@@ -65,11 +65,12 @@ This API documentation has three main modules:
 
   Amongst the interesting available trigger conditions and actions
   are the
-  \link #LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES <em>"event rule matches"</em>\endlink
+  <em>\link api_trigger_cond_er_matches “event rule matches”\endlink</em>
   condition and the
-  \link #LTTNG_ACTION_TYPE_NOTIFY <em>notify</em>\endlink
-  action. With those, your application can receive an asynchronous
-  message (a notification) when a specified event rule matches
+  <em>\link api_trigger_action_notify “notify”\endlink</em>
+  action. With those, your application can
+  \ref api_notif "receive an asynchronous message"
+  (a notification) when a specified event rule matches
   an LTTng event.
 
 The three modules above often refer to the \ref api_gen which offers
@@ -396,8 +397,10 @@ The recording session operations are:
       - lttng_stop_tracing()
       - lttng_stop_tracing_no_wait()
 
-      The #LTTNG_ACTION_TYPE_START_SESSION and
-      #LTTNG_ACTION_TYPE_STOP_SESSION trigger actions can also
+      The \link api_trigger_action_start_session “start recording session”\endlink
+      and
+      \link api_trigger_action_stop_session “stop recording session”\endlink
+      trigger actions can also
       activate and deactivate a recording session.
   <tr>
     <td>Listing
@@ -426,14 +429,18 @@ The recording session operations are:
     <td>
       See \ref api_session_snapshot
 
-      The #LTTNG_ACTION_TYPE_SNAPSHOT_SESSION trigger action can also
+      The
+      \link api_trigger_action_snapshot “take recording session snapshot”\endlink
+      trigger action can also
       take a recording session snapshot.
   <tr>
     <td>Rotation
     <td>
       See \ref api_session_rotation
 
-      The #LTTNG_ACTION_TYPE_ROTATE_SESSION trigger action can also
+      The
+      \link api_trigger_action_rotate “rotate recording session”\endlink
+      trigger action can also
       rotate a recording session.
   <tr>
     <td>Saving and loading
@@ -483,8 +490,9 @@ LTTng offers four <strong><em>recording session modes</em></strong>:
 
       - You call lttng_snapshot_record().
 
-      - LTTng executes an #LTTNG_ACTION_TYPE_SNAPSHOT_SESSION trigger
-        action.
+      - LTTng executes a
+        \link api_trigger_action_snapshot “take recording session snapshot”\endlink
+        trigger action.
 
       LTTng forces the
       \ref api-channel-er-loss-mode "event record loss mode" of all
@@ -1565,23 +1573,22 @@ Each channel can have up to four optional
     When this timer expires, the consumer daemon samples some channel
     statistics to evaluate the following trigger conditions:
 
-    -# The consumed buffer size of a given recording session becomes
-       greater than some value.
-
-    -# The buffer usage of a given channel becomes greater than some
-       value.
-
-    -# The buffer usage of a given channel becomes less than some value.
+    - \ref api_trigger_cond_session_consumed_size "Recording session consumed data size becomes greater than".
+    - \ref api_trigger_cond_buffer_usage "Channel buffer usage becomes greater/less than".
+    - \ref api_trigger_cond_buffer_usage "Channel buffer usage becomes less than".
 
     If you disable the monitor timer of a channel&nbsp;\lt_var{C}, then:
 
-    - The consumed buffer size value of the recording session
-      of&nbsp;\lt_var{C} could be wrong for trigger condition
-      type&nbsp;1: the consumed buffer size of&nbsp;\lt_var{C} won't be
+    - The consumed data size value of the recording session
+      of&nbsp;\lt_var{C} could be wrong for triggers with a
+      “recording session consumed data size becomes greater than”
+      condition: the consumed data size of&nbsp;\lt_var{C} won't be
       part of the grand total.
 
-    - The buffer usage trigger conditions (types&nbsp;2 and&nbsp;3)
-      for&nbsp;\lt_var{C} will never be satisfied.
+    - Triggers with a
+      “channel buffer usage becomes greater than” or
+      “channel buffer usage becomes less than” condition
+      for&nbsp;\lt_var{C} will never fire.
 
       See \ref api_trigger to learn more about triggers.
 
@@ -2216,17 +2223,385 @@ event records, and recording event rules.
 
 @defgroup api_trigger Trigger API
 
-To be done.
+A trigger associates a \ref api_trigger_cond "condition" to
+an \ref api_trigger_action "action".
+
+When the condition of a trigger is satisfied, LTTng attempts to execute
+its action.
+
+A trigger belongs to a session daemon (see
+\lt_man{lttng-sessiond,8} and
+\ref api-gen-sessiond-conn "Session daemon connection"), \em not to a
+specific \lt_obj_session.
+
+To create and register a trigger:
+
+-# Create the \ref api_trigger_cond "condition" and
+   \ref api_trigger_action "action" objects.
+
+   If you need LTTng to execute more than one action when
+   the trigger condition is satisfied, then use an
+   \ref api_trigger_action_list "action list".
+
+-# Create the trigger object with lttng_trigger_create(), passing the
+   condition and action of step&nbsp;1.
+
+-# Register the trigger to the connected session daemon with one of:
+
+   <dl>
+     <dt>Let LTTng assign an automatic trigger name
+     <dd>lttng_register_trigger_with_automatic_name()
+
+     <dt>Set a unique trigger name
+     <dd>lttng_register_trigger_with_name()
+   </dl>
+
+-# When you're done with the trigger object, destroy it
+   with lttng_trigger_destroy().
+
+For a given session daemon, each Unix user has its own, private
+triggers. Note, however, that the \c root Unix user may, for the root
+session daemon:
+
+- Add a trigger as another Unix user and
+  remove a trigger which belongs to another Unix user.
+
+  See lttng_trigger_set_owner_uid().
+
+- List all the triggers, regardless of their owner.
+
+Unregister a trigger with lttng_unregister_trigger().
+
+To list the available triggers your Unix user has access to:
+
+-# Get the trigger list with lttng_list_triggers().
+
+-# Get triggers from the list with lttng_triggers_get_count()
+   and lttng_triggers_get_at_index().
+
+   Get the condition and action of a such a trigger with
+   lttng_trigger_get_const_condition() and
+   lttng_trigger_get_const_action().
+
+-# When you're done with the trigger list,
+   destroy it with lttng_triggers_destroy().
+
+@sa
+    - The “TRIGGER” section of \lt_man{lttng-concepts,7}.
+    - \lt_man{lttng-add-trigger,1}
+    - \lt_man{lttng-list-triggers,1}
+    - \lt_man{lttng-remove-trigger,1}
 
 @defgroup api_trigger_cond Trigger condition API
 @ingroup api_trigger
 
-To be done.
+A <strong><em>trigger condition</em></strong> is the part of a
+\ref api_trigger "trigger" which must be satisfied for LTTng to execute
+its \ref api_trigger_action "action".
 
-@defgroup api_trigger_cond_er_matches "Event rule matches" trigger condition API
+As of LTTng-tools&nbsp;\lt_version_maj_min, the following trigger
+conditions are available:
+
+<table>
+  <tr>
+    <th>Condition type
+    <th>Type enumerator
+    <th>Creation function
+  <tr>
+    <td>\ref api_trigger_cond_session_consumed_size "Recording session consumed data size becomes greater than"
+    <td>#LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE
+    <td>lttng_condition_session_consumed_size_create()
+  <tr>
+    <td>\ref api_trigger_cond_buffer_usage "Channel buffer usage becomes greater than"
+    <td>#LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH
+    <td>lttng_condition_buffer_usage_high_create()
+  <tr>
+    <td>\ref api_trigger_cond_buffer_usage "Channel buffer usage becomes less than"
+    <td>#LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW
+    <td>lttng_condition_buffer_usage_low_create()
+  <tr>
+    <td>\ref api_trigger_cond_rotation "Recording session rotation starts"
+    <td>#LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING
+    <td>lttng_condition_session_rotation_ongoing_create()
+  <tr>
+    <td>\ref api_trigger_cond_rotation "Recording session rotation finishes"
+    <td>#LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED
+    <td>lttng_condition_session_rotation_completed_create()
+  <tr>
+    <td>\ref api_trigger_cond_er_matches "Event rule matches"
+    <td>#LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES
+    <td>lttng_condition_event_rule_matches_create()
+</table>
+
+Get the type of a trigger condition with lttng_condition_get_type().
+
+Destroy a trigger condition with lttng_condition_destroy().
+
+<h1>\anchor api-trigger-cond-eval Evaluation</h1>
+
+When a trigger with a some condition&nbsp;\lt_var{C} fires,
+LTTng can capture some data. With the
+\link api_trigger_action_notify “notify”\endlink action, a user
+may then read the captured value(s) from the \b evaluation
+of&nbsp;\lt_var{C} (through lttng_notification_get_evaluation()).
+
+The opaque type of a trigger condition evaluation is #lttng_evaluation.
+
+Trigger condition and condition evaluation objects share the same
+\link #lttng_condition_type type enumeration\endlink: get the
+condition type of an evaluation with lttng_evaluation_get_type().
+
+The available captured values are, depending on the trigger condition
+type:
+
+<table>
+  <tr>
+    <th>Condition type(s)
+    <th>Captured value(s)
+    <th>Access
+  <tr>
+    <td>#LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE
+    <td>Total \lt_obj_session consumed size.
+    <td>lttng_evaluation_session_consumed_size_get_consumed_size()
+  <tr>
+    <td>
+      #LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH and
+      #LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW
+    <td>\lt_obj_c_channel buffer usage ratio and size.
+    <td>
+      lttng_evaluation_buffer_usage_get_usage_ratio() and
+      lttng_evaluation_buffer_usage_get_usage()
+  <tr>
+    <td>#LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING
+    <td>\lt_obj_c_session rotation ID.
+    <td>lttng_evaluation_session_rotation_get_id()
+  <tr>
+    <td>#LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED
+    <td>\lt_obj_c_session rotation ID and resulting trace archive location.
+    <td>
+      lttng_evaluation_session_rotation_get_id() and
+      lttng_evaluation_session_rotation_completed_get_location()
+  <tr>
+    <td>#LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES
+    <td>Captured event payload and context fields.
+    <td>lttng_evaluation_event_rule_matches_get_captured_values()
+</table>
+
+Destroy a trigger condition evaluation with
+lttng_evaluation_destroy().
+
+@defgroup api_trigger_cond_session_consumed_size “Recording session consumed data size becomes greater than” trigger condition API
 @ingroup api_trigger_cond
 
-To be done.
+A <strong><em>“recording session consumed data size becomes greater than”</em></strong>
+trigger condition is considered satisfied when the total \em consumed
+size of the tracing data of all the \lt_obj_channels of a given
+\lt_obj_session becomes greater than some configured threshold.
+
+A “recording session consumed data size becomes greater than”
+trigger condition has the type
+#LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE.
+
+Every time the \ref api-channel-monitor-timer "monitor timer" of a
+channel expires, LTTng updates the statistics, like the total consumed
+tracing data size, of its owning recording session. This is when LTTng
+tries to evaluate
+“recording session consumed data size becomes greater than” conditions.
+
+To create a valid “recording session consumed data size becomes greater
+than” trigger condition:
+
+-# Create the initial trigger condition
+   with lttng_condition_session_consumed_size_create().
+
+-# Set a threshold (consumed bytes) with
+   lttng_condition_session_consumed_size_set_threshold().
+
+-# Set a target recording session name with
+   lttng_condition_session_consumed_size_set_session_name().
+
+Get the threshold of a
+“recording session consumed data size becomes greater than”
+trigger condition with
+lttng_condition_session_consumed_size_get_threshold().
+
+Get the target recording session name of a
+“recording session consumed data size becomes greater than”
+trigger condition with
+lttng_condition_session_consumed_size_get_session_name().
+
+<h1>Evaluation</h1>
+
+When a trigger with a “recording session consumed data size becomes
+greater than” condition fires, LTTng captures the total consumed size.
+With the \link api_trigger_action_notify “notify”\endlink action, a user
+may then read the captured value from the condition evaluation with
+lttng_evaluation_session_consumed_size_get_consumed_size().
+
+@defgroup api_trigger_cond_buffer_usage “Channel buffer usage becomes greater/less than” trigger condition API
+@ingroup api_trigger_cond
+
+A <strong><em>“channel buffer usage becomes greater/less than”</em></strong>
+trigger condition is considered satisfied when the ring buffer usage of
+a given \lt_obj_channel becomes greater or less than some configured
+threshold.
+
+A “channel buffer usage becomes greater than”
+trigger condition has the type
+#LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH.
+
+A “channel buffer usage becomes less than”
+trigger condition has the type
+#LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW.
+
+Every time the \ref api-channel-monitor-timer "monitor timer" of a
+channel expires, LTTng updates its statistics, including its
+buffer usage. This is when LTTng tries to evaluate
+“channel buffer usage becomes greater/less than” conditions.
+
+To create a valid “channel buffer usage becomes greater/less than”
+trigger condition:
+
+-# Create the initial trigger condition with one of:
+
+   <dl>
+     <dt>Channel buffer usage becomes greater than
+     <dd>lttng_condition_buffer_usage_high_create()
+
+     <dt>Channel buffer usage becomes less than
+     <dd>lttng_condition_buffer_usage_low_create()
+   </dl>
+
+-# Set a buffer usage threshold with one of:
+
+   <dl>
+     <dt>By ratio (0 to 1)
+     <dd>lttng_condition_buffer_usage_set_threshold_ratio()
+
+     <dt>By size (bytes)
+     <dd>lttng_condition_buffer_usage_set_threshold()
+   </dl>
+
+-# Set a target \lt_obj_session name with
+   lttng_condition_buffer_usage_set_session_name().
+
+-# Set a target \lt_obj_domain with
+   lttng_condition_buffer_usage_set_domain_type().
+
+-# Set a target channel name with
+   lttng_condition_buffer_usage_set_channel_name().
+
+Get the buffer usage threshold of a
+“channel buffer usage becomes greater/less than”
+trigger condition with
+lttng_condition_buffer_usage_get_threshold_ratio()
+or
+lttng_condition_buffer_usage_get_threshold().
+
+Get the target recording session name, tracing domain,
+and channel name of a
+“channel buffer usage becomes greater/less than”
+trigger condition with
+lttng_condition_buffer_usage_get_session_name(),
+lttng_condition_buffer_usage_get_domain_type(), and
+lttng_condition_buffer_usage_get_channel_name().
+
+<h1>Evaluation</h1>
+
+When a trigger with a “channel buffer usage becomes greater/less than”
+condition fires, LTTng captures the current ring buffer usage.
+With the \link api_trigger_action_notify “notify”\endlink action, a user
+may then read the captured value from the condition evaluation with
+lttng_evaluation_buffer_usage_get_usage_ratio() and
+lttng_evaluation_buffer_usage_get_usage().
+
+@defgroup api_trigger_cond_rotation “Recording session rotation starts/finishes” trigger condition API
+@ingroup api_trigger_cond
+
+A <strong><em>“recording session rotation starts/finishes”</em></strong>
+trigger condition is considered satisfied when the
+\ref api_session_rotation "rotation" operation of a given
+\lt_obj_session starts or finishes.
+
+A “recording session rotation starts”
+trigger condition has the type
+#LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING.
+
+A “recording session rotation finishes”
+trigger condition has the type
+#LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED.
+
+To create a valid “recording session rotation starts/finishes”
+trigger condition:
+
+-# Create the initial trigger condition with one of:
+
+   <dl>
+     <dt>Recording session rotation starts
+     <dd>lttng_condition_session_rotation_ongoing_create()
+
+     <dt>Recording session rotation finishes
+     <dd>lttng_condition_session_rotation_completed_create()
+   </dl>
+
+-# Set a target \lt_obj_session name with
+   lttng_condition_buffer_usage_set_session_name().
+
+Get the target recording session name of a
+“recording session rotation starts/finishes”
+trigger condition with
+lttng_condition_session_rotation_get_session_name().
+
+<h1>Evaluation</h1>
+
+When a trigger with a “recording session rotation starts/finishes”
+condition fires, LTTng captures the recording session rotation ID.
+Moreover, when a “recording session rotation finishes” condition fires,
+LTTng captures the resulting trace archive location.
+With the \link api_trigger_action_notify “notify”\endlink action, a user
+may then read the captured value(s) from the condition evaluation with
+lttng_evaluation_session_rotation_get_id() and
+lttng_evaluation_session_rotation_completed_get_location().
+
+@defgroup api_trigger_cond_er_matches “Event rule matches” trigger condition API
+@ingroup api_trigger_cond
+
+An <strong><em>“event rule matches”</em></strong> trigger condition is
+considered satisfied when its \ref api_er "event rule"
+matches an LTTng event.
+
+An “event rule matches” trigger condition has the type
+#LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES.
+
+Create an “event rule matches” trigger condition
+with lttng_condition_event_rule_matches_create().
+
+Get the event rule of an “event rule matches” trigger condition
+with lttng_condition_event_rule_matches_get_rule().
+
+<h1>Evaluation</h1>
+
+When a trigger with an “event rule matches” condition fires, LTTng
+can evaluate one or more
+\ref api_ev_expr "event expressions" and then \em capture theirs
+results. As of LTTng-tools&nbsp;\lt_version_maj_min, the only available
+event expressions are event payload and context field references.
+With the \link api_trigger_action_notify “notify”\endlink action,
+a user may then
+read the captured values from the condition evaluation with
+lttng_evaluation_event_rule_matches_get_captured_values().
+
+To make LTTng capture event payload and context fields when an
+“event rule matches” trigger condition is satisfied,
+append capture descriptors to the condition object with
+lttng_condition_event_rule_matches_append_capture_descriptor() before
+you create the trigger with lttng_trigger_create().
+
+Get the capture descriptors of an “event rule matches” trigger
+condition with
+lttng_condition_event_rule_matches_get_capture_descriptor_count()
+and
+lttng_condition_event_rule_matches_get_capture_descriptor_at_index().
 
 @defgroup api_er Event rule API
 @ingroup api_trigger_cond_er_matches
@@ -3254,12 +3629,374 @@ The available event field value types are:
 @defgroup api_trigger_action Trigger action API
 @ingroup api_trigger
 
-To be done.
+A <strong><em>trigger action</em></strong> is the part of a
+\ref api_trigger "trigger" which LTTng executes
+when its trigger \ref api_trigger_cond "condition" is satisfied.
 
-@defgroup api_notif Notification API
+As of LTTng-tools&nbsp;\lt_version_maj_min, the following trigger
+actions are available:
+
+<table>
+  <tr>
+    <th>Action type
+    <th>Type enumerator
+    <th>Creation function
+  <tr>
+    <td>\ref api_trigger_action_notify "Notify"
+    <td>#LTTNG_ACTION_TYPE_NOTIFY
+    <td>lttng_action_notify_create()
+  <tr>
+    <td>\ref api_trigger_action_start_session "Start recording session"
+    <td>#LTTNG_ACTION_TYPE_START_SESSION
+    <td>lttng_action_start_session_create()
+  <tr>
+    <td>\ref api_trigger_action_stop_session "Stop recording session"
+    <td>#LTTNG_ACTION_TYPE_STOP_SESSION
+    <td>lttng_action_stop_session_create()
+  <tr>
+    <td>\ref api_trigger_action_rotate "Rotate recording session snapshot"
+    <td>#LTTNG_ACTION_TYPE_ROTATE_SESSION
+    <td>lttng_action_rotate_session_create()
+  <tr>
+    <td>\ref api_trigger_action_snapshot "Take recording session snapshot"
+    <td>#LTTNG_ACTION_TYPE_SNAPSHOT_SESSION
+    <td>lttng_action_snapshot_session_create()
+</table>
+
+LTTng can execute more than one action when a trigger fires: create
+a trigger action list with lttng_action_list_create().
+
+Get the type of a trigger condition with lttng_condition_get_type().
+
+By default, LTTng executes the action of a trigger every time it fires.
+See \ref api_trigger_action_rate_policy to change the rate policy of a
+trigger action (every&nbsp;\lt_var{N} times or
+once after&nbsp;\lt_var{N} times).
+
+Destroy a trigger condition with lttng_condition_destroy().
+
+@defgroup api_trigger_action_rate_policy Trigger action rate policy API
 @ingroup api_trigger_action
 
-To be done.
+A trigger which \em fires (its condition is satisfied) leads to an
+<em>execution request</em> for its action. If its action is an
+\ref api_trigger_action_list "action list", then LTTng creates an
+execution request for each action of the list, in order.
+
+An execution request of a given action&nbsp;\lt_var{A} first increments
+the <em>execution request count</em>&nbsp;\lt_var{C} of&nbsp;\lt_var{A}.
+The <strong><em>rate policy</em></strong> of&nbsp;\lt_var{A} dictates
+how frequently&nbsp;\lt_var{A} is allowed to execute relative
+to&nbsp;\lt_var{C}.
+
+In other words, the rate policy of a trigger action determines whether
+and when an execution request becomes an actual execution.
+
+As of LTTng-tools&nbsp;\lt_version_maj_min, the available trigger
+action rate policies are:
+
+<table>
+  <tr>
+    <th>Rate policy
+    <th>Description
+    <th>Type enumerator
+    <th>Creation function
+  <tr>
+    <td>
+      \anchor api-trigger-action-rate-policy-every-n
+      “Every&nbsp;\lt_var{N} times”
+    <td>
+      LTTng executes&nbsp;\lt_var{A} every time&nbsp;\lt_var{C} is a
+      multiple of&nbsp;\lt_var{N}.
+    <td>#LTTNG_RATE_POLICY_TYPE_EVERY_N
+    <td>lttng_rate_policy_every_n_create()
+  <tr>
+    <td>“Once after&nbsp;\lt_var{N} times”
+    <td>
+      LTTng executes&nbsp;\lt_var{A} a single time, when&nbsp;\lt_var{C}
+      is greater than or equal to&nbsp;\lt_var{N}.
+    <td>#LTTNG_RATE_POLICY_TYPE_ONCE_AFTER_N
+    <td>lttng_rate_policy_once_after_n_create()
+</table>
+
+Get the type of a trigger action rate policy with
+lttng_rate_policy_get_type().
+
+Destroy a trigger action rate policy with
+lttng_rate_policy_destroy().
+
+Set the rate policy of a trigger action with the following functions,
+depending on the action type:
+
+<table>
+  <tr>
+    <th>Trigger action type
+    <th>Rate policy setter
+  <tr>
+    <td>#LTTNG_ACTION_TYPE_NOTIFY
+    <td>lttng_action_notify_set_rate_policy()
+  <tr>
+    <td>#LTTNG_ACTION_TYPE_START_SESSION
+    <td>lttng_action_start_session_set_rate_policy()
+  <tr>
+    <td>#LTTNG_ACTION_TYPE_STOP_SESSION
+    <td>lttng_action_stop_session_set_rate_policy()
+  <tr>
+    <td>#LTTNG_ACTION_TYPE_ROTATE_SESSION
+    <td>lttng_action_rotate_session_set_rate_policy()
+  <tr>
+    <td>#LTTNG_ACTION_TYPE_SNAPSHOT_SESSION
+    <td>lttng_action_snapshot_session_set_rate_policy()
+</table>
+
+@defgroup api_trigger_action_list Trigger action list API
+@ingroup api_trigger_action
+
+A <strong><em>trigger action list</em></strong> is an ordered sequence
+of trigger actions.
+
+A trigger action list is an action itself: it has
+the type #LTTNG_ACTION_TYPE_LIST.
+
+When a trigger having an action list as its action fires, LTTng
+attempts to execute its contained actions, in order. Whether or not
+LTTng executes a contained action depends on its
+\ref api_trigger_action_rate_policy "rate policy". An action list
+doesn't have a rate policy itself.
+
+Create a trigger action list with lttng_action_list_create().
+
+Add a trigger action to an action list with
+lttng_action_list_add_action().
+
+Get a trigger action from an action list with
+lttng_action_list_get_count() and
+lttng_action_list_get_at_index().
+
+@defgroup api_trigger_action_notify “Notify” trigger action API
+@ingroup api_trigger_action
+
+A <strong><em>“notify”</em></strong> trigger action
+sends a notification to any
+\ref api_notif "notification channel" subscribed to the satisfied
+\ref api_trigger_cond "condition" when its containing trigger fires.
+
+A “notify” trigger action has the type
+#LTTNG_ACTION_TYPE_NOTIFY.
+
+Create a “notify” trigger action with
+lttng_action_notify_create().
+
+Set and get the \ref api_trigger_action_rate_policy "rate policy"
+of a “notify” trigger action with
+lttng_action_notify_set_rate_policy() and
+lttng_action_notify_get_rate_policy().
+
+@defgroup api_notif Notification channel API
+@ingroup api_trigger_action_notify
+
+A <strong><em>notification channel</em></strong> is a special
+\ref api-gen-sessiond-conn "connection to an LTTng session daemon"
+with which you subscribe to <em>notifications</em> which LTTng
+sends when specific \ref api_trigger_cond "trigger conditions"
+are satisfied.
+
+LTTng sends a notification to subscribed notification channels when it
+executes a \link api_trigger_action_notify “notify”\endlink
+trigger action.
+
+To use a notification channel:
+
+-# Create a notification channel with
+   lttng_notification_channel_create().
+
+   This call establishes a dedicated, persistent connection with an
+   LTTng session daemon.
+
+-# Call lttng_notification_channel_subscribe() one or more times to
+   subscribe the notifications which LTTng sends when triggers
+   with specific \ref api_trigger_cond "conditions" fire.
+
+-# Call lttng_notification_channel_get_next_notification() to block
+   the current thread until the channel receives a new notification.
+   Repeat as needed.
+
+   You may also call the non-blocking
+   lttng_notification_channel_has_pending_notification() function to
+   check whether or not
+   lttng_notification_channel_get_next_notification() would return
+   immediately.
+
+   With a notification object in hand, you may get:
+
+   - The trigger which fired to send this notification with
+     lttng_notification_get_trigger().
+
+   - The satisfied trigger condition with
+     lttng_notification_get_condition().
+
+   - The \ref api-trigger-cond-eval "evaluation" of the satisfied
+     trigger condition
+     with lttng_notification_get_evaluation().
+
+     This object contains values which LTTng captured when the
+     trigger fired.
+
+   When you're done with the notification, destroy it with
+   lttng_notification_destroy().
+
+-# When you're done with the notification channel, destroy it
+   with lttng_notification_channel_destroy().
+
+During the lifetime of the notification channel, you may call
+lttng_notification_channel_subscribe() and
+lttng_notification_channel_unsubscribe() as you will to modify its
+subscriptions.
+
+@note
+    If your goal is to capture a large amount of tracing data with
+    a trigger having an
+    \link api_trigger_cond_er_matches “event rule matches”\endlink
+    condition and a
+    \link api_trigger_action_notify “notify”\endlink action, then
+    prefer creating and using a \lt_obj_session instead.
+
+@defgroup api_trigger_action_start_session “Start recording session” trigger action API
+@ingroup api_trigger_action
+
+A <strong><em>“start recording session”</em></strong> trigger action
+starts a specific \lt_obj_session when its containing trigger fires.
+
+LTTng finds the recording session to start <em>by name</em> when it
+executes the action.
+
+Executing this action is equivalent to calling
+lttng_start_tracing() with the same recording session name.
+
+A “start recording session” trigger action has the type
+#LTTNG_ACTION_TYPE_START_SESSION.
+
+To create a valid “start recording session” trigger action:
+
+-# Create the initial trigger action with
+   lttng_action_start_session_create().
+
+-# Set the target recording session name with
+   lttng_action_start_session_set_session_name().
+
+Get the target recording session name of a
+“start recording session” trigger action with
+lttng_action_start_session_get_session_name().
+
+Set and get the \ref api_trigger_action_rate_policy "rate policy"
+of a “start recording session” trigger action with
+lttng_action_start_session_set_rate_policy() and
+lttng_action_start_session_get_rate_policy().
+
+@defgroup api_trigger_action_stop_session “Stop recording session” trigger action API
+@ingroup api_trigger_action
+
+A <strong><em>“stop recording session”</em></strong> trigger action
+\link lttng_stop_tracing() stops\endlink
+a specific \lt_obj_session when its containing trigger fires.
+
+LTTng finds the recording session to stop <em>by name</em> when it
+executes the action.
+
+Executing this action is equivalent to calling
+lttng_stop_tracing() with the same recording session name.
+
+A “start recording session” trigger action has the type
+#LTTNG_ACTION_TYPE_STOP_SESSION.
+
+To create a valid “stop recording session” trigger action:
+
+-# Create the initial trigger action with
+   lttng_action_stop_session_create().
+
+-# Set the target recording session name with
+   lttng_action_stop_session_set_session_name().
+
+Get the target recording session name of a
+“stop recording session” trigger action with
+lttng_action_stop_session_get_session_name().
+
+Set and get the \ref api_trigger_action_rate_policy "rate policy"
+of a “stop recording session” trigger action with
+lttng_action_stop_session_set_rate_policy() and
+lttng_action_stop_session_get_rate_policy().
+
+@defgroup api_trigger_action_rotate “Rotate recording session snapshot” trigger action API
+@ingroup api_trigger_action
+
+A <strong><em>“rotate recording session”</em></strong> trigger action
+\ref api_session_rotation "rotates"
+a specific \lt_obj_session when its containing trigger fires.
+
+LTTng finds the recording session to rotate <em>by name</em> when it
+executes the action.
+
+Executing this action is equivalent to calling
+lttng_rotate_session() with the same recording session name.
+
+A “start recording session” trigger action has the type
+#LTTNG_ACTION_TYPE_ROTATE_SESSION.
+
+To create a valid “rotate recording session” trigger action:
+
+-# Create the initial trigger action with
+   lttng_action_rotate_session_create().
+
+-# Set the target recording session name with
+   lttng_action_rotate_session_set_session_name().
+
+Get the target recording session name of a
+“rotate recording session” trigger action with
+lttng_action_rotate_session_get_session_name().
+
+Set and get the \ref api_trigger_action_rate_policy "rate policy"
+of a “rotate recording session” trigger action with
+lttng_action_rotate_session_set_rate_policy() and
+lttng_action_rotate_session_get_rate_policy().
+
+@defgroup api_trigger_action_snapshot “Take recording session snapshot” trigger action API
+@ingroup api_trigger_action
+
+A <strong><em>“take recording session snapshot”</em></strong> trigger
+action \ref api_session_snapshot "takes a snapshot" of
+a specific \lt_obj_session when its containing trigger fires.
+
+LTTng finds the recording session of which to take a snapshot
+<em>by name</em> when it executes the action.
+
+Executing this action is equivalent to calling
+lttng_snapshot_record() with the same recording session name.
+
+A “start recording session” trigger action has the type
+#LTTNG_ACTION_TYPE_SNAPSHOT_SESSION.
+
+To create a valid “take recording session snapshot” trigger action:
+
+-# Create the initial trigger action with
+   lttng_action_snapshot_session_create().
+
+-# Set the target recording session name with
+   lttng_action_snapshot_session_set_session_name().
+
+The initial recording snapshot output of a
+“take recording session snapshot” trigger action is the default
+snapshot output of the target recording session. Override the snapshot
+output of the action with
+lttng_action_snapshot_session_set_output().
+
+Get the target recording session name of a
+“take recording session snapshot” trigger action with
+lttng_action_snapshot_session_get_session_name().
+
+Set and get the \ref api_trigger_action_rate_policy "rate policy"
+of a “take recording session snapshot” trigger action with
+lttng_action_snapshot_session_set_rate_policy() and
+lttng_action_snapshot_session_get_rate_policy().
 
 @defgroup api_error Error query API
 

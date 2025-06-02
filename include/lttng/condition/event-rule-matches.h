@@ -17,149 +17,251 @@
 extern "C" {
 #endif
 
+/*!
+@addtogroup api_trigger_cond_er_matches
+@{
+*/
+
 struct lttng_event_expr;
 struct lttng_event_field_value;
 
+/*!
+@brief
+    Return type of
+    lttng_evaluation_event_rule_matches_get_captured_values().
+*/
 enum lttng_evaluation_event_rule_matches_status {
-	LTTNG_EVALUATION_EVENT_RULE_MATCHES_STATUS_NONE = 1,
+	/// Success.
 	LTTNG_EVALUATION_EVENT_RULE_MATCHES_STATUS_OK = 0,
+
+	/// The condition of the evaluation has no capture descriptors.
+	LTTNG_EVALUATION_EVENT_RULE_MATCHES_STATUS_NONE = 1,
+
+	/// Unsatisfied precondition.
 	LTTNG_EVALUATION_EVENT_RULE_MATCHES_STATUS_INVALID = -1,
 };
 
-/**
- * Event Rule Matches conditions allows an action to be taken whenever an event
- * matching the Event Rule Matches is hit by the tracers.
- *
- * An Event Rule Matches condition can also specify a payload to be captured at
- * runtime. This is done via the capture descriptor.
- *
- * Note: the dynamic runtime capture of payload is only available for the
- *       trigger notification subsystem.
- */
+/*!
+@brief
+    Creates an “event rule matches” trigger condition to execute
+    an action when the event rule \lt_p{rule} matches
+    an LTTng event.
 
-/*
- * Create a newly allocated Event Rule Matches condition.
- *
- * Returns a new condition on success, NULL on failure. This condition must be
- * destroyed using lttng_condition_destroy().
- */
+On success, the returned trigger condition has no
+capture descriptors: append capture descriptors with
+lttng_condition_event_rule_matches_append_capture_descriptor().
+
+@param[in] rule
+    Event rule of the “event rule matches” trigger condition
+    to create (not moved).
+
+@returns
+    @parblock
+    Trigger condition with the type
+    #LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES on success,
+    or \c NULL on error.
+
+    Destroy the returned trigger condition with
+    lttng_condition_destroy().
+    @endparblock
+
+@pre
+    @lt_pre_not_null{rule}
+*/
 LTTNG_EXPORT extern struct lttng_condition *
 lttng_condition_event_rule_matches_create(struct lttng_event_rule *rule);
 
-/*
- * Get the rule property of an Event Rule Matches condition.
- *
- * The caller does not assume the ownership of the returned rule. The
- * rule shall only be used for the duration of the condition's
- * lifetime.
- *
- * Returns LTTNG_CONDITION_STATUS_OK and a pointer to the condition's rule
- * on success, LTTNG_CONDITION_STATUS_INVALID if an invalid
- * parameter is passed. */
+/*!
+@brief
+    Sets \lt_p{*rule} to the event rule of the
+    “event rule matches” trigger condition \lt_p{condition}.
+
+@param[in] condition
+    “Event rule matches” trigger condition of which to get the
+    event rule.
+@param[out] rule
+    @parblock
+    <strong>On success</strong>, this function sets \lt_p{*rule}
+    to the event rule of \lt_p{condition}.
+
+    \lt_p{condition} owns \lt_p{*rule}.
+
+    \lt_p{*rule} remains valid until the next
+    function call with \lt_p{condition}.
+    @endparblock
+
+@retval #LTTNG_CONDITION_STATUS_OK
+    Success.
+@retval #LTTNG_CONDITION_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{condition}
+    @lt_pre_has_type{condition,LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES}
+    @lt_pre_not_null{rule}
+*/
 LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_event_rule_matches_get_rule(const struct lttng_condition *condition,
 					    const struct lttng_event_rule **rule);
 
-/**
- * lttng_evaluation_event_rule_matches_hit are specialised lttng_evaluations
- * which allow users to query a number of properties resulting from the
- * evaluation of a condition which evaluated to true.
- *
- * The evaluation of an Event Rule Matches condition contains the captured event
- * payload fields that were specified by the condition.
- */
+/*!
+@brief
+    Sets \lt_p{*field_val} to the array event field value of
+    the “event rule matches” trigger condition evaluation
+    \lt_p{evaluation} containing its captured field values.
 
-/*
- * Sets `*field_val` to the array event field value of the Event Rule Matches
- * condition evaluation `evaluation` which contains its captured values.
- *
- * Returns:
- *
- * `LTTNG_EVALUATION_EVENT_RULE_MATCHES_STATUS_OK`:
- *     Success.
- *
- *     `*field_val` is an array event field value with a length of at
- *     least one.
- *
- * `LTTNG_EVALUATION_EVENT_RULE_MATCHES_STATUS_INVALID`:
- *     * `evaluation` is `NULL`.
- *     * The type of the condition of `evaluation` is not
- *       `LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES`.
- *     * `field_val` is `NULL`.
- *
- * `LTTNG_EVALUATION_EVENT_RULE_MATCHES_STATUS_NONE`:
- *     * The condition of `evaluation` has no capture descriptors.
- */
+Each element of the returned array event field value is described
+by the capture descriptor at the same index in the condition
+of \lt_p{evaluation}
+(see
+lttng_condition_event_rule_matches_get_capture_descriptor_count()
+and
+lttng_condition_event_rule_matches_get_capture_descriptor_at_index()).
+
+@param[in] evaluation
+    “Event rule matches” trigger condition evaluation of which to get
+    the captured event field values.
+@param[out] field_val
+    @parblock
+    <strong>On success</strong>, this function sets \lt_p{*field_val}
+    to the captured event field values of \lt_p{evaluation}.
+
+    \lt_p{*field_val} has the type #LTTNG_EVENT_FIELD_VALUE_TYPE_ARRAY.
+
+    \lt_p{evaluation} owns \lt_p{*field_val}.
+
+    \lt_p{*field_val} remains valid until the next
+    function call with \lt_p{evaluation}.
+    @endparblock
+
+@retval #LTTNG_EVALUATION_EVENT_RULE_MATCHES_STATUS_OK
+    Success.
+@retval #LTTNG_EVALUATION_EVENT_RULE_MATCHES_STATUS_NONE
+    The condition of \lt_p{evaluation} has no capture descriptors.
+@retval #LTTNG_EVALUATION_EVENT_RULE_MATCHES_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{evaluation}
+    @lt_pre_has_type{evaluation,LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES}
+    @lt_pre_not_null{field_val}
+*/
 LTTNG_EXPORT extern enum lttng_evaluation_event_rule_matches_status
 lttng_evaluation_event_rule_matches_get_captured_values(
 	const struct lttng_evaluation *evaluation,
 	const struct lttng_event_field_value **field_val);
 
-/*
- * Appends (transfering the ownership) the capture descriptor `expr` to
- * the Event Rule Matches condition `condition`.
- *
- * Returns:
- *
- * `LTTNG_CONDITION_STATUS_OK`:
- *     Success.
- *
- * `LTTNG_CONDITION_STATUS_ERROR`:
- *     Memory error.
- *
- * `LTTNG_CONDITION_STATUS_INVALID`:
- *     * `condition` is `NULL`.
- *     * The type of `condition` is not
- *       `LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES`.
- *     * `expr` is `NULL`.
- *     * `expr` is not a locator expression, that is, its type is not
- *       one of:
- *
- *       * `LTTNG_EVENT_EXPR_TYPE_EVENT_PAYLOAD_FIELD`
- *       * `LTTNG_EVENT_EXPR_TYPE_CHANNEL_CONTEXT_FIELD`
- *       * `LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD`
- *       * `LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT`
- *
- * `LTTNG_CONDITION_STATUS_UNSUPPORTED`:
- *     * The associated event-rule does not support runtime capture.
- */
+/*!
+@brief
+    Appends a capture descriptor with the event expression \lt_p{expr}
+    to the “event rule matches” trigger condition \lt_p{condition}.
+
+When a trigger with \lt_p{condition} fires, LTTng evaluates \lt_p{expr}
+and captures the result. With the
+\link api_trigger_action_notify “notify”\endlink action, a user may read
+the captured values from the condition evaluation with
+lttng_evaluation_event_rule_matches_get_captured_values().
+
+@param[in] condition
+    “Event rule matches” trigger condition to which to append
+    a capture descriptor.
+@param[in] expr
+    @parblock
+    Event expression of the capture descriptor to append to
+    \lt_p{condition}.
+
+    <strong>On success</strong>, the ownership of this expression is
+    moved to \lt_p{condition}.
+    @endparblock
+
+@retval #LTTNG_CONDITION_STATUS_OK
+    Success.
+@retval #LTTNG_CONDITION_STATUS_INVALID
+    Unsatisfied precondition.
+@retval #LTTNG_CONDITION_STATUS_UNSUPPORTED
+    \lt_p{condition} doesn't support event field value capturing
+    considering its event rule.
+@retval #LTTNG_CONDITION_STATUS_ERROR
+    Memory error.
+
+@pre
+    @lt_pre_not_null{condition}
+    @lt_pre_has_type{condition,LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES}
+    @lt_pre_not_null{expr}
+*/
 LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_event_rule_matches_append_capture_descriptor(struct lttng_condition *condition,
 							     struct lttng_event_expr *expr);
 
-/*
- * Sets `*count` to the number of capture descriptors in the Event Rule Matches
- * condition `condition`.
- *
- * Returns:
- *
- * `LTTNG_CONDITION_STATUS_OK`:
- *     Success.
- *
- * `LTTNG_CONDITION_STATUS_INVALID`:
- *     * `condition` is `NULL`.
- *     * The type of `condition` is not
- *       `LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES`.
- *     * `count` is `NULL`.
- */
+/*!
+@brief
+    Sets \lt_p{*count} to the number of capture descriptors
+    of the “event rule matches” trigger condition \lt_p{condition}.
+
+@param[in] condition
+    “Event rule matches” trigger condition of which to get
+    the number of capture descriptors.
+@param[out] count
+    <strong>On success</strong>, this function sets \lt_p{*count}
+    to the number of capture descriptors of \lt_p{condition}.
+
+@retval #LTTNG_CONDITION_STATUS_OK
+    Success.
+@retval #LTTNG_CONDITION_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{condition}
+    @lt_pre_has_type{condition,LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES}
+    @lt_pre_not_null{count}
+
+@sa lttng_condition_event_rule_matches_get_capture_descriptor_at_index() --
+    Get the capture descriptor of an “event rule matches”
+    trigger condition by index.
+*/
 LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_event_rule_matches_get_capture_descriptor_count(
 	const struct lttng_condition *condition, unsigned int *count);
 
-/*
- * Returns the capture descriptor (borrowed) of the Event Rule Matches condition
- * `condition` at the index `index`, or `NULL` if:
- *
- * * `condition` is `NULL`.
- * * The type of `condition` is not
- *   `LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES`.
- * * `index` is greater than or equal to the number of capture
- *   descriptors in `condition` (as returned by
- *   lttng_condition_event_rule_matches_get_capture_descriptor_count()).
- */
+/*!
+@brief
+    Returns the capture descriptor of the “event rule matches” trigger
+    condition \lt_p{condition} at the index \lt_p{index}.
+
+@param[in] condition
+    “Event rule matches” trigger condition of which to get
+    the capture descriptor at the index \lt_p{index}.
+@param[in] index
+    Index of the capture descriptor to get from \lt_p{condition}.
+
+@returns
+    @parblock
+    Capture descriptor of the “event rule matches” trigger condition
+    \lt_p{condition} at the index \lt_p{index}, or \c NULL on error.
+
+    \lt_p{condition} owns the returned capture descriptor.
+
+    The returned capture descriptor remains valid as long
+    as \lt_p{condition} exists.
+    @endparblock
+
+@pre
+    @lt_pre_not_null{condition}
+    @lt_pre_has_type{condition,LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES}
+    - \lt_p{index} is less than the number of capture descriptors
+      (as returned by
+      lttng_condition_event_rule_matches_get_capture_descriptor_count())
+      of \lt_p{condition}.
+
+@sa lttng_condition_event_rule_matches_get_capture_descriptor_count() --
+    Get the number of capture descriptors of an “event rule matches”
+    trigger condition.
+*/
 LTTNG_EXPORT extern const struct lttng_event_expr *
 lttng_condition_event_rule_matches_get_capture_descriptor_at_index(
 	const struct lttng_condition *condition, unsigned int index);
+
+/// @}
 
 #ifdef __cplusplus
 }

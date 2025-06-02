@@ -157,7 +157,25 @@ INPUT                   = "@srcdir@/dox/groups.dox" \
                           "@top_srcdir@/include/lttng/kernel-probe.h" \
                           "@top_srcdir@/include/lttng/userspace-probe.h" \
                           "@top_srcdir@/include/lttng/event-field-value.h" \
-                          "@top_srcdir@/include/lttng/event-expr.h"
+                          "@top_srcdir@/include/lttng/event-expr.h" \
+                          "@top_srcdir@/include/lttng/condition" \
+                          "@top_srcdir@/include/lttng/evaluation" \
+                          "@top_srcdir@/include/lttng/condition/event-rule-matches.h" \
+                          "@top_srcdir@/include/lttng/condition/session-consumed-size.h" \
+                          "@top_srcdir@/include/lttng/condition/buffer-usage.h" \
+                          "@top_srcdir@/include/lttng/condition/session-rotation.h" \
+                          "@top_srcdir@/include/lttng/action/action.h" \
+                          "@top_srcdir@/include/lttng/action/rate-policy.h" \
+                          "@top_srcdir@/include/lttng/action/list.h" \
+                          "@top_srcdir@/include/lttng/action/start-session.h" \
+                          "@top_srcdir@/include/lttng/action/stop-session.h" \
+                          "@top_srcdir@/include/lttng/action/rotate-session.h" \
+                          "@top_srcdir@/include/lttng/action/snapshot-session.h" \
+                          "@top_srcdir@/include/lttng/action/notify.h" \
+                          "@top_srcdir@/include/lttng/endpoint.h" \
+                          "@top_srcdir@/include/lttng/notification/channel.h" \
+                          "@top_srcdir@/include/lttng/notification" \
+                          "@top_srcdir@/include/lttng/trigger/trigger.h"
 INPUT_ENCODING          = UTF-8
 FILE_PATTERNS           = *.h *.dox
 RECURSIVE               = NO
@@ -178,6 +196,7 @@ MACRO_EXPANSION         = YES
 EXPAND_ONLY_PREDEF      = YES
 PREDEFINED              =
 PREDEFINED             += "LTTNG_EXPORT="
+PREDEFINED             += "LTTNG_DEPRECATED="
 
 SOURCE_BROWSER          = NO
 INLINE_SOURCES          = NO

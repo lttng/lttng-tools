@@ -15,29 +15,71 @@
 extern "C" {
 #endif
 
+/*!
+@addtogroup api_trigger_cond
+@{
+*/
+
+/*!
+@struct lttng_evaluation
+
+@brief
+    Trigger condition evaluation (opaque type).
+*/
 struct lttng_evaluation;
 
+/*!
+@brief
+    Return type of trigger condition evaluation API functions.
+*/
 enum lttng_evaluation_status {
+	/// Success.
 	LTTNG_EVALUATION_STATUS_OK = 0,
+
+	/* Unused for the moment */
 	LTTNG_EVALUATION_STATUS_ERROR = -1,
+
+	/// Unsatisfied precondition.
 	LTTNG_EVALUATION_STATUS_INVALID = -2,
+
+	/* Unused for the moment */
 	LTTNG_EVALUATION_STATUS_UNKNOWN = -3,
+
+	/* Unused for the moment */
 	LTTNG_EVALUATION_STATUS_UNSET = -4,
 };
 
-/*
- * Get the condition type associated with an evaluation.
- *
- * Returns the type of a condition on success, LTTNG_CONDITION_TYPE_UNKNOWN on
- * error.
- */
+/*!
+@brief
+    Returns the condition type of the trigger condition evaluation
+    \lt_p{evaluation}.
+
+@param[in] evaluation
+    Trigger condition evaluation of which to get the condition type.
+
+@returns
+    Type of \lt_p{evaluation}.
+
+@pre
+    @lt_pre_not_null{evaluation}
+*/
 LTTNG_EXPORT extern enum lttng_condition_type
 lttng_evaluation_get_type(const struct lttng_evaluation *evaluation);
 
-/*
- * Destroy (frees) an evaluation object.
- */
+/*!
+@brief
+    Destroys the trigger condition evaluation \lt_p{evaluation}.
+
+@param[in] evaluation
+    @parblock
+    Trigger condition evaluation to destroy.
+
+    May be \c NULL.
+    @endparblock
+*/
 LTTNG_EXPORT extern void lttng_evaluation_destroy(struct lttng_evaluation *evaluation);
+
+/// @}
 
 #ifdef __cplusplus
 }

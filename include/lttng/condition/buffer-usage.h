@@ -19,229 +19,538 @@
 extern "C" {
 #endif
 
-/**
- * Buffer usage conditions allows an action to be taken whenever a channel's
- * buffer usage crosses a set threshold.
- *
- * These conditions are periodically evaluated against the current buffer
- * usage statistics. The period at which these conditions are evaluated is
- * governed by the channels' monitor timer.
- *
- * Note that the use of these conditons does not imply any hysteresis-loop
- * mechanism. For instance, an upper-bound buffer usage condition set to 75%
- * will fire everytime the buffer usage goes from a value < 75% to a value that
- * is >= 75%. The evaluation result does not depend on any lower-bound condition
- * being reached before the condition is evaluated to true again.
- *
- * Buffer usage conditions have the following properties:
- *   - the exact name of the session in which the channel to be monitored is
- *     defined,
- *   - the domain of the channel to be monitored,
- *   - the exact name of the channel to be monitored,
- *   - a usage threshold, expressed either in bytes or as a fraction of total
- *     buffer capacity.
- *
- * Wildcards, regular expressions or other globbing mechanisms are not supported
- * in buffer usage condition properties.
- */
+/*!
+@addtogroup api_trigger_cond_buffer_usage
+@{
+*/
 
-/*
- * Create a newly allocated lower-bound buffer usage condition.
- *
- * A lower-bound buffer usage condition evaluates to true whenever
- * a buffer's usage _crosses_ the bound that is defined as part of the
- * condition's properties from high to low. In other words, the condition only
- * evaluates to true when a buffer's usage transitions from a value higher than
- * the threshold defined in the condition to a value lower than the threshold
- * defined in the condition.
- *
- * Returns a new condition on success, NULL on failure. This condition must be
- * destroyed using lttng_condition_destroy().
- */
+/*!
+@brief
+    Creates an initial “channel buffer usage becomes less than”
+    trigger condition to execute
+    an action when the ring buffer usage of a given \lt_obj_channel
+    becomes less than some configured threshold.
+
+On success, the returned trigger condition isn't valid yet; you must:
+
+- Set a target \lt_obj_session name with
+  lttng_condition_buffer_usage_set_session_name().
+
+- Set a target \lt_obj_domain with
+  lttng_condition_buffer_usage_set_domain_type().
+
+- Set a target channel name with
+  lttng_condition_buffer_usage_set_channel_name().
+
+- Set a channel buffer usage threshold with
+  lttng_condition_buffer_usage_set_threshold_ratio() or
+  lttng_condition_buffer_usage_set_threshold().
+
+@returns
+    @parblock
+    Trigger condition with the type
+    #LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW on success,
+    or \c NULL on error.
+
+    Destroy the returned trigger condition with
+    lttng_condition_destroy().
+    @endparblock
+*/
 LTTNG_EXPORT extern struct lttng_condition *lttng_condition_buffer_usage_low_create(void);
 
-/*
- * Create a newly allocated upper-bound buffer usage condition.
- *
- * An upper-bound buffer usage condition evaluates to true whenever
- * a buffer's usage _crosses_ the bound that is defined as part of the
- * condition's properties from low to high. In other words, the condition only
- * evaluates to true when a buffer's usage transitions from a value lower than
- * the threshold defined in the condition to a value higher than the threshold
- * defined in the condition.
- *
- * Returns a new condition on success, NULL on failure. This condition must be
- * destroyed using lttng_condition_destroy().
- */
+/*!
+@brief
+    Creates an initial “channel buffer usage becomes greater than”
+    trigger condition to execute
+    an action when the ring buffer usage of a given \lt_obj_channel
+    becomes greater than some configured threshold.
+
+On success, the returned trigger condition isn't valid yet; you must:
+
+- Set a target \lt_obj_session name with
+  lttng_condition_buffer_usage_set_session_name().
+
+- Set a target \lt_obj_domain with
+  lttng_condition_buffer_usage_set_domain_type().
+
+- Set a target channel name with
+  lttng_condition_buffer_usage_set_channel_name().
+
+- Set a channel buffer usage threshold with
+  lttng_condition_buffer_usage_set_threshold_ratio() or
+  lttng_condition_buffer_usage_set_threshold().
+
+@returns
+    @parblock
+    Trigger condition with the type
+    #LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH on success,
+    or \c NULL on error.
+
+    Destroy the returned trigger condition with
+    lttng_condition_destroy().
+    @endparblock
+*/
 LTTNG_EXPORT extern struct lttng_condition *lttng_condition_buffer_usage_high_create(void);
 
-/*
- * Get the buffer usage threshold ratio of a buffer usage condition.
- *
- * The buffer usage condition's threshold must have been defined as a ratio in
- * order for this call to succeed.
- *
- * Returns LTTNG_CONDITION_STATUS_OK on success and a ratio contained by the
- * interval [0.0, 1.0]. LTTNG_CONDITION_STATUS_INVALID is returned if an invalid
- * parameter is passed, or LTTNG_CONDITION_STATUS_UNSET if a threshold,
- * expressed as a ratio of total buffer capacity, was not set prior to this
- * call.
- */
+/*!
+@brief
+    Sets \lt_p{*threshold} to the \lt_obj_channel buffer usage ratio
+    threshold of the “channel buffer usage becomes greater/less than”
+    trigger condition \lt_p{condition}.
+
+@param[in] condition
+    “Channel buffer usage becomes greater/less than”
+    trigger condition of which to get the
+    channel buffer usage ratio threshold.
+@param[out] threshold
+    <strong>On success</strong>, this function sets \lt_p{*threshold}
+    to the channel buffer usage ratio (between&nbsp;0 and&nbsp;1)
+    threshold of \lt_p{condition}.
+
+@retval #LTTNG_CONDITION_STATUS_OK
+    Success.
+@retval #LTTNG_CONDITION_STATUS_UNSET
+    \lt_p{condition} has no channel buffer usage ratio threshold,
+    although it may have a channel buffer usage size threshold (see
+    lttng_condition_buffer_usage_get_threshold()).
+@retval #LTTNG_CONDITION_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{condition}
+    - \lt_p{condition} has the type
+      #LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH or
+      #LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW.
+    @lt_pre_not_null{threshold}
+
+@sa lttng_condition_buffer_usage_set_threshold_ratio() --
+    Set the channel buffer usage ratio threshold of a
+    “channel buffer usage becomes greater/less than” trigger condition.
+@sa lttng_condition_buffer_usage_get_threshold() --
+    Get the channel buffer usage size threshold of a
+    “channel buffer usage becomes greater/less than” trigger condition.
+*/
 LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_buffer_usage_get_threshold_ratio(const struct lttng_condition *condition,
-						 double *threshold_ratio);
+						 double *threshold);
 
-/*
- * Set the buffer usage threshold ratio of a buffer usage condition.
- *
- * The threshold ratio passed must be contained by the interval [0.0, 1.0] and
- * represents a ratio of the channel's buffer's capacity. Setting a threshold,
- * either as a ratio or as an absolute size in bytes will override any
- * previously set threshold.
- *
- * Returns LTTNG_CONDITION_STATUS_OK on success, LTTNG_CONDITION_STATUS_INVALID
- * if invalid paramenters are passed.
- */
+/*!
+@brief
+    Sets the \lt_obj_channel buffer usage ratio threshold of the
+    “channel buffer usage becomes greater/less than”
+    trigger condition \lt_p{condition} to \lt_p{threshold}.
+
+This function overrides any current channel buffer usage threshold of
+\lt_p{condition}.
+
+@param[in] condition
+    “Channel buffer usage becomes greater/less than” trigger
+    condition of which to set the channel buffer usage ratio threshold.
+@param[in] threshold
+    Channel buffer usage ratio (between&nbsp;0 and&nbsp;1) threshold
+    of \lt_p{condition}.
+
+@retval #LTTNG_CONDITION_STATUS_OK
+    Success.
+@retval #LTTNG_CONDITION_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{condition}
+    - \lt_p{condition} has the type
+      #LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH or
+      #LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW.
+
+@sa lttng_condition_buffer_usage_get_threshold_ratio() --
+    Get the channel buffer usage ratio threshold of a
+    “channel buffer usage becomes greater/less than” trigger condition.
+@sa lttng_condition_buffer_usage_set_threshold() --
+    Set the channel buffer usage size threshold of a
+    “channel buffer usage becomes greater/less than” trigger condition.
+*/
 LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_buffer_usage_set_threshold_ratio(struct lttng_condition *condition,
-						 double threshold_ratio);
+						 double threshold);
 
-/*
- * Get the buffer usage threshold of a buffer usage condition.
- *
- * The buffer usage condition's threshold must have been defined as an absolute
- * value expressed in bytes in order for this call to succeed.
- *
- * Returns LTTNG_CONDITION_STATUS_OK on success and a threshold expressed in
- * bytes, LTTNG_CONDITION_STATUS_INVALID if an invalid parameter is passed, or
- * LTTNG_CONDITION_STATUS_UNSET if a threshold, expressed as an absolute size in
- * bytes, was not set prior to this call.
- */
+/*!
+@brief
+    Sets \lt_p{*threshold} to the channel buffer usage size
+    (bytes) threshold of the
+    “channel buffer usage becomes greater/less than”
+    trigger condition \lt_p{condition}.
+
+@param[in] condition
+    “Channel buffer usage becomes greater/less than”
+    trigger condition of which to get the channel buffer usage size
+    threshold.
+@param[out] threshold
+    <strong>On success</strong>, this function sets \lt_p{*threshold}
+    to the buffer usage size (bytes) threshold of \lt_p{condition}.
+
+@retval #LTTNG_CONDITION_STATUS_OK
+    Success.
+@retval #LTTNG_CONDITION_STATUS_UNSET
+    \lt_p{condition} has no channel buffer usage size threshold,
+    although it may have a channel buffer usage ratio threshold (see
+    lttng_condition_buffer_usage_get_threshold_ratio()).
+@retval #LTTNG_CONDITION_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{condition}
+    - \lt_p{condition} has the type
+      #LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH or
+      #LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW.
+    @lt_pre_not_null{threshold}
+
+@sa lttng_condition_buffer_usage_set_threshold() --
+    Set the channel buffer usage size threshold of a
+    “channel buffer usage becomes greater/less than” trigger condition.
+@sa lttng_condition_buffer_usage_get_threshold_ratio() --
+    Get the channel buffer usage ratio threshold of a
+    “channel buffer usage becomes greater/less than” trigger condition.
+*/
 LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_buffer_usage_get_threshold(const struct lttng_condition *condition,
-					   uint64_t *threshold_bytes);
+					   uint64_t *threshold);
 
-/*
- * Set the buffer usage threshold in bytes of a buffer usage condition.
- *
- * Setting a threshold, either as a ratio or as an absolute size in bytes
- * will override any previously set threshold.
- *
- * Returns LTTNG_CONDITION_STATUS_OK on success, LTTNG_CONDITION_STATUS_INVALID
- * if invalid paramenters are passed.
- */
+/*!
+@brief
+    Sets the \lt_obj_channel buffer usage size threshold of the
+    “channel buffer usage becomes greater/less than”
+    trigger condition \lt_p{condition} to \lt_p{threshold}.
+
+This function overrides any current channel buffer usage threshold of
+\lt_p{condition}.
+
+@param[in] condition
+    “Channel buffer usage becomes greater/less than” trigger
+    condition of which to set the channel buffer usage size threshold.
+@param[in] threshold
+    Channel buffer usage size (bytes) threshold of \lt_p{condition}.
+
+@retval #LTTNG_CONDITION_STATUS_OK
+    Success.
+@retval #LTTNG_CONDITION_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{condition}
+    - \lt_p{condition} has the type
+      #LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH or
+      #LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW.
+
+@sa lttng_condition_buffer_usage_get_threshold() --
+    Get the channel buffer usage size threshold of a
+    “channel buffer usage becomes greater/less than” trigger condition.
+@sa lttng_condition_buffer_usage_set_threshold_ratio() --
+    Set the channel buffer usage ratio threshold of a
+    “channel buffer usage becomes greater/less than” trigger condition.
+*/
 LTTNG_EXPORT extern enum lttng_condition_status
-lttng_condition_buffer_usage_set_threshold(struct lttng_condition *condition,
-					   uint64_t threshold_bytes);
+lttng_condition_buffer_usage_set_threshold(struct lttng_condition *condition, uint64_t threshold);
 
-/*
- * Get the session name property of a buffer usage condition.
- *
- * The caller does not assume the ownership of the returned session name. The
- * session name shall only only be used for the duration of the condition's
- * lifetime, or before a different session name is set.
- *
- * Returns LTTNG_CONDITION_STATUS_OK and a pointer to the condition's session
- * name on success, LTTNG_CONDITION_STATUS_INVALID if an invalid
- * parameter is passed, or LTTNG_CONDITION_STATUS_UNSET if a session name
- * was not set prior to this call.
- */
+/*!
+@brief
+    Sets \lt_p{*session_name} to the target \lt_obj_session name of the
+    “channel buffer usage becomes greater/less than” trigger
+    condition \lt_p{condition}.
+
+@param[in] condition
+    “Channel buffer usage becomes greater/less than” trigger
+    condition of which to get the target recording session name.
+@param[out] session_name
+    @parblock
+    <strong>On success</strong>, this function sets \lt_p{*session_name}
+    to the target recording session name of \lt_p{condition}.
+
+    \lt_p{condition} owns \lt_p{*session_name}.
+
+    \lt_p{*session_name} remains valid until the next
+    function call with \lt_p{condition}.
+    @endparblock
+
+@retval #LTTNG_CONDITION_STATUS_OK
+    Success.
+@retval #LTTNG_CONDITION_STATUS_UNSET
+    \lt_p{condition} has no target recording session name.
+@retval #LTTNG_CONDITION_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{condition}
+    - \lt_p{condition} has the type
+      #LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH or
+      #LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW.
+    @lt_pre_not_null{session_name}
+
+@sa lttng_condition_buffer_usage_set_session_name() --
+    Set the target recording session name of a
+    “channel buffer usage becomes greater/less than”
+    trigger condition.
+*/
 LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_buffer_usage_get_session_name(const struct lttng_condition *condition,
 					      const char **session_name);
 
-/*
- * Set the session name property of a buffer usage condition.
- *
- * The passed session name parameter will be copied to the condition.
- *
- * Returns LTTNG_CONDITION_STATUS_OK on success, LTTNG_CONDITION_STATUS_INVALID
- * if invalid paramenters are passed.
- */
+/*!
+@brief
+    Sets the target \lt_obj_session name of the
+    “channel buffer usage becomes greater/less than”
+    trigger condition \lt_p{condition} to \lt_p{session_name}.
+
+@param[in] condition
+    “Channel buffer usage becomes greater/less than” trigger
+    condition of which to set the target recording session name.
+@param[in] session_name
+    Target recording session name of \lt_p{condition} (copied).
+
+@retval #LTTNG_CONDITION_STATUS_OK
+    Success.
+@retval #LTTNG_CONDITION_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{condition}
+    - \lt_p{condition} has the type
+      #LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH or
+      #LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW.
+    @lt_pre_not_null{session_name}
+
+@sa lttng_condition_buffer_usage_get_session_name() --
+    Get the target recording session name of a
+    “channel buffer usage becomes greater/less than”
+    trigger condition.
+*/
 LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_buffer_usage_set_session_name(struct lttng_condition *condition,
 					      const char *session_name);
 
-/*
- * Get the channel name property of a buffer usage condition.
- *
- * The caller does not assume the ownership of the returned channel name. The
- * channel name shall only only be used for the duration of the condition's
- * lifetime, or before a different channel name is set.
- *
- * Returns LTTNG_CONDITION_STATUS_OK and a pointer to the condition's channel
- * name on success, LTTNG_CONDITION_STATUS_INVALID if an invalid
- * parameter is passed, or LTTNG_CONDITION_STATUS_UNSET if a channel name
- * was not set prior to this call.
- */
+/*!
+@brief
+    Sets \lt_p{*channel_name} to the target \lt_obj_channel name of the
+    “channel buffer usage becomes greater/less than” trigger
+    condition \lt_p{condition}.
+
+@param[in] condition
+    “Channel buffer usage becomes greater/less than” trigger
+    condition of which to get the target channel name.
+@param[out] channel_name
+    @parblock
+    <strong>On success</strong>, this function sets \lt_p{*channel_name}
+    to the target channel name of \lt_p{condition}.
+
+    \lt_p{condition} owns \lt_p{*channel_name}.
+
+    \lt_p{*channel_name} remains valid until the next
+    function call with \lt_p{condition}.
+    @endparblock
+
+@retval #LTTNG_CONDITION_STATUS_OK
+    Success.
+@retval #LTTNG_CONDITION_STATUS_UNSET
+    \lt_p{condition} has no target channel name.
+@retval #LTTNG_CONDITION_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{condition}
+    - \lt_p{condition} has the type
+      #LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH or
+      #LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW.
+    @lt_pre_not_null{channel_name}
+
+@sa lttng_condition_buffer_usage_set_channel_name() --
+    Set the target channel name of a
+    “channel buffer usage becomes greater/less than”
+    trigger condition.
+*/
 LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_buffer_usage_get_channel_name(const struct lttng_condition *condition,
 					      const char **channel_name);
 
-/*
- * Set the channel name property of a buffer usage condition.
- *
- * The passed channel name parameter will be copied to the condition.
- *
- * Returns LTTNG_CONDITION_STATUS_OK on success, LTTNG_CONDITION_STATUS_INVALID
- * if invalid paramenters are passed.
- */
+/*!
+@brief
+    Sets the target \lt_obj_channel name of the
+    “channel buffer usage becomes greater/less than”
+    trigger condition \lt_p{condition} to \lt_p{channel_name}.
+
+@param[in] condition
+    “Channel buffer usage becomes greater/less than” trigger
+    condition of which to set the target channel name.
+@param[in] channel_name
+    Target channel name of \lt_p{condition} (copied).
+
+@retval #LTTNG_CONDITION_STATUS_OK
+    Success.
+@retval #LTTNG_CONDITION_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{condition}
+    - \lt_p{condition} has the type
+      #LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH or
+      #LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW.
+    @lt_pre_not_null{channel_name}
+
+@sa lttng_condition_buffer_usage_get_channel_name() --
+    Get the target channel name of a
+    “channel buffer usage becomes greater/less than”
+    trigger condition.
+*/
 LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_buffer_usage_set_channel_name(struct lttng_condition *condition,
 					      const char *channel_name);
 
-/*
- * Get the domain type property of a buffer usage condition.
- *
- * Returns LTTNG_CONDITION_STATUS_OK and sets the domain type output parameter
- * on success, LTTNG_CONDITION_STATUS_INVALID if an invalid parameter is passed,
- * or LTTNG_CONDITION_STATUS_UNSET if a domain type was not set prior to this
- * call.
- */
+/*!
+@brief
+    Sets \lt_p{*domain} to the target \lt_obj_domain of the
+    “channel buffer usage becomes greater/less than” trigger
+    condition \lt_p{condition}.
+
+@param[in] condition
+    “Channel buffer usage becomes greater/less than” trigger
+    condition of which to get the target tracing domain.
+@param[out] domain
+    @parblock
+    <strong>On success</strong>, this function sets \lt_p{*domain}
+    to the target tracing domain of \lt_p{condition}.
+
+    \lt_p{condition} owns \lt_p{*domain}.
+
+    \lt_p{*domain} remains valid until the next
+    function call with \lt_p{condition}.
+    @endparblock
+
+@retval #LTTNG_CONDITION_STATUS_OK
+    Success.
+@retval #LTTNG_CONDITION_STATUS_UNSET
+    \lt_p{condition} has no target tracing domain.
+@retval #LTTNG_CONDITION_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{condition}
+    - \lt_p{condition} has the type
+      #LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH or
+      #LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW.
+
+@sa lttng_condition_buffer_usage_set_domain_type() --
+    Set the target tracing domain of a
+    “channel buffer usage becomes greater/less than”
+    trigger condition.
+*/
 LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_buffer_usage_get_domain_type(const struct lttng_condition *condition,
-					     enum lttng_domain_type *type);
+					     enum lttng_domain_type *domain);
 
-/*
- * Set the domain type property of a buffer usage condition.
- *
- * Returns LTTNG_CONDITION_STATUS_OK on success, LTTNG_CONDITION_STATUS_INVALID
- * if invalid paramenters are passed.
- */
+/*!
+@brief
+    Sets the target \lt_obj_domain of the
+    “channel buffer usage becomes greater/less than”
+    trigger condition \lt_p{condition} to \lt_p{domain}.
+
+@param[in] condition
+    “Channel buffer usage becomes greater/less than” trigger
+    condition of which to set the target tracing domain.
+@param[in] domain
+    Target tracing domain of \lt_p{condition}.
+
+@retval #LTTNG_CONDITION_STATUS_OK
+    Success.
+@retval #LTTNG_CONDITION_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{condition}
+    - \lt_p{condition} has the type
+      #LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH or
+      #LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW.
+    @lt_pre_not_null{domain}
+
+@sa lttng_condition_buffer_usage_get_domain_type() --
+    Get the target tracing domain of a
+    “channel buffer usage becomes greater/less than”
+    trigger condition.
+*/
 LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_buffer_usage_set_domain_type(struct lttng_condition *condition,
-					     enum lttng_domain_type type);
+					     enum lttng_domain_type domain);
 
-/**
- * lttng_evaluation_buffer_usage are specialised lttng_evaluations which
- * allow users to query a number of properties resulting from the evaluation
- * of a condition which evaluated to true.
- *
- * The evaluation of a buffer usage condition yields two different results:
- *   - the usage ratio of the channel buffers at the time of the evaluation,
- *   - the usage, in bytes, of the channel buffers at the time of evaluation.
- */
+/*!
+@brief
+    Sets \lt_p{*usage} to the captured \lt_obj_channel
+    buffer usage ratio of the
+    “channel buffer usage becomes greater/less than” trigger
+    condition evaluation \lt_p{evaluation}.
 
-/*
- * Get the buffer usage ratio property of a buffer usage evaluation.
- *
- * Returns LTTNG_EVALUATION_STATUS_OK on success and a threshold expressed as
- * as a ratio of the buffer's capacity, or LTTNG_EVALUATION_STATUS_INVALID if
- * an invalid parameter is passed.
- */
+@param[in] evaluation
+    “Channel buffer usage becomes greater/less than” trigger
+    condition evaluation of which to get the captured channel
+    buffer usage ratio.
+@param[out] usage
+    <strong>On success</strong>, this function sets
+    \lt_p{*usage} to the captured channel buffer usage ratio
+    (between&nbsp;0 and&nbsp;1) of \lt_p{evaluation}.
+
+@retval #LTTNG_EVALUATION_STATUS_OK
+    Success.
+@retval #LTTNG_EVALUATION_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{evaluation}
+    - \lt_p{evaluation} has the type
+      #LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH or
+      #LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW.
+    @lt_pre_not_null{usage}
+
+@sa lttng_evaluation_buffer_usage_get_usage() --
+    Get the captured channel buffer usage size of a
+    “channel buffer usage becomes greater/less than” trigger
+    condition evaluation.
+*/
 LTTNG_EXPORT extern enum lttng_evaluation_status
 lttng_evaluation_buffer_usage_get_usage_ratio(const struct lttng_evaluation *evaluation,
-					      double *usage_ratio);
+					      double *usage);
 
-/*
- * Get the buffer usage property of a buffer usage evaluation.
- *
- * Returns LTTNG_EVALUATION_STATUS_OK on success and a threshold expressed in
- * bytes, or LTTNG_EVALUATION_STATUS_INVALID if an invalid parameter is passed.
- */
+/*!
+@brief
+    Sets \lt_p{*usage} to the captured \lt_obj_channel
+    buffer usage size of the
+    “channel buffer usage becomes greater/less than” trigger
+    condition evaluation \lt_p{evaluation}.
+
+@param[in] evaluation
+    “Channel buffer usage becomes greater/less than” trigger
+    condition evaluation of which to get the captured channel
+    buffer usage size.
+@param[out] usage
+    <strong>On success</strong>, this function sets
+    \lt_p{*usage} to the captured channel buffer usage size (bytes)
+    of \lt_p{evaluation}.
+
+@retval #LTTNG_EVALUATION_STATUS_OK
+    Success.
+@retval #LTTNG_EVALUATION_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{evaluation}
+    - \lt_p{evaluation} has the type
+      #LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH or
+      #LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW.
+    @lt_pre_not_null{usage}
+
+@sa lttng_evaluation_buffer_usage_get_usage_ratio() --
+    Get the captured channel buffer usage ratio of a
+    “channel buffer usage becomes greater/less than” trigger
+    condition evaluation.
+*/
 LTTNG_EXPORT extern enum lttng_evaluation_status
-lttng_evaluation_buffer_usage_get_usage(const struct lttng_evaluation *evaluation,
-					uint64_t *usage_bytes);
+lttng_evaluation_buffer_usage_get_usage(const struct lttng_evaluation *evaluation, uint64_t *usage);
+
+/// @}
 
 #ifdef __cplusplus
 }

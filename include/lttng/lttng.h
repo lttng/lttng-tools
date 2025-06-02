@@ -182,7 +182,9 @@ LTTNG_EXPORT extern int lttng_register_consumer(struct lttng_handle *handle,
 @ingroup api_session
 
 @note
-    An #LTTNG_ACTION_TYPE_START_SESSION trigger action can also activate
+    A
+    \link api_trigger_action_start_session “start recording session”\endlink
+    trigger action can also activate
     (start) a recording session.
 
 @param[in] session_name
@@ -232,7 +234,9 @@ session remains inactive, it's \em not a trace chunk archive: you need to
 or a rotation needs to occur to archive it.
 
 @note
-    An #LTTNG_ACTION_TYPE_STOP_SESSION trigger action can also
+    A
+    \link api_trigger_action_stop_session “stop recording session”\endlink
+    trigger action can also
     deactivate (stop) a recording session.
 
 @param[in] session_name
@@ -278,7 +282,9 @@ this function returns, and there's no way to know when it/they become
 valid.
 
 @note
-    An #LTTNG_ACTION_TYPE_STOP_SESSION trigger action can also
+    A
+    \link api_trigger_action_stop_session “stop recording session”\endlink
+    trigger action can also
     deactivate (stop) a recording session.
 
 @param[in] session_name
