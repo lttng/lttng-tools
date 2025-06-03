@@ -257,7 +257,7 @@ happens within a recording session. In particular, a recording session:
 - Has its own \lt_obj_channels to which are attached
   their own recording event rules.
 
-- Has its own \ref api_pais "process attribute inclusion sets".
+- Has its own \ref api_proc_filter "process filter".
 
 Those attributes and objects are completely isolated between different
 recording sessions.
@@ -419,8 +419,8 @@ The recording session operations are:
 
       @sa \lt_man{lttng-list,1}
   <tr>
-    <td>Process attribute inclusion set access
-    <td>See \ref api_pais
+    <td>Process filter access
+    <td>See \ref api_proc_filter
   <tr>
     <td>Clearing
     <td>See \ref api_session_clear
@@ -1664,7 +1664,7 @@ therefore attempting to record it.
       stopped) of the \lt_obj_session containing the rule.
 
     - Whether or not the process for which LTTng would create the event
-      is \ref api_pais "allowed to record events".
+      is \ref api_proc_filter "allowed to record events".
 
     In other words: if, for a given instrumentation point&nbsp;\lt_var{IP},
     the LTTng tracer knows that it would never emit an event,
@@ -2037,7 +2037,7 @@ rule&nbsp;\lt_var{ER}, that is:
           Stops a recording session.
 
     - The process for which LTTng creates&nbsp;\lt_var{E} is
-      \ref api_pais "allowed to record events".
+      \ref api_proc_filter "allowed to record events".
 
       All processes are allowed to record events on recording session
       \link lttng_create_session_ext() creation\endlink.
@@ -2150,10 +2150,16 @@ as well as on the \lt_obj_domain which contains&nbsp;\lt_var{ER}:
       \lt_var{ER} with lttng_enable_event_with_exclusions().
 </table>
 
-@defgroup api_pais Process attribute inclusion set API
+@defgroup api_proc_filter Process filter API
 @ingroup api_session
 
-To be done.
+@warning
+    @parblock
+    The documentation of the process filter API is
+    <strong>missing</strong>.
+
+    See <code>lttng/tracker.h</code>.
+    @endparblock
 
 @defgroup api_session_clear Recording session clearing API
 @ingroup api_session

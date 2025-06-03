@@ -443,13 +443,13 @@ enum lttng_error_code {
 
 	/*!
 	Process attribute is already part of an
-	\ref api_pais "inclusion set".
+	\ref api_proc_filter "inclusion set".
 	*/
 	LTTNG_ERR_PROCESS_ATTR_EXISTS = 114,
 
 	/*!
 	Process attribute isn't part of an
-	\ref api_pais "inclusion set".
+	\ref api_proc_filter "inclusion set".
 	*/
 	LTTNG_ERR_PROCESS_ATTR_MISSING = 115,
 
@@ -658,7 +658,7 @@ enum lttng_error_code {
 
 	/*!
 	Invalid operation considering the policy of the
-	\ref api_pais "process attribute inclusion set".
+	\ref api_proc_filter "process filter".
 	*/
 	LTTNG_ERR_PROCESS_ATTR_TRACKER_INVALID_TRACKING_POLICY = 163,
 
@@ -694,7 +694,7 @@ enum lttng_error_code {
 	/* Backward-compatibility assignments */
 	/*!
 	Process attribute is already part of an
-	\ref api_pais "inclusion set".
+	\ref api_proc_filter "inclusion set".
 
 	@deprecated
 	    Use #LTTNG_ERR_PROCESS_ATTR_EXISTS.
@@ -703,7 +703,7 @@ enum lttng_error_code {
 
 	/*!
 	Process attribute isn't part of an
-	\ref api_pais "inclusion set".
+	\ref api_proc_filter "inclusion set".
 
 	@deprecated
 	    Use #LTTNG_ERR_PROCESS_ATTR_MISSING.

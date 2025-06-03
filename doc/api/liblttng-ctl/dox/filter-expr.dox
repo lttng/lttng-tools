@@ -211,7 +211,7 @@ differences:
   the [0,&nbsp;63] range, then \lt_var{EXPR} is \b false.
 
 @note
-    See the \ref api_pais to allow or disallow processes to
+    See \ref api_proc_filter to allow or disallow processes to
     record LTTng events based on their attributes
     instead of using equivalent statically-known context
     fields in \lt_var{EXPR} like <code>$ctx.pid</code>.
