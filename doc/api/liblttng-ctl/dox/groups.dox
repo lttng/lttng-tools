@@ -2584,7 +2584,13 @@ amongst:
 @defgroup api_session_save_load Recording session saving and loading API
 @ingroup api_session
 
-To be done.
+@warning
+    @parblock
+    The documentation of the recording session saving and loading API is
+    <strong>missing</strong>.
+
+    See <code>lttng/save.h</code> and <code>lttng/load.h</code>.
+    @endparblock
 
 @defgroup api_inst_pt Instrumentation point listing API
 
