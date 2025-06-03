@@ -208,8 +208,9 @@ lttng_destruction_handle_get_rotation_state(const struct lttng_destruction_handl
 
 /*!
 @brief
-    Sets \lt_p{*location} to the location of the final
-    \ref api_session_rotation "trace chunk archive" which
+    Sets \lt_p{*location} to the
+    \ref api_session_trace_archive_loc "location" of the final
+    trace chunk archive which
     the destruction of the recording session identified by \lt_p{handle}
     created.
 
