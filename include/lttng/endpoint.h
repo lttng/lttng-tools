@@ -38,18 +38,18 @@ lttng_notification_channel_create().
 */
 LTTNG_EXPORT extern struct lttng_endpoint *lttng_session_daemon_notification_endpoint;
 
-/*
- * Default LTTng session daemon command endpoint singleton.
- *
- * For use as part of the invocation of a command. This endpoint
- * implements the following policy to connect to a session daemon's
- * command channel:
- *   - If the caller is root or part of the tracing group:
- *     - Attempt to connect to the "root" (global) session daemon,
- *     - Fallback to the session daemon running as the caller's user.
- *   - Otherwise (caller is an unpriviliged user):
- *     - Attempt to connect to the session daemon running as the caller's user.
- */
+/*!
+@brief
+    LTTng session daemon command endpoint.
+
+@ingroup api_error
+
+This endpoint follows the typical
+\ref api-gen-sessiond-conn "session daemon connection" procedure.
+
+The purpose of this endpoint is to execute an
+error query with lttng_error_query_execute().
+*/
 LTTNG_EXPORT extern struct lttng_endpoint *lttng_session_daemon_command_endpoint;
 
 #ifdef __cplusplus
