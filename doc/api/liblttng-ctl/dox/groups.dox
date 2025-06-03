@@ -2192,7 +2192,143 @@ To clear a recording session:
 @defgroup api_session_snapshot Recording session snapshot API
 @ingroup api_session
 
-To be done.
+@warning
+    @parblock
+    The documentation of the recording session snapshot API is
+    <strong>incomplete</strong>.
+
+    The text below shows the typical usage of this API, but the
+    types, enumerators, and functions of
+    <code>lttng/snapshot.h</code> aren't documented
+    individually.
+    @endparblock
+
+A <strong><em>recording session snapshot</em></strong> is a dump,
+local or remote, of the
+current ring buffers of all the \lt_obj_channels of a \lt_obj_session,
+\em without \ref api_session_clear "clearing" them.
+
+Unlike recording session \ref api_session_rotation "rotations",
+snapshots may overlap: successive snapshots may contain the same
+event records.
+
+@image html snapshot.png "Recording session snapshot."
+
+See \ref api_session_descr,
+lttng_session_descriptor_snapshot_create(),
+lttng_session_descriptor_snapshot_local_create(),
+and lttng_session_descriptor_snapshot_network_create()
+to learn how to create a recording session in snapshot mode.
+
+When you create a recording session descriptor with
+lttng_session_descriptor_snapshot_create(), the recording session which
+lttng_create_session_ext() creates from it has no default
+\ref api-session-snapshot-output "snapshot output":
+you need to either set one with lttng_snapshot_add_output() or
+provide one when you take a snapshot with lttng_snapshot_record().
+
+<h1>\anchor api-session-snapshot-output Snapshot output API usage</h1>
+
+A recording session may have zero or one
+<strong><em>default snapshot output</em></strong>.
+
+To set the default snapshot output of a recording session:
+
+-# Create a snapshot output descriptor with
+   lttng_snapshot_output_create().
+
+-# Configure the descriptor as needed:
+
+   - Set a custom snapshot ID with lttng_snapshot_output_set_id().
+
+   - Set the name with lttng_snapshot_output_set_name().
+
+   - Set the maximum total size (bytes) of snapshot trace files with
+     lttng_snapshot_output_set_size().
+
+   - Specify the output destination with one of:
+
+     <dl>
+       <dt>Local filesystem path
+       <dd>lttng_snapshot_output_set_local_path()
+
+       <dt>Single remote URL (LTTng relay daemon; see \lt_man{lttng-relayd,8})
+       <dd>lttng_snapshot_output_set_network_url()
+
+       <dt>Separate control/data URLs
+       <dd>lttng_snapshot_output_set_network_urls()
+
+       <dt>Individual control and data URLs
+       <dd>
+         lttng_snapshot_output_set_ctrl_url() and
+         lttng_snapshot_output_set_data_url()
+     </dl>
+
+     See \ref api-session-url "Output URL format" to learn more about
+     output URLs.
+
+-# Set the default snapshot output of the targeted recording session
+   from the descriptor with
+   lttng_snapshot_add_output().
+
+-# When you're done with the descriptor, destroy it with
+   lttng_snapshot_output_destroy().
+
+   This only destroys the descriptor; it doesn't remove the default
+   snapshot output of the targeted recording session (use
+   lttng_snapshot_del_output() for this).
+
+To inspect the existing snapshot outputs of a given recording session:
+
+-# Get the list of snapshot output descriptors for the recording session
+   with lttng_snapshot_list_output().
+
+-# Iterate the list of step&nbsp;1 with
+   lttng_snapshot_output_list_get_next() until it returns \c NULL.
+
+   With a (borrowed) snapshot output descriptor, you may get:
+
+   - Its ID with lttng_snapshot_output_get_id().
+
+   - Its name with lttng_snapshot_output_get_name() (borrowed).
+
+   - The maximum total size (bytes) of snapshot trace files
+     with lttng_snapshot_output_get_maxsize().
+
+   - Its \ref api-session-url "control and data URLs" with
+     lttng_snapshot_output_get_ctrl_url()
+     and lttng_snapshot_output_get_data_url() (borrowed).
+
+-# When you're done with the snapshot output descriptor list, destroy it
+   with lttng_snapshot_output_list_destroy().
+
+<h1>Snapshot API usage</h1>
+
+To take a snapshot of a recording session:
+
+-# Ensure that the targeted recording session has a
+   \ref api-session-snapshot-output "default snapshot output",
+   or create a snapshot output descriptor to pass directly to
+   lttng_snapshot_record().
+
+-# Call lttng_snapshot_record().
+
+   Passing \c NULL as the output uses the default snapshot output of the
+   targeted recording session.
+
+   The \lt_p{wait} parameter is currently ignored: the call always
+   blocks until the snapshot operation completes.
+
+   The function returns&nbsp;0 on success, or a negative
+   #lttng_error_code enumerator on error.
+
+@note
+    The \ref api_trigger_action_snapshot “take recording session snapshot”
+    trigger action can also take a snapshot.
+
+@sa
+    - \lt_man{lttng-snapshot,1}
+    - \lt_man{lttng-concepts,7}
 
 @defgroup api_session_rotation Recording session rotation API
 @ingroup api_session
