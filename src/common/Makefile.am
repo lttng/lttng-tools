@@ -102,7 +102,6 @@ libcommon_lgpl_la_SOURCES = \
 	notification.cpp \
 	payload.cpp payload.hpp \
 	payload-view.cpp payload-view.hpp \
-	poller.cpp poller.hpp \
 	pthread-lock.hpp \
 	random.cpp random.hpp \
 	readwrite.cpp readwrite.hpp \
@@ -115,7 +114,6 @@ libcommon_lgpl_la_SOURCES = \
 	stream-descriptor.cpp stream-descriptor.hpp \
 	thread.cpp thread.hpp \
 	time.cpp \
-	timerfd.cpp timerfd.hpp \
 	tracker.cpp tracker.hpp \
 	trigger.cpp \
 	type-traits.hpp \
@@ -126,7 +124,10 @@ libcommon_lgpl_la_SOURCES = \
 	utils.cpp utils.hpp
 
 if IS_LINUX
-libcommon_lgpl_la_SOURCES += eventfd.cpp eventfd.hpp
+libcommon_lgpl_la_SOURCES += \
+	eventfd.cpp eventfd.hpp \
+	poller.cpp poller.hpp \
+	timerfd.cpp timerfd.hpp
 endif
 
 if HAVE_ELF_H
@@ -220,6 +221,7 @@ libsynchro_la_LIBADD = $(URCU_LIBS)
 
 
 # libscheduling
+if IS_LINUX
 noinst_LTLIBRARIES += libscheduling.la
 libscheduling_la_SOURCES = \
 	scheduler.hpp \
@@ -228,7 +230,7 @@ libscheduling_la_SOURCES = \
 
 libscheduling_la_CPPFLAGS = $(AM_CPPFLAGS)
 libscheduling_la_LIBADD = libsynchro.la libcommon-lgpl.la
-
+endif
 
 if BUILD_LIB_CONSUMER
 noinst_LTLIBRARIES += libconsumer.la
