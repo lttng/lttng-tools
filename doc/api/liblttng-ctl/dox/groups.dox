@@ -4000,10 +4000,116 @@ lttng_action_snapshot_session_get_rate_policy().
 
 @defgroup api_error Error query API
 
-To be done.
+@warning
+    @parblock
+    The documentation of the error query API is
+    <strong>incomplete</strong>.
+
+    The text below shows the typical usage of this API, but the
+    types, enumerators, and functions of
+    <code>lttng/error-query.h</code> aren't documented
+    individually.
+    @endparblock
+
+An <strong><em>error query</em></strong> retrieves error information for
+a given \ref api_trigger "trigger",
+its \ref api_trigger_cond "condition",
+or its \ref api_trigger "action" from an
+\ref api-gen-sessiond-conn "LTTng session daemon".
+
+To perform an error query:
+
+-# Create the error query object with one of:
+
+   <table>
+     <tr>
+       <th>Target
+       <th>Creation function
+     <tr>
+       <td>Trigger
+       <td>lttng_error_query_trigger_create()
+     <tr>
+       <td>Trigger condition
+       <td>lttng_error_query_condition_create()
+     <tr>
+       <td>Trigger action
+       <td>
+         lttng_error_query_action_create(), which accepts a
+         \ref api_error_action_path "trigger action path"
+         to locate a specific action within
+         the action tree formed with
+         \ref api_trigger_action_list "action lists".
+   </table>
+
+-# Execute the error query against the LTTng session daemon endpoint
+   with lttng_error_query_execute(), passing an
+   #lttng_error_query_results pointer.
+
+   You need to pass the
+   #lttng_session_daemon_command_endpoint endpoint to
+   lttng_error_query_execute().
+
+-# Retrieve the number of results with
+   lttng_error_query_results_get_count().
+
+-# Borrow a result by index from the results with
+   lttng_error_query_results_get_result().
+
+   For a given result:
+
+   - Get the result type with lttng_error_query_result_get_type().
+
+   - Borrow the name and description with
+     lttng_error_query_result_get_name() and
+     lttng_error_query_result_get_description().
+
+   - If the result type is #LTTNG_ERROR_QUERY_RESULT_TYPE_COUNTER,
+     retrieve the counter value with
+     lttng_error_query_result_counter_get_value().
+
+-# When you're done with the results, destroy them
+   with lttng_error_query_results_destroy().
+
+-# Whe you're done with the error query, destroy it with
+   lttng_error_query_destroy().
 
 @defgroup api_error_action_path Trigger action path API
 @ingroup api_error
 
-To be done.
+@warning
+    @parblock
+    The documentation of the trigger action path API is
+    <strong>incomplete</strong>.
+
+    The text below shows the typical usage of this API, but the
+    types, enumerators, and functions of
+    <code>lttng/action/path.h</code> aren't documented
+    individually.
+    @endparblock
+
+A <strong><em>trigger action path</em></strong> specifies how to
+traverse a
+\ref api_trigger_action "trigger action" tree, formed with
+\ref api_trigger_action_list "action lists",
+to reach a specific action.
+
+The current purpose of a trigger action path
+is to locate a specific action when executing an error query
+with lttng_error_query_action_create().
+
+To use a trigger action path:
+
+-# Create an action path with lttng_action_path_create(), passing an
+   array of action indexes (within nested action lists) and the number
+   of indexes.
+
+-# Pass the trigger action path to lttng_error_query_action_create() to
+   locate the specific action when you create an error query.
+
+-# When you're done with the trigger action path, destroy it
+   with lttng_action_path_destroy().
+
+Get an action index from a trigger action path with
+lttng_action_path_get_index_count() and
+lttng_action_path_get_index_at_index().
 */
