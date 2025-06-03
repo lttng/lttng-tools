@@ -2197,7 +2197,247 @@ To be done.
 @defgroup api_session_rotation Recording session rotation API
 @ingroup api_session
 
-To be done.
+@warning
+    @parblock
+    The documentation of the recording session rotation API is
+    <strong>incomplete</strong>.
+
+    The text below shows the typical usage of this API, but the
+    types, enumerators, and functions of
+    <code>lttng/rotation.h</code> aren't documented
+    individually.
+    @endparblock
+
+A <strong><em>recording session rotation</em></strong> is the action of
+archiving the <em>current trace chunk</em> of a \lt_obj_session to the
+file system.
+
+Once LTTng archives a trace chunk, it doesn't manage it anymore: you
+can read it, modify it, move it, or remove it.
+
+@image html rotation.png "Recording session rotation."
+
+<h1>Trace chunk archive</h1>
+
+A <strong><em>trace chunk archive</em></strong> is a collection of
+metadata and data stream files which form a self-contained LTTng trace.
+See the “Trace chunk naming” section of \lt_man{lttng-concepts,7} to
+learn how LTTng names a trace chunk archive directory.
+
+The current trace chunk of a given recording session includes:
+
+- The stream files which LTTng already wrote to the file system, and
+  which are \em not part of a previously archived trace chunk, since the
+  most recent event amongst:
+
+  - The first time the recording session was started.
+
+    @sa
+        - lttng_start_tracing()
+        - \ref api_trigger_action_start_session
+        - \lt_man{lttng-start,1}
+
+  - The last rotation, performed with:
+
+    - lttng_rotate_session().
+
+      @sa \lt_man{lttng-rotate,1}
+
+    - A rotation schedule previously set with
+      lttng_session_add_rotation_schedule().
+
+      @sa \lt_man{lttng-enable-rotation,1}
+
+    - An executed
+      \ref api_trigger_action_rotate “rotate recording session snapshot”
+      trigger action.
+
+- The content of all the <em>non-flushed</em> sub-buffers of the
+  \lt_obj_channels of the recording session.
+
+<h1>Immediate rotation API usage</h1>
+
+To perform an \b immediate recording session rotation:
+
+-# Call lttng_rotate_session(), passing:
+
+   - The name of the recording session to rotate.
+
+   - An optional, immediate rotation descriptor
+     (or \c NULL to use default options).
+
+   - An #lttng_rotation_handle (rotation handle) pointer; on success,
+     lttng_rotate_session() returns&nbsp;0 and sets the handle.
+
+-# With the rotation handle of step&nbsp;1:
+
+   -# Query the rotation state (enumerator of #lttng_rotation_state)
+      with lttng_rotation_handle_get_state() until the current state
+      is #LTTNG_ROTATION_STATE_COMPLETED.
+
+   -# Borrow the resulting
+      \ref api_session_trace_archive_loc "trace chunk archive location"
+      with lttng_rotation_handle_get_archive_location().
+
+   -# When you're done with the rotation handle, destroy it
+      with lttng_rotation_handle_destroy().
+
+@sa \lt_man{lttng-rotate,1}
+
+<h1>Rotation schedule API usage</h1>
+
+A recording session <strong><em>rotation schedule</em></strong> allows
+automatic rotation based on a size or time threshold.
+
+To add a rotation schedule to a given recording session:
+
+-# Create and configure a rotation schedule descriptor with one of:
+
+   <dl>
+     <dt>Based on current trace chunk size
+     <dd>
+       Create with lttng_rotation_schedule_size_threshold_create().
+
+       Then, set the size (bytes) threshold with
+       lttng_rotation_schedule_size_threshold_set_threshold().
+
+     <dt>Based on time
+     <dd>
+       Create with lttng_rotation_schedule_periodic_create().
+
+       Then, set the period (µs) with
+       lttng_rotation_schedule_periodic_set_period().
+   </dl>
+
+-# Add the rotation schedule to the targeted recording session
+   using the descriptor of step&nbsp;1
+   with lttng_session_add_rotation_schedule().
+
+   @note
+       As of LTTng-tools&nbsp;\lt_version_maj_min, you may only add
+       one rotation schedule of each type to a given recording
+       session.
+
+-# When you're done with the rotation schedule descriptor,
+   destroy it with lttng_rotation_schedule_destroy().
+
+   This function doesn't cancel the rotation schedule: use
+   lttng_session_remove_rotation_schedule() to remove a rotation
+   schedule from a recording session.
+
+To inspect the existing rotation schedules of a given recording session:
+
+-# Get the list of rotation schedules of the recording session with
+   lttng_session_list_rotation_schedules().
+
+-# Borrow a rotation schedule from the list of step&nbsp;1 with
+   lttng_rotation_schedules_get_count() and
+   lttng_rotation_schedules_get_at_index().
+
+   With a rotation schedule, you may get:
+
+   - Its type with lttng_rotation_schedule_get_type()
+     (an #lttng_rotation_schedule_type enumerator).
+
+   - Depending on its type:
+
+     <dl>
+       <dt>#LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD
+       <dd>
+         Its current trace chunk size (bytes) threshold
+         with lttng_rotation_schedule_size_threshold_get_threshold().
+
+       <dt>#LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC
+       <dd>
+         Its period (µs) with
+         lttng_rotation_schedule_periodic_get_period().
+     </dl>
+
+-# When you're done with the rotation schedule list, destroy it
+   with lttng_rotation_schedules_destroy().
+
+@sa
+    - \lt_man{lttng-enable-rotation,1}
+    - \lt_man{lttng-disable-rotation,1}
+
+@defgroup api_session_trace_archive_loc Trace chunk archive location API
+@ingroup api_session_rotation
+
+@warning
+    @parblock
+    The documentation of the trace chunk archive API is
+    <strong>incomplete</strong>.
+
+    The text below shows the typical usage of this API, but the
+    types, enumerators, and functions of
+    <code>lttng/location.h</code> aren't documented
+    individually.
+    @endparblock
+
+A <strong><em>trace chunk archive location</em></strong> indicates
+where LTTng wrote a \lt_obj_session trace chunk archive after a
+recording session \ref api_session_rotation "rotation" or
+\link lttng_destroy_session_ext() destruction\endlink.
+
+The type of a trace chunk archive location is
+#lttng_trace_archive_location.
+
+A trace chunk archive location can refer to a local directory or to
+a remote LTTng relay daemon (see \lt_man{lttng-relayd,8}).
+
+To inspect an existing trace chunk archive location, call
+lttng_trace_archive_location_get_type() to get its type
+(enumerator of #lttng_trace_archive_location_type).
+Depending on the returned type:
+
+<table>
+  <tr>
+    <th>Location type
+    <th>Type enumerator
+    <th>Property access
+  <tr>
+    <td>Local filesystem location
+    <td>#LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_LOCAL
+    <td>
+      Borrow the absolute directory path with
+      lttng_trace_archive_location_local_get_absolute_path().
+  <tr>
+    <td>Remote location (LTTng relay daemon)
+    <td>#LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_RELAY
+    <td>
+      Retrieve:
+
+      - The protocol type (enumerator of
+        #lttng_trace_archive_location_relay_protocol_type) with
+        lttng_trace_archive_location_relay_get_protocol_type().
+
+      - The relay daemon host (hostname or IP address) with
+        lttng_trace_archive_location_relay_get_host() (borrowed).
+
+      - The control port with
+        lttng_trace_archive_location_relay_get_control_port().
+
+      - The data port with
+        lttng_trace_archive_location_relay_get_data_port().
+
+      - The path, relative to the output directory of the relay daemon,
+        with lttng_trace_archive_location_relay_get_relative_path()
+        (borrowed).
+</table>
+
+Each accessor returns an #lttng_trace_archive_location_status enumerator
+amongst:
+
+<dl>
+  <dt>#LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK
+  <dd>Success.
+
+  <dt>#LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_INVALID
+  <dd>Unsatisfied precondition.
+
+  <dt>#LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_ERROR
+  <dd>Other error.
+</dl>
 
 @defgroup api_session_save_load Recording session saving and loading API
 @ingroup api_session
