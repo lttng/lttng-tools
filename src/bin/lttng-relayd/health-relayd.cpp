@@ -13,8 +13,6 @@
 #include <common/common.hpp>
 #include <common/compat/getenv.hpp>
 #include <common/compat/poll.hpp>
-#include <common/consumer/consumer-timer.hpp>
-#include <common/consumer/consumer.hpp>
 #include <common/defaults.hpp>
 #include <common/exception.hpp>
 #include <common/fd-tracker/utils.hpp>
