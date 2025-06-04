@@ -12,12 +12,9 @@
 #include <common/file-descriptor.hpp>
 #include <common/format.hpp>
 
-#include <array>
 #include <chrono>
 #include <cstdint>
 #include <functional>
-#include <iostream>
-#include <stdexcept>
 #include <string>
 #include <sys/epoll.h>
 #include <unistd.h>
