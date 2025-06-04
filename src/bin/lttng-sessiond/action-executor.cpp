@@ -695,7 +695,7 @@ end:
 static int action_work_item_execute(struct action_executor *executor,
 				    struct action_work_item *work_item)
 {
-	int ret;
+	int ret = 0;
 	size_t count, i;
 
 	DBG("Starting execution of action work item %" PRIu64 " of trigger `%s`",
