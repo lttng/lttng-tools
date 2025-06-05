@@ -6,6 +6,7 @@
 
 #include <common/error.hpp>
 #include <common/task-executor.hpp>
+#include <common/urcu.hpp>
 
 lttng::scheduling::task_executor::task_executor(scheduler& scheduler) :
 	_scheduler(scheduler), _wake_eventfd(true)
@@ -61,6 +62,8 @@ lttng::scheduling::task_executor::~task_executor()
 
 void lttng::scheduling::task_executor::_run() noexcept
 {
+	const lttng::urcu::scoped_thread_registration rcu_thread_registration;
+
 	logger_set_thread_name("Timer task executor", true);
 	_is_active.store(true);
 	_launch_waiter.get_waker().wake();

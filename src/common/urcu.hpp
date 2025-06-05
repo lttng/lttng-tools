@@ -418,6 +418,32 @@ protected:
 	const lttng::urcu::read_lock_guard read_lock;
 };
 
+class scoped_thread_registration {
+public:
+	scoped_thread_registration()
+	{
+		/* Register the current thread with liburcu. */
+		rcu_register_thread();
+	}
+
+	/* Not copyable or movable. */
+	scoped_thread_registration(const scoped_thread_registration&) = delete;
+	scoped_thread_registration& operator=(const scoped_thread_registration&) = delete;
+	scoped_thread_registration(scoped_thread_registration&&) = delete;
+	scoped_thread_registration& operator=(scoped_thread_registration&&) = delete;
+
+	/* Unregister the current thread from liburcu. */
+	void unregister_thread()
+	{
+		rcu_unregister_thread();
+	}
+
+	~scoped_thread_registration()
+	{
+		unregister_thread();
+	}
+};
+
 } /* namespace urcu */
 } /* namespace lttng */
 
