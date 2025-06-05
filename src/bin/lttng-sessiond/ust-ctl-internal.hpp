@@ -43,7 +43,10 @@ struct lttng_ust_ctl_consumer_channel_attr {
 	uint32_t chan_id; /* channel ID */
 	unsigned char uuid[LTTNG_UST_UUID_LEN]; /* Trace session unique ID */
 	int64_t blocking_timeout; /* Blocking timeout (usec) */
-} LTTNG_PACKED;
+	uint32_t owner_id;
+	/* 1: preallocate/zero, 0: don't preallocate (sparse/lazy allocation) */
+	int preallocate_backing;
+};
 
 /*
  * API used by sessiond.

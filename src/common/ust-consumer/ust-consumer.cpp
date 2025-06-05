@@ -1586,7 +1586,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	case LTTNG_CONSUMER_ASK_CHANNEL_CREATION:
 	{
 		int ret_ask_channel, ret_add_channel, ret_send;
-		struct lttng_ust_ctl_consumer_channel_attr attr;
+		struct lttng_ust_ctl_consumer_channel_attr attr = {};
 		const uint64_t chunk_id = msg.u.ask_channel.chunk_id.value;
 		const struct lttng_credentials buffer_credentials = {
 			.uid = LTTNG_OPTIONAL_INIT_VALUE(msg.u.ask_channel.buffer_credentials.uid),
@@ -1634,6 +1634,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		memcpy(attr.uuid, msg.u.ask_channel.uuid, sizeof(attr.uuid));
 		attr.blocking_timeout = msg.u.ask_channel.blocking_timeout;
 		attr.owner_id = LTTNG_UST_ABI_OWNER_ID_CONSUMER;
+		attr.preallocate_backing = true;
 
 		/* Match channel buffer type to the UST abi. */
 		switch (msg.u.ask_channel.output) {
