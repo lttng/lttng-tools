@@ -491,7 +491,7 @@ struct lttng_consumer_stream {
 	off_t out_fd_offset;
 	/* Amount of bytes written to the output */
 	uint64_t output_written;
-	int shm_fd_is_copy;
+
 	/*
 	 * When a stream's pipe is hung up, a final flush is performed (see hangup_flush_done). This
 	 * indicates whether or not the data resulting from this flush is still to be consumed.
