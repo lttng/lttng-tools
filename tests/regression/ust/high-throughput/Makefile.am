@@ -10,8 +10,10 @@ noinst_PROGRAMS = gen-events
 gen_events_SOURCES = main.c tp.c tp.h
 gen_events_LDADD = $(UST_LIBS) $(DL_LIBS)
 
-noinst_SCRIPTS = test_high_throughput
-EXTRA_DIST = test_high_throughput
+noinst_SCRIPTS = test_high_throughput \
+	test_high_throughput_snapshot.py
+EXTRA_DIST = test_high_throughput \
+	test_high_throughput_snapshot.py
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
