@@ -9,6 +9,8 @@
 #include "signal-helper.hpp"
 #include "utils.h"
 
+#include <common/string-utils/c-string-view.hpp>
+
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -20,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <string>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -28,7 +31,8 @@
 #define TRACEPOINT_DEFINE
 #include "tp.h"
 
-static struct option long_options[] = {
+namespace {
+struct option long_options[] = {
 	/* These options set a flag. */
 	{ "iter", required_argument, nullptr, 'i' },
 	{ "wait", required_argument, nullptr, 'w' },
@@ -41,17 +45,40 @@ static struct option long_options[] = {
 	{ "sync-before-exit-touch", required_argument, nullptr, 'g' },
 	{ "emit-end-event", no_argument, nullptr, 'h' },
 	{ "sync-after-each-iter", required_argument, nullptr, 'j' },
+	{ "text-size", required_argument, nullptr, 0 },
+	{ "fill-text", no_argument, nullptr, 0 },
 	{ nullptr, 0, nullptr, 0 }
 };
 
+std::string generate_repeating_test_pattern(std::size_t desired_length = sizeof("test") - 1)
+{
+	const auto test_string = "test";
+	const auto test_string_length = lttng::c_string_view(test_string).len();
+
+	std::string result;
+	result.reserve(desired_length);
+
+	auto remaining_length = desired_length;
+	while (remaining_length) {
+		const auto length_to_append = std::min(remaining_length, test_string_length);
+
+		result.append(test_string, length_to_append);
+		remaining_length -= length_to_append;
+	}
+
+	return result;
+}
+} /* namespace */
+
 int main(int argc, char **argv)
 {
-	unsigned int i, netint;
+	unsigned int i, netint, text_size = 10;
+	bool fill_text = false;
 	int option_index;
 	int option;
 	long values[] = { 1, 2, 3 };
-	char text[10] = "test";
-	char escape[10] = "\\*";
+	std::string test_text;
+	const char escape[10] = "\\*";
 	const double dbl = 2.0;
 	const float flt = 2222.0;
 	uint32_t net_values[] = { 1, 2, 3 };
@@ -82,6 +109,14 @@ int main(int argc, char **argv)
 	while ((option = getopt_long(
 			argc, argv, "i:w:a:b:c:d:e:f:g:h:j", long_options, &option_index)) != -1) {
 		switch (option) {
+		case 0:
+			if (strcmp(long_options[option_index].name, "text-size") == 0) {
+				text_size = atoi(optarg);
+			}
+			if (strcmp(long_options[option_index].name, "fill-text") == 0) {
+				fill_text = true;
+			}
+			break;
 		case 'a':
 			application_in_main_file_path = strdup(optarg);
 			break;
@@ -140,6 +175,13 @@ int main(int argc, char **argv)
 		goto end;
 	}
 
+	if (fill_text) {
+		test_text = generate_repeating_test_pattern(text_size);
+	} else {
+		/* Only repeat the test pattern once. */
+		test_text = generate_repeating_test_pattern();
+	}
+
 	if (set_signal_handler()) {
 		ret = -1;
 		goto end;
@@ -179,8 +221,8 @@ int main(int argc, char **argv)
 			   i,
 			   netint,
 			   values,
-			   text,
-			   strlen(text),
+			   test_text.c_str(),
+			   test_text.size(),
 			   escape,
 			   net_values,
 			   dbl,
