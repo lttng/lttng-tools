@@ -249,6 +249,8 @@ class _WaitTraceTestApplication:
         wait_before_exit=False,  # type: bool
         wait_before_exit_file_path=None,  # type: Optional[pathlib.Path]
         run_as=None,  # type: Optional[str]
+        text_size=None,  # type: Optional[int]
+        fill_text=False,  # type: bool
     ):
         self._process = None
         self._environment = environment  # type: Environment
@@ -321,6 +323,12 @@ class _WaitTraceTestApplication:
             )
         if wait_time_between_events_us != 0:
             test_app_args.extend(["--wait", str(wait_time_between_events_us)])
+
+        if text_size is not None:
+            test_app_args.extend(["--text-size", str(text_size)])
+
+        if fill_text:
+            test_app_args.extend(["--fill-text"])
 
         if run_as is not None:
             # When running as root and reducing the permissions to run as another
@@ -1142,6 +1150,8 @@ class _Environment(logger._Logger):
         wait_before_exit=False,
         wait_before_exit_file_path=None,
         run_as=None,
+        text_size=None,
+        fill_text=False,
     ):
         # type: (int, int, bool, Optional[pathlib.Path], Optional[str]) -> _WaitTraceTestApplication
         """
@@ -1160,6 +1170,8 @@ class _Environment(logger._Logger):
             wait_before_exit,
             wait_before_exit_file_path,
             run_as,
+            text_size,
+            fill_text,
         )
 
     def launch_test_application(self, subpath):
