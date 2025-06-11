@@ -1,8 +1,0 @@
-regression/ust/linking/test_linking
-regression/ust/daemon/test_daemon
-regression/ust/exit-fast/test_exit-fast
-regression/ust/fork/test_fork
-regression/ust/libc-wrapper/test_libc-wrapper
-regression/ust/baddr-statedump/test_baddr-statedump
-regression/ust/ust-dl/test_ust-dl
-regression/ust/type-declarations/test_type_declarations
