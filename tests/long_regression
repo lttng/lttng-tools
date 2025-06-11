@@ -1,5 +1,0 @@
-regression/tools/health/test_thread_stall
-regression/tools/health/test_tp_fail
-regression/tools/snapshots/test_ust_long
-regression/ust/high-throughput/test_high_throughput.py
-regression/ust/low-throughput/test_low_throughput

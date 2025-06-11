@@ -15,8 +15,8 @@ else
 endif
 
 
-dist_noinst_SCRIPTS = run.sh long_regression
-EXTRA_DIST = run.sh long_regression README.adoc
+dist_noinst_SCRIPTS = run.sh
+EXTRA_DIST = run.sh README.adoc
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \

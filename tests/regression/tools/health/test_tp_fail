@@ -5,12 +5,20 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+CURDIR=$(dirname $(readlink -f $0))
+TESTDIR=${CURDIR}/../../..
+source $TESTDIR/utils/utils.sh
+
+check_skip_long_regression_tests && {
+	plan_skip_all "Long regression tests disabled"
+	exit 0
+}
+
 TEST_DESC="Health check - Testpoint failure"
 
 SESSION_NAME="health_tp_fail"
 SESSIOND_PRELOAD=".libs/libhealthtpfail.so"
 TEST_SUFFIX="TP_FAIL"
-CURDIR=$(dirname $(readlink -f $0))
 
 # A current design limitation of the lttng-consumerd will cause it to
 # hang on shutdown if the timer management thread exits as the teardown

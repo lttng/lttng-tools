@@ -23,6 +23,10 @@ import lttngtest
 def test_high_throughput(
     tap, test_env, app_count=len(lttngtest.online_cpus()) * 2, events_per_app=1000000
 ):
+    if not test_env.run_long_regression_tests():
+        tap.skip_all_remaining("Long regression tests not enabled")
+        return
+
     client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
     output_path = test_env.create_temporary_directory()
     output = lttngtest.LocalSessionOutputLocation(trace_path=output_path)

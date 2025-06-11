@@ -15,6 +15,11 @@ NUM_TESTS=8
 
 source $TESTDIR/utils/utils.sh
 
+check_skip_long_regression_tests && {
+	plan_skip_all "Long regression tests disabled"
+	exit 0
+}
+
 if [ ! -x "$CURDIR/$BIN_NAME" ]; then
 	BAIL_OUT "No UST nevents binary detected."
 fi

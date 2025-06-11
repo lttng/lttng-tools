@@ -11,6 +11,11 @@ TEST_BIN="ust_test"
 
 source $TESTDIR/utils/utils.sh
 
+check_skip_long_regression_tests && {
+	plan_skip_all "Long regression tests disabled"
+	exit 0
+}
+
 if [ ! -x "$CURDIR/$TEST_BIN" ]; then
 	BAIL_OUT "No UST test found: $TEST_BIN"
 fi

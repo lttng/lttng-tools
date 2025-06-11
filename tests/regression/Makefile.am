@@ -19,6 +19,8 @@ SERIAL_TESTS = tools/base-path/test_ust \
 	tools/streaming/test_kernel \
 	tools/streaming/test_ust \
 	tools/health/test_thread_ok \
+	tools/health/test_thread_stall \
+	tools/health/test_tp_fail \
 	tools/live/test_kernel \
 	tools/live/test_lttng_kernel \
 	tools/live/test_ust \
@@ -29,6 +31,7 @@ SERIAL_TESTS = tools/base-path/test_ust \
 	tools/exclusion/test_exclusion \
 	tools/snapshots/test_kernel \
 	tools/snapshots/test_ust_fast \
+	tools/snapshots/test_ust_long \
 	tools/snapshots/test_ust_streaming \
 	tools/snapshots/test_kernel_streaming \
 	tools/save-load/test_save \
@@ -106,6 +109,7 @@ SERIAL_TESTS += ust/before-after/test_before_after \
 	ust/test_event_tracef \
 	ust/test_event_perf \
 	ust/blocking/test_blocking \
+	ust/low-throughput/test_low_throughput \
 	ust/multi-lib/test_multi_lib \
 	ust/rotation-destroy-flush/test_rotation_destroy_flush \
 	ust/ust-app-ctl-paths/test_blocking \
@@ -118,7 +122,8 @@ SERIAL_TESTS += ust/before-after/test_before_after \
 	tools/relayd-grouping/test_ust \
 	tools/trigger/rate-policy/test_ust_rate_policy
 
-TESTS += ust/high-throughput/test_high_throughput_snapshot.py \
+TESTS += ust/high-throughput/test_high_throughput.py \
+	ust/high-throughput/test_high_throughput_snapshot.py \
 	ust/ust-constructor/test_ust_constructor_c_static.py \
 	ust/ust-constructor/test_ust_constructor_cpp_dynamic.py \
 	ust/ust-constructor/test_ust_constructor_cpp_static.py

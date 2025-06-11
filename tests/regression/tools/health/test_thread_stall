@@ -5,11 +5,18 @@
 #
 # SPDX-License-Identifier: LGPL-2.1-only
 
-TEST_DESC="Health check - Thread stall"
+CURDIR=$(dirname $(readlink -f $0))
+TESTDIR=${CURDIR}/../../..
+source $TESTDIR/utils/utils.sh
 
+check_skip_long_regression_tests && {
+	plan_skip_all "Long regression tests disabled"
+	exit 0
+}
+
+TEST_DESC="Health check - Thread stall"
 SESSION_NAME="health_thread_stall"
 SESSIOND_PRELOAD=".libs/libhealthstall.so"
 TEST_SUFFIX="STALL"
-CURDIR=$(dirname $(readlink -f $0))
 
 source ${CURDIR}/test_health.sh
