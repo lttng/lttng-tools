@@ -174,8 +174,7 @@ print_test_banner "$TEST_DESC"
 
 bail_out_if_no_babeltrace
 
-check_skip_kernel_test "$NUM_TESTS" "Skipping all tests." ||
-{
+check_skip_kernel_long_regression_tests "$NUM_TESTS" "Skipping all tests." || {
 
 	# Catch sigint and try to cleanup limits
 	trap interrupt_cleanup SIGTERM SIGINT

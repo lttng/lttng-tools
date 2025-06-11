@@ -15,6 +15,7 @@ SERIAL_TESTS = tools/base-path/test_ust \
 	tools/filtering/test_invalid_filter \
 	tools/filtering/test_unsupported_op \
 	tools/filtering/test_valid_filter \
+	tools/streaming/test_high_throughput_limits \
 	tools/streaming/test_kernel \
 	tools/streaming/test_ust \
 	tools/health/test_thread_ok \
