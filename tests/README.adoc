@@ -147,6 +147,10 @@ the test timeout condition. (Default: 60)
 | Do not run kernel (LTTng-modules) tests
 | {ex} | {check} | {ex}
 
+| `LTTNG_TOOLS_RUN_TESTS_LONG_REGRESSION`
+| When set to non-empty string other than '0', run long regression tests
+| {check} | {check} | {ex}
+
 | `LTTNG_TOOLS_TESTS_DISABLE_WARN_LTTNG_PROCESSES`
 | Skip checking for existing LTTng processes when starting `make check`
 | N/A | N/A | N/A

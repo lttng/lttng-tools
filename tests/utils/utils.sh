@@ -471,6 +471,24 @@ function retry_anycpu_taskset()
 	return "${ret}"
 }
 
+function check_skip_long_regression_tests()
+{
+	local num_tests="${1}"
+	local skip_message="LTTNG_TOOLS_RUN_TESTS_LONG_REGRESSION is not set to a non-empty value that is not '0'.${2+ }${2}"
+
+	val="${LTTNG_TOOLS_RUN_TESTS_LONG_REGRESSION:-}"
+	if [[ -n "${val}" ]] && [[ "${val}" != "0" ]]; then
+		return 1
+	fi
+
+	if [[ -n "${num_tests}" ]]; then
+		skip 0 "${skip_message}" "${num_tests}"
+	else
+		diag "${skip_message}"
+	fi
+	return 0
+}
+
 # Usage:
 # check_skip_kernel_test [NB_TESTS] [SKIP_MESSAGE]
 # Return 0 if LTTNG_TOOLS_DISABLE_KERNEL_TESTS was set or the current user is not a root user
@@ -504,6 +522,24 @@ function check_skip_kernel_test ()
 	fi
 
 	return 1
+}
+
+
+function check_skip_kernel_long_regression_tests()
+{
+	local num_tests="$1"
+	local skip_message="Kernel long regression tests disabled.${2+ }${2}"
+
+	if check_skip_long_regression_tests "" "" || check_skip_kernel_test "" "" ; then
+		if [[ -n "${num_tests}" ]]; then
+			skip 0 "${skip_message}" "${num_tests}"
+		else
+			diag "${skip_message}"
+		fi
+		return 0
+	fi
+	return 1
+
 }
 
 # Check if base lttng-modules are present.

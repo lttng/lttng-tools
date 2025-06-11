@@ -999,6 +999,12 @@ class _Environment(logger._Logger):
             and os.getuid() == 0
         )
 
+    @staticmethod
+    def run_long_regression_tests():
+        # type: () -> bool
+        value = os.getenv("LTTNG_TOOLS_RUN_TESTS_LONG_REGRESSION")
+        return bool(value and value != "0")
+
     # Unpack a list of environment variables from a string
     # such as "HELLO=is_it ME='/you/are/looking/for'"
     @staticmethod
