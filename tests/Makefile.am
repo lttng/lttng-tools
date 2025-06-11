@@ -15,8 +15,7 @@ else
 endif
 
 
-dist_noinst_SCRIPTS = run.sh
-EXTRA_DIST = run.sh README.adoc
+EXTRA_DIST = README.adoc
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \

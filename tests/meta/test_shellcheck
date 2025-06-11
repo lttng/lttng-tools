@@ -9,7 +9,6 @@
 files=(
     meta/test_shellcheck
     regression/tools/notification/util_event_generator.sh
-    run.sh
 )
 
 TESTDIR=$(dirname "$0")/..
