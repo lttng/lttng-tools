@@ -6,6 +6,7 @@ EXTRA_DIST = test_all_events \
 						 test_channel \
 						 test_clock_override \
 						 test_event_basic \
+						 test_high_throughput.py \
 						 test_kernel_function \
 						 test_lttng_logger \
 						 test_ns_contexts \
