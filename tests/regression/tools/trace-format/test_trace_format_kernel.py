@@ -22,27 +22,6 @@ from trace_format_helpers import (
 )
 
 
-@contextlib.contextmanager
-def kernel_module(module_name):
-    """
-    Context manager to load a kernel module and unload it when it goes out of scope.
-    """
-    try:
-        subprocess.run(["modprobe", module_name], check=True)
-        yield module_name
-    finally:
-        subprocess.run(["modprobe", "-r", module_name], check=True)
-
-
-def getconf(name):
-    p = subprocess.Popen(["getconf", str(name)], stdout=subprocess.PIPE)
-    if p.wait() != 0:
-        raise subprocess.CalledProcessError(
-            returncode=p.returncode, cmd=["getconf", str(name)]
-        )
-    return p.stdout.read().decode("utf-8").strip()
-
-
 def capture_local_kernel_trace(environment):
     # type: (lttngtest._Environment) -> pathlib.Path
     session_output_location = lttngtest.LocalSessionOutputLocation(
@@ -66,7 +45,7 @@ def capture_local_kernel_trace(environment):
 
     session.start()
 
-    with kernel_module("lttng-test"):
+    with lttngtest.kernel_module("lttng-test"):
         tap.diagnostic("Loaded kernel module `lttng-test`")
         tap.diagnostic("Writing to /proc/lttng-test-filter-event")
         with open("/proc/lttng-test-filter-event", "w") as f:
@@ -97,7 +76,7 @@ if not lttngtest._Environment.run_kernel_tests():
 pretty_expect_path = pretty_expect_path = pathlib.Path(__file__).absolute().parents[
     0
 ] / "kernel-local-trace-pretty.expect{}".format(
-    ".32" if getconf("LONG_BIT") == "32" else ""
+    ".32" if lttngtest.getconf("LONG_BIT") == "32" else ""
 )
 test_local_trace_all_formats(
     tap=tap,
