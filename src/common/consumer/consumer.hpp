@@ -232,7 +232,6 @@ struct lttng_consumer_channel {
 
 	/* For UST metadata periodical flush */
 	lttng::scheduling::periodic_task::sptr metadata_switch_timer_task;
-	timer_t switch_timer = {};
 	int switch_timer_error = 0;
 
 	/* For the live mode */
@@ -243,7 +242,6 @@ struct lttng_consumer_channel {
 	bool is_live = false;
 
 	/* For channel monitoring timer. */
-	timer_t monitor_timer = {};
 	lttng::scheduling::periodic_task::sptr monitor_timer_task;
 
 	/* On-disk circular buffer */
