@@ -1240,6 +1240,27 @@ class _Environment(logger._Logger):
         self._cleanup()
 
 
+def getconf(name):
+    p = subprocess.Popen(["getconf", str(name)], stdout=subprocess.PIPE)
+    if p.wait() != 0:
+        raise subprocess.CalledProcessError(
+            returncode=p.returncode, cmd=["getconf", str(name)]
+        )
+    return p.stdout.read().decode("utf-8").strip()
+
+
+@contextlib.contextmanager
+def kernel_module(module_name):
+    """
+    Context manager to load a kernel module and unload it when it goes out of scope.
+    """
+    try:
+        subprocess.run(["modprobe", module_name], check=True)
+        yield module_name
+    finally:
+        subprocess.run(["modprobe", "-r", module_name], check=True)
+
+
 def online_cpus():
     "Return a set of CPU that are currently online."
     with open("/sys/devices/system/cpu/online") as online:
