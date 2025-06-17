@@ -23,12 +23,14 @@
 #include <algorithm>
 #include <string.h>
 
+namespace {
 enum communication_state {
 	COMMUNICATION_STATE_RECEIVE_LTTNG_MSG,
 	COMMUNICATION_STATE_RECEIVE_COMMAND_HEADER,
 	COMMUNICATION_STATE_END,
 	COMMUNICATION_STATE_ERROR,
 };
+} /* namespace */
 
 struct lttng_clear_handle {
 	LTTNG_OPTIONAL(enum lttng_error_code) clear_return_code;
