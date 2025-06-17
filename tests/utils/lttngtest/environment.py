@@ -1281,10 +1281,12 @@ def online_cpus():
         cpus = set()
 
         for cpu_range in online.readline().split(","):
-            start, end = cpu_range.split("-")
-
-            for cpu in range(int(start), int(end) + 1):
-                cpus.add(cpu)
+            if cpu_range.find("-") != -1:
+                start, end = cpu_range.split("-")
+                for cpu in range(int(start), int(end) + 1):
+                    cpus.add(cpu)
+            else:
+                cpus.add(int(cpu_range.strip()))
         return cpus
 
 
