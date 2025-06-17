@@ -1159,6 +1159,12 @@ AS_IF([test "x$ARCHTYPE" = "xx86" && test "x$OSTYPE" = "xlinux"],[
 ])
 AM_CONDITIONAL([HAVE_MODULES_USERSPACE_CALLSTACK_CONTEXT], [test x$have_modules_userspace_callstack_context = xyes])
 
+AC_ARG_ENABLE([tests],
+  [AS_HELP_STRING([--enable-tests], [Build the tests. [default=yes]])],
+  [],
+  [enable_tests=yes]
+)
+
 # Export binaries build conditions.
 AM_CONDITIONAL([BUILD_BIN_LTTNG], [test x$enable_bin_lttng != xno])
 AM_CONDITIONAL([BUILD_BIN_LTTNG_CONSUMERD], [test x$enable_bin_lttng_consumerd != xno])
@@ -1172,16 +1178,18 @@ test "x$enable_bin_lttng" != "xno" && \
 test "x$enable_bin_lttng_consumerd" != "xno" && \
 test "x$enable_bin_lttng_crash" != "xno" && \
 test "x$enable_bin_lttng_relayd" != "xno" && \
-test "x$enable_bin_lttng_sessiond" != "xno"],
+test "x$enable_bin_lttng_sessiond" != "xno" && \
+test "x$enable_tests" == "xyes"],
 [build_tests=yes],
 [build_tests=no]
 )
 
 AM_CONDITIONAL([BUILD_TESTS], [test x$build_tests = xyes])
-
 AS_IF([test "x$build_tests" = "xyes"],
   [
-    PKG_CHECK_MODULES([babeltrace2], [babeltrace2])
+    PKG_CHECK_MODULES([babeltrace2],[babeltrace2],,[
+    AC_MSG_ERROR([libbabeltrace2 is required to build tests])
+    ])
   ]
 )
 
@@ -1459,6 +1467,10 @@ PPRINT_SUBTITLE([Tests])
 AS_IF([test "x$build_tests" = "xno"],[
 	PPRINT_WARN([Tests won't be built since some binaries were disabled])
 ])
+
+# Tests disable overall
+test "x$enable_tests" = "xyes" && value=1 || value=0
+PPRINT_PROP_BOOL([Tests], $value)
 
 # LTTng UST Java agent JUL tests enabled/disabled
 test "x$test_java_agent_jul" = "xyes" && value=1 || value=0
