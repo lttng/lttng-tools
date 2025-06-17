@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <stdbool.h>
 
+namespace {
 enum communication_state {
 	COMMUNICATION_STATE_RECEIVE_LTTNG_MSG,
 	COMMUNICATION_STATE_RECEIVE_COMMAND_HEADER,
@@ -29,6 +30,7 @@ enum communication_state {
 	COMMUNICATION_STATE_END,
 	COMMUNICATION_STATE_ERROR,
 };
+} /* namespace */
 
 struct lttng_destruction_handle {
 	LTTNG_OPTIONAL(enum lttng_error_code) destruction_return_code;
