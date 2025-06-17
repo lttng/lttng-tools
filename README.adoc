@@ -146,6 +146,8 @@ You need the following tools to build {lt}:
 
 * **https://www.gnu.org/software/bison/[Bison]{nbsp}≥{nbsp}2.4**
 
+* **https://www.freedesktop.org/wiki/Software/pkg-config/[pkg{nbh}config]** or similiar drop-in replacement
+
 To build the {lt} manual pages:
 
 * **https://asciidoc.org/[AsciiDoc]{nbsp}≥{nbsp}8.4.5**
