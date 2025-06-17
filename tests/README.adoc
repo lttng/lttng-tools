@@ -119,6 +119,11 @@ the test timeout condition. (Default: 60)
 | The time in minutes after which a test run by the serial test runner will be killed. (Default: 30)
 | {check} | N/A | N/A
 
+| `LTTNG_TEST_TEARDOWN_TIMEOUT`
+| A timeout in seconds after which waiting for lttng-consumerd, lttng-relayd, or lttng-sessiond
+| will stop and a kill attempted during the clean-up of the test environment. (Default: 60)
+| {check} | N/A | N/A
+
 | `LTTNG_TEST_VERBOSE_BABELTRACE`
 | Run `babeltrace2` in it's verbose mode
 | {check} | {check} | {ex}
