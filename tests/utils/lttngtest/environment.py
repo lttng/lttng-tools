@@ -703,6 +703,20 @@ class _Environment(logger._Logger):
 
         self._dummy_users = {}  # type: Dictionary[int, string]
         self._preserve_test_env = os.getenv("LTTNG_TEST_PRESERVE_TEST_ENV", "0") != "1"
+        self.teardown_timeout = os.getenv("LTTNG_TEST_TEARDOWN_TIMEOUT", "60")
+
+    @property
+    def teardown_timeout(self):
+        return self._teardown_timeout
+
+    @teardown_timeout.setter
+    def teardown_timeout(self, value):
+        try:
+            self._teardown_timeout = int(value)
+        except TypeError:
+            self._teardown_timeout = None
+        except ValueError:
+            self._teardown_timeout = None
 
     @property
     def lttng_home_location(self):
@@ -1160,8 +1174,22 @@ class _Environment(logger._Logger):
 
     def _terminate_relayd(self):
         if self._relayd and self._relayd.poll() is None:
-            self._relayd.terminate()
-            self._relayd.wait()
+            try:
+                self._relayd.terminate()
+                self._log(
+                    "Termination signal sent to relayd (pid = {})".format(
+                        self._relayd.pid
+                    )
+                )
+                self._relayd.wait(timeout=self.teardown_timeout)
+            except subprocess.TimeoutExpired:
+                self._relayd.kill()
+                self._log(
+                    "Kill signal sent to relayd (pid = {}) after waiting {}s".format(
+                        self._relayd.pid, self.teardown_timeout
+                    )
+                )
+
             if self._relayd_output_consumer:
                 self._relayd_output_consumer.join()
                 self._relayd_output_consumer = None
@@ -1173,14 +1201,21 @@ class _Environment(logger._Logger):
         # type: () -> None
         if self._sessiond and self._sessiond.poll() is None:
             # The session daemon is alive; kill it.
-            self._log(
-                "Killing session daemon (pid = {sessiond_pid})".format(
-                    sessiond_pid=self._sessiond.pid
+            try:
+                self._sessiond.terminate()
+                self._log(
+                    "Termination signal sent to session daemon (pid = {})".format(
+                        self._sessiond.pid
+                    )
                 )
-            )
-
-            self._sessiond.terminate()
-            self._sessiond.wait()
+                self._sessiond.wait(timeout=self.teardown_timeout)
+            except subprocess.TimeoutExpired:
+                self._sessiond.kill()
+                self._log(
+                    "Kill signal sent to lttng-sessiond (pid = {}) after waiting {}s".format(
+                        self._sessiond.pid, self.teardown_timeout
+                    )
+                )
             if self._sessiond_output_consumer:
                 self._sessiond_output_consumer.join()
                 self._sessiond_output_consumer = None
