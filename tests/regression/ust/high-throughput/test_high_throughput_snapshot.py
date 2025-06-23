@@ -35,7 +35,7 @@ def get_bytes_at_offset(file_name, offset, length):
 
 
 def bytes_to_hex_str(b):
-    return " ".join(f"{byte:02x}" for byte in b)
+    return " ".join("{:02x}".format(byte) for byte in b)
 
 
 def test_high_throughput_snapshot(tap, test_env, events_per_app=100):
