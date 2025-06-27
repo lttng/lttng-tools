@@ -1,3 +1,108 @@
+2025-06-27 lttng-tools 2.14.0 (Multiculturalism Day)
+	* tests: Fix string formatting for Python 3.4+
+	* liblttng-ctl: Put `enum communication_state` in anonymous namespaces
+	* tests: Add test_high_throughput for kernel regression
+	* tests: Move getconf/kernel_module to lttngtest
+	* common: Provide `--disable-tests` configuration option
+	* docs: Add pkg-config to requirements in README
+	* tests: Add `test_high_throughput_snapshot`
+	* tests: Fix: online_cpus() fails with disjoint sets
+	* tests: Support `text-size` and `fill-text` options for WaitTraceTestApps
+	* tests: Add option to generate larger tp:tptest events
+	* Fix: consumerd: inaccurate math in discarded events aggregation
+	* groups.dox: warn that the RS save/load API doc isn't done
+	* liblttng-ctl API doc: use the "process filter" term
+	* groups.dox: document the usage of the recording session snapshot API
+	* groups.dox: document the usage of the recording session rotation API
+	* groups.dox: document the usage of the error query API
+	* include/lttng/destruction-handle.h: doc: update internal reference
+	* doc/api/liblttng-ctl: add missing image files
+	* liblttng-ctl API doc: add missing trigger API documentation
+	* groups.dox: adjust style (minor)
+	* include/lttng/log-level-rule.h: fix enumerator references and quotes
+	* include/lttng/event.h: move nested union types out of structures
+	* include/lttng/event-expr.h: document with Doxygen
+	* filter-expr.dox: perf context fields aren't supported
+	* include/lttng/event.h: doc: clarify statically-known ctx. field types
+	* groups.dox: "to create" 👉 "to target"
+	* groups.dox: always quote "event rule matches"
+	* include/lttng/event-field-value.h: document with Doxygen
+	* groups.dox: document the "Event rule API" topic
+	* groups.dox: emphasize "without"
+	* liblttng-ctl API doc: extract filter expression doc
+	* groups.dox: RERs of logging tracing domains can have filters too
+	* groups.dox: reference `event_rule` variable directly
+	* groups.dox: add "Linux user space probe location API" topic
+	* include/lttng/event.h: doc: use "user space probe"; update links
+	* `enum lttng_event_rule_type`: doc: link enumerators to topics
+	* include/lttng/userspace-probe.h: document with Doxygen
+	* include/lttng/kernel-probe.h: document with Doxygen
+	* include/lttng: doc: add reference to lttng_*_get_type() in `enum`
+	* include/lttng/event-rule/python-logging.h: document with Doxygen
+	* include/lttng/event-rule/log4j2-logging.h: document with Doxygen
+	* include/lttng/event-rule/log4j-logging.h: document with Doxygen
+	* include/lttng/event-rule/jul-logging.h: document with Doxygen
+	* include/lttng/event-rule/kernel-uprobe.h: document with Doxygen
+	* include/lttng/event-rule/kernel-kprobe.h: document with Doxygen
+	* include/lttng/event-rule/kernel-syscall.h: document with Doxygen
+	* include/lttng/event-rule/kernel-tracepoint.h: document with Doxygen
+	* include/lttng/event-rule/user-tracepoint.h: document with Doxygen
+	* include/lttng: doc: reorder enumerators logically
+	* include/lttng: doc: add param. copying information
+	* include/lttng/channel.h: doc: remove redundant newline
+	* include/lttng/event.h: doc: use spaces in code snippets, not tabs
+	* Fix: sessiond: stale ust_app_channel on initialization failure
+	* .gitignore: add kprobe/uprobe event name unit test executables
+	* lttng_event_rule_kernel_uprobe_create(): set initial event name
+	* lttng_event_rule_kernel_kprobe_create(): set initial event name
+	* sessiond: Fix potentially uninitialized return value warning
+	* Fix: sessiond: erroneous report of consumerd exit code
+	* kernel-consumer: Fix warning on 32-bit builds
+	* Fix: lttng-sessiond: crash with kernel tracer during early shutdowns
+	* tests: Validate that HOSTNAME is not empty
+	* tests: Fix duplicate `handle_syscall_entry_pselect6_time32`
+	* tests: Skip `test_notification_kernel_userspace_probe` on armhf
+	* tests: Support pselect6_time32 in `kernel/validate_select_poll_epoll.py`
+	* tests: Fix typo in `kernel/validate_select_poll_epoll.py`
+	* tests: Skip 32-bit userspace SDT tests
+	* tests: Handle tests which do not exist or are not executable
+	* tests: Fix `test_trace_format_kernel` with 32-bit kernels
+	* tests: Fix `test_select_poll_epoll` on armhf
+	* tests: Do not expect `epoll_wait_*` on arm64 and riscv64
+	* tests: tests.serial: polled writing and long-running test abort
+	* Fix: sessiond: erroneous check for end of list
+	* sessiond: check liblttng-ust-ctl.so version at runtime
+	* Fix: sessiond: build fails with libxml2 2.14+
+	* tests: Avoid hang in `test_python_logging` when test application fails
+	* Tests: disable coredumps during `test_ppoll_fds_buffer_overflow`
+	* Tests: Fix hang in `tools/health/test_tp_fail`
+	* Tests: fix: time TAP tests in OOT builds
+	* tests: Use machine identifier to search for lttng-ctl ABI reference
+	* doc/api/liblttng-ctl/Doxyfile: don't consider `LTTNG_EXPORT`
+	* Document `include/lttng/event-rule/event-rule.h` with Doxygen
+	* include/lttng/event.h: clarify recording ER vs. IP descriptor
+	* liblttng-ctl API doc: add Doxygen aliases for log4j/Log4j/JUL
+	* include/lttng/channel.h: add missing `*` in param. references
+	* liblttng-ctl API doc: document buffer ownership model and alloc. policy
+	* liblttng-ctl API doc: fix log4j/Log4j terminology
+	* Document `include/lttng/log-level-rule.h` with Doxygen
+	* include/lttng: use list items for preconditions
+	* doc/api/liblttng-ctl/Doxyfile.in: remove deprecated config
+	* doc/api/liblttng-ctl: update images
+	* include/lttng/session.h: doc: add cross-references
+	* Document lttng_get_kernel_tracer_status() and `lttng_kernel_tracer_status`
+	* include/lttng: "invalid parameter" -> "unsatisfied precondition"
+	* include/lttng: fix the documentation of some return values
+	* include/lttng: remove redundant, non-Doxygen comments
+	* doc/api/liblttng-ctl/dox/groups.dox: balance "if" with "then"
+	* doc/api/liblttng-ctl/Makefile.am: depend on all source files
+	* include/lttng/session.h: doc: fix style of lttng_get_session_shm_path_override()
+	* include/lttng/event.h: fix Doxygen warnings
+	* include/lttng/event.h: disable clang-format for some Doxygen comments
+	* doc/api/liblttng-ctl: remove `DoxygenLayout.xml`
+	* Run clang-format on the whole project
+	* tests: Add python 3.4 support to `trace_format_helpers`
+
 2025-04-16 | lttng-tools 2.14.0-rc1 (National Wear Your Pajamas to Work Day)
 
 WHAT'S NEW?

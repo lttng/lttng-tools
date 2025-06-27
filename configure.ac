@@ -1,7 +1,7 @@
 dnl SPDX-License-Identifier: GPL-2.0-only
 dnl SPDX-FileCopyrightText: 2011-2025 EfficiOS Inc.
 AC_PREREQ([2.64])
-AC_INIT([lttng-tools],[2.14.0-rc1],[jeremie.galarneau@efficios.com],[],[https://lttng.org])
+AC_INIT([lttng-tools],[2.14.0],[jeremie.galarneau@efficios.com],[],[https://lttng.org])
 
 AC_CONFIG_HEADERS([include/config.h])
 AC_CONFIG_AUX_DIR([config])
