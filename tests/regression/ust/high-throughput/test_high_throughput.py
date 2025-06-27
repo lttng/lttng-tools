@@ -22,7 +22,9 @@ import bt2
 import lttngtest
 
 
-def test_high_throughput(tap, test_env, app_count=20, events_per_app=1000000):
+def test_high_throughput(
+    tap, test_env, app_count=len(lttngtest.online_cpus()) * 2, events_per_app=1000000
+):
     client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
     output_path = test_env.create_temporary_directory()
     output = lttngtest.LocalSessionOutputLocation(trace_path=output_path)
