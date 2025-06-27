@@ -40,20 +40,20 @@ def test_high_throughput(tap, test_env, app_count=20, events_per_app=1000000):
 
     expected = app_count * events_per_app
     received = 0
-    dropped = 0
+    discarded = 0
     for msg in bt2.TraceCollectionMessageIterator(str(output_path)):
         if type(msg) is bt2._EventMessageConst:
             received += 1
             continue
 
         if type(msg) is bt2._DiscardedEventsMessageConst:
-            dropped += msg.count
+            discarded += msg.count
 
-    total = received + dropped
+    total = received + discarded
     tap.diagnostic("Trace output path: {}".format(str(output_path)))
     tap.diagnostic(
         "received={}, dropped={}, total={}, expected={}".format(
-            received, dropped, total, expected
+            received, discarded, total, expected
         )
     )
     tap.test(
