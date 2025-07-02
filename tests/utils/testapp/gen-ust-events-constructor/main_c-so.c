@@ -1,7 +1,7 @@
 /*
  * SPDX-FileCopyrightText: 2024 Kienan Stewart <kstewart@efficios.com>
  *
- * SPDX-LIcense-Identifier: LGPL-2.1-only
+ * SPDX-License-Identifier: LGPL-2.1-only
  */
 
 #include "tp-so_c.h"
