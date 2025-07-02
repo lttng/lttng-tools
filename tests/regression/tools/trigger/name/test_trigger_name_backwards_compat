@@ -14,7 +14,7 @@ source "$TESTDIR/utils/utils.sh"
 
 TRIGGER_NAME_BIN="$CURDIR/trigger_name"
 
- # MUST set TESTDIR before calling those functions
+# MUST set TESTDIR before calling those functions
 
 start_lttng_sessiond_notap
 tap_disable

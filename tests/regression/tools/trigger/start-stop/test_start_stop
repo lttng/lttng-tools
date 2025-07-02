@@ -144,7 +144,7 @@ function test_stop_session_action()
 	rm -rf "$TRACE_PATH"
 }
 
- # MUST set TESTDIR before calling those functions
+# MUST set TESTDIR before calling those functions
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
