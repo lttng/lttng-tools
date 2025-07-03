@@ -26,7 +26,7 @@ else
 # Force the shared flag on the noinst libraries since they are
 # only built static by default
 FORCE_SHARED_LIB_OPTIONS = -module -shared -avoid-version \
-			   -rpath $(abs_builddir)
+			   -rpath $(libdir)
 
 noinst_LTLIBRARIES += libtp-so-provider.la libtp-so-define.la \
 	libtp-so_c-provider.la libtp-so_c-define.la
