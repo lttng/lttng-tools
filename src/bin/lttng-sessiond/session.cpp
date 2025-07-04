@@ -392,7 +392,7 @@ static bool ltt_sessions_ht_empty()
 	LTTNG_ASSERT(ltt_sessions_ht_by_name);
 
 	if (lttng_ht_get_count(ltt_sessions_ht_by_id) != 0) {
-		/* Not empty.*/
+		/* Not empty. */
 		goto end;
 	}
 
