@@ -27,8 +27,7 @@ noinst_HEADERS = signal-helper.hpp
 if HAVE_LIBLTTNG_UST_CTL
 noinst_PROGRAMS += gen-data-pending
 gen_data_pending_SOURCES = gen-data-pending.cpp
-gen_data_pending_LDADD = $(LIB_LTTNG_CTL) \
-	$(top_builddir)/src/vendor/fmt/libfmt.la
+gen_data_pending_LDADD = $(LIB_LTTNG_CTL)
 
 noinst_PROGRAMS += gen-ust-events
 gen_ust_events_SOURCES = \

@@ -32,8 +32,7 @@ nodist__lttng_la_SOURCES = lttng_wrap.c
 _lttng_la_LDFLAGS = -module
 _lttng_la_LIBADD = 	$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la	\
 			$(top_builddir)/src/common/libsessiond-comm.la		\
-			$(top_builddir)/src/common/libcommon-gpl.la		\
-			$(top_builddir)/src/vendor/fmt/libfmt.la
+			$(top_builddir)/src/common/libcommon-gpl.la
 
 # Use this fake source file to force the link mode of the library
 # from gcc to g++. The library contains only C code, but depends on

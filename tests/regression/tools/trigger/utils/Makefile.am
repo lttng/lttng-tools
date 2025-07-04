@@ -12,8 +12,7 @@ noinst_PROGRAMS = \
 
 notification_client_SOURCES = notification-client.cpp
 notification_client_LDADD = $(LIBLTTNG_CTL) $(LIBCOMMON_LGPL) \
-	$(top_builddir)/tests/utils/libtestutils.la \
-	$(top_builddir)/src/vendor/fmt/libfmt.la
+	$(top_builddir)/tests/utils/libtestutils.la
 
 register_some_triggers_SOURCES = register-some-triggers.cpp
 register_some_triggers_LDADD = $(LIBLTTNG_CTL) \
