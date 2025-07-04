@@ -8029,7 +8029,7 @@ enum lttng_error_code ust_app_clear_session(const ltt_session::locked_ref& sessi
 			(void) push_metadata(it.get_registry_session()->lock(), usess.consumer);
 		}
 
-		const auto clean_ret = consumer_clear_channel(consumer_socket, key.key_value);
+		const auto clean_ret = consumer_clear_channel(consumer_socket, key.consumer_key);
 		if (clean_ret < 0) {
 			if (clean_ret == -LTTCOMM_CONSUMERD_CHAN_NOT_FOUND &&
 			    usess.buffer_type == LTTNG_BUFFER_PER_PID) {
@@ -8081,7 +8081,7 @@ enum lttng_error_code ust_app_open_packets(const ltt_session::locked_ref& sessio
 				64,
 			usess.consumer);
 
-		const auto open_ret = consumer_open_channel_packets(socket, key.key_value);
+		const auto open_ret = consumer_open_channel_packets(socket, key.consumer_key);
 		if (open_ret < 0) {
 			/* Per-PID buffer and application going away. */
 			if (open_ret == -LTTCOMM_CONSUMERD_CHAN_NOT_FOUND &&

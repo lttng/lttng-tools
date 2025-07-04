@@ -1575,15 +1575,15 @@ std::unique_lock<std::mutex> ls::lock_session_list()
 }
 
 lttng::sessiond::user_space_consumer_channel_keys
-ltt_session::user_space_consumer_channel_keys() const
+ltt_session::user_space_consumer_channel_keys(lttng::c_string_view channel_name_filter) const
 {
 	switch (ust_session->buffer_type) {
 	case LTTNG_BUFFER_PER_PID:
-		return lttng::sessiond::user_space_consumer_channel_keys(*ust_session,
-									 *ust_app_get_all());
+		return lttng::sessiond::user_space_consumer_channel_keys(
+			*ust_session, *ust_app_get_all(), channel_name_filter);
 	case LTTNG_BUFFER_PER_UID:
 		return lttng::sessiond::user_space_consumer_channel_keys(
-			*ust_session, ust_session->buffer_reg_uid_list);
+			*ust_session, ust_session->buffer_reg_uid_list, channel_name_filter);
 	default:
 		abort();
 	}
@@ -1682,8 +1682,28 @@ void ls::user_space_consumer_channel_keys::iterator::_skip_to_next_app_per_pid(
 		}
 
 		position.current_registry_session = registry;
-		lttng_ht_get_first((*position.current_app_session)->channels,
-				   &_position.channel_iterator);
+		if (!_creation_context._channel_filter) {
+			/* No filter; point to the app's first channel. */
+			lttng_ht_get_first((*position.current_app_session)->channels,
+					   &_position.channel_iterator);
+		} else {
+			if (_creation_context._channel_filter->is_metadata()) {
+				/*
+				 * An invalid iterator will cause the "metadata" value to be
+				 * delivered.
+				 */
+				_position.channel_iterator.iter = {};
+			} else {
+				/* A filter was specified, point to the target channel. */
+				lttng_ht_lookup(
+					(*position.current_app_session)->channels,
+					(void *) _creation_context._channel_filter->name.data(),
+					&_position.channel_iterator);
+				LTTNG_ASSERT(
+					cds_lfht_iter_get_node(&_position.channel_iterator.iter));
+			}
+		}
+
 		break;
 	}
 }
@@ -1709,16 +1729,41 @@ void ls::user_space_consumer_channel_keys::iterator::_init_per_uid() noexcept
 	position.registry_list_head = &_creation_context._session.buffer_reg_uid_list;
 	position.current_registry = lttng::utils::container_of(
 		_creation_context._session.buffer_reg_uid_list.next, &buffer_reg_uid::lnode);
-	lttng_ht_get_first(position.current_registry->registry->channels,
-			   &_position.channel_iterator);
+	if (!_creation_context._channel_filter) {
+		/* No filter; point to the registry's first channel. */
+		lttng_ht_get_first(position.current_registry->registry->channels,
+				   &_position.channel_iterator);
+	} else {
+		/* A filter was specified, point to the target channel. */
+		if (_creation_context._channel_filter->is_metadata()) {
+			/*
+			 * An invalid iterator will cause the "metadata" value to be
+			 * delivered.
+			 */
+			_position.channel_iterator.iter = {};
+		} else {
+			const auto config_key = _creation_context._channel_filter->config_key();
+
+			lttng_ht_lookup(position.current_registry->registry->channels,
+					&config_key,
+					&_position.channel_iterator);
+			LTTNG_ASSERT(cds_lfht_iter_get_node(&_position.channel_iterator.iter));
+		}
+	}
 }
 
 void ls::user_space_consumer_channel_keys::iterator::_advance_one_per_pid()
 {
 	auto& position = _position._per_pid;
 
-	if (!cds_lfht_iter_get_node(&_position.channel_iterator.iter)) {
-		/* Reached the last channel. Move on to the next app. */
+	if (_creation_context._channel_filter ||
+	    !cds_lfht_iter_get_node(&_position.channel_iterator.iter)) {
+		/*
+		 * If a channel filter is present in the creation context, it is guaranteed that the
+		 * current channel is the only one matching the filter, and thus, is considered the
+		 * "last" channel for this iteration. In this case, or if there are no more
+		 * channels, the iterator skips to the next application.
+		 */
 		_skip_to_next_app_per_pid(false);
 		return;
 	}
@@ -1734,8 +1779,13 @@ void ls::user_space_consumer_channel_keys::iterator::_advance_one_per_uid()
 {
 	auto& position = _position._per_uid;
 
-	if (!cds_lfht_iter_get_node(&_position.channel_iterator.iter)) {
-		/* Reached the last channel of the registry. Move on to the next registry. */
+	if (_creation_context._channel_filter ||
+	    !cds_lfht_iter_get_node(&_position.channel_iterator.iter)) {
+		/*
+		 * If a channel filter is present in the creation context, it is guaranteed that the
+		 * current channel is the only one matching the filter, and thus, is considered the
+		 * "last" channel for this iteration. Move on to the next registry.
+		 */
 		if (position.current_registry->lnode.next == position.registry_list_head) {
 			_is_end = true;
 			return;
@@ -1743,15 +1793,33 @@ void ls::user_space_consumer_channel_keys::iterator::_advance_one_per_uid()
 
 		position.current_registry = lttng::utils::container_of(
 			position.current_registry->lnode.next, &buffer_reg_uid::lnode);
-		cds_lfht_first(position.current_registry->registry->channels->ht,
-			       &_position.channel_iterator.iter);
+
+		if (!_creation_context._channel_filter) {
+			/* No filter; point to the registry's first channel. */
+			lttng_ht_get_first(position.current_registry->registry->channels,
+					   &_position.channel_iterator);
+		} else {
+			if (_creation_context._channel_filter->is_metadata()) {
+				_position.channel_iterator = {};
+			} else {
+				const auto config_key =
+					_creation_context._channel_filter->config_key();
+
+				/* A filter was specified, point to the target channel. */
+				lttng_ht_lookup(position.current_registry->registry->channels,
+						&config_key,
+						&_position.channel_iterator);
+				LTTNG_ASSERT(
+					cds_lfht_iter_get_node(&_position.channel_iterator.iter));
+			}
+		}
 
 		/* Assumes a registry can't be empty. */
 		LTTNG_ASSERT(cds_lfht_iter_get_node(&_position.channel_iterator.iter));
 	}
 
-	cds_lfht_next(position.current_registry->registry->channels->ht,
-		      &_position.channel_iterator.iter);
+	lttng_ht_get_next(position.current_registry->registry->channels,
+			  &_position.channel_iterator);
 }
 
 bool ls::user_space_consumer_channel_keys::iterator::operator==(const iterator& other) const noexcept
@@ -1769,10 +1837,10 @@ bool ls::user_space_consumer_channel_keys::iterator::operator!=(const iterator& 
 	return !(*this == other);
 }
 
-ls::user_space_consumer_channel_keys::key
+ls::user_space_consumer_channel_keys::iterator::key
 ls::user_space_consumer_channel_keys::iterator::_get_current_value_per_pid() const noexcept
 {
-	auto& position = _position._per_pid;
+	const auto& position = _position._per_pid;
 
 	const auto *channel_node =
 		lttng_ht_iter_get_node<lttng_ht_node_str>(&_position.channel_iterator);
@@ -1788,9 +1856,12 @@ ls::user_space_consumer_channel_keys::iterator::_get_current_value_per_pid() con
 
 		return { static_cast<consumer_bitness>(app.abi.bits_per_long),
 			 channel.key,
-			 ls::user_space_consumer_channel_keys::channel_type::DATA };
+			 ls::user_space_consumer_channel_keys::channel_type::DATA,
+			 app.pid };
 	} else {
 		LTTNG_ASSERT(position.current_registry_session);
+		LTTNG_ASSERT(!_creation_context._channel_filter ||
+			     _creation_context._channel_filter->is_metadata());
 
 		/*
 		 * Once the last data channel is delivered (iter points to the 'end' of the ht),
@@ -1798,11 +1869,12 @@ ls::user_space_consumer_channel_keys::iterator::_get_current_value_per_pid() con
 		 */
 		return { static_cast<consumer_bitness>(app.abi.bits_per_long),
 			 position.current_registry_session->_metadata_key,
-			 ls::user_space_consumer_channel_keys::channel_type::METADATA };
+			 ls::user_space_consumer_channel_keys::channel_type::METADATA,
+			 app.pid };
 	}
 }
 
-ls::user_space_consumer_channel_keys::key
+ls::user_space_consumer_channel_keys::iterator::key
 ls::user_space_consumer_channel_keys::iterator::_get_current_value_per_uid() const noexcept
 {
 	const auto *channel_node =
@@ -1815,8 +1887,12 @@ ls::user_space_consumer_channel_keys::iterator::_get_current_value_per_uid() con
 		return { static_cast<consumer_bitness>(
 				 _position._per_uid.current_registry->bits_per_long),
 			 channel.consumer_key,
-			 ls::user_space_consumer_channel_keys::channel_type::DATA };
+			 ls::user_space_consumer_channel_keys::channel_type::DATA,
+			 _position._per_uid.current_registry->uid };
 	} else {
+		LTTNG_ASSERT(!_creation_context._channel_filter ||
+			     _creation_context._channel_filter->name == DEFAULT_METADATA_NAME);
+
 		/*
 		 * Once the last data channel is delivered (iter points to the 'end' of the ht),
 		 * deliver the metadata channel's key.
@@ -1824,11 +1900,12 @@ ls::user_space_consumer_channel_keys::iterator::_get_current_value_per_uid() con
 		return { static_cast<consumer_bitness>(
 				 _position._per_uid.current_registry->bits_per_long),
 			 _position._per_uid.current_registry->registry->reg.ust->_metadata_key,
-			 ls::user_space_consumer_channel_keys::channel_type::METADATA };
+			 ls::user_space_consumer_channel_keys::channel_type::METADATA,
+			 _position._per_uid.current_registry->uid };
 	}
 }
 
-ls::user_space_consumer_channel_keys::key
+ls::user_space_consumer_channel_keys::iterator::key
 ls::user_space_consumer_channel_keys::iterator::operator*() const
 {
 	if (_is_end) {

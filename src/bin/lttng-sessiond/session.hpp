@@ -34,6 +34,7 @@
 #include <mutex>
 #include <stdbool.h>
 #include <urcu/list.h>
+#include <utility>
 
 #define ASSERT_SESSION_LIST_LOCKED() LTTNG_ASSERT(session_trylock_list())
 
@@ -140,13 +141,68 @@ private:
 
 	};
 
-	struct _iterator_creation_context {
+	class _channel_filter_spec final {
+	public:
+		explicit _channel_filter_spec(
+			const lttng::c_string_view target_name,
+			nonstd::optional<std::uint64_t> config_key = nonstd::nullopt) noexcept :
+			name(target_name), _config_key(config_key)
+		{
+			/*
+			 * A metadata channel doesn't have a config key (the 'id' of a matching
+			 * ltt_ust_channel instance).
+			 */
+			LTTNG_ASSERT((target_name == DEFAULT_METADATA_NAME) !=
+				     config_key.has_value());
+		}
+
+		const lttng::c_string_view name;
+		bool is_metadata() const noexcept
+		{
+			return !_config_key.has_value();
+		}
+
+		std::uint64_t config_key() const
+		{
+			LTTNG_ASSERT(!is_metadata());
+			return _config_key.value();
+		}
+
+	private:
+		/* Unique ID of the channel's ltt_ust_channel instance. */
+		const nonstd::optional<std::uint64_t> _config_key;
+	};
+
+	struct _iterator_creation_context final {
+		_iterator_creation_context(_iteration_mode mode,
+					   const ltt_ust_session& session,
+					   lttng_ht *apps,
+					   nonstd::optional<_channel_filter_spec> channel_filter) :
+			_mode(mode),
+			_session(session),
+			_container{ .apps = apps },
+			_channel_filter(std::move(channel_filter))
+		{
+		}
+
+		_iterator_creation_context(_iteration_mode mode,
+					   const ltt_ust_session& session,
+					   const cds_list_head *buffer_registry,
+					   nonstd::optional<_channel_filter_spec> channel_filter) :
+			_mode(mode),
+			_session(session),
+			_container{ .buffer_registry = buffer_registry },
+			_channel_filter(channel_filter)
+		{
+		}
+
 		const _iteration_mode _mode;
 		const ltt_ust_session& _session;
-		union {
+		const union {
 			lttng_ht *apps;
 			const cds_list_head *buffer_registry;
 		} _container;
+		const nonstd::optional<_channel_filter_spec> _channel_filter;
 	};
 
 public:
@@ -154,6 +210,69 @@ public:
 		friend user_space_consumer_channel_keys;
 
 	public:
+		class key {
+		public:
+			key(consumer_bitness bitness_,
+			    std::uint64_t consumer_key_,
+			    channel_type channel_type,
+			    uid_t uid) noexcept :
+				bitness(bitness_),
+				consumer_key(consumer_key_),
+				type(channel_type),
+				ownership_model(lttng::sessiond::recording_channel_configuration::
+							owership_model_t::PER_UID),
+				owner_id{ .uid = uid }
+			{
+			}
+
+			key(consumer_bitness bitness_,
+			    std::uint64_t consumer_key_,
+			    channel_type channel_type,
+			    pid_t pid) noexcept :
+				bitness(bitness_),
+				consumer_key(consumer_key_),
+				type(channel_type),
+				ownership_model(lttng::sessiond::recording_channel_configuration::
+							owership_model_t::PER_PID),
+				owner_id{ .pid = pid }
+			{
+			}
+
+			const consumer_bitness bitness;
+			const std::uint64_t consumer_key;
+			const channel_type type;
+
+			bool operator==(const key& other) const noexcept
+			{
+				return bitness == other.bitness &&
+					consumer_key == other.consumer_key && type == other.type;
+			}
+
+			uid_t owner_uid() const noexcept
+			{
+				LTTNG_ASSERT(ownership_model ==
+					     lttng::sessiond::recording_channel_configuration::
+						     owership_model_t::PER_UID);
+				return owner_id.uid;
+			}
+
+			pid_t owner_pid() const noexcept
+			{
+				LTTNG_ASSERT(ownership_model ==
+					     lttng::sessiond::recording_channel_configuration::
+						     owership_model_t::PER_PID);
+				return owner_id.pid;
+			}
+
+		private:
+			const lttng::sessiond::recording_channel_configuration::owership_model_t
+				ownership_model;
+			const union {
+				uid_t uid; /* per-UID ownership model */
+				pid_t pid; /* per-PID ownership model */
+			} owner_id;
+		};
+
 		/*
 		 * Copy constructor disabled since it would require handling the copy of locked
 		 * references.
@@ -212,20 +331,82 @@ public:
 	};
 
 private:
-	user_space_consumer_channel_keys(const ltt_ust_session& ust_session, lttng_ht& apps) :
-		_creation_context{ _iteration_mode::PER_PID, ust_session, { .apps = &apps } }
+	user_space_consumer_channel_keys(const ltt_ust_session& ust_session,
+					 lttng_ht& apps,
+					 lttng::c_string_view channel_name_filter) :
+		_creation_context{ _iteration_mode::PER_PID,
+				   ust_session,
+				   &apps,
+				   _filter_from_channel_name(ust_session, channel_name_filter) }
 	{
 	}
 
 	user_space_consumer_channel_keys(const ltt_ust_session& ust_session,
-					 const cds_list_head& buffer_registry) :
+					 const cds_list_head& buffer_registry,
+					 lttng::c_string_view channel_name_filter) :
 		_creation_context{ _iteration_mode::PER_UID,
 				   ust_session,
-				   { .buffer_registry = &buffer_registry } }
+				   &buffer_registry,
+				   _filter_from_channel_name(ust_session, channel_name_filter) }
+
 	{
 	}
 
-	lttng::urcu::scoped_rcu_read_lock _read_lock;
+	static nonstd::optional<_channel_filter_spec>
+	_filter_from_channel_name(const ltt_ust_session& ust_session,
+				  lttng::c_string_view channel_name)
+	{
+		if (!channel_name) {
+			/* No filter if no channel name is provided. */
+			return nonstd::nullopt;
+		}
+
+		if (channel_name == DEFAULT_METADATA_NAME) {
+			/*
+			 * Metadata channel is special, it has no config key since
+			 * it is not part of the ltt_ust_session's channels.
+			 */
+			return _channel_filter_spec(channel_name);
+		}
+
+		const lttng::urcu::read_lock_guard read_lock;
+		auto *ust_channel = trace_ust_find_channel_by_name(
+			ust_session.domain_global.channels, channel_name.data());
+		if (!ust_channel) {
+			LTTNG_THROW_CHANNEL_NOT_FOUND_BY_NAME_ERROR(channel_name);
+		}
+
+		return _channel_filter_spec(channel_name, ust_channel->id);
+	}
+
+	class _scoped_rcu_read_lock {
+	public:
+		_scoped_rcu_read_lock()
+		{
+			rcu_read_lock();
+		}
+
+		~_scoped_rcu_read_lock()
+		{
+			if (_armed) {
+				rcu_read_unlock();
+			}
+		}
+
+		_scoped_rcu_read_lock(_scoped_rcu_read_lock&& other) noexcept
+		{
+			other._armed = false;
+		}
+
+		_scoped_rcu_read_lock(_scoped_rcu_read_lock& other) = delete;
+		_scoped_rcu_read_lock& operator=(const _scoped_rcu_read_lock&) = delete;
+		_scoped_rcu_read_lock& operator=(_scoped_rcu_read_lock&&) noexcept = delete;
+
+	private:
+		bool _armed = true;
+	};
+
+	_scoped_rcu_read_lock _read_lock;
 	_iterator_creation_context _creation_context;
 };
 } /* namespace sessiond */
@@ -300,7 +481,8 @@ public:
 	lttng::sessiond::domain& get_domain(lttng::sessiond::domain_class domain);
 	const lttng::sessiond::domain& get_domain(lttng::sessiond::domain_class domain) const;
 
-	lttng::sessiond::user_space_consumer_channel_keys user_space_consumer_channel_keys() const;
+	lttng::sessiond::user_space_consumer_channel_keys
+	user_space_consumer_channel_keys(lttng::c_string_view channel_name_filter = {}) const;
 
 	/*
 	 * Session list lock must be acquired by the caller.

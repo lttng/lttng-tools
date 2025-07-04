@@ -69,6 +69,11 @@ public:
 		SPLICE,
 	};
 
+	enum class owership_model_t {
+		PER_PID,
+		PER_UID,
+	};
+
 	struct consumption_blocking_policy {
 		enum class mode {
 			NONE,
