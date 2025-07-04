@@ -85,11 +85,15 @@ function test_buffer_usage_notification
 	diag "Test done"
 }
 
+LTTNG_SESSIOND_ENV_VARS="LTTNG_TESTPOINT_ENABLE=1 CONSUMER_PAUSE_PIPE_PATH=${TESTPOINT_PIPE_PATH} LD_PRELOAD=${TESTPOINT}"
+if ! start_lttng_sessiond_notap; then
+	plan_tests 1
+	fail "Failed to start sessiond"
+	exit
+fi
+
 # Avoid spurious messages about exiting before the test output anything on cleanup
 tap_disable
-
-LTTNG_SESSIOND_ENV_VARS="LTTNG_TESTPOINT_ENABLE=1 CONSUMER_PAUSE_PIPE_PATH=${TESTPOINT_PIPE_PATH} LD_PRELOAD=${TESTPOINT}"
-start_lttng_sessiond_notap
 
 test_buffer_usage_notification
 

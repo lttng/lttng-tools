@@ -28,17 +28,28 @@ source "$TESTDIR/utils/utils.sh"
 FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 FULL_LTTNG_SESSIOND_BIN="${TESTDIR}/../src/bin/lttng-sessiond/lttng-sessiond"
 
-UST_NUM_TESTS=15
-DESTRUCTIVE_TESTS_NUM=12
-KERNEL_NUM_TESTS=$((14 + $DESTRUCTIVE_TESTS_NUM))
-NUM_TESTS=$(($UST_NUM_TESTS + $KERNEL_NUM_TESTS))
+UST_DISCARD_NUM_TESTS=11
+UST_DISCARD_MAX_BUCKET_NUM_TESTS=7
+UST_NUM_TESTS=$((UST_DISCARD_NUM_TESTS + UST_DISCARD_MAX_BUCKET_NUM_TESTS ))
+
+KERNEL_DISCARD_NUM_TESTS=10
+KERNEL_DISCARD_MAX_BUCKET_NUM_TESTS=7
+KERNEL_NUM_TESTS=$((KERNEL_DISCARD_NUM_TESTS + KERNEL_DISCARD_MAX_BUCKET_NUM_TESTS))
+
+UST_DISCARD_MULTI_UID_NUM_TESTS=10
+UST_DISCARD_TRIGGER_OWNER_NUM_TESTS=6
+DESTRUCTIVE_NUM_TESTS=$((UST_DISCARD_MULTI_UID_NUM_TESTS + UST_DISCARD_TRIGGER_OWNER_NUM_TESTS))
+
+NUM_TESTS=$((UST_NUM_TESTS + KERNEL_NUM_TESTS + DESTRUCTIVE_NUM_TESTS))
 
 plan_tests $NUM_TESTS
 
 function trigger_get_discarded_notif_number()
 {
 	local trigger_name="$1"
-	local list_triggers_stdout=$(mktemp -t "list_triggers_stdout.XXXXXX")
+	local list_triggers_stdout
+
+	list_triggers_stdout=$(mktemp -t "list_triggers_stdout.XXXXXX")
 
 	"$FULL_LTTNG_BIN" list-triggers > "$list_triggers_stdout"
 
@@ -61,7 +72,9 @@ function test_kernel_notifier_discarded_count
 {
 	local sessiond_pipe=()
 	local trigger_name="my_trigger"
-	local list_triggers_stdout=$(mktemp -t "list_triggers_stdout.XXXXXX")
+	local list_triggers_stdout
+
+	list_triggers_stdout=$(mktemp -t "list_triggers_stdout.XXXXXX")
 
 	# Used on sessiond launch.
 	LTTNG_SESSIOND_ENV_VARS="LTTNG_TESTPOINT_ENABLE=1 \
@@ -70,7 +83,10 @@ function test_kernel_notifier_discarded_count
 
 	diag "Kernel event notifer error counter"
 
-	start_lttng_sessiond_notap
+	if ! start_lttng_sessiond; then
+		skip 0 "Failed to start sessiond" $((KERNEL_DISCARD_NUM_TESTS - 1))
+		return
+	fi
 
 	# This is needed since the testpoint creates a pipe with the sessiond
 	# type suffixed.
@@ -83,11 +99,11 @@ function test_kernel_notifier_discarded_count
 		--action notify
 
 	trigger_discarded_nb=$(trigger_get_discarded_notif_number "$trigger_name")
-	is $trigger_discarded_nb 0 "No discarded tracer notification"
+	is "$trigger_discarded_nb" 0 "No discarded tracer notification"
 
 	# Stop consumption of notifier tracer notifications.
 	diag "Pause consumption of tracer messages"
-	echo -n 1 > $sessiond_pipe
+	echo -n 1 > "$sessiond_pipe"
 
 	# The notifier ring buffer configuration is currently made of 16 4096
 	# bytes subbuffers. Each kernel notification is at least 42 bytes long.
@@ -98,7 +114,7 @@ function test_kernel_notifier_discarded_count
 
 	# Confirm that the number of tracer notifications discarded is non-zero.
 	trigger_discarded_nb=$(trigger_get_discarded_notif_number "$trigger_name")
-	isnt $trigger_discarded_nb 0 "Discarded tracer notification number non-zero ($trigger_discarded_nb) as expected"
+	isnt "$trigger_discarded_nb" 0 "Discarded tracer notification number non-zero ($trigger_discarded_nb) as expected"
 
 	lttng_remove_trigger_ok "$trigger_name"
 
@@ -112,11 +128,11 @@ function test_kernel_notifier_discarded_count
 		--action notify
 
 	trigger_discarded_nb=$(trigger_get_discarded_notif_number "$trigger_name")
-	is $trigger_discarded_nb 0 "No discarded tracer notification"
+	is "$trigger_discarded_nb" 0 "No discarded tracer notification"
 
 	lttng_remove_trigger_ok "$trigger_name"
 
-	stop_lttng_sessiond_notap
+	stop_lttng_sessiond
 
 	unset LTTNG_SESSIOND_ENV_VARS
 
@@ -125,22 +141,26 @@ function test_kernel_notifier_discarded_count
 
 function test_kernel_notifier_discarded_count_max_bucket
 {
-	start_lttng_sessiond "" "--event-notifier-error-buffer-size-kernel=3"
-
 	diag "Kernel event notifer error counter bucket limit"
+
+	if ! start_lttng_sessiond "" "--event-notifier-error-buffer-size-kernel=3"; then
+		skip 0 "Failed to start sessiond" $((KERNEL_DISCARD_MAX_BUCKET_NUM_TESTS - 1))
+		return
+	fi
+
 	for i in $(seq 3); do
 		lttng_add_trigger_ok "$i" \
-			--condition event-rule-matches --type=kernel --name=my_event_that_doesnt_need_to_really_exist_$i \
+			--condition event-rule-matches --type=kernel --name="my_event_that_doesnt_need_to_really_exist_$i" \
 			--action notify
 	done
 
 	for i in $(seq 4 5); do
 		lttng_add_trigger_fail "$i" \
-			--condition event-rule-matches --type=kernel --name=my_event_that_doesnt_need_to_really_exist_$i \
+			--condition event-rule-matches --type=kernel --name="my_event_that_doesnt_need_to_really_exist_$i" \
 			--action notify
 	done
 
-	stop_lttng_sessiond_notap
+	stop_lttng_sessiond
 }
 
 function test_ust_notifier_discarded_count
@@ -167,7 +187,10 @@ function test_ust_notifier_discarded_count
 		NOTIFIER_PAUSE_PIPE_PATH=${TESTPOINT_PIPE_PATH} \
 		LD_PRELOAD=${TESTPOINT}"
 
-	start_lttng_sessiond_notap
+	if ! start_lttng_sessiond; then
+		skip 0 "Failed to start sessiond" $((UST_DISCARD_NUM_TESTS - 1))
+		return
+	fi
 
 	# This is needed since the testpoint create a pipe with the sessiond
 	# type suffixed.
@@ -180,18 +203,18 @@ function test_ust_notifier_discarded_count
 		--action notify
 
 	trigger_discarded_nb=$(trigger_get_discarded_notif_number "$trigger_name")
-	is $trigger_discarded_nb 0 "No discarded tracer notification"
+	is "$trigger_discarded_nb" 0 "No discarded tracer notification"
 
 	# Stop consumption of notifier tracer notifications.
 	diag "Pause consumption of tracer messages"
-	echo -n 1 > $sessiond_pipe
+	echo -n 1 > "$sessiond_pipe"
 
 	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT
 	ok $? "Generating $NR_ITER tracer notifications"
 
 	# Confirm that the number of tracer notifications discarded is non-zero.
 	trigger_discarded_nb=$(trigger_get_discarded_notif_number "$trigger_name")
-	isnt $trigger_discarded_nb 0 "Discarded tracer notification number non-zero ($trigger_discarded_nb) as expected"
+	isnt "$trigger_discarded_nb" 0 "Discarded tracer notification number non-zero ($trigger_discarded_nb) as expected"
 
 	# Remove the notifier.
 	lttng_remove_trigger_ok "$trigger_name"
@@ -206,33 +229,37 @@ function test_ust_notifier_discarded_count
 		--action notify
 
 	trigger_discarded_nb=$(trigger_get_discarded_notif_number "$trigger_name")
-	is $trigger_discarded_nb 0 "No discarded tracer notification"
+	is "$trigger_discarded_nb" 0 "No discarded tracer notification"
 
 	lttng_remove_trigger_ok "$trigger_name"
 
-	stop_lttng_sessiond_notap
+	stop_lttng_sessiond
 
 	unset LTTNG_SESSIOND_ENV_VARS
 }
 
 function test_ust_notifier_discarded_count_max_bucket
 {
-	start_lttng_sessiond "" "--event-notifier-error-buffer-size-userspace=3"
-
 	diag "UST event notifer error counter bucket limit"
+
+	if ! start_lttng_sessiond "" "--event-notifier-error-buffer-size-userspace=3"; then
+		skip 0 "Failed to start sessiond" $((UST_DISCARD_MAX_BUCKET_NUM_TESTS - 1))
+		return
+	fi
+
 	for i in $(seq 3); do
 		lttng_add_trigger_ok "$i" \
-			--condition event-rule-matches --type=user --name=my_event_that_doesnt_need_to_really_exist_$i \
+			--condition event-rule-matches --type=user --name="my_event_that_doesnt_need_to_really_exist_$i" \
 			--action notify
 	done
 
 	for i in $(seq 4 5); do
 		lttng_add_trigger_fail "$i" \
-			--condition event-rule-matches --type=user --name=my_event_that_doesnt_need_to_really_exist_$i \
+			--condition event-rule-matches --type=user --name="my_event_that_doesnt_need_to_really_exist_$i" \
 			--action notify
 	done
 
-	stop_lttng_sessiond_notap
+	stop_lttng_sessiond
 }
 
 function test_ust_notifier_discarded_count_multi_uid
@@ -240,13 +267,15 @@ function test_ust_notifier_discarded_count_multi_uid
 	local sessiond_pipe=()
 	local root_trigger_name="root_trigger"
 	local user_trigger_name="user_trigger"
-	local list_triggers_stdout=$(mktemp -t "list_triggers_stdout.XXXXXX")
+	local list_triggers_stdout
 	local NR_USEC_WAIT=0
 	local PIPE_SIZE
 	local NR_ITER
 	local new_user="dummy_lttng_test_user"
 
 	diag "UST event notifer error counter multiple UIDs"
+
+	list_triggers_stdout=$(mktemp -t "list_triggers_stdout.XXXXXX")
 
 	# Create a dummy user to run test apps as.
 	useradd --no-create-home "$new_user"
@@ -266,7 +295,10 @@ function test_ust_notifier_discarded_count_multi_uid
 		NOTIFIER_PAUSE_PIPE_PATH=${TESTPOINT_PIPE_PATH} \
 		LD_PRELOAD=${TESTPOINT}"
 
-	start_lttng_sessiond_notap
+	if ! start_lttng_sessiond; then
+		skip 0 "Failed to start sessiond" $((UST_DISCARD_MULTI_UID_NUM_TESTS - 1))
+		return
+	fi
 
 	# This is needed since the testpoint create a pipe with the sessiond
 	# type suffixed.
@@ -283,7 +315,7 @@ function test_ust_notifier_discarded_count_multi_uid
 		--action notify
 
 	# Stop consumption of notifier tracer notifications.
-	echo -n 1 > $sessiond_pipe
+	echo -n 1 > "$sessiond_pipe"
 
 	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT
 	ok $? "Generating $NR_ITER tracer notifications as UID: $(id -u)"
@@ -294,15 +326,15 @@ function test_ust_notifier_discarded_count_multi_uid
 	root_trigger_discarded_nb=$(trigger_get_discarded_notif_number "$root_trigger_name")
 	user_trigger_discarded_nb=$(trigger_get_discarded_notif_number "$user_trigger_name")
 
-	isnt $root_trigger_discarded_nb 0 \
+	isnt "$root_trigger_discarded_nb" 0 \
 		"Root trigger discarded notifications number ($root_trigger_discarded_nb) is non-zero"
-	isnt $user_trigger_discarded_nb 0 \
+	isnt "$user_trigger_discarded_nb" 0 \
 		"User trigger discarded notifications number ($user_trigger_discarded_nb) is non-zero"
 
 	lttng_remove_trigger_ok "$root_trigger_name"
 	lttng_remove_trigger_ok "$user_trigger_name" --owner-uid "$new_uid"
 
-	stop_lttng_sessiond_notap
+	stop_lttng_sessiond
 
 	unset LTTNG_SESSIOND_ENV_VARS
 
@@ -341,7 +373,10 @@ function test_ust_notifier_discarded_regardless_trigger_owner
 		NOTIFIER_PAUSE_PIPE_PATH=${TESTPOINT_PIPE_PATH} \
 		LD_PRELOAD=${TESTPOINT}"
 
-	start_lttng_sessiond_notap
+	if ! start_lttng_sessiond; then
+		skip 0 "Failed to start sessiond" $((UST_DISCARD_TRIGGER_OWNER_NUM_TESTS - 1))
+		return
+	fi
 
 	# This is needed since the testpoint create a pipe with the sessiond
 	# type suffixed.
@@ -354,19 +389,19 @@ function test_ust_notifier_discarded_regardless_trigger_owner
 		--action notify
 
 	# Stop consumption of notifier tracer notifications.
-	echo -n 1 > $sessiond_pipe
+	echo -n 1 > "$sessiond_pipe"
 
 	su "$new_user" -c "$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT"
 	ok $? "Generating $NR_ITER tracer notifications as UID: $new_uid"
 
 	root_trigger_discarded_nb=$(trigger_get_discarded_notif_number "$root_trigger_name")
 
-	isnt $root_trigger_discarded_nb 0 \
+	isnt "$root_trigger_discarded_nb" 0 \
 		"Root trigger discarded notifications number ($root_trigger_discarded_nb) is non-zero"
 
 	lttng_remove_trigger_ok "$root_trigger_name"
 
-	stop_lttng_sessiond_notap
+	stop_lttng_sessiond
 
 	unset LTTNG_SESSIOND_ENV_VARS
 
@@ -377,7 +412,7 @@ function test_ust_notifier_discarded_regardless_trigger_owner
 test_ust_notifier_discarded_count
 test_ust_notifier_discarded_count_max_bucket
 
-check_skip_kernel_test "$KERNEL_NUM_TESTS" "Skipping kernel notification tests." ||
+check_skip_kernel_test "$((KERNEL_NUM_TESTS + DESTRUCTIVE_NUM_TESTS))" "Skipping kernel notification tests." ||
 {
 
 	validate_lttng_modules_present
@@ -394,7 +429,7 @@ check_skip_kernel_test "$KERNEL_NUM_TESTS" "Skipping kernel notification tests."
 		test_ust_notifier_discarded_count_multi_uid
 		test_ust_notifier_discarded_regardless_trigger_owner
 	else
-		skip 0 "You need to set the LTTNG_ENABLE_DESTRUCTIVE_TESTS environment variable to \"will-break-my-system\" to run this test" $DESTRUCTIVE_TESTS_NUM
+		skip 0 "You need to set the LTTNG_ENABLE_DESTRUCTIVE_TESTS environment variable to \"will-break-my-system\" to run this test" $DESTRUCTIVE_NUM_TESTS
 	fi
 
 	modprobe --remove lttng-test
