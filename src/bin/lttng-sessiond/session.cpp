@@ -1606,15 +1606,16 @@ ls::user_space_consumer_channel_keys::iterator::operator++()
 {
 	if (_is_end) {
 		LTTNG_THROW_OUT_OF_RANGE(fmt::format(
-			"Attempted to advance channel key iterator past the end of channel keys: iteration_mode={}",
-			_creation_context._session.buffer_type));
+			"Attempted to advance channel key iterator past the end of channel keys: iteration_mode='{}'",
+			_creation_context._mode == _iteration_mode::PER_PID ? "per-pid" :
+									      "per-uid"));
 	}
 
-	switch (_creation_context._session.buffer_type) {
-	case LTTNG_BUFFER_PER_PID:
+	switch (_creation_context._mode) {
+	case _iteration_mode::PER_PID:
 		_advance_one_per_pid();
 		break;
-	case LTTNG_BUFFER_PER_UID:
+	case _iteration_mode::PER_UID:
 		_advance_one_per_uid();
 		break;
 	default:
