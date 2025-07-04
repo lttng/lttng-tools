@@ -313,10 +313,10 @@ AM_CONDITIONAL([HAVE_ELF_H], [test x$ac_cv_header_elf_h = xyes])
 # Basic functions check
 AC_CHECK_FUNCS([ \
 	atexit bzero clock_gettime dup2 fdatasync fls ftruncate \
-	gethostbyname gethostname getpagesize localtime_r memchr memrchr memset \
+	gethostname getpagesize localtime_r memchr memrchr memset \
 	mkdir munmap putenv realpath rmdir socket strchr strcspn strdup \
 	strncasecmp strndup strnlen strpbrk strrchr strstr strtol strtoul \
-	strtoull dirfd gethostbyname2 getipnodebyname epoll_create1 \
+	strtoull dirfd epoll_create1 \
 	sched_getcpu sysconf sync_file_range getrandom posix_fadvise \
 	arc4random flock
 ])

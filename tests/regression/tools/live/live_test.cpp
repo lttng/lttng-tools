@@ -99,40 +99,41 @@ static ssize_t lttng_live_send(int fd, const void *buf, size_t len)
 
 static int connect_viewer(const char *hostname)
 {
-	struct hostent *host;
-	struct sockaddr_in server_addr;
+	struct addrinfo hints;
+	struct addrinfo *result, *rp;
 	int ret;
 
-	host = gethostbyname(hostname);
-	if (!host) {
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+
+	ret = getaddrinfo(hostname, "5344", &hints, &result);
+	if (ret != 0) {
 		ret = -1;
 		goto end;
 	}
 
-	if ((control_sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-		PERROR("Socket");
+	/* Loop on the list of address structures and try to connect */
+	for (rp = result; rp != nullptr; rp = rp->ai_next) {
+		control_sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+		if (control_sock == -1) {
+			continue;
+		}
+
+		if (connect(control_sock, rp->ai_addr, rp->ai_addrlen) != -1) {
+			/* Connected */
+			break;
+		}
+
+		close(control_sock);
+	}
+
+	freeaddrinfo(result);
+
+	if (rp == nullptr) {
 		ret = -1;
 		goto end;
 	}
-
-	server_addr.sin_family = AF_INET;
-	server_addr.sin_port = htons(5344);
-	server_addr.sin_addr = *((struct in_addr *) host->h_addr);
-	bzero(&(server_addr.sin_zero), 8);
-
-	if (connect(control_sock, (struct sockaddr *) &server_addr, sizeof(struct sockaddr)) ==
-	    -1) {
-		PERROR("Connect");
-		ret = -1;
-		goto end;
-	}
-
-	server_addr.sin_family = AF_INET;
-	server_addr.sin_port = htons(5345);
-	server_addr.sin_addr = *((struct in_addr *) host->h_addr);
-	bzero(&(server_addr.sin_zero), 8);
-
-	ret = 0;
 
 end:
 	return ret;

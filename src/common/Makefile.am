@@ -195,7 +195,6 @@ libcompat_la_SOURCES = \
         compat/errno.hpp \
         compat/getenv.hpp \
         compat/mman.hpp \
-        compat/netdb.hpp \
         compat/path.hpp \
         compat/paths.hpp \
         compat/poll.cpp \
