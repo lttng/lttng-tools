@@ -9,14 +9,18 @@
 #include "uri.hpp"
 
 #include <common/common.hpp>
-#include <common/compat/netdb.hpp>
 #include <common/defaults.hpp>
+#include <common/make-unique-wrapper.hpp>
+#include <common/string-utils/c-string-view.hpp>
 #include <common/utils.hpp>
 
 #include <arpa/inet.h>
+#include <array>
+#include <netdb.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 
 #define LOOPBACK_ADDR_IPV4 "127.0.0.1"
 #define LOOPBACK_ADDR_IPV6 "::1"
@@ -122,71 +126,126 @@ end:
 /*
  * Set network address from string into dst. Supports both IP string and
  * hostname.
+ *
+ * @addr: String containing a hostname or IP v4/v6 address
+ * @af: Requested network family, either AF_INET or AF_INET6
+ * @dst: Destination buffer for the IP address string
+ * @dst_size: Size of the destination buffer
+ *
+ * Returns 0 on success.
  */
-static int set_ip_address(const char *addr, int af, char *dst, size_t size)
+static int set_ip_address(lttng::c_string_view addr, int af, char *dst, size_t dst_size)
 {
-	int ret;
-	unsigned char buf[sizeof(struct in6_addr)];
-	struct hostent *record;
-
 	LTTNG_ASSERT(addr);
 	LTTNG_ASSERT(dst);
 
-	memset(dst, 0, size);
+	DBG_FMT("Resolving IP address: address=`{}`, af={}", addr, af);
 
-	/* Network protocol */
-	ret = inet_pton(af, addr, buf);
-	if (ret < 1) {
-		/* We consider the dst to be an hostname or an invalid IP char */
-		record = lttng_gethostbyname2(addr, af);
-		if (record) {
-			/* Translate IP to string */
-			if (!inet_ntop(af, record->h_addr_list[0], dst, size)) {
-				PERROR("inet_ntop");
-				goto error;
-			}
-		} else if (!strcmp(addr, "localhost") && (af == AF_INET || af == AF_INET6)) {
-			/*
-			 * Some systems may not have "localhost" defined in
-			 * accordance with IETF RFC 6761. According to this RFC,
-			 * applications may recognize "localhost" names as
-			 * special and resolve to the appropriate loopback
-			 * address.
-			 *
-			 * We choose to use the system name resolution API first
-			 * to honor its network configuration. If this fails, we
-			 * resolve to the appropriate loopback address. This is
-			 * done to accommodates systems which may want to start
-			 * tracing before their network configured.
-			 */
-			const char *loopback_addr = af == AF_INET ? LOOPBACK_ADDR_IPV4 :
-								    LOOPBACK_ADDR_IPV6;
-			const size_t loopback_addr_len = af == AF_INET ?
-				sizeof(LOOPBACK_ADDR_IPV4) :
-				sizeof(LOOPBACK_ADDR_IPV6);
+	/* Clear the destination buffer. */
+	std::memset(dst, 0, dst_size);
 
-			DBG2("Could not resolve localhost address, using fallback");
-			if (loopback_addr_len > size) {
-				ERR("Could not resolve localhost address; destination string is too short");
-				goto error;
-			}
-			strcpy(dst, loopback_addr);
-		} else {
-			/* At this point, the IP or the hostname is bad */
-			goto error;
+	/* Try to parse as a numeric IP address first. */
+	std::array<unsigned char, sizeof(struct in6_addr)> buf{};
+	const int inet_pton_ret = inet_pton(af, addr.data(), buf.data());
+
+	if (inet_pton_ret > 0) {
+		/* Parsed 'addr' with inet_pton, it's already a valid IP address. */
+		if ((addr.len() + 1) > dst_size) {
+			ERR_FMT("Failed to set IP address: destination buffer too small: address=`{}`, af={}",
+				addr,
+				af);
+			return -1;
 		}
-	} else {
-		if (size > 0) {
-			strncpy(dst, addr, size);
-			dst[size - 1] = '\0';
-		}
+
+		strncpy(dst, addr.data(), dst_size);
+		dst[dst_size - 1] = '\0';
+		DBG_FMT("IP address resolved: address=`{}`", dst);
+		return 0;
 	}
 
-	DBG2("IP address resolved to %s", dst);
-	return 0;
+	if (inet_pton_ret < 0) {
+		/* Invalid address family. */
+		PERROR_FMT("Failed to parse IP address: address=`{}`, af={}", addr, af);
+		return -1;
+	}
 
-error:
-	ERR("URI parse bad hostname %s for af %d", addr, af);
+	/*
+	 * inet_pton returned 0: failed to parse 'addr', it's either a hostname
+	 * or an invalid IP address. Try to resolve it as a hostname.
+	 */
+	struct addrinfo hints = {};
+	hints.ai_family = af;
+
+	struct addrinfo *result_raw = nullptr;
+	const int getaddrinfo_ret = getaddrinfo(addr.data(), nullptr, &hints, &result_raw);
+
+	if (getaddrinfo_ret == 0) {
+		const auto result =
+			lttng::make_unique_wrapper<struct addrinfo, freeaddrinfo>(result_raw);
+
+		const void *ip_addr;
+		switch (result->ai_family) {
+		case AF_INET:
+			ip_addr =
+				&(reinterpret_cast<struct sockaddr_in *>(result->ai_addr))->sin_addr;
+			break;
+		case AF_INET6:
+			ip_addr = &(reinterpret_cast<struct sockaddr_in6 *>(result->ai_addr))
+					   ->sin6_addr;
+			break;
+		default:
+			ERR_FMT("Failed to resolve hostname, unexpected address family from getaddrinfo: address=`{}`, af={}",
+				addr,
+				result->ai_family);
+			return -1;
+		}
+
+		/* Copy IP string to 'dst'. */
+		if (inet_ntop(result->ai_family, ip_addr, dst, dst_size) == nullptr) {
+			PERROR_FMT("Failed to convert IP address to string: address=`{}`, af={}",
+				   addr,
+				   af);
+			return -1;
+		}
+
+		DBG_FMT("IP address resolved: address=`{}`", dst);
+		return 0;
+	}
+
+	/*
+	 * getaddrinfo failed. Check for "localhost" special case.
+	 *
+	 * Some systems may not have "localhost" defined in accordance with
+	 * IETF RFC 6761. According to this RFC, applications may recognize
+	 * "localhost" names as special and resolve to the appropriate loopback
+	 * address.
+	 *
+	 * We choose to use the system name resolution API first to honor its
+	 * network configuration. If this fails, we resolve to the appropriate
+	 * loopback address. This is done to accommodate systems which may want
+	 * to start tracing before their network is configured.
+	 */
+	if (addr == "localhost" && (af == AF_INET || af == AF_INET6)) {
+		const char *loopback_addr = af == AF_INET ? LOOPBACK_ADDR_IPV4 : LOOPBACK_ADDR_IPV6;
+		const size_t loopback_addr_len = af == AF_INET ? sizeof(LOOPBACK_ADDR_IPV4) :
+								 sizeof(LOOPBACK_ADDR_IPV6);
+
+		DBG_FMT("Failed to resolve localhost address, using fallback loopback address: af={}",
+			af);
+
+		if (loopback_addr_len > dst_size) {
+			ERR_FMT("Failed to set loopback address: destination buffer too small: af={}",
+				af);
+			return -1;
+		}
+
+		strcpy(dst, loopback_addr);
+		DBG_FMT("IP address resolved: address=`{}`", dst);
+		return 0;
+	}
+
+	/* At this point, the IP or the hostname is bad. */
+	ERR_FMT("Failed to resolve hostname: address=`{}`, af={}", addr, af);
 	return -1;
 }
 
