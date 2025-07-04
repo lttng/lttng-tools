@@ -338,7 +338,7 @@ public:
 	struct cds_list_head list = {};
 	/* session unique identifier */
 	id_t id = 0;
-	/* Indicates if the session has been added to the session list and ht.*/
+	/* Indicates if the session has been added to the session list and ht. */
 	bool published = false;
 	/* Indicates if a destroy command has been applied to this session. */
 	bool destroyed = false;
