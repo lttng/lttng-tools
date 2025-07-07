@@ -91,12 +91,12 @@ def test_shm_warning(tap, test_env, tests):
                 lttngtest.lttngctl.UserTracepointEventRule("tp:tptest")
             )
 
-        output = client._run_cmd("start '{}'".format(session.name))
+        output, error = client._run_cmd("start '{}'".format(session.name))
         tap.diagnostic("\n{}\n".format(output))
         session.destroy()
         tap.test(
-            ("Warning" in output and test["warning_expected"])
-            or ("Warning" not in output and not test["warning_expected"]),
+            ("Warning" in error and test["warning_expected"])
+            or ("Warning" not in error and not test["warning_expected"]),
             "Warning {} in lttng client output when starting session".format(
                 "present" if test["warning_expected"] else "not present"
             ),

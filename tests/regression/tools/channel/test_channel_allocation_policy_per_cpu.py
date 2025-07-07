@@ -49,7 +49,7 @@ def test_per_cpu_buffers_ust_implicit_cpu_id_context(tap, client, session):
         )
     except lttngtest.LTTngClientError as exn:
         tap.test(
-            "User space tracing context already exists" in exn._output,
+            "User space tracing context already exists" in exn._error_output,
             "Cannot add `cpu_id' context when channel allocation policy is 'per-cpu'",
         )
     except Exception as e:

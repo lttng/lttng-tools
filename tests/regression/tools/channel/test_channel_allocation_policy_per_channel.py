@@ -187,7 +187,8 @@ def test_per_channel_buffers_kernel(tap, client, session, get_events):
         tap.fail("Kernel channel was created with per-channel buffers")
     except lttngtest.LTTngClientError as exn:
         tap.test(
-            "Buffer allocation not supported for the kernel domain" in exn._output,
+            "Buffer allocation not supported for the kernel domain"
+            in exn._error_output,
             "Cannot enable a channel with per-channel allocation policy in the kernel domain",
         )
     except Exception as e:

@@ -130,7 +130,7 @@ the test timeout condition. (Default: 60)
 
 | `LTTNG_TEST_VERBOSE_CLIENT`
 | Run `lttng-client` in it's verbose mode
-| {ex} | {check} | {ex}
+| {check} | {check} | {ex}
 
 | `LTTNG_TEST_VERBOSE_RELAYD`
 | Run `lttng-relayd` in it's verbose and debug mode

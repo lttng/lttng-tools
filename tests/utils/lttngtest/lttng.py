@@ -311,7 +311,7 @@ class _Channel(lttngctl.Channel):
     @property
     def recording_rules(self):
         # type: () -> Iterator[lttngctl.EventRule]
-        list_session_xml = self._client._run_cmd(
+        list_session_xml, _ = self._client._run_cmd(
             "list '{session_name}'".format(session_name=self._session.name),
             LTTngClient.CommandOutputFormat.MI_XML,
         )
@@ -594,7 +594,7 @@ class _Session(lttngctl.Session):
     @property
     def is_active(self):
         # type: () -> bool
-        list_session_xml = self._client._run_cmd(
+        list_session_xml, _ = self._client._run_cmd(
             "list '{session_name}'".format(session_name=self.name),
             LTTngClient.CommandOutputFormat.MI_XML,
         )
@@ -664,10 +664,12 @@ class LTTngClientError(lttngctl.ControlException):
     def __init__(
         self,
         command_args,  # type: str
+        output,  # type: str
         error_output,  # type: str
     ):
         self._command_args = command_args  # type: str
-        self._output = error_output  # type: str
+        self._output = output  # type: str
+        self._error_output = error_output  # type: str
 
 
 class LTTngClient(logger._Logger, lttngctl.Controller):
@@ -709,12 +711,17 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
             self._timeout_s = int(value)
 
     def _run_cmd(self, command_args, output_format=CommandOutputFormat.MI_XML):
-        # type: (str, CommandOutputFormat) -> str
+        # type: (str, CommandOutputFormat) -> (str, str)
         """
         Invoke the `lttng` client with a set of arguments. The command is
         executed in the context of the client's test environment.
+
+        Returns a tuple containing (stdout, stderr) that has been decoded to
+        UTF-8.
         """
         args = [str(self._environment.lttng_client_path)]  # type: list[str]
+        if os.getenv("LTTNG_TEST_VERBOSE_CLIENT", ""):
+            args.extend(["-vvv"])
         if output_format == LTTngClient.CommandOutputFormat.MI_XML:
             args.extend(["--mi", "xml"])
 
@@ -728,19 +735,20 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
         client_env.update(self._extra_env_vars)
 
         process = subprocess.Popen(
-            args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=client_env
+            args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=client_env
         )
 
-        out = process.communicate(timeout=self.timeout)[0]
+        out, err = process.communicate(timeout=self.timeout)
+        out = out.decode("utf-8")
+        err = err.decode("utf-8")
+
+        for error_line in err.splitlines():
+            self._log(error_line)
 
         if process.returncode != 0:
-            decoded_output = out.decode("utf-8")
-            for error_line in decoded_output.splitlines():
-                self._log(error_line)
-
-            raise LTTngClientError(command_args, decoded_output)
+            raise LTTngClientError(command_args, out, err)
         else:
-            return out.decode("utf-8")
+            return (out, err)
 
     def create_session(
         self, name=None, output=None, live=False, snapshot=False, shm_path=None
@@ -854,7 +862,7 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
 
     def list_sessions(self):
         # type () -> List[Session]
-        list_sessions_xml = self._run_cmd(
+        list_sessions_xml, _ = self._run_cmd(
             "list", LTTngClient.CommandOutputFormat.MI_XML
         )
 
@@ -888,7 +896,7 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
         return ctl_sessions
 
     def list_session_raw(self, session):
-        list_sessions_xml = self._run_cmd(
+        list_sessions_xml, _ = self._run_cmd(
             "list {}".format(session), LTTngClient.CommandOutputFormat.MI_XML
         )
 
