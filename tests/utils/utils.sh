@@ -2637,8 +2637,8 @@ function retry_validate_trace()
 
 	while [[ "${tries}" -le "${retries}" ]]; do
 		if ! validate_trace_notap "${event_name}" "${path}"; then
-			tries=$((tries+1))
 			diag "Try ${tries}/${retries} failed to validate event '${event_name}' at path '${path}'"
+			tries=$((tries+1))
 			if [[ "${tries}" -lt "${retries}" ]]; then
 				sleep "${sleep}"
 				continue
