@@ -295,6 +295,9 @@ class _WaitTraceTestApplication:
         test_app_env = os.environ.copy()
         if environment.lttng_home_location is not None:
             test_app_env["LTTNG_HOME"] = str(environment.lttng_home_location)
+        if environment.lttng_rundir is not None:
+            test_app_env["LTTNG_UST_APP_PATH"] = str(environment.lttng_rundir)
+
         # Make sure the app is blocked until it is properly registered to
         # the session daemon.
         test_app_env["LTTNG_UST_REGISTER_TIMEOUT"] = "-1"
@@ -583,6 +586,9 @@ class _TraceTestApplication:
 
         test_app_env = os.environ.copy()
         test_app_env["LTTNG_HOME"] = str(environment.lttng_home_location)
+        if environment.lttng_rundir is not None:
+            test_app_env["LTTNG_UST_APP_PATH"] = str(environment.lttng_rundir)
+
         # Make sure the app is blocked until it is properly registered to
         # the session daemon.
         test_app_env["LTTNG_UST_REGISTER_TIMEOUT"] = "-1"
@@ -661,6 +667,7 @@ class _Environment(logger._Logger):
         extra_env_vars=dict(),  # type: dict
         skip_temporary_lttng_home=False,  # type: bool
         enable_kernel_domain=False,  # type: bool
+        skip_temporary_lttng_rundir=False,  # type: bool
     ):
         super().__init__(log)
         signal.signal(signal.SIGTERM, self._handle_termination_signal)
@@ -696,6 +703,14 @@ class _Environment(logger._Logger):
                 | stat.S_IXOTH,
             )
 
+        # When starting a sessiond daemon with the root user, the rundir
+        # is global by default. Use LTTNG_RUNDIR to set it to a temporary
+        # directory to avoid trampling on parallel tests.
+        self._lttng_rundir = None
+        if os.getuid() == 0 and not skip_temporary_lttng_rundir:
+            self._lttng_rundir = TemporaryDirectory("lttng_test_env_rundir")
+            self._extra_env_vars["LTTNG_RUNDIR"] = str(self._lttng_rundir.path)
+
         self._relayd_control_port = 0
         self._relayd_data_port = 0
         self._relayd_live_port = 0
@@ -712,6 +727,26 @@ class _Environment(logger._Logger):
         self._dummy_users = {}  # type: Dictionary[int, string]
         self._preserve_test_env = os.getenv("LTTNG_TEST_PRESERVE_TEST_ENV", "0") != "1"
         self.teardown_timeout = os.getenv("LTTNG_TEST_TEARDOWN_TIMEOUT", "60")
+
+        # This is a bit of particularity for the testing infrastructure.
+        # When the sessiond is started, it will change the permissions of the
+        # set LTTNG_RUNDIR. When running tests that exercise a traced application
+        # run as a non-root user, it is convenient that the permissions are set
+        # so that the shm wait file in LTTNG_UST_APP_PATH can be created.
+        #
+        # The behaviour of a traced application is to disable the LTTNG_UST_APP_PATH
+        # connection if the shm wait file cannot be created, and subsequent retries
+        # only attempt connections to the global socket in /var/run/lttng/.
+        if self._lttng_rundir is not None:
+            os.chmod(
+                str(self._lttng_rundir.path),
+                stat.S_IRUSR
+                | stat.S_IWUSR
+                | stat.S_IXUSR
+                | stat.S_IROTH
+                | stat.S_IWOTH
+                | stat.S_IXOTH,
+            )
 
     @property
     def teardown_timeout(self):
@@ -731,6 +766,13 @@ class _Environment(logger._Logger):
         # type: () -> pathlib.Path
         if self._lttng_home is not None:
             return self._lttng_home.path
+        return None
+
+    @property
+    def lttng_rundir(self):
+        # type: () -> pathlib.Path
+        if self._lttng_rundir is not None:
+            return self._lttng_rundir.path
         return None
 
     @property
@@ -1319,6 +1361,7 @@ def test_environment(
     extra_env_vars=dict(),
     skip_temporary_lttng_home=False,
     enable_kernel_domain=False,
+    skip_temporary_lttng_rundir=False,
 ):
     # type: (bool, Optional[Callable[[str], None]], bool) -> Iterator[_Environment]
     env = _Environment(
@@ -1328,6 +1371,7 @@ def test_environment(
         extra_env_vars,
         skip_temporary_lttng_home,
         enable_kernel_domain,
+        skip_temporary_lttng_rundir,
     )
     try:
         yield env

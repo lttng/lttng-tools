@@ -732,6 +732,8 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
         client_env = os.environ.copy()  # type: dict[str, str]
         if self._environment.lttng_home_location is not None:
             client_env["LTTNG_HOME"] = str(self._environment.lttng_home_location)
+        if self._environment.lttng_rundir is not None:
+            client_env["LTTNG_RUNDIR"] = str(self._environment.lttng_rundir)
         client_env.update(self._extra_env_vars)
 
         process = subprocess.Popen(
