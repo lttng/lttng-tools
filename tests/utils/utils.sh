@@ -2605,7 +2605,7 @@ function validate_trace_opt()
 		if [[ -n "${TAP:-}" ]]; then
 			ok $ret "Found $count events matching '$event_name'"
 		else
-			diag "Found $count events mathcing '${event_name}'"
+			diag "Found $count events matching '${event_name}'"
 		fi
 		if [[ "${ret}" != "0" ]]; then
 			all_events_ret=$ret
