@@ -1220,7 +1220,6 @@ function stop_lttng_sessiond_opt()
 	local timeout_s=$4
 	local dtimeleft_s=
 	local retval=0
-	local runas_pids
 	local pids
 
 	if [ -z "$signal" ]; then
@@ -1238,13 +1237,7 @@ function stop_lttng_sessiond_opt()
 		return 0
 	fi
 
-	runas_pids=$(lttng_pgrep "$RUNAS_MATCH")
-	pids=$(lttng_pgrep "$SESSIOND_MATCH")
-
-	if [ -n "$runas_pids" ]; then
-		pids="$pids $runas_pids"
-	fi
-
+	pids="${LTTNG_SESSIOND_PIDS[@]}"
 	if [ -z "$pids" ]; then
 		if [ "$is_cleanup" -eq 1 ]; then
 			:
@@ -1375,7 +1368,10 @@ function sigstop_lttng_sessiond_opt()
 			pass "Sending SIGSTOP to session daemon"
 		fi
 	fi
-	LTTNG_SESSIOND_PIDS=()
+
+	if [[ "${signal}" != "SIGSTOP" ]]; then
+		LTTNG_SESSIOND_PIDS=()
+	fi
 }
 
 function sigstop_lttng_sessiond()
