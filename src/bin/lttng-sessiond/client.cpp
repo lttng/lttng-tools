@@ -2627,6 +2627,9 @@ void *thread_manage_clients(void *data)
 		} catch (const lttng::invalid_argument_error& ex) {
 			log_nested_exceptions(ex);
 			ret = LTTNG_ERR_INVALID;
+		} catch (const lttng::unsupported_error& ex) {
+			log_nested_exceptions(ex);
+			ret = LTTNG_ERR_NOT_SUPPORTED;
 		} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
 			log_nested_exceptions(ex);
 			ret = LTTNG_ERR_SESS_NOT_FOUND;
