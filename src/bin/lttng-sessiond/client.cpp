@@ -2390,7 +2390,10 @@ void thread_init_cleanup(void *data __attribute__((unused)))
 	set_thread_status(false);
 }
 
-// Helper function to log the source_location if the exception is derived from lttng::runtime_error
+/*
+ * Helper function to log the source_location if the exception is derived from
+ * lttng::runtime_error.
+ */
 template <typename ExceptionType>
 typename std::enable_if<std::is_base_of<lttng::runtime_error, ExceptionType>::value,
 			std::string>::type
