@@ -624,7 +624,7 @@ static int action_executor_snapshot_session_handler(struct action_executor *exec
 			return 0;
 		}
 
-		cmd_ret = (lttng_error_code) cmd_snapshot_record(session, snapshot_output, 0);
+		cmd_ret = (lttng_error_code) cmd_snapshot_record(session, snapshot_output);
 		switch (cmd_ret) {
 		case LTTNG_OK:
 			DBG("Successfully recorded snapshot of session `%s` on behalf of trigger `%s`",

@@ -2053,13 +2053,11 @@ skip_domain:
 		ret = LTTNG_OK;
 		break;
 	}
+
 	case LTTCOMM_SESSIOND_COMMAND_SNAPSHOT_RECORD:
 	{
 		const lttng_snapshot_output output = cmd_ctx->lsm.u.snapshot_record.output;
-		ret = cmd_snapshot_record(*target_session, &output, 0); // RFC: set to zero
-									// since it's ignored
-									// by
-									// cmd_snapshot_record
+		ret = cmd_snapshot_record(*target_session, &output);
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_CREATE_SESSION_EXT:

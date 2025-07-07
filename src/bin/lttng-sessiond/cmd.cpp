@@ -5697,8 +5697,7 @@ error:
  * Return LTTNG_OK on success or else a LTTNG_ERR code.
  */
 int cmd_snapshot_record(const ltt_session::locked_ref& session,
-			const struct lttng_snapshot_output *output,
-			int wait __attribute__((unused)))
+			const struct lttng_snapshot_output *output)
 {
 	enum lttng_error_code cmd_ret = LTTNG_OK;
 	int ret;

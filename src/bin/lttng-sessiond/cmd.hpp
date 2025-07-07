@@ -153,8 +153,7 @@ int cmd_snapshot_add_output(const ltt_session::locked_ref& session,
 int cmd_snapshot_del_output(const ltt_session::locked_ref& session,
 			    const struct lttng_snapshot_output *output);
 int cmd_snapshot_record(const ltt_session::locked_ref& session,
-			const struct lttng_snapshot_output *output,
-			int wait);
+			const struct lttng_snapshot_output *output);
 
 int cmd_set_session_shm_path(const ltt_session::locked_ref& session, const char *shm_path);
 int cmd_regenerate_metadata(const ltt_session::locked_ref& session);
