@@ -898,7 +898,7 @@ struct lttcomm_consumer_close_trace_chunk_reply {
 	enum lttcomm_return_code ret_code;
 	uint32_t path_length;
 	char path[];
-};
+} LTTNG_PACKED;
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
