@@ -68,14 +68,14 @@ static inline bool __lttng_print_check_opt(enum lttng_error_level type)
 {
 	/* lttng_opt_mi and lttng_opt_quiet. */
 	switch (type) {
-	case PRINT_DBG3:
-	case PRINT_DBG2:
-	case PRINT_DBG:
 	case PRINT_MSG:
 		if (lttng_opt_mi) {
 			return false;
 		}
 		/* Fall-through. */
+	case PRINT_DBG3:
+	case PRINT_DBG2:
+	case PRINT_DBG:
 	case PRINT_WARN:
 	case PRINT_BUG:
 	case PRINT_ERR:
