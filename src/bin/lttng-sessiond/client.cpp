@@ -45,8 +45,11 @@
 #include <lttng/session-internal.hpp>
 #include <lttng/userspace-probe-internal.hpp>
 
+#include <array>
 #include <fcntl.h>
+#include <grp.h>
 #include <pthread.h>
+#include <pwd.h>
 #include <signal.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -63,6 +66,106 @@ struct thread_state {
 	bool running;
 	int client_sock;
 } thread_state;
+
+/*
+ * Maximum number of retries for group list resizing.
+ * 5 retries is chosen as a reasonable upper bound to avoid infinite loops in case
+ * of pathological group database changes or errors. This value can be adjusted if needed.
+ */
+constexpr unsigned int GROUP_LIST_RESIZE_MAX_RETRIES = 5;
+
+bool is_user_part_of_group(uid_t uid, gid_t primary_group, gid_t target_group)
+{
+	if (primary_group == target_group) {
+		return true;
+	}
+
+	/* Get number of groups. getgrouplist() returns -1 when fetching the number of groups. */
+	int ngroups = 0;
+	std::vector<gid_t> groups;
+	unsigned int retry_count = GROUP_LIST_RESIZE_MAX_RETRIES;
+
+	while (retry_count-- > 0) {
+		std::array<char, 1024> pwuid_string_buf;
+		passwd pwd, *pw_result = nullptr;
+
+		const auto getpwuid_ret = getpwuid_r(
+			uid, &pwd, pwuid_string_buf.data(), pwuid_string_buf.size(), &pw_result);
+		if (getpwuid_ret < 0) {
+			LTTNG_THROW_POSIX(
+				fmt::format("Failed to get password file entry of user: uid={}",
+					    uid),
+				errno);
+		} else if (!pw_result) {
+			ERR_FMT("No matching password file entry for user: uid={}", uid);
+			return false;
+		}
+
+		DBG_FMT("Validating user membership of group: uid={}, user_name=`{}`, primary_group={}, target_group={}",
+			uid,
+			pw_result->pw_name,
+			primary_group,
+			target_group);
+
+		if (pw_result->pw_gid != primary_group) {
+			ERR_FMT("Primary group of user does not match the expected primary group: uid={}, user_name=`{}`, primary_group={}, expected_primary_group={}",
+				uid,
+				pw_result->pw_name,
+				pw_result->pw_gid,
+				primary_group);
+			return false;
+		}
+
+		(void) getgrouplist(pw_result->pw_name, pw_result->pw_gid, nullptr, &ngroups);
+		if (ngroups == 0) {
+			DBG_FMT("User is not a member of any groups: uid={}, user_name={}",
+				uid,
+				pw_result->pw_name);
+			return false;
+		}
+
+		groups.resize(ngroups);
+
+		DBG_FMT("Fetching the list of groups for user: uid={}, user_name=`{}`, ngroups={}",
+			uid,
+			pw_result->pw_name,
+			ngroups);
+		const auto getgrouplist_ret = getgrouplist(
+			pw_result->pw_name, pw_result->pw_gid, groups.data(), &ngroups);
+		if (getgrouplist_ret < 0) {
+			/* Group list got resized, retry. */
+			DBG_FMT("Group list of user got resized, retrying: uid={}, user_name={}, previous_ngroups={}, ngroups={}",
+				uid,
+				pw_result->pw_name,
+				groups.size(),
+				ngroups);
+			continue;
+		}
+
+		const auto it = std::find(groups.cbegin(), groups.cend(), target_group);
+		return it != groups.cend();
+	}
+
+	return false;
+}
+
+bool is_user_in_tracing_group(uid_t uid, gid_t primary_group)
+{
+	gid_t tracing_group_id;
+	const auto get_group_id_ret =
+		utils_get_group_id(the_config.tracing_group_name.value, true, &tracing_group_id);
+
+	if (get_group_id_ret < 0) {
+		return false;
+	}
+
+	DBG_FMT("Validating user membership of tracing group: uid={}, primary_group={}, "
+		"tracing_group_id={}",
+		uid,
+		primary_group,
+		tracing_group_id);
+	return is_user_part_of_group(uid, primary_group, tracing_group_id);
+}
 
 void set_thread_status(bool running)
 {
@@ -2605,10 +2708,8 @@ void *thread_manage_clients(void *data)
 
 		health_code_update();
 
-		// TODO: Validate cmd_ctx including sanity check for
-		// security purpose.
-
 		rcu_thread_online();
+
 		/*
 		 * This function dispatch the work to the kernel or userspace tracer
 		 * libs and fill the lttcomm_lttng_msg data structure of all the needed
@@ -2616,8 +2717,22 @@ void *thread_manage_clients(void *data)
 		 * everything this function may needs.
 		 */
 		try {
-			ret = process_client_msg(&cmd_ctx, &sock, &sock_error);
-			rcu_thread_offline();
+			/*
+			 * Check if the client has the right to execute this command.
+			 * If the client is root, it can do anything. If the client is not
+			 * root, it must be in the tracing group or have the same UID as the
+			 * sessiond's UID.
+			 */
+			if ((is_root &&
+			     is_user_in_tracing_group(cmd_ctx.creds.uid, cmd_ctx.creds.gid)) ||
+			    (getuid() == cmd_ctx.creds.uid) || cmd_ctx.creds.uid == 0) {
+				ret = process_client_msg(&cmd_ctx, &sock, &sock_error);
+			} else {
+				WARN_FMT(
+					"Client doesn't have permission to interact with this instance: uid={}",
+					cmd_ctx.creds.uid);
+				ret = LTTNG_ERR_EPERM;
+			}
 		} catch (const std::bad_alloc& ex) {
 			log_nested_exceptions(ex);
 			ret = LTTNG_ERR_NOMEM;
@@ -2643,6 +2758,8 @@ void *thread_manage_clients(void *data)
 			log_nested_exceptions(ex);
 			ret = LTTNG_ERR_UNK;
 		}
+
+		rcu_thread_offline();
 
 		if (ret < LTTNG_OK || ret >= LTTNG_ERR_NR) {
 			WARN("Command returned an invalid status code, returning unknown error: "
