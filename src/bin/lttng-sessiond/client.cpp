@@ -63,16 +63,15 @@ struct thread_state {
 	bool running;
 	int client_sock;
 } thread_state;
-} /* namespace */
 
-static void set_thread_status(bool running)
+void set_thread_status(bool running)
 {
 	DBG("Marking client thread's state as %s", running ? "running" : "error");
 	thread_state.running = running;
 	sem_post(&thread_state.ready);
 }
 
-static bool wait_thread_status()
+bool wait_thread_status()
 {
 	DBG("Waiting for client thread to be ready");
 	sem_wait(&thread_state.ready);
@@ -90,11 +89,11 @@ static bool wait_thread_status()
  * right amount of memory and copying the original information from the lsm
  * structure.
  */
-static void setup_lttng_msg(struct command_ctx *cmd_ctx,
-			    const void *payload_buf,
-			    size_t payload_len,
-			    const void *cmd_header_buf,
-			    size_t cmd_header_len)
+void setup_lttng_msg(struct command_ctx *cmd_ctx,
+		     const void *payload_buf,
+		     size_t payload_len,
+		     const void *cmd_header_buf,
+		     size_t cmd_header_len)
 {
 	const auto header_len = sizeof(struct lttcomm_lttng_msg);
 	const auto total_msg_size = header_len + cmd_header_len + payload_len;
@@ -138,7 +137,7 @@ static void setup_lttng_msg(struct command_ctx *cmd_ctx,
 	}
 }
 
-static void setup_empty_lttng_msg(struct command_ctx *cmd_ctx)
+void setup_empty_lttng_msg(struct command_ctx *cmd_ctx)
 {
 	const struct lttcomm_lttng_msg llm = {};
 
@@ -154,7 +153,7 @@ static void setup_empty_lttng_msg(struct command_ctx *cmd_ctx)
 	cmd_ctx->lttng_msg_size = sizeof(llm);
 }
 
-static void update_lttng_msg(struct command_ctx *cmd_ctx, size_t cmd_header_len, size_t payload_len)
+void update_lttng_msg(struct command_ctx *cmd_ctx, size_t cmd_header_len, size_t payload_len)
 {
 	const size_t header_len = sizeof(struct lttcomm_lttng_msg);
 	const size_t total_msg_size = header_len + cmd_header_len + payload_len;
@@ -180,7 +179,7 @@ static void update_lttng_msg(struct command_ctx *cmd_ctx, size_t cmd_header_len,
  * Start the thread_manage_consumer. This must be done after a lttng-consumerd
  * exec or it will fail.
  */
-static int spawn_consumer_thread(struct consumer_data *consumer_data)
+int spawn_consumer_thread(struct consumer_data *consumer_data)
 {
 	return launch_consumer_management_thread(consumer_data) ? 0 : -1;
 }
@@ -190,7 +189,7 @@ static int spawn_consumer_thread(struct consumer_data *consumer_data)
  *
  * Return pid if successful else -1.
  */
-static pid_t spawn_consumerd(struct consumer_data *consumer_data)
+pid_t spawn_consumerd(struct consumer_data *consumer_data)
 {
 	int ret;
 	pid_t pid;
@@ -364,7 +363,7 @@ error:
 /*
  * Spawn the consumerd daemon and session daemon thread.
  */
-static int start_consumerd(struct consumer_data *consumer_data)
+int start_consumerd(struct consumer_data *consumer_data)
 {
 	int ret;
 
@@ -424,7 +423,7 @@ error:
  * function also applies the right modification on a per domain basis for the
  * trace files destination directory.
  */
-static int copy_session_consumer(int domain, const ltt_session::locked_ref& session)
+int copy_session_consumer(int domain, const ltt_session::locked_ref& session)
 {
 	int ret;
 	const char *dir_name;
@@ -484,8 +483,7 @@ error:
 /*
  * Create an UST session and add it to the session ust list.
  */
-static int create_ust_session(const ltt_session::locked_ref& session,
-			      const struct lttng_domain *domain)
+int create_ust_session(const ltt_session::locked_ref& session, const struct lttng_domain *domain)
 {
 	int ret;
 	struct ltt_ust_session *lus = nullptr;
@@ -544,7 +542,7 @@ error:
 /*
  * Create a kernel tracer session then create the default channel.
  */
-static int create_kernel_session(const ltt_session::locked_ref& session)
+int create_kernel_session(const ltt_session::locked_ref& session)
 {
 	int ret;
 
@@ -583,7 +581,7 @@ error_create:
 /*
  * Count number of session permitted by uid/gid.
  */
-static unsigned int lttng_sessions_count(uid_t uid, gid_t gid __attribute__((unused)))
+unsigned int lttng_sessions_count(uid_t uid, gid_t gid __attribute__((unused)))
 {
 	unsigned int i = 0;
 	const struct ltt_session_list *session_list = session_get_list();
@@ -607,8 +605,7 @@ static unsigned int lttng_sessions_count(uid_t uid, gid_t gid __attribute__((unu
 	return i;
 }
 
-static lttng::ctl::trigger
-receive_lttng_trigger(struct command_ctx *cmd_ctx, int sock, int *sock_error)
+lttng::ctl::trigger receive_lttng_trigger(struct command_ctx *cmd_ctx, int sock, int *sock_error)
 {
 	int ret;
 	size_t trigger_len;
@@ -672,10 +669,10 @@ receive_lttng_trigger(struct command_ctx *cmd_ctx, int sock, int *sock_error)
 	return lttng::ctl::trigger(trigger);
 }
 
-static enum lttng_error_code receive_lttng_error_query(struct command_ctx *cmd_ctx,
-						       int sock,
-						       int *sock_error,
-						       struct lttng_error_query **_query)
+enum lttng_error_code receive_lttng_error_query(struct command_ctx *cmd_ctx,
+						int sock,
+						int *sock_error,
+						struct lttng_error_query **_query)
 {
 	int ret;
 	size_t query_len;
@@ -741,14 +738,14 @@ end:
 	return ret_code;
 }
 
-static enum lttng_error_code receive_lttng_event(struct command_ctx *cmd_ctx,
-						 int sock,
-						 int *sock_error,
-						 struct lttng_event **out_event,
-						 char **out_filter_expression,
-						 struct lttng_bytecode **out_bytecode,
-						 struct lttng_event_exclusion **out_exclusion,
-						 lttng::event_rule_uptr& event_rule)
+enum lttng_error_code receive_lttng_event(struct command_ctx *cmd_ctx,
+					  int sock,
+					  int *sock_error,
+					  struct lttng_event **out_event,
+					  char **out_filter_expression,
+					  struct lttng_bytecode **out_bytecode,
+					  struct lttng_event_exclusion **out_exclusion,
+					  lttng::event_rule_uptr& event_rule)
 {
 	int ret;
 	size_t event_len;
@@ -868,11 +865,10 @@ end:
 	return ret_code;
 }
 
-static enum lttng_error_code
-receive_lttng_event_context(const struct command_ctx *cmd_ctx,
-			    int sock,
-			    int *sock_error,
-			    struct lttng_event_context **out_event_context)
+enum lttng_error_code receive_lttng_event_context(const struct command_ctx *cmd_ctx,
+						  int sock,
+						  int *sock_error,
+						  struct lttng_event_context **out_event_context)
 {
 	int ret;
 	const size_t event_context_len = (size_t) cmd_ctx->lsm.u.context.length;
@@ -934,8 +930,9 @@ end:
 /*
  * Version of setup_lttng_msg() without command header.
  */
-static void
-setup_lttng_msg_no_cmd_header(struct command_ctx *cmd_ctx, void *payload_buf, size_t payload_len)
+void setup_lttng_msg_no_cmd_header(struct command_ctx *cmd_ctx,
+				   void *payload_buf,
+				   size_t payload_len)
 {
 	setup_lttng_msg(cmd_ctx, payload_buf, payload_len, nullptr, 0);
 }
@@ -944,7 +941,7 @@ setup_lttng_msg_no_cmd_header(struct command_ctx *cmd_ctx, void *payload_buf, si
  * Check if the current kernel tracer supports the session rotation feature.
  * Return 1 if it does, 0 otherwise.
  */
-static int check_rotate_compatible()
+int check_rotate_compatible()
 {
 	int ret = 1;
 
@@ -961,7 +958,7 @@ static int check_rotate_compatible()
  *
  * Return lttcomm error code.
  */
-static int send_unix_sock(int sock, struct lttng_payload_view *view)
+int send_unix_sock(int sock, struct lttng_payload_view *view)
 {
 	int ret;
 	const int fd_count = lttng_payload_view_get_fd_handle_count(view);
@@ -988,7 +985,7 @@ end:
 	return ret;
 }
 
-static void command_ctx_set_status_code(command_ctx& cmd_ctx, enum lttng_error_code status_code)
+void command_ctx_set_status_code(command_ctx& cmd_ctx, enum lttng_error_code status_code)
 {
 	LTTNG_ASSERT(cmd_ctx.reply_payload.buffer.size >= sizeof(lttcomm_lttng_msg));
 	((struct lttcomm_lttng_msg *) (cmd_ctx.reply_payload.buffer.data))->ret_code = status_code;
@@ -1005,7 +1002,7 @@ static void command_ctx_set_status_code(command_ctx& cmd_ctx, enum lttng_error_c
  * A command may assume the ownership of the socket, in which case its value
  * should be set to -1.
  */
-static int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_error)
+int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_error)
 {
 	int ret = LTTNG_OK;
 	bool need_tracing_session = true;
@@ -2347,7 +2344,7 @@ error:
 	return ret;
 }
 
-static int create_client_sock()
+int create_client_sock()
 {
 	int ret, client_sock;
 
@@ -2383,14 +2380,14 @@ end:
 	return ret;
 }
 
-static void cleanup_client_thread(void *data)
+void cleanup_client_thread(void *data)
 {
 	struct lttng_pipe *quit_pipe = (lttng_pipe *) data;
 
 	lttng_pipe_destroy(quit_pipe);
 }
 
-static void thread_init_cleanup(void *data __attribute__((unused)))
+void thread_init_cleanup(void *data __attribute__((unused)))
 {
 	set_thread_status(false);
 }
@@ -2413,7 +2410,7 @@ formatted_source_location(const ExceptionType&)
 }
 
 template <class ExceptionType>
-static void log_nested_exceptions(const ExceptionType& ex, unsigned int level = 0)
+void log_nested_exceptions(const ExceptionType& ex, unsigned int level = 0)
 {
 	const auto location = formatted_source_location(ex);
 
@@ -2444,7 +2441,7 @@ static void log_nested_exceptions(const ExceptionType& ex, unsigned int level = 
  * This thread manage all clients request using the unix client socket for
  * communication.
  */
-static void *thread_manage_clients(void *data)
+void *thread_manage_clients(void *data)
 {
 	int sock = -1, ret, i, err = -1;
 	int sock_error;
@@ -2738,13 +2735,14 @@ error_create_poll:
 	return nullptr;
 }
 
-static bool shutdown_client_thread(void *thread_data)
+bool shutdown_client_thread(void *thread_data)
 {
 	struct lttng_pipe *client_quit_pipe = (lttng_pipe *) thread_data;
 	const int write_fd = lttng_pipe_get_writefd(client_quit_pipe);
 
 	return notify_thread_pipe(write_fd) == 1;
 }
+} /* namespace */
 
 struct lttng_thread *launch_client_thread()
 {
