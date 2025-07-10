@@ -518,6 +518,7 @@ enum lttng_consumer_command : std::uint8_t {
 	LTTNG_CONSUMER_OPEN_CHANNEL_PACKETS,
 	LTTNG_CONSUMER_RECLAIM_SESSION_OWNER_ID,
 	LTTNG_CONSUMER_GET_CHANNELS_MEMORY_USAGE,
+	LTTNG_CONSUMER_RECLAIM_CHANNELS_MEMORY,
 };
 
 /*
@@ -623,6 +624,9 @@ struct formatter<lttng_consumer_command> : formatter<std::string> {
 			break;
 		case LTTNG_CONSUMER_GET_CHANNELS_MEMORY_USAGE:
 			name = "GET_CHANNELS_MEMORY_USAGE";
+			break;
+		case LTTNG_CONSUMER_RECLAIM_CHANNELS_MEMORY:
+			name = "RECLAIM_CHANNELS_MEMORY";
 			break;
 		}
 
@@ -1152,6 +1156,11 @@ struct lttcomm_consumer_msg {
 		struct {
 			uint64_t key_count; /* Number of keys in payload. */
 		} LTTNG_PACKED get_channels_memory_usage;
+		struct {
+			uint64_t key_count; /* Number of keys in payload. */
+			LTTNG_OPTIONAL_COMM(uint64_t) LTTNG_PACKED age_limit_us;
+			uint8_t require_consumed;
+		} LTTNG_PACKED reclaim_channels_memory;
 	} u;
 } LTTNG_PACKED;
 
@@ -1223,6 +1232,17 @@ struct lttcomm_stream_memory_usage {
 struct lttcomm_consumer_channel_memory_usage_reply_header {
 	uint32_t count;
 	/* A set of lttcomm_stream_memory_usage follows. */
+} LTTNG_PACKED;
+
+struct lttcomm_stream_memory_reclamation_result {
+	/* Key of the stream's channel. */
+	uint64_t channel_key;
+	uint64_t bytes_reclaimed;
+} LTTNG_PACKED;
+
+struct lttcomm_consumer_channel_memory_reclamation_reply_header {
+	uint32_t count;
+	/* A set of lttcomm_stream_memory_reclamation_result follows. */
 } LTTNG_PACKED;
 
 #ifdef HAVE_LIBLTTNG_UST_CTL

@@ -40,6 +40,7 @@
 
 #include <algorithm>
 #include <bin/lttng-consumerd/health-consumerd.hpp>
+#include <chrono>
 #include <fcntl.h>
 #include <inttypes.h>
 #include <poll.h>
@@ -1499,6 +1500,379 @@ static void lttng_ustconsumer_get_channels_memory_usage(int socket, std::uint64_
 	}
 }
 
+static void destroy_subbuf_iter(lttng_ust_ctl_subbuf_iter *it)
+{
+	if (!it) {
+		return;
+	}
+
+	const auto ret = lttng_ust_ctl_subbuf_iter_destroy(it);
+	LTTNG_ASSERT(ret == 0);
+}
+
+static std::size_t reclaim_stream_memory(lttng_consumer_stream& stream,
+					 nonstd::optional<std::chrono::microseconds> age_limit,
+					 bool require_consumed)
+{
+	DBG_FMT("Reclaiming stream memory: channel_name=`{}`, stream_key={}",
+		stream.chan->name,
+		stream.key);
+
+	std::uint64_t current_tracer_time;
+	const auto current_time_ret =
+		lttng_ust_ctl_get_current_timestamp(stream.ustream, &current_tracer_time);
+	if (current_time_ret < 0) {
+		LTTNG_THROW_ERROR(fmt::format(
+			"Failed to get current tracer time for stream: channel_name=`{}`, stream_key={}, error={}",
+			stream.chan->name,
+			stream.key,
+			current_time_ret));
+	}
+
+	bool should_flush = false;
+	if (age_limit) {
+		std::uint64_t expiry_limit = current_tracer_time;
+		lttng_ust_ctl_timestamp_add(stream.ustream,
+					    &expiry_limit,
+					    -std::chrono::nanoseconds(*age_limit).count());
+
+		const auto compare_ret =
+			lttng_ust_ctl_last_activity_timestamp_compare(stream.ustream, expiry_limit);
+		if (compare_ret <= 0) {
+			should_flush = true;
+		}
+	} else {
+		should_flush = true;
+	}
+
+	if (should_flush) {
+		const auto flush_ret = lttng_ust_ctl_flush_buffer(stream.ustream, 1);
+		if (flush_ret) {
+			WARN_FMT(
+				"Failed to flush stream when reclaiming buffer memory: flush_ret={}",
+				flush_ret);
+		}
+	}
+
+	/* The iterator is initially invalid; call [...]_next() before accessing its value. */
+	auto subbuf_iter = lttng::make_unique_wrapper<lttng_ust_ctl_subbuf_iter,
+						      destroy_subbuf_iter>([&stream,
+									    require_consumed]() {
+		lttng_ust_ctl_subbuf_iter *it = nullptr;
+
+		const auto err = lttng_ust_ctl_subbuf_iter_create(
+			stream.ustream,
+			require_consumed ? LTTNG_UST_CTL_SUBBUF_ITER_DELIVERED_CONSUMED :
+					   LTTNG_UST_CTL_SUBBUF_ITER_DELIVERED,
+			&it);
+		if (err) {
+			ERR_FMT("Failed to create sub-buffer iterator for stream: stream_name=`{}`, stream_key={}, error={}",
+				stream.name,
+				stream.key,
+				-err);
+		}
+
+		return it;
+	}());
+
+	if (!subbuf_iter) {
+		LTTNG_THROW_ALLOCATION_FAILURE_ERROR(fmt::format(
+			"Failed to create sub-buffer iterator for stream: channel_name=`{}`, stream_key={}",
+			stream.chan->name,
+			stream.key));
+	}
+
+	unsigned int reclaimed_subbuf_count = 0;
+	while (true) {
+		const auto next_ret = lttng_ust_ctl_subbuf_iter_next(subbuf_iter.get());
+		if (next_ret == 0) {
+			DBG_FMT("Sub-buffer iterator reached end of stream: channel_name=`{}`, stream_key={}",
+				stream.chan->name,
+				stream.key);
+			break;
+		} else if (next_ret < 0) {
+			LTTNG_THROW_ERROR(fmt::format(
+				"Failed to move sub-buffer iterator for stream: channel_name=`{}`, stream_key={}, error={}",
+				stream.chan->name,
+				stream.key,
+				next_ret));
+		}
+
+		unsigned long subbuf_position;
+		const auto subbuf_pos_ret =
+			lttng_ust_ctl_subbuf_iter_pos(subbuf_iter.get(), &subbuf_position);
+		if (subbuf_pos_ret < 0) {
+			LTTNG_THROW_ERROR(fmt::format(
+				"Failed to get sub-buffer iterator position for stream: channel_name=`{}`, stream_key={}, error={}",
+				stream.chan->name,
+				stream.key,
+				subbuf_pos_ret));
+		}
+
+		std::uint64_t subbuf_timestamp;
+		const auto timestamp_ret = lttng_ust_ctl_subbuf_iter_timestamp_end(
+			subbuf_iter.get(), &subbuf_timestamp);
+		if (timestamp_ret < 0) {
+			LTTNG_THROW_ERROR(fmt::format(
+				"Failed to get sub-buffer iterator timestamp for stream: channel_name=`{}`, stream_key={}, error={}",
+				stream.chan->name,
+				stream.key,
+				timestamp_ret));
+		}
+
+		bool is_allocated;
+		const auto allocated_ret =
+			lttng_ust_ctl_subbuf_iter_allocated(subbuf_iter.get(), &is_allocated);
+		if (allocated_ret < 0) {
+			LTTNG_THROW_ERROR(fmt::format(
+				"Failed to check if sub-buffer iterator is allocated for stream: channel_name=`{}`, stream_key={}, error={}",
+				stream.chan->name,
+				stream.key,
+				allocated_ret));
+		}
+
+		DBG_FMT("Sub-buffer iterator properties: channel_name=`{}`, stream_key={}, position={}, allocated={}, current_timestamp={}, subbuf_timestamp={}",
+			stream.chan->name,
+			stream.key,
+			subbuf_position,
+			is_allocated,
+			current_tracer_time,
+			subbuf_timestamp);
+		if (!is_allocated) {
+			/* Sub-buffer already reclaimed, skip it. */
+			continue;
+		}
+
+		if (age_limit) {
+			std::uint64_t expiry_limit = subbuf_timestamp;
+			lttng_ust_ctl_timestamp_add(stream.ustream,
+						    &expiry_limit,
+						    std::chrono::nanoseconds(*age_limit).count());
+
+			/*
+			 * Timeline:
+			 * <----[subbuffer lifetime]---------------|---------------------|------>
+			 * 	                   ^               ^                     ^
+			 *            subbuffer end timestamp   current_tracer_time  expiry_limit
+			 *
+			 * expiry limit is the subbuffer's end timestamp shifted in the future
+			 * by the age limit. When that limit ends up _before_ the current time, the
+			 * subbuffer should be reclaimed.
+			 */
+			if (expiry_limit > current_tracer_time) {
+				DBG_FMT("Sub-buffer is too recent, skipping: channel_name=`{}`, stream_key={}, subbuf_timestamp={}, oldest_data_limit={}",
+					stream.chan->name,
+					stream.key,
+					subbuf_timestamp,
+					expiry_limit);
+				continue;
+			}
+		}
+
+		/*
+		 * Attempt to reclaim the sub-buffer.
+		 *
+		 * Start by reclaiming the reader sub-buffer, then attempt to exchange it with
+		 * the iterator's current sub-buffer.
+		 *
+		 * Exchanging can fail legitimately (i.e., a writer has entered the sub-buffer), in
+		 * which case we simply skip the sub-buffer and continue to the next one.
+		 */
+		const auto reclaim_ret = lttng_ust_ctl_reclaim_reader_subbuf(stream.ustream);
+		/*
+		 * Ignore -ENOMEM; it simply means the reader sub-buffer was already reclaimed
+		 * previously. For instance, an exchange could have been attempted
+		 * but failed due to the sub-buffer being in use by a writer during a previous
+		 * reclamation attempt.
+		 */
+		if (reclaim_ret < 0 && reclaim_ret != -ENOMEM) {
+			LTTNG_THROW_POSIX(
+				fmt::format(
+					"Failed to reclaim reader sub-buffer for stream: channel_name=`{}`, stream_key={}",
+					stream.chan->name,
+					stream.key),
+				errno);
+		}
+
+		const auto exchg_ret =
+			lttng_ust_ctl_try_exchange_subbuf(stream.ustream, subbuf_position);
+		if (exchg_ret == -ENOENT) {
+			/* The sub-buffer is now in use, skip it. */
+			DBG_FMT("Sub-buffer is in use, skipping: channel_name=`{}`, stream_key={}, subbuf_position={}",
+				stream.chan->name,
+				stream.key,
+				subbuf_position);
+			continue;
+		} else if (exchg_ret < 0) {
+			LTTNG_THROW_ERROR(fmt::format(
+				"Failed to exchange sub-buffer for stream: channel_name=`{}`, stream_key={}, subbuf_position={}, error={}",
+				stream.chan->name,
+				stream.key,
+				subbuf_position,
+				exchg_ret));
+		}
+
+		DBG_FMT("Reclaimed sub-buffer: channel_name=`{}`, stream_key={}, subbuf_position={}",
+			stream.chan->name,
+			stream.key,
+			subbuf_position);
+		reclaimed_subbuf_count++;
+	}
+
+	if (reclaimed_subbuf_count != 0) {
+		/*
+		 * The reader sub-buffer was exchanged with the iterator's current sub-buffer,
+		 * so it is "allocated". Reclaim it to reduce the memory footprint.
+		 */
+		const auto reclaim_ret = lttng_ust_ctl_reclaim_reader_subbuf(stream.ustream);
+		if (reclaim_ret < 0 && reclaim_ret != -ENOMEM) {
+			LTTNG_THROW_POSIX(
+				fmt::format(
+					"Failed to reclaim reader sub-buffer for stream: channel_name=`{}`, stream_key={}",
+					stream.chan->name,
+					stream.key),
+				errno);
+		}
+	}
+
+	return reclaimed_subbuf_count * stream.max_sb_size;
+}
+
+static void
+lttng_ustconsumer_reclaim_channels_memory(int socket,
+					  std::uint64_t channel_count,
+					  nonstd::optional<std::chrono::microseconds> age_limit,
+					  bool require_consumed)
+{
+	std::vector<std::uint64_t> channel_keys;
+
+	channel_keys.resize(channel_count);
+	const auto channel_key_payload_size =
+		channel_count * sizeof(decltype(channel_keys)::value_type);
+	const auto recv_ret =
+		lttcomm_recv_unix_sock(socket, channel_keys.data(), channel_key_payload_size);
+
+	if (recv_ret != channel_key_payload_size) {
+		LTTNG_THROW_POSIX("Failed to receive channel keys from session daemon", errno);
+	}
+
+	/*
+	 * The reply has the following structure:
+	 * - generic reply header (announcing the command status and payload size)
+	 * - command-specific reply header (announcing the number of stream memory reclamation
+	 * entries)
+	 * - stream memory reclamation entries (contains channel key, amount reclaimed)
+	 */
+	std::vector<std::uint8_t> reply_payload;
+	lttcomm_consumer_status_msg generic_reply_header = {};
+	lttcomm_consumer_channel_memory_reclamation_reply_header command_specific_reply_header = {};
+
+	/*
+	 * The two headers are inserted in the payload to "reserve" space for them before the
+	 * actual stream memory usage entries are inserted.
+	 *
+	 * Their content will be overwritten later with the actual command status and
+	 * the number of stream memory usage entries.
+	 */
+	reply_payload.resize(sizeof(generic_reply_header) + sizeof(command_specific_reply_header));
+
+	std::size_t total_stream_count = 0;
+	for (const auto channel_key : channel_keys) {
+		auto *channel = consumer_find_channel(channel_key);
+		if (!channel) {
+			LTTNG_THROW_CHANNEL_NOT_FOUND_BY_KEY_ERROR(channel_key);
+		}
+
+		const lttng::pthread::lock_guard channel_lock(channel->lock);
+		DBG_FMT("Reclaiming memory channel: key={}, channel_name=`{}`",
+			channel_key,
+			channel->name);
+
+		if (channel->monitor) {
+			const lttng::urcu::read_lock_guard read_lock;
+			for (auto *stream : lttng::urcu::lfht_filtered_iteration_adapter<
+				     lttng_consumer_stream,
+				     decltype(lttng_consumer_stream::node_channel_id),
+				     &lttng_consumer_stream::node_channel_id,
+				     std::uint64_t>(
+				     *the_consumer_data.stream_per_chan_id_ht->ht,
+				     &channel->key,
+				     the_consumer_data.stream_per_chan_id_ht->hash_fct(
+					     &channel->key, lttng_ht_seed),
+				     the_consumer_data.stream_per_chan_id_ht->match_fct)) {
+				const lttng::pthread::lock_guard stream_lock(stream->lock);
+
+				if (cds_lfht_is_node_deleted(&stream->node.node)) {
+					continue;
+				}
+
+				const auto bytes_reclaimed =
+					reclaim_stream_memory(*stream, age_limit, require_consumed);
+
+				const lttcomm_stream_memory_reclamation_result
+					stream_reclamation_result = {
+						.channel_key = channel_key,
+						.bytes_reclaimed = bytes_reclaimed,
+					};
+
+				reply_payload.insert(reply_payload.end(),
+						     reinterpret_cast<const std::uint8_t *>(
+							     &stream_reclamation_result),
+						     reinterpret_cast<const std::uint8_t *>(
+							     &stream_reclamation_result) +
+							     sizeof(stream_reclamation_result));
+
+				total_stream_count++;
+			}
+		} else {
+			for (auto *stream :
+			     lttng::urcu::list_iteration_adapter<lttng_consumer_stream,
+								 &lttng_consumer_stream::send_node>(
+				     channel->streams.head)) {
+				const lttng::pthread::lock_guard stream_lock(stream->lock);
+
+				const auto bytes_reclaimed =
+					reclaim_stream_memory(*stream, age_limit, require_consumed);
+
+				const lttcomm_stream_memory_reclamation_result
+					stream_reclamation_result = {
+						.channel_key = channel_key,
+						.bytes_reclaimed = bytes_reclaimed,
+					};
+
+				reply_payload.insert(reply_payload.end(),
+						     reinterpret_cast<const std::uint8_t *>(
+							     &stream_reclamation_result),
+						     reinterpret_cast<const std::uint8_t *>(
+							     &stream_reclamation_result) +
+							     sizeof(stream_reclamation_result));
+
+				total_stream_count++;
+			}
+		}
+	}
+
+	/* Update the payload headers. */
+	generic_reply_header.ret_code = LTTCOMM_CONSUMERD_SUCCESS;
+	generic_reply_header.payload_size = reply_payload.size() - sizeof(generic_reply_header);
+	std::memcpy(reply_payload.data(), &generic_reply_header, sizeof(generic_reply_header));
+
+	command_specific_reply_header.count = total_stream_count;
+	std::memcpy(reply_payload.data() + sizeof(generic_reply_header),
+		    &command_specific_reply_header,
+		    sizeof(command_specific_reply_header));
+
+	const auto send_ret =
+		lttcomm_send_unix_sock(socket, reply_payload.data(), reply_payload.size());
+	if (send_ret != reply_payload.size()) {
+		LTTNG_THROW_POSIX(
+			fmt::format(
+				"Failed to send channel memory reclamation reply to session daemon: payload_size={} bytes",
+				reply_payload.size()),
+			errno);
+	}
+}
+
 /*
  * Receive the metadata updates from the sessiond. Supports receiving
  * overlapping metadata, but is needs to always belong to a contiguous
@@ -2592,6 +2966,41 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		 * and not through the consumer_send_status_msg() function. This is because the
 		 * session daemon expects a payload with the memory usage memory usage of the
 		 * channels and not a return code except in the case of errors.
+		 */
+		goto end_nosignal;
+	}
+	case LTTNG_CONSUMER_RECLAIM_CHANNELS_MEMORY:
+	{
+		try {
+			health_code_update();
+			nonstd::optional<std::chrono::microseconds> age_limit;
+
+			if (msg.u.reclaim_channels_memory.age_limit_us.is_set) {
+				age_limit = std::chrono::microseconds(
+					msg.u.reclaim_channels_memory.age_limit_us.value);
+			}
+
+			lttng_ustconsumer_reclaim_channels_memory(
+				sock,
+				msg.u.reclaim_channels_memory.key_count,
+				age_limit,
+				msg.u.reclaim_channels_memory.require_consumed);
+		} catch (lttng::consumerd::exceptions::channel_not_found_error& ex) {
+			ERR_FMT("Failed to reclaim memory of channels: {}", ex.what());
+			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
+			goto end_msg_sessiond;
+		} catch (const std::exception& ex) {
+			/* Generic error. */
+			ERR_FMT("Failed to reclaim memory of channels: {}", ex.what());
+			ret_code = LTTCOMM_CONSUMERD_FATAL;
+			goto end_msg_sessiond;
+		}
+
+		/*
+		 * This command's return payload is sent directly to the session daemon
+		 * and not through the consumer_send_status_msg() function. This is because the
+		 * session daemon expects an amount of reclaimed memory on a per-channel basis and
+		 * not just a return code.
 		 */
 		goto end_nosignal;
 	}
@@ -3812,16 +4221,6 @@ static bool is_subbuf_state_stalled(const struct stream_subbuffer_transaction_st
 	}
 
 	return true;
-}
-
-static void destroy_subbuf_iter(lttng_ust_ctl_subbuf_iter *it)
-{
-	if (!it) {
-		return;
-	}
-
-	const auto ret = lttng_ust_ctl_subbuf_iter_destroy(it);
-	LTTNG_ASSERT(ret == 0);
 }
 
 static int take_stream_stall_snapshot(struct lttng_consumer_stream& stream,
