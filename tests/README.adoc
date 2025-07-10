@@ -21,6 +21,9 @@ The purpose of the `lttngtest` framework is to more reliably control and clean-u
 the environment for each test with the eventual long-term goal to be able to
 parallelize some of the tests.
 
+The file tests/template_test.py can be copied as a starting point for new tests
+that are being written in Python.
+
 Legacy tests are principally written in bash, and some are in C/C++. C/C++ tests
 must be limited to those that actually require interacting with loaded libraries
 or internal testpoints.
