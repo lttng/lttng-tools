@@ -41,6 +41,7 @@ libpause_consumer_la_LIBADD = \
 	$(top_builddir)/src/common/libsessiond-comm.la \
 	$(top_builddir)/src/common/libcommon-gpl.la \
 	$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
+	$(top_builddir)/src/vendor/fmt/libfmt.la \
 	$(DL_LIBS)
 libpause_consumer_la_LDFLAGS = $(FORCE_SHARED_LIB_OPTIONS)
 
@@ -48,6 +49,7 @@ libpause_sessiond_la_SOURCES = sessiond_testpoints.cpp
 libpause_sessiond_la_LIBADD = \
 	$(top_builddir)/src/common/libcommon-gpl.la \
 	$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
+	$(top_builddir)/src/vendor/fmt/libfmt.la \
 	$(DL_LIBS)
 libpause_sessiond_la_LDFLAGS = $(FORCE_SHARED_LIB_OPTIONS)
 noinst_LTLIBRARIES = libpause_sessiond.la libpause_consumer.la
