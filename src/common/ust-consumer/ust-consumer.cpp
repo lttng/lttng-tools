@@ -19,6 +19,7 @@
 #include <common/consumer/consumer.hpp>
 #include <common/consumer/watchdog-timer-task.hpp>
 #include <common/index/index.hpp>
+#include <common/make-unique-wrapper.hpp>
 #include <common/optional.hpp>
 #include <common/pthread-lock.hpp>
 #include <common/relayd/relayd.hpp>
@@ -3635,75 +3636,69 @@ static bool is_subbuf_state_stalled(const struct stream_subbuffer_transaction_st
 	return true;
 }
 
+static void destroy_subbuf_iter(lttng_ust_ctl_subbuf_iter *it)
+{
+	if (!it) {
+		return;
+	}
+
+	const auto ret = lttng_ust_ctl_subbuf_iter_destroy(it);
+	LTTNG_ASSERT(ret == 0);
+}
+
 static int take_stream_stall_snapshot(struct lttng_consumer_stream& stream,
 				      std::set<uint32_t>& observed_owner_ids)
 {
-	int err;
+	/* The iterator is initially invalid; call [...]_next() before accessing its value. */
+	auto subbuf_iter = lttng::make_unique_wrapper<lttng_ust_ctl_subbuf_iter,
+						      destroy_subbuf_iter>([&stream]() {
+		lttng_ust_ctl_subbuf_iter *it = nullptr;
 
-	err = lttng_ustconsumer_sample_snapshot_positions(&stream);
-	if ((err < 0) && (err != -EAGAIN)) {
-		ERR_FMT("Failed to snapshot positions of stream: stream_name=`{}`, stream_key={}, error={}",
-			stream.name,
-			stream.key,
-			-err);
-		return err;
-	}
-
-	unsigned long consumed_pos;
-
-	err = lttng_ustconsumer_get_consumed_snapshot(&stream, &consumed_pos);
-	if (err) {
-		ERR_FMT("Failed to get consumed position of stream: stream_name=`{}`, stream_key={}, error={}",
-			stream.name,
-			stream.key,
-			-err);
-		return err;
-	}
-
-	unsigned long produced_pos;
-
-	err = lttng_ustconsumer_get_produced_snapshot(&stream, &produced_pos);
-	if (err) {
-		ERR_FMT("Failed to get produced position of stream: stream_name=`{}`, stream_key={}, error={}",
-			stream.name,
-			stream.key,
-			-err);
-		return err;
-	}
-
-	struct lttng_ust_ctl_subbuf_state *state;
-
-	err = lttng_ust_ctl_poll_state_create(stream.ustream, consumed_pos, produced_pos, &state);
-
-	if (err) {
-		ERR_FMT("Failed to create polling object for stream: stream_name=`{}`, stream_key={}, error={}",
-			stream.name,
-			stream.key,
-			-err);
-		return err;
-	}
-
-	while (1) {
-		err = lttng_ust_ctl_poll_state_next(state);
-
-		if (err == 0) {
-			break;
+		const auto err = lttng_ust_ctl_subbuf_iter_create(
+			stream.ustream, LTTNG_UST_CTL_SUBBUF_ITER_UNCONSUMED, &it);
+		if (err) {
+			ERR_FMT("Failed to create sub-buffer iterator for stream: stream_name=`{}`, stream_key={}, error={}",
+				stream.name,
+				stream.key,
+				-err);
 		}
 
-		if (err < 0) {
-			ERR_FMT("Failed to poll next state of polling object for stream: stream_name=`{}`, stream_key={}, error={}",
+		return it;
+	}());
+
+	if (!subbuf_iter) {
+		LTTNG_THROW_ALLOCATION_FAILURE_ERROR(fmt::format(
+			"Failed to create sub-buffer iterator for stream: channel_name=`{}`, stream_key={}",
+			stream.chan->name,
+			stream.key));
+	}
+
+	while (true) {
+		int err = lttng_ust_ctl_subbuf_iter_next(subbuf_iter.get());
+		if (err == 0) {
+			break;
+		} else if (err < 0) {
+			ERR_FMT("Failed to move sub-buffer iterator forwards for stream: stream_name=`{}`, stream_key={}, error={}",
 				stream.name,
 				stream.key,
 				-err);
 			return err;
 		}
 
-		struct stream_subbuffer_transaction_state new_state {};
-
-		err = lttng_ust_ctl_poll_state_owner(state, &new_state.owner_id);
-
+		size_t idx;
+		err = lttng_ust_ctl_subbuf_iter_index(subbuf_iter.get(), &idx);
 		if (err) {
-			ERR_FMT("Failed to poll sub-buffer owner state of polling object for stream: stream_name=`{}`, stream_key={}, error={}",
+			ERR_FMT("Failed to get sub-buffer index from sub-buffer iterator for stream: stream_name=`{}`, stream_key={}, error={}",
+				stream.name,
+				stream.key,
+				-err);
+			return err;
+		}
+
+		stream_subbuffer_transaction_state new_state;
+		err = lttng_ust_ctl_subbuf_iter_owner(subbuf_iter.get(), &new_state.owner_id);
+		if (err) {
+			ERR_FMT("Failed to get sub-buffer owner from sub-buffer iterator for stream: stream_name=`{}`, stream_key={}, error={}",
 				stream.name,
 				stream.key,
 				-err);
@@ -3723,33 +3718,23 @@ static int take_stream_stall_snapshot(struct lttng_consumer_stream& stream,
 			continue;
 		}
 
-		size_t idx;
-
-		err = lttng_ust_ctl_poll_state_index(state, &idx);
-
-		if (err) {
-			ERR_FMT("Failed to poll sub-buffer index state of polling object for stream: stream_name=`{}`, stream_key={}, error={}",
-				stream.name,
-				stream.key,
-				-err);
-			return err;
-		}
-
 		if (idx < stream.subbuffer_transaction_states.size()) {
-			err = lttng_ust_ctl_poll_state_cc_hot(state, &new_state.hot_commit_count);
+			err = lttng_ust_ctl_subbuf_iter_cc_hot(subbuf_iter.get(),
+							       &new_state.hot_commit_count);
 
 			if (err) {
-				ERR_FMT("Failed to poll sub-buffer hot commit counter state of polling object for stream: stream_name=`{}`, stream_key={}, error={}",
+				ERR_FMT("Failed to get sub-buffer hot commit counter from sub-buffer iterator for stream: stream_name=`{}`, stream_key={}, error={}",
 					stream.name,
 					stream.key,
 					-err);
 				return err;
 			}
 
-			err = lttng_ust_ctl_poll_state_cc_cold(state, &new_state.cold_commit_count);
+			err = lttng_ust_ctl_subbuf_iter_cc_cold(subbuf_iter.get(),
+								&new_state.cold_commit_count);
 
 			if (err) {
-				ERR_FMT("Failed to poll sub-buffer cold commit counter state of polling object for stream: stream_name=`{}`, stream_key={}, error={}",
+				ERR_FMT("Failed to get sub-buffer cold commit counter from sub-buffer iterator for stream: stream_name=`{}`, stream_key={}, error={}",
 					stream.name,
 					stream.key - err);
 				return err;
