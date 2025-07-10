@@ -3,6 +3,7 @@
 
 include $(top_srcdir)/aminclude_static.am
 
+AUTOMAKE_OPTIONS = subdir-objects
 AM_CPPFLAGS +=-DINSTALL_BIN_PATH=\""$(lttnglibexecdir)"\" \
 	-DINSTALL_LIB_PATH=\""$(libdir)"\"
 
@@ -71,7 +72,8 @@ liblttng_sessiond_common_la_SOURCES = utils.cpp utils.hpp \
                        snapshot-output.hpp \
                        recording-channel-configuration.hpp recording-channel-configuration.cpp \
                        event-rule-configuration.hpp event-rule-configuration.cpp \
-                       domain.hpp domain.cpp
+                       domain.hpp domain.cpp \
+                       commands/get-channel-memory-usage.cpp commands/get-channel-memory-usage.hpp
 
 if HAVE_LIBLTTNG_UST_CTL
 liblttng_sessiond_common_la_SOURCES += trace-ust.cpp ust-registry.cpp ust-app.cpp \

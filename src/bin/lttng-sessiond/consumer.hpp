@@ -12,7 +12,7 @@
 #include "snapshot.hpp"
 #include "ust-app.hpp"
 
-#include <common/consumer/consumer.hpp>
+#include <common/consumer/consumer-type.hpp>
 #include <common/hashtable/hashtable.hpp>
 
 #include <lttng/lttng.h>
@@ -351,5 +351,35 @@ char *setup_channel_trace_path(struct consumer_output *consumer,
 
 /* Clear command */
 int consumer_clear_channel(struct consumer_socket *socket, uint64_t key);
+
+namespace lttng {
+namespace sessiond {
+namespace consumer {
+struct stream_memory_usage {
+	stream_memory_usage(std::uint64_t logical_size_, std::uint64_t physical_size_) :
+		size_bytes{ logical_size_, physical_size_ }
+	{
+	}
+
+	const struct {
+		std::uint64_t logical;
+		std::uint64_t physical;
+	} size_bytes;
+};
+
+struct channel_memory_usage {
+	std::vector<stream_memory_usage> streams_memory_usage;
+};
+
+/*
+ * The returned channel memory usage vector is in the same order as the channel keys provided
+ * in the request.
+ */
+std::vector<channel_memory_usage>
+get_channels_memory_usage(consumer_socket& socket, const std::vector<std::uint64_t>& channel_keys);
+
+} /* namespace consumer */
+} /* namespace sessiond */
+} /* namespace lttng */
 
 #endif /* _CONSUMER_H */

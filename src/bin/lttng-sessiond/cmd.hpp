@@ -16,6 +16,7 @@
 #include "snapshot-output.hpp"
 
 #include <common/ctl/memory.hpp>
+#include <common/trace-chunk.hpp>
 #include <common/tracker.hpp>
 
 #include <lttng/kernel.h>

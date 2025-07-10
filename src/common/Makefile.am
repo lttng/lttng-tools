@@ -252,6 +252,7 @@ libconsumer_la_SOURCES = \
 	consumer/consumer-testpoint.hpp \
 	consumer/consumer-timer.cpp \
 	consumer/consumer-timer.hpp \
+	consumer/consumer-type.hpp \
 	consumer/live-timer-task.cpp \
 	consumer/live-timer-task.hpp \
 	consumer/metadata-bucket.cpp \

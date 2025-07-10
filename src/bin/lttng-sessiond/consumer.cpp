@@ -7,6 +7,8 @@
  */
 
 #define _LGPL_SOURCE
+#include "common/exception.hpp"
+#include "common/runas.hpp"
 #include "consumer-output.hpp"
 #include "consumer.hpp"
 #include "health-sessiond.hpp"
@@ -14,6 +16,7 @@
 #include "ust-app.hpp"
 #include "utils.hpp"
 
+#include <common/binary-view.hpp>
 #include <common/common.hpp>
 #include <common/defaults.hpp>
 #include <common/relayd/relayd.hpp>
@@ -28,6 +31,57 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+namespace lsc = lttng::sessiond::consumer;
+
+namespace {
+std::vector<std::uint8_t> consumer_request(consumer_socket& socket,
+					   lttng_consumer_command command_id,
+					   std::vector<std::uint8_t> payload)
+{
+	const auto send_ret = consumer_socket_send(&socket, payload.data(), payload.size());
+	if (send_ret < 0) {
+		LTTNG_THROW_POSIX("Failed to send command payload to consumer daemon", errno);
+	}
+
+	auto reply = std::move(payload);
+	reply.resize(0);
+
+	lttcomm_consumer_status_msg reply_header;
+
+	const auto recv_reply_header_ret =
+		consumer_socket_recv(&socket, &reply_header, sizeof(reply_header));
+	if (recv_reply_header_ret < 0) {
+		LTTNG_THROW_POSIX("Failed to receive command reply header from consumer daemon",
+				  errno);
+	}
+
+	const auto status_code = static_cast<lttcomm_return_code>(reply_header.ret_code);
+	const auto payload_size = reply_header.payload_size;
+	DBG_FMT("Received command reply from consumer daemon: status_code={}, payload_size={}",
+		status_code,
+		payload_size);
+
+	if (status_code != LTTCOMM_CONSUMERD_SUCCESS) {
+		LTTNG_THROW_CONSUMERD_COMMAND_ERROR(
+			fmt::format("Consumer command failed: command={}", command_id),
+			status_code);
+	}
+
+	if (reply_header.payload_size == 0) {
+		return reply;
+	}
+
+	reply.resize(reply_header.payload_size);
+	const auto recv_payload_ret = consumer_socket_recv(&socket, reply.data(), reply.size());
+	if (recv_payload_ret < 0) {
+		LTTNG_THROW_POSIX("Failed to receive command reply payload from consumer daemon",
+				  errno);
+	}
+
+	return reply;
+}
+} /* namespace */
 
 /*
  * Return allocated full pathname of the session using the consumer trace path
@@ -140,7 +194,7 @@ error:
  *
  * Return 0 on success else a negative value on error.
  */
-int consumer_socket_recv(struct consumer_socket *socket, void *msg, size_t len)
+int consumer_socket_recv(consumer_socket *socket, void *msg, size_t len)
 {
 	int fd;
 	ssize_t size;
@@ -1772,6 +1826,98 @@ error_socket:
 
 	health_code_update();
 	return ret;
+}
+
+std::vector<lsc::channel_memory_usage>
+lsc::get_channels_memory_usage(consumer_socket& socket,
+			       const std::vector<std::uint64_t>& channel_keys)
+{
+	LTTNG_ASSERT(!channel_keys.empty());
+
+	lttcomm_consumer_msg header = {
+		.cmd_type = LTTNG_CONSUMER_GET_CHANNELS_MEMORY_USAGE,
+		.u = {},
+	};
+
+	header.u.get_channels_memory_usage.key_count = channel_keys.size();
+
+	health_code_update();
+
+	const lttng::pthread::lock_guard socket_lock(*socket.lock);
+
+	std::vector<std::uint8_t> request_payload;
+	request_payload.reserve(sizeof(header) + channel_keys.size() * sizeof(uint64_t));
+
+	/* Append header to the payload. */
+	request_payload.insert(request_payload.end(),
+			       reinterpret_cast<const std::uint8_t *>(&header),
+			       reinterpret_cast<const std::uint8_t *>(&header) + sizeof(header));
+
+	/* Append channel keys to the payload (64-bit each). */
+	request_payload.insert(
+		request_payload.end(),
+		reinterpret_cast<const std::uint8_t *>(channel_keys.data()),
+		reinterpret_cast<const std::uint8_t *>(channel_keys.data() + channel_keys.size()));
+
+	auto reply = consumer_request(
+		socket, LTTNG_CONSUMER_GET_CHANNELS_MEMORY_USAGE, std::move(request_payload));
+
+	health_code_update();
+
+	/*
+	 * The expected reply format is:
+	 *   [lttcomm_consumer_channel_memory_usage_reply_header] (announces the count of stream
+	 *                                                         memory usage)
+	 *   [lttcomm_stream_memory_usage]
+	 *   [lttcomm_stream_memory_usage]
+	 *   [...]
+	 *
+	 * The stream memory usage structures are delivered in the same order as the channel keys
+	 * were sent in the request. For each channel, the streams are grouped together, and their
+	 * order matches the CPU number: the first stream for a given channel corresponds to CPU #0,
+	 * the second to CPU #1, and so on.
+	 */
+	if (reply.size() < sizeof(lttcomm_consumer_channel_memory_usage_reply_header)) {
+		LTTNG_THROW_PROTOCOL_ERROR(fmt::format("Consumer reply is too short: command={}",
+						       LTTNG_CONSUMER_GET_CHANNELS_MEMORY_USAGE));
+	}
+
+	const auto stream_info_count = [reply]() {
+		const auto& mem_usage_header = *reinterpret_cast<
+			const lttcomm_consumer_channel_memory_usage_reply_header *>(reply.data());
+
+		return mem_usage_header.count;
+	}();
+
+	/* Build a view over the stream memory usage structures. */
+	const lttng::binary_view<lttcomm_stream_memory_usage> stream_usage_infos(
+		reply.data() + sizeof(lttcomm_consumer_channel_memory_usage_reply_header),
+		reply.size() - sizeof(lttcomm_consumer_channel_memory_usage_reply_header),
+		stream_info_count);
+
+	std::vector<lsc::channel_memory_usage> result;
+	result.resize(channel_keys.size());
+
+	std::size_t current_channel_index = 0;
+	auto current_channel_key = channel_keys[0];
+	for (const auto& stream_info : stream_usage_infos) {
+		if (stream_info.channel_key != current_channel_key) {
+			/* First stream of a new channel; change the current channel index. */
+			current_channel_index++;
+			current_channel_key = stream_info.channel_key;
+
+			if (current_channel_index == channel_keys.size()) {
+				LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+					"Consumer reply contains streams of too many channels: expected={}",
+					channel_keys.size()));
+			}
+		}
+
+		result[current_channel_index].streams_memory_usage.emplace_back(
+			stream_info.logical_size_bytes, stream_info.physical_size_bytes);
+	}
+
+	return result;
 }
 
 int consumer_init(struct consumer_socket *socket, const lttng_uuid& sessiond_uuid)

@@ -46,14 +46,13 @@
 #include <common/compat/getenv.hpp>
 #include <common/compat/socket.hpp>
 #include <common/config/session-config.hpp>
-#include <common/consumer/consumer.hpp>
+#include <common/consumer/consumer-type.hpp>
 #include <common/daemonize.hpp>
 #include <common/defaults.hpp>
 #include <common/dynamic-buffer.hpp>
 #include <common/exception.hpp>
 #include <common/futex.hpp>
 #include <common/ini-config/ini-config.hpp>
-#include <common/kernel-consumer/kernel-consumer.hpp>
 #include <common/lockfile.hpp>
 #include <common/logging-utils.hpp>
 #include <common/make-unique-wrapper.hpp>

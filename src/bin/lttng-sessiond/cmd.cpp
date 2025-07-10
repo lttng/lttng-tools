@@ -12,6 +12,7 @@
 #include "buffer-registry.hpp"
 #include "channel.hpp"
 #include "cmd.hpp"
+#include "commands/get-channel-memory-usage.hpp"
 #include "consumer-output.hpp"
 #include "consumer.hpp"
 #include "event-notifier-error-accounting.hpp"
@@ -1564,25 +1565,23 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 			 * Implicitly add "cpu_id" context to UST domain channels with the
 			 * "per-cpu" allocation policy on creation.
 			 */
-			if (ret_code == LTTNG_OK) {
-				enum lttng_channel_allocation_policy allocation_policy;
-				enum lttng_error_code err = lttng_channel_get_allocation_policy(
-					new_channel_attr.get(), &allocation_policy);
+			if (ret_code != LTTNG_OK) {
+				return ret_code;
+			}
 
-				if ((err == LTTNG_OK) &&
-				    (allocation_policy ==
-				     LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU)) {
-					struct lttng_event_context cpu_id_ctx;
-					cpu_id_ctx.ctx = LTTNG_EVENT_CONTEXT_CPU_ID;
+			enum lttng_channel_allocation_policy allocation_policy;
+			enum lttng_error_code err = lttng_channel_get_allocation_policy(
+				new_channel_attr.get(), &allocation_policy);
 
-					err = static_cast<enum lttng_error_code>(
-						context_ust_add(usess,
-								domain->type,
-								&cpu_id_ctx,
-								new_channel_attr->name));
-					if (err != LTTNG_OK) {
-						ret_code = err;
-					}
+			if ((err == LTTNG_OK) &&
+			    (allocation_policy == LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU)) {
+				struct lttng_event_context cpu_id_ctx;
+				cpu_id_ctx.ctx = LTTNG_EVENT_CONTEXT_CPU_ID;
+
+				err = static_cast<enum lttng_error_code>(context_ust_add(
+					usess, domain->type, &cpu_id_ctx, new_channel_attr->name));
+				if (err != LTTNG_OK) {
+					ret_code = err;
 				}
 			}
 		} else {
@@ -1689,6 +1688,35 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 		}
 	}();
 
+	auto allocation_policy = [&channel_attr, &domain]() {
+		switch (get_domain_class_from_ctl_domain_type(domain->type)) {
+		case lttng::sessiond::domain_class::KERNEL_SPACE:
+			return ls::recording_channel_configuration::buffer_allocation_policy_t::
+				PER_CPU;
+		default:
+		{
+			lttng_channel_allocation_policy policy;
+			const auto get_allocation_policy_ret =
+				lttng_channel_get_allocation_policy(&channel_attr, &policy);
+			LTTNG_ASSERT(get_allocation_policy_ret == LTTNG_OK);
+
+			switch (policy) {
+			case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU:
+				return ls::recording_channel_configuration::
+					buffer_allocation_policy_t::PER_CPU;
+			case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CHANNEL:
+				return ls::recording_channel_configuration::
+					buffer_allocation_policy_t::PER_CHANNEL;
+			default:
+				LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+					"Invalid channel allocation policy value received: value={}",
+					static_cast<std::underlying_type<
+						lttng_channel_allocation_policy>::type>(policy)));
+			}
+		}
+		}
+	}();
+
 	ls::domain& target_domain =
 		session->get_domain(get_domain_class_from_ctl_domain_type(domain->type));
 
@@ -1764,6 +1792,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 					  std::move(name),
 					  buffer_full_policy,
 					  buffer_consumption_backend,
+					  allocation_policy,
 					  subbuffer_size_bytes,
 					  subbuffer_count,
 					  switch_timer_period_us,

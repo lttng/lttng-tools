@@ -588,10 +588,10 @@ public:
 	 * the last rotation.
 	 */
 	bool rotation_pending_check_timer_enabled = false;
-	timer_t rotation_pending_check_timer = nullptr;
+	timer_t rotation_pending_check_timer = {};
 	/* Timer to periodically rotate a session. */
 	bool rotation_schedule_timer_enabled = false;
-	timer_t rotation_schedule_timer = nullptr;
+	timer_t rotation_schedule_timer = {};
 	/* Value for periodic rotations, 0 if disabled. */
 	uint64_t rotate_timer_period = 0;
 	/* Value for size-based rotations, 0 if disabled. */
@@ -767,6 +767,27 @@ public:
 } /* namespace exceptions */
 } /* namespace sessiond */
 } /* namespace lttng */
+
+namespace fmt {
+template <>
+struct formatter<lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness>
+	: formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator
+	format(lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness bitness,
+	       FormatContextType& ctx) const
+	{
+		switch (bitness) {
+		case lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness::ABI_32:
+			return formatter<std::string>::format("32-bit", ctx);
+		case lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness::ABI_64:
+			return formatter<std::string>::format("64-bit", ctx);
+		default:
+			return formatter<std::string>::format("unknown", ctx);
+		}
+	}
+};
+} /* namespace fmt */
 
 void session_destroy(struct ltt_session *session);
 int session_add_destroy_notifier(const ltt_session::locked_ref& session,

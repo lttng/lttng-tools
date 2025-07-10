@@ -16,7 +16,6 @@
 
 #include <common/common.hpp>
 #include <common/compat/errno.hpp>
-#include <common/consumer/consumer.hpp>
 #include <common/defaults.hpp>
 
 #include <inttypes.h>
