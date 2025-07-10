@@ -12,6 +12,7 @@
 
 #include <common/common.hpp>
 #include <common/compat/errno.hpp>
+#include <common/format.hpp>
 
 #include <inttypes.h>
 #include <limits.h>
@@ -561,4 +562,11 @@ int lttcomm_populate_sock_from_open_socket(struct lttcomm_sock *sock,
 
 end:
 	return ret;
+}
+
+lttng::consumerd::commands::exceptions::error::error(const std::string& msg,
+						     enum lttcomm_return_code code,
+						     const lttng::source_location& location) :
+	lttng::runtime_error(fmt::format("{}: {}", msg, code), location)
+{
 }

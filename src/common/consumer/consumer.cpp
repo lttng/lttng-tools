@@ -86,6 +86,15 @@ int data_consumption_paused;
  */
 int consumer_quit;
 
+lttng::consumerd::exceptions::channel_not_found_error::channel_not_found_error(
+	std::uint64_t channel_key_, const lttng::source_location& source_location_) :
+	lttng::runtime_error(fmt::format("No channel found with the given key: channel_key=`{}`",
+					 channel_key_),
+			     source_location_),
+	channel_key{ channel_key_ }
+{
+}
+
 static const char *get_consumer_domain()
 {
 	switch (the_consumer_data.type) {

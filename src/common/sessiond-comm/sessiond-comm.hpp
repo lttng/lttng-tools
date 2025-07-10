@@ -20,6 +20,7 @@
 #include <common/compat/socket.hpp>
 #include <common/compiler.hpp>
 #include <common/defaults.hpp>
+#include <common/exception.hpp>
 #include <common/macros.hpp>
 #include <common/optional.hpp>
 #include <common/unix.hpp>
@@ -34,6 +35,7 @@
 #include <lttng/trigger/trigger-internal.hpp>
 
 #include <arpa/inet.h>
+#include <cstdint>
 #include <limits.h>
 #include <netinet/in.h>
 #include <stdint.h>
@@ -49,6 +51,9 @@
 #else
 #define LTTCOMM_MAX_SEND_FDS 16
 #endif
+
+#define LTTNG_THROW_CONSUMERD_COMMAND_ERROR(msg, code) \
+	throw lttng::consumerd::commands::exceptions::error(msg, code, LTTNG_SOURCE_LOCATION())
 
 enum lttcomm_sessiond_command {
 	LTTCOMM_SESSIOND_COMMAND_MIN,
@@ -290,7 +295,7 @@ static inline const char *lttcomm_relayd_command_str(lttcomm_relayd_command cmd)
 /*
  * lttcomm error code.
  */
-enum lttcomm_return_code {
+enum lttcomm_return_code : std::uint8_t {
 	LTTCOMM_CONSUMERD_SUCCESS = 0, /* Everything went fine. */
 	/*
 	 * Some code paths use -1 to express an error, others
@@ -332,6 +337,309 @@ enum lttcomm_return_code {
 
 	/* MUST be last element */
 	LTTCOMM_NR, /* Last element */
+};
+
+/*
+ * Due to a bug in g++ < 7.1, this specialization must be enclosed in the fmt namespace,
+ * see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480.
+ */
+namespace fmt {
+template <>
+struct formatter<lttcomm_return_code> : formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator format(lttcomm_return_code code,
+						    FormatContextType& ctx) const
+	{
+		const char *name;
+
+		switch (code) {
+		case LTTCOMM_CONSUMERD_SUCCESS:
+			name = "SUCCESS";
+			break;
+		case LTTCOMM_CONSUMERD_COMMAND_SOCK_READY:
+			name = "COMMAND_SOCK_READY";
+			break;
+		case LTTCOMM_CONSUMERD_SUCCESS_RECV_FD:
+			name = "SUCCESS_RECV_FD";
+			break;
+		case LTTCOMM_CONSUMERD_ERROR_RECV_FD:
+			name = "ERROR_RECV_FD";
+			break;
+		case LTTCOMM_CONSUMERD_ERROR_RECV_CMD:
+			name = "ERROR_RECV_CMD";
+			break;
+		case LTTCOMM_CONSUMERD_POLL_ERROR:
+			name = "POLL_ERROR";
+			break;
+		case LTTCOMM_CONSUMERD_POLL_NVAL:
+			name = "POLL_NVAL";
+			break;
+		case LTTCOMM_CONSUMERD_POLL_HUP:
+			name = "POLL_HUP";
+			break;
+		case LTTCOMM_CONSUMERD_EXIT_SUCCESS:
+			name = "EXIT_SUCCESS";
+			break;
+		case LTTCOMM_CONSUMERD_EXIT_FAILURE:
+			name = "EXIT_FAILURE";
+			break;
+		case LTTCOMM_CONSUMERD_OUTFD_ERROR:
+			name = "OUTFD_ERROR";
+			break;
+		case LTTCOMM_CONSUMERD_SPLICE_EBADF:
+			name = "SPLICE_EBADF";
+			break;
+		case LTTCOMM_CONSUMERD_SPLICE_EINVAL:
+			name = "SPLICE_EINVAL";
+			break;
+		case LTTCOMM_CONSUMERD_SPLICE_ENOMEM:
+			name = "SPLICE_ENOMEM";
+			break;
+		case LTTCOMM_CONSUMERD_SPLICE_ESPIPE:
+			name = "SPLICE_ESPIPE";
+			break;
+		case LTTCOMM_CONSUMERD_ENOMEM:
+			name = "ENOMEM";
+			break;
+		case LTTCOMM_CONSUMERD_ERROR_METADATA:
+			name = "ERROR_METADATA";
+			break;
+		case LTTCOMM_CONSUMERD_FATAL:
+			name = "FATAL";
+			break;
+		case LTTCOMM_CONSUMERD_RELAYD_FAIL:
+			name = "RELAYD_FAIL";
+			break;
+		case LTTCOMM_CONSUMERD_CHANNEL_FAIL:
+			name = "CHANNEL_FAIL";
+			break;
+		case LTTCOMM_CONSUMERD_CHAN_NOT_FOUND:
+			name = "CHAN_NOT_FOUND";
+			break;
+		case LTTCOMM_CONSUMERD_ALREADY_SET:
+			name = "ALREADY_SET";
+			break;
+		case LTTCOMM_CONSUMERD_ROTATION_FAIL:
+			name = "ROTATION_FAIL";
+			break;
+		case LTTCOMM_CONSUMERD_SNAPSHOT_FAILED:
+			name = "SNAPSHOT_FAILED";
+			break;
+		case LTTCOMM_CONSUMERD_CREATE_TRACE_CHUNK_FAILED:
+			name = "CREATE_TRACE_CHUNK_FAILED";
+			break;
+		case LTTCOMM_CONSUMERD_CLOSE_TRACE_CHUNK_FAILED:
+			name = "CLOSE_TRACE_CHUNK_FAILED";
+			break;
+		case LTTCOMM_CONSUMERD_INVALID_PARAMETERS:
+			name = "INVALID_PARAMETERS";
+			break;
+		case LTTCOMM_CONSUMERD_TRACE_CHUNK_EXISTS_LOCAL:
+			name = "TRACE_CHUNK_EXISTS_LOCAL";
+			break;
+		case LTTCOMM_CONSUMERD_TRACE_CHUNK_EXISTS_REMOTE:
+			name = "TRACE_CHUNK_EXISTS_REMOTE";
+			break;
+		case LTTCOMM_CONSUMERD_UNKNOWN_TRACE_CHUNK:
+			name = "UNKNOWN_TRACE_CHUNK";
+			break;
+		case LTTCOMM_CONSUMERD_RELAYD_CLEAR_DISALLOWED:
+			name = "RELAYD_CLEAR_DISALLOWED";
+			break;
+		case LTTCOMM_CONSUMERD_UNKNOWN_ERROR:
+			name = "UNKNOWN_ERROR";
+			break;
+		case LTTCOMM_NR:
+			name = "UNKNOWN";
+			break;
+		}
+
+		return format_to(ctx.out(), name);
+	}
+};
+} /* namespace fmt */
+
+namespace lttng {
+namespace consumerd {
+namespace commands {
+namespace exceptions {
+/*
+ * @class command_error
+ * @brief Represents a generic command error.
+ *
+ * This type should only be used when an error is unhandled beyond logging the
+ * error code. Specific handling paths must use specific exception types.
+ */
+class error : public lttng::runtime_error {
+public:
+	explicit error(const std::string& msg,
+		       lttcomm_return_code code,
+		       const lttng::source_location& source_location);
+};
+} /* namespace exceptions */
+} /* namespace commands */
+} /* namespace consumerd */
+} /* namespace lttng */
+
+/* Commands for consumer */
+enum lttng_consumer_command : std::uint8_t {
+	LTTNG_CONSUMER_ADD_CHANNEL,
+	LTTNG_CONSUMER_ADD_STREAM,
+	/* pause, delete, active depending on fd state */
+	LTTNG_CONSUMER_UPDATE_STREAM,
+	/* inform the consumer to quit when all fd has hang up */
+	LTTNG_CONSUMER_STOP, /* deprecated */
+	LTTNG_CONSUMER_ADD_RELAYD_SOCKET,
+	/* Inform the consumer to kill a specific relayd connection */
+	LTTNG_CONSUMER_DESTROY_RELAYD,
+	/* Return to the sessiond if there is data pending for a session */
+	LTTNG_CONSUMER_DATA_PENDING,
+	/* Consumer creates a channel and returns it to sessiond. */
+	LTTNG_CONSUMER_ASK_CHANNEL_CREATION,
+	LTTNG_CONSUMER_GET_CHANNEL,
+	LTTNG_CONSUMER_DESTROY_CHANNEL,
+	LTTNG_CONSUMER_PUSH_METADATA,
+	LTTNG_CONSUMER_CLOSE_METADATA,
+	LTTNG_CONSUMER_SETUP_METADATA,
+	LTTNG_CONSUMER_FLUSH_CHANNEL,
+	LTTNG_CONSUMER_SNAPSHOT_CHANNEL,
+	LTTNG_CONSUMER_SNAPSHOT_METADATA,
+	LTTNG_CONSUMER_STREAMS_SENT,
+	LTTNG_CONSUMER_DISCARDED_EVENTS,
+	LTTNG_CONSUMER_LOST_PACKETS,
+	LTTNG_CONSUMER_CLEAR_QUIESCENT_CHANNEL,
+	LTTNG_CONSUMER_SET_CHANNEL_MONITOR_PIPE,
+	LTTNG_CONSUMER_ROTATE_CHANNEL,
+	LTTNG_CONSUMER_INIT,
+	LTTNG_CONSUMER_CREATE_TRACE_CHUNK,
+	LTTNG_CONSUMER_CLOSE_TRACE_CHUNK,
+	LTTNG_CONSUMER_TRACE_CHUNK_EXISTS,
+	LTTNG_CONSUMER_CLEAR_CHANNEL,
+	LTTNG_CONSUMER_OPEN_CHANNEL_PACKETS,
+	LTTNG_CONSUMER_RECLAIM_SESSION_OWNER_ID,
+	LTTNG_CONSUMER_GET_CHANNELS_MEMORY_USAGE,
+};
+
+/*
+ * Due to a bug in g++ < 7.1, this specialization must be enclosed in the fmt namespace,
+ * see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480.
+ */
+namespace fmt {
+template <>
+struct formatter<lttng_consumer_command> : formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator format(lttng_consumer_command command_id,
+						    FormatContextType& ctx) const
+	{
+		const char *name;
+
+		switch (command_id) {
+		case LTTNG_CONSUMER_ADD_CHANNEL:
+			name = "ADD_CHANNEL";
+			break;
+		case LTTNG_CONSUMER_ADD_STREAM:
+			name = "ADD_STREAM";
+			break;
+		case LTTNG_CONSUMER_UPDATE_STREAM:
+			name = "UPDATE_STREAM";
+			break;
+		case LTTNG_CONSUMER_STOP:
+			name = "STOP";
+			break;
+		case LTTNG_CONSUMER_ADD_RELAYD_SOCKET:
+			name = "ADD_RELAYD_SOCKET";
+			break;
+		case LTTNG_CONSUMER_DESTROY_RELAYD:
+			name = "DESTROY_RELAYD";
+			break;
+		case LTTNG_CONSUMER_DATA_PENDING:
+			name = "DATA_PENDING";
+			break;
+		case LTTNG_CONSUMER_ASK_CHANNEL_CREATION:
+			name = "ASK_CHANNEL_CREATION";
+			break;
+		case LTTNG_CONSUMER_GET_CHANNEL:
+			name = "GET_CHANNEL";
+			break;
+		case LTTNG_CONSUMER_DESTROY_CHANNEL:
+			name = "DESTROY_CHANNEL";
+			break;
+		case LTTNG_CONSUMER_PUSH_METADATA:
+			name = "PUSH_METADATA";
+			break;
+		case LTTNG_CONSUMER_CLOSE_METADATA:
+			name = "CLOSE_METADATA";
+			break;
+		case LTTNG_CONSUMER_SETUP_METADATA:
+			name = "SETUP_METADATA";
+			break;
+		case LTTNG_CONSUMER_FLUSH_CHANNEL:
+			name = "FLUSH_CHANNEL";
+			break;
+		case LTTNG_CONSUMER_SNAPSHOT_CHANNEL:
+			name = "SNAPSHOT_CHANNEL";
+			break;
+		case LTTNG_CONSUMER_SNAPSHOT_METADATA:
+			name = "SNAPSHOT_METADATA";
+			break;
+		case LTTNG_CONSUMER_STREAMS_SENT:
+			name = "STREAMS_SENT";
+			break;
+		case LTTNG_CONSUMER_DISCARDED_EVENTS:
+			name = "DISCARDED_EVENTS";
+			break;
+		case LTTNG_CONSUMER_LOST_PACKETS:
+			name = "LOST_PACKETS";
+			break;
+		case LTTNG_CONSUMER_CLEAR_QUIESCENT_CHANNEL:
+			name = "CLEAR_QUIESCENT_CHANNEL";
+			break;
+		case LTTNG_CONSUMER_SET_CHANNEL_MONITOR_PIPE:
+			name = "SET_CHANNEL_MONITOR_PIPE";
+			break;
+		case LTTNG_CONSUMER_ROTATE_CHANNEL:
+			name = "ROTATE_CHANNEL";
+			break;
+		case LTTNG_CONSUMER_INIT:
+			name = "INIT";
+			break;
+		case LTTNG_CONSUMER_CREATE_TRACE_CHUNK:
+			name = "CREATE_TRACE_CHUNK";
+			break;
+		case LTTNG_CONSUMER_CLOSE_TRACE_CHUNK:
+			name = "CLOSE_TRACE_CHUNK";
+			break;
+		case LTTNG_CONSUMER_TRACE_CHUNK_EXISTS:
+			name = "TRACE_CHUNK_EXISTS";
+			break;
+		case LTTNG_CONSUMER_CLEAR_CHANNEL:
+			name = "CLEAR_CHANNEL";
+			break;
+		case LTTNG_CONSUMER_OPEN_CHANNEL_PACKETS:
+			name = "OPEN_CHANNEL_PACKETS";
+			break;
+		case LTTNG_CONSUMER_RECLAIM_SESSION_OWNER_ID:
+			name = "RECLAIM_SESSION_OWNER_ID";
+			break;
+		case LTTNG_CONSUMER_GET_CHANNELS_MEMORY_USAGE:
+			name = "GET_CHANNELS_MEMORY_USAGE";
+			break;
+		}
+
+		return format_to(ctx.out(), name);
+	}
+};
+} /* namespace fmt */
+
+enum consumer_channel_type {
+	CONSUMER_CHANNEL_TYPE_METADATA = 0,
+	CONSUMER_CHANNEL_TYPE_DATA_PER_CPU = 1,
+	CONSUMER_CHANNEL_TYPE_DATA_PER_CHANNEL = 2,
+};
+
+enum lttng_consumer_error_msg_type : std::uint8_t {
+	LTTNG_CONSUMER_ERROR_MSG_TYPE_ERROR_CODE,
+	LTTNG_CONSUMER_ERROR_MSG_TYPE_OWNER_RECLAIM_NOTIFICATION,
 };
 
 /* lttng socket protocol. */
@@ -841,6 +1149,9 @@ struct lttcomm_consumer_msg {
 			uint64_t session_id;
 			uint32_t owner_id;
 		} LTTNG_PACKED reclaim_session_owner_id;
+		struct {
+			uint64_t key_count; /* Number of keys in payload. */
+		} LTTNG_PACKED get_channels_memory_usage;
 	} u;
 } LTTNG_PACKED;
 
@@ -886,6 +1197,8 @@ struct lttcomm_consumer_channel_monitor_msg {
  */
 struct lttcomm_consumer_status_msg {
 	enum lttcomm_return_code ret_code;
+	/* Size of the payload following this header. */
+	uint32_t payload_size;
 } LTTNG_PACKED;
 
 struct lttcomm_consumer_status_channel {
@@ -898,6 +1211,18 @@ struct lttcomm_consumer_close_trace_chunk_reply {
 	enum lttcomm_return_code ret_code;
 	uint32_t path_length;
 	char path[];
+} LTTNG_PACKED;
+
+struct lttcomm_stream_memory_usage {
+	/* Key of the stream's channel. */
+	uint64_t channel_key;
+	uint64_t logical_size_bytes;
+	uint64_t physical_size_bytes;
+} LTTNG_PACKED;
+
+struct lttcomm_consumer_channel_memory_usage_reply_header {
+	uint32_t count;
+	/* A set of lttcomm_stream_memory_usage follows. */
 } LTTNG_PACKED;
 
 #ifdef HAVE_LIBLTTNG_UST_CTL

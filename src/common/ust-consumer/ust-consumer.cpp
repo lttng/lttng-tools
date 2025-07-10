@@ -7,6 +7,10 @@
  *
  */
 
+#include "common/unix.hpp"
+
+#include <cstdint>
+#include <exception>
 #define _LGPL_SOURCE
 #include "ust-consumer.hpp"
 
@@ -18,6 +22,7 @@
 #include <common/consumer/consumer-timer.hpp>
 #include <common/consumer/consumer.hpp>
 #include <common/consumer/watchdog-timer-task.hpp>
+#include <common/exception.hpp>
 #include <common/index/index.hpp>
 #include <common/make-unique-wrapper.hpp>
 #include <common/optional.hpp>
@@ -1393,6 +1398,107 @@ end:
 	return ret;
 }
 
+static void lttng_ustconsumer_get_channels_memory_usage(int socket, std::uint64_t channel_count)
+{
+	std::vector<std::uint64_t> channel_keys;
+
+	channel_keys.resize(channel_count);
+	const auto channel_key_payload_size =
+		channel_count * sizeof(decltype(channel_keys)::value_type);
+	const auto recv_ret =
+		lttcomm_recv_unix_sock(socket, channel_keys.data(), channel_key_payload_size);
+
+	if (recv_ret != channel_key_payload_size) {
+		LTTNG_THROW_POSIX("Failed to receive channel keys from session daemon", errno);
+	}
+
+	/*
+	 * The reply has the following structure:
+	 * - generic reply header (announcing the command status and payload size)
+	 * - command-specific reply header (announcing the number of stream memory usage entries)
+	 * - stream memory usage entries (contains channel key, logical size, and physical size)
+	 */
+	std::vector<std::uint8_t> reply_payload;
+	lttcomm_consumer_status_msg generic_reply_header = {};
+	lttcomm_consumer_channel_memory_usage_reply_header command_specific_reply_header = {};
+
+	/*
+	 * The two headers are inserted in the payload to "reserve" space for them before the
+	 * actual stream memory usage entries are inserted.
+	 *
+	 * Their content will be overwritten later with the actual command status and
+	 * the number of stream memory usage entries.
+	 */
+	reply_payload.resize(sizeof(generic_reply_header) + sizeof(command_specific_reply_header));
+
+	std::size_t total_stream_count = 0;
+	for (const auto channel_key : channel_keys) {
+		auto *channel = consumer_find_channel(channel_key);
+		if (!channel) {
+			LTTNG_THROW_CHANNEL_NOT_FOUND_BY_KEY_ERROR(channel_key);
+		}
+
+		const lttng::pthread::lock_guard channel_lock(channel->lock);
+		DBG_FMT("Measuring memory usage of channel: key={}, channel_name=`{}`",
+			channel_key,
+			channel->name);
+
+		for (std::size_t stream_idx = 0; stream_idx < channel->nr_stream_fds;
+		     stream_idx++) {
+			const auto stream_fd = channel->stream_fds[stream_idx];
+
+			struct stat file_status;
+			if (fstat(stream_fd, &file_status) == -1) {
+				LTTNG_THROW_POSIX(
+					fmt::format(
+						"Failed to fstat stream file descriptor of channel: channel_key={}, channel_name=`{}`, stream_fd={}",
+						channel_key,
+						channel->name,
+						stream_fd),
+					errno);
+			}
+
+			const auto logical_size = static_cast<std::uint64_t>(file_status.st_size);
+			const auto physical_size =
+				static_cast<std::uint64_t>(file_status.st_blocks) * 512;
+
+			const lttcomm_stream_memory_usage stream_memory_usage = {
+				.channel_key = channel_key,
+				.logical_size_bytes = logical_size,
+				.physical_size_bytes = physical_size,
+			};
+
+			reply_payload.insert(
+				reply_payload.end(),
+				reinterpret_cast<const std::uint8_t *>(&stream_memory_usage),
+				reinterpret_cast<const std::uint8_t *>(&stream_memory_usage) +
+					sizeof(stream_memory_usage));
+		}
+
+		total_stream_count += channel->nr_stream_fds;
+	}
+
+	/* Update the payload headers. */
+	generic_reply_header.ret_code = LTTCOMM_CONSUMERD_SUCCESS;
+	generic_reply_header.payload_size = reply_payload.size() - sizeof(generic_reply_header);
+	std::memcpy(reply_payload.data(), &generic_reply_header, sizeof(generic_reply_header));
+
+	command_specific_reply_header.count = total_stream_count;
+	std::memcpy(reply_payload.data() + sizeof(generic_reply_header),
+		    &command_specific_reply_header,
+		    sizeof(command_specific_reply_header));
+
+	const auto send_ret =
+		lttcomm_send_unix_sock(socket, reply_payload.data(), reply_payload.size());
+	if (send_ret != reply_payload.size()) {
+		LTTNG_THROW_POSIX(
+			fmt::format(
+				"Failed to send channel memory usage reply to session daemon: payload_size={} bytes",
+				reply_payload.size()),
+			errno);
+	}
+}
+
 /*
  * Receive the metadata updates from the sessiond. Supports receiving
  * overlapping metadata, but is needs to always belong to a contiguous
@@ -2463,6 +2569,31 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		}
 
 		break;
+	}
+	case LTTNG_CONSUMER_GET_CHANNELS_MEMORY_USAGE:
+	{
+		try {
+			health_code_update();
+			lttng_ustconsumer_get_channels_memory_usage(
+				sock, msg.u.get_channels_memory_usage.key_count);
+		} catch (lttng::consumerd::exceptions::channel_not_found_error& ex) {
+			ERR_FMT("Failed to get memory usage of channels: {}", ex.what());
+			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
+			goto end_msg_sessiond;
+		} catch (const std::exception& ex) {
+			/* Generic error. */
+			ERR_FMT("Failed to get memory usage of channels: {}", ex.what());
+			ret_code = LTTCOMM_CONSUMERD_FATAL;
+			goto end_msg_sessiond;
+		}
+
+		/*
+		 * This command's return payload is sent directly to the session daemon
+		 * and not through the consumer_send_status_msg() function. This is because the
+		 * session daemon expects a payload with the memory usage memory usage of the
+		 * channels and not a return code except in the case of errors.
+		 */
+		goto end_nosignal;
 	}
 	default:
 		break;

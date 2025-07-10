@@ -11,10 +11,13 @@
 #ifndef LIB_CONSUMER_H
 #define LIB_CONSUMER_H
 
+#include "consumer-type.hpp"
+
 #include <common/buffer-view.hpp>
 #include <common/consumer/consumer-channel.hpp>
 #include <common/credentials.hpp>
 #include <common/dynamic-array.hpp>
+#include <common/exception.hpp>
 #include <common/hashtable/hashtable.hpp>
 #include <common/index/ctf-index.hpp>
 #include <common/pipe.hpp>
@@ -29,6 +32,7 @@
 
 #include <vendor/optional.hpp>
 
+#include <cstdint>
 #include <limits.h>
 #include <mutex>
 #include <poll.h>
@@ -40,91 +44,6 @@
 
 struct lttng_consumer_local_data;
 
-/* Commands for consumer */
-enum lttng_consumer_command {
-	LTTNG_CONSUMER_ADD_CHANNEL,
-	LTTNG_CONSUMER_ADD_STREAM,
-	/* pause, delete, active depending on fd state */
-	LTTNG_CONSUMER_UPDATE_STREAM,
-	/* inform the consumer to quit when all fd has hang up */
-	LTTNG_CONSUMER_STOP, /* deprecated */
-	LTTNG_CONSUMER_ADD_RELAYD_SOCKET,
-	/* Inform the consumer to kill a specific relayd connection */
-	LTTNG_CONSUMER_DESTROY_RELAYD,
-	/* Return to the sessiond if there is data pending for a session */
-	LTTNG_CONSUMER_DATA_PENDING,
-	/* Consumer creates a channel and returns it to sessiond. */
-	LTTNG_CONSUMER_ASK_CHANNEL_CREATION,
-	LTTNG_CONSUMER_GET_CHANNEL,
-	LTTNG_CONSUMER_DESTROY_CHANNEL,
-	LTTNG_CONSUMER_PUSH_METADATA,
-	LTTNG_CONSUMER_CLOSE_METADATA,
-	LTTNG_CONSUMER_SETUP_METADATA,
-	LTTNG_CONSUMER_FLUSH_CHANNEL,
-	LTTNG_CONSUMER_SNAPSHOT_CHANNEL,
-	LTTNG_CONSUMER_SNAPSHOT_METADATA,
-	LTTNG_CONSUMER_STREAMS_SENT,
-	LTTNG_CONSUMER_DISCARDED_EVENTS,
-	LTTNG_CONSUMER_LOST_PACKETS,
-	LTTNG_CONSUMER_CLEAR_QUIESCENT_CHANNEL,
-	LTTNG_CONSUMER_SET_CHANNEL_MONITOR_PIPE,
-	LTTNG_CONSUMER_ROTATE_CHANNEL,
-	LTTNG_CONSUMER_INIT,
-	LTTNG_CONSUMER_CREATE_TRACE_CHUNK,
-	LTTNG_CONSUMER_CLOSE_TRACE_CHUNK,
-	LTTNG_CONSUMER_TRACE_CHUNK_EXISTS,
-	LTTNG_CONSUMER_CLEAR_CHANNEL,
-	LTTNG_CONSUMER_OPEN_CHANNEL_PACKETS,
-	LTTNG_CONSUMER_RECLAIM_SESSION_OWNER_ID,
-};
-
-enum lttng_consumer_error_msg_type : std::uint8_t {
-	LTTNG_CONSUMER_ERROR_MSG_TYPE_ERROR_CODE,
-	LTTNG_CONSUMER_ERROR_MSG_TYPE_OWNER_RECLAIM_NOTIFICATION,
-};
-
-enum lttng_consumer_type {
-	LTTNG_CONSUMER_UNKNOWN = 0,
-	LTTNG_CONSUMER_KERNEL,
-	LTTNG_CONSUMER64_UST,
-	LTTNG_CONSUMER32_UST,
-};
-
-/*
- * Due to a bug in g++ < 7.1, this specialization must be enclosed in the fmt namespace,
- * see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480.
- */
-namespace fmt {
-template <>
-struct formatter<lttng_consumer_type> : formatter<std::string> {
-	template <typename FormatContextType>
-	typename FormatContextType::iterator format(lttng_consumer_type consumer_type,
-						    FormatContextType& ctx) const
-	{
-		const char *name;
-
-		switch (consumer_type) {
-		case LTTNG_CONSUMER_KERNEL:
-			name = "kernel consumer";
-			break;
-		case LTTNG_CONSUMER64_UST:
-			name = "64-bit user space consumer";
-			break;
-		case LTTNG_CONSUMER32_UST:
-			name = "32-bit user space consumer";
-			break;
-		case LTTNG_CONSUMER_UNKNOWN:
-			name = "unknown consumer";
-			break;
-		default:
-			std::abort();
-		}
-
-		return format_to(ctx.out(), name);
-	}
-};
-} /* namespace fmt */
-
 enum consumer_endpoint_status {
 	CONSUMER_ENDPOINT_ACTIVE,
 	CONSUMER_ENDPOINT_INACTIVE,
@@ -133,12 +52,6 @@ enum consumer_endpoint_status {
 enum consumer_channel_output {
 	CONSUMER_CHANNEL_MMAP = 0,
 	CONSUMER_CHANNEL_SPLICE = 1,
-};
-
-enum consumer_channel_type {
-	CONSUMER_CHANNEL_TYPE_METADATA = 0,
-	CONSUMER_CHANNEL_TYPE_DATA_PER_CPU = 1,
-	CONSUMER_CHANNEL_TYPE_DATA_PER_CHANNEL = 2,
 };
 
 enum sync_metadata_status {
@@ -978,6 +891,29 @@ struct lttng_consumer_global_data {
 	struct lttng_trace_chunk_registry *chunk_registry = nullptr;
 };
 
+#define LTTNG_THROW_CHANNEL_NOT_FOUND_BY_KEY_ERROR(channel_key)                  \
+	throw lttng::consumerd::exceptions::channel_not_found_error(channel_key, \
+								    LTTNG_SOURCE_LOCATION())
+
+namespace lttng {
+namespace consumerd {
+namespace exceptions {
+/*
+ * @class channel_not_found_error
+ * @brief Represents a channel-not-found error and provides the key of the channel looked-up
+ * for use by error-reporting code.
+ */
+class channel_not_found_error : public lttng::runtime_error {
+public:
+	explicit channel_not_found_error(std::uint64_t channel_key,
+					 const lttng::source_location& source_location);
+
+	std::uint64_t channel_key;
+};
+} /* namespace exceptions */
+} /* namespace consumerd */
+} /* namespace lttng */
+
 /*
  * Set to nonzero when the consumer is exiting. Updated by signal
  * handler and thread exit, read by threads.
@@ -1193,6 +1129,25 @@ enum lttcomm_return_code lttng_consumer_init_command(struct lttng_consumer_local
 int lttng_consumer_clear_channel(struct lttng_consumer_channel *channel);
 enum lttcomm_return_code
 lttng_consumer_open_channel_packets(struct lttng_consumer_channel *channel);
+
+namespace lttng {
+namespace consumer {
+struct stream_memory_usage {
+	struct {
+		std::uint64_t logical;
+		std::uint64_t physical;
+	} size_bytes;
+};
+
+struct channel_memory_usage {
+	std::vector<stream_memory_usage> streams_memory_usage;
+};
+
+enum lttcomm_return_code get_channels_memory_usage(const std::vector<std::uint64_t>& channel_keys,
+						   std::vector<channel_memory_usage>& usage_stats);
+} /* namespace consumer */
+} /* namespace lttng */
+
 int consumer_metadata_wakeup_pipe(const struct lttng_consumer_channel *channel);
 void lttng_consumer_sigbus_handle(void *addr);
 
