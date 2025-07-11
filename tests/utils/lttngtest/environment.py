@@ -155,7 +155,8 @@ class _LiveViewer:
     def messages(self):
         return [x for x in self._events if type(x) is bt2._EventMessageConst]
 
-    def _drain(self, retry=False):
+    def _drain(self, retry=False, timeout=0):
+        start = time.time()
         while True:
             try:
                 for msg in self._live_iterator:
@@ -165,6 +166,8 @@ class _LiveViewer:
                 break
             except bt2.TryAgain as e:
                 if retry:
+                    if timeout > 0 and (time.time() - start) > timeout:
+                        break
                     time.sleep(0.01)
                     continue
                 else:
@@ -224,11 +227,12 @@ class _LiveViewer:
     def wait_until_connected(self, timeout=0):
         return self._wait_until(True, timeout)
 
-    def wait(self):
+    def wait(self, timeout=0, close_iterator=True):
         if self._live_iterator:
-            self._drain(retry=True)
-            del self._live_iterator
-            self._live_iterator = None
+            self._drain(retry=True, timeout=timeout)
+            if close_iterator:
+                del self._live_iterator
+                self._live_iterator = None
 
     def __del__(self):
         pass
