@@ -9,6 +9,7 @@ from types import FrameType
 from typing import Callable, Iterator, Optional, Tuple, List, Generator
 import sys
 import pathlib
+import platform
 import pwd
 import random
 import signal
@@ -881,6 +882,18 @@ class _Environment(logger._Logger):
     @property
     def lttng_relayd_env_vars(self):
         return self._relayd_env_vars
+
+    @property
+    def lttng_relayd_output_path(self):
+        return os.path.join(
+            (
+                str(self.lttng_home_location)
+                if self.lttng_home_location
+                else os.getenv("HOME")
+            ),
+            "lttng-traces",
+            platform.node(),
+        )
 
     @property
     def preserve_test_env(self):
