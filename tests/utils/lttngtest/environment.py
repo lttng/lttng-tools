@@ -1393,6 +1393,35 @@ def getconf(name):
     return p.stdout.read().decode("utf-8").strip()
 
 
+def count_events(trace_path, ignore_exceptions=False):
+    """
+    Returns a tuple of (received events, discarded events) from the trace path.
+
+    trace_path may be an iterable (e.g., array, map from pathlib.Path.glob()).
+    """
+    received = 0
+    discarded = 0
+    dirs = []
+    if isinstance(trace_path, str) or isinstance(trace_path, pathlib.Path):
+        dirs.append(str(trace_path))
+    else:
+        dirs = trace_path
+
+    for dir in dirs:
+        try:
+            for msg in bt2.TraceCollectionMessageIterator(str(dir)):
+                if type(msg) is bt2._EventMessageConst:
+                    received += 1
+                if type(msg) is bt2._DiscardedEventsMessageConst:
+                    # msg.count may be None when the value is indeterminate
+                    discarded += msg.count if msg.count is not None else 1
+        except RuntimeError as e:
+            if not ignore_exceptions:
+                raise e
+
+    return (received, discarded)
+
+
 @contextlib.contextmanager
 def kernel_module(module_name):
     """
