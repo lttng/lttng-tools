@@ -1920,6 +1920,105 @@ lsc::get_channels_memory_usage(consumer_socket& socket,
 	return result;
 }
 
+std::vector<lsc::stream_memory_reclamation_result_group>
+lsc::reclaim_channels_memory(consumer_socket& socket,
+			     const std::vector<std::uint64_t>& channel_keys,
+			     const nonstd::optional<std::chrono::microseconds>& reclaim_older_than,
+			     bool require_consumed)
+{
+	LTTNG_ASSERT(!channel_keys.empty());
+
+	lttcomm_consumer_msg header = {
+		.cmd_type = LTTNG_CONSUMER_RECLAIM_CHANNELS_MEMORY,
+		.u = {},
+	};
+
+	header.u.reclaim_channels_memory.key_count = channel_keys.size();
+	header.u.reclaim_channels_memory.require_consumed = require_consumed;
+	if (reclaim_older_than) {
+		LTTNG_OPTIONAL_SET(&header.u.reclaim_channels_memory.age_limit_us,
+				   static_cast<uint64_t>(reclaim_older_than->count()));
+	}
+
+	health_code_update();
+
+	const lttng::pthread::lock_guard socket_lock(*socket.lock);
+
+	std::vector<std::uint8_t> request_payload;
+	request_payload.reserve(sizeof(header) + channel_keys.size() * sizeof(uint64_t));
+
+	/* Append header to the payload. */
+	request_payload.insert(request_payload.end(),
+			       reinterpret_cast<const std::uint8_t *>(&header),
+			       reinterpret_cast<const std::uint8_t *>(&header) + sizeof(header));
+
+	/* Append channel keys to the payload (64-bit each). */
+	request_payload.insert(
+		request_payload.end(),
+		reinterpret_cast<const std::uint8_t *>(channel_keys.data()),
+		reinterpret_cast<const std::uint8_t *>(channel_keys.data() + channel_keys.size()));
+
+	auto reply = consumer_request(
+		socket, LTTNG_CONSUMER_RECLAIM_CHANNELS_MEMORY, std::move(request_payload));
+
+	health_code_update();
+
+	/*
+	 * The expected reply format is:
+	 *   [lttcomm_consumer_channel_memory_reclamation_reply_header] (announces the count of
+	 * stream reclamation results) [lttcomm_stream_memory_reclamation_result]
+	 *   [lttcomm_stream_memory_reclamation_result]
+	 *   [...]
+	 *
+	 * The stream reclamation result structures are delivered in the same order as the channel
+	 * keys were sent in the request. For each channel, the streams are grouped together, and
+	 * their order matches the CPU number: the first stream for a given channel corresponds to
+	 * CPU #0, the second to CPU #1, and so on.
+	 */
+	if (reply.size() < sizeof(lttcomm_consumer_channel_memory_reclamation_reply_header)) {
+		LTTNG_THROW_PROTOCOL_ERROR(fmt::format("Consumer reply is too short: command={}",
+						       LTTNG_CONSUMER_RECLAIM_CHANNELS_MEMORY));
+	}
+
+	const auto stream_result_count = [reply]() {
+		const auto& reclamation_header = *reinterpret_cast<
+			const lttcomm_consumer_channel_memory_reclamation_reply_header *>(
+			reply.data());
+
+		return reclamation_header.count;
+	}();
+
+	/* Build a view over the stream memory reclamation result structures. */
+	const lttng::binary_view<lttcomm_stream_memory_reclamation_result> stream_reclamation_results(
+		reply.data() + sizeof(lttcomm_consumer_channel_memory_reclamation_reply_header),
+		reply.size() - sizeof(lttcomm_consumer_channel_memory_reclamation_reply_header),
+		stream_result_count);
+
+	std::vector<lsc::stream_memory_reclamation_result_group> result;
+	result.resize(channel_keys.size());
+
+	std::size_t current_channel_index = 0;
+	auto current_channel_key = channel_keys[0];
+	for (const auto& stream_reclamation_result : stream_reclamation_results) {
+		if (stream_reclamation_result.channel_key != current_channel_key) {
+			/* First stream of a new channel; change the current channel index. */
+			current_channel_index++;
+			current_channel_key = stream_reclamation_result.channel_key;
+
+			if (current_channel_index == channel_keys.size()) {
+				LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+					"Consumer reply contains streams of too many channels: expected={}",
+					channel_keys.size()));
+			}
+		}
+
+		result[current_channel_index].streams_reclaimed_memory.emplace_back(
+			stream_reclamation_result.bytes_reclaimed);
+	}
+
+	return result;
+}
+
 int consumer_init(struct consumer_socket *socket, const lttng_uuid& sessiond_uuid)
 {
 	int ret;

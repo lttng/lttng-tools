@@ -19,6 +19,7 @@
 
 #include <vendor/optional.hpp>
 
+#include <chrono>
 #include <urcu/ref.h>
 
 struct snapshot;
@@ -377,6 +378,29 @@ struct channel_memory_usage {
  */
 std::vector<channel_memory_usage>
 get_channels_memory_usage(consumer_socket& socket, const std::vector<std::uint64_t>& channel_keys);
+
+struct stream_memory_reclamation_result {
+	explicit stream_memory_reclamation_result(std::uint64_t reclaimed_bytes_) :
+		reclaimed_bytes{ reclaimed_bytes_ }
+	{
+	}
+
+	const std::uint64_t reclaimed_bytes;
+};
+
+struct stream_memory_reclamation_result_group {
+	std::vector<stream_memory_reclamation_result> streams_reclaimed_memory;
+};
+
+/*
+ * The returned stream group reclaimed memory vector is in the same order as the channel keys
+ * provided in the request.
+ */
+std::vector<stream_memory_reclamation_result_group>
+reclaim_channels_memory(consumer_socket& socket,
+			const std::vector<std::uint64_t>& channel_keys,
+			const nonstd::optional<std::chrono::microseconds>& reclaim_older_than,
+			bool require_consumed);
 
 } /* namespace consumer */
 } /* namespace sessiond */

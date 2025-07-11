@@ -13,6 +13,7 @@
 #include "channel.hpp"
 #include "cmd.hpp"
 #include "commands/get-channel-memory-usage.hpp"
+#include "commands/reclaim-channel-memory.hpp"
 #include "consumer-output.hpp"
 #include "consumer.hpp"
 #include "event-notifier-error-accounting.hpp"

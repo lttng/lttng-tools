@@ -73,7 +73,8 @@ liblttng_sessiond_common_la_SOURCES = utils.cpp utils.hpp \
                        recording-channel-configuration.hpp recording-channel-configuration.cpp \
                        event-rule-configuration.hpp event-rule-configuration.cpp \
                        domain.hpp domain.cpp \
-                       commands/get-channel-memory-usage.cpp commands/get-channel-memory-usage.hpp
+                       commands/get-channel-memory-usage.cpp commands/get-channel-memory-usage.hpp \
+                       commands/reclaim-channel-memory.cpp commands/reclaim-channel-memory.hpp
 
 if HAVE_LIBLTTNG_UST_CTL
 liblttng_sessiond_common_la_SOURCES += trace-ust.cpp ust-registry.cpp ust-app.cpp \
