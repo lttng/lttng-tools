@@ -59,7 +59,6 @@ SERIAL_TESTS = tools/base-path/test_ust \
 	tools/rotation/test_schedule_api \
 	tools/metadata/test_kernel \
 	tools/working-directory/test_relayd_working_directory \
-	tools/clear/test_ust \
 	tools/clear/test_kernel \
 	tools/clear/test_live_hang.py \
 	tools/tracker/test_event_tracker \
@@ -72,7 +71,9 @@ SERIAL_TESTS = tools/base-path/test_ust \
 	tools/channel/test_channel_allocation_policy_per_channel.py \
 	tools/trace-format/test_trace_format_kernel.py
 
-TESTS = tools/live/test_early_inactive_app.py \
+TESTS = tools/clear/test_disallow.py \
+	tools/clear/test_ust.py \
+	tools/live/test_early_inactive_app.py \
 	tools/live/test_high_latency.py \
 	tools/live/test_miss_short_lived_app.py \
 	tools/live/test_per_application_leaks.py \
