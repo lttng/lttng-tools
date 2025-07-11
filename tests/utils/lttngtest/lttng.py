@@ -517,6 +517,8 @@ class _Session(lttngctl.Session):
         buffer_allocation_policy=lttngctl.BufferAllocationPolicy.PerCPU,
         subbuf_size=None,
         subbuf_count=None,
+        tracefile_size=None,  # type: Optional[int|str]
+        tracefile_count=None,  # type: Optional[int]
     ):
         # type: (lttngctl.TracingDomain, Optional[str], lttngctl.BufferSharingPolicy), Optional[str], Optional[str] -> lttngctl.Channel
         channel_name = lttngctl.Channel._generate_name()
@@ -545,6 +547,10 @@ class _Session(lttngctl.Session):
             args.extend(["--subbuf-size", str(subbuf_size)])
         if subbuf_count is not None:
             args.extend(["--num-subbuf", str(subbuf_count)])
+        if tracefile_count is not None:
+            args.extend(["--tracefile-count", str(tracefile_count)])
+        if tracefile_size is not None:
+            args.extend(["--tracefile-size", str(tracefile_size)])
 
         self._client._run_cmd(" ".join([shlex.quote(x) for x in args]))
         return _Channel(self._client, channel_name, domain, self)
