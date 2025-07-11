@@ -570,9 +570,16 @@ class _Session(lttngctl.Session):
         # type: () -> None
         self._client._run_cmd("clear '{session_name}'".format(session_name=self.name))
 
-    def destroy(self):
+    def destroy(self, wait=True):
         # type: () -> None
-        self._client._run_cmd("destroy '{session_name}'".format(session_name=self.name))
+        args = [
+            "destroy",
+            self.name,
+        ]
+        if not wait:
+            args.append("--no-wait")
+
+        self._client._run_cmd(" ".join([shlex.quote(x) for x in args]))
 
     def rotate(self, wait=True):
         # type: (bool) -> None
