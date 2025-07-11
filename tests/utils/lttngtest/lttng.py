@@ -261,7 +261,7 @@ class _Channel(lttngctl.Channel):
                 client_args = client_args + " --all"
 
             if rule.filter_expression:
-                client_args = client_args + " " + rule.filter_expression
+                client_args = client_args + " --filter " + rule.filter_expression
 
             if getattr(rule, "log_level_rule", None):
                 if isinstance(rule.log_level_rule, lttngctl.LogLevelRuleAsSevereAs):
