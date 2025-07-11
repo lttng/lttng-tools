@@ -77,7 +77,7 @@ def _get_context_type_name(context):
     else:
         raise Unsupported(
             "Context `{context_name}` is not supported by the LTTng client".format(
-                type(context).__name__
+                context_name=type(context).__name__
             )
         )
 
