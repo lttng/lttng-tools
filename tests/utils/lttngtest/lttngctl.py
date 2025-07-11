@@ -139,6 +139,20 @@ class LogLevel(enum.Enum):
 
 
 @enum.unique
+class SessionRegenerateTarget(enum.Enum):
+    """Session regeneration target data type"""
+
+    Metadata = "metadata"
+    Statedump = "statedump"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return "<%s.%s>" % (self.__class__.__name__, self.name)
+
+
+@enum.unique
 class UserLogLevel(LogLevel):
     EMERGENCY = 0
     ALERT = 1

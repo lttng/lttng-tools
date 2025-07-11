@@ -598,6 +598,18 @@ class _Session(lttngctl.Session):
         else:
             self._client.snapshot_record(self.name, None)
 
+    def regenerate(self, target):
+        # type: lttngctl.SessionRegenerateTarget
+        if not isinstance(target, lttngctl.SessionRegenerateTarget):
+            raise RuntimeError(
+                "Expected target of type `{}`, got `{}`".format(
+                    lttngctl.SessionRegenerateTarget, type(target)
+                )
+            )
+
+        args = ["regenerate", str(target), "-s", self.name]
+        self._client._run_cmd(" ".join([shlex.quote(x) for x in args]))
+
     @property
     def is_active(self):
         # type: () -> bool
