@@ -11,6 +11,8 @@
 #include "clear.hpp"
 #include "client.hpp"
 #include "cmd.hpp"
+#include "commands/reclaim-channel-memory.hpp"
+#include "domain.hpp"
 #include "health-sessiond.hpp"
 #include "kernel.hpp"
 #include "lttng-sessiond.hpp"
@@ -41,6 +43,7 @@
 #include <lttng/event-internal.hpp>
 #include <lttng/event-rule/event-rule-internal.hpp>
 #include <lttng/lttng.h>
+#include <lttng/reclaim-internal.hpp>
 #include <lttng/session-descriptor-internal.hpp>
 #include <lttng/session-internal.hpp>
 #include <lttng/userspace-probe-internal.hpp>
@@ -1034,7 +1037,7 @@ end:
  * Version of setup_lttng_msg() without command header.
  */
 void setup_lttng_msg_no_cmd_header(struct command_ctx *cmd_ctx,
-				   void *payload_buf,
+				   const void *payload_buf,
 				   size_t payload_len)
 {
 	setup_lttng_msg(cmd_ctx, payload_buf, payload_len, nullptr, 0);
@@ -1149,6 +1152,7 @@ int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_error)
 	case LTTCOMM_SESSIOND_COMMAND_LIST_TRIGGERS:
 	case LTTCOMM_SESSIOND_COMMAND_EXECUTE_ERROR_QUERY:
 	case LTTCOMM_SESSIOND_COMMAND_KERNEL_TRACER_STATUS:
+	case LTTCOMM_SESSIOND_COMMAND_RECLAIM_CHANNEL_MEMORY:
 		need_domain = false;
 		break;
 	default:
@@ -1213,6 +1217,7 @@ int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_error)
 	case LTTCOMM_SESSIOND_COMMAND_REGISTER_TRIGGER:
 	case LTTCOMM_SESSIOND_COMMAND_LIST_TRIGGERS:
 	case LTTCOMM_SESSIOND_COMMAND_EXECUTE_ERROR_QUERY:
+	case LTTCOMM_SESSIOND_COMMAND_RECLAIM_CHANNEL_MEMORY:
 		break;
 	default:
 		/* Setup lttng message with no payload */
@@ -2289,6 +2294,57 @@ skip_domain:
 
 		setup_lttng_msg_no_cmd_header(cmd_ctx, &rotate_return, sizeof(rotate_return));
 
+		ret = LTTNG_OK;
+		break;
+	}
+	case LTTCOMM_SESSIOND_COMMAND_RECLAIM_CHANNEL_MEMORY:
+	{
+		DBG("Client reclaim channel memory \"%s\"", (*target_session)->name);
+
+		/* Validate that channel_name is null-terminated */
+		const auto channel_name = cmd_ctx->lsm.u.reclaim_channel_memory.channel_name;
+		if (strnlen(channel_name,
+			    sizeof(cmd_ctx->lsm.u.reclaim_channel_memory.channel_name)) ==
+		    sizeof(cmd_ctx->lsm.u.reclaim_channel_memory.channel_name)) {
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR("Channel name is not null-terminated");
+		}
+
+		const auto domain = lttng::sessiond::get_domain_class_from_lttng_domain_type(
+			cmd_ctx->lsm.domain.type);
+		const auto older_than_us = cmd_ctx->lsm.u.reclaim_channel_memory.older_than_us;
+
+		const auto reclaim_older_than = older_than_us > 0 ?
+			nonstd::optional<std::chrono::microseconds>(
+				std::chrono::microseconds(older_than_us)) :
+			nonstd::nullopt;
+
+		const auto& channel_configuration =
+			(*target_session)
+				->get_domain(domain)
+				.get_channel(lttng::c_string_view(channel_name));
+
+		const auto results = lttng::sessiond::commands::reclaim_channel_memory(
+			*target_session,
+			domain,
+			lttng::c_string_view(channel_name),
+			reclaim_older_than,
+			channel_configuration.buffer_full_policy ==
+				ls::recording_channel_configuration::buffer_full_policy_t::
+					DISCARD_EVENT);
+
+		/* Sum up all reclaimed bytes from all groups and streams. */
+		std::uint64_t reclaimed_bytes = 0;
+		for (const auto& group : results) {
+			for (const auto& stream : group.reclaimed_streams_memory) {
+				reclaimed_bytes += stream.bytes_reclaimed;
+			}
+		}
+
+		const lttng_reclaim_channel_memory_return reclaim_return = {
+			.reclaimed_memory_size_bytes = reclaimed_bytes
+		};
+
+		setup_lttng_msg_no_cmd_header(cmd_ctx, &reclaim_return, sizeof(reclaim_return));
 		ret = LTTNG_OK;
 		break;
 	}

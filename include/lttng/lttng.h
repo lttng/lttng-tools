@@ -64,6 +64,7 @@
 #include <lttng/lttng-error.h>
 #include <lttng/notification/channel.h>
 #include <lttng/notification/notification.h>
+#include <lttng/reclaim.h>
 #include <lttng/rotation.h>
 #include <lttng/save.h>
 #include <lttng/session-descriptor.h>

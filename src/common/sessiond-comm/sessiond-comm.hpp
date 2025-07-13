@@ -101,6 +101,7 @@ enum lttcomm_sessiond_command {
 	LTTCOMM_SESSIOND_COMMAND_LIST_TRIGGERS,
 	LTTCOMM_SESSIOND_COMMAND_EXECUTE_ERROR_QUERY,
 	LTTCOMM_SESSIOND_COMMAND_KERNEL_TRACER_STATUS,
+	LTTCOMM_SESSIOND_COMMAND_RECLAIM_CHANNEL_MEMORY,
 	LTTCOMM_SESSIOND_COMMAND_MAX,
 };
 
@@ -200,6 +201,8 @@ static inline const char *lttcomm_sessiond_command_str(enum lttcomm_sessiond_com
 		return "EXECUTE_ERROR_QUERY";
 	case LTTCOMM_SESSIOND_COMMAND_KERNEL_TRACER_STATUS:
 		return "KERNEL_TRACER_STATUS";
+	case LTTCOMM_SESSIOND_COMMAND_RECLAIM_CHANNEL_MEMORY:
+		return "RECLAIM_CHANNEL_MEMORY";
 	default:
 		abort();
 	}
@@ -844,6 +847,10 @@ struct lttcomm_session_msg {
 			uint64_t session_descriptor_size;
 			/* An lttng_session_descriptor follows. */
 		} LTTNG_PACKED create_session;
+		struct {
+			char channel_name[LTTNG_SYMBOL_NAME_LEN];
+			uint64_t older_than_us;
+		} LTTNG_PACKED reclaim_channel_memory;
 	} u;
 	/* Count of fds sent. */
 	uint32_t fd_count;

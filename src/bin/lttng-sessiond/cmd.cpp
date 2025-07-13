@@ -1228,31 +1228,6 @@ error:
 	return ret;
 }
 
-namespace {
-lttng::sessiond::domain_class
-get_domain_class_from_ctl_domain_type(enum lttng_domain_type domain_type)
-{
-	switch (domain_type) {
-	case LTTNG_DOMAIN_KERNEL:
-		return lttng::sessiond::domain_class::KERNEL_SPACE;
-	case LTTNG_DOMAIN_UST:
-		return lttng::sessiond::domain_class::USER_SPACE;
-	case LTTNG_DOMAIN_JUL:
-		return lttng::sessiond::domain_class::JAVA_UTIL_LOGGING;
-	case LTTNG_DOMAIN_LOG4J:
-		return lttng::sessiond::domain_class::LOG4J;
-	case LTTNG_DOMAIN_PYTHON:
-		return lttng::sessiond::domain_class::PYTHON_LOGGING;
-	case LTTNG_DOMAIN_LOG4J2:
-		return lttng::sessiond::domain_class::LOG4J2;
-	default:
-		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
-			"No suitable conversion exists from lttng_domain_type enum to lttng::sessiond::domain_class: domain={}",
-			domain_type));
-	}
-}
-} /* namespace */
-
 /*
  * Command LTTNG_DISABLE_CHANNEL processed by the client thread.
  */
@@ -1261,7 +1236,7 @@ int cmd_disable_channel(const ltt_session::locked_ref& session,
 			char *channel_name)
 {
 	ls::domain& target_domain =
-		session->get_domain(get_domain_class_from_ctl_domain_type(domain));
+		session->get_domain(ls::get_domain_class_from_lttng_domain_type(domain));
 
 	/* Throws if not found. */
 	auto& channel_config = target_domain.get_channel(channel_name);
@@ -1709,7 +1684,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 	}();
 
 	auto allocation_policy = [&channel_attr, &domain]() {
-		switch (get_domain_class_from_ctl_domain_type(domain->type)) {
+		switch (ls::get_domain_class_from_lttng_domain_type(domain->type)) {
 		case lttng::sessiond::domain_class::KERNEL_SPACE:
 			return ls::recording_channel_configuration::buffer_allocation_policy_t::
 				PER_CPU;
@@ -1743,7 +1718,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 			lttng_channel_get_preallocation_policy(&channel_attr, &policy);
 		LTTNG_ASSERT(get_preallocation_policy_ret == LTTNG_OK);
 
-		switch (get_domain_class_from_ctl_domain_type(domain->type)) {
+		switch (ls::get_domain_class_from_lttng_domain_type(domain->type)) {
 		case lttng::sessiond::domain_class::KERNEL_SPACE:
 			if (policy != LTTNG_CHANNEL_PREALLOCATION_POLICY_PREALLOCATE) {
 				LTTNG_THROW_UNSUPPORTED_ERROR(
@@ -1772,7 +1747,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 	}();
 
 	ls::domain& target_domain =
-		session->get_domain(get_domain_class_from_ctl_domain_type(domain->type));
+		session->get_domain(ls::get_domain_class_from_lttng_domain_type(domain->type));
 
 	/* Extract all channel properties needed to initialize the channel. */
 	auto name = std::string(channel_attr.name[0] ? channel_attr.name : DEFAULT_CHANNEL_NAME);
@@ -2321,9 +2296,10 @@ lttng_error_code cmd_disable_event(struct command_ctx *cmd_ctx,
 		return LTTNG_ERR_UND;
 	}
 
-	for (const auto& pair : session.get_domain(get_domain_class_from_ctl_domain_type(domain))
-					.get_channel(channel_name)
-					.event_rules) {
+	for (const auto& pair :
+	     session.get_domain(ls::get_domain_class_from_lttng_domain_type(domain))
+		     .get_channel(channel_name)
+		     .event_rules) {
 		auto& event_rule_cfg = *pair.second;
 
 		const auto this_pattern_or_name =
@@ -2921,8 +2897,9 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 		return LTTNG_ERR_UND;
 	}
 
-	auto& channel_cfg = session.get_domain(get_domain_class_from_ctl_domain_type(domain->type))
-				    .get_channel(user_visible_channel_name);
+	auto& channel_cfg =
+		session.get_domain(ls::get_domain_class_from_lttng_domain_type(domain->type))
+			.get_channel(user_visible_channel_name);
 	try {
 		channel_cfg.get_event_rule_configuration(*event_rule).enable();
 	} catch (const lttng::sessiond::exceptions::event_rule_configuration_not_found_error& ex) {

@@ -118,6 +118,7 @@ lttnginclude_HEADERS = \
 	lttng/lttng-error.h \
 	lttng/lttng-export.h \
 	lttng/lttng.h \
+	lttng/reclaim.h \
 	lttng/rotation.h \
 	lttng/save.h \
 	lttng/session-descriptor.h \
@@ -204,6 +205,7 @@ noinst_HEADERS = \
 	lttng/log-level-rule-internal.hpp \
 	lttng/notification/channel-internal.hpp \
 	lttng/notification/notification-internal.hpp \
+	lttng/reclaim-internal.hpp \
 	lttng/ref-internal.hpp \
 	lttng/rotate-internal.hpp \
 	lttng/save-internal.hpp \

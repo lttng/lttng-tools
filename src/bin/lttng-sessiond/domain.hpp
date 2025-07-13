@@ -15,6 +15,8 @@
 #include <common/make-unique.hpp>
 #include <common/string-utils/c-string-view.hpp>
 
+#include <lttng/domain.h>
+
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -161,6 +163,8 @@ private:
 
 	channels_t channels;
 };
+
+domain_class get_domain_class_from_lttng_domain_type(enum lttng_domain_type domain_type);
 
 } /* namespace sessiond */
 } /* namespace lttng */
