@@ -1725,6 +1725,7 @@ static std::size_t reclaim_stream_memory(lttng_consumer_stream& stream,
 		 * so it is "allocated". Reclaim it to reduce the memory footprint.
 		 */
 		const auto reclaim_ret = lttng_ust_ctl_reclaim_reader_subbuf(stream.ustream);
+
 		if (reclaim_ret < 0 && reclaim_ret != -ENOMEM) {
 			LTTNG_THROW_POSIX(
 				fmt::format(
@@ -2135,6 +2136,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			msg.u.ask_channel.monitor,
 			msg.u.ask_channel.live_timer_interval,
 			msg.u.ask_channel.is_live,
+			msg.u.ask_channel.continuously_reclaimed,
 			msg.u.ask_channel.root_shm_path,
 			msg.u.ask_channel.shm_path);
 		if (!channel) {
@@ -4639,4 +4641,75 @@ void lttng_ustconsumer_quiescent_stalled_channel(struct lttng_consumer_channel& 
 		channel.session_id,
 		observed_owners,
 		channel.subbuffer_count.value());
+}
+
+void lttng_ustconsumer_reclaim_current_subbuffer(lttng_consumer_stream& stream)
+{
+	const auto initial_reclaim_ret = lttng_ust_ctl_reclaim_reader_subbuf(stream.ustream);
+
+	/*
+	 * Ignore -ENOMEM; it simply means the reader sub-buffer was already reclaimed.
+	 * For instance, an exchange could have been attempted but failed due to the sub-buffer
+	 * being in use by a writer during a previous reclamation attempt.
+	 */
+	if (initial_reclaim_ret < 0 && initial_reclaim_ret != -ENOMEM) {
+		LTTNG_THROW_POSIX(
+			fmt::format(
+				"Failed to reclaim reader sub-buffer for stream: channel_name=`{}`, stream_key={}",
+				stream.chan->name,
+				stream.key),
+			errno);
+	}
+
+	const auto pos_snapshot_ret = lttng_ustconsumer_sample_snapshot_positions(&stream);
+	if (pos_snapshot_ret < 0) {
+		LTTNG_THROW_ERROR(fmt::format(
+			"Failed to take snapshot of stream positions: channel_name=`{}`, stream_key={}, error={}",
+			stream.chan->name,
+			stream.key,
+			pos_snapshot_ret));
+	}
+
+	unsigned long consumed_pos;
+	const auto get_consumed_ret =
+		lttng_ustconsumer_get_consumed_snapshot(&stream, &consumed_pos);
+	if (get_consumed_ret < 0) {
+		LTTNG_THROW_ERROR(fmt::format(
+			"Failed to get stream consumed position: channel_name=`{}`, stream_key={}, error={}",
+			stream.chan->name,
+			stream.key,
+			get_consumed_ret));
+	}
+
+	const auto exchg_ret = lttng_ust_ctl_try_exchange_subbuf(stream.ustream, consumed_pos - 1);
+	if (exchg_ret == -ENOENT) {
+		/* The sub-buffer is now in use, skip it. */
+		DBG_FMT("Exchange failed during reclamation as sub-buffer is in use: channel_name=`{}`, stream_key={}, subbuf_position={}",
+			stream.chan->name,
+			stream.key,
+			consumed_pos);
+	} else if (exchg_ret < 0) {
+		LTTNG_THROW_ERROR(fmt::format(
+			"Failed to exchange sub-buffer for stream: channel_name=`{}`, stream_key={}, subbuf_position={}, error={}",
+			stream.chan->name,
+			stream.key,
+			consumed_pos,
+			exchg_ret));
+	}
+
+	const auto consumed_reclaim_ret = lttng_ust_ctl_reclaim_reader_subbuf(stream.ustream);
+
+	/*
+	 * Ignore -ENOMEM; it simply means the reader sub-buffer was already reclaimed.
+	 * For instance, an exchange could have been attempted but failed due to the sub-buffer
+	 * being in use by a writer during a previous reclamation attempt.
+	 */
+	if (consumed_reclaim_ret < 0 && consumed_reclaim_ret != -ENOMEM) {
+		LTTNG_THROW_POSIX(
+			fmt::format(
+				"Failed to reclaim reader sub-buffer for stream: channel_name=`{}`, stream_key={}",
+				stream.chan->name,
+				stream.key),
+			errno);
+	}
 }

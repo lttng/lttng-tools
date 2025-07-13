@@ -578,6 +578,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 							msg.u.channel.monitor,
 							msg.u.channel.live_timer_interval,
 							msg.u.channel.is_live,
+							false,
 							nullptr,
 							nullptr);
 		if (new_channel == nullptr) {

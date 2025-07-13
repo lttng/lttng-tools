@@ -322,6 +322,23 @@ static int consumer_stream_send_index(lttng_consumer_stream& stream,
 	return consumer_stream_write_index(stream, index);
 }
 
+static int reclaim_current_subbuffer(lttng_consumer_stream& stream,
+				     const struct stream_subbuffer *subbuffer [[maybe_unused]],
+				     struct lttng_consumer_local_data *ctx [[maybe_unused]])
+{
+	try {
+		consumer_stream_reclaim_subbuffer(stream);
+	} catch (const lttng::runtime_error& e) {
+		ERR_FMT("Failed to reclaim reader sub-buffer: channel_name=`{}`, stream_key={}: {}",
+			stream.chan->name,
+			stream.key,
+			e.what());
+		return -1;
+	}
+
+	return 0;
+}
+
 /*
  * Actually do the metadata sync using the given metadata stream.
  *
@@ -840,6 +857,18 @@ struct lttng_consumer_stream *consumer_stream_create(struct lttng_consumer_chann
 		if (ret) {
 			PERROR("Failed to add `send index` callback to stream's post consumption callbacks");
 			goto error;
+		}
+
+		if (stream->chan->continuously_reclaimed) {
+			const post_consume_cb reclaim_post_consume = reclaim_current_subbuffer;
+
+			ret = lttng_dynamic_array_add_element(
+				&stream->read_subbuffer_ops.post_consume_cbs,
+				&reclaim_post_consume);
+			if (ret) {
+				PERROR("Failed to add `sub-buffer reclaim` callback to stream's post consumption callbacks");
+				goto error;
+			}
 		}
 
 		ret = lttng_dynamic_array_add_element(&stream->read_subbuffer_ops.post_consume_cbs,
@@ -1439,4 +1468,20 @@ int consumer_stream_send_live_beacon(lttng_consumer_stream& stream,
 	index.timestamp_end = htobe64(timestamp);
 
 	return consumer_stream_write_index(stream, index);
+}
+
+void consumer_stream_reclaim_subbuffer(lttng_consumer_stream& stream)
+{
+	switch (the_consumer_data.type) {
+	case LTTNG_CONSUMER_KERNEL:
+		LTTNG_THROW_UNSUPPORTED_ERROR(
+			"Buffer reclamation is not available for kernel consumer streams");
+	case LTTNG_CONSUMER32_UST:
+	case LTTNG_CONSUMER64_UST:
+		lttng_ustconsumer_reclaim_current_subbuffer(stream);
+		break;
+	default:
+		ERR("Unknown consumer_data type");
+		abort();
+	}
 }

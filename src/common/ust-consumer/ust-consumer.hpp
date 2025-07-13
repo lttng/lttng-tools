@@ -11,6 +11,7 @@
 
 #include <common/compat/errno.hpp>
 #include <common/consumer/consumer.hpp>
+#include <common/exception.hpp>
 
 #include <set>
 #include <stdbool.h>
@@ -78,6 +79,8 @@ int lttng_ustconsumer_fixup_stalled_channel(struct lttng_consumer_channel *chann
 					    size_t& observed_count);
 
 void lttng_ustconsumer_quiescent_stalled_channel(struct lttng_consumer_channel& channel);
+
+void lttng_ustconsumer_reclaim_current_subbuffer(lttng_consumer_stream& stream);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -284,6 +287,11 @@ static inline int lttng_ustconsumer_fixup_stalled_channel(struct lttng_consumer_
 static inline void
 lttng_ustconsumer_quiescent_stalled_channel(struct lttng_consumer_channel& channel
 					    __attribute__((unused)))
+{
+}
+
+static inline void lttng_ustconsumer_reclaim_current_subbuffer(lttng_consumer_stream& stream
+							       [[maybe_unused]])
 {
 }
 

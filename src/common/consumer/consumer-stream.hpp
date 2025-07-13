@@ -152,4 +152,13 @@ int consumer_stream_send_live_beacon(lttng_consumer_stream& stream,
 				     uint64_t timestamp,
 				     uint64_t stream_id);
 
+/*
+ * Reclaim the current reader sub-buffer of a stream.
+ *
+ * This function must be called with the stream and channel locks held.
+ *
+ * Throws on error.
+ */
+void consumer_stream_reclaim_subbuffer(lttng_consumer_stream& stream);
+
 #endif /* LTTNG_CONSUMER_STREAM_H */

@@ -954,6 +954,7 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 					unsigned int read_timer_interval,
 					unsigned int live_timer_interval,
 					bool is_in_live_session,
+					bool continuously_reclaimed,
 					unsigned int monitor_timer_interval,
 					nonstd::optional<uint64_t> watchdog_timer_interval,
 					int output,
@@ -1002,6 +1003,7 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 	msg->u.ask_channel.read_timer_interval = read_timer_interval;
 	msg->u.ask_channel.live_timer_interval = live_timer_interval;
 	msg->u.ask_channel.is_live = is_in_live_session;
+	msg->u.ask_channel.continuously_reclaimed = continuously_reclaimed;
 	msg->u.ask_channel.monitor_timer_interval = monitor_timer_interval;
 
 	if (watchdog_timer_interval) {

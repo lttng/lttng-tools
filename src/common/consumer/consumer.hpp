@@ -193,6 +193,14 @@ struct lttng_consumer_channel {
 	/* Channel is part of a live session ? */
 	bool is_live = false;
 
+	/*
+	 * Continuously reclaimed channel.
+	 *
+	 * If true, the channel's memory is continuously reclaimed as its
+	 * contents are consumed.
+	 */
+	bool continuously_reclaimed = false;
+
 	/* For channel monitoring timer. */
 	lttng::scheduling::periodic_task::sptr monitor_timer_task;
 
@@ -1022,6 +1030,7 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 							 unsigned int monitor,
 							 unsigned int live_timer_interval,
 							 bool is_in_live_session,
+							 bool continuously_reclaimed,
 							 const char *root_shm_path,
 							 const char *shm_path);
 void consumer_del_stream(struct lttng_consumer_stream *stream, struct lttng_ht *ht);

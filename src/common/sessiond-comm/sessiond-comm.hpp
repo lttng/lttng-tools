@@ -1003,11 +1003,12 @@ struct lttcomm_consumer_msg {
 		struct {
 			uint64_t subbuf_size; /* bytes */
 			uint64_t num_subbuf; /* power of 2 */
-			int32_t overwrite; /* 1: overwrite, 0: discard */
+			uint8_t overwrite:1; /* 1: overwrite, 0: discard */
+			uint8_t is_live:1; /* is part of a live session */
+			uint8_t continuously_reclaimed:1; /* 1: continuously reclaimed, 0: not */
 			uint32_t switch_timer_interval; /* usec */
 			uint32_t read_timer_interval; /* usec */
 			unsigned int live_timer_interval; /* usec */
-			uint8_t is_live; /* is part of a live session */
 			uint32_t monitor_timer_interval; /* usec */
 			LTTNG_OPTIONAL_COMM(uint64_t)
 			LTTNG_PACKED watchdog_timer_interval; /* usec */

@@ -1007,6 +1007,7 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 							 unsigned int monitor,
 							 unsigned int live_timer_interval,
 							 bool is_in_live_session,
+							 bool continuously_reclaimed,
 							 const char *root_shm_path,
 							 const char *shm_path)
 {
@@ -1046,6 +1047,7 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 	channel->monitor = monitor;
 	channel->live_timer_interval = live_timer_interval;
 	channel->is_live = is_in_live_session;
+	channel->continuously_reclaimed = continuously_reclaimed;
 	pthread_mutex_init(&channel->lock, nullptr);
 	pthread_mutex_init(&channel->timer_lock, nullptr);
 
