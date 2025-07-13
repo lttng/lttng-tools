@@ -49,6 +49,11 @@ static struct {
 } opt_watchdog_timer;
 static struct {
 	bool set;
+	uint64_t interval;
+} opt_auto_reclaim_older_than_duration;
+static bool opt_auto_reclaim_consumed = false;
+static struct {
+	bool set;
 	int64_t value;
 } opt_blocking_timeout;
 
@@ -68,6 +73,8 @@ enum {
 	OPT_NUM_SUBBUF,
 	OPT_SWITCH_TIMER,
 	OPT_MONITOR_TIMER,
+	OPT_AUTO_RECLAIM_OLDER_THAN,
+	OPT_AUTO_RECLAIM_CONSUMED,
 	OPT_READ_TIMER,
 	OPT_USERSPACE,
 	OPT_LIST_OPTIONS,
@@ -99,6 +106,8 @@ static struct poptOption long_options[] = {
 	{ "switch-timer", 0, POPT_ARG_INT, nullptr, OPT_SWITCH_TIMER, nullptr, nullptr },
 	{ "monitor-timer", 0, POPT_ARG_INT, nullptr, OPT_MONITOR_TIMER, nullptr, nullptr },
 	{ "watchdog-timer", 0, POPT_ARG_INT, nullptr, OPT_WATCHDOG_TIMER, nullptr, nullptr },
+	{ "auto-reclaim-memory-older-than", 0, POPT_ARG_STRING, nullptr, OPT_AUTO_RECLAIM_OLDER_THAN, nullptr, nullptr },
+	{ "auto-reclaim-memory-consumed", 0, POPT_ARG_NONE, nullptr, OPT_AUTO_RECLAIM_CONSUMED, nullptr, nullptr },
 	{ "read-timer", 0, POPT_ARG_INT, nullptr, OPT_READ_TIMER, nullptr, nullptr },
 	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
 	{ "output", 0, POPT_ARG_STRING, &opt_output, 0, nullptr, nullptr },
@@ -730,6 +739,31 @@ int cmd_enable_channels(int argc, const char **argv)
 			    USEC_UNIT);
 			break;
 		}
+		case OPT_AUTO_RECLAIM_OLDER_THAN:
+		{
+			uint64_t v;
+
+			errno = 0;
+			opt_arg = poptGetOptArg(pc);
+
+			if (utils_parse_time_suffix(opt_arg, &v) < 0) {
+				ERR("Wrong value for --auto-reclaim-memory-older-than parameter: %s",
+				    opt_arg);
+				ret = CMD_ERROR;
+				goto end;
+			}
+
+			opt_auto_reclaim_older_than_duration.set = true;
+			opt_auto_reclaim_older_than_duration.interval = v;
+			DBG("Channel automatic memory reclamation set to older than %" PRIu64 " %s",
+			    opt_monitor_timer.interval,
+			    USEC_UNIT);
+			break;
+		}
+		case OPT_AUTO_RECLAIM_CONSUMED:
+			opt_auto_reclaim_consumed = true;
+			DBG("Channel automatic memory reclamation set to when consumed");
+			break;
 		case OPT_BLOCKING_TIMEOUT:
 		{
 			uint64_t v;
@@ -896,6 +930,18 @@ int cmd_enable_channels(int argc, const char **argv)
 	    opt_blocking_timeout.value != 0) {
 		ERR("You cannot specify --overwrite and --blocking-timeout=N, "
 		    "where N is different than 0");
+		ret = CMD_ERROR;
+		goto end;
+	}
+
+	if (opt_auto_reclaim_older_than_duration.set && opt_auto_reclaim_consumed) {
+		ERR("You cannot specify --auto-reclaim-memory-older-than and --auto-reclaim-memory-consumed.");
+		ret = CMD_ERROR;
+		goto end;
+	}
+
+	if (chan_opts.attr.overwrite == 1 && opt_auto_reclaim_consumed) {
+		ERR("You cannot specify --auto-reclaim-memory-consumed with --overwrite.");
 		ret = CMD_ERROR;
 		goto end;
 	}
