@@ -124,6 +124,7 @@ lttnginclude_HEADERS = \
 	lttng/session-descriptor.h \
 	lttng/session.h \
 	lttng/snapshot.h \
+	lttng/stream-info.h \
 	lttng/tracker.h \
 	lttng/userspace-probe.h
 

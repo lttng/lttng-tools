@@ -70,6 +70,7 @@
 #include <lttng/session-descriptor.h>
 #include <lttng/session.h>
 #include <lttng/snapshot.h>
+#include <lttng/stream-info.h>
 #include <lttng/tracker.h>
 #include <lttng/trigger/trigger.h>
 #include <lttng/userspace-probe.h>

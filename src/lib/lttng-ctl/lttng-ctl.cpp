@@ -33,6 +33,7 @@
 #include <common/payload.hpp>
 #include <common/scope-exit.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/stream-info.hpp>
 #include <common/tracker.hpp>
 #include <common/unix.hpp>
 #include <common/uri.hpp>
@@ -48,6 +49,7 @@
 #include <lttng/lttng.h>
 #include <lttng/session-descriptor-internal.hpp>
 #include <lttng/session-internal.hpp>
+#include <lttng/stream-info.h>
 #include <lttng/trigger/trigger-internal.hpp>
 #include <lttng/userspace-probe-internal.hpp>
 
@@ -3562,6 +3564,85 @@ end:
 	lttng_payload_reset(&reply);
 	lttng_triggers_destroy(local_triggers);
 	return ret_code;
+}
+
+enum lttng_channel_get_data_stream_info_sets_status
+lttng_channel_get_data_stream_info_sets(const char *session_name,
+					const char *channel_name,
+					enum lttng_domain_type domain,
+					const struct lttng_data_stream_info_sets **sets)
+{
+	int ret;
+	enum lttng_channel_get_data_stream_info_sets_status ret_status =
+		LTTNG_CHANNEL_GET_DATA_STREAM_INFO_SETS_STATUS_OK;
+	struct lttcomm_session_msg lsm = {};
+	struct lttng_payload reply;
+	struct lttng_payload_view lsm_view =
+		lttng_payload_view_init_from_buffer((const char *) &lsm, 0, sizeof(lsm));
+
+	lttng_payload_init(&reply);
+	const auto reset_payload =
+		lttng::make_scope_exit([&reply]() noexcept { lttng_payload_reset(&reply); });
+
+	if (!session_name || !channel_name || !sets) {
+		ret_status = LTTNG_CHANNEL_GET_DATA_STREAM_INFO_SETS_STATUS_INVALID_PARAMETER;
+		goto end;
+	}
+
+	if (domain != LTTNG_DOMAIN_UST) {
+		ret_status = LTTNG_CHANNEL_GET_DATA_STREAM_INFO_SETS_STATUS_UNSUPPORTED_DOMAIN;
+		goto end;
+	}
+
+	/* Setup the message */
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_GET_CHANNEL_DATA_STREAM_INFO_SETS;
+
+	/* Set session name */
+	ret = lttng_strncpy(lsm.session.name, session_name, sizeof(lsm.session.name));
+	if (ret) {
+		ret_status = LTTNG_CHANNEL_GET_DATA_STREAM_INFO_SETS_STATUS_INVALID_PARAMETER;
+		goto end;
+	}
+
+	/* Set domain */
+	lsm.domain.type = domain;
+
+	/* Set channel name */
+	ret = lttng_strncpy(lsm.u.get_channel_data_stream_info_sets.channel_name,
+			    channel_name,
+			    sizeof(lsm.u.get_channel_data_stream_info_sets.channel_name));
+	if (ret) {
+		ret_status = LTTNG_CHANNEL_GET_DATA_STREAM_INFO_SETS_STATUS_INVALID_PARAMETER;
+		goto end;
+	}
+
+	lsm.fd_count = 0;
+
+	ret = lttng_ctl_ask_sessiond_payload(&lsm_view, &reply);
+	if (ret < 0) {
+		ret_status = LTTNG_CHANNEL_GET_DATA_STREAM_INFO_SETS_STATUS_ERROR;
+		goto end;
+	}
+
+	{
+		lttng_payload_view reply_view =
+			lttng_payload_view_from_payload(&reply, 0, reply.buffer.size);
+
+		try {
+			auto sets_create_result =
+				lttng_data_stream_info_sets::create_from_payload(reply_view);
+			*sets = sets_create_result.second.release();
+		} catch (const std::exception& e) {
+			/* Catch any exception thrown during creation. */
+			ERR("Failed to create data stream info sets: %s", e.what());
+			ret_status = LTTNG_CHANNEL_GET_DATA_STREAM_INFO_SETS_STATUS_ERROR;
+			goto end;
+		}
+	}
+
+end:
+	lttng_payload_reset(&reply);
+	return ret_status;
 }
 
 /*

@@ -11,6 +11,7 @@
 #include "clear.hpp"
 #include "client.hpp"
 #include "cmd.hpp"
+#include "commands/get-channel-memory-usage.hpp"
 #include "commands/reclaim-channel-memory.hpp"
 #include "domain.hpp"
 #include "health-sessiond.hpp"
@@ -35,6 +36,7 @@
 #include <common/pthread-lock.hpp>
 #include <common/scope-exit.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/stream-info.hpp>
 #include <common/tracker.hpp>
 #include <common/unix.hpp>
 #include <common/utils.hpp>
@@ -1097,6 +1099,65 @@ void command_ctx_set_status_code(command_ctx& cmd_ctx, enum lttng_error_code sta
 	((struct lttcomm_lttng_msg *) (cmd_ctx.reply_payload.buffer.data))->ret_code = status_code;
 }
 
+lttng_data_stream_info_sets lttng_data_stream_info_sets_create_from_memory_usage_groups(
+	const std::vector<lttng::sessiond::commands::stream_memory_usage_group>& groups)
+{
+	lttng_data_stream_info_sets sets;
+
+	sets.sets.reserve(groups.size());
+
+	for (const auto& group : groups) {
+		lttng_data_stream_info_set set;
+
+		/* Set owner information */
+		switch (group.owner.owner_type) {
+		case lttng::sessiond::commands::stream_group_owner::type::USER:
+			set.is_per_pid = false;
+			set.owner.uid = group.owner.id.uid;
+			break;
+		case lttng::sessiond::commands::stream_group_owner::type::PROCESS:
+			set.is_per_pid = true;
+			set.owner.pid = group.owner.id.pid;
+			break;
+		default:
+			/* Skip unsupported types */
+			continue;
+		}
+
+		/* Set bitness */
+		switch (group.owner.bitness) {
+		case lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness::ABI_32:
+			set.bitness = LTTNG_APP_BITNESS_32;
+			break;
+		case lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness::ABI_64:
+			set.bitness = LTTNG_APP_BITNESS_64;
+			break;
+		}
+
+		set.streams.reserve(group.streams_memory_usage.size());
+
+		/* Convert each stream */
+		for (const auto& stream : group.streams_memory_usage) {
+			lttng_data_stream_info stream_info;
+
+			/* Set CPU ID if available */
+			if (stream.id.cpu_id.has_value()) {
+				stream_info.cpu_id = *stream.id.cpu_id;
+			}
+
+			/* Set memory usage (use logical size) */
+			stream_info.memory_usage = stream.size_bytes.physical;
+			stream_info.max_memory_usage = stream.size_bytes.logical;
+
+			set.streams.emplace_back(std::move(stream_info));
+		}
+
+		sets.sets.emplace_back(std::move(set));
+	}
+
+	return sets;
+}
+
 /*
  * Process the command requested by the lttng client within the command
  * context structure. This function make sure that the return structure (llm)
@@ -1218,6 +1279,7 @@ int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_error)
 	case LTTCOMM_SESSIOND_COMMAND_LIST_TRIGGERS:
 	case LTTCOMM_SESSIOND_COMMAND_EXECUTE_ERROR_QUERY:
 	case LTTCOMM_SESSIOND_COMMAND_RECLAIM_CHANNEL_MEMORY:
+	case LTTCOMM_SESSIOND_COMMAND_GET_CHANNEL_DATA_STREAM_INFO_SETS:
 		break;
 	default:
 		/* Setup lttng message with no payload */
@@ -2345,6 +2407,40 @@ skip_domain:
 		};
 
 		setup_lttng_msg_no_cmd_header(cmd_ctx, &reclaim_return, sizeof(reclaim_return));
+		ret = LTTNG_OK;
+		break;
+	}
+	case LTTCOMM_SESSIOND_COMMAND_GET_CHANNEL_DATA_STREAM_INFO_SETS:
+	{
+		DBG("Client get channel data stream info sets \"%s\"", (*target_session)->name);
+
+		/* Validate that channel_name is null-terminated */
+		const auto channel_name =
+			cmd_ctx->lsm.u.get_channel_data_stream_info_sets.channel_name;
+		if (strnlen(channel_name,
+			    sizeof(cmd_ctx->lsm.u.get_channel_data_stream_info_sets.channel_name)) ==
+		    sizeof(cmd_ctx->lsm.u.get_channel_data_stream_info_sets.channel_name)) {
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR("Channel name is not null-terminated");
+		}
+
+		const auto domain = lttng::sessiond::get_domain_class_from_lttng_domain_type(
+			cmd_ctx->lsm.domain.type);
+
+		const auto results = lttng::sessiond::commands::get_channel_memory_usage(
+			*target_session, domain, lttng::c_string_view(channel_name));
+
+		/* Convert results to lttng_data_stream_info_sets using helper function */
+		lttng_data_stream_info_sets sets =
+			lttng_data_stream_info_sets_create_from_memory_usage_groups(results);
+
+		setup_empty_lttng_msg(cmd_ctx);
+		const auto original_payload_size = cmd_ctx->reply_payload.buffer.size;
+		sets.serialize(cmd_ctx->reply_payload);
+		const auto payload_size =
+			cmd_ctx->reply_payload.buffer.size - original_payload_size;
+
+		update_lttng_msg(cmd_ctx, 0, payload_size);
+
 		ret = LTTNG_OK;
 		break;
 	}
