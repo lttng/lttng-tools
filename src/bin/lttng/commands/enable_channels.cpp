@@ -35,6 +35,10 @@ static char *opt_output;
 static int opt_buffer_type = -1;
 static enum lttng_channel_allocation_policy opt_allocation_policy =
 	DEFAULT_CHANNEL_ALLOCATION_POLICY;
+
+static enum lttng_channel_preallocation_policy opt_preallocation_policy =
+	DEFAULT_CHANNEL_PREALLOCATION_POLICY;
+
 static struct {
 	bool set;
 	uint64_t interval;
@@ -73,6 +77,7 @@ enum {
 	OPT_BUFFER_OWNERSHIP,
 	OPT_BUFFER_ALLOCATION,
 	OPT_WATCHDOG_TIMER,
+	OPT_BUFFER_PREALLOCATION,
 };
 
 static struct lttng_handle *handle;
@@ -102,6 +107,7 @@ static struct poptOption long_options[] = {
 	{ "buffers-global", 0, POPT_ARG_VAL, &opt_buffer_type, LTTNG_BUFFER_GLOBAL, nullptr, nullptr },
 	{ "buffer-ownership", 0, POPT_ARG_STRING, nullptr, OPT_BUFFER_OWNERSHIP, nullptr, nullptr },
 	{ "buffer-allocation", 0, POPT_ARG_STRING, nullptr, OPT_BUFFER_ALLOCATION, nullptr, nullptr },
+	{ "buffer-preallocation", 0, POPT_ARG_STRING, nullptr, OPT_BUFFER_PREALLOCATION, nullptr, nullptr },
 	{ "tracefile-size", 'C', POPT_ARG_INT, nullptr, OPT_TRACEFILE_SIZE, nullptr, nullptr },
 	{ "tracefile-count", 'W', POPT_ARG_INT, nullptr, OPT_TRACEFILE_COUNT, nullptr, nullptr },
 	{ "blocking-timeout", 0, POPT_ARG_INT, nullptr, OPT_BLOCKING_TIMEOUT, nullptr, nullptr },
@@ -390,6 +396,13 @@ static int enable_channel(char *session_name, char *channel_list)
 		ret = lttng_channel_set_allocation_policy(channel, opt_allocation_policy);
 		if (ret != LTTNG_OK) {
 			ERR("Failed to set the channel's buffer allocation");
+			error = 1;
+			goto error;
+		}
+
+		ret = lttng_channel_set_preallocation_policy(channel, opt_preallocation_policy);
+		if (ret != LTTNG_OK) {
+			ERR("Failed to set the channel's buffer preallocation policy");
 			error = 1;
 			goto error;
 		}
@@ -838,6 +851,25 @@ int cmd_enable_channels(int argc, const char **argv)
 				ERR_FMT("Wrong value for --buffer-allocation: `{}`: "
 					"expecting `per-cpu` or `per-channel`",
 					policy.data());
+				ret = CMD_ERROR;
+				goto end;
+			}
+			break;
+		}
+		case OPT_BUFFER_PREALLOCATION:
+		{
+			const lttng::c_string_view mode(poptGetOptArg(pc));
+
+			if (mode == "preallocate") {
+				opt_preallocation_policy =
+					LTTNG_CHANNEL_PREALLOCATION_POLICY_PREALLOCATE;
+			} else if (mode == "on-demand") {
+				opt_preallocation_policy =
+					LTTNG_CHANNEL_PREALLOCATION_POLICY_ON_DEMAND;
+			} else {
+				ERR_FMT("Wrong value for --buffer-preallocation: `{}`: "
+					"expecting `preallocate` or `on-demand`",
+					mode.data());
 				ret = CMD_ERROR;
 				goto end;
 			}
