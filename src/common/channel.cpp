@@ -179,6 +179,12 @@ ssize_t lttng_channel_create_from_buffer(const struct lttng_buffer_view *view,
 	extended->blocking_timeout = channel_comm->blocking_timeout;
 	extended->allocation_policy = channel_comm->allocation_policy;
 	extended->preallocation_policy = channel_comm->preallocation_policy;
+	if (channel_comm->automatic_memory_reclamation_maximal_age_us.is_set) {
+		LTTNG_OPTIONAL_SET(
+			&extended->automatic_memory_reclamation_maximal_age_us,
+			LTTNG_OPTIONAL_GET(
+				channel_comm->automatic_memory_reclamation_maximal_age_us));
+	}
 
 	*channel = local_channel;
 	local_channel = nullptr;
@@ -239,6 +245,11 @@ int lttng_channel_serialize(struct lttng_channel *channel, struct lttng_dynamic_
 	channel_comm.blocking_timeout = extended->blocking_timeout;
 	channel_comm.allocation_policy = extended->allocation_policy;
 	channel_comm.preallocation_policy = extended->preallocation_policy;
+	if (extended->automatic_memory_reclamation_maximal_age_us.is_set) {
+		LTTNG_OPTIONAL_SET(
+			&channel_comm.automatic_memory_reclamation_maximal_age_us,
+			LTTNG_OPTIONAL_GET(extended->automatic_memory_reclamation_maximal_age_us));
+	}
 
 	/* Header */
 	ret = lttng_dynamic_buffer_append(buf, &channel_comm, sizeof(channel_comm));

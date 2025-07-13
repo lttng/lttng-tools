@@ -2870,6 +2870,49 @@ lttng_channel_set_preallocation_policy(struct lttng_channel *chan,
 	return LTTNG_OK;
 }
 
+enum lttng_channel_status
+lttng_channel_get_automatic_memory_reclamation_policy(const struct lttng_channel *chan,
+						      uint64_t *maximal_age_us)
+{
+	if (!chan || !maximal_age_us) {
+		return LTTNG_CHANNEL_STATUS_INVALID;
+	}
+
+	const auto extended =
+		static_cast<const struct lttng_channel_extended *>(chan->attr.extended.ptr);
+
+	if (!extended) {
+		return LTTNG_CHANNEL_STATUS_INVALID;
+	}
+
+	if (!extended->automatic_memory_reclamation_maximal_age_us.is_set) {
+		return LTTNG_CHANNEL_STATUS_UNSET;
+	}
+
+	*maximal_age_us = LTTNG_OPTIONAL_GET(extended->automatic_memory_reclamation_maximal_age_us);
+
+	return LTTNG_CHANNEL_STATUS_OK;
+}
+
+enum lttng_channel_status
+lttng_channel_set_automatic_memory_reclamation_policy(struct lttng_channel *chan,
+						      uint64_t maximal_age_us)
+{
+	if (!chan) {
+		return LTTNG_CHANNEL_STATUS_INVALID;
+	}
+
+	const auto extended = static_cast<struct lttng_channel_extended *>(chan->attr.extended.ptr);
+
+	if (!extended) {
+		return LTTNG_CHANNEL_STATUS_INVALID;
+	}
+
+	LTTNG_OPTIONAL_SET(&extended->automatic_memory_reclamation_maximal_age_us, maximal_age_us);
+
+	return LTTNG_CHANNEL_STATUS_OK;
+}
+
 /*
  * Check if session daemon is alive.
  *

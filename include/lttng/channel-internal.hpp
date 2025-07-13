@@ -23,6 +23,8 @@ struct lttng_channel_extended {
 	uint8_t allocation_policy;
 	/* enum lttng_channel_preallocation_policy */
 	uint8_t preallocation_policy;
+	/* Maximal age of subbuffers in microseconds (automatic reclamation policy). */
+	LTTNG_OPTIONAL_COMM(std::uint64_t) LTTNG_PACKED automatic_memory_reclamation_maximal_age_us;
 } LTTNG_PACKED;
 
 struct lttng_channel_comm {
@@ -52,6 +54,8 @@ struct lttng_channel_comm {
 	uint8_t allocation_policy;
 	/* enum lttng_channel_preallocation_policy */
 	uint8_t preallocation_policy;
+	/* Maximal age of subbuffers in microseconds (automatic reclamation policy). */
+	LTTNG_OPTIONAL_COMM(std::uint64_t) LTTNG_PACKED automatic_memory_reclamation_maximal_age_us;
 } LTTNG_PACKED;
 
 struct lttng_channel *lttng_channel_create_internal();

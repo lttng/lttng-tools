@@ -10,8 +10,10 @@
 
 #include <lttng/domain.h>
 #include <lttng/event.h>
+#include <lttng/lttng-error.h>
 #include <lttng/lttng-export.h>
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -44,6 +46,21 @@ enum lttng_channel_get_watchdog_timer_interval_status {
 enum lttng_channel_preallocation_policy {
 	LTTNG_CHANNEL_PREALLOCATION_POLICY_PREALLOCATE = 0,
 	LTTNG_CHANNEL_PREALLOCATION_POLICY_ON_DEMAND = 1,
+};
+
+/*!
+@brief
+    Status code for \lt_obj_channel property accessors.
+
+@ingroup api_channel
+*/
+enum lttng_channel_status {
+	/// Success
+	LTTNG_CHANNEL_STATUS_OK = 0,
+	/// Property is unset
+	LTTNG_CHANNEL_STATUS_UNSET = 1,
+	/// Invalid arguments
+	LTTNG_CHANNEL_STATUS_INVALID = -1,
 };
 
 /*
@@ -897,6 +914,14 @@ lttng_channel_get_preallocation_policy(const struct lttng_channel *channel,
 LTTNG_EXPORT extern enum lttng_error_code
 lttng_channel_set_preallocation_policy(struct lttng_channel *channel,
 				       enum lttng_channel_preallocation_policy policy);
+
+LTTNG_EXPORT extern enum lttng_channel_status
+lttng_channel_get_automatic_memory_reclamation_policy(const struct lttng_channel *channel,
+						      uint64_t *maximal_age_us);
+
+LTTNG_EXPORT extern enum lttng_channel_status
+lttng_channel_set_automatic_memory_reclamation_policy(struct lttng_channel *channel,
+						      uint64_t maximal_age_us);
 
 #ifdef __cplusplus
 }
