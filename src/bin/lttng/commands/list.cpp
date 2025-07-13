@@ -1288,6 +1288,19 @@ static const char *allocation_policy_to_pretty_string(enum lttng_channel_allocat
 	}
 }
 
+static const char *
+preallocation_policy_to_pretty_string(enum lttng_channel_preallocation_policy policy)
+{
+	switch (policy) {
+	case LTTNG_CHANNEL_PREALLOCATION_POLICY_PREALLOCATE:
+		return "preallocate";
+	case LTTNG_CHANNEL_PREALLOCATION_POLICY_ON_DEMAND:
+		return "on-demand";
+	default:
+		return "unknown";
+	}
+}
+
 /*
  * Pretty print channel
  */
@@ -1348,9 +1361,49 @@ static void print_channel(struct lttng_channel *channel)
 	MSG("- %s:%s\n", channel->name, enabled_string(channel->enabled));
 	MSG("%sAttributes:", indent4);
 	MSG("%sAllocation policy: %s", indent6, allocation_policy_str);
+
+	{
+		enum lttng_channel_preallocation_policy preallocation_policy;
+		const auto preallocation_ret =
+			lttng_channel_get_preallocation_policy(channel, &preallocation_policy);
+		if (preallocation_ret != LTTNG_OK) {
+			ERR("Failed to retrieve preallocation policy of channel");
+			return;
+		}
+
+		MSG("%sPreallocation policy: %s",
+		    indent6,
+		    preallocation_policy_to_pretty_string(preallocation_policy));
+	}
+
 	MSG("%sEvent-loss mode:   %s", indent6, channel->attr.overwrite ? "overwrite" : "discard");
 	MSG("%sSub-buffer size:   %" PRIu64 " bytes", indent6, channel->attr.subbuf_size);
 	MSG("%sSub-buffer count:  %" PRIu64, indent6, channel->attr.num_subbuf);
+
+	{
+		uint64_t maximal_age_us = 0;
+		static const char *const prop_name = "Automatic memory reclamation policy";
+		const auto reclamation_status =
+			lttng_channel_get_automatic_memory_reclamation_policy(channel,
+									      &maximal_age_us);
+		if (reclamation_status == LTTNG_CHANNEL_STATUS_OK) {
+			if (maximal_age_us == 0) {
+				MSG("%s%s: consumed", indent6, prop_name);
+
+			} else {
+				MSG("%s%s: when older than %" PRIu64 " %s",
+				    indent6,
+				    prop_name,
+				    maximal_age_us,
+				    USEC_UNIT);
+			}
+		} else if (reclamation_status == LTTNG_CHANNEL_STATUS_UNSET) {
+			MSG("%s%s: none", indent6, prop_name);
+		} else {
+			ERR("Failed to retrieve automatic memory reclamation policy of channel");
+			return;
+		}
+	}
 
 	print_timer("Switch timer", 6, channel->attr.switch_timer_interval);
 	print_timer("Read timer", 8, channel->attr.read_timer_interval);
