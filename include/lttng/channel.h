@@ -41,6 +41,11 @@ enum lttng_channel_get_watchdog_timer_interval_status {
 	LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_UNSET = 2,
 };
 
+enum lttng_channel_preallocation_policy {
+	LTTNG_CHANNEL_PREALLOCATION_POLICY_PREALLOCATE = 0,
+	LTTNG_CHANNEL_PREALLOCATION_POLICY_ON_DEMAND = 1,
+};
+
 /*
  * Tracer channel attributes. For both kernel and user-space.
  *
@@ -884,6 +889,14 @@ channels.
 LTTNG_EXPORT extern enum lttng_error_code
 lttng_channel_set_allocation_policy(struct lttng_channel *channel,
 				    enum lttng_channel_allocation_policy policy);
+
+LTTNG_EXPORT extern enum lttng_error_code
+lttng_channel_get_preallocation_policy(const struct lttng_channel *channel,
+				       enum lttng_channel_preallocation_policy *policy);
+
+LTTNG_EXPORT extern enum lttng_error_code
+lttng_channel_set_preallocation_policy(struct lttng_channel *channel,
+				       enum lttng_channel_preallocation_policy policy);
 
 #ifdef __cplusplus
 }

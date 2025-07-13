@@ -178,6 +178,7 @@ ssize_t lttng_channel_create_from_buffer(const struct lttng_buffer_view *view,
 
 	extended->blocking_timeout = channel_comm->blocking_timeout;
 	extended->allocation_policy = channel_comm->allocation_policy;
+	extended->preallocation_policy = channel_comm->preallocation_policy;
 
 	*channel = local_channel;
 	local_channel = nullptr;
@@ -237,6 +238,7 @@ int lttng_channel_serialize(struct lttng_channel *channel, struct lttng_dynamic_
 
 	channel_comm.blocking_timeout = extended->blocking_timeout;
 	channel_comm.allocation_policy = extended->allocation_policy;
+	channel_comm.preallocation_policy = extended->preallocation_policy;
 
 	/* Header */
 	ret = lttng_dynamic_buffer_append(buf, &channel_comm, sizeof(channel_comm));

@@ -21,6 +21,8 @@ struct lttng_channel_extended {
 	int64_t blocking_timeout;
 	/* enum lttng_channel_allocation_policy */
 	uint8_t allocation_policy;
+	/* enum lttng_channel_preallocation_policy */
+	uint8_t preallocation_policy;
 } LTTNG_PACKED;
 
 struct lttng_channel_comm {
@@ -48,6 +50,8 @@ struct lttng_channel_comm {
 	int64_t blocking_timeout;
 	/* enum lttng_channel_allocation_policy */
 	uint8_t allocation_policy;
+	/* enum lttng_channel_preallocation_policy */
+	uint8_t preallocation_policy;
 } LTTNG_PACKED;
 
 struct lttng_channel *lttng_channel_create_internal();

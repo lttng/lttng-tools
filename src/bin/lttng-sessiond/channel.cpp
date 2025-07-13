@@ -64,6 +64,7 @@ struct lttng_channel *channel_new_default_attr(int dom, enum lttng_buffer_type t
 		extended_attr->blocking_timeout = DEFAULT_KERNEL_CHANNEL_BLOCKING_TIMEOUT;
 		extended_attr->monitor_timer_interval = DEFAULT_KERNEL_CHANNEL_MONITOR_TIMER;
 		extended_attr->allocation_policy = DEFAULT_CHANNEL_ALLOCATION_POLICY;
+		extended_attr->preallocation_policy = DEFAULT_CHANNEL_PREALLOCATION_POLICY;
 		break;
 	case LTTNG_DOMAIN_JUL:
 		channel_name = DEFAULT_JUL_CHANNEL_NAME;
@@ -94,6 +95,7 @@ struct lttng_channel *channel_new_default_attr(int dom, enum lttng_buffer_type t
 				&extended_attr->watchdog_timer_interval,
 				static_cast<uint64_t>(DEFAULT_UST_UID_CHANNEL_WATCHDOG_TIMER));
 			extended_attr->allocation_policy = DEFAULT_CHANNEL_ALLOCATION_POLICY;
+			extended_attr->preallocation_policy = DEFAULT_CHANNEL_PREALLOCATION_POLICY;
 			break;
 		case LTTNG_BUFFER_PER_PID:
 		default:
@@ -107,6 +109,7 @@ struct lttng_channel *channel_new_default_attr(int dom, enum lttng_buffer_type t
 			extended_attr->monitor_timer_interval =
 				DEFAULT_UST_PID_CHANNEL_MONITOR_TIMER;
 			extended_attr->allocation_policy = DEFAULT_CHANNEL_ALLOCATION_POLICY;
+			extended_attr->preallocation_policy = DEFAULT_CHANNEL_PREALLOCATION_POLICY;
 			break;
 		}
 		break;
