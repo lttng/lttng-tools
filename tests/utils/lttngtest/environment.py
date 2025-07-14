@@ -1485,7 +1485,7 @@ def count_events_worker(args):
             continue
 
         if type(msg) is bt2._DiscardedEventsMessageConst:
-            discarded += msg.count
+            discarded += msg.count if msg.count is not None else 1
 
     return (received, discarded)
 
