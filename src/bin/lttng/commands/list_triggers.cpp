@@ -1237,10 +1237,7 @@ int cmd_list_triggers(int argc, const char **argv)
 	struct lttng_triggers *triggers = nullptr;
 	struct mi_writer *mi_writer = nullptr;
 
-	argc--;
-	argv++;
-
-	argpar_iter = argpar_iter_create(argc, argv, list_trigger_options);
+	argpar_iter = argpar_iter_create(argc - 1, argv + 1, list_trigger_options);
 	if (!argpar_iter) {
 		ERR("Failed to allocate an argpar iter.");
 		goto error;
