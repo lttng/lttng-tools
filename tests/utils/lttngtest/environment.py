@@ -469,6 +469,29 @@ class _WaitTraceTestApplication:
 
             time.sleep(0.001)
 
+    def taskset(self, cpu):
+        """
+        Use taskset to set the CPU affinity for the traced application.
+        """
+        if not self.vpid:
+            raise RuntimeError("No process ID")
+
+        if self._has_returned:
+            raise RuntimeError("Application is already marked as returned")
+
+        p = subprocess.Popen(["taskset", "-p", "-c", str(cpu), str(self.vpid)])
+        if p.wait() or p.returncode != 0:
+            raise RuntimeError("taskset failed, return code: {}".format(p.returncode))
+
+    def taskset_anycpu(self, retry=True):
+        while True:
+            try:
+                self.taskset(list(online_cpus())[0])
+                break
+            except RuntimeError as e:
+                if retry:
+                    pass
+
     def touch_last_event_file(self):
         if self._wait_before_last_event_file_path is None:
             raise RuntimeError("wait_before_laswt_event_file_path not set")
