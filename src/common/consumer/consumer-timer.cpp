@@ -13,6 +13,7 @@
 #include <common/consumer/consumer-testpoint.hpp>
 #include <common/consumer/consumer-timer.hpp>
 #include <common/consumer/live-timer-task.hpp>
+#include <common/consumer/memory-reclaim-timer-task.hpp>
 #include <common/consumer/metadata-switch-timer-task.hpp>
 #include <common/consumer/monitor-timer-task.hpp>
 #include <common/consumer/watchdog-timer-task.hpp>
@@ -241,6 +242,61 @@ int consumer_timer_stall_watchdog_stop(struct lttng_consumer_channel *channel)
 	channel->stall_watchdog_timer_task->cancel();
 	channel->stall_watchdog_timer_task.reset();
 	return 0;
+}
+
+int consumer_timer_memory_reclaim_start(lttng_consumer_channel& channel,
+					std::chrono::microseconds max_age,
+					lttng::scheduling::scheduler& scheduler)
+{
+	LTTNG_ASSERT(channel.key);
+	LTTNG_ASSERT(!channel.is_deleted);
+	LTTNG_ASSERT(!channel.memory_reclaim_timer_task);
+	LTTNG_ASSERT(max_age.count() > 0);
+
+	/*
+	 * The period is set to half the max_age, but at least
+	 * DEFAULT_MINIMAL_MEMORY_RECLAIM_TIMER_PERIOD_MS milliseconds.
+	 *
+	 * This ensures that the timer runs frequently enough to reclaim memory
+	 * without being too aggressive.
+	 */
+	const std::chrono::nanoseconds period = std::max(
+		std::chrono::duration_cast<std::chrono::nanoseconds>(max_age) / 2,
+		std::chrono::duration_cast<std::chrono::nanoseconds>(
+			std::chrono::milliseconds(DEFAULT_MINIMAL_MEMORY_RECLAIM_TIMER_PERIOD_MS)));
+	DBG_FMT("Starting memory reclaim timer task: channel_name=`{}`, key={}, session_id={}, evaluation_period={}ms, age_limit={}µs",
+		channel.name,
+		channel.key,
+		channel.session_id,
+		std::chrono::duration_cast<std::chrono::nanoseconds>(period).count());
+
+	try {
+		channel.memory_reclaim_timer_task =
+			std::make_shared<lttng::consumer::memory_reclaim_timer_task>(
+				period, channel, max_age);
+
+		scheduler.schedule(channel.memory_reclaim_timer_task,
+				   std::chrono::steady_clock::now() + period);
+	} catch (const std::bad_alloc& e) {
+		ERR_FMT("Failed to allocate memory for memory reclaim timer task: {}: channel_name=`{}`, key={}, session_id={}",
+			e.what(),
+			channel.name,
+			channel.key,
+			channel.session_id);
+		return -1;
+	}
+
+	return 0;
+}
+
+void consumer_timer_memory_reclaim_stop(lttng_consumer_channel *channel)
+{
+	LTTNG_ASSERT(channel);
+	LTTNG_ASSERT(channel->memory_reclaim_timer_task);
+
+	/* Cancel the memory reclaim timer task if it is scheduled. */
+	channel->memory_reclaim_timer_task->cancel();
+	channel->memory_reclaim_timer_task.reset();
 }
 
 int consumer_timer_thread_get_channel_monitor_pipe()

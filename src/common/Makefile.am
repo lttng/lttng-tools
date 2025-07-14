@@ -262,6 +262,8 @@ libconsumer_la_SOURCES = \
 	consumer/metadata-switch-timer-task.hpp \
 	consumer/monitor-timer-task.cpp \
 	consumer/monitor-timer-task.hpp \
+	consumer/memory-reclaim-timer-task.cpp \
+	consumer/memory-reclaim-timer-task.hpp \
 	consumer/watchdog-timer-task.cpp \
 	consumer/watchdog-timer-task.hpp
 

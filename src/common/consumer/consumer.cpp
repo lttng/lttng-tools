@@ -390,6 +390,10 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 	if (channel->stall_watchdog_timer_task) {
 		consumer_timer_stall_watchdog_stop(channel);
 	}
+	if (channel->memory_reclaim_timer_task) {
+		/* Stop the memory reclaim task if it is running. */
+		consumer_timer_memory_reclaim_stop(channel);
+	}
 
 	pthread_mutex_lock(&the_consumer_data.lock);
 	pthread_mutex_lock(&channel->lock);
@@ -993,23 +997,25 @@ end:
  *
  * On error, return NULL.
  */
-struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
-							 uint64_t session_id,
-							 const uint64_t *chunk_id,
-							 const char *pathname,
-							 const char *name,
-							 uint64_t relayd_id,
-							 enum lttng_event_output output,
-							 uint64_t tracefile_size,
-							 uint64_t tracefile_count,
-							 uint64_t subbuffer_count,
-							 uint64_t session_id_per_pid,
-							 unsigned int monitor,
-							 unsigned int live_timer_interval,
-							 bool is_in_live_session,
-							 bool continuously_reclaimed,
-							 const char *root_shm_path,
-							 const char *shm_path)
+struct lttng_consumer_channel *consumer_allocate_channel(
+	uint64_t key,
+	uint64_t session_id,
+	const uint64_t *chunk_id,
+	const char *pathname,
+	const char *name,
+	uint64_t relayd_id,
+	enum lttng_event_output output,
+	uint64_t tracefile_size,
+	uint64_t tracefile_count,
+	uint64_t subbuffer_count,
+	uint64_t session_id_per_pid,
+	unsigned int monitor,
+	unsigned int live_timer_interval,
+	bool is_in_live_session,
+	bool continuously_reclaimed,
+	nonstd::optional<std::chrono::microseconds> automatic_memory_reclamation_max_age,
+	const char *root_shm_path,
+	const char *shm_path)
 {
 	struct lttng_consumer_channel *channel = nullptr;
 	struct lttng_trace_chunk *trace_chunk = nullptr;
@@ -1048,6 +1054,7 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 	channel->live_timer_interval = live_timer_interval;
 	channel->is_live = is_in_live_session;
 	channel->continuously_reclaimed = continuously_reclaimed;
+	channel->automatic_memory_reclamation_max_age = automatic_memory_reclamation_max_age;
 	pthread_mutex_init(&channel->lock, nullptr);
 	pthread_mutex_init(&channel->timer_lock, nullptr);
 

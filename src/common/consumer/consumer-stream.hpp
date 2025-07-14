@@ -161,4 +161,15 @@ int consumer_stream_send_live_beacon(lttng_consumer_stream& stream,
  */
 void consumer_stream_reclaim_subbuffer(lttng_consumer_stream& stream);
 
+/*
+ * Reclaim memory from a stream.
+ *
+ * This function must be called with the stream and channel locks held.
+ *
+ * Returns the number of bytes reclaimed.
+ */
+std::uint64_t consumer_stream_reclaim_memory(lttng_consumer_stream& stream,
+					     const std::chrono::microseconds& age_limit,
+					     bool require_consumed);
+
 #endif /* LTTNG_CONSUMER_STREAM_H */

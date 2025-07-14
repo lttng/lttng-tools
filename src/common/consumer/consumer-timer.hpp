@@ -35,6 +35,11 @@ int consumer_timer_stall_watchdog_start(struct lttng_consumer_channel *channel,
 					lttng::scheduling::scheduler& scheduler);
 int consumer_timer_stall_watchdog_stop(struct lttng_consumer_channel *channel);
 
+int consumer_timer_memory_reclaim_start(lttng_consumer_channel& channel,
+					std::chrono::microseconds max_age,
+					lttng::scheduling::scheduler& scheduler);
+void consumer_timer_memory_reclaim_stop(lttng_consumer_channel *channel);
+
 int consumer_timer_thread_get_channel_monitor_pipe();
 int consumer_timer_thread_set_channel_monitor_pipe(int fd);
 

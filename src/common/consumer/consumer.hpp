@@ -32,6 +32,7 @@
 
 #include <vendor/optional.hpp>
 
+#include <chrono>
 #include <cstdint>
 #include <limits.h>
 #include <mutex>
@@ -52,6 +53,11 @@ enum consumer_endpoint_status {
 enum consumer_channel_output {
 	CONSUMER_CHANNEL_MMAP = 0,
 	CONSUMER_CHANNEL_SPLICE = 1,
+};
+
+enum consumer_channel_event_loss_mode {
+	CONSUMER_CHANNEL_EVENT_LOSS_MODE_DISCARD_EVENTS,
+	CONSUMER_CHANNEL_EVENT_LOSS_MODE_OVERWRITE_OLDEST_PACKET,
 };
 
 enum sync_metadata_status {
@@ -147,6 +153,9 @@ struct lttng_consumer_channel {
 	/* Channel type for stream */
 	enum consumer_channel_type type = CONSUMER_CHANNEL_TYPE_METADATA;
 
+	consumer_channel_event_loss_mode event_loss_mode =
+		CONSUMER_CHANNEL_EVENT_LOSS_MODE_DISCARD_EVENTS;
+
 	/* For UST */
 	uid_t ust_app_uid = 65534; /* Application UID. */
 	struct lttng_ust_ctl_consumer_channel *uchan = nullptr;
@@ -201,6 +210,9 @@ struct lttng_consumer_channel {
 	 */
 	bool continuously_reclaimed = false;
 
+	/* Maximum age of a subbuffer before it is reclaimed. */
+	nonstd::optional<std::chrono::microseconds> automatic_memory_reclamation_max_age;
+
 	/* For channel monitoring timer. */
 	lttng::scheduling::periodic_task::sptr monitor_timer_task;
 
@@ -209,6 +221,9 @@ struct lttng_consumer_channel {
 	 * channels) when `subbuffer_count` is not zero.
 	 */
 	lttng::scheduling::periodic_task::sptr stall_watchdog_timer_task;
+
+	/* For periodic channel memory reclamation. */
+	lttng::scheduling::periodic_task::sptr memory_reclaim_timer_task;
 
 	/* On-disk circular buffer */
 	uint64_t tracefile_size = 0;
@@ -1016,23 +1031,25 @@ struct lttng_consumer_stream *consumer_allocate_stream(struct lttng_consumer_cha
 						       int *alloc_ret,
 						       enum consumer_channel_type type,
 						       unsigned int monitor);
-struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
-							 uint64_t session_id,
-							 const uint64_t *chunk_id,
-							 const char *pathname,
-							 const char *name,
-							 uint64_t relayd_id,
-							 enum lttng_event_output output,
-							 uint64_t tracefile_size,
-							 uint64_t tracefile_count,
-							 uint64_t subbuffer_count,
-							 uint64_t session_id_per_pid,
-							 unsigned int monitor,
-							 unsigned int live_timer_interval,
-							 bool is_in_live_session,
-							 bool continuously_reclaimed,
-							 const char *root_shm_path,
-							 const char *shm_path);
+struct lttng_consumer_channel *consumer_allocate_channel(
+	uint64_t key,
+	uint64_t session_id,
+	const uint64_t *chunk_id,
+	const char *pathname,
+	const char *name,
+	uint64_t relayd_id,
+	enum lttng_event_output output,
+	uint64_t tracefile_size,
+	uint64_t tracefile_count,
+	uint64_t subbuffer_count,
+	uint64_t session_id_per_pid,
+	unsigned int monitor,
+	unsigned int live_timer_interval,
+	bool is_in_live_session,
+	bool continuously_reclaimed,
+	nonstd::optional<std::chrono::microseconds> automatic_memory_reclamation_max_age,
+	const char *root_shm_path,
+	const char *shm_path);
 void consumer_del_stream(struct lttng_consumer_stream *stream, struct lttng_ht *ht);
 void consumer_del_metadata_stream(struct lttng_consumer_stream *stream, struct lttng_ht *ht);
 int consumer_add_channel(struct lttng_consumer_channel *channel,

@@ -390,6 +390,8 @@
 #define DEFAULT_LINUX_POSSIBLE_CPU_PATH	       "/sys/devices/system/cpu/possible"
 #define DEFAULT_LINUX_POSSIBLE_CPU_MASK_LENGTH 4096
 
+#define DEFAULT_MINIMAL_MEMORY_RECLAIM_TIMER_PERIOD_MS 250
+
 /*
  * Returns the default subbuf size.
  *

@@ -1510,9 +1510,10 @@ static void destroy_subbuf_iter(lttng_ust_ctl_subbuf_iter *it)
 	LTTNG_ASSERT(ret == 0);
 }
 
-static std::size_t reclaim_stream_memory(lttng_consumer_stream& stream,
-					 nonstd::optional<std::chrono::microseconds> age_limit,
-					 bool require_consumed)
+std::uint64_t
+lttng_ustconsumer_reclaim_stream_memory(lttng_consumer_stream& stream,
+					nonstd::optional<std::chrono::microseconds> age_limit,
+					bool require_consumed)
 {
 	DBG_FMT("Reclaiming stream memory: channel_name=`{}`, stream_key={}",
 		stream.chan->name,
@@ -1808,7 +1809,8 @@ lttng_ustconsumer_reclaim_channels_memory(int socket,
 				}
 
 				const auto bytes_reclaimed =
-					reclaim_stream_memory(*stream, age_limit, require_consumed);
+					lttng_ustconsumer_reclaim_stream_memory(
+						*stream, age_limit, require_consumed);
 
 				const lttcomm_stream_memory_reclamation_result
 					stream_reclamation_result = {
@@ -1833,7 +1835,8 @@ lttng_ustconsumer_reclaim_channels_memory(int socket,
 				const lttng::pthread::lock_guard stream_lock(stream->lock);
 
 				const auto bytes_reclaimed =
-					reclaim_stream_memory(*stream, age_limit, require_consumed);
+					lttng_ustconsumer_reclaim_stream_memory(
+						*stream, age_limit, require_consumed);
 
 				const lttcomm_stream_memory_reclamation_result
 					stream_reclamation_result = {
@@ -2120,6 +2123,14 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			.gid = LTTNG_OPTIONAL_INIT_VALUE(msg.u.ask_channel.buffer_credentials.gid),
 		};
 
+		nonstd::optional<std::chrono::microseconds> automatic_memory_reclamation_max_age;
+		if (msg.u.ask_channel.automatic_memory_reclamation_maximal_age_us.is_set) {
+			automatic_memory_reclamation_max_age =
+				std::chrono::microseconds(LTTNG_OPTIONAL_GET(
+					msg.u.ask_channel
+						.automatic_memory_reclamation_maximal_age_us));
+		}
+
 		/* Create a plain object and reserve a channel key. */
 		channel = consumer_allocate_channel(
 			msg.u.ask_channel.key,
@@ -2137,6 +2148,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			msg.u.ask_channel.live_timer_interval,
 			msg.u.ask_channel.is_live,
 			msg.u.ask_channel.continuously_reclaimed,
+			automatic_memory_reclamation_max_age,
 			msg.u.ask_channel.root_shm_path,
 			msg.u.ask_channel.shm_path);
 		if (!channel) {
@@ -2151,6 +2163,10 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		 * allocation.
 		 */
 		channel->ust_app_uid = msg.u.ask_channel.ust_app_uid;
+
+		channel->event_loss_mode = msg.u.ask_channel.overwrite ?
+			CONSUMER_CHANNEL_EVENT_LOSS_MODE_OVERWRITE_OLDEST_PACKET :
+			CONSUMER_CHANNEL_EVENT_LOSS_MODE_DISCARD_EVENTS;
 
 		/* Build channel attributes from received message. */
 		attr.subbuf_size = msg.u.ask_channel.subbuf_size;
@@ -2254,6 +2270,13 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 					goto end_channel_error;
 				}
 			}
+
+			if (automatic_memory_reclamation_max_age.has_value()) {
+				consumer_timer_memory_reclaim_start(
+					*channel,
+					*automatic_memory_reclamation_max_age,
+					ctx->timer_task_scheduler);
+			}
 		}
 
 		health_code_update();
@@ -2281,6 +2304,9 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			}
 			if (channel->stall_watchdog_timer_task) {
 				consumer_timer_stall_watchdog_stop(channel);
+			}
+			if (channel->memory_reclaim_timer_task) {
+				consumer_timer_memory_reclaim_stop(channel);
 			}
 
 			goto end_channel_error;
