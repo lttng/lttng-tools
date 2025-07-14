@@ -659,6 +659,16 @@ struct lttng_channel *trace_ust_channel_to_lttng_channel(const struct ltt_ust_ch
 		goto end;
 	}
 
+	if (uchan->automatic_memory_reclamation_maximal_age) {
+		if (lttng_channel_set_automatic_memory_reclamation_policy(
+			    channel, uchan->automatic_memory_reclamation_maximal_age->count()) !=
+		    LTTNG_CHANNEL_STATUS_OK) {
+			ERR("Failed to set automatic memory reclamation maximal age "
+			    "during conversion from ltt_ust_channel to lttng_channel");
+			goto end;
+		}
+	}
+
 	ret = channel;
 	channel = nullptr;
 

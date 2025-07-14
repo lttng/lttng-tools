@@ -976,6 +976,7 @@ void consumer_init_ask_channel_comm_msg(
 	int64_t blocking_timeout,
 	lttng::sessiond::recording_channel_configuration::buffer_preallocation_policy_t
 		preallocation_policy,
+	const nonstd::optional<std::chrono::microseconds>& automatic_memory_reclamation_maximal_age,
 	const char *root_shm_path,
 	const char *shm_path,
 	struct lttng_trace_chunk *trace_chunk,
@@ -1030,6 +1031,12 @@ void consumer_init_ask_channel_comm_msg(
 	msg->u.ask_channel.preallocate_backing = preallocation_policy ==
 		lttng::sessiond::recording_channel_configuration::buffer_preallocation_policy_t::
 			PREALLOCATE;
+
+	if (automatic_memory_reclamation_maximal_age) {
+		LTTNG_OPTIONAL_SET(
+			&msg->u.ask_channel.automatic_memory_reclamation_maximal_age_us,
+			static_cast<uint64_t>(automatic_memory_reclamation_maximal_age->count()));
+	}
 
 	std::copy(uuid.begin(), uuid.end(), msg->u.ask_channel.uuid);
 

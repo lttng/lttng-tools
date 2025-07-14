@@ -17,6 +17,7 @@
 #include <common/common.hpp>
 #include <common/compat/errno.hpp>
 #include <common/defaults.hpp>
+#include <common/make-unique-wrapper.hpp>
 
 #include <inttypes.h>
 #include <stdio.h>
@@ -41,7 +42,6 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 	int ret, output;
 	uint32_t chan_id;
 	uint64_t key, chan_reg_key;
-	char *pathname = nullptr;
 	struct lttcomm_consumer_msg msg;
 	char shm_path[PATH_MAX] = "";
 	char root_shm_path[PATH_MAX] = "";
@@ -58,32 +58,28 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 
 	is_local_trace = consumer->net_seq_index == -1ULL;
 	/* Format the channel's path (relative to the current trace chunk). */
-	pathname = setup_channel_trace_path(consumer, ua_sess->path, &consumer_path_offset);
-	if (!pathname) {
-		ret = -1;
-		goto error;
+	std::string pathname;
+	{
+		const auto raw_pathname = lttng::make_unique_wrapper<char, lttng::memory::free>(
+			setup_channel_trace_path(consumer, ua_sess->path, &consumer_path_offset));
+		if (!raw_pathname) {
+			return -1;
+		}
+
+		pathname = raw_pathname.get();
 	}
 
 	if (is_local_trace && trace_chunk) {
-		enum lttng_trace_chunk_status chunk_status;
-		char *pathname_index;
-
-		ret = asprintf(&pathname_index, "%s/" DEFAULT_INDEX_DIR, pathname);
-		if (ret < 0) {
-			ERR("Failed to format channel index directory");
-			ret = -1;
-			goto error;
-		}
+		const std::string pathname_index = fmt::format("{}/" DEFAULT_INDEX_DIR, pathname);
 
 		/*
 		 * Create the index subdirectory which will take care
 		 * of implicitly creating the channel's path.
 		 */
-		chunk_status = lttng_trace_chunk_create_subdirectory(trace_chunk, pathname_index);
-		free(pathname_index);
+		const auto chunk_status =
+			lttng_trace_chunk_create_subdirectory(trace_chunk, pathname_index.c_str());
 		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
-			ret = -1;
-			goto error;
+			return -1;
 		}
 	}
 
@@ -127,6 +123,18 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 		break;
 	}
 
+	/*
+	 * A reclamation policy with an age of zero effectively means that buffers should be
+	 * continuously reclaimed. In that case, set the continuously_reclaimed flag to true
+	 * and disable the periodic evaluation of the age of buffers.
+	 */
+	const bool continuously_reclaimed =
+		ua_chan->automatic_memory_reclamation_maximal_age.has_value() &&
+		ua_chan->automatic_memory_reclamation_maximal_age->count() == 0;
+	const auto automatic_memory_reclamation_maximal_age = continuously_reclaimed ?
+		nonstd::nullopt :
+		ua_chan->automatic_memory_reclamation_maximal_age;
+
 	consumer_init_ask_channel_comm_msg(&msg,
 					   ua_chan->attr.subbuf_size,
 					   ua_chan->attr.num_subbuf,
@@ -135,7 +143,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 					   ua_chan->attr.read_timer_interval,
 					   ua_sess->live_timer_interval,
 					   ua_sess->live_timer_interval != 0,
-					   true,
+					   continuously_reclaimed,
 					   ua_chan->monitor_timer_interval,
 					   ua_chan->watchdog_timer_interval.is_set ?
 						   nonstd::optional<uint64_t>(LTTNG_OPTIONAL_GET(
@@ -144,7 +152,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 					   output,
 					   (int) ua_chan->attr.type,
 					   ua_sess->tracing_id,
-					   &pathname[consumer_path_offset],
+					   &(pathname.c_str()[consumer_path_offset]),
 					   ua_chan->name,
 					   consumer->net_seq_index,
 					   ua_chan->key,
@@ -157,6 +165,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 					   lttng_credentials_get_uid(&ua_sess->real_credentials),
 					   ua_chan->attr.blocking_timeout,
 					   ua_chan->preallocation_policy,
+					   automatic_memory_reclamation_maximal_age,
 					   root_shm_path,
 					   shm_path,
 					   trace_chunk,
@@ -164,14 +173,17 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 
 	health_code_update();
 
+	const auto update_health_code_on_exit =
+		lttng::make_scope_exit([]() noexcept { health_code_update(); });
+
 	ret = consumer_socket_send(socket, &msg, sizeof(msg));
 	if (ret < 0) {
-		goto error;
+		return ret;
 	}
 
 	ret = consumer_recv_status_channel(socket, &key, &ua_chan->expected_stream_count);
 	if (ret < 0) {
-		goto error;
+		return ret;
 	}
 	/* Communication protocol error. */
 	LTTNG_ASSERT(key == ua_chan->key);
@@ -184,9 +196,6 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 	     key,
 	     ua_chan->expected_stream_count);
 
-error:
-	free(pathname);
-	health_code_update();
 	return ret;
 }
 

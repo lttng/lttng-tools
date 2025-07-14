@@ -157,45 +157,47 @@ struct ust_app_stream {
 };
 
 struct ust_app_channel {
-	bool enabled;
-	int handle;
+	bool enabled = false;
+	int handle = 0;
 	/*
 	 * Unique key used to identify the channel on the consumer side.
 	 * 0 is a reserved 'invalid' value used to indicate that the consumer
 	 * does not know about this channel (i.e. an error occurred).
 	 */
-	uint64_t key;
+	uint64_t key = 0;
 	/* Id of the tracing channel set on creation. */
-	uint64_t tracing_channel_id;
+	uint64_t tracing_channel_id = 0;
 	/* Number of stream that this channel is expected to receive. */
-	unsigned int expected_stream_count;
-	char name[LTTNG_UST_ABI_SYM_NAME_LEN];
-	struct lttng_ust_abi_object_data *obj;
-	struct lttng_ust_ctl_consumer_channel_attr attr;
-	struct ust_app_stream_list streams;
+	unsigned int expected_stream_count = 0;
+	char name[LTTNG_UST_ABI_SYM_NAME_LEN] = {};
+	struct lttng_ust_abi_object_data *obj = nullptr;
+	struct lttng_ust_ctl_consumer_channel_attr attr = {};
+	struct ust_app_stream_list streams = {};
 	/* Session pointer that owns this object. */
-	struct ust_app_session *session;
+	struct ust_app_session *session = nullptr;
 	/* Hashtable of ust_app_ctx instances. */
-	struct lttng_ht *ctx;
+	struct lttng_ht *ctx = nullptr;
 	/* Hashtable of ust_app_event instances. */
-	struct lttng_ht *events;
-	uint64_t tracefile_size;
-	uint64_t tracefile_count;
-	uint64_t monitor_timer_interval;
-	LTTNG_OPTIONAL(uint64_t) watchdog_timer_interval;
+	struct lttng_ht *events = nullptr;
+	uint64_t tracefile_size = 0;
+	uint64_t tracefile_count = 0;
+	uint64_t monitor_timer_interval = 0;
+	LTTNG_OPTIONAL(uint64_t) watchdog_timer_interval = {};
 	lttng::sessiond::recording_channel_configuration::buffer_preallocation_policy_t
-		preallocation_policy;
+		preallocation_policy = lttng::sessiond::recording_channel_configuration::
+			buffer_preallocation_policy_t::PREALLOCATE;
+	nonstd::optional<std::chrono::microseconds> automatic_memory_reclamation_maximal_age;
 	/*
 	 * Node indexed by channel name in the channels' hash table of a session.
 	 */
-	struct lttng_ht_node_str node;
+	struct lttng_ht_node_str node = {};
 	/*
 	 * Node indexed by UST channel object descriptor (handle). Stored in the
 	 * ust_objd hash table in the ust_app object.
 	 */
-	struct lttng_ht_node_ulong ust_objd_node;
+	struct lttng_ht_node_ulong ust_objd_node = {};
 	/* For delayed reclaim */
-	struct rcu_head rcu_head;
+	struct rcu_head rcu_head = {};
 };
 
 struct ust_app_session {

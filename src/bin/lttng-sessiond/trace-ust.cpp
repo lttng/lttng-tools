@@ -349,14 +349,17 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 
 	LTTNG_ASSERT(chan);
 
-	luc = zmalloc<ltt_ust_channel>();
-	if (luc == nullptr) {
-		PERROR("ltt_ust_channel zmalloc");
+	try {
+		luc = new ltt_ust_channel;
+	} catch (const std::bad_alloc&) {
+		PERROR("Failed to allocate ltt_ust_channel");
 		return nullptr;
 	}
 
 	const auto extended =
 		static_cast<const struct lttng_channel_extended *>(chan->attr.extended.ptr);
+	const auto allocation_policy =
+			static_cast<enum lttng_channel_allocation_policy>(extended->allocation_policy);
 
 	luc->domain = domain;
 
@@ -368,6 +371,7 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	luc->attr.read_timer_interval = chan->attr.read_timer_interval;
 	luc->attr.output = (enum lttng_ust_abi_output) chan->attr.output;
 	luc->monitor_timer_interval = extended->monitor_timer_interval;
+	luc->attr.u.s.blocking_timeout = extended->blocking_timeout;
 
 	if (extended->watchdog_timer_interval.is_set) {
 		switch (domain) {
@@ -387,7 +391,12 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	}
 	luc->attr.u.s.blocking_timeout = extended->blocking_timeout;
 
-	switch (extended->allocation_policy) {
+	if (extended->automatic_memory_reclamation_maximal_age_us.is_set) {
+		luc->automatic_memory_reclamation_maximal_age = std::chrono::microseconds(
+			LTTNG_OPTIONAL_GET(extended->automatic_memory_reclamation_maximal_age_us));
+	}
+
+	switch (allocation_policy) {
 	case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU:
 		luc->attr.u.s.type = LTTNG_UST_ABI_CHAN_PER_CPU;
 		break;
@@ -448,7 +457,7 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	return luc;
 
 error:
-	free(luc);
+	delete luc;
 	return nullptr;
 }
 
@@ -1330,7 +1339,7 @@ static void _trace_ust_destroy_channel(struct ltt_ust_channel *channel)
 
 	DBG2("Trace destroy UST channel %s", channel->name);
 
-	free(channel);
+	delete channel;
 }
 
 /*

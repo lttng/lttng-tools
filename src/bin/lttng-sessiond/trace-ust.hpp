@@ -59,28 +59,30 @@ struct ltt_ust_event {
 
 /* UST channel */
 struct ltt_ust_channel {
-	uint64_t id; /* unique id per session. */
-	bool enabled;
+	uint64_t id = 0; /* unique id per session. */
+	bool enabled = false;
 	/*
 	 * A UST channel can be part of a userspace sub-domain such as JUL,
 	 * Log4j, Log4j2, Python.
 	 */
-	enum lttng_domain_type domain;
-	char name[LTTNG_UST_ABI_SYM_NAME_LEN];
-	struct lttng_ust_abi_channel_attr attr;
-	struct lttng_ht *ctx;
-	struct cds_list_head ctx_list;
-	struct lttng_ht *events;
-	struct lttng_ht_node_str node;
-	uint64_t tracefile_size;
-	uint64_t tracefile_count;
-	uint64_t per_pid_closed_app_discarded;
-	uint64_t per_pid_closed_app_lost;
-	uint64_t monitor_timer_interval;
-	/* Only set in UST domain with `user` ownership. */
-	LTTNG_OPTIONAL(uint64_t) watchdog_timer_interval;
+	enum lttng_domain_type domain = LTTNG_DOMAIN_NONE;
+	char name[LTTNG_UST_ABI_SYM_NAME_LEN] = {};
+	struct lttng_ust_abi_channel_attr attr = {};
+	struct lttng_ht *ctx = nullptr; /* Context hash table */
+	struct cds_list_head ctx_list = {};
+	struct lttng_ht *events = nullptr; /* Events hash table */
+	struct lttng_ht_node_str node = {};
+	uint64_t tracefile_size = 0;
+	uint64_t tracefile_count = 0;
+	uint64_t per_pid_closed_app_discarded = 0;
+	uint64_t per_pid_closed_app_lost = 0;
+	uint64_t monitor_timer_interval = 0;
+	LTTNG_OPTIONAL(uint64_t) watchdog_timer_interval = {};
+
 	lttng::sessiond::recording_channel_configuration::buffer_preallocation_policy_t
-		preallocation_policy;
+		preallocation_policy = lttng::sessiond::recording_channel_configuration::
+			buffer_preallocation_policy_t::PREALLOCATE;
+	nonstd::optional<std::chrono::microseconds> automatic_memory_reclamation_maximal_age;
 };
 
 /* UST domain global (LTTNG_DOMAIN_UST) */

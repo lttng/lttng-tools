@@ -681,7 +681,7 @@ static void delete_ust_app_channel_rcu(struct rcu_head *head)
 
 	lttng_ht_destroy(ua_chan->ctx);
 	lttng_ht_destroy(ua_chan->events);
-	free(ua_chan);
+	delete ua_chan;
 }
 
 /*
@@ -1400,9 +1400,10 @@ alloc_ust_app_channel(const char *name,
 	struct ust_app_channel *ua_chan;
 
 	/* Init most of the default value by allocating and zeroing */
-	ua_chan = zmalloc<ust_app_channel>();
-	if (ua_chan == nullptr) {
-		PERROR("malloc");
+	try {
+		ua_chan = new ust_app_channel;
+	} catch (const std::bad_alloc&) {
+		PERROR("ust_app_channel allocation");
 		goto error;
 	}
 
@@ -2618,6 +2619,8 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan, struct ltt_ust_
 	}
 
 	ua_chan->preallocation_policy = uchan->preallocation_policy;
+	ua_chan->automatic_memory_reclamation_maximal_age =
+		uchan->automatic_memory_reclamation_maximal_age;
 	ua_chan->attr.output = (lttng_ust_abi_output) uchan->attr.output;
 	ua_chan->attr.blocking_timeout = uchan->attr.u.s.blocking_timeout;
 	ua_chan->attr.type = static_cast<enum lttng_ust_abi_chan_type>(uchan->attr.u.s.type);

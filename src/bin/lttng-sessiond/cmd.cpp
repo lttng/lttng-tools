@@ -1655,6 +1655,25 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 			nonstd::nullopt;
 	}();
 
+	const auto automatic_memory_reclamation_maximal_age = [&channel_attr]() {
+		std::uint64_t maximal_age_us;
+		const auto ret = lttng_channel_get_automatic_memory_reclamation_policy(
+			&channel_attr, &maximal_age_us);
+
+		if (ret == LTTNG_CHANNEL_STATUS_UNSET) {
+			return decltype(ls::recording_channel_configuration::
+						automatic_memory_reclamation_maximal_age)();
+		} else if (ret != LTTNG_CHANNEL_STATUS_OK) {
+			LTTNG_THROW_ERROR(fmt::format(
+				"Failed to retrieve automatic memory reclamation maximal age from channel: channel_name=`{}`",
+				channel_attr.name));
+		}
+
+		return decltype(ls::recording_channel_configuration::
+					automatic_memory_reclamation_maximal_age)(
+			std::chrono::microseconds(maximal_age_us));
+	}();
+
 	auto blocking_policy = [&channel_attr]() {
 		std::int64_t timeout_us;
 		const int ret = lttng_channel_get_blocking_timeout(&channel_attr, &timeout_us);
@@ -1836,6 +1855,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 					  live_timer_period_us,
 					  monitor_timer_period_us,
 					  watchdog_timer_period_us,
+					  automatic_memory_reclamation_maximal_age,
 					  std::move(blocking_policy),
 					  trace_file_size_limit_bytes,
 					  trace_file_count_limit);

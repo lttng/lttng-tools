@@ -268,6 +268,7 @@ void consumer_init_ask_channel_comm_msg(
 	int64_t blocking_timeout,
 	lttng::sessiond::recording_channel_configuration::buffer_preallocation_policy_t
 		preallocation_policy,
+	const nonstd::optional<std::chrono::microseconds>& automatic_memory_reclamation_maximal_age,
 	const char *root_shm_path,
 	const char *shm_path,
 	struct lttng_trace_chunk *trace_chunk,
