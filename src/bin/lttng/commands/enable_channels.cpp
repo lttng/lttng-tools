@@ -416,6 +416,23 @@ static int enable_channel(char *session_name, char *channel_list)
 			goto error;
 		}
 
+		if (opt_auto_reclaim_older_than_duration.set) {
+			ret = lttng_channel_set_automatic_memory_reclamation_policy(
+				channel, opt_auto_reclaim_older_than_duration.interval);
+			if (ret != LTTNG_CHANNEL_STATUS_OK) {
+				ERR("Failed to set the channel's automatic memory reclamation policy");
+				error = 1;
+				goto error;
+			}
+		} else if (opt_auto_reclaim_consumed) {
+			ret = lttng_channel_set_automatic_memory_reclamation_policy(channel, 0);
+			if (ret != LTTNG_CHANNEL_STATUS_OK) {
+				ERR("Failed to set the channel's automatic memory reclamation policy to 'consumed'");
+				error = 1;
+				goto error;
+			}
+		}
+
 		if (!system_has_memory_for_channel_buffers(
 			    session_name, channel, &bytes_required, &bytes_available)) {
 			ERR_FMT("Not enough system memory available for channel '{}'. At least {}MiB required, {}MiB available",
