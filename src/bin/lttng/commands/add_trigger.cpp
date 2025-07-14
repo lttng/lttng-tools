@@ -2119,7 +2119,7 @@ static void print_valid_action_names()
 
 	ERR("Valid action names are:");
 
-	for (i = 0; i < ARRAY_SIZE(condition_descrs); ++i) {
+	for (i = 0; i < ARRAY_SIZE(action_descrs); ++i) {
 		ERR("  %s", action_descrs[i].name);
 	}
 }
