@@ -210,6 +210,37 @@ struct formatter<lttng_condition_type> : formatter<std::string> {
 	}
 };
 
+template <>
+struct formatter<lttng_condition_status> : formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator format(lttng_condition_status status,
+						    FormatContextType& ctx) const
+	{
+		const char *name = "unknown";
+		switch (status) {
+		case LTTNG_CONDITION_STATUS_OK:
+			name = "ok";
+			break;
+		case LTTNG_CONDITION_STATUS_ERROR:
+			name = "error";
+			break;
+		case LTTNG_CONDITION_STATUS_UNKNOWN:
+			name = "unknown error";
+			break;
+		case LTTNG_CONDITION_STATUS_INVALID:
+			name = "invalid parameter";
+			break;
+		case LTTNG_CONDITION_STATUS_UNSET:
+			name = "unset";
+			break;
+		case LTTNG_CONDITION_STATUS_UNSUPPORTED:
+			name = "unsupported";
+			break;
+		}
+		return format_to(ctx.out(), name);
+	}
+};
+
 } /* namespace fmt */
 
 #endif /* LTTNG_COMMON_CTL_FORMAT_H */

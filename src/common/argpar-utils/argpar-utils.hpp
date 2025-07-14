@@ -8,16 +8,13 @@
 #ifndef COMMON_ARGPAR_UTILS_H
 #define COMMON_ARGPAR_UTILS_H
 
+#include <common/format.hpp>
 #include <common/macros.hpp>
 #include <common/string-utils/format.hpp>
 
 #include <vendor/argpar/argpar.h>
 
 #include <stdarg.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #define WHILE_PARSING_ARG_N_ARG_FMT "While parsing argument #%d (`%s`): "
 
@@ -27,6 +24,35 @@ enum parse_next_item_status {
 	PARSE_NEXT_ITEM_STATUS_ERROR = -1,
 	PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY = -2,
 };
+
+/*
+ * Due to a bug in g++ < 7.1, this specialization must be enclosed in the fmt namespace,
+ * see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480.
+ */
+namespace fmt {
+template <>
+struct formatter<parse_next_item_status> : formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator format(parse_next_item_status status,
+						    FormatContextType& ctx) const
+	{
+		auto name = "unknown";
+
+		switch (status) {
+		case PARSE_NEXT_ITEM_STATUS_OK:
+			name = "ok";
+		case PARSE_NEXT_ITEM_STATUS_END:
+			name = "end";
+		case PARSE_NEXT_ITEM_STATUS_ERROR:
+			name = "error";
+		case PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY:
+			name = "allocation error";
+		}
+
+		return format_to(ctx.out(), name);
+	}
+};
+} /* namespace fmt */
 
 /*
  * Parse the next argpar item using `iter`.
@@ -61,7 +87,4 @@ enum parse_next_item_status parse_next_item(struct argpar_iter *iter,
 					    const char *context_fmt,
 					    ...);
 
-#ifdef __cplusplus
-}
-#endif
 #endif

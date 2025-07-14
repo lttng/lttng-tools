@@ -9,6 +9,7 @@
 #include "../loglevel.hpp"
 #include "../uprobe.hpp"
 #include "common/argpar-utils/argpar-utils.hpp"
+#include "common/ctl/format.hpp"
 #include "common/dynamic-array.hpp"
 #include "common/mi-lttng.hpp"
 #include "common/string-utils/string-utils.hpp"
@@ -26,6 +27,7 @@
 #include "common/filter/filter-ast.hpp"
 #include "common/filter/filter-ir.hpp"
 
+#include <lttng/condition/condition-internal.hpp>
 #include <lttng/event-rule/event-rule-internal.hpp>
 #include <lttng/lttng.h>
 
@@ -65,6 +67,9 @@ enum {
 	OPT_PATH,
 
 	OPT_CAPTURE,
+
+	OPT_SESSION_NAME,
+	OPT_THRESHOLD_SIZE,
 };
 
 static const struct argpar_opt_descr event_rule_opt_descrs[] = {
@@ -81,6 +86,12 @@ static const struct argpar_opt_descr event_rule_opt_descrs[] = {
 	{ OPT_CAPTURE, '\0', "capture", true },
 
 	ARGPAR_OPT_DESCR_SENTINEL
+};
+
+static const struct argpar_opt_descr session_consumed_size_opt_descriptions[] = {
+	{ OPT_SESSION_NAME, 's', "session", true },
+	{ OPT_THRESHOLD_SIZE, 't', "threshold-size", true },
+	ARGPAR_OPT_DESCR_SENTINEL,
 };
 
 static bool has_syscall_prefix(const char *arg)
@@ -643,6 +654,11 @@ struct parse_event_rule_res {
 
 	/* Array of `struct lttng_event_expr *` */
 	struct lttng_dynamic_pointer_array capture_descriptors;
+};
+struct parse_session_consumed_size_res {
+	bool success = false;
+	std::string session_name;
+	uint64_t threshold_size_bytes = 0;
 };
 } /* namespace */
 
@@ -1399,6 +1415,133 @@ end:
 	return c;
 }
 
+static struct parse_session_consumed_size_res
+parse_session_consumed_size(int *argc, const char ***argv, int argc_offset)
+{
+	const char *prefix = "While parsing condition `session-consumed-size-ge`: ";
+	bool has_session_name = false, has_threshold_size = false;
+	struct parse_session_consumed_size_res res;
+	auto argpar_iter = lttng::make_unique_wrapper<struct argpar_iter, argpar_iter_destroy>(
+		argpar_iter_create(*argc, *argv, session_consumed_size_opt_descriptions));
+	auto argpar_item =
+		lttng::make_unique_wrapper<const struct argpar_item, argpar_item_destroy>(
+			(const struct argpar_item *) nullptr);
+
+	if (!argpar_iter) {
+		ERR_FMT("{}failed to create argpar_iter", prefix);
+		return res;
+	}
+
+	while (true) {
+		const struct argpar_item *temp = nullptr;
+
+		const auto status = parse_next_item(
+			argpar_iter.get(), &temp, argc_offset, *argv, false, nullptr, nullptr);
+		argpar_item.reset(temp);
+		if (status == PARSE_NEXT_ITEM_STATUS_ERROR ||
+		    status == PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY) {
+			ERR_FMT("{}parse_next_item error {}", prefix, status);
+			break;
+		} else if (status == PARSE_NEXT_ITEM_STATUS_END) {
+			break;
+		}
+
+		LTTNG_ASSERT(status == PARSE_NEXT_ITEM_STATUS_OK);
+		if (argpar_item_type(argpar_item.get()) == ARGPAR_ITEM_TYPE_OPT) {
+			const struct argpar_opt_descr *descr =
+				argpar_item_opt_descr(argpar_item.get());
+			const char *arg = argpar_item_opt_arg(argpar_item.get());
+
+			switch (descr->id) {
+			case OPT_SESSION_NAME:
+				try {
+					res.session_name = arg;
+				} catch (const std::bad_alloc&) {
+					ERR_FMT("{}failed to allocate memory for session name",
+						prefix);
+					break;
+				}
+
+				has_session_name = true;
+				break;
+			case OPT_THRESHOLD_SIZE:
+				if (utils_parse_size_suffix(arg, &res.threshold_size_bytes) < 0) {
+					ERR_FMT("{}wrong value in `-t/--threshold-size` parameter: `{}`",
+						prefix,
+						arg);
+				} else {
+					has_threshold_size = true;
+				}
+				break;
+			default:
+				abort();
+			}
+		} else {
+			const char *arg = argpar_item_non_opt_arg(argpar_item.get());
+			ERR_FMT("{}unexpected argument '{}'", prefix, arg);
+			break;
+		}
+	}
+
+	const auto consumed_args = argpar_iter_ingested_orig_args(argpar_iter.get());
+	LTTNG_ASSERT(consumed_args >= 0);
+	*argc -= consumed_args;
+	*argv += consumed_args;
+	res.success = has_threshold_size && has_session_name;
+	if (!has_threshold_size) {
+		ERR_FMT("{}Missing or invalid argument for `-t/--threshold-size`", prefix);
+	}
+
+	if (!has_session_name) {
+		ERR_FMT("{}Missing or invalid argument for `-s/--session`", prefix);
+	}
+
+	return res;
+}
+
+static lttng_condition *
+handle_condition_session_consumed_size(int *argc, const char ***argv, int argc_offset)
+{
+	auto condition = []() {
+		lttng_condition *raw_condition = lttng_condition_session_consumed_size_create();
+
+		return lttng::make_unique_wrapper<lttng_condition, lttng_condition_destroy>(
+			raw_condition);
+	}();
+
+	if (!condition || !condition.get()) {
+		ERR("Failed to create lttng_condition structure");
+		return nullptr;
+	}
+
+	auto result = parse_session_consumed_size(argc, argv, argc_offset);
+	if (!result.success) {
+		ERR("Failed to parse session-consumed-size-ge arguments");
+		return nullptr;
+	}
+
+	auto status = lttng_condition_session_consumed_size_set_session_name(
+		condition.get(), result.session_name.c_str());
+	if (status != LTTNG_CONDITION_STATUS_OK) {
+		ERR_FMT("Failed to set condition's session name: {}", status);
+		return nullptr;
+	}
+
+	status = lttng_condition_session_consumed_size_set_threshold(condition.get(),
+								     result.threshold_size_bytes);
+	if (status != LTTNG_CONDITION_STATUS_OK) {
+		ERR_FMT("Failed to set condition's threshold: {}", status);
+		return nullptr;
+	}
+
+	if (!lttng_condition_validate(condition.get())) {
+		ERR("Failed to validate condition");
+		return nullptr;
+	}
+
+	return condition.release();
+}
+
 namespace {
 struct condition_descr {
 	const char *name;
@@ -1408,6 +1551,7 @@ struct condition_descr {
 
 static const struct condition_descr condition_descrs[] = {
 	{ "event-rule-matches", handle_condition_event },
+	{ "session-consumed-size-ge", handle_condition_session_consumed_size },
 };
 
 static void print_valid_condition_names()
