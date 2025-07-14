@@ -551,21 +551,33 @@ test_failure "--condition event-rule-matches --capture: missing colon in app-spe
 test_failure "missing args after --action" \
 	"Error: While parsing argument #5 (\`--action\`): Missing required argument for option \`--action\`
 Error: Valid action names are:
-Error:   notify" \
+Error:   notify
+Error:   start-session
+Error:   stop-session
+Error:   rotate-session
+Error:   snapshot-session" \
 	--condition event-rule-matches --type=user \
 	--action
 
 test_failure "unknown --action" \
 	"Error: While parsing argument #5 (\`--action\`): Unknown action name 'zoofest'
 Error: Valid action names are:
-Error:   notify" \
+Error:   notify
+Error:   start-session
+Error:   stop-session
+Error:   rotate-session
+Error:   snapshot-session" \
 	--condition event-rule-matches --type=user \
 	--action zoofest
 
 test_failure "unknown --action=" \
 	"Error: While parsing argument #5 (\`--action=zoofest\`): Unknown action name 'zoofest'
 Error: Valid action names are:
-Error:   notify" \
+Error:   notify
+Error:   start-session
+Error:   stop-session
+Error:   rotate-session
+Error:   snapshot-session" \
 	--condition event-rule-matches --type=user \
 	--action=zoofest
 
