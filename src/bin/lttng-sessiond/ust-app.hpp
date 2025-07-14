@@ -183,6 +183,8 @@ struct ust_app_channel {
 	uint64_t tracefile_count;
 	uint64_t monitor_timer_interval;
 	LTTNG_OPTIONAL(uint64_t) watchdog_timer_interval;
+	lttng::sessiond::recording_channel_configuration::buffer_preallocation_policy_t
+		preallocation_policy;
 	/*
 	 * Node indexed by channel name in the channels' hash table of a session.
 	 */

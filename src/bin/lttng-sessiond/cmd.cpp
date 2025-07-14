@@ -1718,6 +1718,40 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 		}
 	}();
 
+	auto preallocation_policy = [&channel_attr, &domain]() {
+		lttng_channel_preallocation_policy policy;
+		const auto get_preallocation_policy_ret =
+			lttng_channel_get_preallocation_policy(&channel_attr, &policy);
+		LTTNG_ASSERT(get_preallocation_policy_ret == LTTNG_OK);
+
+		switch (get_domain_class_from_ctl_domain_type(domain->type)) {
+		case lttng::sessiond::domain_class::KERNEL_SPACE:
+			if (policy != LTTNG_CHANNEL_PREALLOCATION_POLICY_PREALLOCATE) {
+				LTTNG_THROW_UNSUPPORTED_ERROR(
+					"Kernel tracer only supports 'PREALLOCATE' buffer preallocation policy");
+			}
+
+			return ls::recording_channel_configuration::buffer_preallocation_policy_t::
+				PREALLOCATE;
+		default:
+		{
+			switch (policy) {
+			case LTTNG_CHANNEL_PREALLOCATION_POLICY_PREALLOCATE:
+				return ls::recording_channel_configuration::
+					buffer_preallocation_policy_t::PREALLOCATE;
+			case LTTNG_CHANNEL_PREALLOCATION_POLICY_ON_DEMAND:
+				return ls::recording_channel_configuration::
+					buffer_preallocation_policy_t::ON_DEMAND;
+			default:
+				LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+					"Invalid channel preallocation policy value received: value={}",
+					static_cast<std::underlying_type<
+						lttng_channel_preallocation_policy>::type>(policy)));
+			}
+		}
+		}
+	}();
+
 	ls::domain& target_domain =
 		session->get_domain(get_domain_class_from_ctl_domain_type(domain->type));
 
@@ -1794,6 +1828,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 					  buffer_full_policy,
 					  buffer_consumption_backend,
 					  allocation_policy,
+					  preallocation_policy,
 					  subbuffer_size_bytes,
 					  subbuffer_count,
 					  switch_timer_period_us,

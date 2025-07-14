@@ -64,6 +64,11 @@ public:
 		PER_CHANNEL,
 	};
 
+	enum class buffer_preallocation_policy_t {
+		PREALLOCATE,
+		ON_DEMAND,
+	};
+
 	enum class buffer_consumption_backend_t {
 		MMAP,
 		SPLICE,
@@ -96,6 +101,7 @@ public:
 		buffer_full_policy_t buffer_full_policy,
 		buffer_consumption_backend_t buffer_consumption_backend,
 		buffer_allocation_policy_t buffer_allocation_policy,
+		buffer_preallocation_policy_t buffer_preallocation_policy,
 		std::uint64_t subbuffer_size_bytes,
 		unsigned int subbuffer_count,
 		const nonstd::optional<timer_period_us>& switch_timer_period_us,
@@ -143,6 +149,7 @@ public:
 	const buffer_full_policy_t buffer_full_policy;
 	const buffer_consumption_backend_t buffer_consumption_backend;
 	const buffer_allocation_policy_t buffer_allocation_policy;
+	const buffer_preallocation_policy_t buffer_preallocation_policy;
 	const std::uint64_t subbuffer_size_bytes;
 	const unsigned int subbuffer_count;
 	const nonstd::optional<timer_period_us> switch_timer_period_us;

@@ -9,6 +9,7 @@
 #define _CONSUMER_H
 
 #include "consumer-destination-type.hpp"
+#include "recording-channel-configuration.hpp"
 #include "snapshot.hpp"
 #include "ust-app.hpp"
 
@@ -238,36 +239,40 @@ int consumer_recv_status_channel(struct consumer_socket *sock,
 void consumer_output_send_destroy_relayd(struct consumer_output *consumer);
 int consumer_create_socket(struct consumer_data *data, struct consumer_output *output);
 
-void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
-					uint64_t subbuf_size,
-					uint64_t num_subbuf,
-					int overwrite,
-					unsigned int switch_timer_interval,
-					unsigned int read_timer_interval,
-					unsigned int live_timer_interval,
-					bool is_in_live_session,
-					bool continuously_reclaimed,
-					unsigned int monitor_timer_interval,
-					nonstd::optional<uint64_t> watchdog_timer_interval,
-					int output,
-					int type,
-					uint64_t session_id,
-					const char *pathname,
-					const char *name,
-					uint64_t relayd_id,
-					uint64_t key,
-					const lttng_uuid& uuid,
-					uint32_t chan_id,
-					uint64_t tracefile_size,
-					uint64_t tracefile_count,
-					uint64_t session_id_per_pid,
-					unsigned int monitor,
-					uint32_t ust_app_uid,
-					int64_t blocking_timeout,
-					const char *root_shm_path,
-					const char *shm_path,
-					struct lttng_trace_chunk *trace_chunk,
-					const struct lttng_credentials *buffer_credentials);
+void consumer_init_ask_channel_comm_msg(
+	struct lttcomm_consumer_msg *msg,
+	uint64_t subbuf_size,
+	uint64_t num_subbuf,
+	int overwrite,
+	unsigned int switch_timer_interval,
+	unsigned int read_timer_interval,
+	unsigned int live_timer_interval,
+	bool is_in_live_session,
+	bool continuously_reclaimed,
+	unsigned int monitor_timer_interval,
+	nonstd::optional<uint64_t> watchdog_timer_interval,
+	int output,
+	int type,
+	uint64_t session_id,
+	const char *pathname,
+	const char *name,
+	uint64_t relayd_id,
+	uint64_t key,
+	const lttng_uuid& uuid,
+	uint32_t chan_id,
+	uint64_t tracefile_size,
+	uint64_t tracefile_count,
+	uint64_t session_id_per_pid,
+	unsigned int monitor,
+	uint32_t ust_app_uid,
+	int64_t blocking_timeout,
+	lttng::sessiond::recording_channel_configuration::buffer_preallocation_policy_t
+		preallocation_policy,
+	const char *root_shm_path,
+	const char *shm_path,
+	struct lttng_trace_chunk *trace_chunk,
+	const struct lttng_credentials *buffer_credentials);
+
 void consumer_init_add_stream_comm_msg(struct lttcomm_consumer_msg *msg,
 				       uint64_t channel_key,
 				       uint64_t stream_key,

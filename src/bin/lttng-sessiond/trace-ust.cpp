@@ -399,6 +399,19 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 		goto error;
 	}
 
+	luc->preallocation_policy = [](enum lttng_channel_preallocation_policy policy) {
+		switch (policy) {
+		case LTTNG_CHANNEL_PREALLOCATION_POLICY_PREALLOCATE:
+			return lttng::sessiond::recording_channel_configuration::
+				buffer_preallocation_policy_t::PREALLOCATE;
+		case LTTNG_CHANNEL_PREALLOCATION_POLICY_ON_DEMAND:
+			return lttng::sessiond::recording_channel_configuration::
+				buffer_preallocation_policy_t::ON_DEMAND;
+		default:
+			std::abort();
+		}
+	}(static_cast<enum lttng_channel_preallocation_policy>(extended->preallocation_policy));
+
 	/* Translate to UST output enum */
 	switch (luc->attr.output) {
 	default:

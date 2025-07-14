@@ -2617,6 +2617,7 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan, struct ltt_ust_
 		LTTNG_OPTIONAL_UNSET(&ua_chan->watchdog_timer_interval);
 	}
 
+	ua_chan->preallocation_policy = uchan->preallocation_policy;
 	ua_chan->attr.output = (lttng_ust_abi_output) uchan->attr.output;
 	ua_chan->attr.blocking_timeout = uchan->attr.u.s.blocking_timeout;
 	ua_chan->attr.type = static_cast<enum lttng_ust_abi_chan_type>(uchan->attr.u.s.type);

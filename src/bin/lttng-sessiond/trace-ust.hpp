@@ -11,6 +11,7 @@
 
 #include "consumer.hpp"
 #include "lttng-ust-ctl.hpp"
+#include "recording-channel-configuration.hpp"
 
 #include <common/defaults.hpp>
 #include <common/hashtable/hashtable.hpp>
@@ -78,6 +79,8 @@ struct ltt_ust_channel {
 	uint64_t monitor_timer_interval;
 	/* Only set in UST domain with `user` ownership. */
 	LTTNG_OPTIONAL(uint64_t) watchdog_timer_interval;
+	lttng::sessiond::recording_channel_configuration::buffer_preallocation_policy_t
+		preallocation_policy;
 };
 
 /* UST domain global (LTTNG_DOMAIN_UST) */

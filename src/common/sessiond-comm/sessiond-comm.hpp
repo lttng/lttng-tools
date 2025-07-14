@@ -1041,6 +1041,7 @@ struct lttcomm_consumer_msg {
 			 */
 			uint32_t ust_app_uid;
 			int64_t blocking_timeout;
+			uint8_t preallocate_backing;
 			char root_shm_path[PATH_MAX];
 			char shm_path[PATH_MAX];
 		} LTTNG_PACKED ask_channel;

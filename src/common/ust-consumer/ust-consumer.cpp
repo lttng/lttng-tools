@@ -2162,7 +2162,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		memcpy(attr.uuid, msg.u.ask_channel.uuid, sizeof(attr.uuid));
 		attr.blocking_timeout = msg.u.ask_channel.blocking_timeout;
 		attr.owner_id = LTTNG_UST_ABI_OWNER_ID_CONSUMER;
-		attr.preallocate_backing = true;
+		attr.preallocate_backing = msg.u.ask_channel.preallocate_backing;
 
 		/* Match channel buffer type to the UST abi. */
 		switch (msg.u.ask_channel.output) {

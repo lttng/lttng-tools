@@ -565,6 +565,20 @@ struct lttng_channel *trace_ust_channel_to_lttng_channel(const struct ltt_ust_ch
 {
 	struct lttng_channel *channel = nullptr, *ret = nullptr;
 	const int type = uchan->attr.u.s.type;
+	enum lttng_channel_allocation_policy allocation_policy;
+	enum lttng_channel_preallocation_policy preallocation_policy;
+
+	/* Convert from internal enum to external enum */
+	switch (uchan->preallocation_policy) {
+	case lttng::sessiond::recording_channel_configuration::buffer_preallocation_policy_t::
+		PREALLOCATE:
+		preallocation_policy = LTTNG_CHANNEL_PREALLOCATION_POLICY_PREALLOCATE;
+		break;
+	case lttng::sessiond::recording_channel_configuration::buffer_preallocation_policy_t::
+		ON_DEMAND:
+		preallocation_policy = LTTNG_CHANNEL_PREALLOCATION_POLICY_ON_DEMAND;
+		break;
+	}
 
 	channel = lttng_channel_create_internal();
 	if (!channel) {
@@ -620,8 +634,6 @@ struct lttng_channel *trace_ust_channel_to_lttng_channel(const struct ltt_ust_ch
 		}
 	}
 
-	enum lttng_channel_allocation_policy allocation_policy;
-
 	switch (type) {
 	case LTTNG_UST_ABI_CHAN_PER_CPU:
 		allocation_policy = LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU;
@@ -637,6 +649,12 @@ struct lttng_channel *trace_ust_channel_to_lttng_channel(const struct ltt_ust_ch
 
 	if (lttng_channel_set_allocation_policy(channel, allocation_policy) != LTTNG_OK) {
 		ERR("Failed to set channel allocation policy "
+		    "during conversion from ltt_ust_channel to lttng_channel");
+		goto end;
+	}
+
+	if (lttng_channel_set_preallocation_policy(channel, preallocation_policy) != LTTNG_OK) {
+		ERR("Failed to set channel preallocation policy "
 		    "during conversion from ltt_ust_channel to lttng_channel");
 		goto end;
 	}
