@@ -31,9 +31,10 @@ import bt2
 
 user_info = pwd.getpwuid(os.getuid())
 user_is_root = user_info.pw_uid == 0
+user_home = os.path.expanduser("~")
 
 DEFAULT_SUBSTITUTIONS = {
-    "USER_HOME": user_info.pw_dir,
+    "USER_HOME": user_home,
     "USER_ID": user_info.pw_uid,
     "SYSTEM_HOME": "@LTTNG_SYSTEM_RUNDIR@",
     "LTTNG_HOME": "@LTTNG_SYSTEM_RUNDIR@" if user_is_root else "{USER_HOME}",
