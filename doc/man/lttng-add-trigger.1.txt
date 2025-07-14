@@ -81,6 +81,30 @@ IMPORTANT: Make sure to **single-quote** 'CDESCR' when you run the
 `add-trigger` command from a shell, as capture descriptors can include
 characters having a special meaning for most shells.
 
+[[session-consumed-size-cond-spec]]`session-consumed-size-ge`::
+    Synopsis:
++
+[verse]
+option:--condition=**session-consumed-size-ge** nloption:--session='SESSION'
+nloption:--threshold-size='THRESHOLD'
+{nbsp}
++
+A `session-consumed-size-ge` condition is considered satisfied when the
+total consumed size of the tracing data of all the channels of the
+recording session 'SESSION' becomes greater than or equal to
+'THRESHOLD' bytes.
++
+Every time the monitor timer (see the nloption:--monitor-timer option
+of man:lttng-enable-channel(1)) of a channel expires, LTTng updates the
+statistics, like the total consumed tracing data size, of its owning
+recording session. This is when LTTng tries to evaluate
+`session-consumed-size-ge` conditions.
++
+'THRESHOLD' supports the `k`{nbsp}(KiB), `M`{nbsp}(MiB), and
+`G`{nbsp}(GiB) suffixes.
++
+The short options nloption:-s and nloption:-t are aliases of
+nloption:--session and nloption:--threshold-size.
 
 [[capture-descr]]
 Capture descriptor
@@ -430,6 +454,23 @@ $ lttng add-trigger --condition=event-rule-matches \
                     --action=start-session my-session \
                     --rate-policy=once-after:40
 ----
+====
+
+.Add a ``recording session consumed data size becomes greater than'' trigger of which the action is to rotate the recording session.
+====
+The `session-consumed-size-ge` trigger condition below is considered
+satisfied when the total consumed size of the recording session named
+`my-session` becomes greater than or equal to 100{nbsp}MiB.
+
+[role="term"]
+----
+$ lttng add-trigger --condition=session-consumed-size-ge \
+                    --session=my-session --threshold-size=100M \
+                    --action=rotate-session my-session
+----
+
+See man:lttng-concepts(7) to learn more about recording sessions and
+rotations.
 ====
 
 
