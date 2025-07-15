@@ -7,6 +7,7 @@
 Validate that the LTTng cli's add-trigger behaves as expected
 """
 
+import copy
 import pathlib
 import sys
 import xml.etree.ElementTree
@@ -160,8 +161,206 @@ def test_session_consumed_size(test_env, tap):
     client._run_cmd("remove-trigger trigger0")
 
 
+def test_buffer_usage_invalid(test_env, tap):
+    """
+    Validate that lttng add-trigger fails when various invalid parameters
+    are passed.
+    """
+    ok_args = {
+        "condition": "channel-buffer-usage-ge",
+        "session": "example_session",
+        "channel": "example_channel",
+        "threshold-ratio": "1.0",
+        "domain": "ust",
+    }
+    cases = [
+        {
+            "condition": "channel-buffer-usage-le",
+            "session": None,
+            "channel": None,
+            "threshold-ratio": None,
+            "domain-type": None,
+            "buffer-usage-type": None,
+        },
+        {"session": ""},
+        {"session": "a/b"},
+        {"channel": ""},
+        {"threshold-ratio": "2.0"},
+        {"threshold-ratio": "-1.0"},
+        {"threshold-size": "1024k"},
+        {
+            "threshold-ratio": None,
+            "threshold-size": "",
+        },
+        {
+            "threshold-ratio": None,
+            "threshold-size": "x",
+        },
+        {
+            "threshold-ratio": None,
+            "threshold-size": "4096BBBB",
+        },
+        {
+            "threshold-ratio": None,
+            "threshold-size": "-123",
+        },
+        {
+            "userspace": "__NOVALUE__",
+        },
+        {
+            "kernel": "__NOVALUE__",
+        },
+        {
+            "domain": None,
+            "kernel": "arg",
+        },
+        {
+            "domain": None,
+            "userspace": "arg",
+        },
+        {"domain": "invalid"},
+    ]
+    client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
+    passed = 0
+    for _case in cases:
+        args = copy.deepcopy(ok_args)
+        args.update(_case)
+        command = "add-trigger "
+        for key, value in args.items():
+            if value is None:
+                continue
+
+            if value != "__NOVALUE__":
+                command += "--{}='{}' ".format(key, value)
+            else:
+                command += "--{} ".format(key)
+
+        command += " --action notify"
+        try:
+            client._run_cmd(command)
+            tap.diagnostic("Case passed but shouldn't have")
+            client._run_cmd("remove-trigger trigger0")
+        except RuntimeError as e:
+            passed += 1
+
+    tap.test(
+        passed == len(cases),
+        "{}/{} lttng add-trigger invalid cases failed as expected".format(
+            passed, len(cases)
+        ),
+    )
+
+
+def test_buffer_usage(test_env, tap):
+    client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
+    usages = ["low", "high"]
+    domains = [
+        "jul",
+        "log4j",
+        "log4j2",
+        "python",
+        "ust",
+    ]
+    if test_env.run_kernel_tests():
+        domains.append("kernel")
+
+    passed = 0
+    expected_passes = len(domains) * len(usages)
+    for usage in usages:
+        usage_condition = (
+            "channel-buffer-usage-ge" if usage == "high" else "channel-buffer-usage-le"
+        )
+        for domain in domains:
+            try:
+                client._run_cmd(
+                    "add-trigger --condition={} -d '{}' -r 0.5 -s example_session -c example_channel --action notify".format(
+                        usage_condition, domain
+                    )
+                )
+            except RuntimeError as e:
+                tap.diagnostic("Exception while adding trigger: {}".format(e))
+                continue
+
+            result, _ = client._run_cmd("list-triggers")
+            root = xml.etree.ElementTree.fromstring(result)
+            ns = {"mi": "https://lttng.org/xml/ns/lttng-mi"}
+            trigger = root.findall("./mi:output/mi:triggers/mi:trigger", ns)[0]
+            condition = trigger.find("mi:condition/", ns)
+            trigger_name = trigger.find("mi:name", ns).text
+            test_passed = True
+            # Check
+            condition_tag_name = "{{{}}}condition_buffer_usage_{}".format(
+                ns["mi"], usage
+            )
+            if condition.tag != condition_tag_name:
+                tap.diagnostic(
+                    "Condition does not match: {} != {}".format(
+                        trigger.find("mi:condition", ns).text,
+                        condition_tag_name,
+                    )
+                )
+                test_passed = False
+
+            if condition.find("mi:session_name", ns).text != "example_session":
+                tap.diagnostic(
+                    "Session name does not match: {} != session_name".format(
+                        trigger.find("mi:session_name", ns).text
+                    )
+                )
+                test_passed = False
+
+            if condition.find("mi:channel_name", ns).text != "example_channel":
+                tap.diagnostic(
+                    "Channel name does not match: {} != channel_name".format(
+                        trigger.find("mi:channel_name", ns).text
+                    )
+                )
+                test_passed = False
+
+            if condition.find("mi:domain", ns).text != domain.upper():
+                tap.diagnostic(
+                    "Channel name does not match: {} != {}".format(
+                        trigger.find("mi:domain", ns).text, domain.upper()
+                    )
+                )
+                test_passed = False
+
+            threshold_bytes = condition.find("mi:threshold_bytes", ns)
+            if threshold_bytes is not None:
+                tap.diagnostic("Not expecting threshold_bytes")
+                test_passed = False
+
+            threshold_ratio = condition.find("mi:threshold_ratio", ns)
+            if threshold_ratio is not None:
+                if threshold_ratio.text != "0.500000":
+                    tap.diagnostic(
+                        "threshold_ratio does not match: {} != {}".format(
+                            threshold_ratio.text, "0.500000"
+                        )
+                    )
+                    test_passed = False
+            else:
+                tap.diagnostic("Missing threshold_ratio")
+                test_passed = False
+
+            if test_passed:
+                passed += 1
+
+            # Cleanup
+            client._run_cmd("remove-trigger '{}'".format(trigger_name))
+
+    tap.test(
+        passed == expected_passes,
+        "{}/{} additions of triggers using channel-buffer-usage-[ge|le] passed".format(
+            passed, expected_passes
+        ),
+    )
+
+
 if __name__ == "__main__":
     tests = [
+        test_buffer_usage_invalid,
+        test_buffer_usage,
         test_session_consumed_size_invalid_size,
         test_session_consumed_size_invalid_name,
         test_session_consumed_size_no_size,
@@ -169,7 +368,11 @@ if __name__ == "__main__":
         test_session_consumed_size,
     ]
     tap = lttngtest.TapGenerator(len(tests))
-    with lttngtest.test_environment(with_sessiond=True, log=tap.diagnostic) as test_env:
+    with lttngtest.test_environment(
+        with_sessiond=True,
+        log=tap.diagnostic,
+        enable_kernel_domain=lttngtest._Environment.run_kernel_tests(),
+    ) as test_env:
         for test in tests:
             tap.diagnostic("Starting test '{}'".format(test.__name__))
             test(test_env, tap)

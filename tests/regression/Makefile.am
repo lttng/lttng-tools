@@ -12,6 +12,7 @@ TEST_EXTENSIONS = .serial
 SERIAL_TESTS = tools/base-path/test_ust \
 	tools/channel/test_channel \
 	tools/channel/test_cli_legacy_channel_buffering_policies.py \
+	tools/client/test_add_trigger.py \
 	tools/filtering/test_invalid_filter \
 	tools/filtering/test_unsupported_op \
 	tools/filtering/test_valid_filter \
@@ -83,7 +84,6 @@ TESTS = tools/clear/test_disallow.py \
 	tools/live/test_per_application_leaks.py \
 	tools/lttng-ctl/test_liblttng-ctl_abi.py \
 	tools/context/test_ust.py \
-	tools/client/test_add_trigger.py \
 	tools/client/test_session_commands.py \
 	tools/client/test_event_rule_listing.py \
 	tools/client/test_warn_on_shm_too_small.py \
