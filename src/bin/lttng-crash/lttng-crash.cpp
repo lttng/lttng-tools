@@ -78,15 +78,21 @@ enum lttng_crash_type {
 #define SB_ID_OFFSET_COUNT(wl) (1UL << SB_ID_OFFSET_SHIFT(wl))
 #define SB_ID_OFFSET_MASK(wl)  (~(SB_ID_OFFSET_COUNT(wl) - 1))
 /*
- * Lowest bit of top word half belongs to noref. Used only for overwrite mode.
+ * LTTng crash ABI 0.0:
+ *   - Lowest bit of top word half belongs to noref. Used only for overwrite mode.
+ * LTTng crash ABI 1.0:
+ *   - Lowest bit of top word half belongs to noref.
  */
 #define SB_ID_NOREF_SHIFT(wl) (SB_ID_OFFSET_SHIFT(wl) - 1)
 #define SB_ID_NOREF_COUNT(wl) (1UL << SB_ID_NOREF_SHIFT(wl))
 #define SB_ID_NOREF_MASK(wl)  SB_ID_NOREF_COUNT(wl)
 /*
- * In overwrite mode: lowest half of word is used for index.
- * Limit of 2^16 subbuffers per buffer on 32-bit, 2^32 on 64-bit.
- * In producer-consumer mode: whole word used for index.
+ * LTTng crash ABI 0.0:
+ *  - In overwrite mode: lowest half of word is used for index.
+ *  - In producer-consumer mode: whole word used for index.
+ * LTTng crash ABI 1.0:
+ *  - Lowest half of word is used for index.
+ *  - Limit of 2^16 subbuffers per buffer on 32-bit, 2^32 on 64-bit.
  */
 #define SB_ID_INDEX_SHIFT(wl) 0
 #define SB_ID_INDEX_COUNT(wl) (1UL << SB_ID_INDEX_SHIFT(wl))
@@ -149,6 +155,47 @@ struct crash_abi_0_0 {
 	uint32_t mode; /* Buffer mode: 0: overwrite, 1: discard */
 } __attribute__((packed));
 
+/*
+ * Crash ABI 1.0 always has an extra reader subbuffer.
+ */
+struct crash_abi_1_0 {
+	struct crash_abi_unknown parent;
+
+	struct {
+		uint32_t prod_offset;
+		uint32_t consumed_offset;
+		uint32_t commit_hot_array;
+		uint32_t commit_hot_seq;
+		uint32_t buf_wsb_array;
+		uint32_t buf_wsb_id;
+		uint32_t sb_array;
+		uint32_t sb_array_shmp_offset;
+		uint32_t sb_backend_p_offset;
+		uint32_t content_size;
+		uint32_t packet_size;
+	} __attribute__((packed)) offset;
+	struct {
+		uint8_t prod_offset;
+		uint8_t consumed_offset;
+		uint8_t commit_hot_seq;
+		uint8_t buf_wsb_id;
+		uint8_t sb_array_shmp_offset;
+		uint8_t sb_backend_p_offset;
+		uint8_t content_size;
+		uint8_t packet_size;
+	} __attribute__((packed)) length;
+	struct {
+		uint32_t commit_hot_array;
+		uint32_t buf_wsb_array;
+		uint32_t sb_array;
+	} __attribute__((packed)) stride;
+
+	uint64_t buf_size; /* Size of the buffer */
+	uint64_t subbuf_size; /* Sub-buffer size */
+	uint64_t num_subbuf; /* Number of sub-buffers for writer */
+	uint32_t mode; /* Buffer mode: 0: overwrite, 1: discard */
+} __attribute__((packed));
+
 struct lttng_crash_layout {
 	struct {
 		int prod_offset, consumed_offset, commit_hot_array, commit_hot_seq, buf_wsb_array,
@@ -171,6 +218,7 @@ struct lttng_crash_layout {
 	uint64_t subbuf_size; /* Sub-buffer size */
 	uint64_t num_subbuf; /* Number of sub-buffers for writer */
 	uint32_t mode; /* Buffer mode: 0: overwrite, 1: discard */
+	uint32_t extra_reader_subbuf; /* Has an extra reader subbuffer ? (true/false) */
 };
 } /* namespace */
 
@@ -441,6 +489,47 @@ static int get_crash_layout_0_0(struct lttng_crash_layout *layout, char *map)
 	crash_get_layout(layout, abi, num_subbuf);
 	crash_get_layout(layout, abi, mode);
 
+	layout->extra_reader_subbuf = (layout->mode == RING_BUFFER_OVERWRITE);
+
+	return 0;
+}
+
+static int get_crash_layout_1_0(struct lttng_crash_layout *layout, char *map)
+{
+	const struct crash_abi_1_0 *abi = (const struct crash_abi_1_0 *) map;
+
+	crash_get_layout(layout, abi, offset.prod_offset);
+	crash_get_layout(layout, abi, offset.consumed_offset);
+	crash_get_layout(layout, abi, offset.commit_hot_array);
+	crash_get_layout(layout, abi, offset.commit_hot_seq);
+	crash_get_layout(layout, abi, offset.buf_wsb_array);
+	crash_get_layout(layout, abi, offset.buf_wsb_id);
+	crash_get_layout(layout, abi, offset.sb_array);
+	crash_get_layout(layout, abi, offset.sb_array_shmp_offset);
+	crash_get_layout(layout, abi, offset.sb_backend_p_offset);
+	crash_get_layout(layout, abi, offset.content_size);
+	crash_get_layout(layout, abi, offset.packet_size);
+
+	crash_get_layout(layout, abi, length.prod_offset);
+	crash_get_layout(layout, abi, length.consumed_offset);
+	crash_get_layout(layout, abi, length.commit_hot_seq);
+	crash_get_layout(layout, abi, length.buf_wsb_id);
+	crash_get_layout(layout, abi, length.sb_array_shmp_offset);
+	crash_get_layout(layout, abi, length.sb_backend_p_offset);
+	crash_get_layout(layout, abi, length.content_size);
+	crash_get_layout(layout, abi, length.packet_size);
+
+	crash_get_layout(layout, abi, stride.commit_hot_array);
+	crash_get_layout(layout, abi, stride.buf_wsb_array);
+	crash_get_layout(layout, abi, stride.sb_array);
+
+	crash_get_layout(layout, abi, buf_size);
+	crash_get_layout(layout, abi, subbuf_size);
+	crash_get_layout(layout, abi, num_subbuf);
+	crash_get_layout(layout, abi, mode);
+
+	layout->extra_reader_subbuf = true;
+
 	return 0;
 }
 
@@ -565,6 +654,20 @@ static int get_crash_layout(struct lttng_crash_layout *layout, int fd, const cha
 			goto end;
 		}
 		break;
+	case 1:
+		switch (minor) {
+		case 0:
+			ret = get_crash_layout_1_0(layout, map);
+			if (ret) {
+				goto end;
+			}
+			break;
+		default:
+			ret = -1;
+			ERR("Unsupported crash ABI %u.%u\n", major, minor);
+			goto end;
+		}
+		break;
 	default:
 		ERR("Unsupported crash ABI %u.%u\n", major, minor);
 		ret = -1;
@@ -609,9 +712,10 @@ static inline uint64_t subbuf_index(uint64_t offset, uint64_t buf_size, uint64_t
 	return buf_offset(offset, buf_size) / subbuf_size;
 }
 
-static inline uint64_t subbuffer_id_get_index(uint32_t mode, uint64_t id, unsigned int wl)
+static inline uint64_t
+subbuffer_id_get_index(uint32_t extra_reader_subbuf, uint64_t id, unsigned int wl)
 {
-	if (mode == RING_BUFFER_OVERWRITE)
+	if (extra_reader_subbuf)
 		return id & SB_ID_INDEX_MASK(wl);
 	else
 		return id;
@@ -685,7 +789,7 @@ copy_crash_subbuf(const struct lttng_crash_layout *layout, int fd_dest, char *bu
 
 	/* Find actual physical offset in subbuffer table */
 	id = crash_get_array_field(layout, buf, buf_wsb_array, sbidx, buf_wsb_id);
-	sb_bindex = subbuffer_id_get_index(layout->mode, id, layout->word_size);
+	sb_bindex = subbuffer_id_get_index(layout->extra_reader_subbuf, id, layout->word_size);
 	rpages_offset =
 		crash_get_array_field(layout, buf, sb_array, sb_bindex, sb_array_shmp_offset);
 	p_offset = crash_get_field(layout, buf + rpages_offset, sb_backend_p_offset);
