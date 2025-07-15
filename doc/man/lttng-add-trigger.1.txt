@@ -57,6 +57,51 @@ with zero or more arguments 'CONDARGS'.
 
 The available condition types are:
 
+[[channel-buffer-usage-cond-spec]]`channel-buffer-usage-ge`::
+`channel-buffer-usage-le`::
+    Synopses:
++
+[verse]
+option:--condition=**channel-buffer-usage-ge** nloption:--session='SESSION'
+nloption:--channel='CHANNEL'
+nloption:--domain=(`kernel` | `user` | `jul` | `log4j` | `log4j2` | `python`)
+(nloption:--threshold-ratio='RATIO' | nloption:--threshold-size='SIZE')
+{nbsp}
+option:--condition=**channel-buffer-usage-le** nloption:--session='SESSION'
+nloption:--channel='CHANNEL'
+nloption:--domain=(`kernel` | `user` | `jul` | `log4j` | `log4j2` | `python`)
+(nloption:--threshold-ratio='RATIO' | nloption:--threshold-size='SIZE')
+{nbsp}
++
+A `channel-buffer-usage-ge` or `channel-buffer-usage-le` condition is
+considered satisfied when the ring buffer usage of the channel 'CHANNEL'
+(within the recording session 'SESSION' and the tracing domain specified
+by nloption:--domain) becomes greater/less than or equal to either:
++
+--
+With the nloption:--threshold-size='SIZE' option::
+    'SIZE' bytes.
++
+'SIZE' supports the `k`{nbsp}(KiB), `M`{nbsp}(MiB), and
+`G`{nbsp}(GiB) suffixes.
+
+With the nloption:--threshold-ratio='RATIO' option::
+    'RATIO' times the total size of the ring buffer
+    of the targeted channel.
++
+'RATIO' is a floating point number from{nbsp}0 to{nbsp}1.
+--
++
+Every time the monitor timer (see the nloption:--monitor-timer option of
+man:lttng-enable-channel(1)) of a channel expires, LTTng updates its
+statistics, including its buffer usage. This is when LTTng tries to
+evaluate `channel-buffer-usage-ge` and `channel-buffer-usage-le`
+conditions.
++
+The short options nloption:-c, nloption:-d, nloption:-s, and nloption:-t
+are aliases of nloption:--channel, nloption:--domain,
+nloption:--session, and nloption:--threshold-size.
+
 [[er-matches-cond-spec]]`event-rule-matches`::
     Synopsis:
 +
@@ -471,6 +516,28 @@ $ lttng add-trigger --condition=session-consumed-size-ge \
 
 See man:lttng-concepts(7) to learn more about recording sessions and
 rotations.
+====
+
+.Add a ``channel buffer usage becomes greater than or equal to'' trigger of which the actions are to send a notification and to rotate the recording session.
+====
+The `channel-buffer-usage-ge` trigger condition below is considered
+satisfied when the ring buffer usage of the Linux kernel channel named
+`my-channel` within the recording session named `my-session` becomes
+greater than or equal to 512{nbsp}KiB.
+
+The order of the option:--action options below is significant.
+
+[role="term"]
+----
+$ lttng add-trigger --condition=channel-buffer-usage-ge \
+                    --session=my-session --channel=my-channel \
+                    --domain=kernel --threshold-size=512k \
+                    --action=notify \
+                    --action=rotate-session my-session
+----
+
+See man:lttng-concepts(7) to learn more about recording sessions,
+channels, and rotations.
 ====
 
 
