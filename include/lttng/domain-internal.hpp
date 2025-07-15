@@ -10,7 +10,9 @@
 
 #include "common/macros.hpp"
 #include "lttng/domain.h"
+#include "lttng/lttng-error.h"
 
+enum lttng_error_code lttng_domain_type_parse(const char *str, enum lttng_domain_type *domain_type);
 const char *lttng_domain_type_str(enum lttng_domain_type domain_type);
 
 #endif /* LTTNG_DOMAIN_INTERNAL_H */
