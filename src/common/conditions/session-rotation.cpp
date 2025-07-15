@@ -8,6 +8,7 @@
 #include <common/error.hpp>
 #include <common/macros.hpp>
 #include <common/mi-lttng.hpp>
+#include <common/session.hpp>
 
 #include <lttng/condition/condition-internal.hpp>
 #include <lttng/condition/session-rotation-internal.hpp>
@@ -74,6 +75,11 @@ static bool lttng_condition_session_rotation_validate(const struct lttng_conditi
 	rotation = lttng::utils::container_of(condition, &lttng_condition_session_rotation::parent);
 	if (!rotation->session_name) {
 		ERR("Invalid session rotation condition: a target session name must be set.");
+		goto end;
+	}
+
+	if (session_validate_name(rotation->session_name) != 0) {
+		ERR("Invalid session rotation condition: session name must be valid.");
 		goto end;
 	}
 

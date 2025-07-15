@@ -8,6 +8,7 @@
 #include <common/error.hpp>
 #include <common/macros.hpp>
 #include <common/mi-lttng.hpp>
+#include <common/session.hpp>
 
 #include <lttng/condition/buffer-usage-internal.hpp>
 #include <lttng/condition/condition-internal.hpp>
@@ -53,14 +54,22 @@ static bool lttng_condition_buffer_usage_validate(const struct lttng_condition *
 		ERR("Invalid buffer condition: a target session name must be set.");
 		goto end;
 	}
+
+	if (session_validate_name(usage->session_name) != 0) {
+		ERR("Invalid buffer condition: session name must be valid.");
+		goto end;
+	}
+
 	if (!usage->channel_name) {
 		ERR("Invalid buffer condition: a target channel name must be set.");
 		goto end;
 	}
+
 	if (usage->threshold_ratio.set == usage->threshold_bytes.set) {
 		ERR("Invalid buffer condition: a threshold must be set or both type cannot be used simultaneously.");
 		goto end;
 	}
+
 	if (!usage->domain.set) {
 		ERR("Invalid buffer usage condition: a domain must be set.");
 		goto end;

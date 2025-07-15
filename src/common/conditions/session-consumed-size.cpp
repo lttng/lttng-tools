@@ -8,6 +8,7 @@
 #include <common/error.hpp>
 #include <common/macros.hpp>
 #include <common/mi-lttng.hpp>
+#include <common/session.hpp>
 
 #include <lttng/condition/condition-internal.hpp>
 #include <lttng/condition/session-consumed-size-internal.hpp>
@@ -49,6 +50,12 @@ static bool lttng_condition_session_consumed_size_validate(const struct lttng_co
 		ERR("Invalid session consumed size condition: a target session name must be set.");
 		goto end;
 	}
+
+	if (session_validate_name(consumed->session_name) != 0) {
+		ERR("Invalid session consumed size condition: session name must be valid.");
+		goto end;
+	}
+
 	if (!consumed->consumed_threshold_bytes.set) {
 		ERR("Invalid session consumed size condition: a threshold must be set.");
 		goto end;

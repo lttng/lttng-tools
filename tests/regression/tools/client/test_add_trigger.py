@@ -53,7 +53,7 @@ def test_session_consumed_size_invalid_name(test_env, tap):
     """
     client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
     size = "1024"
-    invalid_names = [""]
+    invalid_names = ["", "a/b"]
     passed = True
     for name in invalid_names:
         try:
