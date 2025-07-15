@@ -110,6 +110,7 @@ libcommon_lgpl_la_SOURCES = \
 	reference.hpp \
 	runas.cpp runas.hpp \
 	scope-exit.hpp \
+	session.cpp session.hpp \
 	session-descriptor.cpp \
 	snapshot.cpp snapshot.hpp \
 	spawn-viewer.cpp spawn-viewer.hpp \
