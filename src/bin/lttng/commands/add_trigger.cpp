@@ -19,6 +19,7 @@
 #include <lttng/domain-internal.hpp>
 
 #include <ctype.h>
+#include <exception>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -70,6 +71,23 @@ enum {
 
 	OPT_SESSION_NAME,
 	OPT_THRESHOLD_SIZE,
+
+	OPT_CHANNEL_NAME,
+	OPT_DOMAIN,
+	OPT_DOMAIN_UST,
+	OPT_DOMAIN_KERNEL,
+	OPT_THRESHOLD_RATIO,
+};
+
+static const struct argpar_opt_descr buffer_usage_opt_descriptions[] = {
+	{ OPT_SESSION_NAME, 's', "session", true },
+	{ OPT_CHANNEL_NAME, 'c', "channel", true },
+	{ OPT_DOMAIN, 'd', "domain", true },
+	{ OPT_DOMAIN_UST, 'u', "userspace", false },
+	{ OPT_DOMAIN_KERNEL, 'k', "kernel", false },
+	{ OPT_THRESHOLD_SIZE, 't', "threshold-size", true },
+	{ OPT_THRESHOLD_RATIO, 'r', "threshold-ratio", true },
+	ARGPAR_OPT_DESCR_SENTINEL
 };
 
 static const struct argpar_opt_descr event_rule_opt_descrs[] = {
@@ -660,7 +678,292 @@ struct parse_session_consumed_size_res {
 	std::string session_name;
 	uint64_t threshold_size_bytes = 0;
 };
+struct parse_buffer_usage_res {
+	bool success = false;
+	std::string session_name;
+	std::string channel_name;
+	enum lttng_domain_type domain_type = LTTNG_DOMAIN_NONE;
+	double threshold_ratio = 0.0;
+	uint64_t threshold_bytes = 0;
+	bool is_threshold_bytes = false;
+};
 } /* namespace */
+
+static struct parse_buffer_usage_res
+parse_buffer_usage(int *argc, const char ***argv, int argc_offset, const char *condition_cli_name)
+{
+	bool error = false, has_threshold_bytes = false, has_threshold_ratio = false;
+	parse_buffer_usage_res res;
+	std::string prefix;
+	auto argpar_iter = lttng::make_unique_wrapper<struct argpar_iter, argpar_iter_destroy>(
+		argpar_iter_create(*argc, *argv, buffer_usage_opt_descriptions));
+	auto argpar_item =
+		lttng::make_unique_wrapper<const struct argpar_item, argpar_item_destroy>(
+			(const struct argpar_item *) nullptr);
+
+	try {
+		prefix = fmt::format("While parsing condition `{}`: ", condition_cli_name);
+	} catch (const std::exception& e) {
+		ERR_FMT("Failed to format prefix string for `{}`: {}",
+			condition_cli_name,
+			e.what());
+		return res;
+	}
+
+	if (!argpar_iter) {
+		ERR_FMT("{}failed to create argpar-iter", prefix);
+		return res;
+	}
+
+	while (true) {
+		const struct argpar_item *temp = nullptr;
+		parse_next_item_status status = parse_next_item(
+			argpar_iter.get(), &temp, argc_offset, *argv, false, nullptr, nullptr);
+
+		argpar_item.reset(temp);
+		if (status == PARSE_NEXT_ITEM_STATUS_ERROR ||
+		    status == PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY) {
+			error = true;
+			ERR_FMT("{}parse_next_item error {}", prefix, status);
+			break;
+		} else if (status == PARSE_NEXT_ITEM_STATUS_END) {
+			break;
+		}
+
+		LTTNG_ASSERT(status == PARSE_NEXT_ITEM_STATUS_OK);
+		if (argpar_item_type(argpar_item.get()) == ARGPAR_ITEM_TYPE_OPT) {
+			const auto *descr = argpar_item_opt_descr(argpar_item.get());
+			const auto *arg = argpar_item_opt_arg(argpar_item.get());
+
+			switch (descr->id) {
+			case OPT_SESSION_NAME:
+				try {
+					res.session_name = arg;
+				} catch (const std::exception& e) {
+					error = true;
+					ERR_FMT("{}Failed to assign session_name: {}",
+						prefix,
+						e.what());
+				}
+
+				break;
+			case OPT_CHANNEL_NAME:
+				try {
+					res.channel_name = arg;
+				} catch (const std::exception& e) {
+					error = true;
+					ERR_FMT("{}Failed to assign channel_name: {}",
+						prefix,
+						e.what());
+				}
+
+				break;
+			case OPT_DOMAIN:
+			case OPT_DOMAIN_UST:
+			case OPT_DOMAIN_KERNEL:
+				if (res.domain_type != LTTNG_DOMAIN_NONE) {
+					error = true;
+					ERR_FMT("{}domain type already set. Only one of `-d/--domain`, `-u/--userspace`, and `-k/--kernel` may be given.",
+						prefix);
+					break;
+				}
+
+				if (descr->id == OPT_DOMAIN_UST) {
+					res.domain_type = LTTNG_DOMAIN_UST;
+				} else if (descr->id == OPT_DOMAIN_KERNEL) {
+					res.domain_type = LTTNG_DOMAIN_KERNEL;
+				} else {
+					if (lttng_domain_type_parse(arg, &res.domain_type) !=
+					    LTTNG_OK) {
+						error = true;
+						res.domain_type = LTTNG_DOMAIN_NONE;
+						ERR_FMT("{}Unable to parse `{}` into LTTng domain type",
+							prefix,
+							arg);
+						break;
+					}
+				}
+
+				break;
+			case OPT_THRESHOLD_SIZE:
+				if (has_threshold_ratio || has_threshold_bytes) {
+					error = true;
+					ERR_FMT("{}only one of `-r/--threshold-ratio` and `-t/--threshold-size` may be given",
+						prefix);
+					break;
+				}
+
+				if (utils_parse_size_suffix(arg, &res.threshold_bytes) < 0) {
+					error = true;
+					ERR_FMT("{}wrong value in `-t/--threshold-size` parameter: `{}`",
+						prefix,
+						arg);
+					break;
+				}
+
+				res.is_threshold_bytes = true;
+				has_threshold_bytes = true;
+				break;
+			case OPT_THRESHOLD_RATIO:
+				if (has_threshold_ratio or has_threshold_bytes) {
+					error = true;
+					ERR_FMT("{}only one of `-r/--threshold-ratio` and `-t/--threshold-size` may be given",
+						prefix);
+					break;
+				}
+
+				try {
+					res.threshold_ratio = std::stod(arg);
+				} catch (const std::exception& e) {
+					error = true;
+					ERR_FMT("Failed to convert `{}` to double: {}",
+						arg,
+						e.what());
+					break;
+				}
+
+				has_threshold_ratio = true;
+				res.is_threshold_bytes = false;
+				break;
+			default:
+				abort();
+			}
+		} else {
+			const auto *arg = argpar_item_non_opt_arg(argpar_item.get());
+			error = true;
+			ERR_FMT("{}unexpected argument '{}'", prefix, arg);
+			break;
+		}
+	}
+
+	const auto consumed_args = argpar_iter_ingested_orig_args(argpar_iter.get());
+	LTTNG_ASSERT(consumed_args >= 0);
+	*argc -= consumed_args;
+	*argv += consumed_args;
+	if (res.session_name.empty()) {
+		error = true;
+		ERR_FMT("{}`-s/--session` is required", prefix);
+	}
+
+	if (res.channel_name.empty()) {
+		error = true;
+		ERR_FMT("{}`-c/--channel` is required", prefix);
+	}
+
+	if (res.domain_type == LTTNG_DOMAIN_NONE) {
+		error = true;
+		ERR_FMT("{}One of `-u/--userspace`, `-k/--kernel`, or `-d/--domain` must be given",
+			prefix);
+	}
+
+	if (!has_threshold_ratio && !has_threshold_bytes) {
+		error = true;
+		ERR_FMT("{}One of `-r/--threshold-ratio` or `-t/--threshold-size` is required",
+			prefix);
+	}
+
+	res.success = !error;
+	return res;
+}
+
+static struct lttng_condition *
+_handle_condition_buffer_usage(int *argc,
+			       const char ***argv,
+			       int argc_offset,
+			       enum lttng_condition_type condition_type,
+			       const char *condition_cli_name)
+{
+	enum lttng_condition_status status;
+	const auto result = parse_buffer_usage(argc, argv, argc_offset, condition_cli_name);
+	if (!result.success) {
+		ERR("Failed to parse buffer-usage arguments");
+		return nullptr;
+	}
+
+	auto condition = [condition_type]() {
+		struct lttng_condition *raw_condition = nullptr;
+		switch (condition_type) {
+		case LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW:
+			raw_condition = lttng_condition_buffer_usage_low_create();
+			break;
+		case LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH:
+			raw_condition = lttng_condition_buffer_usage_high_create();
+			break;
+		default:
+			break;
+		}
+
+		return lttng::make_unique_wrapper<struct lttng_condition, lttng_condition_destroy>(
+			raw_condition);
+	}();
+	if (!condition) {
+		ERR("Failed to create lttng_condition");
+		return nullptr;
+	}
+
+	if (result.is_threshold_bytes) {
+		status = lttng_condition_buffer_usage_set_threshold(condition.get(),
+								    result.threshold_bytes);
+		if (status != LTTNG_CONDITION_STATUS_OK) {
+			ERR_FMT("Failed to set buffer-usage condition threshold bytes: {}", status);
+			return nullptr;
+		}
+	} else {
+		status = lttng_condition_buffer_usage_set_threshold_ratio(condition.get(),
+									  result.threshold_ratio);
+		if (status != LTTNG_CONDITION_STATUS_OK) {
+			ERR_FMT("Failed to set buffer-usage condition threshold ratio: {}", status);
+			return nullptr;
+		}
+	}
+
+	status = lttng_condition_buffer_usage_set_session_name(condition.get(),
+							       result.session_name.c_str());
+	if (status != LTTNG_CONDITION_STATUS_OK) {
+		ERR_FMT("Failed to set buffer-usage condition session name: {}", status);
+		return nullptr;
+	}
+
+	status = lttng_condition_buffer_usage_set_channel_name(condition.get(),
+							       result.channel_name.c_str());
+	if (status != LTTNG_CONDITION_STATUS_OK) {
+		ERR_FMT("Failed to set buffer-usage condition channel name: {}", status);
+		return nullptr;
+	}
+
+	status = lttng_condition_buffer_usage_set_domain_type(condition.get(), result.domain_type);
+	if (status != LTTNG_CONDITION_STATUS_OK) {
+		ERR_FMT("Failed to set buffer-usage condition domain type: {}", status);
+		return nullptr;
+	}
+
+	if (!lttng_condition_validate(condition.get())) {
+		ERR("Failed to validate condition");
+		return nullptr;
+	}
+
+	return condition.release();
+}
+
+static struct lttng_condition *
+handle_condition_buffer_usage_ge(int *argc, const char ***argv, int argc_offset)
+{
+	return _handle_condition_buffer_usage(argc,
+					      argv,
+					      argc_offset,
+					      LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH,
+					      "condition-buffer-usage-ge");
+}
+
+static struct lttng_condition *
+handle_condition_buffer_usage_le(int *argc, const char ***argv, int argc_offset)
+{
+	return _handle_condition_buffer_usage(argc,
+					      argv,
+					      argc_offset,
+					      LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW,
+					      "condition-buffer-usage-le");
+}
 
 static struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv, int argc_offset)
 {
@@ -1478,7 +1781,7 @@ parse_session_consumed_size(int *argc, const char ***argv, int argc_offset)
 			}
 		} else {
 			const char *arg = argpar_item_non_opt_arg(argpar_item.get());
-			ERR_FMT("{}unexpected argument '{}'", prefix, arg);
+			ERR_FMT("{}unexpected argument `{}`", prefix, arg);
 			break;
 		}
 	}
@@ -1550,6 +1853,8 @@ struct condition_descr {
 } /* namespace */
 
 static const struct condition_descr condition_descrs[] = {
+	{ "channel-buffer-usage-ge", handle_condition_buffer_usage_ge },
+	{ "channel-buffer-usage-le", handle_condition_buffer_usage_le },
 	{ "event-rule-matches", handle_condition_event },
 	{ "session-consumed-size-ge", handle_condition_session_consumed_size },
 };

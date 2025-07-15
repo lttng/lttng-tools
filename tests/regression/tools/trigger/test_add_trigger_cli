@@ -444,18 +444,24 @@ test_failure "invalid argument to --rate-policy: unknown policy type" \
 test_failure "missing args after --condition" \
 	"Error: While parsing argument #2 (\`--condition\`): Missing required argument for option \`--condition\`
 Error: Valid condition names are:
+Error:   channel-buffer-usage-ge
+Error:   channel-buffer-usage-le
 Error:   event-rule-matches
 Error:   session-consumed-size-ge" \
 	--condition
 test_failure "unknown --condition" \
 	"Error: While parsing argument #2 (\`--condition\`): Unknown condition name 'zoofest'
 Error: Valid condition names are:
+Error:   channel-buffer-usage-ge
+Error:   channel-buffer-usage-le
 Error:   event-rule-matches
 Error:   session-consumed-size-ge" \
 	--condition zoofest
 test_failure "unknown --condition=" \
 	"Error: While parsing argument #2 (\`--condition=zoofest\`): Unknown condition name 'zoofest'
 Error: Valid condition names are:
+Error:   channel-buffer-usage-ge
+Error:   channel-buffer-usage-le
 Error:   event-rule-matches
 Error:   session-consumed-size-ge" \
 	--condition=zoofest
