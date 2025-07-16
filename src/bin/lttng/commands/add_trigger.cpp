@@ -112,6 +112,11 @@ static const struct argpar_opt_descr session_consumed_size_opt_descriptions[] = 
 	ARGPAR_OPT_DESCR_SENTINEL,
 };
 
+static const struct argpar_opt_descr session_rotation_opt_descriptions[] = {
+	{ OPT_SESSION_NAME, 's', "session", true },
+	ARGPAR_OPT_DESCR_SENTINEL,
+};
+
 static bool has_syscall_prefix(const char *arg)
 {
 	bool matches = false;
@@ -686,6 +691,10 @@ struct parse_buffer_usage_res {
 	double threshold_ratio = 0.0;
 	uint64_t threshold_bytes = 0;
 	bool is_threshold_bytes = false;
+};
+struct parse_session_rotation_res {
+	bool success;
+	std::string session_name;
 };
 } /* namespace */
 
@@ -1845,6 +1854,163 @@ handle_condition_session_consumed_size(int *argc, const char ***argv, int argc_o
 	return condition.release();
 }
 
+static struct parse_session_rotation_res parse_session_rotation(int *argc,
+								const char ***argv,
+								int argc_offset,
+								const char *condition_cli_name)
+{
+	parse_session_rotation_res res;
+	bool error = false;
+	std::string prefix;
+	auto argpar_iter = lttng::make_unique_wrapper<struct argpar_iter, argpar_iter_destroy>(
+		argpar_iter_create(*argc, *argv, session_rotation_opt_descriptions));
+	auto argpar_item =
+		lttng::make_unique_wrapper<const struct argpar_item, argpar_item_destroy>(
+			(const struct argpar_item *) nullptr);
+
+	try {
+		prefix = fmt::format("While parsing condition `{}`: ", condition_cli_name);
+	} catch (const std::bad_alloc&) {
+		ERR_FMT("Failed to allocate memory for prefix string for `{}`", condition_cli_name);
+		return res;
+	}
+
+	if (!argpar_iter) {
+		ERR_FMT("{}failed to create argpar-iter", prefix);
+		return res;
+	}
+
+	while (true) {
+		const struct argpar_item *temp = nullptr;
+		auto status = parse_next_item(
+			argpar_iter.get(), &temp, argc_offset, *argv, false, nullptr, nullptr);
+
+		argpar_item.reset(temp);
+		if (status == PARSE_NEXT_ITEM_STATUS_ERROR ||
+		    status == PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY) {
+			error = true;
+			ERR_FMT("{}parse_next_item error {}", prefix, status);
+			break;
+		} else if (status == PARSE_NEXT_ITEM_STATUS_END) {
+			break;
+		}
+
+		LTTNG_ASSERT(status == PARSE_NEXT_ITEM_STATUS_OK);
+		if (argpar_item_type(argpar_item.get()) == ARGPAR_ITEM_TYPE_OPT) {
+			const struct argpar_opt_descr *descr =
+				argpar_item_opt_descr(argpar_item.get());
+			const char *arg = argpar_item_opt_arg(argpar_item.get());
+
+			switch (descr->id) {
+			case OPT_SESSION_NAME:
+				try {
+					res.session_name = arg;
+				} catch (const std::exception& e) {
+					error = true;
+					ERR_FMT("{}Failed to assign session name: {}",
+						prefix,
+						e.what());
+				}
+
+				break;
+			default:
+				ERR_FMT("Unknown description id: {}, arg `{}`",
+					(int) descr->id,
+					arg);
+				abort();
+			}
+		} else {
+			const auto *arg = argpar_item_non_opt_arg(argpar_item.get());
+			error = true;
+			ERR_FMT("{}unexpected argument `{}`", prefix, arg);
+			break;
+		}
+	}
+
+	const auto consumed_args = argpar_iter_ingested_orig_args(argpar_iter.get());
+	LTTNG_ASSERT(consumed_args >= 0);
+	*argc -= consumed_args;
+	*argv += consumed_args;
+
+	if (res.session_name.empty()) {
+		error = true;
+		ERR_FMT("{}`-s/--session` is required", prefix);
+	}
+
+	res.success = !error;
+	return res;
+}
+
+static struct lttng_condition *
+_handle_condition_session_rotation(int *argc,
+				   const char ***argv,
+				   int argc_offset,
+				   enum lttng_condition_type condition_type,
+				   const char *condition_cli_name)
+{
+	const auto result = parse_session_rotation(argc, argv, argc_offset, condition_cli_name);
+
+	if (!result.success) {
+		ERR_FMT("Failed to parse {} arguments", condition_cli_name);
+		return nullptr;
+	}
+
+	auto condition = [condition_type]() {
+		struct lttng_condition *raw_condition = nullptr;
+		switch (condition_type) {
+		case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
+			raw_condition = lttng_condition_session_rotation_completed_create();
+			break;
+		case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
+			raw_condition = lttng_condition_session_rotation_ongoing_create();
+			break;
+		default:
+			break;
+		}
+		return lttng::make_unique_wrapper<struct lttng_condition, lttng_condition_destroy>(
+			raw_condition);
+	}();
+
+	if (!condition) {
+		ERR("Failed to create lttng_condition");
+		return nullptr;
+	}
+
+	const auto status = lttng_condition_session_rotation_set_session_name(
+		condition.get(), result.session_name.c_str());
+	if (status != LTTNG_CONDITION_STATUS_OK) {
+		ERR_FMT("Failed to set session rotation condition session name: {}", status);
+		return nullptr;
+	}
+
+	if (!lttng_condition_validate(condition.get())) {
+		ERR("Failed to validate condition");
+		return nullptr;
+	}
+
+	return condition.release();
+}
+
+static struct lttng_condition *
+handle_condition_session_rotation_starts(int *argc, const char ***argv, int argc_offset)
+{
+	return _handle_condition_session_rotation(argc,
+						  argv,
+						  argc_offset,
+						  LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING,
+						  "session-rotation-starts");
+}
+
+static struct lttng_condition *
+handle_condition_session_rotation_finishes(int *argc, const char ***argv, int argc_offset)
+{
+	return _handle_condition_session_rotation(argc,
+						  argv,
+						  argc_offset,
+						  LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED,
+						  "session-rotation-finishes");
+}
+
 namespace {
 struct condition_descr {
 	const char *name;
@@ -1857,6 +2023,8 @@ static const struct condition_descr condition_descrs[] = {
 	{ "channel-buffer-usage-le", handle_condition_buffer_usage_le },
 	{ "event-rule-matches", handle_condition_event },
 	{ "session-consumed-size-ge", handle_condition_session_consumed_size },
+	{ "session-rotation-finishes", handle_condition_session_rotation_finishes },
+	{ "session-rotation-starts", handle_condition_session_rotation_starts },
 };
 
 static void print_valid_condition_names()

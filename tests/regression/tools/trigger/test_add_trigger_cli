@@ -447,7 +447,9 @@ Error: Valid condition names are:
 Error:   channel-buffer-usage-ge
 Error:   channel-buffer-usage-le
 Error:   event-rule-matches
-Error:   session-consumed-size-ge" \
+Error:   session-consumed-size-ge
+Error:   session-rotation-finishes
+Error:   session-rotation-starts" \
 	--condition
 test_failure "unknown --condition" \
 	"Error: While parsing argument #2 (\`--condition\`): Unknown condition name 'zoofest'
@@ -455,7 +457,9 @@ Error: Valid condition names are:
 Error:   channel-buffer-usage-ge
 Error:   channel-buffer-usage-le
 Error:   event-rule-matches
-Error:   session-consumed-size-ge" \
+Error:   session-consumed-size-ge
+Error:   session-rotation-finishes
+Error:   session-rotation-starts" \
 	--condition zoofest
 test_failure "unknown --condition=" \
 	"Error: While parsing argument #2 (\`--condition=zoofest\`): Unknown condition name 'zoofest'
@@ -463,7 +467,9 @@ Error: Valid condition names are:
 Error:   channel-buffer-usage-ge
 Error:   channel-buffer-usage-le
 Error:   event-rule-matches
-Error:   session-consumed-size-ge" \
+Error:   session-consumed-size-ge
+Error:   session-rotation-finishes
+Error:   session-rotation-starts" \
 	--condition=zoofest
 
 # `--condition event-rule-matches` failures
