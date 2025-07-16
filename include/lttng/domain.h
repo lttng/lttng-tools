@@ -45,6 +45,9 @@ enum lttng_domain_type {
 
 	/// Python logging.
 	LTTNG_DOMAIN_PYTHON = 5,
+
+	/* MUST be last element of the manually-assigned section of the enum */
+	LTTNG_DOMAIN_NR,
 };
 
 /*!

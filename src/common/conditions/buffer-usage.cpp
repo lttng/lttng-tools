@@ -380,7 +380,7 @@ static ssize_t init_condition_from_payload(struct lttng_condition *condition,
 	}
 
 	if (condition_comm->domain_type <= LTTNG_DOMAIN_NONE ||
-	    condition_comm->domain_type > LTTNG_DOMAIN_PYTHON) {
+	    condition_comm->domain_type > LTTNG_DOMAIN_NR) {
 		/* Invalid domain value. */
 		ERR("Invalid domain type value (%i) found in condition buffer",
 		    (int) condition_comm->domain_type);
