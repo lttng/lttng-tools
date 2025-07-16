@@ -357,6 +357,111 @@ def test_buffer_usage(test_env, tap):
     )
 
 
+def test_session_rotation_invalid(test_env, tap):
+    client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
+    ok_args = {
+        "condition": "session-rotation-starts",
+        "session": "example_session",
+    }
+    cases = [
+        {"session": ""},
+        {"session": "a/b"},
+        {"session": None},
+        {"condition": "session-rotation-finishes", "session": ""},
+        {"condition": "session-rotation-finishes", "session": "a/b"},
+        {"condition": "session-rotation-finishes", "session": None},
+    ]
+    passed = 0
+    for _case in cases:
+        args = copy.deepcopy(ok_args)
+        args.update(_case)
+        command = "add-trigger "
+        for key, value in args.items():
+            if value is None:
+                continue
+
+            if value != "__NOVALUE__":
+                command += "--{}='{}' ".format(key, value)
+            else:
+                command += "--{} ".format(key)
+
+        command += " --action notify"
+        try:
+            result = client._run_cmd(command)
+            tap.diagnostic("Case passed but shouldn't have")
+            client._run_cmd("remove-trigger trigger0")
+        except RuntimeError as e:
+            passed += 1
+
+    tap.test(
+        passed == len(cases),
+        "{}/{} lttng add-trigger invalid cases failed as expected".format(
+            passed, len(cases)
+        ),
+    )
+
+
+def test_session_rotation(test_env, tap):
+    client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
+    rotation_states = ["completed", "ongoing"]
+    expected_passes = len(rotation_states)
+    passed = 0
+    for rotation_state in rotation_states:
+        condition_name = "session-rotation-starts"
+        if rotation_state == "completed":
+            condition_name = "session-rotation-finishes"
+        try:
+            client._run_cmd(
+                "add-trigger --condition={} -s example_session --action notify".format(
+                    condition_name
+                )
+            )
+        except RuntimeError as e:
+            tap.diagnostic("Exception while adding trigger: {}".format(e))
+            continue
+
+        result, errs = client._run_cmd("list-triggers")
+        root = xml.etree.ElementTree.fromstring(result)
+        ns = {"mi": "https://lttng.org/xml/ns/lttng-mi"}
+        trigger = root.findall("./mi:output/mi:triggers/mi:trigger", ns)[0]
+        condition = trigger.find("mi:condition/", ns)
+        trigger_name = trigger.find("mi:name", ns).text
+        test_passed = True
+        # Check
+        condition_tag_name = "{{{}}}condition_session_rotation_{}".format(
+            ns["mi"], rotation_state
+        )
+        if condition.tag != condition_tag_name:
+            tap.diagnostic(
+                "Condition does not match: {} != {}".format(
+                    trigger.find("mi:condition", ns).text,
+                    condition_tag_name,
+                )
+            )
+            test_passed = False
+
+        if condition.find("mi:session_name", ns).text != "example_session":
+            tap.diagnostic(
+                "Session name does not match: {} != session_name".format(
+                    trigger.find("mi:session_name", ns).text
+                )
+            )
+            test_passed = False
+
+        if test_passed:
+            passed += 1
+
+        # Cleanup
+        client._run_cmd("remove-trigger '{}'".format(trigger_name))
+
+    tap.test(
+        passed == expected_passes,
+        "{}/{} additions of triggers using the session-rotation condition passed".format(
+            passed, expected_passes
+        ),
+    )
+
+
 if __name__ == "__main__":
     tests = [
         test_buffer_usage_invalid,
@@ -366,6 +471,8 @@ if __name__ == "__main__":
         test_session_consumed_size_no_size,
         test_session_consumed_size_no_name,
         test_session_consumed_size,
+        test_session_rotation_invalid,
+        test_session_rotation,
     ]
     tap = lttngtest.TapGenerator(len(tests))
     with lttngtest.test_environment(
