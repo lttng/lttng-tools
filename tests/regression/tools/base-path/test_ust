@@ -136,7 +136,7 @@ function ust_app_stream_base_path_via_load ()
 	local base_path="my/custom/path5"
 
 	diag "Test base path override for trace streaming using lttng load"
-	lttng_load_ok "-i $CURDIR/$session_name.lttng"
+	lttng_load_ok -i "$CURDIR/$session_name.lttng"
 	start_lttng_tracing_ok $session_name
 
 	$TESTAPP_BIN > /dev/null 2>&1
@@ -157,7 +157,7 @@ plan_tests $NUM_TESTS
 print_test_banner "$TEST_DESC"
 bail_out_if_no_babeltrace
 
-start_lttng_relayd "-o $TRACE_PATH"
+start_lttng_relayd -o "$TRACE_PATH"
 start_lttng_sessiond
 
 tests=( ust_app_stream_base_path

@@ -21,6 +21,9 @@ dist_doc_DATA = LICENSE \
 
 dist_noinst_DATA = CodingStyle.md
 
+TEST_DEPS = \
+	.shellcheckrc
+
 EXTRA_DIST = extras/lttng-bash_completion \
 	     extras/zsh-completion \
 	     LICENSES/BSD-2-Clause \
@@ -29,4 +32,20 @@ EXTRA_DIST = extras/lttng-bash_completion \
 	     LICENSES/LGPL-2.1 \
 	     LICENSES/MIT \
 	     LICENSES/BSL-1.0 \
-	     version
+	     version \
+	     $(TEST_DEPS)
+
+# Copy files required by the test suite to the build directory
+all-local:
+	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
+		for script in $(TEST_DEPS); do \
+			cp -f $(srcdir)/$$script $(builddir); \
+		done; \
+	fi
+
+clean-local:
+	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
+		for script in $(TEST_DEPS); do \
+			rm -f $(builddir)/$$script; \
+		done; \
+	fi

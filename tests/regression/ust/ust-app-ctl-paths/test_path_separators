@@ -34,7 +34,6 @@ function test_ctl_path_with_separators
 	env_vars=(
 		LTTNG_UST_CTL_PATH="${CTL_PATH}:${CTL_PATH2}"
 	)
-	# shellcheck disable=SC2119
 	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond
 	create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH}"
 	enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}"
@@ -49,7 +48,6 @@ function test_ctl_path_with_separators
 
 	validate_trace_count "${EVENT_NAMES}" "${TRACE_PATH}" 100
 
-	# shellcheck disable=SC2119
 	stop_lttng_sessiond
 
 	# Cleanup
@@ -66,7 +64,6 @@ function test_app_path_with_separators
 	env_vars=(
 		LTTNG_UST_CTL_PATH="${CTL_PATH}"
 	)
-	# shellcheck disable=SC2119
 	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond
 	create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH}"
 	enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}"
@@ -80,7 +77,6 @@ function test_app_path_with_separators
 
 	validate_trace_count "${EVENT_NAMES}" "${TRACE_PATH}" 100
 
-	# shellcheck disable=SC2119
 	stop_lttng_sessiond
 
 	# Cleanup

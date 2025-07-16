@@ -21,13 +21,13 @@ source "$TESTDIR/utils/utils.sh"
 
 function lttng_untrack_all()
 {
-	lttng_untrack 0 "-s $SESSION_NAME --all --pid -k"
+	lttng_untrack 0 -s "$SESSION_NAME" --all --pid -k
 }
 
 function lttng_track_pid()
 {
 	local PID=$1
-	lttng_track 0 "-s $SESSION_NAME -k --pid=$PID"
+	lttng_track 0 -s "$SESSION_NAME" -k --pid="$PID"
 }
 
 function run_workload()

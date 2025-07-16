@@ -130,9 +130,7 @@ function cleanup()
 	kill -s SIGKILL "${APP_PIDS[@]}"
 	wait "${APP_PIDS[@]}" 2>/dev/null
 	APP_PIDS=()
-	# shellcheck disable=SC2119
 	stop_lttng_sessiond
-	# shellcheck disable=SC2119
 	stop_lttng_relayd
 }
 

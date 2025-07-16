@@ -36,7 +36,7 @@ function test_basic_load()
 {
 	diag "Test basic load"
 
-	lttng_load_ok "-i $CURDIR/$SESSION_NAME.lttng"
+	lttng_load_ok -i "$CURDIR/$SESSION_NAME.lttng"
 
 	destroy_lttng_session_ok $SESSION_NAME
 }
@@ -50,9 +50,9 @@ function test_complex_load()
 
 	# Start relayd with localhost binding. The complex session uses those
 	# custom values.
-	start_lttng_relayd "-C tcp://localhost:8172 -D tcp://localhost:9817"
+	start_lttng_relayd -C tcp://localhost:8172 -D tcp://localhost:9817
 
-	lttng_load_ok "-i $CURDIR/$sess.lttng"
+	lttng_load_ok -i "$CURDIR/$sess.lttng"
 
 	# Once loaded, we are suppose to be able to disable certain events/channels
 	# thus having a confirmation that it's valid
@@ -115,9 +115,9 @@ function test_all_load()
 
 	# Start relayd with localhost binding. The complex session uses those
 	# custom values.
-	start_lttng_relayd "-C tcp://localhost:8172 -D tcp://localhost:9817"
+	start_lttng_relayd -C tcp://localhost:8172 -D tcp://localhost:9817
 
-	lttng_load_ok "-a -i $CURDIR"
+	lttng_load_ok -a -i "$CURDIR"
 
 	destroy_lttng_session_ok $SESSION_NAME
 	destroy_lttng_session_ok "$SESSION_NAME-complex"
@@ -133,10 +133,10 @@ function test_overwrite()
 {
 	diag "Test load overwrite"
 
-	lttng_load_ok "-i $CURDIR/$SESSION_NAME.lttng"
+	lttng_load_ok -i "$CURDIR/$SESSION_NAME.lttng"
 
 	# This one should succeed
-	lttng_load_ok "-f -i $CURDIR $SESSION_NAME"
+	lttng_load_ok -f -i "$CURDIR" "$SESSION_NAME"
 
 	destroy_lttng_session_ok $SESSION_NAME
 }
@@ -145,7 +145,7 @@ function test_trackers()
 {
 	diag "Test trackers loading"
 
-	lttng_load_ok "-i $CURDIR/$SESSION_NAME-trackers.lttng"
+	lttng_load_ok -i "$CURDIR/$SESSION_NAME-trackers.lttng"
 
 	diag "Test pid tracker"
 	local mi_output_file=$(mktemp -t "tmp.${FUNCNAME[0]}_output_file.XXXXXX")
@@ -175,11 +175,11 @@ function test_trackers()
 	fi
 
 	# Test to remove the target just to make sure
-	lttng_untrack_ok "--vpid 666 -u -s $SESSION_NAME-trackers"
-	lttng_untrack_ok "--vuid 777 -u -s $SESSION_NAME-trackers"
-	lttng_untrack_ok "--vgid 888 -u -s $SESSION_NAME-trackers"
+	lttng_untrack_ok --vpid 666 -u -s "$SESSION_NAME-trackers"
+	lttng_untrack_ok --vuid 777 -u -s "$SESSION_NAME-trackers"
+	lttng_untrack_ok --vgid 888 -u -s "$SESSION_NAME-trackers"
 	# Actually using vpid (backward compat)
-	lttng_untrack_ok "--pid 999 -u -s $SESSION_NAME-trackers"
+	lttng_untrack_ok --pid 999 -u -s "$SESSION_NAME-trackers"
 
 	destroy_lttng_session_ok "$SESSION_NAME-trackers"
 	rm -f ${mi_output_file}
@@ -195,7 +195,7 @@ function test_override_url_normal()
 
 	diag "Test url override for normal session"
 
-	start_lttng_relayd "-C tcp://127.0.0.1:8172 -D tcp://127.0.0.1:9817"
+	start_lttng_relayd -C tcp://127.0.0.1:8172 -D tcp://127.0.0.1:9817
 
 	local mi_output_file=$(mktemp -t "tmp.${FUNCNAME[0]}_output_file.XXXXXX")
 	if [ $? -ne 0 ]; then
@@ -203,7 +203,7 @@ function test_override_url_normal()
 	fi
 
 	# Url of style file://
-	lttng_load_ok "-i $CURDIR/$SESSION_NAME.lttng --override-url=${local_url_override}"
+	lttng_load_ok -i "$CURDIR/$SESSION_NAME.lttng" --override-url="${local_url_override}"
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi XML list "$SESSION_NAME" > $mi_output_file
 	mi_result=$("$XML_EXTRACT" $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:path")
 
@@ -212,7 +212,7 @@ function test_override_url_normal()
 	destroy_lttng_session_ok "$SESSION_NAME"
 
 	# Url of style /
-	lttng_load_ok "-i $CURDIR/$SESSION_NAME.lttng --override-url=${local_path_override}"
+	lttng_load_ok -i "$CURDIR/$SESSION_NAME.lttng" "--override-url=${local_path_override}"
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi XML list "$SESSION_NAME" > $mi_output_file
 	mi_result=$("$XML_EXTRACT" $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:path")
 
@@ -221,7 +221,7 @@ function test_override_url_normal()
 	destroy_lttng_session_ok "$SESSION_NAME"
 
 	# Url of style net://ip:port:port
-	lttng_load_ok "-i $CURDIR/$SESSION_NAME.lttng --override-url=${stream_url_override}"
+	lttng_load_ok -i "$CURDIR/$SESSION_NAME.lttng" --override-url="${stream_url_override}"
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi XML list "$SESSION_NAME" > $mi_output_file
 	mi_result=$("$XML_EXTRACT" $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:path")
 
@@ -245,7 +245,7 @@ function test_override_url_snapshot()
 
 	diag "Test url override for snapshot session"
 
-	start_lttng_relayd "-C tcp://127.0.0.1:8172 -D tcp://127.0.0.1:9817"
+	start_lttng_relayd -C tcp://127.0.0.1:8172 -D tcp://127.0.0.1:9817
 
 	local mi_output_file=$(mktemp -t "tmp.${FUNCNAME[0]}_output_file.XXXXXX")
 	if [ $? -ne 0 ]; then
@@ -253,7 +253,7 @@ function test_override_url_snapshot()
 	fi
 
 	# Url of style file://
-	lttng_load_ok "-i $CONFIG_DIR/$local_session_name.lttng --override-url=${url_override}"
+	lttng_load_ok -i "$CONFIG_DIR/$local_session_name.lttng" --override-url="${url_override}"
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi XML snapshot list-output -s "$local_session_name" > $mi_output_file
 	mi_result=$("$XML_EXTRACT" $mi_output_file "//lttng:command/lttng:output/lttng:snapshot_action/lttng:output/lttng:session/lttng:snapshots/lttng:snapshot/lttng:ctrl_url")
 
@@ -262,7 +262,7 @@ function test_override_url_snapshot()
 	destroy_lttng_session_ok "$local_session_name"
 
 	# Url of style /
-	lttng_load_ok "-i $CONFIG_DIR/$local_session_name.lttng --override-url=${path_override}"
+	lttng_load_ok -i "$CONFIG_DIR/$local_session_name.lttng" --override-url="${path_override}"
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi XML snapshot list-output -s "$local_session_name" > $mi_output_file
 	mi_result=$("$XML_EXTRACT" $mi_output_file "//lttng:command/lttng:output/lttng:snapshot_action/lttng:output/lttng:session/lttng:snapshots/lttng:snapshot/lttng:ctrl_url")
 
@@ -271,7 +271,7 @@ function test_override_url_snapshot()
 	destroy_lttng_session_ok "$local_session_name"
 
 	# Url of style net://ip:port:port
-	lttng_load_ok "-i $CONFIG_DIR/$local_session_name.lttng --override-url=${stream_url_override}"
+	lttng_load_ok -i "$CONFIG_DIR/$local_session_name.lttng" --override-url="${stream_url_override}"
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi XML snapshot list-output -s "$local_session_name" > $mi_output_file
 	mi_result=$("$XML_EXTRACT" $mi_output_file "//lttng:command/lttng:output/lttng:snapshot_action/lttng:output/lttng:session/lttng:snapshots/lttng:snapshot/lttng:ctrl_url")
 
@@ -299,7 +299,7 @@ function test_override_url_live()
 
 	diag "Test url override for live session"
 
-	start_lttng_relayd "-C tcp://127.0.0.1:8172 -D tcp://127.0.0.1:9817"
+	start_lttng_relayd -C tcp://127.0.0.1:8172 -D tcp://127.0.0.1:9817
 
 	local mi_output_file=$(mktemp -t "tmp.${FUNCNAME[0]}_output_file.XXXXXX")
 	if [ $? -ne 0 ]; then
@@ -309,17 +309,17 @@ function test_override_url_live()
 	# Url of style file://
 	# Expect this to fail since live session should never accept local
 	# output.
-	lttng_load_fail "-i $CONFIG_DIR/$local_session_name.lttng --override-url=${url_override}"
+	lttng_load_fail -i "$CONFIG_DIR/$local_session_name.lttng" --override-url="${url_override}"
 	destroy_lttng_session_fail "$local_session_name"
 
 	# Url of style /
 	# Expect this to fail since live session should never accept local
 	# output.
-	lttng_load_fail "-i $CONFIG_DIR/$local_session_name.lttng --override-url=${path_override}"
+	lttng_load_fail -i "$CONFIG_DIR/$local_session_name.lttng" --override-url="${path_override}"
 	destroy_lttng_session_fail "$local_session_name"
 
 	# Url of style net://ip:port:port
-	lttng_load_ok "-i $CONFIG_DIR/$local_session_name.lttng --override-url=${stream_url_override}"
+	lttng_load_ok -i "$CONFIG_DIR/$local_session_name.lttng" --override-url="${stream_url_override}"
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi XML list "$local_session_name" > $mi_output_file
 	mi_result=$("$XML_EXTRACT" $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:path")
 
@@ -342,7 +342,7 @@ function test_override_session_name()
 		break;
 	fi
 
-	lttng_load_ok "-i ${CURDIR}/${SESSION_NAME}.lttng --override-name=${override_name} ${SESSION_NAME}"
+	lttng_load_ok -i "${CURDIR}/${SESSION_NAME}.lttng" --override-name="${override_name}" "${SESSION_NAME}"
 	${TESTDIR}/../src/bin/lttng/${LTTNG_BIN} --mi XML list "${SESSION_NAME}" &> /dev/null
 	if [ $? -eq 0 ]; then
 		fail "Expected a failure on listing for old session name"
@@ -362,7 +362,7 @@ function test_override_session_name()
 	destroy_lttng_session_ok "${override_name}"
 
 	diag "Test session name override with all (Do not permit)"
-	lttng_load_fail "-i ${CURDIR}/${SESSION_NAME}.lttng --override-name=${override_name}"
+	lttng_load_fail -i "${CURDIR}/${SESSION_NAME}.lttng" --override-name="${override_name}"
 
 	rm -rf ${mi_output_file}
 }

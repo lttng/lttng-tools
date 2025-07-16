@@ -97,7 +97,7 @@ function test_health
 		# When starting with the error test points the "start" can fail
 		# or hang waiting for the PID file which got cleaned up quickly.
 		# Use the background mode with no tap to avoid the hang and failure.
-		start_lttng_relayd_opt 0 "-b" "-o $TRACE_PATH"
+		start_lttng_relayd_opt 0 "-b" -o "$TRACE_PATH"
 	else
 		RELAYD_ARGS=
 	fi

@@ -199,7 +199,7 @@ fi
 check_skip_kernel_test $NUM_TESTS "Skipping all tests." ||
 {
 	original_date=$(date)
-	start_lttng_relayd "-o $TRACE_PATH"
+	start_lttng_relayd -o "$TRACE_PATH"
 	start_lttng_sessiond
 
 	modprobe lttng-test

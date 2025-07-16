@@ -140,7 +140,6 @@ test_after_app_pid() {
 	# Give time to the consumer to write inflight data.
 	sleep 2
 
-	# shellcheck disable=SC2119
 	validate_trace
 	out=$?
 
@@ -182,7 +181,6 @@ test_before_app_pid() {
 	# Give time to the consumer to write inflight data.
 	sleep 2
 
-	# shellcheck disable=SC2119
 	validate_trace
 	out=$?
 
@@ -222,7 +220,6 @@ test_after_app_uid() {
 	# Give time to the consumer to write inflight data.
 	sleep 2
 
-	# shellcheck disable=SC2119
 	validate_trace
 	out=$?
 
@@ -264,7 +261,6 @@ test_before_app_uid() {
 	# Give time to the consumer to write inflight data.
 	sleep 2
 
-	# shellcheck disable=SC2119
 	validate_trace
 	out=$?
 
@@ -294,7 +290,6 @@ TESTS=(
 TEST_COUNT=${#TESTS[@]}
 i=0
 
-# shellcheck disable=SC2119
 start_lttng_sessiond
 
 while [ $i -lt "$TEST_COUNT" ]; do
@@ -304,5 +299,4 @@ while [ $i -lt "$TEST_COUNT" ]; do
 	(( "i++" ))
 done
 
-# shellcheck disable=SC2119
 stop_lttng_sessiond

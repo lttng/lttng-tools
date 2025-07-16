@@ -82,7 +82,7 @@ function test_thread_ok
 
 	diag "With relay daemon"
 
-	start_lttng_relayd "-o $TRACE_PATH"
+	start_lttng_relayd -o "$TRACE_PATH"
 	# Check health status
 	$CURDIR/$HEALTH_CHECK_BIN \
 		--relayd-path="${LTTNG_RELAYD_HEALTH}" \

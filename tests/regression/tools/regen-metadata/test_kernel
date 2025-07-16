@@ -104,7 +104,7 @@ check_skip_kernel_test "$NUM_TESTS" "Skipping all tests." ||
 	lttng_modules_loaded_fail
 	validate_lttng_modules_present
 
-	start_lttng_relayd "-o $TRACE_PATH"
+	start_lttng_relayd -o "$TRACE_PATH"
 	start_lttng_sessiond
 	modprobe lttng-test
 

@@ -85,7 +85,7 @@ plan_tests $NUM_TESTS
 print_test_banner "$TEST_DESC"
 bail_out_if_no_babeltrace
 
-start_lttng_relayd "-o $TRACE_PATH"
+start_lttng_relayd -o "$TRACE_PATH"
 start_lttng_sessiond
 
 tests=( test_ust_before_start test_ust_after_start )

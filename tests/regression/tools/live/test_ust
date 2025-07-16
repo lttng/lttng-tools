@@ -48,7 +48,7 @@ function clean_live_tracing()
 file_sync_after_first=$(mktemp -u -t tmp.test_live_ust_sync_after_first.XXXXXX)
 
 start_lttng_sessiond_notap
-start_lttng_relayd_notap "-o $TRACE_PATH"
+start_lttng_relayd_notap -o "$TRACE_PATH"
 
 setup_live_tracing
 

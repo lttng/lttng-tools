@@ -112,12 +112,12 @@ function wait_until_app_unregistration ()
 		# Extract from lttng list tracepoint the registered apps.
 		# This should give us enough guarantee since that if the app is not
 		# present it is unregistered from lttng-sessiond point of view.
-		LTTNG_BIN="lttng --mi xml" OUTPUT_DEST="$mi_output" list_lttng_notap -u
-		if ! $MI_VALIDATE "$mi_output"; then
+		LTTNG_TEST_MI_CLIENT=1 OUTPUT_DEST="$mi_output" list_lttng_notap -u
+		if ! lttng_mi_validate "$mi_output"; then
 			return 1
 		fi
 
-		value=$("$MI_VALIDATE" "$mi_output" "$XPATH_PID" | wc -l)
+		value=$(lttng_mi_validate "$mi_output" "$XPATH_PID" | wc -l)
 		if [ $value -ne 0 ]; then
 			diag "At least one app is still registred from lttng-sessiond point of view"
 			sleep 1
@@ -303,7 +303,7 @@ plan_tests $NUM_TESTS
 print_test_banner "$TEST_DESC"
 bail_out_if_no_babeltrace
 
-start_lttng_relayd "-o $TRACE_PATH"
+start_lttng_relayd -o "$TRACE_PATH"
 start_lttng_sessiond
 
 tests=( test_ust_streaming_uid test_ust_local_uid \

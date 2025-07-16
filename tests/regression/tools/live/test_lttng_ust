@@ -60,7 +60,7 @@ function clean_live_tracing()
 }
 
 start_lttng_sessiond
-start_lttng_relayd "-o $TRACE_PATH"
+start_lttng_relayd -o "$TRACE_PATH"
 
 setup_live_tracing
 

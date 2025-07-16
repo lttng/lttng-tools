@@ -85,11 +85,12 @@ function trace_kernel_app
 
 function test_event_tracker()
 {
-	local trace_path
 	local domain="$1"
 	local expect_event="$2"
 	local wildcard="$3"
-	local tracker="$4"
+	local opts=("${@:4}")
+
+	local trace_path
 	local channel=''
 
 	diag "${FUNCNAME[0]} $*"
@@ -100,14 +101,14 @@ function test_event_tracker()
 
 	if [ "$domain" = kernel ]; then
 		channel=chan
-		lttng_enable_kernel_channel 1 0 $SESSION_NAME $channel "--subbuf-size=8M --num-subbuf=4"
+		lttng_enable_kernel_channel 1 0 $SESSION_NAME $channel --subbuf-size=8M --num-subbuf=4
 	fi
 
 	enable_"$domain"_lttng_event_ok $SESSION_NAME "$wildcard" "$channel"
 
 	start_lttng_tracing_ok
 
-	lttng_track_"$domain"_ok "${tracker}"
+	lttng_track_"$domain"_ok "${opts[@]}"
 
 	prepare_"$domain"_app
 
@@ -141,7 +142,7 @@ function test_event_vpid_tracker()
 
 	if [ "$domain" = kernel ]; then
 		channel=chan
-		lttng_enable_kernel_channel 1 0 $SESSION_NAME $channel "--subbuf-size=8M --num-subbuf=4"
+		lttng_enable_kernel_channel 1 0 $SESSION_NAME $channel --subbuf-size=8M --num-subbuf=4
 	fi
 
 	enable_"$domain"_lttng_event_ok $SESSION_NAME "$wildcard" "$channel"
@@ -151,9 +152,9 @@ function test_event_vpid_tracker()
 	start_lttng_tracing_ok
 
 	if [ "$expect_event" -eq 1 ]; then
-		lttng_track_"$domain"_ok "--vpid ${CHILD_PID}"
+		lttng_track_"$domain"_ok --vpid "${CHILD_PID}"
 	else
-		lttng_track_"$domain"_ok "--vpid $((CHILD_PID+1))"
+		lttng_track_"$domain"_ok --vpid "$((CHILD_PID+1))"
 	fi
 
 	trace_"$domain"_app
@@ -172,10 +173,11 @@ function test_event_vpid_tracker()
 
 function test_event_pid_tracker()
 {
-	local trace_path
 	local domain="$1"
 	local expect_event="$2"
 	local wildcard="$3"
+
+	local trace_path
 	local channel=''
 
 	diag "${FUNCNAME[0]} $*"
@@ -186,7 +188,7 @@ function test_event_pid_tracker()
 
 	if [ "$domain" = kernel ]; then
 		channel=chan
-		lttng_enable_kernel_channel 1 0 $SESSION_NAME $channel "--subbuf-size=8M --num-subbuf=4"
+		lttng_enable_kernel_channel 1 0 $SESSION_NAME $channel --subbuf-size=8M --num-subbuf=4
 	fi
 
 	enable_"$domain"_lttng_event_ok $SESSION_NAME "$wildcard" "$channel"
@@ -196,9 +198,9 @@ function test_event_pid_tracker()
 	start_lttng_tracing_ok
 
 	if [ "$expect_event" -eq 1 ]; then
-		lttng_track_"$domain"_ok "--pid ${CHILD_PID}"
+		lttng_track_"$domain"_ok --pid "${CHILD_PID}"
 	else
-		lttng_track_"$domain"_ok "--pid $((CHILD_PID+1))"
+		lttng_track_"$domain"_ok --pid "$((CHILD_PID+1))"
 	fi
 
 	trace_"$domain"_app
@@ -218,10 +220,11 @@ function test_event_pid_tracker()
 
 function test_event_tracker_fail()
 {
-	local trace_path
 	local domain="$1"
 	local wildcard="$2"
-	local tracker="$3"
+	local opts=("${@:3}")
+
+	local trace_path
 
 	diag "${FUNCNAME[0]} $*"
 
@@ -229,7 +232,7 @@ function test_event_tracker_fail()
 
 	create_lttng_session_ok $SESSION_NAME "$trace_path"
 	enable_"$domain"_lttng_event_ok $SESSION_NAME "$wildcard"
-	lttng_track_"$domain"_fail "${tracker}"
+	lttng_track_"$domain"_fail "${opts[@]}"
 	destroy_lttng_session_ok $SESSION_NAME --no-wait
 
 	rm -rf "$trace_path"
@@ -237,11 +240,12 @@ function test_event_tracker_fail()
 
 function test_event_track_untrack()
 {
-	local trace_path
 	local domain="$1"
 	local expect_event="$2"
 	local wildcard="$3"
-	local tracker="$4"
+	local opts=("${@:4}")
+
+	local trace_path
 	local channel=''
 
 	diag "${FUNCNAME[0]} $*"
@@ -252,15 +256,15 @@ function test_event_track_untrack()
 
 	if [ "$domain" = kernel ]; then
 		channel=chan
-		lttng_enable_kernel_channel 1 0 $SESSION_NAME $channel "--subbuf-size=8M --num-subbuf=4"
+		lttng_enable_kernel_channel 1 0 $SESSION_NAME $channel --subbuf-size=8M --num-subbuf=4
 	fi
 
 	enable_"$domain"_lttng_event_ok $SESSION_NAME "$wildcard" "$channel"
 
 	start_lttng_tracing_ok
 
-	lttng_track_"$domain"_ok "${tracker}"
-	lttng_untrack_"$domain"_ok "${tracker}"
+	lttng_track_"$domain"_ok "${opts[@]}"
+	lttng_untrack_"$domain"_ok "${opts[@]}"
 
 	prepare_"$domain"_app
 
@@ -280,10 +284,11 @@ function test_event_track_untrack()
 
 function test_event_vpid_track_untrack()
 {
-	local trace_path
 	local domain="$1"
 	local expect_event="$2"
 	local wildcard="$3"
+
+	local trace_path
 	local channel=''
 
 	diag "${FUNCNAME[0]} $*"
@@ -294,7 +299,7 @@ function test_event_vpid_track_untrack()
 
 	if [ "$domain" = kernel ]; then
 		channel=chan
-		lttng_enable_kernel_channel 1 0 $SESSION_NAME $channel "--subbuf-size=8M --num-subbuf=4"
+		lttng_enable_kernel_channel 1 0 $SESSION_NAME $channel --subbuf-size=8M --num-subbuf=4
 	fi
 
 	enable_"$domain"_lttng_event_ok $SESSION_NAME "$wildcard" "$channel"
@@ -303,8 +308,8 @@ function test_event_vpid_track_untrack()
 
 	start_lttng_tracing_ok
 
-	lttng_track_"$domain"_ok "--vpid ${CHILD_PID}"
-	lttng_untrack_"$domain"_ok "--vpid ${CHILD_PID}"
+	lttng_track_"$domain"_ok --vpid "${CHILD_PID}"
+	lttng_untrack_"$domain"_ok --vpid "${CHILD_PID}"
 
 	trace_"$domain"_app
 
@@ -336,7 +341,7 @@ function test_event_pid_track_untrack()
 
 	if [ "$domain" = kernel ]; then
 		channel=chan
-		lttng_enable_kernel_channel 1 0 $SESSION_NAME $channel "--subbuf-size=8M --num-subbuf=4"
+		lttng_enable_kernel_channel 1 0 $SESSION_NAME $channel --subbuf-size=8M --num-subbuf=4
 	fi
 
 	enable_"$domain"_lttng_event_ok $SESSION_NAME "$wildcard" "$channel"
@@ -345,8 +350,8 @@ function test_event_pid_track_untrack()
 
 	start_lttng_tracing_ok
 
-	lttng_track_"$domain"_ok "--pid ${CHILD_PID}"
-	lttng_untrack_"$domain"_ok "--pid ${CHILD_PID}"
+	lttng_track_"$domain"_ok --pid "${CHILD_PID}"
+	lttng_untrack_"$domain"_ok --pid "${CHILD_PID}"
 
 	trace_"$domain"_app
 
@@ -374,7 +379,7 @@ function test_event_ust_vpid_untrack_snapshot()
 
 	prepare_ust_app
 
-	lttng_untrack_ust_ok "--vpid --all"
+	lttng_untrack_ust_ok --vpid --all
 
 	start_lttng_tracing_ok
 
@@ -408,49 +413,49 @@ fi
 EVENT_NAME="tp:tptest"
 
 # Both ordering of tracker type and `--all` are valid.
-test_event_track_untrack ust 0 "${EVENT_NAME}" "--vgid --all"
-test_event_track_untrack ust 0 "${EVENT_NAME}" "--all --vgid"
+test_event_track_untrack ust 0 "${EVENT_NAME}" --vgid --all
+test_event_track_untrack ust 0 "${EVENT_NAME}" --all --vgid
 
 #vuid, vgid
 
 # non-matching
-test_event_tracker ust 0 "${EVENT_NAME}" "--vuid $((SCRIPT_UID+1))"
-test_event_tracker ust 0 "${EVENT_NAME}" "--vgid $((SCRIPT_GID+1))"
-test_event_tracker ust 0 "${EVENT_NAME}" "--vuid $((SCRIPT_UID+1)) --vgid $((SCRIPT_GID+1))"
-test_event_tracker ust 0 "${EVENT_NAME}" "--vuid $((SCRIPT_UID+1)) --vgid ${SCRIPT_GID}"
-test_event_tracker ust 0 "${EVENT_NAME}" "--vuid ${SCRIPT_UID} --vgid $((SCRIPT_GID+1))"
-test_event_track_untrack ust 0 "${EVENT_NAME}" "--vuid ${SCRIPT_UID}"
-test_event_track_untrack ust 0 "${EVENT_NAME}" "--vgid ${SCRIPT_GID}"
-test_event_track_untrack ust 0 "${EVENT_NAME}" "--vuid --all"
-test_event_track_untrack ust 0 "${EVENT_NAME}" "--vgid --all"
+test_event_tracker ust 0 "${EVENT_NAME}" --vuid "$((SCRIPT_UID+1))"
+test_event_tracker ust 0 "${EVENT_NAME}" --vgid "$((SCRIPT_GID+1))"
+test_event_tracker ust 0 "${EVENT_NAME}" --vuid "$((SCRIPT_UID+1))" --vgid "$((SCRIPT_GID+1))"
+test_event_tracker ust 0 "${EVENT_NAME}" --vuid "$((SCRIPT_UID+1))" --vgid "${SCRIPT_GID}"
+test_event_tracker ust 0 "${EVENT_NAME}" --vuid "${SCRIPT_UID}" --vgid "$((SCRIPT_GID+1))"
+test_event_track_untrack ust 0 "${EVENT_NAME}" --vuid "${SCRIPT_UID}"
+test_event_track_untrack ust 0 "${EVENT_NAME}" --vgid "${SCRIPT_GID}"
+test_event_track_untrack ust 0 "${EVENT_NAME}" --vuid --all
+test_event_track_untrack ust 0 "${EVENT_NAME}" --vgid --all
 
 # matching
-test_event_tracker ust 1 "${EVENT_NAME}" "--vuid ${SCRIPT_UID}"
-test_event_tracker ust 1 "${EVENT_NAME}" "--vgid ${SCRIPT_GID}"
-test_event_tracker ust 1 "${EVENT_NAME}" "--vuid ${SCRIPT_UID} --vgid ${SCRIPT_GID}"
-test_event_tracker ust 1 "${EVENT_NAME}" "--vuid ${SCRIPT_USERNAME}"
-test_event_tracker ust 1 "${EVENT_NAME}" "--vgid ${SCRIPT_GROUPNAME}"
-test_event_tracker ust 1 "${EVENT_NAME}" "--vuid ${SCRIPT_UID},$((SCRIPT_UID+1))"
-test_event_tracker ust 1 "${EVENT_NAME}" "--vgid ${SCRIPT_GID},$((SCRIPT_GID+1))"
-test_event_tracker ust 1 "${EVENT_NAME}" "--vuid ${SCRIPT_USERNAME},$((SCRIPT_UID+1))"
-test_event_tracker ust 1 "${EVENT_NAME}" "--vgid ${SCRIPT_GROUPNAME},$((SCRIPT_GID+1))"
-test_event_tracker ust 1 "${EVENT_NAME}" "--vuid --all"
-test_event_tracker ust 1 "${EVENT_NAME}" "--vgid --all"
+test_event_tracker ust 1 "${EVENT_NAME}" --vuid "${SCRIPT_UID}"
+test_event_tracker ust 1 "${EVENT_NAME}" --vgid "${SCRIPT_GID}"
+test_event_tracker ust 1 "${EVENT_NAME}" --vuid "${SCRIPT_UID}" --vgid "${SCRIPT_GID}"
+test_event_tracker ust 1 "${EVENT_NAME}" --vuid "${SCRIPT_USERNAME}"
+test_event_tracker ust 1 "${EVENT_NAME}" --vgid "${SCRIPT_GROUPNAME}"
+test_event_tracker ust 1 "${EVENT_NAME}" --vuid "${SCRIPT_UID},$((SCRIPT_UID+1))"
+test_event_tracker ust 1 "${EVENT_NAME}" --vgid "${SCRIPT_GID},$((SCRIPT_GID+1))"
+test_event_tracker ust 1 "${EVENT_NAME}" --vuid "${SCRIPT_USERNAME},$((SCRIPT_UID+1))"
+test_event_tracker ust 1 "${EVENT_NAME}" --vgid "${SCRIPT_GROUPNAME},$((SCRIPT_GID+1))"
+test_event_tracker ust 1 "${EVENT_NAME}" --vuid --all
+test_event_tracker ust 1 "${EVENT_NAME}" --vgid --all
 
 #fail
-test_event_tracker_fail ust "${EVENT_NAME}" "--vuid lttng_unexisting_user"
-test_event_tracker_fail ust "${EVENT_NAME}" "--vgid lttng_unexisting_group"
+test_event_tracker_fail ust "${EVENT_NAME}" --vuid lttng_unexisting_user
+test_event_tracker_fail ust "${EVENT_NAME}" --vgid lttng_unexisting_group
 
 
 #vpid
 
 #non-matching
-test_event_track_untrack ust 0 "${EVENT_NAME}" "--vpid --all"
+test_event_track_untrack ust 0 "${EVENT_NAME}" --vpid --all
 test_event_vpid_tracker ust 0 "${EVENT_NAME}"
 test_event_vpid_track_untrack ust 0 "${EVENT_NAME}"
 
 #matching
-test_event_tracker ust 1 "${EVENT_NAME}" "--vpid --all"
+test_event_tracker ust 1 "${EVENT_NAME}" --vpid --all
 test_event_vpid_tracker ust 1 "${EVENT_NAME}"
 
 #snapshot untrack vpid
@@ -462,10 +467,10 @@ test_event_ust_vpid_untrack_snapshot
 #non-matching
 test_event_pid_tracker ust 0 "${EVENT_NAME}"
 test_event_pid_track_untrack ust 0 "${EVENT_NAME}"
-test_event_track_untrack ust 0 "${EVENT_NAME}" "--pid --all"	# backward compat
+test_event_track_untrack ust 0 "${EVENT_NAME}" --pid --all	# backward compat
 
 #matching
-test_event_tracker ust 1 "${EVENT_NAME}" "--pid --all"	# backward compat
+test_event_tracker ust 1 "${EVENT_NAME}" --pid --all	# backward compat
 test_event_pid_tracker ust 1 "${EVENT_NAME}"
 
 check_skip_kernel_test "$NUM_KERNEL_TESTS" "Skipping kernel tracker tests." ||
@@ -480,72 +485,72 @@ check_skip_kernel_test "$NUM_KERNEL_TESTS" "Skipping kernel tracker tests." ||
 	# vuid, vgid, vpid
 
 	# non-matching
-	test_event_tracker kernel 0 "${EVENT_NAME}" "--vuid $((SCRIPT_UID+1))"
-	test_event_tracker kernel 0 "${EVENT_NAME}" "--vgid $((SCRIPT_GID+1))"
-	test_event_tracker kernel 0 "${EVENT_NAME}" "--vuid $((SCRIPT_UID+1)) --vgid $((SCRIPT_GID+1))"
-	test_event_tracker kernel 0 "${EVENT_NAME}" "--vuid $((SCRIPT_UID+1)) --vgid ${SCRIPT_GID}"
-	test_event_tracker kernel 0 "${EVENT_NAME}" "--vuid ${SCRIPT_UID} --vgid $((SCRIPT_GID+1))"
-	test_event_track_untrack kernel 0 "${EVENT_NAME}" "--vuid ${SCRIPT_UID}"
-	test_event_track_untrack kernel 0 "${EVENT_NAME}" "--vgid ${SCRIPT_GID}"
-	test_event_track_untrack kernel 0 "${EVENT_NAME}" "--vuid --all"
-	test_event_track_untrack kernel 0 "${EVENT_NAME}" "--vgid --all"
+	test_event_tracker kernel 0 "${EVENT_NAME}" --vuid "$((SCRIPT_UID+1))"
+	test_event_tracker kernel 0 "${EVENT_NAME}" --vgid "$((SCRIPT_GID+1))"
+	test_event_tracker kernel 0 "${EVENT_NAME}" --vuid "$((SCRIPT_UID+1))" --vgid "$((SCRIPT_GID+1))"
+	test_event_tracker kernel 0 "${EVENT_NAME}" --vuid "$((SCRIPT_UID+1))" --vgid "${SCRIPT_GID}"
+	test_event_tracker kernel 0 "${EVENT_NAME}" --vuid "${SCRIPT_UID}" --vgid "$((SCRIPT_GID+1))"
+	test_event_track_untrack kernel 0 "${EVENT_NAME}" --vuid "${SCRIPT_UID}"
+	test_event_track_untrack kernel 0 "${EVENT_NAME}" --vgid "${SCRIPT_GID}"
+	test_event_track_untrack kernel 0 "${EVENT_NAME}" --vuid --all
+	test_event_track_untrack kernel 0 "${EVENT_NAME}" --vgid --all
 
 	# matching
-	test_event_tracker kernel 1 "${EVENT_NAME}" "--vuid ${SCRIPT_UID}"
-	test_event_tracker kernel 1 "${EVENT_NAME}" "--vgid ${SCRIPT_GID}"
-	test_event_tracker kernel 1 "${EVENT_NAME}" "--vuid ${SCRIPT_UID} --vgid ${SCRIPT_GID}"
-	test_event_tracker kernel 1 "${EVENT_NAME}" "--vuid ${SCRIPT_USERNAME}"
-	test_event_tracker kernel 1 "${EVENT_NAME}" "--vgid ${SCRIPT_GROUPNAME}"
-	test_event_tracker kernel 1 "${EVENT_NAME}" "--vuid ${SCRIPT_UID},$((SCRIPT_UID+1))"
-	test_event_tracker kernel 1 "${EVENT_NAME}" "--vgid ${SCRIPT_GID},$((SCRIPT_GID+1))"
-	test_event_tracker kernel 1 "${EVENT_NAME}" "--vuid ${SCRIPT_USERNAME},$((SCRIPT_UID+1))"
-	test_event_tracker kernel 1 "${EVENT_NAME}" "--vgid ${SCRIPT_GROUPNAME},$((SCRIPT_GID+1))"
-	test_event_tracker kernel 1 "${EVENT_NAME}" "--vuid --all"
-	test_event_tracker kernel 1 "${EVENT_NAME}" "--vgid --all"
+	test_event_tracker kernel 1 "${EVENT_NAME}" --vuid "${SCRIPT_UID}"
+	test_event_tracker kernel 1 "${EVENT_NAME}" --vgid "${SCRIPT_GID}"
+	test_event_tracker kernel 1 "${EVENT_NAME}" --vuid "${SCRIPT_UID}" --vgid "${SCRIPT_GID}"
+	test_event_tracker kernel 1 "${EVENT_NAME}" --vuid "${SCRIPT_USERNAME}"
+	test_event_tracker kernel 1 "${EVENT_NAME}" --vgid "${SCRIPT_GROUPNAME}"
+	test_event_tracker kernel 1 "${EVENT_NAME}" --vuid "${SCRIPT_UID},$((SCRIPT_UID+1))"
+	test_event_tracker kernel 1 "${EVENT_NAME}" --vgid "${SCRIPT_GID},$((SCRIPT_GID+1))"
+	test_event_tracker kernel 1 "${EVENT_NAME}" --vuid "${SCRIPT_USERNAME},$((SCRIPT_UID+1))"
+	test_event_tracker kernel 1 "${EVENT_NAME}" --vgid "${SCRIPT_GROUPNAME},$((SCRIPT_GID+1))"
+	test_event_tracker kernel 1 "${EVENT_NAME}" --vuid --all
+	test_event_tracker kernel 1 "${EVENT_NAME}" --vgid --all
 
 	#fail
-	test_event_tracker_fail kernel "${EVENT_NAME}" "--vuid lttng_unexisting_user"
-	test_event_tracker_fail kernel "${EVENT_NAME}" "--vgid lttng_unexisting_group"
+	test_event_tracker_fail kernel "${EVENT_NAME}" --vuid lttng_unexisting_user
+	test_event_tracker_fail kernel "${EVENT_NAME}" --vgid lttng_unexisting_group
 
 
 	#uid, gid
 
 	# non-matching
-	test_event_tracker kernel 0 "${EVENT_NAME}" "--uid $((SCRIPT_UID+1))"
-	test_event_tracker kernel 0 "${EVENT_NAME}" "--gid $((SCRIPT_GID+1))"
-	test_event_tracker kernel 0 "${EVENT_NAME}" "--uid $((SCRIPT_UID+1)) --gid $((SCRIPT_GID+1))"
-	test_event_tracker kernel 0 "${EVENT_NAME}" "--uid $((SCRIPT_UID+1)) --gid ${SCRIPT_GID}"
-	test_event_tracker kernel 0 "${EVENT_NAME}" "--uid ${SCRIPT_UID} --gid $((SCRIPT_GID+1))"
-	test_event_track_untrack kernel 0 "${EVENT_NAME}" "--uid ${SCRIPT_UID}"
-	test_event_track_untrack kernel 0 "${EVENT_NAME}" "--gid ${SCRIPT_GID}"
-	test_event_track_untrack kernel 0 "${EVENT_NAME}" "--uid --all"
-	test_event_track_untrack kernel 0 "${EVENT_NAME}" "--gid --all"
+	test_event_tracker kernel 0 "${EVENT_NAME}" --uid "$((SCRIPT_UID+1))"
+	test_event_tracker kernel 0 "${EVENT_NAME}" --gid "$((SCRIPT_GID+1))"
+	test_event_tracker kernel 0 "${EVENT_NAME}" --uid "$((SCRIPT_UID+1))" --gid "$((SCRIPT_GID+1))"
+	test_event_tracker kernel 0 "${EVENT_NAME}" --uid "$((SCRIPT_UID+1))" --gid "${SCRIPT_GID}"
+	test_event_tracker kernel 0 "${EVENT_NAME}" --uid "${SCRIPT_UID}" --gid "$((SCRIPT_GID+1))"
+	test_event_track_untrack kernel 0 "${EVENT_NAME}" --uid "${SCRIPT_UID}"
+	test_event_track_untrack kernel 0 "${EVENT_NAME}" --gid "${SCRIPT_GID}"
+	test_event_track_untrack kernel 0 "${EVENT_NAME}" --uid --all
+	test_event_track_untrack kernel 0 "${EVENT_NAME}" --gid --all
 
 	# matching
-	test_event_tracker kernel 1 "${EVENT_NAME}" "--uid ${SCRIPT_UID}"
-	test_event_tracker kernel 1 "${EVENT_NAME}" "--gid ${SCRIPT_GID}"
-	test_event_tracker kernel 1 "${EVENT_NAME}" "--uid ${SCRIPT_UID} --gid ${SCRIPT_GID}"
-	test_event_tracker kernel 1 "${EVENT_NAME}" "--uid ${SCRIPT_USERNAME}"
-	test_event_tracker kernel 1 "${EVENT_NAME}" "--gid ${SCRIPT_GROUPNAME}"
-	test_event_tracker kernel 1 "${EVENT_NAME}" "--uid ${SCRIPT_UID},$((SCRIPT_UID+1))"
-	test_event_tracker kernel 1 "${EVENT_NAME}" "--gid ${SCRIPT_GID},$((SCRIPT_GID+1))"
-	test_event_tracker kernel 1 "${EVENT_NAME}" "--uid ${SCRIPT_USERNAME},$((SCRIPT_UID+1))"
-	test_event_tracker kernel 1 "${EVENT_NAME}" "--gid ${SCRIPT_GROUPNAME},$((SCRIPT_GID+1))"
+	test_event_tracker kernel 1 "${EVENT_NAME}" --uid "${SCRIPT_UID}"
+	test_event_tracker kernel 1 "${EVENT_NAME}" --gid "${SCRIPT_GID}"
+	test_event_tracker kernel 1 "${EVENT_NAME}" --uid "${SCRIPT_UID}" --gid "${SCRIPT_GID}"
+	test_event_tracker kernel 1 "${EVENT_NAME}" --uid "${SCRIPT_USERNAME}"
+	test_event_tracker kernel 1 "${EVENT_NAME}" --gid "${SCRIPT_GROUPNAME}"
+	test_event_tracker kernel 1 "${EVENT_NAME}" --uid "${SCRIPT_UID},$((SCRIPT_UID+1))"
+	test_event_tracker kernel 1 "${EVENT_NAME}" --gid "${SCRIPT_GID},$((SCRIPT_GID+1))"
+	test_event_tracker kernel 1 "${EVENT_NAME}" --uid "${SCRIPT_USERNAME},$((SCRIPT_UID+1))"
+	test_event_tracker kernel 1 "${EVENT_NAME}" --gid "${SCRIPT_GROUPNAME},$((SCRIPT_GID+1))"
 
 	#fail
-	test_event_tracker_fail kernel "${EVENT_NAME}" "--uid lttng_unexisting_user"
-	test_event_tracker_fail kernel "${EVENT_NAME}" "--gid lttng_unexisting_group"
+	test_event_tracker_fail kernel "${EVENT_NAME}" --uid lttng_unexisting_user
+	test_event_tracker_fail kernel "${EVENT_NAME}" --gid lttng_unexisting_group
 
 
 	#vpid
 
 	#non-matching
-	test_event_track_untrack kernel 0 "${EVENT_NAME}" "--vpid --all"
+	test_event_track_untrack kernel 0 "${EVENT_NAME}" --vpid --all
 	test_event_vpid_tracker kernel 0 "${EVENT_NAME}"
 	test_event_vpid_track_untrack kernel 0 "${EVENT_NAME}"
 
 	#matching
-	test_event_tracker kernel 1 "${EVENT_NAME}" "--vpid --all"
+	test_event_tracker kernel 1 "${EVENT_NAME}" --vpid --all
 	test_event_vpid_tracker kernel 1 "${EVENT_NAME}"
 
 	#pid
@@ -553,10 +558,10 @@ check_skip_kernel_test "$NUM_KERNEL_TESTS" "Skipping kernel tracker tests." ||
 	#non-matching
 	test_event_pid_tracker kernel 0 "${EVENT_NAME}"
 	test_event_pid_track_untrack kernel 0 "${EVENT_NAME}"
-	test_event_track_untrack kernel 0 "${EVENT_NAME}" "--pid --all"
+	test_event_track_untrack kernel 0 "${EVENT_NAME}" --pid --all
 
 	#matching
-	test_event_tracker kernel 1 "${EVENT_NAME}" "--pid --all"
+	test_event_tracker kernel 1 "${EVENT_NAME}" --pid --all
 	test_event_pid_tracker kernel 1 "${EVENT_NAME}"
 
 	# When using session destroy with '--no-wait', the quick

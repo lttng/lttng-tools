@@ -8,11 +8,12 @@
 # All file must be relative to the test directory.
 files=(
     meta/test_shellcheck
+    utils/utils.sh
 )
 
 TESTDIR=$(dirname "$0")/..
 
-# shellcheck source=../utils/tap/tap.sh
+# shellcheck source-path=SCRIPTDIR/..
 source "$TESTDIR/utils/tap/tap.sh"
 
 function shellcheck_ok() {

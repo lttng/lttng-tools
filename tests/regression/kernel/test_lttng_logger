@@ -39,7 +39,7 @@ function test_proc_logger()
 	stop_lttng_tracing_ok
 
 	validate_trace_count "lttng_logger" $TRACE_PATH 1
-	validate_trace_only_exp "$PAYLOAD" $TRACE_PATH
+	validate_trace_only_exp "$TRACE_PATH" "$PAYLOAD"
 
 	destroy_lttng_session_ok $SESSION_NAME
 
@@ -70,7 +70,7 @@ function test_dev_logger()
 	stop_lttng_tracing_ok
 
 	validate_trace_count "lttng_logger" $TRACE_PATH 1
-	validate_trace_only_exp "$PAYLOAD" $TRACE_PATH
+	validate_trace_only_exp "$TRACE_PATH" "$PAYLOAD"
 
 	destroy_lttng_session_ok $SESSION_NAME
 
@@ -98,7 +98,7 @@ function test_payload_limit()
 	stop_lttng_tracing_ok
 
 	validate_trace_count "lttng_logger" $TRACE_PATH 4
-	validate_trace_only_exp "$PAYLOAD" $TRACE_PATH
+	validate_trace_only_exp "$TRACE_PATH" "$PAYLOAD"
 
 	destroy_lttng_session_ok $SESSION_NAME
 

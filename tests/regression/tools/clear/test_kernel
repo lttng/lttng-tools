@@ -517,7 +517,7 @@ function test_kernel_disallow_clear ()
 	diag "Test kernel disallow clear on relay daemon"
 	SESSION_NAME=$(randstring 16 0)
 
-	LTTNG_RELAYD_DISALLOW_CLEAR=1 start_lttng_relayd "-o $TRACE_PATH"
+	LTTNG_RELAYD_DISALLOW_CLEAR=1 start_lttng_relayd -o "$TRACE_PATH"
 
 	start_lttng_sessiond
 
@@ -566,7 +566,7 @@ check_skip_kernel_test "$NUM_TESTS" "Skipping kernel streaming tests." ||
 	lttng_modules_loaded_fail
 	validate_lttng_modules_present
 
-	start_lttng_relayd "-o $TRACE_PATH"
+	start_lttng_relayd -o "$TRACE_PATH"
 	start_lttng_sessiond
 	modprobe lttng-test
 

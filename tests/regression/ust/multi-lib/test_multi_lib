@@ -73,8 +73,8 @@ test_dlopen_same_provider_name_different_event()
 	validate_metadata_event $event_name 2 $TRACE_PATH
 
 	# Expect 2 events with different payloads
-	validate_trace_exp $event_a_payload_exp $TRACE_PATH
-	validate_trace_exp $event_b_payload_exp $TRACE_PATH
+	validate_trace_exp "$TRACE_PATH" "$event_a_payload_exp"
+	validate_trace_exp "$TRACE_PATH" "$event_b_payload_exp"
 
 	return $?
 }
@@ -131,8 +131,8 @@ test_dlopen_same_provider_name_different_enum()
 	validate_metadata_event $event_name 2 $TRACE_PATH
 
 	# Expect 2 events with different payloads
-	validate_trace_exp $event_c_payload_exp $TRACE_PATH
-	validate_trace_exp $event_d_payload_exp $TRACE_PATH
+	validate_trace_exp "$TRACE_PATH" "$event_c_payload_exp"
+	validate_trace_exp "$TRACE_PATH" "$event_d_payload_exp"
 
 	return $?
 }

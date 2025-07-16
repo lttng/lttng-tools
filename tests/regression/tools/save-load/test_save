@@ -54,9 +54,9 @@ function test_basic_save()
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
-	lttng_track_ok "-p 666 -u -s $SESSION_NAME"
+	lttng_track_ok -p 666 -u -s "$SESSION_NAME"
 
-	lttng_save $SESSION_NAME "-o $TRACE_PATH"
+	lttng_save $SESSION_NAME -o "$TRACE_PATH"
 
 	is_session_saved $TRACE_PATH $SESSION_NAME
 
@@ -79,11 +79,11 @@ function test_basic_save_all()
 	enable_ust_lttng_event_ok $SESSION_NAME-2 $EVENT_NAME $CHANNEL_NAME
 	enable_ust_lttng_event_ok $SESSION_NAME-3 $EVENT_NAME $CHANNEL_NAME
 
-	lttng_track_ok "-p 666 -u -s $SESSION_NAME-1"
-	lttng_track_ok "-p 666 -u -s $SESSION_NAME-2"
-	lttng_track_ok "-p 666 -u -s $SESSION_NAME-3"
+	lttng_track_ok -p 666 -u -s "$SESSION_NAME-1"
+	lttng_track_ok -p 666 -u -s "$SESSION_NAME-2"
+	lttng_track_ok -p 666 -u -s "$SESSION_NAME-3"
 
-	lttng_save "" "-a -o $TRACE_PATH"
+	lttng_save "" -a -o "$TRACE_PATH"
 
 	is_session_saved $TRACE_PATH $SESSION_NAME-1
 	is_session_saved $TRACE_PATH $SESSION_NAME-2
@@ -102,7 +102,7 @@ function test_overwrite()
 	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 
-	lttng_save $SESSION_NAME "-o $TRACE_PATH"
+	lttng_save $SESSION_NAME -o "$TRACE_PATH"
 
 	is_session_saved $TRACE_PATH $SESSION_NAME
 
@@ -114,10 +114,10 @@ function test_overwrite()
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 
 	# This one MUST fail
-	save_lttng_fail $SESSION_NAME "-o $TRACE_PATH"
+	save_lttng_fail $SESSION_NAME -o "$TRACE_PATH"
 
 	# This one MUST succeed
-	lttng_save $SESSION_NAME "-f -o $TRACE_PATH"
+	lttng_save $SESSION_NAME -f -o "$TRACE_PATH"
 
 	is_session_saved $TRACE_PATH $SESSION_NAME
 

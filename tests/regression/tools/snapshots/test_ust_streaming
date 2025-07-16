@@ -246,8 +246,7 @@ print_test_banner "$TEST_DESC"
 
 bail_out_if_no_babeltrace
 
-start_lttng_relayd "-o $TRACE_PATH"
-# shellcheck disable=SC2119
+start_lttng_relayd -o "$TRACE_PATH"
 start_lttng_sessiond
 
 tests=( test_ust_default_name_with_del
@@ -268,7 +267,5 @@ do
 	fi
 done
 
-# shellcheck disable=SC2119
 stop_lttng_sessiond
-# shellcheck disable=SC2119
 stop_lttng_relayd

@@ -188,14 +188,11 @@ check_skip_kernel_long_regression_tests "$NUM_TESTS" "Skipping all tests." || {
 		set_bw_limit "$BW"
 		ok $? "Setting bandwidth limit"
 
-		# shellcheck disable=SC2119
 		start_lttng_sessiond
-		start_lttng_relayd "-o $TRACE_PATH"
+		start_lttng_relayd -o "$TRACE_PATH"
 		test_high_throughput
 		result=$?
-		# shellcheck disable=SC2119
 		stop_lttng_relayd
-		# shellcheck disable=SC2119
 		stop_lttng_sessiond
 		reset_bw_limit
 		ok $? "Reset bandwith limits"

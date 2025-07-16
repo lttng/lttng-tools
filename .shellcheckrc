@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2025 EfficiOS Inc.
+# SPDX-License-Identifier: MIT
+
+# Enable optional checks
+enable=add-default-case
+enable=avoid-nullary-conditions
+enable=deprecate-which
+
+# Disable checks with mostly false positives
+disable=SC2119

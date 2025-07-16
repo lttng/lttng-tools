@@ -27,7 +27,7 @@ function test_relayd()
 	local cwd
 
 	diag "Test lttng-relayd normal mode change working directory"
-	start_lttng_relayd "--working-directory $working_dir"
+	start_lttng_relayd --working-directory "$working_dir"
 	# When the relayd is successfully started, the PID will be appended
 	# to `LTTNG_RELAYD_PIDS`. Use the last (most recent) PID for checking
 	# the working directory. If relayd fails to start, there will be either
@@ -51,7 +51,7 @@ function test_relayd_daemon()
 
 	diag "Test lttng-relayd daemon mode change working directory"
 
-	start_lttng_relayd_opt 1 "-d" "--working-directory $working_dir"
+	start_lttng_relayd_opt 1 "-d" --working-directory "$working_dir"
 	# When the relayd is successfully started, the PID will be appended
 	# to `LTTNG_RELAYD_PIDS`. Use the last (most recent) PID for checking
 	# the working directory. If relayd fails to start, there will be either
@@ -101,7 +101,7 @@ function test_relayd_background()
 
 	diag "Test lttng-relayd background mode change working directory"
 
-	start_lttng_relayd_opt 1 "-b" "--working-directory $working_dir"
+	start_lttng_relayd_opt 1 "-b" --working-directory "$working_dir"
 	# When the relayd is successfully started, the PID will be appended
 	# to `LTTNG_RELAYD_PIDS`. Use the last (most recent) PID for checking
 	# the working directory. If relayd fails to start, there will be either
@@ -168,7 +168,7 @@ function test_relayd_debug_permission()
 		# Redirect the error output to a temporary file
 
 		RELAYD_ERROR_OUTPUT_DEST=$(mktemp -t "tmp.${FUNCNAME[0]}_error_output.XXXXXX")
-		start_lttng_relayd_opt 1 "-b" "-v --working-dir $working_dir"
+		start_lttng_relayd_opt 1 "-b" -v --working-dir "$working_dir"
 		# When the relayd is successfully started, the PID will be appended
 		# to `LTTNG_RELAYD_PIDS`. Use the last (most recent) PID for checking
 		# the working directory. If relayd fails to start, there will be either
@@ -205,7 +205,7 @@ function test_relayd_failure()
 
 	diag "Test lttng-relayd normal mode change non-existing directory"
 
-	RELAYD_ERROR_OUTPUT_DEST="${output_dest}" start_lttng_relayd_opt 0 -b "--working-directory $working_dir_imaginary"
+	RELAYD_ERROR_OUTPUT_DEST="${output_dest}" start_lttng_relayd_opt 0 -b --working-directory "$working_dir_imaginary"
 	test $? -eq "1"
 	ok $? "Expect failure to start lttng-relayd for non-existent working directory"
 
@@ -264,7 +264,7 @@ function test_relayd_cmdline_overwrite_env()
 	diag "Test lttng-relayd change working directory command line overwrite env variable"
 
 	export LTTNG_RELAYD_WORKING_DIRECTORY=${working_dir_env}
-	start_lttng_relayd_opt 1 "-b" "--working-dir ${working_dir_cmdline}"
+	start_lttng_relayd_opt 1 "-b" --working-dir "${working_dir_cmdline}"
 
 	# When the relayd is successfully started, the PID will be appended
 	# to `LTTNG_RELAYD_PIDS`. Use the last (most recent) PID for checking

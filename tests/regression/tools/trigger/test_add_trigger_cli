@@ -27,7 +27,6 @@ plan_tests 295
 
 FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 
-# shellcheck disable=SC2119
 start_lttng_sessiond_notap
 
 tmp_stdout=$(mktemp -t test_parse_cli_trigger_stdout.XXXXXX)
@@ -81,8 +80,6 @@ function test_mi ()
 	tmp_stdout_raw=$(mktemp -t "tmp.${FUNCNAME[0]}_stdout.XXXXXX")
 	tmp_expected_stdout=$(mktemp -t "tmp.${FUNCNAME[0]}_expected_stdout.XXXXXX")
 
-	diag "${FULL_LTTNG_BIN} --mi=xml add-trigger"
-
 	cat > "${tmp_expected_stdout}" <<- EOF
 	<?xml version="1.0" encoding="UTF-8"?>
 	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/${MI_XSD_MAJOR_VERSION}/lttng-mi-${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}.xsd" schemaVersion="${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}">
@@ -120,16 +117,15 @@ function test_mi ()
 	</command>
 	EOF
 
-	"${FULL_LTTNG_BIN}" --mi xml add-trigger --name mi_hohoho \
+	OUTPUT_DEST="${tmp_stdout_raw}" ERROR_OUTPUT_DEST="${tmp_stderr}" \
+		LTTNG_TEST_MI_CLIENT=1 lttng_add_trigger_ok mi_hohoho \
 		--condition event-rule-matches --name=some-event-id --type=user \
-		--action notify > "${tmp_stdout_raw}" 2> "${tmp_stderr}"
-
-	ok $? "add-trigger mi: exit code is 0"
+		--action notify
 
 	# Pretty-fy xml before further test.
 	$XML_PRETTY < "${tmp_stdout_raw}" > "${tmp_stdout}"
 
-	$MI_VALIDATE "${tmp_stdout}"
+	lttng_mi_validate "${tmp_stdout}"
 	ok $? "add-trigger mi is valid"
 
 	diff -u "${tmp_expected_stdout}" "${tmp_stdout}"

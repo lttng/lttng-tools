@@ -117,7 +117,7 @@ function test_shm_path_per_pid()
 
 	# Build up
 	start_lttng_sessiond
-	create_lttng_session_ok $session_name $OUTPUT_DIR "--shm-path $shm_path"
+	create_lttng_session_ok $session_name $OUTPUT_DIR --shm-path "$shm_path"
 	enable_ust_lttng_channel_ok $session_name $channel_name "--buffer-ownership=process"
 	lttng_untrack_ust_ok --session "${session_name}" --vpid --all
 	start_lttng_tracing_ok $session_name
@@ -189,7 +189,7 @@ function test_shm_path_per_uid()
 
 	# Build up
 	start_lttng_sessiond
-	create_lttng_session_ok $session_name $OUTPUT_DIR "--shm-path $shm_path"
+	create_lttng_session_ok $session_name $OUTPUT_DIR --shm-path "$shm_path"
 	enable_ust_lttng_channel_ok $session_name $channel_name "--buffer-ownership=user"
 
 	start_lttng_tracing_ok $session_name
@@ -242,7 +242,7 @@ function test_lttng_crash()
 
 	# Create a session in snapshot mode to deactivate any use of consumerd
 	start_lttng_sessiond
-	create_lttng_session_ok $session_name $OUTPUT_DIR "--shm-path $shm_path --snapshot"
+	create_lttng_session_ok $session_name $OUTPUT_DIR --shm-path "$shm_path" --snapshot
 	enable_ust_lttng_channel_ok $session_name $channel_name "--buffer-ownership=user"
 	enable_ust_lttng_event_ok $session_name $event_name $channel_name
 	lttng_untrack_ust_ok --session "${session_name}" --vpid --all
@@ -282,7 +282,7 @@ function test_lttng_crash_extraction()
 
 	# Create a session in snapshot mode to deactivate any use of consumerd
 	start_lttng_sessiond
-	create_lttng_session_ok $session_name $OUTPUT_DIR "--shm-path $shm_path --snapshot"
+	create_lttng_session_ok $session_name $OUTPUT_DIR --shm-path "$shm_path" --snapshot
 	enable_ust_lttng_channel_ok $session_name $channel_name "--buffer-ownership=user"
 	enable_ust_lttng_event_ok $session_name $event_name $channel_name
 	lttng_untrack_ust_ok --vpid --all --session "${session_name}"
@@ -316,7 +316,7 @@ function test_shm_path_per_pid_sigint()
 
 	# Build up
 	start_lttng_sessiond
-	create_lttng_session_ok $session_name $OUTPUT_DIR "--shm-path $shm_path"
+	create_lttng_session_ok $session_name $OUTPUT_DIR --shm-path "$shm_path"
 	enable_ust_lttng_channel_ok $session_name $channel_name "--buffer-ownership=process"
 
 	start_lttng_tracing_ok $session_name
@@ -347,7 +347,7 @@ function test_shm_path_per_uid_sigint()
 
 	# Build up
 	start_lttng_sessiond
-	create_lttng_session_ok $session_name $OUTPUT_DIR "--shm-path $shm_path"
+	create_lttng_session_ok $session_name $OUTPUT_DIR --shm-path "$shm_path"
 	enable_ust_lttng_channel_ok $session_name $channel_name "--buffer-ownership=user"
 
 	start_lttng_tracing_ok $session_name
@@ -380,7 +380,7 @@ function test_lttng_crash_extraction_sigkill()
 	local ret=0
 
 	start_lttng_sessiond
-	create_lttng_session_ok $session_name $OUTPUT_DIR "--shm-path $shm_path"
+	create_lttng_session_ok $session_name $OUTPUT_DIR --shm-path "$shm_path"
 	enable_ust_lttng_channel_ok $session_name $channel_name "--buffer-ownership=user"
 	enable_ust_lttng_event_ok $session_name $event_name $channel_name
 	lttng_untrack_ust_ok --session "${session_name}" --vpid --all

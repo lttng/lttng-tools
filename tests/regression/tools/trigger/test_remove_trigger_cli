@@ -126,7 +126,7 @@ function test_mi ()
 	# Pretty-fy xml before further test.
 	$XML_PRETTY < "${tmp_stdout_raw}" > "${tmp_stdout}"
 
-	$MI_VALIDATE "${tmp_stdout}"
+	lttng_mi_validate "${tmp_stdout}"
 	ok $? "remove-trigger mi is valid"
 
 	diff -u "${tmp_expected_stdout}" "${tmp_stdout}"
@@ -138,7 +138,6 @@ function test_mi ()
 	rm -f "${tmp_stdout_raw}"
 }
 
-# shellcheck disable=SC2119
 start_lttng_sessiond_notap
 
 # Add a few triggers

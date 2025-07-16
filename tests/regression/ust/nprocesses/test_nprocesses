@@ -32,7 +32,6 @@ plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
-# shellcheck disable=SC2119
 start_lttng_sessiond
 
 # Start tests. Each is an infinite tracing loop.
@@ -88,5 +87,4 @@ pass "Stopped all spawned applications"
 rm -f "${file_sync_after_first}"
 rm -f "${file_sync_before_last}"
 
-# shellcheck disable=SC2119
 stop_lttng_sessiond

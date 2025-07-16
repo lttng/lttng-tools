@@ -740,8 +740,8 @@ print_test_banner "$TEST_DESC"
 
 bail_out_if_no_babeltrace
 
-# shellcheck disable=SC2119
 start_lttng_sessiond
+
 tests=(
 	test_ust_list_output
 	test_ust_local_snapshot
@@ -763,5 +763,4 @@ do
 	${fct_test}
 done
 
-# shellcheck disable=SC2119
 stop_lttng_sessiond

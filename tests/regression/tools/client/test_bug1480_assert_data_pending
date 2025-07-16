@@ -27,7 +27,6 @@ CHANNEL_NAME=asdf
 plan_tests "${NUM_TESTS}"
 print_test_banner "${TEST_DESC}"
 
-# shellcheck disable=SC2119
 start_lttng_sessiond
 
 create_lttng_session_ok "${SESSION_NAME}" "${OUTPUT_DIR}"
@@ -38,6 +37,5 @@ start_lttng_tracing_ok "${SESSION_NAME}"
 
 stop_lttng_tracing_ok "${SESSION_NAME}"
 destroy_lttng_session_ok "${SESSION_NAME}"
-# shellcheck disable=SC2119
 stop_lttng_sessiond
 rm -rf "${OUTPUT_DIR}"

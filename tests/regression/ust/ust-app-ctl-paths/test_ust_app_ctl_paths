@@ -28,7 +28,6 @@ function test_sessiond_started_before_app()
 		LTTNG_UST_CTL_PATH="${CTL_PATH}"
 	)
 
-	# shellcheck disable=SC2119
 	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond
 	create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH}"
 	enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}"
@@ -37,7 +36,6 @@ function test_sessiond_started_before_app()
 	LTTNG_UST_APP_PATH="${CTL_PATH}" "${TESTAPP}" -i 100 -w 0
 	stop_lttng_tracing_ok "${SESSION_NAME}"
 	destroy_lttng_session_ok "${SESSION_NAME}" --no-wait
-	# shellcheck disable=SC2119
 	stop_lttng_sessiond
 
 	validate_trace_count "${EVENT_NAMES}" "${TRACE_PATH}" 100
@@ -56,7 +54,6 @@ function test_sessiond_started_after_app()
 	LTTNG_UST_APP_PATH="${CTL_PATH}" "${TESTAPP}" -b "${SYNC_FILE}/a" &
 	APP_PID="${!}"
 
-	# shellcheck disable=SC2119
 	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond
 	create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH}"
 	enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}"
@@ -66,7 +63,6 @@ function test_sessiond_started_after_app()
 	wait "${APP_PID}"
 	stop_lttng_tracing_ok "${SESSION_NAME}"
 	destroy_lttng_session_ok "${SESSION_NAME}" --no-wait
-	# shellcheck disable=SC2119
 	stop_lttng_sessiond
 
 	validate_trace "${EVENT_NAMES}" "${TRACE_PATH}"
@@ -94,7 +90,6 @@ function test_multi_sessiond()
 		if [ "${UID}" == "0" ] ; then
 			env_vars+=(LTTNG_RUNDIR="${LTTNG_HOME_BASE}/$i")
 		fi
-		# shellcheck disable=SC2119
 		LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond
 		export "${env_vars[@]}"
 		create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH}"
@@ -121,7 +116,6 @@ function test_multi_sessiond()
 		unset LTTNG_HOME LTTNG_RUNDIR
 		validate_trace_count "${EVENT_NAMES}" "${TRACE_PATH_BASE}/$i" 100
 	done
-	# shellcheck disable=SC2119
 	stop_lttng_sessiond
 
 	# Cleanup
@@ -140,7 +134,6 @@ function test_multi_sessiond_default()
 	TRACE_PATH="$(mktemp -d -t "tmp.${FUNCNAME[0]}.trace.XXXXXX")"
 	LTTNG_HOME_ORIG="${LTTNG_HOME}"
 
-	# shellcheck disable=SC2119
 	start_lttng_sessiond
 
 	LTTNG_UST_APP_PATH="${LTTNG_HOME_B}/.lttng"
@@ -153,7 +146,6 @@ function test_multi_sessiond_default()
 		LTTNG_UST_APP_PATH="${LTTNG_HOME_B}"
 	fi
 	export "${env_vars_b[@]}"
-	# shellcheck disable=SC2119
 	LTTNG_SESSIOND_ENV_VARS="${env_vars_b[*]}" start_lttng_sessiond
 
 	create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH}"
@@ -166,7 +158,6 @@ function test_multi_sessiond_default()
 	unset LTTNG_HOME LTTNG_RUNDIR
 	validate_trace_count "${EVENT_NAMES}" "${TRACE_PATH}" 100
 
-	# shellcheck disable=SC2119
 	stop_lttng_sessiond
 
 	unset LTTNG_HOME LTTNG_RUNDIR TEST_IGNORE_EXISTING_SESSIOND
@@ -195,7 +186,6 @@ function test_trace_another_sessiond()
 	fi
 	export "${env_vars_a[@]}"
 
-	# shellcheck disable=SC2119
 	LTTNG_SESSIOND_ENV_VARS="${env_vars_a[*]}" start_lttng_sessiond
 	create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH_A}"
 	enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}"
@@ -213,7 +203,6 @@ function test_trace_another_sessiond()
 		LD_PRELOAD="liblttng-ust-fd.so:liblttng-ust-fork.so"
 	)
 
-	# shellcheck disable=SC2119
 	LTTNG_SESSIOND_ENV_VARS="${env_vars_b[*]}" start_lttng_sessiond
 	create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH_B}"
 	enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}"
@@ -234,7 +223,6 @@ function test_trace_another_sessiond()
 	EVENT_COUNT="$("${BABELTRACE_BIN}" "${TRACE_PATH_A}" | wc -l)"
 	isnt "${EVENT_COUNT}" "0" "More than zero events were expected"
 
-	# shellcheck disable=SC2119
 	stop_lttng_sessiond
 
 	# Cleanup
@@ -254,7 +242,6 @@ function test_trace_self_default_paths()
 		# Don't block during registration
 		LTTNG_UST_REGISTER_TIMEOUT=0
 	)
-	# shellcheck disable=SC2119
 	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond
 	create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH}"
 	enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}"
@@ -273,7 +260,6 @@ function test_trace_self_default_paths()
 	EVENT_COUNT="$("${BABELTRACE_BIN}" "${TRACE_PATH}" | grep -v "vpid = ${APP_PID}" -c)"
 	isnt "${EVENT_COUNT}" "0" "More than zero events were expected"
 
-	# shellcheck disable=SC2119
 	stop_lttng_sessiond
 	# Cleanup
 	rm -rf "${TRACE_PATH}"
@@ -291,7 +277,6 @@ function test_trace_self_app_and_ctl_paths()
 		# Don't block during registration
 		LTTNG_UST_REGISTER_TIMEOUT=0
 	)
-	# shellcheck disable=SC2119
 	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond
 	create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH}"
 	enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}"
@@ -311,7 +296,6 @@ function test_trace_self_app_and_ctl_paths()
 	EVENT_COUNT="$("${BABELTRACE_BIN}" "${TRACE_PATH}" | grep -v "vpid = ${APP_PID}" -c)"
 	isnt "${EVENT_COUNT}" "0" "More than zero events were expected"
 
-	# shellcheck disable=SC2119
 	stop_lttng_sessiond
 	# Cleanup
 	rm -rf "${TRACE_PATH}" "${CTL_PATH}"
@@ -326,7 +310,6 @@ function test_sessiond_bad_ctl_path() {
 		LTTNG_UST_APP_PATH="${CTL_PATH}"
 		LTTNG_UST_CTL_PATH="${CTL_PATH}"
 	)
-	# shellcheck disable=SC2119
 	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond_fail
 	LTTNG_UST_APP_PATH="${CTL_PATH}" \
 					  LTTNG_UST_WITHOUT_BADDR_STATEDUMP=1 \
@@ -336,7 +319,6 @@ function test_sessiond_bad_ctl_path() {
 	wait "${APP_PID}"
 	ok "${?}" "Test application exited successfully"
 
-	# shellcheck disable=SC2119
 	stop_lttng_sessiond_cleanup
 }
 

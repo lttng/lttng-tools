@@ -30,7 +30,6 @@ function test_app_path_with_separators_java_jul
 	env_vars=(
 		LTTNG_UST_CTL_PATH="${CTL_PATH}:${CTL_PATH2}"
 	)
-	# shellcheck disable=SC2119
 	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond
 
 	create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH}"
@@ -48,7 +47,6 @@ function test_app_path_with_separators_java_jul
 
 	validate_trace_count "lttng_jul:event" "${TRACE_PATH}" 100 0
 
-	# shellcheck disable=SC2119
 	stop_lttng_sessiond
 
 	# Cleanup

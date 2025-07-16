@@ -30,7 +30,6 @@ function test_blocking_mode_app_path()
 		LTTNG_UST_APP_PATH="${APP_PATH}"
 	)
 
-	# shellcheck disable=SC2119
 	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond
 	create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH}"
 	enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}" "--blocking-timeout=inf"
@@ -41,7 +40,6 @@ function test_blocking_mode_app_path()
 	destroy_lttng_session_ok "${SESSION_NAME}" --no-wait
 	validate_trace_count "${EVENT_NAMES}" "${TRACE_PATH}" 100
 
-	# shellcheck disable=SC2119
 	stop_lttng_sessiond
 	rm -rf "${APP_PATH}" "${TRACE_PATH}"
 }
@@ -53,9 +51,7 @@ function test_blocking_mode_default_paths()
 		LTTNG_UST_ALLOW_BLOCKING=1
 	)
 
-	# shellcheck disable=SC2119
 	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond_fail
-	# shellcheck disable=SC2119
 	stop_lttng_sessiond_cleanup
 }
 
@@ -70,7 +66,6 @@ function test_blocking_mode_ctl_path()
 		LTTNG_UST_CTL_PATH="${CTL_PATH}"
 	)
 
-	# shellcheck disable=SC2119
 	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond
 	create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH}"
 	enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}" "--blocking-timeout=inf"
@@ -81,7 +76,6 @@ function test_blocking_mode_ctl_path()
 	destroy_lttng_session_ok "${SESSION_NAME}" --no-wait
 	validate_trace_count "${EVENT_NAMES}" "${TRACE_PATH}" 100
 
-	# shellcheck disable=SC2119
 	stop_lttng_sessiond
 	rm -rf "${CTL_PATH}" "${TRACE_PATH}"
 }
@@ -99,7 +93,6 @@ function test_blocking_mode_with_different_paths()
 		LTTNG_UST_APP_PATH="${APP_PATH}"
 	)
 
-	# shellcheck disable=SC2119
 	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond
 	create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH}"
 	enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}" "--blocking-timeout=inf"
@@ -110,7 +103,6 @@ function test_blocking_mode_with_different_paths()
 	destroy_lttng_session_ok "${SESSION_NAME}" --no-wait
 	validate_trace_count "${EVENT_NAMES}" "${TRACE_PATH}" 100
 
-	# shellcheck disable=SC2119
 	stop_lttng_sessiond
 	rm -rf "${CTL_PATH}" "${TRACE_PATH}" "${APP_PATH}"
 }
@@ -125,9 +117,7 @@ function test_blocking_mode_with_same_paths()
 		LTTNG_UST_ALLOW_BLOCKING=1
 	)
 
-	# shellcheck disable=SC2119
 	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond_fail
-	# shellcheck disable=SC2119
 	stop_lttng_sessiond_cleanup
 
 	rm -rf "${CTL_PATH}"
@@ -142,9 +132,7 @@ function test_blocking_mode_app_path_is_default_ctl_path() {
 		LTTNG_UST_ALLOW_BLOCKING=1
 	)
 
-	# shellcheck disable=SC2119
 	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond_fail
-	# shellcheck disable=SC2119
 	stop_lttng_sessiond_cleanup
 }
 
@@ -157,9 +145,7 @@ function test_blocking_mode_ctl_path_is_default_app_path() {
 		LTTNG_UST_ALLOW_BLOCKING=1
 	)
 
-	# shellcheck disable=SC2119
 	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond_fail
-	# shellcheck disable=SC2119
 	stop_lttng_sessiond_cleanup
 }
 

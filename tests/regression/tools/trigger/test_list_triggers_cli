@@ -2682,7 +2682,6 @@ test_notify_action ()
 
 plan_tests $NUM_TESTS
 
-# shellcheck disable=SC2119
 start_lttng_sessiond_notap
 
 test_top_level_options
