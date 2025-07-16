@@ -151,6 +151,23 @@ recording session. This is when LTTng tries to evaluate
 The short options nloption:-s and nloption:-t are aliases of
 nloption:--session and nloption:--threshold-size.
 
+[[session-rotation-cond-spec]]`session-rotation-starts`::
+`session-rotation-finishes`::
+    Synopses:
++
+[verse]
+option:--condition=**session-rotation-starts** nloption:--session='SESSION'
+{nbsp}
+option:--condition=**session-rotation-finishes** nloption:--session='SESSION'
+{nbsp}
++
+A `session-rotation-starts` or `session-rotation-finishes` condition is
+considered satisfied when the rotation operation (see
+man:lttng-rotate(1)) of the recording session 'SESSION' starts or
+finishes.
++
+The short option nloption:-s is an alias of nloption:--session.
+
 [[capture-descr]]
 Capture descriptor
 ~~~~~~~~~~~~~~~~~~
@@ -538,6 +555,22 @@ $ lttng add-trigger --condition=channel-buffer-usage-ge \
 
 See man:lttng-concepts(7) to learn more about recording sessions,
 channels, and rotations.
+====
+
+.Add a ``recording session rotation finishes'' trigger of which the action is to send a notification.
+====
+The `session-rotation-finishes` trigger condition below is considered
+satisfied when a rotation of the recording session named `my-session`
+finishes.
+
+[role="term"]
+----
+$ lttng add-trigger --condition=session-rotation-finishes \
+                    --session=my-session --action=notify
+----
+
+See man:lttng-concepts(7) to learn more about recording sessions and
+rotations.
 ====
 
 
