@@ -272,6 +272,26 @@ function print_test_banner ()
 	diag "$desc"
 }
 
+# Print the file line by line to stdout prepended with '#'
+function file_to_diag ()
+{
+	local file=$1
+
+	if [ ! -f "$file" ]; then
+		diag "File '$file' doesn't exist"
+		return
+	fi
+
+	if [ ! -s "$file" ]; then
+		diag "**EMPTY**"
+		return
+	fi
+
+	while read -r line; do
+		diag "$line"
+	done < "$file"
+}
+
 function validate_kernel_version ()
 {
 	local kern_version
