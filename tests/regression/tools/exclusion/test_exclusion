@@ -104,8 +104,8 @@ function test_exclusion_tracing_started
 	local exclusions="$1"
 	local event_name_expected_to_be_missing="$2"
 	local trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
-	local file_wait_before_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_first.XXXXXX")
-	local file_create_in_main=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_create_in_main.XXXXXX")
+	local file_sync_before_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_first.XXXXXX")
+	local file_sync_app_in_main_touch=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_app_in_main.XXXXXX")
 
 	# Create session
 	create_lttng_session_ok $SESSION_NAME $trace_path
@@ -120,11 +120,11 @@ function test_exclusion_tracing_started
 	# Launch the test app and make it create a sync file once it's in the
 	# main function.
 	$TESTAPP_BIN -i 1 -w 10000 \
-		--create-in-main ${file_create_in_main} \
-		--wait-before-first-event ${file_wait_before_first} 2>&1 &
+		--sync-application-in-main-touch ${file_sync_app_in_main_touch} \
+		--sync-before-first-event ${file_sync_before_first} 2>&1 &
 	tracee_pids+=("${!}")
 
-	while [ ! -f "${file_create_in_main}" ]; do
+	while [ ! -f "${file_sync_app_in_main_touch}" ]; do
 		sleep 0.5
 	done
 
@@ -134,7 +134,7 @@ function test_exclusion_tracing_started
 	ok $? "Enable lttng event with event \"$exclusions\" excluded"
 
 	# Create the sync file so that the test app starts generating events.
-	touch ${file_wait_before_first}
+	touch ${file_sync_before_first}
 
 	# Wait for the testapp to finish.
 	wait "${tracee_pids[@]}"
@@ -153,8 +153,8 @@ function test_exclusion_tracing_started
 		rm -rf $trace_path
 	fi
 
-	rm -f $file_wait_before_first
-	rm -f $file_create_in_main
+	rm -f $file_sync_before_first
+	rm -f $file_sync_app_in_main_touch
 }
 
 function test_exclusion_fail

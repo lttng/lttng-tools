@@ -187,12 +187,22 @@ int main(int argc, char **argv)
 		goto end;
 	}
 
+	/*
+	 * The two following sync points allow for tests to do work after the
+	 * app has started BUT before it generates any events.
+	 */
 	if (application_in_main_file_path) {
-		create_file(application_in_main_file_path);
+		ret = create_file(application_in_main_file_path);
+		if (ret != 0) {
+			goto end;
+		}
 	}
 
 	if (before_first_event_file_path) {
-		wait_on_file(before_first_event_file_path);
+		ret = wait_on_file(before_first_event_file_path);
+		if (ret != 0) {
+			goto end;
+		}
 	}
 
 	for (i = 0; nr_iter < 0 || i < nr_iter; i++) {
