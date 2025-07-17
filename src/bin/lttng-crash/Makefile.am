@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
+include $(top_srcdir)/aminclude_static.am
+
 AM_CPPFLAGS += -DINSTALL_BIN_PATH=\""$(bindir)"\"
 
 if EMBED_HELP

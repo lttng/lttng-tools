@@ -1,0 +1,3 @@
+exclude = tests
+exclude = src/vendor
+ignore_errors = inconsistent,unused

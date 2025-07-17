@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: 2017 Jonathan Rajotte <jonathan.rajotte-julien@efficios.com>
 
+include $(top_srcdir)/aminclude_static.am
+
 AM_CPPFLAGS += -I$(top_srcdir)/tests/utils
 
 LIBTAP=$(top_builddir)/tests/utils/tap/libtap.la

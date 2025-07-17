@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: 2012-2025 EfficiOS Inc.
 # SPDX-License-Identifier: GPL-2.0-only
 
+include $(top_srcdir)/aminclude_static.am
+
 AM_CPPFLAGS +=-DINSTALL_BIN_PATH=\""$(lttnglibexecdir)"\" \
 	-DINSTALL_LIB_PATH=\""$(libdir)"\"
 

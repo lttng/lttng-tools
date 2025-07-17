@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
+include $(top_srcdir)/aminclude_static.am
+
 lib_LTLIBRARIES = liblttng-ctl.la
 
 liblttng_ctl_la_SOURCES = \

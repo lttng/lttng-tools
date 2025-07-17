@@ -13,6 +13,10 @@ Makefile
 *~
 *.la
 *.lo
+*.gcno
+*.gcda
+/coverage/
+aminclude_static.am
 Makefile.in
 *.loT
 *.info

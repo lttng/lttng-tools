@@ -782,6 +782,22 @@ AS_IF([test "x$api_doc" = xyes], [
 
 AM_CONDITIONAL([API_DOC], [test "x$api_doc" = xyes])
 
+CODE_COVERAGE_OUTPUT_DIRECTORY="coverage"
+AC_SUBST([CODE_COVERAGE_OUTPUT_DIRECTORY])
+CODE_COVERAGE_GENHTML_OPTIONS_DEFAULT="--prefix=\$(realpath \$(top_builddir))"
+AC_SUBST([CODE_COVERAGE_GENHTML_OPTIONS_DEFAULT])
+CODE_COVERAGE_LCOV_OPTIONS="--no-external"
+AC_SUBST([CODE_COVERAGE_LCOV_OPTIONS])
+CODE_COVERAGE_LCOV_SHOPTS="--config-file .lcovrc"
+AC_SUBST([CODE_COVERAGE_LCOV_SHOPTS])
+AX_CODE_COVERAGE
+AX_ADD_AM_MACRO_STATIC([
+    "AM_CPPFLAGS += \$\(CODE_COVERAGE_CPPFLAGS\)"
+    "AM_CFLAGS += \$\(CODE_COVERAGE_CFLAGS\)"
+    "AM_CXXFLAGS += \$\(CODE_COVERAGE_CXXFLAGS\)"
+    "AM_LDFLAGS += \$\(CODE_COVERAGE_LIBS\)"
+])
+
 # enable building man pages (user's intention)
 AC_ARG_ENABLE(
 	man-pages,
@@ -1493,6 +1509,9 @@ PPRINT_PROP_BOOL([LTTng-UST Python3 agent tests], $value)
 # userspace-probe SDT instrumentation tests enabled/disabled
 test "x$test_sdt_uprobe" = "xyes" && value=1 || value=0
 PPRINT_PROP_BOOL([LTTng-modules SDT uprobe tests], $value)
+
+test "x$enable_code_coverage" = xyes && value=1 || value=0
+PPRINT_PROP_BOOL([Code coverage reporting], $value)
 
 #Python binding enabled/disabled
 test "x$enable_python_binding" = xyes && value=1 || value=0

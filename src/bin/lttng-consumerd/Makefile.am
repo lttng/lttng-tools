@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
+include $(top_srcdir)/aminclude_static.am
+
 lttnglibexec_PROGRAMS = lttng-consumerd
 
 lttng_consumerd_SOURCES = \

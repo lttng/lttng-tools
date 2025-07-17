@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 
+include $(top_srcdir)/aminclude_static.am
+
 EXTRA_DIST = test_all_events \
 						 test_callstack \
 						 test_channel \

@@ -116,6 +116,10 @@ Debian/Ubuntu package: `libpfm4-dev`
 +
 Debian/Ubuntu package: `xxd`
 
+* **lcov**: `make{nbsp}check-code-coverage`
++
+Debian/Ubuntu package: `lcov`
+
 {lt} supports both the LTTng Linux kernel tracer and LTTng user space
 tracer sharing the same _minor_ version. While some minor releases do
 not change the tracer ABIs and _could_ work, no testing is performed to

@@ -3,6 +3,10 @@
 
 SUBDIRS = ini_config
 
+# test_event_rule_rule links against lttng-loglevel.o, so needs
+# to be aware of CODE_COVERAGE provided by the static include.
+include $(top_srcdir)/aminclude_static.am
+
 AM_CPPFLAGS += -I$(top_srcdir)/tests/utils/ -I$(srcdir)
 
 LOG_DRIVER_FLAGS='--merge'
