@@ -1,6 +1,7 @@
 #!/bin/bash
 #
 # SPDX-FileCopyrightText: 2012 David Goulet <dgoulet@efficios.com>
+# SPDX-FileCopyrightText: 2025 Michael Jeanson <mjeanson@efficios.com>
 #
 # SPDX-License-Identifier: LGPL-2.1-only
 
@@ -8,55 +9,78 @@ TEST_DESC="UST tracer - Multi-session"
 
 CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../../..
+
 NR_ITER=100
+NR_SESSION=4
 SESSION_NAME="multi-session"
-EVENT_NAME="ust_gen_nevents:tptest"
 NUM_TESTS=28
 
-# shellcheck source=../../../utils/utils.sh
-source $TESTDIR/utils/utils.sh
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-nevents"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME"
+TESTAPP_TIMEOUT_SEC=10
 
-if [ ! -x "$CURDIR/gen-nevents" ]; then
-	BAIL_OUT "No UST nevents binary detected."
-fi
+EVENT_NAME="tp:tptest"
+
+# shellcheck source-path=SCRIPTDIR/../../..
+source "$TESTDIR/utils/utils.sh"
+
 
 # MUST set TESTDIR before calling those functions
 
 test_multi_session() {
-	local out
+	local testapp_pid
+	local trace_path
+	local file_testapp_output
+	local file_sync_after_first
+	local file_sync_before_last
+	local file_sync_before_exit_touch
+
+	# Prepare temp filenames but don't create them on disk
+	trace_path=$(mktemp -d -t tmp.test_multi_session_ust.XXXXXX)
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
+	file_sync_after_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
+	file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	file_sync_before_exit_touch=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_exit_touch.XXXXXX")
+
+	diag "Test UST with multiple sessions"
 
 	# BEFORE application is spawned
-	for i in $(seq 0 3); do
-		create_lttng_session_ok "$SESSION_NAME-$i" "$TRACE_PATH/$i"
+	for i in $(seq 1 $NR_SESSION); do
+		create_lttng_session_ok "$SESSION_NAME-$i" "$trace_path/$i"
 		enable_ust_lttng_event_ok "$SESSION_NAME-$i" "$EVENT_NAME$i"
 		start_lttng_tracing_ok "$SESSION_NAME-$i"
 	done
 
-	"./$CURDIR/gen-nevents" $NR_ITER &
-	ok $? "Start application to generate $NR_ITER events"
-	wait "${!}"
-	pass "Wait for events to record"
+	"$TESTAPP_BIN" -i $NR_ITER -w 0 \
+		--sync-after-first-event "${file_sync_after_first}" \
+		--sync-before-last-event "${file_sync_before_last}" \
+		--sync-before-exit-touch "${file_sync_before_exit_touch}" >"${file_testapp_output}" 2>&1 &
+	testapp_pid=$!
+	diag "Launched testapp '$TESTAPP_NAME' (pid: $testapp_pid) to generate $NR_ITER events"
 
-	for i in $(seq 0 3); do
+	# Wait for the testapp first event
+	app_alive_wait_for_sync "$TESTAPP_NAME" "$testapp_pid" "$TESTAPP_TIMEOUT_SEC" "$file_testapp_output" "$file_sync_after_first"
+
+	# Tell the testapp to continue
+	touch "${file_sync_before_last}"
+
+	# Wait for the testapp to signal completion by creating a file
+	app_exit_wait_for_sync "$TESTAPP_NAME" "$testapp_pid" "$TESTAPP_TIMEOUT_SEC" "$file_testapp_output" "$file_sync_before_exit_touch"
+
+	for i in $(seq 1 $NR_SESSION); do
 		stop_lttng_tracing_ok "$SESSION_NAME-$i"
 		destroy_lttng_session_ok "$SESSION_NAME-$i"
-		out=$(_run_babeltrace_cmd "$TRACE_PATH/$i" | grep -c "$EVENT_NAME$i")
-		if [ "$out" -ne $NR_ITER ]; then
-			fail "Trace validation of $SESSION_NAME-$i"
-			diag "No events found."
-			out=1
-			break
-		else
-			pass "Trace validation of $SESSION_NAME-$i"
-			diag "Found $out event(s) for $SESSION_NAME-$i."
-			out=0
-		fi
+
+		trace_match_only "$EVENT_NAME$i" "$NR_ITER" "$trace_path/$i"
 	done
 
-	return $out
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
+	rm -f "$file_sync_after_first"
+	rm -f "$file_sync_before_last"
+	rm -f "$file_sync_before_exit_touch"
 }
-
-# MUST set TESTDIR before calling those functions
 
 plan_tests $NUM_TESTS
 
@@ -64,15 +88,6 @@ print_test_banner "$TEST_DESC"
 
 start_lttng_sessiond
 
-TRACE_PATH=$(mktemp -d -t tmp.test_multi_session_ust.XXXXXX)
-
 test_multi_session
-out=$?
-if [ $out -ne 0 ]; then
-	stop_lttng_sessiond
-	exit $out
-fi
 
 stop_lttng_sessiond
-
-rm -rf "$TRACE_PATH"
