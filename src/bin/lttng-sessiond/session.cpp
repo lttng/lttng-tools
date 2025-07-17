@@ -1747,7 +1747,10 @@ void ls::user_space_consumer_channel_keys::iterator::_init_per_uid() noexcept
 			lttng_ht_lookup(position.current_registry->registry->channels,
 					&config_key,
 					&_position.channel_iterator);
-			LTTNG_ASSERT(cds_lfht_iter_get_node(&_position.channel_iterator.iter));
+			if (!cds_lfht_iter_get_node(&_position.channel_iterator.iter)) {
+				/* No stream set allocated for this channel yet. */
+				_is_end = true;
+			}
 		}
 	}
 }
