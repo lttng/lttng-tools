@@ -9,6 +9,7 @@
 files=(
     meta/test_shellcheck
     regression/ust/multi-session/test_multi_session
+    regression/ust/overlap/test_overlap
     utils/utils.sh
 )
 

@@ -6,10 +6,11 @@
 
 TEST_DESC="UST - Wildcard overlap"
 
-CURDIR=$(dirname $0)/
+CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../../..
 SESSION_NAME="wildcard-overlap"
 
+TESTAPP_PATH="$CURDIR/demo/demo"
 DEMO_EVENT1="ust_tests_demo:starting"
 DEMO_EVENT1_2="ust_tests_demo:done"
 DEMO_EVENT2="ust_tests_demo2:loop"
@@ -22,44 +23,42 @@ NUM_DEMO3_EVENT=1
 
 NUM_TESTS=259
 
-source $TESTDIR/utils/utils.sh
+# shellcheck source-path=SCRIPTDIR/../../..
+source "$TESTDIR/utils/utils.sh"
 
 # MUST set TESTDIR before calling those functions
 
 run_demo_app()
 {
-	cd $CURDIR/demo
-
 	# Start test
 	diag "Running application"
-	./demo-trace >/dev/null 2>&1
+	LD_PRELOAD="$CURDIR/demo/.libs/liblttng-ust-provider-ust-tests-demo.so:$CURDIR/demo/.libs/liblttng-ust-provider-ust-tests-demo3.so" \
+		"$TESTAPP_PATH"
 	ok $? "Application done"
-
-	cd -
 }
 
 # Ease our life a bit ;)
 trace_match_demo1_events()
 {
-	trace_matches "$DEMO_EVENT1" $NUM_DEMO1_EVENT $TRACE_PATH
-	trace_matches "$DEMO_EVENT1_2" $NUM_DEMO1_EVENT $TRACE_PATH
+	trace_matches "$DEMO_EVENT1" $NUM_DEMO1_EVENT "$TRACE_PATH"
+	trace_matches "$DEMO_EVENT1_2" $NUM_DEMO1_2_EVENT "$TRACE_PATH"
 }
 
 # Ease our life a bit ;)
 trace_match_all_demo_events()
 {
 	trace_match_demo1_events
-	trace_matches "$DEMO_EVENT2" $NUM_DEMO2_EVENT $TRACE_PATH
-	trace_matches "$DEMO_EVENT3" $NUM_DEMO3_EVENT $TRACE_PATH
+	trace_matches "$DEMO_EVENT2" $NUM_DEMO2_EVENT "$TRACE_PATH"
+	trace_matches "$DEMO_EVENT3" $NUM_DEMO3_EVENT "$TRACE_PATH"
 }
 
 # Ease our life a bit ;)
 trace_match_no_demo_events()
 {
-	trace_matches "$DEMO_EVENT1" 0 $TRACE_PATH
-	trace_matches "$DEMO_EVENT1_2" 0 $TRACE_PATH
-	trace_matches "$DEMO_EVENT2" 0 $TRACE_PATH
-	trace_matches "$DEMO_EVENT3" 0 $TRACE_PATH
+	trace_matches "$DEMO_EVENT1" 0 "$TRACE_PATH"
+	trace_matches "$DEMO_EVENT1_2" 0 "$TRACE_PATH"
+	trace_matches "$DEMO_EVENT2" 0 "$TRACE_PATH"
+	trace_matches "$DEMO_EVENT3" 0 "$TRACE_PATH"
 }
 
 # Expect all "demo" events, no duplicate.
@@ -206,10 +205,10 @@ test_enable_wildcard_filter_6()
 
 	stop_lttng_tracing_ok $SESSION_NAME
 
-	trace_matches $DEMO_EVENT1 $NUM_DEMO1_EVENT $TRACE_PATH
-	trace_matches $DEMO_EVENT1_2 0 $TRACE_PATH
-	trace_matches $DEMO_EVENT2 0 $TRACE_PATH
-	trace_matches $DEMO_EVENT3 0 $TRACE_PATH
+	trace_matches $DEMO_EVENT1 $NUM_DEMO1_EVENT "$TRACE_PATH"
+	trace_matches $DEMO_EVENT1_2 0 "$TRACE_PATH"
+	trace_matches $DEMO_EVENT2 0 "$TRACE_PATH"
+	trace_matches $DEMO_EVENT3 0 "$TRACE_PATH"
 	return $?
 }
 
@@ -287,12 +286,7 @@ test_enable_same_wildcard_filter_2()
 	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild1" "1==1"
 
 	# Enabling the same events with same filters should fail. This one is expected to fail.
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_wild2" -s $SESSION_NAME -u --filter "1==1" >/dev/null 2>&1
-	if [ $? -ne 0 ]; then
-	    pass "Enable event $event_name with filtering for session $sess_name twice failure detected"
-	else
-	    fail "Enable event $event_name with filtering for session $sess_name twice failure NOT detected"
-	fi
+	enable_ust_lttng_event_fail $SESSION_NAME "$event_wild2" "" --filter "1==1"
 
 	start_lttng_tracing_ok $SESSION_NAME
 
@@ -363,10 +357,10 @@ test_enable_same_event_filter()
 
 	stop_lttng_tracing_ok $SESSION_NAME
 
-	trace_matches $DEMO_EVENT1 $NUM_DEMO1_EVENT $TRACE_PATH
-	trace_matches $DEMO_EVENT1_2 0 $TRACE_PATH
-	trace_matches $DEMO_EVENT2 0 $TRACE_PATH
-	trace_matches $DEMO_EVENT3 0 $TRACE_PATH
+	trace_matches $DEMO_EVENT1 $NUM_DEMO1_EVENT "$TRACE_PATH"
+	trace_matches $DEMO_EVENT1_2 0 "$TRACE_PATH"
+	trace_matches $DEMO_EVENT2 0 "$TRACE_PATH"
+	trace_matches $DEMO_EVENT3 0 "$TRACE_PATH"
 	return $?
 }
 
@@ -539,10 +533,10 @@ test_enable_same_event_loglevels()
 
 	stop_lttng_tracing_ok $SESSION_NAME
 
-	trace_matches $DEMO_EVENT1 $NUM_DEMO1_EVENT $TRACE_PATH
-	trace_matches $DEMO_EVENT1_2 0 $TRACE_PATH
-	trace_matches $DEMO_EVENT2 0 $TRACE_PATH
-	trace_matches $DEMO_EVENT3 0 $TRACE_PATH
+	trace_matches $DEMO_EVENT1 $NUM_DEMO1_EVENT "$TRACE_PATH"
+	trace_matches $DEMO_EVENT1_2 0 "$TRACE_PATH"
+	trace_matches $DEMO_EVENT2 0 "$TRACE_PATH"
+	trace_matches $DEMO_EVENT3 0 "$TRACE_PATH"
 	return $?
 }
 
@@ -591,10 +585,10 @@ test_disable_wildcard_overlap()
 	stop_lttng_tracing_ok $SESSION_NAME
 
 	# Expect only "ust_tests_demo" events.
-	trace_matches "$DEMO_EVENT1" $NUM_DEMO1_EVENT $TRACE_PATH
-	trace_matches "$DEMO_EVENT1_2" 0 $TRACE_PATH
-	trace_matches "$DEMO_EVENT2" 0 $TRACE_PATH
-	trace_matches "$DEMO_EVENT3" 0 $TRACE_PATH
+	trace_matches "$DEMO_EVENT1" $NUM_DEMO1_EVENT "$TRACE_PATH"
+	trace_matches "$DEMO_EVENT1_2" 0 "$TRACE_PATH"
+	trace_matches "$DEMO_EVENT2" 0 "$TRACE_PATH"
+	trace_matches "$DEMO_EVENT3" 0 "$TRACE_PATH"
 	return $?
 }
 
@@ -604,13 +598,10 @@ print_test_banner "$TEST_DESC"
 
 bail_out_if_no_babeltrace
 
-if [ -x "$CURDIR/demo/demo" ]; then
-	foundbin=1
-else
-	foundbin=0
+if [ ! -x "$TESTAPP_PATH" ]; then
+	skip 0 "No UST demo binary detected. Skipping all tests." $NUM_TESTS
+	exit
 fi
-
-skip $foundbin "No UST nevents binary detected. Skipping all tests." $NUM_TESTS && exit 0
 
 TESTS=(
 	"test_enable_wildcard_filter"
@@ -638,25 +629,20 @@ TESTS=(
 	"test_disable_wildcard_overlap"
 )
 
-TEST_COUNT=${#TESTS[@]}
-i=0
-
 start_lttng_sessiond
 
-while [ "$i" -lt "$TEST_COUNT" ]; do
+for test_func in "${TESTS[@]}"; do
 
-	TRACE_PATH=$(mktemp -d -t tmp.test_overlap.XXXXXX)
+	TRACE_PATH=$(mktemp -d -t "tmp.test_overlap.$test_func.XXXXXX")
 
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
 
 	# Execute test
-	${TESTS[$i]}
+	"$test_func"
 
 	destroy_lttng_session_ok $SESSION_NAME
 
-	rm -rf $TRACE_PATH
-
-	let "i++"
+	rm -rf "$TRACE_PATH"
 done
 
 stop_lttng_sessiond
