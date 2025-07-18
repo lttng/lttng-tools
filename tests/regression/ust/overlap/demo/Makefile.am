@@ -6,7 +6,7 @@ if NO_SHARED
 
 CLEANFILES = demo
 
-EXTRA_DIST = demo-trace demo.c ust_tests_demo.h \
+EXTRA_DIST = demo.c ust_tests_demo.h \
 	tp3.c ust_tests_demo3.h tp2.c ust_tests_demo2.h \
 	tp.c ust_tests_demo.h
 
@@ -42,22 +42,4 @@ noinst_PROGRAMS = demo
 demo_SOURCES = demo.c ust_tests_demo.h
 # The demo program only depends on libdl/libc for dlopen().
 demo_LDADD = $(DL_LIBS)
-
-noinst_SCRIPTS = demo-trace
-EXTRA_DIST = demo-trace
-
-all-local:
-	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
-		for script in $(EXTRA_DIST); do \
-			cp -f $(srcdir)/$$script $(builddir); \
-		done; \
-	fi
-
-clean-local:
-	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
-		for script in $(EXTRA_DIST); do \
-			rm -f $(builddir)/$$script; \
-		done; \
-	fi
-
 endif
