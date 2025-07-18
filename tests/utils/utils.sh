@@ -6,15 +6,23 @@
 #
 # shellcheck disable=SC2034 # This file is sourced, unused variables are expected
 
+# Canonicalize paths to the test and build directories
+ABS_TESTDIR=$(readlink -f "$TESTDIR")
+ABS_BUILDDIR=$(readlink -f "$TESTDIR/..")
+
 SESSIOND_BIN="lttng-sessiond"
 SESSIOND_MATCH=".*lttng-sess.*"
+SESSIOND_PATH="$ABS_BUILDDIR/src/bin/$SESSIOND_BIN/$SESSIOND_BIN"
 RUNAS_BIN="lttng-runas"
 RUNAS_MATCH=".*lttng-runas.*"
 CONSUMERD_BIN="lttng-consumerd"
 CONSUMERD_MATCH=".*lttng-consumerd.*"
+CONSUMERD_PATH="$ABS_BUILDDIR/src/bin/$CONSUMERD_BIN/$CONSUMERD_BIN"
 RELAYD_BIN="lttng-relayd"
 RELAYD_MATCH=".*lttng-relayd.*"
+RELAYD_PATH="$ABS_BUILDDIR/src/bin/$RELAYD_BIN/$RELAYD_BIN"
 LTTNG_BIN="lttng"
+LTTNG_PATH="$ABS_BUILDDIR/src/bin/$LTTNG_BIN/$LTTNG_BIN"
 BABELTRACE_BIN="babeltrace2"
 LTTNG_TEST_LOG_DIR="${LTTNG_TEST_LOG_DIR:-}"
 LTTNG_TEST_GDBSERVER_RELAYD="${LTTNG_TEST_GDBSERVER_RELAYD:-}"
@@ -32,11 +40,11 @@ OUTPUT_DEST="${OUTPUT_DEST:-}"  # For 'lttng', some scripts set this to catch a 
 ERROR_OUTPUT_DEST="${ERROR_OUTPUT_DEST:-}"  # For 'lttng', some scripts set this to catch a command error output
 MI_XSD_MAJOR_VERSION=4
 MI_XSD_MINOR_VERSION=1
-MI_XSD_PATH="$TESTDIR/../src/common/mi-lttng-${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}.xsd"
-MI_VALIDATE_BIN="$TESTDIR/utils/xml-utils/validate_xml"
+MI_XSD_PATH="$ABS_BUILDDIR/src/common/mi-lttng-${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}.xsd"
+MI_VALIDATE_BIN="$ABS_TESTDIR/utils/xml-utils/validate_xml"
 
-XML_PRETTY="$TESTDIR/utils/xml-utils/pretty_xml"
-XML_EXTRACT="$TESTDIR/utils/xml-utils/extract_xml"
+XML_PRETTY="$ABS_TESTDIR/utils/xml-utils/pretty_xml"
+XML_EXTRACT="$ABS_TESTDIR/utils/xml-utils/extract_xml"
 XML_NODE_CHECK="${XML_EXTRACT} -e"
 
 declare -a LTTNG_RELAYD_PIDS
@@ -173,7 +181,7 @@ function get_path_from_top_dir() {
 		echo "$1"
 	fi
 
-	realpath --relative-to="$TESTDIR/.." "$1"
+	realpath --relative-to="$ABS_BUILDDIR" "$1"
 }
 
 function lttng_default_rundir () {
@@ -805,19 +813,19 @@ function _run_lttng_cmd
 		opts=('-vvv' "${opts[@]}")
 	fi
 
-	diag "$TESTDIR/../src/bin/lttng/$LTTNG_BIN ${opts[*]}"
+	diag "Run: $(get_path_from_top_dir "$LTTNG_PATH") ${opts[*]}"
 	if [[ -n "${stdout_dest}" ]] && [[ -n "${stderr_dest}" ]] ; then
 		if [[ "${stdout_dest}" == "${stderr_dest}" ]] ; then
-			"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" "${opts[@]}" >"${stdout_dest}" 2>&1
+			"$LTTNG_PATH" "${opts[@]}" >"${stdout_dest}" 2>&1
 		else
-			"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" "${opts[@]}" >"${stdout_dest}" 2>"${stderr_dest}"
+			"$LTTNG_PATH" "${opts[@]}" >"${stdout_dest}" 2>"${stderr_dest}"
 		fi
 	elif [[ -n "${stdout_dest}" ]] && [[ -z "${stderr_dest}" ]]; then
-		"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" "${opts[@]}" >"${stdout_dest}"
+		"$LTTNG_PATH" "${opts[@]}" >"${stdout_dest}"
 	elif [[ -z "${stdout_dest}" ]] && [[ -n "${stderr_dest}" ]] ; then
-		"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" "${opts[@]}" 2>"${stderr_dest}"
+		"$LTTNG_PATH" "${opts[@]}" 2>"${stderr_dest}"
 	else
-		"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" "${opts[@]}"
+		"$LTTNG_PATH" "${opts[@]}"
 	fi
 }
 
@@ -1124,8 +1132,6 @@ function start_lttng_relayd_opt()
 
 	local ret
 
-	DIR=$(readlink -f "$TESTDIR")
-
 	if [[ -n "${LTTNG_RELAYD_PIDS[*]}" ]] ; then
 		pass "lttng-relayd already started"
 		return
@@ -1148,11 +1154,11 @@ function start_lttng_relayd_opt()
 	opts+=('--pid-file' "${pid_file}" "--sig-parent")
 	wait_until_ready=1
 	trap 'wait_until_ready=0' SIGUSR1
-	# shellcheck disable=SC2086
+	diag "Run: $(get_path_from_top_dir "$RELAYD_PATH") ${opts[*]}"
 	if [[ -n "${log_file}" ]]; then
-		$DIR/../src/bin/lttng-relayd/$RELAYD_BIN "${opts[@]}" >"${log_file}" 2>&1 &
+		"$RELAYD_PATH" "${opts[@]}" >"${log_file}" 2>&1 &
 	else
-		$DIR/../src/bin/lttng-relayd/$RELAYD_BIN "${opts[@]}" &
+		"$RELAYD_PATH" "${opts[@]}" &
 	fi
 
 	ret="${?}"
@@ -1333,15 +1339,13 @@ function start_lttng_sessiond_opt()
 		)
 	fi
 
-	DIR=$(readlink -f "$TESTDIR")
-
 	# Get long_bit value for 32/64 consumerd
 	case "$long_bit_value" in
 		32)
-			consumerd="--consumerd32-path=$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
+			consumerd="--consumerd32-path=$CONSUMERD_PATH"
 			;;
 		64)
-			consumerd="--consumerd64-path=$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
+			consumerd="--consumerd64-path=$CONSUMERD_PATH"
 			;;
 		*)
 			return
@@ -1352,15 +1356,15 @@ function start_lttng_sessiond_opt()
 	if [[ "${LTTNG_SESSIOND_ENV_VARS}" != "" ]]; then
 		env_vars="${LTTNG_SESSIOND_ENV_VARS} "
 	fi
-	env_vars="${env_vars}$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN"
+	env_vars="${env_vars}$SESSIOND_PATH"
 
 	if ! validate_kernel_version; then
 		fail "Start session daemon"
 		LTTNG_BAIL_OUT "*** Kernel too old for session daemon tests ***"
 	fi
 
-	diag "export LTTNG_SESSION_CONFIG_XSD_PATH=${DIR}/../src/common/"
-	: "${LTTNG_SESSION_CONFIG_XSD_PATH="${DIR}/../src/common/"}"
+	diag "export LTTNG_SESSION_CONFIG_XSD_PATH=${ABS_BUILDDIR}/src/common/"
+	: "${LTTNG_SESSION_CONFIG_XSD_PATH="${ABS_BUILDDIR}/src/common/"}"
 	export LTTNG_SESSION_CONFIG_XSD_PATH
 
 	wait_until_ready=1
