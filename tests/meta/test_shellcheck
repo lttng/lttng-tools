@@ -14,11 +14,11 @@ files=(
 TESTDIR=$(dirname "$0")/..
 
 # shellcheck source-path=SCRIPTDIR/..
-source "$TESTDIR/utils/tap/tap.sh"
+source "$TESTDIR/utils/utils.sh"
 
 function shellcheck_ok() {
     shellcheck --external-sources "$1"
-    ok $? "Checking $1"
+    ok $? "Checking '$(get_path_from_top_dir "$1")'"
 }
 
 plan_tests "${#files[@]}"

@@ -166,6 +166,16 @@ if [ -z "$PGREP" ]; then
 	PGREP=pgrep
 fi
 
+# If the 'realpath' command is available, return a path relative to the top
+# project directory. Otherwise, return the path as-is.
+function get_path_from_top_dir() {
+	if ! command -v realpath >/dev/null 2>&1; then
+		echo "$1"
+	fi
+
+	realpath --relative-to="$TESTDIR/.." "$1"
+}
+
 function lttng_default_rundir () {
 	if [ "${UID}" == "0" ] ; then
 		echo "/var/run/lttng"
