@@ -526,6 +526,121 @@ function check_skip_long_regression_tests()
 	return 0
 }
 
+# Usage: is_pid_alive PID
+#  Returns zero if the PID is alive
+function is_pid_alive()
+{
+	local pid=$1
+
+	kill -0 "$pid" >/dev/null 2>&1
+}
+
+
+# Usage: app_alive_wait_for_sync APP_NAME PID TIMEOUT OUTPUT_FILE SYNC_FILE
+#
+#  Until the timeout of TIMEOUT seconds, check that PID is alive and wait for
+#  SYNC_FILE to be created on disk. On timeout, attempt to kill the app.
+#
+#  Returns zero on success.
+#
+function app_alive_wait_for_sync()
+{
+	local app_name=$1
+	local pid=$2
+	local timeout_sec=$3
+	local output_file=$4
+	local sync_file=$5
+
+	local ret
+
+	while true; do
+		is_pid_alive "$pid"
+		ret=$?
+
+		if [ $ret != 0 ]; then
+			fail "Testapp '$app_name' exited before sync"
+			diag "Testapp output:"
+			file_to_diag "$output_file"
+			break
+		fi
+
+		if [ -f "${sync_file}" ]; then
+			pass "Testapp '$app_name' sync"
+			ret=0
+			break
+		fi
+
+		if [ "$timeout_sec" -le 0 ]; then
+			fail "Timeout waiting for testapp '$app_name' sync"
+			diag "Killing testapp '$app_name' (pid: $pid)"
+			kill -SIGKILL "$pid"
+			diag "Testapp output:"
+			file_to_diag "$output_file"
+			ret=1
+			break
+		fi
+
+		diag "Waiting for testapp '$app_name' sync... (Timeout in $timeout_sec seconds)"
+
+		timeout_sec=$(( timeout_sec - 1 ))
+		sleep 1
+	done
+
+	return "$ret"
+}
+
+# Usage: app_exit_wait_for_sync APP_NAME PID TIMEOUT OUTPUT_FILE SYNC_FILE
+#
+#  Until the timeout of TIMEOUT seconds, wait for PID to exit and SYNC_FILE to
+#  be created on disk. On timeout, attempt to kill the app.
+#
+#  Returns zero on success.
+#
+function app_exit_wait_for_sync()
+{
+	local app_name=$1
+	local pid=$2
+	local timeout_sec=$3
+	local output_file=$4
+	local sync_file=$5
+
+	local ret
+
+	while true; do
+		is_pid_alive "$pid"
+		ret=$?
+
+		# Check if the testapp has exited
+		if [ $ret != 0 ]; then
+			# Then check if the sync file was created
+			test -f "${sync_file}"
+			ret=$?
+			ok "$ret" "Testapp '$app_name' created sync file and exited"
+			break
+		fi
+
+		if [ "$timeout_sec" -le 0 ]; then
+			fail "Timeout waiting for testapp '$app_name' to exit"
+			diag "Killing testapp '$app_name' (pid: $pid)"
+			kill -9 "$pid"
+			ret=1
+			break
+		fi
+
+		diag "Waiting for testapp '$app_name' to exit... (Timeout in $timeout_sec seconds)"
+
+		timeout_sec=$(( timeout_sec - 1 ))
+		sleep 1
+	done
+
+	if [ "$ret" != "0" ]; then
+		diag "Testapp output:"
+		file_to_diag "$output_file"
+	fi
+
+	return "$ret"
+}
+
 # Usage:
 # check_skip_kernel_test [NB_TESTS] [SKIP_MESSAGE]
 # Return 0 if LTTNG_TOOLS_DISABLE_KERNEL_TESTS was set or the current user is not a root user
