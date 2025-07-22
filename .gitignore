@@ -51,6 +51,7 @@ tags
 TAGS
 /.ccls-cache/
 .ccls-root
+.cache/
 /.clangd/
 compile_commands.json
 *_flymake*
