@@ -251,6 +251,8 @@ class _WaitTraceTestApplication:
         run_as=None,  # type: Optional[str]
         text_size=None,  # type: Optional[int]
         fill_text=False,  # type: bool
+        wait_before_last_event=False,  # type: bool
+        wait_before_last_event_file_path=None,  # type: Optional[pathlib.Path]
     ):
         self._process = None
         self._environment = environment  # type: Environment
@@ -267,6 +269,15 @@ class _WaitTraceTestApplication:
             tempfile.mktemp(
                 prefix="app_",
                 suffix="_start_tracing",
+                dir=dir,
+            )
+        )
+
+        # File that the application will create when all the last event has been emitted
+        self._app_before_last_event_file_path = pathlib.Path(
+            tempfile.mktemp(
+                prefix="app_",
+                suffix="_before_last_event",
                 dir=dir,
             )
         )
@@ -288,10 +299,16 @@ class _WaitTraceTestApplication:
                     dir=dir,
                 )
             )
+
         self._wait_before_exit_file_path = wait_before_exit_file_path
         self._has_returned = False
         self._tracing_started = False
+        if wait_before_last_event and wait_before_last_event_file_path is None:
+            wait_before_last_event_file_path = pathlib.Path(
+                tempfile.mktemp(prefix="app_", suffix="_last_event", dir=dir)
+            )
 
+        self._wait_before_last_event_file_path = wait_before_last_event_file_path
         test_app_env = os.environ.copy()
         if environment.lttng_home_location is not None:
             test_app_env["LTTNG_HOME"] = str(environment.lttng_home_location)
@@ -318,12 +335,28 @@ class _WaitTraceTestApplication:
             ["--sync-before-first-event", str(self._app_start_tracing_file_path)]
         )
         test_app_args.extend(
+            [
+                "--sync-before-last-event-touch",
+                str(self._app_before_last_event_file_path),
+            ]
+        )
+        test_app_args.extend(
             ["--sync-before-exit-touch", str(self._app_tracing_done_file_path)]
         )
+
+        if wait_before_last_event:
+            test_app_args.extend(
+                [
+                    "--sync-before-last-event",
+                    str(self._wait_before_last_event_file_path),
+                ]
+            )
+
         if wait_before_exit:
             test_app_args.extend(
                 ["--sync-before-exit", str(self._wait_before_exit_file_path)]
             )
+
         if wait_time_between_events_us != 0:
             test_app_args.extend(["--wait", str(wait_time_between_events_us)])
 
@@ -431,6 +464,12 @@ class _WaitTraceTestApplication:
 
             time.sleep(0.001)
 
+    def touch_last_event_file(self):
+        if self._wait_before_last_event_file_path is None:
+            raise RuntimeError("wait_before_laswt_event_file_path not set")
+
+        open(self._compat_pathlike(self._wait_before_last_event_file_path), mode="x")
+
     def touch_exit_file(self):
         open(self._compat_pathlike(self._wait_before_exit_file_path), mode="x")
 
@@ -446,6 +485,13 @@ class _WaitTraceTestApplication:
         open(self._compat_pathlike(self._app_start_tracing_file_path), mode="x")
         self._environment._log("[{}] Tracing started".format(self.vpid))
         self._tracing_started = True
+
+    def wait_for_before_last_event(self):
+        # type: () -> None
+        if not self._tracing_started:
+            raise RuntimeError("Tracing hasn't been started")
+        self._wait_for_file_to_be_created(self._app_before_last_event_file_path)
+        self._environment._log("[{}] Before last event done".format(self.vpid))
 
     def wait_for_tracing_done(self):
         # type: () -> None
@@ -1194,6 +1240,8 @@ class _Environment(logger._Logger):
         run_as=None,
         text_size=None,
         fill_text=False,
+        wait_before_last_event=False,
+        wait_before_last_event_file_path=None,
     ):
         # type: (int, int, bool, Optional[pathlib.Path], Optional[str]) -> _WaitTraceTestApplication
         """
@@ -1214,6 +1262,8 @@ class _Environment(logger._Logger):
             run_as,
             text_size,
             fill_text,
+            wait_before_last_event,
+            wait_before_last_event_file_path,
         )
 
     def launch_test_application(self, subpath):
