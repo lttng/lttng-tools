@@ -167,9 +167,7 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
 		return -1;
 	}
 
-	for (auto stream : lttng::urcu::list_iteration_adapter<lttng_consumer_stream,
-							       &lttng_consumer_stream::send_node>(
-		     channel->streams.head)) {
+	for (auto& stream : channel->get_streams()) {
 		unsigned long consumed_pos, produced_pos, max_subbuf_size;
 		lttng_kernel_abi_ring_buffer_packet_flush_or_populate_packet_args packet_args = {};
 
@@ -178,7 +176,7 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
 		/*
 		 * Lock stream because we are about to change its state.
 		 */
-		const lttng::pthread::lock_guard stream_lock(stream->lock);
+		const lttng::pthread::lock_guard stream_lock(stream.lock);
 
 		LTTNG_ASSERT(channel->trace_chunk);
 		if (!lttng_trace_chunk_get(channel->trace_chunk)) {
@@ -190,36 +188,36 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
 			return -1;
 		}
 
-		LTTNG_ASSERT(!stream->trace_chunk);
-		stream->trace_chunk = channel->trace_chunk;
+		LTTNG_ASSERT(!stream.trace_chunk);
+		stream.trace_chunk = channel->trace_chunk;
 
 		/*
 		 * Assign the received relayd ID so we can use it for streaming. The streams
 		 * are not visible to anyone so this is OK to change it.
 		 */
-		stream->net_seq_idx = relayd_id;
+		stream.net_seq_idx = relayd_id;
 		channel->relayd_id = relayd_id;
 
 		/* Close stream output when were are done. */
 		const auto close_stream_output = lttng::make_scope_exit(
-			[stream]() noexcept { consumer_stream_close_output(stream); });
+			[&stream]() noexcept { consumer_stream_close_output(&stream); });
 
 		if (relayd_id != (uint64_t) -1ULL) {
-			ret = consumer_send_relayd_stream(stream, path);
+			ret = consumer_send_relayd_stream(&stream, path);
 			if (ret < 0) {
 				ERR("sending stream to relayd");
 				return ret;
 			}
 		} else {
-			ret = consumer_stream_create_output_files(stream, false);
+			ret = consumer_stream_create_output_files(&stream, false);
 			if (ret < 0) {
 				return ret;
 			}
 
-			DBG("Kernel consumer snapshot stream (%" PRIu64 ")", stream->key);
+			DBG("Kernel consumer snapshot stream (%" PRIu64 ")", stream.key);
 		}
 
-		ret = kernctl_get_max_subbuf_size(stream->wait_fd, &max_subbuf_size);
+		ret = kernctl_get_max_subbuf_size(stream.wait_fd, &max_subbuf_size);
 		if (ret < 0) {
 			ERR("Failed to get max subbuf_size: %d", ret);
 			return ret;
@@ -235,7 +233,7 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
 		packet_args.packet =
 			static_cast<uint64_t>(reinterpret_cast<uintptr_t>(packet_buffer.data()));
 
-		ret = kernctl_buffer_flush_or_populate_packet(stream->wait_fd, &packet_args);
+		ret = kernctl_buffer_flush_or_populate_packet(stream.wait_fd, &packet_args);
 		if (ret < 0) {
 			if (ret != -ENOTTY) {
 				/* kernctl_buffer_flush_or_poopulate_packet is supported, but failed
@@ -250,7 +248,7 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
 				warn_flush_or_populate_packet = true;
 			}
 
-			ret = kernctl_buffer_flush_empty(stream->wait_fd);
+			ret = kernctl_buffer_flush_empty(stream.wait_fd);
 			if (ret < 0) {
 				if (!warn_flush) {
 					DBG("Failed to perform kernctl_buffer_flush_empty: %d",
@@ -265,7 +263,7 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
 				 * fall-back when "flush_empty" is not
 				 * implemented by lttng-modules.
 				 */
-				ret = kernctl_buffer_flush(stream->wait_fd);
+				ret = kernctl_buffer_flush(stream.wait_fd);
 				if (ret < 0) {
 					ERR("Failed to flush kernel stream");
 					return ret;
@@ -273,26 +271,26 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
 			}
 		}
 
-		ret = lttng_kconsumer_take_snapshot(stream);
+		ret = lttng_kconsumer_take_snapshot(&stream);
 		if (ret < 0) {
 			ERR("Taking kernel snapshot");
 			return ret;
 		}
 
-		ret = lttng_kconsumer_get_produced_snapshot(stream, &produced_pos);
+		ret = lttng_kconsumer_get_produced_snapshot(&stream, &produced_pos);
 		if (ret < 0) {
 			ERR("Produced kernel snapshot position");
 			return ret;
 		}
 
-		ret = lttng_kconsumer_get_consumed_snapshot(stream, &consumed_pos);
+		ret = lttng_kconsumer_get_consumed_snapshot(&stream, &consumed_pos);
 		if (ret < 0) {
 			ERR("Consumerd kernel snapshot position");
 			return ret;
 		}
 
 		consumed_pos = consumer_get_consume_start_pos(
-			consumed_pos, produced_pos, nb_packets_per_stream, stream->max_sb_size);
+			consumed_pos, produced_pos, nb_packets_per_stream, stream.max_sb_size);
 
 		while ((long) (consumed_pos - produced_pos) < 0) {
 			ssize_t read_len;
@@ -303,7 +301,7 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
 			health_code_update();
 			DBG("Kernel consumer taking snapshot at pos %lu", consumed_pos);
 
-			ret = kernctl_get_subbuf(stream->wait_fd, &consumed_pos);
+			ret = kernctl_get_subbuf(stream.wait_fd, &consumed_pos);
 			if (ret < 0) {
 				if (ret != -EAGAIN) {
 					PERROR("kernctl_get_subbuf snapshot");
@@ -311,39 +309,39 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
 				}
 
 				DBG("Kernel consumer get subbuf failed. Skipping it.");
-				consumed_pos += stream->max_sb_size;
-				stream->chan->lost_packets++;
+				consumed_pos += stream.max_sb_size;
+				stream.chan->lost_packets++;
 				continue;
 			}
 
 			/* Put the subbuffer once we are done. */
 			const auto put_subbuf = lttng::make_scope_exit([stream]() noexcept {
-				const auto put_ret = kernctl_put_subbuf(stream->wait_fd);
+				const auto put_ret = kernctl_put_subbuf(stream.wait_fd);
 				if (put_ret < 0) {
 					ERR("Snapshot kernctl_put_subbuf");
 				}
 			});
 
-			ret = kernctl_get_subbuf_size(stream->wait_fd, &len);
+			ret = kernctl_get_subbuf_size(stream.wait_fd, &len);
 			if (ret < 0) {
 				ERR("Snapshot kernctl_get_subbuf_size");
 				return ret;
 			}
 
-			ret = kernctl_get_padded_subbuf_size(stream->wait_fd, &padded_len);
+			ret = kernctl_get_padded_subbuf_size(stream.wait_fd, &padded_len);
 			if (ret < 0) {
 				ERR("Snapshot kernctl_get_padded_subbuf_size");
 				return ret;
 			}
 
-			ret = get_current_subbuf_addr(stream, &subbuf_addr);
+			ret = get_current_subbuf_addr(&stream, &subbuf_addr);
 			if (ret) {
 				return ret;
 			}
 
 			subbuf_view = lttng_buffer_view_init(subbuf_addr, 0, padded_len);
 			read_len = lttng_consumer_on_read_subbuffer_mmap(
-				stream, &subbuf_view, padded_len - len);
+				&stream, &subbuf_view, padded_len - len);
 			/*
 			 * We write the padded len in local tracefiles but the data len
 			 * when using a relay. Display the error but continue processing
@@ -363,7 +361,7 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
 				}
 			}
 
-			consumed_pos += stream->max_sb_size;
+			consumed_pos += stream.max_sb_size;
 		}
 
 		if (packet_args.packet_populated) {
@@ -372,7 +370,7 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
 			const auto subbuf_view = lttng_buffer_view_init(
 				(char *) packet_buffer.data(), 0, packet_args.packet_length_padded);
 			const auto read_len = lttng_consumer_on_read_subbuffer_mmap(
-				stream,
+				&stream,
 				&subbuf_view,
 				packet_args.packet_length_padded - packet_args.packet_length);
 
@@ -1021,6 +1019,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 	case LTTNG_CONSUMER_SNAPSHOT_CHANNEL:
 	{
+		const lttng::pthread::lock_guard consumer_data_lock(the_consumer_data.lock);
 		struct lttng_consumer_channel *channel;
 		const uint64_t key = msg.u.snapshot_channel.key;
 		int ret_send_status;

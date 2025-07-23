@@ -12,6 +12,7 @@
 
 #include <common/common.hpp>
 #include <common/compat/endian.hpp>
+#include <common/consumer/consumer-channel.hpp>
 #include <common/consumer/consumer-metadata-cache.hpp>
 #include <common/consumer/consumer-stream.hpp>
 #include <common/consumer/consumer-timer.hpp>
@@ -1094,12 +1095,13 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 	LTTNG_ASSERT(ctx);
 	ASSERT_RCU_READ_LOCKED();
 
+	/* Prevent channel modifications while we perform the snapshot. */
+	const lttng::pthread::lock_guard channe_lock(channel->lock);
+
 	if (!terminal_packet) {
 		ERR("Failed to allocate lttng-ust consumer packet");
 		return -1;
 	}
-
-	const lttng::urcu::read_lock_guard read_lock;
 
 	if (relayd_id != (uint64_t) -1ULL) {
 		use_relayd = 1;
@@ -1108,13 +1110,11 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 	LTTNG_ASSERT(!channel->monitor);
 	DBG("UST consumer snapshot channel %" PRIu64, key);
 
-	for (auto stream : lttng::urcu::list_iteration_adapter<lttng_consumer_stream,
-							       &lttng_consumer_stream::send_node>(
-		     channel->streams.head)) {
+	for (auto& stream : channel->get_streams()) {
 		health_code_update();
 
 		/* Lock stream because we are about to change its state. */
-		const lttng::pthread::lock_guard stream_lock(stream->lock);
+		const lttng::pthread::lock_guard stream_lock(stream.lock);
 		LTTNG_ASSERT(channel->trace_chunk);
 		if (!lttng_trace_chunk_get(channel->trace_chunk)) {
 			/*
@@ -1125,35 +1125,35 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 			return -1;
 		}
 
-		LTTNG_ASSERT(!stream->trace_chunk);
-		stream->trace_chunk = channel->trace_chunk;
-		stream->net_seq_idx = relayd_id;
+		LTTNG_ASSERT(!stream.trace_chunk);
+		stream.trace_chunk = channel->trace_chunk;
+		stream.net_seq_idx = relayd_id;
 
 		/* Close stream output when were are done. */
 		const auto close_stream_output = lttng::make_scope_exit(
-			[stream]() noexcept { consumer_stream_close_output(stream); });
+			[&stream]() noexcept { consumer_stream_close_output(&stream); });
 
 		if (use_relayd) {
-			ret = consumer_send_relayd_stream(stream, path);
+			ret = consumer_send_relayd_stream(&stream, path);
 			if (ret < 0) {
 				return ret;
 			}
 		} else {
-			ret = consumer_stream_create_output_files(stream, false);
+			ret = consumer_stream_create_output_files(&stream, false);
 			if (ret < 0) {
 				return ret;
 			}
 
-			DBG("UST consumer snapshot stream (%" PRIu64 ")", stream->key);
+			DBG("UST consumer snapshot stream (%" PRIu64 ")", stream.key);
 		}
 
 		/*
 		 * If tracing is active, we want to perform an active buffer flush.
 		 * Else, if quiescent, it has already been done by the prior stop.
 		 */
-		if (!stream->quiescent) {
+		if (!stream.quiescent) {
 			ret = lttng_ustconsumer_flush_buffer_or_populate_packet(
-				stream, terminal_packet.get(), &packet_populated, nullptr);
+				&stream, terminal_packet.get(), &packet_populated, nullptr);
 			if (ret < 0) {
 				ERR("Failed to flush buffer during snapshot of channel: channel key = %" PRIu64
 				    ", channel name='%s', ret=%d",
@@ -1164,19 +1164,19 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 			}
 		}
 
-		ret = lttng_ustconsumer_take_snapshot(stream);
+		ret = lttng_ustconsumer_take_snapshot(&stream);
 		if (ret < 0) {
 			ERR("Taking UST snapshot");
 			return ret;
 		}
 
-		ret = lttng_ustconsumer_get_produced_snapshot(stream, &produced_pos);
+		ret = lttng_ustconsumer_get_produced_snapshot(&stream, &produced_pos);
 		if (ret < 0) {
 			ERR("Produced UST snapshot position");
 			return ret;
 		}
 
-		ret = lttng_ustconsumer_get_consumed_snapshot(stream, &consumed_pos);
+		ret = lttng_ustconsumer_get_consumed_snapshot(&stream, &consumed_pos);
 		if (ret < 0) {
 			ERR("Consumerd UST snapshot position");
 			return ret;
@@ -1189,7 +1189,7 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 		 * subbuffer size.
 		 */
 		consumed_pos = consumer_get_consume_start_pos(
-			consumed_pos, produced_pos, nb_packets_per_stream, stream->max_sb_size);
+			consumed_pos, produced_pos, nb_packets_per_stream, stream.max_sb_size);
 
 		while ((long) (consumed_pos - produced_pos) < 0) {
 			ssize_t read_len;
@@ -1201,7 +1201,7 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 
 			DBG("UST consumer taking snapshot at pos %lu", consumed_pos);
 
-			ret = lttng_ust_ctl_get_subbuf(stream->ustream, &consumed_pos);
+			ret = lttng_ust_ctl_get_subbuf(stream.ustream, &consumed_pos);
 			if (ret < 0) {
 				if (ret != -EAGAIN) {
 					PERROR("lttng_ust_ctl_get_subbuf snapshot");
@@ -1209,38 +1209,38 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 				}
 
 				DBG("UST consumer get subbuf failed. Skipping it.");
-				consumed_pos += stream->max_sb_size;
-				stream->chan->lost_packets++;
+				consumed_pos += stream.max_sb_size;
+				stream.chan->lost_packets++;
 				continue;
 			}
 
 			/* Put the subbuffer once we are done. */
 			const auto put_subbuf = lttng::make_scope_exit([stream]() noexcept {
-				if (lttng_ust_ctl_put_subbuf(stream->ustream) < 0) {
+				if (lttng_ust_ctl_put_subbuf(stream.ustream) < 0) {
 					ERR("Snapshot lttng_ust_ctl_put_subbuf");
 				}
 			});
 
-			ret = lttng_ust_ctl_get_subbuf_size(stream->ustream, &len);
+			ret = lttng_ust_ctl_get_subbuf_size(stream.ustream, &len);
 			if (ret < 0) {
 				ERR("Snapshot lttng_ust_ctl_get_subbuf_size");
 				return ret;
 			}
 
-			ret = lttng_ust_ctl_get_padded_subbuf_size(stream->ustream, &padded_len);
+			ret = lttng_ust_ctl_get_padded_subbuf_size(stream.ustream, &padded_len);
 			if (ret < 0) {
 				ERR("Snapshot lttng_ust_ctl_get_padded_subbuf_size");
 				return ret;
 			}
 
-			ret = get_current_subbuf_addr(stream, &subbuf_addr);
+			ret = get_current_subbuf_addr(&stream, &subbuf_addr);
 			if (ret) {
 				return ret;
 			}
 
 			subbuf_view = lttng_buffer_view_init(subbuf_addr, 0, padded_len);
 			read_len = lttng_consumer_on_read_subbuffer_mmap(
-				stream, &subbuf_view, padded_len - len);
+				&stream, &subbuf_view, padded_len - len);
 			if (use_relayd) {
 				if (read_len != len) {
 					return -EPERM;
@@ -1251,7 +1251,7 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 				}
 			}
 
-			consumed_pos += stream->max_sb_size;
+			consumed_pos += stream.max_sb_size;
 		}
 
 		if (packet_populated) {
@@ -1278,7 +1278,7 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 			subbuf_view =
 				lttng_buffer_view_init(src, 0, (ptrdiff_t) packet_length_padded);
 			read_len = lttng_consumer_on_read_subbuffer_mmap(
-				stream, &subbuf_view, packet_length_padded - packet_length);
+				&stream, &subbuf_view, packet_length_padded - packet_length);
 			if (read_len < length) {
 				WARN("Failed to write terminal packet to stream, read %ld of %ld",
 				     read_len,
@@ -1288,7 +1288,7 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 		}
 
 		/* Simply close the stream so we can use it on the next snapshot. */
-		consumer_stream_close_output(stream);
+		consumer_stream_close_output(&stream);
 	}
 
 	return 0;
@@ -1936,6 +1936,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 	case LTTNG_CONSUMER_SNAPSHOT_CHANNEL:
 	{
+		const lttng::pthread::lock_guard consumer_data_lock(the_consumer_data.lock);
 		struct lttng_consumer_channel *found_channel;
 		const uint64_t key = msg.u.snapshot_channel.key;
 		int ret_send;
