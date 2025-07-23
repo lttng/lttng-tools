@@ -444,6 +444,43 @@ public:
 	}
 };
 
+/*
+ * scoped_rcu_read_lock is a RAII-style wrapper around the RCU read lock.
+ * It ensures that the read lock is acquired upon construction and released
+ * upon destruction, providing exception safety.
+ *
+ * In general, prefer using read_lock_guard instead of scoped_rcu_read_lock
+ * as it provides a more standard interface and is more idiomatic in C++.
+ * However, scoped_rcu_read_lock is provided to make the scoped lock
+ * moveable in the few cases where that is required.
+ */
+class scoped_rcu_read_lock {
+public:
+	scoped_rcu_read_lock()
+	{
+		rcu_read_lock();
+	}
+
+	~scoped_rcu_read_lock()
+	{
+		if (_armed) {
+			rcu_read_unlock();
+		}
+	}
+
+	scoped_rcu_read_lock(scoped_rcu_read_lock&& other) noexcept
+	{
+		other._armed = false;
+	}
+
+	scoped_rcu_read_lock(scoped_rcu_read_lock& other) = delete;
+	scoped_rcu_read_lock& operator=(const scoped_rcu_read_lock&) = delete;
+	scoped_rcu_read_lock& operator=(scoped_rcu_read_lock&&) noexcept = delete;
+
+private:
+	bool _armed = true;
+};
+
 } /* namespace urcu */
 } /* namespace lttng */
 

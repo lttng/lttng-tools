@@ -224,34 +224,7 @@ private:
 	{
 	}
 
-	class _scoped_rcu_read_lock {
-	public:
-		_scoped_rcu_read_lock()
-		{
-			rcu_read_lock();
-		}
-
-		~_scoped_rcu_read_lock()
-		{
-			if (_armed) {
-				rcu_read_unlock();
-			}
-		}
-
-		_scoped_rcu_read_lock(_scoped_rcu_read_lock&& other) noexcept
-		{
-			other._armed = false;
-		}
-
-		_scoped_rcu_read_lock(_scoped_rcu_read_lock& other) = delete;
-		_scoped_rcu_read_lock& operator=(const _scoped_rcu_read_lock&) = delete;
-		_scoped_rcu_read_lock& operator=(_scoped_rcu_read_lock&&) noexcept = delete;
-
-	private:
-		bool _armed = true;
-	};
-
-	_scoped_rcu_read_lock _read_lock;
+	lttng::urcu::scoped_rcu_read_lock _read_lock;
 	_iterator_creation_context _creation_context;
 };
 } /* namespace sessiond */

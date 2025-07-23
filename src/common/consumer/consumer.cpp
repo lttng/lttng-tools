@@ -7,6 +7,7 @@
  *
  */
 
+#include "common/macros.hpp"
 #define _LGPL_SOURCE
 #include <common/align.hpp>
 #include <common/common.hpp>

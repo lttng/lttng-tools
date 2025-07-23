@@ -12,6 +12,7 @@
 #define LIB_CONSUMER_H
 
 #include <common/buffer-view.hpp>
+#include <common/consumer/consumer-channel.hpp>
 #include <common/credentials.hpp>
 #include <common/dynamic-array.hpp>
 #include <common/hashtable/hashtable.hpp>
@@ -148,6 +149,17 @@ struct stream_list {
 struct consumer_metadata_cache;
 
 struct lttng_consumer_channel {
+	/*
+	 * Iterate over the streams of this channel. Note that this utility provides the channel's
+	 * streams from the "streams" list  and from the global stream hash table, providing streams
+	 * that are either published or not.
+	 *
+	 * The consumer_data and channel locks must be acquired before calling this method.
+	 */
+	lttng::consumer::stream_set
+	get_streams(const nonstd::optional<lttng::consumer::stream_set::filter>& filter =
+			    nonstd::nullopt);
+
 	/* Is the channel published in the channel hash tables? */
 	bool is_published = false;
 	/*
@@ -207,6 +219,10 @@ struct lttng_consumer_channel {
 	 * Temporary stream list used to store the streams once created and waiting
 	 * to be sent to the session daemon by receiving the
 	 * LTTNG_CONSUMER_GET_CHANNEL.
+	 *
+	 * Note that in the case of a channel that has no active output (i.e.
+	 * a "snapshot" channel), this list is used to reference the streams as they
+	 * never become globally visible (monitored).
 	 */
 	struct stream_list streams = {};
 

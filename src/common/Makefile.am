@@ -240,6 +240,8 @@ noinst_LTLIBRARIES += libconsumer.la
 libconsumer_la_SOURCES = \
 	consumer/consumer.cpp \
 	consumer/consumer.hpp \
+	consumer/consumer-channel.hpp \
+	consumer/consumer-channel.cpp \
 	consumer/consumer-metadata-cache.cpp \
 	consumer/consumer-metadata-cache.hpp \
 	consumer/consumer-stream.cpp \
