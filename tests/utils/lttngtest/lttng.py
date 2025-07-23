@@ -731,6 +731,13 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
         self._environment = test_environment  # type: environment._Environment
         self._extra_env_vars = extra_env_vars
 
+        # The client needs to know where to find the LTTng session configuration
+        # XSD file for validating session configuration files when `lttng-load`
+        # is used.
+        self._extra_env_vars.setdefault("LTTNG_SESSION_CONFIG_XSD_PATH", str(
+            self._environment._project_root / "src" / "common"
+        ))
+
     @staticmethod
     def _namespaced_mi_element(property):
         # type: (str) -> str
@@ -948,3 +955,51 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
         if len(sessions) > 0:
             return sessions[0]
         raise InvalidMI("Invalid empty 'sessions element in '{}".format(session_mi.tag))
+
+    def save_sessions(self, session_name=None, force=False, output_path=None):
+
+        cmd = [
+            "save",
+        ]
+
+        if force:
+            cmd.append("--force")
+
+        if output_path:
+            cmd.append("--output-path={}".format(output_path))
+        else:
+            cmd.append(
+                "--output-path={}".format(
+                    str(self._environment.lttng_home_location) + "/.lttng/sessions"
+                )
+            )
+
+        if session_name:
+            cmd.append(session_name)
+        else:
+            cmd.append("--all")
+
+        self._run_cmd(" ".join(cmd))
+
+    def load_sessions(self, session_name=None, force=False, input_path=None):
+
+        cmd = ["load"]
+
+        if force:
+            cmd.append("--force")
+
+        if input_path:
+            cmd.append("--input-path={}".format(input_path))
+        else:
+            cmd.append(
+                "--input-path={}".format(
+                    str(self._environment.lttng_home_location) + "/.lttng/sessions"
+                )
+            )
+
+        if session_name:
+            cmd.append(session_name)
+        else:
+            cmd.append("--all")
+
+        self._run_cmd(" ".join(cmd))

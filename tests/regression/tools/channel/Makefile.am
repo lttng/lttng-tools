@@ -6,14 +6,16 @@ noinst_SCRIPTS =					\
 	test_channel					\
 	test_cli_legacy_channel_buffering_policies.py	\
 	test_channel_allocation_policy_per_channel.py	\
-	test_channel_allocation_policy_per_cpu.py
+	test_channel_allocation_policy_per_cpu.py	\
+	test_channel_watchdog_timer.py
 
 
 EXTRA_DIST =						\
 	test_channel					\
 	test_cli_legacy_channel_buffering_policies.py	\
 	test_channel_allocation_policy_per_channel.py	\
-	test_channel_allocation_policy_per_cpu.py
+	test_channel_allocation_policy_per_cpu.py	\
+	test_channel_watchdog_timer.py
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
