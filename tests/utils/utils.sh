@@ -641,6 +641,27 @@ function app_exit_wait_for_sync()
 	return "$ret"
 }
 
+# Usage: run_testapp_ok OUTPUT_FILE TESTAPP_PATH [Options...]
+function run_testapp_ok()
+{
+	local file_testapp_output=$1
+	local testapp_path=$2
+	local testapp_opts=("${@:3}")
+
+	local ret
+
+	diag "Run: $(get_path_from_top_dir "$testapp_path") ${testapp_opts[*]}"
+	"$testapp_path" "${testapp_opts[@]}" >"${file_testapp_output}" 2>&1
+	ret=$?
+
+	ok $ret "Testapp exit with success"
+
+	if [ "$ret" != 0 ]; then
+		diag "Testapp output:"
+		file_to_diag "$file_testapp_output"
+	fi
+}
+
 # Usage:
 # check_skip_kernel_test [NB_TESTS] [SKIP_MESSAGE]
 # Return 0 if LTTNG_TOOLS_DISABLE_KERNEL_TESTS was set or the current user is not a root user
