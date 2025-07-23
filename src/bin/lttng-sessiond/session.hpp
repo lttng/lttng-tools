@@ -28,6 +28,7 @@
 #include <lttng/rotation.h>
 
 #include <condition_variable>
+#include <iterator>
 #include <limits.h>
 #include <mutex>
 #include <stdbool.h>
@@ -115,6 +116,19 @@ public:
 		DATA,
 	};
 
+	struct key {
+		/* Bitness is needed to query the appropriate consumer daemon. */
+		consumer_bitness bitness;
+		std::uint64_t key_value;
+		channel_type type;
+
+		bool operator==(const key& other)
+		{
+			return bitness == other.bitness && key_value == other.key_value &&
+				type == other.type;
+		}
+	};
+
 	iterator begin() const noexcept;
 	iterator end() const noexcept;
 
@@ -135,23 +149,10 @@ private:
 	};
 
 public:
-	class iterator : public std::iterator<std::input_iterator_tag, std::uint64_t> {
+	class iterator : public std::iterator<std::forward_iterator_tag, key> {
 		friend user_space_consumer_channel_keys;
 
 	public:
-		struct key {
-			/* Bitness is needed to query the appropriate consumer daemon. */
-			consumer_bitness bitness;
-			std::uint64_t key_value;
-			channel_type type;
-
-			bool operator==(const key& other)
-			{
-				return bitness == other.bitness && key_value == other.key_value &&
-					type == other.type;
-			}
-		};
-
 		/*
 		 * Copy constructor disabled since it would require handling the copy of locked
 		 * references.

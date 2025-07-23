@@ -1810,7 +1810,7 @@ bool ls::user_space_consumer_channel_keys::iterator::operator!=(const iterator& 
 	return !(*this == other);
 }
 
-ls::user_space_consumer_channel_keys::iterator::key
+ls::user_space_consumer_channel_keys::key
 ls::user_space_consumer_channel_keys::iterator::_get_current_value_per_pid() const noexcept
 {
 	auto& position = _position._per_pid;
@@ -1843,7 +1843,7 @@ ls::user_space_consumer_channel_keys::iterator::_get_current_value_per_pid() con
 	}
 }
 
-ls::user_space_consumer_channel_keys::iterator::key
+ls::user_space_consumer_channel_keys::key
 ls::user_space_consumer_channel_keys::iterator::_get_current_value_per_uid() const noexcept
 {
 	const auto *channel_node =
@@ -1869,7 +1869,7 @@ ls::user_space_consumer_channel_keys::iterator::_get_current_value_per_uid() con
 	}
 }
 
-ls::user_space_consumer_channel_keys::iterator::key
+ls::user_space_consumer_channel_keys::key
 ls::user_space_consumer_channel_keys::iterator::operator*() const
 {
 	if (_is_end) {
