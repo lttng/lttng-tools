@@ -8,6 +8,7 @@
 # All file must be relative to the test directory.
 files=(
     meta/test_shellcheck
+    regression/tools/live/test_lttng_ust
     regression/tools/regen-statedump/test_ust
     regression/ust/multi-session/test_multi_session
     regression/ust/overlap/test_overlap
