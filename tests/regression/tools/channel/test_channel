@@ -6,56 +6,66 @@
 
 TEST_DESC="LTTng - Channel tests"
 
-CURDIR=$(dirname $0)/
+CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../../..
+
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME"
+
 NR_ITER=100
 NR_USEC_WAIT=1
-NUM_TESTS=14
 
-source $TESTDIR/utils/utils.sh
+NUM_TESTS=16
+
+# shellcheck source-path=SCRIPTDIR/../../..
+source "$TESTDIR/utils/utils.sh"
 
 function test_channel_disable_stopped_session()
 {
-	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
-	local SESSION_NAME="test_channel"
-	local CHAN_NAME="channel0"
-	local EVENT_NAME="tp:tptest"
+	local session_name="test_channel"
+	local chan_name="channel0"
+	local event_name="tp:tptest"
+
+	local trace_path
+	local file_testapp_output
+
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
 
 	diag "Test channel disable on stop session"
 
-	create_lttng_session_ok "$SESSION_NAME" "$TRACE_PATH"
+	create_lttng_session_ok "$session_name" "$trace_path"
 
-	enable_ust_lttng_channel_ok "$SESSION_NAME" "$CHAN_NAME"
+	enable_ust_lttng_channel_ok "$session_name" "$chan_name"
 
-	enable_ust_lttng_event_ok "$SESSION_NAME" "$EVENT_NAME" "$CHAN_NAME"
+	enable_ust_lttng_event_ok "$session_name" "$event_name" "$chan_name"
 
-	start_lttng_tracing_ok "$SESSION_NAME"
+	start_lttng_tracing_ok "$session_name"
 
-	"$TESTAPP_BIN" -i "$NR_ITER" -w "$NR_USEC_WAIT"
+	run_testapp_ok "$file_testapp_output" "$TESTAPP_BIN" -i "$NR_ITER" -w "$NR_USEC_WAIT"
 
-	stop_lttng_tracing_ok "$SESSION_NAME"
+	stop_lttng_tracing_ok "$session_name"
 
-	trace_match_only "$EVENT_NAME" "$NR_ITER" "$TRACE_PATH"
+	trace_match_only "$event_name" "$NR_ITER" "$trace_path"
 
-	lttng_clear_session_ok "$SESSION_NAME"
+	lttng_clear_session_ok "$session_name"
 
-	disable_ust_lttng_channel "$SESSION_NAME" "$CHAN_NAME"
+	disable_ust_lttng_channel "$session_name" "$chan_name"
 
-	start_lttng_tracing_ok "$SESSION_NAME"
+	start_lttng_tracing_ok "$session_name"
 
 	# The channel is disabled so no events should be emited by this app.
-	"$TESTAPP_BIN" -i "$NR_ITER" -w "$NR_USEC_WAIT"
+	run_testapp_ok "$file_testapp_output" "$TESTAPP_BIN" -i "$NR_ITER" -w "$NR_USEC_WAIT"
 
-	stop_lttng_tracing_ok "$SESSION_NAME"
+	stop_lttng_tracing_ok "$session_name"
 
-	trace_match_only "$EVENT_NAME" 0 "$TRACE_PATH"
+	trace_match_only "$event_name" 0 "$trace_path"
 
-	destroy_lttng_session_ok $SESSION_NAME
+	destroy_lttng_session_ok "$session_name"
 
-	rm -rf $TRACE_PATH
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
 }
 
 
