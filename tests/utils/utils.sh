@@ -1759,24 +1759,42 @@ function sigstop_lttng_consumerd_notap()
 function list_lttng_with_opts ()
 {
 	local withtap=$1
-	local opts=("${@:2}")
+	local expected_to_fail=$2
+	local opts=("${@:3}")
 
 	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		list "${opts[@]}"
 	local ret=$?
-	if [ "$withtap" -eq "1" ]; then
-		ok $ret "Lttng-tool list command with options: ${opts[*]}"
+
+	if [[ $expected_to_fail -eq "1" ]]; then
+		test $ret -ne "0"
+		ret=$?
+
+		if [[ "$withtap" -eq "1" ]]; then
+			ok $ret "List command failed as expected with options: ${opts[*]}"
+		fi
+	else
+		if [[ "$withtap" -eq "1" ]]; then
+			ok $ret "List command with options: ${opts[*]}"
+		fi
 	fi
+
+	return "$ret"
 }
 
 function list_lttng_ok ()
 {
-	list_lttng_with_opts 1 "$@"
+	list_lttng_with_opts 1 0 "$@"
+}
+
+function list_lttng_fail ()
+{
+	list_lttng_with_opts 1 1 "$@"
 }
 
 function list_lttng_notap ()
 {
-	list_lttng_with_opts 0 "$@"
+	list_lttng_with_opts 0 0 "$@"
 }
 
 function create_lttng_session_no_output ()
