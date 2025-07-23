@@ -10,6 +10,7 @@ files=(
     meta/test_shellcheck
     regression/tools/live/test_lttng_ust
     regression/tools/regen-statedump/test_ust
+    regression/tools/save-load/test_load
     regression/ust/multi-session/test_multi_session
     regression/ust/overlap/test_overlap
     utils/utils.sh
