@@ -1,64 +1,86 @@
 #!/bin/bash
 #
 # SPDX-FileCopyrightText: 2016 Julien Desfossez <jdesfossez@efficios.com>
+# SPDX-FileCopyrightText: 2025 Michael Jeanson <mjeanson@efficios.com>
 #
 # SPDX-License-Identifier: LGPL-2.1-only
 
 TEST_DESC="Regenerate the statedump - User-space tracing"
 
-CURDIR=$(dirname $0)/
+CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../../..
+
 NR_ITER=10
 NR_USEC_WAIT=0
+
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME"
-SESSION_NAME="stream"
-EVENT_NAME="lttng_ust_statedump:start,lttng_ust_statedump:end"
+TESTAPP_TIMEOUT_SEC=10
 
-TRACE_PATH=$(mktemp -d -t tmp.test_regenerate_statedump_ust_trace_path.XXXXXX)
+NUM_TESTS=13
 
-NUM_TESTS=11
-
-source $TESTDIR/utils/utils.sh
+# shellcheck source-path=SCRIPTDIR/../../..
+source "$TESTDIR/utils/utils.sh"
 
 if [ ! -x "$TESTAPP_BIN" ]; then
 	BAIL_OUT "No UST events binary detected."
 fi
 
-function test_ust_local ()
+function test_regenerate_statedump_ust ()
 {
-	local file_sync_after_first=$(mktemp -u -t tmp.test_${FUNCNAME[0]}_sync_after_first.XXXXXX)
-	local file_sync_before_last=$(mktemp -u -t tmp.test_${FUNCNAME[0]}_sync_before_last.XXXXXX)
+	local session_name="regen-statedump-ust"
+	local event_name="lttng_ust_statedump:start,lttng_ust_statedump:end"
+
+	local ret
+	local testapp_pid
+	local trace_path
+	local file_testapp_output
+	local file_sync_after_first
+	local file_sync_before_last
+	local file_sync_before_exit_touch
+
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
+	file_sync_after_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
+	file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	file_sync_before_exit_touch=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_exit_touch.XXXXXX")
 
 	diag "Test UST local with statedump regeneration"
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
 
-	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
-		--sync-after-first-event ${file_sync_after_first} \
-		--sync-before-last-event ${file_sync_before_last} >/dev/null 2>&1 &
+	create_lttng_session_ok $session_name "$trace_path"
+	enable_ust_lttng_event_ok $session_name $event_name
 
-	start_lttng_tracing_ok $SESSION_NAME
+	"$TESTAPP_BIN" -i $NR_ITER -w $NR_USEC_WAIT \
+		--sync-after-first-event "${file_sync_after_first}" \
+		--sync-before-last-event "${file_sync_before_last}" \
+		--sync-before-exit-touch "${file_sync_before_exit_touch}" >"${file_testapp_output}" 2>&1 &
+	testapp_pid=$!
+	diag "Launched testapp '$TESTAPP_NAME' (pid: $testapp_pid) to generate $NR_ITER events"
 
-	while [ ! -f "${file_sync_after_first}" ]; do
-		sleep 0.5
-	done
+	start_lttng_tracing_ok $session_name
 
-	regenerate_statedump_ok $SESSION_NAME
+	# Wait for the testapp first event
+	app_alive_wait_for_sync "$TESTAPP_NAME" "$testapp_pid" "$TESTAPP_TIMEOUT_SEC" "$file_testapp_output" "$file_sync_after_first"
 
-	touch ${file_sync_before_last}
+	regenerate_statedump_ok $session_name
 
-	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
-	# Validate test
-	validate_trace_count $EVENT_NAME $TRACE_PATH 4
-	if [ $? -eq 0 ]; then
-		# Only delete if successful
-		rm -rf $TRACE_PATH
-	fi
-	rm -f ${file_sync_after_first}
-	rm -f ${file_sync_before_last}
+	# Tell the testapp to continue
+	touch "${file_sync_before_last}"
+
+	app_exit_wait_for_sync "$TESTAPP_NAME" "$testapp_pid" "$TESTAPP_TIMEOUT_SEC" "$file_testapp_output" "$file_sync_before_exit_touch"
+
+	stop_lttng_tracing_ok $session_name
+	destroy_lttng_session_ok $session_name
+
+	validate_trace_count $event_name "$trace_path" 4
+
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
+	rm -f "$file_sync_after_first"
+	rm -f "$file_sync_before_last"
+	rm -f "$file_sync_before_exit_touch"
 }
 
 plan_tests $NUM_TESTS
@@ -68,14 +90,6 @@ bail_out_if_no_babeltrace
 
 start_lttng_sessiond
 
-tests=( test_ust_local )
-
-for fct_test in ${tests[@]};
-do
-	SESSION_NAME=$(randstring 16 0)
-	${fct_test}
-done
+test_regenerate_statedump_ust
 
 stop_lttng_sessiond
-
-exit $out
