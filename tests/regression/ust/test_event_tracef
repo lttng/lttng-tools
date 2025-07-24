@@ -7,17 +7,18 @@
 
 TEST_DESC="UST tracer - tracef events"
 
-CURDIR=$(dirname $0)/
+CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../..
+
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-tracef"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME"
-SESSION_NAME="tracef"
-EVENT_NAME="lttng_ust_tracef:event"
-NUM_TESTS=9
 NR_ITER=100
 
-source $TESTDIR/utils/utils.sh
+NUM_TESTS=9
+
+# shellcheck source-path=SCRIPTDIR/../..
+source "$TESTDIR/utils/utils.sh"
 
 if [ ! -x "$TESTAPP_BIN" ]; then
 	BAIL_OUT "No UST nevents binary detected."
@@ -25,19 +26,27 @@ fi
 
 function test_event_tracef()
 {
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
-	start_lttng_tracing_ok $SESSION_NAME
+	local session_name="tracef"
+	local event_name="lttng_ust_tracef:event"
+	local trace_path
+	local file_testapp_output
 
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT
-	ok $? "Traced application stopped."
+	trace_path=$(mktemp -d -t tmp.test_event_tracef_trace_path.XXXXXX)
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
 
-	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
+	create_lttng_session_ok $session_name "$trace_path"
+	enable_ust_lttng_event_ok $session_name $event_name
+	start_lttng_tracing_ok $session_name
 
-	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH
+	run_testapp_ok "$file_testapp_output" "$TESTAPP_BIN" "$NR_ITER" "$NR_USEC_WAIT"
 
-	return $?
+	stop_lttng_tracing_ok $session_name
+	destroy_lttng_session_ok $session_name
+
+	trace_match_only $event_name $NR_ITER "$trace_path"
+
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
 }
 
 # MUST set TESTDIR before calling those functions
@@ -49,14 +58,6 @@ bail_out_if_no_babeltrace
 
 start_lttng_sessiond
 
-TRACE_PATH=$(mktemp -d -t tmp.test_event_tracef_trace_path.XXXXXX)
 test_event_tracef
-out=$?
-if [ $out -ne 0 ]; then
-	stop_lttng_sessiond
-	exit $out
-fi
 
 stop_lttng_sessiond
-
-rm -rf $TRACE_PATH
