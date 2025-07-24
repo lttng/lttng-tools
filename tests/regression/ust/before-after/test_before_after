@@ -1,22 +1,28 @@
 #!/bin/bash
 #
 # SPDX-FileCopyrightText: 2012 David Goulet <dgoulet@efficios.com>
+# SPDX-FileCopyrightText: 2025 Michael Jeanson <mjeanson@efficios.com>
 #
 # SPDX-License-Identifier: LGPL-2.1-only
 
 TEST_DESC="UST tracer - Start tracing before and after execution"
 
-CURDIR=$(dirname $0)/
+CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../../..
+
 NR_ITER=100
+
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME"
-SESSION_NAME="per-session"
-EVENT_NAME="tp:tptest"
-NUM_TESTS=16
+TESTAPP_TIMEOUT_SEC=10
 
-source $TESTDIR/utils/utils.sh
+EVENT_NAME="tp:tptest"
+
+NUM_TESTS=17
+
+# shellcheck source-path=SCRIPTDIR/../../..
+source "$TESTDIR/utils/utils.sh"
 
 if [ ! -x "$TESTAPP_BIN" ]; then
 	BAIL_OUT "No UST nevents binary detected."
@@ -26,87 +32,93 @@ fi
 
 function test_before_apps()
 {
-	# BEFORE application is spawned
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
-	start_lttng_tracing_ok $SESSION_NAME
+	local session_name="before-app"
+	local trace_path
+	local file_testapp_output
 
-	$TESTAPP_BIN -i $NR_ITER &
-	wait "${!}"
-	ok $? "Traced application stopped."
+	diag "Start tracing BEFORE application is started"
 
-	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
+	trace_path=$(mktemp -d -t tmp.test_before_after_ust_trace_path.XXXXXX)
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
 
-	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH
+	# BEFORE application is started
+	create_lttng_session_ok $session_name "$trace_path"
+	enable_ust_lttng_event_ok $session_name $EVENT_NAME
+	start_lttng_tracing_ok $session_name
 
-	return $?
+	run_testapp_ok "$file_testapp_output" "$TESTAPP_BIN" -i "$NR_ITER"
+
+	stop_lttng_tracing_ok $session_name
+	destroy_lttng_session_ok $session_name
+
+	trace_match_only $EVENT_NAME $NR_ITER "$trace_path"
+
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
 }
 
 function test_after_apps()
 {
-	local out
-	local file_sync_after_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
-	local file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	local session_name="after-app"
+	local testapp_pid
+	local trace_path
+	local file_testapp_output
+	local file_sync_after_first
+	local file_sync_before_last
+	local file_sync_before_exit_touch
 
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
+	diag "Start tracing AFTER application is started"
 
-	$TESTAPP_BIN -i $NR_ITER \
-		--sync-after-first-event ${file_sync_after_first} \
-		--sync-before-last-event ${file_sync_before_last} &
-	ok $? "Application started in background."
+	trace_path=$(mktemp -d -t tmp.test_before_after_ust_trace_path.XXXXXX)
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
+	file_sync_after_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
+	file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	file_sync_before_exit_touch=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_exit_touch.XXXXXX")
 
-	start_lttng_tracing_ok $SESSION_NAME
+	create_lttng_session_ok $session_name "$trace_path"
+	enable_ust_lttng_event_ok $session_name $EVENT_NAME
 
-	touch ${file_sync_before_last}
+	"$TESTAPP_BIN" -i $NR_ITER \
+		--sync-after-first-event "${file_sync_after_first}" \
+		--sync-before-last-event "${file_sync_before_last}" \
+		--sync-before-exit-touch "${file_sync_before_exit_touch}" >"${file_testapp_output}" 2>&1 &
+	testapp_pid=$!
+	diag "Launched testapp '$TESTAPP_NAME' (pid: $testapp_pid) to generate $NR_ITER events"
 
-	wait "${!}"
+	# Wait for the testapp first event
+	app_alive_wait_for_sync "$TESTAPP_NAME" "$testapp_pid" "$TESTAPP_TIMEOUT_SEC" "$file_testapp_output" "$file_sync_after_first"
 
-	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
+	# AFTER application is started
+	start_lttng_tracing_ok $session_name
 
-	rm -f ${file_sync_after_first}
-	rm -f ${file_sync_before_last}
+	# Tell the testapp to continue
+	touch "${file_sync_before_last}"
 
-	validate_trace $EVENT_NAME $TRACE_PATH
-	out=$?
+	app_exit_wait_for_sync "$TESTAPP_NAME" "$testapp_pid" "$TESTAPP_TIMEOUT_SEC" "$file_testapp_output" "$file_sync_before_exit_touch"
 
-	return $out
+	stop_lttng_tracing_ok $session_name
+	destroy_lttng_session_ok $session_name
+
+	validate_trace $EVENT_NAME "$trace_path"
+
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
+	rm -f "$file_sync_after_first"
+	rm -f "$file_sync_before_last"
+	rm -f "$file_sync_before_exit_touch"
 }
 
 # MUST set TESTDIR before calling those functions
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
+
 bail_out_if_no_babeltrace
 
 start_lttng_sessiond
 
-diag "Start tracing BEFORE application is started"
-
-TRACE_PATH=$(mktemp -d -t tmp.test_before_after_ust_trace_path.XXXXXX)
-
 test_before_apps
-out=$?
-if [ $out -ne 0 ]; then
-	stop_lttng_sessiond
-	exit $out
-fi
-
-rm -rf $TRACE_PATH
-
-diag "Start tracing AFTER application is started"
-
-TRACE_PATH=$(mktemp -d -t tmp.test_before_after_ust_trace_path.XXXXXX)
-
 test_after_apps
-out=$?
-if [ $out -ne 0 ]; then
-	stop_lttng_sessiond
-	exit $out
-fi
 
 stop_lttng_sessiond
 
-rm -rf $TRACE_PATH

@@ -12,6 +12,7 @@ files=(
     regression/tools/regen-metadata/test_ust
     regression/tools/regen-statedump/test_ust
     regression/tools/save-load/test_load
+    regression/ust/before-after/test_before_after
     regression/ust/multi-session/test_multi_session
     regression/ust/overlap/test_overlap
     regression/ust/test_event_basic
