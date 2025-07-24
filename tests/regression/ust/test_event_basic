@@ -6,63 +6,77 @@
 
 TEST_DESC="UST tracer - Basic events"
 
-CURDIR=$(dirname $0)/
-TESTDIR=$CURDIR/../..
-BIN_NAME="gen-ust-events"
-SESSION_NAME="valid_filter"
-EVENT_NAME="tp:tptest"
+CURDIR=$(dirname "$0")/
+TESTDIR="$CURDIR/../.."
 
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME"
 
-NUM_TESTS=25
+NR_ITER=5
+NR_USEC_WAIT=1
 
-source $TESTDIR/utils/utils.sh
+NUM_TESTS=32
+
+# shellcheck source-path=SCRIPTDIR/../..
+source "$TESTDIR/utils/utils.sh"
 
 function test_event_basic()
 {
-	TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
-	SESSION_NAME="ust_event_basic"
-	SESSION_NAME2="ust_event_basic2"
-	CHAN_NAME="mychan"
-	CHAN_NAME2="mychan2"
-	EVENT_NAME="tp1"
-	EVENT_NAME2="ev2"
-	EVENT_NAME3="ev3"
+	local session_name="ust_event_basic"
+	local session_name2="ust_event_basic2"
+	local chan_name="mychan"
+	local chan_name2="mychan2"
+	local event_name="tp:tptest"
+	local event_name2="ev2"
+	local event_name3="ev3"
+	local trace_path
+	local file_testapp_output
 
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
-	create_lttng_session_ok $SESSION_NAME2 $TRACE_PATH
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
 
-	enable_ust_lttng_channel_ok $SESSION_NAME $CHAN_NAME
-	enable_ust_lttng_channel_ok $SESSION_NAME2 $CHAN_NAME2
+	create_lttng_session_ok $session_name "$trace_path/$session_name"
+	create_lttng_session_ok $session_name2 "$trace_path/$session_name2"
 
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHAN_NAME
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME2 $CHAN_NAME
-	enable_ust_lttng_event_ok $SESSION_NAME2 $EVENT_NAME3 $CHAN_NAME2
+	enable_ust_lttng_channel_ok $session_name $chan_name
+	enable_ust_lttng_channel_ok $session_name2 $chan_name2
 
-	add_context_ust_ok $SESSION_NAME $CHAN_NAME "vpid"
-	add_context_ust_ok $SESSION_NAME $CHAN_NAME "vtid"
-	add_context_ust_ok $SESSION_NAME $CHAN_NAME "pthread_id"
-	add_context_ust_ok $SESSION_NAME $CHAN_NAME "procname"
-	add_context_ust_ok $SESSION_NAME2 $CHAN_NAME2 "procname"
+	enable_ust_lttng_event_ok $session_name $event_name $chan_name
+	enable_ust_lttng_event_ok $session_name $event_name2 $chan_name
+	enable_ust_lttng_event_ok $session_name2 $event_name3 $chan_name2
 
-	disable_ust_lttng_event $SESSION_NAME $EVENT_NAME $CHAN_NAME
-	disable_ust_lttng_event $SESSION_NAME2 $EVENT_NAME3 $CHAN_NAME2
+	add_context_ust_ok $session_name $chan_name "vpid"
+	add_context_ust_ok $session_name $chan_name "vtid"
+	add_context_ust_ok $session_name $chan_name "pthread_id"
+	add_context_ust_ok $session_name $chan_name "procname"
+	add_context_ust_ok $session_name2 $chan_name2 "procname"
 
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHAN_NAME
-	enable_ust_lttng_event_ok $SESSION_NAME2 $EVENT_NAME3 $CHAN_NAME2
+	disable_ust_lttng_event $session_name $event_name $chan_name
+	disable_ust_lttng_event $session_name2 $event_name3 $chan_name2
 
-	start_lttng_tracing_ok
-	stop_lttng_tracing_ok
+	enable_ust_lttng_event_ok $session_name $event_name $chan_name
+	enable_ust_lttng_event_ok $session_name2 $event_name3 $chan_name2
 
-	start_lttng_tracing_ok
-	stop_lttng_tracing_ok
+	start_lttng_tracing_ok $session_name
+	start_lttng_tracing_ok $session_name
+	run_testapp_ok "$file_testapp_output" "$TESTAPP_BIN" -i "$NR_ITER" -w "$NR_USEC_WAIT"
+	stop_lttng_tracing_ok $session_name
+	stop_lttng_tracing_ok $session_name2
 
-	# TODO: Validate trace output is coherent"
-	ok 0 "Validate trace"
+	start_lttng_tracing_ok $session_name
+	start_lttng_tracing_ok $session_name2
+	run_testapp_ok "$file_testapp_output" "$TESTAPP_BIN" -i "$NR_ITER" -w "$NR_USEC_WAIT"
+	stop_lttng_tracing_ok $session_name
+	stop_lttng_tracing_ok $session_name2
 
-	destroy_lttng_session_ok $SESSION_NAME2
-	destroy_lttng_session_ok $SESSION_NAME
+	validate_trace_count $event_name "$trace_path" $(( NR_ITER * 2 ))
 
-	rm -rf $TRACE_PATH
+	destroy_lttng_session_ok $session_name2
+	destroy_lttng_session_ok $session_name
+
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
 }
 
 # MUST set TESTDIR before calling those functions
