@@ -15,6 +15,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <getopt.h>
+#include <libgen.h>
 #include <poll.h>
 #include <signal.h>
 #include <stdarg.h>
@@ -72,6 +73,7 @@ std::string generate_repeating_test_pattern(std::size_t desired_length = sizeof(
 
 int main(int argc, char **argv)
 {
+	const char *cmd_name = (argc > 0) ? basename(argv[0]) : "COMMAND";
 	unsigned int i, netint, text_size = 10;
 	bool fill_text = false;
 	int option_index;
@@ -187,11 +189,14 @@ int main(int argc, char **argv)
 		goto end;
 	}
 
+	fprintf(stderr, "%s: starting: %d iter %d usec wait\n", cmd_name, nr_iter, nr_usec);
+
 	/*
 	 * The two following sync points allow for tests to do work after the
 	 * app has started BUT before it generates any events.
 	 */
 	if (application_in_main_file_path) {
+		fprintf(stderr, "%s: sync-application-in-main-touch: create %s\n", cmd_name, application_in_main_file_path);
 		ret = create_file(application_in_main_file_path);
 		if (ret != 0) {
 			goto end;
@@ -199,6 +204,7 @@ int main(int argc, char **argv)
 	}
 
 	if (before_first_event_file_path) {
+		fprintf(stderr, "%s: sync-before-first-event: wait %s\n", cmd_name, before_first_event_file_path);
 		ret = wait_on_file(before_first_event_file_path);
 		if (ret != 0) {
 			goto end;
@@ -208,6 +214,7 @@ int main(int argc, char **argv)
 	for (i = 0; nr_iter < 0 || i < nr_iter; i++) {
 		if (nr_iter >= 0 && i == nr_iter - 1) {
 			if (before_last_event_file_path_touch) {
+				fprintf(stderr, "%s: sync-before-last-event-touch: create %s\n", cmd_name, before_last_event_file_path_touch);
 				ret = create_file(before_last_event_file_path_touch);
 				if (ret != 0) {
 					goto end;
@@ -219,6 +226,7 @@ int main(int argc, char **argv)
 			 * event.
 			 */
 			if (before_last_event_file_path) {
+				fprintf(stderr, "%s: sync-before-last-event: wait %s\n", cmd_name, before_last_event_file_path);
 				ret = wait_on_file(before_last_event_file_path);
 				if (ret != 0) {
 					goto end;
@@ -243,6 +251,7 @@ int main(int argc, char **argv)
 		 * that at least one tracepoint has been hit.
 		 */
 		if (after_first_event_file_path && first_event_file_created == 0) {
+			fprintf(stderr, "%s: sync-after-first-event: create %s\n", cmd_name, after_first_event_file_path);
 			ret = create_file(after_first_event_file_path);
 
 			if (ret != 0) {
@@ -260,11 +269,13 @@ int main(int argc, char **argv)
 		}
 
 		if (after_each_iter_file_path) {
+			fprintf(stderr, "%s: sync-after-each-iter: wait %s\n", cmd_name, after_each_iter_file_path);
 			ret = wait_on_file(after_each_iter_file_path);
 			if (ret != 0) {
 				goto end;
 			}
 
+			fprintf(stderr, "%s: sync-after-each-iter: delete %s\n", cmd_name, after_each_iter_file_path);
 			ret = delete_file(after_each_iter_file_path);
 			if (ret != 0) {
 				goto end;
@@ -281,12 +292,14 @@ int main(int argc, char **argv)
 	}
 
 	if (before_exit_file_path_touch) {
+		fprintf(stderr, "%s: sync-before-exit-touch: create %s\n", cmd_name, before_exit_file_path_touch);
 		ret = create_file(before_exit_file_path_touch);
 		if (ret != 0) {
 			goto end;
 		}
 	}
 	if (before_exit_file_path) {
+		fprintf(stderr, "%s: sync-before-exit: wait %s\n", cmd_name, before_exit_file_path);
 		ret = wait_on_file(before_exit_file_path);
 		if (ret != 0) {
 			goto end;
