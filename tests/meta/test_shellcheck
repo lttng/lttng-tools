@@ -15,6 +15,7 @@ files=(
     regression/ust/multi-session/test_multi_session
     regression/ust/overlap/test_overlap
     regression/ust/test_event_basic
+    regression/ust/test_event_perf
     utils/utils.sh
 )
 
