@@ -1,227 +1,335 @@
 #!/bin/bash
 #
 # SPDX-FileCopyrightText: 2015 Julien Desfossez <jdesfossez@efficios.com>
+# SPDX-FileCopyrightText: 2025 Michael Jeanson <mjeanson@efficios.com>
 #
 # SPDX-License-Identifier: LGPL-2.1-only
 
 TEST_DESC="Streaming - User space tracing"
 
-CURDIR=$(dirname $0)/
+CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../../..
+
 NR_ITER=1
 NR_USEC_WAIT=0
+
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME"
-SESSION_NAME="stream"
+TESTAPP_TIMEOUT_SEC=10
+
 EVENT_NAME="tp:tptest"
 
-TRACE_PATH=$(mktemp -d -t tmp.test_regen_metadata_ust_trace_path.XXXXXX)
+NUM_TESTS=69
 
-NUM_TESTS=47
-
-source $TESTDIR/utils/utils.sh
+# shellcheck source-path=SCRIPTDIR/../../..
+source "$TESTDIR/utils/utils.sh"
 
 if [ ! -x "$TESTAPP_BIN" ]; then
 	BAIL_OUT "No UST events binary detected."
 fi
 
-function enable_channel_per_pid()
-{
-	sess_name=$1
-	channel_name=$2
-
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel --buffer-ownership=process -u $channel_name -s $sess_name >/dev/null 2>&1
-	ok $? "Enable channel $channel_name per PID for session $sess_name"
-}
-
 # MUST set TESTDIR before calling those functions
 
-function test_ust_streaming ()
+function test_ust_streaming_regenerate_metadata ()
 {
-	local file_sync_after_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
-	local file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	local session_name="streaming"
+
+	local ret
 	local metadata_path
-	local pid
+	local testapp_pid
+	local trace_path
+	local file_testapp_output
+	local file_sync_application_in_main_touch
+	local file_sync_before_last
+	local file_sync_before_exit_touch
 
 	diag "Test UST streaming with metadata regeneration"
-	create_lttng_session_uri $SESSION_NAME net://localhost
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
 
-	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
-		--sync-after-first-event ${file_sync_after_first} \
-		--sync-before-last-event ${file_sync_before_last} >/dev/null 2>&1 &
-	pid="${!}"
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
+	file_sync_application_in_main_touch=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_application_in_main_touch.XXXXXX")
+	file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	file_sync_before_exit_touch=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_exit_touch.XXXXXX")
 
-	start_lttng_tracing_ok $SESSION_NAME
+	start_lttng_relayd -o "$trace_path"
 
-	touch ${file_sync_before_last}
+	create_lttng_session_uri "$session_name" net://localhost
+	enable_ust_lttng_event_ok "$session_name" $EVENT_NAME
+
+	"$TESTAPP_BIN" -i $NR_ITER -w $NR_USEC_WAIT \
+		--sync-application-in-main-touch "${file_sync_application_in_main_touch}" \
+		--sync-before-last-event "${file_sync_before_last}" \
+		--sync-before-exit-touch "${file_sync_before_exit_touch}" >"${file_testapp_output}" 2>&1 &
+	testapp_pid="${!}"
+	diag "Launched testapp '$TESTAPP_NAME' (pid: $testapp_pid) to generate $NR_ITER events"
+
+	start_lttng_tracing_ok "$session_name"
+
+	# Wait for the testapp to start
+	app_alive_wait_for_sync "$TESTAPP_NAME" "$testapp_pid" "$TESTAPP_TIMEOUT_SEC" "$file_testapp_output" "$file_sync_application_in_main_touch"
+
+	# Tell the testapp to continue
+	touch "${file_sync_before_last}"
 
 	# Wait for the applications started in background
-	wait "${pid}"
+	app_exit_wait_for_sync "$TESTAPP_NAME" "$testapp_pid" "$TESTAPP_TIMEOUT_SEC" "$file_testapp_output" "$file_sync_before_exit_touch"
 
 	# Expect a valid trace
-	stop_lttng_tracing_ok $SESSION_NAME
-	validate_trace $EVENT_NAME "$TRACE_PATH/$HOSTNAME/$SESSION_NAME"*
+	stop_lttng_tracing_ok "$session_name"
+	validate_trace $EVENT_NAME "$trace_path/$HOSTNAME"
+	validate_metadata_event $EVENT_NAME 1 "$trace_path/$HOSTNAME"
 
 	# Find the metadata file
-	metadata_path=$(find "$TRACE_PATH/$HOSTNAME/$SESSION_NAME"* -name "metadata")
+	metadata_path=$(find "$trace_path/$HOSTNAME" -name "metadata")
+	ret=$?
+	ok $ret "Found metadata file"
 
-	# Empty the metadata file
-	echo -n > "$metadata_path"
+	if [[ $ret = 0 ]]; then
+		# Empty the metadata file
+		echo -n > "$metadata_path"
+	fi
 
-	start_lttng_tracing_ok $SESSION_NAME
-	regenerate_metadata_ok $SESSION_NAME
-	stop_lttng_tracing_ok $SESSION_NAME
+	test ! -s "$metadata_path"
+	ok $? "Metadata cleared"
+
+	start_lttng_tracing_ok "$session_name"
+	regenerate_metadata_ok "$session_name"
+	stop_lttng_tracing_ok "$session_name"
 
 	# Metadata file must have been regenerated
-	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$SESSION_NAME*
-	destroy_lttng_session_ok $SESSION_NAME
+	validate_trace $EVENT_NAME "$trace_path/$HOSTNAME"
+	validate_metadata_event $EVENT_NAME 1 "$trace_path/$HOSTNAME"
+	destroy_lttng_session_ok "$session_name"
 
-	rm -rf "$TRACE_PATH"
-	rm -f ${file_sync_after_first}
-	rm -f ${file_sync_before_last}
+	stop_lttng_relayd
+
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
+	rm -f "$file_sync_application_in_main_touch"
+	rm -f "$file_sync_before_last"
+	rm -f "$file_sync_before_exit_touch"
 }
 
-function test_ust_local ()
+function test_ust_local_regenerate_metadata ()
 {
-	local file_sync_after_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
-	local file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	local session_name="local"
+
+	local ret
 	local metadata_path
-	local pid
+	local testapp_pid
+	local trace_path
+	local file_testapp_output
+	local file_sync_application_in_main_touch
+	local file_sync_before_last
+	local file_sync_before_exit_touch
 
 	diag "Test UST local with metadata regeneration"
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
 
-	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
-		--sync-after-first-event ${file_sync_after_first} \
-		--sync-before-last-event ${file_sync_before_last} > /dev/null 2>&1 &
-	pid="${!}"
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
+	file_sync_application_in_main_touch=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_application_in_main_touch.XXXXXX")
+	file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	file_sync_before_exit_touch=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_exit_touch.XXXXXX")
 
-	start_lttng_tracing_ok $SESSION_NAME
+	create_lttng_session_ok "$session_name" "$trace_path"
+	enable_ust_lttng_event_ok "$session_name" $EVENT_NAME
 
-	touch ${file_sync_before_last}
+	"$TESTAPP_BIN" -i $NR_ITER -w $NR_USEC_WAIT \
+		--sync-application-in-main-touch "${file_sync_application_in_main_touch}" \
+		--sync-before-last-event "${file_sync_before_last}" \
+		--sync-before-exit-touch "${file_sync_before_exit_touch}" >"${file_testapp_output}" 2>&1 &
+	testapp_pid="${!}"
+	diag "Launched testapp '$TESTAPP_NAME' (pid: $testapp_pid) to generate $NR_ITER events"
+
+	start_lttng_tracing_ok "$session_name"
+
+	# Wait for the testapp to start
+	app_alive_wait_for_sync "$TESTAPP_NAME" "$testapp_pid" "$TESTAPP_TIMEOUT_SEC" "$file_testapp_output" "$file_sync_application_in_main_touch"
+
+	# Tell the testapp to continue
+	touch "${file_sync_before_last}"
 
 	# Wait for the applications started in background
-	wait "${pid}"
+	app_exit_wait_for_sync "$TESTAPP_NAME" "$testapp_pid" "$TESTAPP_TIMEOUT_SEC" "$file_testapp_output" "$file_sync_before_exit_touch"
 
 	# Expect a valid trace
-	stop_lttng_tracing_ok $SESSION_NAME
-	validate_trace $EVENT_NAME "$TRACE_PATH"
+	stop_lttng_tracing_ok "$session_name"
+	validate_trace $EVENT_NAME "$trace_path"
+	validate_metadata_event $EVENT_NAME 1 "$trace_path"
 
 	# Find the metadata file
-	metadata_path=$(find "$TRACE_PATH"* -name "metadata")
+	metadata_path=$(find "$trace_path" -name "metadata")
+	ret=$?
+	ok $ret "Found metadata file"
 
-	# Empty the metadata file
-	echo -n > "$metadata_path"
+	if [[ $ret = 0 ]]; then
+		# Empty the metadata file
+		echo -n > "$metadata_path"
+	fi
 
-	start_lttng_tracing_ok $SESSION_NAME
-	regenerate_metadata_ok $SESSION_NAME
-	stop_lttng_tracing_ok $SESSION_NAME
+	test ! -s "$metadata_path"
+	ok $? "Metadata cleared"
+
+	start_lttng_tracing_ok "$session_name"
+	regenerate_metadata_ok "$session_name"
+	stop_lttng_tracing_ok "$session_name"
 
 	# Metadata file must have been regenerated
-	validate_trace $EVENT_NAME $TRACE_PATH
-	destroy_lttng_session_ok $SESSION_NAME
+	validate_trace $EVENT_NAME "$trace_path"
+	validate_metadata_event $EVENT_NAME 1 "$trace_path"
+	destroy_lttng_session_ok "$session_name"
 
-	rm -rf "$TRACE_PATH"
-	rm -f ${file_sync_after_first}
-	rm -f ${file_sync_before_last}
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
+	rm -f "$file_sync_application_in_main_touch"
+	rm -f "$file_sync_before_last"
+	rm -f "$file_sync_before_exit_touch"
 }
 
-function test_ust_pid ()
+function test_ust_pid_regenerate_metadata ()
 {
-	local file_sync_after_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
-	local file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
-	local pid
+	local session_name="pid"
+
+	local testapp_pid
+	local trace_path
+	local file_testapp_output
+	local file_sync_application_in_main_touch
+	local file_sync_before_last
+	local file_sync_before_exit_touch
 
 	diag "Test UST per-pid with metadata regeneration (expect failure)"
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
-	enable_channel_per_pid $SESSION_NAME "channel0"
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
 
-	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
-		--sync-after-first-event ${file_sync_after_first} \
-		--sync-before-last-event ${file_sync_before_last} >/dev/null 2>&1 &
-	pid="${!}"
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
+	file_sync_application_in_main_touch=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_application_in_main_touch.XXXXXX")
+	file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	file_sync_before_exit_touch=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_exit_touch.XXXXXX")
 
-	start_lttng_tracing_ok $SESSION_NAME
+	create_lttng_session_ok "$session_name" "$trace_path"
+	enable_ust_lttng_channel_ok "$session_name" "channel0" --buffer-ownership=process
+	enable_ust_lttng_event_ok "$session_name" $EVENT_NAME "channel0"
 
-	touch ${file_sync_before_last}
+	"$TESTAPP_BIN" -i $NR_ITER -w $NR_USEC_WAIT \
+		--sync-application-in-main-touch "${file_sync_application_in_main_touch}" \
+		--sync-before-last-event "${file_sync_before_last}" \
+		--sync-before-exit-touch "${file_sync_before_exit_touch}" >"${file_testapp_output}" 2>&1 &
+	testapp_pid="${!}"
+	diag "Launched testapp '$TESTAPP_NAME' (pid: $testapp_pid) to generate $NR_ITER events"
+
+	start_lttng_tracing_ok "$session_name"
+
+	# Wait for the testapp to start
+	app_alive_wait_for_sync "$TESTAPP_NAME" "$testapp_pid" "$TESTAPP_TIMEOUT_SEC" "$file_testapp_output" "$file_sync_application_in_main_touch"
+
+	# Tell the testapp to continue
+	touch "${file_sync_before_last}"
 
 	# Wait for the applications started in background
-	wait "${pid}"
-	regenerate_metadata_fail $SESSION_NAME
+	app_exit_wait_for_sync "$TESTAPP_NAME" "$testapp_pid" "$TESTAPP_TIMEOUT_SEC" "$file_testapp_output" "$file_sync_before_exit_touch"
 
-	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
-	# Validate test
-	validate_trace $EVENT_NAME $TRACE_PATH
-	if [ $? -eq 0 ]; then
-		# Only delete if successful
-		rm -rf $TRACE_PATH
-	fi
-	rm -f ${file_sync_after_first}
-	rm -f ${file_sync_before_last}
+	regenerate_metadata_fail "$session_name"
+
+	stop_lttng_tracing_ok "$session_name"
+	validate_trace $EVENT_NAME "$trace_path"
+	validate_metadata_event $EVENT_NAME 1 "$trace_path"
+	destroy_lttng_session_ok "$session_name"
+
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
+	rm -f "$file_sync_application_in_main_touch"
+	rm -f "$file_sync_before_last"
+	rm -f "$file_sync_before_exit_touch"
 }
 
-function test_ust_live ()
+function test_ust_live_regenerate_metadata ()
 {
-	local file_sync_after_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
-	local file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
-	local pid
+	local session_name="live"
+
+	local testapp_pid
+	local trace_path
+	local file_testapp_output
+	local file_sync_application_in_main_touch
+	local file_sync_before_last
+	local file_sync_before_exit_touch
 
 	diag "Test UST live with metadata regeneration (expect failure)"
-	create_lttng_session_uri $SESSION_NAME net://localhost --live
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
 
-	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
-		--sync-after-first-event ${file_sync_after_first} \
-		--sync-before-last-event ${file_sync_before_last} >/dev/null 2>&1 &
-	pid="${!}"
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
+	file_sync_application_in_main_touch=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_application_in_main_touch.XXXXXX")
+	file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	file_sync_before_exit_touch=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_exit_touch.XXXXXX")
 
-	start_lttng_tracing_ok $SESSION_NAME
+	start_lttng_relayd -o "$trace_path"
 
-	touch ${file_sync_before_last}
+	create_lttng_session_uri "$session_name" net://localhost --live
+	enable_ust_lttng_event_ok "$session_name" $EVENT_NAME
+
+	"$TESTAPP_BIN" -i $NR_ITER -w $NR_USEC_WAIT \
+		--sync-application-in-main-touch "${file_sync_application_in_main_touch}" \
+		--sync-before-last-event "${file_sync_before_last}" \
+		--sync-before-exit-touch "${file_sync_before_exit_touch}" >"${file_testapp_output}" 2>&1 &
+	testapp_pid="${!}"
+	diag "Launched testapp '$TESTAPP_NAME' (pid: $testapp_pid) to generate $NR_ITER events"
+
+	start_lttng_tracing_ok "$session_name"
+
+	# Wait for the testapp to start
+	app_alive_wait_for_sync "$TESTAPP_NAME" "$testapp_pid" "$TESTAPP_TIMEOUT_SEC" "$file_testapp_output" "$file_sync_application_in_main_touch"
+
+	# Tell the testapp to continue
+	touch "${file_sync_before_last}"
 
 	# Wait for the applications started in background
-	wait "${pid}"
-	regenerate_metadata_fail $SESSION_NAME
+	app_exit_wait_for_sync "$TESTAPP_NAME" "$testapp_pid" "$TESTAPP_TIMEOUT_SEC" "$file_testapp_output" "$file_sync_before_exit_touch"
 
-	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
-	# Validate test
-	validate_trace $EVENT_NAME $TRACE_PATH
-	if [ $? -eq 0 ]; then
-		# Only delete if successful
-		rm -rf $TRACE_PATH
-	fi
-	rm -f ${file_sync_after_first}
-	rm -f ${file_sync_before_last}
+	regenerate_metadata_fail "$session_name"
+
+	stop_lttng_tracing_ok "$session_name"
+	validate_trace $EVENT_NAME "$trace_path"
+	validate_metadata_event $EVENT_NAME 1 "$trace_path"
+	destroy_lttng_session_ok "$session_name"
+
+	stop_lttng_relayd
+
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
+	rm -f "$file_sync_application_in_main_touch"
+	rm -f "$file_sync_before_last"
+	rm -f "$file_sync_before_exit_touch"
 }
 
 function test_ust_local_snapshot_after_regenerate_metadata ()
 {
-	local file_sync_before_last
-	local metadata_path
+	local session_name="snapshot-regen"
 
-	file_sync_before_last=$(mktemp -u)
+	local trace_path
+	local metadata_path
+	local file_testapp_output
+
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
 
 	diag "Test UST local snapshot after regenerate metadata"
-	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH" --snapshot
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
-	start_lttng_tracing_ok $SESSION_NAME
 
-	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT
+	create_lttng_session_ok "$session_name" "$trace_path" --snapshot
+	enable_ust_lttng_event_ok "$session_name" $EVENT_NAME
+	start_lttng_tracing_ok "$session_name"
 
-	regenerate_metadata_ok $SESSION_NAME
-	lttng_snapshot_record $SESSION_NAME "$TRACE_PATH"
-	stop_lttng_tracing_ok $SESSION_NAME
+	run_testapp_ok "$file_testapp_output" "$TESTAPP_BIN" -i "$NR_ITER" -w "$NR_USEC_WAIT"
 
-	validate_trace $EVENT_NAME "$TRACE_PATH"
-	destroy_lttng_session_ok $SESSION_NAME
+	regenerate_metadata_ok "$session_name"
 
-	rm -rf "$TRACE_PATH"
+	lttng_snapshot_record "$session_name" "$trace_path"
+
+	stop_lttng_tracing_ok "$session_name"
+	validate_trace $EVENT_NAME "$trace_path"
+	validate_metadata_event $EVENT_NAME 1 "$trace_path"
+	destroy_lttng_session_ok "$session_name"
+
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
 }
 
 plan_tests $NUM_TESTS
@@ -229,19 +337,12 @@ plan_tests $NUM_TESTS
 print_test_banner "$TEST_DESC"
 bail_out_if_no_babeltrace
 
-start_lttng_relayd -o "$TRACE_PATH"
 start_lttng_sessiond
 
-tests=( test_ust_streaming test_ust_local test_ust_pid test_ust_live
-	test_ust_local_snapshot_after_regenerate_metadata)
-
-for fct_test in ${tests[@]};
-do
-	SESSION_NAME=$(randstring 16 0)
-	${fct_test}
-done
+test_ust_streaming_regenerate_metadata
+test_ust_local_regenerate_metadata
+test_ust_pid_regenerate_metadata
+test_ust_live_regenerate_metadata
+test_ust_local_snapshot_after_regenerate_metadata
 
 stop_lttng_sessiond
-stop_lttng_relayd
-
-exit $out
