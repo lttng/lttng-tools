@@ -7,28 +7,26 @@
 
 TEST_DESC="UST tracer - Perf counters"
 
-CURDIR=$(dirname $0)/
+CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../..
-SESSION_NAME="perf_counters"
+
+session_name="perf_counters"
+
 EVENT_NAME="tp:tptest"
-NUM_TESTS=24
+
+UST_NUM_TESTS=16
+ROOT_NUM_TESTS=9
+NUM_TESTS=$((UST_NUM_TESTS + ROOT_NUM_TESTS))
+
 NR_ITER=1
 NR_USEC_WAIT=1
+
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME"
 
-source $TESTDIR/utils/utils.sh
-
-function enable_ust_lttng_event_per_chan()
-{
-	sess_name="$1"
-	event_name="$2"
-	chan_name="$3"
-
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -c $chan_name -u >/dev/null 2>&1
-	ok $? "Enable event $event_name for session $sess_name in channel $chan_name"
-}
+# shellcheck source-path=SCRIPTDIR/../..
+source "$TESTDIR/utils/utils.sh"
 
 function add_context_ust_skip_ok()
 {
@@ -54,64 +52,72 @@ function add_context_ust_skip_ok()
 }
 
 # Only test parsing of the enabling by raw ID
-function test_parsing_raw()
+function test_perf_event_parsing_raw()
 {
-	TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
-	SESSION_NAME="ust_event_basic"
-	CHAN_NAME="mychan"
+	local session_name="ust_event_basic"
+	local chan_name="mychan"
 
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	local trace_path
 
-	enable_ust_lttng_channel_ok $SESSION_NAME $CHAN_NAME
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 
-	enable_ust_lttng_event_per_chan $SESSION_NAME $EVENT_NAME $CHAN_NAME
+	create_lttng_session_ok $session_name "$trace_path"
 
-	add_context_ust_skip_ok $SESSION_NAME $CHAN_NAME "perf:thread:raw:r0110:test" 1
-	add_context_ust_fail $SESSION_NAME $CHAN_NAME "perf:thread:raw:rZZZ:test"
-	add_context_ust_fail $SESSION_NAME $CHAN_NAME "perf:thread:raw:b0110:test"
-	add_context_ust_fail $SESSION_NAME $CHAN_NAME "perf:thread:raw:r0110:"
-	add_context_ust_fail $SESSION_NAME $CHAN_NAME "perf:thread:raw:r0110::"
-	add_context_ust_fail $SESSION_NAME $CHAN_NAME "perf:thread:raw:r:test"
-	add_context_ust_fail $SESSION_NAME $CHAN_NAME "perf:thread:raw:r::"
-	add_context_ust_fail $SESSION_NAME $CHAN_NAME "perf:thread:raw::"
-	add_context_ust_fail $SESSION_NAME $CHAN_NAME "perf:thread:raw"
-	add_context_ust_fail $SESSION_NAME $CHAN_NAME "perf:thread:raw:r0110:test:wrong"
+	enable_ust_lttng_channel_ok $session_name $chan_name
 
-	destroy_lttng_session_ok $SESSION_NAME
+	enable_ust_lttng_event_ok $session_name $EVENT_NAME $chan_name
 
-	rm -rf $TRACE_PATH
+	add_context_ust_skip_ok $session_name $chan_name "perf:thread:raw:r0110:test" 1
+	add_context_ust_fail $session_name $chan_name "perf:thread:raw:rZZZ:test"
+	add_context_ust_fail $session_name $chan_name "perf:thread:raw:b0110:test"
+	add_context_ust_fail $session_name $chan_name "perf:thread:raw:r0110:"
+	add_context_ust_fail $session_name $chan_name "perf:thread:raw:r0110::"
+	add_context_ust_fail $session_name $chan_name "perf:thread:raw:r:test"
+	add_context_ust_fail $session_name $chan_name "perf:thread:raw:r::"
+	add_context_ust_fail $session_name $chan_name "perf:thread:raw::"
+	add_context_ust_fail $session_name $chan_name "perf:thread:raw"
+	add_context_ust_fail $session_name $chan_name "perf:thread:raw:r0110:test:wrong"
+
+	destroy_lttng_session_ok $session_name
+
+	rm -rf "$trace_path"
 }
 
-function test_event_basic()
+function test_perf_event_basic()
 {
-	TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
-	SESSION_NAME="ust_event_basic"
-	CHAN_NAME="mychan"
+	local session_name="ust_event_basic"
+	local chan_name="mychan"
 
 	local ret
+	local trace_path
+	local file_testapp_output
 
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
 
-	enable_ust_lttng_channel_ok $SESSION_NAME $CHAN_NAME
+	create_lttng_session_ok $session_name "$trace_path"
 
-	enable_ust_lttng_event_per_chan $SESSION_NAME $EVENT_NAME $CHAN_NAME
+	enable_ust_lttng_channel_ok $session_name $chan_name
 
-	add_context_ust_skip_ok $SESSION_NAME $CHAN_NAME "perf:thread:page-fault" 4
+	enable_ust_lttng_event_ok $session_name $EVENT_NAME $chan_name
+
+	add_context_ust_skip_ok $session_name $chan_name "perf:thread:page-fault" 4
 	ret=$?
 
 	if [ "$ret" != "4" ]; then
 		start_lttng_tracing_ok
 
-		$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT >/dev/null 2>&1
+		run_testapp_ok "$file_testapp_output" "$TESTAPP_BIN" -i "$NR_ITER" -w "$NR_USEC_WAIT"
 
 		stop_lttng_tracing_ok
 
-		validate_trace "perf_thread_page_fault" "$TRACE_PATH"
+		validate_trace "perf_thread_page_fault" "$trace_path"
 	fi
 
-	destroy_lttng_session_ok $SESSION_NAME
+	destroy_lttng_session_ok $session_name
 
-	rm -rf "$TRACE_PATH"
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
 }
 
 # MUST set TESTDIR before calling those functions
@@ -123,11 +129,11 @@ bail_out_if_no_babeltrace
 
 start_lttng_sessiond
 
-test_parsing_raw
+test_perf_event_parsing_raw
 
-check_skip_kernel_test 8 "Skipping UST perf tests." ||
+check_skip_kernel_test $ROOT_NUM_TESTS "Skipping UST perf tests." ||
 {
-	test_event_basic
+	test_perf_event_basic
 }
 
 stop_lttng_sessiond
