@@ -4362,26 +4362,6 @@ error:
 	return ret;
 }
 
-static int consumer_clear_unmonitored_channel(struct lttng_consumer_channel *channel)
-{
-	const lttng::urcu::read_lock_guard read_lock;
-	const lttng::pthread::lock_guard channel_lock(channel->lock);
-
-	for (auto stream : lttng::urcu::list_iteration_adapter<lttng_consumer_stream,
-							       &lttng_consumer_stream::send_node>(
-		     channel->streams.head)) {
-		health_code_update();
-
-		const lttng::pthread::lock_guard stream_lock(stream->lock);
-		const auto ret = consumer_clear_stream(stream);
-		if (ret) {
-			return ret;
-		}
-	}
-
-	return 0;
-}
-
 /*
  * Check if a stream is ready to be rotated after extracting it.
  *
@@ -5000,41 +4980,12 @@ end:
 	return ret_code;
 }
 
-static int consumer_clear_monitored_channel(struct lttng_consumer_channel *channel)
-{
-	int ret;
-	const auto ht = the_consumer_data.stream_per_chan_id_ht;
-
-	for (auto *stream : lttng::urcu::lfht_filtered_iteration_adapter<
-		     lttng_consumer_stream,
-		     decltype(lttng_consumer_stream::node_channel_id),
-		     &lttng_consumer_stream::node_channel_id,
-		     std::uint64_t>(*ht->ht,
-				    &channel->key,
-				    ht->hash_fct(&channel->key, lttng_ht_seed),
-				    ht->match_fct)) {
-		/*
-		 * Protect against teardown with mutex.
-		 */
-		const lttng::pthread::lock_guard stream_lock(stream->lock);
-		if (cds_lfht_is_node_deleted(&stream->node.node)) {
-			continue;
-		}
-
-		ret = consumer_clear_stream(stream);
-		if (ret) {
-			return ret;
-		}
-	}
-
-	return LTTCOMM_CONSUMERD_SUCCESS;
-}
-
 int lttng_consumer_clear_channel(struct lttng_consumer_channel *channel)
 {
-	int ret;
-
-	DBG("Consumer clear channel %" PRIu64, channel->key);
+	DBG_FMT("Consumer clear channel: session_id={}, channel_name={}, channel_key={}",
+		channel->session_id,
+		channel->name,
+		channel->key);
 
 	if (channel->type == CONSUMER_CHANNEL_TYPE_METADATA) {
 		/*
@@ -5043,17 +4994,24 @@ int lttng_consumer_clear_channel(struct lttng_consumer_channel *channel)
 		 * handling/generation, and monitored channels only need to
 		 * have their data stream cleared..
 		 */
-		ret = LTTCOMM_CONSUMERD_SUCCESS;
-		goto end;
+		return LTTCOMM_CONSUMERD_SUCCESS;
 	}
 
-	if (!channel->monitor) {
-		ret = consumer_clear_unmonitored_channel(channel);
-	} else {
-		ret = consumer_clear_monitored_channel(channel);
+	for (auto& stream : channel->get_streams()) {
+		health_code_update();
+
+		const lttng::pthread::lock_guard stream_lock(stream.lock);
+		if (cds_lfht_is_node_deleted(&stream.node.node)) {
+			continue;
+		}
+
+		const auto ret = consumer_clear_stream(&stream);
+		if (ret) {
+			return ret;
+		}
 	}
-end:
-	return ret;
+
+	return 0;
 }
 
 enum lttcomm_return_code lttng_consumer_open_channel_packets(struct lttng_consumer_channel *channel)

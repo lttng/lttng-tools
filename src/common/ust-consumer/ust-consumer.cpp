@@ -2188,14 +2188,16 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		const uint64_t key = msg.u.clear_channel.key;
 		int ret_send_status;
 
+		const lttng::pthread::lock_guard global_lock(the_consumer_data.lock);
+
 		found_channel = consumer_find_channel(key);
 		if (!found_channel) {
 			DBG("Channel %" PRIu64 " not found", key);
 			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
 		} else {
-			int ret_clear_channel;
+			const lttng::pthread::lock_guard channel_lock(found_channel->lock);
 
-			ret_clear_channel = lttng_consumer_clear_channel(found_channel);
+			const auto ret_clear_channel = lttng_consumer_clear_channel(found_channel);
 			if (ret_clear_channel) {
 				ERR("Clear channel failed key %" PRIu64, key);
 				ret_code = (lttcomm_return_code) ret_clear_channel;
