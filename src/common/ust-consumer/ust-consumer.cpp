@@ -687,54 +687,48 @@ error:
 static int flush_channel(uint64_t chan_key)
 {
 	int ret = 0;
-	struct lttng_consumer_channel *channel;
-	const auto ht = the_consumer_data.stream_per_chan_id_ht;
 
 	DBG("UST consumer flush channel key %" PRIu64, chan_key);
 
 	const lttng::urcu::read_lock_guard read_lock;
-	channel = consumer_find_channel(chan_key);
-	if (!channel) {
-		ERR("UST consumer flush channel %" PRIu64 " not found", chan_key);
-		ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
-		goto error;
-	}
+	struct lttng_consumer_channel *channel = nullptr;
 
-	/* For each stream of the channel id, flush it. */
-	for (auto *stream : lttng::urcu::lfht_filtered_iteration_adapter<
-		     lttng_consumer_stream,
-		     decltype(lttng_consumer_stream::node_channel_id),
-		     &lttng_consumer_stream::node_channel_id,
-		     std::uint64_t>(*ht->ht,
-				    &channel->key,
-				    ht->hash_fct(&channel->key, lttng_ht_seed),
-				    ht->match_fct)) {
-		health_code_update();
-
-		pthread_mutex_lock(&stream->lock);
-
-		/*
-		 * Protect against concurrent teardown of a stream.
-		 */
-		if (cds_lfht_is_node_deleted(&stream->node.node)) {
-			goto next;
+	{
+		const lttng::pthread::lock_guard consumer_data_lock(the_consumer_data.lock);
+		channel = consumer_find_channel(chan_key);
+		if (!channel) {
+			ERR("UST consumer flush channel %" PRIu64 " not found", chan_key);
+			return LTTNG_ERR_UST_CHAN_NOT_FOUND;
 		}
 
-		if (!stream->quiescent) {
-			ret = lttng_ust_ctl_flush_buffer(stream->ustream, 0);
-			if (ret) {
-				ERR("Failed to flush buffer while flushing channel: channel key = %" PRIu64
-				    ", channel name = '%s'",
-				    chan_key,
-				    channel->name);
-				ret = LTTNG_ERR_BUFFER_FLUSH_FAILED;
-				pthread_mutex_unlock(&stream->lock);
-				goto error;
+		const lttng::pthread::lock_guard channel_lock(channel->lock);
+
+		/* For each stream of the channel id, flush it. */
+		for (auto& stream : channel->get_streams()) {
+			health_code_update();
+
+			/*
+			 * Protect against concurrent teardown of a stream.
+			 */
+			if (cds_lfht_is_node_deleted(&stream.node.node)) {
+				continue;
 			}
-			stream->quiescent = true;
+
+			const lttng::pthread::lock_guard stream_lock(stream.lock);
+
+			if (!stream.quiescent) {
+				ret = lttng_ust_ctl_flush_buffer(stream.ustream, 0);
+				if (ret) {
+					ERR("Failed to flush buffer while flushing channel: channel key = %" PRIu64
+					    ", channel name = '%s'",
+					    chan_key,
+					    channel->name);
+					return LTTNG_ERR_BUFFER_FLUSH_FAILED;
+				}
+
+				stream.quiescent = true;
+			}
 		}
-	next:
-		pthread_mutex_unlock(&stream->lock);
 	}
 
 	/*
@@ -746,7 +740,7 @@ static int flush_channel(uint64_t chan_key)
 	if (channel->monitor_timer_task) {
 		channel->monitor_timer_task->run(std::chrono::steady_clock::now());
 	}
-error:
+
 	return ret;
 }
 
