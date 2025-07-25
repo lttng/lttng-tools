@@ -174,6 +174,7 @@ static int send_stream_to_thread(struct lttng_consumer_stream *stream,
 	 * global.
 	 */
 	stream->globally_visible = 1;
+	ASSERT_LOCKED(stream->chan->lock);
 	cds_list_del_init(&stream->send_node);
 
 	ret = lttng_pipe_write(stream_pipe, &stream, sizeof(stream)); /* NOLINT sizeof used on a
@@ -506,17 +507,14 @@ static int send_channel_to_sessiond_and_relayd(int sock,
 	DBG("UST consumer sending channel %s to sessiond", channel->name);
 
 	if (channel->relayd_id != (uint64_t) -1ULL) {
-		for (auto stream :
-		     lttng::urcu::list_iteration_adapter<lttng_consumer_stream,
-							 &lttng_consumer_stream::send_node>(
-			     channel->streams.head)) {
+		for (auto& stream : channel->get_streams()) {
 			health_code_update();
 
 			/* Try to send the stream to the relayd if one is available. */
 			DBG("Sending stream %" PRIu64 " of channel \"%s\" to relayd",
-			    stream->key,
+			    stream.key,
 			    channel->name);
-			ret = consumer_send_relayd_stream(stream, stream->chan->pathname);
+			ret = consumer_send_relayd_stream(&stream, stream.chan->pathname);
 			if (ret < 0) {
 				/*
 				 * Flag that the relayd was the problem here probably due to a
@@ -528,7 +526,7 @@ static int send_channel_to_sessiond_and_relayd(int sock,
 				ret_code = LTTCOMM_CONSUMERD_RELAYD_FAIL;
 			}
 			if (net_seq_idx == -1ULL) {
-				net_seq_idx = stream->net_seq_idx;
+				net_seq_idx = stream.net_seq_idx;
 			}
 		}
 	}
@@ -555,13 +553,11 @@ static int send_channel_to_sessiond_and_relayd(int sock,
 	}
 
 	/* The channel was sent successfully to the sessiond at this point. */
-	for (auto stream : lttng::urcu::list_iteration_adapter<lttng_consumer_stream,
-							       &lttng_consumer_stream::send_node>(
-		     channel->streams.head)) {
+	for (auto& stream : channel->get_streams()) {
 		health_code_update();
 
 		/* Send stream to session daemon. */
-		ret = send_sessiond_stream(sock, stream);
+		ret = send_sessiond_stream(sock, &stream);
 		if (ret < 0) {
 			goto error;
 		}
@@ -662,13 +658,14 @@ static int send_streams_to_thread(struct lttng_consumer_channel *channel,
 	LTTNG_ASSERT(ctx);
 
 	/* Send streams to the corresponding thread. */
-	for (auto stream : lttng::urcu::list_iteration_adapter<lttng_consumer_stream,
-							       &lttng_consumer_stream::send_node>(
-		     channel->streams.head)) {
+	for (auto& stream :
+	     channel->get_streams(lttng::consumer::stream_set::filter::UNPUBLISHED)) {
 		health_code_update();
 
+		const lttng::pthread::lock_guard stream_lock(stream.lock);
+
 		/* Sending the stream to the thread. */
-		ret = send_stream_to_thread(stream, ctx);
+		ret = send_stream_to_thread(&stream, ctx);
 		if (ret < 0) {
 			/*
 			 * If we are unable to send the stream to the thread, there is
@@ -880,66 +877,73 @@ static int setup_metadata(struct lttng_consumer_local_data *ctx, uint64_t key)
 	ASSERT_RCU_READ_LOCKED();
 
 	DBG("UST consumer setup metadata key %" PRIu64, key);
+	{
+		const lttng::pthread::lock_guard consumer_data_lock(the_consumer_data.lock);
 
-	metadata = consumer_find_channel(key);
-	if (!metadata) {
-		ERR("UST consumer push metadata %" PRIu64 " not found", key);
-		ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
-		goto end;
-	}
+		metadata = consumer_find_channel(key);
+		if (!metadata) {
+			ERR("UST consumer push metadata %" PRIu64 " not found", key);
+			return LTTNG_ERR_UST_CHAN_NOT_FOUND;
+		}
 
-	/*
-	 * In no monitor mode, the metadata channel has no stream(s) so skip the
-	 * ownership transfer to the metadata thread.
-	 */
-	if (!metadata->monitor) {
-		DBG("Metadata channel in no monitor");
+		const lttng::pthread::lock_guard channel_lock(metadata->lock);
+		const lttng::pthread::lock_guard channel_timer_lock(metadata->timer_lock);
+
+		/*
+		 * In no monitor mode, the metadata channel has no stream(s) so skip the
+		 * ownership transfer to the metadata thread.
+		 */
+		if (!metadata->monitor) {
+			DBG("Metadata channel in no monitor");
+			ret = 0;
+			goto end;
+		}
+
+		/*
+		 * Send metadata stream to relayd if one available. Availability is
+		 * known if the stream is still in the list of the channel.
+		 */
+		if (cds_list_empty(&metadata->streams.head)) {
+			ERR("Metadata channel key %" PRIu64 ", no stream available.", key);
+			ret = LTTCOMM_CONSUMERD_ERROR_METADATA;
+			goto error_no_stream;
+		}
+
+		/* Send metadata stream to relayd if needed. */
+		if (metadata->metadata_stream->net_seq_idx != (uint64_t) -1ULL) {
+			ret = consumer_send_relayd_stream(metadata->metadata_stream,
+							  metadata->pathname);
+			if (ret < 0) {
+				ret = LTTCOMM_CONSUMERD_ERROR_METADATA;
+				goto error;
+			}
+			ret = consumer_send_relayd_streams_sent(
+				metadata->metadata_stream->net_seq_idx);
+			if (ret < 0) {
+				ret = LTTCOMM_CONSUMERD_RELAYD_FAIL;
+				goto error;
+			}
+		}
+
+		/*
+		 * Ownership of metadata stream is passed along. Freeing is handled by
+		 * the callee.
+		 */
+		ret = send_streams_to_thread(metadata, ctx);
+		if (ret < 0) {
+			/*
+			 * If we are unable to send the stream to the thread, there is
+			 * a big problem so just stop everything.
+			 */
+			ret = LTTCOMM_CONSUMERD_FATAL;
+			goto send_streams_error;
+		}
+		/* List MUST be empty after or else it could be reused. */
+		LTTNG_ASSERT(cds_list_empty(&metadata->streams.head));
+
 		ret = 0;
 		goto end;
 	}
-
-	/*
-	 * Send metadata stream to relayd if one available. Availability is
-	 * known if the stream is still in the list of the channel.
-	 */
-	if (cds_list_empty(&metadata->streams.head)) {
-		ERR("Metadata channel key %" PRIu64 ", no stream available.", key);
-		ret = LTTCOMM_CONSUMERD_ERROR_METADATA;
-		goto error_no_stream;
-	}
-
-	/* Send metadata stream to relayd if needed. */
-	if (metadata->metadata_stream->net_seq_idx != (uint64_t) -1ULL) {
-		ret = consumer_send_relayd_stream(metadata->metadata_stream, metadata->pathname);
-		if (ret < 0) {
-			ret = LTTCOMM_CONSUMERD_ERROR_METADATA;
-			goto error;
-		}
-		ret = consumer_send_relayd_streams_sent(metadata->metadata_stream->net_seq_idx);
-		if (ret < 0) {
-			ret = LTTCOMM_CONSUMERD_RELAYD_FAIL;
-			goto error;
-		}
-	}
-
-	/*
-	 * Ownership of metadata stream is passed along. Freeing is handled by
-	 * the callee.
-	 */
-	ret = send_streams_to_thread(metadata, ctx);
-	if (ret < 0) {
-		/*
-		 * If we are unable to send the stream to the thread, there is
-		 * a big problem so just stop everything.
-		 */
-		ret = LTTCOMM_CONSUMERD_FATAL;
-		goto send_streams_error;
-	}
-	/* List MUST be empty after or else it could be reused. */
-	LTTNG_ASSERT(cds_list_empty(&metadata->streams.head));
-
-	ret = 0;
-	goto end;
 
 error:
 	/*
@@ -1755,54 +1759,60 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		const uint64_t key = msg.u.get_channel.key;
 		struct lttng_consumer_channel *found_channel;
 
+		const lttng::pthread::lock_guard consumer_data_lock(the_consumer_data.lock);
+
 		found_channel = consumer_find_channel(key);
 		if (!found_channel) {
 			ERR("UST consumer get channel key %" PRIu64 " not found", key);
 			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
-			goto end_get_channel;
-		}
+		} else {
+			health_code_update();
+			const lttng::pthread::lock_guard channel_lock(found_channel->lock);
+			const lttng::pthread::lock_guard channel_timer_lock(
+				found_channel->timer_lock);
 
-		health_code_update();
-
-		/* Send the channel to sessiond (and relayd, if applicable). */
-		ret = send_channel_to_sessiond_and_relayd(sock, found_channel, ctx, &relayd_err);
-		if (ret < 0) {
-			if (relayd_err) {
+			/* Send the channel to sessiond (and relayd, if applicable). */
+			ret = send_channel_to_sessiond_and_relayd(
+				sock, found_channel, ctx, &relayd_err);
+			if (ret < 0) {
+				if (relayd_err) {
+					/*
+					 * We were unable to send to the relayd the stream so avoid
+					 * sending back a fatal error to the thread since this is OK
+					 * and the consumer can continue its work. The above call
+					 * has sent the error status message to the sessiond.
+					 */
+					goto end_get_channel_nosignal;
+				}
 				/*
-				 * We were unable to send to the relayd the stream so avoid
-				 * sending back a fatal error to the thread since this is OK
-				 * and the consumer can continue its work. The above call
-				 * has sent the error status message to the sessiond.
+				 * The communicaton was broken hence there is a bad state between
+				 * the consumer and sessiond so stop everything.
 				 */
-				goto end_get_channel_nosignal;
+				goto error_get_channel_fatal;
 			}
+
+			health_code_update();
+
 			/*
-			 * The communicaton was broken hence there is a bad state between
-			 * the consumer and sessiond so stop everything.
+			 * In no monitor mode, the streams ownership is kept inside the channel
+			 * so don't send them to the data thread.
 			 */
-			goto error_get_channel_fatal;
+			if (!found_channel->monitor) {
+				goto end_get_channel;
+			}
+
+			ret = send_streams_to_thread(found_channel, ctx);
+			if (ret < 0) {
+				/*
+				 * If we are unable to send the stream to the thread, there is
+				 * a big problem so just stop everything.
+				 */
+				goto error_get_channel_fatal;
+			}
+			/* List MUST be empty after or else it could be reused. */
+			LTTNG_ASSERT(cds_list_empty(&found_channel->streams.head));
 		}
 
-		health_code_update();
-
-		/*
-		 * In no monitor mode, the streams ownership is kept inside the channel
-		 * so don't send them to the data thread.
-		 */
-		if (!found_channel->monitor) {
-			goto end_get_channel;
-		}
-
-		ret = send_streams_to_thread(found_channel, ctx);
-		if (ret < 0) {
-			/*
-			 * If we are unable to send the stream to the thread, there is
-			 * a big problem so just stop everything.
-			 */
-			goto error_get_channel_fatal;
-		}
-		/* List MUST be empty after or else it could be reused. */
-		LTTNG_ASSERT(cds_list_empty(&found_channel->streams.head));
 	end_get_channel:
 		goto end_msg_sessiond;
 	error_get_channel_fatal:

@@ -664,6 +664,8 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		int ret_send_status, ret_poll, ret_get_max_subbuf_size;
 		ssize_t ret_pipe_write, ret_recv;
 
+		const lttng::pthread::lock_guard consumer_data_lock(the_consumer_data.lock);
+
 		/*
 		 * Get stream's channel reference. Needed when adding the stream to the
 		 * global hash table.
@@ -677,6 +679,9 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			ERR("Unable to find channel key %" PRIu64, msg.u.stream.channel_key);
 			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
 		}
+
+		const lttng::pthread::lock_guard channel_lock(channel->lock);
+		const lttng::pthread::lock_guard timer_lock(channel->timer_lock);
 
 		health_code_update();
 
@@ -728,7 +733,6 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		health_code_update();
 
-		pthread_mutex_lock(&channel->lock);
 		new_stream = consumer_stream_create(channel,
 						    channel->key,
 						    fd,
@@ -844,8 +848,6 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				}
 			}
 		}
-		pthread_mutex_unlock(&new_stream->lock);
-		pthread_mutex_unlock(&channel->lock);
 
 		/* Get the right pipe where the stream will be sent. */
 		if (new_stream->metadata_flag) {
@@ -855,6 +857,8 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			consumer_add_data_stream(new_stream);
 			stream_pipe = ctx->consumer_data_pipe;
 		}
+
+		pthread_mutex_unlock(&new_stream->lock);
 
 		/* Visible to other threads */
 		new_stream->globally_visible = 1;

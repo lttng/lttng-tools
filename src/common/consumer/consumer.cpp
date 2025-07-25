@@ -571,10 +571,10 @@ void consumer_add_data_stream(struct lttng_consumer_stream *stream)
 
 	DBG3("Adding consumer stream %" PRIu64, stream->key);
 
-	pthread_mutex_lock(&the_consumer_data.lock);
-	pthread_mutex_lock(&stream->chan->lock);
-	pthread_mutex_lock(&stream->chan->timer_lock);
-	pthread_mutex_lock(&stream->lock);
+	ASSERT_LOCKED(the_consumer_data.lock);
+	ASSERT_LOCKED(stream->chan->lock);
+	ASSERT_LOCKED(stream->chan->timer_lock);
+	ASSERT_LOCKED(stream->lock);
 	const lttng::urcu::read_lock_guard read_lock;
 
 	/* Steal stream identifier to avoid having streams with the same key */
@@ -607,11 +607,6 @@ void consumer_add_data_stream(struct lttng_consumer_stream *stream)
 	/* Update consumer data once the node is inserted. */
 	the_consumer_data.stream_count++;
 	the_consumer_data.need_update = 1;
-
-	pthread_mutex_unlock(&stream->lock);
-	pthread_mutex_unlock(&stream->chan->timer_lock);
-	pthread_mutex_unlock(&stream->chan->lock);
-	pthread_mutex_unlock(&the_consumer_data.lock);
 }
 
 /*
@@ -2166,10 +2161,10 @@ void consumer_add_metadata_stream(struct lttng_consumer_stream *stream)
 
 	DBG3("Adding metadata stream %" PRIu64 " to hash table", stream->key);
 
-	pthread_mutex_lock(&the_consumer_data.lock);
-	pthread_mutex_lock(&stream->chan->lock);
-	pthread_mutex_lock(&stream->chan->timer_lock);
-	pthread_mutex_lock(&stream->lock);
+	ASSERT_LOCKED(the_consumer_data.lock);
+	ASSERT_LOCKED(stream->chan->lock);
+	ASSERT_LOCKED(stream->chan->timer_lock);
+	ASSERT_LOCKED(stream->lock);
 
 	/*
 	 * From here, refcounts are updated so be _careful_ when returning an error
@@ -2209,11 +2204,6 @@ void consumer_add_metadata_stream(struct lttng_consumer_stream *stream)
 	 * into this table.
 	 */
 	lttng_ht_add_u64(the_consumer_data.stream_list_ht, &stream->node_session_id);
-
-	pthread_mutex_unlock(&stream->lock);
-	pthread_mutex_unlock(&stream->chan->lock);
-	pthread_mutex_unlock(&stream->chan->timer_lock);
-	pthread_mutex_unlock(&the_consumer_data.lock);
 }
 
 /*
