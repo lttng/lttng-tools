@@ -6,6 +6,7 @@
  */
 
 #include <common/consumer/live-timer-task.hpp>
+#include <common/pthread-lock.hpp>
 #include <common/urcu.hpp>
 
 namespace {
@@ -59,23 +60,17 @@ end:
 void lttng::consumer::live_timer_task::_run(lttng::scheduling::absolute_time current_time
 					    [[maybe_unused]]) noexcept
 {
+	const lttng::pthread::lock_guard consumer_data_lock(the_consumer_data.lock);
+	const lttng::pthread::lock_guard channel_lock(_channel.lock);
+
 	LTTNG_ASSERT(!_channel.is_deleted);
 
 	if (_channel.switch_timer_error) {
 		return;
 	}
 
-	const auto *stream_per_chan_id_ht = the_consumer_data.stream_per_chan_id_ht;
-
-	for (auto *stream : lttng::urcu::lfht_filtered_iteration_adapter<
-		     lttng_consumer_stream,
-		     decltype(lttng_consumer_stream::node_channel_id),
-		     &lttng_consumer_stream::node_channel_id,
-		     std::uint64_t>(*stream_per_chan_id_ht->ht,
-				    &_channel.key,
-				    stream_per_chan_id_ht->hash_fct(&_channel.key, lttng_ht_seed),
-				    stream_per_chan_id_ht->match_fct)) {
-		const auto ret = check_stream(*stream);
+	for (auto& stream : _channel.get_streams()) {
+		const auto ret = check_stream(stream);
 		if (ret < 0) {
 			return;
 		}
