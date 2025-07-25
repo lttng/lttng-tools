@@ -7,6 +7,7 @@
 
 #include <common/consumer/monitor-timer-task.hpp>
 #include <common/kernel-consumer/kernel-consumer.hpp>
+#include <common/pthread-lock.hpp>
 #include <common/urcu.hpp>
 #include <common/ust-consumer/ust-consumer.hpp>
 
@@ -26,44 +27,34 @@ int sample_channel_positions(lttng_consumer_channel& channel,
 	int ret = 0;
 	bool empty_channel = true;
 	uint64_t high = 0, low = UINT64_MAX;
-	struct lttng_ht *ht = the_consumer_data.stream_per_chan_id_ht;
 
 	*_total_consumed = 0;
 
-	for (auto *const stream : lttng::urcu::lfht_filtered_iteration_adapter<
-		     lttng_consumer_stream,
-		     decltype(lttng_consumer_stream::node_channel_id),
-		     &lttng_consumer_stream::node_channel_id,
-		     std::uint64_t>(*ht->ht,
-				    &channel.key,
-				    ht->hash_fct(&channel.key, lttng_ht_seed),
-				    ht->match_fct)) {
-		unsigned long produced, consumed, usage;
-
+	const lttng::pthread::lock_guard channel_lock(channel.lock);
+	for (auto& stream : channel.get_streams()) {
 		empty_channel = false;
 
-		pthread_mutex_lock(&stream->lock);
-		if (cds_lfht_is_node_deleted(&stream->node.node)) {
-			goto next;
+		const lttng::pthread::lock_guard stream_lock(stream.lock);
+		if (cds_lfht_is_node_deleted(&stream.node.node)) {
+			continue;
 		}
 
-		ret = sample(stream);
+		ret = sample(&stream);
 		if (ret) {
 			ERR("Failed to take buffer position snapshot in monitor timer (ret = %d)",
 			    ret);
-			pthread_mutex_unlock(&stream->lock);
 			goto end;
 		}
-		ret = get_consumed(stream, &consumed);
+
+		unsigned long produced, consumed, usage;
+		ret = get_consumed(&stream, &consumed);
 		if (ret) {
 			ERR("Failed to get buffer consumed position in monitor timer");
-			pthread_mutex_unlock(&stream->lock);
 			goto end;
 		}
-		ret = get_produced(stream, &produced);
+		ret = get_produced(&stream, &produced);
 		if (ret) {
 			ERR("Failed to get buffer produced position in monitor timer");
-			pthread_mutex_unlock(&stream->lock);
 			goto end;
 		}
 
@@ -78,9 +69,7 @@ int sample_channel_positions(lttng_consumer_channel& channel,
 		 *  - the consumed position is not the accurate representation of what
 		 *    was extracted from a buffer in overwrite mode.
 		 */
-		*_total_consumed += stream->output_written;
-	next:
-		pthread_mutex_unlock(&stream->lock);
+		*_total_consumed += stream.output_written;
 	}
 
 	*_highest_use = high;
@@ -111,6 +100,7 @@ void lttng::consumer::monitor_timer_task::_run(lttng::scheduling::absolute_time 
 	get_produced_cb get_produced;
 	uint64_t lowest = 0, highest = 0, total_consumed = 0;
 
+	const lttng::pthread::lock_guard consumer_data_lock(the_consumer_data.lock);
 	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		sample = lttng_kconsumer_sample_snapshot_positions;
