@@ -1418,6 +1418,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 	case LTTNG_CONSUMER_OPEN_CHANNEL_PACKETS:
 	{
+		const lttng::pthread::lock_guard consumer_data_lock(the_consumer_data.lock);
 		const uint64_t key = msg.u.open_channel_packets.key;
 		struct lttng_consumer_channel *channel = consumer_find_channel(key);
 

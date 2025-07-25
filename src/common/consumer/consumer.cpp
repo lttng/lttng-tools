@@ -5023,33 +5023,30 @@ enum lttcomm_return_code lttng_consumer_open_channel_packets(struct lttng_consum
 		return LTTCOMM_CONSUMERD_INVALID_PARAMETERS;
 	}
 
-	const lttng::urcu::read_lock_guard read_lock;
-	for (auto stream : lttng::urcu::list_iteration_adapter<lttng_consumer_stream,
-							       &lttng_consumer_stream::send_node>(
-		     channel->streams.head)) {
+	for (auto& stream : channel->get_streams()) {
 		enum consumer_stream_open_packet_status status;
 
-		const lttng::pthread::lock_guard stream_lock(stream->lock);
-		if (cds_lfht_is_node_deleted(&stream->node.node)) {
+		const lttng::pthread::lock_guard stream_lock(stream.lock);
+		if (cds_lfht_is_node_deleted(&stream.node.node)) {
 			continue;
 		}
 
-		status = consumer_stream_open_packet(*stream);
+		status = consumer_stream_open_packet(stream);
 		switch (status) {
 		case CONSUMER_STREAM_OPEN_PACKET_STATUS_OPENED:
 			DBG("Opened a packet in \"open channel packets\" command: stream id = %" PRIu64
 			    ", channel name = %s, session id = %" PRIu64,
-			    stream->key,
-			    stream->chan->name,
-			    stream->chan->session_id);
-			stream->opened_packet_in_current_trace_chunk = true;
+			    stream.key,
+			    stream.chan->name,
+			    stream.chan->session_id);
+			stream.opened_packet_in_current_trace_chunk = true;
 			break;
 		case CONSUMER_STREAM_OPEN_PACKET_STATUS_NO_SPACE:
 			DBG("No space left to open a packet in \"open channel packets\" command: stream id = %" PRIu64
 			    ", channel name = %s, session id = %" PRIu64,
-			    stream->key,
-			    stream->chan->name,
-			    stream->chan->session_id);
+			    stream.key,
+			    stream.chan->name,
+			    stream.chan->session_id);
 			break;
 		case CONSUMER_STREAM_OPEN_PACKET_STATUS_ERROR:
 			/*
@@ -5059,7 +5056,7 @@ enum lttcomm_return_code lttng_consumer_open_channel_packets(struct lttng_consum
 			ERR("Failed to flush empty buffer in \"open channel packets\" command: stream id = %" PRIu64
 			    ", channel id = %" PRIu64 ", channel name = %s"
 			    ", session id = %" PRIu64,
-			    stream->key,
+			    stream.key,
 			    channel->key,
 			    channel->name,
 			    channel->session_id);
