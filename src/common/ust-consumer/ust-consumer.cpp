@@ -760,6 +760,7 @@ static int clear_quiescent_channel(uint64_t chan_key)
 {
 	DBG("UST consumer clear quiescent channel key %" PRIu64, chan_key);
 
+	const lttng::pthread::lock_guard consumer_data_lock(the_consumer_data.lock);
 	const lttng::urcu::read_lock_guard read_lock;
 	auto channel = consumer_find_channel(chan_key);
 	if (!channel) {
@@ -767,21 +768,14 @@ static int clear_quiescent_channel(uint64_t chan_key)
 		return LTTNG_ERR_UST_CHAN_NOT_FOUND;
 	}
 
-	const auto ht = the_consumer_data.stream_per_chan_id_ht;
+	const lttng::pthread::lock_guard channel_lock(channel->lock);
 
 	/* For each stream of the channel id, clear quiescent state. */
-	for (auto *stream : lttng::urcu::lfht_filtered_iteration_adapter<
-		     lttng_consumer_stream,
-		     decltype(lttng_consumer_stream::node_channel_id),
-		     &lttng_consumer_stream::node_channel_id,
-		     std::uint64_t>(*ht->ht,
-				    &channel->key,
-				    ht->hash_fct(&channel->key, lttng_ht_seed),
-				    ht->match_fct)) {
+	for (auto& stream : channel->get_streams()) {
 		health_code_update();
 
-		const lttng::pthread::lock_guard stream_lock(stream->lock);
-		stream->quiescent = false;
+		const lttng::pthread::lock_guard stream_lock(stream.lock);
+		stream.quiescent = false;
 	}
 
 	return 0;
