@@ -176,11 +176,12 @@ static void clean_channel_stream_list(struct lttng_consumer_channel *channel)
 {
 	LTTNG_ASSERT(channel);
 
-	/* Delete streams that might have been left in the stream list. */
-	for (auto stream : lttng::urcu::list_iteration_adapter<lttng_consumer_stream,
-							       &lttng_consumer_stream::send_node>(
-		     channel->streams.head)) {
-		consumer_stream_destroy(stream, nullptr);
+	const lttng::pthread::lock_guard global_lock(the_consumer_data.lock);
+	const lttng::pthread::lock_guard lock(channel->lock);
+
+	for (auto& stream :
+	     channel->get_streams(lttng::consumer::stream_set::filter::UNPUBLISHED)) {
+		consumer_stream_destroy(&stream, nullptr);
 	}
 }
 
@@ -362,9 +363,6 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 
 	DBG("Consumer delete channel key %" PRIu64, channel->key);
 
-	pthread_mutex_lock(&the_consumer_data.lock);
-	pthread_mutex_lock(&channel->lock);
-
 	/* Destroy streams that might have been left in the stream list. */
 	clean_channel_stream_list(channel);
 
@@ -379,6 +377,9 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 		channel->monitor_timer_task->run(std::chrono::steady_clock::now());
 		consumer_timer_monitor_stop(channel);
 	}
+
+	pthread_mutex_lock(&the_consumer_data.lock);
+	pthread_mutex_lock(&channel->lock);
 
 	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
