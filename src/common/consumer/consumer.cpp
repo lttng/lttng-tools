@@ -4530,31 +4530,23 @@ error:
 int lttng_consumer_rotate_ready_streams(struct lttng_consumer_channel *channel, uint64_t key)
 {
 	int ret;
-	const auto ht = the_consumer_data.stream_per_chan_id_ht;
 
 	ASSERT_RCU_READ_LOCKED();
 
 	DBG("Consumer rotate ready streams in channel %" PRIu64, key);
 
-	for (auto *stream : lttng::urcu::lfht_filtered_iteration_adapter<
-		     lttng_consumer_stream,
-		     decltype(lttng_consumer_stream::node_channel_id),
-		     &lttng_consumer_stream::node_channel_id,
-		     std::uint64_t>(*ht->ht,
-				    &channel->key,
-				    ht->hash_fct(&channel->key, lttng_ht_seed),
-				    ht->match_fct)) {
+	const lttng::pthread::lock_guard channel_lock(channel->lock);
+	for (auto& stream : channel->get_streams()) {
 		health_code_update();
 
-		const lttng::pthread::lock_guard channel_lock(stream->chan->lock);
-		const lttng::pthread::lock_guard stream_lock(stream->lock);
+		const lttng::pthread::lock_guard stream_lock(stream.lock);
 
-		if (!stream->rotate_ready) {
+		if (!stream.rotate_ready) {
 			continue;
 		}
 
-		DBG("Consumer rotate ready stream %" PRIu64, stream->key);
-		ret = lttng_consumer_rotate_stream(stream);
+		DBG("Consumer rotate ready stream %" PRIu64, stream.key);
+		ret = lttng_consumer_rotate_stream(&stream);
 		if (ret) {
 			goto end;
 		}
