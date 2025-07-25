@@ -2133,6 +2133,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		const uint64_t key = msg.u.rotate_channel.key;
 		int ret_send_status;
 
+		const lttng::pthread::lock_guard consumer_data_lock(the_consumer_data.lock);
+
 		found_channel = consumer_find_channel(key);
 		if (!found_channel) {
 			DBG("Channel %" PRIu64 " not found", key);

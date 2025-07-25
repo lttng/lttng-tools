@@ -1235,6 +1235,8 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		DBG("Consumer rotate channel %" PRIu64, key);
 
+		const lttng::pthread::lock_guard consumer_data_lock(the_consumer_data.lock);
+
 		channel = consumer_find_channel(key);
 		if (!channel) {
 			ERR("Channel %" PRIu64 " not found", key);

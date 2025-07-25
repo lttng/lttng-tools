@@ -3913,7 +3913,6 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 				  uint64_t relayd_id)
 {
 	int ret;
-	const auto ht = the_consumer_data.stream_per_chan_id_ht;
 	struct lttng_dynamic_array stream_rotation_positions;
 	uint64_t next_chunk_id, stream_count = 0;
 	enum lttng_trace_chunk_status chunk_status;
@@ -3941,14 +3940,7 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 		goto end;
 	}
 
-	for (auto *stream : lttng::urcu::lfht_filtered_iteration_adapter<
-		     lttng_consumer_stream,
-		     decltype(lttng_consumer_stream::node_channel_id),
-		     &lttng_consumer_stream::node_channel_id,
-		     std::uint64_t>(*ht->ht,
-				    &channel->key,
-				    ht->hash_fct(&channel->key, lttng_ht_seed),
-				    ht->match_fct)) {
+	for (auto& stream : channel->get_streams()) {
 		unsigned long produced_pos = 0, consumed_pos = 0;
 
 		health_code_update();
@@ -3956,9 +3948,9 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 		/*
 		 * Lock stream because we are about to change its state.
 		 */
-		const lttng::pthread::lock_guard stream_lock(stream->lock);
+		const lttng::pthread::lock_guard stream_lock(stream.lock);
 
-		if (stream->trace_chunk == stream->chan->trace_chunk) {
+		if (stream.trace_chunk == stream.chan->trace_chunk) {
 			rotating_to_new_chunk = false;
 		}
 
@@ -3969,10 +3961,10 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 		 * already. No new data can be produced when a stream has no
 		 * associated trace chunk (e.g. a stop followed by a rotate).
 		 */
-		if (stream->trace_chunk) {
+		if (stream.trace_chunk) {
 			bool flush_active;
 
-			if (stream->metadata_flag) {
+			if (stream.metadata_flag) {
 				/*
 				 * Don't produce an empty metadata packet,
 				 * simply close the current one.
@@ -3989,7 +3981,7 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 				 * to a new trace chunk and no packets were
 				 * consumed within the chunk's lifetime.
 				 */
-				if (stream->opened_packet_in_current_trace_chunk) {
+				if (stream.opened_packet_in_current_trace_chunk) {
 					flush_active = true;
 				} else {
 					/*
@@ -4008,7 +4000,7 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 					 * chunk's lifetime.
 					 */
 					ret = sample_stream_positions(
-						stream, &produced_pos, &consumed_pos);
+						&stream, &produced_pos, &consumed_pos);
 					if (ret) {
 						goto end;
 					}
@@ -4024,7 +4016,7 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 						uint64_t trace_chunk_id;
 
 						chunk_status = lttng_trace_chunk_get_name(
-							stream->trace_chunk,
+							stream.trace_chunk,
 							&trace_chunk_name,
 							nullptr);
 						if (chunk_status == LTTNG_TRACE_CHUNK_STATUS_NONE) {
@@ -4036,7 +4028,7 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 						 * never anonymous.
 						 */
 						chunk_status = lttng_trace_chunk_get_id(
-							stream->trace_chunk, &trace_chunk_id);
+							stream.trace_chunk, &trace_chunk_id);
 						LTTNG_ASSERT(chunk_status ==
 							     LTTNG_TRACE_CHUNK_STATUS_OK);
 
@@ -4044,7 +4036,7 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 						    "Flushing an empty packet to prevent an empty file from being created: "
 						    "stream id = %" PRIu64
 						    ", trace chunk name = `%s`, trace chunk id = %" PRIu64,
-						    stream->key,
+						    stream.key,
 						    trace_chunk_name,
 						    trace_chunk_id);
 					}
@@ -4055,27 +4047,27 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 			 * Close the current packet before sampling the
 			 * ring buffer positions.
 			 */
-			ret = consumer_stream_flush_buffer(stream, flush_active);
+			ret = consumer_stream_flush_buffer(&stream, flush_active);
 			if (ret < 0) {
 				ERR("Failed to flush stream %" PRIu64 " during channel rotation",
-				    stream->key);
+				    stream.key);
 				goto end;
 			}
 		}
 
-		ret = lttng_consumer_take_snapshot(stream);
+		ret = lttng_consumer_take_snapshot(&stream);
 		if (ret < 0 && ret != -ENODATA && ret != -EAGAIN) {
 			ERR("Failed to sample snapshot position during channel rotation");
 			goto end;
 		}
 		if (!ret) {
-			ret = lttng_consumer_get_produced_snapshot(stream, &produced_pos);
+			ret = lttng_consumer_get_produced_snapshot(&stream, &produced_pos);
 			if (ret < 0) {
 				ERR("Failed to sample produced position during channel rotation");
 				goto end;
 			}
 
-			ret = lttng_consumer_get_consumed_snapshot(stream, &consumed_pos);
+			ret = lttng_consumer_get_consumed_snapshot(&stream, &consumed_pos);
 			if (ret < 0) {
 				ERR("Failed to sample consumed position during channel rotation");
 				goto end;
@@ -4085,17 +4077,17 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 		 * Align produced position on the start-of-packet boundary of the first
 		 * packet going into the next trace chunk.
 		 */
-		produced_pos = lttng_align_floor(produced_pos, stream->max_sb_size);
+		produced_pos = lttng_align_floor(produced_pos, stream.max_sb_size);
 		if (consumed_pos == produced_pos) {
 			DBG("Set rotate ready for stream %" PRIu64 " produced = %lu consumed = %lu",
-			    stream->key,
+			    stream.key,
 			    produced_pos,
 			    consumed_pos);
-			stream->rotate_ready = true;
+			stream.rotate_ready = true;
 		} else {
 			DBG("Different consumed and produced positions "
 			    "for stream %" PRIu64 " produced = %lu consumed = %lu",
-			    stream->key,
+			    stream.key,
 			    produced_pos,
 			    consumed_pos);
 		}
@@ -4109,22 +4101,22 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 		 * correspond exactly to the same packet identified by the
 		 * consumed_pos, which can happen in overwrite mode.
 		 */
-		if (stream->sequence_number_unavailable) {
+		if (stream.sequence_number_unavailable) {
 			/*
 			 * Rotation should never be performed on a session which
 			 * interacts with a pre-2.8 lttng-modules, which does
 			 * not implement packet sequence number.
 			 */
 			ERR("Failure to rotate stream %" PRIu64 ": sequence number unavailable",
-			    stream->key);
+			    stream.key);
 			ret = -1;
 			goto end;
 		}
-		stream->rotate_position = stream->last_sequence_number + 1 +
-			((produced_pos - consumed_pos) / stream->max_sb_size);
+		stream.rotate_position = stream.last_sequence_number + 1 +
+			((produced_pos - consumed_pos) / stream.max_sb_size);
 		DBG("Set rotation position for stream %" PRIu64 " at position %" PRIu64,
-		    stream->key,
-		    stream->rotate_position);
+		    stream.key,
+		    stream.rotate_position);
 
 		if (!is_local_trace) {
 			/*
@@ -4133,8 +4125,8 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 			 * _after_ the current trace chunk".
 			 */
 			const struct relayd_stream_rotation_position position = {
-				.stream_id = stream->relayd_stream_id,
-				.rotate_at_seq_num = stream->rotate_position,
+				.stream_id = stream.relayd_stream_id,
+				.rotate_at_seq_num = stream.rotate_position,
 			};
 
 			ret = lttng_dynamic_array_add_element(&stream_rotation_positions,
@@ -4146,9 +4138,9 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 			stream_count++;
 		}
 
-		stream->opened_packet_in_current_trace_chunk = false;
+		stream.opened_packet_in_current_trace_chunk = false;
 
-		if (rotating_to_new_chunk && !stream->metadata_flag) {
+		if (rotating_to_new_chunk && !stream.metadata_flag) {
 			/*
 			 * Attempt to flush an empty packet as close to the
 			 * rotation point as possible. In the event where a
@@ -4199,7 +4191,7 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 			 * chunk.
 			 */
 			ret = lttng_dynamic_pointer_array_add_pointer(&streams_packet_to_open,
-								      stream);
+								      &stream);
 			if (ret) {
 				PERROR("Failed to add a stream pointer to array of streams in which to open a packet");
 				ret = -1;
