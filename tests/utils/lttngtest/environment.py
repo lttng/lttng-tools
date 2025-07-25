@@ -706,7 +706,8 @@ class ProcessOutputConsumer(threading.Thread, logger._Logger):
     def run(self):
         # type: () -> None
         while self._process.poll() is None:
-            assert self._process.stdout
+            if not self._process.stdout:
+                break
             line = self._process.stdout.readline().decode("utf-8").replace("\n", "")
             if len(line) != 0:
                 self._log("{prefix}: {line}".format(prefix=self._prefix, line=line))
@@ -720,7 +721,8 @@ class SavingProcessOutputConsumer(ProcessOutputConsumer):
     def run(self):
         # type: () -> None
         while self._process.poll() is None:
-            assert self._process.stdout
+            if not self._process.stdout:
+                break
             line = self._process.stdout.readline().decode("utf-8").replace("\n", "")
             if len(line) != 0:
                 self._lines.append(line)
@@ -785,6 +787,7 @@ class _Environment(logger._Logger):
             self._lttng_rundir = TemporaryDirectory("lttng_test_env_rundir")
             self._extra_env_vars["LTTNG_RUNDIR"] = str(self._lttng_rundir.path)
 
+        self._preserve_test_env = os.getenv("LTTNG_TEST_PRESERVE_TEST_ENV", "0") != "1"
         self._relayd_control_port = 0
         self._relayd_data_port = 0
         self._relayd_live_port = 0
@@ -799,7 +802,6 @@ class _Environment(logger._Logger):
         )  # type: Optional[subprocess.Popen[bytes]]
 
         self._dummy_users = {}  # type: Dictionary[int, string]
-        self._preserve_test_env = os.getenv("LTTNG_TEST_PRESERVE_TEST_ENV", "0") != "1"
         self.teardown_timeout = os.getenv("LTTNG_TEST_TEARDOWN_TIMEOUT", "60")
 
         # This is a bit of particularity for the testing infrastructure.
@@ -841,6 +843,13 @@ class _Environment(logger._Logger):
         if self._lttng_home is not None:
             return self._lttng_home.path
         return None
+
+    @property
+    def lttng_log_dir(self):
+        path = os.getenv("LTTNG_TEST_LOG_DIR", "")
+        if path == "" or path is None or path == "-":
+            return None
+        return path
 
     @property
     def lttng_rundir(self):
@@ -1044,6 +1053,13 @@ class _Environment(logger._Logger):
         verbose = []
         if os.environ.get("LTTNG_TEST_VERBOSE_RELAYD") is not None:
             verbose = ["-vvv"]
+        self._relayd_log_file = None
+        if self.lttng_log_dir:
+            self._relayd_log_file = tempfile.NamedTemporaryFile(
+                prefix="relayd_",
+                dir=self.lttng_log_dir,
+                delete=False,
+            )
         process = subprocess.Popen(
             [
                 str(relayd_path),
@@ -1056,7 +1072,9 @@ class _Environment(logger._Logger):
                 "tcp://localhost:{}".format(self.lttng_relayd_live_port),
             ]
             + verbose,
-            stdout=subprocess.PIPE,
+            stdout=(
+                self._relayd_log_file.file if self._relayd_log_file else subprocess.PIPE
+            ),
             stderr=subprocess.STDOUT,
             env=relayd_env,
         )
@@ -1183,9 +1201,20 @@ class _Environment(logger._Logger):
                 sessiond_command.extend(["-vvv", "--verbose-consumer"])
             if not enable_kernel_domain:
                 sessiond_command.extend(["--no-kernel"])
+            self._lttng_sessiond_log_file = None
+            if self.lttng_log_dir:
+                self._lttng_sessiond_log_file = tempfile.NamedTemporaryFile(
+                    prefix="sessiond_",
+                    dir=self.lttng_log_dir,
+                    delete=False,
+                )
             process = subprocess.Popen(
                 sessiond_command,
-                stdout=subprocess.PIPE,
+                stdout=(
+                    self._lttng_sessiond_log_file.file
+                    if self._lttng_sessiond_log_file
+                    else subprocess.PIPE
+                ),
                 stderr=subprocess.STDOUT,
                 env=sessiond_env,
             )

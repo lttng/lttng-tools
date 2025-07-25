@@ -45,7 +45,7 @@ or internal testpoints.
 
 | `LTTNG_TEST_LOG_DIR`
 | Sets the default log dir to `<testname>.log.d`
-| {ex} | {check} | {ex}
+| {check} | {check} | {ex}
 
 |===
 
