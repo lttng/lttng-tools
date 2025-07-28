@@ -13,7 +13,7 @@ SESSION_NAME=""
 CHANNEL_NAME="snapchan"
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
-TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME"
 APPS_PID=()
 
 NUM_TESTS=201
@@ -403,7 +403,7 @@ function test_ust_local_snapshot_large_metadata ()
 	LM_EVENT="tp:tptest1,tp:tptest2,tp:tptest3,tp:tptest4,tp:tptest5"
 	LM_PATH="$TESTDIR/utils/testapp"
 	LM_NAME="gen-ust-nevents"
-	LM_BIN="$LM_PATH/$LM_NAME/$LM_NAME"
+	LM_BIN="$LM_PATH/$LM_NAME"
 
 	diag "Test local UST snapshots with > 4kB metadata"
 	create_lttng_session_no_output "$SESSION_NAME"

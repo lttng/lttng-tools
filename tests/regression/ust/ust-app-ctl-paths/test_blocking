@@ -15,7 +15,7 @@ NUM_TESTS=34
 # shellcheck source=../../../utils/utils.sh
 source "${TESTDIR}/utils/utils.sh"
 
-TESTAPP="${TESTDIR}/utils/testapp/gen-ust-events/gen-ust-events"
+TESTAPP="${TESTDIR}/utils/testapp/gen-ust-events"
 SESSION_NAME="ust-blocking"
 CHANNEL_NAME="ust-blocking"
 EVENT_NAMES="tp:tptest"

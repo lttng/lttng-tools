@@ -1347,7 +1347,6 @@ class _Environment(logger._Logger):
             / "tests"
             / "utils"
             / "testapp"
-            / "gen-ust-events"
             / "gen-ust-events",
             event_count,
             self,

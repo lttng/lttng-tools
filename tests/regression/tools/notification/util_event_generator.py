@@ -195,7 +195,6 @@ if __name__ == "__main__":
             test_utils_import_path.absolute()
             / "testapp"
             / SYSCALL_TESTAPP_NAME
-            / SYSCALL_TESTAPP_NAME
         )
 
     if os.environ.get("USERSPACE_TESTAPP_NAME", None):
@@ -207,7 +206,6 @@ if __name__ == "__main__":
         USERSPACE_TESTAPP_BIN = (
             test_utils_import_path.absolute()
             / "testapp"
-            / USERSPACE_TESTAPP_NAME
             / USERSPACE_TESTAPP_NAME
         )
 
@@ -226,7 +224,6 @@ if __name__ == "__main__":
         USERSPACE_PROBE_ELF_TESTAPP_BIN = (
             test_utils_import_path.absolute()
             / "testapp"
-            / USERSPACE_PROBE_ELF_TESTAPP_NAME
             / ".libs"
             / USERSPACE_PROBE_ELF_TESTAPP_NAME
         )

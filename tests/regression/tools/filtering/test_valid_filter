@@ -42,7 +42,7 @@ function run_ust
 
 function run_ust_str
 {
-	$TESTDIR/utils/testapp/gen-ust-nevents-str/gen-ust-nevents-str $NR_ITER \
+	$TESTDIR/utils/testapp/gen-ust-nevents-str $NR_ITER \
 		hypothec \
 		hypotheca \
 		hypothecary \

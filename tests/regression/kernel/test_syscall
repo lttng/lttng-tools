@@ -14,7 +14,7 @@ NUM_TESTS=216
 
 # `gen-syscall-event` starts and waits for the creation a file passed by
 # arguments to start executing 3 syscalls (open,read,close) and returning.
-TESTCMD="$TESTDIR/utils/testapp/gen-syscall-events/gen-syscall-events"
+TESTCMD="$TESTDIR/utils/testapp/gen-syscall-events"
 
 source $TESTDIR/utils/utils.sh
 

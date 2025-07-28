@@ -10,7 +10,7 @@ CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../../..
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
-TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME"
 EVENT_NAME="tp:tptest"
 
 TRACE_PATH=$(mktemp -d -t tmp.test_metadata_env_ust_trace_path.XXXXXX)

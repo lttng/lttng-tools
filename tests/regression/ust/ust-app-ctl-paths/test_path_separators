@@ -13,7 +13,7 @@ TESTDIR="${CURDIR}/../../../"
 # shellcheck source=../../../utils/utils.sh
 source "${TESTDIR}/utils/utils.sh"
 
-TESTAPP="${TESTDIR}/utils/testapp/gen-ust-events/gen-ust-events"
+TESTAPP="${TESTDIR}/utils/testapp/gen-ust-events"
 EVENT_NAMES="tp:tptest"
 SESSION_NAME="ust-app-ctl-path-separator"
 CHANNEL_NAME="ust-app-ctl-path-separator"

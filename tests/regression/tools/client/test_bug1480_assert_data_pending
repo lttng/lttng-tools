@@ -10,7 +10,7 @@ TESTDIR=$(realpath "${CURDIR}/../../../")
 # Test app for ust event
 TESTAPP_PATH="${TESTDIR}/utils/testapp"
 TESTAPP_NAME="gen-data-pending"
-TESTAPP_BIN="${TESTAPP_PATH}/${TESTAPP_NAME}/${TESTAPP_NAME}"
+TESTAPP_BIN="${TESTAPP_PATH}/${TESTAPP_NAME}"
 SESSION_NAME=asdf
 
 NUM_TESTS=7

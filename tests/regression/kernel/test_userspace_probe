@@ -11,13 +11,13 @@ TEST_DESC="Userspace probe - Testing userspace probe on ELF symbol"
 CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../..
 TESTAPP_DIR="$TESTDIR/utils/testapp/"
-ELF_TEST_BIN_DIR="$TESTAPP_DIR/userspace-probe-elf-binary/.libs/"
+ELF_TEST_BIN_DIR="$TESTAPP_DIR/.libs/"
 ELF_TEST_BIN_NAME="userspace-probe-elf-binary"
 ELF_TEST_BIN="$ELF_TEST_BIN_DIR/$ELF_TEST_BIN_NAME"
-ELF_CXX_TEST_BIN_DIR="$TESTAPP_DIR/userspace-probe-elf-cxx-binary/"
+ELF_CXX_TEST_BIN_DIR="$TESTAPP_DIR"
 ELF_CXX_TEST_BIN_NAME="userspace-probe-elf-cxx-binary"
 ELF_CXX_TEST_BIN="$ELF_CXX_TEST_BIN_DIR/$ELF_CXX_TEST_BIN_NAME"
-SDT_TEST_BIN_DIR="$TESTAPP_DIR/userspace-probe-sdt-binary/.libs/"
+SDT_TEST_BIN_DIR="$TESTAPP_DIR/.libs/"
 SDT_TEST_BIN_NAME="userspace-probe-sdt-binary"
 SDT_TEST_BIN="$SDT_TEST_BIN_DIR/$SDT_TEST_BIN_NAME"
 ELF_SYMBOL="test_function"
@@ -289,7 +289,7 @@ function test_userspace_probe_elf ()
 	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
 
 	start_lttng_tracing_ok $SESSION_NAME
-	LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$TESTDIR/utils/testapp/userspace-probe-elf-binary/.libs" "$ELF_TEST_BIN" > /dev/null
+	LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$TESTDIR/utils/testapp/.libs" "$ELF_TEST_BIN" > /dev/null
 	stop_lttng_tracing_ok $SESSION_NAME
 
 	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
@@ -303,8 +303,8 @@ function test_userspace_probe_elf_dynamic_symbol ()
 {
 	TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userprobe_elf"
-	LIBFOO_PATH="$ELF_TEST_BIN_DIR/libfoo.so"
-	ENABLE_EXPR="elf:$LIBFOO_PATH:dynamic_symbol"
+	LIBDYNSYM_PATH="$ELF_TEST_BIN_DIR/libdynsym.so"
+	ENABLE_EXPR="elf:$LIBDYNSYM_PATH:dynamic_symbol"
 
 	diag "Userspace probe on Elf dynamic symbol enabled and traced"
 
@@ -313,7 +313,7 @@ function test_userspace_probe_elf_dynamic_symbol ()
 	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
 
 	start_lttng_tracing_ok $SESSION_NAME
-	LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$TESTDIR/utils/testapp/userspace-probe-elf-binary/.libs" "$ELF_TEST_BIN" > /dev/null
+	LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$TESTDIR/utils/testapp/.libs" "$ELF_TEST_BIN" > /dev/null
 	stop_lttng_tracing_ok $SESSION_NAME
 
 	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
@@ -554,7 +554,7 @@ function test_userspace_probe_sdt ()
 	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
 
 	start_lttng_tracing_ok $SESSION_NAME
-	LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$TESTDIR/utils/testapp/userspace-probe-sdt-binary/.libs" "$SDT_TEST_BIN" > /dev/null
+	LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$TESTDIR/utils/testapp/.libs" "$SDT_TEST_BIN" > /dev/null
 	stop_lttng_tracing_ok $SESSION_NAME
 
 	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
@@ -662,7 +662,7 @@ function test_userspace_probe_sdt_one_probe ()
 	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
 
 	start_lttng_tracing_ok $SESSION_NAME
-	LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$TESTDIR/utils/testapp/userspace-probe-sdt-binary/.libs" "$SDT_TEST_BIN" > /dev/null
+	LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$TESTDIR/utils/testapp/.libs" "$SDT_TEST_BIN" > /dev/null
 	stop_lttng_tracing_ok $SESSION_NAME
 
 	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
@@ -687,7 +687,7 @@ function test_userspace_probe_sdt_two_probes ()
 	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
 
 	start_lttng_tracing_ok $SESSION_NAME
-	LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$TESTDIR/utils/testapp/userspace-probe-sdt-binary/.libs" "$SDT_TEST_BIN" > /dev/null
+	LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$TESTDIR/utils/testapp/.libs" "$SDT_TEST_BIN" > /dev/null
 	stop_lttng_tracing_ok $SESSION_NAME
 
 	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
@@ -712,7 +712,7 @@ function test_userspace_probe_sdt_in_shared_object ()
 	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
 
 	start_lttng_tracing_ok $SESSION_NAME
-	LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$TESTDIR/utils/testapp/userspace-probe-sdt-binary/.libs" "$SDT_TEST_BIN" > /dev/null
+	LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$TESTDIR/utils/testapp/.libs" "$SDT_TEST_BIN" > /dev/null
 	stop_lttng_tracing_ok $SESSION_NAME
 
 	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
@@ -737,7 +737,7 @@ function test_userspace_probe_sdt_in_shared_object_dlopen ()
 	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
 
 	start_lttng_tracing_ok $SESSION_NAME
-	LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$TESTDIR/utils/testapp/userspace-probe-sdt-binary/.libs" "$SDT_TEST_BIN" > /dev/null
+	LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$TESTDIR/utils/testapp/.libs" "$SDT_TEST_BIN" > /dev/null
 	stop_lttng_tracing_ok $SESSION_NAME
 
 	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
@@ -762,7 +762,7 @@ function test_userspace_probe_sdt_in_shared_object_ldpreload ()
 	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
 
 	start_lttng_tracing_ok $SESSION_NAME
-	LD_PRELOAD="$SDT_TEST_BIN_DIR/libzzz.so" LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$TESTDIR/utils/testapp/userspace-probe-sdt-binary/.libs" "$SDT_TEST_BIN" > /dev/null
+	LD_PRELOAD="$SDT_TEST_BIN_DIR/libzzz.so" LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$TESTDIR/utils/testapp/.libs" "$SDT_TEST_BIN" > /dev/null
 	stop_lttng_tracing_ok $SESSION_NAME
 
 	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
@@ -787,7 +787,7 @@ function test_userspace_probe_sdt_with_arg ()
 	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
 
 	start_lttng_tracing_ok $SESSION_NAME
-	LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$TESTDIR/utils/testapp/userspace-probe-sdt-binary/.libs" "$SDT_TEST_BIN" > /dev/null
+	LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$TESTDIR/utils/testapp/.libs" "$SDT_TEST_BIN" > /dev/null
 	stop_lttng_tracing_ok $SESSION_NAME
 
 	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"

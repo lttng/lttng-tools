@@ -10,8 +10,8 @@ TEST_DESC="Kernel tracer - Callstack context"
 CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../..
 NUM_TESTS=14
-TEST_APP_USERSPACE="$TESTDIR/utils/testapp/gen-syscall-events-callstack/gen-syscall-events-callstack"
-TEST_APP_KERNELSPACE="$TESTDIR/utils/testapp/gen-syscall-events/gen-syscall-events"
+TEST_APP_USERSPACE="$TESTDIR/utils/testapp/gen-syscall-events-callstack"
+TEST_APP_KERNELSPACE="$TESTDIR/utils/testapp/gen-syscall-events"
 PARSE_CALLSTACK="$TESTDIR/utils/parse-callstack.py"
 
 SESSION_NAME="callstack"

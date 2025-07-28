@@ -31,7 +31,7 @@ start_lttng_sessiond_notap
 
 tmp_stdout=$(mktemp -t test_parse_cli_trigger_stdout.XXXXXX)
 tmp_stderr=$(mktemp -t test_parse_cli_trigger_stderr.XXXXXX)
-uprobe_elf_binary="${TESTDIR}/utils/testapp/userspace-probe-elf-binary/.libs/userspace-probe-elf-binary"
+uprobe_elf_binary="${TESTDIR}/utils/testapp/.libs/userspace-probe-elf-binary"
 
 function test_success ()
 {

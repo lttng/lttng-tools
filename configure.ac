@@ -1377,21 +1377,7 @@ AC_CONFIG_FILES([
 	tests/utils/lttngtest/Makefile
 	tests/utils/tap/Makefile
 	tests/utils/testapp/Makefile
-	tests/utils/testapp/gen-data-pending/Makefile
-	tests/utils/testapp/gen-ns-events/Makefile
-	tests/utils/testapp/gen-kernel-test-events/Makefile
-	tests/utils/testapp/gen-py-events/Makefile
-	tests/utils/testapp/gen-ust-events/Makefile
 	tests/utils/testapp/gen-ust-events-constructor/Makefile
-	tests/utils/testapp/gen-ust-events-ns/Makefile
-	tests/utils/testapp/gen-syscall-events-callstack/Makefile
-	tests/utils/testapp/gen-ust-nevents/Makefile
-	tests/utils/testapp/gen-ust-nevents-str/Makefile
-	tests/utils/testapp/gen-syscall-events/Makefile
-	tests/utils/testapp/gen-ust-tracef/Makefile
-	tests/utils/testapp/userspace-probe-elf-binary/Makefile
-	tests/utils/testapp/userspace-probe-elf-cxx-binary/Makefile
-	tests/utils/testapp/userspace-probe-sdt-binary/Makefile
 	tests/utils/xml-utils/Makefile
 ])
 

@@ -13,7 +13,7 @@ TESTPOINT=$(readlink -f ${CURDIR}/.libs/libpause_consumer.so)
 
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
-TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME"
 TESTAPP_STATE_FILE="$(mktemp -u -t tmp.test_notification_multi_app_state_file.XXXXXX)"
 
 NR_ITER=1000

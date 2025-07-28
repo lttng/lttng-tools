@@ -13,7 +13,7 @@ TESTDIR=$(realpath "${CURDIR}/../../../")
 # Test app for ust event
 TESTAPP_PATH="${TESTDIR}/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
-TESTAPP_BIN="${TESTAPP_PATH}/${TESTAPP_NAME}/${TESTAPP_NAME}"
+TESTAPP_BIN="${TESTAPP_PATH}/${TESTAPP_NAME}"
 NR_USEC_WAIT=1
 NR_ITER=100000
 
