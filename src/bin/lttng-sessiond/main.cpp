@@ -46,6 +46,7 @@
 #include <common/compat/getenv.hpp>
 #include <common/compat/socket.hpp>
 #include <common/config/session-config.hpp>
+#include <common/consumer/consumer.hpp>
 #include <common/daemonize.hpp>
 #include <common/defaults.hpp>
 #include <common/dynamic-buffer.hpp>

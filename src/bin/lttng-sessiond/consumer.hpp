@@ -16,7 +16,6 @@
 
 #include <lttng/lttng.h>
 
-#include <algorithm>
 #include <urcu/ref.h>
 
 struct snapshot;

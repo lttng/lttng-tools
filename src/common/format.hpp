@@ -8,7 +8,6 @@
 #define LTTNG_FORMAT_H
 
 #include <common/macros.hpp>
-#include <common/make-unique.hpp>
 
 #include <vendor/optional.hpp>
 

@@ -11,7 +11,6 @@
 
 #include <common/compat/string.hpp>
 
-#include <memory>
 #include <pthread.h>
 #include <stddef.h>
 #include <stdlib.h>

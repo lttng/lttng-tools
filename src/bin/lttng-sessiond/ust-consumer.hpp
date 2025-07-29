@@ -8,7 +8,6 @@
 #ifndef _UST_CONSUMER_H
 #define _UST_CONSUMER_H
 
-#include "consumer.hpp"
 #include "ust-app.hpp"
 
 #include <common/trace-chunk.hpp>

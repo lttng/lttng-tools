@@ -13,9 +13,9 @@
 
 #include <vendor/optional.hpp>
 
+#include <memory>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string>
 #include <sys/time.h>
 #include <urcu/arch.h>

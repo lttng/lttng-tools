@@ -9,7 +9,6 @@
 #define _LGPL_SOURCE
 
 #include "buffer-registry.hpp"
-#include "condition-internal.hpp"
 #include "event-notifier-error-accounting.hpp"
 #include "event.hpp"
 #include "fd-limit.hpp"
@@ -48,7 +47,6 @@
 #include <fcntl.h>
 #include <inttypes.h>
 #include <pthread.h>
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

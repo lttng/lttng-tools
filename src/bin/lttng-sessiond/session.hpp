@@ -21,6 +21,7 @@
 #include <common/make-unique-wrapper.hpp>
 #include <common/pthread-lock.hpp>
 #include <common/reference.hpp>
+#include <common/trace-chunk.hpp>
 #include <common/urcu.hpp>
 
 #include <lttng/location.h>
