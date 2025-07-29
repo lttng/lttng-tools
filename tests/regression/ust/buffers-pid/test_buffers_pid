@@ -9,7 +9,6 @@ TEST_DESC="UST tracer - Tracing with per PID buffers"
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
 NR_ITER=100
-NR_USEC_WAIT=100000
 SESSION_NAME="buffers-pid"
 
 TESTAPP_PATH="$TESTDIR/utils/testapp"
@@ -49,7 +48,7 @@ test_after_multiple_apps() {
 	start_lttng_tracing_ok $SESSION_NAME
 
 	for i in `seq 1 5`; do
-		$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT >/dev/null 2>&1 &
+		$TESTAPP_BIN -i $NR_ITER >/dev/null 2>&1 &
 		ok $? "Start application $i for tracing"
 		tracee_pids+=("${!}")
 	done
@@ -73,7 +72,7 @@ test_before_multiple_apps() {
 	diag "Start multiple applications BEFORE tracing is started"
 
 	for i in `seq 1 5`; do
-		$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
+		$TESTAPP_BIN -i $NR_ITER \
 			--sync-after-first-event ${file_sync_after_first}_${i} \
 			--sync-before-last-event ${file_sync_before_last}_${i} >/dev/null 2>&1 &
 		ok $? "Start application $i for tracing"
@@ -127,7 +126,7 @@ test_after_app() {
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
 	start_lttng_tracing_ok $SESSION_NAME
 
-	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT &
+	$TESTAPP_BIN -i $NR_ITER &
 	ok $? "Start application to trace"
 	wait "${!}"
 
@@ -153,7 +152,7 @@ test_before_app() {
 	enable_channel_per_pid $SESSION_NAME "channel0"
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
 
-	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
+	$TESTAPP_BIN -i $NR_ITER \
 		--sync-after-first-event ${file_sync_after_first} \
 		--sync-before-last-event ${file_sync_before_last} &
 	ok $? "Start application to trace"
@@ -210,7 +209,7 @@ test_multiple_channels() {
 	ok $? "Enable event $EVENT_NAME for session $SESSION_NAME in channel4"
 	start_lttng_tracing_ok $SESSION_NAME
 
-	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT &
+	$TESTAPP_BIN -i $NR_ITER &
 	ok $? "Start application to trace"
 	wait "${!}"
 
