@@ -5023,10 +5023,8 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 static bool is_context_redundant(const struct ltt_ust_channel *uchan,
 				 const struct ltt_ust_context *uctx)
 {
-	const enum lttng_ust_abi_object_type chan_type =
-		static_cast<enum lttng_ust_abi_object_type>(uchan->attr.u.s.type);
-
-	const enum lttng_ust_abi_context_type context_type = uctx->ctx.ctx;
+	const auto chan_type = static_cast<enum lttng_ust_abi_chan_type>(uchan->attr.u.s.type);
+	const auto context_type = uctx->ctx.ctx;
 
 	switch (chan_type) {
 	case LTTNG_UST_ABI_CHAN_PER_CPU:
