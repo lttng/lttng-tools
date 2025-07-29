@@ -1371,14 +1371,8 @@ AC_CONFIG_FILES([
 	tests/unit/ini_config/Makefile
 	tests/perf/Makefile
 	tests/utils/Makefile
-	tests/utils/bt2_plugins/Makefile
-	tests/utils/bt2_plugins/event_name/Makefile
-	tests/utils/bt2_plugins/field_stats/Makefile
-	tests/utils/lttngtest/Makefile
-	tests/utils/tap/Makefile
 	tests/utils/testapp/Makefile
 	tests/utils/testapp/gen-ust-events-constructor/Makefile
-	tests/utils/xml-utils/Makefile
 ])
 
 # Inject variable into python test script.
