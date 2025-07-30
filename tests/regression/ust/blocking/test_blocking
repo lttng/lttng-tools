@@ -2,13 +2,15 @@
 #
 # SPDX-FileCopyrightText: 2015 Jonathan Rajotte <jonathan.rajotte-julien@efficios.com>
 # SPDX-FileCopyrightText: 2016 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+# SPDX-FileCopyrightText: 2025 Michael Jeanson <mjeanson@efficios.com>
 #
 # SPDX-License-Identifier: LGPL-2.1-only
 
 TEST_DESC="UST - Blocking mode"
 
-CURDIR=$(dirname $0)/
+CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../../..
+
 SESSION_NAME="blocking"
 CHANNEL_NAME="testchan"
 
@@ -17,16 +19,19 @@ TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME"
 EVENT_NAME="tp:tptest"
 
-NUM_TESTS=49
+NUM_TESTS=50
 
-# shellcheck source=../utils/utils.sh
+# shellcheck source-path=SCRIPTDIR/../../..
 source "$TESTDIR/utils/utils.sh"
 
 # MUST set TESTDIR before calling those functions
+
 # Run app on a single CPU to ensure we only write in a single ring buffer.
 function run_app()
 {
-	retry_anycpu_taskset $TESTAPP_BIN -i $NUM_EVENT
+	local num_event=$1
+
+	retry_anycpu_taskset "$TESTAPP_BIN" -i "$num_event"
 	ok $? "Application done"
 }
 
@@ -45,26 +50,38 @@ function check_disk_space()
 
 function test_ust_implicit_no_blocking()
 {
-	NUM_EVENT=5000000
+	local num_event=5000000
+	local trace_path
+
 	diag "UST implicit non-blocking mode (default): will hang if fails"
+
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 
 	start_lttng_sessiond
 	# session in no-output mode
 	create_lttng_session_no_output $SESSION_NAME
 	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME"
 	start_lttng_tracing_ok $SESSION_NAME
-	run_app
+
+	run_app "$num_event"
+
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
 	stop_lttng_sessiond
 
-	ok 0 "Does not hang"
+	pass "Does not hang"
+
+	rm -rf "$trace_path"
 }
 
 function test_ust_implicit_no_blocking_with_channel_blocking()
 {
-	NUM_EVENT=5000000
+	local num_event=5000000
+	local trace_path
+
 	diag "UST implicit non-blocking mode (default) with blocking-timeout=inf channel: will hang if fails"
+
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 
 	start_lttng_sessiond
 	# session in no-output mode
@@ -72,18 +89,26 @@ function test_ust_implicit_no_blocking_with_channel_blocking()
 	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME "--blocking-timeout=inf"
 	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME" $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
-	run_app
+
+	run_app "$num_event"
+
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
 	stop_lttng_sessiond
 
-	ok 0 "Does not hang"
+	pass "Does not hang"
+
+	rm -rf "$trace_path"
 }
 
 function test_ust_timeout_no_blocking()
 {
-	NUM_EVENT=12500
+	local num_event=12500
+	local trace_path
+
 	diag "UST 1ms timeout blocking mode: will hang if fails"
+
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 
 	start_lttng_sessiond
 	# session in no-output mode
@@ -92,54 +117,78 @@ function test_ust_timeout_no_blocking()
 	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME "--blocking-timeout=1000"
 	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME" $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
-	LTTNG_UST_ALLOW_BLOCKING=1 run_app
+
+	LTTNG_UST_ALLOW_BLOCKING=1 run_app "$num_event"
+
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
 	stop_lttng_sessiond
 
-	ok 0 "Does not hang"
+	pass "Does not hang"
+
+	rm -rf "$trace_path"
 }
 
 function test_ust_snapshot_no_blocking()
 {
-	NUM_EVENT=5000000
+	local num_event=5000000
+	local trace_path
+
 	diag "UST blocking mode: don't block in snapshot mode"
+
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 
 	# Test without the plugin
 	start_lttng_sessiond
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH --snapshot
+	create_lttng_session_ok $SESSION_NAME "$trace_path" --snapshot
 	# blocking timeout 1ms
 	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME "--blocking-timeout=1000"
 	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME" $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
-	LTTNG_UST_ALLOW_BLOCKING=1 run_app
+
+	LTTNG_UST_ALLOW_BLOCKING=1 run_app "$num_event"
+
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
 	stop_lttng_sessiond
 
-	ok 0 "Does not hang"
+	pass "Does not hang"
+
+	rm -rf "$trace_path"
 }
 
 function test_ust_blocking_no_discard()
 {
-	NUM_EVENT=5000000
+	local num_event=5000000
+	local trace_path
+	local mi_output_file
+	local discarded
+
 	diag "UST blocking mode: no event discarded"
+
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	mi_output_file=$(mktemp -t "tmp.${FUNCNAME[0]}_output_file.XXXXXX")
 
 	# Test without the plugin
 	start_lttng_sessiond
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME "$trace_path"
 	# infinite blocking timeout
 	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME "--blocking-timeout=inf"
 	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME" $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
-	LTTNG_UST_ALLOW_BLOCKING=1 run_app
+
+	LTTNG_UST_ALLOW_BLOCKING=1 run_app "$num_event"
+
 	stop_lttng_tracing_ok $SESSION_NAME
-	discarded=$("${XML_EXTRACT}" <("${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}" --mi=xml list --channel="${CHANNEL_NAME}" "${SESSION_NAME}") '//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:channels/lttng:channel/lttng:attributes/lttng:discarded_events')
+	LTTNG_TEST_MI_CLIENT=1 OUTPUT_DEST="$mi_output_file" list_lttng_ok "${SESSION_NAME}" -c "${CHANNEL_NAME}"
 	destroy_lttng_session_ok $SESSION_NAME
 	stop_lttng_sessiond
 
-	test "$(echo "${discarded}" | grep -Eo '[0-9]+')" = "0"
-	ok $? "No event lost with UST blocking mode: ${discarded}"
+	discarded=$("${XML_EXTRACT}" "$mi_output_file" '//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:channels/lttng:channel/lttng:attributes/lttng:discarded_events')
+	is "$discarded" 0 "No event lost with UST blocking mode: ${discarded}"
+
+	rm -f "$mi_output_file"
+	rm -rf "$trace_path"
 }
 
 plan_tests $NUM_TESTS
@@ -152,25 +201,8 @@ if ! check_disk_space "${TMPDIR:-/tmp}"; then
 	BAIL_OUT "Not enough free space to run blocking tests"
 fi
 
-TESTS=(
-	"test_ust_implicit_no_blocking"
-	"test_ust_implicit_no_blocking_with_channel_blocking"
-	"test_ust_timeout_no_blocking"
-	"test_ust_snapshot_no_blocking"
-	"test_ust_blocking_no_discard"
-)
-
-TEST_COUNT=${#TESTS[@]}
-i=0
-
-while [ "$i" -lt "$TEST_COUNT" ]; do
-
-	TRACE_PATH=$(mktemp -d -t tmp.test_blocking_ust_trace_path.XXXXXX)
-
-	# Execute test
-	${TESTS[$i]}
-
-	rm -rf $TRACE_PATH
-
-	let "i++"
-done
+test_ust_implicit_no_blocking
+test_ust_implicit_no_blocking_with_channel_blocking
+test_ust_timeout_no_blocking
+test_ust_snapshot_no_blocking
+test_ust_blocking_no_discard
