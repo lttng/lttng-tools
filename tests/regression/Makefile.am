@@ -128,6 +128,7 @@ TESTS += ust/high-throughput/test_high_throughput.py \
 	ust/ust-constructor/test_ust_constructor_c_static.py \
 	ust/ust-constructor/test_ust_constructor_cpp_dynamic.py \
 	ust/ust-constructor/test_ust_constructor_cpp_static.py
+	ust/test_no_event_timestamps.py
 
 if TEST_JAVA_JUL_AGENT
 SERIAL_TESTS += ust/java-jul/test_java_jul \
