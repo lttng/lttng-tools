@@ -408,10 +408,11 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 	int error_holder = CMD_SUCCESS, warn = 0, error = 0, success = 1;
 	char *channel_name = nullptr;
 	struct lttng_event *ev;
-	struct lttng_domain dom = {};
+	struct lttng_domain dom;
 	struct lttng_dynamic_pointer_array exclusions;
 	struct lttng_userspace_probe_location *uprobe_loc = nullptr;
 
+	::memset(&dom, 0, sizeof(dom));
 	lttng_dynamic_pointer_array_init(&exclusions, nullptr);
 
 	ev = lttng_event_create();
