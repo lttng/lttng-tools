@@ -1,19 +1,21 @@
 #!/bin/bash
 #
 # SPDX-FileCopyrightText: 2015 Jonathan Rajotte <jonathan.rajotte-julien@efficios.com>
+# SPDX-FileCopyrightText: 2025 Michael Jeanson <mjeanson@efficios.com>
 #
 # SPDX-License-Identifier: LGPL-2.1-only
 
 TEST_DESC="UST - Getcpu override plugin"
 
-CURDIR=$(dirname $0)/
+CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../../..
-SESSION_NAME="sequence-cpu"
 
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME"
-TESTAPP_WRAPPER="run-getcpu-override"
+
+LTTNG_UST_GETCPU_PLUGIN_SO="$CURDIR/.libs/lttng-ust-getcpu-override-test.so"
+
 NUM_EVENT=256
 EVENT_WAIT_USEC=1
 EVENT_NAME="tp:tptest"
@@ -35,48 +37,26 @@ SEQUENCE_SEED=(
 89 13 63 6 136 153 23 16 47 130 75 62
 )
 
-source $TESTDIR/utils/utils.sh
+# shellcheck source-path=SCRIPTDIR/../../..
+source "$TESTDIR/utils/utils.sh"
 
 # Equivalent to the syconf(_SC_NPROCESSORS_CONF) call.
 num_cpus=$(conf_proc_count)
 
 # MUST set TESTDIR before calling those functions
 
-run_app()
-{
-	diag "Launching app without getcpu-plugin wrapper"
-	$TESTAPP_BIN -i $NUM_EVENT -w $EVENT_WAIT_USEC
-	ok $? "Application without wrapper done"
-}
-
-run_getcpu_plugin_app()
-{
-	diag "Launching app with getcpu-plugin wrapper"
-	$CURDIR/$TESTAPP_WRAPPER $TESTAPP_BIN -i $NUM_EVENT -w $EVENT_WAIT_USEC
-	ok $? "Application with wrapper done"
-}
-
-compare_ok()
-{
-	compare 0 "$@"
-}
-
-compare_fail()
-{
-	compare 1 "$@"
-}
-
 compare()
 {
 	local expected_to_fail=$1
-	declare -a array_to_compare=("${!2}")
+	local trace_path=$2
+	local array_to_compare=("${@:3}")
 	local valid=0
 
 	test ${#array_to_compare[*]} -eq ${#SEQUENCE_SEED[*]}
 	ok $? "Sequence seed and cpuid sequence have the same size ${#SEQUENCE_SEED[*]}/${#array_to_compare[*]}"
 
 	for (( i = 0; i < ${#SEQUENCE_SEED[*]}; i++ )); do
-		if [ "${array_to_compare[$i]}" -ne "$(( ${SEQUENCE_SEED[$i]} % $num_cpus))" ]; then
+		if [ "${array_to_compare[$i]}" -ne "$(( ${SEQUENCE_SEED[$i]} % num_cpus))" ]; then
 			valid=1
 			break
 		fi
@@ -93,54 +73,94 @@ compare()
 				echo -n "# array value is "
 				echo -n "${array_to_compare[$i]}"
 				echo -n " expected "
-				echo "$(( ${SEQUENCE_SEED[$i]} % $num_cpus))"
+				echo "$(( ${SEQUENCE_SEED[$i]} % num_cpus))"
 			done
 			diag "Dumping trace"
-			_run_babeltrace_cmd $TRACE_PATH | awk '{print "# " $0}'
+			_run_babeltrace_cmd "$trace_path" | awk '{print "# " $0}'
 		fi
 	fi
 }
 
+compare_ok()
+{
+	compare 0 "$@"
+}
+
+compare_fail()
+{
+	compare 1 "$@"
+}
+
 test_getcpu_override_fail()
 {
+	local session_name="getcpu-plugin-disabled"
+	local trace_path
+	local file_testapp_output
+	local cpuid_events=()
+	local num_events
+
 	diag "Getcpu plugin - no preloaded plugin"
 
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
-	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME"
-	start_lttng_tracing_ok $SESSION_NAME
-	run_app
-	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
 
-	# Move output to an array by using =($())
-	local cpuid_events=($(_run_babeltrace_cmd $TRACE_PATH | sed -n 's/.*cpu_id = \([0-9]*\).*/\1/p'))
-	local num_events=${#cpuid_events[*]}
-	test $num_events -eq $NUM_EVENT
+	create_lttng_session_ok $session_name "$trace_path"
+	enable_ust_lttng_event_ok $session_name "$EVENT_NAME"
+	start_lttng_tracing_ok $session_name
+
+	diag "Launching app without getcpu plugin"
+	run_testapp_ok "$file_testapp_output" "$TESTAPP_BIN" -i $NUM_EVENT -w $EVENT_WAIT_USEC
+
+	stop_lttng_tracing_ok $session_name
+	destroy_lttng_session_ok $session_name
+
+	# Get the cpu_id from each event in an array
+	mapfile -t cpuid_events < <(_run_babeltrace_cmd "$trace_path" | sed -n 's/.*cpu_id = \([0-9]*\).*/\1/p')
+
+	num_events=${#cpuid_events[*]}
+	test "$num_events" -eq $NUM_EVENT
 	ok $? "Extraction without getcpu plugin have $num_events/$NUM_EVENT"
-	compare_fail cpuid_events[@]
+	compare_fail "$trace_path" "${cpuid_events[@]}"
 
-	return $?
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
 }
 
 test_getcpu_override()
 {
+	local session_name="getcpu-plugin-enabled"
+	local trace_path
+	local file_testapp_output
+	local cpuid_events=()
+	local num_events
+
 	diag "Getcpu plugin - with plugin preloaded"
 
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
-	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME"
-	start_lttng_tracing_ok $SESSION_NAME
-	run_getcpu_plugin_app
-	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
 
-	local cpuid_events=($(_run_babeltrace_cmd $TRACE_PATH | sed -n 's/.*cpu_id = \([0-9]*\).*/\1/p'))
-	local num_events=${#cpuid_events[*]}
-	test $num_events -eq $NUM_EVENT
+	create_lttng_session_ok $session_name "$trace_path"
+	enable_ust_lttng_event_ok $session_name "$EVENT_NAME"
+	start_lttng_tracing_ok $session_name
+
+	diag "Launching app with getcpu plugin"
+	LTTNG_UST_GETCPU_PLUGIN="$LTTNG_UST_GETCPU_PLUGIN_SO" \
+		run_testapp_ok "$file_testapp_output" "$TESTAPP_BIN" -i $NUM_EVENT -w $EVENT_WAIT_USEC
+
+	stop_lttng_tracing_ok $session_name
+	destroy_lttng_session_ok $session_name
+
+	# Get the cpu_id from each event in an array
+	mapfile -t cpuid_events < <(_run_babeltrace_cmd "$trace_path" | sed -n 's/.*cpu_id = \([0-9]*\).*/\1/p')
+
+	num_events=${#cpuid_events[*]}
+	test "$num_events" -eq $NUM_EVENT
 	ok $? "Extraction with getcpu plugin have $num_events/$NUM_EVENT"
 
-	compare_ok cpuid_events[@]
+	compare_ok "$trace_path" "${cpuid_events[@]}"
 
-	return $?
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
 }
 
 plan_tests $NUM_TESTS
@@ -162,27 +182,9 @@ if [ "$num_cpus" -eq "1" ]; then
 	skip 0 "Test system only have a single thread. Skipping all tests." $NUM_TESTS && exit 0
 fi
 
-
-TESTS=(
-	test_getcpu_override_fail
-	test_getcpu_override
-)
-
-TEST_COUNT=${#TESTS[@]}
-i=0
-
 start_lttng_sessiond
 
-for fct_test in ${TESTS[@]};
-do
-	TRACE_PATH=$(mktemp -d -t tmp.test_getcpu_override_trace_path.XXXXXX)
-
-	${fct_test}
-	if [ $? -ne 0 ]; then
-		break;
-	fi
-
-	rm -rf $TRACE_PATH
-done
+test_getcpu_override_fail
+test_getcpu_override
 
 stop_lttng_sessiond
