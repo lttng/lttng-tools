@@ -1,32 +1,96 @@
 #!/bin/bash
 #
 # SPDX-FileCopyrightText: 2012 David Goulet <dgoulet@efficios.com>
+# SPDX-FileCopyrightText: 2025 Michael Jeanson <mjeanson@efficios.com>
 #
 # SPDX-License-Identifier: LGPL-2.1-only
 
 TEST_DESC="UST tracer - Testing low events throughput"
 
-CURDIR=$(dirname $0)/
+CURDIR=$(dirname "$0")
 TESTDIR=$CURDIR/../../..
+
 BIN_NAME="gen-events"
 SESSION_NAME="low-throughput"
+
 EVENT_NAME="tp:slow"
-NUM_TESTS=8
+NUM_TESTS=10
 
-source $TESTDIR/utils/utils.sh
-
-check_skip_long_regression_tests && {
-	plan_skip_all "Long regression tests disabled"
-	exit 0
-}
-
-if [ ! -x "$CURDIR/$BIN_NAME" ]; then
-	BAIL_OUT "No UST nevents binary detected."
-fi
-
-TRACE_PATH=$(mktemp -d -t tmp.test_low_throughput_ust_trace_path.XXXXXX)
+# shellcheck source-path=SCRIPTDIR/../../..
+source "$TESTDIR/utils/utils.sh"
 
 # MUST set TESTDIR before calling those functions
+
+function test_low_throughput()
+{
+	local trace_path
+	local file_testapp_output
+
+	trace_path=$(mktemp -d -t tmp.test_low_throughput_ust_trace_path.XXXXXX)
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
+
+	start_lttng_sessiond
+
+	create_lttng_session_ok $SESSION_NAME "$trace_path"
+
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
+	start_lttng_tracing_ok $SESSION_NAME
+
+	diag "Running test app for 20 minutes"
+	run_testapp_ok "$file_testapp_output" "./$CURDIR/$BIN_NAME"
+
+	stop_lttng_tracing_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
+
+	stop_lttng_sessiond
+
+	# Validate test
+
+	trace_match_only "$EVENT_NAME" 23 "$trace_path"
+
+	local last_val=0
+	local out=0
+
+	while read -r event
+	do
+		val=$(echo "$event" | cut -f10 -d" ")
+		val=${val%?}
+		th=$(echo "$event" | cut -f13 -d " ")
+
+		if [ "$th" = '"one"' ]; then
+			((last_val++))
+			# We expect here a continous value from 1 to 20
+			if [ $last_val -ne "$val" ]; then
+				diag "One minute event failed ($val)"
+				out=1
+				break
+			fi
+		elif [ "$th" = '"ten"' ]; then
+			# Test 10 minutes counter
+			if [ "$val" -ne 10 ]; then
+				# Test 20 minutes counter
+				if [ "$val" -ne 20 ]; then
+					diag "Ten minutes event failed ($val)"
+					out=1
+					break
+				fi
+			fi
+		elif [ "$th" = '"twenty"' ]; then
+			# Test 20 minutes counter
+			if [ "$val" -ne 20 ]; then
+				diag "Twenty minutes event failed ($val)"
+				out=1
+				break
+			fi
+		fi
+	done < <(_run_babeltrace_cmd "$trace_path")
+
+	ok "$out" "Trace validation"
+
+	rm -rf "$trace_path"
+	rm -r "$file_testapp_output"
+}
+
 
 plan_tests $NUM_TESTS
 
@@ -34,60 +98,13 @@ print_test_banner "$TEST_DESC"
 
 bail_out_if_no_babeltrace
 
-start_lttng_sessiond
+if [ ! -x "$CURDIR/$BIN_NAME" ]; then
+	BAIL_OUT "No UST nevents binary detected."
+fi
 
-create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+check_skip_long_regression_tests && {
+	skip 0 "Long regression tests disabled" $NUM_TESTS
+	exit 0
+}
 
-enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
-start_lttng_tracing_ok $SESSION_NAME
-
-# This is going to take 20 minutes
-./$CURDIR/$BIN_NAME >/dev/null 2>&1
-
-stop_lttng_tracing_ok $SESSION_NAME
-destroy_lttng_session_ok $SESSION_NAME
-
-stop_lttng_sessiond
-
-# Validate test
-
-last_val=0
-out=0
-
-"_run_babeltrace_cmd" $TRACE_PATH | while read event;
-do
-	val=$(echo $event | cut -f10 -d" ")
-	val=${val%?}
-	th=$(echo $event | cut -f13 -d " ")
-
-	if [ $th = '"one"' ]; then
-		((last_val++))
-		# We expect here a continous value from 1 to 20
-		if [ $last_val -ne $val ]; then
-			diag "One minute event failed ($val)"
-			out=1
-			break
-		fi
-	elif [ $th = '"ten"' ]; then
-		# Test 10 minutes counter
-		if [ $val -ne 10 ]; then
-			# Test 20 minutes counter
-			if [ $val -ne 20 ]; then
-				diag "Ten minutes event failed ($val)"
-				out=1
-				break
-			fi
-		fi
-	elif [ $th = '"twenty"' ]; then
-		# Test 20 minutes counter
-		if [ $val -ne 20 ]; then
-			diag "Twenty minutes event failed ($val)"
-			out=1
-			break
-		fi
-	fi
-done
-
-ok $out "Trace validation"
-
-rm -rf $TRACE_PATH
+test_low_throughput
