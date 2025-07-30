@@ -1,23 +1,30 @@
 #!/bin/bash
 #
 # SPDX-FileCopyrightText: 2012 David Goulet <dgoulet@efficios.com>
+# SPDX-FileCopyrightText: 2025 Michael Jeanson <mjeanson@efficios.com>
 #
 # SPDX-License-Identifier: LGPL-2.1-only
 
 TEST_DESC="UST tracer - Tracing with per PID buffers"
 
-CURDIR=$(dirname $0)/
+CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../../..
+
 NR_ITER=100
+
 SESSION_NAME="buffers-pid"
 
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME"
-EVENT_NAME="tp:tptest"
-NUM_TESTS=59
+TESTAPP_TIMEOUT_SEC=10
 
-source $TESTDIR/utils/utils.sh
+EVENT_NAME="tp:tptest"
+
+NUM_TESTS=69
+
+# shellcheck source-path=SCRIPTDIR/../../..
+source "$TESTDIR/utils/utils.sh"
 
 if [ ! -x "$TESTAPP_BIN" ]; then
 	BAIL_OUT "No UST events binary detected."
@@ -30,223 +37,255 @@ function enable_channel_per_pid()
 	sess_name=$1
 	channel_name=$2
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel --buffer-ownership=process -u $channel_name -s $sess_name >/dev/null 2>&1
-	ok $? "Enable channel $channel_name per PID for session $sess_name"
+	enable_ust_lttng_channel_ok "$sess_name" "$channel_name" --buffer-ownership=process
 }
 
 test_after_multiple_apps() {
-	local out
-	local i
-	local tracee_pids=()
+	local app_cnt=5
+	local app_id
+	local testapp_pids=()
+	local trace_path
+	local file_testapp_output
+	local file_sync_after_first
+	local file_sync_before_last
+	local file_sync_before_exit_touch
 
 	diag "Start multiple applications AFTER tracing is started"
 
-	# BEFORE application is spawned
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
+	file_sync_after_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
+	file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	file_sync_before_exit_touch=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_exit_touch.XXXXXX")
+
+	# BEFORE applications are spawned
+	create_lttng_session_ok $SESSION_NAME "$trace_path"
 	enable_channel_per_pid $SESSION_NAME "channel0"
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
 	start_lttng_tracing_ok $SESSION_NAME
-
-	for i in `seq 1 5`; do
-		$TESTAPP_BIN -i $NR_ITER >/dev/null 2>&1 &
-		ok $? "Start application $i for tracing"
-		tracee_pids+=("${!}")
+	for app_id in $(seq 0 $((app_cnt - 1))); do
+		"$TESTAPP_BIN" -i $NR_ITER \
+			--sync-after-first-event "${file_sync_after_first}_${app_id}" \
+			--sync-before-last-event "${file_sync_before_last}_${app_id}" \
+			--sync-before-exit-touch "${file_sync_before_exit_touch}_${app_id}" >"${file_testapp_output}_${app_id}" 2>&1 &
+		testapp_pids+=($!)
+		diag "Launched testapp '$TESTAPP_NAME $app_id' (pid: ${testapp_pids[$app_id]}) to generate $NR_ITER events"
 	done
-	wait "${tracee_pids[@]}"
+
+	for app_id in $(seq 0 $((app_cnt - 1))); do
+		# Wait for the testapp first event
+		app_alive_wait_for_sync "$TESTAPP_NAME $app_id" "${testapp_pids[$app_id]}" "$TESTAPP_TIMEOUT_SEC" "${file_testapp_output}_${app_id}" "${file_sync_after_first}_${app_id}"
+	done
+
+	for app_id in $(seq 0 $((app_cnt - 1))); do
+		# Tell the testapp to continue
+		touch "${file_sync_before_last}_${app_id}"
+	done
+
+	for app_id in $(seq 0 $((app_cnt - 1))); do
+		app_exit_wait_for_sync "$TESTAPP_NAME" "${testapp_pids[$app_id]}" "$TESTAPP_TIMEOUT_SEC" "${file_testapp_output}_${app_id}" "${file_sync_before_exit_touch}_${app_id}"
+	done
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
 
-	trace_match_only $EVENT_NAME $[NR_ITER * 5] $TRACE_PATH
+	trace_match_only $EVENT_NAME $((NR_ITER * app_cnt)) "$trace_path"
 
-	return $?
+	rm -rf "$trace_path"
+	for app_id in $(seq 0 $((app_cnt - 1))); do
+		rm -f "${file_testapp_output}_${app_id}"
+		rm -f "${file_sync_after_first}_${app_id}"
+		rm -f "${file_sync_before_last}_${app_id}"
+		rm -f "${file_sync_before_exit_touch}_${app_id}"
+	done
 }
 
 test_before_multiple_apps() {
-	local out
-	local i
-	local tracee_pids=()
-	local file_sync_after_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
-	local file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	local app_cnt=5
+	local app_id
+	local testapp_pids=()
+	local trace_path
+	local file_testapp_output
+	local file_sync_after_first
+	local file_sync_before_last
+	local file_sync_before_exit_touch
 
 	diag "Start multiple applications BEFORE tracing is started"
 
-	for i in `seq 1 5`; do
-		$TESTAPP_BIN -i $NR_ITER \
-			--sync-after-first-event ${file_sync_after_first}_${i} \
-			--sync-before-last-event ${file_sync_before_last}_${i} >/dev/null 2>&1 &
-		ok $? "Start application $i for tracing"
-		tracee_pids+=("${!}")
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
+	file_sync_after_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
+	file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	file_sync_before_exit_touch=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_exit_touch.XXXXXX")
+
+	for app_id in $(seq 0 $((app_cnt - 1))); do
+		"$TESTAPP_BIN" -i $NR_ITER \
+			--sync-after-first-event "${file_sync_after_first}_${app_id}" \
+			--sync-before-last-event "${file_sync_before_last}_${app_id}" \
+			--sync-before-exit-touch "${file_sync_before_exit_touch}_${app_id}" >"${file_testapp_output}_${app_id}" 2>&1 &
+		testapp_pids+=($!)
+		diag "Launched testapp '$TESTAPP_NAME $app_id' (pid: ${testapp_pids[$app_id]}) to generate $NR_ITER events"
 	done
 
-	# BEFORE application is spawned
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	for app_id in $(seq 0 $((app_cnt - 1))); do
+		# Wait for the testapp first event
+		app_alive_wait_for_sync "$TESTAPP_NAME $app_id" "${testapp_pids[$app_id]}" "$TESTAPP_TIMEOUT_SEC" "${file_testapp_output}_${app_id}" "${file_sync_after_first}_${app_id}"
+	done
+
+	# AFTER applications are spawned
+	create_lttng_session_ok $SESSION_NAME "$trace_path"
 	enable_channel_per_pid $SESSION_NAME "channel0"
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
 	start_lttng_tracing_ok $SESSION_NAME
 
-	for i in `seq 1 5`; do
-		touch ${file_sync_before_last}_${i}
+	for app_id in $(seq 0 $((app_cnt - 1))); do
+		# Tell the testapp to continue
+		touch "${file_sync_before_last}_${app_id}"
 	done
 
-	diag "Waiting for applications to end"
-	wait "${tracee_pids[@]}"
-	pass "Waiting done"
+	for app_id in $(seq 0 $((app_cnt - 1))); do
+		app_exit_wait_for_sync "$TESTAPP_NAME" "${testapp_pids[$app_id]}" "$TESTAPP_TIMEOUT_SEC" "${file_testapp_output}_${app_id}" "${file_sync_before_exit_touch}_${app_id}"
+	done
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
 
-	for i in `seq 1 5`; do
-		rm -f ${file_sync_after_first}_${i}
-		rm -f ${file_sync_before_last}_${i}
+	validate_trace $EVENT_NAME "$trace_path"
+
+	rm -rf "$trace_path"
+	for app_id in $(seq 0 $((app_cnt - 1))); do
+		rm -f "${file_testapp_output}_${app_id}"
+		rm -f "${file_sync_after_first}_${app_id}"
+		rm -f "${file_sync_before_last}_${app_id}"
+		rm -f "${file_sync_before_exit_touch}_${app_id}"
 	done
-
-	out=$("_run_babeltrace_cmd" $TRACE_PATH | grep $EVENT_NAME | wc -l)
-	if [ $out -eq 0 ]; then
-		fail "Trace validation"
-		diag "No event(s) found. We are supposed to have at least one."
-		out=1
-	else
-		pass "Trace validation"
-		diag "Found $out event(s). Coherent."
-		out=0
-	fi
-
-	return $out
 }
 
 test_after_app() {
-	local out
+	local trace_path
+	local file_testapp_output
 
 	diag "Start application AFTER tracing is started"
 
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
+
 	# BEFORE application is spawned
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME "$trace_path"
 	enable_channel_per_pid $SESSION_NAME "channel0"
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
 	start_lttng_tracing_ok $SESSION_NAME
 
-	$TESTAPP_BIN -i $NR_ITER &
-	ok $? "Start application to trace"
-	wait "${!}"
+	run_testapp_ok "$file_testapp_output" "$TESTAPP_BIN" -i "$NR_ITER"
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
 
-	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH
+	trace_match_only $EVENT_NAME $NR_ITER "$trace_path"
 
-	return $?
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
 }
 
 test_before_app() {
-	local out
-	local pid
-	local file_sync_after_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
-	local file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	local testapp_pid
+	local trace_path
+	local file_testapp_output
+	local file_sync_after_first
+	local file_sync_before_last
+	local file_sync_before_exit_touch
 
 	diag "Start application BEFORE tracing is started"
 
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
+	file_sync_after_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
+	file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	file_sync_before_exit_touch=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_exit_touch.XXXXXX")
 
 	# BEFORE application is spawned
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME "$trace_path"
 	enable_channel_per_pid $SESSION_NAME "channel0"
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
 
-	$TESTAPP_BIN -i $NR_ITER \
-		--sync-after-first-event ${file_sync_after_first} \
-		--sync-before-last-event ${file_sync_before_last} &
-	ok $? "Start application to trace"
-	pid="${!}"
+	"$TESTAPP_BIN" -i $NR_ITER \
+		--sync-after-first-event "${file_sync_after_first}" \
+		--sync-before-last-event "${file_sync_before_last}" \
+		--sync-before-exit-touch "${file_sync_before_exit_touch}" >"${file_testapp_output}" 2>&1 &
+	testapp_pid=$!
+	diag "Launched testapp '$TESTAPP_NAME' (pid: $testapp_pid) to generate $NR_ITER events"
+
+	# Wait for the testapp first event
+	app_alive_wait_for_sync "$TESTAPP_NAME" "$testapp_pid" "$TESTAPP_TIMEOUT_SEC" "$file_testapp_output" "$file_sync_after_first"
 
 	start_lttng_tracing_ok $SESSION_NAME
 
-	touch ${file_sync_before_last}
+	# Tell the testapp to continue
+	touch "${file_sync_before_last}"
 
-	wait "${pid}"
+	app_exit_wait_for_sync "$TESTAPP_NAME" "$testapp_pid" "$TESTAPP_TIMEOUT_SEC" "$file_testapp_output" "$file_sync_before_exit_touch"
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
 
-	rm -f ${file_sync_after_first}
-	rm -f ${file_sync_before_last}
+	validate_trace $EVENT_NAME "$trace_path"
 
-	out=$("_run_babeltrace_cmd" $TRACE_PATH | grep $EVENT_NAME | wc -l)
-	if [ $out -eq 0 ]; then
-		fail "Trace validation"
-		diag "No event(s) found. We are supposed to have at least one."
-		out=1
-	else
-		pass "Trace validation"
-		diag "Found $out event(s). Coherent."
-		out=0
-	fi
-
-	return $out
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
+	rm -f "$file_sync_after_first"
+	rm -f "$file_sync_before_last"
+	rm -f "$file_sync_before_exit_touch"
 }
 
 test_multiple_channels() {
-	local out
+	local trace_path
+	local file_testapp_output
 
 	diag "Start with multiple channels"
 
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
+
 	# BEFORE application is spawned
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME "$trace_path"
+
 	enable_channel_per_pid $SESSION_NAME "channel0"
 	enable_channel_per_pid $SESSION_NAME "channel1"
 	enable_channel_per_pid $SESSION_NAME "channel2"
 	enable_channel_per_pid $SESSION_NAME "channel3"
 	enable_channel_per_pid $SESSION_NAME "channel4"
+
 	# Enable event in all channels.
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event $EVENT_NAME -c channel0 -s $SESSION_NAME -u >/dev/null 2>&1
-	ok $? "Enable event $EVENT_NAME for session $SESSION_NAME in channel0"
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event $EVENT_NAME -c channel1 -s $SESSION_NAME -u >/dev/null 2>&1
-	ok $? "Enable event $EVENT_NAME for session $SESSION_NAME in channel1"
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event $EVENT_NAME -c channel2 -s $SESSION_NAME -u >/dev/null 2>&1
-	ok $? "Enable event $EVENT_NAME for session $SESSION_NAME in channel2"
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event $EVENT_NAME -c channel3 -s $SESSION_NAME -u >/dev/null 2>&1
-	ok $? "Enable event $EVENT_NAME for session $SESSION_NAME in channel3"
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event $EVENT_NAME -c channel4 -s $SESSION_NAME -u >/dev/null 2>&1
-	ok $? "Enable event $EVENT_NAME for session $SESSION_NAME in channel4"
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME channel0
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME channel1
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME channel2
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME channel3
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME channel4
+
 	start_lttng_tracing_ok $SESSION_NAME
 
-	$TESTAPP_BIN -i $NR_ITER &
-	ok $? "Start application to trace"
-	wait "${!}"
+	run_testapp_ok "$file_testapp_output" "$TESTAPP_BIN" -i "$NR_ITER"
 
 	stop_lttng_tracing_ok $SESSION_NAME
-	trace_match_only $EVENT_NAME $[NR_ITER * 5] $TRACE_PATH
-	out=$?
-
+	trace_match_only $EVENT_NAME $((NR_ITER * 5)) "$trace_path"
 	destroy_lttng_session_ok $SESSION_NAME
 
-	return $out
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
 }
 
-# MUST set TESTDIR before calling those functions
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
 bail_out_if_no_babeltrace
 
-TESTS=(
-	"test_before_app"
-	"test_after_app"
-	"test_after_multiple_apps"
-	"test_before_multiple_apps"
-	"test_multiple_channels"
-)
-
-TEST_COUNT=${#TESTS[@]}
-i=0
-
 start_lttng_sessiond
 
-while [ $i -lt $TEST_COUNT ]; do
-	TRACE_PATH=$(mktemp -d -t tmp.test_buffers_pid_trace_path.XXXXXX)
-	${TESTS[$i]}
-	rm -rf $TRACE_PATH
-	let "i++"
-done
+test_before_app
+test_after_app
+test_after_multiple_apps
+test_before_multiple_apps
+test_multiple_channels
 
 stop_lttng_sessiond
