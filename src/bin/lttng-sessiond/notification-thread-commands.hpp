@@ -26,6 +26,7 @@ struct notification_thread_data;
 struct lttng_trigger;
 
 enum notification_thread_command_type {
+	NOTIFICATION_COMMAND_TYPE_UNKNOWN,
 	NOTIFICATION_COMMAND_TYPE_REGISTER_TRIGGER,
 	NOTIFICATION_COMMAND_TYPE_UNREGISTER_TRIGGER,
 	NOTIFICATION_COMMAND_TYPE_ADD_CHANNEL,
@@ -43,9 +44,11 @@ enum notification_thread_command_type {
 };
 
 struct notification_thread_command {
-	struct cds_list_head cmd_list_node = {};
+	notification_thread_command();
 
-	notification_thread_command_type type = NOTIFICATION_COMMAND_TYPE_QUIT;
+	struct cds_list_head cmd_list_node;
+
+	notification_thread_command_type type = NOTIFICATION_COMMAND_TYPE_UNKNOWN;
 	union {
 		/* Register trigger. */
 		struct {
@@ -110,7 +113,7 @@ struct notification_thread_command {
 			const struct lttng_trigger *trigger;
 		} get_trigger;
 
-	} parameters = {};
+	} parameters;
 
 	union {
 		struct {
@@ -119,10 +122,10 @@ struct notification_thread_command {
 		struct {
 			struct lttng_trigger *trigger;
 		} get_trigger;
-	} reply = {};
+	} reply;
 
 	/* Used to wake origin thread for synchroneous commands. */
-	nonstd::optional<lttng::synchro::waker> command_completed_waker = nonstd::nullopt;
+	nonstd::optional<lttng::synchro::waker> command_completed_waker;
 	lttng_error_code reply_code = LTTNG_ERR_UNK;
 	bool is_async = false;
 };
