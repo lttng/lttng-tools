@@ -17,9 +17,12 @@
 #include <stdint.h>
 #include <unistd.h>
 
-static void init_notification_thread_command(struct notification_thread_command *cmd)
+notification_thread_command::notification_thread_command()
 {
-	CDS_INIT_LIST_HEAD(&cmd->cmd_list_node);
+	CDS_INIT_LIST_HEAD(&cmd_list_node);
+	/* memset is used since  */
+	::memset(&parameters, 0, sizeof(parameters));
+	::memset(&reply, 0, sizeof(reply));
 }
 
 static int run_command_wait(struct notification_thread_handle *handle,
@@ -69,7 +72,6 @@ notification_thread_command_copy(const struct notification_thread_command *origi
 	}
 
 	*new_cmd = *original_cmd;
-	init_notification_thread_command(new_cmd);
 	return new_cmd;
 }
 
@@ -121,7 +123,6 @@ notification_thread_command_register_trigger(struct notification_thread_handle *
 	notification_thread_command cmd;
 
 	LTTNG_ASSERT(trigger);
-	init_notification_thread_command(&cmd);
 
 	cmd.type = NOTIFICATION_COMMAND_TYPE_REGISTER_TRIGGER;
 	lttng_trigger_get(trigger);
@@ -145,8 +146,6 @@ notification_thread_command_unregister_trigger(struct notification_thread_handle
 	int ret;
 	enum lttng_error_code ret_code;
 	notification_thread_command cmd;
-
-	init_notification_thread_command(&cmd);
 
 	cmd.type = NOTIFICATION_COMMAND_TYPE_UNREGISTER_TRIGGER;
 	cmd.parameters.unregister_trigger.trigger = trigger;
@@ -172,8 +171,6 @@ notification_thread_command_add_session(struct notification_thread_handle *handl
 	enum lttng_error_code ret_code;
 	notification_thread_command cmd;
 
-	init_notification_thread_command(&cmd);
-
 	cmd.type = NOTIFICATION_COMMAND_TYPE_ADD_SESSION;
 	cmd.parameters.add_session.session_id = session_id;
 	cmd.parameters.add_session.session_name = session_name;
@@ -197,8 +194,6 @@ notification_thread_command_remove_session(struct notification_thread_handle *ha
 	int ret;
 	enum lttng_error_code ret_code;
 	notification_thread_command cmd;
-
-	init_notification_thread_command(&cmd);
 
 	cmd.type = NOTIFICATION_COMMAND_TYPE_REMOVE_SESSION;
 	cmd.parameters.remove_session.session_id = session_id;
@@ -225,8 +220,6 @@ notification_thread_command_add_channel(struct notification_thread_handle *handl
 	enum lttng_error_code ret_code;
 	notification_thread_command cmd;
 
-	init_notification_thread_command(&cmd);
-
 	cmd.type = NOTIFICATION_COMMAND_TYPE_ADD_CHANNEL;
 	cmd.parameters.add_channel.session.id = session_id;
 	cmd.parameters.add_channel.channel.name = channel_name;
@@ -251,8 +244,6 @@ enum lttng_error_code notification_thread_command_remove_channel(
 	enum lttng_error_code ret_code;
 	notification_thread_command cmd;
 
-	init_notification_thread_command(&cmd);
-
 	cmd.type = NOTIFICATION_COMMAND_TYPE_REMOVE_CHANNEL;
 	cmd.parameters.remove_channel.key = key;
 	cmd.parameters.remove_channel.domain = domain;
@@ -275,8 +266,6 @@ notification_thread_command_session_rotation_ongoing(struct notification_thread_
 	int ret;
 	enum lttng_error_code ret_code;
 	notification_thread_command cmd;
-
-	init_notification_thread_command(&cmd);
 
 	cmd.type = NOTIFICATION_COMMAND_TYPE_SESSION_ROTATION_ONGOING;
 	cmd.parameters.session_rotation.session_id = session_id;
@@ -301,8 +290,6 @@ enum lttng_error_code notification_thread_command_session_rotation_completed(
 	int ret;
 	enum lttng_error_code ret_code;
 	notification_thread_command cmd;
-
-	init_notification_thread_command(&cmd);
 
 	cmd.type = NOTIFICATION_COMMAND_TYPE_SESSION_ROTATION_COMPLETED;
 	cmd.parameters.session_rotation.session_id = session_id;
@@ -330,8 +317,6 @@ notification_thread_command_add_tracer_event_source(struct notification_thread_h
 
 	LTTNG_ASSERT(tracer_event_source_fd >= 0);
 
-	init_notification_thread_command(&cmd);
-
 	cmd.type = NOTIFICATION_COMMAND_TYPE_ADD_TRACER_EVENT_SOURCE;
 	cmd.parameters.tracer_event_source.tracer_event_source_fd = tracer_event_source_fd;
 	cmd.parameters.tracer_event_source.domain = domain;
@@ -354,8 +339,6 @@ notification_thread_command_remove_tracer_event_source(struct notification_threa
 	int ret;
 	enum lttng_error_code ret_code;
 	notification_thread_command cmd;
-
-	init_notification_thread_command(&cmd);
 
 	cmd.type = NOTIFICATION_COMMAND_TYPE_REMOVE_TRACER_EVENT_SOURCE;
 	cmd.parameters.tracer_event_source.tracer_event_source_fd = tracer_event_source_fd;
@@ -381,8 +364,6 @@ enum lttng_error_code notification_thread_command_list_triggers(
 	LTTNG_ASSERT(handle);
 	LTTNG_ASSERT(triggers);
 
-	init_notification_thread_command(&cmd);
-
 	cmd.type = NOTIFICATION_COMMAND_TYPE_LIST_TRIGGERS;
 	cmd.parameters.list_triggers.uid = uid;
 
@@ -404,8 +385,6 @@ void notification_thread_command_quit(struct notification_thread_handle *handle)
 	int ret;
 	notification_thread_command cmd;
 
-	init_notification_thread_command(&cmd);
-
 	cmd.type = NOTIFICATION_COMMAND_TYPE_QUIT;
 	ret = run_command_wait(handle, &cmd);
 	LTTNG_ASSERT(!ret && cmd.reply_code == LTTNG_OK);
@@ -417,8 +396,6 @@ int notification_thread_client_communication_update(
 	enum client_transmission_status transmission_status)
 {
 	notification_thread_command cmd;
-
-	init_notification_thread_command(&cmd);
 
 	cmd.type = NOTIFICATION_COMMAND_TYPE_CLIENT_COMMUNICATION_UPDATE;
 	cmd.parameters.client_communication_update.id = id;
@@ -434,8 +411,6 @@ notification_thread_command_get_trigger(struct notification_thread_handle *handl
 	int ret;
 	enum lttng_error_code ret_code;
 	notification_thread_command cmd;
-
-	init_notification_thread_command(&cmd);
 
 	cmd.type = NOTIFICATION_COMMAND_TYPE_GET_TRIGGER;
 	cmd.parameters.get_trigger.trigger = trigger;
