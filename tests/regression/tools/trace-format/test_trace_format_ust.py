@@ -37,6 +37,7 @@ def capture_local_ust_trace(environment):
     tap.diagnostic("Created channel `{channel_name}`".format(channel_name=channel.name))
 
     test_app = environment.launch_wait_trace_test_application(10)
+    test_app.taskset_anycpu()
 
     # Only track the test application
     session.user_vpid_process_attribute_tracker.track(test_app.vpid)
@@ -78,6 +79,7 @@ def test_snapshot_trace_valid_ctf2():
             )
 
             test_app = test_env.launch_wait_trace_test_application(10)
+            test_app.taskset_anycpu()
 
             # Only track the test application
             session.user_vpid_process_attribute_tracker.track(test_app.vpid)
@@ -165,6 +167,7 @@ def test_snapshot_network_output_disallowed_for_ctf2():
         )
 
         test_app = test_env.launch_wait_trace_test_application(10)
+        test_app.taskset_anycpu()
 
         # Only track the test application
         session.user_vpid_process_attribute_tracker.track(test_app.vpid)
