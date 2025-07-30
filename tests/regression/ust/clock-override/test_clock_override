@@ -1,22 +1,23 @@
 #!/bin/bash
 #
 # SPDX-FileCopyrightText: 2015 Jonathan Rajotte <jonathan.rajotte-julien@efficios.com>
+# SPDX-FileCopyrightText: 2025 Michael Jeanson <mjeanson@efficios.com>
 #
 # SPDX-License-Identifier: LGPL-2.1-only
 
 TEST_DESC="UST - Clock override plugin"
 
-CURDIR=$(dirname $0)/
+CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../../..
-SESSION_NAME="clock_override"
 
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME"
+
 NUM_EVENT=256
 EVENT_NAME="tp:tptest"
-LTTNG_UST_CLOCK_PLUGIN_SO="lttng-ust-clock-override-test.so"
-LIBS_DIR=".libs"
+
+LTTNG_UST_CLOCK_PLUGIN_SO="$CURDIR/.libs/lttng-ust-clock-override-test.so"
 
 METADATA_TOKEN_LIST=(
 	"name"
@@ -34,14 +35,10 @@ UST_CLOCK_TOKEN_VALUE=(
 
 NUM_TESTS=32
 
-source $TESTDIR/utils/utils.sh
+# shellcheck source-path=SCRIPTDIR/../../..
+source "$TESTDIR/utils/utils.sh"
 
 # MUST set TESTDIR before calling those functions
-function run_app()
-{
-	$TESTAPP_BIN -i $NUM_EVENT
-	ok $? "Application done"
-}
 
 function extract_clock_metadata_token()
 {
@@ -50,30 +47,39 @@ function extract_clock_metadata_token()
 	"$TESTDIR/utils/extract_ctf_2_prop.py" "$ctf_metadata_file" clock-class "$token"
 }
 
-function test_getcpu_override_metadata()
+function test_clock_override_metadata()
 {
-	local ctf_metadata_file=$(TMPDIR="$TRACE_PATH" mktemp -t ctf-metadata.XXXXXX)
-	local result=""
+	local session_name="clock-override-metadata"
+	local file_testapp_output
+	local ctf_metadata_file
+	local trace_metadata_file_path
+	local trace_metadata_dir
+	local result
+	local trace_path
 
 	diag "Clock override plugin metadata test"
 
-	# LTTNG_UST_CLOCK_PLUGIN need to be defined for lttng-sessiond.
-	export LTTNG_UST_CLOCK_PLUGIN=$CURDIR/.libs/$LTTNG_UST_CLOCK_PLUGIN_SO
-	start_lttng_sessiond
-	unset LTTNG_UST_CLOCK_PLUGIN
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
+	ctf_metadata_file=$(TMPDIR="$trace_path" mktemp -t ctf-metadata.XXXXXX)
 
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
-	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME"
-	start_lttng_tracing_ok $SESSION_NAME
-	run_app
-	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
+	# LTTNG_UST_CLOCK_PLUGIN need to be defined for lttng-sessiond.
+	LTTNG_UST_CLOCK_PLUGIN="$LTTNG_UST_CLOCK_PLUGIN_SO" start_lttng_sessiond
+
+	create_lttng_session_ok $session_name "$trace_path"
+	enable_ust_lttng_event_ok $session_name "$EVENT_NAME"
+	start_lttng_tracing_ok $session_name
+
+	run_testapp_ok "$file_testapp_output" "$TESTAPP_BIN" -i $NUM_EVENT
+
+	stop_lttng_tracing_ok $session_name
+	destroy_lttng_session_ok $session_name
 	stop_lttng_sessiond
 
-	local TRACE_METADATA_FILE_PATH="$(find "$TRACE_PATH" -name metadata -type f)"
-	local TRACE_METADATA_DIR="$(dirname "$TRACE_METADATA_FILE_PATH")"
+	trace_metadata_file_path="$(find "$trace_path" -name metadata -type f)"
+	trace_metadata_dir="$(dirname "$trace_metadata_file_path")"
 
-	_run_babeltrace_cmd -o ctf-metadata -w $ctf_metadata_file $TRACE_METADATA_DIR
+	_run_babeltrace_cmd -o ctf-metadata -w "$ctf_metadata_file" "$trace_metadata_dir"
 	ok $? "Metadata extraction from babeltrace"
 
 	test ${#METADATA_TOKEN_LIST[@]} -eq ${#UST_CLOCK_TOKEN_VALUE[@]}
@@ -81,88 +87,96 @@ function test_getcpu_override_metadata()
 
 	local counter=0
 	while [ "$counter" -lt "${#METADATA_TOKEN_LIST[@]}" ]; do
-		result=$(extract_clock_metadata_token $ctf_metadata_file \
-			${METADATA_TOKEN_LIST[$counter]})
+		result=$(extract_clock_metadata_token "$ctf_metadata_file" \
+			"${METADATA_TOKEN_LIST[$counter]}")
 		test "$result" == "${UST_CLOCK_TOKEN_VALUE[$counter]}"
 		ok $? "Token \"${METADATA_TOKEN_LIST[$counter]}\" expect:${UST_CLOCK_TOKEN_VALUE[$counter]} got:$result"
-		let "counter++"
+		(( counter++ ))
 	done
-	rm -rf $ctf_metadata_file
+
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
 }
 
-function test_getcpu_override_timestamp()
+function test_clock_override_timestamp_disabled()
 {
-	diag "Clock override test"
+	local session_name="clock-override-disabled"
+	local trace_path
+	local file_testapp_output
+
+	diag "Clock override test: plugin disabled"
+
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
 
 	# Test without the plugin
 	diag "Plugin disabled"
 	start_lttng_sessiond
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
-	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME"
-	start_lttng_tracing_ok $SESSION_NAME
-	run_app
-	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
+	create_lttng_session_ok $session_name "$trace_path"
+	enable_ust_lttng_event_ok $session_name "$EVENT_NAME"
+	start_lttng_tracing_ok $session_name
+
+	run_testapp_ok "$file_testapp_output" "$TESTAPP_BIN" -i $NUM_EVENT
+
+	stop_lttng_tracing_ok $session_name
+	destroy_lttng_session_ok $session_name
+	stop_lttng_sessiond
 
 	# Use Babeltrace with "-n all" to give a comma separated list for
 	# easy extraction of timestamps.
-	unique_timestamps_count=$(_run_babeltrace_cmd -n all $TRACE_PATH | \
+	unique_timestamps_count=$(_run_babeltrace_cmd -n all "$trace_path" | \
 		cut -d, -f1 | uniq | wc -l)
-	test $unique_timestamps_count -gt 1
+	test "$unique_timestamps_count" -gt 1
 	ok $? "Unique event timestamps without clock override: $unique_timestamps_count expect >1"
-	stop_lttng_sessiond
+
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
+}
+
+function test_clock_override_timestamp_enabled()
+{
+	local session_name="clock-override-enabled"
+	local trace_path
+	local file_testapp_output
+
+	diag "Clock override test: plugin enabled"
+
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
 
 	# Test with clock override plugin.
-	# LTTNG_UST_CLOCK_PLUGIN need to be defined for both lttng-sessiond.
-	diag "Plugin enabled"
-	export LTTNG_UST_CLOCK_PLUGIN=$CURDIR/.libs/$LTTNG_UST_CLOCK_PLUGIN_SO
-	start_lttng_sessiond
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
-	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME"
-	start_lttng_tracing_ok $SESSION_NAME
-	run_app
-	unset LTTNG_UST_CLOCK_PLUGIN
-	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
+	# LTTNG_UST_CLOCK_PLUGIN need to be defined for both lttng-sessiond and the testapp.
+	LTTNG_UST_CLOCK_PLUGIN="$LTTNG_UST_CLOCK_PLUGIN_SO" start_lttng_sessiond
+
+	create_lttng_session_ok $session_name "$trace_path"
+	enable_ust_lttng_event_ok $session_name "$EVENT_NAME"
+	start_lttng_tracing_ok $session_name
+
+	LTTNG_UST_CLOCK_PLUGIN="$LTTNG_UST_CLOCK_PLUGIN_SO" \
+		run_testapp_ok "$file_testapp_output" "$TESTAPP_BIN" -i $NUM_EVENT
+
+	stop_lttng_tracing_ok $session_name
+	destroy_lttng_session_ok $session_name
 	stop_lttng_sessiond
 
 	# Use Babeltrace with "-n all" to give a comma separated list for
 	# easy extraction of timestamps.
-	unique_timestamps_count=$(_run_babeltrace_cmd -n all $TRACE_PATH | \
+	unique_timestamps_count=$(_run_babeltrace_cmd -n all "$trace_path" | \
 		cut -d, -f1 | uniq | wc -l)
-	test $unique_timestamps_count -eq 1
+	test "$unique_timestamps_count" -eq 1
 	ok $? "Unique event timestamps with clock override: $unique_timestamps_count expect 1"
+
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
 }
 
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
-if [ -x "$CURDIR/$LIBS_DIR/$LTTNG_UST_CLOCK_PLUGIN_SO" ]; then
-	foundobj=1
-else
-	foundobj=0
-fi
-
-skip $foundobj "No shared object generated. Skipping all tests." $NUM_TESTS && exit 0
-
-TESTS=(
-	"test_getcpu_override_metadata"
-	"test_getcpu_override_timestamp"
-)
-
-TEST_COUNT=${#TESTS[@]}
-i=0
-
-while [ "$i" -lt "$TEST_COUNT" ]; do
-
-	TRACE_PATH=$(mktemp -d -t tmp.test_clock_override_ust_trace_path.XXXXXX)
-
-	# Execute test
-	${TESTS[$i]}
-
-	rm -rf $TRACE_PATH
-
-	let "i++"
-done
-
+test ! -x "$LTTNG_UST_CLOCK_PLUGIN_SO"
+skip $? "No shared object generated. Skipping all tests." $NUM_TESTS || {
+	test_clock_override_metadata
+	test_clock_override_timestamp_disabled
+	test_clock_override_timestamp_enabled
+}
