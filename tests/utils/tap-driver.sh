@@ -126,6 +126,15 @@ TIME_SCRIPT="$(realpath -e -- "$(dirname "$0")")/tap/clock"
 # source of stray processes.
 export LTTNG_CURRENT_TEST="$test_name"
 
+# mawk buffers its input which can be problematic for inactivity timeout checks
+# based on the output. It however supports a non-standard 'interactive' mode
+# which disables input and output buffering. Check if the current AWK binary
+# supports this option and enable it.
+MAWK_INTERACTIVE=
+if ${AM_TAP_AWK-awk} -Wi >/dev/null 2>&1; then
+	MAWK_INTERACTIVE="-Wi"
+fi
+
 # :; is there to work around a bug in bash 3.2 (and earlier) which
 # does not always set '$?' properly on redirection failure.
 # See the Autoconf manual for more details.
@@ -178,6 +187,7 @@ export LTTNG_CURRENT_TEST="$test_name"
     fi
     echo $ret
   ) | LC_ALL=C ${AM_TAP_AWK-awk} \
+        $MAWK_INTERACTIVE \
         -v me="$me" \
         -v test_script_name="$test_name" \
         -v log_file="$log_file" \
@@ -319,12 +329,12 @@ function report(result, details)
     msg = msg " " details
   # Output on console might be colorized.
   print decorate_result(result) msg
-  # Flush stdout after each test result, this is useful when stdout
-  # is buffered, for example in a CI system.
-  fflush()
   # Log the result in the log file too, to help debugging (this is
   # especially true when said result is a TAP error or "Bail out!").
   print result msg | "cat >&3";
+  # Flush FDs after each test result, this is useful when stdout
+  # is buffered, for example in a CI system.
+  fflush("")
 }
 
 function testsuite_error(error_message)
