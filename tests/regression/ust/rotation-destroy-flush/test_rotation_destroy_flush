@@ -2,138 +2,88 @@
 #
 # SPDX-FileCopyrightText: 2015 Jonathan Rajotte <jonathan.rajotte-julien@efficios.com>
 # SPDX-FileCopyrightText: 2016 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+# SPDX-FileCopyrightText: 2025 Michael Jeanson <mjeanson@efficios.com>
 #
 # SPDX-License-Identifier: LGPL-2.1-only
 
 TEST_DESC="UST - Rotation destroy flush"
 
-CURDIR=$(dirname $0)/
+CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../../..
-SESSION_NAME="rotation_destroy_flush"
 
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME"
+
 NUM_EVENT=1000000
 EVENT_NAME="tp:tptest"
-CHANNEL_NAME="testchan"
-PAGE_SIZE=$(getconf PAGE_SIZE)
-SIZE_LIMIT=$PAGE_SIZE
 
-NR_ITER=10
-NUM_TESTS=$((15*$NR_ITER))
+TEST_RUNS=10
+NUM_TESTS=$((19 * TEST_RUNS))
 
-source $TESTDIR/utils/utils.sh
+# shellcheck source-path=SCRIPTDIR/../../..
+source "$TESTDIR/utils/utils.sh"
 
 # Ensure the daemons invoke abort on error.
 check_skip_kernel_test || export LTTNG_ABORT_ON_ERROR=1
 
 # MUST set TESTDIR before calling those functions
-function run_app()
-{
-	$TESTAPP_BIN -i $NUM_EVENT
-	ok $? "Application done"
-}
-
-function signal_cleanup()
-{
-	diag "*** Exiting ***"
-	full_cleanup
-}
-
-function enable_ust_lttng_channel_size_limit ()
-{
-	sess_name="$1"
-	channel_name="$2"
-	tracefile_size_limit="$3"
-
-	test_name="Enable channel $channel_name "
-	test_name+="for session $sess_name: "
-	test_name+="$tracefile_size_limit bytes tracefile limit"
-
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel \
-	    -u $channel_name -s $sess_name --buffer-ownership=process \
-	    -C $tracefile_size_limit >/dev/null 2>&1
-
-	ok $? "$test_name"
-}
-
-function enable_ust_lttng_event_per_channel ()
-{
-	sess_name="$1"
-	event_name="$2"
-	channel_name="$3"
-
-	test_name="Enable event $event_name "
-	test_name+="for session $sess_name "
-	test_name+="in channel $channel_name"
-
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" \
-	    -s $sess_name -u -c $channel_name >/dev/null 2>&1
-
-	ok $? "$test_name"
-}
 
 function test_rotation_destroy_flush_single()
 {
+	local session_name="rotation_destroy_flush"
+	local channel_name="page_size_chan"
+	local trace_path
+	local file_testapp_output
+
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
+
 	start_lttng_sessiond
 
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
-	enable_ust_lttng_channel_size_limit \
-		$SESSION_NAME $CHANNEL_NAME $SIZE_LIMIT
-	enable_ust_lttng_event_per_channel \
-		$SESSION_NAME $EVENT_NAME $CHANNEL_NAME
-	start_lttng_tracing_ok $SESSION_NAME
-	run_app
+	create_lttng_session_ok $session_name "$trace_path"
+	enable_ust_lttng_channel_ok $session_name $channel_name --buffer-ownership=process --tracefile-size="$(getconf PAGE_SIZE)"
+	enable_ust_lttng_event_ok $session_name $EVENT_NAME $channel_name
+	start_lttng_tracing_ok $session_name
+
+	run_testapp_ok "$file_testapp_output" "$TESTAPP_BIN" -i $NUM_EVENT
+
 	# stop and destroy
-	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
+	stop_lttng_tracing_ok $session_name
+	destroy_lttng_session_ok $session_name
 
-	rm -rf $TRACE_PATH
+	validate_trace_count_range_incl_min_excl_max "$EVENT_NAME" "${trace_path}" 1 $NUM_EVENT
 
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
-	enable_ust_lttng_channel_size_limit \
-		$SESSION_NAME $CHANNEL_NAME $SIZE_LIMIT
-	enable_ust_lttng_event_per_channel \
-		$SESSION_NAME $EVENT_NAME $CHANNEL_NAME
-	start_lttng_tracing_ok $SESSION_NAME
-	run_app
+	rm -rf "$trace_path"
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+
+	create_lttng_session_ok $session_name "$trace_path"
+	enable_ust_lttng_channel_ok $session_name $channel_name --buffer-ownership=process --tracefile-size="$(getconf PAGE_SIZE)"
+	enable_ust_lttng_event_ok $session_name $EVENT_NAME $channel_name
+	start_lttng_tracing_ok $session_name
+
+	run_testapp_ok "$file_testapp_output" "$TESTAPP_BIN" -i $NUM_EVENT
+
 	# destroy only
-	destroy_lttng_session_ok $SESSION_NAME
-
-	rm -rf $TRACE_PATH
-
+	destroy_lttng_session_ok $session_name
 	stop_lttng_sessiond
+
+	validate_trace_count_range_incl_min_excl_max "$EVENT_NAME" "${trace_path}" 1 $NUM_EVENT
+
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
 }
 
 function test_rotation_destroy_flush()
 {
-	for a in $(seq 1 ${NR_ITER}); do
-		diag "Iteration ${a}/${NR_ITER}"
+	for a in $(seq 1 ${TEST_RUNS}); do
+		diag "Test run ${a}/${TEST_RUNS}"
 		test_rotation_destroy_flush_single
 	done
 }
-
 
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
-TESTS=(
-	"test_rotation_destroy_flush"
-)
-
-TEST_COUNT=${#TESTS[@]}
-i=0
-
-while [ "$i" -lt "$TEST_COUNT" ]; do
-
-	trap signal_cleanup SIGTERM SIGINT
-
-	TRACE_PATH=$(mktemp -d -t tmp.test_rotation_destroy_flush.XXXXXX)
-
-	# Execute test
-	${TESTS[$i]}
-
-	let "i++"
-done
+test_rotation_destroy_flush
