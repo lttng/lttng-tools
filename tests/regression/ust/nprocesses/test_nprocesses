@@ -1,90 +1,113 @@
 #!/bin/bash
 #
 # SPDX-FileCopyrightText: 2012 David Goulet <dgoulet@efficios.com>
+# SPDX-FileCopyrightText: 2025 Michael Jeanson <mjeanson@efficios.com>
 #
 # SPDX-License-Identifier: LGPL-2.1-only
 
-NUM_PROCESS=30
-TEST_DESC="UST tracer - Generate $NUM_PROCESS process"
-
 CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../../..
-NR_ITER=-1 # infinite loop
-NR_USEC_WAIT=1000000
+
+NR_APPS=30
+NR_ITER=10
+NR_USEC_WAIT=10
+
+TEST_DESC="UST tracer - Generate $NR_APPS processes"
+
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME"
-SESSION_NAME="ust-nprocesses"
+TESTAPP_TIMEOUT_SEC=10
+
 EVENT_NAME="tp:tptest"
-NUM_TESTS=9
-APP_PIDS=()
+
+NUM_TESTS=$((11 + (2 * NR_APPS)))
 
 # shellcheck source-path=SCRIPTDIR/../../../
 source "${TESTDIR}/utils/utils.sh"
+
+# MUST set TESTDIR before calling those functions
+
+function test_nprocesses ()
+{
+	local session_name="ust-$NR_APPS-processes"
+	local app_id
+	local testapp_pids=()
+	local registered_pids=()
+	local trace_path
+	local mi_output_file
+	local file_testapp_output
+	local file_sync_after_first
+	local file_sync_before_last
+	local file_sync_before_exit_touch
+
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	mi_output_file=$(mktemp -t "tmp.${FUNCNAME[0]}_mi_output_file.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
+	file_sync_after_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
+	file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	file_sync_before_exit_touch=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_exit_touch.XXXXXX")
+
+	start_lttng_sessiond
+
+	for app_id in $(seq 0 $((NR_APPS - 1))); do
+		"$TESTAPP_BIN" -i $NR_ITER -w $NR_USEC_WAIT \
+			--sync-after-first-event "${file_sync_after_first}_${app_id}" \
+			--sync-before-last-event "${file_sync_before_last}_${app_id}" \
+			--sync-before-exit-touch "${file_sync_before_exit_touch}_${app_id}" >"${file_testapp_output}_${app_id}" 2>&1 &
+		testapp_pids+=($!)
+		diag "Launched testapp '$TESTAPP_NAME $app_id' (pid: ${testapp_pids[$app_id]}) to generate $NR_ITER events"
+	done
+
+	# Wait for all apps to have sent an event
+	for app_id in $(seq 0 $((NR_APPS - 1))); do
+		app_alive_wait_for_sync "$TESTAPP_NAME $app_id" "${testapp_pids[$app_id]}" "$TESTAPP_TIMEOUT_SEC" "${file_testapp_output}_${app_id}" "${file_sync_after_first}_${app_id}"
+	done
+
+	# Get the list of registered apps
+	LTTNG_TEST_MI_CLIENT=1 OUTPUT_DEST="$mi_output_file" list_lttng_ok -u
+
+	while IFS='' read -r line; do registered_pids+=("$line"); done < <("$XML_EXTRACT" "$mi_output_file" '//lttng:pids/lttng:pid/lttng:id')
+	is "${#registered_pids[@]}" "$NR_APPS" "All apps registered (${#registered_pids[@]} / $NR_APPS)"
+
+	create_lttng_session_ok $session_name "${trace_path}"
+
+	enable_ust_lttng_event_ok $session_name $EVENT_NAME
+	start_lttng_tracing_ok $session_name
+
+	for app_id in $(seq 0 $((NR_APPS - 1))); do
+		# Tell the testapp to continue
+		touch "${file_sync_before_last}_${app_id}"
+	done
+
+	# Wait for all apps to exit
+	for app_id in $(seq 0 $((NR_APPS - 1))); do
+		app_exit_wait_for_sync "$TESTAPP_NAME $app_id" "${testapp_pids[$app_id]}" "$TESTAPP_TIMEOUT_SEC" "${file_testapp_output}_${app_id}" "${file_sync_before_exit_touch}_${app_id}"
+	done
+
+	stop_lttng_tracing_ok $session_name
+	destroy_lttng_session_ok $session_name
+
+	stop_lttng_sessiond
+
+	validate_trace_count "$EVENT_NAME" "${trace_path}" $NR_APPS
+
+	rm -rf "$trace_path"
+	for app_id in $(seq 0 $((NR_APPS - 1))); do
+		rm -f "${file_testapp_output}_${app_id}"
+		rm -f "${file_sync_after_first}_${app_id}"
+		rm -f "${file_sync_before_last}_${app_id}"
+		rm -f "${file_sync_before_exit_touch}_${app_id}"
+	done
+	rm -f "$mi_output_file"
+}
 
 if [ ! -x "$TESTAPP_BIN" ]; then
 	BAIL_OUT "No UST $TESTAPP_BIN binary detected."
 fi
 
-# MUST set TESTDIR before calling those functions
-
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
-start_lttng_sessiond
-
-# Start tests. Each is an infinite tracing loop.
-
-file_sync_after_first=$(mktemp -u -t tmp.test_nprocesses_sync_after_first.XXXXXX)
-file_sync_before_last=$(mktemp -u -t tmp.test_nprocesses_sync_before_last.XXXXXX)
-
-diag "Starting $NUM_PROCESS test applications"
-# shellcheck disable=SC2034
-for i in $(seq 1 $NUM_PROCESS)
-do
-	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
-		--sync-after-first-event "${file_sync_after_first}" \
-		--sync-before-last-event "${file_sync_before_last}" >/dev/null 2>&1 &
-	APP_PIDS+=(${!})
-done
-
-diag "Waiting for applications to be registered to sessiond"
-
-reg_app_count=0
-while [ $reg_app_count -ne $NUM_PROCESS ]; do
-	listing=$(LTTNG_LIST_LEGACY=1 "${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}" list -u)
-	reg_app_count=$(echo -n "${listing}" | sed "s#$TESTAPP_BIN#$TESTAPP_BIN\n#g" | grep -c "$TESTAPP_BIN")
-done
-
-pass "All applications are registered to sessiond"
-
-TRACE_PATH=$(mktemp -d -t tmp.test_nprocesses_trace_path.XXXXXX)
-
-create_lttng_session_ok $SESSION_NAME "${TRACE_PATH}"
-
-enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
-start_lttng_tracing_ok $SESSION_NAME
-
-touch "${file_sync_before_last}"
-
-# We don't validate whether the applications have traced here, rather
-# just that they registered to sessiond (above).
-
-stop_lttng_tracing_ok $SESSION_NAME
-destroy_lttng_session_ok $SESSION_NAME
-
-#TODO: add trace validation.
-
-rm -rf "${TRACE_PATH}"
-
-diag "Stopping all spawned applications"
-kill "${APP_PIDS[@]}"
-wait "${APP_PIDS[@]}" 2>/dev/null
-APP_PIDS=()
-pass "Stopped all spawned applications"
-
-rm -f "${file_sync_after_first}"
-rm -f "${file_sync_before_last}"
-
-stop_lttng_sessiond
+test_nprocesses

@@ -22,6 +22,7 @@ files=(
     regression/ust/multi-session/test_multi_session
     regression/ust/namespaces/test_ns_contexts
     regression/ust/namespaces/test_ns_contexts_change
+    regression/ust/nprocesses/test_nprocesses
     regression/ust/overlap/test_overlap
     regression/ust/test_event_basic
     regression/ust/test_event_perf
