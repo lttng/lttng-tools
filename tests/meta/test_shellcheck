@@ -28,6 +28,7 @@ files=(
     regression/ust/test_event_basic
     regression/ust/test_event_perf
     regression/ust/test_event_tracef
+    regression/ust/ust-app-ctl-paths/test_blocking
     utils/utils.sh
 )
 
