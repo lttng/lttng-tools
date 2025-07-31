@@ -1,6 +1,7 @@
 #!/bin/bash
 #
 # SPDX-FileCopyrightText: 2023 Kienan Stewart <kstewart@efficios.com>
+# SPDX-FileCopyrightText: 2025 Michael Jeanson <mjeanson@efficios.com>
 #
 # SPDX-License-Identifier: LGPL-2.1-only
 #
@@ -8,17 +9,20 @@
 TEST_DESC="Verifies the behaviour of the sessiond and applications with multiple LTTNG_UST_APP_PATHs and multiple LTTNG_UST_CTL_PATHS, including the verification oPython agents"
 
 CURDIR="$(dirname "${0}")"
-TESTDIR="${CURDIR}/../../../"
+TESTDIR="${CURDIR}/../../.."
 
-# shellcheck source=../../../utils/utils.sh
+# shellcheck source-path=SCRIPTDIR/../../..
 source "${TESTDIR}/utils/utils.sh"
 
 TESTAPP="${TESTDIR}/utils/testapp/gen-ust-events"
+NR_ITER=100
+NR_ITER2=150
+
 EVENT_NAMES="tp:tptest"
 SESSION_NAME="ust-app-ctl-path-separator"
 CHANNEL_NAME="ust-app-ctl-path-separator"
 
-NUM_TESTS=20
+NUM_TESTS=23
 
 #
 # There is no escaping of the path separator
@@ -26,72 +30,85 @@ NUM_TESTS=20
 
 function test_ctl_path_with_separators
 {
-	CTL_PATH="$(mktemp -d -t "tmp.${FUNCNAME[0]}.ctl.XXXXXX")"
-	CTL_PATH2="$(mktemp -d -t "tmp.${FUNCNAME[0]}.ctl2.XXXXXX")"
-	TRACE_PATH="$(mktemp -d -t "tmp.${FUNCNAME[0]}.trace.XXXXXX")"
+	local ctl_path
+	local ctl_path2
+	local trace_path
+	local file_testapp_output
+	local env_vars
+
+	ctl_path="$(mktemp -d -t "tmp.${FUNCNAME[0]}.ctl.XXXXXX")"
+	ctl_path2="$(mktemp -d -t "tmp.${FUNCNAME[0]}.ctl2.XXXXXX")"
+	trace_path="$(mktemp -d -t "tmp.${FUNCNAME[0]}.trace.XXXXXX")"
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
 
 	# The current implementation should ignore paths other than the first
 	env_vars=(
-		LTTNG_UST_CTL_PATH="${CTL_PATH}:${CTL_PATH2}"
+		LTTNG_UST_CTL_PATH="${ctl_path}:${ctl_path2}"
 	)
+
 	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond
-	create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH}"
+	create_lttng_session_ok "${SESSION_NAME}" "${trace_path}"
 	enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}"
 	enable_ust_lttng_event_ok "${SESSION_NAME}" "${EVENT_NAMES}" "${CHANNEL_NAME}"
 	start_lttng_tracing_ok "${SESSION_NAME}"
 
-	LTTNG_UST_APP_PATH="${CTL_PATH}" "${TESTAPP}" -i 100 -w 0
-	LTTNG_UST_APP_PATH="${CTL_PATH2}" "${TESTAPP}" -i 100 -w 0
+	LTTNG_UST_APP_PATH="${ctl_path}" run_testapp_ok "$file_testapp_output" "${TESTAPP}" -i $NR_ITER -w 0
+	LTTNG_UST_APP_PATH="${ctl_path2}" run_testapp_ok "$file_testapp_output" "${TESTAPP}" -i $NR_ITER2 -w 0
 
 	stop_lttng_tracing_ok "${SESSION_NAME}"
 	destroy_lttng_session_ok "${SESSION_NAME}" --no-wait
 
-	validate_trace_count "${EVENT_NAMES}" "${TRACE_PATH}" 100
+	# We should only have traced the first app
+	validate_trace_count "${EVENT_NAMES}" "${trace_path}" $NR_ITER
 
 	stop_lttng_sessiond
 
 	# Cleanup
-	rm -rf "${CTL_PATH}" "${CTL_PATH2}" "${TRACE_PATH}"
+	rm -rf "${ctl_path}" "${ctl_path2}" "${trace_path}"
+	rm -f "$file_testapp_output"
 }
 
 function test_app_path_with_separators
 {
-	# The current implementation should ignore paths other than the first
-	CTL_PATH="$(mktemp -d -t "tmp.${FUNCNAME[0]}.ctl.XXXXXX")"
-	CTL_PATH2="$(mktemp -d -t "tmp.${FUNCNAME[0]}.ctl2.XXXXXX")"
-	TRACE_PATH="$(mktemp -d -t "tmp.${FUNCNAME[0]}.trace.XXXXXX")"
+	local ctl_path
+	local ctl_path2
+	local trace_path
+	local file_testapp_output
+	local env_vars
+
+	ctl_path="$(mktemp -d -t "tmp.${FUNCNAME[0]}.ctl.XXXXXX")"
+	ctl_path2="$(mktemp -d -t "tmp.${FUNCNAME[0]}.ctl2.XXXXXX")"
+	trace_path="$(mktemp -d -t "tmp.${FUNCNAME[0]}.trace.XXXXXX")"
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
 
 	env_vars=(
-		LTTNG_UST_CTL_PATH="${CTL_PATH}"
+		LTTNG_UST_CTL_PATH="${ctl_path}"
 	)
+
 	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond
-	create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH}"
+	create_lttng_session_ok "${SESSION_NAME}" "${trace_path}"
 	enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}"
 	enable_ust_lttng_event_ok "${SESSION_NAME}" "${EVENT_NAMES}" "${CHANNEL_NAME}"
 	start_lttng_tracing_ok "${SESSION_NAME}"
 
-	LTTNG_UST_APP_PATH="${CTL_PATH}:${CTL_PATH2}" "${TESTAPP}" -i 100 -w 0
+	# The current implementation should ignore paths other than the first
+	LTTNG_UST_APP_PATH="${ctl_path}:${ctl_path2}" run_testapp_ok "$file_testapp_output" "${TESTAPP}" -i $NR_ITER -w 0
 
 	stop_lttng_tracing_ok "${SESSION_NAME}"
 	destroy_lttng_session_ok "${SESSION_NAME}" --no-wait
 
-	validate_trace_count "${EVENT_NAMES}" "${TRACE_PATH}" 100
+	validate_trace_count "${EVENT_NAMES}" "${trace_path}" $NR_ITER
 
 	stop_lttng_sessiond
 
 	# Cleanup
-	rm -rf "${CTL_PATH}" "${CTL_PATH2}" "${TRACE_PATH}"
+	rm -rf "${ctl_path}" "${ctl_path2}" "${trace_path}"
+	rm -f "$file_testapp_output"
 }
 
 plan_tests "${NUM_TESTS}"
 print_test_banner "${TEST_DESC}"
 bail_out_if_no_babeltrace
 
-TESTS=(
-	test_app_path_with_separators
-	test_ctl_path_with_separators
-)
-
-for TEST in "${TESTS[@]}" ; do
-	"${TEST}"
-done
+test_app_path_with_separators
+test_ctl_path_with_separators
