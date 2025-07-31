@@ -1241,13 +1241,14 @@ int stream_add_index(struct relay_stream *stream, const struct lttcomm_relayd_in
 
 	/* Live beacon handling */
 	if (index_info->packet_size == 0) {
-		DBG("Received live beacon for stream %" PRIu64, stream->stream_handle);
+		DBG_FMT("Received live beacon for stream {}, indexes_in_flight={}",
+			stream->stream_handle,
+			stream->indexes_in_flight);
 
 		/*
-		 * Only flag a stream inactive when it has already
-		 * received data and no indexes are in flight.
+		 * Only flag a stream inactive when no indexes are in flight.
 		 */
-		if (stream->index_received_seqcount > 0 && stream->indexes_in_flight == 0) {
+		if (stream->indexes_in_flight == 0) {
 			stream->beacon_ts_end = index_info->timestamp_end;
 		}
 		ret = 0;
