@@ -6,8 +6,6 @@
 
 import pathlib
 import sys
-import os
-import json
 
 # Import in-tree test utils
 test_utils_import_path = pathlib.Path(__file__).absolute().parents[3] / "utils"

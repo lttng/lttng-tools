@@ -7,8 +7,6 @@
 import pathlib
 import sys
 import os
-import contextlib
-import subprocess
 
 # Import in-tree test utils
 test_utils_import_path = pathlib.Path(__file__).absolute().parents[3] / "utils"
