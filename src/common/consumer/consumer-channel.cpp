@@ -59,7 +59,7 @@ lttng::consumer::stream_set::iterator::iterator(
 	if (!_filter || *_filter == lttng::consumer::stream_set::filter::UNPUBLISHED) {
 		_phase = lttng::consumer::stream_set::iterator::_phase_t::
 			ITERATING_ON_UNPUBLISHED_STREAMS;
-		if (cds_list_empty(&_channel.streams.head)) {
+		if (lttng::urcu::is_list_empty(&_channel.streams.head)) {
 			_position.unpublished.next_stream_node = nullptr;
 			_at_end = true;
 			return;
@@ -88,7 +88,7 @@ lttng::consumer::stream_set::iterator& lttng::consumer::stream_set::iterator::op
 			/* No more published streams, switch to unpublished streams. */
 			_phase = lttng::consumer::stream_set::iterator::_phase_t::
 				ITERATING_ON_UNPUBLISHED_STREAMS;
-			if (cds_list_empty(&_channel.streams.head) ||
+			if (lttng::urcu::is_list_empty(&_channel.streams.head) ||
 			    (_filter &&
 			     _filter == lttng::consumer::stream_set::filter::PUBLISHED)) {
 				_at_end = true;

@@ -1659,13 +1659,6 @@ ls::user_space_consumer_channel_keys::iterator::operator++()
 	return *this;
 }
 
-namespace {
-bool is_list_empty(const cds_list_head *head)
-{
-	return head == head->next;
-}
-} /* namespace */
-
 ls::user_space_consumer_channel_keys::iterator::iterator(
 	const _iterator_creation_context& creation_context, bool is_end) :
 	_creation_context(creation_context), _is_end(is_end)
@@ -1742,7 +1735,7 @@ void ls::user_space_consumer_channel_keys::iterator::_init_per_uid() noexcept
 	auto& position = _position._per_uid;
 
 	/* Start the iteration: get the first registry and point to its first channel. */
-	if (is_list_empty(&_creation_context._session.buffer_reg_uid_list)) {
+	if (lttng::urcu::is_list_empty(&_creation_context._session.buffer_reg_uid_list)) {
 		_is_end = true;
 		return;
 	}

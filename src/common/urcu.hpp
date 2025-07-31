@@ -481,6 +481,16 @@ private:
 	bool _armed = true;
 };
 
+/*
+ * is_list_empty checks if a cds_list_head is empty.
+ * It is equivalent to cds_list_empty, but that function is not const-correct
+ * before urcu 0.15.
+ */
+bool is_list_empty(const cds_list_head *head)
+{
+	return head == head->next;
+}
+
 } /* namespace urcu */
 } /* namespace lttng */
 
