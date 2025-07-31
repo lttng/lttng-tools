@@ -4997,7 +4997,8 @@ enum lttcomm_return_code lttng_consumer_open_channel_packets(struct lttng_consum
 		return LTTCOMM_CONSUMERD_INVALID_PARAMETERS;
 	}
 
-	for (auto& stream : channel->get_streams()) {
+	for (auto& stream :
+	     channel->get_streams(lttng::consumer::stream_set::filter::UNPUBLISHED)) {
 		enum consumer_stream_open_packet_status status;
 
 		const lttng::pthread::lock_guard stream_lock(stream.lock);
