@@ -18,6 +18,7 @@ files=(
     regression/ust/clock-override/test_clock_override
     regression/ust/getcpu-override/test_getcpu_override
     regression/ust/low-throughput/test_low_throughput
+    regression/ust/multi-lib/test_multi_lib
     regression/ust/multi-session/test_multi_session
     regression/ust/overlap/test_overlap
     regression/ust/test_event_basic

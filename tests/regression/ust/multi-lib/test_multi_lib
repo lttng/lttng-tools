@@ -1,14 +1,14 @@
 #!/bin/bash
 #
 # SPDX-FileCopyrightText: 2018 Francis Deslauriers <francis.deslauriers@efficios.com>
+# SPDX-FileCopyrightText: 2025 Michael Jeanson <mjeanson@efficios.com>
 #
 # SPDX-License-Identifier: LGPL-2.1-only
 
 TEST_DESC="UST - Dynamic loading and unloading of libraries"
 
-CURDIR=$(dirname $0)/
+CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../../..
-SESSION_NAME="multi_lib"
 
 EXEC_NAME_WITH_CALLSITES=./$CURDIR/exec-with-callsites
 EXEC_NAME_WITHOUT_CALLSITES=./$CURDIR/exec-without-callsites
@@ -22,194 +22,264 @@ SO_PROBES_D=$SO_DIR/libprobes_d.so
 SO_CALLSITE_1=$SO_DIR/libcallsites_1.so
 SO_CALLSITE_2=$SO_DIR/libcallsites_2.so
 
-NUM_TESTS=55
+NUM_TESTS=62
 
-source $TESTDIR/utils/utils.sh
+# shellcheck source-path=SCRIPTDIR/../../..
+source "$TESTDIR/utils/utils.sh"
 
 test_dlopen_same_provider_name_same_event()
 {
+	local session_name="multi_lib_dlopen_same_same"
 	local event_name="multi:tp"
+	local trace_path
+	local file_testapp_output
+
 	diag "dlopen 2 providers, same event name, same payload"
 
-	enable_ust_lttng_event_ok $SESSION_NAME "$event_name"
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
 
-	start_lttng_tracing_ok $SESSION_NAME
+	create_lttng_session_ok $session_name "$trace_path"
+	enable_ust_lttng_event_ok $session_name "$event_name"
 
-	$EXEC_NAME_WITH_CALLSITES -t 0 $SO_PROBES_A $SO_PROBES_A_PRIME
+	start_lttng_tracing_ok $session_name
 
-	stop_lttng_tracing_ok $SESSION_NAME
+	run_testapp_ok "$file_testapp_output" "$EXEC_NAME_WITH_CALLSITES" -t 0 "$SO_PROBES_A" "$SO_PROBES_A_PRIME"
+
+	stop_lttng_tracing_ok $session_name
+	destroy_lttng_session_ok $session_name
 
 	# Expect 2 identical events in the trace
-	trace_match_only $event_name 2 $TRACE_PATH
+	trace_match_only $event_name 2 "$trace_path"
 
 	# Expect a single event ID in the metadata
-	validate_metadata_event $event_name 1 $TRACE_PATH
+	validate_metadata_event $event_name 1 "$trace_path"
 
-	return $?
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
 }
 
 test_dlopen_same_provider_name_different_event()
 {
+	local session_name="multi_lib_dlopen_same_diff"
 	local event_name="multi:tp"
 	# Regular expression for event tp with one argument: arg_long
 	local event_a_payload_exp="^.*$event_name.*arg_long_A.*"
 	# Regular expression for event tp with two arguments: arg_long and
 	# arg_float
 	local event_b_payload_exp="^.*$event_name.*arg_long_B.*arg_float_B.*"
+	local trace_path
+	local file_testapp_output
+
 	diag "dlopen 2 providers, same event name, different payload"
 
-	enable_ust_lttng_event_ok $SESSION_NAME "$event_name"
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
 
-	start_lttng_tracing_ok $SESSION_NAME
+	create_lttng_session_ok $session_name "$trace_path"
+	enable_ust_lttng_event_ok $session_name "$event_name"
 
-	$EXEC_NAME_WITH_CALLSITES -t 0 $SO_PROBES_A $SO_PROBES_B
+	start_lttng_tracing_ok $session_name
 
-	stop_lttng_tracing_ok $SESSION_NAME
+	run_testapp_ok "$file_testapp_output" "$EXEC_NAME_WITH_CALLSITES" -t 0 "$SO_PROBES_A" "$SO_PROBES_B"
+
+	stop_lttng_tracing_ok $session_name
+	destroy_lttng_session_ok $session_name
 
 	# Expect 2 identical events in the trace
-	trace_match_only $event_name 2 $TRACE_PATH
+	trace_match_only $event_name 2 "$trace_path"
 
 	# Expect 2 events ID in the metadata
-	validate_metadata_event $event_name 2 $TRACE_PATH
+	validate_metadata_event $event_name 2 "$trace_path"
 
 	# Expect 2 events with different payloads
-	validate_trace_exp "$TRACE_PATH" "$event_a_payload_exp"
-	validate_trace_exp "$TRACE_PATH" "$event_b_payload_exp"
+	validate_trace_exp "$trace_path" "$event_a_payload_exp"
+	validate_trace_exp "$trace_path" "$event_b_payload_exp"
 
-	return $?
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
 }
 
 test_dlopen_same_provider_name_same_enum()
 {
+	local session_name="multi_lib_dlopen_same_same"
 	local event_name="multi:tp"
 	# Regular expression for event tp with one argument: arg_long
 	local event_c_payload_exp="^.*$event_name.*enum_int_C.*"
 	# Regular expression for event tp with two arguments: arg_long and
 	# arg_float
 	local event_d_payload_exp="^.*$event_name.*enum_int_D.*"
+	local trace_path
+	local file_testapp_output
+
 	diag "dlopen 2 providers, same event name, same enum definition"
 
-	enable_ust_lttng_event_ok $SESSION_NAME "$event_name"
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
 
-	start_lttng_tracing_ok $SESSION_NAME
+	create_lttng_session_ok $session_name "$trace_path"
+	enable_ust_lttng_event_ok $session_name "$event_name"
 
-	$EXEC_NAME_WITH_CALLSITES -t 0 $SO_PROBES_C $SO_PROBES_C_PRIME
+	start_lttng_tracing_ok $session_name
 
-	stop_lttng_tracing_ok $SESSION_NAME
+	run_testapp_ok "$file_testapp_output" "$EXEC_NAME_WITH_CALLSITES" -t 0 "$SO_PROBES_C" "$SO_PROBES_C_PRIME"
+
+	stop_lttng_tracing_ok $session_name
+	destroy_lttng_session_ok $session_name
 
 	# Expect 2 identical events in the trace
-	trace_match_only $event_name 2 $TRACE_PATH
+	trace_match_only $event_name 2 "$trace_path"
 
 	# Expect 2 events ID in the metadata
-	validate_metadata_event $event_name 1 $TRACE_PATH
+	validate_metadata_event $event_name 1 "$trace_path"
 
-	return $?
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
 }
 
 test_dlopen_same_provider_name_different_enum()
 {
+	local session_name="multi_lib_dlopen_same_diff"
 	local event_name="multi:tp"
 	# Regular expression for event tp with one argument: arg_long
 	local event_c_payload_exp="^.*$event_name.*enum_int_C.*"
 	# Regular expression for event tp with two arguments: arg_long and
 	# arg_float
 	local event_d_payload_exp="^.*$event_name.*enum_int_D.*"
+	local trace_path
+	local file_testapp_output
+
 	diag "dlopen 2 providers, same event name, different enum definition"
 
-	enable_ust_lttng_event_ok $SESSION_NAME "$event_name"
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
 
-	start_lttng_tracing_ok $SESSION_NAME
+	create_lttng_session_ok $session_name "$trace_path"
+	enable_ust_lttng_event_ok $session_name "$event_name"
 
-	$EXEC_NAME_WITH_CALLSITES -t 0 $SO_PROBES_C $SO_PROBES_D
+	start_lttng_tracing_ok $session_name
 
-	stop_lttng_tracing_ok $SESSION_NAME
+	run_testapp_ok "$file_testapp_output" "$EXEC_NAME_WITH_CALLSITES" -t 0 "$SO_PROBES_C" "$SO_PROBES_D"
+
+	stop_lttng_tracing_ok $session_name
+	destroy_lttng_session_ok $session_name
 
 	# Expect 2 identical events in the trace
-	trace_match_only $event_name 2 $TRACE_PATH
+	trace_match_only $event_name 2 "$trace_path"
 
 	# Expect 2 events ID in the metadata
-	validate_metadata_event $event_name 2 $TRACE_PATH
+	validate_metadata_event $event_name 2 "$trace_path"
 
 	# Expect 2 events with different payloads
-	validate_trace_exp "$TRACE_PATH" "$event_c_payload_exp"
-	validate_trace_exp "$TRACE_PATH" "$event_d_payload_exp"
+	validate_trace_exp "$trace_path" "$event_c_payload_exp"
+	validate_trace_exp "$trace_path" "$event_d_payload_exp"
 
-	return $?
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
 }
 
 test_upgrade_probes_dlopen_dclose()
 {
+	local session_name="multi_lib_dlopen_dlclose"
 	local event_name="multi:tp"
+	local trace_path
+	local file_testapp_output
+
 	diag "Upgrade probe provider using dlopen/dlclose during tracing"
 
-	enable_ust_lttng_event_ok $SESSION_NAME "$event_name"
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
 
-	start_lttng_tracing_ok $SESSION_NAME
+	create_lttng_session_ok $session_name "$trace_path"
+	enable_ust_lttng_event_ok $session_name "$event_name"
 
-	$EXEC_NAME_WITH_CALLSITES -t 1 $SO_PROBES_A $SO_PROBES_B
+	start_lttng_tracing_ok $session_name
 
-	stop_lttng_tracing_ok $SESSION_NAME
+	run_testapp_ok "$file_testapp_output" "$EXEC_NAME_WITH_CALLSITES" -t 1 "$SO_PROBES_A" "$SO_PROBES_B"
+
+	stop_lttng_tracing_ok $session_name
+	destroy_lttng_session_ok $session_name
 
 	# Expect 2 identical events in the trace
-	trace_match_only $event_name 4 $TRACE_PATH
+	trace_match_only $event_name 4 "$trace_path"
 
 	# Expect 2 events ID in the metadata
-	validate_metadata_event $event_name 2 $TRACE_PATH
+	validate_metadata_event $event_name 2 "$trace_path"
 
-	return $?
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
 }
 
 test_upgrade_callsites_dlopen_dclose()
 {
+	local session_name="multi_lib_dlopen_dlclose"
 	local event_name="multi:tp"
+	local trace_path
+	local file_testapp_output
+
 	diag "Upgrade callsite using dlopen/dlclose during tracing"
 
-	enable_ust_lttng_event_ok $SESSION_NAME "$event_name"
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
 
-	start_lttng_tracing_ok $SESSION_NAME
+	create_lttng_session_ok $session_name "$trace_path"
+	enable_ust_lttng_event_ok $session_name "$event_name"
 
-	$EXEC_NAME_WITHOUT_CALLSITES -t 2 $SO_CALLSITE_1 $SO_CALLSITE_2
+	start_lttng_tracing_ok $session_name
 
-	stop_lttng_tracing_ok $SESSION_NAME
+	run_testapp_ok "$file_testapp_output" "$EXEC_NAME_WITHOUT_CALLSITES" -t 2 "$SO_CALLSITE_1" "$SO_CALLSITE_2"
+
+	stop_lttng_tracing_ok $session_name
+	destroy_lttng_session_ok $session_name
 
 	# Expect 2 identical events in the trace
-	trace_match_only $event_name 3 $TRACE_PATH
+	trace_match_only $event_name 3 "$trace_path"
 
 	# Expect 2 events ID in the metadata
-	validate_metadata_event $event_name 1 $TRACE_PATH
+	validate_metadata_event $event_name 1 "$trace_path"
 
-	return $?
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
 }
 
 test_event_field_comparison()
 {
+	local session_name="multi_lib_field_comp"
 	local event_name="multi:tp"
+	local trace_path
+	local file_testapp_output
+
 	diag "Load multiple events with slight variations in the field descriptions."
 
 	local library_prefix="libprobes_"
-	local nb_libs=0
-	local library_list=" "
-	# Concatenate all the probe libraries in a string.
+	local libraries=()
+
+	# Create an array of all the probe libraries
 	for postfix in {a..p}; do
-		library_list="$library_list $SO_DIR/$library_prefix$postfix.so"
-		let nb_libs+=1
+		libraries+=("$SO_DIR/$library_prefix$postfix.so")
 	done
 
-	enable_ust_lttng_event_ok $SESSION_NAME "$event_name"
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
 
-	start_lttng_tracing_ok $SESSION_NAME
+	create_lttng_session_ok $session_name "$trace_path"
+	enable_ust_lttng_event_ok $session_name "$event_name"
 
-	$EXEC_NAME_WITH_CALLSITES -t 0 $library_list
+	start_lttng_tracing_ok $session_name
 
-	stop_lttng_tracing_ok $SESSION_NAME
+	run_testapp_ok "$file_testapp_output" "$EXEC_NAME_WITH_CALLSITES" -t 0 "${libraries[@]}"
+
+	stop_lttng_tracing_ok $session_name
+	destroy_lttng_session_ok $session_name
 
 	# Expect $nb_libs identical events in the trace
-	trace_match_only $event_name $nb_libs $TRACE_PATH
+	trace_match_only $event_name ${#libraries[@]} "$trace_path"
 
 	# Expect $nb_libs events ID in the metadata
-	validate_metadata_event $event_name $nb_libs $TRACE_PATH
+	validate_metadata_event $event_name ${#libraries[@]} "$trace_path"
 
-	return $?
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
 }
 
 
@@ -219,35 +289,14 @@ print_test_banner "$TEST_DESC"
 
 bail_out_if_no_babeltrace
 
-TESTS=(
-	"test_dlopen_same_provider_name_same_event"
-	"test_dlopen_same_provider_name_different_event"
-	"test_dlopen_same_provider_name_different_enum"
-	"test_dlopen_same_provider_name_same_enum"
-	"test_event_field_comparison"
-	"test_upgrade_probes_dlopen_dclose"
-	"test_upgrade_callsites_dlopen_dclose"
-)
-
-TEST_COUNT=${#TESTS[@]}
-i=0
-
 start_lttng_sessiond
 
-while [ "$i" -lt "$TEST_COUNT" ]; do
-
-	TRACE_PATH=$(mktemp -d -t tmp.test_multi_lib_ust_trace_path.XXXXXX)
-
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
-
-	# Execute test
-	${TESTS[$i]}
-
-	destroy_lttng_session_ok $SESSION_NAME
-
-	rm -rf $TRACE_PATH
-
-	let "i++"
-done
+test_dlopen_same_provider_name_same_event
+test_dlopen_same_provider_name_different_event
+test_dlopen_same_provider_name_different_enum
+test_dlopen_same_provider_name_same_enum
+test_upgrade_probes_dlopen_dclose
+test_upgrade_callsites_dlopen_dclose
+test_event_field_comparison
 
 stop_lttng_sessiond
