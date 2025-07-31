@@ -515,7 +515,7 @@ public:
 	~variant_type_choice() = default;
 
 	variant_type_choice(const variant_type_choice& other) = default;
-	variant_type_choice(variant_type_choice&& other) = default;
+	variant_type_choice(variant_type_choice&& other) noexcept = default;
 	variant_type_choice& operator=(variant_type_choice&&) = delete;
 	variant_type_choice& operator=(const variant_type_choice&) = delete;
 
