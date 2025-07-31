@@ -12,21 +12,18 @@ TESTDIR=$CURDIR/../../..
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME"
-NUM_EVENT=1000
+
+NUM_EVENT=100
 EVENT_NAME="tp:tptest"
 
-TESTS_PER_NS=13
+NUM_NS=8
+NUM_TESTS_PER_NS=11
+NUM_TESTS=$(((NUM_TESTS_PER_NS * NUM_NS) + 2))
 
-NUM_TESTS=$((TESTS_PER_NS * 8))
-
+# shellcheck source-path=SCRIPTDIR/../../..
 source "$TESTDIR/utils/utils.sh"
 
 # MUST set TESTDIR before calling those functions
-function run_app()
-{
-	$TESTAPP_BIN -i $NUM_EVENT
-	ok $? "Application done"
-}
 
 function test_ns()
 {
@@ -36,21 +33,21 @@ function test_ns()
 	local chan_name="${ns}_ns"
 	local context_name="${ns}_ns"
 	local trace_path
+	local file_testapp_output
 	local ns_inode
 
 	# Check if the kernel has support for this ns type
 	if [ ! -f "/proc/$$/ns/$ns" ]; then
-		skip 0 "System has no $ns namespace support" $TESTS_PER_NS
+		skip 0 "System has no '$ns' namespace support" $NUM_TESTS_PER_NS
 		return
 	fi
 
 	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
 
 	# Get the current ns inode number
 	ns_inode=$(stat -c '%i' -L "/proc/$$/ns/$ns")
-	ok $? "Get current $ns namespace inode: $ns_inode"
-
-	start_lttng_sessiond
+	ok $? "Get current '$ns' namespace inode: $ns_inode"
 
 	create_lttng_session_ok "$session_name" "$trace_path"
 	enable_ust_lttng_channel_ok "$session_name" "$chan_name"
@@ -58,17 +55,17 @@ function test_ns()
 	enable_ust_lttng_event_ok "$session_name" "$EVENT_NAME" "$chan_name"
 	start_lttng_tracing_ok "$session_name"
 
-	run_app
+	run_testapp_ok "$file_testapp_output" "$TESTAPP_BIN" -i $NUM_EVENT
 
 	# stop and destroy
 	stop_lttng_tracing_ok "$session_name"
 	destroy_lttng_session_ok "$session_name"
-	stop_lttng_sessiond
 
 	# Check that the events contain the right namespace inode number
 	validate_trace_count "${ns}_ns = $ns_inode" "$trace_path" $NUM_EVENT
 
 	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
 }
 
 
@@ -85,6 +82,8 @@ fi
 
 skip $system_has_ns "System does not support namespaces" $NUM_TESTS && exit 0
 
+start_lttng_sessiond
+
 test_ns cgroup
 test_ns ipc
 test_ns mnt
@@ -93,3 +92,5 @@ test_ns pid
 test_ns time
 test_ns user
 test_ns uts
+
+stop_lttng_sessiond

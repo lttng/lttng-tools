@@ -20,6 +20,7 @@ files=(
     regression/ust/low-throughput/test_low_throughput
     regression/ust/multi-lib/test_multi_lib
     regression/ust/multi-session/test_multi_session
+    regression/ust/namespaces/test_ns_contexts
     regression/ust/overlap/test_overlap
     regression/ust/test_event_basic
     regression/ust/test_event_perf
