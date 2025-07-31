@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# SPDX-FileCopyrightText: 2019 Michael Jeanson <mjeanson@efficios.com>
+# SPDX-FileCopyrightText: 2025 Michael Jeanson <mjeanson@efficios.com>
 #
 # SPDX-License-Identifier: LGPL-2.1-only
 
@@ -12,13 +12,16 @@ TESTDIR=$CURDIR/../../..
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events-ns"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME"
-NUM_EVENT=1000
+TESTAPP_TIMEOUT_SEC=10
+
+NUM_EVENT=100
 EVENT_NAME="tp:tptest"
 
-TESTS_PER_NS=16
+NUM_NS=5
+NUM_TESTS_PER_NS=16
+NUM_TESTS=$(((NUM_TESTS_PER_NS * NUM_NS) + 2))
 
-NUM_TESTS=$((TESTS_PER_NS * 5))
-
+# shellcheck source-path=SCRIPTDIR/../../..
 source "$TESTDIR/utils/utils.sh"
 
 # MUST set TESTDIR before calling those functions
@@ -31,14 +34,18 @@ function test_ns()
 	local chan_name="${ns}_ns"
 	local context_name="${ns}_ns"
 
-	local trace_path
 	local ns_inode
+	local testapp_ns_inode
+	local testapp_pid
+	local trace_path
+	local file_testapp_output
 	local file_sync_before_last
-	local file_sync_after_unshare
+	local file_sync_after_unshare_touch
+	local file_sync_before_exit_touch
 
 	# Check if the kernel has support for this ns type
 	if [ ! -f "/proc/$$/ns/$ns" ]; then
-		skip 0 "System has no $ns namespace support" $TESTS_PER_NS
+		skip 0 "System has no $ns namespace support" $NUM_TESTS_PER_NS
 		return
 	fi
 
@@ -47,10 +54,10 @@ function test_ns()
 	ok $? "Get current $ns namespace inode: $ns_inode" || ns_inode="invalid"
 
 	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
 	file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
-	file_sync_after_unshare=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_after_unshare.XXXXXX")
-
-	start_lttng_sessiond
+	file_sync_after_unshare_touch=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_after_unshare_touch.XXXXXX")
+	file_sync_before_exit_touch=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_exit_touch.XXXXXX")
 
 	create_lttng_session_ok "$session_name" "$trace_path"
 	enable_ust_lttng_channel_ok "$session_name" "$chan_name"
@@ -58,42 +65,41 @@ function test_ns()
 	enable_ust_lttng_event_ok "$session_name" "$EVENT_NAME" "$chan_name"
 	start_lttng_tracing_ok "$session_name"
 
-	$TESTAPP_BIN -n "$ns" -i $NUM_EVENT -a "$file_sync_after_unshare" -b "$file_sync_before_last" &
-	app_pid=$!
+	$TESTAPP_BIN -n "$ns" -i $NUM_EVENT \
+		--sync-after-unshare-touch "$file_sync_after_unshare_touch" \
+		--sync-before-last-event "$file_sync_before_last" \
+		--sync-before-exit-touch "${file_sync_before_exit_touch}" >"${file_testapp_output}" 2>&1 &
+	testapp_pid=$!
+	diag "Launched testapp '$TESTAPP_NAME' (pid: $testapp_pid) to generate $NR_ITER events"
 
-	while [ ! -f "$file_sync_after_unshare" ]; do
-		# Break if the app failed / died
-		if ! kill -0 "$app_pid" ; then
-			echo "# App failed"
-			break
-		fi
-		echo "# Waiting for app..."
-		sleep 0.5
-	done
+	# Wait for the testapp to unshare (change ns)
+	app_alive_wait_for_sync "$TESTAPP_NAME" "$testapp_pid" "$TESTAPP_TIMEOUT_SEC" "$file_testapp_output" "$file_sync_after_unshare_touch"
 
-	app_ns_inode=$(stat -c '%i' -L "/proc/$app_pid/ns/$ns")
-	ok $? "Get current $ns namespace inode: $app_ns_inode" || app_ns_inode="invalid"
+	testapp_ns_inode=$(stat -c '%i' -L "/proc/$testapp_pid/ns/$ns")
+	ok $? "Get current $ns namespace inode: $testapp_ns_inode" || testapp_ns_inode="invalid"
 
-	test "$ns_inode" != "invalid" && test "$app_ns_inode" != "invalid" && test "$ns_inode" != "$app_ns_inode"
+	test "$ns_inode" != "invalid" && test "$testapp_ns_inode" != "invalid" && test "$ns_inode" != "$testapp_ns_inode"
 	ok $? "Reported namespace inode changed after unshare"
 
+	# Tell the testapp to continue
 	touch "$file_sync_before_last"
 
-	# Wait for the test app to generate all expected events and exit.
-	wait $app_pid
+	# Wait for the testapp to signal completion by creating a file
+	app_exit_wait_for_sync "$TESTAPP_NAME" "$testapp_pid" "$TESTAPP_TIMEOUT_SEC" "$file_testapp_output" "$file_sync_before_exit_touch"
 
 	# stop and destroy
 	stop_lttng_tracing_ok "$session_name"
 	destroy_lttng_session_ok "$session_name"
-	stop_lttng_sessiond
 
 	# Check that the events contain the right namespace inode number
 	validate_trace_count "${ns}_ns = $ns_inode" "$trace_path" $NUM_EVENT
-	validate_trace_count "${ns}_ns = $app_ns_inode" "$trace_path" $NUM_EVENT
+	validate_trace_count "${ns}_ns = $testapp_ns_inode" "$trace_path" $NUM_EVENT
 
 	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
 	rm -f "$file_sync_before_last"
-	rm -f "$file_sync_after_unshare"
+	rm -f "$file_sync_after_unshare_touch"
+	rm -f "$file_sync_before_exit_touch"
 }
 
 
@@ -113,6 +119,8 @@ fi
 skip $system_has_ns "System has no namespaces support" $NUM_TESTS && exit 0
 
 
+start_lttng_sessiond
+
 test_ns cgroup
 test_ns ipc
 test_ns mnt
@@ -121,3 +129,5 @@ test_ns net
 #test_ns time # time_ns is special, can't be changed that way
 #test_ns user # user_ns can only be change when the app is single threaded, this is always false for an ust instrumented app
 test_ns uts
+
+stop_lttng_sessiond

@@ -61,45 +61,40 @@
 #define CLONE_NEWTIME 0x00000080
 #endif
 
+const char *cmd_name = nullptr;
 static int nr_iter = 100;
-static int debug = 0;
 static char *ns_opt = nullptr;
-static char *after_unshare_file_path = nullptr;
-static char *before_second_event_file_path = nullptr;
+static char *after_unshare_touch_file_path = nullptr;
+static char *before_last_event_file_path = nullptr;
+static char *before_exit_touch_file_path = nullptr;
 
 static struct poptOption opts[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{ "debug", 'd', POPT_ARG_NONE, &debug, 0, "Enable debug output", nullptr },
 	{ "ns", 'n', POPT_ARG_STRING, &ns_opt, 0, "Namespace short identifier", nullptr },
 	{ "iter", 'i', POPT_ARG_INT, &nr_iter, 0, "Number of tracepoint iterations", nullptr },
-	{ "after",
+	{ "sync-after-unshare-touch",
 	  'a',
 	  POPT_ARG_STRING,
-	  &after_unshare_file_path,
+	  &after_unshare_touch_file_path,
 	  0,
-	  "after_unshare_file_path,",
+	  "Path to a file that will be created after unshare",
 	  nullptr },
-	{ "before",
+	{ "sync-before-last-event",
 	  'b',
 	  POPT_ARG_STRING,
-	  &before_second_event_file_path,
+	  &before_last_event_file_path,
 	  0,
-	  "before_second_event_file_path,",
+	  "Path to a file to wait on before the last group of events",
+	  nullptr },
+	{ "sync-before-exit-touch",
+	  'g',
+	  POPT_ARG_STRING,
+	  &before_exit_touch_file_path,
+	  0,
+	  "Path to a file that will be created before exiting",
 	  nullptr },
 	POPT_AUTOHELP{ nullptr, 0, 0, nullptr, 0 }
 };
-
-static ATTR_FORMAT_PRINTF(1, 2) void debug_printf(const char *format, ...)
-{
-	va_list args;
-	va_start(args, format);
-
-	if (debug) {
-		vfprintf(stderr, format, args);
-	}
-
-	va_end(args);
-}
 
 static int get_ns_inum(const char *ns, ino_t *ns_inum)
 {
@@ -133,18 +128,25 @@ end:
 	return ret;
 }
 
-static int do_the_needful(int ns_flag, const char *ns_str)
+static int unshare_and_emit_events(int ns_flag, const char *ns_str)
 {
 	int ret = 0, i;
 	ino_t ns1, ns2;
 
 	ret = get_ns_inum(ns_str, &ns1);
 	if (ret) {
-		debug_printf("Failed to get ns inode number for namespace %s", ns_str);
+		fprintf(stderr,
+			"%s: Failed to get ns inode number for namespace %s",
+			cmd_name,
+			ns_str);
 		ret = -1;
 		goto end;
 	}
-	debug_printf("Initial %s ns inode number:      %" PRIuMAX "\n", ns_str, (uintmax_t) ns1);
+	fprintf(stderr,
+		"%s: Initial %s ns inode number:      %" PRIuMAX "\n",
+		cmd_name,
+		ns_str,
+		(uintmax_t) ns1);
 
 	for (i = 0; nr_iter < 0 || i < nr_iter; i++) {
 		tracepoint(tp, tptest, ns1);
@@ -161,26 +163,41 @@ static int do_the_needful(int ns_flag, const char *ns_str)
 
 	ret = get_ns_inum(ns_str, &ns2);
 	if (ret) {
-		debug_printf("Failed to get ns inode number for namespace %s", ns_str);
+		fprintf(stderr,
+			"%s: Failed to get ns inode number for namespace %s",
+			cmd_name,
+			ns_str);
 		ret = -1;
 		goto end;
 	}
-	debug_printf("Post unshare %s ns inode number: %" PRIuMAX "\n", ns_str, (uintmax_t) ns2);
+	fprintf(stderr,
+		"%s: Post unshare %s ns inode number: %" PRIuMAX "\n",
+		cmd_name,
+		ns_str,
+		(uintmax_t) ns2);
 
 	/*
 	 * Signal that we emited the first event group and that the
 	 * unshare call is completed.
 	 */
-	if (after_unshare_file_path) {
-		ret = create_file(after_unshare_file_path);
+	if (after_unshare_touch_file_path) {
+		fprintf(stderr,
+			"%s: sync-after-unshare-touch: create %s\n",
+			cmd_name,
+			after_unshare_touch_file_path);
+		ret = create_file(after_unshare_touch_file_path);
 		if (ret != 0) {
 			goto end;
 		}
 	}
 
-	/* Wait on synchronization before writing second event group. */
-	if (before_second_event_file_path) {
-		ret = wait_on_file(before_second_event_file_path);
+	/* Wait on synchronization before writing last event group. */
+	if (before_last_event_file_path) {
+		fprintf(stderr,
+			"%s: sync-before-last-event: wait %s\n",
+			cmd_name,
+			before_last_event_file_path);
+		ret = wait_on_file(before_last_event_file_path);
 		if (ret != 0) {
 			goto end;
 		}
@@ -190,6 +207,17 @@ static int do_the_needful(int ns_flag, const char *ns_str)
 		tracepoint(tp, tptest, ns2);
 		if (should_quit) {
 			break;
+		}
+	}
+
+	if (before_exit_touch_file_path) {
+		fprintf(stderr,
+			"%s: sync-before-exit-touch: create %s\n",
+			cmd_name,
+			before_exit_touch_file_path);
+		ret = create_file(before_exit_touch_file_path);
+		if (ret != 0) {
+			goto end;
 		}
 	}
 
@@ -206,6 +234,8 @@ int main(int argc, const char **argv)
 	int opt;
 	int ret = EXIT_SUCCESS;
 	poptContext pc;
+
+	cmd_name = (argc > 0) ? basename(argv[0]) : "COMMAND";
 
 	pc = poptGetContext(nullptr, argc, argv, opts, 0);
 	poptReadDefaultConfig(pc, 0);
@@ -248,27 +278,27 @@ int main(int argc, const char **argv)
 	}
 
 	if (strncmp(ns_opt, "cgroup", 6) == 0) {
-		ret = do_the_needful(CLONE_NEWCGROUP, "cgroup");
+		ret = unshare_and_emit_events(CLONE_NEWCGROUP, "cgroup");
 	} else if (strncmp(ns_opt, "ipc", 3) == 0) {
-		ret = do_the_needful(CLONE_NEWIPC, "ipc");
+		ret = unshare_and_emit_events(CLONE_NEWIPC, "ipc");
 	} else if (strncmp(ns_opt, "mnt", 3) == 0) {
-		ret = do_the_needful(CLONE_NEWNS, "mnt");
+		ret = unshare_and_emit_events(CLONE_NEWNS, "mnt");
 	} else if (strncmp(ns_opt, "net", 3) == 0) {
-		ret = do_the_needful(CLONE_NEWNET, "net");
+		ret = unshare_and_emit_events(CLONE_NEWNET, "net");
 	} else if (strncmp(ns_opt, "pid", 3) == 0) {
-		ret = do_the_needful(CLONE_NEWPID, "pid");
+		ret = unshare_and_emit_events(CLONE_NEWPID, "pid");
 	} else if (strncmp(ns_opt, "time", 4) == 0) {
-		ret = do_the_needful(CLONE_NEWTIME, "time");
+		ret = unshare_and_emit_events(CLONE_NEWTIME, "time");
 	} else if (strncmp(ns_opt, "user", 4) == 0) {
 		/*
 		 * Will always fail, requires a single threaded application,
 		 * which can't happen with UST.
 		 */
-		ret = do_the_needful(CLONE_NEWUSER, "user");
+		ret = unshare_and_emit_events(CLONE_NEWUSER, "user");
 	} else if (strncmp(ns_opt, "uts", 3) == 0) {
-		ret = do_the_needful(CLONE_NEWUTS, "uts");
+		ret = unshare_and_emit_events(CLONE_NEWUTS, "uts");
 	} else {
-		printf("invalid ns id\n");
+		fprintf(stderr, "%s: invalid ns id\n", cmd_name);
 		ret = EXIT_FAILURE;
 		goto end;
 	}

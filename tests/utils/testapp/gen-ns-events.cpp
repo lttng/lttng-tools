@@ -139,7 +139,7 @@ end:
 	return ret;
 }
 
-static int do_the_needful(int ns_flag, const char *ns_str)
+static int unshare_and_emit_events(int ns_flag, const char *ns_str)
 {
 	int ret = 0;
 	ino_t ns1, ns2;
@@ -241,25 +241,25 @@ int main(int argc, const char **argv)
 	}
 
 	if (strncmp(ns_opt, "cgroup", 6) == 0) {
-		ret = do_the_needful(CLONE_NEWCGROUP, "cgroup");
+		ret = unshare_and_emit_events(CLONE_NEWCGROUP, "cgroup");
 	} else if (strncmp(ns_opt, "ipc", 3) == 0) {
-		ret = do_the_needful(CLONE_NEWIPC, "ipc");
+		ret = unshare_and_emit_events(CLONE_NEWIPC, "ipc");
 	} else if (strncmp(ns_opt, "mnt", 3) == 0) {
-		ret = do_the_needful(CLONE_NEWNS, "mnt");
+		ret = unshare_and_emit_events(CLONE_NEWNS, "mnt");
 	} else if (strncmp(ns_opt, "net", 3) == 0) {
-		ret = do_the_needful(CLONE_NEWNET, "net");
+		ret = unshare_and_emit_events(CLONE_NEWNET, "net");
 	} else if (strncmp(ns_opt, "pid", 3) == 0) {
-		ret = do_the_needful(CLONE_NEWPID, "pid");
+		ret = unshare_and_emit_events(CLONE_NEWPID, "pid");
 	} else if (strncmp(ns_opt, "time", 4) == 0) {
-		ret = do_the_needful(CLONE_NEWTIME, "time");
+		ret = unshare_and_emit_events(CLONE_NEWTIME, "time");
 	} else if (strncmp(ns_opt, "user", 4) == 0) {
 		/*
 		 * Will always fail, requires a single threaded application,
 		 * which can't happen with UST.
 		 */
-		ret = do_the_needful(CLONE_NEWUSER, "user");
+		ret = unshare_and_emit_events(CLONE_NEWUSER, "user");
 	} else if (strncmp(ns_opt, "uts", 3) == 0) {
-		ret = do_the_needful(CLONE_NEWUTS, "uts");
+		ret = unshare_and_emit_events(CLONE_NEWUTS, "uts");
 	} else {
 		printf("invalid ns id\n");
 		ret = EXIT_FAILURE;
