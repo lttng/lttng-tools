@@ -321,13 +321,13 @@ private:
 			case 0:
 				return nullptr;
 			case 1:
-				const auto task = std::move(*_tasks.begin());
+				auto task = std::move(*_tasks.begin());
 
 				_tasks.clear();
 				return task;
 			}
 
-			const auto task = std::move(*_tasks.begin());
+			auto task = std::move(*_tasks.begin());
 			*_tasks.begin() = std::move(*(_tasks.end() - 1));
 			_tasks.resize(_tasks.size() - 1);
 			heapify(0);
