@@ -125,6 +125,7 @@ static const struct option long_options[] = {
 	{ "daemonize", no_argument, nullptr, 'd' },
 	{ "background", no_argument, nullptr, 'b' },
 	{ "sig-parent", no_argument, nullptr, 'S' },
+	{ "spawn-consumers", no_argument, nullptr, '\0' },
 	{ "help", no_argument, nullptr, 'h' },
 	{ "group", required_argument, nullptr, 'g' },
 	{ "version", no_argument, nullptr, 'V' },
@@ -457,6 +458,8 @@ static int set_option(int opt, const char *arg, const char *optname)
 		opt_print_version = 1;
 	} else if (string_match(optname, "sig-parent") || opt == 'S') {
 		the_config.sig_parent = true;
+	} else if (string_match(optname, "spawn-consumers")) {
+		the_config.spawn_consumers = true;
 	} else if (string_match(optname, "kconsumerd-err-sock")) {
 		if (!arg || *arg == '\0') {
 			ret = -EINVAL;
@@ -1994,6 +1997,56 @@ static int _main(int argc, char **argv)
 				goto stop_threads;
 			}
 			kernel_set_notification_fd_registered();
+		}
+	}
+
+	if (the_config.spawn_consumers) {
+		if (is_root && !the_config.no_kernel) {
+			pthread_mutex_lock(&the_kconsumer_data.pid_mutex);
+			if (the_kconsumer_data.pid == 0) {
+				pthread_mutex_unlock(&the_kconsumer_data.pid_mutex);
+				ret = start_consumerd(&the_kconsumer_data);
+				if (ret < 0) {
+					ERR_FMT("Failed to start kernel consumer at startup: %d",
+						ret);
+					retval = -1;
+					goto stop_threads;
+				}
+
+				uatomic_set(&the_kernel_consumerd_state, CONSUMER_STARTED);
+			} else {
+				pthread_mutex_unlock(&the_kconsumer_data.pid_mutex);
+			}
+		}
+
+		pthread_mutex_lock(&the_ustconsumer64_data.pid_mutex);
+		if (the_config.consumerd64_bin_path.value && the_ustconsumer64_data.pid == 0) {
+			pthread_mutex_unlock(&the_ustconsumer64_data.pid_mutex);
+			ret = start_consumerd(&the_ustconsumer64_data);
+			if (ret < 0) {
+				ERR_FMT("Failed to start ustconsumer64 at startup: %d", ret);
+				retval = -1;
+				goto stop_threads;
+			}
+
+			uatomic_set(&the_ust_consumerd_state, CONSUMER_STARTED);
+		} else {
+			pthread_mutex_unlock(&the_ustconsumer64_data.pid_mutex);
+		}
+
+		pthread_mutex_lock(&the_ustconsumer32_data.pid_mutex);
+		if (the_config.consumerd32_bin_path.value && the_ustconsumer32_data.pid == 0) {
+			pthread_mutex_unlock(&the_ustconsumer32_data.pid_mutex);
+			ret = start_consumerd(&the_ustconsumer32_data);
+			if (ret < 0) {
+				ERR_FMT("Failed to start ustconsumer32 at startup: %d", ret);
+				retval = -1;
+				goto stop_threads;
+			}
+
+			uatomic_set(&the_ust_consumerd_state, CONSUMER_STARTED);
+		} else {
+			pthread_mutex_unlock(&the_ustconsumer32_data.pid_mutex);
 		}
 	}
 

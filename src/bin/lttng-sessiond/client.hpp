@@ -10,8 +10,12 @@
 #ifndef CLIENT_SESSIOND_H
 #define CLIENT_SESSIOND_H
 
+#include "consumer.hpp"
 #include "thread.hpp"
 
+#include <sys/types.h>
+
 struct lttng_thread *launch_client_thread();
+int start_consumerd(struct consumer_data *consumer_data);
 
 #endif /* CLIENT_SESSIOND_H */

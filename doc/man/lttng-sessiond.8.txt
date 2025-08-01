@@ -32,6 +32,7 @@ SYNOPSIS
                [option:--ustconsumerd64-cmd-sock='PATH']
                [option:--consumerd32-path='PATH'] [option:--consumerd32-libdir='PATH']
                [option:--consumerd64-path='PATH'] [option:--consumerd64-libdir='PATH']
+               [option:--spawn-consumers]
                [option:--event-notifier-error-buffer-size-kernel='SLOTS']
                [option:--event-notifier-error-buffer-size-userspace='SLOTS']
                [option:--quiet | [option:--verbose]... [option:--verbose-consumer]]
@@ -212,6 +213,9 @@ You can also use the option:--daemonize or option:--background option,
 in which case `lttng-sessiond` ensures the daemon is ready to receive
 client commands before it exits.
 
+option:--spawn-consumers::
+    Start the consumer(s) during lttng-sessiond start-up. By default
+    the consumers are only started on an as-needed basis.
 
 Linux kernel tracing
 ~~~~~~~~~~~~~~~~~~~~
@@ -294,7 +298,6 @@ option:--ustconsumerd32-err-sock='PATH'::
 option:--ustconsumerd64-err-sock='PATH'::
     Set the Unix socket path of the 64-bit consumer daemon error to
     'PATH'.
-
 
 Buffer size of event notifier error counters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

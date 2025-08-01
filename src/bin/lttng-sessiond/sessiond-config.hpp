@@ -42,6 +42,7 @@ struct sessiond_config {
 	bool background;
 	bool daemonize;
 	bool sig_parent;
+	bool spawn_consumers;
 
 	enum lttng_trace_format default_trace_format;
 

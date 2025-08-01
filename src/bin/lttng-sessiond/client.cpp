@@ -471,64 +471,6 @@ error:
 }
 
 /*
- * Spawn the consumerd daemon and session daemon thread.
- */
-int start_consumerd(struct consumer_data *consumer_data)
-{
-	int ret;
-
-	/*
-	 * Set the listen() state on the socket since there is a possible race
-	 * between the exec() of the consumer daemon and this call if place in the
-	 * consumer thread. See bug #366 for more details.
-	 */
-	ret = lttcomm_listen_unix_sock(consumer_data->err_sock);
-	if (ret < 0) {
-		goto error;
-	}
-
-	pthread_mutex_lock(&consumer_data->pid_mutex);
-	if (consumer_data->pid != 0) {
-		pthread_mutex_unlock(&consumer_data->pid_mutex);
-		goto end;
-	}
-
-	ret = spawn_consumerd(consumer_data);
-	if (ret < 0) {
-		ERR("Spawning consumerd failed");
-		pthread_mutex_unlock(&consumer_data->pid_mutex);
-		goto error;
-	}
-
-	/* Setting up the consumer_data pid */
-	consumer_data->pid = ret;
-	DBG2("Consumer pid %d", consumer_data->pid);
-	pthread_mutex_unlock(&consumer_data->pid_mutex);
-
-	DBG2("Spawning consumer control thread");
-	ret = spawn_consumer_thread(consumer_data);
-	if (ret < 0) {
-		ERR("Fatal error spawning consumer control thread");
-		goto error;
-	}
-
-end:
-	return 0;
-
-error:
-	/* Cleanup already created sockets on error. */
-	if (consumer_data->err_sock >= 0) {
-		int err;
-
-		err = close(consumer_data->err_sock);
-		if (err < 0) {
-			PERROR("close consumer data error socket");
-		}
-	}
-	return ret;
-}
-
-/*
  * Copy consumer output from the tracing session to the domain session. The
  * function also applies the right modification on a per domain basis for the
  * trace files destination directory.
@@ -2999,6 +2941,64 @@ bool shutdown_client_thread(void *thread_data)
 	return notify_thread_pipe(write_fd) == 1;
 }
 } /* namespace */
+
+/*
+ * Spawn the consumerd daemon and session daemon thread.
+ */
+int start_consumerd(struct consumer_data *consumer_data)
+{
+	int ret;
+
+	/*
+	 * Set the listen() state on the socket since there is a possible race
+	 * between the exec() of the consumer daemon and this call if place in the
+	 * consumer thread. See bug #366 for more details.
+	 */
+	ret = lttcomm_listen_unix_sock(consumer_data->err_sock);
+	if (ret < 0) {
+		goto error;
+	}
+
+	pthread_mutex_lock(&consumer_data->pid_mutex);
+	if (consumer_data->pid != 0) {
+		pthread_mutex_unlock(&consumer_data->pid_mutex);
+		goto end;
+	}
+
+	ret = spawn_consumerd(consumer_data);
+	if (ret < 0) {
+		ERR("Spawning consumerd failed");
+		pthread_mutex_unlock(&consumer_data->pid_mutex);
+		goto error;
+	}
+
+	/* Setting up the consumer_data pid */
+	consumer_data->pid = ret;
+	DBG2("Consumer pid %d", consumer_data->pid);
+	pthread_mutex_unlock(&consumer_data->pid_mutex);
+
+	DBG2("Spawning consumer control thread");
+	ret = spawn_consumer_thread(consumer_data);
+	if (ret < 0) {
+		ERR("Fatal error spawning consumer control thread");
+		goto error;
+	}
+
+end:
+	return 0;
+
+error:
+	/* Cleanup already created sockets on error. */
+	if (consumer_data->err_sock >= 0) {
+		int err;
+
+		err = close(consumer_data->err_sock);
+		if (err < 0) {
+			PERROR("close consumer data error socket");
+		}
+	}
+	return ret;
+}
 
 struct lttng_thread *launch_client_thread()
 {

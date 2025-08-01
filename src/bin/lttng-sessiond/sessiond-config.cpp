@@ -35,6 +35,7 @@ static struct sessiond_config sessiond_config_build_defaults = {
 	.background = false,
 	.daemonize = false,
 	.sig_parent = false,
+	.spawn_consumers = false,
 
 	.default_trace_format = LTTNG_TRACE_FORMAT_CTF_2,
 
