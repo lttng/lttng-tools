@@ -832,9 +832,10 @@ class _Environment(logger._Logger):
         sessiond_extra_args=None,  # type: Optional[List[str]]
     ):
         super().__init__(log)
+        self._processes = []
+
         signal.signal(signal.SIGTERM, self._handle_termination_signal)
         signal.signal(signal.SIGINT, self._handle_termination_signal)
-
         if os.getenv("LTTNG_TEST_VERBOSE_BABELTRACE", "0") != "0":
             # @TODO: Is there a way to feed the logging output to
             # the logger._Logger instead of directly to stderr?
@@ -914,6 +915,10 @@ class _Environment(logger._Logger):
                 | stat.S_IXOTH,
             )
 
+    def log(self, *args, **kwargs):
+        if self._log:
+            self._log(*args, **kwargs)
+
     @property
     def teardown_timeout(self):
         return self._teardown_timeout
@@ -971,6 +976,53 @@ class _Environment(logger._Logger):
         except Exception as e:
             self._log("Failed to open port file '{}': {}".format(port_file, str(e)))
             raise e
+
+    @property
+    def lttng_consumerd_control_directory(self):
+        if self.lttng_sessiond_env_vars.get("LTTNG_RUNDIR"):
+            return pathlib.Path(self.lttng_sessiond_env_vars.get("LTTNG_RUNDIR"))
+        else:
+            home_dir = (
+                self.lttng_sessiond_env_vars["LTTNG_HOME"]
+                if ("LTTNG_HOME" in self.lttng_sessiond_env_vars)
+                else os.environ.get("HOME", os.path.expanduser("~"))
+            )
+            return (
+                pathlib.Path("/var/run/lttng")
+                if os.getuid() == 0
+                else pathlib.Path(home_dir) / ".lttng"
+            )
+
+    @property
+    def lttng_consumerd_kernel_pid(self):
+        pid_file = str(self.lttng_consumerd_control_directory / "kconsumerd" / "pid")
+        if os.path.exists(pid_file):
+            with open(pid_file, "r") as f:
+                return f.read().strip()
+
+        return None
+
+    @property
+    def lttng_consumerd_ust32_pid(self):
+        pid_file = str(
+            self.lttng_consumerd_control_directory / "ustconsumerd32" / "pid"
+        )
+        if os.path.exists(pid_file):
+            with open(pid_file, "r") as f:
+                return f.read().strip()
+
+        return None
+
+    @property
+    def lttng_consumerd_ust64_pid(self):
+        pid_file = str(
+            self.lttng_consumerd_control_directory / "ustconsumerd64" / "pid"
+        )
+        if os.path.exists(pid_file):
+            with open(pid_file, "r") as f:
+                return f.read().strip()
+
+        return None
 
     @property
     def lttng_relayd_control_port(self):
@@ -1306,6 +1358,7 @@ class _Environment(logger._Logger):
         if self.lttng_home_location is not None:
             sessiond_env["LTTNG_HOME"] = str(self.lttng_home_location)
 
+        self.lttng_sessiond_env_vars = sessiond_env
         wait_queue = _SignalWaitQueue()
         with wait_queue.intercept_signal(signal.SIGUSR1):
             self._log(
@@ -1322,10 +1375,19 @@ class _Environment(logger._Logger):
             ]
             if os.getenv("LTTNG_TEST_VERBOSE_SESSIOND", "0") != "0":
                 sessiond_command.extend(["-vvv", "--verbose-consumer"])
+
             if not enable_kernel_domain:
                 sessiond_command.extend(["--no-kernel"])
+
             if self._sessiond_extra_args:
                 sessiond_command.extend(self._sessiond_extra_args)
+
+            if (
+                os.environ.get("LTTNG_TEST_GDBSERVER_CONSUMERD_UST32") is not None
+                or os.environ.get("LTTNG_TEST_GDBSERVER_CONSUMERD_UST64") is not None
+            ):
+                sessiond_command.extend(["--spawn-consumers"])
+
             self._lttng_sessiond_log_file = None
             if self.lttng_log_dir:
                 self._lttng_sessiond_log_file = tempfile.NamedTemporaryFile(
@@ -1357,33 +1419,99 @@ class _Environment(logger._Logger):
             wait_queue.wait_for_signal()
 
         if os.environ.get("LTTNG_TEST_GDBSERVER_SESSIOND") is not None:
-            subprocess.Popen(
-                [
-                    "gdbserver",
-                    "--attach",
-                    "localhost:{}".format(
-                        os.environ.get("LTTNG_TEST_GDBSERVER_SESSIOND_PORT", "1024")
-                    ),
-                    str(process.pid),
-                ]
+            self.attach_gdbserver(
+                "localhost:{}".format(
+                    os.environ.get("LTTNG_TEST_GDBSERVER_SESSIOND_PORT", "1024")
+                ),
+                process.pid,
             )
 
             if os.environ.get("LTTNG_TEST_GDBSERVER_SESSIOND_WAIT", ""):
                 input("Waiting for user input. Press `Enter` to continue")
             else:
-                subprocess.Popen(
-                    [
-                        "gdb",
-                        "--batch-silent",
-                        "-ex",
-                        "target remote localhost:{}".format(
-                            os.environ.get("LTTNG_TEST_GDBSERVER_SESSIOND_PORT", "1024")
-                        ),
-                        "-ex",
-                        "continue",
-                        "-ex",
-                        "disconnect",
-                    ]
+                self.detach_gdbserver(
+                    "localhost:{}".format(
+                        os.environ.get("LTTNG_TEST_GDBSERVER_SESSIOND_PORT", "1024")
+                    ),
+                    True,
+                )
+
+        if (
+            os.environ.get("LTTNG_TEST_GDBSERVER_CONSUMERD_KERNEL") is not None
+            and enable_kernel_domain
+            and os.getuid() == 0
+        ):
+            while self.lttng_consumerd_kernel_pid is None:
+                self.log("Waiting for lttng-consumerd kernel pid")
+                time.sleep(1)
+
+            self.attach_gdbserver(
+                "localhost:{}".format(
+                    os.environ.get("LTTNG_TEST_GDBSERVER_CONSUMERD_KERNEL_PORT", "1026")
+                ),
+                self.lttng_consumerd_kernel_pid,
+            )
+
+            if os.environ.get("LTTNG_TEST_GDBSERVER_CONSUMERD_KERNEL_WAIT", ""):
+                input(
+                    "Waiting for user input (post gdbserver attach to consumer kernel). Press `Enter` to continue"
+                )
+            else:
+                self.detach_gdbserver(
+                    "localhost:{}".format(
+                        os.environ.get(
+                            "LTTNG_TEST_GDBSERVER_CONSUMERD_KERNEL_PORT", "1026"
+                        )
+                    )
+                )
+        if os.environ.get("LTTNG_TEST_GDBSERVER_CONSUMERD_UST32") is not None:
+            while self.lttng_consumerd_ust32_pid is None:
+                self.log("Waiting for lttng-consumerd ust32 pid")
+                time.sleep(1)
+
+            self.attach_gdbserver(
+                "localhost:{}".format(
+                    os.environ.get("LTTNG_TEST_GDBSERVER_CONSUMERD_UST32_PORT", "1027")
+                ),
+                self.lttng_consumerd_ust32_pid,
+            )
+
+            if os.environ.get("LTTNG_TEST_GDBSERVER_CONSUMERD_UST32_WAIT", ""):
+                input(
+                    "Waiting for user input (post gdbserver attach to consumer ust32). Press `Enter` to continue"
+                )
+            else:
+                self.detach_gdbserver(
+                    "localhost:{}".format(
+                        os.environ.get(
+                            "LTTNG_TEST_GDBSERVER_CONSUMERD_UST32_PORT", "1027"
+                        )
+                    )
+                )
+
+        if os.environ.get("LTTNG_TEST_GDBSERVER_CONSUMERD_UST64") is not None:
+            while self.lttng_consumerd_ust64_pid is None:
+                self.log("Waiting for lttng-consumerd ust64 pid")
+                time.sleep(1)
+
+            self.attach_gdbserver(
+                "localhost:{}".format(
+                    os.environ.get("LTTNG_TEST_GDBSERVER_CONSUMERD_UST64_PORT", "1028")
+                ),
+                self.lttng_consumerd_ust64_pid,
+            )
+
+            if os.environ.get("LTTNG_TEST_GDBSERVER_CONSUMERD_UST64_WAIT", ""):
+                input(
+                    "Waiting for user input (post gdbserver attach to consumer ust64). Press `Enter` to continue"
+                )
+            else:
+                self.detach_gdbserver(
+                    "localhost:{}".format(
+                        os.environ.get(
+                            "LTTNG_TEST_GDBSERVER_CONSUMERD_UST64_PORT", "1028"
+                        )
+                    )
                 )
 
         return process
@@ -1536,6 +1664,24 @@ class _Environment(logger._Logger):
     # Clean-up managed processes
     def _cleanup(self):
         # type: () -> None
+        for process in self._processes:
+            if process.poll() is None:
+                try:
+                    process.terminate()
+                    self.log(
+                        "Termination signal sent to process (pid = {})".format(
+                            process.pid
+                        )
+                    )
+                    process.wait(timeout=self.teardown_timeout)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    self.log(
+                        "Kill signal sent to process (pid = {}) after waiting {}s".format(
+                            process.pid, self.teardown_timeout
+                        )
+                    )
+
         if self._sessiond and self._sessiond.poll() is None:
             # The session daemon is alive; kill it.
             try:
@@ -1605,6 +1751,28 @@ class _Environment(logger._Logger):
 
     def __del__(self):
         self._cleanup()
+
+    def attach_gdbserver(self, target, pid):
+        process = subprocess.Popen(["gdbserver", "--attach", target, str(pid)])
+        self._processes.append(process)
+
+    def detach_gdbserver(self, target, continue_and_dont_wait=False):
+        command = [
+            "gdb",
+            "--nx",
+            "--batch",
+            "-ex",
+            "target remote {}".format(target),
+        ]
+        if continue_and_dont_wait:
+            command.extend(["-ex", "continue"])
+
+        command.extend(["-ex", "disconnect"])
+        process = subprocess.Popen(command)
+        if not continue_and_dont_wait:
+            process.wait()
+        else:
+            self._processes.append(process)
 
 
 def getconf(name):

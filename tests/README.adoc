@@ -122,6 +122,45 @@ Some invocations of programs during the test may override this value to perform 
 | Environment variables to forward into test environment
 | {check} | {ex} | {ex}
 
+| `LTTNG_TEST_GDBSERVER_CONSUMERD_KERNEL
+| Launch `gdbserver` and attach to newly spawned `lttng-consumerd` process
+| {check} | {ex} | {ex}
+
+| `LTTNG_TEST_GDBSERVER_CONSUMERD_KERNEL_PORT`
+| The TCP port for the gdbserver instance. Default:{nbsp}`1026`
+| {check} | {ex} | {ex}
+
+| `LTTNG_TEST_GDBSERVER_CONSUMERD_KERNEL_WAIT`
+| When not empty, the test script will wait for user input after starting lttng-consumerd before continuing.
+Useful to connect and insert breakpoints before other commands are run.
+| {check} | {ex} | {ex}
+
+| `LTTNG_TEST_GDBSERVER_CONSUMERD_UST32`
+| Launch `gdbserver` and attach to newly spawned `lttng-consumerd` UST32 process
+| {check} | {ex} | {ex}
+
+| `LTTNG_TEST_GDBSERVER_CONSUMERD_UST32_PORT`
+| The TCP port for the gdbserver instance. Default:{nbsp}`1027`
+| {check} | {ex} | {ex}
+
+| `LTTNG_TEST_GDBSERVER_CONSUMERD_UST32_WAIT`
+| When not empty, the test script will wait for user input after starting lttng-consumerd before continuing.
+Useful to connect and insert breakpoints before other commands are run.
+| {check} | {ex} | {ex}
+
+| `LTTNG_TEST_GDBSERVER_CONSUMERD_UST64`
+| Launch `gdbserver` and attach to newly spawned `lttng-consumerd` UST64 process
+| {check} | {ex} | {ex}
+
+| `LTTNG_TEST_GDBSERVER_CONSUMERD_UST64_PORT`
+| The TCP port for the gdbserver instance. Default:{nbsp}`1028`
+| {check} | {ex} | {ex}
+
+| `LTTNG_TEST_GDBSERVER_CONSUMERD_UST64_WAIT`
+| When not empty, the test script will wait for user input after starting lttng-consumerd before continuing.
+Useful to connect and insert breakpoints before other commands are run.
+| {check} | {ex} | {ex}
+
 | `LTTNG_TEST_GDBSERVER_RELAYD`
 | Launch `gdbserver` and attach to newly spawned `lttng-relayd` processes
 | {check} | {check} | {ex}
