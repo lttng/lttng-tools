@@ -515,7 +515,18 @@ public:
 	~variant_type_choice() = default;
 
 	variant_type_choice(const variant_type_choice& other) = default;
-	variant_type_choice(variant_type_choice&& other) noexcept = default;
+
+	/*
+	 * Explicitly define the move constructor to ensure compatibility with older compilers
+	 * (e.g., GCC 4.8). Some older compilers generate an implicit exception specification for
+	 * defaulted move constructors that conflicts with the `noexcept` specifier.
+	 */
+	variant_type_choice(variant_type_choice&& other) noexcept :
+		name{ std::move(other.name) },
+		mapping{ std::move(other.mapping) },
+		type_{ std::move(other.type_) }
+	{
+	}
 	variant_type_choice& operator=(variant_type_choice&&) = delete;
 	variant_type_choice& operator=(const variant_type_choice&) = delete;
 
@@ -524,8 +535,9 @@ public:
 		return name == other.name && mapping == other.mapping && *type_ == *other.type_;
 	}
 
-	const std::string name;
-	const mapping_t mapping;
+	/* Attributes are not const to allow efficient (copy-less) move semantics. */
+	std::string name;
+	mapping_t mapping;
 	type::cuptr type_;
 };
 
