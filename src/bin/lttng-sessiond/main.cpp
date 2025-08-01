@@ -2030,6 +2030,7 @@ static int _main(int argc, char **argv)
 			}
 
 			uatomic_set(&the_ust_consumerd_state, CONSUMER_STARTED);
+			uatomic_set(&the_ust_consumerd64_fd, the_ustconsumer64_data.cmd_sock);
 		} else {
 			pthread_mutex_unlock(&the_ustconsumer64_data.pid_mutex);
 		}
@@ -2045,6 +2046,7 @@ static int _main(int argc, char **argv)
 			}
 
 			uatomic_set(&the_ust_consumerd_state, CONSUMER_STARTED);
+			uatomic_set(&the_ust_consumerd32_fd, the_ustconsumer32_data.cmd_sock);
 		} else {
 			pthread_mutex_unlock(&the_ustconsumer32_data.pid_mutex);
 		}

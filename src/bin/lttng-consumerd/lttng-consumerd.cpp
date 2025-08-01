@@ -19,6 +19,7 @@
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/utils.hpp>
 
+#include <cstdarg>
 #include <fcntl.h>
 #include <getopt.h>
 #include <grp.h>
@@ -322,6 +323,79 @@ static void set_ulimit()
 	}
 }
 
+namespace {
+__attribute__((format(printf, 1, 2))) std::string format_printf_string(const char *fmt, ...)
+{
+	va_list args;
+
+	va_start(args, fmt);
+	const auto size = std::vsnprintf(nullptr, 0, fmt, args);
+	va_end(args);
+
+	if (size <= 0) {
+		LTTNG_THROW_POSIX("Failed to format string with snprintf", errno);
+	}
+
+	std::string result(size, '\0');
+
+	va_start(args, fmt);
+	const auto ret = std::vsnprintf(&result[0], size + 1, fmt, args);
+	va_end(args);
+
+	if (ret < 0) {
+		LTTNG_THROW_POSIX("Failed to format string with snprintf", errno);
+	}
+
+	if (ret != size) {
+		LTTNG_THROW_ERROR(fmt::format(
+			"Unexpected snprintf return value: expected_size={}, got={}", size, ret));
+	}
+
+	return result;
+}
+
+/* Returns the path of the PID file. */
+static std::string create_pid_file(lttng_consumer_type consumer_type)
+{
+	const auto rundir_path =
+		lttng::make_unique_wrapper<char, lttng::memory::free>(utils_get_rundir(0));
+
+	if (!rundir_path) {
+		LTTNG_THROW_ERROR("Failed to get rundir path");
+	}
+
+	/*
+	 * The sprintf call is repeated in each case to avoid -Wformat-nonliteral.
+	 */
+	std::string pid_file_path;
+	switch (consumer_type) {
+	case LTTNG_CONSUMER_KERNEL:
+		pid_file_path =
+			format_printf_string(DEFAULT_KCONSUMERD_PID_FILE_PATH, rundir_path.get());
+		break;
+	case LTTNG_CONSUMER64_UST:
+		pid_file_path = format_printf_string(DEFAULT_USTCONSUMERD64_PID_FILE_PATH,
+						     rundir_path.get());
+		break;
+	case LTTNG_CONSUMER32_UST:
+		pid_file_path = format_printf_string(DEFAULT_USTCONSUMERD32_PID_FILE_PATH,
+						     rundir_path.get());
+		break;
+	default:
+		ERR_FMT("Unknown consumerd type: {}", (int) consumer_type);
+		std::abort();
+	}
+
+	const auto ret = utils_create_pid_file(getpid(), pid_file_path.c_str());
+	if (ret) {
+		LTTNG_THROW_ERROR(
+			fmt::format("Failed to create PID file: path=`{}`", pid_file_path));
+	}
+
+	return pid_file_path;
+}
+} /* namespace */
+
 /*
  * main
  */
@@ -330,6 +404,12 @@ int main(int argc, char **argv)
 	int ret = 0, retval = 0;
 	void *status;
 	struct lttng_consumer_local_data *tmp_ctx;
+	std::string pid_file_path;
+	auto delete_pid_file = lttng::make_scope_exit([&pid_file_path]() noexcept {
+		if (!pid_file_path.empty() && unlink(pid_file_path.c_str())) {
+			PERROR_FMT("Failed to delete PID file: path=`{}`", pid_file_path);
+		}
+	});
 
 	rcu_register_thread();
 
@@ -396,6 +476,7 @@ int main(int argc, char **argv)
 				retval = -1;
 				goto exit_init_data;
 			}
+
 			break;
 		case LTTNG_CONSUMER64_UST:
 			ret = snprintf(command_sock_path,
@@ -406,6 +487,7 @@ int main(int argc, char **argv)
 				retval = -1;
 				goto exit_init_data;
 			}
+
 			break;
 		case LTTNG_CONSUMER32_UST:
 			ret = snprintf(command_sock_path,
@@ -416,12 +498,21 @@ int main(int argc, char **argv)
 				retval = -1;
 				goto exit_init_data;
 			}
+
 			break;
 		default:
 			ERR("Unknown consumerd type");
 			retval = -1;
 			goto exit_init_data;
 		}
+	}
+
+	try {
+		pid_file_path = create_pid_file(opt_type);
+	} catch (const std::exception& ex) {
+		ERR("Failed to create PID file: %s", ex.what());
+		retval = -1;
+		goto exit_init_data;
 	}
 
 	/* Init */
