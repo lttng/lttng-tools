@@ -608,6 +608,63 @@ SPDX-License-Identifier: MIT
 		</xs:all>
 	</xs:complexType>
 
+	<!-- Maps to enum lttng_app_bitness - only allows 32 or 64 -->
+	<xs:simpleType name="app_bitness_type">
+		<xs:restriction base="xs:integer">
+			<xs:enumeration value="32" />
+			<xs:enumeration value="64" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!-- Extensible UID type - allows future addition of user name -->
+	<xs:complexType name="uid_type">
+		<xs:all>
+			<xs:element name="id" type="tns:uint32_type" />
+			<!-- Future extension: <xs:element name="name" type="xs:string" minOccurs="0" /> -->
+		</xs:all>
+	</xs:complexType>
+
+	<!-- Maps to lttng_data_stream_info -->
+	<xs:complexType name="data_stream_info_type">
+		<xs:all>
+			<xs:element name="cpu_id" type="tns:uint32_type" minOccurs="0" />
+			<xs:element name="memory_usage_bytes" type="tns:uint64_type" />
+		</xs:all>
+	</xs:complexType>
+
+	<!-- List of data_stream_info -->
+	<xs:complexType name="data_stream_info_list_type">
+		<xs:sequence>
+			<xs:element name="data_stream_info" type="tns:data_stream_info_type" minOccurs="0" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Maps to lttng_data_stream_info_set -->
+	<xs:complexType name="data_stream_info_set_type">
+		<xs:all>
+			<xs:element name="uid" type="tns:uid_type" minOccurs="0" />
+			<xs:element name="pid" type="tns:uint32_type" minOccurs="0" />
+			<xs:element name="app_bitness" type="tns:app_bitness_type" minOccurs="0" />
+			<xs:element name="total_memory_usage_bytes" type="tns:uint64_type" />
+			<xs:element name="data_stream_info_list" type="tns:data_stream_info_list_type" />
+		</xs:all>
+	</xs:complexType>
+
+	<!-- List of data_stream_info_set -->
+	<xs:complexType name="data_stream_info_set_list_type">
+		<xs:sequence>
+			<xs:element name="data_stream_info_set" type="tns:data_stream_info_set_type" minOccurs="0" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Maps to lttng_data_stream_info_sets -->
+	<xs:complexType name="data_stream_info_sets_type">
+		<xs:all>
+			<xs:element name="total_memory_usage_bytes" type="tns:uint64_type" />
+			<xs:element name="sets" type="tns:data_stream_info_set_list_type" />
+		</xs:all>
+	</xs:complexType>
+
 	<!-- Maps to struct lttng_channel -->
 	<xs:complexType name="channel_type">
 		<xs:all>
@@ -615,6 +672,7 @@ SPDX-License-Identifier: MIT
 			<xs:element name="enabled" type="xs:boolean" default="true" minOccurs="0" />
 			<xs:element name="attributes" type="tns:channel_attributes_type" minOccurs="0" />
 			<xs:element name="events" type="tns:event_list_type" minOccurs="0" />
+			<xs:element name="data_stream_info_sets" type="tns:data_stream_info_sets_type" minOccurs="0" />
 			<xs:element name="success" type="xs:boolean" default="false" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
