@@ -1714,11 +1714,10 @@ static int check_index_status(struct relay_viewer_stream *vstream,
 		 * packet sequence numbers.
 		 */
 		index->status = LTTNG_VIEWER_INDEX_RETRY;
-		DBG("Check index status:"
-		    "did not received beacon for stream %" PRIu64 ", returning status=%s",
-		    vstream->stream->stream_handle,
-		    lttng_viewer_next_index_return_code_str(
-			    (enum lttng_viewer_next_index_return_code) index->status));
+		DBG_FMT("Check index status: did not receive live beacon for stream {}, returning status={}",
+			vstream->stream->stream_handle,
+			lttng_viewer_next_index_return_code_str(
+				(enum lttng_viewer_next_index_return_code) index->status));
 		goto index_ready;
 	} else if (!tracefile_array_seq_in_file(rstream->tfa,
 						vstream->current_tracefile_id,
