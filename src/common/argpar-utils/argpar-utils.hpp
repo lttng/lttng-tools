@@ -41,12 +41,16 @@ struct formatter<parse_next_item_status> : formatter<std::string> {
 		switch (status) {
 		case PARSE_NEXT_ITEM_STATUS_OK:
 			name = "ok";
+			break;
 		case PARSE_NEXT_ITEM_STATUS_END:
 			name = "end";
+			break;
 		case PARSE_NEXT_ITEM_STATUS_ERROR:
 			name = "error";
+			break;
 		case PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY:
 			name = "allocation error";
+			break;
 		}
 
 		return format_to(ctx.out(), name);
