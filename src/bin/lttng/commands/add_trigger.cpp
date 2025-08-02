@@ -846,7 +846,7 @@ parse_buffer_usage(int *argc, const char ***argv, int argc_offset, const char *c
 	}
 
 	const auto consumed_args = argpar_iter_ingested_orig_args(argpar_iter.get());
-	LTTNG_ASSERT(consumed_args >= 0);
+
 	*argc -= consumed_args;
 	*argv += consumed_args;
 	if (res.session_name.empty()) {
@@ -1213,7 +1213,7 @@ static struct parse_event_rule_res parse_event_rule(int *argc, const char ***arg
 	 * Update *argc and *argv so our caller can keep parsing what follows.
 	 */
 	consumed_args = argpar_iter_ingested_orig_args(argpar_iter);
-	LTTNG_ASSERT(consumed_args >= 0);
+
 	*argc -= consumed_args;
 	*argv += consumed_args;
 
@@ -1796,7 +1796,7 @@ parse_session_consumed_size(int *argc, const char ***argv, int argc_offset)
 	}
 
 	const auto consumed_args = argpar_iter_ingested_orig_args(argpar_iter.get());
-	LTTNG_ASSERT(consumed_args >= 0);
+
 	*argc -= consumed_args;
 	*argv += consumed_args;
 	res.success = has_threshold_size && has_session_name;
@@ -1928,7 +1928,7 @@ static struct parse_session_rotation_res parse_session_rotation(int *argc,
 	}
 
 	const auto consumed_args = argpar_iter_ingested_orig_args(argpar_iter.get());
-	LTTNG_ASSERT(consumed_args >= 0);
+
 	*argc -= consumed_args;
 	*argv += consumed_args;
 
