@@ -129,6 +129,7 @@ SERIAL_TESTS += ust/before-after/test_before_after \
 	ust/ust-app-ctl-paths/test_ust_app_ctl_paths \
 	ust/ust-constructor/test_ust_constructor_c_dynamic.py \
 	tools/client/test_bug1373_events_differ_only_by_loglevel \
+	tools/client/test_bug1480_assert_data_pending \
 	tools/config-directory/test_config.py \
 	tools/metadata/test_ust \
 	tools/relayd-grouping/test_ust \

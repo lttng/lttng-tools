@@ -4,38 +4,53 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 #
-TEST_DESC="lttng-sessiond should not crash when receiving data-pending for an active session"
+
 CURDIR=$(dirname "$0")
-TESTDIR=$(realpath "${CURDIR}/../../../")
-# Test app for ust event
+TESTDIR=${CURDIR}/../../..
+
+TEST_DESC="lttng-sessiond should not crash when receiving data-pending for an active session"
+
 TESTAPP_PATH="${TESTDIR}/utils/testapp"
 TESTAPP_NAME="gen-data-pending"
 TESTAPP_BIN="${TESTAPP_PATH}/${TESTAPP_NAME}"
-SESSION_NAME=asdf
 
-NUM_TESTS=7
+NUM_TESTS=8
 
 # shellcheck source-path=SCRIPTDIR/../../../
 source "${TESTDIR}/utils/utils.sh"
+
+function test_assert_data_pending ()
+{
+	local session_name="data-pending"
+	local channel_name="chan1"
+	local trace_path
+	local file_testapp_output
+
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
+
+	start_lttng_sessiond
+
+	create_lttng_session_ok "${session_name}" "${trace_path}"
+	enable_ust_lttng_channel_ok "${session_name}" "${channel_name}"
+	start_lttng_tracing_ok "${session_name}"
+
+	run_testapp_ok "$file_testapp_output" "${TESTAPP_BIN}" "${session_name}"
+
+	stop_lttng_tracing_ok "${session_name}"
+	destroy_lttng_session_ok "${session_name}"
+	stop_lttng_sessiond
+
+	rm -rf "${trace_path}"
+	rm -f "$file_testapp_output"
+}
+
+plan_tests "${NUM_TESTS}"
+
+print_test_banner "${TEST_DESC}"
+
 if [ ! -x "${TESTAPP_BIN}" ] ; then
     BAIL_OUT "Test binary '${TESTAPP_BIN}' not detected or not executable"
 fi
 
-OUTPUT_DIR=$(mktemp -d)
-CHANNEL_NAME=asdf
-
-plan_tests "${NUM_TESTS}"
-print_test_banner "${TEST_DESC}"
-
-start_lttng_sessiond
-
-create_lttng_session_ok "${SESSION_NAME}" "${OUTPUT_DIR}"
-enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}"
-start_lttng_tracing_ok "${SESSION_NAME}"
-
-"${TESTAPP_BIN}" "${SESSION_NAME}"
-
-stop_lttng_tracing_ok "${SESSION_NAME}"
-destroy_lttng_session_ok "${SESSION_NAME}"
-stop_lttng_sessiond
-rm -rf "${OUTPUT_DIR}"
+test_assert_data_pending

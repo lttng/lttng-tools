@@ -172,6 +172,7 @@ noinst_SCRIPTS += \
 	client/test_event_rule_listing.py \
 	client/test_add_trigger.py \
 	client/test_bug1373_events_differ_only_by_loglevel \
+	client/test_bug1480_assert_data_pending \
 	client/test_warn_on_shm_too_small.py \
 	client/test_reclaim_memory.py \
 	context/test_ust.py \
