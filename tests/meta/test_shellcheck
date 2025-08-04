@@ -11,6 +11,7 @@ files=(
     regression/tools/base-path/test_ust
     regression/tools/channel/test_channel
     regression/tools/clear/test_kernel
+    regression/tools/client/test_bug1373_events_differ_only_by_loglevel
     regression/tools/client/test_bug1480_assert_data_pending
     regression/tools/live/test_lttng_ust
     regression/tools/regen-metadata/test_ust
