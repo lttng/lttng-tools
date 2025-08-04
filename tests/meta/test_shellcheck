@@ -8,6 +8,7 @@
 # All file must be relative to the test directory.
 files=(
     meta/test_shellcheck
+    regression/tools/base-path/test_ust
     regression/tools/channel/test_channel
     regression/tools/live/test_lttng_ust
     regression/tools/regen-metadata/test_ust
