@@ -30,7 +30,7 @@ EXTRA_DIST = \
 	     test_notification_ust_capture \
 	     test_notification_ust_error \
 	     test_notification_ust_event_rule_condition_exclusion \
-	     util_event_generator.sh
+	     util_event_generator.py
 else
 
 # In order to test the health check feature, the helper library
@@ -78,7 +78,7 @@ noinst_SCRIPTS = \
 	test_notification_ust_error \
 	test_notification_ust_event_rule_condition_exclusion \
 	test_rotation \
-	util_event_generator.sh
+	util_event_generator.py
 
 EXTRA_DIST = \
 	test_notification_kernel_buffer_usage \
@@ -94,7 +94,7 @@ EXTRA_DIST = \
 	test_notification_ust_error \
 	test_notification_ust_event_rule_condition_exclusion \
 	test_rotation \
-	util_event_generator.sh
+	util_event_generator.py
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \

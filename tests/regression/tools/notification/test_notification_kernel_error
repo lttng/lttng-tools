@@ -14,14 +14,17 @@ NUM_TESTS=44
 
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
-# shellcheck source=./util_event_generator.sh
-source "$CURDIR/util_event_generator.sh"
+EVENT_GENERATOR_SCRIPT="${CURDIR}/util_event_generator.py"
 
 function test_basic_error_path
 {
-	kernel_event_generator_run_once_per_transition generate_filter_events \
-		"$TESTAPP_STATE_PATH" 10 &
+	READY_FILE="$(mktemp -u -t "generator_ready.XXXXXX")"
+	"${EVENT_GENERATOR_SCRIPT}" --ready-file "${READY_FILE}" --state-file "${TESTAPP_STATE_PATH}" --iterations 10 --run-once kernel_generate_filter_events &
 	APP_PID=$!
+	while [ ! -f "${READY_FILE}" ]; do
+		sleep 0.1
+	done
+	rm -f "${READY_FILE}"
 
 	"$CURDIR/notification" 1 LTTNG_DOMAIN_KERNEL $APP_PID \
 		"$TESTAPP_STATE_PATH"

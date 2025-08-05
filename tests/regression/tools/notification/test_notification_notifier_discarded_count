@@ -24,8 +24,6 @@ SH_TAP=1
 
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
-# shellcheck source=./util_event_generator.sh
-source "$CURDIR/util_event_generator.sh"
 
 FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 FULL_LTTNG_SESSIOND_BIN="${TESTDIR}/../src/bin/lttng-sessiond/lttng-sessiond"

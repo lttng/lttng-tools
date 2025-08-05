@@ -26,8 +26,7 @@ NUM_TESTS=99
 
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
-# shellcheck source=./util_event_generator.sh
-source "$CURDIR/util_event_generator.sh"
+EVENT_GENERATOR_SCRIPT="${CURDIR}/util_event_generator.py"
 
 function test_buffer_usage_notification
 {
@@ -45,8 +44,15 @@ function test_buffer_usage_notification
 		--subbuf-size="$page_size"
 	enable_kernel_lttng_event_notap $SESSION_NAME $event_name $CHANNEL_NAME
 
-	kernel_event_generator generate_filter_events "$TESTAPP_STATE_PATH" &
+
+	READY_FILE="$(mktemp -u -t "generator_ready.XXXXXX")"
+	"${EVENT_GENERATOR_SCRIPT}" --ready-file "${READY_FILE}" --state-file "${TESTAPP_STATE_PATH}" \
+				    kernel_generate_filter_events &
 	APP_PID=$!
+	while [ ! -f "${READY_FILE}" ]; do
+		sleep 0.1
+	done
+	rm -f "${READY_FILE}"
 
 	# This is needed since the testpoint create a pipe with the consumer
 	# type suffixed.

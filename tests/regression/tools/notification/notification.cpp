@@ -524,7 +524,7 @@ int validate_context_procname_kernel(const struct lttng_event_field_value *event
 {
 	/* Unused. */
 	(void) iteration;
-	return validate_string(event_field, "echo");
+	return validate_string(event_field, "python3");
 }
 
 const capture_base_field_tuple test_capture_base_fields[] = {

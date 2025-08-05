@@ -16,13 +16,19 @@ TESTAPP_STATE_PATH=$(mktemp -u -t "tmp.test_notif_event_rule_exclusion_ust_appli
 
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
-# shellcheck source=./util_event_generator.sh
-source "$CURDIR/util_event_generator.sh"
+EVENT_GENERATOR_SCRIPT="${CURDIR}/util_event_generator.py"
 
 function test_event_rule_condition_exclusion_notification
 {
-	ust_event_generator_run_once_per_transition "$GEN_UST_NEVENTS_TESTAPP_BIN" "$TESTAPP_STATE_PATH" 5 5 &
+	READY_FILE="$(mktemp -u -t "generator_ready.XXXXXX")"
+	USERSPACE_TESTAPP_BIN="${GEN_UST_NEVENTS_TESTAPP_BIN}" "${EVENT_GENERATOR_SCRIPT}" \
+			     --ready-file "${READY_FILE}" --state-file "${TESTAPP_STATE_PATH}" \
+			     --iterations 5 --wait 5 --run-once userspace_testapp &
 	APP_PID=$!
+	while [ ! -f "${READY_FILE}" ]; do
+		sleep 0.1
+	done
+	rm -f "${READY_FILE}"
 
 	"$CURDIR/notification" 3 LTTNG_DOMAIN_UST $APP_PID "$TESTAPP_STATE_PATH"
 

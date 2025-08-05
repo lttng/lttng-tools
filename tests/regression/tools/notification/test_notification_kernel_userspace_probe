@@ -13,13 +13,21 @@ NUM_TESTS=13
 
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
-# shellcheck source=./util_event_generator.sh
-source "$CURDIR/util_event_generator.sh"
+EVENT_GENERATOR_SCRIPT="${CURDIR}/util_event_generator.py"
+
+TESTAPP_PATH=${TESTAPP_PATH:-"$TESTDIR/utils/testapp"}
+USERSPACE_PROBE_ELF_TESTAPP_NAME=${USERSPACE_PROBE_ELF_TESTAPP_NAME:-"userspace-probe-elf-binary"}
+USERSPACE_PROBE_ELF_TESTAPP_BIN=${USERSPACE_PROBE_ELF_TESTAPP_BIN:-"$TESTAPP_PATH/$USERSPACE_PROBE_ELF_TESTAPP_NAME/.libs/$USERSPACE_PROBE_ELF_TESTAPP_NAME"}
 
 function test_kernel_userspace_probe_notification
 {
-	kernel_event_generator_run_once_per_transition userspace_probe_testapp "$TESTAPP_STATE_PATH" 10 &
+	READY_FILE="$(mktemp -u -t "generator_ready.XXXXXX")"
+	"${EVENT_GENERATOR_SCRIPT}" --ready-file "${READY_FILE}" --state-file "${TESTAPP_STATE_PATH}" --iterations 10 --run-once userspace_probe_testapp &
 	APP_PID=$!
+	while [ ! -f "${READY_FILE}" ]; do
+		sleep 0.1
+	done
+	rm -f "${READY_FILE}"
 
 	"$CURDIR/notification" 6 LTTNG_DOMAIN_KERNEL \
 		$APP_PID "$TESTAPP_STATE_PATH" \
