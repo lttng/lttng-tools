@@ -1,81 +1,90 @@
 #!/bin/bash
 #
 # SPDX-FileCopyrightText: 2012 Christian Babeux <christian.babeux@efficios.com>
+# SPDX-FileCopyrightText: 2025 Michael Jeanson <mjeanson@efficios.com>
 #
 # SPDX-License-Identifier: GPL-2.0-only
 #
 
 TEST_DESC="Filtering - Unsupported operators"
 
-CURDIR=$(dirname $0)/
+CURDIR=$(dirname "$0")
 TESTDIR=$CURDIR/../../..
-SESSION_NAME="filter-unsupported-ops"
-EVENT_NAME="bogus"
-ENABLE_EVENT_STDERR=$(mktemp -t tmp.test_filtering_unsupported_ops.XXXXXX)
-TRACE_PATH=$(mktemp -d -t tmp.test_filtering_unsupported_ops_trace_path.XXXXXX)
+
 NUM_GLOBAL_TESTS=2
 NUM_UST_TESTS=20
 NUM_KERNEL_TESTS=20
-NUM_TESTS=$(($NUM_UST_TESTS+$NUM_KERNEL_TESTS+$NUM_GLOBAL_TESTS))
+NUM_TESTS=$(( NUM_UST_TESTS + NUM_KERNEL_TESTS + NUM_GLOBAL_TESTS ))
 
-source $TESTDIR/utils/utils.sh
+# shellcheck source-path=SCRIPTDIR/../../..
+source "$TESTDIR/utils/utils.sh"
 
-function enable_lttng_event_filter_unsupported
+function test_ust_filter_unsupported_op
 {
-	domain="$1"
-	sess_name="$2"
-	event_name="$3"
-	filter="$4"
+	local test_op_str="$1"
+	local test_op_tkn="$2"
 
-	_run_lttng_cmd '/dev/null' "$ENABLE_EVENT_STDERR" enable-event \
-		"$event_name" --session "$sess_name" "$domain" --filter "$filter"
+	local session_name="filter-unsupported-ops"
+	local event_name="bogus"
+	local test_filter="intfield $test_op_tkn 1"
+	local trace_path
+	local file_err_output
 
-	# Enable must fail
-	if [ $? -eq 0 ]; then
-		fail "Enable lttng event with filtering and unsupported operator"
-		return 1
-	else
-		pass "Enable lttng event with filtering and unsupported operator"
-		return 0
-	fi
-}
+	diag "Test UST filter expression with unsupported operator $test_op_str ($test_op_tkn)"
 
-function test_unsupported_op
-{
-	domain="$1"
-	test_op_str="$2"
-	test_op_tkn="$3"
-
-	diag "Test filter expression with unsupported operator $test_op_str ($test_op_tkn)"
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_err_output=$(mktemp -t "tmp.${FUNCNAME[0]}_err_output.XXXXXX")
 
 	# Create session
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
-
-	# Create filter
-	if [ "$test_op_str" == "UNARY_BIN_NOT" ]; then
-		TEST_FILTER="${test_op_tkn}1"
-	else
-		TEST_FILTER="intfield $test_op_tkn 1"
-	fi
+	create_lttng_session_ok "$session_name" "$trace_path"
 
 	# Apply filter
-	enable_lttng_event_filter_unsupported $domain $SESSION_NAME $EVENT_NAME "$TEST_FILTER"
+	ERROR_OUTPUT_DEST="$file_err_output" enable_ust_lttng_event_fail "$session_name" "$event_name" "" --filter "$test_filter"
 
 	# Test stderr for unsupported operator
-
-	grep -i -q "not[[:space:]]\+supported" $ENABLE_EVENT_STDERR
-
-	if [ $? -eq 1 ]; then
-		fail "Unsupported operator test $test_op_str ($test_op_tkn)"
-		return 1
-	else
-		pass "Unsupported operator test $test_op_str ($test_op_tkn)"
-	fi
+	grep -i -q "not[[:space:]]\+supported" "$file_err_output"
+	ok $? "Unsupported error reported for: $test_op_str ($test_op_tkn)"
 
 	# Destroy session
-	destroy_lttng_session_ok $SESSION_NAME
-	return 0
+	destroy_lttng_session_ok "$session_name"
+
+	rm -rf "$trace_path"
+	rm -f "$file_err_output"
 }
+
+function test_kernel_filter_unsupported_op
+{
+	local test_op_str="$1"
+	local test_op_tkn="$2"
+
+	local session_name="filter-unsupported-ops"
+	local event_name="bogus"
+	local test_filter="intfield $test_op_tkn 1"
+	local trace_path
+	local file_err_output
+
+	diag "Test kernel filter expression with unsupported operator $test_op_str ($test_op_tkn)"
+
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_err_output=$(mktemp -t "tmp.${FUNCNAME[0]}_err_output.XXXXXX")
+
+	# Create session
+	create_lttng_session_ok "$session_name" "$trace_path"
+
+	# Apply filter
+	ERROR_OUTPUT_DEST="$file_err_output" enable_kernel_lttng_event_fail "$session_name" "$event_name" "" --filter "$test_filter"
+
+	# Test stderr for unsupported operator
+	grep -i -q "not[[:space:]]\+supported" "$file_err_output"
+	ok $? "Unsupported error reported for: $test_op_str ($test_op_tkn)"
+
+	# Destroy session
+	destroy_lttng_session_ok "$session_name"
+
+	rm -rf "$trace_path"
+	rm -f "$file_err_output"
+}
+
 
 plan_tests $NUM_TESTS
 
@@ -94,13 +103,8 @@ diag "Test UST unsupported filter operations"
 
 i=0
 while [ "$i" -lt "$OP_COUNT" ]; do
-	test_unsupported_op -u "${OP_STR[$i]}" "${OP_TKN[$i]}"
-
-	if [ $? -eq 1 ]; then
-		exit 1
-	fi
-
-	let "i++"
+	test_ust_filter_unsupported_op "${OP_STR[$i]}" "${OP_TKN[$i]}"
+	(( i++ ))
 done
 
 check_skip_kernel_test $NUM_KERNEL_TESTS "Skipping kernel unsupported filter operations tests." ||
@@ -109,18 +113,9 @@ check_skip_kernel_test $NUM_KERNEL_TESTS "Skipping kernel unsupported filter ope
 
 	i=0
 	while [ "$i" -lt "$OP_COUNT" ]; do
-		test_unsupported_op -k "${OP_STR[$i]}" "${OP_TKN[$i]}"
-
-		if [ $? -eq 1 ]; then
-			exit 1
-		fi
-
-		let "i++"
+		test_kernel_filter_unsupported_op "${OP_STR[$i]}" "${OP_TKN[$i]}"
+		(( i++ ))
 	done
 }
 
 stop_lttng_sessiond
-
-# Cleanup
-rm -f $ENABLE_EVENT_STDERR
-rm -rf $TRACE_PATH

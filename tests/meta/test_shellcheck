@@ -15,6 +15,7 @@ files=(
     regression/tools/client/test_bug1480_assert_data_pending
     regression/tools/exclusion/test_exclusion
     regression/tools/filtering/test_invalid_filter
+    regression/tools/filtering/test_unsupported_op
     regression/tools/filtering/test_valid_filter
     regression/tools/live/test_lttng_ust
     regression/tools/regen-metadata/test_ust
