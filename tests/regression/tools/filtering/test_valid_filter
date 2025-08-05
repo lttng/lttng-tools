@@ -1,48 +1,95 @@
 #!/bin/bash
 #
 # SPDX-FileCopyrightText: 2012 Christian Babeux <christian.babeux@efficios.com>
+# SPDX-FileCopyrightText: 2025 Michael Jeanson <mjeanson@efficios.com>
 #
 # SPDX-License-Identifier: GPL-2.0-only
 #
 
 TEST_DESC="Filtering - Valid filters"
 
-CURDIR=$(dirname $0)/
+CURDIR=$(dirname "$0")
 TESTDIR=$CURDIR/../../..
+
 BT2_PLUGINS_DIR="${TESTDIR}/utils/bt2_plugins"
 
 SESSION_NAME="valid_filter"
 NR_ITER=100
+
 NUM_GLOBAL_TESTS=4
-NUM_UST_TESTS=1122
-NUM_KERNEL_TESTS=1056
-NUM_TESTS=$(($NUM_UST_TESTS+$NUM_KERNEL_TESTS+$NUM_GLOBAL_TESTS))
+NUM_UST_TESTS=1491
+NUM_KERNEL_TESTS=1408
+NUM_TESTS=$((NUM_UST_TESTS + NUM_KERNEL_TESTS + NUM_GLOBAL_TESTS))
 
-source $TESTDIR/utils/utils.sh
+# shellcheck source-path=SCRIPTDIR/../../..
+source "$TESTDIR/utils/utils.sh"
 
-function enable_lttng_event_filter()
+function test_valid_ust_filter
 {
-	domain="$1"
-	sess_name="$2"
-	event_name="$3"
-	filter="$4"
+	local filter="$1"
+	local validator="$2"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event $event_name \
-			-s $sess_name $domain --filter "$filter" 2>&1 >/dev/null
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN add-context \
-			-s $sess_name $domain -t procname 2>&1 >/dev/null
+	local event_name="tp:tptest"
+	local channel_name='ust-filter'
+	local trace_path
+	local file_testapp_output
 
-	ok $? "Enable lttng event with filtering"
+	diag "Test valid ust filter: '$filter'"
+
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
+
+	# Create session
+	create_lttng_session_ok $SESSION_NAME "$trace_path"
+	enable_ust_lttng_channel_ok $SESSION_NAME "$channel_name"
+
+	# Enable filter
+	enable_ust_lttng_event_ok "$SESSION_NAME" "$event_name" "$channel_name" --filter "$filter"
+	add_context_ust_ok $SESSION_NAME "$channel_name" procname
+
+	# Trace apps
+	start_lttng_tracing_ok $SESSION_NAME
+
+	run_testapp_ok "$file_testapp_output" "$CURDIR/$BIN_NAME" $NR_ITER
+
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	# Destroy session
+	destroy_lttng_session_ok $SESSION_NAME --no-wait
+
+	stats=$("${BABELTRACE_BIN}" --plugin-path "${BT2_PLUGINS_DIR}" "${trace_path}" -c filter.lttngtest.event_name -p "names=[\"${event_name}\"]" -c sink.lttngtest.field_stats)
+
+	$validator "$stats"
+	ok $? "Validate trace filter output"
+
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
 }
 
-function run_ust
+function test_valid_ust_str_filter
 {
-	./$CURDIR/$BIN_NAME $NR_ITER >/dev/null 2>&1
-}
+	local filter="$1"
+	local validator="$2"
 
-function run_ust_str
-{
-	$TESTDIR/utils/testapp/gen-ust-nevents-str $NR_ITER \
+	local event_name="tp:the_string"
+	local trace_path
+	local file_testapp_output
+
+	diag "Test valid ust string filter: '$filter'"
+
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
+
+	# Create session
+	create_lttng_session_ok $SESSION_NAME "$trace_path"
+
+	# Enable filter
+	enable_ust_lttng_event_ok "$SESSION_NAME" "$event_name" "" --filter "$filter"
+
+	# Trace apps
+	start_lttng_tracing_ok $SESSION_NAME
+
+	run_testapp_ok "$file_testapp_output" "$TESTDIR/utils/testapp/gen-ust-nevents-str" $NR_ITER \
 		hypothec \
 		hypotheca \
 		hypothecary \
@@ -80,34 +127,7 @@ function run_ust_str
 		coseismal \
 		decimal \
 		dermal
-}
 
-function run_kernel
-{
-	# Trigger the event for 100 iterations
-	echo -n "100" > /proc/lttng-test-filter-event
-}
-
-function test_valid_filter
-{
-	domain_name="$1"
-	domain="$2"
-	event_name="$3"
-	filter="$4"
-	validator="$5"
-	local trace_path=$(mktemp -d -t tmp.test_filtering_valid_filters_trace_path.XXXXXX)
-
-	diag "Test valid $domain_name filter: $filter"
-
-	# Create session
-	create_lttng_session_ok $SESSION_NAME $trace_path
-
-	# Enable filter
-	enable_lttng_event_filter $domain $SESSION_NAME "$event_name" "$filter"
-
-	# Trace apps
-	start_lttng_tracing_ok $SESSION_NAME
-	run_$domain_name
 	stop_lttng_tracing_ok $SESSION_NAME
 
 	# Destroy session
@@ -117,47 +137,89 @@ function test_valid_filter
 
 	$validator "$stats"
 	ok $? "Validate trace filter output"
-	rm -rf $trace_path
+
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
 }
+
+function test_valid_kernel_filter
+{
+	local filter="$1"
+	local validator="$2"
+
+	local event_name="lttng_test_filter_event"
+	local channel_name='kernel-filter'
+	local trace_path
+
+	diag "Test valid kernel filter: '$filter'"
+
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+
+	# Create session
+	create_lttng_session_ok $SESSION_NAME "$trace_path"
+	enable_kernel_lttng_channel_ok $SESSION_NAME "$channel_name"
+
+	# Enable filter
+	enable_kernel_lttng_event_ok "$SESSION_NAME" "$event_name" "$channel_name" --filter "$filter"
+	add_context_kernel_ok $SESSION_NAME "$channel_name" procname
+
+	# Trace apps
+	start_lttng_tracing_ok $SESSION_NAME
+
+	echo -n "$NR_ITER" > /proc/lttng-test-filter-event
+
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	# Destroy session
+	destroy_lttng_session_ok $SESSION_NAME --no-wait
+
+	stats=$("${BABELTRACE_BIN}" --plugin-path "${BT2_PLUGINS_DIR}" "${trace_path}" -c filter.lttngtest.event_name -p "names=[\"${event_name}\"]" -c sink.lttngtest.field_stats)
+
+	$validator "$stats"
+	ok $? "Validate trace filter output"
+
+	rm -rf "$trace_path"
+}
+
 
 function validate_min_max
 {
-	stats="$1"
-	field=$2
-	expected_min=$3
-	expected_max=$4
+	local stats="$1"
+	local field=$2
+	local expected_min=$3
+	local expected_max=$4
 
-	echo $stats | grep -q "$field $expected_min $expected_max"
+	echo "$stats" | grep -qF "$field $expected_min $expected_max"
 
 	return $?
 }
 
 function validator_intfield
 {
-	stats="$1"
-	status=0
+	local stats="$1"
+	local status=0
 
 	validate_min_max "$stats" "intfield" "1" "99"
-	status=$(($status|$?))
+	status=$((status|$?))
 
 	validate_min_max "$stats" "intfield2" "0x1" "0x63"
-	status=$(($status|$?))
+	status=$((status|$?))
 
 	validate_min_max "$stats" "longfield" "1" "99"
-	status=$(($status|$?))
+	status=$((status|$?))
 
 	validate_min_max "$stats" "netintfield" "1" "99"
-	status=$(($status|$?))
+	status=$((status|$?))
 
 	validate_min_max "$stats" "netintfieldhex" "0x1" "0x63"
-	status=$(($status|$?))
+	status=$((status|$?))
 
 	if [ $KERNEL_CHECK -eq 0 ]; then
 		validate_min_max "$stats" "floatfield" "2222" "2222"
-		status=$(($status|$?))
+		status=$((status|$?))
 
 		validate_min_max "$stats" "doublefield" "2" "2"
-		status=$(($status|$?))
+		status=$((status|$?))
 	fi
 
 	return $status
@@ -165,22 +227,22 @@ function validator_intfield
 
 function validator_intfield_gt
 {
-	stats="$1"
-	status=0
+	local stats="$1"
+	local status=0
 
 	validate_min_max "$stats" "intfield" "2" "99"
-	status=$(($status|$?))
+	status=$((status|$?))
 
 	return $status
 }
 
 function validator_has_no_event
 {
-	stats="$1"
-	status=0
+	local stats="$1"
+	local status=0
 
 	validate_min_max "$stats" "intfield" "0" "99"
-	status=$(($status|$?))
+	status=$((status|$?))
 
 	if [ $status -eq 0 ]; then
 		return 1
@@ -196,200 +258,200 @@ function validator_str_has_no_event
 
 function validator_has_events
 {
-	stats="$1"
-	status=0
+	local stats="$1"
+	local status=0
 
 	validate_min_max "$stats" "intfield" "0" "99"
-	status=$(($status|$?))
+	status=$((status|$?))
 
 	return $status
 }
 
 function validator_str_has_events
 {
-	stats="$1"
-	status=0
+	local stats="$1"
+	local status=0
 
-	echo $stats | grep -q str
-	status=$(($status|$?))
+	echo "$stats" | grep -q str
+	status=$((status|$?))
 
 	return $status
 }
 
 function validator_stringfield_has_events
 {
-	stats="$1"
-	status=0
+	local stats="$1"
+	local status=0
 
-	echo $stats | grep -q stringfield
-	status=$(($status|$?))
+	echo "$stats" | grep -q stringfield
+	status=$((status|$?))
 
 	return $status
 }
 
 function validator_intfield_ge
 {
-	stats="$1"
-	status=0
+	local stats="$1"
+	local status=0
 
 	validate_min_max "$stats" "intfield" "1" "99"
-	status=$(($status|$?))
+	status=$((status|$?))
 
 	return $status
 }
 
 function validator_intfield_lt
 {
-	stats="$1"
-	status=0
+	local stats="$1"
+	local status=0
 
 	validate_min_max "$stats" "intfield" "0" "1"
-	status=$(($status|$?))
+	status=$((status|$?))
 
 	return $status
 }
 
 function validator_intfield_le
 {
-	stats="$1"
-	status=0
+	local stats="$1"
+	local status=0
 
 	validate_min_max "$stats" "intfield" "0" "2"
-	status=$(($status|$?))
+	status=$((status|$?))
 
 	return $status
 }
 
 function validator_intfield_eq
 {
-	stats="$1"
-	status=0
+	local stats="$1"
+	local status=0
 
 	validate_min_max "$stats" "intfield" "1" "1"
-	status=$(($status|$?))
+	status=$((status|$?))
 
 	return $status
 }
 
 function validator_intfield_ne
 {
-	stats="$1"
-	status=0
+	local stats="$1"
+	local status=0
 
 	validate_min_max "$stats" "intfield" "0" "98"
-	status=$(($status|$?))
+	status=$((status|$?))
 
 	return $status
 }
 
 function validator_intfield_not
 {
-	stats="$1"
-	status=0
+	local stats="$1"
+	local status=0
 
 	validate_min_max "$stats" "intfield" "0" "0"
-	status=$(($status|$?))
+	status=$((status|$?))
 
 	return $status
 }
 
 function validator_intfield_gt_and_longfield_gt
 {
-	stats="$1"
-	status=0
+	local stats="$1"
+	local status=0
 
 	validate_min_max "$stats" "intfield" "43" "99"
-	status=$(($status|$?))
+	status=$((status|$?))
 	validate_min_max "$stats" "longfield" "43" "99"
-	status=$(($status|$?))
+	status=$((status|$?))
 
 	return $status
 }
 
 function validator_intfield_ge_and_longfield_le
 {
-	stats="$1"
-	status=0
+	local stats="$1"
+	local status=0
 
 	validate_min_max "$stats" "intfield" "42" "42"
-	status=$(($status|$?))
+	status=$((status|$?))
 	validate_min_max "$stats" "longfield" "42" "42"
-	status=$(($status|$?))
+	status=$((status|$?))
 
 	return $status
 }
 
 function validator_intfield_lt_or_longfield_gt
 {
-	stats="$1"
-	status=0
+	local stats="$1"
+	local status=0
 
 	validate_min_max "$stats" "intfield" "0" "99"
-	status=$(($status|$?))
+	status=$((status|$?))
 	validate_min_max "$stats" "longfield" "0" "99"
-	status=$(($status|$?))
+	status=$((status|$?))
 
 	return $status
 }
 
 function validator_mixed_str_or_int_and_int
 {
-	stats="$1"
-	status=0
+	local stats="$1"
+	local status=0
 
 	validate_min_max "$stats" "intfield" "34" "99"
-	status=$(($status|$?))
+	status=$((status|$?))
 
-	validate_min_max "$stats" "stringfield" "\"test\"" "\"test\""
-	status=$(($status|$?))
+	validate_min_max "$stats" "stringfield" '"test"' '"test"'
+	status=$((status|$?))
 
 	return $status
 }
 
 function validator_mixed_int_double
 {
-	stats="$1"
-	status=0
+	local stats="$1"
+	local status=0
 
 	validate_min_max "$stats" "intfield" "0" "42"
-	status=$(($status|$?))
+	status=$((status|$?))
 
 	return $status
 }
 
 function validator_true_statement
 {
-	stats="$1"
-	status=0
+	local stats="$1"
+	local status=0
 
 	validate_min_max "$stats" "intfield" "0" "99"
-	status=$(($status|$?))
+	status=$((status|$?))
 
 	validate_min_max "$stats" "intfield2" "0x0" "0x63"
-	status=$(($status|$?))
+	status=$((status|$?))
 
 	validate_min_max "$stats" "longfield" "0" "99"
-	status=$(($status|$?))
+	status=$((status|$?))
 
 	validate_min_max "$stats" "netintfield" "0" "99"
-	status=$(($status|$?))
+	status=$((status|$?))
 
 	validate_min_max "$stats" "netintfieldhex" "0x0" "0x63"
-	status=$(($status|$?))
+	status=$((status|$?))
 
 	if [ $KERNEL_CHECK -eq 0 ]; then
 		validate_min_max "$stats" "floatfield" "2222" "2222"
-		status=$(($status|$?))
+		status=$((status|$?))
 
 		validate_min_max "$stats" "doublefield" "2" "2"
-		status=$(($status|$?))
+		status=$((status|$?))
 	fi
 
-	validate_min_max "$stats" "stringfield" "\"test\"" "\"test\""
-	status=$(($status|$?))
+	validate_min_max "$stats" "stringfield" '"test"' '"test"'
+	status=$((status|$?))
 
-	validate_min_max "$stats" "stringfield2" ""\*"" ""\*""
-	status=$(($status|$?))
+	validate_min_max "$stats" "stringfield2" '"\*"' '"\*"'
+	status=$((status|$?))
 
 	return $status
 }
@@ -629,7 +691,7 @@ UST_FILTERS=(
 
 	# Issue 356
 	intfield
-	$issue_356_filter
+	"$issue_356_filter"
 
 	true_statement
 	"1&1"
@@ -993,7 +1055,7 @@ UST_STR_FILTERS=(
 	str_has_events
 	'"salut vous*" == "salut*"'
 
-	${KIRK_KRAUSS_TESTS[@]}
+	"${KIRK_KRAUSS_TESTS[@]}"
 
 	END
 )
@@ -1016,12 +1078,7 @@ while true; do
 	fi
 
 	filter="${UST_FILTERS[$(( i + 1 ))]}"
-	test_valid_filter ust -u "tp:tptest" "$filter" "validator_$validator"
-
-	if [ $? -eq 1 ]; then
-		stop_lttng_sessiond
-		exit 1
-	fi
+	test_valid_ust_filter "$filter" "validator_$validator"
 
 	i=$(( i + 2 ))
 done
@@ -1035,12 +1092,7 @@ while true; do
 	fi
 
 	filter="${UST_STR_FILTERS[$(( i + 1 ))]}"
-	test_valid_filter ust_str -u "tp:the_string" "$filter" "validator_$validator"
-
-	if [ $? -eq 1 ]; then
-		stop_lttng_sessiond
-		exit 1
-	fi
+	test_valid_ust_str_filter "$filter" "validator_$validator"
 
 	i=$(( i + 2 ))
 done
@@ -1118,7 +1170,7 @@ KERNEL_FILTERS=(
 	"stringfield == \"*\""
 
 	intfield
-	$issue_356_filter
+	"$issue_356_filter"
 
 	true_statement
 	"1&1"
@@ -1445,7 +1497,7 @@ KERNEL_FILTERS=(
 	has_no_event
 	'seqfield1 != "dontmatch"'
 
-	${KIRK_KRAUSS_TESTS[@]}
+	"${KIRK_KRAUSS_TESTS[@]}"
 
 	END
 )
@@ -1468,17 +1520,7 @@ check_skip_kernel_test "$NUM_KERNEL_TESTS" "Skipping kernel valid filter tests."
 		fi
 
 		filter="${KERNEL_FILTERS[$(( i + 1 ))]}"
-		test_valid_filter kernel -k "lttng_test_filter_event" "$filter" "validator_$validator"
-
-		if [ $? -eq 1 ]; then
-			# The module removal will fail if events are
-			# still being produced
-			while ! modprobe --remove lttng-test ; do
-				sleep 1
-			done
-			stop_lttng_sessiond
-			exit 1
-		fi
+		test_valid_kernel_filter "$filter" "validator_$validator"
 
 		i=$(( i + 2 ))
 	done
