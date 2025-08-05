@@ -841,7 +841,9 @@ function enable_kernel_lttng_event
 	local sess_name="$3"
 	local event_name="$4"
 	local channel_name="$5"
+	local opts=("${@:6}")
 
+	local chan_opt=()
 	local ret
 
 	if [ -z "$event_name" ]; then
@@ -849,15 +851,13 @@ function enable_kernel_lttng_event
 		event_name="-a"
 	fi
 
-	local chan_opt=()
-
 	# default channel if none specified
 	if [ -n "$channel_name" ]; then
 		chan_opt=("-c" "$channel_name")
 	fi
 
 	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
-		enable-event "$event_name" "${chan_opt[@]}" -s "$sess_name" -k
+		enable-event "$event_name" "${chan_opt[@]}" -s "$sess_name" -k "${opts[@]}"
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
 		test $ret -ne "0"

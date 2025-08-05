@@ -14,6 +14,7 @@ files=(
     regression/tools/client/test_bug1373_events_differ_only_by_loglevel
     regression/tools/client/test_bug1480_assert_data_pending
     regression/tools/exclusion/test_exclusion
+    regression/tools/filtering/test_invalid_filter
     regression/tools/live/test_lttng_ust
     regression/tools/regen-metadata/test_ust
     regression/tools/regen-statedump/test_ust

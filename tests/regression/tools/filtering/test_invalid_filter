@@ -1,101 +1,124 @@
 #!/bin/bash
 #
 # SPDX-FileCopyrightText: 2012 Christian Babeux <christian.babeux@efficios.com>
+# SPDX-FileCopyrightText: 2025 Michael Jeanson <mjeanson@efficios.com>
 #
 # SPDX-License-Identifier: GPL-2.0-only
 #
-# This program is free software; you can redistribute it and/or modify it
-# under the terms of the GNU General Public License, version 2 only, as
-# published by the Free Software Foundation.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-# more details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 51
-# Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 TEST_DESC="Filtering - Invalid filters"
 
-CURDIR=$(dirname $0)/
+CURDIR=$(dirname "$0")
 TESTDIR=$CURDIR/../../..
-SESSION_NAME="filter-invalid"
+
 EVENT_NAME="bogus"
-ENABLE_EVENT_STDERR="/tmp/invalid-filters-stderr"
-TRACE_PATH=$(mktemp -d -t tmp.test_filtering_invalid_filters_trace_path.XXXXXX)
+
 NUM_GLOBAL_TESTS=2
 NUM_UST_TESTS=138
 NUM_KERNEL_TESTS=138
-NUM_TESTS=$(($NUM_UST_TESTS+$NUM_KERNEL_TESTS+$NUM_GLOBAL_TESTS))
+NUM_TESTS=$(( NUM_UST_TESTS + NUM_KERNEL_TESTS + NUM_GLOBAL_TESTS ))
 
-source $TESTDIR/utils/utils.sh
+# shellcheck source-path=SCRIPTDIR/../../..
+source "$TESTDIR/utils/utils.sh"
 
-function enable_lttng_event_filter
+function test_ust_invalid_filter
 {
-	domain="$1"
-	sess_name="$2"
-	event_name="$3"
-	filter="$4"
+	local test_invalid_filter="$1"
 
-	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
-		enable-event "$event_name" --session "$sess_name" \
-		"$domain" --filter "$filter"
+	local session_name="ust-invalid-filter"
+	local trace_path
 
-	# Enable must fail
-	if [ $? -eq 0 ]; then
-		fail "Enable lttng event with filtering and invalid filter"
-		return 1
-	else
-		pass "Enable lttng event with filtering and invalid filter"
-		return 0
-	fi
-}
+	diag "Test UST filter expression with invalid filter: $test_invalid_filter"
 
-function test_invalid_filter
-{
-	domain="$1"
-	test_invalid_filter="$2"
-
-	diag "Test filter expression with invalid filter"
-	diag "Filter: $test_invalid_filter"
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 
 	# Create session
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $session_name "$trace_path"
 
 	# Apply filter
-	enable_lttng_event_filter $domain $SESSION_NAME $EVENT_NAME "$test_invalid_filter"
+	enable_ust_lttng_event_fail $session_name $EVENT_NAME "" --filter "$test_invalid_filter"
 
 	# Destroy session
-	destroy_lttng_session_ok $SESSION_NAME
+	destroy_lttng_session_ok $session_name
+
+	rm -rf "$trace_path"
 }
 
-function test_bytecode_limit
+function test_kernel_invalid_filter
 {
-	domain="$1"
+	local test_invalid_filter="$1"
 
-	# Current bytecode limitation is 65536 bytes long.
-	# Generate a huge bytecode with some perl-fu
-	BYTECODE_LIMIT=`perl -e 'print "intfield" . " && 1" x5460'`
+	local session_name="kernel-invalid-filter"
+	local trace_path
 
-	diag "Test filter bytecode limits (64KiB)"
+	diag "Test kernel filter expression with invalid filter: $test_invalid_filter"
+
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 
 	# Create session
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $session_name "$trace_path"
 
 	# Apply filter
-	enable_lttng_event_filter $domain $SESSION_NAME $EVENT_NAME "$BYTECODE_LIMIT"
+	enable_kernel_lttng_event_fail $session_name $EVENT_NAME "" --filter "$test_invalid_filter"
 
 	# Destroy session
-	destroy_lttng_session_ok $SESSION_NAME
+	destroy_lttng_session_ok $session_name
+
+	rm -rf "$trace_path"
 }
+
+function test_ust_bytecode_size_limit
+{
+	local session_name="ust-bytecode-size-limit"
+	local trace_path
+
+	diag "Test UST filter bytecode size limits (64KiB)"
+
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+
+	# Create session
+	create_lttng_session_ok $session_name "$trace_path"
+
+	# Apply filter
+	enable_ust_lttng_event_fail $session_name $EVENT_NAME "" --filter "$BYTECODE_LIMIT"
+
+	# Destroy session
+	destroy_lttng_session_ok $session_name
+
+	rm -rf "$trace_path"
+}
+
+function test_kernel_bytecode_size_limit
+{
+	local session_name="kernel-bytecode-size-limit"
+	local trace_path
+
+	diag "Test kernel filter bytecode size limits (64KiB)"
+
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+
+	# Create session
+	create_lttng_session_ok $session_name "$trace_path"
+
+	# Apply filter
+	enable_kernel_lttng_event_fail $session_name $EVENT_NAME "" --filter "$BYTECODE_LIMIT"
+
+	# Destroy session
+	destroy_lttng_session_ok $session_name
+
+	rm -rf "$trace_path"
+}
+
 
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
 bail_out_if_no_babeltrace
+
+# Current bytecode limitation is 65536 bytes long.
+# Generate a huge bytecode
+BYTECODE_LIMIT=$(echo -n "intfield"; for i in {0..5460}; do echo -n ' && 1'; done)
 
 OLDIFS="$IFS"
 IFS=$'\n'
@@ -160,30 +183,26 @@ INVALID_FILTERS=(
 IFS="$OLDIFS"
 
 start_lttng_sessiond
+
 diag "Test UST filters"
 
-i=0
-while [ "$i" -lt "${#INVALID_FILTERS[@]}" ]; do
-	echo "${INVALID_FILTERS[$i]}"
-	test_invalid_filter -u "${INVALID_FILTERS[$i]}"
-	let "i++"
+for filter in "${INVALID_FILTERS[@]}"
+do
+	test_ust_invalid_filter "$filter"
 done
 
-test_bytecode_limit -u
+test_ust_bytecode_size_limit
 
 check_skip_kernel_test "$NUM_KERNEL_TESTS" "Skipping kernel invalid filter tests." ||
 {
 	diag "Test kernel filters"
-	i=0
-	while [ "$i" -lt "${#INVALID_FILTERS[@]}" ]; do
-		echo "${INVALID_FILTERS[$i]}"
-		test_invalid_filter -k "${INVALID_FILTERS[$i]}"
-		let "i++"
+
+	for filter in "${INVALID_FILTERS[@]}"
+	do
+		test_kernel_invalid_filter "$filter"
 	done
 
-	test_bytecode_limit -k
+	test_kernel_bytecode_size_limit
 }
-stop_lttng_sessiond
 
-rm -f $ENABLE_EVENT_STDERR
-rm -rf $TRACE_PATH
+stop_lttng_sessiond
