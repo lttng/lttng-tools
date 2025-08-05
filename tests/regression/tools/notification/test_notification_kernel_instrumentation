@@ -13,13 +13,19 @@ NUM_TESTS=13
 
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
-# shellcheck source=./util_event_generator.sh
-source "$CURDIR/util_event_generator.sh"
+
+EVENT_GENERATOR_SCRIPT="${CURDIR}/util_event_generator.py"
 
 function test_kernel_instrumentation_notification
 {
-	kernel_event_generator generate_filter_events "$TESTAPP_STATE_PATH" &
+	READY_FILE="$(mktemp -u -t "generator_ready.XXXXXXXXX")"
+	"${EVENT_GENERATOR_SCRIPT}" --ready-file "${READY_FILE}" --state-file "${TESTAPP_STATE_PATH}" kernel_generate_filter_events &
 	APP_PID=$!
+
+	while [ ! -f "${READY_FILE}" ]; do
+		sleep 0.1
+	done
+	rm -f "${READY_FILE}"
 
 	"$CURDIR/notification" 4 LTTNG_DOMAIN_KERNEL $APP_PID \
 		"$TESTAPP_STATE_PATH"

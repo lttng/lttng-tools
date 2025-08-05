@@ -34,8 +34,7 @@ set +x
 
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
-# shellcheck source=./util_event_generator.sh
-source "$CURDIR/util_event_generator.sh"
+EVENT_GENERATOR_SCRIPT="${CURDIR}/util_event_generator.py"
 
 function test_buffer_usage_notification
 {
@@ -52,9 +51,16 @@ function test_buffer_usage_notification
 		consumerd_pipe+=("$f")
 	done
 
-	ust_event_generator "$GEN_UST_EVENTS_TESTAPP_BIN" "$TESTAPP_STATE_PATH" &
+
+	READY_FILE="$(mktemp -u -t "generator_ready.XXXXXX")"
+	USERSPACE_TESTAPP_BIN="${GEN_UST_EVENTS_TESTAPP_BIN}" "${EVENT_GENERATOR_SCRIPT}" \
+			     --ready-file "${READY_FILE}" --state-file "${TESTAPP_STATE_PATH}" \
+			     userspace_testapp &
 	APP_PID=$!
-	diag "Started generator pid $APP_PID"
+	while [ ! -f "${READY_FILE}" ]; do
+		sleep 0.1
+	done
+	rm -f "${READY_FILE}"
 
 	while pgrep notification ; do
 		diag "WARNING: notification already running"

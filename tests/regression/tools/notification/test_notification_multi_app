@@ -32,7 +32,8 @@ NUM_TEST_KERNEL=50
 NUM_TESTS=$(($NUM_TEST_UST + $NUM_TEST_KERNEL))
 
 source $TESTDIR/utils/utils.sh
-source $CURDIR/util_event_generator.sh
+
+EVENT_GENERATOR_SCRIPT="${CURDIR}/util_event_generator.py"
 
 consumerd_pipe=()
 file_sync_after_first_event=$(mktemp -u -t tmp.test_notification_multi_app_sync_after_first.XXXXXX)
@@ -254,8 +255,13 @@ function test_multi_app ()
 function test_multi_app_ust ()
 {
 	diag "Multi client app UST notification"
-	ust_event_generator "$TESTAPP_BIN" "$TESTAPP_STATE_FILE" &
+	READY_FILE="$(mktemp -u -t "generate_ready.XXXXXX")"
+	TESTAPP_BIN="${TESTAPP_BIN}" "${EVENT_GENERATOR_SCRIPT}" --ready-file "${READY_FILE}" --state-file "${TESTAPP_STATE_FILE}" userspace_testapp &
 	local generator_pid=$!
+	while [ ! -f "${READY_FILE}" ]; do
+		sleep 0.1
+	done
+	rm -f "${READY_FILE}"
 
 	test_multi_app ust $generator_pid
 
@@ -269,8 +275,13 @@ function test_multi_app_kernel ()
 	diag "Multi client app kernel notification"
 	modprobe lttng-test
 
-	kernel_event_generator generate_filter_events $TESTAPP_STATE_FILE &
+	READY_FILE="$(mktemp -u -t "generate_ready.XXXXXX")"
+	"${EVENT_GENERATOR_SCRIPT}" --ready-file "${READY_FILE}" --state-file "${TESTAPP_STATE_FILE}" kernel_generate_filter_events &
 	local generator_pid=$!
+	while [ ! -f "${READY_FILE}" ]; do
+		sleep 0.1
+	done
+	rm -f "${READY_FILE}"
 
 	test_multi_app kernel $generator_pid
 
@@ -286,9 +297,15 @@ function test_on_register_evaluation_ust ()
 {
 	diag "On register notification UST"
 
+	READY_FILE="$(mktemp -u -t "generate_ready.XXXXXX")"
 	# Start app in infinite loop
-	ust_event_generator "$TESTAPP_BIN" "$TESTAPP_STATE_FILE" &
+	TESTAPP_BIN="${TESTAPP_BIN}" "${EVENT_GENERATOR_SCRIPT}" --ready-file "${READY_FILE}" --state-file "${TESTAPP_STATE_FILE}" userspace_testapp &
 	local generator_pid=$!
+	while [ ! -f "${READY_FILE}" ]; do
+		sleep 0.1
+	done
+	rm -f "${READY_FILE}"
+
 
 	test_on_register_evaluation ust $generator_pid
 
@@ -304,8 +321,13 @@ function test_on_register_evaluation_kernel()
 
 	modprobe lttng-test
 
-	kernel_event_generator generate_filter_events $TESTAPP_STATE_FILE &
+	READY_FILE="$(mktemp -u -t "generate_ready.XXXXXX")"
+	"${EVENT_GENERATOR_SCRIPT}" --ready-file "${READY_FILE}" --state-file "${TESTAPP_STATE_FILE}" kernel_generate_filter_events &
 	local generator_pid=$!
+	while [ ! -f "${READY_FILE}" ]; do
+		sleep 0.1
+	done
+	rm -f "${READY_FILE}"
 
 	test_on_register_evaluation kernel $generator_pid
 
