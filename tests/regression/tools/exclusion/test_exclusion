@@ -1,181 +1,204 @@
 #!/bin/bash
 #
 # SPDX-FileCopyrightText: 2012 Christian Babeux <christian.babeux@efficios.com>
+# SPDX-FileCopyrightText: 2025 Michael Jeanson <mjeanson@efficios.com>
 #
 # SPDX-License-Identifier: GPL-2.0-only
 #
 
 TEST_DESC="Event exclusion"
 
-CURDIR=$(dirname $0)/
+CURDIR=$(dirname "$0")
 TESTDIR=$CURDIR/../../..
+
 BT2_PLUGINS_DIR="${TESTDIR}/utils/bt2_plugins"
 
-SESSION_NAME="test-exclusion"
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-nevents"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME"
+TESTAPP_TIMEOUT_SEC=10
+
 NR_ITER=100
 NR_USEC_WAIT=1
-NUM_TESTS=185
 
-source $TESTDIR/utils/utils.sh
+NUM_TESTS=188
+
+# shellcheck source-path=SCRIPTDIR/../../..
+source "$TESTDIR/utils/utils.sh"
 
 function enable_ust_lttng_all_event_exclusion()
 {
-	sess_name="$1"
-	exclusion="$2"
+	local sess_name="$1"
+	local exclusions="$2"
 
 	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		enable-event --userspace "tp:*" --session "$sess_name" \
-		--exclude "$exclusion"
-}
-
-function run_apps
-{
-	$TESTAPP_BIN --iter $NR_ITER --wait $NR_USEC_WAIT >/dev/null 2>&1
-	ok $? "Running test application"
+		--exclude "$exclusions"
+	ok $? "Enable lttng event with event \"$exclusions\" excluded"
 }
 
 # Testing for the absence of an event when testing exclusion is tricky. An
 # event could be absent because our exclusion mechanism works but also because
-# the event was not generate in the first place. This function test the ability
+# the event was not generated in the first place. This function test the ability
 # of our test suite to generate events.
-function dry_run
+function test_no_exclusion
 {
-	local trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local session_name="no-exclusion"
+	local trace_path
+	local file_testapp_output
+
+	diag "Enable event without exclusion"
+
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
 
 	# Create session
-	create_lttng_session_ok $SESSION_NAME $trace_path
+	create_lttng_session_ok $session_name "$trace_path"
 
 	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
-		enable-event --userspace "tp:*" --session "$SESSION_NAME"
+		enable-event --userspace "tp:*" --session "$session_name"
 	ok $? "Enabling events without exclusion"
 
 	# Trace apps
-	start_lttng_tracing_ok $SESSION_NAME
-	run_apps
-	stop_lttng_tracing_ok $SESSION_NAME
+	start_lttng_tracing_ok $session_name
 
-	nb_events=$("_run_babeltrace_cmd" $trace_path | wc -l)
-	if [ "$nb_events" -ne "0" ]; then
-		ok 0 "Events were found during the dry run without exclusion"
-	else
-		fail "No events were found during the dry run without exclusion"
-	fi
+	run_testapp_ok "$file_testapp_output" "$TESTAPP_BIN" --iter $NR_ITER --wait $NR_USEC_WAIT
 
-	rm -rf $trace_path
+	stop_lttng_tracing_ok $session_name
+
+	validate_trace_count 'tp:tptest2' "$trace_path" "$NR_ITER"
 
 	# Destroy session
-	destroy_lttng_session_ok $SESSION_NAME
+	destroy_lttng_session_ok $session_name
+
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
 }
 
 function test_exclusion
 {
 	local exclusions="$1"
 	local event_name_expected_to_be_missing="$2"
-	local trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+
+	local session_name="exclusion"
+	local trace_path
+	local file_testapp_output
+
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
 
 	# Create session
-	create_lttng_session_ok $SESSION_NAME $trace_path
+	create_lttng_session_ok $session_name "$trace_path"
 
-	enable_ust_lttng_all_event_exclusion $SESSION_NAME "$exclusions"
-	ok $? "Enable lttng event with event \"$exclusions\" excluded"
+	enable_ust_lttng_all_event_exclusion $session_name "$exclusions"
 
 	# Trace apps
-	start_lttng_tracing_ok $SESSION_NAME
-	run_apps
-	stop_lttng_tracing_ok $SESSION_NAME
+	start_lttng_tracing_ok $session_name
+	run_testapp_ok "$file_testapp_output" "$TESTAPP_BIN" --iter $NR_ITER --wait $NR_USEC_WAIT
+	stop_lttng_tracing_ok $session_name
 
 	# Destroy session
-	destroy_lttng_session_ok $SESSION_NAME
+	destroy_lttng_session_ok $session_name
 
 	stats=$("_run_babeltrace_cmd" --plugin-path "${BT2_PLUGINS_DIR}" "${trace_path}" -c filter.lttngtest.event_name -p "names=[\"${event_name_expected_to_be_missing}\"]" -c sink.lttngtest.field_stats | grep -v index)
-	if [ ! -z "$stats" ]; then
+	if [ -n "$stats" ]; then
 		fail "Excluded event \"$event_name_expected_to_be_missing\" was found in trace!"
 	else
 		ok 0 "Validate trace exclusion output"
-		rm -rf $trace_path
 	fi
+
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
 }
 
 function test_exclusion_tracing_started
 {
 	local exclusions="$1"
 	local event_name_expected_to_be_missing="$2"
-	local trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
-	local file_sync_before_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_first.XXXXXX")
-	local file_sync_app_in_main_touch=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_app_in_main.XXXXXX")
+
+	local session_name="exclusion-after-start"
+	local testapp_pid
+	local trace_path
+	local file_testapp_output
+	local file_sync_before_first
+	local file_sync_app_in_main_touch
+	local file_sync_before_exit_touch
+
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_testapp_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_testapp_output.XXXXXX")
+	file_sync_before_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_first.XXXXXX")
+	file_sync_app_in_main_touch=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_app_in_main.XXXXXX")
+	file_sync_before_exit_touch=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_exit_touch.XXXXXX")
 
 	# Create session
-	create_lttng_session_ok $SESSION_NAME $trace_path
+	create_lttng_session_ok $session_name "$trace_path"
 
 	# Enable a dummy event so that the session is active after we start the
 	# session.
-	enable_ust_lttng_event_ok $SESSION_NAME "non-existent-event"
+	enable_ust_lttng_event_ok $session_name "non-existent-event"
 
 	# Start the tracing
-	start_lttng_tracing_ok $SESSION_NAME
+	start_lttng_tracing_ok $session_name
 
 	# Launch the test app and make it create a sync file once it's in the
 	# main function.
-	$TESTAPP_BIN -i 1 -w 10000 \
-		--sync-application-in-main-touch ${file_sync_app_in_main_touch} \
-		--sync-before-first-event ${file_sync_before_first} 2>&1 &
-	tracee_pids+=("${!}")
+	"${TESTAPP_BIN}" -i "${NR_ITER}" -w "${NR_USEC_WAIT}" \
+		--sync-application-in-main-touch "${file_sync_app_in_main_touch}" \
+		--sync-before-first-event "${file_sync_before_first}" \
+		--sync-before-exit-touch "$file_sync_before_exit_touch" \
+		>"${file_testapp_output}" 2>&1 &
+	testapp_pid="${!}"
+	diag "Launched testapp '$TESTAPP_NAME' (pid: $testapp_pid) to generate $NR_ITER events"
 
-	while [ ! -f "${file_sync_app_in_main_touch}" ]; do
-		sleep 0.5
-	done
+	# Wait for the application sync file to appear
+	app_alive_wait_for_sync "$TESTAPP_NAME" "$testapp_pid" "$TESTAPP_TIMEOUT_SEC" "$file_testapp_output" "$file_sync_app_in_main_touch"
 
 	# Enable an event with an exclusion once the tracing is active in the
 	# UST app.
-	enable_ust_lttng_all_event_exclusion $SESSION_NAME "$exclusions"
-	ok $? "Enable lttng event with event \"$exclusions\" excluded"
+	enable_ust_lttng_all_event_exclusion $session_name "$exclusions"
 
 	# Create the sync file so that the test app starts generating events.
-	touch ${file_sync_before_first}
+	touch "${file_sync_before_first}"
 
 	# Wait for the testapp to finish.
-	wait "${tracee_pids[@]}"
-	tracee_pids=()
+	app_exit_wait_for_sync "$TESTAPP_NAME" "$testapp_pid" "$TESTAPP_TIMEOUT_SEC" "$file_testapp_output" "$file_sync_before_exit_touch"
 
-	stop_lttng_tracing_ok $SESSION_NAME
+	stop_lttng_tracing_ok $session_name
 
 	# Destroy session
-	destroy_lttng_session_ok $SESSION_NAME
+	destroy_lttng_session_ok $session_name
 
 	stats=$("_run_babeltrace_cmd" --plugin-path "${BT2_PLUGINS_DIR}" "${trace_path}" -c filter.lttngtest.event_name -p "names=[\"${event_name_expected_to_be_missing}\"]" -c sink.lttngtest.field_stats | grep -v index)
-	if [ ! -z "$stats" ]; then
+	if [ -n "$stats" ]; then
 		fail "Excluded event \"$event_name_expected_to_be_missing\" was found in trace!"
 	else
 		ok 0 "Validate trace exclusion output"
-		rm -rf $trace_path
 	fi
 
-	rm -f $file_sync_before_first
-	rm -f $file_sync_app_in_main_touch
+	rm -rf "$trace_path"
+	rm -f "$file_testapp_output"
+	rm -f "$file_sync_before_first"
+	rm -f "$file_sync_app_in_main_touch"
+	rm -f "$file_sync_before_exit_touch"
 }
 
 function test_exclusion_fail
 {
-	event_name="$1"
-	exclusions="$2"
+	local event_name="$1"
+	local exclusions="$2"
 
-	create_lttng_session_ok $SESSION_NAME $trace_path
-	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
-		enable-event --userspace "$event_name" --session "$sess_name" \
-		--exclude "$exclusions"
-	res=$?
-	destroy_lttng_session_ok $SESSION_NAME
+	local session_name="exclusion-fail"
+	local trace_path
 
-	if [ $res -eq 0 ]; then
-		fail "Enable LTTng event \"$event_name\" with exclusion \"$exclusions\" passes"
-		return 1
-	else
-		pass "Enable LTTng event \"$event_name\" with exclusion \"$exclusions\" fails"
-		return 0
-	fi
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+
+	create_lttng_session_ok $session_name "$trace_path"
+
+	enable_ust_lttng_event_fail $session_name "$event_name" "" --exclude "$exclusions"
+
+	destroy_lttng_session_ok $session_name
+
+	rm -rf "$trace_path"
 }
 
 plan_tests $NUM_TESTS
@@ -185,10 +208,8 @@ print_test_banner "$TEST_DESC"
 bail_out_if_no_babeltrace
 
 start_lttng_sessiond
-tracee_pids=()
 
-diag "Enable event without exclusion"
-dry_run
+test_no_exclusion
 
 diag "Enable event with exclusion"
 test_exclusion 'tp:tptest2' 'tp:tptest2'
