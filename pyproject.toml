@@ -6,3 +6,11 @@
 requires-python = ">= 3.6"
 
 [tool.black]
+required-version = "25"
+force-exclude = '''
+^/(
+    extras/bindings/swig/python/lttng\.py
+  | tests/unit/liblttngctl/lttngctl/lttng\.py
+  | tests/vendor/
+)
+'''

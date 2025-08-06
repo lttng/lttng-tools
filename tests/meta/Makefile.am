@@ -3,10 +3,15 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 LOG_DRIVER_FLAGS = --merge
-LOG_DRIVER = env PGREP='$(PGREP)' AM_TAP_AWK='$(AWK)' $(SHELL) \
+# The meta tests operate on the source files, but may be launched from an
+# out-of-tree build. They can get the absolute path of the source tree
+# from LTTNG_TEST_ABS_TOP_SRCDIR.
+LOG_DRIVER = env PGREP='$(PGREP)' AM_TAP_AWK='$(AWK)' \
+		LTTNG_TEST_ABS_TOP_SRCDIR='$(abs_top_srcdir)' $(SHELL) \
 		$(top_builddir)/tests/utils/tap-driver.sh
 
-TESTS = test_vermin.py
+TESTS = test_black.py \
+	test_vermin.py
 
 if HAVE_SHELLCHECK
 TESTS += test_shellcheck

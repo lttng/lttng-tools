@@ -25,7 +25,8 @@ dist_noinst_DATA = CodingStyle.md
 
 TEST_DEPS = \
 	.shellcheckrc \
-	.vermin
+	.vermin \
+	pyproject.toml
 
 EXTRA_DIST = CLAUDE.md \
 	     extras/lttng-bash_completion \
