@@ -53,6 +53,7 @@ TAGS
 .ccls-root
 .cache/
 /.clangd/
+.cache/clangd
 compile_commands.json
 *_flymake*
 /.vscode/settings.json
