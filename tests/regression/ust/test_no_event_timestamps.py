@@ -93,7 +93,7 @@ if __name__ == "__main__":
     tap = lttngtest.TapGenerator(1)
 
     if platform.machine() != "x86_64":
-        tap.skip_all_remainign("Only run on x86_64")
+        tap.skip_all_remaining("Only run on x86_64")
         sys.exit(0)
 
     if sys.maxsize <= 2**32:
