@@ -99,7 +99,13 @@ def test_abi_diff(tap, test_env):
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
-    abidiff.wait()
+
+    output = ""
+    while True:
+        _outs, _errs = abidiff.communicate()
+        output += _outs.decode("utf-8")
+        if abidiff.returncode is not None:
+            break
 
     message = "No ABI changes detected"
     success = True
@@ -112,7 +118,7 @@ def test_abi_diff(tap, test_env):
         success = False
         message = "Error running abidiff, return code '{}'".format(abidiff.returncode)
 
-    tap.diagnostic("ABI diff output:\n{}".format(abidiff.stdout.read().decode("utf-8")))
+    tap.diagnostic("ABI diff output:\n{}".format(output))
     tap.test(success, message)
 
 
