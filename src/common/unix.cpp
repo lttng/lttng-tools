@@ -36,7 +36,8 @@ int lttcomm_connect_unix_sock(const char *pathname)
 		    pathname,
 		    strlen(pathname) + 1,
 		    sizeof(s_un.sun_path));
-		ret = -ENAMETOOLONG;
+		errno = ENAMETOOLONG;
+		ret = -errno;
 		goto error;
 	}
 

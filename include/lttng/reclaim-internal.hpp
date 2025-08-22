@@ -16,6 +16,7 @@
 /* For the LTTCOMM_SESSIOND_COMMAND_RECLAIM_CHANNEL_MEMORY command. */
 struct lttng_reclaim_channel_memory_return {
 	uint64_t reclaimed_memory_size_bytes;
+	uint64_t pending_memory_size_bytes;
 } LTTNG_PACKED;
 
 #endif /* LTTNG_RECLAIM_INTERNAL_ABI_H */

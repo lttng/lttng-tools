@@ -265,6 +265,35 @@ struct formatter<lttng_reclaim_channel_memory_status> : formatter<std::string> {
 	}
 };
 
+template <>
+struct formatter<lttng_reclaim_handle_status> : formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator format(lttng_reclaim_handle_status status,
+						    FormatContextType& ctx) const
+	{
+		const char *name = "Unknown";
+
+		switch (status) {
+		case LTTNG_RECLAIM_HANDLE_STATUS_OK:
+			name = "Success";
+			break;
+		case LTTNG_RECLAIM_HANDLE_STATUS_ERROR:
+			name = "Generic error";
+			break;
+		case LTTNG_RECLAIM_HANDLE_STATUS_COMPLETED:
+			name = "Completed";
+			break;
+		case LTTNG_RECLAIM_HANDLE_STATUS_TIMEOUT:
+			name = "Timeout";
+			break;
+		case LTTNG_RECLAIM_HANDLE_STATUS_INVALID:
+			name = "Invalid";
+			break;
+		}
+
+		return format_to(ctx.out(), name);
+	}
+};
 } /* namespace fmt */
 
 #endif /* LTTNG_COMMON_CTL_FORMAT_H */

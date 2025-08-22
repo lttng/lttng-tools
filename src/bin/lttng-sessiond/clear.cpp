@@ -35,7 +35,6 @@ static void cmd_clear_session_reply(const ltt_session::locked_ref& session, void
 	struct lttcomm_lttng_msg llm = {
 		.cmd_type = LTTCOMM_SESSIOND_COMMAND_CLEAR_SESSION,
 		.ret_code = LTTNG_OK,
-		.pid = UINT32_MAX,
 		.cmd_header_size = 0,
 		.data_size = 0,
 		.fd_count = 0,

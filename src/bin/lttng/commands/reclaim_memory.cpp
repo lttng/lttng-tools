@@ -30,6 +30,7 @@
 #include <chrono>
 #include <cstdio>
 #include <map>
+#include <numeric>
 #include <set>
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -51,23 +52,49 @@ enum reclaim_option_types {
 	OPT_USER_SPACE,
 	OPT_SESSION,
 	OPT_ALL_CHANNELS,
+	OPT_NO_WAIT,
 };
 
 using channel_name_set = std::set<std::string>;
 
+struct reclamation_amount {
+	reclamation_amount() = delete;
+	reclamation_amount(std::uint64_t immediate_bytes_, std::uint64_t deferred_bytes_) :
+		immediate_bytes(immediate_bytes_), deferred_bytes(deferred_bytes_)
+	{
+	}
+
+	const std::uint64_t immediate_bytes;
+	const std::uint64_t deferred_bytes;
+};
+
 struct reclaim_result {
-	std::map<std::string, std::uint64_t> reclaimed_per_channel;
+	std::map<std::string, reclamation_amount> reclaimed_per_channel;
 
 	bool success = false;
 
-	std::uint64_t total_reclaimed() const noexcept
+	std::uint64_t total_reclaimed_immediate() const noexcept
 	{
-		std::uint64_t total = 0;
-		for (const auto& entry : reclaimed_per_channel) {
-			total += entry.second;
-		}
+		return std::accumulate(
+			reclaimed_per_channel.begin(),
+			reclaimed_per_channel.end(),
+			0ULL,
+			[](std::uint64_t acc,
+			   const std::pair<const std::string, reclamation_amount>& entry) {
+				return acc + entry.second.immediate_bytes;
+			});
+	}
 
-		return total;
+	std::uint64_t total_reclaimed_deferred() const noexcept
+	{
+		return std::accumulate(
+			reclaimed_per_channel.begin(),
+			reclaimed_per_channel.end(),
+			0ULL,
+			[](std::uint64_t acc,
+			   const std::pair<const std::string, reclamation_amount>& entry) {
+				return acc + entry.second.deferred_bytes;
+			});
 	}
 };
 
@@ -76,6 +103,7 @@ struct reclaim_config {
 	channel_name_set channel_names;
 	lttng::domain_class domain;
 	nonstd::optional<std::chrono::microseconds> older_than;
+	bool no_wait;
 };
 
 channel_name_set get_session_channel_names(const std::string& session_name,
@@ -118,6 +146,7 @@ nonstd::optional<reclaim_config> parse_cli_args(int argc, const char **argv)
 		{ reclaim_option_types::OPT_USER_SPACE, 'u', "userspace", false },
 		{ reclaim_option_types::OPT_SESSION, 's', "session", true },
 		{ reclaim_option_types::OPT_ALL_CHANNELS, 'a', "all", false },
+		{ reclaim_option_types::OPT_NO_WAIT, '\0', "no-wait", false },
 		ARGPAR_OPT_DESCR_SENTINEL,
 	};
 
@@ -129,6 +158,7 @@ nonstd::optional<reclaim_config> parse_cli_args(int argc, const char **argv)
 	nonstd::optional<lttng::domain_class> target_domain;
 	nonstd::optional<std::chrono::microseconds> older_than;
 	bool target_all_channels = false;
+	bool no_wait = false;
 
 	try {
 		while (const auto item = argpar_iter.next()) {
@@ -184,6 +214,15 @@ nonstd::optional<reclaim_config> parse_cli_args(int argc, const char **argv)
 				}
 
 				target_all_channels = true;
+				break;
+			case reclaim_option_types::OPT_NO_WAIT:
+				if (no_wait) {
+					LTTNG_THROW_CLI_INVALID_USAGE(
+						fmt::format("Option --{} specified multiple times",
+							    item->asOpt().descr().long_name));
+				}
+
+				no_wait = true;
 				break;
 			default:
 				break;
@@ -251,10 +290,11 @@ nonstd::optional<reclaim_config> parse_cli_args(int argc, const char **argv)
 	return reclaim_config{ .session_name = std::move(target_session_name),
 			       .channel_names = std::move(target_channel_names),
 			       .domain = *target_domain,
-			       .older_than = older_than };
+			       .older_than = older_than,
+			       .no_wait = no_wait };
 }
 
-/* Execute the memory reclaim operation */
+/* Execute the memory reclaim operation. */
 reclaim_result execute_reclaim(const reclaim_config& config)
 {
 	LTTNG_ASSERT(!config.session_name.empty());
@@ -262,25 +302,66 @@ reclaim_result execute_reclaim(const reclaim_config& config)
 	reclaim_result result;
 
 	result.success = true;
-	for (const auto& channel_name : config.channel_names) {
-		std::uint64_t reclaimed_memory_bytes = 0;
+	std::vector<std::pair<std::string, lttng::ctl::lttng_reclaim_memory_handle_uptr>>
+		pending_ops;
 
-		const auto reclaim_status = lttng_reclaim_channel_memory(
-			config.session_name.c_str(),
-			channel_name.c_str(),
-			lttng::ctl::get_lttng_domain_type_from_domain_class(config.domain),
-			config.older_than ? config.older_than->count() : 0,
-			&reclaimed_memory_bytes);
+	for (auto& channel_name : config.channel_names) {
+		auto handle = [config, channel_name]() {
+			lttng_reclaim_handle *raw_reclaimed_memory_handle = nullptr;
 
-		if (reclaim_status == LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_OK) {
-			result.reclaimed_per_channel[channel_name] = reclaimed_memory_bytes;
-		} else {
-			LTTNG_THROW_ERROR(
-				fmt::format("Failed to reclaim memory for channel `{}`: {}",
-					    channel_name,
-					    reclaim_status));
-			break;
+			const auto reclaim_status = lttng_reclaim_channel_memory(
+				config.session_name.c_str(),
+				channel_name.c_str(),
+				lttng::ctl::get_lttng_domain_type_from_domain_class(config.domain),
+				config.older_than ? config.older_than->count() : 0,
+				&raw_reclaimed_memory_handle);
+
+			lttng::ctl::lttng_reclaim_memory_handle_uptr request_handle{
+				raw_reclaimed_memory_handle
+			};
+
+			if (reclaim_status == LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_OK) {
+				return request_handle;
+			} else {
+				LTTNG_THROW_ERROR(
+					fmt::format("Failed to reclaim memory for channel `{}`: {}",
+						    channel_name,
+						    reclaim_status));
+			}
+		}();
+
+		pending_ops.emplace_back(channel_name, std::move(handle));
+	}
+
+	for (auto& op : pending_ops) {
+		if (!config.no_wait) {
+			const auto wait_status =
+				lttng_reclaim_handle_wait_for_completion(op.second.get(), -1);
+			if (wait_status != LTTNG_RECLAIM_HANDLE_STATUS_COMPLETED) {
+				LTTNG_THROW_ERROR(fmt::format(
+					"Failed to wait for memory reclaim completion: {}",
+					wait_status));
+			}
 		}
+
+		std::uint64_t reclaimed_bytes = 0;
+		const auto get_size_status = lttng_reclaim_handle_get_reclaimed_memory_size_bytes(
+			op.second.get(), &reclaimed_bytes);
+		if (get_size_status != LTTNG_RECLAIM_HANDLE_STATUS_OK) {
+			LTTNG_THROW_ERROR(fmt::format("Failed to get reclaimed memory size: {}",
+						      get_size_status));
+		}
+
+		std::uint64_t pending_bytes = 0;
+		const auto get_pending_status = lttng_reclaim_handle_get_pending_memory_size_bytes(
+			op.second.get(), &pending_bytes);
+		if (get_pending_status != LTTNG_RECLAIM_HANDLE_STATUS_OK) {
+			LTTNG_THROW_ERROR(fmt::format("Failed to get pending memory size: {}",
+						      get_pending_status));
+		}
+
+		result.reclaimed_per_channel.emplace(
+			std::move(op.first), reclamation_amount{ reclaimed_bytes, pending_bytes });
 	}
 
 	return result;
@@ -297,15 +378,16 @@ void run_and_print_human_readable(const reclaim_config& config)
 
 	for (const auto& channel_result : result.reclaimed_per_channel) {
 		const auto& channel_name = channel_result.first;
-		const auto& reclaimed_bytes = channel_result.second;
-		const auto human_readable_size = utils_string_from_size(reclaimed_bytes);
+		const auto& reclaimed_amount = channel_result.second;
+		const auto human_readable_size =
+			utils_string_from_size(reclaimed_amount.immediate_bytes);
 
 		fmt::print("Channel `{}`: {} reclaimed\n", channel_name, human_readable_size);
 	}
 
 	/* Only display the total if multiple channels were targeted. */
 	if (result.reclaimed_per_channel.size() > 1) {
-		const auto total_bytes = result.total_reclaimed();
+		const auto total_bytes = result.total_reclaimed_immediate();
 		const auto total_human_readable = utils_string_from_size(total_bytes);
 
 		fmt::print("Total: {} reclaimed\n", total_human_readable);
@@ -362,7 +444,7 @@ void run_and_print_machine_interface(const reclaim_config& config)
 
 		for (const auto& channel_result : result.reclaimed_per_channel) {
 			const auto& channel_name = channel_result.first;
-			const auto& reclaimed_bytes = channel_result.second;
+			const auto& reclaimed_amount = channel_result.second;
 
 			if (mi_lttng_writer_open_element(writer.get(), "channel")) {
 				LTTNG_THROW_ERROR("Failed to open channel element");
@@ -378,7 +460,9 @@ void run_and_print_machine_interface(const reclaim_config& config)
 				LTTNG_THROW_ERROR("Failed to write channel name element");
 			}
 			if (mi_lttng_writer_write_element_unsigned_int(
-				    writer.get(), "reclaimed_bytes", reclaimed_bytes)) {
+				    writer.get(),
+				    "reclaimed_bytes",
+				    reclaimed_amount.immediate_bytes)) {
 				LTTNG_THROW_ERROR("Failed to write reclaimed bytes element");
 			}
 		}

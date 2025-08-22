@@ -3878,7 +3878,6 @@ static void cmd_destroy_session_reply(const ltt_session::locked_ref& session, vo
 	struct lttcomm_lttng_msg llm = {
 		.cmd_type = LTTCOMM_SESSIOND_COMMAND_DESTROY_SESSION,
 		.ret_code = reply_context->destruction_status,
-		.pid = UINT32_MAX,
 		.cmd_header_size = sizeof(struct lttcomm_session_destroy_command_header),
 		.data_size = 0,
 		.fd_count = 0,
