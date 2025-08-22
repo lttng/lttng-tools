@@ -63,6 +63,11 @@ using lttng_channel_uptr = std::unique_ptr<
 	lttng_channel,
 	lttng::memory::create_deleter_class<lttng_channel, lttng_channel_destroy>::deleter>;
 
+using lttng_reclaim_memory_handle_uptr =
+	std::unique_ptr<struct lttng_reclaim_handle,
+			lttng::memory::create_deleter_class<struct lttng_reclaim_handle,
+							    lttng_reclaim_handle_destroy>>;
+
 namespace details {
 template <typename WrappedTypeUniquePtr>
 class c_array_storage {

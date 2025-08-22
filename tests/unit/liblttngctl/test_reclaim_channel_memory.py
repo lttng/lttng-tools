@@ -22,7 +22,7 @@ import lttngtest
 def test_reclaim_channel_memory_no_session_string(
     session_name, channel_name, tap, test_env
 ):
-    reclaimed_memory_size_bytes = ctypes.c_uint64(0)
+    handle = ctypes.POINTER(lttng.struct_lttng_reclaim_handle)()
     ret = lttng.lttng_reclaim_channel_memory(
         None,
         ctypes.cast(
@@ -30,18 +30,20 @@ def test_reclaim_channel_memory_no_session_string(
         ),
         lttng.LTTNG_DOMAIN_UST,
         ctypes.c_uint64(0),
-        ctypes.pointer(reclaimed_memory_size_bytes),
+        ctypes.pointer(handle),
     )
     tap.test(
         ret != lttng.LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_OK,
         "lttng_reclaim_channel_memory_status fails with no session string",
     )
+    if handle:
+        lttng.lttng_reclaim_handle_destroy(handle)
 
 
 def test_reclaim_channel_memory_no_channel_string(
     session_name, channel_name, tap, test_env
 ):
-    reclaimed_memory_size_bytes = ctypes.c_uint64(0)
+    handle = ctypes.POINTER(lttng.struct_lttng_reclaim_handle)()
     ret = lttng.lttng_reclaim_channel_memory(
         ctypes.cast(
             session_name.encode(), lttng.lttng_reclaim_channel_memory.argtypes[0]
@@ -49,17 +51,17 @@ def test_reclaim_channel_memory_no_channel_string(
         None,
         lttng.LTTNG_DOMAIN_UST,
         ctypes.c_uint64(0),
-        ctypes.pointer(reclaimed_memory_size_bytes),
+        ctypes.pointer(handle),
     )
     tap.test(
         ret != lttng.LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_OK,
         "lttng_reclaim_channel_memory_status fails with no channel string",
     )
+    if handle:
+        lttng.lttng_reclaim_handle_destroy(handle)
 
 
-def test_reclaim_channel_memory_no_memory_size(
-    session_name, channel_name, tap, test_env
-):
+def test_reclaim_channel_memory_no_handle(session_name, channel_name, tap, test_env):
     session_name_enc = session_name.encode()
     channel_name_enc = channel_name.encode()
     ret = lttng.lttng_reclaim_channel_memory(
@@ -71,12 +73,12 @@ def test_reclaim_channel_memory_no_memory_size(
     )
     tap.test(
         ret != lttng.LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_OK,
-        "lttng_reclaim_channel_memory_status fails with no memory_size parameter",
+        "lttng_reclaim_channel_memory_status fails with no handle parameter",
     )
 
 
 def test_reclaim_channel_memory_no_sessiond(session_name, channel_name, tap, test_env):
-    reclaimed_memory_size_bytes = ctypes.c_uint64(0)
+    handle = ctypes.POINTER(lttng.struct_lttng_reclaim_handle)()
     session_name_enc = session_name.encode()
     channel_name_enc = channel_name.encode()
     # Set a fake directory to force the connection to fail
@@ -92,7 +94,7 @@ def test_reclaim_channel_memory_no_sessiond(session_name, channel_name, tap, tes
             ),
             lttng.LTTNG_DOMAIN_UST,
             ctypes.c_uint64(0),
-            ctypes.pointer(reclaimed_memory_size_bytes),
+            ctypes.pointer(handle),
         )
     finally:
         os.environ["LTTNG_RUNDIR"] = old_rundir
@@ -101,12 +103,14 @@ def test_reclaim_channel_memory_no_sessiond(session_name, channel_name, tap, tes
         ret != lttng.LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_OK,
         "lttng_reclaim_channel_memory_status fails with no sessiond",
     )
+    if handle:
+        lttng.lttng_reclaim_handle_destroy(handle)
 
 
 def test_reclaim_channel_memory_invalid_domain_value(
     session_name, channel_name, tap, test_env
 ):
-    reclaimed_memory_size_bytes = ctypes.c_uint64(0)
+    handle = ctypes.POINTER(lttng.struct_lttng_reclaim_handle)()
     session_name_enc = session_name.encode()
     channel_name_enc = channel_name.encode()
     ret = lttng.lttng_reclaim_channel_memory(
@@ -114,18 +118,20 @@ def test_reclaim_channel_memory_invalid_domain_value(
         ctypes.cast(channel_name_enc, lttng.lttng_reclaim_channel_memory.argtypes[1]),
         lttng.LTTNG_DOMAIN_NR + 1,
         ctypes.c_uint64(0),
-        ctypes.pointer(reclaimed_memory_size_bytes),
+        ctypes.pointer(handle),
     )
     tap.test(
         ret != lttng.LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_OK,
         "lttng_reclaim_channel_memory_status fails with invalid domain",
     )
+    if handle:
+        lttng.lttng_reclaim_handle_destroy(handle)
 
 
 def test_reclaim_channel_memory_with_sessiond(
     session_name, channel_name, tap, test_env
 ):
-    reclaimed_memory_size_bytes = ctypes.c_uint64(0)
+    handle = ctypes.POINTER(lttng.struct_lttng_reclaim_handle)()
     session_name_enc = session_name.encode()
     channel_name_enc = channel_name.encode()
     ret = lttng.lttng_reclaim_channel_memory(
@@ -133,8 +139,16 @@ def test_reclaim_channel_memory_with_sessiond(
         ctypes.cast(channel_name_enc, lttng.lttng_reclaim_channel_memory.argtypes[1]),
         lttng.LTTNG_DOMAIN_UST,
         ctypes.c_uint64(0),
-        ctypes.pointer(reclaimed_memory_size_bytes),
+        ctypes.pointer(handle),
     )
+
+    reclaimed_memory_size_bytes = ctypes.c_uint64(0)
+    if ret == lttng.LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_OK and handle:
+        lttng.lttng_reclaim_handle_get_reclaimed_memory_size_bytes(
+            handle, ctypes.pointer(reclaimed_memory_size_bytes)
+        )
+        lttng.lttng_reclaim_handle_destroy(handle)
+
     tap.test(
         ret == lttng.LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_OK,
         "lttng_reclaim_channel_memory_status passes: ret=`{}`, reclaimed_memory_size_bytes=`{}`".format(
@@ -147,7 +161,7 @@ if __name__ == "__main__":
     tests = [
         test_reclaim_channel_memory_no_session_string,
         test_reclaim_channel_memory_no_channel_string,
-        test_reclaim_channel_memory_no_memory_size,
+        test_reclaim_channel_memory_no_handle,
         test_reclaim_channel_memory_no_sessiond,
         test_reclaim_channel_memory_invalid_domain_value,
         test_reclaim_channel_memory_with_sessiond,  # simple integration test

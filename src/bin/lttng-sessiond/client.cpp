@@ -208,7 +208,6 @@ void setup_lttng_msg(struct command_ctx *cmd_ctx,
 	lttcomm_lttng_msg llm{};
 
 	llm.cmd_type = cmd_ctx->lsm.cmd_type;
-	llm.pid = (uint32_t) cmd_ctx->lsm.domain.attr.pid;
 	llm.cmd_header_size = (uint32_t) cmd_header_len;
 	llm.data_size = (uint32_t) payload_len;
 
@@ -269,7 +268,6 @@ void update_lttng_msg(struct command_ctx *cmd_ctx, size_t cmd_header_len, size_t
 	lttcomm_lttng_msg llm{};
 
 	llm.cmd_type = cmd_ctx->lsm.cmd_type;
-	llm.pid = (uint32_t) cmd_ctx->lsm.domain.attr.pid;
 	llm.cmd_header_size = (uint32_t) cmd_header_len;
 	llm.data_size = (uint32_t) payload_len;
 
@@ -2410,7 +2408,7 @@ skip_domain:
 			goto error;
 		}
 
-		/* Validate that channel_name is null-terminated */
+		/* Validate that channel_name is null-terminated. */
 		const auto channel_name = cmd_ctx->lsm.u.reclaim_channel_memory.channel_name;
 		if (strnlen(channel_name,
 			    sizeof(cmd_ctx->lsm.u.reclaim_channel_memory.channel_name)) ==
@@ -2445,12 +2443,18 @@ skip_domain:
 		std::uint64_t reclaimed_bytes = 0;
 		for (const auto& group : results) {
 			for (const auto& stream : group.reclaimed_streams_memory) {
+				DBG_FMT("Bytes reclaimed: {}", stream.bytes_reclaimed);
 				reclaimed_bytes += stream.bytes_reclaimed;
 			}
 		}
 
+		/*
+		 * At this point, pending_bytes is always 0 since the backend is synchronous.
+		 * Future commits will track pending reclamation for async completion.
+		 */
 		const lttng_reclaim_channel_memory_return reclaim_return = {
-			.reclaimed_memory_size_bytes = reclaimed_bytes
+			.reclaimed_memory_size_bytes = reclaimed_bytes,
+			.pending_memory_size_bytes = 0,
 		};
 
 		setup_lttng_msg_no_cmd_header(cmd_ctx, &reclaim_return, sizeof(reclaim_return));
