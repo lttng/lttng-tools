@@ -274,7 +274,7 @@ static inline uint32_t lttng_ustconsumer_reclaim_session_owner_id(uint64_t sessi
 static inline int lttng_ustconsumer_fixup_stalled_channel(struct lttng_consumer_channel *channel
 							  __attribute__((unused)),
 							  std::set<uint32_t>& reclaimed_owner_ids
-							  __attribute__((unused))
+							  __attribute__((unused)),
 							  size_t& observed_count
 							  __attribute__((unused)))
 {
