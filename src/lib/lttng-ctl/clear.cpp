@@ -117,7 +117,7 @@ static int handle_state_transition(struct lttng_clear_handle *handle)
 
 		handle->communication.state = COMMUNICATION_STATE_END;
 		handle->communication.bytes_left_to_receive = 0;
-		LTTNG_OPTIONAL_SET(&handle->communication.data_size, 0);
+		LTTNG_OPTIONAL_SET(&handle->communication.data_size, static_cast<size_t>(0));
 		ret = lttng_dynamic_buffer_set_size(&handle->communication.buffer, 0);
 		LTTNG_ASSERT(!ret);
 		break;

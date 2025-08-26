@@ -268,10 +268,11 @@ void *memmove(DestinationType *d, const SourceType *s, size_t n) = delete;
 	_Pragma("GCC diagnostic ignored \"-Wformat-nonliteral\"")
 #define DIAGNOSTIC_IGNORE_LOGICAL_OP
 #define DIAGNOSTIC_IGNORE_DUPLICATED_BRANCHES
-#define DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
+#define DIAGNOSTIC_IGNORE_INVALID_OFFSETOF _Pragma("GCC diagnostic ignored \"-Winvalid-offsetof\"")
 #define DIAGNOSTIC_IGNORE_INJECTED_CLASS_NAME \
 	_Pragma("GCC diagnostic ignored \"-Winjected-class-name\"")
-_Pragma("GCC diagnostic ignored \"-Winvalid-offsetof\"")
+#define DIAGNOSTIC_IGNORE_ADDRESS_OF_PACKED_MEMBER \
+	_Pragma("GCC diagnostic ignored \"-Waddress-of-packed-member\"")
 #else
 /* GCC */
 #define DIAGNOSTIC_IGNORE_SUGGEST_ATTRIBUTE_FORMAT \
@@ -288,6 +289,8 @@ _Pragma("GCC diagnostic ignored \"-Winvalid-offsetof\"")
 #define DIAGNOSTIC_IGNORE_INVALID_OFFSETOF _Pragma("GCC diagnostic ignored \"-Winvalid-offsetof\"")
 
 #define DIAGNOSTIC_IGNORE_INJECTED_CLASS_NAME
+#define DIAGNOSTIC_IGNORE_ADDRESS_OF_PACKED_MEMBER \
+	_Pragma("GCC diagnostic ignored \"-Waddress-of-packed-member\"")
 #endif
 
 /* Used to make specific C++ functions to C code. */
@@ -297,16 +300,16 @@ _Pragma("GCC diagnostic ignored \"-Winvalid-offsetof\"")
 #define C_LINKAGE
 #endif
 
-	/*
-	 * lttng_strncpy returns 0 on success, or nonzero on failure.
-	 * It checks that the @src string fits into @dst_len before performing
-	 * the copy. On failure, no copy has been performed.
-	 *
-	 * Assumes that 'src' is null-terminated.
-	 *
-	 * dst_len includes the string's trailing NULL.
-	 */
-	static inline int lttng_strncpy(char *dst, const char *src, size_t dst_len)
+/*
+ * lttng_strncpy returns 0 on success, or nonzero on failure.
+ * It checks that the @src string fits into @dst_len before performing
+ * the copy. On failure, no copy has been performed.
+ *
+ * Assumes that 'src' is null-terminated.
+ *
+ * dst_len includes the string's trailing NULL.
+ */
+static inline int lttng_strncpy(char *dst, const char *src, size_t dst_len)
 {
 	if (strlen(src) >= dst_len) {
 		/* Fail since copying would result in truncation. */

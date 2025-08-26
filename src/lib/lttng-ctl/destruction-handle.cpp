@@ -122,7 +122,8 @@ static int handle_state_transition(struct lttng_destruction_handle *handle)
 
 		handle->communication.state = COMMUNICATION_STATE_RECEIVE_COMMAND_HEADER;
 		handle->communication.bytes_left_to_receive = msg->cmd_header_size;
-		LTTNG_OPTIONAL_SET(&handle->communication.data_size, msg->data_size);
+		LTTNG_OPTIONAL_SET(&handle->communication.data_size,
+				   static_cast<size_t>(msg->data_size));
 		ret = lttng_dynamic_buffer_set_size(&handle->communication.buffer, 0);
 		LTTNG_ASSERT(!ret);
 		break;

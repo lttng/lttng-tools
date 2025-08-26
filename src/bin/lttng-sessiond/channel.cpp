@@ -90,8 +90,9 @@ struct lttng_channel *channel_new_default_attr(int dom, enum lttng_buffer_type t
 			extended_attr->blocking_timeout = DEFAULT_UST_UID_CHANNEL_BLOCKING_TIMEOUT;
 			extended_attr->monitor_timer_interval =
 				DEFAULT_UST_UID_CHANNEL_MONITOR_TIMER;
-			LTTNG_OPTIONAL_SET(&extended_attr->watchdog_timer_interval,
-					   DEFAULT_UST_UID_CHANNEL_WATCHDOG_TIMER);
+			LTTNG_OPTIONAL_SET(
+				&extended_attr->watchdog_timer_interval,
+				static_cast<uint64_t>(DEFAULT_UST_UID_CHANNEL_WATCHDOG_TIMER));
 			extended_attr->allocation_policy = DEFAULT_CHANNEL_ALLOCATION_POLICY;
 			break;
 		case LTTNG_BUFFER_PER_PID:

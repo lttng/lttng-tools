@@ -167,7 +167,7 @@ ssize_t lttng_trigger_create_from_payload(struct lttng_payload_view *src_view,
 		goto end;
 	}
 
-	LTTNG_OPTIONAL_SET(&creds.uid, trigger_comm->uid);
+	LTTNG_OPTIONAL_SET(&creds.uid, static_cast<uid_t>(trigger_comm->uid));
 
 	offset += sizeof(*trigger_comm);
 

@@ -271,8 +271,9 @@ void lttng_channel_set_default_extended_attr(struct lttng_domain *domain,
 		case LTTNG_BUFFER_PER_UID:
 			extended_attr->monitor_timer_interval =
 				DEFAULT_UST_UID_CHANNEL_MONITOR_TIMER;
-			LTTNG_OPTIONAL_SET(&extended_attr->watchdog_timer_interval,
-					   DEFAULT_UST_UID_CHANNEL_WATCHDOG_TIMER);
+			LTTNG_OPTIONAL_SET(
+				&extended_attr->watchdog_timer_interval,
+				static_cast<std::uint64_t>(DEFAULT_UST_UID_CHANNEL_WATCHDOG_TIMER));
 			extended_attr->blocking_timeout = DEFAULT_UST_UID_CHANNEL_BLOCKING_TIMEOUT;
 			break;
 		case LTTNG_BUFFER_PER_PID:
