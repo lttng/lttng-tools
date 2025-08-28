@@ -734,7 +734,6 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		health_code_update();
 
-		pthread_mutex_lock(&channel->lock);
 		try {
 			new_stream = consumer_stream_create(channel,
 							    channel->key,
@@ -758,7 +757,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 							  LTTCOMM_CONSUMERD_OUTFD_ERROR);
 				break;
 			}
-			pthread_mutex_unlock(&channel->lock);
+
 			goto error_add_stream_nosignal;
 		}
 
@@ -766,7 +765,6 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		ret_get_max_subbuf_size =
 			kernctl_get_max_subbuf_size(new_stream->wait_fd, &new_stream->max_sb_size);
 		if (ret_get_max_subbuf_size < 0) {
-			pthread_mutex_unlock(&channel->lock);
 			ERR("Failed to get kernel maximal subbuffer size");
 			goto error_add_stream_nosignal;
 		}
@@ -800,7 +798,6 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			const int ret_recv_stream = ctx->on_recv_stream(new_stream);
 			if (ret_recv_stream < 0) {
 				pthread_mutex_unlock(&new_stream->lock);
-				pthread_mutex_unlock(&channel->lock);
 				consumer_stream_free(new_stream);
 				goto error_add_stream_nosignal;
 			}
@@ -819,7 +816,6 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			    new_stream->net_seq_idx);
 			cds_list_add(&new_stream->send_node, &channel->streams.head);
 			pthread_mutex_unlock(&new_stream->lock);
-			pthread_mutex_unlock(&channel->lock);
 			goto end_add_stream;
 		}
 
@@ -831,7 +827,6 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				consumer_send_relayd_stream(new_stream, new_stream->chan->pathname);
 			if (ret_send_relayd_stream < 0) {
 				pthread_mutex_unlock(&new_stream->lock);
-				pthread_mutex_unlock(&channel->lock);
 				consumer_stream_free(new_stream);
 				goto error_add_stream_nosignal;
 			}
@@ -848,7 +843,6 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 					consumer_send_relayd_streams_sent(new_stream->net_seq_idx);
 				if (ret_send_relayd_streams_sent < 0) {
 					pthread_mutex_unlock(&new_stream->lock);
-					pthread_mutex_unlock(&channel->lock);
 					goto error_add_stream_nosignal;
 				}
 			}
