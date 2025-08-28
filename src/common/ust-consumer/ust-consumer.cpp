@@ -1082,15 +1082,14 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 			    uint64_t nb_packets_per_stream,
 			    struct lttng_consumer_local_data *ctx)
 {
-	unsigned long consumed_pos, produced_pos;
-	bool packet_populated = false;
+	/* Allocate a terminal packet for the snapshot process. */
 	auto terminal_packet = []() {
 		lttng_ust_ctl_consumer_packet *raw_packet = nullptr;
 		lttng_ust_ctl_packet_create(&raw_packet);
 		return lttng::make_unique_wrapper<lttng_ust_ctl_consumer_packet,
 						  lttng_ust_ctl_packet_destroy>(raw_packet);
 	}();
-	unsigned use_relayd = 0;
+	const bool use_relayd = relayd_id != (uint64_t) -1ULL;
 	int ret;
 
 	LTTNG_ASSERT(path);
@@ -1105,14 +1104,13 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 		return -1;
 	}
 
-	if (relayd_id != (uint64_t) -1ULL) {
-		use_relayd = 1;
-	}
-
 	LTTNG_ASSERT(!channel->monitor);
 	DBG("UST consumer snapshot channel %" PRIu64, key);
 
 	for (auto& stream : channel->get_streams()) {
+		unsigned long consumed_pos, produced_pos;
+		bool terminal_packet_populated = false;
+
 		health_code_update();
 
 		/* Lock stream because we are about to change its state. */
@@ -1131,10 +1129,11 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 		stream.trace_chunk = channel->trace_chunk;
 		stream.net_seq_idx = relayd_id;
 
-		/* Close stream output when were are done. */
+		/* Close stream output when we are done. */
 		const auto close_stream_output = lttng::make_scope_exit(
 			[&stream]() noexcept { consumer_stream_close_output(&stream); });
 
+		/* Handle relayd or local file output. */
 		if (use_relayd) {
 			ret = consumer_send_relayd_stream(&stream, path);
 			if (ret < 0) {
@@ -1150,12 +1149,15 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 		}
 
 		/*
-		 * If tracing is active, we want to perform an active buffer flush.
-		 * Else, if quiescent, it has already been done by the prior stop.
+		 * Handle empty or terminal packets:
+		 * - If no events were produced, generate an empty packet to indicate
+		 *   the recording interval.
+		 * - If consecutive snapshots are taken without new events, generate
+		 *   a terminal packet to indicate the recording was still active.
 		 */
 		if (!stream.quiescent) {
 			ret = lttng_ustconsumer_flush_buffer_or_populate_packet(
-				&stream, terminal_packet.get(), &packet_populated, nullptr);
+				&stream, terminal_packet.get(), &terminal_packet_populated, nullptr);
 			if (ret < 0) {
 				ERR("Failed to flush buffer during snapshot of channel: channel key = %" PRIu64
 				    ", channel name='%s', ret=%d",
@@ -1166,33 +1168,76 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 			}
 		}
 
+		bool forced_empty_packet = false;
+
+		/* Take a snapshot of the stream's positions. */
 		ret = lttng_ustconsumer_take_snapshot(&stream);
-		if (ret < 0) {
-			ERR("Taking UST snapshot");
+		if (ret == -EAGAIN) {
+			DBG_FMT("Stream has no active packet (no activity yet), forcing a flush before snapshot: session_id={}, channel_name=`{}`, channel_key={}, stream_key={}",
+				channel->session_id,
+				channel->name,
+				channel->key,
+				stream.key);
+
+			/*
+			 * There was no content in the buffers, produce an empty packet
+			 * so that readers can infer that tracing was underway for that
+			 * stream.
+			 */
+			ret = consumer_stream_flush_buffer(&stream, false);
+			if (ret < 0) {
+				ERR_FMT("Failed to force a flush before snapshot on an empty stream: session_id={}, channel_name=`{}`, channel_key={}, stream_key={}",
+					channel->session_id,
+					channel->name,
+					channel->key,
+					stream.key);
+				return ret;
+			}
+
+			forced_empty_packet = true;
+			ret = lttng_ustconsumer_take_snapshot(&stream);
+			if (ret < 0) {
+				ERR_FMT("Failed to sample positions while taking a snapshot: session_id={}, channel_name=`{}`, channel_key={}, stream_key={}",
+					channel->session_id,
+					channel->name,
+					channel->key,
+					stream.key);
+				return ret;
+			}
+		} else if (ret < 0) {
+			ERR_FMT("Failed to sample positions while taking a snapshot: session_id={}, channel_name=`{}`, channel_key={}, stream_key={}",
+				channel->session_id,
+				channel->name,
+				channel->key,
+				stream.key);
 			return ret;
 		}
 
 		ret = lttng_ustconsumer_get_produced_snapshot(&stream, &produced_pos);
 		if (ret < 0) {
-			ERR("Produced UST snapshot position");
+			ERR_FMT("Failed to get produced position while taking a snapshot: session_id={}, channel_name=`{}`, channel_key={}, stream_key={}",
+				channel->session_id,
+				channel->name,
+				channel->key,
+				stream.key);
 			return ret;
 		}
 
 		ret = lttng_ustconsumer_get_consumed_snapshot(&stream, &consumed_pos);
 		if (ret < 0) {
-			ERR("Consumerd UST snapshot position");
+			ERR_FMT("Failed to get consumed position while taking a snapshot: session_id={}, channel_name=`{}`, channel_key={}, stream_key={}",
+				channel->session_id,
+				channel->name,
+				channel->key,
+				stream.key);
 			return ret;
 		}
 
-		/*
-		 * The original value is sent back if max stream size is larger than
-		 * the possible size of the snapshot. Also, we assume that the session
-		 * daemon should never send a maximum stream size that is lower than
-		 * subbuffer size.
-		 */
+		/* Adjust the consumed position based on the number of packets to snapshot. */
 		consumed_pos = consumer_get_consume_start_pos(
 			consumed_pos, produced_pos, nb_packets_per_stream, stream.max_sb_size);
 
+		/* Process each available sub-buffer in the stream. */
 		while ((long) (consumed_pos - produced_pos) < 0) {
 			ssize_t read_len;
 			unsigned long len, padded_len;
@@ -1256,7 +1301,8 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 			consumed_pos += stream.max_sb_size;
 		}
 
-		if (packet_populated) {
+		/* Append terminal packet if necessary. */
+		if (terminal_packet_populated && !forced_empty_packet) {
 			uint64_t length, packet_length = 0, packet_length_padded = 0;
 			struct lttng_buffer_view subbuf_view;
 			ssize_t read_len;
