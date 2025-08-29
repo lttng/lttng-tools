@@ -83,6 +83,10 @@ def run_simple_scenario(
     channel.add_recording_rule(lttngtest.UserTracepointEventRule(name_pattern="tp:*"))
     session.start()
 
+    # A single event is emitted to ensure the buffer has an initialized packet.
+    app = test_env.launch_wait_trace_test_application(1)
+    app.trace()
+
     # 4.
     scenario(tap.diagnostic, test_env, session)
 
@@ -109,7 +113,7 @@ fast_path_scenarios = (
 The producer crashes after succesfully taking the ownership of a
 sub-buffer, but has not make a reservation yet.
 """,
-        expected_events=0,
+        expected_events=1,
         expected_discarded_events=0,
         expected_packets=1,
         expected_discarded_packets=0,
@@ -120,7 +124,7 @@ sub-buffer, but has not make a reservation yet.
         synopsis="""\
 The producer crashes after succesfully taking the reservation of a
 sub-buffer, but has not make a reservation yet.""",
-        expected_events=0,
+        expected_events=1,
         expected_discarded_events=0,
         expected_packets=1,
         expected_discarded_packets=0,
@@ -132,7 +136,7 @@ sub-buffer, but has not make a reservation yet.""",
 The producer crashes after incrementing the number of commited records,
 but before incrementing the hot commit counter of the sub-buffer.
 """,
-        expected_events=0,
+        expected_events=1,
         expected_discarded_events=0,
         expected_packets=1,
         expected_discarded_packets=0,
@@ -145,7 +149,7 @@ but before incrementing the hot commit counter of the sub-buffer.
 The producer crashes after incrementing the hot commit count of
 the sub-buffer.
 """,
-        expected_events=1,
+        expected_events=1 + 1,
         expected_discarded_events=0,
         expected_packets=1,
         expected_discarded_packets=0,
@@ -156,7 +160,7 @@ the sub-buffer.
         synopsis="""\
 The producer crashes before succesfully releasing the ownership of a
 sub-buffer.""",
-        expected_events=1,
+        expected_events=1 + 1,
         expected_discarded_events=0,
         expected_packets=1,
         expected_discarded_packets=0,
@@ -172,7 +176,7 @@ slow_path_scenarios = (
 The producer crashes after succesfully taking the ownership of a
 sub-buffer (slow-path), but has not make a reservation yet.
 """,
-        expected_events=lambda x: x != 0,
+        expected_events=lambda x: x > 1,
         expected_discarded_events=0,
         expected_packets=1,
         expected_discarded_packets=0,
@@ -186,7 +190,7 @@ sub-buffer (slow-path), but has not make a reservation yet.
         synopsis="""\
 The producer crashes after succesfully taking the reservation of a
 sub-buffer (slow-path), but has not make a reservation yet.""",
-        expected_events=lambda x: x != 0,
+        expected_events=lambda x: x > 1,
         expected_discarded_events=0,
         expected_packets=2,
         expected_discarded_packets=0,
@@ -196,14 +200,14 @@ sub-buffer (slow-path), but has not make a reservation yet.""",
         synopsis="""\
 The producer crashes after succesfully comitting the packet header
 of a new sub-buffer.""",
-        expected_events=lambda x: x != 0,
+        expected_events=lambda x: x > 1,
         expected_discarded_events=0,
         expected_packets=2,
         expected_discarded_packets=0,
     ),
     StallScenario(
         testpoints=["lib_ring_buffer_check_deliver_slow_cmpxchg_succeed"],
-        expected_events=lambda x: x != 0,
+        expected_events=lambda x: x > 1,
         expected_discarded_events=0,
         expected_packets=lambda x: x != 0,
         expected_discarded_packets=0,
@@ -213,7 +217,7 @@ of a new sub-buffer.""",
         synopsis="""\
 The producer crashes before delivering the wakeup to the consumer.
 """,
-        expected_events=lambda x: x != 0,
+        expected_events=lambda x: x > 1,
         expected_discarded_events=0,
         expected_packets=2,
         expected_discarded_packets=0,
