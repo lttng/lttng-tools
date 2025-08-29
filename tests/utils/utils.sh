@@ -1183,7 +1183,7 @@ function start_lttng_sessiond_opt()
 	esac
 
 	# Check for env. variable. Allow the use of LD_PRELOAD etc.
-	if [[ "x${LTTNG_SESSIOND_ENV_VARS}" != "x" ]]; then
+	if [[ "${LTTNG_SESSIOND_ENV_VARS}" != "" ]]; then
 		env_vars="${LTTNG_SESSIOND_ENV_VARS} "
 	fi
 	env_vars="${env_vars}$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN"
