@@ -7,6 +7,7 @@ import contextlib
 import itertools
 import multiprocessing
 import pathlib
+import resource
 import signal
 import subprocess
 import sys
@@ -241,6 +242,9 @@ if __name__ == "__main__":
     tap = lttngtest.TapGenerator(number_of_tests)
 
     if gdb_exists():
+        # These tests make use of traps which will produce core files.
+        # Disable core dumps to avoid filling disk or tmp space.
+        resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
 
         def handle_result(result):
 

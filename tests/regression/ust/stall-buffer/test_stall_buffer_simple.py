@@ -5,6 +5,7 @@
 
 import mmap
 import pathlib
+import resource
 import subprocess
 import sys
 
@@ -268,6 +269,9 @@ if __name__ == "__main__":
         tap.skip_all_remaining("GDB not available")
         sys.exit(0)
 
+    # These tests make use of traps which will produce core files.
+    # Disable core dumps to avoid filling disk or tmp space.
+    resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
     for variant in variants:
         tap.diagnostic("Starting variant: {}".format(variant))
         run_tests(tap, scenarios, **variant)
