@@ -240,6 +240,9 @@ if __name__ == "__main__":
     number_of_tests = len(scenarios) * len(variants)
 
     tap = lttngtest.TapGenerator(number_of_tests)
+    if not lttngtest._Environment.run_long_regression_tests():
+        tap.skip_all_remaining("Long regression tests not enabled")
+        sys.exit(0)
 
     if gdb_exists():
         # These tests make use of traps which will produce core files.
