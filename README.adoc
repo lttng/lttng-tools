@@ -223,7 +223,7 @@ $ sudo ldconfig
 == Tests
 
 To run all the tests:
-+
+
 ----
 $ make check
 ----
