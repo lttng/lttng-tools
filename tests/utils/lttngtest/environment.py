@@ -1482,7 +1482,7 @@ def count_events(trace_path, ignore_exceptions=False):
                 if type(msg) is bt2._DiscardedEventsMessageConst:
                     # msg.count may be None when the value is indeterminate
                     discarded += msg.count if msg.count is not None else 1
-        except RuntimeError as e:
+        except Exception as e:
             if not ignore_exceptions:
                 raise e
 
