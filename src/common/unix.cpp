@@ -21,6 +21,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <vector>
 
 /*
  * Connect to unix socket using the path name.
@@ -411,7 +412,6 @@ ssize_t lttcomm_send_fds_unix_sock(int sock, const int *fds, size_t nb_fd)
 	struct iovec iov[1];
 	ssize_t ret = -1;
 	const unsigned int sizeof_fds = nb_fd * sizeof(int);
-	char tmp[CMSG_SPACE(sizeof_fds)];
 	char dummy = 0;
 
 	LTTNG_ASSERT(sock);
@@ -419,12 +419,18 @@ ssize_t lttcomm_send_fds_unix_sock(int sock, const int *fds, size_t nb_fd)
 	LTTNG_ASSERT(nb_fd > 0);
 
 	memset(&msg, 0, sizeof(msg));
-	memset(tmp, 0, sizeof(tmp));
 
 	if (nb_fd > LTTCOMM_MAX_SEND_FDS)
 		return -EINVAL;
 
-	msg.msg_control = (caddr_t) tmp;
+	std::vector<char> ctrl_buf;
+	try {
+		ctrl_buf.resize(CMSG_SPACE(sizeof_fds));
+	} catch (const std::bad_alloc&) {
+		return -ENOMEM;
+	}
+
+	msg.msg_control = (caddr_t) ctrl_buf.data();
 	msg.msg_controllen = CMSG_LEN(sizeof_fds);
 
 	cmptr = CMSG_FIRSTHDR(&msg);
@@ -535,7 +541,6 @@ ssize_t lttcomm_send_fds_unix_sock_non_block(int sock, const int *fds, size_t nb
 	struct iovec iov[1];
 	ssize_t ret = -1;
 	const unsigned int sizeof_fds = nb_fd * sizeof(int);
-	char tmp[CMSG_SPACE(sizeof_fds)];
 	char dummy = 0;
 
 	LTTNG_ASSERT(sock);
@@ -543,12 +548,18 @@ ssize_t lttcomm_send_fds_unix_sock_non_block(int sock, const int *fds, size_t nb
 	LTTNG_ASSERT(nb_fd > 0);
 
 	memset(&msg, 0, sizeof(msg));
-	memset(tmp, 0, sizeof(tmp));
 
 	if (nb_fd > LTTCOMM_MAX_SEND_FDS)
 		return -EINVAL;
 
-	msg.msg_control = (caddr_t) tmp;
+	std::vector<char> ctrl_buf;
+	try {
+		ctrl_buf.resize(CMSG_SPACE(sizeof_fds));
+	} catch (const std::bad_alloc&) {
+		return -ENOMEM;
+	}
+
+	msg.msg_control = (caddr_t) ctrl_buf.data();
 	msg.msg_controllen = CMSG_LEN(sizeof_fds);
 
 	cmptr = CMSG_FIRSTHDR(&msg);
@@ -623,13 +634,19 @@ ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 	const size_t sizeof_fds = nb_fd * sizeof(int);
 
 #ifdef __linux__
-/* Account for the struct ucred cmsg in the buffer size */
-#define LTTNG_SOCK_RECV_FDS_BUF_SIZE CMSG_SPACE(sizeof_fds) + CMSG_SPACE(sizeof(struct ucred))
+	/* Account for the struct ucred cmsg in the buffer size */
+	const size_t recv_buf_size = CMSG_SPACE(sizeof_fds) + CMSG_SPACE(sizeof(struct ucred));
 #else
-#define LTTNG_SOCK_RECV_FDS_BUF_SIZE CMSG_SPACE(sizeof_fds)
+	const size_t recv_buf_size = CMSG_SPACE(sizeof_fds);
 #endif /* __linux__ */
 
-	char recv_buf[LTTNG_SOCK_RECV_FDS_BUF_SIZE];
+	std::vector<char> recv_buf;
+	try {
+		recv_buf.resize(recv_buf_size);
+	} catch (const std::bad_alloc&) {
+		return -ENOMEM;
+	}
+
 	struct msghdr msg;
 	char dummy;
 
@@ -645,13 +662,13 @@ ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 	msg.msg_iov = iov;
 	msg.msg_iovlen = 1;
 
-	cmsg = (struct cmsghdr *) recv_buf;
+	cmsg = (struct cmsghdr *) recv_buf.data();
 	cmsg->cmsg_len = CMSG_LEN(sizeof_fds);
 	cmsg->cmsg_level = SOL_SOCKET;
 	cmsg->cmsg_type = SCM_RIGHTS;
 
 	msg.msg_control = cmsg;
-	msg.msg_controllen = CMSG_LEN(sizeof(recv_buf));
+	msg.msg_controllen = CMSG_LEN(recv_buf_size);
 	msg.msg_flags = 0;
 
 retry:
@@ -853,13 +870,19 @@ ssize_t lttcomm_recv_fds_unix_sock_non_block(int sock, int *fds, size_t nb_fd)
 	LTTNG_ASSERT(nb_fd > 0);
 
 #ifdef __linux__
-/* Account for the struct ucred cmsg in the buffer size */
-#define LTTNG_SOCK_RECV_FDS_BUF_SIZE CMSG_SPACE(sizeof_fds) + CMSG_SPACE(sizeof(struct ucred))
+	/* Account for the struct ucred cmsg in the buffer size */
+	const size_t recv_buf_size = CMSG_SPACE(sizeof_fds) + CMSG_SPACE(sizeof(struct ucred));
 #else
-#define LTTNG_SOCK_RECV_FDS_BUF_SIZE CMSG_SPACE(sizeof_fds)
+	const size_t recv_buf_size = CMSG_SPACE(sizeof_fds);
 #endif /* __linux__ */
 
-	char recv_buf[LTTNG_SOCK_RECV_FDS_BUF_SIZE];
+	std::vector<char> recv_buf;
+	try {
+		recv_buf.resize(recv_buf_size);
+	} catch (const std::bad_alloc&) {
+		return -ENOMEM;
+	}
+
 	struct msghdr msg;
 	char dummy;
 
@@ -871,13 +894,13 @@ ssize_t lttcomm_recv_fds_unix_sock_non_block(int sock, int *fds, size_t nb_fd)
 	msg.msg_iov = iov;
 	msg.msg_iovlen = 1;
 
-	cmsg = (struct cmsghdr *) recv_buf;
+	cmsg = (struct cmsghdr *) recv_buf.data();
 	cmsg->cmsg_len = CMSG_LEN(sizeof_fds);
 	cmsg->cmsg_level = SOL_SOCKET;
 	cmsg->cmsg_type = SCM_RIGHTS;
 
 	msg.msg_control = cmsg;
-	msg.msg_controllen = CMSG_LEN(sizeof(recv_buf));
+	msg.msg_controllen = CMSG_LEN(recv_buf_size);
 	msg.msg_flags = 0;
 
 retry:
