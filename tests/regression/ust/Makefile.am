@@ -38,7 +38,8 @@ endif
 EXTRA_DIST = \
 	test_event_basic \
 	test_event_perf	\
-	test_event_tracef
+	test_event_tracef \
+	test_no_event_timestamps.py
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
