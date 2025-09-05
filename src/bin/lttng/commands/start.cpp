@@ -207,8 +207,8 @@ void warn_on_small_client_shm(const char *session_name)
 			return lttng::file_descriptor(raw_fd);
 		}();
 
-		const auto scope_shm_unlink = lttng::make_scope_exit(
-			[CLIENT_SHM_TEST_PATH]() noexcept { shm_unlink(CLIENT_SHM_TEST_PATH); });
+		const auto scope_shm_unlink =
+			lttng::make_scope_exit([]() noexcept { shm_unlink(CLIENT_SHM_TEST_PATH); });
 		if (fstatvfs(fd.fd(), &statbuf) != 0) {
 			LTTNG_THROW_POSIX(
 				"Failed to get the capacity of the filesystem at the default location used by shm_open",
