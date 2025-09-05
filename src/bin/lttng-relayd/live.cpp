@@ -815,18 +815,14 @@ static struct lttcomm_sock *init_socket(struct lttng_uri *uri, const char *name)
 		LTTNG_THROW_ERROR(lttng::format("Failed to create \"{}\" socket", formatted_name));
 	}
 
-	auto fd_tracker_remove_on_error =
-		lttng::make_scope_exit([&sock, &sock_fd, &relayd_live_port_path]() noexcept {
-			if (sock.get() != nullptr) {
-				if (sock->fd >= 0) {
-					fd_tracker_close_unsuspendable_fd(the_fd_tracker,
-									  &sock_fd,
-									  1,
-									  close_sock,
-									  sock.get());
-				}
+	auto fd_tracker_remove_on_error = lttng::make_scope_exit([&sock, &sock_fd]() noexcept {
+		if (sock.get() != nullptr) {
+			if (sock->fd >= 0) {
+				fd_tracker_close_unsuspendable_fd(
+					the_fd_tracker, &sock_fd, 1, close_sock, sock.get());
 			}
-		});
+		}
+	});
 
 	DBG("Listening on %s socket %d", name, sock->fd);
 	ret = sock->ops->bind(sock.get());
