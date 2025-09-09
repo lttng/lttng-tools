@@ -537,10 +537,9 @@ class _WaitTraceTestApplication:
         # type: () -> None
         if self._process.wait() != 0:
             raise RuntimeError(
-                "Test application [{pid}] has exit with return code `{return_code}`, output=`{output}`".format(
+                "Test application [{pid}] has exit with return code `{return_code}`".format(
                     pid=self.vpid,
                     return_code=self._process.returncode,
-                    output=self._process.stderr.read().decode("utf-8"),
                 )
             )
         self._has_returned = True

@@ -209,9 +209,22 @@ class StallScenario:
                 ]
             )
 
-            output = subprocess.check_output(
-                gdb_args, timeout=5, stderr=subprocess.STDOUT
-            ).decode("utf-8")
+            with subprocess.Popen(
+                gdb_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+            ) as process:
+                try:
+                    output, _ = process.communicate(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+
+                    output, _ = process.communicate()
+                    for line in output.decode("utf-8", errors="ignore").splitlines():
+                        log("GDB (timeout): {}".format(line))
+
+                    # Re-raise the exception so the test fails.
+                    raise
+
+            output = output.decode("utf-8")
 
             # Just emit the output of GDB with TAP for better error reporting.
             for line in output.splitlines():
