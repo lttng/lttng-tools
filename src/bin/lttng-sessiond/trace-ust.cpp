@@ -286,7 +286,7 @@ struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 	lus->metadata_attr.switch_timer_interval = DEFAULT_METADATA_SWITCH_TIMER;
 	lus->metadata_attr.read_timer_interval = DEFAULT_METADATA_READ_TIMER;
 	lus->metadata_attr.output = LTTNG_UST_ABI_MMAP;
-	lus->metadata_attr.u.s.type = LTTNG_UST_ABI_CHAN_METADATA;
+	lus->metadata_attr.type = LTTNG_UST_ABI_CHAN_METADATA;
 
 	/*
 	 * Default buffer type. This can be changed through an enable channel
@@ -371,7 +371,7 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	luc->attr.read_timer_interval = chan->attr.read_timer_interval;
 	luc->attr.output = (enum lttng_ust_abi_output) chan->attr.output;
 	luc->monitor_timer_interval = extended->monitor_timer_interval;
-	luc->attr.u.s.blocking_timeout = extended->blocking_timeout;
+	luc->attr.blocking_timeout = extended->blocking_timeout;
 
 	if (extended->watchdog_timer_interval.is_set) {
 		switch (domain) {
@@ -389,7 +389,7 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 			goto error;
 		}
 	}
-	luc->attr.u.s.blocking_timeout = extended->blocking_timeout;
+	luc->attr.blocking_timeout = extended->blocking_timeout;
 
 	if (extended->automatic_memory_reclamation_maximal_age_us.is_set) {
 		luc->automatic_memory_reclamation_maximal_age = std::chrono::microseconds(
@@ -398,10 +398,10 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 
 	switch (allocation_policy) {
 	case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU:
-		luc->attr.u.s.type = LTTNG_UST_ABI_CHAN_PER_CPU;
+		luc->attr.type = LTTNG_UST_ABI_CHAN_PER_CPU;
 		break;
 	case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CHANNEL:
-		luc->attr.u.s.type = LTTNG_UST_ABI_CHAN_PER_CHANNEL;
+		luc->attr.type = LTTNG_UST_ABI_CHAN_PER_CHANNEL;
 		break;
 	default:
 		PERROR("Unknown channel stream allocation");

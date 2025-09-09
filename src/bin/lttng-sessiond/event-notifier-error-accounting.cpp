@@ -518,7 +518,7 @@ send_counter_data_to_ust(struct ust_app *app, struct lttng_ust_abi_object_data *
 	/* Attach counter to trigger group. */
 	pthread_mutex_lock(&app->sock_lock);
 	ret = lttng_ust_ctl_send_counter_data_to_ust(
-		app->sock, app->event_notifier_group.object->handle, new_counter);
+		app->sock, app->event_notifier_group.object->header.handle, new_counter);
 	pthread_mutex_unlock(&app->sock_lock);
 	if (ret < 0) {
 		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {

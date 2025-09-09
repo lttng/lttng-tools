@@ -367,8 +367,8 @@ static void copy_channel_attr_to_ustctl(struct lttng_ust_ctl_consumer_channel_at
 	attr->switch_timer_interval = uattr->switch_timer_interval;
 	attr->read_timer_interval = uattr->read_timer_interval;
 	attr->output = (lttng_ust_abi_output) uattr->output;
-	attr->blocking_timeout = uattr->u.s.blocking_timeout;
-	attr->type = static_cast<enum lttng_ust_abi_chan_type>(uattr->u.s.type);
+	attr->blocking_timeout = uattr->blocking_timeout;
+	attr->type = static_cast<enum lttng_ust_abi_chan_type>(uattr->type);
 }
 
 /*
@@ -513,7 +513,7 @@ static void delete_ust_app_ctx(int sock, struct ust_app_ctx *ua_ctx, struct ust_
 				     app->sock);
 			} else {
 				ERR("UST app release ctx obj handle %d failed with ret %d: pid = %d, sock = %d",
-				    ua_ctx->obj->handle,
+				    ua_ctx->obj->header.handle,
 				    ret,
 				    app->pid,
 				    app->sock);
@@ -1433,8 +1433,8 @@ alloc_ust_app_channel(const char *name,
 		ua_chan->attr.switch_timer_interval = attr->switch_timer_interval;
 		ua_chan->attr.read_timer_interval = attr->read_timer_interval;
 		ua_chan->attr.output = (lttng_ust_abi_output) attr->output;
-		ua_chan->attr.blocking_timeout = attr->u.s.blocking_timeout;
-		ua_chan->attr.type = static_cast<enum lttng_ust_abi_chan_type>(attr->u.s.type);
+		ua_chan->attr.blocking_timeout = attr->blocking_timeout;
+		ua_chan->attr.type = static_cast<enum lttng_ust_abi_chan_type>(attr->type);
 	}
 
 	DBG3("UST app channel %s allocated", ua_chan->name);
@@ -1807,7 +1807,7 @@ static int create_ust_channel_context(struct ust_app_channel *ua_chan,
 		goto error;
 	}
 
-	ua_ctx->handle = ua_ctx->obj->handle;
+	ua_ctx->handle = ua_ctx->obj->header.handle;
 
 	DBG2("UST app context handle %d created successfully for channel %s",
 	     ua_ctx->handle,
@@ -1929,8 +1929,9 @@ static struct lttng_ust_abi_event_exclusion *
 create_ust_exclusion_from_exclusion(const struct lttng_event_exclusion *exclusion)
 {
 	struct lttng_ust_abi_event_exclusion *ust_exclusion = nullptr;
-	const size_t exclusion_alloc_size = sizeof(struct lttng_ust_abi_event_exclusion) +
-		LTTNG_UST_ABI_SYM_NAME_LEN * exclusion->count;
+	const size_t names_size = LTTNG_UST_ABI_SYM_NAME_LEN * exclusion->count;
+	const size_t exclusion_alloc_size =
+		sizeof(struct lttng_ust_abi_event_exclusion) + names_size;
 
 	ust_exclusion = zmalloc<lttng_ust_abi_event_exclusion>(exclusion_alloc_size);
 	if (!ust_exclusion) {
@@ -1938,9 +1939,9 @@ create_ust_exclusion_from_exclusion(const struct lttng_event_exclusion *exclusio
 		goto end;
 	}
 
-	LTTNG_ASSERT(sizeof(struct lttng_event_exclusion) ==
-		     sizeof(struct lttng_ust_abi_event_exclusion));
-	memcpy(ust_exclusion, exclusion, exclusion_alloc_size);
+	ust_exclusion->count = exclusion->count;
+
+	memcpy(ust_exclusion->names, exclusion->names, names_size);
 end:
 	return ust_exclusion;
 }
@@ -2278,7 +2279,7 @@ static int create_ust_event(struct ust_app *app,
 		goto error;
 	}
 
-	ua_event->handle = ua_event->obj->handle;
+	ua_event->handle = ua_event->obj->header.handle;
 
 	DBG2("UST app event %s created successfully for pid:%d object = %p",
 	     ua_event->attr.name,
@@ -2397,16 +2398,15 @@ init_ust_event_notifier_from_event_rule(const struct lttng_event_rule *rule,
 		}
 	}
 
-	event_notifier->event.instrumentation = LTTNG_UST_ABI_TRACEPOINT;
-	ret = lttng_strncpy(
-		event_notifier->event.name, pattern, sizeof(event_notifier->event.name));
+	event_notifier->instrumentation = LTTNG_UST_ABI_TRACEPOINT;
+	ret = lttng_strncpy(event_notifier->name, pattern, sizeof(event_notifier->name));
 	if (ret) {
 		ERR("Failed to copy event rule pattern to notifier: pattern = '%s' ", pattern);
 		goto end;
 	}
 
-	event_notifier->event.loglevel_type = ust_loglevel_type;
-	event_notifier->event.loglevel = loglevel;
+	event_notifier->loglevel_type = ust_loglevel_type;
+	event_notifier->loglevel = loglevel;
 end:
 	return ret;
 }
@@ -2448,7 +2448,7 @@ static int create_ust_event_notifier(struct ust_app *app,
 		     event_rule_type == LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING);
 
 	init_ust_event_notifier_from_event_rule(event_rule, &event_notifier);
-	event_notifier.event.token = ua_event_notifier_rule->token;
+	event_notifier.token = ua_event_notifier_rule->token;
 	event_notifier.error_counter_index = ua_event_notifier_rule->error_counter_index;
 
 	/* Create UST event notifier against the tracer. */
@@ -2471,7 +2471,7 @@ static int create_ust_event_notifier(struct ust_app *app,
 			     app->sock);
 		} else {
 			ERR("UST app create event notifier '%s' failed with ret %d: pid = %d, sock = %d",
-			    event_notifier.event.name,
+			    event_notifier.name,
 			    ret,
 			    app->pid,
 			    app->sock);
@@ -2479,10 +2479,10 @@ static int create_ust_event_notifier(struct ust_app *app,
 		goto error;
 	}
 
-	ua_event_notifier_rule->handle = ua_event_notifier_rule->obj->handle;
+	ua_event_notifier_rule->handle = ua_event_notifier_rule->obj->header.handle;
 
 	DBG2("UST app event notifier %s created successfully: app = '%s': pid = %d, object = %p",
-	     event_notifier.event.name,
+	     event_notifier.name,
 	     app->name,
 	     app->pid,
 	     ua_event_notifier_rule->obj);
@@ -2622,8 +2622,8 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan, struct ltt_ust_
 	ua_chan->automatic_memory_reclamation_maximal_age =
 		uchan->automatic_memory_reclamation_maximal_age;
 	ua_chan->attr.output = (lttng_ust_abi_output) uchan->attr.output;
-	ua_chan->attr.blocking_timeout = uchan->attr.u.s.blocking_timeout;
-	ua_chan->attr.type = static_cast<enum lttng_ust_abi_chan_type>(uchan->attr.u.s.type);
+	ua_chan->attr.blocking_timeout = uchan->attr.blocking_timeout;
+	ua_chan->attr.type = static_cast<enum lttng_ust_abi_chan_type>(uchan->attr.type);
 
 	/*
 	 * Note that the attribute channel type is not set since the channel on the
@@ -3372,7 +3372,7 @@ static int duplicate_stream_object(struct buffer_reg_stream *reg_stream,
 		lttng_fd_put(LTTNG_FD_APPS, 2);
 		goto error;
 	}
-	stream->handle = stream->obj->handle;
+	stream->handle = stream->obj->header.handle;
 
 error:
 	return ret;
@@ -3408,7 +3408,7 @@ static int duplicate_channel_object(struct buffer_reg_channel *buf_reg_chan,
 		    ret);
 		goto error;
 	}
-	ua_chan->handle = ua_chan->obj->handle;
+	ua_chan->handle = ua_chan->obj->header.handle;
 
 	return 0;
 
@@ -5261,7 +5261,7 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 static bool is_context_redundant(const struct ltt_ust_channel *uchan,
 				 const struct ltt_ust_context *uctx)
 {
-	const auto chan_type = static_cast<enum lttng_ust_abi_chan_type>(uchan->attr.u.s.type);
+	const auto chan_type = static_cast<enum lttng_ust_abi_chan_type>(uchan->attr.type);
 	const auto context_type = uctx->ctx.ctx;
 
 	switch (chan_type) {
@@ -5301,7 +5301,7 @@ static int ust_app_channel_create(struct ltt_ust_session *usess,
 		ret = ust_app_channel_allocate(
 			ua_sess,
 			uchan,
-			static_cast<enum lttng_ust_abi_chan_type>(uchan->attr.u.s.type),
+			static_cast<enum lttng_ust_abi_chan_type>(uchan->attr.type),
 			usess,
 			&ua_chan);
 		if (ret < 0) {

@@ -870,12 +870,16 @@ struct lttcomm_session_msg {
  * bytecode. It is made of tuples: (uint16_t, var. len. string). It
  * starts at reloc_table_offset.
  */
-#define LTTNG_FILTER_PADDING 32
+#define LTTNG_FILTER_BYTECODE_SIZE 64
 struct lttng_bytecode {
-	uint32_t len; /* len of data */
-	uint32_t reloc_table_offset;
-	uint64_t seqnum;
-	char padding[LTTNG_FILTER_PADDING];
+	union {
+		char padding[LTTNG_FILTER_BYTECODE_SIZE];
+		struct {
+			uint32_t len; /* len of data */
+			uint32_t reloc_table_offset;
+			uint64_t seqnum;
+		} LTTNG_PACKED;
+	};
 	char data[0];
 } LTTNG_PACKED;
 
@@ -886,8 +890,12 @@ struct lttng_bytecode {
  */
 #define LTTNG_EVENT_EXCLUSION_PADDING 32
 struct lttng_event_exclusion {
-	uint32_t count;
-	char padding[LTTNG_EVENT_EXCLUSION_PADDING];
+	union {
+		char padding[LTTNG_EVENT_EXCLUSION_PADDING];
+		struct {
+			uint32_t count;
+		} LTTNG_PACKED;
+	};
 	char names[LTTNG_FLEXIBLE_ARRAY_MEMBER_LENGTH][LTTNG_SYMBOL_NAME_LEN];
 } LTTNG_PACKED;
 

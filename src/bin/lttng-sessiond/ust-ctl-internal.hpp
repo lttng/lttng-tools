@@ -17,10 +17,6 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-#ifndef LTTNG_UST_UUID_LEN
-#define LTTNG_UST_UUID_LEN 16
-#endif
-
 /* Default unix socket path */
 #define LTTNG_UST_SOCK_FILENAME \
 	"lttng-ust-sock-" lttng_ust_stringify(LTTNG_UST_ABI_MAJOR_VERSION_OLDEST_COMPATIBLE)
@@ -41,12 +37,12 @@ struct lttng_ust_ctl_consumer_channel_attr {
 	unsigned int read_timer_interval; /* usec */
 	enum lttng_ust_abi_output output; /* splice, mmap */
 	uint32_t chan_id; /* channel ID */
-	unsigned char uuid[LTTNG_UST_UUID_LEN]; /* Trace session unique ID */
+	unsigned char uuid[LTTNG_UST_ABI_UUID_LEN]; /* Trace session unique ID */
 	int64_t blocking_timeout; /* Blocking timeout (usec) */
 	uint32_t owner_id;
 	/* 1: preallocate/zero, 0: don't preallocate (sparse/lazy allocation) */
 	int preallocate_backing;
-};
+} LTTNG_PACKED;
 
 /*
  * API used by sessiond.
@@ -61,13 +57,6 @@ struct lttng_ust_context_attr {
 			char *ctx_name;
 		} app_ctx;
 	} u;
-};
-
-struct lttng_ust_ctl_subbuf_state {
-	uint64_t hot_commit_count;
-	uint64_t cold_commit_count;
-	size_t idx;
-	uint32_t owner;
 };
 
 /*
@@ -153,6 +142,9 @@ int lttng_ust_ctl_tracepoint_field_list_get(int sock,
 					    struct lttng_ust_abi_field_iter *iter);
 
 int lttng_ust_ctl_tracer_version(int sock, struct lttng_ust_abi_tracer_version *v);
+
+int lttng_ust_ctl_unknown_command(int sock);
+
 int lttng_ust_ctl_wait_quiescent(int sock);
 
 int lttng_ust_ctl_sock_flush_buffer(int sock, struct lttng_ust_abi_object_data *object);
@@ -190,6 +182,7 @@ int lttng_ust_ctl_duplicate_ust_object_data(struct lttng_ust_abi_object_data **d
 struct lttng_ust_ctl_consumer_channel;
 struct lttng_ust_ctl_consumer_stream;
 struct lttng_ust_ctl_consumer_channel_attr;
+struct lttng_ust_ctl_consumer_packet;
 
 int lttng_ust_ctl_get_nr_stream_per_channel();
 
@@ -238,15 +231,137 @@ int lttng_ust_ctl_get_max_subbuf_size(struct lttng_ust_ctl_consumer_stream *stre
 
 void lttng_ust_ctl_set_channel_owner_id(struct lttng_ust_abi_object_data *obj, uint32_t id);
 
+/* Opaque type. */
+struct lttng_ust_ctl_subbuf_iter;
+
+enum lttng_ust_ctl_subbuf_iter_type {
+	/* Iterate on all delivered subbuffers: those non-consumed and consumed. */
+	LTTNG_UST_CTL_SUBBUF_ITER_DELIVERED = 0,
+	/* Iterate on subbuffers which were delivered and consumed. */
+	LTTNG_UST_CTL_SUBBUF_ITER_DELIVERED_CONSUMED = 1,
+	/* Iterate only on non-consumed subbuffers, whether they were delivered or not. */
+	LTTNG_UST_CTL_SUBBUF_ITER_UNCONSUMED = 2,
+};
+
+/*
+ * Create a subbuffer iterator object.
+ *
+ * The object will iterate on sub-buffers from `stream`.
+ *
+ * Return 0 on success.
+ *
+ * Return a negative value on error.
+ */
+int lttng_ust_ctl_subbuf_iter_create(struct lttng_ust_ctl_consumer_stream *stream,
+				     enum lttng_ust_ctl_subbuf_iter_type iter_type,
+				     struct lttng_ust_ctl_subbuf_iter **iter);
+
+/*
+ * Iterate to the next sub-buffer.
+ *
+ * Return 0 if no next sub-buffer is available.
+ *
+ * Return 1 on success.
+ *
+ * Return a negative value on error.
+ */
+int lttng_ust_ctl_subbuf_iter_next(struct lttng_ust_ctl_subbuf_iter *iter);
+
+/*
+ * Get the hot commit counter of the current sub-buffer.
+ *
+ * Return 0 on success.
+ *
+ * Return a negative value on error.
+ */
+int lttng_ust_ctl_subbuf_iter_cc_hot(struct lttng_ust_ctl_subbuf_iter *iter, unsigned long *cc_hot);
+
+/*
+ * Get the cold commit counter of the current sub-buffer.
+ *
+ * Return 0 on success.
+ *
+ * Return a negative value on error.
+ */
+int lttng_ust_ctl_subbuf_iter_cc_cold(struct lttng_ust_ctl_subbuf_iter *iter,
+				      unsigned long *cc_cold);
+
+/*
+ * Get the index in the buffer of the current sub-buffer.
+ *
+ * Return 0 on success.
+ *
+ * Return a negative value on error.
+ */
+int lttng_ust_ctl_subbuf_iter_index(struct lttng_ust_ctl_subbuf_iter *iter, size_t *idx);
+
+/*
+ * Get the owner of the current sub-buffer.
+ *
+ * Return 0 on success.
+ *
+ * Return a negative value on error.
+ */
+int lttng_ust_ctl_subbuf_iter_owner(struct lttng_ust_ctl_subbuf_iter *iter, uint32_t *owner);
+
+/*
+ * Get the timestamp begin of the current sub-buffer.
+ *
+ * Return 0 on success.
+ *
+ * Return a negative value on error.
+ */
+int lttng_ust_ctl_subbuf_iter_timestamp_begin(struct lttng_ust_ctl_subbuf_iter *iter,
+					      uint64_t *timestamp_begin);
+
+/*
+ * Get the timestamp end of the current sub-buffer.
+ *
+ * Return 0 on success.
+ *
+ * Return a negative value on error.
+ */
+int lttng_ust_ctl_subbuf_iter_timestamp_end(struct lttng_ust_ctl_subbuf_iter *iter,
+					    uint64_t *timestamp_end);
+
+/*
+ * Get the allocated state of the current sub-buffer.
+ *
+ * Return 0 on success.
+ *
+ * Return a negative value on error.
+ */
+int lttng_ust_ctl_subbuf_iter_allocated(struct lttng_ust_ctl_subbuf_iter *iter, bool *allocated);
+
+/*
+ * Get the free running position of the current sub-buffer.
+ *
+ * Return 0 on success.
+ *
+ * Return a negative value on error.
+ */
+int lttng_ust_ctl_subbuf_iter_pos(struct lttng_ust_ctl_subbuf_iter *iter, unsigned long *pos);
+
+/*
+ * Destroy the subbuf iterator object.
+ *
+ * Return 0 on success.
+ *
+ * Return a negative value on error.
+ */
+int lttng_ust_ctl_subbuf_iter_destroy(struct lttng_ust_ctl_subbuf_iter *iter);
+
+/*
+ * Try to fixup any stalled sub-buffer in the range [consumed_pos, produced_pos].
+ *
+ * `ids[length]` is a list of known owners that are dead. Only sub-buffer owned
+ * by dead owners (or without any owner) can be fixed up by this function.
+ */
 int lttng_ust_ctl_fixup_stalled_stream(struct lttng_ust_ctl_consumer_stream *stream,
 				       unsigned long consumed_pos,
 				       unsigned long produced_pos,
 				       uint32_t *ids,
 				       uint32_t length);
-
-int lttng_ust_ctl_get_subbuf_state(struct lttng_ust_ctl_consumer_stream *stream,
-				   unsigned long *consumed_pos,
-				   struct lttng_ust_ctl_subbuf_state *state);
 
 /*
  * For mmap mode, operate on the current packet (between get/put or
@@ -273,6 +388,19 @@ int lttng_ust_ctl_get_subbuf(struct lttng_ust_ctl_consumer_stream *stream, unsig
 int lttng_ust_ctl_put_subbuf(struct lttng_ust_ctl_consumer_stream *stream);
 
 int lttng_ust_ctl_flush_buffer(struct lttng_ust_ctl_consumer_stream *stream, int producer_active);
+/*
+ * Perform an active flush, populating a packet if there was not packet
+ * delivery performed during the flush so readers can be able to infer the lack
+ * events between the last produced packet and the time the produced position
+ * sampled (indicated by an empty packet).
+ *
+ * `packet` and `packet_populated` must be non-NULL.
+ * `packet` should be a pointer to memory allocated by `lttng_ust_ctl_packet_create`.
+ */
+int lttng_ust_ctl_flush_events_or_populate_packet(struct lttng_ust_ctl_consumer_stream *stream,
+						  struct lttng_ust_ctl_consumer_packet *packet,
+						  bool *packet_populated,
+						  bool *flush_done);
 int lttng_ust_ctl_clear_buffer(struct lttng_ust_ctl_consumer_stream *stream);
 
 /* index */
@@ -307,6 +435,63 @@ int lttng_ust_ctl_get_instance_id(struct lttng_ust_ctl_consumer_stream *stream, 
  * tracer.
  */
 int lttng_ust_ctl_get_current_timestamp(struct lttng_ust_ctl_consumer_stream *stream, uint64_t *ts);
+
+/*
+ * Return < 0 if the last activity timestamp for @stream is before @ts,
+ * return > 0 if it after, 0 if equal. Note that on 32-bit architectures
+ * the accuracy of the comparison has a coarseness in the order of
+ * 250ms.
+ *
+ * The @ts parameter is expressed in clock cycles, as defined by the
+ * clock frequency.
+ */
+int lttng_ust_ctl_last_activity_timestamp_compare(struct lttng_ust_ctl_consumer_stream *stream,
+						  uint64_t ts);
+
+/*
+ * Add a nanoseconds @delta_ns (positive or negative) to a stream @timestamp.
+ * Return 0 on success, negative error value on error. @timestamp is an
+ * inout parameter.
+ *
+ * This helper takes into account the stream's clocksource frequency.
+ */
+int lttng_ust_ctl_timestamp_add(struct lttng_ust_ctl_consumer_stream *stream,
+				uint64_t *ts,
+				int64_t delta_ns);
+
+/*
+ * Try to exchange the subbuffer corresponding to @pos with the reader subbuffer.
+ *
+ * Return -ENOENT if the subbuffer is being used for writing or there is
+ * no subbuffer matching the @pos producer position in the buffer, else
+ * return 0 on success. Return -EIO on shared memory access error.
+ */
+int lttng_ust_ctl_try_exchange_subbuf(struct lttng_ust_ctl_consumer_stream *stream,
+				      unsigned long pos);
+
+/*
+ * Reclaim memory (MADV_REMOVE) backing reader subbuffer.
+ *
+ * Return 0 on success, -ENOMEM if memory is already reclaimed. It can
+ * also return any negative errno from madvise(2).
+ * Return -EIO on shared memory access error.
+ */
+int lttng_ust_ctl_reclaim_reader_subbuf(struct lttng_ust_ctl_consumer_stream *stream);
+
+/*
+ * Packets
+ */
+
+/*
+ * Allocates and creates a new packet, owned by the caller.
+ * The packet must be destroyed using `lttng_ust_ctl_packet_destroy`.
+ */
+int lttng_ust_ctl_packet_create(struct lttng_ust_ctl_consumer_packet **packet);
+void lttng_ust_ctl_packet_destroy(struct lttng_ust_ctl_consumer_packet *packet);
+int lttng_ust_ctl_packet_get_buffer(struct lttng_ust_ctl_consumer_packet *packet,
+				    void **buffer,
+				    uint64_t *packet_length,
+				    uint64_t *packet_length_padded);
 
 /* returns whether UST has perf counters support. */
 int lttng_ust_ctl_has_perf_counters();
@@ -655,7 +840,7 @@ enum lttng_ust_ctl_counter_alloc {
 
 struct lttng_ust_ctl_daemon_counter;
 
-int lttng_ust_ctl_get_nr_cpu_per_counter();
+int lttng_ust_ctl_get_nr_cpu_per_counter(void);
 
 struct lttng_ust_ctl_counter_dimension {
 	uint64_t size;
@@ -670,7 +855,7 @@ struct lttng_ust_ctl_daemon_counter *
 lttng_ust_ctl_create_counter(size_t nr_dimensions,
 			     const struct lttng_ust_ctl_counter_dimension *dimensions,
 			     int64_t global_sum_step,
-			     int channel_counter_fd,
+			     int per_channel_counter_fd,
 			     int nr_counter_cpu_fds,
 			     const int *counter_cpu_fds,
 			     enum lttng_ust_ctl_counter_bitness bitness,
@@ -697,7 +882,7 @@ void lttng_ust_ctl_destroy_counter(struct lttng_ust_ctl_daemon_counter *counter)
 int lttng_ust_ctl_send_counter_data_to_ust(int sock,
 					   int parent_handle,
 					   struct lttng_ust_abi_object_data *counter_data);
-int lttng_ust_ctl_send_counter_channel_to_ust(
+int lttng_ust_ctl_send_counter_channel_data_to_ust(
 	int sock,
 	struct lttng_ust_abi_object_data *counter_data,
 	struct lttng_ust_abi_object_data *counter_channel_data);

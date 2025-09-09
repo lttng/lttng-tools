@@ -526,7 +526,7 @@ error:
 struct lttng_channel *trace_ust_channel_to_lttng_channel(const struct ltt_ust_channel *uchan)
 {
 	struct lttng_channel *channel = nullptr, *ret = nullptr;
-	const int type = uchan->attr.u.s.type;
+	const int type = uchan->attr.type;
 	enum lttng_channel_allocation_policy allocation_policy;
 	enum lttng_channel_preallocation_policy preallocation_policy;
 
@@ -578,7 +578,7 @@ struct lttng_channel *trace_ust_channel_to_lttng_channel(const struct ltt_ust_ch
 		break;
 	}
 
-	lttng_channel_set_blocking_timeout(channel, uchan->attr.u.s.blocking_timeout);
+	lttng_channel_set_blocking_timeout(channel, uchan->attr.blocking_timeout);
 	lttng_channel_set_monitor_timer_interval(channel, uchan->monitor_timer_interval);
 
 	if (uchan->watchdog_timer_interval.is_set) {
@@ -605,7 +605,7 @@ struct lttng_channel *trace_ust_channel_to_lttng_channel(const struct ltt_ust_ch
 		break;
 	default:
 		ERR_FMT("Unknown channel allocation policy: {}",
-			static_cast<int>(uchan->attr.u.s.type));
+			static_cast<int>(uchan->attr.type));
 		goto end;
 	}
 

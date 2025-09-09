@@ -485,7 +485,7 @@ void buffer_reg_stream_destroy(struct buffer_reg_stream *regp, enum lttng_domain
 		return;
 	}
 
-	DBG3("Buffer registry stream destroy with handle %d", regp->obj.ust->handle);
+	DBG3("Buffer registry stream destroy with handle %d", regp->obj.ust->header.handle);
 
 	switch (domain) {
 	case LTTNG_DOMAIN_UST:
@@ -495,7 +495,7 @@ void buffer_reg_stream_destroy(struct buffer_reg_stream *regp, enum lttng_domain
 		ret = ust_app_release_object(nullptr, regp->obj.ust);
 		if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
 			ERR("Buffer reg stream release obj handle %d failed with ret %d",
-			    regp->obj.ust->handle,
+			    regp->obj.ust->header.handle,
 			    ret);
 		}
 		free(regp->obj.ust);
@@ -557,7 +557,7 @@ void buffer_reg_channel_destroy(struct buffer_reg_channel *regp, enum lttng_doma
 			ret = ust_app_release_object(nullptr, regp->obj.ust);
 			if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
 				ERR("Buffer reg channel release obj handle %d failed with ret %d",
-				    regp->obj.ust->handle,
+				    regp->obj.ust->header.handle,
 				    ret);
 			}
 			free(regp->obj.ust);

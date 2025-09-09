@@ -38,6 +38,40 @@
 
 #define LTTNG_UST_ABI_CMD_MAX_LEN 4096U
 
+#ifndef LTTNG_UST_ABI_UUID_LEN
+#define LTTNG_UST_ABI_UUID_LEN 16
+#endif
+
+/*
+ * Compile time assertion.
+ * - predicate: boolean expression to evaluate,
+ * - msg: string to print to the user on failure when `static_assert()` is
+ *   supported,
+ * - c_identifier_msg: message to be included in the typedef to emulate a
+ *   static assertion. This parameter must be a valid C identifier as it will
+ *   be used as a typedef name.
+ */
+#ifdef __cplusplus
+#define lttng_ust_static_assert(predicate, msg, c_identifier_msg) static_assert(predicate, msg)
+#elif defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
+#define lttng_ust_static_assert(predicate, msg, c_identifier_msg) _Static_assert(predicate, msg)
+#else
+/*
+ * Evaluates the predicate and emit a compilation error on failure.
+ *
+ * If the predicate evaluates to true, this macro emits a function
+ * prototype with an argument type which is an array of size 0.
+ *
+ * If the predicate evaluates to false, this macro emits a function
+ * prototype with an argument type which is an array of negative size
+ * which is invalid in C and forces a compiler error. The
+ * c_identifier_msg parameter is used as the argument identifier so it
+ * is printed to the user when the error is reported.
+ */
+#define lttng_ust_static_assert(predicate, msg, c_identifier_msg) \
+	void lttng_ust_static_assert_proto(char c_identifier_msg[2 * !!(predicate) -1])
+#endif
+
 enum lttng_ust_abi_instrumentation {
 	LTTNG_UST_ABI_TRACEPOINT = 0,
 	LTTNG_UST_ABI_PROBE = 1,
@@ -71,7 +105,7 @@ struct lttng_ust_abi_tracer_version {
 	uint32_t patchlevel;
 } LTTNG_PACKED;
 
-#define LTTNG_UST_ABI_CHANNEL_PADDING (LTTNG_UST_ABI_SYM_NAME_LEN + 32)
+#define LTTNG_UST_ABI_CHANNEL_SIZE 64
 /*
  * Given that the consumerd is limited to 64k file descriptors, we
  * cannot expect much more than 1MB channel structure size. This size is
@@ -80,53 +114,109 @@ struct lttng_ust_abi_tracer_version {
  */
 #define LTTNG_UST_ABI_CHANNEL_DATA_MAX_LEN 1048576U
 struct lttng_ust_abi_channel {
-	uint64_t len;
-	int32_t type; /* enum lttng_ust_abi_chan_type */
-	char padding[LTTNG_UST_ABI_CHANNEL_PADDING];
+	union {
+		char padding[LTTNG_UST_ABI_CHANNEL_SIZE];
+		struct {
+			uint64_t len;
+			int32_t type; /* enum lttng_ust_abi_chan_type */
+			uint32_t owner_id;
+		} LTTNG_PACKED;
+	};
 	char data[]; /* variable sized data */
 } LTTNG_PACKED;
 
-#define LTTNG_UST_ABI_STREAM_PADDING1 (LTTNG_UST_ABI_SYM_NAME_LEN + 32)
+lttng_ust_static_assert(sizeof(struct lttng_ust_abi_channel) == LTTNG_UST_ABI_CHANNEL_SIZE,
+			"Unexpected size for struct lttng_ust_abi_channel",
+			Unexpected_size_for_struct_lttng_ust_abi_channel);
+
+#define LTTNG_UST_ABI_CHANNEL_CONFIG_SIZE 64
+struct lttng_ust_abi_channel_config {
+	union {
+		char padding[LTTNG_UST_ABI_CHANNEL_CONFIG_SIZE];
+		struct {
+			unsigned int id; /* Channel ID */
+			unsigned char uuid[LTTNG_UST_ABI_UUID_LEN]; /* Trace session unique ID */
+		} LTTNG_PACKED;
+	};
+} LTTNG_PACKED;
+
+lttng_ust_static_assert(sizeof(struct lttng_ust_abi_channel_config) ==
+				LTTNG_UST_ABI_CHANNEL_CONFIG_SIZE,
+			"Incorrect size for struct lttng_ust_abi_channel_config",
+			Incorrect_size_for_struct_lttng_ust_abi_channel_config);
+
+#define LTTNG_UST_ABI_STREAM_SIZE 64
 struct lttng_ust_abi_stream {
-	uint64_t len; /* shm len */
-	uint32_t stream_nr; /* stream number */
-	char padding[LTTNG_UST_ABI_STREAM_PADDING1];
+	union {
+		char padding[LTTNG_UST_ABI_STREAM_SIZE];
+		struct {
+			uint64_t len; /* shm len */
+			uint32_t stream_nr; /* stream number */
+		} LTTNG_PACKED;
+	};
 	/*
 	 * shm_fd and wakeup_fd are send over unix socket as file
 	 * descriptors after this structure.
 	 */
 } LTTNG_PACKED;
 
-#define LTTNG_UST_ABI_EVENT_PADDING1 8
-#define LTTNG_UST_ABI_EVENT_PADDING2 (LTTNG_UST_ABI_SYM_NAME_LEN + 32)
+lttng_ust_static_assert(sizeof(struct lttng_ust_abi_stream) == LTTNG_UST_ABI_STREAM_SIZE,
+			"Unexpected size for struct lttng_ust_abi_stream",
+			Unexpected_size_for_struct_lttng_ust_abi_stream);
+
+#define LTTNG_UST_ABI_EVENT_SIZE 320
 struct lttng_ust_abi_event {
-	int32_t instrumentation; /* enum lttng_ust_abi_instrumentation */
-	char name[LTTNG_UST_ABI_SYM_NAME_LEN]; /* event name */
-
-	int32_t loglevel_type; /* enum lttng_ust_abi_loglevel_type */
-	int32_t loglevel; /* value, -1: all */
-	uint64_t token; /* User-provided token */
-	char padding[LTTNG_UST_ABI_EVENT_PADDING1];
-
-	/* Per instrumentation type configuration */
 	union {
-		char padding[LTTNG_UST_ABI_EVENT_PADDING2];
-	} u;
+		char padding[LTTNG_UST_ABI_EVENT_SIZE];
+		struct {
+			int32_t instrumentation; /* enum lttng_ust_abi_instrumentation */
+			int32_t loglevel_type; /* enum lttng_ust_abi_loglevel_type */
+			int32_t loglevel; /* value, -1: all */
+			uint64_t token; /* User-provided token */
+			char name[LTTNG_UST_ABI_SYM_NAME_LEN]; /* event name */
+		} LTTNG_PACKED;
+	};
 } LTTNG_PACKED;
 
-#define LTTNG_UST_ABI_EVENT_NOTIFIER_PADDING 32
+lttng_ust_static_assert(sizeof(struct lttng_ust_abi_event) == LTTNG_UST_ABI_EVENT_SIZE,
+			"Unexpected size for struct lttng_ust_abi_event",
+			Unexpected_size_for_struct_lttng_ust_abi_event);
+
+#define LTTNG_UST_ABI_EVENT_NOTIFIER_SIZE 320
 struct lttng_ust_abi_event_notifier {
-	struct lttng_ust_abi_event event;
-	uint64_t error_counter_index;
-	char padding[LTTNG_UST_ABI_EVENT_NOTIFIER_PADDING];
+	union {
+		char padding[LTTNG_UST_ABI_EVENT_NOTIFIER_SIZE];
+		struct {
+			int32_t instrumentation; /* enum lttng_ust_abi_instrumentation */
+			int32_t loglevel_type; /* enum lttng_ust_abi_loglevel_type */
+			int32_t loglevel; /* value, -1: all */
+			uint64_t token; /* User-provided token */
+			uint64_t error_counter_index;
+			char name[LTTNG_UST_ABI_SYM_NAME_LEN]; /* event name */
+		} LTTNG_PACKED;
+	};
 } LTTNG_PACKED;
 
-#define LTTNG_UST_ABI_EVENT_NOTIFIER_NOTIFICATION_PADDING 32
+lttng_ust_static_assert(sizeof(struct lttng_ust_abi_event_notifier) ==
+				LTTNG_UST_ABI_EVENT_NOTIFIER_SIZE,
+			"Unexpected size for struct lttng_ust_abi_event_notifier",
+			Unexpected_size_for_struct_lttng_ust_abi_event_notifier);
+
+#define LTTNG_UST_ABI_EVENT_NOTIFIER_NOTIFICATION_SIZE 32
 struct lttng_ust_abi_event_notifier_notification {
-	uint64_t token;
-	uint16_t capture_buf_size;
-	char padding[LTTNG_UST_ABI_EVENT_NOTIFIER_NOTIFICATION_PADDING];
+	union {
+		char padding[LTTNG_UST_ABI_EVENT_NOTIFIER_NOTIFICATION_SIZE];
+		struct {
+			uint64_t token;
+			uint16_t capture_buf_size;
+		} LTTNG_PACKED;
+	};
 } LTTNG_PACKED;
+
+lttng_ust_static_assert(sizeof(struct lttng_ust_abi_event_notifier_notification) ==
+				LTTNG_UST_ABI_EVENT_NOTIFIER_NOTIFICATION_SIZE,
+			"Unexpected size for struct lttng_ust_abi_event_notifier_notification",
+			Unexpected_size_for_struct_lttng_ust_abi_event_notifier_notification);
 
 enum lttng_ust_abi_key_token_type {
 	LTTNG_UST_ABI_KEY_TOKEN_STRING = 0, /* arg: strtab_offset. */
@@ -144,6 +234,7 @@ enum lttng_ust_abi_counter_bitness {
 	LTTNG_UST_ABI_COUNTER_BITNESS_64 = 1,
 };
 
+#ifdef CONFIG_LTTNG_UST_EXPERIMENTAL_COUNTER
 struct lttng_ust_abi_key_token {
 	uint32_t len; /* length of child structure. */
 	uint32_t type; /* enum lttng_ust_abi_key_token_type */
@@ -160,6 +251,7 @@ struct lttng_ust_abi_key_token_string {
 
 	char str[]; /* Null-terminated string following this structure. */
 } LTTNG_PACKED;
+#endif /* CONFIG_LTTNG_UST_EXPERIMENTAL_COUNTER */
 
 /*
  * token types event_name and provider_name don't have specific fields,
@@ -175,6 +267,7 @@ enum lttng_ust_abi_key_type {
 	LTTNG_UST_ABI_KEY_TYPE_INTEGER = 1, /* Dimension key is an integer value. */
 };
 
+#ifdef CONFIG_LTTNG_UST_EXPERIMENTAL_COUNTER
 struct lttng_ust_abi_counter_key_dimension {
 	uint32_t len; /* length of child structure */
 	uint32_t key_type; /* enum lttng_ust_abi_key_type */
@@ -219,6 +312,7 @@ struct lttng_ust_abi_counter_event {
 	 * variable-length array of key dimensions.
 	 */
 } LTTNG_PACKED;
+#endif /* CONFIG_LTTNG_UST_EXPERIMENTAL_COUNTER */
 
 enum lttng_ust_abi_counter_dimension_flags {
 	LTTNG_UST_ABI_COUNTER_DIMENSION_FLAG_UNDERFLOW = (1 << 0),
@@ -266,15 +360,23 @@ enum lttng_ust_abi_field_type {
 	LTTNG_UST_ABI_FIELD_STRING = 4,
 };
 
-#define LTTNG_UST_ABI_FIELD_ITER_PADDING (LTTNG_UST_ABI_SYM_NAME_LEN + 28)
+#define LTTNG_UST_ABI_FIELD_ITER_SIZE 640
 struct lttng_ust_abi_field_iter {
-	char event_name[LTTNG_UST_ABI_SYM_NAME_LEN];
-	char field_name[LTTNG_UST_ABI_SYM_NAME_LEN];
-	int32_t type; /* enum lttng_ust_abi_field_type */
-	int loglevel; /* event loglevel */
-	int nowrite;
-	char padding[LTTNG_UST_ABI_FIELD_ITER_PADDING];
+	union {
+		char padding[LTTNG_UST_ABI_FIELD_ITER_SIZE];
+		struct {
+			char event_name[LTTNG_UST_ABI_SYM_NAME_LEN];
+			char field_name[LTTNG_UST_ABI_SYM_NAME_LEN];
+			int32_t type; /* enum lttng_ust_abi_field_type */
+			int loglevel; /* event loglevel */
+			int nowrite;
+		} LTTNG_PACKED;
+	};
 } LTTNG_PACKED;
+
+lttng_ust_static_assert(sizeof(struct lttng_ust_abi_field_iter) == LTTNG_UST_ABI_FIELD_ITER_SIZE,
+			"Unexpected size for struct lttng_ust_abi_field_iter",
+			Unexpected_size_for_struct_lttng_ust_abi_field_iter);
 
 enum lttng_ust_abi_context_type {
 	LTTNG_UST_ABI_CONTEXT_VTID = 0,
@@ -307,49 +409,72 @@ struct lttng_ust_abi_perf_counter_ctx {
 	char name[LTTNG_UST_ABI_SYM_NAME_LEN];
 } LTTNG_PACKED;
 
-#define LTTNG_UST_ABI_CONTEXT_PADDING1 16
-#define LTTNG_UST_ABI_CONTEXT_PADDING2 (LTTNG_UST_ABI_SYM_NAME_LEN + 32)
+#define LTTNG_UST_ABI_CONTEXT_HEADER_SIZE 16
+#define LTTNG_UST_ABI_CONTEXT_TYPE_SIZE	  288
 struct lttng_ust_abi_context {
-	int32_t ctx; /* enum lttng_ust_abi_context_type */
-	char padding[LTTNG_UST_ABI_CONTEXT_PADDING1];
+	union {
+		char padding[LTTNG_UST_ABI_CONTEXT_HEADER_SIZE];
+		struct {
+			int32_t ctx; /* enum lttng_ust_abi_context_type */
+		} LTTNG_PACKED;
+	} header;
 
 	union {
+		char padding[LTTNG_UST_ABI_CONTEXT_TYPE_SIZE];
 		struct lttng_ust_abi_perf_counter_ctx perf_counter;
 		struct {
 			/* Includes trailing '\0'. */
 			uint32_t provider_name_len;
 			uint32_t ctx_name_len;
-		} app_ctx;
-		char padding[LTTNG_UST_ABI_CONTEXT_PADDING2];
-	} u;
+		} LTTNG_PACKED app_ctx;
+	} type;
 } LTTNG_PACKED;
+
+lttng_ust_static_assert(sizeof(struct lttng_ust_abi_context) ==
+				LTTNG_UST_ABI_CONTEXT_HEADER_SIZE + LTTNG_UST_ABI_CONTEXT_TYPE_SIZE,
+			"Unexpected size for struct lttng_ust_abi_context",
+			Unexpected_size_for_struct_lttng_ust_abi_context);
 
 /*
  * Tracer channel attributes.
  */
-#define LTTNG_UST_ABI_CHANNEL_ATTR_PADDING (LTTNG_UST_ABI_SYM_NAME_LEN + 32)
+#define LTTNG_UST_ABI_CHANNEL_ATTR_SIZE 320
 struct lttng_ust_abi_channel_attr {
-	uint64_t subbuf_size; /* bytes */
-	uint64_t num_subbuf; /* power of 2 */
-	int overwrite; /* 1: overwrite, 0: discard */
-	unsigned int switch_timer_interval; /* usec */
-	unsigned int read_timer_interval; /* usec */
-	int32_t output; /* enum lttng_ust_abi_output */
 	union {
+		char padding[LTTNG_UST_ABI_CHANNEL_ATTR_SIZE];
 		struct {
+			uint64_t subbuf_size; /* bytes */
+			uint64_t num_subbuf; /* power of 2 */
+			int overwrite; /* 1: overwrite, 0: discard */
+			unsigned int switch_timer_interval; /* usec */
+			unsigned int read_timer_interval; /* usec */
+			int32_t output; /* enum lttng_ust_abi_output */
 			int64_t blocking_timeout; /* Blocking timeout (usec) */
 			int8_t type; /* enum lttng_ust_abi_chan_type */
-		} s;
-		char padding[LTTNG_UST_ABI_CHANNEL_ATTR_PADDING];
-	} u;
+		} LTTNG_PACKED;
+	};
 } LTTNG_PACKED;
 
-#define LTTNG_UST_ABI_TRACEPOINT_ITER_PADDING 16
+lttng_ust_static_assert(sizeof(struct lttng_ust_abi_channel_attr) ==
+				LTTNG_UST_ABI_CHANNEL_ATTR_SIZE,
+			"Unexpected size for struct lttng_ust_abi_channel_attr",
+			Unexpected_size_for_struct_lttng_ust_abi_channel_attr);
+
+#define LTTNG_UST_ABI_TRACEPOINT_ITER_SIZE 320
 struct lttng_ust_abi_tracepoint_iter {
-	char name[LTTNG_UST_ABI_SYM_NAME_LEN]; /* provider:name */
-	int loglevel;
-	char padding[LTTNG_UST_ABI_TRACEPOINT_ITER_PADDING];
+	union {
+		char padding[LTTNG_UST_ABI_TRACEPOINT_ITER_SIZE];
+		struct {
+			char name[LTTNG_UST_ABI_SYM_NAME_LEN]; /* provider:name */
+			int loglevel;
+		} LTTNG_PACKED;
+	};
 } LTTNG_PACKED;
+
+lttng_ust_static_assert(sizeof(struct lttng_ust_abi_tracepoint_iter) ==
+				LTTNG_UST_ABI_TRACEPOINT_ITER_SIZE,
+			"Unexpected size for struct lttng_ust_abi_tracepoint_iter",
+			Unexpected_size_for_struct_lttng_ust_abi_tracepoint_iter);
 
 enum lttng_ust_abi_object_type {
 	LTTNG_UST_ABI_OBJECT_TYPE_UNKNOWN = -1,
@@ -365,20 +490,26 @@ enum lttng_ust_abi_object_type {
 	LTTNG_UST_ABI_OBJECT_TYPE_COUNTER_EVENT = 9,
 };
 
-#define LTTNG_UST_ABI_OBJECT_DATA_PADDING1 32
-#define LTTNG_UST_ABI_OBJECT_DATA_PADDING2 (LTTNG_UST_ABI_SYM_NAME_LEN + 32)
+#define LTTNG_UST_ABI_OBJECT_DATA_HEADER_SIZE 32
+#define LTTNG_UST_ABI_OBJECT_DATA_TYPE_SIZE   288
 
 struct lttng_ust_abi_object_data {
-	int32_t type; /* enum lttng_ust_abi_object_type */
-	int handle;
-	uint64_t size;
-	char padding1[LTTNG_UST_ABI_OBJECT_DATA_PADDING1];
 	union {
+		char padding[LTTNG_UST_ABI_OBJECT_DATA_HEADER_SIZE];
+		struct {
+			int32_t type; /* enum lttng_ust_abi_object_type */
+			int handle;
+			uint64_t size;
+		} LTTNG_PACKED;
+	} header;
+
+	union {
+		char padding[LTTNG_UST_ABI_OBJECT_DATA_TYPE_SIZE];
 		struct {
 			void *data;
 			int32_t type; /* enum lttng_ust_abi_chan_type */
 			int wakeup_fd;
-			int32_t owner_id;
+			uint32_t owner_id;
 		} channel;
 		struct {
 			int shm_fd;
@@ -395,51 +526,84 @@ struct lttng_ust_abi_object_data {
 			int shm_fd;
 			uint32_t cpu_nr;
 		} counter_cpu;
-		char padding2[LTTNG_UST_ABI_OBJECT_DATA_PADDING2];
-	} u;
+	} type;
 } LTTNG_PACKED;
+
+lttng_ust_static_assert(sizeof(struct lttng_ust_abi_object_data) ==
+				LTTNG_UST_ABI_OBJECT_DATA_HEADER_SIZE +
+					LTTNG_UST_ABI_OBJECT_DATA_TYPE_SIZE,
+			"Unexpected size for struct lttng_ust_abi_object_data",
+			Unexpected_size_for_struct_lttng_ust_abi_object_data);
 
 enum lttng_ust_abi_calibrate_type {
 	LTTNG_UST_ABI_CALIBRATE_TRACEPOINT,
 };
 
-#define LTTNG_UST_ABI_CALIBRATE_PADDING1 16
-#define LTTNG_UST_ABI_CALIBRATE_PADDING2 (LTTNG_UST_ABI_SYM_NAME_LEN + 32)
+#define LTTNG_UST_ABI_CALIBRATE_SIZE 32
 struct lttng_ust_abi_calibrate {
-	enum lttng_ust_abi_calibrate_type type; /* type (input) */
-	char padding[LTTNG_UST_ABI_CALIBRATE_PADDING1];
-
 	union {
-		char padding[LTTNG_UST_ABI_CALIBRATE_PADDING2];
-	} u;
+		char padding[LTTNG_UST_ABI_CALIBRATE_SIZE];
+		struct {
+			enum lttng_ust_abi_calibrate_type type; /* type (input) */
+		} LTTNG_PACKED;
+	};
 } LTTNG_PACKED;
+
+lttng_ust_static_assert(sizeof(struct lttng_ust_abi_calibrate) == LTTNG_UST_ABI_CALIBRATE_SIZE,
+			"Unexpected size for struct lttng_ust_abi_calibrate",
+			Unexpected_size_for_struct_lttng_ust_abi_calibrate);
 
 #define LTTNG_UST_ABI_FILTER_BYTECODE_MAX_LEN 65536
-#define LTTNG_UST_ABI_FILTER_PADDING	      32
+#define LTTNG_UST_ABI_FILTER_SIZE	      64
 struct lttng_ust_abi_filter_bytecode {
-	uint32_t len;
-	uint32_t reloc_offset;
-	uint64_t seqnum;
-	char padding[LTTNG_UST_ABI_FILTER_PADDING];
+	union {
+		char padding[LTTNG_UST_ABI_FILTER_SIZE];
+		struct {
+			uint32_t len;
+			uint32_t reloc_offset;
+			uint64_t seqnum;
+		} LTTNG_PACKED;
+	};
 	char data[0];
 } LTTNG_PACKED;
+
+lttng_ust_static_assert(sizeof(struct lttng_ust_abi_filter_bytecode) == LTTNG_UST_ABI_FILTER_SIZE,
+			"Unexpected size for struct lttng_ust_abi_filter_bytecode",
+			Unexpected_size_for_struct_lttng_ust_abi_filter_bytecode);
 
 #define LTTNG_UST_ABI_CAPTURE_BYTECODE_MAX_LEN 65536
-#define LTTNG_UST_ABI_CAPTURE_PADDING	       32
+#define LTTNG_UST_ABI_CAPTURE_SIZE	       64
 struct lttng_ust_abi_capture_bytecode {
-	uint32_t len;
-	uint32_t reloc_offset;
-	uint64_t seqnum;
-	char padding[LTTNG_UST_ABI_CAPTURE_PADDING];
+	union {
+		char padding[LTTNG_UST_ABI_CAPTURE_SIZE];
+		struct {
+			uint32_t len;
+			uint32_t reloc_offset;
+			uint64_t seqnum;
+		} LTTNG_PACKED;
+	};
 	char data[0];
 } LTTNG_PACKED;
 
-#define LTTNG_UST_ABI_EXCLUSION_PADDING 32
+lttng_ust_static_assert(sizeof(struct lttng_ust_abi_capture_bytecode) == LTTNG_UST_ABI_CAPTURE_SIZE,
+			"Unexpected size for struct lttng_ust_abi_capture_bytecode",
+			Unexpected_size_for_struct_lttng_ust_abi_capture_bytecode);
+
+#define LTTNG_UST_ABI_EXCLUSION_SIZE 32
 struct lttng_ust_abi_event_exclusion {
-	uint32_t count;
-	char padding[LTTNG_UST_ABI_EXCLUSION_PADDING];
+	union {
+		char padding[LTTNG_UST_ABI_EXCLUSION_SIZE];
+		struct {
+			uint32_t count;
+		} LTTNG_PACKED;
+	};
 	char names[LTTNG_UST_ABI_SYM_NAME_LEN][0];
 } LTTNG_PACKED;
+
+lttng_ust_static_assert(sizeof(struct lttng_ust_abi_event_exclusion) ==
+				LTTNG_UST_ABI_EXCLUSION_SIZE,
+			"Unexpected size for struct lttng_ust_abi_event_exclusion",
+			Unexpected_size_for_struct_lttng_ust_abi_event_exclusion);
 
 #define LTTNG_UST_ABI_CMD(minor)		    (minor)
 #define LTTNG_UST_ABI_CMDR(minor, type)		    (minor)
@@ -492,6 +656,13 @@ struct lttng_ust_abi_event_exclusion {
 
 /* Event notifier commands */
 #define LTTNG_UST_ABI_CAPTURE LTTNG_UST_ABI_CMD(0xB6)
+
+/*
+ * Dummy command for testing unknown command.
+ *
+ * Not meant to be used by users.
+ */
+#define LTTNG_UST_ABI_UNKNOWN_COMMAND LTTNG_UST_ABI_CMD(UINT32_MAX)
 
 /* Session and event notifier group commands */
 /* (0xC0) reserved for old ABI. */

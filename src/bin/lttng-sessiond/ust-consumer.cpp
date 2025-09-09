@@ -398,14 +398,14 @@ int ust_consumer_send_stream_to_ust(struct ust_app *app,
 			     app->sock);
 		} else {
 			ERR("UST app send stream, handle %d, to ust failed with ret %d (pid: %d, sock: %d).",
-			    stream->obj->handle,
+			    stream->obj->header.handle,
 			    ret,
 			    app->pid,
 			    app->sock);
 		}
 		goto error;
 	}
-	channel->handle = channel->obj->handle;
+	channel->handle = channel->obj->header.handle;
 
 error:
 	return ret;
