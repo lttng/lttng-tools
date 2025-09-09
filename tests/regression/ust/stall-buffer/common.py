@@ -277,7 +277,7 @@ class TraceStats:
 
         if not scenario.expected_discarded_events(self.discarded_events):
             return "Events discarded count `{}` does not match scenario expectation".format(
-                stats.discarded_events
+                self.discarded_events
             )
 
         if not scenario.expected_packets(self.packets):
