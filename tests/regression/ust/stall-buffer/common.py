@@ -103,111 +103,97 @@ class StallScenario:
     def __call__(self, log, test_env, session):
         with contextlib.ExitStack() as stack:
 
+            gdb_script_path = (
+                test_env.create_temporary_directory("gdb_script_dir") / "gdb_script"
+            )
+
             applications = [
                 stack.enter_context(self.traced_application(test_env))
                 for producer in self.producers
             ]
 
-            gdb_args = [
-                "gdb",
-                "--nx",  # No loading of any .gdbinit
-                "--nw",  # No GUI
-                "--batch",  # Exit when all commands are executed
-                "-ex",
-                "set trace-commands on",  # Print all command invocations
-                "-ex",
-                "set breakpoint pending on",  # Do not prompt for breakpoint insertion
-                "-ex",
-                "set pagination off",  # Do not prompt for more output
-                "-ex",
-                "set auto-load off",  # Do not auto-load script files
-                "-ex",
-                "handle all nostop noprint pass",  # Do not hide failed assertions
-            ]
+            # Build GDB script content
+            gdb_commands = []
 
-            # Set this environment variable if debug-symbols for LTTng-UST are
-            # not in a standard location or in a different file than the
-            # shared-library (.debug_link).
+            # Basic GDB settings
+            gdb_commands.extend(
+                [
+                    "set trace-commands on",
+                    "set breakpoint pending on",
+                    "set pagination off",
+                    "set auto-load off",
+                    "handle all nostop noprint pass",
+                ]
+            )
+
+            # Set debug file directory if specified
             gdb_debug_directory = os.getenv("GDB_DEBUG_FILE_DIRECTORY")
             if gdb_debug_directory:
-                gdb_args.extend(
-                    ["-ex", "set debug-file-directory {}".format(gdb_debug_directory)]
+                gdb_commands.append(
+                    "set debug-file-directory {}".format(gdb_debug_directory)
                 )
 
-            # If the scenario may be impossible to produced, one of the producer
-            # will exit gracefully, resulting in a failure of the test.
-            #
-            # To ensure that all producers are killed by GDB, set a breakpoint
-            # on the exit symbol.
-            #
-            # However, some scenarios are known to be possible to happen and so
-            # this is why this an option.
-            #
-            # See test_stall_buffer_complex.py for complete rationale.
+            # Handle scenarios that might be impossible
             if self.might_be_impossible:
-                gdb_args.extend(["-ex", "break exit"])
+                gdb_commands.append("break exit")
 
-            # By default, GDB starts with a single inferior.
-            #
-            # Add more to match the number of application.
+            # Add inferiors to match number of applications
             for k in range(len(applications) - 1):
-                gdb_args.extend(["-ex", "add-inferior"])
+                gdb_commands.append("add-inferior")
 
-            # For each application, attach to a matching inferior process.
+            # Attach to each application
             k = 0
             producer_to_inferior = {}
             for producer in self.producers:
                 producer_to_inferior[producer] = k + 1
-                gdb_args.extend(
+                gdb_commands.extend(
                     [
-                        "-ex",
                         "inferior {}".format(k + 1),
-                        "-ex",
                         "attach {}".format(applications[k].vpid),
                     ]
                 )
                 k += 1
 
-            # At this point, all producers are stopped after being attached.
-            #
-            # For each application, touch the special tracing file so that all
-            # producers will start their tracing loop after continuing.
+            # Touch tracing files to start tracing loops
             for application in applications:
-                gdb_args.extend(
-                    [
-                        "-ex",
-                        "shell touch {}".format(application.start_tracing_path),
-                    ]
+                gdb_commands.append(
+                    "shell touch {}".format(application.start_tracing_path)
                 )
 
-            # Emit the scheduling.
+            # Execute scheduling
             for schedule in self.scheduling:
-
                 producer = schedule[0]
                 testpoint = schedule[1]
 
-                gdb_args.extend(
+                gdb_commands.extend(
                     [
-                        "-ex",
                         "inferior {}".format(producer_to_inferior[producer]),
-                        "-ex",
                         "tbreak lttng_ust_testpoint_{}".format(testpoint),
-                        "-ex",
                         "continue",
                     ]
                 )
 
-            # At this point, all producers are at their corresponding final
-            # testpoints (or in exit(3)). Kill all applications to see what
-            # happens.
-            gdb_args.extend(
-                [
-                    "-ex",
-                    "kill inferiors {}".format(
-                        " ".join([str(k + 1) for k in range(len(applications))])
-                    ),
-                ]
+            # Kill all applications
+            gdb_commands.append(
+                "kill inferiors {}".format(
+                    " ".join([str(k + 1) for k in range(len(applications))])
+                )
             )
+
+            # Write GDB script to file
+            with open(gdb_script_path, "w") as f:
+                for cmd in gdb_commands:
+                    f.write(cmd + "\n")
+
+            # Execute GDB with the script
+            gdb_args = [
+                "gdb",
+                "--nx",  # No loading of any .gdbinit
+                "--nw",  # No GUI
+                "--batch",  # Exit when all commands are executed
+                "-x",
+                str(gdb_script_path),  # Execute script
+            ]
 
             with subprocess.Popen(
                 gdb_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
