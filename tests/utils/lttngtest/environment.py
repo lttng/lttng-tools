@@ -444,8 +444,20 @@ class _WaitTraceTestApplication:
             test_app_args,
             env=test_app_env,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
         )  # type: subprocess.Popen
+
+        # Create and start a thread to consume and log the process output
+        if self._environment._logging_function:
+            self._output_consumer = ProcessOutputConsumer(
+                self._process,
+                "test-app-{}".format(os.path.basename(str(test_app_args[0]))),
+                self._environment._logging_function,
+            )
+            self._output_consumer.daemon = True
+            self._output_consumer.start()
+        else:
+            self._output_consumer = None
 
         # Wait for the application to create the file indicating it has fully
         # initialized. Make sure the app hasn't crashed in order to not wait
