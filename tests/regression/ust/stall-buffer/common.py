@@ -122,7 +122,8 @@ class StallScenario:
                     "set breakpoint pending on",
                     "set pagination off",
                     "set auto-load off",
-                    "handle all nostop noprint pass",
+                    "handle SIGTRAP stop noprint nopass",
+                    "handle SIGSTOP stop noprint nopass",
                 ]
             )
 
