@@ -171,6 +171,7 @@ noinst_SCRIPTS += \
 	client/test_add_trigger.py \
 	client/test_bug1373_events_differ_only_by_loglevel \
 	client/test_warn_on_shm_too_small.py \
+	client/test_reclaim_memory.py \
 	context/test_ust.py \
 	crash/test_crash \
 	exclusion/test_exclusion \
