@@ -1183,8 +1183,9 @@ int stream_update_index(struct relay_stream *stream,
 		tracefile_array_file_rotate(stream->tfa, TRACEFILE_ROTATE_READ);
 		tracefile_array_commit_seq(stream->tfa, stream->index_received_seqcount);
 		stream->index_received_seqcount++;
-		LTTNG_OPTIONAL_SET(&stream->received_packet_seq_num,
-				   be64toh(index->index_data.packet_seq_num));
+
+		const uint64_t packet_seq_num = be64toh(index->index_data.packet_seq_num);
+		LTTNG_OPTIONAL_SET(&stream->received_packet_seq_num, packet_seq_num);
 		*flushed = true;
 	} else if (ret > 0) {
 		index->total_size = total_size;
