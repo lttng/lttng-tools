@@ -63,14 +63,14 @@
  * Since this returns the 'optional' by value, it is not suitable for all
  * wrapped optional types. It is meant to be used with PODs.
  */
-#define LTTNG_OPTIONAL_GET(optional) details::lttng_optional_get_value_impl(optional)
+#define LTTNG_OPTIONAL_GET(optional) ::details::lttng_optional_get_value_impl(optional)
 
 /*
  * This macro is available as a 'convenience' to allow sites that assume
  * an optional value is set to LTTNG_ASSERT() that it is set when fecthing the
  * underlying value's address.
  */
-#define LTTNG_OPTIONAL_GET_PTR(optional) details::lttng_optional_get_value_ptr_impl(optional)
+#define LTTNG_OPTIONAL_GET_PTR(optional) ::details::lttng_optional_get_value_ptr_impl(optional)
 
 /*
  * Initialize an optional field as unset.
@@ -99,7 +99,7 @@
 			std::is_same<typename std::decay<decltype((field_ptr)->value)>::type, \
 				     typename std::decay<decltype(val)>::type>::value,        \
 			"Type mismatch between optional field and value");                    \
-		details::lttng_optional_set_impl(field_ptr, val);                             \
+		::details::lttng_optional_set_impl(field_ptr, val);                           \
 		DIAGNOSTIC_POP                                                                \
 	} while (0)
 
