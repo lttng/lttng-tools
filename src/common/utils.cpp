@@ -18,7 +18,7 @@
 #include <common/compat/string.hpp>
 #include <common/dynamic-buffer.hpp>
 #include <common/exception.hpp>
-#include <common/file-descriptor.hpp>
+#include <common/stream-descriptor.hpp>
 #include <common/format.hpp>
 #include <common/readwrite.hpp>
 #include <common/runas.hpp>
@@ -1396,12 +1396,8 @@ end:
 namespace {
 unsigned int get_max_possible_cpu_id() LTTNG_MAY_THROW
 {
-	constexpr unsigned int cpu_mask_buffer_length{ DEFAULT_LINUX_POSSIBLE_CPU_MASK_LENGTH };
-	std::array<uint8_t, cpu_mask_buffer_length> possible_cpu_mask{};
-	static int max_possible_cpu_id{ 0 };
-	size_t possible_cpu_mask_len{ 0 };
-	unsigned long cpu_index{ 0 };
-	int i{};
+	constexpr auto cpu_mask_buffer_length{ DEFAULT_LINUX_POSSIBLE_CPU_MASK_LENGTH };
+	static unsigned int max_possible_cpu_id = 0;
 
 	if (max_possible_cpu_id != 0) {
 		return max_possible_cpu_id;
@@ -1411,47 +1407,60 @@ unsigned int get_max_possible_cpu_id() LTTNG_MAY_THROW
 		const auto raw_handle = open(DEFAULT_LINUX_POSSIBLE_CPU_PATH, O_RDONLY);
 		if (raw_handle < 0) {
 			LTTNG_THROW_POSIX(
-				lttng::format("Failed to open possible CPU file, path='{}'",
+				lttng::format("Failed to open possible CPU file, path=`{}`",
 					      DEFAULT_LINUX_POSSIBLE_CPU_PATH),
 				errno);
 		}
-		return lttng::file_descriptor(raw_handle);
+
+		return lttng::input_stream_descriptor(raw_handle);
 	}();
 
-	const ssize_t bytes_read =
-		read(possible_cpu_mask_fd.fd(), possible_cpu_mask.data(), cpu_mask_buffer_length);
+	std::array<char, cpu_mask_buffer_length> possible_cpu_mask;
+	possible_cpu_mask.fill(0);
+
+	const auto bytes_read =
+		possible_cpu_mask_fd.read_some(possible_cpu_mask.data(), cpu_mask_buffer_length);
 	if (bytes_read == cpu_mask_buffer_length) {
-		uint8_t next{};
-		if (read(possible_cpu_mask_fd.fd(), &next, 1) != 0) {
-			LTTNG_THROW_ERROR(lttng::format(
-				"Possible CPU mask length exceeds maximum configured size: path='{}', max_size={}",
-				DEFAULT_LINUX_POSSIBLE_CPU_PATH,
-				cpu_mask_buffer_length));
-		}
+		LTTNG_THROW_ERROR(lttng::format(
+			"Possible CPU mask length exceeds or meets maximum configured size: path=`{}`, max_size={}",
+			DEFAULT_LINUX_POSSIBLE_CPU_PATH,
+			cpu_mask_buffer_length));
 	}
 
-	possible_cpu_mask_len = (size_t) bytes_read;
+	auto possible_cpu_mask_len = bytes_read;
 	if (possible_cpu_mask_len < 1) {
-		LTTNG_THROW_ERROR(lttng::format("0 bytes read from possible cpu file path={}",
+		LTTNG_THROW_ERROR(lttng::format("0 bytes read from possible cpu file path=`{}`",
 						DEFAULT_LINUX_POSSIBLE_CPU_PATH));
 	}
 
 	/* Start from the end to read the last CPU index. */
-	i = possible_cpu_mask_len;
-	for (auto iter = possible_cpu_mask.crbegin(); iter != possible_cpu_mask.crend(); iter++) {
+	int i = possible_cpu_mask_len;
+	while (i-- > 0) {
 		/* Break when we hit the first separator. */
 		if ((possible_cpu_mask[i] == ',') || (possible_cpu_mask[i] == '-')) {
 			i++;
 			break;
 		}
-		i--;
 	}
 
-	cpu_index = strtoul((const char *) &possible_cpu_mask.data()[i],
-			    (char **) &possible_cpu_mask.data()[possible_cpu_mask_len],
-			    10);
-	if ((i != possible_cpu_mask_len) && (cpu_index < INT_MAX)) {
-		max_possible_cpu_id = (unsigned int) cpu_index;
+	DBG_FMT("Read possible CPU mask: mask_contents=`{}`",
+		lttng::c_string_view(possible_cpu_mask.data()));
+
+	const char *cpu_id_parse_start = &possible_cpu_mask.data()[i];
+	char *end_ptr;
+	unsigned long cpu_id =
+		strtoul(cpu_id_parse_start,
+			&end_ptr,
+			10);
+	if (cpu_id == 0 && end_ptr == cpu_id_parse_start) {
+		/* No digits found. */
+		LTTNG_THROW_ERROR(lttng::format(
+			"Failed to parse possible CPU mask: mask_contents=`{}`",
+			lttng::c_string_view(possible_cpu_mask.data())));
+	}
+
+	if ((i != possible_cpu_mask_len) && (cpu_id < UINT_MAX)) {
+		max_possible_cpu_id = static_cast<unsigned int>(cpu_id);
 		return max_possible_cpu_id;
 	}
 
