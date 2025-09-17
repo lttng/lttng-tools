@@ -693,7 +693,7 @@ struct parse_buffer_usage_res {
 	bool is_threshold_bytes = false;
 };
 struct parse_session_rotation_res {
-	bool success;
+	bool success = false;
 	std::string session_name;
 };
 } /* namespace */
