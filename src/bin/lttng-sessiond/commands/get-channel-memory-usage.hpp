@@ -87,7 +87,7 @@ struct stream_memory_usage_group {
 
 std::vector<stream_memory_usage_group>
 get_channel_memory_usage(const ltt_session::locked_ref& session,
-			 lttng::sessiond::domain_class domain,
+			 lttng::domain_class domain,
 			 lttng::c_string_view channel_name);
 
 } /* namespace commands */

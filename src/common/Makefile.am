@@ -65,7 +65,7 @@ libcommon_lgpl_la_SOURCES = \
 	container-wrapper.hpp \
 	credentials.cpp credentials.hpp \
 	defaults.cpp \
-	domain.cpp \
+	domain.cpp domain.hpp \
 	dynamic-array.cpp dynamic-array.hpp \
 	dynamic-buffer.cpp dynamic-buffer.hpp \
 	endpoint.cpp \

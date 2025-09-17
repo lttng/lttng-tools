@@ -461,23 +461,23 @@ void ltt_session::unlock() const noexcept
 	ltt_session::_const_session_unlock(*this);
 }
 
-ls::domain& ltt_session::get_domain(ls::domain_class domain)
+ls::domain& ltt_session::get_domain(lttng::domain_class domain)
 {
 	switch (domain) {
-	case ls::domain_class::LOG4J:
-	case ls::domain_class::LOG4J2:
-	case ls::domain_class::JAVA_UTIL_LOGGING:
-	case ls::domain_class::PYTHON_LOGGING:
-	case ls::domain_class::USER_SPACE:
+	case lttng::domain_class::LOG4J:
+	case lttng::domain_class::LOG4J2:
+	case lttng::domain_class::JAVA_UTIL_LOGGING:
+	case lttng::domain_class::PYTHON_LOGGING:
+	case lttng::domain_class::USER_SPACE:
 		return user_space_domain;
-	case ls::domain_class::KERNEL_SPACE:
+	case lttng::domain_class::KERNEL_SPACE:
 		return kernel_space_domain;
 	}
 
 	std::abort();
 }
 
-const ls::domain& ltt_session::get_domain(ls::domain_class domain) const
+const ls::domain& ltt_session::get_domain(lttng::domain_class domain) const
 {
 	/* NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast) */
 	return const_cast<ltt_session *>(this)->get_domain(domain);

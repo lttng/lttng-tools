@@ -20,24 +20,24 @@ lttng::sessiond::exceptions::channel_not_found_error::channel_not_found_error(
 {
 }
 
-lttng::sessiond::domain_class
+lttng::domain_class
 lttng::sessiond::get_domain_class_from_lttng_domain_type(enum lttng_domain_type domain_type)
 {
 	switch (domain_type) {
 	case LTTNG_DOMAIN_KERNEL:
-		return lttng::sessiond::domain_class::KERNEL_SPACE;
+		return lttng::domain_class::KERNEL_SPACE;
 	case LTTNG_DOMAIN_UST:
-		return lttng::sessiond::domain_class::USER_SPACE;
+		return lttng::domain_class::USER_SPACE;
 	case LTTNG_DOMAIN_JUL:
-		return lttng::sessiond::domain_class::JAVA_UTIL_LOGGING;
+		return lttng::domain_class::JAVA_UTIL_LOGGING;
 	case LTTNG_DOMAIN_LOG4J:
-		return lttng::sessiond::domain_class::LOG4J;
+		return lttng::domain_class::LOG4J;
 	case LTTNG_DOMAIN_PYTHON:
-		return lttng::sessiond::domain_class::PYTHON_LOGGING;
+		return lttng::domain_class::PYTHON_LOGGING;
 	case LTTNG_DOMAIN_LOG4J2:
-		return lttng::sessiond::domain_class::LOG4J2;
+		return lttng::domain_class::LOG4J2;
 	default:
 		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
-			"No suitable conversion exists from lttng_domain_type enum to lttng::sessiond::domain_class");
+			"No suitable conversion exists from lttng_domain_type enum to lttng::domain_class");
 	}
 }

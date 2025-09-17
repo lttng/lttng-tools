@@ -10,6 +10,7 @@
 
 #include "recording-channel-configuration.hpp"
 
+#include <common/domain.hpp>
 #include <common/exception.hpp>
 #include <common/format.hpp>
 #include <common/make-unique.hpp>
@@ -23,15 +24,6 @@
 
 namespace lttng {
 namespace sessiond {
-
-enum class domain_class {
-	USER_SPACE,
-	KERNEL_SPACE,
-	LOG4J,
-	LOG4J2,
-	JAVA_UTIL_LOGGING,
-	PYTHON_LOGGING,
-};
 
 #define LTTNG_THROW_CHANNEL_NOT_FOUND_BY_NAME_ERROR(channel_name)                \
 	throw lttng::sessiond::exceptions::channel_not_found_error(channel_name, \
@@ -58,7 +50,7 @@ public:
  */
 class domain {
 public:
-	explicit domain(lttng::sessiond::domain_class domain_class) : domain_class_(domain_class)
+	explicit domain(lttng::domain_class domain_class) : domain_class_(domain_class)
 	{
 	}
 
@@ -87,7 +79,7 @@ public:
 		return const_cast<domain *>(this)->get_channel(name);
 	}
 
-	const lttng::sessiond::domain_class domain_class_;
+	const lttng::domain_class domain_class_;
 
 private:
 	virtual recording_channel_configuration&
@@ -168,48 +160,5 @@ domain_class get_domain_class_from_lttng_domain_type(enum lttng_domain_type doma
 
 } /* namespace sessiond */
 } /* namespace lttng */
-
-/*
- * Specialize fmt::formatter for domain_class.
- *
- * Due to a bug in g++ < 7.1, this specialization must be enclosed in the fmt namespace,
- * see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480.
- */
-namespace fmt {
-template <>
-struct formatter<lttng::sessiond::domain_class> : formatter<std::string> {
-	/* Format function to convert enum to string. */
-	template <typename FormatContextType>
-	typename FormatContextType::iterator format(lttng::sessiond::domain_class domain,
-						    FormatContextType& ctx) const
-	{
-		auto name = "UNKNOWN";
-
-		switch (domain) {
-		case lttng::sessiond::domain_class::USER_SPACE:
-			name = "USER_SPACE";
-			break;
-		case lttng::sessiond::domain_class::KERNEL_SPACE:
-			name = "KERNEL_SPACE";
-			break;
-		case lttng::sessiond::domain_class::LOG4J:
-			name = "LOG4J";
-			break;
-		case lttng::sessiond::domain_class::LOG4J2:
-			name = "LOG4J2";
-			break;
-		case lttng::sessiond::domain_class::JAVA_UTIL_LOGGING:
-			name = "JAVA_UTIL_LOGGING";
-			break;
-		case lttng::sessiond::domain_class::PYTHON_LOGGING:
-			name = "PYTHON_LOGGING";
-			break;
-		}
-
-		/* Write the string representation to the format context output iterator. */
-		return format_to(ctx.out(), name);
-	}
-};
-} /* namespace fmt */
 
 #endif /* LTTNG_SESSIOND_DOMAIN_HPP */

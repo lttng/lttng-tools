@@ -47,18 +47,17 @@ struct hash<std::pair<std::uint64_t,
 } /* namespace std */
 
 namespace {
-void validate_agent_channel_name(lttng::sessiond::domain_class domain,
-				 lttng::c_string_view channel_name)
+void validate_agent_channel_name(lttng::domain_class domain, lttng::c_string_view channel_name)
 {
 	const auto expected_channel_name = [domain]() {
 		switch (domain) {
-		case lttng::sessiond::domain_class::LOG4J:
+		case lttng::domain_class::LOG4J:
 			return DEFAULT_LOG4J_CHANNEL_NAME;
-		case lttng::sessiond::domain_class::LOG4J2:
+		case lttng::domain_class::LOG4J2:
 			return DEFAULT_LOG4J2_CHANNEL_NAME;
-		case lttng::sessiond::domain_class::JAVA_UTIL_LOGGING:
+		case lttng::domain_class::JAVA_UTIL_LOGGING:
 			return DEFAULT_JUL_CHANNEL_NAME;
-		case lttng::sessiond::domain_class::PYTHON_LOGGING:
+		case lttng::domain_class::PYTHON_LOGGING:
 			return DEFAULT_PYTHON_CHANNEL_NAME;
 		default:
 			std::abort();
@@ -136,7 +135,7 @@ void reclaim_consumer_channel_memory(
 
 std::vector<lsc::stream_memory_reclamation_result_group>
 lsc::reclaim_channel_memory(const ltt_session::locked_ref& session,
-			    lttng::sessiond::domain_class domain,
+			    lttng::domain_class domain,
 			    lttng::c_string_view channel_name,
 			    const nonstd::optional<std::chrono::microseconds>& reclaim_older_than,
 			    bool require_consumed)
@@ -149,16 +148,16 @@ lsc::reclaim_channel_memory(const ltt_session::locked_ref& session,
 		require_consumed);
 
 	switch (domain) {
-	case lttng::sessiond::domain_class::LOG4J:
-	case lttng::sessiond::domain_class::LOG4J2:
-	case lttng::sessiond::domain_class::JAVA_UTIL_LOGGING:
-	case lttng::sessiond::domain_class::PYTHON_LOGGING:
+	case lttng::domain_class::LOG4J:
+	case lttng::domain_class::LOG4J2:
+	case lttng::domain_class::JAVA_UTIL_LOGGING:
+	case lttng::domain_class::PYTHON_LOGGING:
 		/* Throws when the channel name is invalid. */
 		validate_agent_channel_name(domain, channel_name);
 		break;
-	case lttng::sessiond::domain_class::USER_SPACE:
+	case lttng::domain_class::USER_SPACE:
 		break;
-	case lttng::sessiond::domain_class::KERNEL_SPACE:
+	case lttng::domain_class::KERNEL_SPACE:
 		LTTNG_THROW_UNSUPPORTED_ERROR(
 			"Reclaiming channel memory for channels in the kernel domain is not supported");
 	default:

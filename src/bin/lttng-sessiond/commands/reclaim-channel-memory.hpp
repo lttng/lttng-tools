@@ -47,7 +47,7 @@ struct stream_memory_reclamation_result_group {
 
 std::vector<stream_memory_reclamation_result_group>
 reclaim_channel_memory(const ltt_session::locked_ref& session,
-		       lttng::sessiond::domain_class domain,
+		       lttng::domain_class domain,
 		       lttng::c_string_view channel_name,
 		       const nonstd::optional<std::chrono::microseconds>& reclaim_older_than,
 		       bool require_consumed);

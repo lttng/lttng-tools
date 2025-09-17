@@ -1685,7 +1685,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 
 	auto allocation_policy = [&channel_attr, &domain]() {
 		switch (ls::get_domain_class_from_lttng_domain_type(domain->type)) {
-		case lttng::sessiond::domain_class::KERNEL_SPACE:
+		case lttng::domain_class::KERNEL_SPACE:
 			return ls::recording_channel_configuration::buffer_allocation_policy_t::
 				PER_CPU;
 		default:
@@ -1719,7 +1719,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 		LTTNG_ASSERT(get_preallocation_policy_ret == LTTNG_OK);
 
 		switch (ls::get_domain_class_from_lttng_domain_type(domain->type)) {
-		case lttng::sessiond::domain_class::KERNEL_SPACE:
+		case lttng::domain_class::KERNEL_SPACE:
 			if (policy != LTTNG_CHANNEL_PREALLOCATION_POLICY_PREALLOCATE) {
 				LTTNG_THROW_UNSUPPORTED_ERROR(
 					"Kernel tracer only supports 'PREALLOCATE' buffer preallocation policy");
@@ -1784,7 +1784,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 		nonstd::nullopt;
 
 	/* Validate consumption backend (mmap or splice). */
-	if (target_domain.domain_class_ != ls::domain_class::KERNEL_SPACE &&
+	if (target_domain.domain_class_ != lttng::domain_class::KERNEL_SPACE &&
 	    channel_attr.attr.output != LTTNG_EVENT_MMAP) {
 		LTTNG_THROW_UNSUPPORTED_ERROR(fmt::format(
 			"Buffer consumption back-end is unsupported by this domain: domain={}, backend=SPLICE",
