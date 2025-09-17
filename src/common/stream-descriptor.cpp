@@ -12,7 +12,7 @@
 #include <common/format.hpp>
 #include <common/readwrite.hpp>
 
-#include <algorithm>
+#include <cstddef>
 #include <limits>
 #include <unistd.h>
 
@@ -20,22 +20,38 @@ namespace lttng {
 
 void input_stream_descriptor::read(void *buffer, std::size_t size)
 {
+	const auto read_ret = read_some(buffer, size);
+	if (static_cast<std::size_t>(read_ret) != size) {
+		LTTNG_THROW_POSIX(
+			lttng::format(
+				"Failed to read enough data from file descriptor: fd={}, requested_size={}, amount_read={}",
+				fd(),
+				size,
+				read_ret),
+			errno);
+	}
+}
+
+std::size_t input_stream_descriptor::read_some(void *buffer, std::size_t max_size)
+{
 	using lttng_read_return_type = decltype(lttng_read(
 		std::declval<int>(), std::declval<void *>(), std::declval<size_t>()));
 	constexpr auto max_supported_read_size = std::numeric_limits<lttng_read_return_type>::max();
 
-	if (size > max_supported_read_size) {
+	if (max_size > max_supported_read_size) {
 		LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
 			"Read size exceeds the maximal supported value of lttng_read: read_size={}, maximal_read_size={}",
-			size,
+			max_size,
 			max_supported_read_size));
 	}
 
-	const auto read_ret = lttng_read(fd(), buffer, size);
-	if (read_ret < 0 || static_cast<std::size_t>(read_ret) != size) {
+	const auto read_ret = lttng_read(fd(), buffer, max_size);
+	if (read_ret < 0) {
 		LTTNG_THROW_POSIX(lttng::format("Failed to read from file descriptor: fd={}", fd()),
 				  errno);
 	}
+
+	return read_ret;
 }
 
 void output_stream_descriptor::write(const void *buffer, std::size_t size)
@@ -59,4 +75,4 @@ void output_stream_descriptor::write(const void *buffer, std::size_t size)
 	}
 }
 
-} // namespace lttng
+} /* namespace lttng */

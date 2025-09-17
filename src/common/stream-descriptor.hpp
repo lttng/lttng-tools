@@ -10,6 +10,7 @@
 
 #include "file-descriptor.hpp"
 
+#include <cstddef>
 #include <utility>
 
 namespace lttng {
@@ -51,6 +52,13 @@ public:
 	 * Throws an exception if the requested amount of bytes couldn't be read.
 	 */
 	void read(void *buffer, std::size_t size);
+
+	/*
+	 * Read up to `size` bytes from the underlying file descriptor.
+	 *
+	 * Throws an exception if an error occurs. Returns the number of bytes read.
+	 */
+	std::size_t read_some(void *buffer, std::size_t max_size);
 };
 
 class output_stream_descriptor : public virtual file_descriptor {
