@@ -1451,15 +1451,12 @@ unsigned int get_max_possible_cpu_id() LTTNG_MAY_THROW
 
 	const char *cpu_id_parse_start = &possible_cpu_mask.data()[i];
 	char *end_ptr;
-	unsigned long cpu_id =
-		strtoul(cpu_id_parse_start,
-			&end_ptr,
-			10);
+	unsigned long cpu_id = strtoul(cpu_id_parse_start, &end_ptr, 10);
 	if (cpu_id == 0 && end_ptr == cpu_id_parse_start) {
 		/* No digits found. */
-		LTTNG_THROW_ERROR(lttng::format(
-			"Failed to parse possible CPU mask: mask_contents=`{}`",
-			lttng::c_string_view(possible_cpu_mask.data())));
+		LTTNG_THROW_ERROR(
+			lttng::format("Failed to parse possible CPU mask: mask_contents=`{}`",
+				      lttng::c_string_view(possible_cpu_mask.data())));
 	}
 
 	if ((i != possible_cpu_mask_len) && (cpu_id < UINT_MAX)) {
