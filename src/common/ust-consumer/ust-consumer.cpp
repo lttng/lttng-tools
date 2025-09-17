@@ -1262,7 +1262,7 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 			}
 
 			/* Put the subbuffer once we are done. */
-			const auto put_subbuf = lttng::make_scope_exit([stream]() noexcept {
+			const auto put_subbuf = lttng::make_scope_exit([&stream]() noexcept {
 				if (lttng_ust_ctl_put_subbuf(stream.ustream) < 0) {
 					ERR("Snapshot lttng_ust_ctl_put_subbuf");
 				}

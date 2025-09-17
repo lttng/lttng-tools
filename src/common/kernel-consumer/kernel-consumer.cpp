@@ -315,7 +315,7 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
 			}
 
 			/* Put the subbuffer once we are done. */
-			const auto put_subbuf = lttng::make_scope_exit([stream]() noexcept {
+			const auto put_subbuf = lttng::make_scope_exit([&stream]() noexcept {
 				const auto put_ret = kernctl_put_subbuf(stream.wait_fd);
 				if (put_ret < 0) {
 					ERR("Snapshot kernctl_put_subbuf");
