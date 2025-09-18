@@ -1236,6 +1236,8 @@ class _Environment(logger._Logger):
                     dir=self.lttng_log_dir,
                     delete=False,
                 )
+
+            self._log(" ".join(sessiond_command))
             process = subprocess.Popen(
                 sessiond_command,
                 stdout=(
