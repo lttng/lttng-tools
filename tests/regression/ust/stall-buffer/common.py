@@ -4,11 +4,14 @@
 import contextlib
 import mmap
 import os
+import pathlib
 import shutil
 import signal
 import subprocess
 
 import bt2
+
+gdb_helper_script_path = pathlib.Path(__file__).absolute().parents[0] / "gdb_helper.py"
 
 
 class StallScenario:
@@ -124,6 +127,7 @@ class StallScenario:
                     "set auto-load off",
                     "handle SIGTRAP stop noprint nopass",
                     "handle SIGSTOP stop noprint nopass",
+                    "source {}".format(gdb_helper_script_path),
                 ]
             )
 
@@ -169,8 +173,11 @@ class StallScenario:
                 gdb_commands.extend(
                     [
                         "inferior {}".format(producer_to_inferior[producer]),
-                        "tbreak lttng_ust_testpoint_{}".format(testpoint),
+                        "python break_testpoint('lttng_ust_testpoint_{}')".format(
+                            testpoint
+                        ),
                         "continue",
+                        "delete",
                     ]
                 )
 
@@ -200,7 +207,7 @@ class StallScenario:
                 gdb_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
             ) as process:
                 try:
-                    output, _ = process.communicate(timeout=5)
+                    output, _ = process.communicate(timeout=30)
                 except subprocess.TimeoutExpired:
                     process.kill()
 

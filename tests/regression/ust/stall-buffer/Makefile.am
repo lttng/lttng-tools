@@ -2,12 +2,14 @@
 
 noinst_SCRIPTS =					\
 	common.py					\
+	gdb_helper.py					\
 	test_stall_buffer_complex.py			\
 	test_stall_buffer_simple.py
 
 
 EXTRA_DIST =						\
 	common.py					\
+	gdb_helper.py					\
 	test_stall_buffer_complex.py			\
 	test_stall_buffer_simple.py
 
