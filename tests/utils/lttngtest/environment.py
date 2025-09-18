@@ -812,17 +812,19 @@ class _Environment(logger._Logger):
         self._relayd_data_port = 0
         self._relayd_live_port = 0
         self._relayd_env_vars = {}
+        self._relayd = None
+        self._relayd_output_consumer = None
+        self._dummy_users = {}  # type: Dictionary[int, string]
+        self.teardown_timeout = os.getenv("LTTNG_TEST_TEARDOWN_TIMEOUT", "60")
+        self._sessiond = None
+
+        # Start daemons as required
         self._relayd = (
             self._launch_lttng_relayd() if with_relayd else None
         )  # type: Optional[subprocess.Popen[bytes]]
-        self._relayd_output_consumer = None
-
         self._sessiond = (
             self._launch_lttng_sessiond(enable_kernel_domain) if with_sessiond else None
         )  # type: Optional[subprocess.Popen[bytes]]
-
-        self._dummy_users = {}  # type: Dictionary[int, string]
-        self.teardown_timeout = os.getenv("LTTNG_TEST_TEARDOWN_TIMEOUT", "60")
 
         # This is a bit of particularity for the testing infrastructure.
         # When the sessiond is started, it will change the permissions of the
