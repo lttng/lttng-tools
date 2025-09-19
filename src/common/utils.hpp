@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <vector>
 
 #define KIBI_LOG2 10
 #define MEBI_LOG2 20
@@ -118,5 +119,5 @@ int utils_create_value_file(const ValueType value, const lttng::c_string_view fi
 }
 
 bool utils_force_experimental_ctf_2();
-
+std::vector<int> list_open_fds();
 #endif /* _COMMON_UTILS_H */

@@ -1452,9 +1452,32 @@ static int run_as_create_worker_no_lock(const char *procname,
 		 * Close all FDs aside from STDIN, STDOUT, STDERR and sockpair[1]
 		 * Sockpair[1] is used as a control channel with the master
 		 */
-		for (i = 3; i < sysconf(_SC_OPEN_MAX); i++) {
-			if (i != worker->sockpair[1]) {
-				(void) close(i);
+		try {
+			const auto open_fds = list_open_fds();
+			for (const int fd : open_fds) {
+				if (fd != worker->sockpair[1] && fd >= 3) {
+					if (close(fd)) {
+						PERROR_FMT("Failed to close file descriptor: fd={}",
+							   fd);
+					}
+				}
+			}
+		} catch (const std::exception& e) {
+			/*
+			 * Fallback to original method, which may be very slow depending on
+			 * the value of sysconf(_SC_OPEN_MAX).
+			 */
+			DBG_FMT("Exception thrown while trying to close file descriptors: {}",
+				e.what());
+			DBG_FMT("Falling back to old method");
+			const int open_max = sysconf(_SC_OPEN_MAX);
+			for (i = 3; i < open_max; i++) {
+				if (i != worker->sockpair[1]) {
+					if (close(i)) {
+						PERROR_FMT("Failed to close file descriptor: fd={}",
+							   i);
+					}
+				}
 			}
 		}
 
