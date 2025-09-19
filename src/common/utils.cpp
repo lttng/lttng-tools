@@ -18,11 +18,12 @@
 #include <common/compat/string.hpp>
 #include <common/dynamic-buffer.hpp>
 #include <common/exception.hpp>
-#include <common/stream-descriptor.hpp>
 #include <common/format.hpp>
+#include <common/make-unique-wrapper.hpp>
 #include <common/readwrite.hpp>
 #include <common/runas.hpp>
 #include <common/scope-exit.hpp>
+#include <common/stream-descriptor.hpp>
 #include <common/string-utils/c-string-view.hpp>
 #include <common/string-utils/format.hpp>
 
@@ -30,6 +31,7 @@
 
 #include <algorithm>
 #include <ctype.h>
+#include <dirent.h>
 #include <fcntl.h>
 #include <grp.h>
 #include <inttypes.h>
@@ -40,6 +42,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <vector>
 
 #define PROC_MEMINFO_PATH	       "/proc/meminfo"
 #define PROC_MEMINFO_MEMAVAILABLE_LINE "MemAvailable:"
@@ -1538,4 +1541,55 @@ bool utils_force_experimental_ctf_2()
 	}
 
 	return false;
+}
+
+static void lttng_closedir(DIR *d)
+{
+	if (closedir(d)) {
+		PWARN_FMT("Failed to close directory");
+	}
+}
+
+std::vector<int> list_open_fds()
+{
+	std::vector<int> results;
+	const char *proc_self_fd = "/proc/self/fd";
+	const auto self_fd_handle =
+		lttng::make_unique_wrapper<DIR, lttng_closedir>(opendir(proc_self_fd));
+
+	if (!self_fd_handle) {
+		LTTNG_THROW_POSIX(fmt::format("Failed to open directory: path=`{}`", proc_self_fd),
+				  errno);
+	}
+
+	struct dirent *entry = nullptr;
+	while ((entry = readdir(self_fd_handle.get())) != nullptr) {
+		errno = 0;
+		char *end_ptr = nullptr;
+		const auto fd = strtol(entry->d_name, &end_ptr, 10);
+
+		/*
+		 * Since strtol() _may_ set errno to EINVAL when no conversion is performed,
+		 * the both errno and the value of end_ptr are checked to determine
+		 * if conversion was successful.
+		 */
+		if (errno || end_ptr != nullptr) {
+			errno = errno ? errno : EINVAL;
+			PWARN_FMT(
+				"Failed to convert file name to file descriptor when enumerating open files: file_name=`{}`",
+				entry->d_name);
+			continue;
+		}
+
+		if (fd < 0) {
+			DBG_FMT("Skipping entry in `{}` that converted to a negative integer value: file_name=`{}`",
+				proc_self_fd,
+				entry->d_name);
+			continue;
+		}
+
+		results.push_back(static_cast<int>(fd));
+	}
+
+	return results;
 }
