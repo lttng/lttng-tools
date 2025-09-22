@@ -6,7 +6,6 @@
 import mmap
 import pathlib
 import resource
-import subprocess
 import sys
 
 # Import in-tree test utils
@@ -95,6 +94,10 @@ def run_simple_scenario(
     expectation_error = stats.unmet_scenario_expectations(scenario)
 
     if expectation_error:
+        tap.diagnostic(
+            "Trace stats did not meet scenario expectations: dumping contents"
+        )
+        dump_trace_contents(session.output.path, tap)
         raise Exception(expectation_error)
 
 

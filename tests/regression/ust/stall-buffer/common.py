@@ -349,3 +349,18 @@ def validate_trace(trace_location):
 def gdb_exists():
     """Return true if GDB can be executed."""
     return shutil.which("gdb") is not None
+
+
+# Dump the contents of a trace to the TAP log.
+def dump_trace_contents(trace_path, tap):
+    try:
+        result = subprocess.run(
+            ["babeltrace2", "--component", "sink.text.details", str(trace_path)],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        for line in result.stdout.splitlines():
+            tap.diagnostic(line.decode("utf-8"))
+    except subprocess.CalledProcessError as ex:
+        tap.diagnostic("Failed to dump trace contents: {}".format(ex))
