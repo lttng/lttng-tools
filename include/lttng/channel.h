@@ -661,7 +661,6 @@ lttng_channel_get_monitor_timer_interval(const struct lttng_channel *channel, ui
 
 @pre
     @lt_pre_not_null{channel}
-    - \lt_p{period}&nbsp;≥&nbsp;1
 
 @sa lttng_channel_get_monitor_timer_interval() --
     Returns the monitor timer period property of a channel summary.
