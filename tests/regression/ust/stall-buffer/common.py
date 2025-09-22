@@ -41,7 +41,7 @@ class StallScenario:
     ):
         if producers:
             self.producers = producers
-            self.scheduling = scheduling
+            self.scheduling = scheduling or []
         elif testpoints:
             self.producers = [k for k in range(len(testpoints))]
             self.scheduling = [(k, testpoints[k]) for k in range(len(testpoints))]
