@@ -1064,6 +1064,13 @@ The properties of a channel are:
       - lttng_channel_get_monitor_timer_interval()
       - lttng_channel_set_monitor_timer_interval()
   <tr>
+    <td>Watchdog timer period
+    <td>
+      See \ref api-channel-watchdog-timer "Watchdog timer".
+    <td>
+      - lttng_channel_get_watchdog_timer_interval()
+      - lttng_channel_set_watchdog_timer_interval()
+  <tr>
     <td>Output type (Linux kernel channel)
     <td>
       Whether to use <code>mmap()</code> or <code>splice()</code>.
@@ -1596,6 +1603,42 @@ Each channel can have up to four optional
     it:
 
     - Call lttng_channel_set_monitor_timer_interval() with the
+      #lttng_channel structure you pass to lttng_enable_channel().
+
+  <dt>\anchor api-channel-watchdog-timer Watchdog timer
+  <dd>
+    When this timer expires, LTTng performs health checks that detect
+    recoverable issues and trigger corrective actions to keep trace
+    recording running smoothly for the channel.
+
+    As of LTTng-tools&nbsp;\lt_version_maj_min, the only health check
+    is:
+
+    <dl>
+      <dt>Sub-buffer stall detection
+      <dd>
+        With a
+        \link #LTTNG_DOMAIN_UST user space\endlink channel having a
+        \ref api-channel-per-user-buf "per-user" ownership model, an
+        instrumented application currently writing to a sub-buffer may
+        crash and make said sub-buffer “stalled”, that is, never
+        released and unusable. This can reduce the effective capacity of
+        the channel or even halt the consumption altogether.
+
+        When the watchdog timer of a channel expires and LTTng detects
+        this condition, it marks the stalled sub-buffer
+        consumable/readable again.
+
+        @note
+            A process needs to terminate for the sub-buffer
+            to be considered stalled: a \c SIGSTOP signal doesn't
+            qualify.
+    </dl>
+
+    To set the period of the watchdog timer of a channel when you create
+    it:
+
+    - Call lttng_channel_set_watchdog_timer_interval() with the
       #lttng_channel structure you pass to lttng_enable_channel().
 </dl>
 

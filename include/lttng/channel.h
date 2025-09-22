@@ -35,11 +35,20 @@ enum lttng_channel_allocation_policy {
 	LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CHANNEL = 1,
 };
 
+/*!
+@brief
+    Return type of lttng_channel_get_watchdog_timer_interval().
+
+@ingroup api_channel
+*/
 enum lttng_channel_get_watchdog_timer_interval_status {
+	/// Success.
 	LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_OK = 0,
-	/* Invalid parameters provided. */
+
+	/// Unsatisfied precondition.
 	LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_INVALID = 1,
-	/* Information is unset. */
+
+	/// Watchdog timer isn't set.
 	LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_UNSET = 2,
 };
 
@@ -674,17 +683,12 @@ LTTNG_EXPORT extern int lttng_channel_set_monitor_timer_interval(struct lttng_ch
     <strong>On success</strong>, this function sets \lt_p{*period} to
     the watchdog timer period (µs) property of \lt_p{channel}.
 
-@returns
-    <dl>
-      <dt>LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_OK
-      <dd>Success.
-
-      <dt>LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_INVALID
-      <dd>Invalid parameters provided.
-
-      <dt>LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_UNSET
-      <dd>Watchdog timer is unset.
-    </dl>
+@retval #LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_OK
+    Success.
+@retval #LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_INVALID
+    Unsatisfied precondition.
+@retval #LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_UNSET
+    Watchdog timer isn't set.
 
 @pre
     @lt_pre_not_null{channel}
@@ -721,7 +725,6 @@ lttng_channel_get_watchdog_timer_interval(const struct lttng_channel *channel, u
 
 @pre
     @lt_pre_not_null{channel}
-    - \lt_p{period}&nbsp;≥&nbsp;1
     - The \lt_obj_domain of \lt_p{channel} is #LTTNG_DOMAIN_UST.
     - The \ref api-channel-buf-ownership-model "buffer ownership model"
       of \lt_p{channel} is #LTTNG_BUFFER_PER_UID.
