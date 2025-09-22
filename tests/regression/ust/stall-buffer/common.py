@@ -106,7 +106,7 @@ class StallScenario:
     def __call__(self, log, test_env, session):
         with contextlib.ExitStack() as stack:
 
-            gdb_script_path = (
+            gdb_script_path = str(
                 test_env.create_temporary_directory("gdb_script_dir") / "gdb_script"
             )
 
@@ -200,7 +200,7 @@ class StallScenario:
                 "--nw",  # No GUI
                 "--batch",  # Exit when all commands are executed
                 "-x",
-                str(gdb_script_path),  # Execute script
+                gdb_script_path,  # Execute script
             ]
 
             with subprocess.Popen(
