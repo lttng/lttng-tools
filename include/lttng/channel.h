@@ -35,8 +35,18 @@ enum lttng_channel_allocation_policy {
 	LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CHANNEL = 1,
 };
 
+/*!
+@brief
+    \ref api-channel-buf-prealloc-policy "Buffer preallocation policy"
+    of a channel.
+
+@ingroup api_channel
+*/
 enum lttng_channel_preallocation_policy {
+	/// Preallocate sub-buffers.
 	LTTNG_CHANNEL_PREALLOCATION_POLICY_PREALLOCATE = 0,
+
+	/// Allocate sub-buffers as needed.
 	LTTNG_CHANNEL_PREALLOCATION_POLICY_ON_DEMAND = 1,
 };
 
@@ -47,11 +57,13 @@ enum lttng_channel_preallocation_policy {
 @ingroup api_channel
 */
 enum lttng_channel_status {
-	/// Success
+	/// Success.
 	LTTNG_CHANNEL_STATUS_OK = 0,
-	/// Property is unset
+
+	/// Property is unset.
 	LTTNG_CHANNEL_STATUS_UNSET = 1,
-	/// Invalid arguments
+
+	/// Unsatisfied precondition.
 	LTTNG_CHANNEL_STATUS_INVALID = -1,
 };
 
@@ -888,21 +900,133 @@ LTTNG_EXPORT extern enum lttng_error_code
 lttng_channel_set_allocation_policy(struct lttng_channel *channel,
 				    enum lttng_channel_allocation_policy policy);
 
+/*!
+@brief
+    Sets \lt_p{*policy} to the
+    \ref api-channel-buf-prealloc-policy "buffer preallocation policy"
+    of the \lt_obj_channel summary \lt_p{channel}.
+
+@ingroup api_channel
+
+This property only applies to \link #LTTNG_DOMAIN_UST user space\endlink
+channels.
+
+@param[in] channel
+    Summary of the channel of which to get the
+    buffer preallocation policy.
+@param[out] policy
+    <strong>On success</strong>, this function sets \lt_p{*policy} to
+    the buffer preallocation policy of \lt_p{channel}.
+
+@retval #LTTNG_CHANNEL_STATUS_OK
+    Success.
+@retval #LTTNG_CHANNEL_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{channel}
+    - The \lt_obj_domain type of \lt_p{channel} is #LTTNG_DOMAIN_UST.
+    @lt_pre_not_null{policy}
+*/
 LTTNG_EXPORT extern enum lttng_channel_status
 lttng_channel_get_preallocation_policy(const struct lttng_channel *channel,
 				       enum lttng_channel_preallocation_policy *policy);
 
+/*!
+@brief
+    Sets the
+    \ref api-channel-buf-prealloc-policy "buffer preallocation policy"
+    property of the channel summary \lt_p{channel} to \lt_p{policy}.
+
+@ingroup api_channel
+
+This property only applies to \link #LTTNG_DOMAIN_UST user space\endlink
+channels.
+
+@param[in] channel
+    Channel summary of which to set the buffer preallocation policy to
+    \lt_p{policy}.
+@param[in] policy
+    Buffer preallocation policy to set.
+
+@retval #LTTNG_CHANNEL_STATUS_OK
+    Success.
+@retval #LTTNG_CHANNEL_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{channel}
+    - The \lt_obj_domain type of \lt_p{channel} is #LTTNG_DOMAIN_UST.
+*/
 LTTNG_EXPORT extern enum lttng_channel_status
 lttng_channel_set_preallocation_policy(struct lttng_channel *channel,
 				       enum lttng_channel_preallocation_policy policy);
 
+/*!
+@brief
+    Sets \lt_p{*older_than_us} to the age threshold (µs) of the
+    \ref api-channel-auto-reclaim "automatic memory reclaim"
+    of the channel summary \lt_p{channel}.
+
+@ingroup api_channel
+
+This property only applies to \link #LTTNG_DOMAIN_UST user space\endlink
+channels.
+
+@param[in] channel
+    Summary of the channel of which to get the automatic memory
+    reclaim maximal age.
+@param[out] older_than_us
+    <strong>On success</strong>, this function sets
+    \lt_p{*older_than_us} to the age threshold (µs) of the
+    automatic memory reclaim.
+
+@retval #LTTNG_CHANNEL_STATUS_OK
+    Success.
+@retval #LTTNG_CHANNEL_STATUS_UNSET
+    The automatic memory reclaim age threshold is not
+    set for this channel.
+@retval #LTTNG_CHANNEL_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{channel}
+    - The \lt_obj_domain type of \lt_p{channel} is #LTTNG_DOMAIN_UST.
+    @lt_pre_not_null{older_than_us}
+*/
 LTTNG_EXPORT extern enum lttng_channel_status
 lttng_channel_get_automatic_memory_reclamation_policy(const struct lttng_channel *channel,
-						      uint64_t *maximal_age_us);
+						      uint64_t *older_than_us);
 
+/*!
+@brief
+    Sets the \ref api-channel-auto-reclaim "automatic memory reclaim"
+    policy of the
+    \lt_obj_channel summary \lt_p{channel} to reclaim buffered data
+    older than \lt_p{older_than_us}&nbsp;µs.
+
+@ingroup api_channel
+
+This property only applies to \link #LTTNG_DOMAIN_UST user space\endlink
+channels.
+
+@param[in] channel
+    Channel summary of which to set the automatic memory reclaim policy.
+@param[in] older_than_us
+    Minimum age (µs) of buffered data to consider to reclaim memory.
+
+@retval #LTTNG_CHANNEL_STATUS_OK
+    Success.
+@retval #LTTNG_CHANNEL_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{channel}
+    - The \lt_obj_domain type of \lt_p{channel} is #LTTNG_DOMAIN_UST.
+*/
 LTTNG_EXPORT extern enum lttng_channel_status
 lttng_channel_set_automatic_memory_reclamation_policy(struct lttng_channel *channel,
-						      uint64_t maximal_age_us);
+						      uint64_t older_than_us);
 
 #ifdef __cplusplus
 }

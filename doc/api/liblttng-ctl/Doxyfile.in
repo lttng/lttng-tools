@@ -141,6 +141,8 @@ INPUT                   = "@srcdir@/dox/groups.dox" \
                           "@top_srcdir@/include/lttng/destruction-handle.h" \
                           "@top_srcdir@/include/lttng/domain.h" \
                           "@top_srcdir@/include/lttng/channel.h" \
+                          "@top_srcdir@/include/lttng/reclaim.h" \
+                          "@top_srcdir@/include/lttng/stream-info.h" \
                           "@top_srcdir@/include/lttng/event.h" \
                           "@top_srcdir@/include/lttng/kernel.h" \
                           "@top_srcdir@/include/lttng/log-level-rule.h" \
