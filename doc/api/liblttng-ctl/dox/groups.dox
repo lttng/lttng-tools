@@ -970,6 +970,10 @@ The channel operations are:
 
       @sa \lt_man{lttng-add-context,1}
   <tr>
+    <td>Memory reclaim
+    <td>
+      See \ref api_channel_reclaim.
+  <tr>
     <td>Enabling
     <td>
       Use lttng_enable_channel().
@@ -1016,6 +1020,38 @@ The properties of a channel are:
     <td>
       - lttng_channel_get_allocation_policy()
       - lttng_channel_set_allocation_policy()
+  <tr>
+    <td>Buffer preallocation policy
+    <td>
+      See \ref api-channel-buf-prealloc-policy "Buffer preallocation policy".
+    <td>
+      - lttng_channel_get_preallocation_policy()
+      - lttng_channel_set_preallocation_policy()
+  <tr>
+    <td>\anchor api-channel-auto-reclaim Automatic memory reclaim policy
+    <td>
+      LTTng may automatically reclaim the memory of a
+      \link #LTTNG_DOMAIN_UST user space\endlink channel when its
+      buffered data becomes older than a given maximal age.
+
+      This is more or less equivalent to automatically calling
+      lttng_reclaim_channel_memory(). LTTng automatically evaluates
+      the eligibility of sub-buffers for a memory reclaim operation at
+      regular intervals (every half the configured maximal age, but also
+      at least a period defined at build time) and reclaims sub-buffers
+      of which the age of the \em closing time have exceeded the
+      age threshold.
+
+      See \ref api_channel_reclaim to learn more.
+    <td>
+      - lttng_channel_get_automatic_memory_reclamation_policy()
+      - lttng_channel_set_automatic_memory_reclamation_policy()
+  <tr>
+    <td>Data stream infos
+    <td>
+      See \ref api_channel_ds_info.
+    <td>
+      lttng_channel_get_data_stream_info_sets()
   <tr>
     <td>Event record loss mode
     <td>
@@ -1267,6 +1303,42 @@ To set the buffer allocation policy of a channel when you create it:
   #lttng_channel structure you pass to lttng_enable_channel().
 
 @sa The “Buffering scheme” section of \lt_man{lttng-concepts,7}.
+
+<h3>\anchor api-channel-buf-prealloc-policy Buffer preallocation policy</h3>
+
+The buffer preallocation policy of a \link #LTTNG_DOMAIN_UST user
+space\endlink channel specifies \em when LTTng allocates the backing
+memory for the ring buffers of the channel.
+
+The available buffer preallocation policies are:
+
+<dl>
+  <dt>\link #LTTNG_CHANNEL_PREALLOCATION_POLICY_PREALLOCATE Preallocate\endlink
+  <dd>
+    LTTng allocates the full backing memory for all ring buffers when
+    you create the channel.
+
+    This policy provides consistent performance but uses more memory
+    upfront. Use this policy to optimize instrumented application
+    startup time.
+
+  <dt>\link #LTTNG_CHANNEL_PREALLOCATION_POLICY_ON_DEMAND On demand\endlink
+  <dd>
+    LTTng allocates backing memory for ring buffers incrementally, as
+    needed during tracing.
+
+    This policy uses less initial memory but may introduce slight
+    performance overhead when allocating new memory during tracing.
+</dl>
+
+As of LTTng-tools&nbsp;\lt_version_maj_min, the implicit buffer
+preallocation policy of a \link #LTTNG_DOMAIN_KERNEL Linux
+kernel\endlink channel is always to preallocate backing memory.
+
+To set the buffer preallocation policy of a channel when you create it:
+
+- Call lttng_channel_set_preallocation_policy() with the
+  #lttng_channel structure you pass to lttng_enable_channel().
 
 <h3>\anchor api-channel-er-loss-mode Event record loss mode</h3>
 
@@ -1656,6 +1728,148 @@ Each channel can have up to four optional
 </dl>
 
 @sa The “Timers” section of \lt_man{lttng-concepts,7}.
+
+@defgroup api_channel_ds_info Data stream infos
+@ingroup api_channel
+
+A <strong><em>data stream info</em></strong> (#lttng_data_stream_info)
+represents information about a single data stream of a
+\link #LTTNG_DOMAIN_UST user space\endlink channel.
+
+The main purpose of this API is to get the
+\link lttng_data_stream_info_get_cpu_id() CPU ID\endlink
+(for a \ref api-channel-per-cpu-buf "per-CPU" channel only)
+and \link lttng_data_stream_info_get_memory_usage() memory usage\endlink
+of the data streams of a channel.
+
+A <strong><em>data stream info set</em></strong>
+(#lttng_data_stream_info_set) contains data stream infos that share
+common ownership properties (same
+\link lttng_data_stream_info_set_get_uid() Unix user ID\endlink,
+\link lttng_data_stream_info_set_get_pid() process ID\endlink, or
+instrumented
+\link lttng_data_stream_info_set_get_app_bitness() application bitness\endlink).
+
+A <strong><em>set of data stream info sets</em></strong>
+(#lttng_data_stream_info_sets) groups multiple data stream info sets
+for a given channel.
+
+To get CPU ID and memory usage of the data streams of a channel:
+
+-# Retrieve data stream info sets for the channel with
+   lttng_channel_get_data_stream_info_sets().
+
+   This function returns a container of \em snapshots of information
+   about data streams at call time: the returned object tree is
+   immutable.
+
+-# For each data stream info set (use
+   lttng_data_stream_info_sets_get_at_index() (borrowed) and
+   lttng_data_stream_info_sets_get_count()):
+
+   -# Get the ID of its owning Unix user/process and its
+      application bitness with
+      lttng_data_stream_info_set_get_uid(),
+      lttng_data_stream_info_set_get_pid(), and
+      lttng_data_stream_info_set_get_app_bitness().
+
+   -# For each data stream info (use
+      lttng_data_stream_info_set_get_at_index() (borrowed) and
+      lttng_data_stream_info_set_get_count()):
+
+      - Get its memory usage and CPU ID with
+        lttng_data_stream_info_get_cpu_id() and
+        lttng_data_stream_info_get_memory_usage().
+
+-# When you're done with the data stream info sets, destroy them with
+   lttng_data_stream_info_sets_destroy().
+
+@note
+    The content and availability of memory usage information may vary
+    depending on tracer support.
+
+@defgroup api_channel_reclaim Memory reclaim
+@ingroup api_channel
+
+A channel <strong><em>memory reclaim operation</em></strong> makes it
+possible to free memory which the eligible sub-buffers of a
+\link #LTTNG_DOMAIN_UST user space\endlink channel use.
+
+@image html reclaim.png "Reclaim of channel sub-buffers older than 40 seconds."
+
+The channel memory reclaim operation behaviour depends on the
+configured \ref api-channel-er-loss-mode "event record loss mode" of
+the channel:
+
+<dl>
+  <dt>\ref api-channel-discard-mode "Discard mode"
+  <dd>
+    Only reclaim sub-buffers that have been both delivered (completed
+    and ready to be consumed) \em and
+    consumed, since unconsumed data would be lost forever.
+
+  <dt>\ref api-channel-overwrite-mode "Overwrite mode"
+  <dd>
+    Reclaim any delivered sub-buffer, since old data will be
+    overwritten anyway: no need to wait for consumption.
+</dl>
+
+There are two ways to reclaim channel memory:
+
+<dl>
+  <dt>Immediate reclaim
+  <dd>
+    -# Call lttng_reclaim_channel_memory() to initiate an immediate
+       memory reclaim operation.
+
+       This function returns a memory reclaim operation
+       handle (#lttng_reclaim_handle).
+
+    -# Wait for the completion of the memory reclaim operation
+       with lttng_reclaim_handle_wait_for_completion()
+       and get its results with lttng_reclaim_handle_get_result().
+
+    -# Query the amount of reclaimed memory with
+       lttng_reclaim_result_get_memory_size_bytes().
+
+    -# Destroy the memory reclaim operation handle with
+       lttng_reclaim_handle_destroy().
+
+  <dt>Automatic reclaim
+  <dd>
+    Use lttng_channel_set_automatic_memory_reclamation_policy()
+    before creating the channel to enable an automatic memory reclaim.
+
+    See \ref api-channel-auto-reclaim "Automatic memory reclaim policy"
+    to learn more.
+</dl>
+
+In both cases, you may specify a sub-buffer <em>age threshold</em>: only
+sub-buffers of which the age of the <em>closing time</em> is older than
+the threshold are eligible for a memory reclaim. Moreover, with some age
+threshold \lt_var{T}:
+
+<dl>
+  <dt>If \lt_var{T}&nbsp;&gt;&nbsp;last stream activity age
+  <dd>
+    The sub-buffers of which the age, at the moment of closing them, is
+    greater than \lt_var{T} are eligible for a memory reclaim.
+
+  <dt>If \lt_var{T}&nbsp;&lt;&nbsp;last stream activity age
+  <dd>
+    All the sub-buffers are eligible.
+
+    The LTTng tracers flush for the targeted channel so that any open
+    sub-buffer gets closed to become eligible.
+</dl>
+
+You might want to use this feature in conjunction with the
+#LTTNG_CHANNEL_PREALLOCATION_POLICY_ON_DEMAND
+\ref api-channel-buf-prealloc-policy "buffer preallocation policy"
+of the channel to also minimize initial memory usage.
+
+@sa \lt_man{lttng-reclaim-memory,1}
+@sa \lt_man{lttng-enable-channel,1}
 
 @defgroup api_rer Recording event rule API
 @ingroup api_channel
