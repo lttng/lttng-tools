@@ -420,14 +420,14 @@ The recording session operations are:
       @sa \lt_man{lttng-list,1}
   <tr>
     <td>Process filter access
-    <td>See \ref api_proc_filter
+    <td>See \ref api_proc_filter.
   <tr>
     <td>Clearing
-    <td>See \ref api_session_clear
+    <td>See \ref api_session_clear.
   <tr>
     <td>Snapshot recording
     <td>
-      See \ref api_session_snapshot
+      See \ref api_session_snapshot.
 
       The
       \link api_trigger_action_snapshot “take recording session snapshot”\endlink
@@ -436,7 +436,7 @@ The recording session operations are:
   <tr>
     <td>Rotation
     <td>
-      See \ref api_session_rotation
+      See \ref api_session_rotation.
 
       The
       \link api_trigger_action_rotate “rotate recording session”\endlink
@@ -444,7 +444,7 @@ The recording session operations are:
       rotate a recording session.
   <tr>
     <td>Saving and loading
-    <td>See \ref api_session_save_load
+    <td>See \ref api_session_save_load.
   <tr>
     <td>Trace data regeneration
     <td>
