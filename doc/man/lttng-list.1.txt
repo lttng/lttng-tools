@@ -1,6 +1,6 @@
 lttng-list(1)
 =============
-:revdate: 1 April 2025
+:revdate: 24 September 2025
 
 
 NAME
@@ -19,13 +19,14 @@ List the tracing domains of a recording session with at least one
 channel:
 
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* option:--domain 'SESSION'
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* option:--domain [option:--stream-info-details] 'SESSION'
 
 List the channels and recording event rules of a recording session:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* [option:--channel='CHANNEL'] 'SESSION'
       [option:--kernel] [option:--userspace] [option:--jul] [option:--log4j] [option:--log4j2] [option:--python]
+      [option:--stream-info-details]
 
 List the available LTTng tracepoints, Linux system calls, and/or
 Java/Python loggers:
@@ -67,6 +68,10 @@ With the 'SESSION' argument::
 Use the dedicated tracing domain options (option:--kernel,
 option:--userspace, option:--jul, option:--log4j, option:--log4j2, and
 option:--python) to only show specific channels.
++
+Also show the CPU ID (if available) and current memory usage of each
+data stream of the channel(s) with the option:--stream-info-details
+option.
 
 Without the 'SESSION' argument and with at least one dedicated tracing domain option::
 +
@@ -164,6 +169,15 @@ option:--syscall::
     system calls.
 
 
+Display
+~~~~~~~
+option:--stream-info-details::
+    Show the CPU ID (if available) and current memory usage of each data
+    stream of the channel(s).
++
+Only available with the 'SESSION' argument.
+
+
 include::common-lttng-cmd-help-options.txt[]
 
 
@@ -217,13 +231,13 @@ $ lttng list --domain my-session
 ----
 ====
 
-.Show the details of a specific channel in a specific recording session.
+.Show the details of a specific channel, including its current data stream infos, in a specific recording session.
 ====
 See the option:--channel option.
 
 [role="term"]
 ----
-$ lttng list my-session --channel=channel0
+$ lttng list my-session --channel=channel0 --stream-info-details
 ----
 ====
 
