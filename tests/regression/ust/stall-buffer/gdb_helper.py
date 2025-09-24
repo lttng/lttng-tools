@@ -3,7 +3,7 @@
 
 import gdb
 import shlex
-import subproces
+import subprocess
 
 pid_to_testpoints = dict()
 
