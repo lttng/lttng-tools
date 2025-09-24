@@ -77,7 +77,7 @@ def run_test(test_env, tap):
                 tap.diagnostic("Begin and end timestamps do not differ")
                 passed = False
 
-            if duration < 1_000_000_000:
+            if duration < 1000000000:
                 tap.diagnostic(
                     "Expected duration should be at least one second, got {}ns".format(
                         duration
