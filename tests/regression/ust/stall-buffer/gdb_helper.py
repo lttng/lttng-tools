@@ -10,7 +10,7 @@ pid_to_testpoints = dict()
 
 def list_testpoints(path):
     cmd = (
-        "nm --quiet --format=posix %s | cut -d ' ' -f 1 | grep lttng_ust_testpoint | sort | uniq"
+        "nm --format=posix %s | cut -d ' ' -f 1 | grep lttng_ust_testpoint | sort | uniq"
         % shlex.quote(path)
     )
     result = subprocess.check_output(cmd, shell=True)
