@@ -140,19 +140,31 @@ EXTRA_DIST += foobar_provider.d
 noinst_PROGRAMS += userspace-probe-sdt-binary
 userspace_probe_sdt_binary_SOURCES = userspace-probe-sdt-binary.c sema.h sema.c
 userspace_probe_sdt_binary_LDADD = foobar_provider.o libfoo.la libbar.la $(DL_LIBS)
+# Add the build directory since foobar_provider.h is generated at build time
+userspace_probe_sdt_binary_CFLAGS = $(AM_CFLAGS) \
+		-I$(top_builddir)/tests/utils/testapp
 
 noinst_LTLIBRARIES += libfoo.la libbar.la libzzz.la
 libfoo_la_SOURCES = libfoo.h libfoo.c
 libfoo_la_LIBADD = foobar_provider.o
 libfoo_la_LDFLAGS = -module -shared -avoid-version -rpath $(libdir)
+# Add the build directory since foobar_provider.h is generated at build time
+libfoo_la_CFLAGS = $(AM_CFLAGS) \
+		-I$(top_builddir)/tests/utils/testapp
 
 libbar_la_SOURCES = libbar.h libbar.c
 libbar_la_LIBADD = foobar_provider.o
 libbar_la_LDFLAGS = -module -shared -avoid-version -rpath $(libdir)
+# Add the build directory since foobar_provider.h is generated at build time
+libbar_la_CFLAGS = $(AM_CFLAGS) \
+		-I$(top_builddir)/tests/utils/testapp
 
 libzzz_la_SOURCES = libzzz.h libzzz.c
 libzzz_la_LIBADD = foobar_provider.o
 libzzz_la_LDFLAGS = -module -shared -avoid-version -rpath $(libdir)
+# Add the build directory since foobar_provider.h is generated at build time
+libzzz_la_CFLAGS = $(AM_CFLAGS) \
+		-I$(top_builddir)/tests/utils/testapp
 
 dtrace_verbose = $(dtrace_verbose_@AM_V@)
 dtrace_verbose_ = $(dtrace_verbose_@AM_DEFAULT_V@)
