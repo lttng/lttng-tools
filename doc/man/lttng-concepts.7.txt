@@ -1,6 +1,6 @@
 lttng-concepts(7)
 =================
-:revdate: 1 April 2025
+:revdate: 24 September 2025
 :sect-event-rule: INSTRUMENTATION POINT, EVENT RULE, AND EVENT
 :sect-session: RECORDING SESSION
 :sect-domain: TRACING DOMAIN
@@ -579,6 +579,15 @@ you set its final attributes, that is:
 +
 See the ``<<channel-buf-scheme,Buffering scheme>>'' section below.
 
+* Its buffer preallocation policy.
++
+See the ``<<channel-buf-prealloc,Buffering preallocation policy>>''
+section below.
+
+* Its automatic memory reclaim policy.
++
+See the ``<<channel-reclaim,Memory reclaim>>'' section below.
+
 * What to do when there's no
   space left for a new event record because all sub-buffers are full.
 +
@@ -729,6 +738,95 @@ processes than Unix users running instrumented processes. However, the
 per-process model ensures that one process having a high event
 throughput won't fill all the shared sub-buffers of the same Unix user,
 only its own.
+
+
+[[channel-buf-prealloc]]
+Buffer preallocation policy
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The buffer preallocation policy of a user space channel specifies
+_when_ LTTng allocates the backing memory for the ring buffers
+of the channel.
+
+The available buffer preallocation policies are:
+
+Preallocate::
+    LTTng allocates the full backing memory for all ring buffers when
+    you create the channel.
++
+This policy provides consistent performance but uses more memory
+upfront. Use this policy to optimize instrumented application
+startup time.
+
+On demand::
+    LTTng allocates backing memory for ring buffers incrementally, as
+    needed during tracing.
++
+This policy uses less initial memory but may introduce slight
+performance overhead when allocating new memory during tracing.
+
+As of LTTng{nbsp}{lttng_version}, the implicit buffer
+preallocation policy of a Linux kernel channel is always to preallocate
+backing memory.
+
+Set the buffer preallocation policy of a user space channel with the
+nloption:--buffer-preallocation option of the
+man:lttng-enable-channel(1) command.
+
+
+[[channel-reclaim]]
+Memory reclaim
+~~~~~~~~~~~~~~
+A channel memory reclaim operation makes it
+possible to free memory which the eligible sub-buffers of a
+user space channel use.
+
+The channel memory reclaim operation behaviour depends on the
+configured event record loss mode (see the
+``<<channel-er-loss-mode,Event record loss mode>>'' section
+below) of the channel:
+
+Discard mode::
+    Only reclaim sub-buffers that have been both delivered (completed
+    and ready to be consumed) _and_
+    consumed, since unconsumed data would be lost forever.
+
+Overwrite mode::
+    Reclaim any delivered sub-buffer, since old data will be
+    overwritten anyway: no need to wait for consumption.
+
+There are two ways to reclaim channel memory:
+
+Immediate reclaim::
+    Use the man:lttng-reclaim-memory(1) command.
+
+Automatic reclaim::
+    LTTng may automatically reclaim the memory of a
+    user space channel.
++
+This is more or less equivalent to automatically running the
+man:lttng-reclaim-memory(1) command. LTTng automatically evaluates
+the eligibility of sub-buffers for a memory reclaim operation at
+regular intervals (every half the configured maximal age, but also
+at least a period defined at build time) and reclaims sub-buffers
+of which the age of the _closing time_ have exceeded the age threshold.
++
+Use the nloption:--auto-reclaim-memory-older-than option of
+the man:lttng-enable-channel(1) command.
+
+In both cases, you may specify a sub-buffer _age threshold_: only
+sub-buffers of which the age of the _closing time_ is older than the
+threshold are eligible for a memory reclaim. Moreover, with some
+age threshold{nbsp}__T__:
+
+If __T__{nbsp}>{nbsp}last stream activity age::
+    The sub-buffers of which the age, at the moment of closing them, is
+    greater than{nbsp}__T__ are eligible for a memory reclaim.
+
+If __T__{nbsp}<{nbsp}last stream activity age::
+    All the sub-buffers are eligible.
++
+The LTTng tracers flush for the targeted channel so that any open
+sub-buffer gets closed to become eligible.
 
 
 [[channel-er-loss-mode]]

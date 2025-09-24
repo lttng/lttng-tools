@@ -1,6 +1,6 @@
 lttng-enable-channel(1)
 =======================
-:revdate: 15 April 2025
+:revdate: 24 September 2025
 
 
 NAME
@@ -26,9 +26,12 @@ Create a user space channel:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *enable-channel* option:--userspace
-      [option:--overwrite | [option:--discard] option:--blocking-timeout='TIMEOUTUS']
+      [option:--overwrite |
+       [option:--discard] [option:--blocking-timeout='TIMEOUTUS']
+       [option:--auto-reclaim-memory-older-than='AGEUS']]
       [option:--output=**mmap**] [option:--buffer-ownership=(**user** | **process**)]
       [option:--buffer-allocation=(**per-cpu** | **per-channel**)]
+      [option:--buffer-preallocation=(**preallocate** | **on-demand**)]
       [option:--subbuf-size='SIZE'] [option:--num-subbuf='COUNT']
       [option:--switch-timer='PERIODUS'] [option:--read-timer='PERIODUS']
       [option:--monitor-timer='PERIODUS']
@@ -218,6 +221,52 @@ $ lttng add-context --session=SESSION --channel=CHANNEL \
 +
 As of LTTng{nbsp}{lttng_version}, this is the default buffer allocation
 policy, but this may change in the future.
+
+
+Buffer preallocation policy
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+option:--buffer-preallocation='POLICY'::
+    Depending on 'POLICY', allocate:
++
+--
+`preallocate`:::
+    The full backing memory for all ring buffers when
+    you create the channel.
++
+This policy provides consistent performance but uses more memory
+upfront. Use this policy to optimize instrumented application
+startup time.
++
+As of LTTng{nbsp}{lttng_version}, this is the default buffer
+preallocation policy, but this may change in the future.
+
+`on-demand`:::
+    Backing memory for ring buffers incrementally, as
+    needed during tracing.
++
+This policy uses less initial memory but may introduce slight
+performance overhead when allocating new memory during tracing.
+--
++
+Only available with the option:--userspace option.
+
+
+Automatic memory reclaim
+~~~~~~~~~~~~~~~~~~~~~~~~
+option:--auto-reclaim-memory-older-than='AGEUS'::
+    LTTng may automatically reclaim the memory of the
+    created channel.
++
+This is more or less equivalent to automatically running the
+man:lttng-reclaim-memory(1) command. LTTng automatically evaluates
+the eligibility of sub-buffers for a memory reclaim operation at
+regular intervals (every half 'AGEUS'{nbsp}µs, but also
+at least a period defined at build time) and reclaims sub-buffers
+of which the age of the _closing time_ have exceeded
+'AGEUS'{nbsp}µs.
++
+Only available with the option:--userspace and
+option:--discard options.
 
 
 Event record loss mode
@@ -446,6 +495,20 @@ See the option:--buffer-allocation option.
 ----
 $ lttng enable-channel --userspace \
                        --buffer-allocation=per-channel my-channel
+----
+====
+
+.Create a user space channel with an ``on-demand'' preallocation policy and an automatic memory reclaim.
+====
+See the option:--buffer-preallocation and
+option:--auto-reclaim-memory-older-than options.
+
+LTTng will automatically reclaim the memory of
+
+[role="term"]
+----
+$ lttng enable-channel --userspace my-channel \
+                       --buffer-preallocation=on-demand
 ----
 ====
 

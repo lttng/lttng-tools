@@ -1,30 +1,108 @@
 lttng-reclaim-memory(1)
 =======================
-:revdate: 11 July 2025
+:revdate: 24 September 2025
 
 
 NAME
 ----
-lttng-reclaim-memory - Reclaim unused channel memory immediately
+lttng-reclaim-memory - Reclaim channel memory immediately
 
 
 SYNOPSIS
 --------
-TBD
+[verse]
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *reclaim-memory* option:--userspace
+      [option:--no-wait] [option:--older-than='AGEUS']
+      [option:--session='SESSION'] ([option:--all] | 'CHANNEL'...)
 
 
 DESCRIPTION
 -----------
-TBD
+The `lttng reclaim-memory` command immediately reclaims memory for the
+sub-buffers of:
+
+With the option:--all option::
+    All the user space channels of the targeted session.
+
+With one or more 'CHANNEL' arguments::
+    Each named user space channel.
+
+The targeted session is either:
+
+With the option:--session='SESSION' argument::
+    The recording session named 'SESSION'.
+
+Otherwise::
+    The current recording session (see man:lttng-concepts(7) to learn
+    more about the current recording session).
+
+See man:lttng-concepts(7) to learn more about channel memory reclaim.
+
+The channel memory reclaim operation behaviour depends on the
+configured event record loss mode of the channel:
+
+Discard mode::
+    Only reclaim sub-buffers that have been both delivered (completed
+    and ready to be consumed) _and_
+    consumed, since unconsumed data would be lost forever.
+
+Overwrite mode::
+    Reclaim any delivered sub-buffer, since old data will be
+    overwritten anyway: no need to wait for consumption.
+
+Specify a sub-buffer _age threshold_ with the
+option:--older-than='AGEUS' option: only sub-buffers of which
+the age of the _closing time_ is older than 'AGEUS'{nbsp}µs are eligible
+for a memory reclaim. Moreover:
+
+If 'AGEUS'{nbsp}>{nbsp}last stream activity age::
+    The sub-buffers of which the age, at the moment of closing them, is
+    greater than{nbsp}__AGEUS__{nbsp}µs are eligible for a memory reclaim.
+
+If 'AGEUS'{nbsp}<{nbsp}last stream activity age::
+    All the sub-buffers are eligible.
++
+The LTTng tracers flush for the targeted channel so that any open
+sub-buffer gets closed to become eligible.
+
+By default, the command waits for the memory reclaim operation to
+complete and displays the amount of reclaimed memory. Use the
+option:--no-wait option to exit immediately without waiting for
+completion.
+
+See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 
 include::common-lttng-cmd-options-head.txt[]
 
 
-TBD
-
-
 include::common-lttng-cmd-help-options.txt[]
+
+
+option:-a, option:--all::
+    Reclaim memory for all the user space channels of the targeted
+    session.
+
+option:--older-than='AGEUS'::
+    Only reclaim sub-buffers of which the age (µs) of the closing time
+    is greater than __AGEUS__{nbsp}µs instead of reclaiming the memory
+    of all eligible sub-buffers.
++
+The `ms`{nbsp}(milliseconds), `s`{nbsp}(seconds), `m`{nbsp}(minutes),
+and `h`{nbsp}(hours) suffixes are supported.
+
+option:--no-wait::
+    Do :not: wait for the memory reclaim operation to complete
+    before exiting.
+
+option:-s 'SESSION', option:--session='SESSION'::
+    Reclaim memory for channels of the recording
+    session named 'SESSION'.
+
+option:-u, option:--userspace::
+    Reclaim memory of a user space channel.
++
+As of LTTng{nbsp}{lttng_version}, this option is mandatory.
 
 
 include::common-lttng-cmd-after-options.txt[]
@@ -33,7 +111,31 @@ include::common-lttng-cmd-after-options.txt[]
 [[examples]]
 EXAMPLES
 --------
-TBD
+.Reclaim memory for all eligible sub-buffers of user space channel `my-channel` (current recording session).
+====
+[role="term"]
+----
+$ lttng reclaim-memory --userspace my-channel
+----
+====
+
+.Reclaim memory for sub-buffers older than 2{nbsp}s of user space channels `mon-canal` and `mein-Kanal` (current recording session).
+====
+[role="term"]
+----
+$ lttng reclaim-memory --userspace --older-than=2s \
+                       mon-canal mein-Kanal
+----
+====
+
+.Reclaim memory for all user space channels of the recording session named `my-session` without waiting for completion.
+====
+[role="term"]
+----
+$ lttng reclaim-memory --userspace --session=my-session \
+                       --no-wait --all
+----
+====
 
 
 include::common-footer.txt[]
@@ -42,5 +144,5 @@ include::common-footer.txt[]
 SEE ALSO
 --------
 man:lttng(1),
-man:lttng-concepts(7)
+man:lttng-concepts(7),
 man:lttng-enable-channel(1)
