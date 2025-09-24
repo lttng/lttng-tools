@@ -34,7 +34,7 @@ Create a user space channel:
       [option:--buffer-preallocation=(**preallocate** | **on-demand**)]
       [option:--subbuf-size='SIZE'] [option:--num-subbuf='COUNT']
       [option:--switch-timer='PERIODUS'] [option:--read-timer='PERIODUS']
-      [option:--monitor-timer='PERIODUS']
+      [option:--monitor-timer='PERIODUS'] [option:--watchdog-timer='PERIODUS']
       [option:--tracefile-size='SIZE' [option:--tracefile-count='COUNT']]
       [option:--session='SESSION'] 'CHANNEL'
 
@@ -453,6 +453,17 @@ option:--kernel and option:--buffer-ownership=`system` options:::
     +{default_kernel_channel_switch_timer}+
 `metadata` channel:::
     +{default_metadata_switch_timer}+
+
+option:--watchdog-timer='PERIODUS'::
+    Set the period of the watchdog timer of the channel to
+    __PERIODUS__{nbsp}µs.
++
+Set 'PERIODUS' to `0` to disable the watchdog timer.
++
+You may only use this option with the
+option:--userspace and option:--buffer-ownership=`user` options.
++
+Default value: +{default_ust_uid_channel_watchdog_timer}+.
 
 
 include::common-lttng-cmd-help-options.txt[]

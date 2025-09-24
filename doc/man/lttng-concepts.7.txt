@@ -606,7 +606,7 @@ section below.
 See the ``<<channel-max-trace-file-size-count,Maximum trace file size
 and count>>'' section below.
 
-* The periods of its read, switch, and monitor timers.
+* The periods of its read, switch, monitor, and watchdog timers.
 +
 See the ``<<channel-timers,Timers>>'' section below.
 
@@ -1089,6 +1089,26 @@ triggers.
 +
 Set the period of the monitor timer of a channel, or disable the timer
 altogether, with the nloption:--monitor-timer option of the
+man:lttng-enable-channel(1) command.
+
+Watchdog timer::
+    When this timer expires, LTTng performs health checks that detect
+    recoverable issues and trigger corrective actions to keep trace
+    recording running smoothly for the channel.
++
+As of LTTng{nbsp}{lttng_version}, the only health check
+is a sub-buffer stall detection: with a user space channel having a
+per-user ownership model (see the
+<<channel-buf-scheme,Buffering scheme>> section above),
+an instrumented application writing to a sub-buffer may crash and
+make said sub-buffer ``stalled'', that is, never released and
+unusable. This can reduce the effective capacity of the channel or
+even halt the consumption altogether. When the watchdog timer of
+a channel expires and LTTng detects this condition, it marks
+the stalled sub-buffer consumable/readable again.
++
+Set the period of the watchdog timer of a channel, or disable the timer
+altogether, with the nloption:--watchdog-timer option of the
 man:lttng-enable-channel(1) command.
 
 
