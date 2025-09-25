@@ -28,8 +28,6 @@ All tests work similarly by doing the following steps:
      a) Channels are created with the per-channel buffer-allocation for better
      reproducibility.
 
-     b) Channels must have a stall watchdog timer.
-
   3. Enable some events
 
   4. Start some producers that will generate the events.
@@ -41,8 +39,7 @@ All tests work similarly by doing the following steps:
   5. The session is destroyed.
 
      a) If sessiond failed to destroyed the session within time, the test
-     failed. For better reproducibility, the timeout should be twice the
-     maximum stall watchdog timer.
+     failed.
 
   6. The trace is read and compared against expected trace.
 
@@ -73,6 +70,7 @@ def run_simple_scenario(
         buffer_allocation_policy=lttngtest.BufferAllocationPolicy.PerChannel,
         subbuf_size=mmap.PAGESIZE,
         event_record_loss_mode=event_record_loss_mode,
+        watchdog_timer_period_us=0,
     )
 
     # 3.
