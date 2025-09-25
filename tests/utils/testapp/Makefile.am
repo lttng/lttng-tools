@@ -180,6 +180,7 @@ endif # TEST_SDT_UPROBE
 
 
 TEST_DEPS = gen-py-events.py
+EXTRA_DIST += gen-py-events.py
 
 all-local: libdynsym.strip-stamp
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
