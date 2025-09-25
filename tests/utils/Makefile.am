@@ -93,7 +93,10 @@ bt2_plugins_lttngtest_la_LIBADD = \
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
 		for script in $(EXTRA_DIST); do \
-			cp -f $(srcdir)/$$script $(builddir); \
+			if [ x"$$(dirname $$script)" != x"." ]; then \
+				mkdir -p $(builddir)/$$(dirname $$script); \
+			fi; \
+			cp -f $(srcdir)/$$script $(builddir)/$$script; \
 		done; \
 	fi
 
