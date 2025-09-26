@@ -135,7 +135,8 @@ TESTS += ust/high-throughput/test_high_throughput.py \
 # However, in practice, spurious failures can happen due to timeout of
 # sub-process invocations, typically on systems with heavy workload.
 SERIAL_TESTS += ust/stall-buffer/test_stall_buffer_complex.py \
-		ust/stall-buffer/test_stall_buffer_simple.py
+		ust/stall-buffer/test_stall_buffer_simple.py \
+		ust/stall-buffer/test_stall_buffer_timer.py
 
 
 if TEST_JAVA_JUL_AGENT
