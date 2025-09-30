@@ -108,7 +108,7 @@ void list_commands(struct cmd_struct *commands, FILE *ofp)
 }
 
 /*
- * list_cmd_options
+ * list_cmd_options (popt)
  *
  * Prints a simple list of the options available to a command. This is intended
  * to be easily parsed for bash completion.
@@ -670,10 +670,10 @@ end:
 
 namespace {
 template <typename FilterFunctionType>
-lttng::cli::session_list get_sessions(const FilterFunctionType& filter,
+lttng::ctl::session_list get_sessions(const FilterFunctionType& filter,
 				      bool return_first_match_only = false)
 {
-	lttng::cli::session_list list = []() {
+	lttng::ctl::session_list list = []() {
 		int list_ret;
 		struct lttng_session *psessions;
 
@@ -684,7 +684,7 @@ lttng::cli::session_list get_sessions(const FilterFunctionType& filter,
 					static_cast<lttng_error_code>(list_ret));
 		}
 
-		return lttng::cli::session_list(psessions, list_ret);
+		return lttng::ctl::session_list(psessions, list_ret);
 	}();
 
 	std::size_t write_to = 0;
@@ -700,17 +700,17 @@ lttng::cli::session_list get_sessions(const FilterFunctionType& filter,
 		++write_to;
 
 		if (return_first_match_only) {
-			return lttng::cli::session_list(std::move(list), 1);
+			return lttng::ctl::session_list(std::move(list), 1);
 		}
 	}
 
-	list.resize(write_to);
+	list.shrink(write_to);
 
 	return list;
 }
 } /* namespace */
 
-lttng::cli::session_list lttng::cli::list_sessions(const struct session_spec& spec)
+lttng::ctl::session_list lttng::cli::list_sessions(const struct session_spec& spec)
 {
 	switch (spec.type_) {
 	case lttng::cli::session_spec::type::NAME:
@@ -742,7 +742,7 @@ lttng::cli::session_list lttng::cli::list_sessions(const struct session_spec& sp
 		return get_sessions([](const lttng_session&) { return true; });
 	}
 
-	return lttng::cli::session_list();
+	return lttng::ctl::session_list();
 }
 
 void print_kernel_tracer_status_error()

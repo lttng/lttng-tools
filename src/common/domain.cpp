@@ -6,9 +6,11 @@
  */
 
 #include "common/config/config-session-abi.hpp"
-#include "common/macros.hpp"
 #include "lttng/domain-internal.hpp"
 #include "lttng/lttng-error.h"
+
+#include <common/domain.hpp>
+#include <common/exception.hpp>
 
 enum lttng_error_code lttng_domain_type_parse(const char *str, enum lttng_domain_type *domain_type)
 {
@@ -59,5 +61,27 @@ const char *lttng_domain_type_str(enum lttng_domain_type domain_type)
 		return "Python logging";
 	default:
 		return "???";
+	}
+}
+
+lttng::domain_class
+lttng::get_domain_class_from_lttng_domain_type(enum lttng_domain_type domain_type)
+{
+	switch (domain_type) {
+	case LTTNG_DOMAIN_KERNEL:
+		return lttng::domain_class::KERNEL_SPACE;
+	case LTTNG_DOMAIN_UST:
+		return lttng::domain_class::USER_SPACE;
+	case LTTNG_DOMAIN_JUL:
+		return lttng::domain_class::JAVA_UTIL_LOGGING;
+	case LTTNG_DOMAIN_LOG4J:
+		return lttng::domain_class::LOG4J;
+	case LTTNG_DOMAIN_PYTHON:
+		return lttng::domain_class::PYTHON_LOGGING;
+	case LTTNG_DOMAIN_LOG4J2:
+		return lttng::domain_class::LOG4J2;
+	default:
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+			"No suitable conversion exists from lttng_domain_type enum to lttng::domain_class");
 	}
 }

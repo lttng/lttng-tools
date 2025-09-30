@@ -273,7 +273,7 @@ cmd_error_code start_tracing(const lttng::cli::session_spec& spec)
 	bool had_error = false;
 	bool listing_failed = false;
 
-	const auto sessions = [&listing_failed, &spec]() -> lttng::cli::session_list {
+	const auto sessions = [&listing_failed, &spec]() -> lttng::ctl::session_list {
 		try {
 			return list_sessions(spec);
 		} catch (const lttng::ctl::error& ctl_exception) {

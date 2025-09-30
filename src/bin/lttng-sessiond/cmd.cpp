@@ -134,7 +134,7 @@ static int cmd_enable_event_internal(ltt_session::locked_ref& session,
 				     struct lttng_bytecode *filter,
 				     struct lttng_event_exclusion *exclusion,
 				     int wpipe,
-				     lttng::event_rule_uptr event_rule);
+				     lttng::ctl::event_rule_uptr event_rule);
 static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref& session,
 							 const struct lttng_domain *domain,
 							 const struct lttng_channel& channel_attr,
@@ -1236,7 +1236,7 @@ int cmd_disable_channel(const ltt_session::locked_ref& session,
 			char *channel_name)
 {
 	ls::domain& target_domain =
-		session->get_domain(ls::get_domain_class_from_lttng_domain_type(domain));
+		session->get_domain(lttng::get_domain_class_from_lttng_domain_type(domain));
 
 	/* Throws if not found. */
 	auto& channel_config = target_domain.get_channel(channel_name);
@@ -1684,7 +1684,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 	}();
 
 	auto allocation_policy = [&channel_attr, &domain]() {
-		switch (ls::get_domain_class_from_lttng_domain_type(domain->type)) {
+		switch (lttng::get_domain_class_from_lttng_domain_type(domain->type)) {
 		case lttng::domain_class::KERNEL_SPACE:
 			return ls::recording_channel_configuration::buffer_allocation_policy_t::
 				PER_CPU;
@@ -1718,7 +1718,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 			lttng_channel_get_preallocation_policy(&channel_attr, &policy);
 		LTTNG_ASSERT(get_preallocation_policy_ret == LTTNG_OK);
 
-		switch (ls::get_domain_class_from_lttng_domain_type(domain->type)) {
+		switch (lttng::get_domain_class_from_lttng_domain_type(domain->type)) {
 		case lttng::domain_class::KERNEL_SPACE:
 			if (policy != LTTNG_CHANNEL_PREALLOCATION_POLICY_PREALLOCATE) {
 				LTTNG_THROW_UNSUPPORTED_ERROR(
@@ -1747,7 +1747,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 	}();
 
 	ls::domain& target_domain =
-		session->get_domain(ls::get_domain_class_from_lttng_domain_type(domain->type));
+		session->get_domain(lttng::get_domain_class_from_lttng_domain_type(domain->type));
 
 	/* Extract all channel properties needed to initialize the channel. */
 	auto name = std::string(channel_attr.name[0] ? channel_attr.name : DEFAULT_CHANNEL_NAME);
@@ -2112,7 +2112,7 @@ lttng_error_code cmd_disable_event(struct command_ctx *cmd_ctx,
 				   char *raw_filter_expression,
 				   struct lttng_bytecode *raw_bytecode,
 				   struct lttng_event_exclusion *raw_exclusion,
-				   lttng::event_rule_uptr event_rule)
+				   lttng::ctl::event_rule_uptr event_rule)
 {
 	int ret;
 	const ltt_session& session = *locked_session;
@@ -2297,7 +2297,7 @@ lttng_error_code cmd_disable_event(struct command_ctx *cmd_ctx,
 	}
 
 	for (const auto& pair :
-	     session.get_domain(ls::get_domain_class_from_lttng_domain_type(domain))
+	     session.get_domain(lttng::get_domain_class_from_lttng_domain_type(domain))
 		     .get_channel(channel_name)
 		     .event_rules) {
 		auto& event_rule_cfg = *pair.second;
@@ -2474,10 +2474,10 @@ end:
 }
 
 namespace {
-lttng::event_rule_uptr create_agent_internal_event_rule(lttng_domain_type agent_domain,
-							lttng::c_string_view filter_expression)
+lttng::ctl::event_rule_uptr create_agent_internal_event_rule(lttng_domain_type agent_domain,
+							     lttng::c_string_view filter_expression)
 {
-	lttng::event_rule_uptr event_rule(lttng_event_rule_user_tracepoint_create());
+	lttng::ctl::event_rule_uptr event_rule(lttng_event_rule_user_tracepoint_create());
 
 	if (!event_rule) {
 		LTTNG_THROW_POSIX("Failed to allocate agent internal user space tracer event rule",
@@ -2521,7 +2521,7 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 					  struct lttng_event_exclusion *raw_exclusion,
 					  int wpipe,
 					  bool internal_event,
-					  lttng::event_rule_uptr event_rule)
+					  lttng::ctl::event_rule_uptr event_rule)
 {
 	auto filter_expression =
 		lttng::make_unique_wrapper<char, lttng::memory::free>(raw_filter_expression);
@@ -2778,7 +2778,7 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 		struct lttng_domain tmp_dom;
 		struct ltt_ust_session *usess = session.ust_session;
 
-		lttng::event_rule_uptr internal_event_rule =
+		lttng::ctl::event_rule_uptr internal_event_rule =
 			create_agent_internal_event_rule(domain->type, filter_expression.get());
 
 		LTTNG_ASSERT(usess);
@@ -2898,7 +2898,7 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 	}
 
 	auto& channel_cfg =
-		session.get_domain(ls::get_domain_class_from_lttng_domain_type(domain->type))
+		session.get_domain(lttng::get_domain_class_from_lttng_domain_type(domain->type))
 			.get_channel(user_visible_channel_name);
 	try {
 		channel_cfg.get_event_rule_configuration(*event_rule).enable();
@@ -2921,7 +2921,7 @@ int cmd_enable_event(struct command_ctx *cmd_ctx,
 		     struct lttng_event_exclusion *exclusion,
 		     struct lttng_bytecode *bytecode,
 		     int wpipe,
-		     lttng::event_rule_uptr event_rule)
+		     lttng::ctl::event_rule_uptr event_rule)
 {
 	int ret;
 	/*
@@ -2966,7 +2966,7 @@ static int cmd_enable_event_internal(ltt_session::locked_ref& locked_session,
 				     struct lttng_bytecode *filter,
 				     struct lttng_event_exclusion *exclusion,
 				     int wpipe,
-				     lttng::event_rule_uptr event_rule)
+				     lttng::ctl::event_rule_uptr event_rule)
 {
 	return _cmd_enable_event(locked_session,
 				 domain,

@@ -155,9 +155,6 @@ private:
 
 	channels_t channels;
 };
-
-domain_class get_domain_class_from_lttng_domain_type(enum lttng_domain_type domain_type);
-
 } /* namespace sessiond */
 } /* namespace lttng */
 

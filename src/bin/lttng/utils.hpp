@@ -9,6 +9,7 @@
 #define _LTTNG_UTILS_H
 
 #include <common/container-wrapper.hpp>
+#include <common/ctl/memory.hpp>
 #include <common/dynamic-array.hpp>
 #include <common/make-unique-wrapper.hpp>
 
@@ -48,104 +49,7 @@ struct session_spec {
 	const char *value;
 };
 
-class session_list;
-
-namespace details {
-class session_storage {
-public:
-	session_storage(lttng_session *raw_sessions, std::size_t sessions_count) :
-		_array(raw_sessions), _count(sessions_count)
-	{
-	}
-
-	session_storage(session_storage&& original) noexcept :
-		_array(std::move(original._array)), _count(original._count)
-	{
-	}
-
-	session_storage(session_storage&& original, std::size_t new_count) :
-		_array(std::move(original._array)), _count(new_count)
-	{
-	}
-
-	session_storage(session_storage&) = delete;
-	session_storage& operator=(const session_storage& other) = delete;
-	session_storage& operator=(session_storage&& other) = delete;
-	~session_storage() = default;
-
-	lttng_session_uptr _array = nullptr;
-	std::size_t _count = 0;
-};
-
-class session_list_operations {
-public:
-	static lttng_session& get(const lttng::cli::details::session_storage& storage,
-				  std::size_t index) noexcept
-	{
-		return storage._array[index];
-	}
-
-	static std::size_t size(const lttng::cli::details::session_storage& storage)
-	{
-		return storage._count;
-	}
-};
-} /* namespace details */
-
-/*
- * We don't use a std::vector here because it would make a copy of the C array.
- */
-class session_list
-	: public lttng::utils::random_access_container_wrapper<details::session_storage,
-							       lttng_session&,
-							       details::session_list_operations> {
-public:
-	friend details::session_list_operations;
-
-	session_list() :
-		lttng::utils::random_access_container_wrapper<details::session_storage,
-							      lttng_session&,
-							      details::session_list_operations>(
-			{ nullptr, 0 })
-	{
-	}
-
-	session_list(session_list&& original) noexcept :
-		lttng::utils::random_access_container_wrapper<details::session_storage,
-							      lttng_session&,
-							      details::session_list_operations>(
-			std::move(original._container))
-	{
-	}
-
-	session_list(session_list&& original, std::size_t new_count) :
-		lttng::utils::random_access_container_wrapper<details::session_storage,
-							      lttng_session&,
-							      details::session_list_operations>(
-			{ std::move(original._container), new_count })
-	{
-	}
-
-	session_list(lttng_session *raw_sessions, std::size_t raw_sessions_count) :
-		lttng::utils::random_access_container_wrapper<details::session_storage,
-							      lttng_session&,
-							      details::session_list_operations>(
-			{ raw_sessions, raw_sessions_count })
-	{
-	}
-
-	session_list(session_list&) = delete;
-	session_list& operator=(const session_list& other) = delete;
-	session_list& operator=(session_list&& other) = delete;
-	~session_list() = default;
-
-	void resize(std::size_t new_size) noexcept
-	{
-		_container._count = new_size;
-	}
-};
-
-lttng::cli::session_list list_sessions(const struct session_spec& spec);
+lttng::ctl::session_list list_sessions(const struct session_spec& spec);
 } /* namespace cli */
 } /* namespace lttng */
 

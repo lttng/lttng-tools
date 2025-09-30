@@ -93,7 +93,7 @@ lttng_error_code cmd_disable_event(struct command_ctx *cmd_ctx,
 				   char *filter_expression,
 				   struct lttng_bytecode *filter,
 				   struct lttng_event_exclusion *exclusion,
-				   lttng::event_rule_uptr event_rule);
+				   lttng::ctl::event_rule_uptr event_rule);
 int cmd_add_context(struct command_ctx *cmd_ctx,
 		    ltt_session::locked_ref& locked_session,
 		    const struct lttng_event_context *event_context,
@@ -110,7 +110,7 @@ int cmd_enable_event(struct command_ctx *cmd_ctx,
 		     struct lttng_event_exclusion *exclusion,
 		     struct lttng_bytecode *bytecode,
 		     int wpipe,
-		     lttng::event_rule_uptr event_rule);
+		     lttng::ctl::event_rule_uptr event_rule);
 
 /* Trace session action commands */
 int cmd_start_trace(const ltt_session::locked_ref& session);

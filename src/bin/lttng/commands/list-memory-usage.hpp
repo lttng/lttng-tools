@@ -46,7 +46,7 @@ public:
 	const std::uint64_t total_memory_usage;
 
 private:
-	data_stream_info_sets_cuptr _ds_info_sets;
+	lttng::ctl::data_stream_info_sets_cuptr _ds_info_sets;
 };
 
 /*

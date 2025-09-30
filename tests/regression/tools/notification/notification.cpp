@@ -1271,10 +1271,10 @@ end:
 
 struct notification_reception_result {
 	lttng_notification_channel_status status;
-	lttng::notification_uptr notification;
+	lttng::ctl::notification_uptr notification;
 };
 
-lttng::notification_uptr
+lttng::ctl::notification_uptr
 get_next_notification_skip_type(lttng_notification_channel *notification_channel,
 				const lttng_condition_type ignored_condition_type)
 {
@@ -1285,7 +1285,7 @@ get_next_notification_skip_type(lttng_notification_channel *notification_channel
 				notification_channel, &raw_notification);
 
 			return notification_reception_result{
-				status, lttng::notification_uptr(raw_notification)
+				status, lttng::ctl::notification_uptr(raw_notification)
 			};
 		}();
 
@@ -1322,7 +1322,7 @@ void test_buffer_usage_notification_channel(const char *session_name,
 	struct lttng_trigger *high_trigger = nullptr;
 	struct lttng_condition *low_condition = nullptr;
 	struct lttng_condition *high_condition = nullptr;
-	lttng::notification_uptr notification;
+	lttng::ctl::notification_uptr notification;
 	const double low_ratio = 0.0;
 	const double high_ratio = 0.90;
 

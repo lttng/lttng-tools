@@ -10,6 +10,8 @@
 
 #include <common/format.hpp>
 
+#include <lttng/lttng.h>
+
 namespace lttng {
 
 enum class domain_class {
@@ -20,6 +22,8 @@ enum class domain_class {
 	JAVA_UTIL_LOGGING,
 	PYTHON_LOGGING,
 };
+
+domain_class get_domain_class_from_lttng_domain_type(lttng_domain_type domain_type);
 } /* namespace lttng */
 
 /*

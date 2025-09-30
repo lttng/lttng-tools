@@ -853,7 +853,7 @@ enum lttng_error_code receive_lttng_event(struct command_ctx *cmd_ctx,
 					  char **out_filter_expression,
 					  struct lttng_bytecode **out_bytecode,
 					  struct lttng_event_exclusion **out_exclusion,
-					  lttng::event_rule_uptr& event_rule)
+					  lttng::ctl::event_rule_uptr& event_rule)
 {
 	int ret;
 	size_t event_len;
@@ -1828,7 +1828,7 @@ skip_domain:
 		char *filter_expression;
 		struct lttng_event_exclusion *exclusions;
 		struct lttng_bytecode *bytecode;
-		lttng::event_rule_uptr event_rule;
+		lttng::ctl::event_rule_uptr event_rule;
 		const enum lttng_error_code ret_code = receive_lttng_event(cmd_ctx,
 									   *sock,
 									   sock_error,
@@ -2371,8 +2371,8 @@ skip_domain:
 			LTTNG_THROW_INVALID_ARGUMENT_ERROR("Channel name is not null-terminated");
 		}
 
-		const auto domain = lttng::sessiond::get_domain_class_from_lttng_domain_type(
-			cmd_ctx->lsm.domain.type);
+		const auto domain =
+			lttng::get_domain_class_from_lttng_domain_type(cmd_ctx->lsm.domain.type);
 		const auto older_than_us = cmd_ctx->lsm.u.reclaim_channel_memory.older_than_us;
 
 		const auto reclaim_older_than = older_than_us > 0 ?
@@ -2423,8 +2423,8 @@ skip_domain:
 			LTTNG_THROW_INVALID_ARGUMENT_ERROR("Channel name is not null-terminated");
 		}
 
-		const auto domain = lttng::sessiond::get_domain_class_from_lttng_domain_type(
-			cmd_ctx->lsm.domain.type);
+		const auto domain =
+			lttng::get_domain_class_from_lttng_domain_type(cmd_ctx->lsm.domain.type);
 
 		const auto results = lttng::sessiond::commands::get_channel_memory_usage(
 			*target_session, domain, lttng::c_string_view(channel_name));

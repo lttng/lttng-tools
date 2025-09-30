@@ -265,7 +265,7 @@ cmd_error_code destroy_sessions(const lttng::cli::session_spec& spec)
 	bool had_error = false;
 	bool listing_failed = false;
 
-	const auto sessions = [&listing_failed, &spec]() -> lttng::cli::session_list {
+	const auto sessions = [&listing_failed, &spec]() -> lttng::ctl::session_list {
 		try {
 			return list_sessions(spec);
 		} catch (const lttng::ctl::error& ctl_exception) {
@@ -349,7 +349,7 @@ int cmd_destroy(int argc, const char **argv)
 	static poptContext pc;
 	const char *leftover = nullptr;
 	lttng::cli::session_spec spec(lttng::cli::session_spec::type::NAME);
-	const lttng::cli::session_list sessions;
+	const lttng::ctl::session_list sessions;
 
 	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);

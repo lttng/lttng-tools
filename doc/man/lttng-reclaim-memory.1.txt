@@ -1,0 +1,46 @@
+lttng-reclaim-memory(1)
+=======================
+:revdate: 11 July 2025
+
+
+NAME
+----
+lttng-reclaim-memory - Reclaim unused channel memory immediately
+
+
+SYNOPSIS
+--------
+TBD
+
+
+DESCRIPTION
+-----------
+TBD
+
+
+include::common-lttng-cmd-options-head.txt[]
+
+
+TBD
+
+
+include::common-lttng-cmd-help-options.txt[]
+
+
+include::common-lttng-cmd-after-options.txt[]
+
+
+[[examples]]
+EXAMPLES
+--------
+TBD
+
+
+include::common-footer.txt[]
+
+
+SEE ALSO
+--------
+man:lttng(1),
+man:lttng-concepts(7)
+man:lttng-enable-channel(1)

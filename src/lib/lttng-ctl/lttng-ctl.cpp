@@ -1175,7 +1175,7 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 		}
 	}
 
-	lttng::event_rule_uptr event_rule;
+	lttng::ctl::event_rule_uptr event_rule;
 	try {
 		event_rule = lttng::ctl::create_event_rule_from_lttng_event(
 			*ev,
@@ -1349,7 +1349,7 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 	}
 
 	const std::vector<lttng::c_string_view> exclusions_vec;
-	lttng::event_rule_uptr event_rule;
+	lttng::ctl::event_rule_uptr event_rule;
 	if (ev->type != LTTNG_EVENT_ALL) {
 		try {
 			event_rule = lttng::ctl::create_event_rule_from_lttng_event(

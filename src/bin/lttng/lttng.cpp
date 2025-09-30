@@ -5,6 +5,8 @@
  *
  */
 
+#include "bin/lttng/exception.hpp"
+#include "common/exception.hpp"
 #define _LGPL_SOURCE
 #include "command.hpp"
 #include "version.hpp"
@@ -14,6 +16,8 @@
 #include <common/utils.hpp>
 
 #include <lttng/lttng.h>
+
+#include <vendor/argpar/argpar.hpp>
 
 #include <ctype.h>
 #include <getopt.h>
@@ -77,6 +81,7 @@ static struct cmd_struct commands[] = {
 	{ "list-triggers", cmd_list_triggers },
 	{ "load", cmd_load },
 	{ "metadata", cmd_metadata },
+	{ "reclaim-memory", cmd_reclaim_memory },
 	{ "regenerate", cmd_regenerate },
 	{ "remove-trigger", cmd_remove_trigger },
 	{ "rotate", cmd_rotate },
@@ -116,7 +121,7 @@ static int mi_output_type(const char *output_type)
 		ret = LTTNG_MI_XML;
 	} else {
 		/* Invalid output format */
-		ERR("MI output format not supported");
+		ERR_FMT("`{}` MI output format is not supported", output_type);
 		ret = -LTTNG_ERR_MI_OUTPUT_TYPE;
 	}
 
@@ -178,7 +183,7 @@ static int handle_command(int argc, char **argv)
 		if (strcmp(argv[0], cmd->name) == 0) {
 			try {
 				ret = cmd->func(argc, (const char **) argv);
-			} catch (const std::exception& e) {
+			} catch (const lttng::runtime_error& e) {
 				ERR_FMT("{}", e.what());
 				ret = CMD_ERROR;
 			}
@@ -233,6 +238,7 @@ static void show_basic_help()
 	puts("  add-context       " CONFIG_CMD_DESCR_ADD_CONTEXT);
 	puts("  disable-channel   " CONFIG_CMD_DESCR_DISABLE_CHANNEL);
 	puts("  enable-channel    " CONFIG_CMD_DESCR_ENABLE_CHANNEL);
+	puts("  reclaim-memory    " CONFIG_CMD_DESCR_RECLAIM_MEMORY);
 	puts("");
 	puts("Recording event rules:");
 	puts("  disable-event     " CONFIG_CMD_DESCR_DISABLE_EVENT);

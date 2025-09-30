@@ -10,7 +10,7 @@
 namespace ls = lttng::sessiond;
 
 ls::event_rule_configuration::event_rule_configuration(bool is_enabled_,
-						       lttng::event_rule_uptr&& event_rule_) :
+						       lttng::ctl::event_rule_uptr&& event_rule_) :
 	is_enabled(is_enabled_), event_rule(std::move(event_rule_))
 {
 }

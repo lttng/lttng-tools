@@ -27,7 +27,7 @@ class event_rule_configuration final {
 public:
 	using uptr = std::unique_ptr<event_rule_configuration>;
 
-	event_rule_configuration(bool is_enabled, lttng::event_rule_uptr&& event_rule);
+	event_rule_configuration(bool is_enabled, lttng::ctl::event_rule_uptr&& event_rule);
 
 	~event_rule_configuration() = default;
 	event_rule_configuration(event_rule_configuration&&) = delete;
@@ -48,7 +48,7 @@ public:
 	void set_enabled(bool enable) noexcept;
 
 	bool is_enabled;
-	const lttng::event_rule_uptr event_rule;
+	const lttng::ctl::event_rule_uptr event_rule;
 };
 
 } /* namespace sessiond */

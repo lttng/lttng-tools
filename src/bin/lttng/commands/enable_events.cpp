@@ -41,16 +41,7 @@
 #endif
 
 namespace {
-void _mi_lttng_writer_deleter_func(mi_writer *writer)
-{
-	if (writer && mi_lttng_writer_destroy(writer)) {
-		LTTNG_THROW_ERROR("Failed to destroy mi_writer instance");
-	}
-}
 
-using mi_writer_uptr = std::unique_ptr<
-	mi_writer,
-	lttng::memory::create_deleter_class<mi_writer, _mi_lttng_writer_deleter_func>::deleter>;
 using event_rule_patterns = std::vector<std::string>;
 
 int opt_event_type;

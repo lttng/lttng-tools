@@ -25,8 +25,4 @@ struct lttng_session_extended {
 	} LTTNG_PACKED shm_path;
 } LTTNG_PACKED;
 
-using lttng_session_uptr = std::unique_ptr<
-	lttng_session[],
-	lttng::memory::create_deleter_class<lttng_session, lttng::memory::free>::deleter>;
-
 #endif /* LTTNG_SESSION_INTERNAL_H */

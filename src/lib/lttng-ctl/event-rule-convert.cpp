@@ -58,13 +58,13 @@ template <EventRuleCreateFunctionType EventRuleCreateFunction,
 	  EventRuleSetNamePatternFunctionType EventRuleSetNamePatternFunction,
 	  EventRuleSetLogLevelRuleFunctionType EventRuleSetLogLevelRuleFunction,
 	  EventRuleSetFilterExpressionFunctionType EventRuleSetFilterExpressionFunction>
-lttng::event_rule_uptr create_user_or_agent_event_rule_from_lttng_event(
+lttng::ctl::event_rule_uptr create_user_or_agent_event_rule_from_lttng_event(
 	const lttng_event& event,
 	lttng_domain_type domain,
 	const log_level_rule_uptr& log_level_rule,
 	nonstd::optional<lttng::c_string_view> filter_expression)
 {
-	lttng::event_rule_uptr rule{ EventRuleCreateFunction() };
+	lttng::ctl::event_rule_uptr rule{ EventRuleCreateFunction() };
 
 	if (!rule) {
 		LTTNG_THROW_ERROR(fmt::format("Failed to allocate event rule: domain={}", domain));
@@ -108,11 +108,11 @@ lttng::event_rule_uptr create_user_or_agent_event_rule_from_lttng_event(
 	return rule;
 }
 
-lttng::event_rule_uptr
+lttng::ctl::event_rule_uptr
 create_kernel_event_rule_from_lttng_event(const lttng_event& event,
 					  nonstd::optional<lttng::c_string_view> filter_expression)
 {
-	lttng::event_rule_uptr rule;
+	lttng::ctl::event_rule_uptr rule;
 
 	switch (event.type) {
 	case LTTNG_EVENT_ALL:
@@ -150,7 +150,7 @@ create_kernel_event_rule_from_lttng_event(const lttng_event& event,
 	case LTTNG_EVENT_PROBE:
 	case LTTNG_EVENT_FUNCTION:
 	{
-		lttng::kernel_location_uptr location;
+		lttng::ctl::kernel_location_uptr location;
 
 		if (event.attr.probe.symbol_name[0]) {
 			/* Specified by name. */
@@ -244,13 +244,13 @@ create_kernel_event_rule_from_lttng_event(const lttng_event& event,
 }
 } /* namespace */
 
-lttng::event_rule_uptr lttng::ctl::create_event_rule_from_lttng_event(
+lttng::ctl::event_rule_uptr lttng::ctl::create_event_rule_from_lttng_event(
 	const lttng_event& event,
 	lttng_domain_type domain,
 	const nonstd::optional<lttng::c_string_view>& filter_expression,
 	const std::vector<lttng::c_string_view>& exclusions)
 {
-	lttng::event_rule_uptr rule;
+	lttng::ctl::event_rule_uptr rule;
 	const auto log_level_rule = [&event, domain]() {
 		switch (domain) {
 		case LTTNG_DOMAIN_UST:

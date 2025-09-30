@@ -11,10 +11,12 @@
 
 #include <common/config/session-config.hpp>
 #include <common/error.hpp>
+#include <common/exception.hpp>
 #include <common/macros.hpp>
 
 #include <lttng/lttng.h>
 
+#include <memory>
 #include <stdint.h>
 
 /* Don't want to reference snapshot-internal.h here */
@@ -1106,5 +1108,19 @@ int mi_lttng_rotate(struct mi_writer *writer,
 		    const char *session_name,
 		    enum lttng_rotation_state rotation_state,
 		    const struct lttng_trace_archive_location *location);
+
+namespace details {
+static inline void _mi_lttng_writer_deleter_func(mi_writer *writer)
+{
+	if (writer && mi_lttng_writer_destroy(writer)) {
+		LTTNG_THROW_ERROR("Failed to destroy mi_writer instance");
+	}
+}
+} /* namespace details */
+
+using mi_writer_uptr = std::unique_ptr<
+	mi_writer,
+	lttng::memory::create_deleter_class<mi_writer,
+					    details::_mi_lttng_writer_deleter_func>::deleter>;
 
 #endif /* _MI_LTTNG_H */

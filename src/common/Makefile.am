@@ -54,6 +54,7 @@ libcommon_lgpl_la_SOURCES = \
 	binary-view.hpp \
 	buffer-view.hpp buffer-view.cpp \
 	channel.cpp \
+	ctl/domain.cpp ctl/domain.hpp \
 	ctl/format.hpp \
 	ctl/memory.hpp \
 	compiler.hpp \

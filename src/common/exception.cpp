@@ -9,6 +9,8 @@
 
 #include <common/error.hpp>
 
+#include <lttng/lttng-error.h>
+
 lttng::ctl::error::error(const std::string& msg,
 			 lttng_error_code error_code,
 			 const lttng::source_location& location) :

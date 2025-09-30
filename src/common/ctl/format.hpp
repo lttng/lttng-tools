@@ -216,27 +216,51 @@ struct formatter<lttng_condition_status> : formatter<std::string> {
 	typename FormatContextType::iterator format(lttng_condition_status status,
 						    FormatContextType& ctx) const
 	{
-		const char *name = "unknown";
+		const char *name = "Unknown";
 		switch (status) {
 		case LTTNG_CONDITION_STATUS_OK:
-			name = "ok";
+			name = "Ok";
 			break;
 		case LTTNG_CONDITION_STATUS_ERROR:
-			name = "error";
+			name = "Generic error";
 			break;
 		case LTTNG_CONDITION_STATUS_UNKNOWN:
-			name = "unknown error";
+			name = "Unknown error";
 			break;
 		case LTTNG_CONDITION_STATUS_INVALID:
-			name = "invalid parameter";
+			name = "Invalid parameter";
 			break;
 		case LTTNG_CONDITION_STATUS_UNSET:
-			name = "unset";
+			name = "Unset";
 			break;
 		case LTTNG_CONDITION_STATUS_UNSUPPORTED:
-			name = "unsupported";
+			name = "Unsupported";
 			break;
 		}
+		return format_to(ctx.out(), name);
+	}
+};
+
+template <>
+struct formatter<lttng_reclaim_channel_memory_status> : formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator format(lttng_reclaim_channel_memory_status status,
+						    FormatContextType& ctx) const
+	{
+		const char *name = "Unknown";
+
+		switch (status) {
+		case LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_OK:
+			name = "Success";
+			break;
+		case LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_ERROR:
+			name = "Generic error";
+			break;
+		case LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_INVALID_PARAMETER:
+			name = "Invalid parameter";
+			break;
+		}
+
 		return format_to(ctx.out(), name);
 	}
 };

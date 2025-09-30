@@ -743,6 +743,20 @@ SPDX-License-Identifier: MIT
 		</xs:sequence>
 	</xs:complexType>
 
+	<!-- Maps to channel information for reclaim-memory command -->
+	<xs:complexType name="reclaim_channel_type">
+		<xs:all>
+			<xs:element name="name" type="tns:name_type" />
+			<xs:element name="reclaimed_bytes" type="tns:uint64_type" />
+		</xs:all>
+	</xs:complexType>
+
+	<xs:complexType name="reclaim_channels_type">
+		<xs:sequence>
+			<xs:element name="channel" type="tns:reclaim_channel_type" minOccurs="0" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+
 	<!-- Maps to a lttng_session -->
 	<xs:complexType name="session_type">
 		<xs:all>
@@ -1379,6 +1393,7 @@ SPDX-License-Identifier: MIT
 			<xs:element name="load" type="tns:load_type" minOccurs="0" />
 			<xs:element name="metadata_action" type="tns:metadata_cmd_type" minOccurs="0" />
 			<xs:element name="process_attr_trackers" type="tns:process_attr_trackers_type" minOccurs="0" />
+			<xs:element name="reclaim_channels" type="tns:reclaim_channels_type" minOccurs="0" />
 			<xs:element name="regenerate_action" type="tns:regenerate_cmd_type" minOccurs="0" />
 			<xs:element name="rotation" type="tns:rotate_type" minOccurs="0" />
 			<xs:element name="rotation_schedule_results" type="tns:rotation_schedule_cmd_type" minOccurs="0" />
@@ -1412,6 +1427,7 @@ SPDX-License-Identifier: MIT
 			<xs:enumeration value="list-trigger" />
 			<xs:enumeration value="load" />
 			<xs:enumeration value="metadata" />
+			<xs:enumeration value="reclaim-memory" />
 			<xs:enumeration value="regenerate" />
 			<xs:enumeration value="remove-trigger" />
 			<xs:enumeration value="rotate" />

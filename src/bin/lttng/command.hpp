@@ -9,6 +9,7 @@
 #define _LTTNG_CMD_H
 
 #include "conf.hpp"
+#include "exception.hpp"
 #include "utils.hpp"
 
 #include <common/common.hpp>
@@ -34,6 +35,15 @@
 			SHOW_HELP_ERROR_LINE                 \
 			ret = CMD_ERROR;                     \
 		}                                            \
+	} while (0)
+
+#define SHOW_HELP_THROW(cmd_name)                                                       \
+	do {                                                                            \
+		const auto _show_cmd_help_ret = show_cmd_help(cmd_name, HELP_MSG_NAME); \
+                                                                                        \
+		if (_show_cmd_help_ret) {                                               \
+			LTTNG_THROW_CLI_SHOW_HELP_FAIL(cmd_name);                       \
+		}                                                                       \
 	} while (0)
 
 enum cmd_error_code {
@@ -80,6 +90,7 @@ DECL_COMMAND(clear);
 DECL_COMMAND(add_trigger);
 DECL_COMMAND(list_triggers);
 DECL_COMMAND(remove_trigger);
+DECL_COMMAND(reclaim_memory);
 
 extern int cmd_help(int argc, const char **argv, const struct cmd_struct commands[]);
 
