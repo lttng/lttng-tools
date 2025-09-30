@@ -138,10 +138,6 @@ class StallScenario:
                     "set debug-file-directory {}".format(gdb_debug_directory)
                 )
 
-            # Handle scenarios that might be impossible
-            if self.might_be_impossible:
-                gdb_commands.append("break exit")
-
             # Add inferiors to match number of applications
             for k in range(len(applications) - 1):
                 gdb_commands.append("add-inferior")
@@ -176,6 +172,15 @@ class StallScenario:
                         "python break_testpoint('lttng_ust_testpoint_{}')".format(
                             testpoint
                         ),
+                    ]
+                )
+
+                # Handle scenarios that might be impossible
+                if self.might_be_impossible:
+                    gdb_commands.append("break exit")
+
+                gdb_commands.extend(
+                    [
                         "continue",
                         "delete",
                     ]
