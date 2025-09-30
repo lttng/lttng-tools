@@ -1562,22 +1562,46 @@ std::vector<int> list_open_fds()
 				  errno);
 	}
 
+	const auto dir_fd = dirfd(self_fd_handle.get());
+	if (dir_fd < 0) {
+		LTTNG_THROW_POSIX(fmt::format("Failed to get directory file descriptor: path=`{}`",
+					      proc_self_fd),
+				  errno);
+	}
+
 	struct dirent *entry = nullptr;
 	while ((entry = readdir(self_fd_handle.get())) != nullptr) {
 		errno = 0;
 		char *end_ptr = nullptr;
-		const auto fd = strtol(entry->d_name, &end_ptr, 10);
+		const auto fd = static_cast<int>(strtol(entry->d_name, &end_ptr, 10));
+
+		/*
+		 * Skip '.' and '..'.
+		 *
+		 * Not all file systems support setting entry->d_type, and to filter out
+		 * directories systematically an additional lstat() call would be required
+		 * for each entry.
+		 */
+		if (entry->d_name[0] == '.') {
+			continue;
+		}
 
 		/*
 		 * Since strtol() _may_ set errno to EINVAL when no conversion is performed,
 		 * the both errno and the value of end_ptr are checked to determine
 		 * if conversion was successful.
 		 */
-		if (errno || end_ptr != nullptr) {
+		if (errno || (end_ptr != nullptr && *end_ptr != '\0')) {
 			errno = errno ? errno : EINVAL;
 			PWARN_FMT(
-				"Failed to convert file name to file descriptor when enumerating open files: file_name=`{}`",
-				entry->d_name);
+				"Failed to convert file name to file descriptor when enumerating open files: file_name=`{}`, end_ptr=`{}`",
+				entry->d_name,
+				end_ptr);
+			continue;
+		}
+
+		if (fd == dir_fd) {
+			/* Skip the directory file descriptor we are iterating on. */
 			continue;
 		}
 
@@ -1588,7 +1612,7 @@ std::vector<int> list_open_fds()
 			continue;
 		}
 
-		results.push_back(static_cast<int>(fd));
+		results.push_back(fd);
 	}
 
 	return results;
