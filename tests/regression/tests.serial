@@ -141,9 +141,14 @@ def run_test(test_script):
     stdout = ""
     logging.info("Starting test '{}'".format(test_script))
 
+    test_env = os.environ.copy()
+
+    # Add the current test script to the environment, this helps to identify
+    # the source of stray processes
+    test_env["LTTNG_CURRENT_TEST"] = str(test_script)
+
     # Support logd from the modified tap driver
     current_test_log_dir = os.environ.get("LTTNG_TEST_LOG_DIR", None)
-    test_env = os.environ.copy()
     test_log = pathlib.Path("{}.log".format(test_script))
     test_log_dir = None
     if current_test_log_dir:

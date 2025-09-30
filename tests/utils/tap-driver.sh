@@ -122,6 +122,10 @@ fi
 
 TIME_SCRIPT="$(realpath -e -- "$(dirname "$0")")/tap/clock"
 
+# Add the current test script to the environment, this helps to identify the
+# source of stray processes.
+export LTTNG_CURRENT_TEST="$test_name"
+
 # :; is there to work around a bug in bash 3.2 (and earlier) which
 # does not always set '$?' properly on redirection failure.
 # See the Autoconf manual for more details.
