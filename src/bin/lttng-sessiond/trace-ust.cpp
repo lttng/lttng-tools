@@ -359,7 +359,7 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	const auto extended =
 		static_cast<const struct lttng_channel_extended *>(chan->attr.extended.ptr);
 	const auto allocation_policy =
-			static_cast<enum lttng_channel_allocation_policy>(extended->allocation_policy);
+		static_cast<enum lttng_channel_allocation_policy>(extended->allocation_policy);
 
 	luc->domain = domain;
 
