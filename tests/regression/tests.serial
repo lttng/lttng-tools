@@ -196,7 +196,15 @@ def run_test(test_script):
                             time.time() - last_output, test_script
                         )
                     )
-                    current_test_process.kill()
+                    try:
+                        current_test_process.terminate()
+                        current_test_process.wait(timeout=10)
+                    except subprocess.TimeoutExpired:
+                        logging.warning(
+                            "Test process did not terminate before timeout, sending SIGKILL"
+                        )
+                        current_test_process.kill()
+                        current_test_process.wait()
                 continue
 
     return_code = current_test_process.returncode
