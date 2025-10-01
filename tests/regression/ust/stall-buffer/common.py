@@ -119,15 +119,17 @@ class StallScenario:
             gdb_commands = []
 
             # Basic GDB settings
-            gdb_static_commands = [
-                "set trace-commands on",
-                "set breakpoint pending on",
-                "set pagination off",
-                "set auto-load off",
-                "handle SIGTRAP stop noprint nopass",
-                "handle SIGSTOP stop noprint nopass",
-                "source {}".format(gdb_helper_script_path),
-            ]
+            gdb_commands.extend(
+                [
+                    "set trace-commands on",
+                    "set breakpoint pending on",
+                    "set pagination off",
+                    "set auto-load off",
+                    "handle SIGTRAP stop noprint nopass",
+                    "handle SIGSTOP stop noprint nopass",
+                    "source {}".format(gdb_helper_script_path),
+                ]
+            )
 
             # Set debug file directory if specified
             gdb_debug_directory = os.getenv("GDB_DEBUG_FILE_DIRECTORY")
@@ -135,10 +137,6 @@ class StallScenario:
                 gdb_commands.append(
                     "set debug-file-directory {}".format(gdb_debug_directory)
                 )
-
-            # Handle scenarios that might be impossible
-            if self.might_be_impossible:
-                gdb_commands.append("break exit")
 
             # Add inferiors to match number of applications
             for k in range(len(applications) - 1):
@@ -174,6 +172,15 @@ class StallScenario:
                         "python break_testpoint('lttng_ust_testpoint_{}')".format(
                             testpoint
                         ),
+                    ]
+                )
+
+                # Handle scenarios that might be impossible
+                if self.might_be_impossible:
+                    gdb_commands.append("break exit")
+
+                gdb_commands.extend(
+                    [
                         "continue",
                         "delete",
                     ]
@@ -188,8 +195,6 @@ class StallScenario:
 
             # Write GDB script to file
             with open(gdb_script_path, "w") as f:
-                for cmd in gdb_static_commands:
-                    f.write(cmd + "\n")
                 for cmd in gdb_commands:
                     f.write("shell date\n")
                     f.write(cmd + "\n")
