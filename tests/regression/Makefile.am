@@ -78,6 +78,7 @@ SERIAL_TESTS = tools/base-path/test_ust \
 
 TESTS = tools/clear/test_disallow.py \
 	tools/clear/test_ust.py \
+	tools/clear/test_ust_multi_user.py \
 	tools/live/test_early_inactive_app.py \
 	tools/live/test_high_latency.py \
 	tools/live/test_miss_short_lived_app.py \
