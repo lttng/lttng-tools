@@ -1789,10 +1789,10 @@ void ls::user_space_consumer_channel_keys::iterator::_advance_one_per_uid()
 
 		/* Assumes a registry can't be empty. */
 		LTTNG_ASSERT(cds_lfht_iter_get_node(&_position.channel_iterator.iter));
+	} else {
+		cds_lfht_next(position.current_registry->registry->channels->ht,
+			      &_position.channel_iterator.iter);
 	}
-
-	cds_lfht_next(position.current_registry->registry->channels->ht,
-		      &_position.channel_iterator.iter);
 }
 
 bool ls::user_space_consumer_channel_keys::iterator::operator==(const iterator& other) const noexcept
