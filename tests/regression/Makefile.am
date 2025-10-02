@@ -72,7 +72,8 @@ SERIAL_TESTS = tools/base-path/test_ust \
 	tools/channel/test_channel_allocation_policy_per_channel.py \
 	tools/trace-format/test_trace_format_kernel.py
 
-TESTS = tools/live/test_early_inactive_app.py \
+TESTS = tools/clear/test_ust_multi_user.py \
+	tools/live/test_early_inactive_app.py \
 	tools/live/test_miss_short_lived_app.py \
 	tools/live/test_per_application_leaks.py \
 	tools/lttng-ctl/test_liblttng-ctl_abi.py \

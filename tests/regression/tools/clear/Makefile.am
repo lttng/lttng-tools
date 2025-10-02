@@ -1,7 +1,13 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
-noinst_SCRIPTS = test_kernel test_ust test_live_hang.py
-EXTRA_DIST = test_kernel test_ust test_live_hang.py
+noinst_SCRIPTS = test_kernel \
+	test_live_hang.py \
+	test_ust \
+	test_ust_multi_user.py
+EXTRA_DIST = test_kernel \
+	test_live_hang.py \
+	test_ust \
+	test_ust_multi_user.py
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
