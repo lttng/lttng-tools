@@ -895,6 +895,7 @@ ssize_t lttcomm_recv_fds_unix_sock_non_block(int sock, int *fds, size_t nb_fd)
 	msg.msg_iovlen = 1;
 
 	cmsg = (struct cmsghdr *) recv_buf.data();
+	LTTNG_ASSERT(cmsg);
 	cmsg->cmsg_len = CMSG_LEN(sizeof_fds);
 	cmsg->cmsg_level = SOL_SOCKET;
 	cmsg->cmsg_type = SCM_RIGHTS;
