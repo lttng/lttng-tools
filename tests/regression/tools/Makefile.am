@@ -32,6 +32,8 @@ filtering_gen_ust_events_CXXFLAGS = $(AM_CXXFLAGS) $(WARN_FLAGS)
 
 endif
 
+include lttng-ctl/Makefile.am
+
 if NO_SHARED
 # Do not build the health test
 EXTRA_DIST += \
