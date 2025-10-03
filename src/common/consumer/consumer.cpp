@@ -4581,6 +4581,8 @@ int lttng_consumer_rotate_stream(struct lttng_consumer_stream *stream)
 	}
 
 	if (stream->metadata_flag && stream->trace_chunk) {
+		stream->first_metadata_write_done = false;
+
 		/*
 		 * If the stream has transitioned to a new trace
 		 * chunk, the metadata should be re-dumped to the
