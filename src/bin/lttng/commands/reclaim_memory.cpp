@@ -321,8 +321,11 @@ void run_and_print_machine_interface(const reclaim_config& config)
 		LTTNG_THROW_ERROR("Failed to open command element");
 	}
 
-	const auto command_close_guard = lttng::make_scope_exit(
-		[&writer]() noexcept { mi_lttng_writer_command_close(writer.get()); });
+	const auto command_close_guard = lttng::make_scope_exit([&writer]() noexcept {
+		if (mi_lttng_writer_command_close(writer.get())) {
+			ERR("Failed to close machine interface command element");
+		}
+	});
 
 	const auto result = [config, &writer]() {
 		try {
