@@ -93,11 +93,16 @@ void reclaim_consumer_channel_memory(
 		consumer_socket, consumer_channel_keys, reclaim_older_than, require_consumed);
 
 	for (const auto& channel_reclaimed_memory : channels_reclaimed_memory) {
-		const auto& channel_description =
-			channel_descriptions
-				.find(std::make_pair(
-					consumer_channel_keys.at(current_channel_index), bitness))
-				->second;
+		const auto it = channel_descriptions.find(
+			std::make_pair(consumer_channel_keys.at(current_channel_index), bitness));
+		if (it == channel_descriptions.end()) {
+			LTTNG_THROW_ERROR(fmt::format(
+				"Consumer channel key not found in channel descriptions: key={}, bitness={}",
+				consumer_channel_keys.at(current_channel_index),
+				static_cast<int>(bitness)));
+		}
+
+		const auto& channel_description = it->second;
 
 		const auto group_owner = [&session, &channel_description]() {
 			switch (session->ust_session->buffer_type) {
