@@ -10,6 +10,10 @@
 #ifndef _LTTNG_KCONSUMER_H
 #define _LTTNG_KCONSUMER_H
 
+/* See lttng-modules include/lttng/tracer.h */
+#define KERNEL_CTF_SPEC_MAJOR 1
+#define KERNEL_CTF_SPEC_MINOR 8
+
 #include <common/consumer/consumer.hpp>
 
 #include <stdbool.h>

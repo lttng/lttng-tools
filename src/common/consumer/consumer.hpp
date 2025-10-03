@@ -676,10 +676,12 @@ struct lttng_consumer_stream {
 	 * Flag to inform the data or metadata thread that a stream is
 	 * ready to be rotated.
 	 */
-	bool rotate_ready;
+	bool rotate_ready:1;
 
 	/* Indicate if the stream still has some data to be read. */
 	unsigned int has_data:1;
+
+	bool first_metadata_write_done:1;
 	/*
 	 * Inform the consumer or relay to reset the metadata
 	 * file before writing in it (regeneration).

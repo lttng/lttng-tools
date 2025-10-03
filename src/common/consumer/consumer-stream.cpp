@@ -240,6 +240,40 @@ static ssize_t consumer_stream_consume_mmap(struct lttng_consumer_local_data *ct
 					    struct lttng_consumer_stream *stream,
 					    const struct stream_subbuffer *subbuffer)
 {
+	ssize_t metadata_written_bytes = 0;
+
+	if (the_consumer_data.type == LTTNG_CONSUMER_KERNEL &&
+	    stream->chan->type == CONSUMER_CHANNEL_TYPE_METADATA &&
+	    !utils_force_experimental_ctf_2() && !stream->first_metadata_write_done) {
+		/*
+		 * The kernel tracer does not write the CTF 1.x announcement
+		 * comment in the metadata stream, so we do it here on
+		 * its behalf the first time we write to the metadata
+		 * stream.
+		 *
+		 * Note that this is re-done when a new metadata version
+		 * is set (metadata regeneration) and when a new trace chunk
+		 * is entered.
+		 */
+		const static auto ctf_1x_announcement = fmt::format(
+			"/* CTF {}.{} */", KERNEL_CTF_SPEC_MAJOR, KERNEL_CTF_SPEC_MINOR);
+		const static auto announcement_size = ctf_1x_announcement.size();
+		const static auto announcement_view =
+			lttng_buffer_view_init(ctf_1x_announcement.c_str(), 0, announcement_size);
+
+		metadata_written_bytes =
+			lttng_consumer_on_read_subbuffer_mmap(stream, &announcement_view, 0);
+		if (metadata_written_bytes != (ssize_t) announcement_size) {
+			ERR_FMT("Failed to write CTF announcement to metadata stream: written_bytes={}, announcement_size={}, announcement=`{}`",
+				metadata_written_bytes,
+				announcement_size,
+				ctf_1x_announcement);
+			return metadata_written_bytes;
+		}
+
+		stream->first_metadata_write_done = true;
+	}
+
 	const unsigned long padding_size =
 		subbuffer->info.data.padded_subbuf_size - subbuffer->info.data.subbuf_size;
 	const ssize_t written_bytes = lttng_consumer_on_read_subbuffer_mmap(
@@ -273,9 +307,10 @@ static ssize_t consumer_stream_consume_mmap(struct lttng_consumer_local_data *ct
 	 */
 	if (written_bytes < 0) {
 		ERR("Error reading mmap subbuffer: %zd", written_bytes);
+		return written_bytes;
 	}
 
-	return written_bytes;
+	return written_bytes + metadata_written_bytes;
 }
 
 static ssize_t consumer_stream_consume_splice(struct lttng_consumer_local_data *ctx,
@@ -1386,6 +1421,7 @@ void consumer_stream_metadata_set_version(struct lttng_consumer_stream *stream,
 	LTTNG_ASSERT(new_version > stream->metadata_version);
 	stream->metadata_version = new_version;
 	stream->reset_metadata_flag = 1;
+	stream->first_metadata_write_done = false;
 
 	if (stream->metadata_bucket) {
 		metadata_bucket_reset(stream->metadata_bucket);
