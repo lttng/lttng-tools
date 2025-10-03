@@ -28,7 +28,7 @@ public:
 
 	explicit memory_reclaim_timer_task(lttng::scheduling::duration_ns period,
 					   lttng_consumer_channel& channel,
-					   std::chrono::microseconds age_limit) noexcept :
+					   std::chrono::microseconds age_limit) :
 		periodic_task(
 			period,
 			fmt::format(
