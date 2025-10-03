@@ -365,6 +365,21 @@ extern const char *const mi_lttng_element_error_query_results;
 /* String related to add-context command */
 extern const char *const mi_lttng_element_context_symbol;
 
+/* Memory usage elements */
+extern const char *const mi_lttng_element_data_stream_info_sets;
+extern const char *const mi_lttng_element_data_stream_info_set_list;
+extern const char *const mi_lttng_element_data_stream_info_set;
+extern const char *const mi_lttng_element_data_stream_info_list;
+extern const char *const mi_lttng_element_data_stream_info;
+extern const char *const mi_lttng_element_total_memory_usage_bytes;
+extern const char *const mi_lttng_element_memory_usage_bytes;
+extern const char *const mi_lttng_element_app_bitness;
+extern const char *const mi_lttng_element_uid;
+extern const char *const mi_lttng_element_uid_id;
+extern const char *const mi_lttng_element_pid;
+extern const char *const mi_lttng_element_cpu_id;
+extern const char *const mi_lttng_element_sets;
+
 /* Utility string function  */
 const char *mi_lttng_loglevel_string(int value, enum lttng_domain_type domain);
 const char *mi_lttng_logleveltype_string(enum lttng_loglevel_type value);
@@ -625,6 +640,20 @@ int mi_lttng_channel(struct mi_writer *writer, struct lttng_channel *channel, in
  * Negative values indicate an error.
  */
 int mi_lttng_channel_attr(struct mi_writer *writer, struct lttng_channel_attr *attr);
+
+/*
+ * Machine interface for channel memory usage data stream info sets.
+ *
+ * writer An instance of a mi writer.
+ * ds_info_sets The data stream info sets containing memory usage information.
+ * ds_info_sets_count The number of data stream info sets.
+ *
+ * Returns zero if the element's value could be written.
+ * Negative values indicate an error.
+ */
+int mi_lttng_data_stream_info_sets(struct mi_writer *writer,
+				   const struct lttng_data_stream_info_sets *ds_info_sets,
+				   unsigned int ds_info_sets_count);
 
 /*
  * Machine interface for event common attributes.

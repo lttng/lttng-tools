@@ -1617,3 +1617,15 @@ std::vector<int> list_open_fds()
 
 	return results;
 }
+
+std::string utils_string_from_size(std::uint64_t bytes)
+{
+	const char *suffixes[] = { "B", "KiB", "MiB", "GiB", "TiB", "PiB" };
+	size_t i = 0;
+	double count = static_cast<double>(bytes);
+	while (count >= 1024 && i < sizeof(suffixes) / sizeof(suffixes[0]) - 1) {
+		count /= 1024;
+		++i;
+	}
+	return fmt::format("{:.2f} {}", count, suffixes[i]);
+}

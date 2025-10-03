@@ -363,6 +363,21 @@ const char *const mi_lttng_element_error_query_results = "error_query_results";
 /* String related to add-context command */
 const char *const mi_lttng_element_context_symbol = "symbol";
 
+/* Memory usage elements */
+const char *const mi_lttng_element_data_stream_info_sets = "data_stream_info_sets";
+const char *const mi_lttng_element_data_stream_info_set_list = "data_stream_info_list";
+const char *const mi_lttng_element_data_stream_info_set = "data_stream_info_set";
+const char *const mi_lttng_element_data_stream_info_list = "data_stream_info_list";
+const char *const mi_lttng_element_data_stream_info = "data_stream_info";
+const char *const mi_lttng_element_total_memory_usage_bytes = "total_memory_usage_bytes";
+const char *const mi_lttng_element_memory_usage_bytes = "memory_usage_bytes";
+const char *const mi_lttng_element_app_bitness = "app_bitness";
+const char *const mi_lttng_element_uid = "uid";
+const char *const mi_lttng_element_uid_id = "id";
+const char *const mi_lttng_element_pid = "pid";
+const char *const mi_lttng_element_cpu_id = "cpu_id";
+const char *const mi_lttng_element_sets = "sets";
+
 /* This is a merge of jul loglevel and regular loglevel
  * Those should never overlap by definition
  * (see struct lttng_event loglevel)
@@ -1301,6 +1316,237 @@ end:
 	return ret;
 }
 
+namespace {
+
+class xml_element_guard {
+public:
+	explicit xml_element_guard(struct mi_writer *writer) : _writer(writer)
+	{
+	}
+
+	xml_element_guard(const xml_element_guard&) = delete;
+	xml_element_guard(xml_element_guard&&) = delete;
+	xml_element_guard& operator=(const xml_element_guard&) = delete;
+	xml_element_guard& operator=(xml_element_guard&&) = delete;
+
+	~xml_element_guard()
+	{
+		if (_opened) {
+			mi_lttng_writer_close_element(_writer);
+		}
+	}
+
+	int open(const char *element_name)
+	{
+		if (_opened) {
+			return -1;
+		}
+
+		const auto ret = mi_lttng_writer_open_element(_writer, element_name);
+		if (ret == 0) {
+			_opened = true;
+		}
+
+		return ret;
+	}
+
+	int close()
+	{
+		if (!_opened) {
+			return 0;
+		}
+
+		const auto ret = mi_lttng_writer_close_element(_writer);
+		_opened = false;
+		return ret;
+	}
+
+private:
+	struct mi_writer *_writer;
+	bool _opened = false;
+};
+
+int write_uid_element(struct mi_writer *writer, const struct lttng_data_stream_info_set *set)
+{
+	uid_t uid;
+	auto status = lttng_data_stream_info_set_get_uid(set, &uid);
+
+	if (status == LTTNG_DATA_STREAM_INFO_STATUS_OK) {
+		xml_element_guard uid_guard(writer);
+
+		if (uid_guard.open(mi_lttng_element_uid)) {
+			return -1;
+		}
+
+		return mi_lttng_writer_write_element_unsigned_int(
+			writer, mi_lttng_element_uid_id, uid);
+	} else if (status != LTTNG_DATA_STREAM_INFO_STATUS_NONE) {
+		return -1;
+	}
+	return 0;
+}
+
+int write_pid_element(struct mi_writer *writer, const struct lttng_data_stream_info_set *set)
+{
+	pid_t pid;
+	auto status = lttng_data_stream_info_set_get_pid(set, &pid);
+
+	if (status == LTTNG_DATA_STREAM_INFO_STATUS_OK) {
+		return mi_lttng_writer_write_element_unsigned_int(
+			writer, mi_lttng_element_pid, pid);
+	} else if (status != LTTNG_DATA_STREAM_INFO_STATUS_NONE) {
+		return -1;
+	}
+	return 0;
+}
+
+int write_app_bitness_element(struct mi_writer *writer,
+			      const struct lttng_data_stream_info_set *set)
+{
+	enum lttng_app_bitness bitness;
+	auto status = lttng_data_stream_info_set_get_app_bitness(set, &bitness);
+
+	if (status == LTTNG_DATA_STREAM_INFO_STATUS_OK) {
+		const auto bitness_value = (bitness == LTTNG_APP_BITNESS_32) ? 32U : 64U;
+
+		return mi_lttng_writer_write_element_unsigned_int(
+			writer, mi_lttng_element_app_bitness, bitness_value);
+	} else if (status != LTTNG_DATA_STREAM_INFO_STATUS_NONE) {
+		return -1;
+	}
+
+	return 0;
+}
+
+std::int64_t write_stream_info(struct mi_writer *writer,
+			       const struct lttng_data_stream_info *stream_info)
+{
+	xml_element_guard stream_guard(writer);
+	if (stream_guard.open(mi_lttng_element_data_stream_info) != 0) {
+		return -1;
+	}
+
+	/* Write CPU ID if available. */
+	unsigned int cpu_id;
+	auto status = lttng_data_stream_info_get_cpu_id(stream_info, &cpu_id);
+	if (status == LTTNG_DATA_STREAM_INFO_STATUS_OK) {
+		if (mi_lttng_writer_write_element_unsigned_int(
+			    writer, mi_lttng_element_cpu_id, cpu_id) != 0) {
+			return -1;
+		}
+	} else if (status != LTTNG_DATA_STREAM_INFO_STATUS_NONE) {
+		return -1;
+	}
+
+	/* Write memory usage. */
+	uint64_t memory_usage;
+	status = lttng_data_stream_info_get_memory_usage(stream_info, &memory_usage);
+	if (status == LTTNG_DATA_STREAM_INFO_STATUS_OK) {
+		if (mi_lttng_writer_write_element_unsigned_int(
+			    writer, mi_lttng_element_memory_usage_bytes, memory_usage) != 0) {
+			return -1;
+		}
+
+		return memory_usage;
+	} else {
+		/* Memory usage should always be available. */
+		return -1;
+	}
+}
+
+} /* namespace */
+
+int mi_lttng_data_stream_info_sets(struct mi_writer *writer,
+				   const struct lttng_data_stream_info_sets *ds_info_sets,
+				   unsigned int ds_info_sets_count)
+{
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(ds_info_sets);
+
+	xml_element_guard sets_element(writer);
+	if (sets_element.open(mi_lttng_element_data_stream_info_sets)) {
+		return -1;
+	}
+
+	xml_element_guard sets_list(writer);
+	if (sets_list.open(mi_lttng_element_sets)) {
+		return -1;
+	}
+
+	std::uint64_t total_memory = 0;
+	for (unsigned int set_idx = 0; set_idx < ds_info_sets_count; set_idx++) {
+		const struct lttng_data_stream_info_set *set;
+
+		auto status = lttng_data_stream_info_sets_get_at_index(ds_info_sets, set_idx, &set);
+		if (status != LTTNG_DATA_STREAM_INFO_STATUS_OK) {
+			return -1;
+		}
+
+		xml_element_guard set_element(writer);
+		if (set_element.open(mi_lttng_element_data_stream_info_set) != 0) {
+			return -1;
+		}
+
+		if (write_uid_element(writer, set) != 0 || write_pid_element(writer, set) != 0 ||
+		    write_app_bitness_element(writer, set) != 0) {
+			return -1;
+		}
+
+		unsigned int set_count;
+		status = lttng_data_stream_info_set_get_count(set, &set_count);
+		if (status != LTTNG_DATA_STREAM_INFO_STATUS_OK) {
+			return -1;
+		}
+
+		xml_element_guard stream_list(writer);
+		if (stream_list.open(mi_lttng_element_data_stream_info_list) != 0) {
+			return -1;
+		}
+
+		std::uint64_t set_memory_total = 0;
+		for (unsigned int stream_idx = 0; stream_idx < set_count; stream_idx++) {
+			const struct lttng_data_stream_info *stream_info;
+			status = lttng_data_stream_info_set_get_at_index(
+				set, stream_idx, &stream_info);
+			if (status != LTTNG_DATA_STREAM_INFO_STATUS_OK) {
+				return -1;
+			}
+
+			const auto stream_memory = write_stream_info(writer, stream_info);
+			if (stream_memory < 0) {
+				return -1;
+			}
+
+			set_memory_total += stream_memory;
+			total_memory += stream_memory;
+		}
+
+		if (stream_list.close() != 0) {
+			return -1;
+		}
+
+		if (mi_lttng_writer_write_element_unsigned_int(
+			    writer, mi_lttng_element_total_memory_usage_bytes, set_memory_total) !=
+		    0) {
+			return -1;
+		}
+
+		/* set_element will automatically close when it goes out of scope */
+	}
+
+	if (sets_list.close() != 0) {
+		return -1;
+	}
+
+	if (mi_lttng_writer_write_element_unsigned_int(
+		    writer, mi_lttng_element_total_memory_usage_bytes, total_memory) != 0) {
+		return -1;
+	}
+
+	/* sets_element will automatically close when it goes out of scope */
+	return 0;
+}
+
 int mi_lttng_event_common_attributes(struct mi_writer *writer, struct lttng_event *event)
 {
 	int ret;
@@ -1772,7 +2018,7 @@ int mi_lttng_pid(struct mi_writer *writer, pid_t pid, const char *name, int is_o
 	int ret;
 
 	/* Open pid process */
-	ret = mi_lttng_writer_open_element(writer, config_element_pid);
+	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_pid);
 	if (ret) {
 		goto end;
 	}

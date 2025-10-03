@@ -30,6 +30,11 @@ using notification_uptr = std::unique_ptr<
 	lttng_notification,
 	lttng::memory::create_deleter_class<lttng_notification, lttng_notification_destroy>>;
 
+using data_stream_info_sets_cuptr =
+	std::unique_ptr<const lttng_data_stream_info_sets,
+			lttng::memory::create_deleter_class<const lttng_data_stream_info_sets,
+							    lttng_data_stream_info_sets_destroy>>;
+
 } /* namespace lttng */
 
 #endif /* LTTNG_COMMON_CTL_MEMORY_HPP */

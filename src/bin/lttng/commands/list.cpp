@@ -9,19 +9,24 @@
 #include <stdint.h>
 #define _LGPL_SOURCE
 #include "../command.hpp"
+#include "list-memory-usage.hpp"
 
 #include <common/mi-lttng.hpp>
 #include <common/time.hpp>
 #include <common/tracker.hpp>
+#include <common/utils.hpp>
 
 #include <lttng/domain-internal.hpp>
 #include <lttng/lttng.h>
+#include <lttng/stream-info.h>
 
 #include <inttypes.h>
 #include <popt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+namespace lcm = lttng::cli::memory_usage;
 
 static int opt_userspace;
 static int opt_kernel;
@@ -33,6 +38,7 @@ static char *opt_channel;
 static int opt_domain;
 static int opt_fields;
 static int opt_syscall;
+static int opt_stream_info_details;
 
 const char *indent4 = "    ";
 const char *indent6 = "      ";
@@ -69,6 +75,7 @@ static struct poptOption long_options[] = {
 	{ "domain", 'd', POPT_ARG_VAL, &opt_domain, 1, nullptr, nullptr },
 	{ "fields", 'f', POPT_ARG_VAL, &opt_fields, 1, nullptr, nullptr },
 	{ "syscall", 'S', POPT_ARG_VAL, &opt_syscall, 1, nullptr, nullptr },
+	{ "stream-info-details", 0, POPT_ARG_VAL, &opt_stream_info_details, 1, nullptr, nullptr },
 	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
 	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
@@ -1301,6 +1308,179 @@ preallocation_policy_to_pretty_string(enum lttng_channel_preallocation_policy po
 	}
 }
 
+static void print_detailed_mem_usage(struct lttng_channel *channel,
+				     const struct lttng_data_stream_info_sets *ds_info_sets,
+				     unsigned int ds_info_sets_count)
+{
+	enum lttng_data_stream_info_status status;
+
+	for (unsigned int ds_info_set_i = 0; ds_info_set_i < ds_info_sets_count; ds_info_set_i++) {
+		const struct lttng_data_stream_info_set *ds_info_set;
+		nonstd::optional<uid_t> uid;
+		nonstd::optional<pid_t> pid;
+		nonstd::optional<enum lttng_app_bitness> app_bitness;
+		unsigned int ds_info_count;
+
+		status = lttng_data_stream_info_sets_get_at_index(
+			ds_info_sets, ds_info_set_i, &ds_info_set);
+		if (status != LTTNG_DATA_STREAM_INFO_STATUS_OK) {
+			ERR_FMT("Failed to retrieve data stream info set #{} of channel `{}`",
+				ds_info_set_i,
+				channel->name);
+			continue;
+		}
+
+		{
+			uid_t tmp_uid;
+
+			status = lttng_data_stream_info_set_get_uid(ds_info_set, &tmp_uid);
+			if (status == LTTNG_DATA_STREAM_INFO_STATUS_OK) {
+				uid = tmp_uid;
+			} else if (status != LTTNG_DATA_STREAM_INFO_STATUS_NONE) {
+				ERR_FMT("Failed to retrieve UID of data stream info set #{} of channel `{}`",
+					ds_info_set_i,
+					channel->name);
+				continue;
+			}
+		}
+
+		{
+			pid_t tmp_pid;
+
+			status = lttng_data_stream_info_set_get_pid(ds_info_set, &tmp_pid);
+			if (status == LTTNG_DATA_STREAM_INFO_STATUS_OK) {
+				pid = tmp_pid;
+			} else if (status != LTTNG_DATA_STREAM_INFO_STATUS_NONE) {
+				ERR_FMT("Failed to retrieve PID of data stream info set #{} of channel `{}`",
+					ds_info_set_i,
+					channel->name);
+				continue;
+			}
+		}
+
+		{
+			enum lttng_app_bitness tmp_app_bitness;
+
+			status = lttng_data_stream_info_set_get_app_bitness(ds_info_set,
+									    &tmp_app_bitness);
+			if (status == LTTNG_DATA_STREAM_INFO_STATUS_OK) {
+				app_bitness = tmp_app_bitness;
+			} else if (status != LTTNG_DATA_STREAM_INFO_STATUS_NONE) {
+				ERR_FMT("Failed to retrieve ABI of data stream info set #{} of channel `{}`",
+					ds_info_set_i,
+					channel->name);
+				continue;
+			}
+		}
+
+		status = lttng_data_stream_info_set_get_count(ds_info_set, &ds_info_count);
+		if (status != LTTNG_DATA_STREAM_INFO_STATUS_OK) {
+			ERR_FMT("Failed to retrieve data stream info count of set #{} of channel `{}`",
+				ds_info_set_i,
+				channel->name);
+			continue;
+		}
+
+		{
+			std::string msg = fmt::format("Data streams for ", indent6);
+
+			if (uid) {
+				msg += fmt::format("UID {}", *uid);
+			}
+
+			if (pid) {
+				msg += fmt::format("PID {}", *pid);
+			}
+
+			if (app_bitness) {
+				msg += fmt::format(" ({}-bit)",
+						   *app_bitness == LTTNG_APP_BITNESS_32 ? 32 : 64);
+			}
+
+			msg += fmt::format(": {}:",
+					   utils_string_from_size(lcm::compute_set_memory_usage(
+						   channel, ds_info_set, ds_info_set_i)));
+			MSG("%s%s", indent6, msg.c_str());
+		}
+
+		for (unsigned int ds_info_i = 0; ds_info_i < ds_info_count; ds_info_i++) {
+			const struct lttng_data_stream_info *ds_info;
+			nonstd::optional<unsigned int> cpu_id;
+			uint64_t mem_bytes;
+
+			status = lttng_data_stream_info_set_get_at_index(
+				ds_info_set, ds_info_i, &ds_info);
+			if (status != LTTNG_DATA_STREAM_INFO_STATUS_OK) {
+				ERR_FMT("Failed to retrieve data stream info #{} of set #{} of channel `{}`",
+					ds_info_i,
+					ds_info_set_i,
+					channel->name);
+				continue;
+			}
+
+			{
+				unsigned int tmp_cpu_id;
+
+				status = lttng_data_stream_info_get_cpu_id(ds_info, &tmp_cpu_id);
+				if (status == LTTNG_DATA_STREAM_INFO_STATUS_OK) {
+					cpu_id = tmp_cpu_id;
+				} else if (status != LTTNG_DATA_STREAM_INFO_STATUS_NONE) {
+					ERR_FMT("Failed to retrieve CPU ID of data stream info #{} of set {} of channel `{}`",
+						ds_info_set_i,
+						ds_info_set_i,
+						channel->name);
+					continue;
+				}
+			}
+
+			status = lttng_data_stream_info_get_memory_usage(ds_info, &mem_bytes);
+			if (status != LTTNG_DATA_STREAM_INFO_STATUS_OK) {
+				ERR_FMT("Failed to retrieve memory usage of data stream info #{} of set {} of channel `{}`",
+					ds_info_i,
+					ds_info_set_i,
+					channel->name);
+				continue;
+			}
+
+			std::string msg = fmt::format("[{}] ", ds_info_i);
+
+			if (cpu_id) {
+				msg += fmt::format("CPU {}: ", *cpu_id);
+			}
+
+			msg += utils_string_from_size(mem_bytes);
+			MSG("%s%s", indent8, msg.c_str());
+		}
+	}
+}
+
+static void print_mem_usage(struct lttng_channel *channel)
+{
+	try {
+		const auto channel_mem_usage = lcm::get_channel_memory_usage(
+			the_handle->session_name, channel, the_handle->domain.type);
+		const auto msg =
+			fmt::format("Buffer memory usage: {}",
+				    utils_string_from_size(channel_mem_usage.total_memory_usage));
+
+		if (opt_stream_info_details && channel_mem_usage.data_stream_info_sets_count > 0) {
+			MSG("\n%s%s:", indent4, msg.c_str());
+			print_detailed_mem_usage(channel,
+						 channel_mem_usage.data_stream_info_sets(),
+						 channel_mem_usage.data_stream_info_sets_count);
+		} else {
+			MSG("\n%s%s", indent4, msg.c_str());
+		}
+	} catch (const lttng::unsupported_error& e) {
+		/* This information is not available for all domains. */
+		return;
+	} catch (const std::exception& e) {
+		ERR_FMT("Failed to retrieve memory usage of channel `{}`: {}",
+			channel->name,
+			e.what());
+	}
+}
+
 /*
  * Pretty print channel
  */
@@ -1468,7 +1648,29 @@ static void print_channel(struct lttng_channel *channel)
 		MSG("%sLost packets:     %" PRIu64, indent6, lost_packets);
 	}
 skip_stats_printing:
+	print_mem_usage(channel);
 	return;
+}
+
+static int mi_write_channel_memory_usage(struct lttng_channel *channel)
+{
+	try {
+		const auto channel_mem_usage = lcm::get_channel_memory_usage(
+			the_handle->session_name, channel, the_handle->domain.type);
+
+		return mi_lttng_data_stream_info_sets(
+			the_writer,
+			channel_mem_usage.data_stream_info_sets(),
+			channel_mem_usage.data_stream_info_sets_count);
+	} catch (const lttng::unsupported_error& e) {
+		/* This information is not available for all domains. */
+		return 0;
+	} catch (const std::exception& e) {
+		ERR_FMT("Failed to retrieve memory usage of channel `{}`: {}",
+			channel->name,
+			e.what());
+		return -1;
+	}
 }
 
 /*
@@ -1508,7 +1710,13 @@ static int mi_list_channels(struct lttng_channel *channels, int count, const cha
 			goto error;
 		}
 
-		/* Closing the channel element we opened earlier */
+		/* Add memory usage, if available */
+		ret = mi_write_channel_memory_usage(&channels[i]);
+		if (ret) {
+			goto error;
+		}
+
+		/* Close channel element */
 		ret = mi_lttng_writer_close_element(the_writer);
 		if (ret) {
 			goto error;
