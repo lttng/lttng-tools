@@ -597,9 +597,10 @@ enum lttng_trace_chunk_status lttng_trace_chunk_set_close_timestamp(struct lttng
 	 * also know as the wall time.
 	 */
 	if (chunk->timestamp_creation.value > close_ts) {
-		WARN("Set trace chunk close timestamp: close timestamp is before creation timestamp, begin : %ld, close : %ld",
-		     chunk->timestamp_creation.value,
-		     close_ts);
+		WARN_FMT(
+			"Set trace chunk close timestamp: close timestamp is before creation timestamp, begin={}, close={}",
+			chunk->timestamp_creation.value,
+			close_ts);
 	}
 
 	LTTNG_OPTIONAL_SET(&chunk->timestamp_close, close_ts);
