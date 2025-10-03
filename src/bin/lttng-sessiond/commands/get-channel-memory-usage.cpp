@@ -229,11 +229,17 @@ lsc::get_channel_memory_usage(const ltt_session::locked_ref& session,
 				if (stream_group.streams_memory_usage.empty()) {
 					return 0.0;
 				}
+
 				std::uint64_t logical_size = 0, physical_size = 0;
 				for (const auto& usage : stream_group.streams_memory_usage) {
 					logical_size += usage.size_bytes.logical;
 					physical_size += usage.size_bytes.physical;
 				}
+
+				if (logical_size == 0) {
+					return 0.0;
+				}
+
 				return (static_cast<double>(physical_size) / logical_size) * 100.0;
 			}());
 
