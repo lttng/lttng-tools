@@ -3542,7 +3542,7 @@ static int load_session_from_path(const char *path,
 				  int overwrite,
 				  const struct config_load_session_override_attr *overrides)
 {
-	int ret, session_found = !session_name;
+	int ret = 0, session_found = !session_name;
 	DIR *directory = nullptr;
 	struct lttng_dynamic_buffer file_path;
 	size_t path_len;
@@ -3686,7 +3686,6 @@ static int load_session_from_path(const char *path,
 		session_found = 1;
 	}
 
-	ret = 0;
 end:
 	if (directory) {
 		if (closedir(directory)) {
