@@ -128,19 +128,19 @@ the test timeout condition. (Default: 60)
 | {check} | {check} | N/A
 
 | `LTTNG_TEST_VERBOSE_BABELTRACE`
-| Run `babeltrace2` in it's verbose mode
+| Run `babeltrace2` in it's verbose mode when not "0" or empty
 | {check} | {check} | {ex}
 
 | `LTTNG_TEST_VERBOSE_CLIENT`
-| Run `lttng-client` in it's verbose mode
+| Run `lttng-client` in it's verbose mode when not "0" or empty
 | {check} | {check} | {ex}
 
 | `LTTNG_TEST_VERBOSE_RELAYD`
-| Run `lttng-relayd` in it's verbose and debug mode
+| Run `lttng-relayd` in it's verbose and debug mode when not "0" or empty
 | {check} | {check} | {ex}
 
 | `LTTNG_TEST_VERBOSE_SESSIOND`
-| Run `lttng-sesiond in it's verbose and debug mode
+| Run `lttng-sesiond in it's verbose and debug mode when not "0" or empty
 | {check} | {check} | {ex}
 
 | `LTTNG_TOOLS_DISABLE_KERNEL_TESTS`

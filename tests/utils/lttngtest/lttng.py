@@ -597,7 +597,9 @@ class _Session(lttngctl.Session):
             args.append("--no-wait")
             timeout_s = None
 
-        self._client._run_cmd(" ".join([shlex.quote(x) for x in args]), timeout_s=timeout_s)
+        self._client._run_cmd(
+            " ".join([shlex.quote(x) for x in args]), timeout_s=timeout_s
+        )
 
     def rotate(self, wait=True):
         # type: (bool) -> None
@@ -734,9 +736,10 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
         # The client needs to know where to find the LTTng session configuration
         # XSD file for validating session configuration files when `lttng-load`
         # is used.
-        self._extra_env_vars.setdefault("LTTNG_SESSION_CONFIG_XSD_PATH", str(
-            self._environment._project_root / "src" / "common"
-        ))
+        self._extra_env_vars.setdefault(
+            "LTTNG_SESSION_CONFIG_XSD_PATH",
+            str(self._environment._project_root / "src" / "common"),
+        )
 
     @staticmethod
     def _namespaced_mi_element(property):
@@ -766,7 +769,7 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
         UTF-8.
         """
         args = [str(self._environment.lttng_client_path)]  # type: list[str]
-        if os.getenv("LTTNG_TEST_VERBOSE_CLIENT", ""):
+        if os.getenv("LTTNG_TEST_VERBOSE_CLIENT", "0") != "0":
             args.extend(["-vvv"])
         if output_format == LTTngClient.CommandOutputFormat.MI_XML:
             args.extend(["--mi", "xml"])

@@ -769,7 +769,7 @@ class _Environment(logger._Logger):
         signal.signal(signal.SIGTERM, self._handle_termination_signal)
         signal.signal(signal.SIGINT, self._handle_termination_signal)
 
-        if os.getenv("LTTNG_TEST_VERBOSE_BABELTRACE", "0") == "1":
+        if os.getenv("LTTNG_TEST_VERBOSE_BABELTRACE", "0") != "0":
             # @TODO: Is there a way to feed the logging output to
             # the logger._Logger instead of directly to stderr?
             bt2.set_global_logging_level(bt2.LoggingLevel.TRACE)
@@ -1079,7 +1079,7 @@ class _Environment(logger._Logger):
         )
 
         verbose = []
-        if os.environ.get("LTTNG_TEST_VERBOSE_RELAYD") is not None:
+        if os.getenv("LTTNG_TEST_VERBOSE_RELAYD", "0") != "0":
             verbose = ["-vvv"]
         self._relayd_log_file = None
         if self.lttng_log_dir:
@@ -1225,7 +1225,7 @@ class _Environment(logger._Logger):
                 str(consumerd_path),
                 "--sig-parent",
             ]
-            if os.environ.get("LTTNG_TEST_VERBOSE_SESSIOND") is not None:
+            if os.getenv("LTTNG_TEST_VERBOSE_SESSIOND", "0") != "0":
                 sessiond_command.extend(["-vvv", "--verbose-consumer"])
             if not enable_kernel_domain:
                 sessiond_command.extend(["--no-kernel"])
@@ -1347,11 +1347,7 @@ class _Environment(logger._Logger):
         Launch an application that will wait before tracing `event_count` events.
         """
         return _WaitTraceTestApplication(
-            self._project_root
-            / "tests"
-            / "utils"
-            / "testapp"
-            / "gen-ust-events",
+            self._project_root / "tests" / "utils" / "testapp" / "gen-ust-events",
             event_count,
             self,
             wait_time_between_events_us,
