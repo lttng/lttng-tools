@@ -1384,8 +1384,8 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 		new_channel_attr->attr.extended.ptr);
 
 	if (extended->watchdog_timer_interval.is_set) {
-		if (domain->type != LTTNG_DOMAIN_UST) {
-			WARN_FMT("Watchdog timer is only supported by UST domain: "
+		if (domain->type == LTTNG_DOMAIN_KERNEL) {
+			WARN_FMT("Watchdog timer is only supported by UST domains: "
 				 "session_name=`{}` channel_name=`{}` domain_type={}",
 				 session->name,
 				 new_channel_attr->name,
