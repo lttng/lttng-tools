@@ -39,6 +39,9 @@ libtestutils_la_SOURCES = \
 ## tap
 
 tap_clock_SOURCES = tap/clock.cpp
+tap_clock_LDADD = \
+	libtestutils.la \
+	$(top_builddir)/src/vendor/fmt/libfmt.la
 
 tap_libtap_la_SOURCES = tap/tap.c tap/tap.h
 tap_libtap_la_LIBADD = libtestutils.la
