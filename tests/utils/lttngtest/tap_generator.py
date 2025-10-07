@@ -189,6 +189,8 @@ class TapGenerator:
 
         if result is False:
             self._has_failure = True
+            if os.getenv("LTTNG_TEST_PRESERVE_TEST_ENV_ON_FAILURE", "0") != "0":
+                os.environ["LTTNG_TEST_PRESERVE_TEST_ENV"] = "1"
 
         result_string = "ok" if result else "not ok"
         self._last_test_case_id = self._last_test_case_id + 1
