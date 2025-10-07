@@ -42,7 +42,11 @@ class TemporaryDirectory:
             for func, args, kwargs in self._cleanup_callbacks:
                 func(*args, **kwargs)
         finally:
-            if os.getenv("LTTNG_TEST_PRESERVE_TEST_ENV", "0") != "1":
+            if os.getenv("LTTNG_TEST_PRESERVE_TEST_ENV", "0") != "0":
+                destination = os.getenv("LTTNG_TEST_PRESERVE_TEST_ENV_DIR", None)
+                if destination is not None and pathlib.Path(destination).is_dir():
+                    shutil.move(self._directory_path, destination)
+            else:
                 shutil.rmtree(self._directory_path, ignore_errors=True)
 
     def add_cleanup_callback(self, func, *args, **kwargs):
