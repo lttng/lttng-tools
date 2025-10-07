@@ -155,6 +155,10 @@ Used to manually launch one during test troubleshooting
 | `LTTNG_TEST_PRESERVE_TEST_ENV_DIR`
 | Move the preserved test environments to the given path. The path must exist and be a directory.
 | {check} | {ex} | {ex}
+
+| `LTTNG_TEST_PRESERVE_TEST_ENV_ON_FAILURE`
+| Set `LTTNG_TEST_PRESERVE_TEST_ENV` when the tap generator encounters a failure
+| {check} | {ex} | {ex}
 |===
 
 . Environment variables for managing test suite behaviour
