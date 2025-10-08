@@ -643,7 +643,7 @@ private:
 		 * uint8_t. */
 		std::unique_ptr<const lst::type> uint8_element =
 			lttng::make_unique<lst::integer_type>(
-				0,
+				8,
 				_trace_abi.byte_order,
 				8,
 				lst::integer_type::signedness::UNSIGNED,
