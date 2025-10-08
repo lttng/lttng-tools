@@ -16,9 +16,15 @@
 /* clang-format off */
 
 TRACEPOINT_EVENT(tp, tptest1,
-	TP_ARGS(int, anint, int, netint, long *, values,
-		char *, text, size_t, textlen,
-		double, doublearg, float, floatarg),
+	TP_ARGS(
+		int, anint,
+		int, netint,
+		long *, values,
+		char *, text,
+		size_t, textlen,
+		double, doublearg,
+		float, floatarg
+	),
 	TP_FIELDS(
 		ctf_integer(int, intfield, anint)
 		ctf_integer_hex(int, intfield2, anint)
@@ -35,9 +41,15 @@ TRACEPOINT_EVENT(tp, tptest1,
 	)
 )
 TRACEPOINT_EVENT(tp, tptest2,
-	TP_ARGS(int, anint, int, netint, long *, values,
-		char *, text, size_t, textlen,
-		double, doublearg, float, floatarg),
+	TP_ARGS(
+		int, anint,
+		int, netint,
+		long *, values,
+		char *, text,
+		size_t, textlen,
+		double, doublearg,
+		float, floatarg
+	),
 	TP_FIELDS(
 		ctf_integer(int, intfield, anint)
 		ctf_integer_hex(int, intfield2, anint)
@@ -54,9 +66,15 @@ TRACEPOINT_EVENT(tp, tptest2,
 	)
 )
 TRACEPOINT_EVENT(tp, tptest3,
-	TP_ARGS(int, anint, int, netint, long *, values,
-		char *, text, size_t, textlen,
-		double, doublearg, float, floatarg),
+	TP_ARGS(
+		int, anint,
+		int, netint,
+		long *, values,
+		char *, text,
+		size_t, textlen,
+		double, doublearg,
+		float, floatarg
+	),
 	TP_FIELDS(
 		ctf_integer(int, intfield, anint)
 		ctf_integer_hex(int, intfield2, anint)
@@ -73,9 +91,15 @@ TRACEPOINT_EVENT(tp, tptest3,
 	)
 )
 TRACEPOINT_EVENT(tp, tptest4,
-	TP_ARGS(int, anint, int, netint, long *, values,
-		char *, text, size_t, textlen,
-		double, doublearg, float, floatarg),
+	TP_ARGS(
+		int, anint,
+		int, netint,
+		long *, values,
+		char *, text,
+		size_t, textlen,
+		double, doublearg,
+		float, floatarg
+	),
 	TP_FIELDS(
 		ctf_integer(int, intfield, anint)
 		ctf_integer_hex(int, intfield2, anint)
@@ -92,9 +116,15 @@ TRACEPOINT_EVENT(tp, tptest4,
 	)
 )
 TRACEPOINT_EVENT(tp, tptest5,
-	TP_ARGS(int, anint, int, netint, long *, values,
-		char *, text, size_t, textlen,
-		double, doublearg, float, floatarg),
+	TP_ARGS(
+		int, anint,
+		int, netint,
+		long *, values,
+		char *, text,
+		size_t, textlen,
+		double, doublearg,
+		float, floatarg
+	),
 	TP_FIELDS(
 		ctf_integer(int, intfield, anint)
 		ctf_integer_hex(int, intfield2, anint)

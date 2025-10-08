@@ -16,7 +16,9 @@
 /* clang-format off */
 
 TRACEPOINT_EVENT(ust_tests_demo3, done,
-	TP_ARGS(int, value),
+	TP_ARGS(
+		int, value
+	),
 	TP_FIELDS(
 		ctf_integer(int, value, value)
 	)

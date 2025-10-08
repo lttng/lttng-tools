@@ -17,8 +17,12 @@
 /* clang-format off */
 
 TRACEPOINT_EVENT(ust_tests_exitfast, message,
-		TP_ARGS(char *, text),
-		TP_FIELDS(ctf_string(message, text))
+	TP_ARGS(
+		char *, text
+	),
+	TP_FIELDS(
+		ctf_string(message, text)
+	)
 )
 
 TRACEPOINT_LOGLEVEL(ust_tests_exitfast, message, TRACE_INFO)

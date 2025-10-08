@@ -18,11 +18,9 @@
 
 /* clang-format off */
 
-TRACEPOINT_EVENT(
-    libfoo,
-    foo,
-    TP_ARGS(void),
-    TP_FIELDS()
+TRACEPOINT_EVENT(libfoo, foo,
+	TP_ARGS(void),
+	TP_FIELDS()
 )
 
 /* clang-format on */

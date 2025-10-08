@@ -16,7 +16,10 @@
 /* clang-format off */
 
 TRACEPOINT_EVENT(ust_gen_nevents, tptest0,
-	TP_ARGS(int, anint, long, value),
+	TP_ARGS(
+		int, anint,
+		long, value
+	),
 	TP_FIELDS(
 		ctf_integer(int, intfield, anint)
 		ctf_integer(long, longfield, value)
@@ -24,7 +27,10 @@ TRACEPOINT_EVENT(ust_gen_nevents, tptest0,
 )
 
 TRACEPOINT_EVENT(ust_gen_nevents, tptest1,
-	TP_ARGS(int, anint, long, value),
+	TP_ARGS(
+		int, anint,
+		long, value
+	),
 	TP_FIELDS(
 		ctf_integer(int, intfield, anint)
 		ctf_integer(long, longfield, value)
@@ -32,7 +38,10 @@ TRACEPOINT_EVENT(ust_gen_nevents, tptest1,
 )
 
 TRACEPOINT_EVENT(ust_gen_nevents, tptest2,
-	TP_ARGS(int, anint, long, value),
+	TP_ARGS(
+		int, anint,
+		long, value
+	),
 	TP_FIELDS(
 		ctf_integer(int, intfield, anint)
 		ctf_integer(long, longfield, value)
@@ -40,7 +49,10 @@ TRACEPOINT_EVENT(ust_gen_nevents, tptest2,
 )
 
 TRACEPOINT_EVENT(ust_gen_nevents, tptest3,
-	TP_ARGS(int, anint, long, value),
+	TP_ARGS(
+		int, anint,
+		long, value
+	),
 	TP_FIELDS(
 		ctf_integer(int, intfield, anint)
 		ctf_integer(long, longfield, value)

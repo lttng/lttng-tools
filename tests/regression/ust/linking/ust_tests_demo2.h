@@ -16,9 +16,15 @@
 /* clang-format off */
 
 TRACEPOINT_EVENT(ust_tests_demo2, loop,
-	TP_ARGS(int, anint, int, netint, long *, values,
-		 char *, text, size_t, textlen,
-		 double, doublearg, float, floatarg),
+	TP_ARGS(
+		int, anint,
+		int, netint,
+		long *, values,
+		char *, text,
+		size_t, textlen,
+		double, doublearg,
+		float, floatarg
+	),
 	TP_FIELDS(
 		ctf_integer(int, intfield, anint)
 		ctf_integer_hex(int, intfield2, anint)
@@ -27,10 +33,8 @@ TRACEPOINT_EVENT(ust_tests_demo2, loop,
 		ctf_integer_network_hex(int, netintfieldhex, netint)
 		ctf_array(long, arrfield1, values, 3)
 		ctf_array_text(char, arrfield2, text, 10)
-		ctf_sequence(char, seqfield1, text,
-			     size_t, textlen)
-		ctf_sequence_text(char, seqfield2, text,
-			     size_t, textlen)
+		ctf_sequence(char, seqfield1, text, size_t, textlen)
+		ctf_sequence_text(char, seqfield2, text, size_t, textlen)
 		ctf_string(stringfield, text)
 		ctf_float(float, floatfield, floatarg)
 		ctf_float(double, doublefield, doublearg)
