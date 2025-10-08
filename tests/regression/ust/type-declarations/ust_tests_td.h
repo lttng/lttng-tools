@@ -13,6 +13,8 @@
 
 #include <lttng/tracepoint.h>
 
+/* clang-format off */
+
 TRACEPOINT_ENUM(ust_tests_td, testenum,
 	TP_ENUM_VALUES(
 		ctf_enum_value("zero", 0)
@@ -78,6 +80,8 @@ TRACEPOINT_EVENT(ust_tests_td, test_auto,
 		ctf_enum(ust_tests_td, testenum3, int, twenty_one, 21)
 	)
 )
+
+/* clang-format on */
 
 #endif /* _TRACEPOINT_UST_TESTS_TD_H */
 

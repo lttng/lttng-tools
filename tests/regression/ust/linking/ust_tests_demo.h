@@ -13,6 +13,8 @@
 
 #include <lttng/tracepoint.h>
 
+/* clang-format off */
+
 TRACEPOINT_EVENT(ust_tests_demo, starting,
 	TP_ARGS(int, value),
 	TP_FIELDS(
@@ -28,6 +30,8 @@ TRACEPOINT_EVENT(ust_tests_demo, done,
 	)
 )
 TRACEPOINT_LOGLEVEL(ust_tests_demo, done, TRACE_CRIT)
+
+/* clang-format on */
 
 #endif /* _TRACEPOINT_UST_TESTS_DEMO_H */
 

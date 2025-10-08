@@ -12,6 +12,8 @@
 
 #include <lttng/tracepoint.h>
 
+/* clang-format off */
+
 TRACEPOINT_EVENT(ust_tests_demo2, loop,
 	TP_ARGS(int, anint, int, netint, long *, values,
 		 char *, text, size_t, textlen,
@@ -34,6 +36,8 @@ TRACEPOINT_EVENT(ust_tests_demo2, loop,
 	)
 )
 TRACEPOINT_LOGLEVEL(ust_tests_demo2, loop, TRACE_WARNING)
+
+/* clang-format on */
 
 #endif /* _TRACEPOINT_UST_TESTS_DEMO2_H */
 

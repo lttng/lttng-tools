@@ -17,6 +17,8 @@
 #include <lttng/tracepoint.h>
 #include <stdint.h>
 
+/* clang-format off */
+
 #if defined(ACTIVATE_PROBES_A)
 TRACEPOINT_EVENT(multi, tp,
 	TP_ARGS(uint64_t, arg),
@@ -188,6 +190,8 @@ TRACEPOINT_EVENT(multi, tp,
 	)
 )
 #endif
+
+/* clang-format on */
 
 #endif /* PROBES_H */
 

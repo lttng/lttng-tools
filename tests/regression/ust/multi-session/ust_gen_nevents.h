@@ -13,6 +13,8 @@
 
 #include <lttng/tracepoint.h>
 
+/* clang-format off */
+
 TRACEPOINT_EVENT(ust_gen_nevents, tptest0,
 	TP_ARGS(int, anint, long, value),
 	TP_FIELDS(
@@ -44,6 +46,8 @@ TRACEPOINT_EVENT(ust_gen_nevents, tptest3,
 		ctf_integer(long, longfield, value)
 	)
 )
+
+/* clang-format on */
 
 #endif /* _TRACEPOINT_UST_GEN_NEVENTS_H */
 
