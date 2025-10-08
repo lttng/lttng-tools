@@ -18,12 +18,10 @@
 
 /* clang-format off */
 
-TRACEPOINT_EVENT(
-		my_provider,
-		my_first_tracepoint,
-		TP_ARGS(
+TRACEPOINT_EVENT(my_provider, my_first_tracepoint,
+	TP_ARGS(
 		int, my_integer_arg,
-		char*, my_string_arg
+		char *, my_string_arg
 	),
 	TP_FIELDS(
 		ctf_string(my_string_field, my_string_arg)

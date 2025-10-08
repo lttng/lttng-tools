@@ -16,7 +16,9 @@
 /* clang-format off */
 
 TRACEPOINT_EVENT(ust_tests_demo, starting,
-	TP_ARGS(int, value),
+	TP_ARGS(
+		int, value
+	),
 	TP_FIELDS(
 		ctf_integer(int, value, value)
 	)
@@ -31,7 +33,9 @@ TRACEPOINT_MODEL_EMF_URI(ust_tests_demo, starting,
 	"http://example.com/path_to_model?q=ust_tests_demo:starting")
 
 TRACEPOINT_EVENT(ust_tests_demo, done,
-	TP_ARGS(int, value),
+	TP_ARGS(
+		int, value
+	),
 	TP_FIELDS(
 		ctf_integer(int, value, value)
 	)

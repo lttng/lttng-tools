@@ -45,13 +45,15 @@ TRACEPOINT_ENUM(ust_tests_td, testenum3,
  * is entered only once in the metadata file.
  */
 TRACEPOINT_EVENT(ust_tests_td, tptest,
-	TP_ARGS(int, enumval, int, enumval2, int, enumval3),
+	TP_ARGS(
+		int, enumval,
+		int, enumval2,
+		int, enumval3
+	),
 	TP_FIELDS(
 		ctf_enum(ust_tests_td, testenum, int, enumfield, enumval)
-		ctf_enum(ust_tests_td, testenum, long long,
-				enumfield_bis, enumval2)
-		ctf_enum(ust_tests_td, testenum2, unsigned int,
-				enumfield_third, enumval3)
+		ctf_enum(ust_tests_td, testenum, long long, enumfield_bis, enumval2)
+		ctf_enum(ust_tests_td, testenum2, unsigned int, enumfield_third, enumval3)
 	)
 )
 
@@ -60,10 +62,11 @@ TRACEPOINT_EVENT(ust_tests_td, tptest,
  * entered only once in the metadata file.
  */
 TRACEPOINT_EVENT(ust_tests_td, tptest_bis,
-	TP_ARGS(int, enumval),
+	TP_ARGS(
+		int, enumval
+	),
 	TP_FIELDS(
-		ctf_enum(ust_tests_td, testenum, unsigned char,
-				enumfield, enumval)
+		ctf_enum(ust_tests_td, testenum, unsigned char, enumfield, enumval)
 	)
 )
 

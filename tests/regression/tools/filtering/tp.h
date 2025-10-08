@@ -16,9 +16,14 @@
 /* clang-format off */
 
 TRACEPOINT_EVENT(tp, tptest,
-	TP_ARGS(int, anint, int, netint, long *, values,
-		char *, text, size_t, textlen,
-		char *, etext, double, doublearg, float, floatarg,
+	TP_ARGS(int, anint,
+		int, netint,
+		long *, values,
+		char *, text,
+		size_t, textlen,
+		char *, etext,
+		double, doublearg,
+		float, floatarg,
 		uint32_t *, net_values),
 	TP_FIELDS(
 		ctf_integer(int, intfield, anint)

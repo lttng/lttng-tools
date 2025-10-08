@@ -17,28 +17,36 @@
 /* clang-format off */
 
 TRACEPOINT_EVENT(ust_tests_fork, before_fork,
-	TP_ARGS(pid_t, pid),
+	TP_ARGS(
+		pid_t, pid
+	),
 	TP_FIELDS(
 		ctf_integer(pid_t, pid, pid)
 	)
 )
 
 TRACEPOINT_EVENT(ust_tests_fork, after_fork_child,
-	TP_ARGS(pid_t, pid),
+	TP_ARGS(
+		pid_t, pid
+	),
 	TP_FIELDS(
 		ctf_integer(pid_t, pid, pid)
 	)
 )
 
 TRACEPOINT_EVENT(ust_tests_fork, after_fork_parent,
-	TP_ARGS(pid_t, pid),
+	TP_ARGS(
+		pid_t, pid
+	),
 	TP_FIELDS(
 		ctf_integer(pid_t, pid, pid)
 	)
 )
 
 TRACEPOINT_EVENT(ust_tests_fork, after_exec,
-	TP_ARGS(pid_t, pid),
+	TP_ARGS(
+		pid_t, pid
+	),
 	TP_FIELDS(
 		ctf_integer(pid_t, pid, pid)
 	)

@@ -17,14 +17,18 @@
 /* clang-format off */
 
 TRACEPOINT_EVENT(ust_tests_daemon, before_daemon,
-	TP_ARGS(pid_t, pid),
+	TP_ARGS(
+		pid_t, pid
+	),
 	TP_FIELDS(
 		ctf_integer(pid_t, pid, pid)
 	)
 )
 
 TRACEPOINT_EVENT(ust_tests_daemon, after_daemon_child,
-	TP_ARGS(pid_t, pid),
+	TP_ARGS(
+		pid_t, pid
+	),
 	TP_FIELDS(
 		ctf_integer(pid_t, pid, pid)
 	)
