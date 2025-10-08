@@ -307,8 +307,12 @@ void lst::dynamic_length_array_type::accept(type_visitor& visitor) const
 
 lst::static_length_blob_type::static_length_blob_type(unsigned int in_alignment,
 						      uint64_t in_length_bytes,
+						      nonstd::optional<std::string> in_media_type,
 						      roles in_roles) :
-	type(in_alignment), length_bytes{ in_length_bytes }, roles_{ std::move(in_roles) }
+	type(in_alignment),
+	length_bytes{ in_length_bytes },
+	media_type{ std::move(in_media_type) },
+	roles_{ std::move(in_roles) }
 {
 }
 
@@ -316,12 +320,14 @@ bool lst::static_length_blob_type::_is_equal(const type& base_other) const noexc
 {
 	const auto& other = static_cast<decltype(*this)&>(base_other);
 
-	return length_bytes == other.length_bytes && roles_ == other.roles_;
+	return length_bytes == other.length_bytes && media_type == other.media_type &&
+		roles_ == other.roles_;
 }
 
 lst::type::cuptr lst::static_length_blob_type::copy() const
 {
-	return lttng::make_unique<static_length_blob_type>(alignment, length_bytes, roles_);
+	return lttng::make_unique<static_length_blob_type>(
+		alignment, length_bytes, media_type, roles_);
 }
 
 void lst::static_length_blob_type::accept(type_visitor& visitor) const
@@ -330,8 +336,12 @@ void lst::static_length_blob_type::accept(type_visitor& visitor) const
 }
 
 lst::dynamic_length_blob_type::dynamic_length_blob_type(
-	unsigned int in_alignment, lst::field_location in_length_field_location) :
-	type(in_alignment), length_field_location{ std::move(in_length_field_location) }
+	unsigned int in_alignment,
+	lst::field_location in_length_field_location,
+	nonstd::optional<std::string> in_media_type) :
+	type(in_alignment),
+	length_field_location{ std::move(in_length_field_location) },
+	media_type{ std::move(in_media_type) }
 {
 }
 
@@ -339,12 +349,14 @@ bool lst::dynamic_length_blob_type::_is_equal(const type& base_other) const noex
 {
 	const auto& other = dynamic_cast<decltype(*this)&>(base_other);
 
-	return length_field_location == other.length_field_location;
+	return length_field_location == other.length_field_location &&
+		media_type == other.media_type;
 }
 
 lst::type::cuptr lst::dynamic_length_blob_type::copy() const
 {
-	return lttng::make_unique<dynamic_length_blob_type>(alignment, length_field_location);
+	return lttng::make_unique<dynamic_length_blob_type>(
+		alignment, length_field_location, media_type);
 }
 
 void lst::dynamic_length_blob_type::accept(type_visitor& visitor) const

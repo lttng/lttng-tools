@@ -38,6 +38,11 @@ nljson::json::object_t::value_type make_json_length_prop(const uint64_t length)
 	return std::make_pair("length", length);
 }
 
+nljson::json::object_t::value_type make_json_media_type_prop(const std::string& media_type)
+{
+	return std::make_pair("media-type", media_type);
+}
+
 nljson::json json_fixed_length_bit_array_field_class_from_type(
 	const char *const type_name,
 	const trace::bit_array_type& type,
@@ -287,6 +292,11 @@ private:
 				make_json_length_prop(type.length_bytes),
 			};
 
+			if (type.media_type) {
+				json_field_class.update({
+					make_json_media_type_prop(*type.media_type),
+				});
+			}
 			if (!type.roles_.empty()) {
 				LTTNG_ASSERT(type.roles_.size() == 1);
 				LTTNG_ASSERT(
@@ -301,11 +311,19 @@ private:
 
 	void visit(const trace::dynamic_length_blob_type& type) override
 	{
-		_json_field_class = make_json_field_class(
-			"dynamic-length-blob",
-			{
+		_json_field_class = make_json_field_class("dynamic-length-blob", [&] {
+			nljson::json json_field_class{
 				json_length_field_location_prop_from_type(type),
-			});
+			};
+
+			if (type.media_type) {
+				json_field_class.update({
+					make_json_media_type_prop(*type.media_type),
+				});
+			}
+
+			return json_field_class;
+		}());
 	}
 
 	void visit(const trace::null_terminated_string_type&) override

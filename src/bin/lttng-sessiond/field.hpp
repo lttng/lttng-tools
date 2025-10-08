@@ -390,13 +390,17 @@ public:
 
 	using roles = std::vector<role>;
 
-	static_length_blob_type(unsigned int alignment, uint64_t in_length_bytes, roles roles = {});
+	static_length_blob_type(unsigned int alignment,
+				uint64_t in_length_bytes,
+				nonstd::optional<std::string> media_type = {},
+				roles roles = {});
 
 	type::cuptr copy() const final;
 
 	void accept(type_visitor& visitor) const final;
 
 	const uint64_t length_bytes;
+	const nonstd::optional<std::string> media_type;
 	const roles roles_;
 
 private:
@@ -405,13 +409,16 @@ private:
 
 class dynamic_length_blob_type : public type {
 public:
-	dynamic_length_blob_type(unsigned int alignment, field_location length_field_location);
+	dynamic_length_blob_type(unsigned int alignment,
+				 field_location length_field_location,
+				 nonstd::optional<std::string> media_type = {});
 
 	type::cuptr copy() const final;
 
 	void accept(type_visitor& visitor) const final;
 
 	const field_location length_field_location;
+	const nonstd::optional<std::string> media_type;
 
 private:
 	bool _is_equal(const type& base_other) const noexcept final;

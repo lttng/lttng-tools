@@ -779,6 +779,95 @@ lst::type::cuptr create_variant_field_from_ust_ctl_fields(
 	}
 }
 
+lst::type::cuptr create_fixed_length_blob_type_from_ust_ctl_fields(
+	const lttng_ust_ctl_field *current,
+	const lttng_ust_ctl_field *end,
+	const session_attributes& session_attributes __attribute__((unused)),
+	const lttng_ust_ctl_field **next_ust_ctl_field,
+	lsu::ctl_field_quirks quirks __attribute__((unused)))
+{
+	if (current >= end) {
+		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
+			"End of {} array reached unexpectedly during decoding", typeid(*current)));
+	}
+
+	const auto& fixed_length_blob_uctl_field = *current;
+	nonstd::optional<std::string> media_type;
+	const uint32_t blob_length = fixed_length_blob_uctl_field.type.u.fixed_length_blob.length;
+
+	if (lttng_strnlen(
+		    fixed_length_blob_uctl_field.type.u.fixed_length_blob.media_type,
+		    sizeof(fixed_length_blob_uctl_field.type.u.fixed_length_blob.media_type)) ==
+	    sizeof(fixed_length_blob_uctl_field.type.u.fixed_length_blob.media_type)) {
+		LTTNG_THROW_PROTOCOL_ERROR("Static length blob media type is not null terminated");
+	}
+	if (fixed_length_blob_uctl_field.type.u.fixed_length_blob.media_type[0]) {
+		media_type = std::string(
+			fixed_length_blob_uctl_field.type.u.fixed_length_blob.media_type);
+	}
+	*next_ust_ctl_field = current + 1;
+	return lttng::make_unique<lst::static_length_blob_type>(
+		0, blob_length, std::move(media_type));
+}
+
+lst::type::cuptr create_dynamic_length_blob_type_from_ust_ctl_fields(
+	const lttng_ust_ctl_field *current,
+	const lttng_ust_ctl_field *end,
+	const session_attributes& session_attributes __attribute__((unused)),
+	const lttng_ust_ctl_field **next_ust_ctl_field,
+	const lookup_field_fn& lookup_field,
+	lst::field_location::root lookup_root,
+	lst::field_location::elements& current_field_location_elements,
+	lsu::ctl_field_quirks quirks __attribute__((unused)))
+{
+	if (current >= end) {
+		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
+			"End of {} array reached unexpectedly during decoding", typeid(*current)));
+	}
+
+	*next_ust_ctl_field = current + 1;
+
+	const auto& variable_length_blob_uctl_field = *current;
+	const auto *length_field_name =
+		variable_length_blob_uctl_field.type.u.variable_length_blob.length_name;
+	nonstd::optional<std::string> media_type = {};
+
+	if (lttng_strnlen(variable_length_blob_uctl_field.type.u.variable_length_blob.length_name,
+			  sizeof(variable_length_blob_uctl_field.type.u.variable_length_blob
+					 .length_name)) ==
+	    sizeof(variable_length_blob_uctl_field.type.u.variable_length_blob.length_name)) {
+		LTTNG_THROW_PROTOCOL_ERROR(
+			"Dynamic length blob length field name is not null terminated");
+	}
+	if (lttng_strnlen(variable_length_blob_uctl_field.type.u.variable_length_blob.media_type,
+			  sizeof(variable_length_blob_uctl_field.type.u.variable_length_blob
+					 .media_type)) ==
+	    sizeof(variable_length_blob_uctl_field.type.u.variable_length_blob.media_type)) {
+		LTTNG_THROW_PROTOCOL_ERROR("Dynamic length blob media type is not null terminated");
+	}
+
+	lst::field_location::elements length_field_location_elements =
+		current_field_location_elements;
+	length_field_location_elements.emplace_back(length_field_name);
+
+	lst::field_location length_field_location{ lookup_root,
+						   std::move(length_field_location_elements) };
+
+	/* Validate existence of length field (throws if not found). */
+	const auto& length_field = lookup_field(length_field_location);
+	const auto *integer_selector_field =
+		dynamic_cast<const lst::integer_type *>(&length_field.get_type());
+	if (!integer_selector_field) {
+		LTTNG_THROW_PROTOCOL_ERROR(
+			"Invalid selector field type referenced from dynamic length blob: expected integer or enumeration");
+	}
+	if (variable_length_blob_uctl_field.type.u.variable_length_blob.media_type[0])
+		media_type = std::string(
+			variable_length_blob_uctl_field.type.u.variable_length_blob.media_type);
+	return lttng::make_unique<lst::dynamic_length_blob_type>(
+		0, std::move(length_field_location), std::move(media_type));
+}
+
 lst::type::cuptr
 create_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 				const lttng_ust_ctl_field *end,
@@ -852,6 +941,19 @@ create_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 								lookup_root,
 								current_field_location_elements,
 								quirks);
+	case lttng_ust_ctl_atype_fixed_length_blob:
+		return create_fixed_length_blob_type_from_ust_ctl_fields(
+			current, end, session_attributes, next_ust_ctl_field, quirks);
+	case lttng_ust_ctl_atype_variable_length_blob:
+		return create_dynamic_length_blob_type_from_ust_ctl_fields(
+			current,
+			end,
+			session_attributes,
+			next_ust_ctl_field,
+			lookup_field,
+			lookup_root,
+			current_field_location_elements,
+			quirks);
 	default:
 		LTTNG_THROW_PROTOCOL_ERROR(
 			lttng::format("Unknown {} value `{}` encountered while converting {} to {}",
