@@ -264,7 +264,7 @@ lttng_data_stream_info_sets::create_from_payload(lttng_payload_view& view)
 	/* Read set count */
 	const lttng::binary_view<uint32_t> set_count_view(view.buffer.data + offset,
 							  view.buffer.size);
-	const auto set_count = *set_count_view.begin();
+	const auto set_count = set_count_view.value();
 	offset += sizeof(set_count);
 
 	sets->sets.reserve(set_count);
@@ -275,26 +275,26 @@ lttng_data_stream_info_sets::create_from_payload(lttng_payload_view& view)
 
 		const lttng::binary_view<std::uint8_t> bitness_view(view.buffer.data + offset,
 								    view.buffer.size - offset);
-		const auto bitness = *bitness_view.begin();
+		const auto bitness = bitness_view.value();
 		offset += sizeof(bitness);
 
 		const lttng::binary_view<std::uint8_t> is_per_pid_view(view.buffer.data + offset,
 								       view.buffer.size - offset);
-		const auto is_per_pid = *is_per_pid_view.begin();
+		const auto is_per_pid = is_per_pid_view.value();
 		offset += sizeof(is_per_pid);
 
 		/* Read owner info */
 		if (is_per_pid) {
 			const lttng::binary_view<std::uint64_t> pid_view(view.buffer.data + offset,
 									 view.buffer.size - offset);
-			const auto pid = *pid_view.begin();
+			const auto pid = pid_view.value();
 			offset += sizeof(pid);
 
 			set.owner.pid = pid;
 		} else {
 			const lttng::binary_view<std::uint64_t> uid_view(view.buffer.data + offset,
 									 view.buffer.size - offset);
-			const auto uid = *uid_view.begin();
+			const auto uid = uid_view.value();
 			offset += sizeof(uid);
 
 			set.owner.uid = uid;
@@ -302,7 +302,7 @@ lttng_data_stream_info_sets::create_from_payload(lttng_payload_view& view)
 
 		const lttng::binary_view<std::uint32_t> stream_count_view(
 			view.buffer.data + offset, view.buffer.size - offset);
-		const auto stream_count = *stream_count_view.begin();
+		const auto stream_count = stream_count_view.value();
 		offset += sizeof(stream_count);
 
 		set.bitness = static_cast<enum lttng_app_bitness>(bitness);
@@ -315,27 +315,27 @@ lttng_data_stream_info_sets::create_from_payload(lttng_payload_view& view)
 
 			const lttng::binary_view<std::uint8_t> has_cpu_id_view(
 				view.buffer.data + offset, view.buffer.size - offset);
-			const auto has_cpu_id = *has_cpu_id_view.begin();
+			const auto has_cpu_id = has_cpu_id_view.value();
 			offset += sizeof(has_cpu_id);
 
 			if (has_cpu_id) {
 				const lttng::binary_view<std::uint32_t> cpu_id_view(
 					view.buffer.data + offset, view.buffer.size - offset);
-				const auto cpu_id = *cpu_id_view.begin();
+				const auto cpu_id = cpu_id_view.value();
 				offset += sizeof(cpu_id);
 				stream.cpu_id = cpu_id;
 			}
 
 			const lttng::binary_view<std::uint64_t> memory_usage_view(
 				view.buffer.data + offset, view.buffer.size - offset);
-			const auto memory_usage = *memory_usage_view.begin();
+			const auto memory_usage = memory_usage_view.value();
 			offset += sizeof(memory_usage);
 
 			stream.memory_usage = memory_usage;
 
 			const lttng::binary_view<std::uint64_t> max_memory_usage_view(
 				view.buffer.data + offset, view.buffer.size - offset);
-			const auto max_memory_usage = *max_memory_usage_view.begin();
+			const auto max_memory_usage = max_memory_usage_view.value();
 			offset += sizeof(max_memory_usage);
 
 			stream.max_memory_usage = max_memory_usage;

@@ -75,6 +75,7 @@ public:
 		}
 	}
 
+	/* Note that begin() returns a potentially unaligned pointer. */
 	const_iterator begin() const noexcept
 	{
 		return reinterpret_cast<const ValueType *>(_data);
@@ -85,14 +86,14 @@ public:
 		return begin() + _count;
 	}
 
-	reference operator[](size_type idx) const
+	value_type operator[](size_type idx) const
 	{
 		if (idx >= _count) {
 			LTTNG_THROW_OUT_OF_RANGE(fmt::format(
 				"Binary view index out of range: index={}, count={}", idx, _count));
 		}
 
-		return begin()[idx];
+		return value(idx);
 	}
 
 	size_type size() const noexcept
@@ -103,6 +104,29 @@ public:
 	bool empty() const noexcept
 	{
 		return _count == 0;
+	}
+
+	value_type value(size_type idx = 0) const
+	{
+		if (idx >= _count) {
+			LTTNG_THROW_OUT_OF_RANGE(fmt::format(
+				"Binary view index out of range: index={}, count={}", idx, _count));
+		}
+
+#if (defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || defined(__x86_64)) || \
+	(defined(__i486__) || defined(__i586__) || defined(__i686__)) ||                    \
+	(defined(__i386__) || defined(__i386)) ||                                           \
+	(defined(__powerpc64__) || defined(__ppc64__)) ||                                   \
+	(defined(__powerpc__) || defined(__powerpc) || defined(__ppc__))
+		/* x86/x64 and ppc/ppc64 allow unaligned access; just dereference. */
+		return begin()[idx];
+#else
+		/* Other architectures, use memcpy for safety. */
+		value_type result;
+
+		std::memcpy(&result, _data + idx, sizeof(ValueType));
+		return result;
+#endif
 	}
 
 private:
