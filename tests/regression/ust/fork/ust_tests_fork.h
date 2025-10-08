@@ -14,6 +14,8 @@
 #include <lttng/tracepoint.h>
 #include <sys/types.h>
 
+/* clang-format off */
+
 TRACEPOINT_EVENT(ust_tests_fork, before_fork,
 	TP_ARGS(pid_t, pid),
 	TP_FIELDS(
@@ -41,6 +43,8 @@ TRACEPOINT_EVENT(ust_tests_fork, after_exec,
 		ctf_integer(pid_t, pid, pid)
 	)
 )
+
+/* clang-format on */
 
 #endif /* _TRACEPOINT_UST_TESTS_FORK_H */
 

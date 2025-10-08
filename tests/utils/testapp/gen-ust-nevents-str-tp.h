@@ -13,6 +13,8 @@
 
 #include <lttng/tracepoint.h>
 
+/* clang-format off */
+
 TRACEPOINT_EVENT(tp, the_string,
 	TP_ARGS(
 		int, i,
@@ -25,6 +27,8 @@ TRACEPOINT_EVENT(tp, the_string,
 		ctf_string(str, str)
 	)
 )
+
+/* clang-format on */
 
 #endif /* _TRACEPOINT_TP_H */
 

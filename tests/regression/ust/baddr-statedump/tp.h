@@ -16,6 +16,8 @@
 
 #include <lttng/tracepoint.h>
 
+/* clang-format off */
+
 TRACEPOINT_EVENT(
 		my_provider,
 		my_first_tracepoint,
@@ -28,6 +30,8 @@ TRACEPOINT_EVENT(
 		ctf_integer(int, my_integer_field, my_integer_arg)
 	)
 )
+
+/* clang-format on */
 
 #endif /* _TP_H */
 

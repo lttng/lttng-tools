@@ -16,12 +16,16 @@
 
 #include <lttng/tracepoint.h>
 
+/* clang-format off */
+
 TRACEPOINT_EVENT(
     libzzz,
     zzz,
     TP_ARGS(void),
     TP_FIELDS()
 )
+
+/* clang-format on */
 
 #endif /* _LIBZZZ_TP_H */
 

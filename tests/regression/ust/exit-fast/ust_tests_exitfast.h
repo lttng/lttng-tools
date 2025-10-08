@@ -14,12 +14,16 @@
 
 #include <lttng/tracepoint.h>
 
+/* clang-format off */
+
 TRACEPOINT_EVENT(ust_tests_exitfast, message,
 		TP_ARGS(char *, text),
 		TP_FIELDS(ctf_string(message, text))
 )
 
 TRACEPOINT_LOGLEVEL(ust_tests_exitfast, message, TRACE_INFO)
+
+/* clang-format on */
 
 #endif /* _TRACEPOINT_UST_TESTS_EXITFAST_H */
 
