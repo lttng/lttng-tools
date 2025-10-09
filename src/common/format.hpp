@@ -94,6 +94,16 @@ std::string format(FormattingArguments&&...args)
 		return std::string("Failed to format string: ") += ex.what();
 	}
 }
+
+template <typename... FormattingArguments>
+void print(FormattingArguments&&...args)
+{
+	try {
+		fmt::print(std::forward<FormattingArguments>(args)...);
+	} catch (const fmt::format_error& ex) {
+		fmt::print("Failed to format string: {}\n", ex.what());
+	}
+}
 } /* namespace lttng */
 
 #endif /* LTTNG_FORMAT_H */
