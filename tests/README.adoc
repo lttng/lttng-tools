@@ -77,7 +77,7 @@ or internal testpoints.
 | Define a directory to which the verbose logs will be written to disk.
 `-` may be used to indicate stdout/stderr respectively.
 Some invocations of programs during the test may override this value to perform the test.
-| {ex} | {check} | {ex}
+| {check} | {check} | {ex}
 
 | `LTTNG_TEST_BABELTRACE_VERBOSITY`
 | Define the level of verbosity for `babeltrace2`. Default:{nbsp}`I`
