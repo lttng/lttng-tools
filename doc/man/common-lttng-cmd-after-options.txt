@@ -47,6 +47,31 @@ directory.
 The genoption:--sessiond-path general option overrides this environment
 variable.
 
+`LTTNG_TERM_COLOR`::
+    Controls when to emit terminal SGR codes in the output.
++
+The `NO_COLOR` environment variable overrides this.
++
+One of:
++
+--
+`auto` (default)::
+    Only emit SGR codes when the standard output is connected to a
+    color-capable terminal.
+
+`always`::
+    Always emit SGR codes.
+
+`never`::
+    Never emit SGR codes.
+--
+
+`NO_COLOR`::
+    If set and not empty, then it's equivalent to setting
+    `LTTNG_TERM_COLOR` to `never`.
++
+See https://no-color.org/[NO_COLOR] to learn more.
+
 
 FILES
 -----

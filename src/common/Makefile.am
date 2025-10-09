@@ -103,6 +103,7 @@ libcommon_lgpl_la_SOURCES = \
 	math.hpp \
 	meta-helpers.hpp \
 	mi-lttng.cpp mi-lttng.hpp \
+	mint.cpp mint.hpp \
 	notification.cpp \
 	payload.cpp payload.hpp \
 	payload-view.cpp payload-view.hpp \

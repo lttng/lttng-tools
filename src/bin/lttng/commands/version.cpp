@@ -10,6 +10,7 @@
 #include "version.hpp"
 
 #include <common/mi-lttng.hpp>
+#include <common/mint.hpp>
 
 #include <popt.h>
 #include <stdio.h>
@@ -143,19 +144,33 @@ int cmd_version(int argc, const char **argv)
 	if (lttng_opt_mi) {
 		ret = print_mi();
 	} else {
-		MSG("lttng version " VERSION " - " VERSION_NAME "%s",
-		    GIT_VERSION[0] == '\0' ? "" : " - " GIT_VERSION);
-		MSG("\n" VERSION_DESCRIPTION "\n");
-		MSG("Web site: https://lttng.org");
-		MSG("\n%s", lttng_license);
-		if (EXTRA_VERSION_NAME[0] != '\0') {
-			MSG("\nExtra version name: " EXTRA_VERSION_NAME);
+		lttng::mint_print("lttng version [!]{}[/] - [*b!]{}[/]", VERSION, VERSION_NAME);
+
+		if (GIT_VERSION[0] != '\0') {
+			lttng::mint_print(" - [*y]{}[/]", GIT_VERSION);
 		}
-		if (EXTRA_VERSION_DESCRIPTION[0] != '\0') {
-			MSG("\nExtra version description:\n\t" EXTRA_VERSION_DESCRIPTION);
-		}
-		if (EXTRA_VERSION_PATCHES[0] != '\0') {
-			MSG("\nExtra version patches:\n\t" EXTRA_VERSION_PATCHES);
+
+		lttng::mint_print("\n\n[c]{}[/]\n\n"
+				  "[!]Web site[/]: https://lttng.org\n\n",
+				  VERSION_DESCRIPTION);
+		lttng::mint_print("[-]{}[/]\n", lttng_license);
+
+		if (EXTRA_VERSION_NAME[0] != '\0' || EXTRA_VERSION_DESCRIPTION[0] != '\0' ||
+		    EXTRA_VERSION_PATCHES[0] != '\0') {
+			if (EXTRA_VERSION_NAME[0] != '\0') {
+				lttng::mint_print("\n[!]Extra version name[/]: {}",
+						  EXTRA_VERSION_NAME);
+			}
+			if (EXTRA_VERSION_DESCRIPTION[0] != '\0') {
+				lttng::mint_print("\n[!]Extra version description[/]: {}",
+						  EXTRA_VERSION_DESCRIPTION);
+			}
+			if (EXTRA_VERSION_PATCHES[0] != '\0') {
+				lttng::mint_print("\n[!]Extra version patches[/]: {}",
+						  EXTRA_VERSION_PATCHES);
+			}
+
+			lttng::print("\n");
 		}
 	}
 
