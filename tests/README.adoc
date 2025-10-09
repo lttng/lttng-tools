@@ -57,7 +57,7 @@ or internal testpoints.
 | Environment Variable | Description | Python Framework | Bash Framework | C/C++ Framework
 | `LTTNG_TOOLS_DISABLE_KERNEL_TESTS`
 | Do not run kernel (LTTng-modules) tests
-| {ex} | {check} | {ex}
+| {check} | {check} | {ex}
 
 | `LTTNG_ENABLE_DESTRUCTIVE_TESTS`
 | When set to `will-break-my-system`, tests that change global state (e.g. clock settings, creating and destroying users, ...) will be run. These tests typically also require being run as the root user.
