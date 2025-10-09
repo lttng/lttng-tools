@@ -102,6 +102,45 @@ LTTNG_UST_TRACEPOINT_EVENT(tp, tptest_empty,
 		lttng_ust_field_integer(int, , anint)
 	)
 )
+
+LTTNG_UST_TRACEPOINT_EVENT(tp, tptest_blob_fixed_length_nomediatype,
+	LTTNG_UST_TP_ARGS(
+		const uint8_t *, byte_values
+	),
+	LTTNG_UST_TP_FIELDS(
+		lttng_ust_field_fixed_length_blob(fixblobfield_nomediatype, byte_values, 4, NULL)
+	)
+)
+
+LTTNG_UST_TRACEPOINT_EVENT(tp, tptest_blob_variable_length_nomediatype,
+	LTTNG_UST_TP_ARGS(
+		const uint8_t *, byte_values,
+		size_t, byte_values_len
+	),
+	LTTNG_UST_TP_FIELDS(
+		lttng_ust_field_variable_length_blob(varblobfield_nomediatype, byte_values, size_t, byte_values_len, NULL)
+	)
+)
+
+LTTNG_UST_TRACEPOINT_EVENT(tp, tptest_blob_fixed_length_mediatype,
+	LTTNG_UST_TP_ARGS(
+		const uint8_t *, byte_values
+	),
+	LTTNG_UST_TP_FIELDS(
+		lttng_ust_field_fixed_length_blob(fixblobfield_mediatype, byte_values, 4, "lttng/testmediatype_fix")
+	)
+)
+
+LTTNG_UST_TRACEPOINT_EVENT(tp, tptest_blob_variable_length_mediatype,
+	LTTNG_UST_TP_ARGS(
+		const uint8_t *, byte_values,
+		size_t, byte_values_len
+	),
+	LTTNG_UST_TP_FIELDS(
+		lttng_ust_field_variable_length_blob(varblobfield_mediatype, byte_values, size_t, byte_values_len, "lttng/testmediatype_var")
+	)
+)
+
 /* clang-format on */
 
 TRACEPOINT_EVENT(tp, end, TP_ARGS(), TP_FIELDS())

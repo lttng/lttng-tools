@@ -47,6 +47,7 @@ struct option long_options[] = {
 	{ "emit-end-event", no_argument, nullptr, 'h' },
 	{ "sync-after-each-iter", required_argument, nullptr, 'j' },
 	{ "emit-event-with-empty-field-name", no_argument, nullptr, 0 },
+	{ "emit-blob-events", no_argument, nullptr, 0 },
 	{ "text-size", required_argument, nullptr, 0 },
 	{ "fill-text", no_argument, nullptr, 0 },
 	{ nullptr, 0, nullptr, 0 }
@@ -85,6 +86,7 @@ int main(int argc, char **argv)
 	const double dbl = 2.0;
 	const float flt = 2222.0;
 	uint32_t net_values[] = { 1, 2, 3 };
+	uint8_t byte_values[] = { 2, 3, 4, 5 };
 	int nr_iter = 100, ret = 0, first_event_file_created = 0;
 	useconds_t nr_usec = 0;
 	char *application_in_main_file_path = nullptr;
@@ -105,6 +107,7 @@ int main(int argc, char **argv)
 	/* Emit an end event */
 	bool emit_end_event = false;
 	bool emit_event_with_empty_field_name = false;
+	bool emit_blob_events = false;
 
 	for (i = 0; i < 3; i++) {
 		net_values[i] = htonl(net_values[i]);
@@ -123,6 +126,9 @@ int main(int argc, char **argv)
 			if (strcmp(long_options[option_index].name,
 				   "emit-event-with-empty-field-name") == 0) {
 				emit_event_with_empty_field_name = true;
+			}
+			if (strcmp(long_options[option_index].name, "emit-blob-events") == 0) {
+				emit_blob_events = true;
 			}
 			break;
 		case 'a':
@@ -263,6 +269,19 @@ int main(int argc, char **argv)
 			   net_values,
 			   dbl,
 			   flt);
+
+		if (emit_blob_events) {
+			tracepoint(tp, tptest_blob_fixed_length_nomediatype, byte_values);
+			tracepoint(tp,
+				   tptest_blob_variable_length_nomediatype,
+				   byte_values,
+				   sizeof(byte_values));
+			tracepoint(tp, tptest_blob_fixed_length_mediatype, byte_values);
+			tracepoint(tp,
+				   tptest_blob_variable_length_mediatype,
+				   byte_values,
+				   sizeof(byte_values));
+		}
 
 		/*
 		 * First loop we create the file if asked to indicate
