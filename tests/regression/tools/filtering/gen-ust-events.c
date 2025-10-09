@@ -23,6 +23,7 @@ int main(int argc, char **argv)
 	int i, netint;
 	long values[] = { 1, 2, 3 };
 	uint32_t net_values[] = { 1, 2, 3 };
+	uint8_t byte_values[] = { 2, 3, 4, 5 };
 	char text[10] = "test";
 	char escape[10] = "\\*";
 	double dbl = 2.0;
@@ -57,6 +58,9 @@ int main(int argc, char **argv)
 			   dbl,
 			   flt,
 			   net_values);
+
+		tracepoint(tp, tptest_blob, byte_values, sizeof(byte_values));
+
 		usleep(nr_usec);
 	}
 
