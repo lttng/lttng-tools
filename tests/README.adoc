@@ -51,22 +51,27 @@ or internal testpoints.
 
 === Test environment variables
 
-. Environment variables support across testing frameworks
+. Environment variables for controlling which tests are run
 [cols="1,1,1,1,1"]
 |===
 | Environment Variable | Description | Python Framework | Bash Framework | C/C++ Framework
+| `LTTNG_TOOLS_DISABLE_KERNEL_TESTS`
+| Do not run kernel (LTTng-modules) tests
+| {ex} | {check} | {ex}
 
 | `LTTNG_ENABLE_DESTRUCTIVE_TESTS`
 | When set to `will-break-my-system`, tests that change global state (e.g. clock settings, creating and destroying users, ...) will be run. These tests typically also require being run as the root user.
 | {check} | {check} | {ex}
 
-| `LTTNG_RELAYD_ENV_VARS`
-| Environment variables to forward into test environment
-| {check} | {ex} | {ex}
+| `LTTNG_TOOLS_RUN_TESTS_LONG_REGRESSION`
+| When set to non-empty string other than '0', run long regression tests
+| {check} | {check} | {ex}
+|===
 
-| `LTTNG_SESSIOND_ENV_VARS`
-| Environment variables to forward into test environment
-| {check} | {ex} | {ex}
+. Environment variables for controlling test output
+[cols="1,1,1,1,1"]
+|===
+| Environment Variable | Description | Python Framework | Bash Framework | C/C++ Framework
 
 | `LTTNG_TEST_LOG_DIR`
 | Define a directory to which the verbose logs will be written to disk.
@@ -77,6 +82,36 @@ Some invocations of programs during the test may override this value to perform 
 | `LTTNG_TEST_BABELTRACE_VERBOSITY`
 | Define the level of verbosity for `babeltrace2`. Default:{nbsp}`I`
 | {ex} | {check} | {ex}
+
+| `LTTNG_TEST_VERBOSE_BABELTRACE`
+| Run `babeltrace2` in it's verbose mode when not "0" or empty
+| {check} | {check} | {ex}
+
+| `LTTNG_TEST_VERBOSE_CLIENT`
+| Run `lttng-client` in it's verbose mode when not "0" or empty
+| {check} | {check} | {ex}
+
+| `LTTNG_TEST_VERBOSE_RELAYD`
+| Run `lttng-relayd` in it's verbose and debug mode when not "0" or empty
+| {check} | {check} | {ex}
+
+| `LTTNG_TEST_VERBOSE_SESSIOND`
+| Run `lttng-sesiond in it's verbose and debug mode when not "0" or empty
+| {check} | {check} | {ex}
+|===
+
+. Environment variables for debugging during tests
+[cols="1,1,1,1,1"]
+|===
+| Environment Variable | Description | Python Framework | Bash Framework | C/C++ Framework
+
+| `LTTNG_RELAYD_ENV_VARS`
+| Environment variables to forward into test environment
+| {check} | {ex} | {ex}
+
+| `LTTNG_SESSIOND_ENV_VARS`
+| Environment variables to forward into test environment
+| {check} | {ex} | {ex}
 
 | `LTTNG_TEST_GDBSERVER_RELAYD`
 | Launch `gdbserver` and attach to newly spawned `lttng-relayd` processes
@@ -112,7 +147,11 @@ Used to manually launch one during test troubleshooting
 | `LTTNG_TEST_PRESERVE_TEST_ENV`
 | Do not delete test environment folders on tear-down
 | {check} | {ex} | {ex}
+|===
 
+. Environment variables for managing test suite behaviour
+[cols="1,1,1,1,1"]
+|===
 | `LTTNG_TEST_SERIAL_TEST_POLL_PERIOD_SECONDS`
 | The time in seconds that the serial test runner should read stdout and check
 the test timeout condition. (Default: 60)
@@ -126,30 +165,6 @@ the test timeout condition. (Default: 60)
 | A timeout in seconds after which waiting for lttng-consumerd, lttng-relayd, or lttng-sessiond
 will stop and a kill attempted during the clean-up of the test environment. (Default: 60)
 | {check} | {check} | N/A
-
-| `LTTNG_TEST_VERBOSE_BABELTRACE`
-| Run `babeltrace2` in it's verbose mode when not "0" or empty
-| {check} | {check} | {ex}
-
-| `LTTNG_TEST_VERBOSE_CLIENT`
-| Run `lttng-client` in it's verbose mode when not "0" or empty
-| {check} | {check} | {ex}
-
-| `LTTNG_TEST_VERBOSE_RELAYD`
-| Run `lttng-relayd` in it's verbose and debug mode when not "0" or empty
-| {check} | {check} | {ex}
-
-| `LTTNG_TEST_VERBOSE_SESSIOND`
-| Run `lttng-sesiond in it's verbose and debug mode when not "0" or empty
-| {check} | {check} | {ex}
-
-| `LTTNG_TOOLS_DISABLE_KERNEL_TESTS`
-| Do not run kernel (LTTng-modules) tests
-| {ex} | {check} | {ex}
-
-| `LTTNG_TOOLS_RUN_TESTS_LONG_REGRESSION`
-| When set to non-empty string other than '0', run long regression tests
-| {check} | {check} | {ex}
 
 | `LTTNG_TOOLS_TESTS_DISABLE_WARN_LTTNG_PROCESSES`
 | Skip checking for existing LTTng processes when starting `make check`
