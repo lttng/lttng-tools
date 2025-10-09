@@ -172,8 +172,7 @@ if __name__ == "__main__":
     tap = lttngtest.TapGenerator(len(scenarios) * len(variants) * 2)
 
     if not gdb_exists():
-        tap.skip_all_remaining("GDB not available")
-        sys.exit(0)
+        tap.missing_platform_requirement("GDB not available")
 
     # These tests make use of traps which will produce core files.
     # Disable core dumps to avoid filling disk or tmp space.

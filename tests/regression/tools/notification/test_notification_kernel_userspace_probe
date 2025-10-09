@@ -44,7 +44,7 @@ check_skip_kernel_test &&
 }
 
 if file /bin/bash | grep -q 'ELF 32-bit' && uname -n | grep -q arm ; then
-	plan_skip_all "Unsupported"
+	missing_platform_requirement "Only supported on 64-bit non-ARM systems"
 	exit 0
 fi
 

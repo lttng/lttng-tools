@@ -172,12 +172,10 @@ def test_high_throughput_snapshot(tap, test_env, events_per_app=100):
 if __name__ == "__main__":
     tap = lttngtest.TapGenerator(3)
     if platform.machine() != "x86_64":
-        tap.skip_all_remaining("Only run on x86_64")
-        sys.exit(0)
+        tap.missing_platform_requirement("Only run on x86_64")
 
     if sys.maxsize <= 2**32:
-        tap.skip_all_remaining("Only run on 64-bit systems")
-        sys.exit(0)
+        tap.missing_platform_requirement("Only run on 64-bit systems")
 
     with lttngtest.test_environment(log=tap.diagnostic, with_sessiond=True) as test_env:
         test_high_throughput_snapshot(tap, test_env)

@@ -93,12 +93,10 @@ if __name__ == "__main__":
     tap = lttngtest.TapGenerator(1)
 
     if platform.machine() != "x86_64":
-        tap.skip_all_remaining("Only run on x86_64")
-        sys.exit(0)
+        tap.missing_platform_requirement("Only run on x86_64")
 
     if sys.maxsize <= 2**32:
-        tap.skip_all_remaining("Only run on 64-bit systems")
-        sys.exit(0)
+        tap.missing_platform_requirement("Only run on 64-bit systems")
 
     with lttngtest.test_environment(with_sessiond=True, log=tap.diagnostic) as test_env:
         run_test(test_env, tap)

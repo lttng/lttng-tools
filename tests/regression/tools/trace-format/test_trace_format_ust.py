@@ -190,8 +190,8 @@ tap.diagnostic("Test trace format generation (user space)")
 
 version_parts = tuple(map(int, bt2.__version__.split(".")[:2]))
 if version_parts < (2, 1):
-    tap.skip_all_remaining(
-        "Skipping test: Babeltrace 2.1.0 or later is required to run the CTF2 trace format test"
+    tap.missing_platform_requirement(
+        "Babeltrace 2.1.0 or later is required to run the CTF2 trace format test"
     )
     sys.exit(0)
 

@@ -245,21 +245,18 @@ def set_delay(delay):
 
 if __name__ == "__main__":
     tap = lttngtest.TapGenerator(1)
-    if sys.version_info < (3, 12):
-        tap.skip_all_remaining("Requires python 3.12+")
-        sys.exit(0)
-
     if os.getuid() != 0:
         tap.skip_all_remaining("Need root")
         sys.exit(0)
 
+    if sys.version_info < (3, 12):
+        tap.missing_platform_requirement("Requires Python 3.12+")
+
     if not shutil.which("ip"):
-        tap.skip_all_remaining("`ip` is required")
-        sys.exit(0)
+        tap.missing_platform_requirement("`ip` is required")
 
     if not shutil.which("tc"):
-        tap.skip_all_remaining("`tc` is required")
-        sys.exit(0)
+        tap.missing_platform_requirement("`tc` is required")
 
     with create_interfaces():
         with lttngtest.test_environment(
