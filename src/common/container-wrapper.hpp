@@ -75,6 +75,26 @@ class random_access_container_wrapper {
 			return !(*this == other);
 		}
 
+		bool operator<(const _iterator& other) const noexcept
+		{
+			return _index < other._index;
+		}
+
+		bool operator<=(const _iterator& other) const noexcept
+		{
+			return _index <= other._index;
+		}
+
+		bool operator>(const _iterator& other) const noexcept
+		{
+			return _index > other._index;
+		}
+
+		bool operator>=(const _iterator& other) const noexcept
+		{
+			return _index >= other._index;
+		}
+
 		typename std::conditional<std::is_pointer<IteratorElementType>::value,
 					  IteratorElementType,
 					  IteratorElementType&>::type
