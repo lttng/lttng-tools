@@ -2,7 +2,7 @@
 
 SUBDIRS = msgpack fmt
 
-EXTRA_DIST = optional.hpp fmt nlohmann
+EXTRA_DIST = optional.hpp fmt nlohmann mint.hpp
 
 noinst_LTLIBRARIES =
 
