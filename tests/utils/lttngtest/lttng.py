@@ -6,11 +6,13 @@
 
 
 from . import lttngctl, logger, environment
+
+import enum
 import os
-from typing import Callable, Optional, Type, Union, Iterator
 import shlex
 import subprocess
-import enum
+import tempfile
+from typing import Callable, Optional, Type, Union, Iterator
 import xml.etree.ElementTree
 
 """
@@ -785,13 +787,26 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
             client_env["LTTNG_RUNDIR"] = str(self._environment.lttng_rundir)
         client_env.update(self._extra_env_vars)
 
+        err_output = (
+            tempfile.NamedTemporaryFile(
+                prefix="lttng_", dir=self._environment.lttng_log_dir, delete=False
+            )
+            if self._environment.lttng_log_dir is not None
+            else None
+        )
         process = subprocess.Popen(
-            args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=client_env
+            args,
+            stdout=subprocess.PIPE,
+            stderr=err_output.file if err_output else subprocess.PIPE,
+            env=client_env,
         )
 
         out, err = process.communicate(timeout=self.timeout)
         out = out.decode("utf-8")
-        err = err.decode("utf-8")
+        if not err_output:
+            err = err.decode("utf-8")
+        else:
+            err = open(err_output.name, "r", encoding="utf-8").read()
 
         for error_line in err.splitlines():
             self._log(error_line)
