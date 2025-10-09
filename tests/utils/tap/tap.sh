@@ -417,6 +417,30 @@ BAIL_OUT(){
     _exit 255
 }
 
+missing_platform_requirement()
+{
+    local reason="${1:-''}"
+    local action="${2:-default}"
+    if [[ "${action}" == "default" ]]; then
+	    if [[ -n "${LTTNG_TEST_ABORT_ON_MISSING_PLATFORM_REQUIREMENTS}" ]] && [[ "${LTTNG_TEST_ABORT_ON_MISSING_PLATFORM_REQUIREMENTS}" != "0" ]]; then
+		    action="skip_and_quit"
+	    else
+		    action="bailout"
+	    fi
+    fi
+
+    case "${action}" in
+	    skip_and_quit)
+		    skip_all "${reason}"
+		    ;;
+	    bailout)
+		    BAIL_OUT "${reason}"
+		    ;;
+	    *)
+		    BAIL_OUT "Unsupported action: '${action}'"
+		    ;;
+    esac
+}
 
 _cleanup(){
     local rc=0
