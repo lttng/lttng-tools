@@ -313,8 +313,11 @@ update_stats(const bt_message *message,
 		const auto member_class_type = bt_field_class_get_type(member_class);
 
 		if (bt_field_class_type_is(member_class_type, BT_FIELD_CLASS_TYPE_ARRAY) ||
-		    bt_field_class_type_is(member_class_type, BT_FIELD_CLASS_TYPE_STRUCTURE)) {
-			/* Ignore array and structure field types. */
+		    bt_field_class_type_is(member_class_type, BT_FIELD_CLASS_TYPE_STRUCTURE) ||
+		    bt_field_class_type_is(member_class_type, BT_FIELD_CLASS_TYPE_STATIC_BLOB) ||
+		    bt_field_class_type_is(member_class_type,
+					   BT_FIELD_CLASS_TYPE_DYNAMIC_BLOB_WITH_LENGTH_FIELD)) {
+			/* Ignore array, structure and BLOB field types. */
 			continue;
 		}
 

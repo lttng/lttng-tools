@@ -17,7 +17,7 @@ SESSION_NAME="valid_filter"
 NR_ITER=100
 
 NUM_GLOBAL_TESTS=4
-NUM_UST_TESTS=1491
+NUM_UST_TESTS=1563
 NUM_KERNEL_TESTS=1408
 NUM_TESTS=$((NUM_UST_TESTS + NUM_KERNEL_TESTS + NUM_GLOBAL_TESTS))
 
@@ -29,7 +29,7 @@ function test_valid_ust_filter
 	local filter="$1"
 	local validator="$2"
 
-	local event_name="tp:tptest"
+	local event_name="${3:-tp:tptest}"
 	local channel_name='ust-filter'
 	local trace_path
 	local file_testapp_output
@@ -256,6 +256,21 @@ function validator_str_has_no_event
 	validator_has_no_event "$1"
 }
 
+function validator_blob_has_no_event
+{
+	local stats="$1"
+	local status=0
+
+	echo "$stats" | grep -q blob
+	status=$((status|$?))
+
+	if [ $status -eq 0 ]; then
+		return 1
+	else
+		return 0
+	fi
+}
+
 function validator_has_events
 {
 	local stats="$1"
@@ -273,6 +288,17 @@ function validator_str_has_events
 	local status=0
 
 	echo "$stats" | grep -q str
+	status=$((status|$?))
+
+	return $status
+}
+
+function validator_blob_has_events
+{
+	local stats="$1"
+	local status=0
+
+	echo "$stats" | grep -q blob
 	status=$((status|$?))
 
 	return $status
@@ -1060,6 +1086,34 @@ UST_STR_FILTERS=(
 	END
 )
 
+UST_BLOB_FILTERS=(
+	blob_has_events
+	'fixblobfield_nomediatype[1] == 3'
+
+	blob_has_events
+	'fixblobfield_mediatype[1] == 3'
+
+	blob_has_events
+	'varblobfield_nomediatype[1] == 3'
+
+	blob_has_events
+	'varblobfield_mediatype[1] == 3'
+
+	blob_has_no_event
+	'fixblobfield_nomediatype[0] == 100'
+
+	blob_has_no_event
+	'fixblobfield_mediatype[0] == 100'
+
+	blob_has_no_event
+	'varblobfield_nomediatype[0] == 100'
+
+	blob_has_no_event
+	'varblobfield_mediatype[0] == 100'
+
+	END
+)
+
 if [ ! -x "$CURDIR/$BIN_NAME" ]; then
 	BAIL_OUT "No UST nevents binary detected."
 fi
@@ -1093,6 +1147,25 @@ while true; do
 
 	filter="${UST_STR_FILTERS[$(( i + 1 ))]}"
 	test_valid_ust_str_filter "$filter" "validator_$validator"
+
+	i=$(( i + 2 ))
+done
+
+i=0
+while true; do
+	validator="${UST_BLOB_FILTERS[$i]}"
+
+	if [ "$validator" = END ]; then
+		break
+	fi
+
+	filter="${UST_BLOB_FILTERS[$(( i + 1 ))]}"
+	test_valid_ust_filter "$filter" "validator_$validator" "tp:tptest_blob"
+
+	if [ $? -eq 1 ]; then
+		stop_lttng_sessiond
+		exit 1
+	fi
 
 	i=$(( i + 2 ))
 done
