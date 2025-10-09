@@ -6,6 +6,7 @@
 #
 
 import contextlib
+import enum
 import os
 import sys
 import time
@@ -23,6 +24,14 @@ def _get_time_ns():
     # so the value is multiplied by 10^9 to maintain compatibility with
     # older versions of the interpreter.
     return int(time.monotonic() * 1000000000)
+
+
+@enum.unique
+class MissingPlatformRequirementAction(enum.Enum):
+    default = "Default behaviour"
+    skip_and_quit = "Skip all and quit"
+    bailout = "Bailout"
+    skip = "Skip all"
 
 
 class InvalidTestPlan(RuntimeError):
@@ -149,6 +158,28 @@ class TapGenerator:
         self._print("Bail out! {reason}".format(reason=reason))
         self._last_test_case_id = self._total_test_count
         raise BailOut(reason)
+
+    def missing_platform_requirement(
+        self, reason, behaviour=MissingPlatformRequirementAction.default
+    ):
+        # Default behaviour depends on `LTTNG_TEST_ABORT_ON_MISSING_PLATFORM_REQUIREMENTS`
+        if behaviour == MissingPlatformRequirementAction.default:
+            if os.getenv(
+                "LTTNG_TEST_ABORT_ON_MISSING_PLATFORM_REQUIREMENTS", "0"
+            ) not in ["", "0"]:
+                behaviour = MissingPlatformRequirementAction.bailout
+            else:
+                behaviour = MissingPlatformRequirementAction.skip_and_quit
+
+        if behaviour == MissingPlatformRequirementAction.skip_and_quit:
+            self.skip_all_remaining(reason)
+            sys.exit(0)
+        elif behaviour == MissingPlatformRequirementAction.skip:
+            self.skip_all_remaining(reason)
+        elif behaviour == MissingPlatformRequirementAction.bailout:
+            self.bail_out(reason)
+        else:
+            raise RuntimeError("Unknown behaviour: {}".format(behaviour))
 
     def test(self, result, description):
         # type: (bool, str) -> None

@@ -55,12 +55,16 @@ or internal testpoints.
 [cols="1,1,1,1,1"]
 |===
 | Environment Variable | Description | Python Framework | Bash Framework | C/C++ Framework
-| `LTTNG_TOOLS_DISABLE_KERNEL_TESTS`
-| Do not run kernel (LTTng-modules) tests
-| {check} | {check} | {ex}
-
 | `LTTNG_ENABLE_DESTRUCTIVE_TESTS`
 | When set to `will-break-my-system`, tests that change global state (e.g. clock settings, creating and destroying users, ...) will be run. These tests typically also require being run as the root user.
+| {check} | {check} | {ex}
+
+| `LTTNG_TEST_ABORT_ON_MISSING_PLATFORM_REQUIREMENTS`
+| When set to a non-empty, non-'0' value, tests should bail out instead of skipping. This is useful in certain CI scenarios to avoid hiding errors behind skipped tests.
+| {check} | {check} | {ex}
+
+| `LTTNG_TOOLS_DISABLE_KERNEL_TESTS`
+| Do not run kernel (LTTng-modules) tests
 | {check} | {check} | {ex}
 
 | `LTTNG_TOOLS_RUN_TESTS_LONG_REGRESSION`
