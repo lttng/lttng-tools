@@ -12,6 +12,7 @@
 #include <common/compat/time.hpp>
 #include <common/format.hpp>
 #include <common/macros.hpp>
+#include <common/mint.hpp>
 #include <common/string-utils/format.hpp>
 
 #include <stdbool.h>
@@ -19,6 +20,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <urcu/tls-compat.h>
+#include <vector>
 
 #ifndef _GNU_SOURCE
 #error "lttng-tools error.h needs _GNU_SOURCE"
@@ -144,12 +146,27 @@ static inline void __lttng_print_check_abort(enum lttng_error_level type)
  * want any nested msg to show up when printing mi to stdout(if it's the case).
  * All warnings and errors should be printed to stderr as normal.
  */
-#define __lttng_print(type, fmt, args...)                                            \
-	do {                                                                         \
-		if (__lttng_print_check_opt(type)) {                                 \
-			fprintf((type) == PRINT_MSG ? stdout : stderr, fmt, ##args); \
-		}                                                                    \
-		__lttng_print_check_abort(type);                                     \
+#define __lttng_print(type, fmt, args...)                                                         \
+	do {                                                                                      \
+		if (__lttng_print_check_opt(type)) {                                              \
+			if ((type) == PRINT_WARN || (type) == PRINT_ERR || (type) == PRINT_BUG) { \
+				const auto __lttng_print_msg_len =                                \
+					snprintf(nullptr, 0, fmt, ##args);                        \
+				std::vector<char> __lttng_print_print_buf(__lttng_print_msg_len + \
+									  1);                     \
+				snprintf(__lttng_print_print_buf.data(),                          \
+					 __lttng_print_print_buf.size(),                          \
+					 fmt,                                                     \
+					 ##args);                                                 \
+				const auto __lttng_print_msg = lttng::mint_format(                \
+					(type) == PRINT_WARN ? "[!*y]{}[/]" : "[!*r]{}[/]",       \
+					__lttng_print_print_buf.data());                          \
+				fprintf(stderr, "%s", __lttng_print_msg.c_str());                 \
+			} else {                                                                  \
+				fprintf((type) == PRINT_MSG ? stdout : stderr, fmt, ##args);      \
+			}                                                                         \
+		}                                                                                 \
+		__lttng_print_check_abort(type);                                                  \
 	} while (0)
 
 /* Three level of debug. Use -v, -vv or -vvv for the levels */
