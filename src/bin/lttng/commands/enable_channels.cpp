@@ -11,6 +11,7 @@
 
 #include <common/defaults.hpp>
 #include <common/lttng-kernel.hpp>
+#include <common/make-unique-wrapper.hpp>
 #include <common/mi-lttng.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/utils.hpp>
@@ -873,7 +874,10 @@ int cmd_enable_channels(int argc, const char **argv)
 			goto end;
 		case OPT_BUFFER_OWNERSHIP:
 		{
-			const lttng::c_string_view ownership(poptGetOptArg(pc));
+			const auto ownership_ptr =
+				lttng::make_unique_wrapper<char, lttng::memory::free>(
+					poptGetOptArg(pc));
+			const lttng::c_string_view ownership(ownership_ptr.get());
 
 			if (ownership == "user") {
 				opt_buffer_type = LTTNG_BUFFER_PER_UID;
@@ -892,7 +896,10 @@ int cmd_enable_channels(int argc, const char **argv)
 		}
 		case OPT_BUFFER_ALLOCATION:
 		{
-			const lttng::c_string_view policy(poptGetOptArg(pc));
+			const auto policy_ptr =
+				lttng::make_unique_wrapper<char, lttng::memory::free>(
+					poptGetOptArg(pc));
+			const lttng::c_string_view policy(policy_ptr.get());
 
 			if (policy == "per-cpu") {
 				opt_allocation_policy = LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU;
@@ -909,7 +916,9 @@ int cmd_enable_channels(int argc, const char **argv)
 		}
 		case OPT_BUFFER_PREALLOCATION:
 		{
-			const lttng::c_string_view mode(poptGetOptArg(pc));
+			const auto mode_ptr = lttng::make_unique_wrapper<char, lttng::memory::free>(
+				poptGetOptArg(pc));
+			const lttng::c_string_view mode(mode_ptr.get());
 
 			if (mode == "preallocate") {
 				opt_preallocation_policy =
