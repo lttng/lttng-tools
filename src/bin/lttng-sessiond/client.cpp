@@ -2666,30 +2666,35 @@ formatted_source_location(const ExceptionType&)
 }
 
 template <class ExceptionType>
-void log_nested_exceptions(const ExceptionType& ex, unsigned int level = 0)
+void log_nested_exceptions(const ExceptionType& ex,
+			   lttng_error_level log_level = PRINT_WARN,
+			   unsigned int level = 0)
 {
 	const auto location = formatted_source_location(ex);
 
 	if (level == 0) {
 		if (location.size()) {
-			WARN_FMT("Client request failed: {}, location='{}'", ex.what(), location);
+			LOG_FMT(log_level,
+				"Client request failed: {}, location='{}'",
+				ex.what(),
+				location);
 		} else {
-			WARN_FMT("Client request failed: {}", ex.what());
+			LOG_FMT(log_level, "Client request failed: {}", ex.what());
 		}
 	} else {
 		if (location.size()) {
-			WARN_FMT("\t{}, location='{}'", ex.what(), location);
+			LOG_FMT(log_level, "\t{}, location='{}'", ex.what(), location);
 		} else {
-			WARN_FMT("\t{}", ex.what());
+			LOG_FMT(log_level, "\t{}", ex.what());
 		}
 	}
 
 	try {
 		std::rethrow_if_nested(ex);
 	} catch (const lttng::runtime_error& nested_ex) {
-		log_nested_exceptions(nested_ex, level + 1);
+		log_nested_exceptions(nested_ex, log_level, level + 1);
 	} catch (const std::exception& nested_ex) {
-		log_nested_exceptions(nested_ex, level + 1);
+		log_nested_exceptions(nested_ex, log_level, level + 1);
 	}
 }
 
