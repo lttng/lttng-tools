@@ -9,7 +9,9 @@
 #include <stdint.h>
 #define _LGPL_SOURCE
 #include "../command.hpp"
+#include "list-common.hpp"
 #include "list-memory-usage.hpp"
+#include "list-mi.hpp"
 
 #include <common/mi-lttng.hpp>
 #include <common/time.hpp>
@@ -57,7 +59,6 @@ enum {
 };
 
 static struct lttng_handle *the_handle;
-static struct mi_writer *the_writer;
 
 /* Only set when listing a single session. */
 static struct lttng_session the_listed_session;
@@ -86,38 +87,6 @@ static struct poptOption long_options[] = {
  * On success, return an allocated string pointer to the proc cmdline.
  * On error, return NULL.
  */
-static char *get_cmdline_by_pid(pid_t pid)
-{
-	int ret;
-	FILE *fp = nullptr;
-	char *cmdline = nullptr;
-	/* Can't go bigger than /proc/LTTNG_MAX_PID/cmdline */
-	char path[sizeof("/proc//cmdline") + sizeof(LTTNG_MAX_PID_STR) - 1];
-
-	snprintf(path, sizeof(path), "/proc/%d/cmdline", pid);
-	fp = fopen(path, "r");
-	if (fp == nullptr) {
-		goto end;
-	}
-
-	/* Caller must free() *cmdline */
-	cmdline = zmalloc<char>(PATH_MAX);
-	if (!cmdline) {
-		PERROR("malloc cmdline");
-		goto end;
-	}
-
-	ret = fread(cmdline, 1, PATH_MAX, fp);
-	if (ret < 0) {
-		PERROR("fread proc list");
-	}
-
-end:
-	if (fp) {
-		fclose(fp);
-	}
-	return cmdline;
-}
 
 static const char *active_string(int value)
 {
@@ -489,94 +458,6 @@ static void print_event_field(struct lttng_event_field *field)
 	    field->nowrite ? " [no write]" : "");
 }
 
-/*
- * Machine interface
- * Jul and ust event listing
- */
-static int
-mi_list_agent_ust_events(struct lttng_event *events, int count, struct lttng_domain *domain)
-{
-	int ret, i;
-	pid_t cur_pid = 0;
-	char *cmdline = nullptr;
-	int pid_element_open = 0;
-
-	/* Open domains element */
-	ret = mi_lttng_domains_open(the_writer);
-	if (ret) {
-		goto end;
-	}
-
-	/* Write domain */
-	ret = mi_lttng_domain(the_writer, domain, 1);
-	if (ret) {
-		goto end;
-	}
-
-	/* Open pids element element */
-	ret = mi_lttng_pids_open(the_writer);
-	if (ret) {
-		goto end;
-	}
-
-	for (i = 0; i < count; i++) {
-		if (cur_pid != events[i].pid) {
-			if (pid_element_open) {
-				/* Close the previous events and pid element */
-				ret = mi_lttng_close_multi_element(the_writer, 2);
-				if (ret) {
-					goto end;
-				}
-				pid_element_open = 0;
-			}
-
-			cur_pid = events[i].pid;
-			cmdline = get_cmdline_by_pid(cur_pid);
-			if (!cmdline) {
-				ret = CMD_ERROR;
-				goto end;
-			}
-
-			if (!pid_element_open) {
-				/* Open and write a pid element */
-				ret = mi_lttng_pid(the_writer, cur_pid, cmdline, 1);
-				if (ret) {
-					goto error;
-				}
-
-				/* Open events element */
-				ret = mi_lttng_events_open(the_writer);
-				if (ret) {
-					goto error;
-				}
-
-				pid_element_open = 1;
-			}
-			free(cmdline);
-		}
-
-		/* Write an event */
-		ret = mi_lttng_event(the_writer, &events[i], 0, the_handle->domain.type);
-		if (ret) {
-			goto end;
-		}
-	}
-
-	/* Close pids */
-	ret = mi_lttng_writer_close_element(the_writer);
-	if (ret) {
-		goto end;
-	}
-
-	/* Close domain, domains */
-	ret = mi_lttng_close_multi_element(the_writer, 2);
-end:
-	return ret;
-error:
-	free(cmdline);
-	return ret;
-}
-
 static int list_agent_events()
 {
 	int i, size, ret = CMD_SUCCESS;
@@ -619,37 +500,28 @@ static int list_agent_events()
 		goto end;
 	}
 
-	if (lttng_opt_mi) {
-		/* Mi print */
-		ret = mi_list_agent_ust_events(event_list, size, &domain);
-		if (ret) {
-			ret = CMD_ERROR;
-			goto error;
-		}
-	} else {
-		/* Pretty print */
-		MSG("%s events (Logger name):\n-------------------------", agent_domain_str);
+	/* Pretty print */
+	MSG("%s events (Logger name):\n-------------------------", agent_domain_str);
 
-		if (size == 0) {
-			MSG("None");
-		}
-
-		for (i = 0; i < size; i++) {
-			if (cur_pid != event_list[i].pid) {
-				cur_pid = event_list[i].pid;
-				cmdline = get_cmdline_by_pid(cur_pid);
-				if (cmdline == nullptr) {
-					ret = CMD_ERROR;
-					goto error;
-				}
-				MSG("\nPID: %d - Name: %s", cur_pid, cmdline);
-				free(cmdline);
-			}
-			MSG("%s- %s", indent6, event_list[i].name);
-		}
-
-		MSG("");
+	if (size == 0) {
+		MSG("None");
 	}
+
+	for (i = 0; i < size; i++) {
+		if (cur_pid != event_list[i].pid) {
+			cur_pid = event_list[i].pid;
+			cmdline = get_cmdline_by_pid(cur_pid);
+			if (cmdline == nullptr) {
+				ret = CMD_ERROR;
+				goto error;
+			}
+			MSG("\nPID: %d - Name: %s", cur_pid, cmdline);
+			free(cmdline);
+		}
+		MSG("%s- %s", indent6, event_list[i].name);
+	}
+
+	MSG("");
 
 error:
 	free(event_list);
@@ -689,157 +561,33 @@ static int list_ust_events()
 		goto error;
 	}
 
-	if (lttng_opt_mi) {
-		/* Mi print */
-		ret = mi_list_agent_ust_events(event_list, size, &domain);
-	} else {
-		/* Pretty print */
-		MSG("UST events:\n-------------");
+	/* Pretty print */
+	MSG("UST events:\n-------------");
 
-		if (size == 0) {
-			MSG("None");
-		}
-
-		for (i = 0; i < size; i++) {
-			if (cur_pid != event_list[i].pid) {
-				cur_pid = event_list[i].pid;
-				cmdline = get_cmdline_by_pid(cur_pid);
-				if (cmdline == nullptr) {
-					ret = CMD_ERROR;
-					goto error;
-				}
-				MSG("\nPID: %d - Name: %s", cur_pid, cmdline);
-				free(cmdline);
-			}
-			print_events(&event_list[i]);
-		}
-
-		MSG("");
+	if (size == 0) {
+		MSG("None");
 	}
+
+	for (i = 0; i < size; i++) {
+		if (cur_pid != event_list[i].pid) {
+			cur_pid = event_list[i].pid;
+			cmdline = get_cmdline_by_pid(cur_pid);
+			if (cmdline == nullptr) {
+				ret = CMD_ERROR;
+				goto error;
+			}
+			MSG("\nPID: %d - Name: %s", cur_pid, cmdline);
+			free(cmdline);
+		}
+		print_events(&event_list[i]);
+	}
+
+	MSG("");
 
 error:
 	free(event_list);
 end:
 	lttng_destroy_handle(handle);
-	return ret;
-}
-
-/*
- * Machine interface
- * List all ust event with their fields
- */
-static int
-mi_list_ust_event_fields(struct lttng_event_field *fields, int count, struct lttng_domain *domain)
-{
-	int ret, i;
-	pid_t cur_pid = 0;
-	char *cmdline = nullptr;
-	int pid_element_open = 0;
-	int event_element_open = 0;
-	struct lttng_event cur_event;
-
-	memset(&cur_event, 0, sizeof(cur_event));
-
-	/* Open domains element */
-	ret = mi_lttng_domains_open(the_writer);
-	if (ret) {
-		goto end;
-	}
-
-	/* Write domain */
-	ret = mi_lttng_domain(the_writer, domain, 1);
-	if (ret) {
-		goto end;
-	}
-
-	/* Open pids element */
-	ret = mi_lttng_pids_open(the_writer);
-	if (ret) {
-		goto end;
-	}
-
-	for (i = 0; i < count; i++) {
-		if (cur_pid != fields[i].event.pid) {
-			if (pid_element_open) {
-				if (event_element_open) {
-					/* Close the previous field element and event. */
-					ret = mi_lttng_close_multi_element(the_writer, 2);
-					if (ret) {
-						goto end;
-					}
-					event_element_open = 0;
-				}
-				/* Close the previous events, pid element */
-				ret = mi_lttng_close_multi_element(the_writer, 2);
-				if (ret) {
-					goto end;
-				}
-				pid_element_open = 0;
-			}
-
-			cur_pid = fields[i].event.pid;
-			cmdline = get_cmdline_by_pid(cur_pid);
-			if (!pid_element_open) {
-				/* Open and write a pid element */
-				ret = mi_lttng_pid(the_writer, cur_pid, cmdline, 1);
-				if (ret) {
-					goto error;
-				}
-
-				/* Open events element */
-				ret = mi_lttng_events_open(the_writer);
-				if (ret) {
-					goto error;
-				}
-				pid_element_open = 1;
-			}
-			free(cmdline);
-			/* Wipe current event since we are about to print a new PID. */
-			memset(&cur_event, 0, sizeof(cur_event));
-		}
-
-		if (strcmp(cur_event.name, fields[i].event.name) != 0) {
-			if (event_element_open) {
-				/* Close the previous fields element and the previous event */
-				ret = mi_lttng_close_multi_element(the_writer, 2);
-				if (ret) {
-					goto end;
-				}
-				event_element_open = 0;
-			}
-
-			memcpy(&cur_event, &fields[i].event, sizeof(cur_event));
-
-			if (!event_element_open) {
-				/* Open and write the event */
-				ret = mi_lttng_event(
-					the_writer, &cur_event, 1, the_handle->domain.type);
-				if (ret) {
-					goto end;
-				}
-
-				/* Open a fields element */
-				ret = mi_lttng_event_fields_open(the_writer);
-				if (ret) {
-					goto end;
-				}
-				event_element_open = 1;
-			}
-		}
-
-		/* Print the event_field */
-		ret = mi_lttng_event_field(the_writer, &fields[i]);
-		if (ret) {
-			goto end;
-		}
-	}
-
-	/* Close pids, domain, domains */
-	ret = mi_lttng_close_multi_element(the_writer, 3);
-end:
-	return ret;
-error:
-	free(cmdline);
 	return ret;
 }
 
@@ -877,91 +625,39 @@ static int list_ust_event_fields()
 		goto end;
 	}
 
-	if (lttng_opt_mi) {
-		/* Mi print */
-		ret = mi_list_ust_event_fields(event_field_list, size, &domain);
-		if (ret) {
-			ret = CMD_ERROR;
-			goto error;
-		}
-	} else {
-		/* Pretty print */
-		MSG("UST events:\n-------------");
+	/* Pretty print */
+	MSG("UST events:\n-------------");
 
-		if (size == 0) {
-			MSG("None");
-		}
-
-		for (i = 0; i < size; i++) {
-			if (cur_pid != event_field_list[i].event.pid) {
-				cur_pid = event_field_list[i].event.pid;
-				cmdline = get_cmdline_by_pid(cur_pid);
-				if (cmdline == nullptr) {
-					ret = CMD_ERROR;
-					goto error;
-				}
-				MSG("\nPID: %d - Name: %s", cur_pid, cmdline);
-				free(cmdline);
-				/* Wipe current event since we are about to print a new PID. */
-				memset(&cur_event, 0, sizeof(cur_event));
-			}
-			if (strcmp(cur_event.name, event_field_list[i].event.name) != 0) {
-				print_events(&event_field_list[i].event);
-				memcpy(&cur_event, &event_field_list[i].event, sizeof(cur_event));
-			}
-			print_event_field(&event_field_list[i]);
-		}
-
-		MSG("");
+	if (size == 0) {
+		MSG("None");
 	}
+
+	for (i = 0; i < size; i++) {
+		if (cur_pid != event_field_list[i].event.pid) {
+			cur_pid = event_field_list[i].event.pid;
+			cmdline = get_cmdline_by_pid(cur_pid);
+			if (cmdline == nullptr) {
+				ret = CMD_ERROR;
+				goto error;
+			}
+			MSG("\nPID: %d - Name: %s", cur_pid, cmdline);
+			free(cmdline);
+			/* Wipe current event since we are about to print a new PID. */
+			memset(&cur_event, 0, sizeof(cur_event));
+		}
+		if (strcmp(cur_event.name, event_field_list[i].event.name) != 0) {
+			print_events(&event_field_list[i].event);
+			memcpy(&cur_event, &event_field_list[i].event, sizeof(cur_event));
+		}
+		print_event_field(&event_field_list[i]);
+	}
+
+	MSG("");
 
 error:
 	free(event_field_list);
 end:
 	lttng_destroy_handle(handle);
-	return ret;
-}
-
-/*
- * Machine interface
- * Print a list of kernel events
- */
-static int mi_list_kernel_events(struct lttng_event *events, int count, struct lttng_domain *domain)
-{
-	int ret, i;
-
-	/* Open domains element */
-	ret = mi_lttng_domains_open(the_writer);
-	if (ret) {
-		goto end;
-	}
-
-	/* Write domain */
-	ret = mi_lttng_domain(the_writer, domain, 1);
-	if (ret) {
-		goto end;
-	}
-
-	/* Open events */
-	ret = mi_lttng_events_open(the_writer);
-	if (ret) {
-		goto end;
-	}
-
-	for (i = 0; i < count; i++) {
-		ret = mi_lttng_event(the_writer, &events[i], 0, the_handle->domain.type);
-		if (ret) {
-			goto end;
-		}
-	}
-
-	/* close events, domain and domains */
-	ret = mi_lttng_close_multi_element(the_writer, 3);
-	if (ret) {
-		goto end;
-	}
-
-end:
 	return ret;
 }
 
@@ -984,7 +680,7 @@ static int list_kernel_events()
 	handle = lttng_create_handle(nullptr, &domain);
 	if (handle == nullptr) {
 		ret = CMD_ERROR;
-		goto error;
+		goto end;
 	}
 
 	size = lttng_list_tracepoints(handle, &event_list);
@@ -994,62 +690,17 @@ static int list_kernel_events()
 		return CMD_ERROR;
 	}
 
-	if (lttng_opt_mi) {
-		/* Mi print */
-		ret = mi_list_kernel_events(event_list, size, &domain);
-		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
-		}
-	} else {
-		MSG("Kernel events:\n-------------");
+	MSG("Kernel events:\n-------------");
 
-		for (i = 0; i < size; i++) {
-			print_events(&event_list[i]);
-		}
-
-		MSG("");
+	for (i = 0; i < size; i++) {
+		print_events(&event_list[i]);
 	}
 
-end:
+	MSG("");
 	free(event_list);
 
-	lttng_destroy_handle(handle);
-	return ret;
-
-error:
-	lttng_destroy_handle(handle);
-	return ret;
-}
-
-/*
- * Machine interface
- * Print a list of system calls.
- */
-static int mi_list_syscalls(struct lttng_event *events, int count)
-{
-	int ret, i;
-
-	/* Open events */
-	ret = mi_lttng_events_open(the_writer);
-	if (ret) {
-		goto end;
-	}
-
-	for (i = 0; i < count; i++) {
-		ret = mi_lttng_event(the_writer, &events[i], 0, the_handle->domain.type);
-		if (ret) {
-			goto end;
-		}
-	}
-
-	/* Close events. */
-	ret = mi_lttng_writer_close_element(the_writer);
-	if (ret) {
-		goto end;
-	}
-
 end:
+	lttng_destroy_handle(handle);
 	return ret;
 }
 
@@ -1067,57 +718,17 @@ static int list_syscalls()
 	if (size < 0) {
 		ERR("Unable to list system calls: %s", lttng_strerror(size));
 		ret = CMD_ERROR;
-		goto error;
-	}
-
-	if (lttng_opt_mi) {
-		/* Mi print */
-		ret = mi_list_syscalls(event_list, size);
-		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
-		}
-	} else {
-		MSG("System calls:\n-------------");
-
-		for (i = 0; i < size; i++) {
-			print_events(&event_list[i]);
-		}
-
-		MSG("");
-	}
-
-end:
-	free(event_list);
-	return ret;
-
-error:
-	return ret;
-}
-
-/*
- * Machine Interface
- * Print a list of agent events
- */
-static int mi_list_session_agent_events(struct lttng_event *events, int count)
-{
-	int ret, i;
-
-	/* Open events element */
-	ret = mi_lttng_events_open(the_writer);
-	if (ret) {
 		goto end;
 	}
 
-	for (i = 0; i < count; i++) {
-		ret = mi_lttng_event(the_writer, &events[i], 0, the_handle->domain.type);
-		if (ret) {
-			goto end;
-		}
+	MSG("System calls:\n-------------");
+
+	for (i = 0; i < size; i++) {
+		print_events(&event_list[i]);
 	}
 
-	/* Close events element */
-	ret = mi_lttng_writer_close_element(the_writer);
+	MSG("");
+	free(event_list);
 
 end:
 	return ret;
@@ -1140,88 +751,50 @@ static int list_session_agent_events()
 		goto error;
 	}
 
-	if (lttng_opt_mi) {
-		/* Mi print */
-		ret = mi_list_session_agent_events(events, count);
-		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
-		}
-	} else {
-		/* Pretty print */
-		MSG("Event rules:\n---------------------");
-		if (count == 0) {
-			MSG("%sNone\n", indent6);
-			goto end;
-		}
-
-		for (i = 0; i < count; i++) {
-			const char *filter_str;
-			char *filter_msg = nullptr;
-			struct lttng_event *event = &events[i];
-
-			ret = lttng_event_get_filter_expression(event, &filter_str);
-			if (ret) {
-				filter_msg = strdup(" [failed to retrieve filter]");
-			} else if (filter_str) {
-				if (asprintf(&filter_msg, " [filter: '%s']", filter_str) == -1) {
-					filter_msg = nullptr;
-				}
-			}
-
-			if (event->loglevel_type != LTTNG_EVENT_LOGLEVEL_ALL) {
-				MSG("%s- %s%s (loglevel%s %s)%s",
-				    indent4,
-				    event->name,
-				    enabled_string(event->enabled),
-				    logleveltype_string(event->loglevel_type),
-				    mi_lttng_loglevel_string(event->loglevel,
-							     the_handle->domain.type),
-				    safe_string(filter_msg));
-			} else {
-				MSG("%s- %s%s%s",
-				    indent4,
-				    event->name,
-				    enabled_string(event->enabled),
-				    safe_string(filter_msg));
-			}
-			free(filter_msg);
-		}
-
-		MSG("");
-	}
-
-end:
-	free(events);
-error:
-	return ret;
-}
-
-/*
- * Machine interface
- * print a list of event
- */
-static int mi_list_events(struct lttng_event *events, int count)
-{
-	int ret, i;
-
-	/* Open events element */
-	ret = mi_lttng_events_open(the_writer);
-	if (ret) {
+	/* Pretty print */
+	MSG("Event rules:\n---------------------");
+	if (count == 0) {
+		MSG("%sNone\n", indent6);
 		goto end;
 	}
 
 	for (i = 0; i < count; i++) {
-		ret = mi_lttng_event(the_writer, &events[i], 0, the_handle->domain.type);
+		const char *filter_str;
+		char *filter_msg = nullptr;
+		struct lttng_event *event = &events[i];
+
+		ret = lttng_event_get_filter_expression(event, &filter_str);
 		if (ret) {
-			goto end;
+			filter_msg = strdup(" [failed to retrieve filter]");
+		} else if (filter_str) {
+			if (asprintf(&filter_msg, " [filter: '%s']", filter_str) == -1) {
+				filter_msg = nullptr;
+			}
 		}
+
+		if (event->loglevel_type != LTTNG_EVENT_LOGLEVEL_ALL) {
+			MSG("%s- %s%s (loglevel%s %s)%s",
+			    indent4,
+			    event->name,
+			    enabled_string(event->enabled),
+			    logleveltype_string(event->loglevel_type),
+			    mi_lttng_loglevel_string(event->loglevel, the_handle->domain.type),
+			    safe_string(filter_msg));
+		} else {
+			MSG("%s- %s%s%s",
+			    indent4,
+			    event->name,
+			    enabled_string(event->enabled),
+			    safe_string(filter_msg));
+		}
+		free(filter_msg);
 	}
 
-	/* Close events element */
-	ret = mi_lttng_writer_close_element(the_writer);
+	MSG("");
 
 end:
+	free(events);
+error:
 	return ret;
 }
 
@@ -1240,27 +813,18 @@ static int list_events(const char *channel_name)
 		goto error;
 	}
 
-	if (lttng_opt_mi) {
-		/* Mi print */
-		ret = mi_list_events(events, count);
-		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
-		}
-	} else {
-		/* Pretty print */
-		MSG("\n%sRecording event rules:", indent4);
-		if (count == 0) {
-			MSG("%sNone\n", indent6);
-			goto end;
-		}
-
-		for (i = 0; i < count; i++) {
-			print_events(&events[i]);
-		}
-
-		MSG("");
+	/* Pretty print */
+	MSG("\n%sRecording event rules:", indent4);
+	if (count == 0) {
+		MSG("%sNone\n", indent6);
+		goto end;
 	}
+
+	for (i = 0; i < count; i++) {
+		print_events(&events[i]);
+	}
+
+	MSG("");
 end:
 	free(events);
 error:
@@ -1652,91 +1216,6 @@ skip_stats_printing:
 	return;
 }
 
-static int mi_write_channel_memory_usage(struct lttng_channel *channel)
-{
-	try {
-		const auto channel_mem_usage = lcm::get_channel_memory_usage(
-			the_handle->session_name, channel, the_handle->domain.type);
-
-		return mi_lttng_data_stream_info_sets(
-			the_writer,
-			channel_mem_usage.data_stream_info_sets(),
-			channel_mem_usage.data_stream_info_sets_count);
-	} catch (const lttng::unsupported_error& e) {
-		/* This information is not available for all domains. */
-		return 0;
-	} catch (const std::exception& e) {
-		ERR_FMT("Failed to retrieve memory usage of channel `{}`: {}",
-			channel->name,
-			e.what());
-		return -1;
-	}
-}
-
-/*
- * Machine interface
- * Print a list of channel
- *
- */
-static int mi_list_channels(struct lttng_channel *channels, int count, const char *channel_name)
-{
-	int i, ret;
-	unsigned int chan_found = 0;
-
-	/* Open channels element */
-	ret = mi_lttng_channels_open(the_writer);
-	if (ret) {
-		goto error;
-	}
-
-	for (i = 0; i < count; i++) {
-		if (channel_name != nullptr) {
-			if (strncmp(channels[i].name, channel_name, NAME_MAX) == 0) {
-				chan_found = 1;
-			} else {
-				continue;
-			}
-		}
-
-		/* Write channel element  and leave it open */
-		ret = mi_lttng_channel(the_writer, &channels[i], 1);
-		if (ret) {
-			goto error;
-		}
-
-		/* Listing events per channel */
-		ret = list_events(channels[i].name);
-		if (ret) {
-			goto error;
-		}
-
-		/* Add memory usage, if available */
-		ret = mi_write_channel_memory_usage(&channels[i]);
-		if (ret) {
-			goto error;
-		}
-
-		/* Close channel element */
-		ret = mi_lttng_writer_close_element(the_writer);
-		if (ret) {
-			goto error;
-		}
-
-		if (chan_found) {
-			break;
-		}
-	}
-
-	/* Close channels element */
-	ret = mi_lttng_writer_close_element(the_writer);
-	if (ret) {
-		goto error;
-	}
-
-error:
-	return ret;
-}
-
 /*
  * List channel(s) of session and domain.
  *
@@ -1754,63 +1233,47 @@ static int list_channels(const char *channel_name)
 	if (count < 0) {
 		switch (-count) {
 		case LTTNG_ERR_KERN_CHAN_NOT_FOUND:
-			if (lttng_opt_mi) {
-				/* When printing mi this is not an error
-				 * but an empty channels element */
-				count = 0;
-			} else {
-				ret = CMD_SUCCESS;
-				goto error_channels;
-			}
-			break;
+			/* In pretty-print mode, treat as no channels. */
+			ret = CMD_SUCCESS;
+			goto error_channels;
 		default:
 			/* We had a real error */
 			ret = CMD_ERROR;
 			ERR("%s", lttng_strerror(count));
 			goto error_channels;
+		}
+	}
+
+	/* Pretty print */
+	if (count) {
+		MSG("Channels:\n-------------");
+	}
+
+	for (i = 0; i < count; i++) {
+		if (channel_name != nullptr) {
+			if (strncmp(channels[i].name, channel_name, NAME_MAX) == 0) {
+				chan_found = 1;
+			} else {
+				continue;
+			}
+		}
+		print_channel(&channels[i]);
+
+		/* Listing events per channel */
+		ret = list_events(channels[i].name);
+		if (ret) {
+			goto error;
+		}
+
+		if (chan_found) {
 			break;
 		}
 	}
 
-	if (lttng_opt_mi) {
-		/* Mi print */
-		ret = mi_list_channels(channels, count, channel_name);
-		if (ret) {
-			ret = CMD_ERROR;
-			goto error;
-		}
-	} else {
-		/* Pretty print */
-		if (count) {
-			MSG("Channels:\n-------------");
-		}
-
-		for (i = 0; i < count; i++) {
-			if (channel_name != nullptr) {
-				if (strncmp(channels[i].name, channel_name, NAME_MAX) == 0) {
-					chan_found = 1;
-				} else {
-					continue;
-				}
-			}
-			print_channel(&channels[i]);
-
-			/* Listing events per channel */
-			ret = list_events(channels[i].name);
-			if (ret) {
-				goto error;
-			}
-
-			if (chan_found) {
-				break;
-			}
-		}
-
-		if (!chan_found && channel_name != nullptr) {
-			ret = CMD_ERROR;
-			ERR("Channel %s not found", channel_name);
-			goto error;
-		}
+	if (!chan_found && channel_name != nullptr) {
+		ret = CMD_ERROR;
+		ERR("Channel %s not found", channel_name);
+		goto error;
 	}
 error:
 	free(channels);
@@ -1838,51 +1301,6 @@ static const char *get_capitalized_process_attr_str(enum lttng_process_attr proc
 		return "Unknown";
 	}
 	return nullptr;
-}
-
-static int handle_process_attr_status(enum lttng_process_attr process_attr,
-				      enum lttng_process_attr_tracker_handle_status status)
-{
-	int ret = CMD_SUCCESS;
-
-	switch (status) {
-	case LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_INVALID_TRACKING_POLICY:
-	case LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_OK:
-		/* Carry on. */
-		break;
-	case LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_COMMUNICATION_ERROR:
-		ERR("Communication occurred while fetching %s tracker",
-		    lttng_process_attr_to_string(process_attr));
-		ret = CMD_ERROR;
-		break;
-	case LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_SESSION_DOES_NOT_EXIST:
-		ERR("Failed to get the inclusion set of the %s tracker: session `%s` no longer exists",
-		    lttng_process_attr_to_string(process_attr),
-		    the_handle->session_name);
-		ret = CMD_ERROR;
-		break;
-	default:
-		ERR("Unknown error occurred while fetching the inclusion set of the %s tracker",
-		    lttng_process_attr_to_string(process_attr));
-		ret = CMD_ERROR;
-		break;
-	}
-
-	return ret;
-}
-
-static int mi_output_empty_tracker(enum lttng_process_attr process_attr)
-{
-	int ret;
-
-	ret = mi_lttng_process_attribute_tracker_open(the_writer, process_attr);
-	if (ret) {
-		goto end;
-	}
-
-	ret = mi_lttng_close_multi_element(the_writer, 2);
-end:
-	return ret;
 }
 
 static inline bool is_value_type_name(enum lttng_process_attr_value_type value_type)
@@ -1915,14 +1333,14 @@ static int list_process_attr_tracker(enum lttng_process_attr process_attr)
 
 	handle_status =
 		lttng_process_attr_tracker_handle_get_inclusion_set(tracker_handle, &values);
-	ret = handle_process_attr_status(process_attr, handle_status);
+	ret = handle_process_attr_status(process_attr, handle_status, the_handle->session_name);
 	if (ret != CMD_SUCCESS) {
 		goto end;
 	}
 
 	handle_status =
 		lttng_process_attr_tracker_handle_get_tracking_policy(tracker_handle, &policy);
-	ret = handle_process_attr_status(process_attr, handle_status);
+	ret = handle_process_attr_status(process_attr, handle_status, the_handle->session_name);
 	if (ret != CMD_SUCCESS) {
 		goto end;
 	}
@@ -1943,9 +1361,6 @@ static int list_process_attr_tracker(enum lttng_process_attr process_attr)
 	case LTTNG_TRACKING_POLICY_INCLUDE_SET:
 		break;
 	case LTTNG_TRACKING_POLICY_EXCLUDE_ALL:
-		if (the_writer) {
-			mi_output_empty_tracker(process_attr);
-		}
 		MSG("none");
 		ret = CMD_SUCCESS;
 		goto end;
@@ -1972,21 +1387,9 @@ static int list_process_attr_tracker(enum lttng_process_attr process_attr)
 
 	if (count == 0) {
 		/* Functionally equivalent to the 'exclude all' policy. */
-		if (the_writer) {
-			mi_output_empty_tracker(process_attr);
-		}
 		MSG("none");
 		ret = CMD_SUCCESS;
 		goto end;
-	}
-
-	/* Mi tracker_id element */
-	if (the_writer) {
-		/* Open tracker_id and targets elements */
-		ret = mi_lttng_process_attribute_tracker_open(the_writer, process_attr);
-		if (ret) {
-			goto end;
-		}
 	}
 
 	for (i = 0; i < count; i++) {
@@ -2051,28 +1454,9 @@ static int list_process_attr_tracker(enum lttng_process_attr process_attr)
 		} else {
 			_MSG("%" PRIi64, integral_value);
 		}
-
-		/* Mi */
-		if (the_writer) {
-			ret = is_value_type_name(value_type) ?
-				mi_lttng_string_process_attribute_value(
-					the_writer, process_attr, name, false) :
-				mi_lttng_integral_process_attribute_value(
-					the_writer, process_attr, integral_value, false);
-			if (ret) {
-				goto end;
-			}
-		}
 	}
 	MSG("");
 
-	/* Mi close tracker_id and targets */
-	if (the_writer) {
-		ret = mi_lttng_close_multi_element(the_writer, 2);
-		if (ret) {
-			goto end;
-		}
-	}
 end:
 	lttng_process_attr_tracker_handle_destroy(tracker_handle);
 	return ret;
@@ -2086,13 +1470,6 @@ static int list_trackers(const struct lttng_domain *domain)
 	int ret = 0;
 
 	MSG("Tracked process attributes");
-	/* Trackers listing */
-	if (lttng_opt_mi) {
-		ret = mi_lttng_trackers_open(the_writer);
-		if (ret) {
-			goto end;
-		}
-	}
 
 	switch (domain->type) {
 	case LTTNG_DOMAIN_KERNEL:
@@ -2148,13 +1525,6 @@ static int list_trackers(const struct lttng_domain *domain)
 		break;
 	}
 	MSG();
-	if (lttng_opt_mi) {
-		/* Close trackers element */
-		ret = mi_lttng_writer_close_element(the_writer);
-		if (ret) {
-			goto end;
-		}
-	}
 
 end:
 	return ret;
@@ -2248,13 +1618,6 @@ static enum cmd_error_code list_rotate_settings(const char *session_name)
 	}
 
 	MSG("Automatic rotation schedules:");
-	if (lttng_opt_mi) {
-		ret = mi_lttng_writer_open_element(the_writer, mi_lttng_element_rotation_schedules);
-		if (ret) {
-			cmd_ret = CMD_ERROR;
-			goto end;
-		}
-	}
 
 	for (i = 0; i < count; i++) {
 		enum cmd_error_code tmp_ret = CMD_SUCCESS;
@@ -2267,14 +1630,7 @@ static enum cmd_error_code list_rotate_settings(const char *session_name)
 			goto end;
 		}
 
-		if (lttng_opt_mi) {
-			ret = mi_lttng_rotation_schedule(the_writer, schedule);
-			if (ret) {
-				tmp_ret = CMD_ERROR;
-			}
-		} else {
-			tmp_ret = print_rotation_schedule(schedule);
-		}
+		tmp_ret = print_rotation_schedule(schedule);
 
 		/*
 		 * Report an error if the serialization of any of the
@@ -2284,89 +1640,9 @@ static enum cmd_error_code list_rotate_settings(const char *session_name)
 	}
 
 	_MSG("\n");
-	if (lttng_opt_mi) {
-		/* Close the rotation_schedules element. */
-		ret = mi_lttng_writer_close_element(the_writer);
-		if (ret) {
-			cmd_ret = CMD_ERROR;
-			goto end;
-		}
-	}
 end:
 	lttng_rotation_schedules_destroy(schedules);
 	return cmd_ret;
-}
-
-/*
- * Machine interface
- * Find the session with session_name as name
- * and print his informations.
- */
-static int mi_list_session(const char *session_name, struct lttng_session *sessions, int count)
-{
-	int ret, i;
-	bool session_found = false;
-
-	if (session_name == nullptr) {
-		ret = -LTTNG_ERR_SESS_NOT_FOUND;
-		goto end;
-	}
-
-	for (i = 0; i < count; i++) {
-		if (strncmp(sessions[i].name, session_name, NAME_MAX) == 0) {
-			/*
-			 * We need to leave it open to append other informations
-			 * like domain, channel, events etc.
-			 */
-			session_found = true;
-			ret = mi_lttng_session(the_writer, &sessions[i], 1);
-			if (ret) {
-				goto end;
-			}
-			break;
-		}
-	}
-
-	if (!session_found) {
-		ERR("Session '%s' not found", session_name);
-		ret = -LTTNG_ERR_SESS_NOT_FOUND;
-		goto end;
-	}
-
-end:
-	return ret;
-}
-
-/*
- * Machine interface
- * List all availables session
- */
-static int mi_list_sessions(struct lttng_session *sessions, int count)
-{
-	int ret, i;
-
-	/* Opening sessions element */
-	ret = mi_lttng_sessions_open(the_writer);
-	if (ret) {
-		goto end;
-	}
-
-	/* Listing sessions */
-	for (i = 0; i < count; i++) {
-		ret = mi_lttng_session(the_writer, &sessions[i], 0);
-		if (ret) {
-			goto end;
-		}
-	}
-
-	/* Closing sessions element */
-	ret = mi_lttng_writer_close_element(the_writer);
-	if (ret) {
-		goto end;
-	}
-
-end:
-	return ret;
 }
 
 /*
@@ -2389,109 +1665,63 @@ static int list_sessions(const char *session_name)
 		goto end;
 	}
 
-	if (lttng_opt_mi) {
-		/* Mi */
-		if (session_name == nullptr) {
-			/* List all sessions */
-			ret = mi_list_sessions(sessions, count);
-		} else {
-			/* Note : this return an open session element */
-			ret = mi_list_session(session_name, sessions, count);
-		}
-		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
-		}
-	} else {
-		/* Pretty print */
-		if (count == 0) {
-			MSG("Currently no available recording session");
-			goto end;
-		}
+	/* Pretty print */
+	if (count == 0) {
+		MSG("Currently no available recording session");
+		goto end;
+	}
 
-		if (session_name == nullptr) {
-			MSG("Available recording sessions:");
-		}
+	if (session_name == nullptr) {
+		MSG("Available recording sessions:");
+	}
 
-		for (i = 0; i < count; i++) {
-			if (session_name != nullptr) {
-				if (strncmp(sessions[i].name, session_name, NAME_MAX) == 0) {
-					session_found = 1;
-					MSG("Recording session %s: [%s%s]",
-					    session_name,
-					    active_string(sessions[i].enabled),
-					    snapshot_string(sessions[i].snapshot_mode));
-					if (*sessions[i].path) {
-						MSG("%sTrace output: %s\n",
-						    indent4,
-						    sessions[i].path);
-					}
-					memcpy(&the_listed_session,
-					       &sessions[i],
-					       sizeof(the_listed_session));
-					break;
-				}
-			} else {
-				MSG("  %d) %s [%s%s]",
-				    i + 1,
-				    sessions[i].name,
+	for (i = 0; i < count; i++) {
+		if (session_name != nullptr) {
+			if (strncmp(sessions[i].name, session_name, NAME_MAX) == 0) {
+				session_found = 1;
+				MSG("Recording session %s: [%s%s]",
+				    session_name,
 				    active_string(sessions[i].enabled),
 				    snapshot_string(sessions[i].snapshot_mode));
 				if (*sessions[i].path) {
-					MSG("%sTrace output: %s", indent4, sessions[i].path);
+					MSG("%sTrace output: %s\n", indent4, sessions[i].path);
 				}
-				if (sessions[i].live_timer_interval != 0) {
-					MSG("%sLive timer interval: %u %s",
-					    indent4,
-					    sessions[i].live_timer_interval,
-					    USEC_UNIT);
-				}
-				MSG("");
+				memcpy(&the_listed_session,
+				       &sessions[i],
+				       sizeof(the_listed_session));
+				break;
 			}
+		} else {
+			MSG("  %d) %s [%s%s]",
+			    i + 1,
+			    sessions[i].name,
+			    active_string(sessions[i].enabled),
+			    snapshot_string(sessions[i].snapshot_mode));
+			if (*sessions[i].path) {
+				MSG("%sTrace output: %s", indent4, sessions[i].path);
+			}
+			if (sessions[i].live_timer_interval != 0) {
+				MSG("%sLive timer interval: %u %s",
+				    indent4,
+				    sessions[i].live_timer_interval,
+				    USEC_UNIT);
+			}
+			MSG("");
 		}
+	}
 
-		if (!session_found && session_name != nullptr) {
-			ERR("Session '%s' not found", session_name);
-			ret = CMD_ERROR;
-			goto end;
-		}
+	if (!session_found && session_name != nullptr) {
+		ERR("Session '%s' not found", session_name);
+		ret = CMD_ERROR;
+		goto end;
+	}
 
-		if (session_name == nullptr) {
-			MSG("\nUse lttng list <session_name> for more details");
-		}
+	if (session_name == nullptr) {
+		MSG("\nUse lttng list <session_name> for more details");
 	}
 
 end:
 	free(sessions);
-	return ret;
-}
-
-/*
- * Machine Interface
- * list available domain(s) for a session.
- */
-static int mi_list_domains(struct lttng_domain *domains, int count)
-{
-	int i, ret;
-	/* Open domains element */
-	ret = mi_lttng_domains_open(the_writer);
-	if (ret) {
-		goto end;
-	}
-
-	for (i = 0; i < count; i++) {
-		ret = mi_lttng_domain(the_writer, &domains[i], 0);
-		if (ret) {
-			goto end;
-		}
-	}
-
-	/* Closing domains element */
-	ret = mi_lttng_writer_close_element(the_writer);
-	if (ret) {
-		goto end;
-	}
-end:
 	return ret;
 }
 
@@ -2510,51 +1740,40 @@ static int list_domains(const char *session_name)
 		goto end;
 	}
 
-	if (lttng_opt_mi) {
-		/* Mi output */
-		ret = mi_list_domains(domains, count);
-		if (ret) {
-			ret = CMD_ERROR;
-			goto error;
-		}
-	} else {
-		/* Pretty print */
-		MSG("Domains:\n-------------");
-		if (count == 0) {
-			MSG("  None");
-			goto end;
-		}
+	/* Pretty print */
+	MSG("Domains:\n-------------");
+	if (count == 0) {
+		MSG("  None");
+		goto end;
+	}
 
-		for (i = 0; i < count; i++) {
-			switch (domains[i].type) {
-			case LTTNG_DOMAIN_KERNEL:
-				MSG("  - Kernel");
-				break;
-			case LTTNG_DOMAIN_UST:
-				MSG("  - UST global");
-				break;
-			case LTTNG_DOMAIN_JUL:
-				MSG("  - JUL (java.util.logging)");
-				break;
-			case LTTNG_DOMAIN_LOG4J:
-				MSG("  - Log4j");
-				break;
-			case LTTNG_DOMAIN_LOG4J2:
-				MSG("  - Log4j2");
-				break;
-			case LTTNG_DOMAIN_PYTHON:
-				MSG("  - Python (logging)");
-				break;
-			default:
-				break;
-			}
+	for (i = 0; i < count; i++) {
+		switch (domains[i].type) {
+		case LTTNG_DOMAIN_KERNEL:
+			MSG("  - Kernel");
+			break;
+		case LTTNG_DOMAIN_UST:
+			MSG("  - UST global");
+			break;
+		case LTTNG_DOMAIN_JUL:
+			MSG("  - JUL (java.util.logging)");
+			break;
+		case LTTNG_DOMAIN_LOG4J:
+			MSG("  - Log4j");
+			break;
+		case LTTNG_DOMAIN_LOG4J2:
+			MSG("  - Log4j2");
+			break;
+		case LTTNG_DOMAIN_PYTHON:
+			MSG("  - Python (logging)");
+			break;
+		default:
+			break;
 		}
 	}
 
-error:
-	free(domains);
-
 end:
+	free(domains);
 	return ret;
 }
 
@@ -2596,29 +1815,6 @@ int cmd_list(int argc, const char **argv)
 		}
 	}
 
-	/* Mi check */
-	if (lttng_opt_mi) {
-		the_writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
-		if (!the_writer) {
-			ret = CMD_ERROR;
-			goto end;
-		}
-
-		/* Open command element */
-		ret = mi_lttng_writer_command_open(the_writer, mi_lttng_element_command_list);
-		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
-		}
-
-		/* Open output element */
-		ret = mi_lttng_writer_open_element(the_writer, mi_lttng_element_command_output);
-		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
-		}
-	}
-
 	/* Get session name (trailing argument) */
 	arg_session_name = poptGetArg(pc);
 	DBG2("Session name: %s", arg_session_name);
@@ -2630,6 +1826,29 @@ int cmd_list(int argc, const char **argv)
 		goto end;
 	}
 
+	if (!opt_kernel && opt_syscall) {
+		WARN("--syscall will only work with the Kernel domain (-k)");
+		ret = CMD_ERROR;
+		goto end;
+	}
+
+	/* Machine interface mode: delegate to list_mi() */
+	if (lttng_opt_mi) {
+		ret = list_mi(arg_session_name,
+			      opt_kernel,
+			      opt_userspace,
+			      opt_jul,
+			      opt_log4j,
+			      opt_log4j2,
+			      opt_python,
+			      opt_channel,
+			      opt_domain,
+			      opt_fields,
+			      opt_syscall);
+		goto end;
+	}
+
+	/* Pretty-print mode follows */
 	if (opt_kernel) {
 		domain.type = LTTNG_DOMAIN_KERNEL;
 	} else if (opt_userspace) {
@@ -2644,12 +1863,6 @@ int cmd_list(int argc, const char **argv)
 		domain.type = LTTNG_DOMAIN_LOG4J2;
 	} else if (opt_python) {
 		domain.type = LTTNG_DOMAIN_PYTHON;
-	}
-
-	if (!opt_kernel && opt_syscall) {
-		WARN("--syscall will only work with the Kernel domain (-k)");
-		ret = CMD_ERROR;
-		goto end;
 	}
 
 	if (opt_kernel || opt_userspace || opt_jul || opt_log4j || opt_log4j2 || opt_python) {
@@ -2699,15 +1912,6 @@ int cmd_list(int argc, const char **argv)
 		}
 	} else {
 		/* List session attributes */
-		if (lttng_opt_mi) {
-			/* Open element sessions
-			 * Present for xml consistency */
-			ret = mi_lttng_sessions_open(the_writer);
-			if (ret) {
-				goto end;
-			}
-		}
-		/* MI: the ouptut of list_sessions is an unclosed session element */
 		ret = list_sessions(arg_session_name);
 		if (ret) {
 			goto end;
@@ -2726,23 +1930,6 @@ int cmd_list(int argc, const char **argv)
 
 		/* Channel listing */
 		if (opt_kernel || opt_userspace) {
-			if (lttng_opt_mi) {
-				/* Add of domains and domain element for xml
-				 * consistency and validation
-				 */
-				ret = mi_lttng_domains_open(the_writer);
-				if (ret) {
-					goto end;
-				}
-
-				/* Open domain and leave it open for
-				 * nested channels printing */
-				ret = mi_lttng_domain(the_writer, &domain, 1);
-				if (ret) {
-					goto end;
-				}
-			}
-
 			/* Trackers */
 			ret = list_trackers(&domain);
 			if (ret) {
@@ -2754,15 +1941,6 @@ int cmd_list(int argc, const char **argv)
 			if (ret) {
 				goto end;
 			}
-
-			if (lttng_opt_mi) {
-				/* Close domain and domain element */
-				ret = mi_lttng_close_multi_element(the_writer, 2);
-			}
-			if (ret) {
-				goto end;
-			}
-
 		} else {
 			int i, nb_domain;
 
@@ -2772,14 +1950,6 @@ int cmd_list(int argc, const char **argv)
 				ret = CMD_ERROR;
 				ERR("%s", lttng_strerror(nb_domain));
 				goto end;
-			}
-
-			if (lttng_opt_mi) {
-				ret = mi_lttng_domains_open(the_writer);
-				if (ret) {
-					ret = CMD_ERROR;
-					goto end;
-				}
 			}
 
 			for (i = 0; i < nb_domain; i++) {
@@ -2809,14 +1979,6 @@ int cmd_list(int argc, const char **argv)
 				default:
 					MSG("=== Domain: Unimplemented ===\n");
 					break;
-				}
-
-				if (lttng_opt_mi) {
-					ret = mi_lttng_domain(the_writer, &domains[i], 1);
-					if (ret) {
-						ret = CMD_ERROR;
-						goto end;
-					}
 				}
 
 				/* Clean handle before creating a new one */
@@ -2859,50 +2021,12 @@ int cmd_list(int argc, const char **argv)
 					goto end;
 				}
 
-			next_domain:
-				if (lttng_opt_mi) {
-					/* Close domain element */
-					ret = mi_lttng_writer_close_element(the_writer);
-					if (ret) {
-						ret = CMD_ERROR;
-						goto end;
-					}
-				}
-			}
-			if (lttng_opt_mi) {
-				/* Close the domains, session and sessions element */
-				ret = mi_lttng_close_multi_element(the_writer, 3);
-				if (ret) {
-					ret = CMD_ERROR;
-					goto end;
-				}
+			next_domain:;
 			}
 		}
 	}
 
-	/* Mi closing */
-	if (lttng_opt_mi) {
-		/* Close  output element */
-		ret = mi_lttng_writer_close_element(the_writer);
-		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
-		}
-
-		/* Command element close */
-		ret = mi_lttng_writer_command_close(the_writer);
-		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
-		}
-	}
 end:
-	/* Mi clean-up */
-	if (the_writer && mi_lttng_writer_destroy(the_writer)) {
-		/* Preserve original error code */
-		ret = ret ? ret : -LTTNG_ERR_MI_IO_FAIL;
-	}
-
 	free(domains);
 	if (the_handle) {
 		lttng_destroy_handle(the_handle);
