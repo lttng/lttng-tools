@@ -431,7 +431,7 @@ missing_platform_requirement()
 
     case "${action}" in
 	    skip_and_quit)
-		    skip_all "${reason}"
+		    plan_skip_all "${reason}"
 		    ;;
 	    bailout)
 		    BAIL_OUT "${reason}"
