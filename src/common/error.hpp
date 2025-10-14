@@ -58,10 +58,15 @@ enum lttng_error_level {
 	PRINT_ERR = 0,
 	PRINT_BUG = 1,
 	PRINT_WARN = 2,
+	/*
+	 * PRINT_MSG goes to stdout
+	 * PRINT_INFO goes to stderr
+	 */
 	PRINT_MSG = 3,
-	PRINT_DBG = 4,
-	PRINT_DBG2 = 5,
-	PRINT_DBG3 = 6,
+	PRINT_INFO = 4,
+	PRINT_DBG = 5,
+	PRINT_DBG2 = 6,
+	PRINT_DBG3 = 7,
 };
 
 static inline bool __lttng_print_check_opt(enum lttng_error_level type)
@@ -76,6 +81,7 @@ static inline bool __lttng_print_check_opt(enum lttng_error_level type)
 	case PRINT_DBG3:
 	case PRINT_DBG2:
 	case PRINT_DBG:
+	case PRINT_INFO:
 	case PRINT_WARN:
 	case PRINT_BUG:
 	case PRINT_ERR:
@@ -102,6 +108,7 @@ static inline bool __lttng_print_check_opt(enum lttng_error_level type)
 		}
 		break;
 	case PRINT_MSG:
+	case PRINT_INFO:
 	case PRINT_WARN:
 	case PRINT_BUG:
 	case PRINT_ERR:
@@ -120,6 +127,7 @@ static inline void __lttng_print_check_abort(enum lttng_error_level type)
 	case PRINT_DBG2:
 	case PRINT_DBG:
 	case PRINT_MSG:
+	case PRINT_INFO:
 	case PRINT_WARN:
 		break;
 	case PRINT_BUG:
@@ -192,6 +200,7 @@ static inline void __lttng_print_check_abort(enum lttng_error_level type)
 
 #define BUG(fmt, args...) _ERRMSG("BUG", PRINT_BUG, fmt, ##args)
 
+#define INFO(fmt, args...)	 _ERRMSG_NO_LOC("INFO", PRINT_INFO, fmt, ##args)
 #define DBG(fmt, args...)	 _ERRMSG("DBG1", PRINT_DBG, fmt, ##args)
 #define DBG_NO_LOC(fmt, args...) _ERRMSG_NO_LOC("DBG1", PRINT_DBG, fmt, ##args)
 #define DBG2(fmt, args...)	 _ERRMSG("DBG2", PRINT_DBG2, fmt, ##args)
@@ -210,6 +219,9 @@ static inline void __lttng_print_check_abort(enum lttng_error_level type)
 			break;             \
 		case PRINT_MSG:            \
 			MSG(fmt, ##args);  \
+			break;             \
+		case PRINT_INFO:           \
+			INFO(fmt, ##args); \
 			break;             \
 		case PRINT_DBG:            \
 			DBG(fmt, ##args);  \
@@ -278,10 +290,30 @@ namespace details {
 } /* namespace logging */
 } /* namespace lttng */
 
+#define LOG_FMT(format_level, format_str, args...)                                                \
+	do {                                                                                      \
+		try {                                                                             \
+			LOG(format_level, "%s", lttng::format(format_str, ##args).c_str());       \
+		} catch (const std::exception& _formatting_exception) {                           \
+			lttng::logging::details::die_formatting_exception(format_str,             \
+									  _formatting_exception); \
+		}                                                                                 \
+	} while (0);
+
 #define DBG_FMT(format_str, args...)                                                              \
 	do {                                                                                      \
 		try {                                                                             \
 			DBG("%s", lttng::format(format_str, ##args).c_str());                     \
+		} catch (const std::exception& _formatting_exception) {                           \
+			lttng::logging::details::die_formatting_exception(format_str,             \
+									  _formatting_exception); \
+		}                                                                                 \
+	} while (0);
+
+#define INFO_FMT(format_str, args...)                                                             \
+	do {                                                                                      \
+		try {                                                                             \
+			INFO("%s", lttng::format(format_str, ##args).c_str());                    \
 		} catch (const std::exception& _formatting_exception) {                           \
 			lttng::logging::details::die_formatting_exception(format_str,             \
 									  _formatting_exception); \
