@@ -1338,10 +1338,13 @@ int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_error)
 		try {
 			target_session.emplace(
 				ltt_session::find_locked_session(cmd_ctx->lsm.session.name));
+		} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
+			return LTTNG_ERR_SESS_NOT_FOUND;
 		} catch (...) {
 			std::throw_with_nested(lttng::ctl::error(
 				fmt::format(
-					"Target session of command doesn't exist: command='{}'",
+					"Failed to get target session: session='{}', command='{}'",
+					(const char *) cmd_ctx->lsm.session.name,
 					lttcomm_sessiond_command_str(
 						(lttcomm_sessiond_command) cmd_ctx->lsm.cmd_type)),
 				LTTNG_ERR_SESS_NOT_FOUND,
