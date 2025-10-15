@@ -114,6 +114,23 @@ std::string escape_tsdl_env_string_value(const std::string& original_string)
 	return escaped_string;
 }
 
+std::string escape_tsdl_single_line_comment(const std::string& original_string)
+{
+	std::string escaped_string;
+
+	escaped_string.reserve(original_string.size());
+
+	for (const auto c : original_string) {
+		if (c == '\n') {
+			escaped_string += "\\n";
+		} else {
+			escaped_string += c;
+		}
+	}
+
+	return escaped_string;
+}
+
 /*
  * Variants produced by LTTng-UST contain TSDL-unsafe names. A variant/selector
  * sanitization pass is performed before serializing a trace class hierarchy to
@@ -634,6 +651,15 @@ private:
 		const auto array = lttng::make_unique<lst::static_length_array_type>(
 			type.alignment, std::move(uint8_element), type.length_bytes);
 
+		_description += "// static length BLOB field";
+		if (type.media_type) {
+			_description +=
+				lttng::format(" with `{}` media type",
+					      escape_tsdl_single_line_comment(*type.media_type));
+		}
+		_description += "\n";
+		_description.resize(_description.size() + _indentation_level, '\t');
+
 		visit(*array);
 	}
 
@@ -650,6 +676,15 @@ private:
 				lst::integer_type::base::HEXADECIMAL);
 		const auto array = lttng::make_unique<lst::dynamic_length_array_type>(
 			type.alignment, std::move(uint8_element), type.length_field_location);
+
+		_description += "// dynamic length BLOB field";
+		if (type.media_type) {
+			_description +=
+				lttng::format(" with `{}` media type",
+					      escape_tsdl_single_line_comment(*type.media_type));
+		}
+		_description += "\n";
+		_description.resize(_description.size() + _indentation_level, '\t');
 
 		visit(*array);
 	}
