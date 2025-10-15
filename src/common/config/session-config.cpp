@@ -129,6 +129,9 @@ const char *const config_element_channels = "channels";
 const char *const config_element_channel_allocation_policy = "allocation_policy";
 const char *const config_element_channel_allocation_policy_per_channel = "PER_CHANNEL";
 const char *const config_element_channel_allocation_policy_per_cpu = "PER_CPU";
+const char *const config_element_channel_preallocation_policy = "preallocation_policy";
+const char *const config_element_channel_preallocation_policy_preallocate = "PREALLOCATE";
+const char *const config_element_channel_preallocation_policy_on_demand = "ON_DEMAND";
 const char *const config_element_domain = "domain";
 const char *const config_element_domains = "domains";
 const char *const config_element_event = "event";
@@ -2276,6 +2279,33 @@ static int process_channel_attr_node(xmlNodePtr attr_node,
 		} else if (content == config_element_channel_allocation_policy_per_channel) {
 			ret = lttng_channel_set_allocation_policy(
 				channel, LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CHANNEL);
+		} else {
+			ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+		}
+
+		free(const_cast<char *>(content.data()));
+
+		if (ret != LTTNG_OK) {
+			goto end;
+		}
+
+	} else if (!strcmp((const char *) attr_node->name,
+			   config_element_channel_preallocation_policy)) {
+		/* Channel preallocation policy */
+
+		const lttng::c_string_view content(
+			reinterpret_cast<const char *>(xmlNodeGetContent(attr_node)));
+		if (!content) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		if (content == config_element_channel_preallocation_policy_preallocate) {
+			ret = lttng_channel_set_preallocation_policy(
+				channel, LTTNG_CHANNEL_PREALLOCATION_POLICY_PREALLOCATE);
+		} else if (content == config_element_channel_preallocation_policy_on_demand) {
+			ret = lttng_channel_set_preallocation_policy(
+				channel, LTTNG_CHANNEL_PREALLOCATION_POLICY_ON_DEMAND);
 		} else {
 			ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
 		}
