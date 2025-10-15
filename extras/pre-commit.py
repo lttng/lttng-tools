@@ -147,7 +147,31 @@ def python_blacken(files):
     return stdout.decode("utf-8"), black.returncode
 
 
+def is_text_file(filepath):
+    """Check if a file is a text file using the 'file' command."""
+    try:
+        result = subprocess.run(
+            ["file", "--mime-type", "-b", filepath],
+            capture_output=True,
+            text=True,
+            timeout=1,
+        )
+
+        # Extract mime type before "charset" parameter which follows a semicolon
+        # For example: `text/plain; charset=us-ascii`
+        mime_type = result.stdout.split(";")[0].strip()
+        return mime_type.startswith("text/") or mime_type in [
+            "application/xml",
+            "application/json",
+        ]
+    except Exception:
+        return False
+
+
 def spdx_tags(files):
+    # Filter out non-text files
+    files = [f for f in files if is_text_file(f)]
+
     tag_re = re.compile(r"SPDX-(?P<tag>[^ :]+): (?P<value>[^\n]+)")
     valid_tags = [
         "License-Identifier",
