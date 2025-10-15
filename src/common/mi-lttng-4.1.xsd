@@ -43,6 +43,14 @@ SPDX-License-Identifier: MIT
 		</xs:restriction>
 	</xs:simpleType>
 
+	<!-- Maps to lttng_channel_preallocation_policy enum -->
+	<xs:simpleType name="channel_preallocation_policy_type">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="PREALLOCATE" />
+			<xs:enumeration value="ON_DEMAND" />
+		</xs:restriction>
+	</xs:simpleType>
+
 	<!--
 	Maps to the range allowed for blocking timeout: -1 (block
 	forever), 0 (do not block), positive integer value (blocking
@@ -695,6 +703,7 @@ SPDX-License-Identifier: MIT
                         <xs:element name="watchdog_timer_interval" type="tns:uint64_type" default="0" minOccurs="0" />
 			<xs:element name="blocking_timeout" type="tns:blocking_timeout_type" default="0" minOccurs="0" />
 			<xs:element name="allocation_policy" type="tns:channel_allocation_policy_type" default="PER_CPU" minOccurs="0" />
+			<xs:element name="preallocation_policy" type="tns:channel_preallocation_policy_type" default="PREALLOCATE" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 
