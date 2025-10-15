@@ -11,6 +11,8 @@
 #include "trace-kernel.hpp"
 #include "trace-ust.hpp"
 
+#include <common/ctl/memory.hpp>
+
 #include <lttng/lttng.h>
 
 int channel_kernel_disable(struct ltt_kernel_session *ksession, char *channel_name);
@@ -20,8 +22,7 @@ enum lttng_error_code channel_kernel_create(struct ltt_kernel_session *ksession,
 					    struct lttng_channel *chan,
 					    int kernel_pipe);
 
-struct lttng_channel *channel_new_default_attr(int domain, enum lttng_buffer_type type);
-void channel_attr_destroy(struct lttng_channel *channel);
+lttng::ctl::lttng_channel_uptr channel_new_default_attr(lttng_domain_type domain, enum lttng_buffer_type type);
 
 enum lttng_error_code channel_ust_create(struct ltt_ust_session *usess,
 					 struct lttng_channel *attr,

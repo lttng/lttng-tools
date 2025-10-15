@@ -27,25 +27,18 @@
 /*
  * Return allocated channel attributes.
  */
-struct lttng_channel *channel_new_default_attr(int dom, enum lttng_buffer_type type)
+lttng::ctl::lttng_channel_uptr channel_new_default_attr(lttng_domain_type dom,
+							enum lttng_buffer_type type)
 {
-	struct lttng_channel *chan;
 	const char *channel_name = DEFAULT_CHANNEL_NAME;
-	struct lttng_channel_extended *extended_attr = nullptr;
 
-	chan = zmalloc<lttng_channel>();
-	if (chan == nullptr) {
-		PERROR("zmalloc channel init");
-		goto error_alloc;
+	lttng::ctl::lttng_channel_uptr chan(lttng_channel_create_internal());
+	if (!chan) {
+		LTTNG_THROW_POSIX("Failed to allocate channel with default attributes", -ENOMEM);
 	}
 
-	extended_attr = zmalloc<lttng_channel_extended>();
-	if (!extended_attr) {
-		PERROR("zmalloc channel extended init");
-		goto error;
-	}
-
-	chan->attr.extended.ptr = extended_attr;
+	struct lttng_channel_extended *extended_attr =
+		static_cast<lttng_channel_extended *>(chan->attr.extended.ptr);
 
 	/* Same for all domains. */
 	chan->attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
@@ -114,29 +107,15 @@ struct lttng_channel *channel_new_default_attr(int dom, enum lttng_buffer_type t
 		}
 		break;
 	default:
-		goto error; /* Not implemented */
+		return nullptr;
 	}
 
 	if (snprintf(chan->name, sizeof(chan->name), "%s", channel_name) < 0) {
 		PERROR("snprintf default channel name");
-		goto error;
+		return nullptr;
 	}
+
 	return chan;
-
-error:
-	free(extended_attr);
-	free(chan);
-error_alloc:
-	return nullptr;
-}
-
-void channel_attr_destroy(struct lttng_channel *channel)
-{
-	if (!channel) {
-		return;
-	}
-	free(channel->attr.extended.ptr);
-	free(channel);
 }
 
 /*
@@ -240,18 +219,14 @@ enum lttng_error_code channel_kernel_create(struct ltt_kernel_session *ksession,
 					    int kernel_pipe)
 {
 	enum lttng_error_code ret_code;
-	struct lttng_channel *defattr = nullptr;
+	lttng::ctl::lttng_channel_uptr defattr;
 
 	LTTNG_ASSERT(ksession);
 
 	/* Creating channel attributes if needed */
 	if (attr == nullptr) {
 		defattr = channel_new_default_attr(LTTNG_DOMAIN_KERNEL, LTTNG_BUFFER_GLOBAL);
-		if (defattr == nullptr) {
-			ret_code = LTTNG_ERR_FATAL;
-			goto error;
-		}
-		attr = defattr;
+		attr = defattr.get();
 	}
 
 	/*
@@ -264,31 +239,24 @@ enum lttng_error_code channel_kernel_create(struct ltt_kernel_session *ksession,
 
 	/* Validate common channel properties. */
 	if (channel_validate(attr) < 0) {
-		ret_code = LTTNG_ERR_INVALID;
-		goto error;
+		return LTTNG_ERR_INVALID;
 	}
 
 	if (channel_validate_kernel(attr) < 0) {
-		ret_code = LTTNG_ERR_INVALID;
-		goto error;
+		return LTTNG_ERR_INVALID;
 	}
 
 	/* Channel not found, creating it. */
 	if (kernel_create_channel(ksession, attr) < 0) {
-		ret_code = LTTNG_ERR_KERN_CHAN_FAIL;
-		goto error;
+		return LTTNG_ERR_KERN_CHAN_FAIL;
 	}
 
 	/* Notify kernel thread that there is a new channel */
 	if (notify_thread_pipe(kernel_pipe) < 0) {
-		ret_code = LTTNG_ERR_FATAL;
-		goto error;
+		return LTTNG_ERR_FATAL;
 	}
 
-	ret_code = LTTNG_OK;
-error:
-	channel_attr_destroy(defattr);
-	return ret_code;
+	return LTTNG_OK;
 }
 
 /*
@@ -346,7 +314,7 @@ enum lttng_error_code channel_ust_create(struct ltt_ust_session *usess,
 {
 	enum lttng_error_code ret_code = LTTNG_OK;
 	struct ltt_ust_channel *uchan = nullptr;
-	struct lttng_channel *defattr = nullptr;
+	lttng::ctl::lttng_channel_uptr defattr;
 	enum lttng_domain_type domain = LTTNG_DOMAIN_UST;
 	bool chan_published = false;
 	const lttng::urcu::read_lock_guard read_lock;
@@ -356,11 +324,7 @@ enum lttng_error_code channel_ust_create(struct ltt_ust_session *usess,
 	/* Creating channel attributes if needed */
 	if (attr == nullptr) {
 		defattr = channel_new_default_attr(LTTNG_DOMAIN_UST, type);
-		if (defattr == nullptr) {
-			ret_code = LTTNG_ERR_FATAL;
-			goto error;
-		}
-		attr = defattr;
+		attr = defattr.get();
 	} else {
 		/*
 		 * HACK: Set the channel's subdomain (JUL, Log4j, Python, etc.)
@@ -504,7 +468,6 @@ enum lttng_error_code channel_ust_create(struct ltt_ust_session *usess,
 		}
 	}
 
-	channel_attr_destroy(defattr);
 	return LTTNG_OK;
 
 error_remove_chan:
@@ -514,7 +477,6 @@ error_remove_chan:
 error_free_chan:
 	trace_ust_destroy_channel(uchan);
 error:
-	channel_attr_destroy(defattr);
 	return ret_code;
 }
 

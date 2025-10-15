@@ -2389,8 +2389,7 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 		chan_count = lttng_ht_get_count(usess->domain_global.channels);
 		if (chan_count == 0) {
 			/* Create default channel */
-			auto attr = lttng::make_unique_wrapper<lttng_channel, channel_attr_destroy>(
-				channel_new_default_attr(domain, usess->buffer_type));
+			const auto attr = channel_new_default_attr(domain, usess->buffer_type);
 
 			if (!attr) {
 				ret = LTTNG_ERR_FATAL;
@@ -2535,7 +2534,6 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 	}
 
 	int ret = 0, channel_created = 0;
-	struct lttng_channel *attr = nullptr;
 	ltt_session& session = *locked_session;
 
 	LTTNG_ASSERT(event);
@@ -2581,10 +2579,8 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 
 		kchan = trace_kernel_get_channel_by_name(channel_name, session.kernel_session);
 		if (kchan == nullptr) {
-			attr = channel_new_default_attr(LTTNG_DOMAIN_KERNEL, LTTNG_BUFFER_GLOBAL);
-			if (attr == nullptr) {
-				return LTTNG_ERR_FATAL;
-			}
+			const auto attr =
+				channel_new_default_attr(LTTNG_DOMAIN_KERNEL, LTTNG_BUFFER_GLOBAL);
 
 			if (lttng_strncpy(attr->name, channel_name, sizeof(attr->name))) {
 				return LTTNG_ERR_INVALID;
@@ -2712,10 +2708,8 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels, channel_name);
 		if (uchan == nullptr) {
 			/* Create default channel */
-			attr = channel_new_default_attr(LTTNG_DOMAIN_UST, usess->buffer_type);
-			if (attr == nullptr) {
-				return LTTNG_ERR_FATAL;
-			}
+			const auto attr =
+				channel_new_default_attr(LTTNG_DOMAIN_UST, usess->buffer_type);
 
 			if (lttng_strncpy(attr->name, channel_name, sizeof(attr->name))) {
 				return LTTNG_ERR_INVALID;

@@ -46,9 +46,22 @@ using lttng_session_uptr = std::unique_ptr<
 	lttng_session[],
 	lttng::memory::create_deleter_class<lttng_session, lttng::memory::free>::deleter>;
 
-using lttng_channel_uptr = std::unique_ptr<
+/*
+ * lttng_channels_uptr is a unique pointer to an array of lttng_channel
+ * structures, with a custom deleter that uses lttng::memory::free to free. It uses a
+ * different deleter than lttng_channel_uptr because lttng_channel_destroy()
+ * must be used to free a single lttng_channel structure.
+ *
+ * When an array of lttng_channel structures is allocated, it must be freed
+ * using lttng::memory::free since the layout is a plain flat array.
+ */
+using lttng_channels_uptr = std::unique_ptr<
 	lttng_channel[],
 	lttng::memory::create_deleter_class<lttng_channel, lttng::memory::free>::deleter>;
+
+using lttng_channel_uptr = std::unique_ptr<
+	lttng_channel,
+	lttng::memory::create_deleter_class<lttng_channel, lttng_channel_destroy>::deleter>;
 
 namespace details {
 template <typename WrappedTypeUniquePtr>
@@ -150,8 +163,8 @@ public:
 using session_list_storage = c_array_storage<lttng_session_uptr>;
 using session_list_operations = c_array_storage_operations<lttng_session_uptr>;
 
-using channel_list_storage = c_array_storage<lttng_channel_uptr>;
-using channel_list_operations = c_array_storage_operations<lttng_channel_uptr>;
+using channel_list_storage = c_array_storage<lttng_channels_uptr>;
+using channel_list_operations = c_array_storage_operations<lttng_channels_uptr>;
 
 } /* namespace details */
 
