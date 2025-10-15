@@ -140,6 +140,7 @@ end:
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
 static int save_ust_channel_attributes(struct config_writer *writer,
+				       const struct ltt_ust_channel *ust_chan,
 				       struct lttng_ust_abi_channel_attr *attr)
 {
 	int ret;
@@ -215,6 +216,29 @@ static int save_ust_channel_attributes(struct config_writer *writer,
 
 	ret = config_writer_write_element_string(
 		writer, config_element_channel_allocation_policy, allocation_policy_str);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	const char *preallocation_policy_str;
+
+	switch (ust_chan->preallocation_policy) {
+	case lttng::sessiond::recording_channel_configuration::buffer_preallocation_policy_t::
+		PREALLOCATE:
+		preallocation_policy_str = config_element_channel_preallocation_policy_preallocate;
+		break;
+	case lttng::sessiond::recording_channel_configuration::buffer_preallocation_policy_t::
+		ON_DEMAND:
+		preallocation_policy_str = config_element_channel_preallocation_policy_on_demand;
+		break;
+	default:
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	ret = config_writer_write_element_string(
+		writer, config_element_channel_preallocation_policy, preallocation_policy_str);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
@@ -1644,7 +1668,7 @@ static int save_ust_channel(struct config_writer *writer,
 		goto end;
 	}
 
-	ret = save_ust_channel_attributes(writer, &ust_chan->attr);
+	ret = save_ust_channel_attributes(writer, ust_chan, &ust_chan->attr);
 	if (ret != LTTNG_OK) {
 		goto end;
 	}
