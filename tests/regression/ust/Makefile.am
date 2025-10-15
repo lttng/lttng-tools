@@ -5,6 +5,7 @@
 if HAVE_LIBLTTNG_UST_CTL
 SUBDIRS = \
 	before-after \
+	blob-type \
 	blocking \
 	buffers-pid \
 	clock-override \

@@ -137,6 +137,7 @@ SERIAL_TESTS += ust/before-after/test_before_after \
 	tools/trigger/rate-policy/test_ust_rate_policy
 
 TESTS += tools/client/test_reclaim_memory.py \
+	ust/blob-type/test_blob_type.py \
 	ust/high-throughput/test_high_throughput.py \
 	ust/high-throughput/test_high_throughput_snapshot.py \
 	ust/ust-constructor/test_ust_constructor_c_static.py \
