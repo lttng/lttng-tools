@@ -23,8 +23,12 @@ void lttng::consumer::memory_reclaim_timer_task::_run(lttng::scheduling::absolut
 			_channel.key,
 			_channel.name);
 
-		const bool require_consumed = _channel.event_loss_mode ==
-			CONSUMER_CHANNEL_EVENT_LOSS_MODE_DISCARD_EVENTS;
+		/*
+		 * The channel being monitored means its data is being consumed.
+		 * As such, we can only reclaim sub-buffers that have been consumed since we
+		 * don't want to lose recorded data.
+		 */
+		const bool require_consumed = _channel.monitor;
 
 		std::uint64_t bytes_reclaimed = 0;
 		if (_channel.monitor) {
