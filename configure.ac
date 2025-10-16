@@ -228,7 +228,6 @@ detection.
 AM_CONDITIONAL([HAVE_FLEX], [test "x$have_flex" = "xyes"])
 
 
-
 # Check if linker has the -no-pie option.
 AX_CHECK_LINK_FLAG([-no-pie], [linker_have_no_pie_option=yes])
 AM_CONDITIONAL([LINKER_HAVE_NO_PIE_OPTION], [test "x$linker_have_no_pie_option" = "xyes"])
@@ -1266,6 +1265,10 @@ AC_SUBST(lttngeventruleincludedir)
 
 lttnglibexecdir="${libdir}/lttng/libexec"
 AC_SUBST(lttnglibexecdir)
+
+AC_ARG_VAR([CLANG2PY], [Path for clang2py])
+AC_PATH_PROG([CLANG2PY], [clang2py], [], [$PATH])
+AM_CONDITIONAL([HAVE_CLANG2PY], [test "$CLANG2PY" != ""])
 
 AC_CONFIG_FILES([
 	Makefile
