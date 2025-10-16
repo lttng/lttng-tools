@@ -2425,19 +2425,21 @@ skip_domain:
 				std::chrono::microseconds(older_than_us)) :
 			nonstd::nullopt;
 
-		const auto& channel_configuration =
-			(*target_session)
-				->get_domain(domain)
-				.get_channel(lttng::c_string_view(channel_name));
-
+		/*
+		 * Perform the actual reclaim operation. Note that we require the data to
+		 * be consumed by the consumer for sub-buffers to be reclaimed when an output
+		 * is configured (i.e. when streaming locally or to a relay daemon).
+		 *
+		 * Reclaiming memory on a snapshot (or no-output) session will always
+		 * reclaim all the data that is older than the specified threshold and result
+		 * in the loss of recorded data.
+		 */
 		const auto results = lttng::sessiond::commands::reclaim_channel_memory(
 			*target_session,
 			domain,
 			lttng::c_string_view(channel_name),
 			reclaim_older_than,
-			channel_configuration.buffer_full_policy ==
-				ls::recording_channel_configuration::buffer_full_policy_t::
-					DISCARD_EVENT);
+			(*target_session)->output_traces);
 
 		/* Sum up all reclaimed bytes from all groups and streams. */
 		std::uint64_t reclaimed_bytes = 0;
