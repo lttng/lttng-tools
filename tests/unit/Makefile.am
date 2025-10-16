@@ -13,6 +13,7 @@ LOG_DRIVER_FLAGS='--merge'
 LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) \
 	$(top_builddir)/tests/utils/tap-driver.sh
 
+EXTRA_DIST =
 TESTS = \
 	ini_config/test_ini_config \
 	test_action \
@@ -87,7 +88,27 @@ noinst_PROGRAMS = \
 	test_uuid
 
 if HAVE_LIBLTTNG_UST_CTL
-noinst_PROGRAMS += test_ust_data
+noinst_PROGRAMS += \
+	test_ust_data
+
+CLEANFILES=
+if HAVE_CLANG2PY
+
+CLANG_ARGS=-I$(top_srcdir)/include -I$(top_srcdir)/src
+liblttngctl/lttngctl/lttng.py: $(top_srcdir)/include/lttng/lttng.h $(LIBLTTNG_CTL)
+	mkdir -p $(dir $@)
+	$(CLANG2PY) -i --clang-args="$(CLANG_ARGS)" -l $(abs_top_builddir)/src/lib/lttng-ctl/.libs/liblttng-ctl.so $(top_srcdir)/include/lttng/lttng.h > liblttngctl/lttngctl/lttng.py
+
+# BUILT_SOURCES can't be used since it's evaluated early during `make dist` on a clean
+# tree, and this target requires a tree that's in the process of being built.
+CLEANFILES += liblttngctl/lttngctl/lttng.py
+TESTS += \
+	liblttngctl/test_watchdog_timer.py
+endif
+
+EXTRA_DIST += \
+	liblttngctl/common.py \
+	liblttngctl/test_watchdog_timer.py
 TESTS += test_ust_data
 endif
 
@@ -220,3 +241,25 @@ test_scheduler_LDADD = $(LIBTAP) $(LIBCOMMON_LGPL) $(LIBSCHEDULING)
 # Poller
 test_poller_SOURCES = test_poller.cpp
 test_poller_LDADD = $(LIBTAP) $(LIBCOMMON_GPL)
+
+# Copy test scripts to the builddir for OOT builds
+if HAVE_CLANG2PY
+all-local: liblttngctl/lttngctl/lttng.py
+else
+all-local:
+endif
+	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
+		for script in $(EXTRA_DIST); do \
+			if [ x"$$(dirname $$script)" != x"." ]; then \
+				mkdir -p $(builddir)/$$(dirname $$script); \
+			fi; \
+			cp -f $(srcdir)/$$script $(builddir)/$$script; \
+		done; \
+	fi
+
+clean-local:
+	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
+		for script in $(EXTRA_DIST); do \
+			rm -f $(builddir)/$$script; \
+		done; \
+	fi

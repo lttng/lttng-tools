@@ -82,6 +82,7 @@ compile_commands.json
 /extras/core-handler/crash
 
 # Tests
+/tests/unit/liblttngctl/lttngctl/
 /tests/unit/test_kernel_data
 /tests/unit/test_session
 /tests/unit/test_uri
