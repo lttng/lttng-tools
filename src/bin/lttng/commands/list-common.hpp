@@ -17,10 +17,44 @@
 #include <lttng/lttng.h>
 #include <lttng/tracker.h>
 
+#include <vendor/optional.hpp>
+
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string>
 #include <sys/types.h>
+
+/*
+ * Common configuration structure for list command operations.
+ *
+ * This structure holds all command-line options and configuration
+ * needed by any output generator implementation.
+ */
+struct list_cmd_config final {
+	/* Session name to list (not set for all sessions) */
+	nonstd::optional<std::string> session_name;
+
+	/* Channel name to filter by (not set for all channels) */
+	nonstd::optional<std::string> channel_name;
+
+	/* Domain type to filter by */
+	nonstd::optional<lttng_domain_type> domain_type;
+
+	/* Domain selection flags */
+	bool kernel;
+	bool userspace;
+	bool jul;
+	bool log4j;
+	bool log4j2;
+	bool python;
+
+	/* Output option flags */
+	bool domain;
+	bool fields;
+	bool syscall;
+	bool stream_info_details;
+};
 
 /*
  * Get command line from /proc for a specific pid.

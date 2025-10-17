@@ -17,6 +17,7 @@ bin_PROGRAMS = lttng
 lttng_SOURCES = command.hpp conf.cpp conf.hpp commands/start.cpp \
 				commands/list.cpp commands/create.cpp commands/destroy.cpp \
 				commands/list-mi.cpp commands/list-mi.hpp \
+				commands/list-human.cpp commands/list-human.hpp \
 				commands/list-common.hpp \
 				commands/list-wrappers.hpp \
 				commands/stop.cpp commands/enable_events.cpp \
