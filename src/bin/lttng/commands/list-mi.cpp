@@ -32,6 +32,9 @@
 
 static struct mi_writer *the_writer;
 
+/* Configuration for the list command */
+static const list_cmd_config *the_config;
+
 namespace {
 
 int mi_write_event(const lttng_event& event, int is_open, lttng_domain_type domain_type)
@@ -46,20 +49,6 @@ int mi_write_domain(const lttng_domain& domain, int is_open)
 
 } /* namespace */
 
-/* Cached command-line options for MI handling in this TU. */
-static const char *opt_session_name;
-static lttng_domain_type opt_domain_type;
-static int opt_kernel;
-static int opt_userspace;
-static int opt_jul;
-static int opt_log4j;
-static int opt_log4j2;
-static int opt_python;
-static int opt_fields;
-static int opt_syscall;
-static int opt_domain;
-static const char *opt_channel;
-
 template <typename InstrumentationPointSetType>
 static int list_agent_ust_events(const InstrumentationPointSetType& instrumentation_points)
 {
@@ -68,8 +57,9 @@ static int list_agent_ust_events(const InstrumentationPointSetType& instrumentat
 	int pid_element_open = 0;
 	lttng_domain domain;
 
+	LTTNG_ASSERT(the_config->domain_type);
 	std::memset(&domain, 0, sizeof(domain));
-	domain.type = opt_domain_type;
+	domain.type = *the_config->domain_type;
 
 	/* Open domains element */
 	ret = mi_lttng_domains_open(the_writer);
@@ -125,7 +115,8 @@ static int list_agent_ust_events(const InstrumentationPointSetType& instrumentat
 		}
 
 		/* Write an event */
-		ret = mi_write_event(instrumentation_point.lib(), 0, opt_domain_type);
+		LTTNG_ASSERT(the_config->domain_type);
+		ret = mi_write_event(instrumentation_point.lib(), 0, *the_config->domain_type);
 		if (ret) {
 			goto end;
 		}
@@ -360,8 +351,8 @@ static int list_channels(const lttng::cli::channel_set<lttng::cli::channel>& cha
 	}
 
 	for (const auto& channel : channels) {
-		if (opt_channel != nullptr) {
-			if (channel.name() != opt_channel) {
+		if (the_config->channel_name) {
+			if (channel.name() != *the_config->channel_name) {
 				continue;
 			}
 			chan_found = 1;
@@ -654,7 +645,8 @@ static int handle_no_session_name()
 	int ret = CMD_SUCCESS;
 
 	/* Listing sessions, kernel/ust events, or syscalls */
-	if (!opt_kernel && !opt_userspace && !opt_jul && !opt_log4j && !opt_log4j2 && !opt_python) {
+	if (!the_config->kernel && !the_config->userspace && !the_config->jul &&
+	    !the_config->log4j && !the_config->log4j2 && !the_config->python) {
 		/* List all sessions */
 		const lttng::cli::session_list sessions;
 		DBG("Session count %zu", sessions.size());
@@ -665,8 +657,8 @@ static int handle_no_session_name()
 		}
 	}
 
-	if (opt_kernel) {
-		if (opt_syscall) {
+	if (the_config->kernel) {
+		if (the_config->syscall) {
 			/* List syscalls */
 			const lttng::cli::kernel_syscall_set syscalls;
 			ret = list_syscalls(syscalls);
@@ -685,9 +677,9 @@ static int handle_no_session_name()
 		}
 	}
 
-	if (opt_userspace) {
+	if (the_config->userspace) {
 		const lttng::cli::ust_tracepoint_set tracepoints;
-		if (opt_fields) {
+		if (the_config->fields) {
 			/* List UST event fields */
 			ret = list_ust_event_fields(tracepoints);
 			if (ret) {
@@ -704,9 +696,10 @@ static int handle_no_session_name()
 		}
 	}
 
-	if (opt_jul || opt_log4j || opt_log4j2 || opt_python) {
+	if (the_config->jul || the_config->log4j || the_config->log4j2 || the_config->python) {
 		/* List agent events */
-		const lttng::cli::java_python_logger_set loggers(opt_domain_type);
+		LTTNG_ASSERT(the_config->domain_type);
+		const lttng::cli::java_python_logger_set loggers(*the_config->domain_type);
 		ret = list_agent_ust_events(loggers);
 		if (ret) {
 			ret = CMD_ERROR;
@@ -859,10 +852,11 @@ static int handle_with_session_name()
 	}
 
 	/* Find the session */
-	const auto found_session = sessions.find_by_name(opt_session_name);
+	LTTNG_ASSERT(the_config->session_name);
+	const auto found_session = sessions.find_by_name(the_config->session_name->c_str());
 
 	if (!found_session) {
-		ERR("Session '%s' not found", opt_session_name);
+		ERR("Session '%s' not found", the_config->session_name->c_str());
 		return -LTTNG_ERR_SESS_NOT_FOUND;
 	}
 
@@ -878,16 +872,19 @@ static int handle_with_session_name()
 	}
 
 	/* Domain listing */
-	if (opt_domain) {
+	if (the_config->domain) {
 		const auto session_domains = found_session->domains();
 		return list_domains(session_domains);
 	}
 
 	/* Channel listing */
-	if (opt_kernel || opt_userspace) {
+	if (the_config->kernel || the_config->userspace) {
 		/* Find the requested domain from the session's domains */
 		const auto session_domains = found_session->domains();
-		const auto found_domain = session_domains.find_by_type(opt_domain_type);
+
+		LTTNG_ASSERT(the_config->domain_type);
+
+		const auto found_domain = session_domains.find_by_type(*the_config->domain_type);
 
 		if (!found_domain) {
 			ERR("Domain not found in session");
@@ -957,19 +954,12 @@ static int handle_with_session_name()
 /*
  * Entry point for machine interface list command.
  */
-int list_mi(const char *session_name,
-	    int opt_kernel_param,
-	    int opt_userspace_param,
-	    int opt_jul_param,
-	    int opt_log4j_param,
-	    int opt_log4j2_param,
-	    int opt_python_param,
-	    const char *opt_channel_param,
-	    int opt_domain_param,
-	    int opt_fields_param,
-	    int opt_syscall_param)
+int list_mi(const list_cmd_config& config)
 {
 	int ret = CMD_SUCCESS;
+
+	/* Cache configuration for use by helpers */
+	the_config = &config;
 
 	/* Initialize writer */
 	the_writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
@@ -992,48 +982,10 @@ int list_mi(const char *session_name,
 		goto end;
 	}
 
-	/* Cache options for use by helpers. */
-	opt_session_name = session_name;
-	opt_kernel = opt_kernel_param;
-	opt_userspace = opt_userspace_param;
-	opt_jul = opt_jul_param;
-	opt_log4j = opt_log4j_param;
-	opt_log4j2 = opt_log4j2_param;
-	opt_python = opt_python_param;
-	opt_channel = opt_channel_param;
-	opt_domain = opt_domain_param;
-	opt_fields = opt_fields_param;
-	opt_syscall = opt_syscall_param;
-
-	/* Determine domain type */
-	if (opt_kernel) {
-		opt_domain_type = LTTNG_DOMAIN_KERNEL;
-	} else if (opt_userspace) {
-		DBG2("Listing userspace global domain");
-		opt_domain_type = LTTNG_DOMAIN_UST;
-	} else if (opt_jul) {
-		DBG2("Listing JUL domain");
-		opt_domain_type = LTTNG_DOMAIN_JUL;
-	} else if (opt_log4j) {
-		opt_domain_type = LTTNG_DOMAIN_LOG4J;
-	} else if (opt_log4j2) {
-		opt_domain_type = LTTNG_DOMAIN_LOG4J2;
-	} else if (opt_python) {
-		opt_domain_type = LTTNG_DOMAIN_PYTHON;
+	if (!the_config->session_name) {
+		ret = handle_no_session_name();
 	} else {
-		opt_domain_type = LTTNG_DOMAIN_NONE;
-	}
-
-	try {
-		if (!opt_session_name) {
-			ret = handle_no_session_name();
-		} else {
-			ret = handle_with_session_name();
-		}
-	} catch (const std::exception& e) {
-		ERR_FMT("Failed to list: {}", e.what());
-		ret = CMD_ERROR;
-		goto end;
+		ret = handle_with_session_name();
 	}
 
 	if (ret) {
