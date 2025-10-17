@@ -6,12 +6,15 @@
  *
  */
 
+#include "lttng/channel.h"
+#include "lttng/domain.h"
+#include "lttng/event.h"
+
 #include <stdint.h>
 #define _LGPL_SOURCE
 #include "../command.hpp"
-#include "list-common.hpp"
-#include "list-memory-usage.hpp"
 #include "list-mi.hpp"
+#include "list-wrappers.hpp"
 
 #include <common/mi-lttng.hpp>
 #include <common/time.hpp>
@@ -26,14 +29,26 @@
 #include <popt.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-
-namespace lcm = lttng::cli::memory_usage;
 
 static struct mi_writer *the_writer;
-static struct lttng_handle *the_handle;
+
+namespace {
+
+int mi_write_event(const lttng_event& event, int is_open, lttng_domain_type domain_type)
+{
+	return mi_lttng_event(the_writer, const_cast<lttng_event *>(&event), is_open, domain_type);
+}
+
+int mi_write_domain(const lttng_domain& domain, int is_open)
+{
+	return mi_lttng_domain(the_writer, const_cast<lttng_domain *>(&domain), is_open);
+}
+
+} /* namespace */
 
 /* Cached command-line options for MI handling in this TU. */
+static const char *opt_session_name;
+static lttng_domain_type opt_domain_type;
 static int opt_kernel;
 static int opt_userspace;
 static int opt_jul;
@@ -45,12 +60,16 @@ static int opt_syscall;
 static int opt_domain;
 static const char *opt_channel;
 
-static int list_agent_ust_events(struct lttng_event *events, int count, struct lttng_domain *domain)
+template <typename InstrumentationPointSetType>
+static int list_agent_ust_events(const InstrumentationPointSetType& instrumentation_points)
 {
-	int ret, i;
+	int ret;
 	pid_t cur_pid = 0;
-	char *cmdline = nullptr;
 	int pid_element_open = 0;
+	lttng_domain domain;
+
+	std::memset(&domain, 0, sizeof(domain));
+	domain.type = opt_domain_type;
 
 	/* Open domains element */
 	ret = mi_lttng_domains_open(the_writer);
@@ -59,7 +78,7 @@ static int list_agent_ust_events(struct lttng_event *events, int count, struct l
 	}
 
 	/* Write domain */
-	ret = mi_lttng_domain(the_writer, domain, 1);
+	ret = mi_lttng_domain(the_writer, &domain, 1);
 	if (ret) {
 		goto end;
 	}
@@ -70,8 +89,8 @@ static int list_agent_ust_events(struct lttng_event *events, int count, struct l
 		goto end;
 	}
 
-	for (i = 0; i < count; i++) {
-		if (cur_pid != events[i].pid) {
+	for (const auto& instrumentation_point : instrumentation_points) {
+		if (cur_pid != instrumentation_point.pid()) {
 			if (pid_element_open) {
 				/* Close the previous events and pid element */
 				ret = mi_lttng_close_multi_element(the_writer, 2);
@@ -81,8 +100,8 @@ static int list_agent_ust_events(struct lttng_event *events, int count, struct l
 				pid_element_open = 0;
 			}
 
-			cur_pid = events[i].pid;
-			cmdline = get_cmdline_by_pid(cur_pid);
+			cur_pid = instrumentation_point.pid();
+			const auto cmdline = instrumentation_point.cmdline();
 			if (!cmdline) {
 				ret = CMD_ERROR;
 				goto end;
@@ -90,24 +109,23 @@ static int list_agent_ust_events(struct lttng_event *events, int count, struct l
 
 			if (!pid_element_open) {
 				/* Open and write a pid element */
-				ret = mi_lttng_pid(the_writer, cur_pid, cmdline, 1);
+				ret = mi_lttng_pid(the_writer, cur_pid, cmdline->c_str(), 1);
 				if (ret) {
-					goto error;
+					goto end;
 				}
 
 				/* Open events element */
 				ret = mi_lttng_events_open(the_writer);
 				if (ret) {
-					goto error;
+					goto end;
 				}
 
 				pid_element_open = 1;
 			}
-			free(cmdline);
 		}
 
 		/* Write an event */
-		ret = mi_lttng_event(the_writer, &events[i], 0, the_handle->domain.type);
+		ret = mi_write_event(instrumentation_point.lib(), 0, opt_domain_type);
 		if (ret) {
 			goto end;
 		}
@@ -123,22 +141,17 @@ static int list_agent_ust_events(struct lttng_event *events, int count, struct l
 	ret = mi_lttng_close_multi_element(the_writer, 2);
 end:
 	return ret;
-error:
-	free(cmdline);
-	return ret;
 }
 
-static int
-list_ust_event_fields(struct lttng_event_field *fields, int count, struct lttng_domain *domain)
+static int list_ust_event_fields(const lttng::cli::ust_tracepoint_set& tracepoints)
 {
-	int ret, i;
+	int ret;
 	pid_t cur_pid = 0;
-	char *cmdline = nullptr;
 	int pid_element_open = 0;
-	int event_element_open = 0;
-	struct lttng_event cur_event;
+	lttng_domain domain;
 
-	memset(&cur_event, 0, sizeof(cur_event));
+	std::memset(&domain, 0, sizeof(domain));
+	domain.type = LTTNG_DOMAIN_UST;
 
 	/* Open domains element */
 	ret = mi_lttng_domains_open(the_writer);
@@ -147,7 +160,7 @@ list_ust_event_fields(struct lttng_event_field *fields, int count, struct lttng_
 	}
 
 	/* Write domain */
-	ret = mi_lttng_domain(the_writer, domain, 1);
+	ret = mi_lttng_domain(the_writer, &domain, 1);
 	if (ret) {
 		goto end;
 	}
@@ -158,17 +171,9 @@ list_ust_event_fields(struct lttng_event_field *fields, int count, struct lttng_
 		goto end;
 	}
 
-	for (i = 0; i < count; i++) {
-		if (cur_pid != fields[i].event.pid) {
+	for (const auto& tracepoint : tracepoints) {
+		if (cur_pid != tracepoint.pid()) {
 			if (pid_element_open) {
-				if (event_element_open) {
-					/* Close the previous field element and event. */
-					ret = mi_lttng_close_multi_element(the_writer, 2);
-					if (ret) {
-						goto end;
-					}
-					event_element_open = 0;
-				}
 				/* Close the previous events, pid element */
 				ret = mi_lttng_close_multi_element(the_writer, 2);
 				if (ret) {
@@ -177,58 +182,52 @@ list_ust_event_fields(struct lttng_event_field *fields, int count, struct lttng_
 				pid_element_open = 0;
 			}
 
-			cur_pid = fields[i].event.pid;
-			cmdline = get_cmdline_by_pid(cur_pid);
+			cur_pid = tracepoint.pid();
+			const auto cmdline = tracepoint.cmdline();
+			if (!cmdline) {
+				ret = CMD_ERROR;
+				goto end;
+			}
+
 			if (!pid_element_open) {
 				/* Open and write a pid element */
-				ret = mi_lttng_pid(the_writer, cur_pid, cmdline, 1);
+				ret = mi_lttng_pid(the_writer, cur_pid, cmdline->c_str(), 1);
 				if (ret) {
-					goto error;
+					goto end;
 				}
 
 				/* Open events element */
 				ret = mi_lttng_events_open(the_writer);
 				if (ret) {
-					goto error;
+					goto end;
 				}
 				pid_element_open = 1;
 			}
-			free(cmdline);
-			/* Wipe current event since we are about to print a new PID. */
-			memset(&cur_event, 0, sizeof(cur_event));
 		}
 
-		if (strcmp(cur_event.name, fields[i].event.name) != 0) {
-			if (event_element_open) {
-				/* Close the previous fields element and the previous event */
-				ret = mi_lttng_close_multi_element(the_writer, 2);
-				if (ret) {
-					goto end;
-				}
-				event_element_open = 0;
-			}
+		/* Open and write the event */
+		ret = mi_write_event(tracepoint.lib(), 1, LTTNG_DOMAIN_UST);
+		if (ret) {
+			goto end;
+		}
 
-			memcpy(&cur_event, &fields[i].event, sizeof(cur_event));
+		/* Open a fields element */
+		ret = mi_lttng_event_fields_open(the_writer);
+		if (ret) {
+			goto end;
+		}
 
-			if (!event_element_open) {
-				/* Open and write the event */
-				ret = mi_lttng_event(
-					the_writer, &cur_event, 1, the_handle->domain.type);
-				if (ret) {
-					goto end;
-				}
-
-				/* Open a fields element */
-				ret = mi_lttng_event_fields_open(the_writer);
-				if (ret) {
-					goto end;
-				}
-				event_element_open = 1;
+		/* Write all fields for this event */
+		for (const auto& field : tracepoint.fields()) {
+			ret = mi_lttng_event_field(the_writer,
+						   const_cast<lttng_event_field *>(&field.lib()));
+			if (ret) {
+				goto end;
 			}
 		}
 
-		/* Print the event_field */
-		ret = mi_lttng_event_field(the_writer, &fields[i]);
+		/* Close fields and event elements */
+		ret = mi_lttng_close_multi_element(the_writer, 2);
 		if (ret) {
 			goto end;
 		}
@@ -238,14 +237,15 @@ list_ust_event_fields(struct lttng_event_field *fields, int count, struct lttng_
 	ret = mi_lttng_close_multi_element(the_writer, 3);
 end:
 	return ret;
-error:
-	free(cmdline);
-	return ret;
 }
 
-static int list_kernel_events(struct lttng_event *events, int count, struct lttng_domain *domain)
+static int list_kernel_events(const lttng::cli::kernel_tracepoint_set& tracepoints)
 {
-	int ret, i;
+	int ret;
+	lttng_domain domain;
+
+	std::memset(&domain, 0, sizeof(domain));
+	domain.type = LTTNG_DOMAIN_KERNEL;
 
 	/* Open domains element */
 	ret = mi_lttng_domains_open(the_writer);
@@ -254,7 +254,7 @@ static int list_kernel_events(struct lttng_event *events, int count, struct lttn
 	}
 
 	/* Write domain */
-	ret = mi_lttng_domain(the_writer, domain, 1);
+	ret = mi_lttng_domain(the_writer, &domain, 1);
 	if (ret) {
 		goto end;
 	}
@@ -265,8 +265,8 @@ static int list_kernel_events(struct lttng_event *events, int count, struct lttn
 		goto end;
 	}
 
-	for (i = 0; i < count; i++) {
-		ret = mi_lttng_event(the_writer, &events[i], 0, the_handle->domain.type);
+	for (const auto& tracepoint : tracepoints) {
+		ret = mi_write_event(tracepoint.lib(), 0, LTTNG_DOMAIN_KERNEL);
 		if (ret) {
 			goto end;
 		}
@@ -282,9 +282,9 @@ end:
 	return ret;
 }
 
-static int list_syscalls(struct lttng_event *events, int count)
+static int list_syscalls(const lttng::cli::kernel_syscall_set& syscalls)
 {
-	int ret, i;
+	int ret;
 
 	/* Open events */
 	ret = mi_lttng_events_open(the_writer);
@@ -292,8 +292,8 @@ static int list_syscalls(struct lttng_event *events, int count)
 		goto end;
 	}
 
-	for (i = 0; i < count; i++) {
-		ret = mi_lttng_event(the_writer, &events[i], 0, the_handle->domain.type);
+	for (const auto& syscall : syscalls) {
+		ret = mi_write_event(syscall.lib(), 0, LTTNG_DOMAIN_KERNEL);
 		if (ret) {
 			goto end;
 		}
@@ -309,9 +309,10 @@ end:
 	return ret;
 }
 
-static int list_session_agent_events(struct lttng_event *events, int count)
+template <typename EventRuleSetType>
+int list_events(const EventRuleSetType& event_rules, lttng_domain_type domain_type)
 {
-	int ret, i;
+	int ret;
 
 	/* Open events element */
 	ret = mi_lttng_events_open(the_writer);
@@ -319,8 +320,8 @@ static int list_session_agent_events(struct lttng_event *events, int count)
 		goto end;
 	}
 
-	for (i = 0; i < count; i++) {
-		ret = mi_lttng_event(the_writer, &events[i], 0, the_handle->domain.type);
+	for (const auto& event : event_rules) {
+		ret = mi_write_event(event.lib(), 0, domain_type);
 		if (ret) {
 			goto end;
 		}
@@ -333,54 +334,23 @@ end:
 	return ret;
 }
 
-static int list_events(struct lttng_event *events, int count)
+static int write_channel_memory_usage(const lttng::cli::channel& channel)
 {
-	int ret, i;
-
-	/* Open events element */
-	ret = mi_lttng_events_open(the_writer);
-	if (ret) {
-		goto end;
-	}
-
-	for (i = 0; i < count; i++) {
-		ret = mi_lttng_event(the_writer, &events[i], 0, the_handle->domain.type);
-		if (ret) {
-			goto end;
-		}
-	}
-
-	/* Close events element */
-	ret = mi_lttng_writer_close_element(the_writer);
-
-end:
-	return ret;
-}
-
-static int write_channel_memory_usage(struct lttng_channel *channel)
-{
-	try {
-		const auto channel_mem_usage = lcm::get_channel_memory_usage(
-			the_handle->session_name, channel, the_handle->domain.type);
-
-		return mi_lttng_data_stream_info_sets(
-			the_writer,
-			channel_mem_usage.data_stream_info_sets(),
-			channel_mem_usage.data_stream_info_sets_count);
-	} catch (const lttng::unsupported_error& e) {
-		/* This information is not available for all domains. */
+	/* Memory usage information isn't available for a kernel channel */
+	if (channel.domain_type() == LTTNG_DOMAIN_KERNEL) {
 		return 0;
-	} catch (const std::exception& e) {
-		ERR_FMT("Failed to retrieve memory usage of channel `{}`: {}",
-			channel->name,
-			e.what());
-		return -1;
 	}
+
+	const auto data_stream_infos = channel.as_ust_or_java_python().data_stream_infos();
+
+	return mi_lttng_data_stream_info_sets(the_writer,
+					      &data_stream_infos.lib(),
+					      static_cast<unsigned int>(data_stream_infos.size()));
 }
 
-static int list_channels(struct lttng_channel *channels, int count, const char *channel_name)
+static int list_channels(const lttng::cli::channel_set<lttng::cli::channel>& channels)
 {
-	int i, ret;
+	int ret;
 	unsigned int chan_found = 0;
 
 	/* Open channels element */
@@ -389,42 +359,35 @@ static int list_channels(struct lttng_channel *channels, int count, const char *
 		goto error;
 	}
 
-	for (i = 0; i < count; i++) {
-		if (channel_name != nullptr) {
-			if (strncmp(channels[i].name, channel_name, NAME_MAX) == 0) {
-				chan_found = 1;
-			} else {
+	for (const auto& channel : channels) {
+		if (opt_channel != nullptr) {
+			if (channel.name() != opt_channel) {
 				continue;
 			}
+			chan_found = 1;
 		}
 
 		/* Write channel element  and leave it open */
-		ret = mi_lttng_channel(the_writer, &channels[i], 1);
+		ret = mi_lttng_channel(the_writer, const_cast<lttng_channel *>(&channel.lib()), 1);
 		if (ret) {
 			goto error;
 		}
 
 		/* Listing events per channel */
-		{
-			int event_count;
-			struct lttng_event *events = nullptr;
-
-			event_count = lttng_list_events(the_handle, channels[i].name, &events);
-			if (event_count < 0) {
-				ret = CMD_ERROR;
-				ERR("%s", lttng_strerror(event_count));
-				goto error;
-			}
-
-			ret = list_events(events, event_count);
-			free(events);
+		try {
+			const auto event_rules = channel.event_rules();
+			ret = list_events(event_rules, channel.domain_type());
 			if (ret) {
 				goto error;
 			}
+		} catch (const std::exception& e) {
+			ERR_FMT("Failed to list event rules: {}", e.what());
+			ret = CMD_ERROR;
+			goto error;
 		}
 
 		/* Add memory usage, if available */
-		ret = write_channel_memory_usage(&channels[i]);
+		ret = write_channel_memory_usage(channel);
 		if (ret) {
 			goto error;
 		}
@@ -467,78 +430,50 @@ end:
 
 /*
  * Emit the values of a process-attribute tracker to the MI writer.
- * Does not manage tracker handle lifecycle; caller handles cleanup on error.
  */
 static int write_process_attr_values(enum lttng_process_attr process_attr,
-				     const struct lttng_process_attr_values *values)
+				     const std::set<lttng::cli::process_attr_value>& values)
 {
 	int ret = CMD_SUCCESS;
-	unsigned int val_count;
-	enum lttng_process_attr_values_status values_status;
 
-	values_status = lttng_process_attr_values_get_count(values, &val_count);
-	if (values_status != LTTNG_PROCESS_ATTR_VALUES_STATUS_OK) {
-		ERR("Failed to get value count");
-		ret = CMD_ERROR;
-		goto end;
-	}
-
-	for (unsigned int j = 0; j < val_count; j++) {
-		const enum lttng_process_attr_value_type value_type =
-			lttng_process_attr_values_get_type_at_index(values, j);
+	for (const auto& value : values) {
+		const auto value_type = value.type();
 
 		if (value_type == LTTNG_PROCESS_ATTR_VALUE_TYPE_PID) {
-			pid_t pid;
-			values_status = lttng_process_attr_values_get_pid_at_index(values, j, &pid);
-			if (values_status == LTTNG_PROCESS_ATTR_VALUES_STATUS_OK) {
+			const auto pid = value.pid();
+			if (pid) {
 				ret = mi_lttng_integral_process_attribute_value(
-					the_writer, process_attr, (int64_t) pid, false);
+					the_writer, process_attr, (int64_t) *pid, false);
 			} else {
-				ERR("Failed to get PID at index %u", j);
+				ERR("Failed to get PID");
 				ret = CMD_ERROR;
 			}
 		} else if (value_type == LTTNG_PROCESS_ATTR_VALUE_TYPE_UID) {
-			uid_t uid;
-			values_status = lttng_process_attr_values_get_uid_at_index(values, j, &uid);
-			if (values_status == LTTNG_PROCESS_ATTR_VALUES_STATUS_OK) {
+			const auto uid = value.uid();
+			if (uid) {
 				ret = mi_lttng_integral_process_attribute_value(
-					the_writer, process_attr, (int64_t) uid, false);
+					the_writer, process_attr, (int64_t) *uid, false);
 			} else {
-				ERR("Failed to get UID at index %u", j);
+				ERR("Failed to get UID");
 				ret = CMD_ERROR;
 			}
 		} else if (value_type == LTTNG_PROCESS_ATTR_VALUE_TYPE_GID) {
-			gid_t gid;
-			values_status = lttng_process_attr_values_get_gid_at_index(values, j, &gid);
-			if (values_status == LTTNG_PROCESS_ATTR_VALUES_STATUS_OK) {
+			const auto gid = value.gid();
+			if (gid) {
 				ret = mi_lttng_integral_process_attribute_value(
-					the_writer, process_attr, (int64_t) gid, false);
+					the_writer, process_attr, (int64_t) *gid, false);
 			} else {
-				ERR("Failed to get GID at index %u", j);
+				ERR("Failed to get GID");
 				ret = CMD_ERROR;
 			}
 		} else if (value_type == LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME) {
-			const char *name;
-			values_status =
-				lttng_process_attr_values_get_user_name_at_index(values, j, &name);
-			if (values_status == LTTNG_PROCESS_ATTR_VALUES_STATUS_OK) {
-				ret = mi_lttng_string_process_attribute_value(
-					the_writer, process_attr, name, false);
-			} else {
-				ERR("Failed to get user name at index %u", j);
-				ret = CMD_ERROR;
-			}
+			const auto name = value.user_name();
+			ret = mi_lttng_string_process_attribute_value(
+				the_writer, process_attr, name.data(), false);
 		} else if (value_type == LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME) {
-			const char *name;
-			values_status =
-				lttng_process_attr_values_get_group_name_at_index(values, j, &name);
-			if (values_status == LTTNG_PROCESS_ATTR_VALUES_STATUS_OK) {
-				ret = mi_lttng_string_process_attribute_value(
-					the_writer, process_attr, name, false);
-			} else {
-				ERR("Failed to get group name at index %u", j);
-				ret = CMD_ERROR;
-			}
+			const auto name = value.group_name();
+			ret = mi_lttng_string_process_attribute_value(
+				the_writer, process_attr, name.data(), false);
 		}
 
 		if (ret) {
@@ -550,44 +485,9 @@ end:
 	return ret;
 }
 
-static int list_session(const char *session_name, struct lttng_session *sessions, int count)
+static int list_sessions(const lttng::cli::session_list& sessions)
 {
-	int ret, i;
-	bool session_found = false;
-
-	if (session_name == nullptr) {
-		ret = -LTTNG_ERR_SESS_NOT_FOUND;
-		goto end;
-	}
-
-	for (i = 0; i < count; i++) {
-		if (strncmp(sessions[i].name, session_name, NAME_MAX) == 0) {
-			/*
-			 * We need to leave it open to append other informations
-			 * like domain, channel, events etc.
-			 */
-			session_found = true;
-			ret = mi_lttng_session(the_writer, &sessions[i], 1);
-			if (ret) {
-				goto end;
-			}
-			break;
-		}
-	}
-
-	if (!session_found) {
-		ERR("Session '%s' not found", session_name);
-		ret = -LTTNG_ERR_SESS_NOT_FOUND;
-		goto end;
-	}
-
-end:
-	return ret;
-}
-
-static int list_sessions(struct lttng_session *sessions, int count)
-{
-	int ret, i;
+	int ret;
 
 	/* Opening sessions element */
 	ret = mi_lttng_sessions_open(the_writer);
@@ -596,8 +496,8 @@ static int list_sessions(struct lttng_session *sessions, int count)
 	}
 
 	/* Listing sessions */
-	for (i = 0; i < count; i++) {
-		ret = mi_lttng_session(the_writer, &sessions[i], 0);
+	for (const auto& session : sessions) {
+		ret = mi_lttng_session(the_writer, &session.lib(), 0);
 		if (ret) {
 			goto end;
 		}
@@ -613,136 +513,125 @@ end:
 	return ret;
 }
 
+namespace {
+
+int write_tracker(enum lttng_process_attr process_attr,
+		  const lttng::cli::process_attr_tracker& tracker)
+{
+	const auto policy = tracker.tracking_policy();
+
+	if (policy == LTTNG_TRACKING_POLICY_EXCLUDE_ALL) {
+		return output_empty_tracker(process_attr);
+	}
+
+	if (policy == LTTNG_TRACKING_POLICY_INCLUDE_ALL) {
+		/* Skip - all is implicit */
+		return CMD_SUCCESS;
+	}
+
+	/* INCLUDE_SET - output tracker */
+	int ret = mi_lttng_process_attribute_tracker_open(the_writer, process_attr);
+	if (ret) {
+		return ret;
+	}
+
+	const auto inclusion_set = tracker.inclusion_set();
+	if (inclusion_set) {
+		ret = write_process_attr_values(process_attr, *inclusion_set);
+		if (ret) {
+			return ret;
+		}
+	}
+
+	/* Close tracker element */
+	return mi_lttng_close_multi_element(the_writer, 2);
+}
+
+} /* namespace */
+
 /*
- * Write the trackers for a given domain and session to the MI writer.
+ * Write the trackers for a given domain to the MI writer.
  */
-static int write_domain_trackers(const char *session_name, const struct lttng_domain *domain)
+static int write_domain_trackers(const lttng::cli::domain& domain)
 {
 	int ret = CMD_SUCCESS;
 
 	/* Trackers */
 	ret = mi_lttng_trackers_open(the_writer);
 	if (ret) {
-		goto end;
+		return ret;
 	}
 
-	/* Output trackers for this domain */
-	{
-		enum lttng_process_attr process_attrs[] = {
-			LTTNG_PROCESS_ATTR_PROCESS_ID, LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID,
-			LTTNG_PROCESS_ATTR_USER_ID,    LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID,
-			LTTNG_PROCESS_ATTR_GROUP_ID,   LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID,
-		};
-		size_t num_attrs = sizeof(process_attrs) / sizeof(process_attrs[0]);
-
-		for (size_t i = 0; i < num_attrs; i++) {
-			enum lttng_process_attr process_attr = process_attrs[i];
-			const struct lttng_process_attr_values *values;
-			struct lttng_process_attr_tracker_handle *tracker_handle = nullptr;
-			enum lttng_error_code ret_code;
-			enum lttng_process_attr_tracker_handle_status handle_status;
-			enum lttng_tracking_policy policy;
-
-			/* Skip attributes not applicable to this domain */
-			if (domain->type == LTTNG_DOMAIN_UST) {
-				if (process_attr == LTTNG_PROCESS_ATTR_PROCESS_ID ||
-				    process_attr == LTTNG_PROCESS_ATTR_USER_ID ||
-				    process_attr == LTTNG_PROCESS_ATTR_GROUP_ID) {
-					continue;
-				}
-			}
-
-			ret_code = lttng_session_get_tracker_handle(
-				session_name, domain->type, process_attr, &tracker_handle);
-			if (ret_code != LTTNG_OK) {
-				ERR("Failed to get process attribute tracker handle: %s",
-				    lttng_strerror(ret_code));
-				ret = CMD_ERROR;
-				goto close_trackers;
-			}
-
-			handle_status = lttng_process_attr_tracker_handle_get_tracking_policy(
-				tracker_handle, &policy);
-			ret = handle_process_attr_status(process_attr, handle_status, session_name);
-			if (ret != CMD_SUCCESS) {
-				lttng_process_attr_tracker_handle_destroy(tracker_handle);
-				goto close_trackers;
-			}
-
-			handle_status = lttng_process_attr_tracker_handle_get_inclusion_set(
-				tracker_handle, &values);
-			ret = handle_process_attr_status(process_attr, handle_status, session_name);
-			if (ret != CMD_SUCCESS) {
-				lttng_process_attr_tracker_handle_destroy(tracker_handle);
-				goto close_trackers;
-			}
-
-			if (policy == LTTNG_TRACKING_POLICY_EXCLUDE_ALL) {
-				ret = output_empty_tracker(process_attr);
-				lttng_process_attr_tracker_handle_destroy(tracker_handle);
-				if (ret) {
-					goto close_trackers;
-				}
-				continue;
-			}
-
-			if (policy == LTTNG_TRACKING_POLICY_INCLUDE_ALL) {
-				/* Skip - all is implicit */
-				lttng_process_attr_tracker_handle_destroy(tracker_handle);
-				continue;
-			}
-
-			/* INCLUDE_SET - output tracker */
-			ret = mi_lttng_process_attribute_tracker_open(the_writer, process_attr);
-			if (ret) {
-				lttng_process_attr_tracker_handle_destroy(tracker_handle);
-				goto close_trackers;
-			}
-
-			/* Output values */
-			ret = write_process_attr_values(process_attr, values);
-			if (ret) {
-				lttng_process_attr_tracker_handle_destroy(tracker_handle);
-				goto close_trackers;
-			}
-
-			/* Close tracker element */
-			ret = mi_lttng_close_multi_element(the_writer, 2);
-			lttng_process_attr_tracker_handle_destroy(tracker_handle);
-			if (ret) {
-				goto close_trackers;
-			}
+	/* Output trackers based on domain type */
+	if (domain.type() == LTTNG_DOMAIN_KERNEL) {
+		const auto kernel_domain = domain.as_kernel();
+		ret = write_tracker(LTTNG_PROCESS_ATTR_PROCESS_ID,
+				    kernel_domain.process_id_tracker());
+		if (ret) {
+			return ret;
+		}
+		ret = write_tracker(LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID,
+				    kernel_domain.virtual_process_id_tracker());
+		if (ret) {
+			return ret;
+		}
+		ret = write_tracker(LTTNG_PROCESS_ATTR_USER_ID, kernel_domain.user_id_tracker());
+		if (ret) {
+			return ret;
+		}
+		ret = write_tracker(LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID,
+				    kernel_domain.virtual_user_id_tracker());
+		if (ret) {
+			return ret;
+		}
+		ret = write_tracker(LTTNG_PROCESS_ATTR_GROUP_ID, kernel_domain.group_id_tracker());
+		if (ret) {
+			return ret;
+		}
+		ret = write_tracker(LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID,
+				    kernel_domain.virtual_group_id_tracker());
+		if (ret) {
+			return ret;
+		}
+	} else if (domain.type() == LTTNG_DOMAIN_UST) {
+		const auto ust_domain = domain.as_ust();
+		ret = write_tracker(LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID,
+				    ust_domain.virtual_process_id_tracker());
+		if (ret) {
+			return ret;
+		}
+		ret = write_tracker(LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID,
+				    ust_domain.virtual_user_id_tracker());
+		if (ret) {
+			return ret;
+		}
+		ret = write_tracker(LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID,
+				    ust_domain.virtual_group_id_tracker());
+		if (ret) {
+			return ret;
 		}
 	}
 
 	/* Close trackers element */
 	ret = mi_lttng_writer_close_element(the_writer);
 	if (ret) {
-		goto end;
+		return ret;
 	}
 
-	goto end;
-
-close_trackers:
-{
-	int close_ret = mi_lttng_writer_close_element(the_writer);
-	(void) close_ret; /* Best-effort close; preserve original error. */
-}
-end:
 	return ret;
 }
 
-static int list_domains(struct lttng_domain *domains, int count)
+static int list_domains(const lttng::cli::domain_set& domains)
 {
-	int i, ret;
+	int ret;
 	/* Open domains element */
 	ret = mi_lttng_domains_open(the_writer);
 	if (ret) {
 		goto end;
 	}
 
-	for (i = 0; i < count; i++) {
-		ret = mi_lttng_domain(the_writer, &domains[i], 0);
+	for (const auto& domain : domains) {
+		ret = mi_write_domain(domain.lib(), 0);
 		if (ret) {
 			goto end;
 		}
@@ -760,23 +649,16 @@ end:
 /*
  * Handle MI listing when no session name is provided.
  */
-static int handle_no_session_name(struct lttng_domain *domain)
+static int handle_no_session_name()
 {
 	int ret = CMD_SUCCESS;
 
 	/* Listing sessions, kernel/ust events, or syscalls */
 	if (!opt_kernel && !opt_userspace && !opt_jul && !opt_log4j && !opt_log4j2 && !opt_python) {
 		/* List all sessions */
-		struct lttng_session *sessions = nullptr;
-		int count = lttng_list_sessions(&sessions);
-		DBG("Session count %d", count);
-		if (count < 0) {
-			ret = CMD_ERROR;
-			ERR("%s", lttng_strerror(count));
-			goto end;
-		}
-		ret = list_sessions(sessions, count);
-		free(sessions);
+		const lttng::cli::session_list sessions;
+		DBG("Session count %zu", sessions.size());
+		ret = list_sessions(sessions);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
@@ -784,33 +666,18 @@ static int handle_no_session_name(struct lttng_domain *domain)
 	}
 
 	if (opt_kernel) {
-		struct lttng_event *event_list;
-		int size;
-
 		if (opt_syscall) {
 			/* List syscalls */
-			size = lttng_list_syscalls(&event_list);
-			if (size < 0) {
-				ERR("Unable to list system calls: %s", lttng_strerror(size));
-				ret = CMD_ERROR;
-				goto end;
-			}
-			ret = list_syscalls(event_list, size);
-			free(event_list);
+			const lttng::cli::kernel_syscall_set syscalls;
+			ret = list_syscalls(syscalls);
 			if (ret) {
 				ret = CMD_ERROR;
 				goto end;
 			}
 		} else {
 			/* List kernel events */
-			size = lttng_list_tracepoints(the_handle, &event_list);
-			if (size < 0) {
-				ERR("Unable to list kernel events: %s", lttng_strerror(size));
-				ret = CMD_ERROR;
-				goto end;
-			}
-			ret = list_kernel_events(event_list, size, domain);
-			free(event_list);
+			const lttng::cli::kernel_tracepoint_set tracepoints;
+			ret = list_kernel_events(tracepoints);
 			if (ret) {
 				ret = CMD_ERROR;
 				goto end;
@@ -819,32 +686,17 @@ static int handle_no_session_name(struct lttng_domain *domain)
 	}
 
 	if (opt_userspace) {
+		const lttng::cli::ust_tracepoint_set tracepoints;
 		if (opt_fields) {
 			/* List UST event fields */
-			struct lttng_event_field *event_field_list;
-			int size = lttng_list_tracepoint_fields(the_handle, &event_field_list);
-			if (size < 0) {
-				ERR("Unable to list UST event fields: %s", lttng_strerror(size));
-				ret = CMD_ERROR;
-				goto end;
-			}
-			ret = list_ust_event_fields(event_field_list, size, domain);
-			free(event_field_list);
+			ret = list_ust_event_fields(tracepoints);
 			if (ret) {
 				ret = CMD_ERROR;
 				goto end;
 			}
 		} else {
 			/* List UST events */
-			struct lttng_event *event_list;
-			int size = lttng_list_tracepoints(the_handle, &event_list);
-			if (size < 0) {
-				ERR("Unable to list UST events: %s", lttng_strerror(size));
-				ret = CMD_ERROR;
-				goto end;
-			}
-			ret = list_agent_ust_events(event_list, size, domain);
-			free(event_list);
+			ret = list_agent_ust_events(tracepoints);
 			if (ret) {
 				ret = CMD_ERROR;
 				goto end;
@@ -854,16 +706,8 @@ static int handle_no_session_name(struct lttng_domain *domain)
 
 	if (opt_jul || opt_log4j || opt_log4j2 || opt_python) {
 		/* List agent events */
-		struct lttng_event *event_list;
-		int size = lttng_list_tracepoints(the_handle, &event_list);
-		if (size < 0) {
-			const char *agent_domain_str = lttng_domain_type_str(domain->type);
-			ERR("Unable to list %s events: %s", agent_domain_str, lttng_strerror(size));
-			ret = CMD_ERROR;
-			goto end;
-		}
-		ret = list_agent_ust_events(event_list, size, domain);
-		free(event_list);
+		const lttng::cli::java_python_logger_set loggers(opt_domain_type);
+		ret = list_agent_ust_events(loggers);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
@@ -877,49 +721,24 @@ end:
 /*
  * Write automatic rotation schedules for a given session to the MI writer.
  */
-static int write_session_rotation_schedules(const char *session_name)
+static int write_session_rotation_schedules(const lttng::cli::session& session)
 {
 	int ret = CMD_SUCCESS;
-	unsigned int sched_count;
-	struct lttng_rotation_schedules *schedules = nullptr;
-	enum lttng_rotation_status status;
-	int ret_code;
 
-	ret_code = lttng_session_list_rotation_schedules(session_name, &schedules);
-	if (ret_code != LTTNG_OK) {
-		ERR("Failed to list session rotation schedules: %s", lttng_strerror(ret_code));
-		ret = CMD_ERROR;
-		goto end;
-	}
+	const auto schedules = session.rotation_schedules();
 
-	status = lttng_rotation_schedules_get_count(schedules, &sched_count);
-	if (status != LTTNG_ROTATION_STATUS_OK) {
-		ERR("Failed to retrieve the number of session rotation schedules.");
-		ret = CMD_ERROR;
-		goto destroy;
-	}
-
-	if (sched_count > 0) {
+	if (!schedules.is_empty()) {
 		ret = mi_lttng_writer_open_element(the_writer, mi_lttng_element_rotation_schedules);
 		if (ret) {
 			ret = CMD_ERROR;
-			goto destroy;
+			goto end;
 		}
 
-		for (unsigned int i = 0; i < sched_count; i++) {
-			const struct lttng_rotation_schedule *schedule;
-
-			schedule = lttng_rotation_schedules_get_at_index(schedules, i);
-			if (!schedule) {
-				ERR("Failed to retrieve session rotation schedule.");
-				ret = CMD_ERROR;
-				goto destroy;
-			}
-
-			ret = mi_lttng_rotation_schedule(the_writer, schedule);
+		for (const auto& schedule : schedules) {
+			ret = mi_lttng_rotation_schedule(the_writer, &schedule.lib());
 			if (ret) {
 				ret = CMD_ERROR;
-				goto destroy;
+				goto end;
 			}
 		}
 
@@ -927,12 +746,10 @@ static int write_session_rotation_schedules(const char *session_name)
 		ret = mi_lttng_writer_close_element(the_writer);
 		if (ret) {
 			ret = CMD_ERROR;
-			goto destroy;
+			goto end;
 		}
 	}
 
-destroy:
-	lttng_rotation_schedules_destroy(schedules);
 end:
 	return ret;
 }
@@ -943,18 +760,11 @@ end:
  * element internally and leaves the surrounding `session`/`sessions` elements
  * to the caller.
  */
-static int list_all_session_domains(const char *session_name)
+static int list_all_session_domains(const lttng::cli::session& session)
 {
 	int ret = CMD_SUCCESS;
-	struct lttng_domain *domains_local = nullptr;
-	int nb_domain;
 
-	nb_domain = lttng_list_domains(session_name, &domains_local);
-	if (nb_domain < 0) {
-		ret = CMD_ERROR;
-		ERR("%s", lttng_strerror(nb_domain));
-		goto end;
-	}
+	const auto session_domains = session.domains();
 
 	ret = mi_lttng_domains_open(the_writer);
 	if (ret) {
@@ -962,47 +772,18 @@ static int list_all_session_domains(const char *session_name)
 		goto end;
 	}
 
-	for (int i = 0; i < nb_domain; i++) {
-		struct lttng_channel *channels = nullptr;
-		int channel_count;
-
-		ret = mi_lttng_domain(the_writer, &domains_local[i], 1);
+	for (const auto& domain : session_domains) {
+		ret = mi_write_domain(domain.lib(), 1);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto close_domains_element;
 		}
 
-		/* Clean handle before creating a new one */
-		if (the_handle) {
-			lttng_destroy_handle(the_handle);
-		}
-
-		the_handle = lttng_create_handle(session_name, &domains_local[i]);
-		if (the_handle == nullptr) {
-			ret = CMD_FATAL;
-			goto close_domains_element;
-		}
-
-		if (domains_local[i].type == LTTNG_DOMAIN_JUL ||
-		    domains_local[i].type == LTTNG_DOMAIN_LOG4J ||
-		    domains_local[i].type == LTTNG_DOMAIN_LOG4J2 ||
-		    domains_local[i].type == LTTNG_DOMAIN_PYTHON) {
-			/* List agent events */
-			struct lttng_event *events = nullptr;
-			int count;
-
-			count = lttng_list_events(the_handle, "", &events);
-			if (count < 0) {
-				ret = CMD_ERROR;
-				ERR("%s", lttng_strerror(count));
-				free(events);
-				goto close_domain_element;
-			}
-
-			ret = list_session_agent_events(events, count);
-			free(events);
+		if (domain.type() == LTTNG_DOMAIN_JUL || domain.type() == LTTNG_DOMAIN_LOG4J ||
+		    domain.type() == LTTNG_DOMAIN_LOG4J2 || domain.type() == LTTNG_DOMAIN_PYTHON) {
+			/* List agent event rules directly (no channels for Java/Python domains) */
+			ret = list_events(domain.as_java_python().event_rules(), domain.type());
 			if (ret) {
-				ret = CMD_ERROR;
 				goto close_domain_element;
 			}
 
@@ -1016,25 +797,23 @@ static int list_all_session_domains(const char *session_name)
 		}
 
 		/* Trackers for kernel and UST */
-		if (domains_local[i].type == LTTNG_DOMAIN_KERNEL ||
-		    domains_local[i].type == LTTNG_DOMAIN_UST) {
-			ret = write_domain_trackers(session_name, &domains_local[i]);
+		if (domain.type() == LTTNG_DOMAIN_KERNEL || domain.type() == LTTNG_DOMAIN_UST) {
+			ret = write_domain_trackers(domain);
 			if (ret) {
 				goto close_domain_element;
 			}
 		}
 
 		/* List channels */
-		channel_count = lttng_list_channels(the_handle, &channels);
-		if (channel_count < 0) {
+		try {
+			const auto channels = domain.channels();
+			ret = list_channels(channels);
+			if (ret) {
+				goto close_domain_element;
+			}
+		} catch (const std::exception& e) {
+			ERR_FMT("Failed to list channels: {}", e.what());
 			ret = CMD_ERROR;
-			ERR("%s", lttng_strerror(channel_count));
-			goto close_domain_element;
-		}
-
-		ret = list_channels(channels, channel_count, opt_channel);
-		free(channels);
-		if (ret) {
 			goto close_domain_element;
 		}
 
@@ -1060,134 +839,119 @@ close_domains_element:
 	(void) close_ret;
 }
 end:
-	free(domains_local);
 	return ret;
 }
 
 /*
  * Handle MI listing when a session name is provided.
  */
-static int handle_with_session_name(const char *session_name, struct lttng_domain *domain)
+static int handle_with_session_name()
 {
-	int ret = CMD_SUCCESS;
-	struct lttng_domain *domains = nullptr;
-
 	/* List session attributes */
-	{
-		struct lttng_session *sessions = nullptr;
-		int count = lttng_list_sessions(&sessions);
-		DBG("Session count %d", count);
-		if (count < 0) {
-			ret = CMD_ERROR;
-			ERR("%s", lttng_strerror(count));
-			goto end;
-		}
+	const lttng::cli::session_list sessions;
 
-		/* Open sessions element */
-		ret = mi_lttng_sessions_open(the_writer);
-		if (ret) {
-			free(sessions);
-			goto end;
-		}
+	DBG("Session count %zu", sessions.size());
 
-		/* List the session */
-		ret = list_session(session_name, sessions, count);
-		free(sessions);
-		if (ret) {
-			goto end;
-		}
+	/* Open sessions element */
+	int ret = mi_lttng_sessions_open(the_writer);
+	if (ret) {
+		return ret;
+	}
+
+	/* Find the session */
+	const auto found_session = sessions.find_by_name(opt_session_name);
+
+	if (!found_session) {
+		ERR("Session '%s' not found", opt_session_name);
+		return -LTTNG_ERR_SESS_NOT_FOUND;
+	}
+
+	ret = mi_lttng_session(the_writer, &found_session->lib(), 1);
+	if (ret) {
+		return ret;
 	}
 
 	/* Automatic rotation schedules */
-	ret = write_session_rotation_schedules(session_name);
+	ret = write_session_rotation_schedules(*found_session);
 	if (ret) {
-		goto end;
+		return ret;
 	}
 
 	/* Domain listing */
 	if (opt_domain) {
-		int nb_domain = lttng_list_domains(session_name, &domains);
-		if (nb_domain < 0) {
-			ret = CMD_ERROR;
-			ERR("%s", lttng_strerror(nb_domain));
-			goto end;
-		}
-		ret = list_domains(domains, nb_domain);
-		free(domains);
-		domains = nullptr;
-		goto end;
+		const auto session_domains = found_session->domains();
+		return list_domains(session_domains);
 	}
 
 	/* Channel listing */
 	if (opt_kernel || opt_userspace) {
-		struct lttng_channel *channels = nullptr;
-		int channel_count;
+		/* Find the requested domain from the session's domains */
+		const auto session_domains = found_session->domains();
+		const auto found_domain = session_domains.find_by_type(opt_domain_type);
+
+		if (!found_domain) {
+			ERR("Domain not found in session");
+			return CMD_ERROR;
+		}
 
 		/* Add domains and domain element */
 		ret = mi_lttng_domains_open(the_writer);
 		if (ret) {
-			goto end;
+			return ret;
 		}
 
 		/* Open domain and leave it open for nested elements */
-		ret = mi_lttng_domain(the_writer, domain, 1);
+		ret = mi_write_domain(found_domain->lib(), 1);
 		if (ret) {
-			goto end;
+			return ret;
 		}
 
 		/* Trackers */
-		ret = write_domain_trackers(session_name, domain);
+		ret = write_domain_trackers(*found_domain);
 		if (ret) {
-			goto end;
+			return ret;
 		}
 
 		/* Channels */
-		channel_count = lttng_list_channels(the_handle, &channels);
-		if (channel_count < 0) {
-			ret = CMD_ERROR;
-			ERR("%s", lttng_strerror(channel_count));
-			goto end;
-		}
-
-		ret = list_channels(channels, channel_count, opt_channel);
-		free(channels);
-		if (ret) {
-			goto end;
+		try {
+			const auto channels = found_domain->channels();
+			ret = list_channels(channels);
+			if (ret) {
+				return ret;
+			}
+		} catch (const std::exception& e) {
+			ERR_FMT("Failed to list channels: {}", e.what());
+			return CMD_ERROR;
 		}
 
 		/* Close domain element */
 		ret = mi_lttng_writer_close_element(the_writer);
 		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
+			return CMD_ERROR;
 		}
 
 		/* Close the domains, session and sessions element */
 		ret = mi_lttng_close_multi_element(the_writer, 3);
 		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
+			return CMD_ERROR;
 		}
 
-		goto end;
+		return CMD_SUCCESS;
 	}
 
 	/* List all domains */
-	ret = list_all_session_domains(session_name);
+	ret = list_all_session_domains(*found_session);
 	if (ret) {
-		goto end;
+		return ret;
 	}
 
 	/* Close the session and sessions element */
 	ret = mi_lttng_close_multi_element(the_writer, 2);
 	if (ret) {
-		ret = CMD_ERROR;
-		goto end;
+		return CMD_ERROR;
 	}
 
-end:
-	free(domains);
-	return ret;
+	return CMD_SUCCESS;
 }
 
 /*
@@ -1206,10 +970,6 @@ int list_mi(const char *session_name,
 	    int opt_syscall_param)
 {
 	int ret = CMD_SUCCESS;
-	struct lttng_domain domain;
-	struct lttng_domain *domains = nullptr;
-
-	memset(&domain, 0, sizeof(domain));
 
 	/* Initialize writer */
 	the_writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
@@ -1232,33 +992,8 @@ int list_mi(const char *session_name,
 		goto end;
 	}
 
-	/* Determine domain type */
-	if (opt_kernel_param) {
-		domain.type = LTTNG_DOMAIN_KERNEL;
-	} else if (opt_userspace_param) {
-		DBG2("Listing userspace global domain");
-		domain.type = LTTNG_DOMAIN_UST;
-	} else if (opt_jul_param) {
-		DBG2("Listing JUL domain");
-		domain.type = LTTNG_DOMAIN_JUL;
-	} else if (opt_log4j_param) {
-		domain.type = LTTNG_DOMAIN_LOG4J;
-	} else if (opt_log4j2_param) {
-		domain.type = LTTNG_DOMAIN_LOG4J2;
-	} else if (opt_python_param) {
-		domain.type = LTTNG_DOMAIN_PYTHON;
-	}
-
-	if (opt_kernel_param || opt_userspace_param || opt_jul_param || opt_log4j_param ||
-	    opt_log4j2_param || opt_python_param) {
-		the_handle = lttng_create_handle(session_name, &domain);
-		if (the_handle == nullptr) {
-			ret = CMD_FATAL;
-			goto end;
-		}
-	}
-
 	/* Cache options for use by helpers. */
+	opt_session_name = session_name;
 	opt_kernel = opt_kernel_param;
 	opt_userspace = opt_userspace_param;
 	opt_jul = opt_jul_param;
@@ -1270,10 +1005,35 @@ int list_mi(const char *session_name,
 	opt_fields = opt_fields_param;
 	opt_syscall = opt_syscall_param;
 
-	if (!session_name) {
-		ret = handle_no_session_name(&domain);
+	/* Determine domain type */
+	if (opt_kernel) {
+		opt_domain_type = LTTNG_DOMAIN_KERNEL;
+	} else if (opt_userspace) {
+		DBG2("Listing userspace global domain");
+		opt_domain_type = LTTNG_DOMAIN_UST;
+	} else if (opt_jul) {
+		DBG2("Listing JUL domain");
+		opt_domain_type = LTTNG_DOMAIN_JUL;
+	} else if (opt_log4j) {
+		opt_domain_type = LTTNG_DOMAIN_LOG4J;
+	} else if (opt_log4j2) {
+		opt_domain_type = LTTNG_DOMAIN_LOG4J2;
+	} else if (opt_python) {
+		opt_domain_type = LTTNG_DOMAIN_PYTHON;
 	} else {
-		ret = handle_with_session_name(session_name, &domain);
+		opt_domain_type = LTTNG_DOMAIN_NONE;
+	}
+
+	try {
+		if (!opt_session_name) {
+			ret = handle_no_session_name();
+		} else {
+			ret = handle_with_session_name();
+		}
+	} catch (const std::exception& e) {
+		ERR_FMT("Failed to list: {}", e.what());
+		ret = CMD_ERROR;
+		goto end;
 	}
 
 	if (ret) {
@@ -1301,11 +1061,6 @@ end:
 	if (the_writer && mi_lttng_writer_destroy(the_writer)) {
 		/* Preserve original error code */
 		ret = ret ? ret : -LTTNG_ERR_MI_IO_FAIL;
-	}
-
-	free(domains);
-	if (the_handle) {
-		lttng_destroy_handle(the_handle);
 	}
 
 	return ret;
