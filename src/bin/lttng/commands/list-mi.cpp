@@ -6,11 +6,13 @@
  *
  */
 
+#include "common/exception.hpp"
+#include "common/macros.hpp"
 #include "lttng/channel.h"
 #include "lttng/domain.h"
 #include "lttng/event.h"
 
-#include <stdint.h>
+#include <cstdint>
 #define _LGPL_SOURCE
 #include "../command.hpp"
 #include "list-mi.hpp"
@@ -25,368 +27,311 @@
 #include <lttng/lttng.h>
 #include <lttng/stream-info.h>
 
-#include <inttypes.h>
-#include <popt.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-static struct mi_writer *the_writer;
-
-/* Configuration for the list command */
-static const list_cmd_config *the_config;
-
 namespace {
 
-int mi_write_event(const lttng_event& event, int is_open, lttng_domain_type domain_type)
+/* The XML writer */
+struct mi_writer *the_writer;
+
+/* Configuration for the list command */
+const list_cmd_config *the_config;
+
+int mi_write_event(const lttng_event& event, bool is_open, lttng_domain_type domain_type)
 {
 	return mi_lttng_event(the_writer, const_cast<lttng_event *>(&event), is_open, domain_type);
 }
 
-int mi_write_domain(const lttng_domain& domain, int is_open)
+int mi_write_domain(const lttng_domain& domain, bool is_open)
 {
 	return mi_lttng_domain(the_writer, const_cast<lttng_domain *>(&domain), is_open);
 }
 
-} /* namespace */
-
-template <typename InstrumentationPointSetType>
-static int list_agent_ust_events(const InstrumentationPointSetType& instrumentation_points)
+int mi_lttng_pseudo_domain(lttng_domain_type type, bool is_open)
 {
-	int ret;
-	pid_t cur_pid = 0;
-	int pid_element_open = 0;
 	lttng_domain domain;
 
-	LTTNG_ASSERT(the_config->domain_type);
 	std::memset(&domain, 0, sizeof(domain));
-	domain.type = *the_config->domain_type;
+	domain.type = type;
+	return mi_lttng_domain(the_writer, &domain, is_open);
+}
+
+template <typename InstrumentationPointSetType>
+void list_agent_ust_events(const InstrumentationPointSetType& instrumentation_points)
+{
+	LTTNG_ASSERT(the_config->domain_type);
 
 	/* Open domains element */
-	ret = mi_lttng_domains_open(the_writer);
-	if (ret) {
-		goto end;
+	if (mi_lttng_domains_open(the_writer)) {
+		LTTNG_THROW_ERROR("Failed to open XML domains element");
 	}
 
 	/* Write domain */
-	ret = mi_lttng_domain(the_writer, &domain, 1);
-	if (ret) {
-		goto end;
+	if (mi_lttng_pseudo_domain(*the_config->domain_type, true)) {
+		LTTNG_THROW_ERROR("Failed to write XML domain");
 	}
 
 	/* Open pids element element */
-	ret = mi_lttng_pids_open(the_writer);
-	if (ret) {
-		goto end;
+	if (mi_lttng_pids_open(the_writer)) {
+		LTTNG_THROW_ERROR("Failed to open XML PIDs element");
 	}
+
+	pid_t cur_pid = 0;
+	auto pid_element_open = false;
 
 	for (const auto& instrumentation_point : instrumentation_points) {
 		if (cur_pid != instrumentation_point.pid()) {
 			if (pid_element_open) {
-				/* Close the previous events and pid element */
-				ret = mi_lttng_close_multi_element(the_writer, 2);
-				if (ret) {
-					goto end;
+				/* Close the previous events and PID element */
+				if (mi_lttng_close_multi_element(the_writer, 2)) {
+					LTTNG_THROW_ERROR("Failed to close XML elements");
 				}
-				pid_element_open = 0;
+
+				pid_element_open = false;
 			}
 
 			cur_pid = instrumentation_point.pid();
+
 			const auto cmdline = instrumentation_point.cmdline();
+
 			if (!cmdline) {
-				ret = CMD_ERROR;
-				goto end;
+				LTTNG_THROW_ERROR("Failed to get command line of PID");
 			}
 
 			if (!pid_element_open) {
 				/* Open and write a pid element */
-				ret = mi_lttng_pid(the_writer, cur_pid, cmdline->c_str(), 1);
-				if (ret) {
-					goto end;
+				if (mi_lttng_pid(the_writer, cur_pid, cmdline->c_str(), true)) {
+					LTTNG_THROW_ERROR("Failed to write XML PID element");
 				}
 
 				/* Open events element */
-				ret = mi_lttng_events_open(the_writer);
-				if (ret) {
-					goto end;
+				if (mi_lttng_events_open(the_writer)) {
+					LTTNG_THROW_ERROR("Failed to open XML events element");
 				}
 
-				pid_element_open = 1;
+				pid_element_open = true;
 			}
 		}
 
 		/* Write an event */
 		LTTNG_ASSERT(the_config->domain_type);
-		ret = mi_write_event(instrumentation_point.lib(), 0, *the_config->domain_type);
-		if (ret) {
-			goto end;
+
+		if (mi_write_event(instrumentation_point.lib(), false, *the_config->domain_type)) {
+			LTTNG_THROW_ERROR("Failed to write XML event");
 		}
 	}
 
 	/* Close pids */
-	ret = mi_lttng_writer_close_element(the_writer);
-	if (ret) {
-		goto end;
+	if (mi_lttng_writer_close_element(the_writer)) {
+		LTTNG_THROW_ERROR("Failed to close XML PIDs element");
 	}
 
 	/* Close domain, domains */
-	ret = mi_lttng_close_multi_element(the_writer, 2);
-end:
-	return ret;
+	if (mi_lttng_close_multi_element(the_writer, 2)) {
+		LTTNG_THROW_ERROR("Failed to close XML domain and domains elements");
+	}
 }
 
-static int list_ust_event_fields(const lttng::cli::ust_tracepoint_set& tracepoints)
+void list_ust_event_fields(const lttng::cli::ust_tracepoint_set& tracepoints)
 {
-	int ret;
-	pid_t cur_pid = 0;
-	int pid_element_open = 0;
-	lttng_domain domain;
-
-	std::memset(&domain, 0, sizeof(domain));
-	domain.type = LTTNG_DOMAIN_UST;
-
 	/* Open domains element */
-	ret = mi_lttng_domains_open(the_writer);
-	if (ret) {
-		goto end;
+	if (mi_lttng_domains_open(the_writer)) {
+		LTTNG_THROW_ERROR("Failed to open XML domains element");
 	}
 
 	/* Write domain */
-	ret = mi_lttng_domain(the_writer, &domain, 1);
-	if (ret) {
-		goto end;
+	if (mi_lttng_pseudo_domain(LTTNG_DOMAIN_UST, true)) {
+		LTTNG_THROW_ERROR("Failed to write XML domain");
 	}
 
 	/* Open pids element */
-	ret = mi_lttng_pids_open(the_writer);
-	if (ret) {
-		goto end;
+	if (mi_lttng_pids_open(the_writer)) {
+		LTTNG_THROW_ERROR("Failed to open XML PIDs element");
 	}
+
+	pid_t cur_pid = 0;
+	auto pid_element_open = false;
 
 	for (const auto& tracepoint : tracepoints) {
 		if (cur_pid != tracepoint.pid()) {
 			if (pid_element_open) {
 				/* Close the previous events, pid element */
-				ret = mi_lttng_close_multi_element(the_writer, 2);
-				if (ret) {
-					goto end;
+				if (mi_lttng_close_multi_element(the_writer, 2)) {
+					LTTNG_THROW_ERROR("Failed to close XML elements");
 				}
-				pid_element_open = 0;
+
+				pid_element_open = false;
 			}
 
 			cur_pid = tracepoint.pid();
+
 			const auto cmdline = tracepoint.cmdline();
+
 			if (!cmdline) {
-				ret = CMD_ERROR;
-				goto end;
+				LTTNG_THROW_ERROR("Failed to get command line of PID");
 			}
 
 			if (!pid_element_open) {
 				/* Open and write a pid element */
-				ret = mi_lttng_pid(the_writer, cur_pid, cmdline->c_str(), 1);
-				if (ret) {
-					goto end;
+				if (mi_lttng_pid(the_writer, cur_pid, cmdline->c_str(), true)) {
+					LTTNG_THROW_ERROR("Failed to write XML PID element");
 				}
 
 				/* Open events element */
-				ret = mi_lttng_events_open(the_writer);
-				if (ret) {
-					goto end;
+				if (mi_lttng_events_open(the_writer)) {
+					LTTNG_THROW_ERROR("Failed to open XML events element");
 				}
-				pid_element_open = 1;
+
+				pid_element_open = true;
 			}
 		}
 
 		/* Open and write the event */
-		ret = mi_write_event(tracepoint.lib(), 1, LTTNG_DOMAIN_UST);
-		if (ret) {
-			goto end;
+		if (mi_write_event(tracepoint.lib(), true, LTTNG_DOMAIN_UST)) {
+			LTTNG_THROW_ERROR("Failed to write XML event");
 		}
 
 		/* Open a fields element */
-		ret = mi_lttng_event_fields_open(the_writer);
-		if (ret) {
-			goto end;
+		if (mi_lttng_event_fields_open(the_writer)) {
+			LTTNG_THROW_ERROR("Failed to open XML event fields element");
 		}
 
 		/* Write all fields for this event */
 		for (const auto& field : tracepoint.fields()) {
-			ret = mi_lttng_event_field(the_writer,
-						   const_cast<lttng_event_field *>(&field.lib()));
-			if (ret) {
-				goto end;
+			if (mi_lttng_event_field(the_writer,
+						 const_cast<lttng_event_field *>(&field.lib()))) {
+				LTTNG_THROW_ERROR("Failed to write XML event field");
 			}
 		}
 
 		/* Close fields and event elements */
-		ret = mi_lttng_close_multi_element(the_writer, 2);
-		if (ret) {
-			goto end;
+		if (mi_lttng_close_multi_element(the_writer, 2)) {
+			LTTNG_THROW_ERROR("Failed to close XML fields and event elements");
 		}
 	}
 
 	/* Close pids, domain, domains */
-	ret = mi_lttng_close_multi_element(the_writer, 3);
-end:
-	return ret;
+	if (mi_lttng_close_multi_element(the_writer, 3)) {
+		LTTNG_THROW_ERROR("Failed to close XML PIDs, domain, and domains elements");
+	}
 }
 
-static int list_kernel_events(const lttng::cli::kernel_tracepoint_set& tracepoints)
+void list_kernel_events()
 {
-	int ret;
-	lttng_domain domain;
-
-	std::memset(&domain, 0, sizeof(domain));
-	domain.type = LTTNG_DOMAIN_KERNEL;
-
 	/* Open domains element */
-	ret = mi_lttng_domains_open(the_writer);
-	if (ret) {
-		goto end;
+	if (mi_lttng_domains_open(the_writer)) {
+		LTTNG_THROW_ERROR("Failed to open XML domains element");
 	}
 
 	/* Write domain */
-	ret = mi_lttng_domain(the_writer, &domain, 1);
-	if (ret) {
-		goto end;
+	if (mi_lttng_pseudo_domain(LTTNG_DOMAIN_KERNEL, true)) {
+		LTTNG_THROW_ERROR("Failed to write XML domain");
 	}
 
 	/* Open events */
-	ret = mi_lttng_events_open(the_writer);
-	if (ret) {
-		goto end;
+	if (mi_lttng_events_open(the_writer)) {
+		LTTNG_THROW_ERROR("Failed to open XML events element");
 	}
 
-	for (const auto& tracepoint : tracepoints) {
-		ret = mi_write_event(tracepoint.lib(), 0, LTTNG_DOMAIN_KERNEL);
-		if (ret) {
-			goto end;
+	for (const auto& tracepoint : lttng::cli::kernel_tracepoint_set()) {
+		if (mi_write_event(tracepoint.lib(), false, LTTNG_DOMAIN_KERNEL)) {
+			LTTNG_THROW_ERROR("Failed to write XML event");
 		}
 	}
 
 	/* close events, domain and domains */
-	ret = mi_lttng_close_multi_element(the_writer, 3);
-	if (ret) {
-		goto end;
+	if (mi_lttng_close_multi_element(the_writer, 3)) {
+		LTTNG_THROW_ERROR("Failed to close XML events, domain, and domains elements");
 	}
-
-end:
-	return ret;
 }
 
-static int list_syscalls(const lttng::cli::kernel_syscall_set& syscalls)
+void list_syscalls()
 {
-	int ret;
-
 	/* Open events */
-	ret = mi_lttng_events_open(the_writer);
-	if (ret) {
-		goto end;
+	if (mi_lttng_events_open(the_writer)) {
+		LTTNG_THROW_ERROR("Failed to open XML events element");
 	}
 
-	for (const auto& syscall : syscalls) {
-		ret = mi_write_event(syscall.lib(), 0, LTTNG_DOMAIN_KERNEL);
-		if (ret) {
-			goto end;
+	for (const auto& syscall : lttng::cli::kernel_syscall_set()) {
+		if (mi_write_event(syscall.lib(), false, LTTNG_DOMAIN_KERNEL)) {
+			LTTNG_THROW_ERROR("Failed to write XML event");
 		}
 	}
 
-	/* Close events. */
-	ret = mi_lttng_writer_close_element(the_writer);
-	if (ret) {
-		goto end;
+	/* Close events */
+	if (mi_lttng_writer_close_element(the_writer)) {
+		LTTNG_THROW_ERROR("Failed to close XML events element");
 	}
-
-end:
-	return ret;
 }
 
 template <typename EventRuleSetType>
-int list_events(const EventRuleSetType& event_rules, lttng_domain_type domain_type)
+void list_events(const EventRuleSetType& event_rules, const lttng_domain_type domain_type)
 {
-	int ret;
-
 	/* Open events element */
-	ret = mi_lttng_events_open(the_writer);
-	if (ret) {
-		goto end;
+	if (mi_lttng_events_open(the_writer)) {
+		LTTNG_THROW_ERROR("Failed to open XML events element");
 	}
 
-	for (const auto& event : event_rules) {
-		ret = mi_write_event(event.lib(), 0, domain_type);
-		if (ret) {
-			goto end;
+	for (const auto& event_rule : event_rules) {
+		if (mi_write_event(event_rule.lib(), false, domain_type)) {
+			LTTNG_THROW_ERROR("Failed to write XML event");
 		}
 	}
 
 	/* Close events element */
-	ret = mi_lttng_writer_close_element(the_writer);
-
-end:
-	return ret;
+	if (mi_lttng_writer_close_element(the_writer)) {
+		LTTNG_THROW_ERROR("Failed to close XML events element");
+	}
 }
 
-static int write_channel_memory_usage(const lttng::cli::channel& channel)
+void write_channel_memory_usage(const lttng::cli::channel& channel)
 {
 	/* Memory usage information isn't available for a kernel channel */
 	if (channel.domain_type() == LTTNG_DOMAIN_KERNEL) {
-		return 0;
+		return;
 	}
 
 	const auto data_stream_infos = channel.as_ust_or_java_python().data_stream_infos();
 
-	return mi_lttng_data_stream_info_sets(the_writer,
-					      &data_stream_infos.lib(),
-					      static_cast<unsigned int>(data_stream_infos.size()));
+	if (mi_lttng_data_stream_info_sets(the_writer,
+					   &data_stream_infos.lib(),
+					   static_cast<unsigned int>(data_stream_infos.size()))) {
+		LTTNG_THROW_ERROR("Failed to write XML data stream info sets");
+	}
 }
 
-static int list_channels(const lttng::cli::channel_set<lttng::cli::channel>& channels)
+void list_channels(const lttng::cli::channel_set<lttng::cli::channel>& channels)
 {
-	int ret;
-	unsigned int chan_found = 0;
-
 	/* Open channels element */
-	ret = mi_lttng_channels_open(the_writer);
-	if (ret) {
-		goto error;
+	if (mi_lttng_channels_open(the_writer)) {
+		LTTNG_THROW_ERROR("Failed to open XML channels element");
 	}
 
 	for (const auto& channel : channels) {
+		/* Filter by name if needed */
+		auto chan_found = false;
+
 		if (the_config->channel_name) {
 			if (channel.name() != *the_config->channel_name) {
 				continue;
 			}
-			chan_found = 1;
+
+			chan_found = true;
 		}
 
 		/* Write channel element  and leave it open */
-		ret = mi_lttng_channel(the_writer, const_cast<lttng_channel *>(&channel.lib()), 1);
-		if (ret) {
-			goto error;
+		if (mi_lttng_channel(
+			    the_writer, const_cast<lttng_channel *>(&channel.lib()), true)) {
+			LTTNG_THROW_ERROR("Failed to write XML channel element");
 		}
 
 		/* Listing events per channel */
-		try {
-			const auto event_rules = channel.event_rules();
-			ret = list_events(event_rules, channel.domain_type());
-			if (ret) {
-				goto error;
-			}
-		} catch (const std::exception& e) {
-			ERR_FMT("Failed to list event rules: {}", e.what());
-			ret = CMD_ERROR;
-			goto error;
-		}
+		list_events(channel.event_rules(), channel.domain_type());
 
 		/* Add memory usage, if available */
-		ret = write_channel_memory_usage(channel);
-		if (ret) {
-			goto error;
-		}
+		write_channel_memory_usage(channel);
 
 		/* Close channel element */
-		ret = mi_lttng_writer_close_element(the_writer);
-		if (ret) {
-			goto error;
+		if (mi_lttng_writer_close_element(the_writer)) {
+			LTTNG_THROW_ERROR("Failed to close XML channel element");
 		}
 
 		if (chan_found) {
@@ -395,625 +340,434 @@ static int list_channels(const lttng::cli::channel_set<lttng::cli::channel>& cha
 	}
 
 	/* Close channels element */
-	ret = mi_lttng_writer_close_element(the_writer);
-	if (ret) {
-		goto error;
+	if (mi_lttng_writer_close_element(the_writer)) {
+		LTTNG_THROW_ERROR("Failed to close XML channels element");
 	}
-
-error:
-	return ret;
 }
 
-static int output_empty_tracker(enum lttng_process_attr process_attr)
+void output_empty_tracker(const lttng_process_attr process_attr)
 {
-	int ret;
-
-	ret = mi_lttng_process_attribute_tracker_open(the_writer, process_attr);
-	if (ret) {
-		goto end;
+	if (mi_lttng_process_attribute_tracker_open(the_writer, process_attr)) {
+		LTTNG_THROW_ERROR("Failed to open XML process attribute tracker element");
 	}
 
 	/* mi_lttng_process_attribute_tracker_open() opens two elements */
-	ret = mi_lttng_close_multi_element(the_writer, 2);
-end:
-	return ret;
+	if (mi_lttng_close_multi_element(the_writer, 2)) {
+		LTTNG_THROW_ERROR("Failed to close XML process attribute tracker elements");
+	}
 }
 
-/*
- * Emit the values of a process-attribute tracker to the MI writer.
- */
-static int write_process_attr_values(enum lttng_process_attr process_attr,
-				     const std::set<lttng::cli::process_attr_value>& values)
+void write_process_attr_values(const lttng_process_attr process_attr,
+			       const std::set<lttng::cli::process_attr_value>& values)
 {
-	int ret = CMD_SUCCESS;
-
 	for (const auto& value : values) {
-		const auto value_type = value.type();
-
-		if (value_type == LTTNG_PROCESS_ATTR_VALUE_TYPE_PID) {
-			const auto pid = value.pid();
-			if (pid) {
-				ret = mi_lttng_integral_process_attribute_value(
-					the_writer, process_attr, (int64_t) *pid, false);
+		if (value.type() == LTTNG_PROCESS_ATTR_VALUE_TYPE_PID) {
+			if (const auto pid = value.pid()) {
+				if (mi_lttng_integral_process_attribute_value(
+					    the_writer,
+					    process_attr,
+					    static_cast<int64_t>(*pid),
+					    false)) {
+					LTTNG_THROW_ERROR("Failed to write XML PID value");
+				}
 			} else {
-				ERR("Failed to get PID");
-				ret = CMD_ERROR;
+				LTTNG_THROW_ERROR("Failed to get expected PID");
 			}
-		} else if (value_type == LTTNG_PROCESS_ATTR_VALUE_TYPE_UID) {
-			const auto uid = value.uid();
-			if (uid) {
-				ret = mi_lttng_integral_process_attribute_value(
-					the_writer, process_attr, (int64_t) *uid, false);
+		} else if (value.type() == LTTNG_PROCESS_ATTR_VALUE_TYPE_UID) {
+			if (const auto uid = value.uid()) {
+				if (mi_lttng_integral_process_attribute_value(
+					    the_writer,
+					    process_attr,
+					    static_cast<int64_t>(*uid),
+					    false)) {
+					LTTNG_THROW_ERROR("Failed to write XML UID value");
+				}
 			} else {
-				ERR("Failed to get UID");
-				ret = CMD_ERROR;
+				LTTNG_THROW_ERROR("Failed to get expected UID");
 			}
-		} else if (value_type == LTTNG_PROCESS_ATTR_VALUE_TYPE_GID) {
-			const auto gid = value.gid();
-			if (gid) {
-				ret = mi_lttng_integral_process_attribute_value(
-					the_writer, process_attr, (int64_t) *gid, false);
+		} else if (value.type() == LTTNG_PROCESS_ATTR_VALUE_TYPE_GID) {
+			if (const auto gid = value.gid()) {
+				if (mi_lttng_integral_process_attribute_value(
+					    the_writer,
+					    process_attr,
+					    static_cast<int64_t>(*gid),
+					    false)) {
+					LTTNG_THROW_ERROR("Failed to write XML GID value");
+				}
 			} else {
-				ERR("Failed to get GID");
-				ret = CMD_ERROR;
+				LTTNG_THROW_ERROR("Failed to get expected GID");
 			}
-		} else if (value_type == LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME) {
-			const auto name = value.user_name();
-			ret = mi_lttng_string_process_attribute_value(
-				the_writer, process_attr, name.data(), false);
-		} else if (value_type == LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME) {
-			const auto name = value.group_name();
-			ret = mi_lttng_string_process_attribute_value(
-				the_writer, process_attr, name.data(), false);
-		}
-
-		if (ret) {
-			goto end;
+		} else if (value.type() == LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME) {
+			if (const auto name = value.user_name()) {
+				if (mi_lttng_string_process_attribute_value(
+					    the_writer, process_attr, name.data(), false)) {
+					LTTNG_THROW_ERROR("Failed to write XML user name value");
+				}
+			} else {
+				LTTNG_THROW_ERROR("Failed to get expected user name");
+			}
+		} else if (value.type() == LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME) {
+			if (const auto name = value.group_name()) {
+				if (mi_lttng_string_process_attribute_value(
+					    the_writer, process_attr, name.data(), false)) {
+					LTTNG_THROW_ERROR("Failed to write XML group name value");
+				}
+			} else {
+				LTTNG_THROW_ERROR("Failed to get expected group name");
+			}
 		}
 	}
-
-end:
-	return ret;
 }
 
-static int list_sessions(const lttng::cli::session_list& sessions)
+void list_sessions(const lttng::cli::session_list& sessions)
 {
-	int ret;
-
 	/* Opening sessions element */
-	ret = mi_lttng_sessions_open(the_writer);
-	if (ret) {
-		goto end;
+	if (mi_lttng_sessions_open(the_writer)) {
+		LTTNG_THROW_ERROR("Failed to open XML sessions element");
 	}
 
 	/* Listing sessions */
 	for (const auto& session : sessions) {
-		ret = mi_lttng_session(the_writer, &session.lib(), 0);
-		if (ret) {
-			goto end;
+		if (mi_lttng_session(the_writer, &session.lib(), false)) {
+			LTTNG_THROW_ERROR("Failed to write XML session");
 		}
 	}
 
 	/* Closing sessions element */
-	ret = mi_lttng_writer_close_element(the_writer);
-	if (ret) {
-		goto end;
+	if (mi_lttng_writer_close_element(the_writer)) {
+		LTTNG_THROW_ERROR("Failed to close XML sessions element");
 	}
-
-end:
-	return ret;
 }
 
-namespace {
-
-int write_tracker(enum lttng_process_attr process_attr,
-		  const lttng::cli::process_attr_tracker& tracker)
+void write_tracker(const lttng_process_attr process_attr,
+		   const lttng::cli::process_attr_tracker& tracker)
 {
 	const auto policy = tracker.tracking_policy();
 
 	if (policy == LTTNG_TRACKING_POLICY_EXCLUDE_ALL) {
-		return output_empty_tracker(process_attr);
+		output_empty_tracker(process_attr);
+		return;
+	} else if (policy == LTTNG_TRACKING_POLICY_INCLUDE_ALL) {
+		/* Skip: "all" is implicit */
+		return;
 	}
 
-	if (policy == LTTNG_TRACKING_POLICY_INCLUDE_ALL) {
-		/* Skip - all is implicit */
-		return CMD_SUCCESS;
+	/* `LTTNG_TRACKING_POLICY_INCLUDE_SET`: output tracker */
+	if (mi_lttng_process_attribute_tracker_open(the_writer, process_attr)) {
+		LTTNG_THROW_ERROR("Failed to open XML process attribute tracker element");
 	}
 
-	/* INCLUDE_SET - output tracker */
-	int ret = mi_lttng_process_attribute_tracker_open(the_writer, process_attr);
-	if (ret) {
-		return ret;
-	}
-
-	const auto inclusion_set = tracker.inclusion_set();
-	if (inclusion_set) {
-		ret = write_process_attr_values(process_attr, *inclusion_set);
-		if (ret) {
-			return ret;
-		}
+	if (const auto inclusion_set = tracker.inclusion_set()) {
+		write_process_attr_values(process_attr, *inclusion_set);
 	}
 
 	/* Close tracker element */
-	return mi_lttng_close_multi_element(the_writer, 2);
+	if (mi_lttng_close_multi_element(the_writer, 2)) {
+		LTTNG_THROW_ERROR("Failed to close XML tracker elements");
+	}
 }
 
-} /* namespace */
-
-/*
- * Write the trackers for a given domain to the MI writer.
- */
-static int write_domain_trackers(const lttng::cli::domain& domain)
+void write_domain_trackers(const lttng::cli::domain& domain)
 {
-	int ret = CMD_SUCCESS;
-
 	/* Trackers */
-	ret = mi_lttng_trackers_open(the_writer);
-	if (ret) {
-		return ret;
+	if (mi_lttng_trackers_open(the_writer)) {
+		LTTNG_THROW_ERROR("Failed to open XML trackers element");
 	}
 
 	/* Output trackers based on domain type */
 	if (domain.type() == LTTNG_DOMAIN_KERNEL) {
 		const auto kernel_domain = domain.as_kernel();
-		ret = write_tracker(LTTNG_PROCESS_ATTR_PROCESS_ID,
-				    kernel_domain.process_id_tracker());
-		if (ret) {
-			return ret;
-		}
-		ret = write_tracker(LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID,
-				    kernel_domain.virtual_process_id_tracker());
-		if (ret) {
-			return ret;
-		}
-		ret = write_tracker(LTTNG_PROCESS_ATTR_USER_ID, kernel_domain.user_id_tracker());
-		if (ret) {
-			return ret;
-		}
-		ret = write_tracker(LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID,
-				    kernel_domain.virtual_user_id_tracker());
-		if (ret) {
-			return ret;
-		}
-		ret = write_tracker(LTTNG_PROCESS_ATTR_GROUP_ID, kernel_domain.group_id_tracker());
-		if (ret) {
-			return ret;
-		}
-		ret = write_tracker(LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID,
-				    kernel_domain.virtual_group_id_tracker());
-		if (ret) {
-			return ret;
-		}
+
+		write_tracker(LTTNG_PROCESS_ATTR_PROCESS_ID, kernel_domain.process_id_tracker());
+		write_tracker(LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID,
+			      kernel_domain.virtual_process_id_tracker());
+		write_tracker(LTTNG_PROCESS_ATTR_USER_ID, kernel_domain.user_id_tracker());
+		write_tracker(LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID,
+			      kernel_domain.virtual_user_id_tracker());
+		write_tracker(LTTNG_PROCESS_ATTR_GROUP_ID, kernel_domain.group_id_tracker());
+		write_tracker(LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID,
+			      kernel_domain.virtual_group_id_tracker());
 	} else if (domain.type() == LTTNG_DOMAIN_UST) {
 		const auto ust_domain = domain.as_ust();
-		ret = write_tracker(LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID,
-				    ust_domain.virtual_process_id_tracker());
-		if (ret) {
-			return ret;
-		}
-		ret = write_tracker(LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID,
-				    ust_domain.virtual_user_id_tracker());
-		if (ret) {
-			return ret;
-		}
-		ret = write_tracker(LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID,
-				    ust_domain.virtual_group_id_tracker());
-		if (ret) {
-			return ret;
-		}
+
+		write_tracker(LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID,
+			      ust_domain.virtual_process_id_tracker());
+		write_tracker(LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID,
+			      ust_domain.virtual_user_id_tracker());
+		write_tracker(LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID,
+			      ust_domain.virtual_group_id_tracker());
 	}
 
 	/* Close trackers element */
-	ret = mi_lttng_writer_close_element(the_writer);
-	if (ret) {
-		return ret;
+	if (mi_lttng_writer_close_element(the_writer)) {
+		LTTNG_THROW_ERROR("Failed to close XML trackers element");
 	}
-
-	return ret;
 }
 
-static int list_domains(const lttng::cli::domain_set& domains)
+void list_domains(const lttng::cli::domain_set& domains)
 {
-	int ret;
 	/* Open domains element */
-	ret = mi_lttng_domains_open(the_writer);
-	if (ret) {
-		goto end;
+	if (mi_lttng_domains_open(the_writer)) {
+		LTTNG_THROW_ERROR("Failed to open XML domains element");
 	}
 
 	for (const auto& domain : domains) {
-		ret = mi_write_domain(domain.lib(), 0);
-		if (ret) {
-			goto end;
+		if (mi_write_domain(domain.lib(), false)) {
+			LTTNG_THROW_ERROR("Failed to write XML domain");
 		}
 	}
 
 	/* Closing domains element */
-	ret = mi_lttng_writer_close_element(the_writer);
-	if (ret) {
-		goto end;
+	if (mi_lttng_writer_close_element(the_writer)) {
+		LTTNG_THROW_ERROR("Failed to close XML domains element");
 	}
-end:
-	return ret;
 }
 
 /*
  * Handle MI listing when no session name is provided.
  */
-static int handle_no_session_name()
+void handle_no_session_name()
 {
-	int ret = CMD_SUCCESS;
-
-	/* Listing sessions, kernel/ust events, or syscalls */
+	/* Listing sessions or instrumentation points */
 	if (!the_config->kernel && !the_config->userspace && !the_config->jul &&
 	    !the_config->log4j && !the_config->log4j2 && !the_config->python) {
 		/* List all sessions */
 		const lttng::cli::session_list sessions;
+
 		DBG("Session count %zu", sessions.size());
-		ret = list_sessions(sessions);
-		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
-		}
+		list_sessions(sessions);
 	}
 
 	if (the_config->kernel) {
 		if (the_config->syscall) {
-			/* List syscalls */
-			const lttng::cli::kernel_syscall_set syscalls;
-			ret = list_syscalls(syscalls);
-			if (ret) {
-				ret = CMD_ERROR;
-				goto end;
-			}
+			/* List kernel system calls */
+			list_syscalls();
 		} else {
-			/* List kernel events */
-			const lttng::cli::kernel_tracepoint_set tracepoints;
-			ret = list_kernel_events(tracepoints);
-			if (ret) {
-				ret = CMD_ERROR;
-				goto end;
-			}
+			/* List kernel tracepoints */
+			list_kernel_events();
 		}
 	}
 
 	if (the_config->userspace) {
 		const lttng::cli::ust_tracepoint_set tracepoints;
+
 		if (the_config->fields) {
-			/* List UST event fields */
-			ret = list_ust_event_fields(tracepoints);
-			if (ret) {
-				ret = CMD_ERROR;
-				goto end;
-			}
+			/* List UST tracepoint fields */
+			list_ust_event_fields(tracepoints);
 		} else {
-			/* List UST events */
-			ret = list_agent_ust_events(tracepoints);
-			if (ret) {
-				ret = CMD_ERROR;
-				goto end;
-			}
+			/* List UST tracepoints */
+			list_agent_ust_events(tracepoints);
 		}
 	}
 
 	if (the_config->jul || the_config->log4j || the_config->log4j2 || the_config->python) {
-		/* List agent events */
+		/* List agent loggers */
 		LTTNG_ASSERT(the_config->domain_type);
-		const lttng::cli::java_python_logger_set loggers(*the_config->domain_type);
-		ret = list_agent_ust_events(loggers);
-		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
-		}
-	}
 
-end:
-	return ret;
+		const lttng::cli::java_python_logger_set loggers(*the_config->domain_type);
+
+		list_agent_ust_events(loggers);
+	}
 }
 
-/*
- * Write automatic rotation schedules for a given session to the MI writer.
- */
-static int write_session_rotation_schedules(const lttng::cli::session& session)
+void write_session_rotation_schedules(const lttng::cli::session& session)
 {
-	int ret = CMD_SUCCESS;
-
 	const auto schedules = session.rotation_schedules();
 
 	if (!schedules.is_empty()) {
-		ret = mi_lttng_writer_open_element(the_writer, mi_lttng_element_rotation_schedules);
-		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
+		if (mi_lttng_writer_open_element(the_writer, mi_lttng_element_rotation_schedules)) {
+			LTTNG_THROW_ERROR("Failed to open XML rotation schedules element");
 		}
 
 		for (const auto& schedule : schedules) {
-			ret = mi_lttng_rotation_schedule(the_writer, &schedule.lib());
-			if (ret) {
-				ret = CMD_ERROR;
-				goto end;
+			if (mi_lttng_rotation_schedule(the_writer, &schedule.lib())) {
+				LTTNG_THROW_ERROR("Failed to write XML rotation schedule");
 			}
 		}
 
 		/* Close rotation_schedules element */
-		ret = mi_lttng_writer_close_element(the_writer);
-		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
+		if (mi_lttng_writer_close_element(the_writer)) {
+			LTTNG_THROW_ERROR("Failed to close XML rotation schedules element");
 		}
 	}
-
-end:
-	return ret;
 }
 
-/*
- * List all domains of a session, including trackers and channels, and emit
- * them to the MI writer. This function opens and closes the `domains` MI
- * element internally and leaves the surrounding `session`/`sessions` elements
- * to the caller.
- */
-static int list_all_session_domains(const lttng::cli::session& session)
+void list_all_session_domains(const lttng::cli::session& session)
 {
-	int ret = CMD_SUCCESS;
-
-	const auto session_domains = session.domains();
-
-	ret = mi_lttng_domains_open(the_writer);
-	if (ret) {
-		ret = CMD_ERROR;
-		goto end;
+	if (mi_lttng_domains_open(the_writer)) {
+		LTTNG_THROW_ERROR("Failed to open XML domains element");
 	}
 
-	for (const auto& domain : session_domains) {
-		ret = mi_write_domain(domain.lib(), 1);
-		if (ret) {
-			ret = CMD_ERROR;
-			goto close_domains_element;
+	for (const auto& domain : session.domains()) {
+		if (mi_write_domain(domain.lib(), true)) {
+			LTTNG_THROW_ERROR("Failed to write XML domain");
 		}
 
 		if (domain.type() == LTTNG_DOMAIN_JUL || domain.type() == LTTNG_DOMAIN_LOG4J ||
 		    domain.type() == LTTNG_DOMAIN_LOG4J2 || domain.type() == LTTNG_DOMAIN_PYTHON) {
 			/* List agent event rules directly (no channels for Java/Python domains) */
-			ret = list_events(domain.as_java_python().event_rules(), domain.type());
-			if (ret) {
-				goto close_domain_element;
-			}
+			list_events(domain.as_java_python().event_rules(), domain.type());
 
 			/* Close domain element and continue */
-			ret = mi_lttng_writer_close_element(the_writer);
-			if (ret) {
-				ret = CMD_ERROR;
-				goto close_domains_element;
+			if (mi_lttng_writer_close_element(the_writer)) {
+				LTTNG_THROW_ERROR("Failed to close XML domain element");
 			}
+
 			continue;
 		}
 
 		/* Trackers for kernel and UST */
 		if (domain.type() == LTTNG_DOMAIN_KERNEL || domain.type() == LTTNG_DOMAIN_UST) {
-			ret = write_domain_trackers(domain);
-			if (ret) {
-				goto close_domain_element;
-			}
+			write_domain_trackers(domain);
 		}
 
 		/* List channels */
-		try {
-			const auto channels = domain.channels();
-			ret = list_channels(channels);
-			if (ret) {
-				goto close_domain_element;
-			}
-		} catch (const std::exception& e) {
-			ERR_FMT("Failed to list channels: {}", e.what());
-			ret = CMD_ERROR;
-			goto close_domain_element;
-		}
+		list_channels(domain.channels());
 
 		/* Close domain element */
-		ret = mi_lttng_writer_close_element(the_writer);
-		if (ret) {
-			ret = CMD_ERROR;
-			goto close_domains_element;
+		if (mi_lttng_writer_close_element(the_writer)) {
+			LTTNG_THROW_ERROR("Failed to close XML domain element");
 		}
-		continue;
-
-	close_domain_element:
-	{
-		int close_ret = mi_lttng_writer_close_element(the_writer);
-		(void) close_ret;
-	}
-		goto close_domains_element;
 	}
 
-close_domains_element:
-{
-	int close_ret = mi_lttng_writer_close_element(the_writer);
-	(void) close_ret;
-}
-end:
-	return ret;
+	/* Close domains element */
+	if (mi_lttng_writer_close_element(the_writer)) {
+		LTTNG_THROW_ERROR("Failed to close XML domains element");
+	}
 }
 
 /*
  * Handle MI listing when a session name is provided.
  */
-static int handle_with_session_name()
+void handle_with_session_name()
 {
+	LTTNG_ASSERT(the_config->session_name);
+
 	/* List session attributes */
 	const lttng::cli::session_list sessions;
 
 	DBG("Session count %zu", sessions.size());
 
 	/* Open sessions element */
-	int ret = mi_lttng_sessions_open(the_writer);
-	if (ret) {
-		return ret;
+	if (mi_lttng_sessions_open(the_writer)) {
+		LTTNG_THROW_ERROR("Failed to open XML sessions element");
 	}
 
 	/* Find the session */
 	LTTNG_ASSERT(the_config->session_name);
+
 	const auto found_session = sessions.find_by_name(the_config->session_name->c_str());
 
 	if (!found_session) {
-		ERR("Session '%s' not found", the_config->session_name->c_str());
-		return -LTTNG_ERR_SESS_NOT_FOUND;
+		LTTNG_THROW_ERROR(
+			lttng::format("Session '{}' not found", the_config->session_name->c_str()));
 	}
 
-	ret = mi_lttng_session(the_writer, &found_session->lib(), 1);
-	if (ret) {
-		return ret;
+	if (mi_lttng_session(the_writer, &found_session->lib(), true)) {
+		LTTNG_THROW_ERROR("Failed to write XML session");
 	}
 
 	/* Automatic rotation schedules */
-	ret = write_session_rotation_schedules(*found_session);
-	if (ret) {
-		return ret;
-	}
+	write_session_rotation_schedules(*found_session);
 
 	/* Domain listing */
 	if (the_config->domain) {
-		const auto session_domains = found_session->domains();
-		return list_domains(session_domains);
+		list_domains(found_session->domains());
+		return;
 	}
 
 	/* Channel listing */
 	if (the_config->kernel || the_config->userspace) {
 		/* Find the requested domain from the session's domains */
-		const auto session_domains = found_session->domains();
-
 		LTTNG_ASSERT(the_config->domain_type);
 
-		const auto found_domain = session_domains.find_by_type(*the_config->domain_type);
+		const auto found_domain =
+			found_session->domains().find_by_type(*the_config->domain_type);
 
 		if (!found_domain) {
-			ERR("Domain not found in session");
-			return CMD_ERROR;
+			LTTNG_THROW_ERROR("Domain not found in session");
 		}
 
 		/* Add domains and domain element */
-		ret = mi_lttng_domains_open(the_writer);
-		if (ret) {
-			return ret;
+		if (mi_lttng_domains_open(the_writer)) {
+			LTTNG_THROW_ERROR("Failed to open XML domains element");
 		}
 
 		/* Open domain and leave it open for nested elements */
-		ret = mi_write_domain(found_domain->lib(), 1);
-		if (ret) {
-			return ret;
+		if (mi_write_domain(found_domain->lib(), true)) {
+			LTTNG_THROW_ERROR("Failed to write XML domain");
 		}
 
 		/* Trackers */
-		ret = write_domain_trackers(*found_domain);
-		if (ret) {
-			return ret;
-		}
+		write_domain_trackers(*found_domain);
 
 		/* Channels */
-		try {
-			const auto channels = found_domain->channels();
-			ret = list_channels(channels);
-			if (ret) {
-				return ret;
-			}
-		} catch (const std::exception& e) {
-			ERR_FMT("Failed to list channels: {}", e.what());
-			return CMD_ERROR;
-		}
+		list_channels(found_domain->channels());
 
 		/* Close domain element */
-		ret = mi_lttng_writer_close_element(the_writer);
-		if (ret) {
-			return CMD_ERROR;
+		if (mi_lttng_writer_close_element(the_writer)) {
+			LTTNG_THROW_ERROR("Failed to close XML domain element");
 		}
 
 		/* Close the domains, session and sessions element */
-		ret = mi_lttng_close_multi_element(the_writer, 3);
-		if (ret) {
-			return CMD_ERROR;
+		if (mi_lttng_close_multi_element(the_writer, 3)) {
+			LTTNG_THROW_ERROR(
+				"Failed to close XML domains, session, and sessions elements");
 		}
 
-		return CMD_SUCCESS;
+		return;
 	}
 
 	/* List all domains */
-	ret = list_all_session_domains(*found_session);
-	if (ret) {
-		return ret;
-	}
+	list_all_session_domains(*found_session);
 
 	/* Close the session and sessions element */
-	ret = mi_lttng_close_multi_element(the_writer, 2);
-	if (ret) {
-		return CMD_ERROR;
+	if (mi_lttng_close_multi_element(the_writer, 2)) {
+		LTTNG_THROW_ERROR("Failed to close XML session and sessions elements");
 	}
-
-	return CMD_SUCCESS;
 }
+
+} /* namespace */
 
 /*
  * Entry point for machine interface list command.
  */
 int list_mi(const list_cmd_config& config)
 {
-	int ret = CMD_SUCCESS;
-
 	/* Cache configuration for use by helpers */
 	the_config = &config;
 
 	/* Initialize writer */
-	the_writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
-	if (!the_writer) {
-		ret = CMD_ERROR;
-		goto end;
-	}
+	const mi_writer_uptr writer(mi_lttng_writer_create(fileno(stdout), lttng_opt_mi));
+
+	LTTNG_ASSERT(writer);
+	the_writer = writer.get();
 
 	/* Open command element */
-	ret = mi_lttng_writer_command_open(the_writer, mi_lttng_element_command_list);
-	if (ret) {
-		ret = CMD_ERROR;
-		goto end;
+	if (mi_lttng_writer_command_open(the_writer, mi_lttng_element_command_list)) {
+		LTTNG_THROW_ERROR("Failed to open XML command element");
 	}
 
 	/* Open output element */
-	ret = mi_lttng_writer_open_element(the_writer, mi_lttng_element_command_output);
-	if (ret) {
-		ret = CMD_ERROR;
-		goto end;
+	if (mi_lttng_writer_open_element(the_writer, mi_lttng_element_command_output)) {
+		LTTNG_THROW_ERROR("Failed to open XML output element");
 	}
 
 	if (!the_config->session_name) {
-		ret = handle_no_session_name();
+		handle_no_session_name();
 	} else {
-		ret = handle_with_session_name();
-	}
-
-	if (ret) {
-		goto end;
+		handle_with_session_name();
 	}
 
 	/* Close output element */
-	{
-		int close_ret = mi_lttng_writer_close_element(the_writer);
-		if (close_ret) {
-			ret = ret ? ret : CMD_ERROR;
-		}
+	if (mi_lttng_writer_close_element(the_writer)) {
+		LTTNG_THROW_ERROR("Failed to close XML output element");
 	}
 
 	/* Command element close */
-	{
-		int close_ret = mi_lttng_writer_command_close(the_writer);
-		if (close_ret) {
-			ret = ret ? ret : CMD_ERROR;
-		}
+	if (mi_lttng_writer_command_close(the_writer)) {
+		LTTNG_THROW_ERROR("Failed to open XML writer element");
 	}
 
-end:
-	/* Mi clean-up */
-	if (the_writer && mi_lttng_writer_destroy(the_writer)) {
-		/* Preserve original error code */
-		ret = ret ? ret : -LTTNG_ERR_MI_IO_FAIL;
-	}
-
-	return ret;
+	return CMD_SUCCESS;
 }
