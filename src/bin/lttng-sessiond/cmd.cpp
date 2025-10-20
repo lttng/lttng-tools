@@ -1383,6 +1383,60 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 	const auto extended = reinterpret_cast<const struct lttng_channel_extended *>(
 		new_channel_attr->attr.extended.ptr);
 
+	if (extended->automatic_memory_reclamation_maximal_age_us.is_set) {
+		if (domain->type == LTTNG_DOMAIN_KERNEL) {
+			WARN_FMT("Auto-reclaim of memory is only available for UST domains: "
+				 "session_name=`{}`, channel_name=`{}`, domain_type=`{}`",
+				 session->name,
+				 new_channel_attr->name,
+				 domain->type);
+			return LTTNG_ERR_UNSUPPORTED_DOMAIN;
+		}
+
+		const auto ust_session = session->ust_session;
+
+		if (ust_session) {
+			if (!ust_session->supports_madv_remove()) {
+				WARN_FMT(
+					"Auto-reclaim of memory requires that MADV_REMOVE is supported by the file-system "
+					"containing the shared memory path: "
+					"session_name=`{}`, channel_name=`{}`, domain_type=`{}`, shm_path=`{}`",
+					session->name,
+					new_channel_attr->name,
+					domain->type,
+					ust_session->shm_path);
+				return LTTNG_ERR_NOT_SUPPORTED;
+			}
+
+			/*
+			 * If the reclamation age is 0, then the reclamation is
+			 * done on consumed data, which is only valid in
+			 * streaming session for UST sessions.
+			 */
+			if (LTTNG_OPTIONAL_GET(
+				    extended->automatic_memory_reclamation_maximal_age_us) == 0) {
+				if (ust_session->snapshot_mode) {
+					WARN_FMT(
+						"Continuous reclamation of memory consumed is not supported in snapshot mode: "
+						"session_name=`{}`, channel_name=`{}`, domain_type=`{}`",
+						session->name,
+						new_channel_attr->name,
+						domain->type);
+					return LTTNG_ERR_INVALID_RECLAMATION_POLICY;
+				}
+				if (!ust_session->output_traces) {
+					WARN_FMT(
+						"Auto-reclaim of memory consumed requires a session with an output: "
+						"session_name=`{}`, channel_name=`{}`, domain_type=`{}`",
+						session->name,
+						new_channel_attr->name,
+						domain->type);
+					return LTTNG_ERR_INVALID_RECLAMATION_POLICY;
+				}
+			}
+		}
+	}
+
 	if (extended->watchdog_timer_interval.is_set) {
 		if (domain->type == LTTNG_DOMAIN_KERNEL) {
 			WARN_FMT("Watchdog timer is only supported by UST domains: "

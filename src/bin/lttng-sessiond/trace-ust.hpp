@@ -14,6 +14,7 @@
 #include "recording-channel-configuration.hpp"
 
 #include <common/defaults.hpp>
+#include <common/fs-utils.hpp>
 #include <common/hashtable/hashtable.hpp>
 #include <common/optional.hpp>
 #include <common/tracker.hpp>
@@ -153,6 +154,12 @@ struct ltt_ust_session {
 	struct process_attr_tracker *tracker_vpid;
 	struct process_attr_tracker *tracker_vuid;
 	struct process_attr_tracker *tracker_vgid;
+
+	bool supports_madv_remove() const noexcept
+	{
+		return lttng::utils::fs_supports_madv_remove(
+			this->shm_path[0] != '\0' ? this->shm_path : nullptr);
+	}
 };
 
 /*

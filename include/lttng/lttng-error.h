@@ -686,6 +686,9 @@ enum lttng_error_code {
 	/// Failed to flush a buffer.
 	LTTNG_ERR_BUFFER_FLUSH_FAILED = 170,
 
+	/// Invalid reclamation policy.
+	LTTNG_ERR_INVALID_RECLAMATION_POLICY = 171,
+
 	/* MUST be last element of the manually-assigned section of the enum */
 	/// @cond INTERNAL_ERR_CODES
 	LTTNG_ERR_NR,
