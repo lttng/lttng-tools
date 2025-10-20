@@ -174,13 +174,10 @@ int cmd_list(int argc, const char **argv)
 		if (const auto config = make_config(argc, argv)) {
 			/* Actual command */
 			if (lttng_opt_mi) {
-				return list_mi(*config);
+				list_mi(*config);
 			} else {
-				return list_human(*config);
+				list_human(*config);
 			}
-		} else {
-			/* Help/usage/options */
-			return CMD_SUCCESS;
 		}
 	} catch (const undefined_opt&) {
 		return CMD_UNDEFINED;
@@ -188,4 +185,6 @@ int cmd_list(int argc, const char **argv)
 		ERR_FMT("Failed to list: {}", e.what());
 		return CMD_ERROR;
 	}
+
+	return CMD_SUCCESS;
 }

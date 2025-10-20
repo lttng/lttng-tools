@@ -6,78 +6,53 @@
  *
  */
 
-#include "../command.hpp"
 #include "list-common.hpp"
 #include "list-human.hpp"
 #include "list-wrappers.hpp"
 
+#include <common/exception.hpp>
+#include <common/macros.hpp>
 #include <common/mi-lttng.hpp>
 
 #include <lttng/domain-internal.hpp>
 #include <lttng/lttng.h>
+
+namespace {
 
 const char *indent4 = "    ";
 const char *indent6 = "      ";
 const char *indent8 = "        ";
 
 /* Configuration for the list command */
-static const list_cmd_config *the_config;
+const list_cmd_config *the_config;
 
-static bool is_agent_domain(lttng_domain_type domain_type)
+bool is_agent_domain(const lttng_domain_type domain_type)
 {
 	return domain_type == LTTNG_DOMAIN_JUL || domain_type == LTTNG_DOMAIN_LOG4J ||
 		domain_type == LTTNG_DOMAIN_LOG4J2 || domain_type == LTTNG_DOMAIN_PYTHON;
 }
 
-static bool is_ust_or_agent_domain(lttng_domain_type domain_type)
+bool is_ust_or_agent_domain(const lttng_domain_type domain_type)
 {
 	return domain_type == LTTNG_DOMAIN_UST || is_agent_domain(domain_type);
 }
 
-static const char *active_string(int value)
+const char *active_string(const bool is_active)
 {
-	switch (value) {
-	case 0:
-		return "inactive";
-	case 1:
-		return "active";
-	case -1:
-		return "";
-	default:
-		return nullptr;
-	}
+	return is_active ? "active" : "inactive";
 }
 
-static const char *snapshot_string(int value)
+const char *snapshot_string(const bool is_snapshot)
 {
-	switch (value) {
-	case 1:
-		return " snapshot";
-	default:
-		return "";
-	}
+	return is_snapshot ? " snapshot" : "";
 }
 
-static const char *enabled_string(int value)
+const char *enabled_string(const bool is_enabled)
 {
-	switch (value) {
-	case 0:
-		return " [disabled]";
-	case 1:
-		return " [enabled]";
-	case -1:
-		return "";
-	default:
-		return nullptr;
-	}
+	return is_enabled ? " [enabled]" : " [disabled]";
 }
 
-static const char *safe_string(const char *str)
-{
-	return str ? str : "";
-}
-
-static const char *logleveltype_string(enum lttng_loglevel_type value)
+const char *logleveltype_string(enum lttng_loglevel_type value)
 {
 	switch (value) {
 	case LTTNG_EVENT_LOGLEVEL_ALL:
@@ -91,15 +66,15 @@ static const char *logleveltype_string(enum lttng_loglevel_type value)
 	}
 }
 
-static const char *bitness_event(enum lttng_event_flag flags)
+const char *bitness_event(const bool is_32_bit, const bool is_64_bit)
 {
-	if (flags & LTTNG_EVENT_FLAG_SYSCALL_32) {
-		if (flags & LTTNG_EVENT_FLAG_SYSCALL_64) {
+	if (is_32_bit) {
+		if (is_64_bit) {
 			return " [32/64-bit]";
 		} else {
 			return " [32-bit]";
 		}
-	} else if (flags & LTTNG_EVENT_FLAG_SYSCALL_64) {
+	} else if (is_64_bit) {
 		return " [64-bit]";
 	} else {
 		return "";
@@ -111,11 +86,8 @@ static const char *bitness_event(enum lttng_event_flag flags)
  *
  * Returned pointer must be freed by caller. Returns NULL on error.
  */
-static char *get_exclusion_names_msg(const lttng::cli::ust_tracepoint_event_rule& event_rule)
+std::string get_exclusion_names_msg(const lttng::cli::ust_tracepoint_event_rule& event_rule)
 {
-	char *exclusion_msg = nullptr;
-	const char *const exclusion_fmt = " [exclusions: ";
-	const size_t exclusion_fmt_len = strlen(exclusion_fmt);
 	const auto exclusions = event_rule.exclusions();
 
 	if (exclusions.empty()) {
@@ -123,131 +95,129 @@ static char *get_exclusion_names_msg(const lttng::cli::ust_tracepoint_event_rule
 		 * No exclusions: return copy of empty string so that
 		 * it can be freed by caller.
 		 */
-		exclusion_msg = strdup("");
-		return exclusion_msg;
+		return {};
 	}
 
-	/*
-	 * exclusion_msg's size is bounded by the exclusion_fmt string,
-	 * a comma per entry, the entry count (fixed-size), a closing
-	 * bracket, and a trailing \0.
-	 */
-	const auto exclusion_count = exclusions.size();
-
-	exclusion_msg = (char *) malloc(exclusion_count + exclusion_count * LTTNG_SYMBOL_NAME_LEN +
-					exclusion_fmt_len + 1);
-	if (!exclusion_msg) {
-		return nullptr;
-	}
-
-	char *at = strcpy(exclusion_msg, exclusion_fmt) + exclusion_fmt_len;
-	bool first = true;
+	auto first = true;
+	std::string exclusions_str(" [exclusions: ");
 
 	for (const auto& exclusion : exclusions) {
 		/* Append comma between exclusion names */
 		if (!first) {
-			*at = ',';
-			at++;
+			exclusions_str += ',';
 		}
 
 		first = false;
 
 		/* Append exclusion name */
-		at += sprintf(at, "%s", exclusion.data());
+		exclusions_str += exclusion.data();
 	}
 
 	/* This also puts a final '\0' at the end of exclusion_msg */
-	strcpy(at, "]");
-
-	return exclusion_msg;
+	exclusions_str += ']';
+	return exclusions_str;
 }
 
-static void print_userspace_probe_location(const lttng::cli::linux_uprobe_event_rule& uprobe_event)
+std::string realpath_str(const char *const path)
+{
+	const auto str = realpath(path, nullptr);
+
+	if (!str) {
+		return "NULL";
+	}
+
+	const std::string ret_str(str);
+
+	std::free(str);
+	return ret_str;
+}
+
+void print_userspace_probe_location(const lttng::cli::linux_uprobe_event_rule& uprobe_event)
 {
 	const auto location = uprobe_event.location();
 
 	if (!location) {
-		MSG("Event has no userspace probe location");
+		lttng::print("Event has no userspace probe location\n");
 		return;
 	}
 
-	MSG("%s%s (type: userspace-probe)%s",
-	    indent6,
-	    uprobe_event.name().data(),
-	    enabled_string(uprobe_event.is_enabled()));
+	lttng::print("{}{} (type: userspace-probe){}\n",
+		     indent6,
+		     uprobe_event.name(),
+		     enabled_string(uprobe_event.is_enabled()));
 
 	switch (location->type()) {
 	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_UNKNOWN:
-		MSG("%sType: Unknown", indent8);
+		lttng::print("{}Type: Unknown\n", indent8);
 		break;
 	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION:
 	{
 		const auto func_location = location->as_function();
-		char *binary_path = realpath(func_location.binary_path().data(), nullptr);
 
-		MSG("%sType: Function", indent8);
-		MSG("%sBinary path:   %s", indent8, binary_path ? binary_path : "NULL");
-		MSG("%sFunction:      %s()", indent8, func_location.function_name().data());
+		lttng::print("{}Type: Function\n", indent8);
+		lttng::print("{}Binary path:   {}\n",
+			     indent8,
+			     realpath_str(func_location.binary_path().data()));
+		lttng::print("{}Function:      {}()\n", indent8, func_location.function_name());
 
 		switch (location->lookup_method_type()) {
 		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
-			MSG("%sLookup method: ELF", indent8);
+			lttng::print("{}Lookup method: ELF\n", indent8);
 			break;
 		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_DEFAULT:
-			MSG("%sLookup method: default", indent8);
+			lttng::print("{}Lookup method: default\n", indent8);
 			break;
 		default:
-			MSG("%sLookup method: INVALID LOOKUP TYPE ENCOUNTERED", indent8);
+			lttng::print("{}Lookup method: INVALID LOOKUP TYPE ENCOUNTERED\n", indent8);
 			break;
 		}
 
-		free(binary_path);
 		break;
 	}
 	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT:
 	{
 		const auto tp_location = location->as_tracepoint();
-		char *binary_path = realpath(tp_location.binary_path().data(), nullptr);
 
-		MSG("%sType: Tracepoint", indent8);
-		MSG("%sBinary path:   %s", indent8, binary_path ? binary_path : "NULL");
-		MSG("%sTracepoint:    %s:%s",
-		    indent8,
-		    tp_location.provider_name().data(),
-		    tp_location.probe_name().data());
+		lttng::print("{}Type: Tracepoint\n", indent8);
+		lttng::print("{}Binary path:   {}\n",
+			     indent8,
+			     realpath_str(tp_location.binary_path().data()));
+		lttng::print("{}Tracepoint:    {}:{}\n",
+			     indent8,
+			     tp_location.provider_name(),
+			     tp_location.probe_name());
 
 		switch (location->lookup_method_type()) {
 		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
-			MSG("%sLookup method: SDT", indent8);
+			lttng::print("{}Lookup method: SDT\n", indent8);
 			break;
 		default:
-			MSG("%sLookup method: INVALID LOOKUP TYPE ENCOUNTERED", indent8);
+			lttng::print("{}Lookup method: INVALID LOOKUP TYPE ENCOUNTERED\n", indent8);
 			break;
 		}
 
-		free(binary_path);
 		break;
 	}
 	default:
-		ERR("Invalid probe type encountered");
+		LTTNG_THROW_ERROR("Invalid probe type encountered");
 	}
 }
 
 /*
  * Pretty print instrumentation point (kernel tracepoint, UST tracepoint, syscall, agent logger).
  */
-static void print_instrumentation_point(const lttng::cli::instrumentation_point& instr_point,
-					enum lttng_domain_type domain_type)
+void print_instrumentation_point(const lttng::cli::instrumentation_point& instr_point,
+				 enum lttng_domain_type domain_type)
 {
 	switch (instr_point.lib().type) {
 	case LTTNG_EVENT_TRACEPOINT:
 	{
 		if (domain_type == LTTNG_DOMAIN_KERNEL) {
 			/* Kernel tracepoint - no loglevel */
-			MSG("%s%s (type: tracepoint)", indent6, instr_point.name().data());
+			lttng::print("{}{} (type: tracepoint)\n", indent6, instr_point.name());
 		} else {
 			/* UST/agent instrumentation point - has loglevel */
-			int loglevel = -1;
+			auto loglevel = -1;
 
 			if (domain_type == LTTNG_DOMAIN_UST) {
 				loglevel =
@@ -256,93 +226,91 @@ static void print_instrumentation_point(const lttng::cli::instrumentation_point&
 			}
 
 			if (loglevel != -1) {
-				MSG("%s%s (loglevel: %s (%d)) (type: tracepoint)",
-				    indent6,
-				    instr_point.name().data(),
-				    mi_lttng_loglevel_string(loglevel, domain_type),
-				    loglevel);
+				lttng::print("{}{} (loglevel: {} ({})) (type: tracepoint)\n",
+					     indent6,
+					     instr_point.name(),
+					     mi_lttng_loglevel_string(loglevel, domain_type),
+					     loglevel);
 			} else {
-				MSG("%s%s (type: tracepoint)", indent6, instr_point.name().data());
+				lttng::print(
+					"{}{} (type: tracepoint)\n", indent6, instr_point.name());
 			}
 		}
+
 		break;
 	}
 	case LTTNG_EVENT_SYSCALL:
-		MSG("%s%s%s%s",
-		    indent6,
-		    instr_point.name().data(),
-		    (the_config->syscall ? "" : " (type:syscall)"),
-		    bitness_event(instr_point.lib().flags));
-		break;
+	{
+		const auto syscall_ip = static_cast<const lttng::cli::kernel_syscall&>(instr_point);
+
+		lttng::print("{}{}{}{}\n",
+			     indent6,
+			     instr_point.name(),
+			     (the_config->syscall ? "" : " (type:syscall)"),
+			     bitness_event(syscall_ip.is_32_bit(), syscall_ip.is_64_bit()));
+	}
+
+	break;
 	default:
 		/* Should not happen for instrumentation points */
-		abort();
-		break;
+		std::abort();
 	}
 }
 
 /*
  * Pretty print single event rule (from a channel).
  */
-static void print_events(const lttng::cli::event_rule& event_rule,
-			 enum lttng_domain_type domain_type)
+void print_events(const lttng::cli::event_rule& event_rule, const lttng_domain_type domain_type)
 {
-	char *filter_msg = nullptr;
-	char *exclusion_msg = nullptr;
+	std::string filter_msg;
 
-	const auto filter_expr = event_rule.filter_expression();
-	if (filter_expr) {
-		if (asprintf(&filter_msg, " [filter: '%s']", filter_expr.data()) == -1) {
-			filter_msg = nullptr;
-		}
+	if (event_rule.filter_expression()) {
+		filter_msg = fmt::format(" [filter: '{}']", event_rule.filter_expression());
 	}
+
+	std::string exclusion_msg;
 
 	/* Exclusions are only supported for UST tracepoint event rules */
 	if (domain_type == LTTNG_DOMAIN_UST && event_rule.type() == LTTNG_EVENT_TRACEPOINT) {
 		const auto ust_event = event_rule.as_ust_tracepoint();
+
 		exclusion_msg = get_exclusion_names_msg(ust_event);
-		if (!exclusion_msg) {
-			exclusion_msg = strdup(" [failed to retrieve exclusions]");
-		}
-	} else {
-		exclusion_msg = strdup("");
 	}
 
 	switch (event_rule.type()) {
 	case LTTNG_EVENT_TRACEPOINT:
 	{
-		if (domain_type == LTTNG_DOMAIN_UST || domain_type == LTTNG_DOMAIN_JUL ||
-		    domain_type == LTTNG_DOMAIN_LOG4J || domain_type == LTTNG_DOMAIN_LOG4J2 ||
-		    domain_type == LTTNG_DOMAIN_PYTHON) {
+		if (is_ust_or_agent_domain(domain_type)) {
 			const auto ust_or_agent_event = event_rule.as_ust_tracepoint();
-			const auto loglevel = ust_or_agent_event.log_level();
 
-			if (loglevel != -1) {
-				MSG("%s%s (loglevel%s %s (%d)) (type: tracepoint)%s%s%s",
-				    indent6,
-				    event_rule.name().data(),
-				    logleveltype_string(ust_or_agent_event.log_level_type()),
-				    mi_lttng_loglevel_string(loglevel, domain_type),
-				    loglevel,
-				    enabled_string(event_rule.is_enabled()),
-				    safe_string(exclusion_msg),
-				    safe_string(filter_msg));
+			if (ust_or_agent_event.log_level() != -1) {
+				lttng::print(
+					"{}{} (loglevel{} {} ({})) (type: tracepoint){}{}{}\n",
+					indent6,
+					event_rule.name(),
+					logleveltype_string(ust_or_agent_event.log_level_type()),
+					mi_lttng_loglevel_string(ust_or_agent_event.log_level(),
+								 domain_type),
+					ust_or_agent_event.log_level(),
+					enabled_string(event_rule.is_enabled()),
+					exclusion_msg,
+					filter_msg);
 			} else {
-				MSG("%s%s (type: tracepoint)%s%s%s",
-				    indent6,
-				    event_rule.name().data(),
-				    enabled_string(event_rule.is_enabled()),
-				    safe_string(exclusion_msg),
-				    safe_string(filter_msg));
+				lttng::print("{}{} (type: tracepoint){}{}{}\n",
+					     indent6,
+					     event_rule.name(),
+					     enabled_string(event_rule.is_enabled()),
+					     exclusion_msg,
+					     filter_msg);
 			}
 		} else {
 			/* Kernel tracepoint event rule */
-			MSG("%s%s (type: tracepoint)%s%s%s",
-			    indent6,
-			    event_rule.name().data(),
-			    enabled_string(event_rule.is_enabled()),
-			    safe_string(exclusion_msg),
-			    safe_string(filter_msg));
+			lttng::print("{}{} (type: tracepoint){}{}{}\n",
+				     indent6,
+				     event_rule.name(),
+				     enabled_string(event_rule.is_enabled()),
+				     exclusion_msg,
+				     filter_msg);
 		}
 		break;
 	}
@@ -351,18 +319,18 @@ static void print_events(const lttng::cli::event_rule& event_rule,
 	{
 		const auto kprobe_event = event_rule.as_linux_kprobe();
 
-		MSG("%s%s (type: %s)%s%s",
-		    indent6,
-		    event_rule.name().data(),
-		    event_rule.type() == LTTNG_EVENT_FUNCTION ? "function" : "probe",
-		    enabled_string(event_rule.is_enabled()),
-		    safe_string(filter_msg));
+		lttng::print("{}{} (type: {}){}{}\n",
+			     indent6,
+			     event_rule.name(),
+			     event_rule.type() == LTTNG_EVENT_FUNCTION ? "function" : "probe",
+			     enabled_string(event_rule.is_enabled()),
+			     filter_msg);
 
 		if (kprobe_event.address() != 0) {
-			MSG("%saddr: 0x%" PRIx64, indent8, kprobe_event.address());
+			lttng::print("{}addr: {:#x}\n", indent8, kprobe_event.address());
 		} else {
-			MSG("%soffset: 0x%" PRIx64, indent8, kprobe_event.offset());
-			MSG("%ssymbol: %s", indent8, kprobe_event.symbol_name().data());
+			lttng::print("{}offset: {:#x}\n", indent8, kprobe_event.offset());
+			lttng::print("{}symbol: {}\n", indent8, kprobe_event.symbol_name());
 		}
 		break;
 	}
@@ -370,33 +338,28 @@ static void print_events(const lttng::cli::event_rule& event_rule,
 		print_userspace_probe_location(event_rule.as_linux_uprobe());
 		break;
 	case LTTNG_EVENT_SYSCALL:
-		MSG("%s%s%s%s%s%s",
-		    indent6,
-		    event_rule.name().data(),
-		    (the_config->syscall ? "" : " (type:syscall)"),
-		    enabled_string(event_rule.is_enabled()),
-		    bitness_event(event_rule.lib().flags),
-		    safe_string(filter_msg));
+		lttng::print("{}{}{}{}{}\n",
+			     indent6,
+			     event_rule.name(),
+			     (the_config->syscall ? "" : " (type:syscall)"),
+			     enabled_string(event_rule.is_enabled()),
+			     filter_msg);
 		break;
 	case LTTNG_EVENT_NOOP:
-		MSG("%s (type: noop)%s%s",
-		    indent6,
-		    enabled_string(event_rule.is_enabled()),
-		    safe_string(filter_msg));
+		lttng::print("{} (type: noop){}{}\n",
+			     indent6,
+			     enabled_string(event_rule.is_enabled()),
+			     filter_msg);
 		break;
 	case LTTNG_EVENT_ALL:
 		/* Fall-through. */
 	default:
 		/* We should never have "all" events in list. */
-		abort();
-		break;
+		std::abort();
 	}
-
-	free(filter_msg);
-	free(exclusion_msg);
 }
 
-static const char *field_type(const lttng::cli::tracepoint_field& field)
+const char *field_type(const lttng::cli::tracepoint_field& field)
 {
 	switch (field.type()) {
 	case LTTNG_EVENT_FIELD_INTEGER:
@@ -416,193 +379,178 @@ static const char *field_type(const lttng::cli::tracepoint_field& field)
 /*
  * Pretty print single event fields.
  */
-static void print_event_field(const lttng::cli::tracepoint_field& field)
+void print_event_field(const lttng::cli::tracepoint_field& field)
 {
 	if (field.name().len() == 0) {
 		return;
 	}
 
-	MSG("%sfield: %s (%s)%s",
-	    indent8,
-	    field.name().data(),
-	    field_type(field),
-	    field.is_no_write() ? " [no write]" : "");
+	lttng::print("{}field: {} ({}){}\n",
+		     indent8,
+		     field.name(),
+		     field_type(field),
+		     field.is_no_write() ? " [no write]" : "");
 }
 
-static int list_agent_events()
+void list_agent_events()
 {
-	int ret = CMD_SUCCESS;
-	pid_t cur_pid = 0;
-
 	LTTNG_ASSERT(the_config->domain_type);
-	const char *agent_domain_str = lttng_domain_type_str(*the_config->domain_type);
+
+	const auto agent_domain_str = lttng_domain_type_str(*the_config->domain_type);
 
 	DBG("Getting %s tracing events", agent_domain_str);
 
 	const lttng::cli::java_python_logger_set loggers(*the_config->domain_type);
 
 	/* Pretty print */
-	MSG("%s events (Logger name):\n-------------------------", agent_domain_str);
+	lttng::print("{} events (Logger name):\n-------------------------\n", agent_domain_str);
 
 	if (loggers.is_empty()) {
-		MSG("None");
+		lttng::print("None\n");
 	}
 
-	for (auto& logger : loggers) {
+	pid_t cur_pid = 0;
+
+	for (const auto& logger : loggers) {
 		if (cur_pid != logger.pid()) {
 			cur_pid = logger.pid();
+
 			const auto cmdline = logger.cmdline();
 
 			if (!cmdline) {
-				ret = CMD_ERROR;
-				return ret;
+				LTTNG_THROW_ERROR("Failed to get command line of PID");
 			}
 
-			MSG("\nPID: %d - Name: %s", cur_pid, cmdline->c_str());
+			lttng::print("\nPID: {} - Name: {}\n", cur_pid, *cmdline);
 		}
 
-		MSG("%s- %s", indent6, logger.name().data());
+		lttng::print("{}- {}\n", indent6, logger.name());
 	}
 
-	MSG("");
-	return ret;
+	lttng::print("\n");
 }
 
 /*
  * Ask session daemon for all user space tracepoints available.
  */
-static int list_ust_events()
+void list_ust_events()
 {
-	int ret = CMD_SUCCESS;
-	pid_t cur_pid = 0;
-
 	DBG("Getting UST tracing events");
 
 	const lttng::cli::ust_tracepoint_set tracepoints;
 
 	/* Pretty print */
-	MSG("UST events:\n-------------");
+	lttng::print("UST events:\n-------------\n");
 
 	if (tracepoints.is_empty()) {
-		MSG("None");
+		lttng::print("None\n");
 	}
 
-	for (auto& tracepoint : tracepoints) {
+	pid_t cur_pid = 0;
+
+	for (const auto& tracepoint : tracepoints) {
 		if (cur_pid != tracepoint.pid()) {
 			cur_pid = tracepoint.pid();
+
 			const auto cmdline = tracepoint.cmdline();
 
 			if (!cmdline) {
-				ret = CMD_ERROR;
-				return ret;
+				LTTNG_THROW_ERROR("Failed to get command line of PID");
 			}
 
-			MSG("\nPID: %d - Name: %s", cur_pid, cmdline->c_str());
+			lttng::print("\nPID: {} - Name: {}\n", cur_pid, *cmdline);
 		}
 
 		print_instrumentation_point(tracepoint, LTTNG_DOMAIN_UST);
 	}
 
-	MSG("");
-	return ret;
+	lttng::print("\n");
 }
 
 /*
  * Ask session daemon for all user space tracepoint fields available.
  */
-static int list_ust_event_fields()
+void list_ust_event_fields()
 {
-	int ret = CMD_SUCCESS;
-	pid_t cur_pid = 0;
-
 	DBG("Getting UST tracing event fields");
 
 	const lttng::cli::ust_tracepoint_set tracepoints;
 
 	/* Pretty print */
-	MSG("UST events:\n-------------");
+	lttng::print("UST events:\n-------------\n");
 
 	if (tracepoints.is_empty()) {
-		MSG("None");
+		lttng::print("None\n");
 	}
 
-	for (auto& tracepoint : tracepoints) {
+	pid_t cur_pid = 0;
+
+	for (const auto& tracepoint : tracepoints) {
 		if (cur_pid != tracepoint.pid()) {
 			cur_pid = tracepoint.pid();
+
 			const auto cmdline = tracepoint.cmdline();
 
 			if (!cmdline) {
-				ret = CMD_ERROR;
-				return ret;
+				LTTNG_THROW_ERROR("Failed to get command line of PID");
 			}
 
-			MSG("\nPID: %d - Name: %s", cur_pid, cmdline->c_str());
+			lttng::print("\nPID: {} - Name: {}\n", cur_pid, *cmdline);
 		}
 
 		/* Print the event */
 		print_instrumentation_point(tracepoint, LTTNG_DOMAIN_UST);
 
 		/* Print all fields for this event */
-		for (auto& field : tracepoint.fields()) {
+		for (const auto& field : tracepoint.fields()) {
 			print_event_field(field);
 		}
 	}
 
-	MSG("");
-	return ret;
+	lttng::print("\n");
 }
 
 /*
  * Ask for all trace events in the kernel
  */
-static int list_kernel_events()
+void list_kernel_events()
 {
-	int ret = CMD_SUCCESS;
-
 	DBG("Getting kernel tracing events");
 
 	const lttng::cli::kernel_tracepoint_set tracepoints;
 
-	MSG("Kernel events:\n-------------");
+	lttng::print("Kernel events:\n-------------\n");
 
-	for (auto& tracepoint : tracepoints) {
+	for (const auto& tracepoint : tracepoints) {
 		print_instrumentation_point(tracepoint, LTTNG_DOMAIN_KERNEL);
 	}
 
-	MSG("");
-	return ret;
+	lttng::print("\n");
 }
 
 /*
  * Ask for kernel system calls.
  */
-static int list_syscalls()
+void list_syscalls()
 {
-	int ret = CMD_SUCCESS;
-
 	DBG("Getting kernel system call events");
 
 	const lttng::cli::kernel_syscall_set syscalls;
 
-	MSG("System calls:\n-------------");
+	lttng::print("System calls:\n-------------\n");
 
-	for (auto& syscall : syscalls) {
+	for (const auto& syscall : syscalls) {
 		print_instrumentation_point(syscall, LTTNG_DOMAIN_KERNEL);
 	}
 
-	MSG("");
-	return ret;
+	lttng::print("\n");
 }
 
 /*
  * List agent events for a specific session using the domain.
- *
- * Return CMD_SUCCESS on success else a negative value.
  */
-static int list_session_agent_events(const lttng::cli::domain& domain)
+void list_session_agent_events(const lttng::cli::domain& domain)
 {
-	int ret = CMD_SUCCESS;
-
 	/*
 	 * For Java/Python domains, there are no channels.
 	 * Get event rules directly from the domain.
@@ -610,90 +558,82 @@ static int list_session_agent_events(const lttng::cli::domain& domain)
 	const auto event_rules = domain.as_java_python().event_rules();
 
 	/* Pretty print */
-	MSG("Event rules:\n---------------------");
+	lttng::print("Event rules:\n---------------------\n");
+
 	if (event_rules.is_empty()) {
-		MSG("%sNone\n", indent6);
-		return ret;
+		lttng::print("{}None\n\n", indent6);
+		return;
 	}
 
-	for (auto& event_rule : event_rules) {
+	for (const auto& event_rule : event_rules) {
 		const auto agent_rule = event_rule.as_java_python_logger();
-		char *filter_msg = nullptr;
+		std::string filter_msg;
 
-		const auto filter_expr = agent_rule.filter_expression();
-
-		if (!filter_expr) {
-			filter_msg = nullptr;
-		} else {
-			if (asprintf(&filter_msg, " [filter: '%s']", filter_expr.data()) == -1) {
-				filter_msg = nullptr;
-			}
+		if (agent_rule.filter_expression()) {
+			filter_msg =
+				lttng::format(" [filter: '{}']", agent_rule.filter_expression());
 		}
 
 		if (agent_rule.log_level_type() != LTTNG_EVENT_LOGLEVEL_ALL) {
-			MSG("%s- %s%s (loglevel%s %s)%s",
-			    indent4,
-			    agent_rule.name().data(),
-			    enabled_string(agent_rule.is_enabled()),
-			    logleveltype_string(agent_rule.log_level_type()),
-			    mi_lttng_loglevel_string(agent_rule.log_level(), domain.type()),
-			    safe_string(filter_msg));
+			lttng::print("{}- {}{} (loglevel{} {}){}\n",
+				     indent4,
+				     agent_rule.name(),
+				     enabled_string(agent_rule.is_enabled()),
+				     logleveltype_string(agent_rule.log_level_type()),
+				     mi_lttng_loglevel_string(agent_rule.log_level(),
+							      domain.type()),
+				     filter_msg);
 		} else {
-			MSG("%s- %s%s%s",
-			    indent4,
-			    agent_rule.name().data(),
-			    enabled_string(agent_rule.is_enabled()),
-			    safe_string(filter_msg));
+			lttng::print("{}- {}{}{}\n",
+				     indent4,
+				     agent_rule.name(),
+				     enabled_string(agent_rule.is_enabled()),
+				     filter_msg);
 		}
-
-		free(filter_msg);
 	}
 
-	MSG("");
-	return ret;
+	lttng::print("\n");
 }
 
 /*
  * List events of channel of session and domain.
  */
-static int list_events(const lttng::cli::channel& channel)
+void list_events(const lttng::cli::channel& channel)
 {
-	int ret = CMD_SUCCESS;
-
 	const auto event_rules = channel.event_rules();
 
 	/* Pretty print */
-	MSG("\n%sRecording event rules:", indent4);
+	lttng::print("\n{}Recording event rules:\n", indent4);
 	if (event_rules.is_empty()) {
-		MSG("%sNone\n", indent6);
-		return ret;
+		lttng::print("{}None\n\n", indent6);
+		return;
 	}
 
-	for (auto& event_rule : event_rules) {
+	for (const auto& event_rule : event_rules) {
 		print_events(event_rule, channel.domain_type());
 	}
 
-	MSG("");
-	return ret;
+	lttng::print("\n");
 }
 
-static void print_timer(const char *timer_name, uint32_t space_count, int64_t value)
+void print_timer(const char *const timer_name,
+		 const std::uint32_t space_count,
+		 const std::int64_t value)
 {
-	uint32_t i;
+	lttng::print("{}{}:", indent6, timer_name);
 
-	_MSG("%s%s:", indent6, timer_name);
-	for (i = 0; i < space_count; i++) {
-		_MSG(" ");
+	for (auto i = 0U; i < space_count; ++i) {
+		lttng::print(" ");
 	}
 
 	if (value) {
-		MSG("%" PRId64 " %s", value, USEC_UNIT);
+		lttng::print("{} {}\n", value, USEC_UNIT);
 	} else {
-		MSG("inactive");
+		lttng::print("inactive\n");
 	}
 }
 
-static const char *allocation_policy_to_pretty_string(enum lttng_channel_allocation_policy policy)
+const char *allocation_policy_to_pretty_string(const lttng_channel_allocation_policy policy)
 {
 	switch (policy) {
 	case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU:
@@ -705,8 +645,7 @@ static const char *allocation_policy_to_pretty_string(enum lttng_channel_allocat
 	}
 }
 
-static const char *
-preallocation_policy_to_pretty_string(enum lttng_channel_preallocation_policy policy)
+const char *preallocation_policy_to_pretty_string(const lttng_channel_preallocation_policy policy)
 {
 	switch (policy) {
 	case LTTNG_CHANNEL_PREALLOCATION_POLICY_PREALLOCATE:
@@ -718,109 +657,105 @@ preallocation_policy_to_pretty_string(enum lttng_channel_preallocation_policy po
 	}
 }
 
-static void print_detailed_mem_usage(const lttng::cli::data_stream_info_sets& ds_info_sets)
+void print_detailed_mem_usage(const lttng::cli::data_stream_info_sets& ds_info_sets)
 {
 	for (const auto& ds_info_set : ds_info_sets) {
-		const auto uid = ds_info_set.uid();
-		const auto pid = ds_info_set.pid();
-		const auto app_bitness = ds_info_set.app_bitness();
-
 		{
 			std::string msg = fmt::format("Data streams for ", indent6);
 
-			if (uid) {
-				msg += fmt::format("UID {}", *uid);
+			if (ds_info_set.uid()) {
+				msg += fmt::format("UID {}", *ds_info_set.uid());
 			}
 
-			if (pid) {
-				msg += fmt::format("PID {}", *pid);
+			if (ds_info_set.pid()) {
+				msg += fmt::format("PID {}", *ds_info_set.pid());
 			}
 
-			if (app_bitness) {
-				msg += fmt::format(" ({}-bit)",
-						   *app_bitness == LTTNG_APP_BITNESS_32 ? 32 : 64);
+			if (ds_info_set.app_bitness()) {
+				msg += fmt::format(
+					" ({}-bit)",
+					*ds_info_set.app_bitness() == LTTNG_APP_BITNESS_32 ? 32 :
+											     64);
 			}
 
 			msg += fmt::format(
 				": {}:", utils_string_from_size(ds_info_set.memory_usage_bytes()));
-			MSG("%s%s", indent6, msg.c_str());
+			lttng::print("{}{}\n", indent6, msg);
 		}
 
 		auto ds_info_i = 0U;
-		for (const auto& ds_info : ds_info_set) {
-			const auto cpu_id = ds_info.cpu_id();
-			const auto mem_bytes = ds_info.memory_usage_bytes();
 
+		for (const auto& ds_info : ds_info_set) {
 			std::string msg = fmt::format("[{}] ", ds_info_i);
 
-			if (cpu_id) {
-				msg += fmt::format("CPU {}: ", *cpu_id);
+			if (ds_info.cpu_id()) {
+				msg += fmt::format("CPU {}: ", *ds_info.cpu_id());
 			}
 
-			msg += utils_string_from_size(mem_bytes);
-			MSG("%s%s", indent8, msg.c_str());
+			msg += utils_string_from_size(ds_info.memory_usage_bytes());
+			lttng::print("{}{}\n", indent8, msg);
 			++ds_info_i;
 		}
 	}
 }
 
-static void print_mem_usage(const lttng::cli::ust_or_java_python_channel& channel)
+void print_mem_usage(const lttng::cli::ust_or_java_python_channel& channel)
 {
 	const auto ds_info_sets = channel.data_stream_infos();
 	const auto msg = fmt::format("Buffer memory usage: {}",
 				     utils_string_from_size(ds_info_sets.memory_usage_bytes()));
 
 	if (the_config->stream_info_details && !ds_info_sets.is_empty()) {
-		MSG("\n%s%s:", indent4, msg.c_str());
+		lttng::print("\n{}{}:\n", indent4, msg);
 		print_detailed_mem_usage(ds_info_sets);
 	} else {
-		MSG("\n%s%s", indent4, msg.c_str());
+		lttng::print("\n{}{}\n", indent4, msg);
 	}
 }
 
 /*
  * Pretty print channel
  */
-static void print_channel(const lttng::cli::channel& channel, bool snapshot_mode)
+void print_channel(const lttng::cli::channel& channel, const bool snapshot_mode)
 {
-	MSG("- %s:%s\n", channel.name().data(), enabled_string(channel.is_enabled()));
-	MSG("%sAttributes:", indent4);
+	lttng::print("- {}:{}\n\n", channel.name(), enabled_string(channel.is_enabled()));
+	lttng::print("{}Attributes:\n", indent4);
 
 	if (is_ust_or_agent_domain(channel.domain_type())) {
-		const auto& ust_channel = channel.as_ust_or_java_python();
-		const auto allocation_policy_str =
-			allocation_policy_to_pretty_string(ust_channel.allocation_policy());
+		const auto ust_channel = channel.as_ust_or_java_python();
 
-		MSG("%sAllocation policy: %s", indent6, allocation_policy_str);
-
-		MSG("%sPreallocation policy: %s",
-		    indent6,
-		    preallocation_policy_to_pretty_string(ust_channel.preallocation_policy()));
+		lttng::print("{}Allocation policy: {}\n",
+			     indent6,
+			     allocation_policy_to_pretty_string(ust_channel.allocation_policy()));
+		lttng::print(
+			"{}Preallocation policy: {}\n",
+			indent6,
+			preallocation_policy_to_pretty_string(ust_channel.preallocation_policy()));
 	}
 
-	MSG("%sEvent-loss mode:   %s",
-	    indent6,
-	    channel.is_discard_mode() ? "discard" : "overwrite");
-	MSG("%sSub-buffer size:   %" PRIu64 " bytes", indent6, channel.sub_buf_size());
-	MSG("%sSub-buffer count:  %" PRIu64, indent6, channel.sub_buf_count());
+	lttng::print("{}Event-loss mode:   {}\n",
+		     indent6,
+		     channel.is_discard_mode() ? "discard" : "overwrite");
+	lttng::print("{}Sub-buffer size:   {} bytes\n", indent6, channel.sub_buf_size());
+	lttng::print("{}Sub-buffer count:  {}\n", indent6, channel.sub_buf_count());
 
 	if (is_ust_or_agent_domain(channel.domain_type())) {
-		static const char *const prop_name = "Automatic memory reclamation policy";
+		static constexpr auto prop_name = "Automatic memory reclamation policy";
 		const auto maximal_age_us =
 			channel.as_ust_or_java_python().automatic_memory_reclaim_maximal_age_us();
 
 		if (maximal_age_us) {
 			if (*maximal_age_us == 0) {
-				MSG("%s%s: consumed", indent6, prop_name);
+				lttng::print("{}{}: consumed\n", indent6, prop_name);
 			} else {
-				MSG("%s%s: when older than %" PRIu64 " %s",
-				    indent6,
-				    prop_name,
-				    *maximal_age_us,
-				    USEC_UNIT);
+				lttng::print("{}{}: when older than {} {}\n",
+					     indent6,
+					     prop_name,
+					     *maximal_age_us,
+					     USEC_UNIT);
 			}
 		} else {
-			MSG("%s%s: none", indent6, prop_name);
+			lttng::print("{}{}: none\n", indent6, prop_name);
 		}
 	}
 
@@ -831,6 +766,7 @@ static void print_channel(const lttng::cli::channel& channel, bool snapshot_mode
 	if (is_ust_or_agent_domain(channel.domain_type())) {
 		const auto watchdog_timer =
 			channel.as_ust_or_java_python().watchdog_timer_period_us();
+
 		if (watchdog_timer) {
 			print_timer("Watchdog timer", 4, *watchdog_timer);
 		}
@@ -838,41 +774,48 @@ static void print_channel(const lttng::cli::channel& channel, bool snapshot_mode
 
 	if (channel.is_discard_mode() && is_ust_or_agent_domain(channel.domain_type())) {
 		const auto blocking_timeout = channel.as_ust_or_java_python().blocking_timeout_us();
+
 		if (blocking_timeout) {
-			MSG("%sBlocking timeout:  %" PRIu64 " %s",
-			    indent6,
-			    *blocking_timeout,
-			    USEC_UNIT);
+			lttng::print("{}Blocking timeout:  {} {}\n",
+				     indent6,
+				     *blocking_timeout,
+				     USEC_UNIT);
 		} else {
-			MSG("%sBlocking timeout:  infinite", indent6);
+			lttng::print("{}Blocking timeout:  infinite\n", indent6);
 		}
 	}
 
-	const auto trace_file_count = channel.max_trace_file_count();
-	MSG("%sTrace file count:  %" PRIu64 " per stream",
-	    indent6,
-	    trace_file_count == 0 ? 1 : trace_file_count);
+	{
+		const auto trace_file_count = channel.max_trace_file_count();
 
-	const auto trace_file_size = channel.max_trace_file_size();
-	if (trace_file_size != 0) {
-		MSG("%sTrace file size:   %" PRIu64 " bytes", indent6, trace_file_size);
-	} else {
-		MSG("%sTrace file size:   %s", indent6, "unlimited");
+		lttng::print("{}Trace file count:  {} per stream\n",
+			     indent6,
+			     trace_file_count == 0 ? 1 : trace_file_count);
+	}
+
+	{
+		const auto trace_file_size = channel.max_trace_file_size();
+
+		if (trace_file_size != 0) {
+			lttng::print("{}Trace file size:   {} bytes\n", indent6, trace_file_size);
+		} else {
+			lttng::print("{}Trace file size:   {}\n", indent6, "unlimited");
+		}
 	}
 
 	if (channel.domain_type() == LTTNG_DOMAIN_KERNEL) {
-		const auto output_type = channel.as_kernel().output_type();
-		switch (output_type) {
+		switch (channel.as_kernel().output_type()) {
 		case LTTNG_EVENT_SPLICE:
-			MSG("%sOutput mode:       splice", indent6);
+			lttng::print("{}Output mode:       splice\n", indent6);
 			break;
 		case LTTNG_EVENT_MMAP:
-			MSG("%sOutput mode:       mmap", indent6);
+			lttng::print("{}Output mode:       mmap\n", indent6);
 			break;
 		}
 	}
 
-	MSG("\n%sStatistics:", indent4);
+	lttng::print("\n{}Statistics:\n", indent4);
+
 	if (snapshot_mode) {
 		/*
 		 * The lost packet count is omitted for sessions in snapshot
@@ -887,23 +830,23 @@ static void print_channel(const lttng::cli::channel& channel, bool snapshot_mode
 		 * packets lost between the first and last extracted
 		 * packets of a given snapshot (which prevents most analyses).
 		 */
-		MSG("%sNone", indent6);
+		lttng::print("{}None\n", indent6);
 		goto skip_stats_printing;
 	}
 
 	if (channel.is_discard_mode()) {
-		MSG("%sDiscarded events: %" PRIu64,
-		    indent6,
-		    channel.discarded_event_record_count());
+		lttng::print("{}Discarded events: {}\n",
+			     indent6,
+			     channel.discarded_event_record_count());
 	} else {
-		MSG("%sLost packets:     %" PRIu64, indent6, channel.discarded_packet_count());
+		lttng::print("{}Lost packets:     {}\n", indent6, channel.discarded_packet_count());
 	}
+
 skip_stats_printing:
 	/* Print memory usage for UST and agent channels */
 	if (is_ust_or_agent_domain(channel.domain_type())) {
 		print_mem_usage(channel.as_ust_or_java_python());
 	}
-	return;
 }
 
 /*
@@ -911,25 +854,25 @@ skip_stats_printing:
  *
  * If channel_name is NULL, all channels are listed.
  */
-static int
-list_channels(const lttng::cli::domain& domain, const char *channel_name, bool snapshot_mode)
+void list_channels(const lttng::cli::domain& domain,
+		   const char *const channel_name,
+		   const bool snapshot_mode)
 {
-	int ret = CMD_SUCCESS;
-	unsigned int chan_found = 0;
-
 	DBG("Listing channel(s) (%s)", channel_name ?: "<all>");
 
 	const auto channels = domain.channels();
 
 	/* Pretty print */
 	if (!channels.is_empty()) {
-		MSG("Channels:\n-------------");
+		lttng::print("Channels:\n-------------\n");
 	}
 
-	for (auto& channel : channels) {
-		if (channel_name != nullptr) {
+	auto chan_found = false;
+
+	for (const auto& channel : channels) {
+		if (channel_name) {
 			if (channel.name() == channel_name) {
-				chan_found = 1;
+				chan_found = true;
 			} else {
 				continue;
 			}
@@ -938,10 +881,7 @@ list_channels(const lttng::cli::domain& domain, const char *channel_name, bool s
 		print_channel(channel, snapshot_mode);
 
 		/* Listing events per channel */
-		ret = list_events(channel);
-		if (ret) {
-			return ret;
-		}
+		list_events(channel);
 
 		if (chan_found) {
 			break;
@@ -949,14 +889,11 @@ list_channels(const lttng::cli::domain& domain, const char *channel_name, bool s
 	}
 
 	if (!chan_found && channel_name != nullptr) {
-		ret = CMD_ERROR;
-		ERR("Channel %s not found", channel_name);
+		LTTNG_THROW_ERROR(lttng::format("Channel {} not found", channel_name));
 	}
-
-	return ret;
 }
 
-static const char *get_capitalized_process_attr_str(enum lttng_process_attr process_attr)
+const char *get_capitalized_process_attr_str(const lttng_process_attr process_attr)
 {
 	switch (process_attr) {
 	case LTTNG_PROCESS_ATTR_PROCESS_ID:
@@ -974,65 +911,45 @@ static const char *get_capitalized_process_attr_str(enum lttng_process_attr proc
 	default:
 		return "Unknown";
 	}
-	return nullptr;
-}
 
-static inline bool is_value_type_name(enum lttng_process_attr_value_type value_type)
-{
-	return value_type == LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME ||
-		value_type == LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME;
+	return nullptr;
 }
 
 /*
  * List a process attribute tracker for a session and domain tuple.
  */
-static int list_process_attr_tracker(const lttng::cli::process_attr_tracker& tracker,
-				     enum lttng_process_attr process_attr)
+void list_process_attr_tracker(const lttng::cli::process_attr_tracker& tracker,
+			       const lttng_process_attr process_attr)
 {
-	int ret = CMD_SUCCESS;
+	lttng::print("  {:<22}",
+		     lttng::format("{}s:", get_capitalized_process_attr_str(process_attr)));
 
-	{
-		char *process_attr_name;
-		const int print_ret = asprintf(
-			&process_attr_name, "%ss:", get_capitalized_process_attr_str(process_attr));
-
-		if (print_ret == -1) {
-			return CMD_FATAL;
-		}
-
-		_MSG("  %-22s", process_attr_name);
-		free(process_attr_name);
-	}
-
-	const auto policy = tracker.tracking_policy();
-
-	switch (policy) {
+	switch (tracker.tracking_policy()) {
 	case LTTNG_TRACKING_POLICY_INCLUDE_SET:
 		break;
 	case LTTNG_TRACKING_POLICY_EXCLUDE_ALL:
-		MSG("none");
-		return CMD_SUCCESS;
+		lttng::print("none\n");
+		return;
 	case LTTNG_TRACKING_POLICY_INCLUDE_ALL:
-		MSG("all");
-		return CMD_SUCCESS;
+		lttng::print("all\n");
+		return;
 	default:
-		ERR("Unknown tracking policy encountered");
-		return CMD_FATAL;
+		LTTNG_THROW_ERROR("Unknown tracking policy encountered");
 	}
 
 	const auto inclusion_set = tracker.inclusion_set();
 
 	if (!inclusion_set || inclusion_set->empty()) {
 		/* Functionally equivalent to the 'exclude all' policy. */
-		MSG("none");
-		return CMD_SUCCESS;
+		lttng::print("none\n");
+		return;
 	}
 
 	auto first = true;
 
-	for (auto& value : *inclusion_set) {
+	for (const auto& value : *inclusion_set) {
 		if (!first) {
-			_MSG(", ");
+			lttng::print(", ");
 		}
 
 		first = false;
@@ -1040,47 +957,48 @@ static int list_process_attr_tracker(const lttng::cli::process_attr_tracker& tra
 		switch (value.type()) {
 		case LTTNG_PROCESS_ATTR_VALUE_TYPE_PID:
 			if (const auto pid = value.pid()) {
-				_MSG("%" PRId64, static_cast<int64_t>(*pid));
+				lttng::print("{}", static_cast<int64_t>(*pid));
 			}
+
 			break;
 		case LTTNG_PROCESS_ATTR_VALUE_TYPE_UID:
 			if (const auto uid = value.uid()) {
-				_MSG("%" PRId64, static_cast<int64_t>(*uid));
+				lttng::print("{}", static_cast<int64_t>(*uid));
 			}
+
 			break;
 		case LTTNG_PROCESS_ATTR_VALUE_TYPE_GID:
 			if (const auto gid = value.gid()) {
-				_MSG("%" PRId64, static_cast<int64_t>(*gid));
+				lttng::print("{}", static_cast<int64_t>(*gid));
 			}
+
 			break;
 		case LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME:
 			if (const auto name = value.user_name()) {
-				_MSG("`%s`", name.data());
+				lttng::print("`{}`", name);
 			}
+
 			break;
 		case LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME:
 			if (const auto name = value.group_name()) {
-				_MSG("`%s`", name.data());
+				lttng::print("`{}`", name);
 			}
+
 			break;
 		default:
-			ret = CMD_ERROR;
-			return ret;
+			LTTNG_THROW_ERROR("");
 		}
 	}
 
-	MSG("");
-	return ret;
+	lttng::print("\n");
 }
 
 /*
  * List all trackers of a domain
  */
-static int list_trackers(const lttng::cli::domain& domain)
+void list_trackers(const lttng::cli::domain& domain)
 {
-	int ret = CMD_SUCCESS;
-
-	MSG("Tracked process attributes");
+	lttng::print("Tracked process attributes\n");
 
 	switch (domain.type()) {
 	case LTTNG_DOMAIN_KERNEL:
@@ -1088,47 +1006,28 @@ static int list_trackers(const lttng::cli::domain& domain)
 		const auto kernel_domain = domain.as_kernel();
 
 		/* pid tracker */
-		ret = list_process_attr_tracker(kernel_domain.process_id_tracker(),
-						LTTNG_PROCESS_ATTR_PROCESS_ID);
-		if (ret) {
-			return ret;
-		}
+		list_process_attr_tracker(kernel_domain.process_id_tracker(),
+					  LTTNG_PROCESS_ATTR_PROCESS_ID);
 
 		/* vpid tracker */
-		ret = list_process_attr_tracker(kernel_domain.virtual_process_id_tracker(),
-						LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID);
-		if (ret) {
-			return ret;
-		}
+		list_process_attr_tracker(kernel_domain.virtual_process_id_tracker(),
+					  LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID);
 
 		/* uid tracker */
-		ret = list_process_attr_tracker(kernel_domain.user_id_tracker(),
-						LTTNG_PROCESS_ATTR_USER_ID);
-		if (ret) {
-			return ret;
-		}
+		list_process_attr_tracker(kernel_domain.user_id_tracker(),
+					  LTTNG_PROCESS_ATTR_USER_ID);
 
 		/* vuid tracker */
-		ret = list_process_attr_tracker(kernel_domain.virtual_user_id_tracker(),
-						LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID);
-		if (ret) {
-			return ret;
-		}
+		list_process_attr_tracker(kernel_domain.virtual_user_id_tracker(),
+					  LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID);
 
 		/* gid tracker */
-		ret = list_process_attr_tracker(kernel_domain.group_id_tracker(),
-						LTTNG_PROCESS_ATTR_GROUP_ID);
-		if (ret) {
-			return ret;
-		}
+		list_process_attr_tracker(kernel_domain.group_id_tracker(),
+					  LTTNG_PROCESS_ATTR_GROUP_ID);
 
 		/* vgid tracker */
-		ret = list_process_attr_tracker(kernel_domain.virtual_group_id_tracker(),
-						LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID);
-		if (ret) {
-			return ret;
-		}
-
+		list_process_attr_tracker(kernel_domain.virtual_group_id_tracker(),
+					  LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID);
 		break;
 	}
 	case LTTNG_DOMAIN_UST:
@@ -1136,214 +1035,181 @@ static int list_trackers(const lttng::cli::domain& domain)
 		const auto ust_domain = domain.as_ust();
 
 		/* vpid tracker */
-		ret = list_process_attr_tracker(ust_domain.virtual_process_id_tracker(),
-						LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID);
-		if (ret) {
-			return ret;
-		}
+		list_process_attr_tracker(ust_domain.virtual_process_id_tracker(),
+					  LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID);
 
 		/* vuid tracker */
-		ret = list_process_attr_tracker(ust_domain.virtual_user_id_tracker(),
-						LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID);
-		if (ret) {
-			return ret;
-		}
+		list_process_attr_tracker(ust_domain.virtual_user_id_tracker(),
+					  LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID);
 
 		/* vgid tracker */
-		ret = list_process_attr_tracker(ust_domain.virtual_group_id_tracker(),
-						LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID);
-		if (ret) {
-			return ret;
-		}
-
+		list_process_attr_tracker(ust_domain.virtual_group_id_tracker(),
+					  LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID);
 		break;
 	}
 	default:
 		break;
 	}
 
-	MSG();
-	return ret;
+	lttng::print("\n");
 }
 
-static enum cmd_error_code
-print_periodic_rotation_schedule(const lttng::cli::rotation_schedule_periodic& schedule)
+void print_periodic_rotation_schedule(const lttng::cli::rotation_schedule_periodic& schedule)
 {
-	MSG("    timer period: %" PRIu64 " %s", schedule.period(), USEC_UNIT);
-	return CMD_SUCCESS;
+	lttng::print("    timer period: {} {}\n", schedule.period(), USEC_UNIT);
 }
 
-static enum cmd_error_code
-print_size_threshold_rotation_schedule(const lttng::cli::rotation_schedule_size& schedule)
+void print_size_threshold_rotation_schedule(const lttng::cli::rotation_schedule_size& schedule)
 {
-	MSG("    size threshold: %" PRIu64 " bytes", schedule.threshold());
-	return CMD_SUCCESS;
+	lttng::print("    size threshold: {} bytes\n", schedule.threshold());
 }
 
-static enum cmd_error_code print_rotation_schedule(const lttng::cli::rotation_schedule& schedule)
+void print_rotation_schedule(const lttng::cli::rotation_schedule& schedule)
 {
-	enum cmd_error_code ret;
-
 	switch (schedule.type()) {
 	case LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD:
-		ret = print_size_threshold_rotation_schedule(schedule.as_size());
+		print_size_threshold_rotation_schedule(schedule.as_size());
 		break;
 	case LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC:
-		ret = print_periodic_rotation_schedule(schedule.as_periodic());
+		print_periodic_rotation_schedule(schedule.as_periodic());
 		break;
 	default:
-		ret = CMD_ERROR;
+		LTTNG_THROW_ERROR("");
 	}
-	return ret;
 }
 
 /*
  * List the automatic rotation settings.
  */
-static enum cmd_error_code list_rotate_settings(const lttng::cli::session& session)
+void list_rotate_settings(const lttng::cli::session& session)
 {
-	enum cmd_error_code cmd_ret = CMD_SUCCESS;
 	const auto schedules = session.rotation_schedules();
 
 	if (schedules.is_empty()) {
-		return CMD_SUCCESS;
+		return;
 	}
 
-	MSG("Automatic rotation schedules:");
+	lttng::print("Automatic rotation schedules:\n");
 
-	for (auto& schedule : schedules) {
-		enum cmd_error_code tmp_ret = CMD_SUCCESS;
-
-		tmp_ret = print_rotation_schedule(schedule);
-
-		/*
-		 * Report an error if the serialization of any of the
-		 * descriptors failed.
-		 */
-		cmd_ret = cmd_ret ? cmd_ret : tmp_ret;
+	for (const auto& schedule : schedules) {
+		print_rotation_schedule(schedule);
 	}
 
-	_MSG("\n");
-	return cmd_ret;
+	lttng::print("\n");
 }
 
 /*
  * List available tracing session. List only basic information.
- *
- * If session_name is NULL, all sessions are listed.
  */
-static int list_sessions(const lttng::cli::session_list& sessions, const char *session_name)
+void list_sessions(const lttng::cli::session_list& sessions)
 {
-	int ret = CMD_SUCCESS;
-	unsigned int session_found = 0;
-
 	DBG("Session count %zu", sessions.size());
 
 	/* Pretty print */
 	if (sessions.is_empty()) {
-		MSG("Currently no available recording session");
-		return ret;
+		lttng::print("Currently no available recording session\n");
+		return;
 	}
 
-	if (session_name == nullptr) {
-		MSG("Available recording sessions:");
+	if (!the_config->session_name) {
+		lttng::print("Available recording sessions:\n");
 	}
 
+	auto session_found = false;
 	auto i = 0U;
 
-	for (auto& session : sessions) {
-		if (session_name != nullptr) {
-			if (session.name() == session_name) {
-				session_found = 1;
-				MSG("Recording session %s: [%s%s]",
-				    session_name,
-				    active_string(session.is_active()),
-				    snapshot_string(session.is_snapshot_mode()));
+	for (const auto& session : sessions) {
+		if (the_config->session_name) {
+			if (session.name() == *the_config->session_name) {
+				session_found = true;
+				lttng::print("Recording session {}: [{}{}]\n",
+					     *the_config->session_name,
+					     active_string(session.is_active()),
+					     snapshot_string(session.is_snapshot_mode()));
 
-				if (*session.output()) {
-					MSG("%sTrace output: %s\n",
-					    indent4,
-					    session.output().data());
+				if (session.output()) {
+					lttng::print("{}Trace output: {}\n\n",
+						     indent4,
+						     session.output());
 				}
+
 				break;
 			}
 		} else {
-			MSG("  %d) %s [%s%s]",
-			    i + 1,
-			    session.name().data(),
-			    active_string(session.is_active()),
-			    snapshot_string(session.is_snapshot_mode()));
+			lttng::print("  {}) {} [{}{}]\n",
+				     i + 1,
+				     session.name(),
+				     active_string(session.is_active()),
+				     snapshot_string(session.is_snapshot_mode()));
 
-			if (*session.output()) {
-				MSG("%sTrace output: %s", indent4, session.output().data());
+			if (session.output()) {
+				lttng::print("{}Trace output: {}\n", indent4, session.output());
 			}
 
 			if (const auto live_period = session.live_timer_period_us()) {
-				MSG("%sLive timer interval: %u %s",
-				    indent4,
-				    *live_period,
-				    USEC_UNIT);
+				lttng::print("{}Live timer interval: {} {}\n",
+					     indent4,
+					     *live_period,
+					     USEC_UNIT);
 			}
-			MSG("");
+
+			lttng::print("\n");
 		}
 
-		i++;
+		++i;
 	}
 
-	if (!session_found && session_name != nullptr) {
-		ERR("Session '%s' not found", session_name);
-		ret = CMD_ERROR;
+	if (!session_found && the_config->session_name) {
+		LTTNG_THROW_ERROR(
+			lttng::format("Session '{}' not found", *the_config->session_name));
 	}
 
-	if (session_name == nullptr) {
-		MSG("\nUse lttng list <session_name> for more details");
+	if (!the_config->session_name) {
+		lttng::print("\nUse lttng list <session_name> for more details\n");
 	}
-
-	return ret;
 }
 
 /*
  * List available domain(s) for a session.
  */
-static int list_domains(const lttng::cli::session& session)
+void list_domains(const lttng::cli::session& session)
 {
-	int ret = CMD_SUCCESS;
 	const auto domains = session.domains();
 
 	/* Pretty print */
-	MSG("Domains:\n-------------");
+	lttng::print("Domains:\n-------------\n");
 	if (domains.is_empty()) {
-		MSG("  None");
-		return ret;
+		lttng::print("  None\n");
+		return;
 	}
 
-	for (auto& domain : domains) {
+	for (const auto& domain : domains) {
 		switch (domain.type()) {
 		case LTTNG_DOMAIN_KERNEL:
-			MSG("  - Kernel");
+			lttng::print("  - Kernel\n");
 			break;
 		case LTTNG_DOMAIN_UST:
-			MSG("  - UST global");
+			lttng::print("  - UST global\n");
 			break;
 		case LTTNG_DOMAIN_JUL:
-			MSG("  - JUL (java.util.logging)");
+			lttng::print("  - JUL (java.util.logging)\n");
 			break;
 		case LTTNG_DOMAIN_LOG4J:
-			MSG("  - Log4j");
+			lttng::print("  - Log4j\n");
 			break;
 		case LTTNG_DOMAIN_LOG4J2:
-			MSG("  - Log4j2");
+			lttng::print("  - Log4j2\n");
 			break;
 		case LTTNG_DOMAIN_PYTHON:
-			MSG("  - Python (logging)");
+			lttng::print("  - Python (logging)\n");
 			break;
 		default:
 			break;
 		}
 	}
-
-	return ret;
 }
+
+} /* namespace */
 
 /*
  * Pretty-print (human-readable) output for the list command.
@@ -1351,10 +1217,8 @@ static int list_domains(const lttng::cli::session& session)
  * This function implements the non-MI output format for listing sessions,
  * domains, channels, events, and trackers.
  */
-int list_human(const list_cmd_config& config)
+void list_human(const list_cmd_config& config)
 {
-	int ret = CMD_SUCCESS;
-
 	/* Cache configuration for use by helpers */
 	the_config = &config;
 
@@ -1363,162 +1227,114 @@ int list_human(const list_cmd_config& config)
 	if (!config.session_name) {
 		if (!config.kernel && !config.userspace && !config.jul && !config.log4j &&
 		    !config.log4j2 && !config.python) {
-			ret = list_sessions(sessions, nullptr);
-			if (ret) {
-				goto end;
-			}
+			list_sessions(sessions);
 		}
 		if (config.kernel) {
 			if (config.syscall) {
-				ret = list_syscalls();
-				if (ret) {
-					goto end;
-				}
+				list_syscalls();
 			} else {
-				ret = list_kernel_events();
-				if (ret) {
-					goto end;
-				}
+				list_kernel_events();
 			}
 		}
 		if (config.userspace) {
 			if (config.fields) {
-				ret = list_ust_event_fields();
+				list_ust_event_fields();
 			} else {
-				ret = list_ust_events();
-			}
-
-			if (ret) {
-				goto end;
+				list_ust_events();
 			}
 		}
 		if (config.jul || config.log4j || config.log4j2 || config.python) {
-			ret = list_agent_events();
-			if (ret) {
-				goto end;
-			}
+			list_agent_events();
 		}
 	} else {
 		/* Get the session set once for all operations */
 		const auto found_session = sessions.find_by_name(config.session_name->c_str());
 
 		if (!found_session) {
-			ERR("Session '%s' not found", config.session_name->c_str());
-			ret = CMD_ERROR;
-			goto end;
+			LTTNG_THROW_ERROR(
+				lttng::format("Session '{}' not found", *config.session_name));
 		}
-
-		auto& session = *found_session;
 
 		/* List session attributes */
-		ret = list_sessions(sessions, config.session_name->c_str());
-		if (ret) {
-			goto end;
-		}
-
-		ret = list_rotate_settings(session);
-		if (ret) {
-			goto end;
-		}
+		list_sessions(sessions);
+		list_rotate_settings(*found_session);
 
 		/* Domain listing */
 		if (config.domain) {
-			ret = list_domains(session);
-			goto end;
+			list_domains(*found_session);
+			return;
 		}
 
-		const auto session_domains = session.domains();
+		const auto session_domains = found_session->domains();
 
 		/* Channel listing */
 		if (config.kernel || config.userspace) {
 			LTTNG_ASSERT(config.domain_type);
+
 			const auto domain = session_domains.find_by_type(*config.domain_type);
 
 			if (!domain) {
-				ERR("Domain not found in session");
-				ret = CMD_ERROR;
-				goto end;
+				LTTNG_THROW_ERROR("Domain not found in session");
 			}
 
 			/* Trackers */
-			ret = list_trackers(*domain);
-			if (ret) {
-				goto end;
-			}
+			list_trackers(*domain);
 
 			/* Channels */
-			ret = list_channels(*domain,
-					    config.channel_name ? config.channel_name->c_str() :
-								  nullptr,
-					    session.is_snapshot_mode());
-			if (ret) {
-				goto end;
-			}
+			list_channels(*domain,
+				      config.channel_name ? config.channel_name->c_str() : nullptr,
+				      found_session->is_snapshot_mode());
 		} else {
 			/* We want all domain(s) */
-			for (auto& domain : session_domains) {
+			for (const auto& domain : session_domains) {
 				switch (domain.type()) {
 				case LTTNG_DOMAIN_KERNEL:
-					MSG("=== Domain: Linux kernel ===\n");
+					lttng::print("=== Domain: Linux kernel ===\n\n");
 					break;
 				case LTTNG_DOMAIN_UST:
-					MSG("=== Domain: User space ===\n");
-					MSG("Buffering scheme: %s\n",
-					    domain.buffer_ownership_model() ==
-							    LTTNG_BUFFER_PER_PID ?
-						    "per-process" :
-						    "per-user");
+					lttng::print("=== Domain: User space ===\n\n");
+					lttng::print("Buffering scheme: {}\n\n",
+						     domain.buffer_ownership_model() ==
+								     LTTNG_BUFFER_PER_PID ?
+							     "per-process" :
+							     "per-user");
 					break;
 				case LTTNG_DOMAIN_JUL:
-					MSG("=== Domain: JUL (java.util.logging) ===\n");
+					lttng::print("=== Domain: JUL (java.util.logging) ===\n\n");
 					break;
 				case LTTNG_DOMAIN_LOG4J:
-					MSG("=== Domain: Log4j ===\n");
+					lttng::print("=== Domain: Log4j ===\n\n");
 					break;
 				case LTTNG_DOMAIN_LOG4J2:
-					MSG("=== Domain: Log4j2 ===\n");
+					lttng::print("=== Domain: Log4j2 ===\n\n");
 					break;
 				case LTTNG_DOMAIN_PYTHON:
-					MSG("=== Domain: Python logging ===\n");
+					lttng::print("=== Domain: Python logging ===\n\n");
 					break;
 				default:
-					MSG("=== Domain: Unimplemented ===\n");
+					lttng::print("=== Domain: Unimplemented ===\n\n");
 					break;
 				}
 
 				if (is_agent_domain(domain.type())) {
-					ret = list_session_agent_events(domain);
-					if (ret) {
-						goto end;
-					}
-
+					list_session_agent_events(domain);
 					continue;
 				}
 
 				switch (domain.type()) {
 				case LTTNG_DOMAIN_KERNEL:
 				case LTTNG_DOMAIN_UST:
-					ret = list_trackers(domain);
-					if (ret) {
-						goto end;
-					}
+					list_trackers(domain);
 					break;
 				default:
 					break;
 				}
 
-				ret = list_channels(domain,
-						    config.channel_name ?
-							    config.channel_name->c_str() :
-							    nullptr,
-						    session.is_snapshot_mode());
-				if (ret) {
-					goto end;
-				}
+				list_channels(domain,
+					      config.channel_name ? config.channel_name->c_str() :
+								    nullptr,
+					      found_session->is_snapshot_mode());
 			}
 		}
 	}
-
-end:
-	return ret;
 }
