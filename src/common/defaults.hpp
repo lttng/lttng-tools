@@ -393,6 +393,20 @@
 #define DEFAULT_MINIMAL_MEMORY_RECLAIM_TIMER_PERIOD_MS 250
 
 /*
+ * Filename used to test the support for `MADV_REMOVE` using `madvise(2)`.
+ *
+ * The value is used with either `openat(2)` -- when testing a shared-memory
+ * mounted file-system -- or `shm_open(3)`.
+ *
+ * According to `shm_open(3)`:
+ *   For portable use, a shared memory object should be identified by a name of
+ *   the form /somename; that is, a null-terminated string of up to NAME_MAX
+ *   (i.e., 255) characters consisting of an initial slash, followed by one or
+ *   more characters, none of which are slashes.
+ */
+#define DEFAULT_MADV_REMOVE_TEST_FILENAME "/lttng-test-fs-supports-madv-remove"
+
+/*
  * Returns the default subbuf size.
  *
  * This function depends on a value that is set at constructor time, so it is

@@ -90,6 +90,7 @@ libcommon_lgpl_la_SOURCES = \
 	file-descriptor.hpp file-descriptor.cpp \
 	fd-handle.cpp fd-handle.hpp \
 	format.hpp \
+	fs-utils.cpp fs-utils.hpp \
 	io-hint.cpp \
 	io-hint.hpp \
 	kernel-probe.cpp \

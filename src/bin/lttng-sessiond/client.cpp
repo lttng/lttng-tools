@@ -633,6 +633,16 @@ int create_ust_session(const ltt_session::locked_ref& session, const struct lttn
 		lus->shm_path[sizeof(lus->shm_path) - 1] = '\0';
 		strncat(lus->shm_path, "/ust", sizeof(lus->shm_path) - strlen(lus->shm_path) - 1);
 	}
+
+	if (!lus->supports_madv_remove()) {
+		WARN_FMT(
+			"File-system containing shared memory location for UST session does not support "
+			"MADV_REMOVE; memory reclamation won't be possible for this session: "
+			"session_name=`{}`, shm_path=`{}`",
+			session->name,
+			session->shm_path);
+	}
+
 	/* Copy session output to the newly created UST session */
 	ret = copy_session_consumer(domain->type, session);
 	if (ret != LTTNG_OK) {
@@ -2365,6 +2375,29 @@ skip_domain:
 	case LTTCOMM_SESSIOND_COMMAND_RECLAIM_CHANNEL_MEMORY:
 	{
 		DBG("Client reclaim channel memory \"%s\"", (*target_session)->name);
+
+		const auto can_reclaim_memory = [&target_session]() {
+			const auto ust_session = (*target_session)->ust_session;
+
+			if (ust_session) {
+				if (ust_session->supports_madv_remove()) {
+					return true;
+				}
+				WARN_FMT(
+					"Reclaim of memory requires that MADV_REMOVE is supported by the file-system "
+					"containing the shared memory path: "
+					"session_name=`{}`, shm_path=`{}`",
+					(*target_session)->name,
+					ust_session->shm_path);
+			}
+
+			return false;
+		}();
+
+		if (!can_reclaim_memory) {
+			ret = LTTNG_ERR_NOT_SUPPORTED;
+			goto error;
+		}
 
 		/* Validate that channel_name is null-terminated */
 		const auto channel_name = cmd_ctx->lsm.u.reclaim_channel_memory.channel_name;
