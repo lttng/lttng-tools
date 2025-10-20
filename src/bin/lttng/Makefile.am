@@ -41,8 +41,6 @@ lttng_SOURCES = command.hpp conf.cpp conf.hpp commands/start.cpp \
 				commands/add_trigger.cpp \
 				commands/list_triggers.cpp \
 				commands/remove_trigger.cpp \
-				commands/list-memory-usage.hpp \
-				commands/list-memory-usage.cpp \
 				commands/reclaim_memory.cpp \
 				utils.cpp utils.hpp lttng.cpp \
 				uprobe.cpp uprobe.hpp \
