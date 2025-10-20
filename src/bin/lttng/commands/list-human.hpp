@@ -13,9 +13,7 @@
 
 /*
  * Pretty-print (human-readable) output for the list command.
- *
- * Returns CMD_SUCCESS on success, appropriate error code otherwise.
  */
-int list_human(const list_cmd_config& config);
+void list_human(const list_cmd_config& config);
 
 #endif /* _LTTNG_LIST_HUMAN_HPP */

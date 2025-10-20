@@ -732,7 +732,7 @@ void handle_with_session_name()
 /*
  * Entry point for machine interface list command.
  */
-int list_mi(const list_cmd_config& config)
+void list_mi(const list_cmd_config& config)
 {
 	/* Cache configuration for use by helpers */
 	the_config = &config;
@@ -768,6 +768,4 @@ int list_mi(const list_cmd_config& config)
 	if (mi_lttng_writer_command_close(the_writer)) {
 		LTTNG_THROW_ERROR("Failed to open XML writer element");
 	}
-
-	return CMD_SUCCESS;
 }
