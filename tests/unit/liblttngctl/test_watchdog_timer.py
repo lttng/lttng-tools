@@ -10,7 +10,6 @@ Tests lttng_channel_(get|set)_watchdog_timer_interval
 import ctypes
 import os
 import pathlib
-import platform
 import sys
 
 # Import in-tree test utils
@@ -159,10 +158,6 @@ def test_watchdog_timer_interval_with_session(tap, test_env):
         test_pass = False
 
     tap.test(test_pass, "lttng_channel_get/set_watchdog_timer_interval")
-
-
-def get_machine():
-    return "{}-{}".format(platform.machine(), platform.system().lower())
 
 
 if __name__ == "__main__":
