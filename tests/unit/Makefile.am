@@ -103,11 +103,13 @@ liblttngctl/lttngctl/lttng.py: $(top_srcdir)/include/lttng/lttng.h $(LIBLTTNG_CT
 # tree, and this target requires a tree that's in the process of being built.
 CLEANFILES += liblttngctl/lttngctl/lttng.py
 TESTS += \
+	liblttngctl/test_preallocation_policy.py \
 	liblttngctl/test_watchdog_timer.py
 endif
 
 EXTRA_DIST += \
 	liblttngctl/common.py \
+	liblttngctl/test_preallocation_policy.py \
 	liblttngctl/test_watchdog_timer.py
 TESTS += test_ust_data
 endif
