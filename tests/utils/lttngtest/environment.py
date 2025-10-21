@@ -1499,6 +1499,13 @@ def getconf(name):
     return p.stdout.read().decode("utf-8").strip()
 
 
+def get_machine():
+    """
+    Returns a machine identifier
+    """
+    return "{}-{}".format(platform.machine(), platform.system().lower())
+
+
 def count_events(trace_path, ignore_exceptions=False):
     """
     Returns a tuple of (received events, discarded events) from the trace path.
