@@ -38,6 +38,10 @@ extern LTTNG_EXPORT enum lttng_data_stream_info_status
 lttng_data_stream_info_get_memory_usage(const struct lttng_data_stream_info *stream_info,
 					uint64_t *value);
 
+extern LTTNG_EXPORT enum lttng_data_stream_info_status
+lttng_data_stream_info_get_max_memory_usage(const struct lttng_data_stream_info *stream_info,
+					    uint64_t *value);
+
 struct lttng_data_stream_info_set;
 
 extern LTTNG_EXPORT enum lttng_data_stream_info_status
