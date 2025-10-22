@@ -49,6 +49,18 @@ lttng_data_stream_info_get_memory_usage(const struct lttng_data_stream_info *str
 }
 
 enum lttng_data_stream_info_status
+lttng_data_stream_info_get_max_memory_usage(const struct lttng_data_stream_info *stream_info,
+					    uint64_t *value)
+{
+	if (!stream_info || !value) {
+		return LTTNG_DATA_STREAM_INFO_STATUS_INVALID_PARAMETER;
+	}
+
+	*value = stream_info->max_memory_usage;
+	return LTTNG_DATA_STREAM_INFO_STATUS_OK;
+}
+
+enum lttng_data_stream_info_status
 lttng_data_stream_info_set_get_count(const struct lttng_data_stream_info_set *set,
 				     unsigned int *count)
 {
