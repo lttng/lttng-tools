@@ -57,14 +57,21 @@ struct timespec timespec_abs_diff(struct timespec t1, struct timespec t2)
 	return res;
 }
 
+static bool contains_utf8(const char *const str)
+{
+	if (!str) {
+		return false;
+	}
+
+	return std::strstr(str, "utf8") || std::strstr(str, "UTF8") || std::strstr(str, "utf-8") ||
+		std::strstr(str, "UTF-8");
+}
+
 static void __attribute__((constructor)) init_locale_utf8_support()
 {
-	const char *program_locale = setlocale(LC_ALL, nullptr);
-	const char *lang = getenv("LANG");
-
-	if (program_locale && strstr(program_locale, "utf8")) {
+	if (contains_utf8(setlocale(LC_ALL, nullptr))) {
 		utf8_output_supported = true;
-	} else if (lang && strstr(lang, "utf8")) {
+	} else if (contains_utf8(getenv("LANG"))) {
 		utf8_output_supported = true;
 	}
 }
