@@ -120,6 +120,7 @@ int utils_create_value_file(const ValueType value, const lttng::c_string_view fi
 
 bool utils_force_experimental_ctf_2();
 std::vector<int> list_open_fds();
+std::pair<double, const char *> utils_value_unit_from_size(std::uint64_t bytes);
 std::string utils_string_from_size(std::uint64_t bytes);
 
 #endif /* _COMMON_UTILS_H */

@@ -1615,14 +1615,21 @@ std::vector<int> list_open_fds()
 	return results;
 }
 
-std::string utils_string_from_size(std::uint64_t bytes)
+std::pair<double, const char *> utils_value_unit_from_size(std::uint64_t bytes)
 {
-	const char *suffixes[] = { "B", "KiB", "MiB", "GiB", "TiB", "PiB" };
+	static constexpr const char *suffixes[] = { "B", "KiB", "MiB", "GiB", "TiB", "PiB" };
 	size_t i = 0;
 	double count = static_cast<double>(bytes);
 	while (count >= 1024 && i < sizeof(suffixes) / sizeof(suffixes[0]) - 1) {
 		count /= 1024;
 		++i;
 	}
-	return fmt::format("{:.2f} {}", count, suffixes[i]);
+	return { count, suffixes[i] };
+}
+
+std::string utils_string_from_size(std::uint64_t bytes)
+{
+	const auto value_unit = utils_value_unit_from_size(bytes);
+
+	return fmt::format("{:.2f} {}", value_unit.first, value_unit.second);
 }
