@@ -30,6 +30,7 @@
 #include <lttng/constant.h>
 
 #include <algorithm>
+#include <cstdlib>
 #include <ctype.h>
 #include <dirent.h>
 #include <fcntl.h>
@@ -1632,4 +1633,33 @@ std::string utils_string_from_size(std::uint64_t bytes)
 	const auto value_unit = utils_value_unit_from_size(bytes);
 
 	return fmt::format("{:.2f} {}", value_unit.first, value_unit.second);
+}
+
+std::string utils_format_integer_grouped(const std::int64_t value)
+{
+	/* Don't group if value is small enough */
+	if (value >= -9999 && value <= 9999) {
+		return fmt::format("{}", value);
+	}
+
+	/* Convert to string and reserve space */
+	const auto digits = fmt::format("{}", static_cast<std::uint64_t>(std::abs(value)));
+	std::string result;
+
+	result.reserve(digits.size() * 2);
+
+	if (value < 0) {
+		/* Negative: start with `-` */
+		result += '-';
+	}
+
+	for (size_t i = 0; i < digits.size(); ++i) {
+		if (i > 0 && (digits.size() - i) % 3 == 0) {
+			result += ',';
+		}
+
+		result += digits[i];
+	}
+
+	return result;
 }
