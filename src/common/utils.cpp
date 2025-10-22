@@ -1635,6 +1635,41 @@ std::string utils_string_from_size(std::uint64_t bytes)
 	return fmt::format("{:.2f} {}", value_unit.first, value_unit.second);
 }
 
+std::pair<double, const char *> utils_value_unit_from_period(const std::uint64_t period_us)
+{
+	struct unit_info final {
+		std::uint64_t divisor;
+		const char *suffix;
+	};
+
+	static const unit_info units[] = {
+		{ USEC_PER_HOURS, HR_UNIT },
+		{ USEC_PER_MINUTE, MIN_UNIT },
+		{ USEC_PER_SEC, SEC_UNIT },
+		{ USEC_PER_MSEC, MSEC_UNIT },
+		{ 1, USEC_UNIT },
+	};
+
+	for (const auto& unit : units) {
+		if (period_us >= unit.divisor) {
+			return { static_cast<double>(period_us) / unit.divisor, unit.suffix };
+		}
+	}
+
+	return { static_cast<double>(period_us), USEC_UNIT };
+}
+
+std::string utils_string_from_period(const std::uint64_t period_us)
+{
+	if (period_us < 1000) {
+		return fmt::format("{} {}", period_us, USEC_UNIT);
+	}
+
+	const auto value_unit = utils_value_unit_from_period(period_us);
+
+	return fmt::format("{:.2f} {}", value_unit.first, value_unit.second);
+}
+
 std::string utils_format_integer_grouped(const std::int64_t value)
 {
 	/* Don't group if value is small enough */
