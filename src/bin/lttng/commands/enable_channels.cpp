@@ -164,6 +164,12 @@ static void set_default_attr(struct lttng_domain *dom)
 	}
 }
 
+static size_t real_subbuff_count(const struct lttng_channel& channel)
+{
+	/* An additional sub-buffer is allocated to support sparse-buffers. */
+	return channel.attr.num_subbuf + 1;
+}
+
 static bool system_has_memory_for_channel_buffers(char *session_name,
 						  struct lttng_channel *channel,
 						  uint64_t *bytes_required,
@@ -185,16 +191,18 @@ static bool system_has_memory_for_channel_buffers(char *session_name,
 		return false;
 	}
 
-	if (channel->attr.num_subbuf > UINT64_MAX / channel->attr.subbuf_size) {
+	const auto total_num_subbuf = real_subbuff_count(*channel);
+
+	if (total_num_subbuf > UINT64_MAX / channel->attr.subbuf_size) {
 		/* Overflow */
 		ERR_FMT("Integer overflow calculating total buffer size per CPU on channel '{}': num_subbuf={}, subbuf_size={}",
 			channel->name,
-			channel->attr.num_subbuf,
+			total_num_subbuf,
 			channel->attr.subbuf_size)
 		return false;
 	}
 
-	total_buffer_size_needed_per_cpu = channel->attr.num_subbuf * channel->attr.subbuf_size;
+	total_buffer_size_needed_per_cpu = total_num_subbuf * channel->attr.subbuf_size;
 	try {
 		switch (opt_allocation_policy) {
 		case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU:
