@@ -26,6 +26,31 @@
 #include <sys/types.h>
 
 /*
+ * Style for list command output.
+ */
+enum class list_cmd_style {
+	/* Compact output */
+	COMPACT,
+
+	/* Breathe output (more spacing) */
+	BREATHE,
+};
+
+/*
+ * Memory usage display mode.
+ */
+enum class list_cmd_mem_usage_mode {
+	/* Only show total */
+	TOTAL,
+
+	/* Show total and per-stream info set */
+	COMPACT,
+
+	/* Show everything including per-CPU details */
+	FULL,
+};
+
+/*
  * Common configuration structure for list command operations.
  *
  * This structure holds all command-line options and configuration
@@ -53,7 +78,9 @@ struct list_cmd_config final {
 	bool domain;
 	bool fields;
 	bool syscall;
-	bool stream_info_details;
+	bool no_truncate = false;
+	list_cmd_mem_usage_mode mem_usage = list_cmd_mem_usage_mode::TOTAL;
+	list_cmd_style style = list_cmd_style::BREATHE;
 };
 
 /*

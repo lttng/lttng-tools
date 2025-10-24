@@ -1,6 +1,6 @@
 lttng-list(1)
 =============
-:revdate: 24 September 2025
+:revdate: 26 October 2025
 
 
 NAME
@@ -15,26 +15,26 @@ List the recording sessions:
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list*
 
-List the tracing domains of a recording session with at least one
-channel:
+List the tracing domains of a recording session:
 
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* option:--domain [option:--stream-info-details] 'SESSION'
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* option:--domain 'SESSION'
 
 List the channels and recording event rules of a recording session:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* [option:--channel='CHANNEL'] 'SESSION'
       [option:--kernel] [option:--userspace] [option:--jul] [option:--log4j] [option:--log4j2] [option:--python]
-      [option:--stream-info-details]
+      [option:--style=(**compact** | **breathe**)] [option:--no-truncate]
+      [option:--mem-usage=(**total** | **compact** | **full**)]
 
 List the available LTTng tracepoints, Linux system calls, and/or
 Java/Python loggers:
 
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* [option:--fields]
-      [option:--kernel [option:--syscall]] [option:--userspace] [option:--jul]
-      [option:--log4j] [option:--log4j2] [option:--python]
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list*
+      [option:--kernel [option:--syscall]] [option:--userspace [option:--fields]]
+      [option:--jul] [option:--log4j] [option:--log4j2] [option:--python]
 
 
 DESCRIPTION
@@ -50,28 +50,32 @@ how a user application connects to a session daemon.
 +
 The command shows recording session properties such as their output
 directories/URLs and whether or not they're active.
++
+The name of the current recording session is underlined.
 
 With the 'SESSION' argument::
     With the option:--domain option:::
-        The tracing domains (with at least one channel) of the recording
-        session named 'SESSION'.
+        The tracing domains of the recording session named 'SESSION'.
 
     Without the option:--domain option:::
-        With the option:--channel='CHANNEL' option::::
-            The recording event rules of the channel 'CHANNEL' of the
-            recording session named 'SESSION'.
++
+--
+With the option:--channel='CHANNEL' option::
+    The recording event rules of the channel(s) 'CHANNEL' of the
+    recording session named 'SESSION'.
 
-        Without the option:--channel option::::
-            The channels of the recording session named 'SESSION' and
-            their recording event rules.
+Without the option:--channel option::
+    The channels of the recording session named 'SESSION' and
+    their recording event rules.
+--
++
+By default, the command shows the total memory usage of each channel.
+Control the memory usage display mode with the option:--mem-usage
+option.
 +
 Use the dedicated tracing domain options (option:--kernel,
 option:--userspace, option:--jul, option:--log4j, option:--log4j2, and
 option:--python) to only show specific channels.
-+
-Also show the CPU ID (if available) and current memory usage of each
-data stream of the channel(s) with the option:--stream-info-details
-option.
 
 Without the 'SESSION' argument and with at least one dedicated tracing domain option::
 +
@@ -80,19 +84,29 @@ With the option:--kernel option::
     Without the option:--syscall option:::
         The available LTTng kernel tracepoints.
     With the option:--syscall option:::
-        The available, instrumented Linux system calls.
+        The available instrumented Linux system calls.
 With the option:--userspace option::
     The available LTTng user space tracepoints.
-With the option:--jul, option:--log4j, option:--log4j2, and/or option:--python options::
-    The available `java.util.logging`, Apache log4j{nbsp}1.x,
-    Apache Log4j{nbsp}2 and/or Python logger names.
---
 +
 Also list the available instrumentation point fields with the
 option:--fields option.
 
-See man:lttng-concepts(7) to learn more about recording sessions, tracing
-domains, channels, recording event rules, and instrumentation points.
+With the option:--jul, option:--log4j, option:--log4j2, and/or option:--python options::
+    The available `java.util.logging`, Apache log4j{nbsp}1.x,
+    Apache Log4j{nbsp}2 and/or Python logger names.
+--
+
+See man:lttng-concepts(7) to learn more about recording sessions,
+tracing domains, channels, recording event rules, and instrumentation
+points.
+
+By default, the command adds empty lines between blocks of related
+information. Remove those empty lines with the
+option:--style=**compact** option.
+
+This command shows colored text when the terminal supports it.
+Override the terminal coloring behaviour with the
+`LTTNG_TERM_COLOR` and `NO_COLOR` environment variables.
 
 See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
@@ -110,7 +124,7 @@ option:-j, option:--jul::
     Without the 'SESSION' argument:::
         List the `java.util.logging` logger names.
     With the 'SESSION' argument:::
-        Only list the `java.util.logging` channels and their recording
+        Only list the `java.util.logging` recording
         event rules.
 
 option:-k, option:--kernel::
@@ -124,21 +138,21 @@ option:-l, option:--log4j::
     Without the 'SESSION' argument:::
         List the Apache log4j{nbsp}1.x logger names.
     With the 'SESSION' argument:::
-        Only list the Apache log4j{nbsp}1.x channels and their recording
+        Only list the Apache log4j{nbsp}1.x recording
         event rules.
 
 option:--log4j2::
     Without the 'SESSION' argument:::
         List the Apache Log4j{nbsp}2 logger names.
     With the 'SESSION' argument:::
-        Only list the Apache Log4j{nbsp}2 channels and their recording
+        Only list the Apache Log4j{nbsp}2 recording
         event rules.
 
 option:-p, option:--python::
     Without the 'SESSION' argument:::
         List the Python logger names.
     With the 'SESSION' argument:::
-        Only list the Python channels and their recording event rules.
+        Only list the Python recording event rules.
 
 option:-u, option:--userspace::
     Without the 'SESSION' argument:::
@@ -151,17 +165,16 @@ option:-u, option:--userspace::
 Filtering
 ~~~~~~~~~
 option:-c 'CHANNEL', option:--channel='CHANNEL'::
-    Only list the properties and recording event rules of the channel
+    Only list the properties and recording event rules of the channel(s)
     named 'CHANNEL'.
 +
 Only available with the 'SESSION' argument.
 
 option:-d, option:--domain::
-    Show the tracing domains with at least one channel of the recording
-    session named 'SESSION'.
+    Show the tracing domains of the recording session named 'SESSION'.
 
 option:-f, option:--fields::
-    When listing instrumentation points, also show their fields if
+    When listing user space tracepoints, also show their fields if
     they're available.
 
 option:--syscall::
@@ -171,11 +184,44 @@ option:--syscall::
 
 Display
 ~~~~~~~
-option:--stream-info-details::
-    Show the CPU ID (if available) and current memory usage of each data
-    stream of the channel(s).
+option:--mem-usage='MODE'::
+    Set the channel memory usage display mode to 'MODE'.
++
+'MODE' is one of:
++
+--
+`total` (default)::
+    Show the total memory usage of the channel.
+
+`compact`::
+    Show the memory usage for each Unix user or process,
+    depending on the buffer ownership model of the channel (see the
+    nloption:--buffer-ownership option of man:lttng-enable-channel(1)).
+
+`full`::
+    Show the memory usage for each each CPU (if available).
+--
 +
 Only available with the 'SESSION' argument.
+
+option:--no-truncate::
+    Do :not: truncate long output lines.
++
+By default, the command truncates lines, adding an ellipsis,
+to fit the current terminal width.
+
+option:--style='STYLE'::
+    Set the command output style to 'STYLE'.
++
+'STYLE' is one of:
++
+--
+`breathe` (default)::
+    Add empty lines to make blocks of related information stand out.
+
+`compact`::
+    Make the the output compact.
+--
 
 
 include::common-lttng-cmd-help-options.txt[]

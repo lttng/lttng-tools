@@ -52,7 +52,7 @@ function validate_list()
 	local event_name=$2
 	local opt=$3
 
-	out=$($TESTDIR/../src/bin/lttng/$LTTNG_BIN list $session_name $opt | grep $event_name)
+	out=$(LTTNG_LIST_LEGACY=1 $TESTDIR/../src/bin/lttng/$LTTNG_BIN list $session_name $opt | grep $event_name)
 	if [ -z "$out" ]; then
 		fail "Validate syscall listing"
 		diag "$event_name not found when listing $session_name (opt $opt)"

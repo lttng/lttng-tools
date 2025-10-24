@@ -13,6 +13,7 @@
 #define _LGPL_SOURCE
 #include "../command.hpp"
 #include "list-common.hpp"
+#include "list-human-legacy.hpp"
 #include "list-human.hpp"
 #include "list-mi.hpp"
 
@@ -42,7 +43,9 @@ char *opt_channel;
 int opt_domain;
 int opt_fields;
 int opt_syscall;
-int opt_stream_info_details;
+int opt_no_truncate;
+char *opt_mem_usage;
+char *opt_style;
 
 enum {
 	OPT_HELP = 1,
@@ -63,7 +66,9 @@ struct poptOption long_options[] = {
 	{ "domain", 'd', POPT_ARG_VAL, &opt_domain, 1, nullptr, nullptr },
 	{ "fields", 'f', POPT_ARG_VAL, &opt_fields, 1, nullptr, nullptr },
 	{ "syscall", 'S', POPT_ARG_VAL, &opt_syscall, 1, nullptr, nullptr },
-	{ "stream-info-details", 0, POPT_ARG_VAL, &opt_stream_info_details, 1, nullptr, nullptr },
+	{ "no-truncate", 0, POPT_ARG_VAL, &opt_no_truncate, 1, nullptr, nullptr },
+	{ "mem-usage", 0, POPT_ARG_STRING, &opt_mem_usage, 0, nullptr, nullptr },
+	{ "style", 0, POPT_ARG_STRING, &opt_style, 0, nullptr, nullptr },
 	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
 	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
@@ -132,6 +137,32 @@ nonstd::optional<list_cmd_config> make_config(int argc, const char **argv)
 		config.channel_name = opt_channel;
 	}
 
+	if (opt_style) {
+		if (std::strcmp(opt_style, "compact") == 0) {
+			config.style = list_cmd_style::COMPACT;
+		} else if (std::strcmp(opt_style, "breathe") == 0) {
+			config.style = list_cmd_style::BREATHE;
+		} else {
+			ERR_FMT("Invalid --style value `{}`: expecting `compact` or `breathe`)",
+				opt_style);
+			LTTNG_THROW_ERROR("");
+		}
+	}
+
+	if (opt_mem_usage) {
+		if (std::strcmp(opt_mem_usage, "total") == 0) {
+			config.mem_usage = list_cmd_mem_usage_mode::TOTAL;
+		} else if (std::strcmp(opt_mem_usage, "compact") == 0) {
+			config.mem_usage = list_cmd_mem_usage_mode::COMPACT;
+		} else if (std::strcmp(opt_mem_usage, "full") == 0) {
+			config.mem_usage = list_cmd_mem_usage_mode::FULL;
+		} else {
+			ERR_FMT("Invalid --mem-usage value `{}`: expecting `total`, `compact`, or `full`",
+				opt_mem_usage);
+			LTTNG_THROW_ERROR("");
+		}
+	}
+
 	/* Determine domain type */
 	if (opt_kernel) {
 		config.domain_type = LTTNG_DOMAIN_KERNEL;
@@ -159,7 +190,7 @@ nonstd::optional<list_cmd_config> make_config(int argc, const char **argv)
 	config.domain = opt_domain;
 	config.fields = opt_fields;
 	config.syscall = opt_syscall;
-	config.stream_info_details = opt_stream_info_details;
+	config.no_truncate = opt_no_truncate;
 	return config;
 }
 
@@ -176,7 +207,15 @@ int cmd_list(int argc, const char **argv)
 			if (lttng_opt_mi) {
 				list_mi(*config);
 			} else {
-				list_human(*config);
+				if (const auto val = std::getenv("LTTNG_LIST_LEGACY")) {
+					if (std::strcmp(val, "1") == 0) {
+						list_human_legacy(*config);
+					} else {
+						list_human(*config);
+					}
+				} else {
+					list_human(*config);
+				}
 			}
 		}
 	} catch (const undefined_opt&) {
