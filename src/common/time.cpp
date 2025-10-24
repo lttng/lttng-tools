@@ -69,6 +69,12 @@ static bool contains_utf8(const char *const str)
 
 static void __attribute__((constructor)) init_locale_utf8_support()
 {
+	if (const auto no_utf8_env = getenv("LTTNG_NO_UTF_8")) {
+		if (std::strcmp(no_utf8_env, "1") == 0) {
+			return;
+		}
+	}
+
 	if (contains_utf8(setlocale(LC_ALL, nullptr))) {
 		utf8_output_supported = true;
 	} else if (contains_utf8(getenv("LANG"))) {
