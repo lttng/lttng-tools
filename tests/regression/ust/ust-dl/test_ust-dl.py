@@ -2,208 +2,94 @@
 #
 # SPDX-FileCopyrightText: 2013 Jérémie Galarneau <jeremie.galarneau@efficios.com>
 # SPDX-FileCopyrightText: 2015 Antoine Busque <abusque@efficios.com>
+# SPDX-FileCopyrightText: 2025 Kienan Stewart <kstewart@efficios.com>
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+import ctypes
+import ctypes.util
 import os
+import pathlib
 import subprocess
 import re
 import shutil
 import sys
 
-test_path = os.path.dirname(os.path.abspath(__file__)) + "/"
-test_utils_path = test_path
-for i in range(4):
-    test_utils_path = os.path.dirname(test_utils_path)
-test_utils_path = test_utils_path + "/utils"
-sys.path.append(test_utils_path)
-from test_utils import *
+# Import in-tree test utils
+test_utils_import_path = pathlib.Path(__file__).absolute().parents[3] / "utils"
+sys.path.append(str(test_utils_import_path))
+
+import lttngtest
+import bt2
 
 
-have_dlmopen = os.environ.get("LTTNG_TOOLS_HAVE_DLMOPEN") == "1"
+def test(tap, test_env):
+    expected_events = [
+        "lttng_ust_dl:dlopen",
+        "lttng_ust_dl:dlmopen",  # > 0 iff dlmopen available
+        "lttng_ust_dl:build_id",
+        "lttng_ust_dl:debug_link",
+        "lttng_ust_dl:dlclose",
+        "lttng_ust_lib:build_id",
+        "lttng_ust_lib:debug_link",
+        "lttng_ust_lib:unload",
+        "lttng_ust_lib:load",
+    ]
+    expected_library_loads = ["libfoo.so", "libbar.so", "libzzz.so"]
 
-
-NR_TESTS = 14
-current_test = 1
-print("1..{0}".format(NR_TESTS))
-
-# Check if a sessiond is running... bail out if none found.
-if session_daemon_alive() == 0:
-    bail(
-        """No sessiond running. Please make sure you are running this test
-    with the "run" shell script and verify that the lttng tools are
-    properly installed."""
+    test_path = os.path.dirname(os.path.abspath(__file__)) + "/"
+    output_path = test_env.create_temporary_directory("trace")
+    client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
+    session = client.create_session(
+        output=lttngtest.LocalSessionOutputLocation(output_path)
     )
+    channel = session.add_channel(lttngtest.lttngctl.TracingDomain.User)
+    channel.add_recording_rule(lttngtest.lttngctl.UserTracepointEventRule("*"))
+    session.start()
 
-session_info = create_session()
-enable_ust_tracepoint_event(session_info, "*")
-start_session(session_info)
-
-test_env = os.environ.copy()
-test_env["LD_PRELOAD"] = test_env.get("LD_PRELOAD", "") + ":liblttng-ust-dl.so"
-test_env["LD_LIBRARY_PATH"] = test_env.get("LD_LIBRARY_PATH", "") + ":" + test_path
-test_process = subprocess.Popen(
-    test_path + "prog",
-    stdout=subprocess.DEVNULL,
-    stderr=subprocess.DEVNULL,
-    env=test_env,
-)
-test_process.wait()
-
-print_test_result(
-    test_process.returncode == 0, current_test, "Test application exited normally"
-)
-current_test += 1
-
-stop_session(session_info)
-
-# Check for dl events in the resulting trace
-try:
-    babeltrace_process = subprocess.Popen(
-        [BABELTRACE_BIN, session_info.trace_path],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+    app_env = {
+        "LD_PRELOAD": "{}:{}".format(os.getenv("LD_PRELOAD", ""), "liblttng-ust-dl.so"),
+        "LD_LIBRARY_PATH": "{}:{}".format(os.getenv("LD_LIBRARY_PATH", ""), test_path),
+    }
+    app = test_env.launch_test_application(
+        os.path.join(test_path, "prog"), extra_env_vars=app_env
     )
-except FileNotFoundError:
-    bail(
-        "Could not open {}. Please make sure it is installed.".format(BABELTRACE_BIN),
-        session_info,
-    )
+    app.wait_for_exit()
+    session.stop()
+    received_events = {x: 0 for x in expected_events}
+    received_library_loads = {x: 0 for x in expected_library_loads}
+    for msg in bt2.TraceCollectionMessageIterator(str(output_path)):
+        if type(msg) is bt2._EventMessageConst:
+            if msg.event.name in expected_events:
+                received_events[msg.event.name] += 1
+            if msg.event.name == "lttng_ust_lib:load":
+                if "path" in msg.event.payload_field:
+                    lib = os.path.basename(str(msg.event.payload_field["path"]))
+                    received_library_loads[lib] += 1
 
-dlopen_event_found = 0
-dlmopen_event_found = 0
-build_id_event_found = 0
-debug_link_event_found = 0
-dlclose_event_found = 0
-load_event_found = 0
-load_build_id_event_found = 0
-load_debug_link_event_found = 0
-unload_event_found = 0
-load_libfoo_found = 0
-load_libbar_found = 0
-load_libzzz_found = 0
+    for event, count in received_events.items():
+        if event == "lttng_ust_dl:dlmopen" and not have_dlmopen:
+            tap.skip(
+                "lttng_ust_dl:dlmopen has at least 1 event",
+                "dlmopen not detected in libdl.so",
+            )
+        else:
+            tap.test(count > 0, "Event '{}' has at least 1 event".format(event))
 
-for event_line in babeltrace_process.stdout:
+    for lib, count in received_library_loads.items():
+        tap.test(count == 1, "Library '{}' loaded exactly once".format(lib))
 
-    event_line = event_line.decode("utf-8").replace("\n", "")
-    if re.search(r".*lttng_ust_dl:dlopen.*", event_line) is not None:
-        dlopen_event_found += 1
-    elif re.search(r".*lttng_ust_dl:dlmopen.*", event_line) is not None:
-        dlmopen_event_found += 1
-    elif re.search(r".*lttng_ust_dl:build_id.*", event_line) is not None:
-        build_id_event_found += 1
-    elif re.search(r".*lttng_ust_dl:debug_link.*", event_line) is not None:
-        debug_link_event_found += 1
-    elif re.search(r".*lttng_ust_dl:dlclose.*", event_line) is not None:
-        dlclose_event_found += 1
-    elif re.search(r".*lttng_ust_lib:build_id.*", event_line) is not None:
-        load_build_id_event_found += 1
-    elif re.search(r".*lttng_ust_lib:debug_link.*", event_line) is not None:
-        load_debug_link_event_found += 1
-    elif re.search(r".*lttng_ust_lib:unload.*", event_line) is not None:
-        unload_event_found += 1
-    elif re.search(r".*lttng_ust_lib:load.*", event_line) is not None:
-        load_event_found += 1
-        if re.search(r".*lttng_ust_lib:load.*libfoo.*", event_line) is not None:
-            load_libfoo_found += 1
-        elif re.search(r".*lttng_ust_lib:load.*libbar.*", event_line) is not None:
-            load_libbar_found += 1
-        elif re.search(r".*lttng_ust_lib:load.*libzzz.*", event_line) is not None:
-            load_libzzz_found += 1
 
-babeltrace_process.wait()
+if __name__ == "__main__":
+    have_dlmopen = False
+    dl_lib = ctypes.util.find_library("dl")
+    if dl_lib:
+        dl = ctypes.cdll.LoadLibrary(dl_lib)
+        if dl.dlmopen:
+            have_dlmopen = True
 
-print_test_result(
-    babeltrace_process.returncode == 0, current_test, "Resulting trace is readable"
-)
-current_test += 1
+    tap = lttngtest.TapGenerator(12)
+    with lttngtest.test_environment(with_sessiond=True, log=tap.diagnostic) as test_env:
+        test(tap, test_env)
 
-print_test_result(
-    dlopen_event_found > 0,
-    current_test,
-    "lttng_ust_dl:dlopen event found in resulting trace",
-)
-current_test += 1
-
-if have_dlmopen:
-    print_test_result(
-        dlmopen_event_found > 0,
-        current_test,
-        "lttng_ust_dl:dlmopen event found in resulting trace",
-    )
-else:
-    skip_test(current_test, "dlmopen() is not available")
-
-current_test += 1
-
-print_test_result(
-    build_id_event_found > 0,
-    current_test,
-    "lttng_ust_dl:build_id event found in resulting trace",
-)
-current_test += 1
-
-print_test_result(
-    debug_link_event_found > 0,
-    current_test,
-    "lttng_ust_dl:debug_link event found in resulting trace",
-)
-current_test += 1
-
-print_test_result(
-    dlclose_event_found > 0,
-    current_test,
-    "lttng_ust_dl:dlclose event found in resulting trace",
-)
-current_test += 1
-
-print_test_result(
-    load_event_found > 0,
-    current_test,
-    "lttng_ust_lib:load event found in resulting trace",
-)
-current_test += 1
-
-print_test_result(
-    load_build_id_event_found > 0,
-    current_test,
-    "lttng_ust_lib:build_id event found in resulting trace",
-)
-current_test += 1
-
-print_test_result(
-    load_debug_link_event_found > 0,
-    current_test,
-    "lttng_ust_lib:debug_link event found in resulting trace",
-)
-current_test += 1
-
-print_test_result(
-    unload_event_found == 3,
-    current_test,
-    "lttng_ust_lib:unload event found 3 times in resulting trace",
-)
-current_test += 1
-
-print_test_result(
-    load_libfoo_found == 1,
-    current_test,
-    "lttng_ust_lib:load libfoo.so event found once in resulting trace",
-)
-current_test += 1
-
-print_test_result(
-    load_libbar_found == 1,
-    current_test,
-    "lttng_ust_lib:load libbar.so event found once in resulting trace",
-)
-current_test += 1
-
-print_test_result(
-    load_libzzz_found == 1,
-    current_test,
-    "lttng_ust_lib:load libzzz.so event found once in resulting trace",
-)
-current_test += 1
-
-shutil.rmtree(session_info.tmp_directory)
+    sys.exit(0 if tap.is_successful else 1)

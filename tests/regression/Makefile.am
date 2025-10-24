@@ -183,8 +183,8 @@ SERIAL_TESTS += ust/linking/test_linking \
 	ust/fork/test_fork \
 	ust/libc-wrapper/test_libc-wrapper \
 	ust/baddr-statedump/test_baddr-statedump \
-	ust/ust-dl/test_ust-dl \
 	ust/type-declarations/test_type_declarations
+TESTS += ust/ust-dl/test_ust-dl.py
 endif
 
 SERIAL_LOG_DRIVER_FLAGS = --merge
