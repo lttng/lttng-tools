@@ -263,6 +263,7 @@ class _WaitTraceTestApplication:
         fill_text=False,  # type: bool
         wait_before_last_event=False,  # type: bool
         wait_before_last_event_file_path=None,  # type: Optional[pathlib.Path]
+        extra_env_vars=dict(),
     ):
         self._process = None
         self._environment = environment  # type: Environment
@@ -328,6 +329,7 @@ class _WaitTraceTestApplication:
         # Make sure the app is blocked until it is properly registered to
         # the session daemon.
         test_app_env["LTTNG_UST_REGISTER_TIMEOUT"] = "-1"
+        test_app_env.update(extra_env_vars)
 
         # File that the application will create to indicate it has completed its initialization.
         app_ready_file_path = tempfile.mktemp(
@@ -676,7 +678,7 @@ class _TraceTestApplication:
     scenarios, it is preferable to use a WaitTraceTestApplication.
     """
 
-    def __init__(self, binary_path, environment):
+    def __init__(self, binary_path, environment, extra_env_vars=dict()):
         # type: (pathlib.Path, Environment)
         self._process = None
         self._environment = environment  # type: Environment
@@ -693,9 +695,15 @@ class _TraceTestApplication:
 
         test_app_args = [str(binary_path)]
 
+        test_app_env.update(extra_env_vars)
         self._process = subprocess.Popen(
             test_app_args, env=test_app_env
         )  # type: subprocess.Popen
+        self._environment._log(
+            "Launched tested application '{}' with pid '{}'".format(
+                test_app_args, self._process.pid
+            )
+        )
 
     def wait_for_exit(self):
         # type: () -> None
@@ -711,8 +719,17 @@ class _TraceTestApplication:
         if self._process is not None and not self._has_returned:
             # This is potentially racy if the pid has been recycled. However,
             # we can't use pidfd_open since it is only available in python >= 3.9.
-            self._process.kill()
-            self._process.wait()
+            self._environment._log(
+                "Terminating test app pid '{}'".format(self._process.pid)
+            )
+            self._process.terminate()
+            try:
+                self._process.wait(timeout=self._environment.teardown_timeout)
+            except TimeoutException:
+                self._environment._log(
+                    "Killing test app pid '{}'".format(self._process.pid)
+                )
+                self._process.kill()
 
 
 class ProcessOutputConsumer(threading.Thread, logger._Logger):
@@ -1345,6 +1362,7 @@ class _Environment(logger._Logger):
         fill_text=False,
         wait_before_last_event=False,
         wait_before_last_event_file_path=None,
+        extra_env_vars=dict(),
     ):
         # type: (int, int, bool, Optional[pathlib.Path], Optional[str]) -> _WaitTraceTestApplication
         """
@@ -1362,9 +1380,10 @@ class _Environment(logger._Logger):
             fill_text,
             wait_before_last_event,
             wait_before_last_event_file_path,
+            extra_env_vars,
         )
 
-    def launch_test_application(self, subpath):
+    def launch_test_application(self, subpath, extra_env_vars=dict()):
         # type () -> TraceTestApplication
         """
         Launch an application that will trace from within constructors.
@@ -1372,6 +1391,7 @@ class _Environment(logger._Logger):
         return _TraceTestApplication(
             self._project_root / "tests" / "utils" / "testapp" / subpath,
             self,
+            extra_env_vars,
         )
 
     def _terminate_relayd(self):
