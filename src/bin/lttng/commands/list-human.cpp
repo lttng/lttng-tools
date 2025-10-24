@@ -26,17 +26,6 @@ const char *indent8 = "        ";
 /* Configuration for the list command */
 const list_cmd_config *the_config;
 
-bool is_agent_domain(const lttng_domain_type domain_type)
-{
-	return domain_type == LTTNG_DOMAIN_JUL || domain_type == LTTNG_DOMAIN_LOG4J ||
-		domain_type == LTTNG_DOMAIN_LOG4J2 || domain_type == LTTNG_DOMAIN_PYTHON;
-}
-
-bool is_ust_or_agent_domain(const lttng_domain_type domain_type)
-{
-	return domain_type == LTTNG_DOMAIN_UST || is_agent_domain(domain_type);
-}
-
 const char *active_string(const bool is_active)
 {
 	return is_active ? "active" : "inactive";

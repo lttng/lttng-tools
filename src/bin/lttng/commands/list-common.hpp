@@ -133,4 +133,21 @@ static inline int handle_process_attr_status(enum lttng_process_attr process_att
 	return ret;
 }
 
+/*
+ * Returns true if `domain_type` is a Java/Python agent domain.
+ */
+static inline bool is_agent_domain(const lttng_domain_type domain_type)
+{
+	return domain_type == LTTNG_DOMAIN_JUL || domain_type == LTTNG_DOMAIN_LOG4J ||
+		domain_type == LTTNG_DOMAIN_LOG4J2 || domain_type == LTTNG_DOMAIN_PYTHON;
+}
+
+/*
+ * Returns true if `domain_type` is a user space or agent domain.
+ */
+static inline bool is_ust_or_agent_domain(const lttng_domain_type domain_type)
+{
+	return domain_type == LTTNG_DOMAIN_UST || is_agent_domain(domain_type);
+}
+
 #endif /* LTTNG_LIST_COMMON_HPP */
