@@ -2235,7 +2235,7 @@ static int process_channel_attr_node(xmlNodePtr attr_node,
 		}
 
 		ret = lttng_channel_set_watchdog_timer_interval(channel, watchdog_timer_interval);
-		if (ret) {
+		if (ret != LTTNG_OK) {
 			ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
 			goto end;
 		}

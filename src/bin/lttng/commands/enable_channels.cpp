@@ -395,7 +395,7 @@ static int enable_channel(char *session_name, char *channel_list)
 		if (opt_watchdog_timer.set) {
 			ret = lttng_channel_set_watchdog_timer_interval(
 				channel, opt_watchdog_timer.interval);
-			if (ret) {
+			if (ret != LTTNG_OK) {
 				ERR("Failed to set the channel's watchdog timer interval");
 				error = 1;
 				goto error;

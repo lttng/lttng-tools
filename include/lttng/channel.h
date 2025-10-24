@@ -713,14 +713,10 @@ lttng_channel_get_watchdog_timer_interval(const struct lttng_channel *channel, u
 @param[in] period
     Watchdog timer period property to set.
 
-@returns
-    <dl>
-      <dt>0
-      <dd>Success.
-
-      <dt>-#LTTNG_ERR_INVALID (negative)
-      <dd>Unsatisfied precondition.
-    </dl>
+@retval #LTTNG_OK
+    Success.
+@retval #LTTNG_ERR_INVALID
+    Unsatisfied precondition.
 
 @pre
     @lt_pre_not_null{channel}
@@ -731,7 +727,7 @@ lttng_channel_get_watchdog_timer_interval(const struct lttng_channel *channel, u
 @sa lttng_channel_set_watchdog_timer_interval() --
     Sets the watchdog timer period property of a channel summary.
 */
-LTTNG_EXPORT extern int lttng_channel_set_watchdog_timer_interval(struct lttng_channel *channel,
+LTTNG_EXPORT extern enum lttng_error_code lttng_channel_set_watchdog_timer_interval(struct lttng_channel *channel,
 								  uint64_t period);
 
 /*!
