@@ -1,150 +1,101 @@
 #!/usr/bin/env python3
 #
 # SPDX-FileCopyrightText: 2014 Geneviève Bastien <gbastien@versatic.net>
+# SPDX-FileCopyrightText: 2025 Kienan Stewart <kstewart@efficios.com>
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
 import os
-import subprocess
-import re
+import pathlib
 import shutil
+import subprocess
 import sys
 
-test_path = os.path.dirname(os.path.abspath(__file__)) + "/"
-test_utils_path = test_path
-for i in range(4):
-    test_utils_path = os.path.dirname(test_utils_path)
-test_utils_path = test_utils_path + "/utils"
-sys.path.append(test_utils_path)
-from test_utils import *
+# Import in-tree test utils
+test_utils_import_path = pathlib.Path(__file__).absolute().parents[3] / "utils"
+sys.path.append(str(test_utils_import_path))
 
-NR_TESTS = 10
-current_test = 1
-print("1..{0}".format(NR_TESTS))
+import lttngtest
+import bt2
 
-# Check if a sessiond is running... bail out if none found.
-if session_daemon_alive() == 0:
-    bail(
-        'No sessiond running. Please make sure you are running this test with the "run" shell script and verify that the lttng tools are properly installed.'
+
+def test(tap, test_env):
+    test_path = os.path.dirname(os.path.abspath(__file__)) + "/"
+    output_path = test_env.create_temporary_directory("trace")
+    client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
+    session = client.create_session(
+        output=lttngtest.LocalSessionOutputLocation(output_path)
+    )
+    channel = session.add_channel(lttngtest.lttngctl.TracingDomain.User)
+    channel.add_recording_rule(
+        lttngtest.lttngctl.UserTracepointEventRule("ust_tests_td*")
+    )
+    session.start()
+    td_process = test_env.launch_test_application(
+        os.path.join(test_path, "type-declarations"),
+    )
+    td_process.wait_for_exit()
+    session.stop()
+    expected = 5
+    received = 0
+    events = []
+    for msg in bt2.TraceCollectionMessageIterator(str(output_path)):
+        if type(msg) is bt2._EventMessageConst:
+            received += 1
+            events.append(msg.event)
+
+    tap.test(received == expected, "Receive the expected number of events in trace")
+    tap.test(
+        events[0].name == "ust_tests_td:tptest", "First event is ust_tests_td:tptest"
+    )
+    tap.test(
+        "(zero)" in str(events[0]["enumfield"]),
+        "First event's enumfield maps to '(zero)': `{}`".format(events[0]["enumfield"]),
+    )
+    tap.test(
+        "(one)" in str(events[0]["enumfield_bis"]),
+        "First event's enumfield_bis maps to '(one)': `{}`".format(
+            events[0]["enumfield_bis"]
+        ),
     )
 
-session_info = create_session()
-enable_ust_tracepoint_event(session_info, "ust_tests_td*")
-start_session(session_info)
-
-test_env = os.environ.copy()
-test_env["LTTNG_UST_REGISTER_TIMEOUT"] = "-1"
-
-td_process = subprocess.Popen(
-    test_path + "type-declarations",
-    stdout=subprocess.DEVNULL,
-    stderr=subprocess.DEVNULL,
-    env=test_env,
-)
-td_process.wait()
-
-print_test_result(
-    td_process.returncode == 0, current_test, "Test application exited normally"
-)
-current_test += 1
-
-stop_session(session_info)
-
-# Check event fields using type declarations are present
-try:
-    babeltrace_process = subprocess.Popen(
-        [BABELTRACE_BIN, session_info.trace_path],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+    tap.test(
+        events[1].name == "ust_tests_td:tptest_bis",
+        "Second event is ust_tests_td:tptest_bis",
     )
-except FileNotFoundError:
-    bail("Could not open {}. Please make sure it is installed.".format(BABELTRACE_BIN))
-
-event_lines = []
-for event_line in babeltrace_process.stdout:
-    event_line = event_line.decode("utf-8").replace("\n", "")
-    event_lines.append(event_line)
-babeltrace_process.wait()
-
-print_test_result(
-    babeltrace_process.returncode == 0, current_test, "Resulting trace is readable"
-)
-current_test += 1
-
-if babeltrace_process.returncode != 0:
-    bail("Unreadable trace; can't proceed with analysis.")
-
-print_test_result(
-    len(event_lines) == 5,
-    current_test,
-    "Correct number of events found in resulting trace",
-)
-current_test += 1
-
-if len(event_lines) != 5:
-    bail(
-        "Unexpected number of events found in resulting trace ("
-        + session_info.trace_path
-        + ")."
+    tap.test(
+        "(zero)" in str(events[1]["enumfield"]),
+        "Second event's enumfield maps to '(zero)': `{}`".format(
+            events[1]["enumfield"]
+        ),
     )
 
-match = re.search(
-    r".*ust_tests_td:(.*):.*enumfield = \( \"(.*)\" :.*enumfield_bis = \( \"(.*)\" :.*enumfield_third = .*:.*",
-    event_lines[0],
-)
-print_test_result(
-    match is not None and match.group(1) == "tptest",
-    current_test,
-    "First tracepoint is present",
-)
-current_test += 1
+    tap.test(
+        "(one)" in str(events[2]["enumfield"]),
+        "Third event's enumfield maps to '(one)': `{}`".format(events[2]["enumfield"]),
+    )
 
-print_test_result(
-    match is not None and match.group(2) == "zero",
-    current_test,
-    "First tracepoint's enum value maps to zero",
-)
-current_test += 1
+    event = events[4]
+    tap.test(
+        "(zero)" in str(event["zero"])
+        and "(two)" in str(event["two"])
+        and "(three)" in str(event["three"])
+        and "(ten_to_twenty)" in str(event["fifteen"])
+        and "(twenty_one)" in str(event["twenty_one"]),
+        "Auto-incrementing enum values are correct. zero=`{}`, two=`{}`, three=`{}`, fifteen=`{}`, twenty_one=`{}`".format(
+            event["zero"],
+            event["two"],
+            event["three"],
+            event["fifteen"],
+            event["twenty_one"],
+        ),
+    )
+    del events
 
-print_test_result(
-    match is not None and match.group(3) == "one",
-    current_test,
-    "First tracepoint's second enum value maps to one",
-)
-current_test += 1
 
-match = re.search(r".*ust_tests_td:(.*):.*enumfield = \( \"(.*)\" :.*", event_lines[1])
-print_test_result(
-    match is not None and match.group(1) == "tptest_bis",
-    current_test,
-    "Second tracepoint is present",
-)
-current_test += 1
+if __name__ == "__main__":
+    tap = lttngtest.TapGenerator(8)
+    with lttngtest.test_environment(with_sessiond=True, log=tap.diagnostic) as test_env:
+        test(tap, test_env)
 
-print_test_result(
-    match is not None and match.group(2) == "zero",
-    current_test,
-    "Second tracepoint's enum value maps to zero",
-)
-current_test += 1
-
-match = re.search(
-    r".*ust_tests_td:(.*):.*enumfield = \( \"(.*)\" :.*enumfield_bis = \( \"(.*)\" .*",
-    event_lines[2],
-)
-
-print_test_result(
-    match is not None and match.group(2) == "one",
-    current_test,
-    "Third tracepoint's enum value maps to one",
-)
-current_test += 1
-
-print_test_result(
-    '{ zero = ( "zero" : container = 0 ), two = ( "two" : container = 2 ), three = ( "three" : container = 3 ), fifteen = ( "ten_to_twenty" : container = 15 ), twenty_one = ( "twenty_one" : container = 21 ) }'
-    in event_lines[4],
-    current_test,
-    "Auto-incrementing enum values are correct",
-)
-
-shutil.rmtree(session_info.tmp_directory)
+    sys.exit(0 if tap.is_successful else 1)
