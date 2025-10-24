@@ -35,6 +35,10 @@ directory.
     command-line help (with man:lttng-help(1) or with the
     nloption:--help option) instead of `/usr/bin/man`.
 
+`LTTNG_NO_UTF_8`::
+    Set to `1` to :not: emit multi-byte UTF-8 sequences, even if the
+    locale claims to support it.
+
 `LTTNG_SESSION_CONFIG_XSD_PATH`::
     Path to the directory containing the `session.xsd` recording session
     configuration XML schema.
