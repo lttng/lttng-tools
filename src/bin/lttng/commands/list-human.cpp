@@ -657,62 +657,6 @@ const char *preallocation_policy_to_pretty_string(const lttng_channel_preallocat
 	}
 }
 
-void print_detailed_mem_usage(const lttng::cli::data_stream_info_sets& ds_info_sets)
-{
-	for (const auto& ds_info_set : ds_info_sets) {
-		{
-			std::string msg = fmt::format("Data streams for ", indent6);
-
-			if (ds_info_set.uid()) {
-				msg += fmt::format("UID {}", *ds_info_set.uid());
-			}
-
-			if (ds_info_set.pid()) {
-				msg += fmt::format("PID {}", *ds_info_set.pid());
-			}
-
-			if (ds_info_set.app_bitness()) {
-				msg += fmt::format(
-					" ({}-bit)",
-					*ds_info_set.app_bitness() == LTTNG_APP_BITNESS_32 ? 32 :
-											     64);
-			}
-
-			msg += fmt::format(
-				": {}:", utils_string_from_size(ds_info_set.memory_usage_bytes()));
-			lttng::print("{}{}\n", indent6, msg);
-		}
-
-		auto ds_info_i = 0U;
-
-		for (const auto& ds_info : ds_info_set) {
-			std::string msg = fmt::format("[{}] ", ds_info_i);
-
-			if (ds_info.cpu_id()) {
-				msg += fmt::format("CPU {}: ", *ds_info.cpu_id());
-			}
-
-			msg += utils_string_from_size(ds_info.memory_usage_bytes());
-			lttng::print("{}{}\n", indent8, msg);
-			++ds_info_i;
-		}
-	}
-}
-
-void print_mem_usage(const lttng::cli::ust_or_java_python_channel& channel)
-{
-	const auto ds_info_sets = channel.data_stream_infos();
-	const auto msg = fmt::format("Buffer memory usage: {}",
-				     utils_string_from_size(ds_info_sets.memory_usage_bytes()));
-
-	if (the_config->stream_info_details && !ds_info_sets.is_empty()) {
-		lttng::print("\n{}{}:\n", indent4, msg);
-		print_detailed_mem_usage(ds_info_sets);
-	} else {
-		lttng::print("\n{}{}\n", indent4, msg);
-	}
-}
-
 /*
  * Pretty print channel
  */
@@ -831,7 +775,7 @@ void print_channel(const lttng::cli::channel& channel, const bool snapshot_mode)
 		 * packets of a given snapshot (which prevents most analyses).
 		 */
 		lttng::print("{}None\n", indent6);
-		goto skip_stats_printing;
+		return;
 	}
 
 	if (channel.is_discard_mode()) {
@@ -840,12 +784,6 @@ void print_channel(const lttng::cli::channel& channel, const bool snapshot_mode)
 			     channel.discarded_event_record_count());
 	} else {
 		lttng::print("{}Lost packets:     {}\n", indent6, channel.discarded_packet_count());
-	}
-
-skip_stats_printing:
-	/* Print memory usage for UST and agent channels */
-	if (is_ust_or_agent_domain(channel.domain_type())) {
-		print_mem_usage(channel.as_ust_or_java_python());
 	}
 }
 
