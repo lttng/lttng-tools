@@ -14,6 +14,7 @@ reads the resulting trace to determine if all the expected events are present.
 
 import copy
 import pathlib
+import os
 import sys
 
 # Import in-tree test utils
@@ -25,7 +26,7 @@ import ust_constructor_common as ust
 
 test = {
     "description": "Test user space constructor/destructor instrumentation coverage (C w/ static archive)",
-    "application": "gen-ust-events-constructor/gen-ust-events-c-constructor-a",
+    "application": "tests/utils/testapp/gen-ust-events-constructor/gen-ust-events-c-constructor-a",
     "expected_events": copy.deepcopy(
         ust.expected_events_common + ust.expected_events_tp_a
     ),
@@ -35,6 +36,7 @@ test = {
 tap = lttngtest.TapGenerator(7 + len(test["expected_events"]))
 with lttngtest.test_environment(with_sessiond=True, log=tap.diagnostic) as test_env:
     try:
+        test["application"] = os.path.join(test_env._project_root, test["application"])
         outputlocation = ust.capture_trace(
             tap, test_env, test["application"], test["description"]
         )

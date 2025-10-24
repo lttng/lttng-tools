@@ -692,9 +692,7 @@ class _TraceTestApplication:
         # Make sure the app is blocked until it is properly registered to
         # the session daemon.
         test_app_env["LTTNG_UST_REGISTER_TIMEOUT"] = "-1"
-
         test_app_args = [str(binary_path)]
-
         test_app_env.update(extra_env_vars)
         self._process = subprocess.Popen(
             test_app_args, env=test_app_env
@@ -1383,13 +1381,14 @@ class _Environment(logger._Logger):
             extra_env_vars,
         )
 
-    def launch_test_application(self, subpath, extra_env_vars=dict()):
+    def launch_test_application(self, path, extra_env_vars=dict()):
         # type () -> TraceTestApplication
         """
-        Launch an application that will trace from within constructors.
+        Launch an application with it's environment set for being traced
+        by this test environment's session daemon.
         """
         return _TraceTestApplication(
-            self._project_root / "tests" / "utils" / "testapp" / subpath,
+            path,
             self,
             extra_env_vars,
         )
