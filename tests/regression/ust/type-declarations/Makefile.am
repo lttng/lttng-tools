@@ -11,8 +11,8 @@ type_declarations_SOURCES = type-declarations.c ust_tests_td.h
 type_declarations_LDADD = $(UST_LIBS) $(DL_LIBS)
 type_declarations_CPPFLAGS = $(UST_CFLAGS) $(DL_CFLAGS) $(AM_CPPFLAGS)
 
-noinst_SCRIPTS = test_type_declarations test_type_declarations.py
-EXTRA_DIST = test_type_declarations test_type_declarations.py
+noinst_SCRIPTS = test_type_declarations.py
+EXTRA_DIST = test_type_declarations.py
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
