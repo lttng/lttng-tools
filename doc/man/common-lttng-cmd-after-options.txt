@@ -30,6 +30,14 @@ Defaults to `$HOME`.
 Useful when the Unix user running the commands has a non-writable home
 directory.
 
+`LTTNG_LIST_LEGACY`::
+    Set to `1` to use the legacy output format (LTTng{nbsp}2.14 and
+    earlier) for the man:lttng-list(1) command instead of the modern
+    output format.
++
+Note that the legacy output doesn't show anything related to features
+introduced after LTTng{nbsp}2.14.
+
 `LTTNG_MAN_BIN_PATH`::
     Absolute path to the manual pager to use to read the LTTng
     command-line help (with man:lttng-help(1) or with the

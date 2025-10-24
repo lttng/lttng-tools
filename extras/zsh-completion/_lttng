@@ -24,10 +24,10 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 #
 # This is a Zsh completion function for the lttng(1) command (see
-# <https://lttng.org/>), for versions 2.5 to 2.14.
+# <https://lttng.org/>), for versions 2.5 to 2.15.
 #
 # If you want, at your own risk, the function to work with versions
-# above 2.14, set `LTTNG_ZSH_COMP_IGNORE_VERSION_LIMIT=1`.
+# above 2.15, set `LTTNG_ZSH_COMP_IGNORE_VERSION_LIMIT=1`.
 #
 # Each subcommand changes the command part of the current context so
 # that you can target a specific subcommand with `zstyle`, for
@@ -1765,13 +1765,13 @@ __lttng_complete_list_cmd() {
     -l --log4j
        --log4j2
     -p --python
-    --syscall
+       --syscall
   )
   local specs=(
     $help_opt_specs
-    '(-d --domain -f --fields --syscall -c --channel 1)'{-f,--fields}'[show instrumentation point fields]'
-    "($domain_opt_excl)"{-d,--domain}'[show tracing domains with at least one channel]'
-    '(-d --domain -f --fields --syscall -c --channel)'{-c+,--channel=}'[list the objects of a specific channel]: : __lttng_complete_channel_name all arg'
+    '(-d --domain -f --fields -c --channel --mem-usage 1)'{-f,--fields}'[show user space tracepoint fields]'
+    "($domain_opt_excl)"{-d,--domain}'[show tracing domains]'
+    '(-d --domain -f --fields --syscall -c --channel)'{-c+,--channel=}'[list the objects of specific channel(s)]: : __lttng_complete_channel_name all arg'
     '(-d --domain -f --fields --syscall):recording session name: __lttng_complete_session_name all all'
     '(-d --domain -k --kernel)'{-k,--kernel}'[list Linux kernel tracing domain objects]'
     '(-d --domain -u --userspace)'{-u,--userspace}'[list user space tracing domain objects]'
@@ -1783,7 +1783,7 @@ __lttng_complete_list_cmd() {
   if ((minor_version >= 6)); then
     specs+=(
       '(-d --domain -l --log4j)'{-l,--log4j}'[list Apache log4j 1.x tracing domain objects]'
-      '(-d --domain)--syscall[list Linux kernel system calls]'
+      '(-d --domain -f --fields -c --channel --mem-usage 1)--syscall[list Linux kernel system calls]'
     )
   fi
 
@@ -1798,6 +1798,15 @@ __lttng_complete_list_cmd() {
   if ((minor_version >= 14)); then
     specs+=(
       '(-d --domain --log4j2)--log4j2[list Apache Log4j 2 tracing domain objects]'
+    )
+  fi
+
+  # The modern output options require LTTng-tools ≥ 2.15.
+  if ((minor_version >= 15)); then
+    specs+=(
+      '(-f --fields --syscall)--mem-usage=[set channel memory usage display mode]:memory usage mode:(compact full)'
+      '--style=[set command output style]:output style:(compact)'
+      '--no-truncate[do not truncate long output lines]'
     )
   fi
 
@@ -2105,10 +2114,10 @@ local -i minor_version
 
 __lttng_set_minor_version
 
-# Exit now with LTTng-tools < 2.5 or LTTng-tools > 2.14
+# Exit now with LTTng-tools < 2.5 or LTTng-tools > 2.15
 local -r ignore_version_limit=${LTTNG_ZSH_COMP_IGNORE_VERSION_LIMIT:-0}
 
-if ((minor_version < 5 || (minor_version > 14 && !ignore_version_limit))); then
+if ((minor_version < 5 || (minor_version > 15 && !ignore_version_limit))); then
   _message "completion not available for LTTng-tools 2.$minor_version; please update the completion files or set \`LTTNG_ZSH_COMP_IGNORE_VERSION_LIMIT=1\`"
   return 1
 fi
