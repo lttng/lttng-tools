@@ -1,95 +1,61 @@
 #!/usr/bin/env python3
 #
 # SPDX-FileCopyrightText: 2013 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+# SPDX-FileCopyrightText: 2025 Kienan Stewart <kstewart@efficios.com>
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
 import os
-import subprocess
-import re
-import shutil
+import pathlib
 import sys
 
-test_path = os.path.dirname(os.path.abspath(__file__)) + "/"
-test_utils_path = test_path
-for i in range(4):
-    test_utils_path = os.path.dirname(test_utils_path)
-test_utils_path = test_utils_path + "/utils"
-sys.path.append(test_utils_path)
-from test_utils import *
+# Import in-tree test utils
+test_utils_import_path = pathlib.Path(__file__).absolute().parents[3] / "utils"
+sys.path.append(str(test_utils_import_path))
+
+import lttngtest
+import bt2
 
 
-NR_TESTS = 4
-current_test = 1
-print("1..{0}".format(NR_TESTS))
+def test(tap, test_env):
+    expected_events = [
+        "lttng_ust_libc:malloc",
+        "lttng_ust_libc:free",
+    ]
+    test_path = os.path.dirname(os.path.abspath(__file__)) + "/"
+    output_path = test_env.create_temporary_directory("trace")
+    client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
+    session = client.create_session(
+        output=lttngtest.LocalSessionOutputLocation(output_path)
+    )
+    channel = session.add_channel(lttngtest.lttngctl.TracingDomain.User)
+    channel.add_recording_rule(
+        lttngtest.lttngctl.UserTracepointEventRule("lttng_ust_libc*")
+    )
+    session.start()
 
-# Check if a sessiond is running... bail out if none found.
-if session_daemon_alive() == 0:
-    bail(
-        'No sessiond running. Please make sure you are running this test with the "run" shell script and verify that the lttng tools are properly installed.'
+    malloc_process = test_env.launch_test_application(os.path.join(test_path, "prog"))
+    malloc_process.wait_for_exit()
+    session.stop()
+
+    received_events = {x: 0 for x in expected_events}
+    for msg in bt2.TraceCollectionMessageIterator(str(output_path)):
+        if type(msg) is bt2._EventMessageConst:
+            if msg.event.name in received_events:
+                received_events[msg.event.name] += 1
+
+    tap.test(
+        received_events["lttng_ust_libc:malloc"] > 0,
+        "Received at least one malloc event",
+    )
+    tap.test(
+        received_events["lttng_ust_libc:free"] > 0, "Received at least one free event"
     )
 
-session_info = create_session()
-enable_ust_tracepoint_event(session_info, "lttng_ust_libc*")
-start_session(session_info)
 
-malloc_process = subprocess.Popen(
-    test_path + "prog", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-)
-malloc_process.wait()
+if __name__ == "__main__":
+    tap = lttngtest.TapGenerator(2)
+    with lttngtest.test_environment(with_sessiond=True, log=tap.diagnostic) as test_env:
+        test(tap, test_env)
 
-print_test_result(
-    malloc_process.returncode == 0, current_test, "Test application exited normally"
-)
-current_test += 1
-
-stop_session(session_info)
-
-# Check for malloc events in the resulting trace
-try:
-    babeltrace_process = subprocess.Popen(
-        [BABELTRACE_BIN, session_info.trace_path],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-except FileNotFoundError:
-    bail(
-        "Could not open {}. Please make sure it is installed.".format(BABELTRACE_BIN),
-        session_info,
-    )
-
-malloc_event_found = False
-free_event_found = False
-
-for event_line in babeltrace_process.stdout:
-    # Let babeltrace finish to get the return code
-    if malloc_event_found and free_event_found:
-        continue
-
-    event_line = event_line.decode("utf-8").replace("\n", "")
-    if re.search(r".*lttng_ust_libc:malloc.*", event_line) is not None:
-        malloc_event_found = True
-
-    if re.search(r".*lttng_ust_libc:free.*", event_line) is not None:
-        free_event_found = True
-
-babeltrace_process.wait()
-
-print_test_result(
-    babeltrace_process.returncode == 0, current_test, "Resulting trace is readable"
-)
-current_test += 1
-
-print_test_result(
-    malloc_event_found,
-    current_test,
-    "lttng_ust_libc:malloc event found in resulting trace",
-)
-current_test += 1
-
-print_test_result(
-    free_event_found, current_test, "lttng_ust_libc:free event found in resulting trace"
-)
-current_test += 1
-
-shutil.rmtree(session_info.tmp_directory)
+    sys.exit(0 if tap.is_successful else 1)

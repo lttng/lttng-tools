@@ -177,12 +177,11 @@ endif # IS_LINUX
 endif # HAVE_LIBLTTNG_UST_CTL
 
 if PYTHON_BINDING
-SERIAL_TESTS += \
-	ust/libc-wrapper/test_libc-wrapper
 TESTS += ust/baddr-statedump/test_baddr-statedump.py \
 	ust/daemon/test_daemon.py \
 	ust/exit-fast/test_exit-fast.py \
 	ust/fork/test_fork.py \
+	ust/libc-wrapper/test_libc-wrapper.py \
 	ust/linking/test_linking.py \
 	ust/type-declarations/test_type_declarations.py \
 	ust/ust-dl/test_ust-dl.py
