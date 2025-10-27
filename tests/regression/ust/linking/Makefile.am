@@ -45,7 +45,7 @@ demo_static_LDADD = liblttng-ust-provider-ust-tests-demo-static.la \
 
 noinst_PROGRAMS = demo_builtin demo_static
 
-COPYSCRIPTS = test_linking test_linking.py demo_preload
+COPYSCRIPTS = test_linking.py demo_preload
 noinst_SCRIPTS = $(COPYSCRIPTS)
 
 if NO_SHARED
