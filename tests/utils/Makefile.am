@@ -13,7 +13,6 @@ EXTRA_DIST = \
 	parse-callstack.py \
 	tap-driver.sh \
 	tap/tap.sh \
-	test_utils.py \
 	utils.sh \
 	warn_processes.sh
 
