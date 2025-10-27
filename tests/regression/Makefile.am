@@ -181,9 +181,9 @@ SERIAL_TESTS += ust/linking/test_linking \
 	ust/daemon/test_daemon \
 	ust/exit-fast/test_exit-fast \
 	ust/fork/test_fork \
-	ust/libc-wrapper/test_libc-wrapper \
-	ust/baddr-statedump/test_baddr-statedump
-TESTS += ust/type-declarations/test_type_declarations.py \
+	ust/libc-wrapper/test_libc-wrapper
+TESTS += ust/baddr-statedump/test_baddr-statedump.py \
+	ust/type-declarations/test_type_declarations.py \
 	ust/ust-dl/test_ust-dl.py
 endif
 
