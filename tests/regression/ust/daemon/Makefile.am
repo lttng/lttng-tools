@@ -10,8 +10,8 @@ noinst_PROGRAMS = daemon
 daemon_SOURCES = daemon.c ust_tests_daemon.h
 daemon_LDADD = $(UST_LIBS) -llttng-ust-fork $(DL_LIBS)
 
-noinst_SCRIPTS = test_daemon test_daemon.py
-EXTRA_DIST = test_daemon test_daemon.py
+noinst_SCRIPTS = test_daemon.py
+EXTRA_DIST = test_daemon.py
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \

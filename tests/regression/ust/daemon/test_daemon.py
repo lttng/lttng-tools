@@ -1,139 +1,90 @@
 #!/usr/bin/env python3
 #
 # SPDX-FileCopyrightText: 2013 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+# SPDX-FileCopyrightText: 2025 Kienan Stewart <kstewart@efficios.com>
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import uuid
 import os
+import pathlib
 import subprocess
-import re
-import shutil
 import sys
 
-test_path = os.path.dirname(os.path.abspath(__file__)) + "/"
-test_utils_path = test_path
-for i in range(4):
-    test_utils_path = os.path.dirname(test_utils_path)
-test_utils_path = test_utils_path + "/utils"
-sys.path.append(test_utils_path)
-from test_utils import *
+# Import in-tree test utils
+test_utils_import_path = pathlib.Path(__file__).absolute().parents[3] / "utils"
+sys.path.append(str(test_utils_import_path))
+
+import lttngtest
+import bt2
 
 
-NR_TESTS = 6
-current_test = 1
-print("1..{0}".format(NR_TESTS))
+def test(tap, test_env):
+    expected_events = [
+        "ust_tests_daemon:before_daemon",
+        "ust_tests_daemon:after_daemon_child",
+    ]
+    test_path = os.path.dirname(os.path.abspath(__file__))
+    output_path = test_env.create_temporary_directory("trace")
+    client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
+    session = client.create_session(
+        output=lttngtest.LocalSessionOutputLocation(output_path)
+    )
+    channel = session.add_channel(lttngtest.lttngctl.TracingDomain.User)
+    channel.add_recording_rule(lttngtest.lttngctl.UserTracepointEventRule("*"))
+    session.start()
 
-# Check if a sessiond is running... bail out if none found.
-if session_daemon_alive() == 0:
-    bail(
-        'No sessiond running. Please make sure you are running this test with the "run" shell script and verify that the lttng tools are properly installed.'
+    parent_pid = None
+    daemon_pid = None
+    daemon_process = test_env.launch_test_application(
+        os.path.join(test_path, "daemon"), stdout=subprocess.PIPE
+    )
+    daemon_process.wait_for_exit()
+    for line in daemon_process._process.stdout:
+        name, pid = line.decode("utf-8").split()
+        if name == "child_pid":
+            daemon_pid = pid
+        if name == "parent_pid":
+            parent_pid = pid
+
+    tap.diagnostic("Parent pid: {}, daemon pid: {}".format(parent_pid, daemon_pid))
+    session.stop()
+    received_events_parent = {x: 0 for x in expected_events}
+    received_events_daemon = {x: 0 for x in expected_events}
+    for msg in bt2.TraceCollectionMessageIterator(str(output_path)):
+        if type(msg) is bt2._EventMessageConst:
+            if "pid" not in msg.event.payload_field:
+                continue
+
+            pid = str(msg.event.payload_field["pid"])
+            if pid == parent_pid and msg.event.name in expected_events:
+                received_events_parent[msg.event.name] += 1
+
+            if pid == daemon_pid and msg.event.name in expected_events:
+                received_events_daemon[msg.event.name] += 1
+
+    tap.test(
+        received_events_parent["ust_tests_daemon:before_daemon"] == 1,
+        "Received before_daemon event from parent pid {}".format(parent_pid),
+    )
+    tap.test(
+        received_events_parent["ust_tests_daemon:after_daemon_child"] == 0,
+        "Did not receive after_daemon_child event from parent pid {}".format(
+            parent_pid
+        ),
+    )
+    tap.test(
+        received_events_daemon["ust_tests_daemon:before_daemon"] == 0,
+        "Did not received before_daemon event from daemon pid {}".format(daemon_pid),
+    )
+    tap.test(
+        received_events_daemon["ust_tests_daemon:after_daemon_child"] == 1,
+        "Received after_daemon_child event from daemon pid {}".format(daemon_pid),
     )
 
-session_info = create_session()
-enable_ust_tracepoint_event(session_info, "*")
-start_session(session_info)
 
+if __name__ == "__main__":
+    tap = lttngtest.TapGenerator(4)
+    with lttngtest.test_environment(with_sessiond=True, log=tap.diagnostic) as test_env:
+        test(tap, test_env)
 
-parent_pid = None
-daemon_pid = None
-daemon_process = subprocess.Popen(test_path + "daemon", stdout=subprocess.PIPE)
-for line in daemon_process.stdout:
-    name, pid = line.decode("utf-8").split()
-    if name == "child_pid":
-        daemon_pid = int(pid)
-    if name == "parent_pid":
-        parent_pid = int(pid)
-
-daemon_process_return_code = daemon_process.wait()
-
-if parent_pid is None or daemon_pid is None:
-    bail(
-        "Unexpected output received from daemon test executable."
-        + str(daemon_process_output)
-    )
-
-print_test_result(
-    daemon_process_return_code == 0,
-    current_test,
-    "Successful call to daemon() and normal exit",
-)
-current_test += 1
-
-if daemon_process_return_code != 0:
-    bail("Could not trigger tracepoints successfully. Abandoning test.")
-
-stop_session(session_info)
-
-try:
-    babeltrace_process = subprocess.Popen(
-        [BABELTRACE_BIN, session_info.trace_path], stdout=subprocess.PIPE
-    )
-except FileNotFoundError:
-    bail("Could not open {}. Please make sure it is installed.".format(BABELTRACE_BIN))
-
-before_daemon_event_found = False
-before_daemon_event_pid = -1
-after_daemon_event_found = False
-after_daemon_event_pid = -1
-
-for event_line in babeltrace_process.stdout:
-    event_line = event_line.decode("utf-8").replace("\n", "")
-
-    if re.search(r"before_daemon", event_line) is not None:
-        if before_daemon_event_found:
-            bail(
-                "Multiple instances of the before_daemon event found. Please make sure only one instance of this test is runnning."
-            )
-        before_daemon_event_found = True
-        match = re.search(r"(?<=pid = )\d+", event_line)
-
-        if match is not None:
-            before_daemon_event_pid = int(match.group(0))
-
-    if re.search(r"after_daemon", event_line) is not None:
-        if after_daemon_event_found:
-            bail(
-                "Multiple instances of the after_daemon event found. Please make sure only one instance of this test is runnning."
-            )
-        after_daemon_event_found = True
-        match = re.search(r"(?<=pid = )\d+", event_line)
-
-        if match is not None:
-            after_daemon_event_pid = int(match.group(0))
-babeltrace_process.wait()
-
-print_test_result(
-    babeltrace_process.returncode == 0, current_test, "Resulting trace is readable"
-)
-current_test += 1
-
-if babeltrace_process.returncode != 0:
-    bail("Unreadable trace; can't proceed with analysis.")
-
-print_test_result(
-    before_daemon_event_found,
-    current_test,
-    "before_daemon event found in resulting trace",
-)
-current_test += 1
-print_test_result(
-    before_daemon_event_pid == parent_pid,
-    current_test,
-    "Parent pid reported in trace is correct",
-)
-current_test += 1
-print_test_result(
-    before_daemon_event_found,
-    current_test,
-    "after_daemon event found in resulting trace",
-)
-current_test += 1
-print_test_result(
-    after_daemon_event_pid == daemon_pid,
-    current_test,
-    "Daemon pid reported in trace is correct",
-)
-current_test += 1
-
-shutil.rmtree(session_info.tmp_directory)
+    sys.exit(0 if tap.is_successful else 1)

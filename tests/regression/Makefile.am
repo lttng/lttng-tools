@@ -178,9 +178,9 @@ endif # HAVE_LIBLTTNG_UST_CTL
 
 if PYTHON_BINDING
 SERIAL_TESTS += \
-	ust/daemon/test_daemon \
 	ust/libc-wrapper/test_libc-wrapper
 TESTS += ust/baddr-statedump/test_baddr-statedump.py \
+	ust/daemon/test_daemon.py \
 	ust/exit-fast/test_exit-fast.py \
 	ust/fork/test_fork.py \
 	ust/linking/test_linking.py \
