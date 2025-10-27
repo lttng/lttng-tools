@@ -1,118 +1,81 @@
 #!/usr/bin/env python3
 #
 # SPDX-FileCopyrightText: 2013 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+# SPDX-FileCopyrightText: 2025 Kienan Stewart <kstewart@efficios.com>
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
 import os
-import subprocess
-import re
+import pathlib
 import shutil
+import subprocess
 import sys
 
-test_path = os.path.dirname(os.path.abspath(__file__)) + "/"
-test_utils_path = test_path
-for i in range(4):
-    test_utils_path = os.path.dirname(test_utils_path)
-test_utils_path = test_utils_path + "/utils"
-sys.path.append(test_utils_path)
-from test_utils import *
+# Import in-tree test utils
+test_utils_import_path = pathlib.Path(__file__).absolute().parents[3] / "utils"
+sys.path.append(str(test_utils_import_path))
+
+import lttngtest
+import bt2
 
 
-normal_exit_message = "exit-fast tracepoint normal exit"
-suicide_exit_message = "exit-fast tracepoint suicide"
-NR_TESTS = 5
-current_test = 1
-print("1..{0}".format(NR_TESTS))
+def test(tap, test_env):
+    normal_exit_message = "exit-fast tracepoint normal exit"
+    suicide_exit_message = "exit-fast tracepoint suicide"
+    test_path = os.path.dirname(os.path.abspath(__file__)) + "/"
+    output_path = test_env.create_temporary_directory("trace")
+    client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
+    session = client.create_session(
+        output=lttngtest.LocalSessionOutputLocation(output_path)
+    )
+    channel = session.add_channel(lttngtest.lttngctl.TracingDomain.User)
+    channel.add_recording_rule(
+        lttngtest.lttngctl.UserTracepointEventRule("ust_tests_exitfast*")
+    )
+    session.start()
 
-# Check if a sessiond is running... bail out if none found.
-if session_daemon_alive() == 0:
-    bail(
-        'No sessiond running. Please make sure you are running this test with the "run" shell script and verify that the lttng tools are properly installed.'
+    exit_fast_process = test_env.launch_test_application(
+        os.path.join(test_path, "exit-fast"),
+    )
+    exit_fast_process.wait_for_exit()
+
+    exit_fast_process = test_env.launch_test_application(
+        [os.path.join(test_path, "exit-fast"), "suicide"],
+    )
+    try:
+        exit_fast_process.wait_for_exit()
+    except RuntimeError as e:
+        # This invocation should die with non-zero exit code
+        pass
+    session.stop()
+
+    received_events = []
+    for msg in bt2.TraceCollectionMessageIterator(str(output_path)):
+        if type(msg) is bt2._EventMessageConst:
+            received_events.append(msg.event)
+
+    tap.test(len(received_events) == 2, "Found 2 expected events")
+    tap.test(
+        received_events[0].payload_field["message"] == normal_exit_message,
+        "Event '{}' message '{}' matches expected value '{}'".format(
+            received_events[0].name,
+            received_events[0].payload_field["message"],
+            normal_exit_message,
+        ),
+    )
+    tap.test(
+        received_events[1].payload_field["message"] == suicide_exit_message,
+        "Event '{}' message '{}' matches expected value '{}'".format(
+            received_events[1].name,
+            received_events[1].payload_field["message"],
+            normal_exit_message,
+        ),
     )
 
-session_info = create_session()
-enable_ust_tracepoint_event(session_info, "ust_tests_exitfast*")
-start_session(session_info)
 
-test_env = os.environ.copy()
-test_env["LTTNG_UST_REGISTER_TIMEOUT"] = "-1"
+if __name__ == "__main__":
+    tap = lttngtest.TapGenerator(3)
+    with lttngtest.test_environment(with_sessiond=True, log=tap.diagnostic) as test_env:
+        test(tap, test_env)
 
-exit_fast_process = subprocess.Popen(
-    test_path + "exit-fast",
-    stdout=subprocess.DEVNULL,
-    stderr=subprocess.DEVNULL,
-    env=test_env,
-)
-exit_fast_process.wait()
-
-print_test_result(
-    exit_fast_process.returncode == 0, current_test, "Test application exited normally"
-)
-current_test += 1
-
-exit_fast_process = subprocess.Popen(
-    [test_path + "exit-fast", "suicide"],
-    stdout=subprocess.DEVNULL,
-    stderr=subprocess.DEVNULL,
-    env=test_env,
-)
-exit_fast_process.wait()
-
-stop_session(session_info)
-
-# Check both events (normal exit and suicide messages) are present in the resulting trace
-try:
-    babeltrace_process = subprocess.Popen(
-        [BABELTRACE_BIN, session_info.trace_path],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-except FileNotFoundError:
-    bail("Could not open {}. Please make sure it is installed.".format(BABELTRACE_BIN))
-
-event_lines = []
-for event_line in babeltrace_process.stdout:
-    event_line = event_line.decode("utf-8").replace("\n", "")
-    event_lines.append(event_line)
-babeltrace_process.wait()
-
-print_test_result(
-    babeltrace_process.returncode == 0, current_test, "Resulting trace is readable"
-)
-current_test += 1
-
-if babeltrace_process.returncode != 0:
-    bail("Unreadable trace; can't proceed with analysis.")
-
-print_test_result(
-    len(event_lines) == 2,
-    current_test,
-    "Correct number of events found in resulting trace",
-)
-current_test += 1
-
-if len(event_lines) != 2:
-    bail(
-        "Unexpected number of events found in resulting trace ("
-        + session_info.trace_path
-        + ")."
-    )
-
-match = re.search(r".*message = \"(.*)\"", event_lines[0])
-print_test_result(
-    match is not None and match.group(1) == normal_exit_message,
-    current_test,
-    "Tracepoint message generated during normal exit run is present in trace and has the expected value",
-)
-current_test += 1
-
-match = re.search(r".*message = \"(.*)\"", event_lines[1])
-print_test_result(
-    match is not None and match.group(1) == suicide_exit_message,
-    current_test,
-    "Tracepoint message generated during suicide run is present in trace and has the expected value",
-)
-current_test += 1
-
-shutil.rmtree(session_info.tmp_directory)
+    sys.exit(0 if tap.is_successful else 1)
