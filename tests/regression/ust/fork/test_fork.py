@@ -1,138 +1,96 @@
 #!/usr/bin/env python3
 #
 # SPDX-FileCopyrightText: 2013 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+# SPDX-FileCopyrightText: 2025 Kienan Stewart <kstewart@efficios.com>
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
 import os
-import subprocess
+import pathlib
 import re
+import subprocess
 import shutil
 import sys
 
-test_path = os.path.dirname(os.path.abspath(__file__)) + "/"
-test_utils_path = test_path
-for i in range(4):
-    test_utils_path = os.path.dirname(test_utils_path)
-test_utils_path = test_utils_path + "/utils"
-sys.path.append(test_utils_path)
-from test_utils import *
+# Import in-tree test utils
+test_utils_import_path = pathlib.Path(__file__).absolute().parents[3] / "utils"
+sys.path.append(str(test_utils_import_path))
+
+import lttngtest
+import bt2
 
 
-NR_TESTS = 6
-current_test = 1
-print("1..{0}".format(NR_TESTS))
-
-# Check if a sessiond is running... bail out if none found.
-if session_daemon_alive() == 0:
-    bail(
-        'No sessiond running. Please make sure you are running this test with the "run" shell script and verify that the lttng tools are properly installed.'
+def test(tap, test_env):
+    expected_events_parent = [
+        "ust_tests_fork:before_fork",
+        "ust_tests_fork:after_fork_parent",
+    ]
+    expected_events_child = [
+        "ust_tests_fork:after_fork_child",
+        "ust_tests_fork:after_exec",
+    ]
+    test_path = os.path.dirname(os.path.abspath(__file__)) + "/"
+    output_path = test_env.create_temporary_directory("trace")
+    client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
+    session = client.create_session(
+        output=lttngtest.LocalSessionOutputLocation(output_path)
     )
+    channel = session.add_channel(lttngtest.lttngctl.TracingDomain.User)
+    channel.add_recording_rule(lttngtest.lttngctl.UserTracepointEventRule("*"))
+    session.start()
 
-session_info = create_session()
-enable_ust_tracepoint_event(session_info, "ust_tests_fork*")
-start_session(session_info)
-
-fork_process = subprocess.Popen(
-    [test_path + "fork", test_path + "fork2"],
-    stdout=subprocess.PIPE,
-    stderr=subprocess.PIPE,
-)
-parent_pid = -1
-child_pid = -1
-for line in fork_process.stdout:
-    line = line.decode("utf-8").replace("\n", "")
-    match = re.search(r"child_pid (\d+)", line)
-    if match:
-        child_pid = match.group(1)
-    match = re.search(r"parent_pid (\d+)", line)
-    if match:
-        parent_pid = match.group(1)
-
-fork_process.wait()
-
-print_test_result(
-    fork_process.returncode == 0, current_test, "Fork test application exited normally"
-)
-current_test += 1
-
-stop_session(session_info)
-
-# Check both events (normal exit and suicide messages) are present in the resulting trace
-try:
-    babeltrace_process = subprocess.Popen(
-        [BABELTRACE_BIN, session_info.trace_path],
+    fork_process = test_env.launch_test_application(
+        [os.path.join(test_path, "fork"), os.path.join(test_path, "fork2")],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
-except FileNotFoundError:
-    bail("Could not open {}. Please make sure it is installed.".format(BABELTRACE_BIN))
+    parent_pid = -1
+    child_pid = -1
+    fork_process.wait_for_exit()
+    for line in fork_process._process.stdout:
+        line = line.decode("utf-8").replace("\n", "")
+        match = re.search(r"child_pid (\d+)", line)
+        if match:
+            child_pid = match.group(1)
 
-event_lines = []
-for event_line in babeltrace_process.stdout:
-    event_line = event_line.decode("utf-8").replace("\n", "")
-    if (
-        re.search(r"warning", event_line) is not None
-        or re.search(r"error", event_line) is not None
-    ):
-        print("# " + event_line)
-    else:
-        event_lines.append(event_line)
+        match = re.search(r"parent_pid (\d+)", line)
+        if match:
+            parent_pid = match.group(1)
 
-babeltrace_process.wait()
+    tap.diagnostic("Parent pid: {}, child pid: {}".format(parent_pid, child_pid))
+    session.stop()
+    received_events_parent = {x: 0 for x in expected_events_parent}
+    received_events_child = {x: 0 for x in expected_events_child}
+    for msg in bt2.TraceCollectionMessageIterator(str(output_path)):
+        if type(msg) is bt2._EventMessageConst:
+            if "pid" not in msg.event.payload_field:
+                continue
 
-print_test_result(
-    babeltrace_process.returncode == 0, current_test, "Resulting trace is readable"
-)
-current_test += 1
+            pid = str(msg.event.payload_field["pid"])
+            if pid == parent_pid and msg.event.name in expected_events_parent:
+                received_events_parent[msg.event.name] += 1
 
-if babeltrace_process.returncode != 0:
-    bail("Unreadable trace; can't proceed with analysis.", session_info)
+            if pid == child_pid and msg.event.name in expected_events_child:
+                received_events_child[msg.event.name] += 1
 
-event_before_fork = False
-event_after_fork_parent = False
-event_after_fork_child = False
-event_after_exec = False
+    for event, count in received_events_parent.items():
+        tap.test(
+            count > 0,
+            "Event '{}' has at least 1 event in parent pid {}".format(
+                event, parent_pid
+            ),
+        )
 
-for event_line in event_lines:
-    match = re.search(r".*pid = (\d+)", event_line)
-    if match is not None:
-        event_pid = match.group(1)
-    else:
-        continue
+    for event, count in received_events_child.items():
+        tap.test(
+            count > 0,
+            "Event '{}' has at least 1 event in child pid {}".format(event, child_pid),
+        )
 
-    if re.search(r"before_fork", event_line):
-        event_before_fork = event_pid == parent_pid
-    if re.search(r"after_fork_parent", event_line):
-        event_after_fork_parent = event_pid == parent_pid
-    if re.search(r"after_fork_child", event_line):
-        event_after_fork_child = event_pid == child_pid
-    if re.search(r"after_exec", event_line):
-        event_after_exec = event_pid == child_pid
 
-print_test_result(
-    event_before_fork,
-    current_test,
-    "before_fork event logged by parent process found in trace",
-)
-current_test += 1
-print_test_result(
-    event_after_fork_parent,
-    current_test,
-    "after_fork_parent event logged by parent process found in trace",
-)
-current_test += 1
-print_test_result(
-    event_after_fork_child,
-    current_test,
-    "after_fork_child event logged by child process found in trace",
-)
-current_test += 1
-print_test_result(
-    event_after_exec,
-    current_test,
-    "after_exec event logged by child process found in trace",
-)
-current_test += 1
+if __name__ == "__main__":
+    tap = lttngtest.TapGenerator(4)
+    with lttngtest.test_environment(with_sessiond=True, log=tap.diagnostic) as test_env:
+        test(tap, test_env)
 
-shutil.rmtree(session_info.tmp_directory)
+    sys.exit(0 if tap.is_successful else 1)
