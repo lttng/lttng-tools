@@ -678,7 +678,7 @@ class _TraceTestApplication:
     scenarios, it is preferable to use a WaitTraceTestApplication.
     """
 
-    def __init__(self, binary_path, environment, extra_env_vars=dict()):
+    def __init__(self, binary_path, environment, extra_env_vars=dict(), **kwargs):
         # type: (pathlib.Path, Environment)
         self._process = None
         self._environment = environment  # type: Environment
@@ -692,10 +692,15 @@ class _TraceTestApplication:
         # Make sure the app is blocked until it is properly registered to
         # the session daemon.
         test_app_env["LTTNG_UST_REGISTER_TIMEOUT"] = "-1"
-        test_app_args = [str(binary_path)]
+        if type(binary_path) is str:
+            test_app_args = [str(binary_path)]
+        else:
+            # Assume it is a list
+            test_app_args = binary_path
+
         test_app_env.update(extra_env_vars)
         self._process = subprocess.Popen(
-            test_app_args, env=test_app_env
+            test_app_args, env=test_app_env, **kwargs
         )  # type: subprocess.Popen
         self._environment._log(
             "Launched tested application '{}' with pid '{}'".format(
@@ -1381,7 +1386,7 @@ class _Environment(logger._Logger):
             extra_env_vars,
         )
 
-    def launch_test_application(self, path, extra_env_vars=dict()):
+    def launch_test_application(self, path, extra_env_vars=dict(), **kwargs):
         # type () -> TraceTestApplication
         """
         Launch an application with it's environment set for being traced
@@ -1391,6 +1396,7 @@ class _Environment(logger._Logger):
             path,
             self,
             extra_env_vars,
+            **kwargs,
         )
 
     def _terminate_relayd(self):
