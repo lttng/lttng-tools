@@ -14,8 +14,8 @@ noinst_PROGRAMS = prog
 prog_SOURCES = prog.c tp.c tp.h
 prog_LDADD = $(UST_LIBS) $(DL_LIBS)
 
-noinst_SCRIPTS = test_baddr-statedump test_baddr-statedump.py
-EXTRA_DIST = test_baddr-statedump test_baddr-statedump.py
+noinst_SCRIPTS = test_baddr-statedump.py
+EXTRA_DIST = test_baddr-statedump.py
 
 # Extract debug symbols
 prog.debug: prog

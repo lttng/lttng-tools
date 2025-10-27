@@ -2,134 +2,62 @@
 #
 # SPDX-FileCopyrightText: 2013 Jérémie Galarneau <jeremie.galarneau@efficios.com>
 # SPDX-FileCopyrightText: 2015 Antoine Busque <abusque@efficios.com>
+# SPDX-FileCopyrightText: 2025 Kienan Stewart <kstewart@efficios.com>
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
 import os
-import subprocess
-import re
+import pathlib
 import shutil
+import subprocess
 import sys
 
-test_path = os.path.dirname(os.path.abspath(__file__)) + "/"
-test_utils_path = test_path
-for i in range(4):
-    test_utils_path = os.path.dirname(test_utils_path)
-test_utils_path = test_utils_path + "/utils"
-sys.path.append(test_utils_path)
-from test_utils import *
+# Import in-tree test utils
+test_utils_import_path = pathlib.Path(__file__).absolute().parents[3] / "utils"
+sys.path.append(str(test_utils_import_path))
+
+import lttngtest
+import bt2
 
 
-NR_TESTS = 7
-current_test = 1
-print("1..{0}".format(NR_TESTS))
+def test(tap, test_env):
+    expected_events = [
+        "lttng_ust_statedump:start",
+        "lttng_ust_statedump:bin_info",
+        "lttng_ust_statedump:build_id",
+        "lttng_ust_statedump:debug_link",
+        "lttng_ust_statedump:end",
+    ]
 
-# Check if a sessiond is running... bail out if none found.
-if session_daemon_alive() == 0:
-    bail(
-        """No sessiond running. Please make sure you are running this test
-    with the "run" shell script and verify that the lttng tools are
-    properly installed."""
+    test_path = os.path.dirname(os.path.abspath(__file__)) + "/"
+    output_path = test_env.create_temporary_directory("trace")
+    client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
+    session = client.create_session(
+        output=lttngtest.LocalSessionOutputLocation(output_path)
     )
+    channel = session.add_channel(lttngtest.lttngctl.TracingDomain.User)
+    channel.add_recording_rule(lttngtest.lttngctl.UserTracepointEventRule("*"))
+    session.start()
 
-session_info = create_session()
-enable_ust_tracepoint_event(session_info, "*")
-start_session(session_info)
-
-test_process = subprocess.Popen(
-    test_path + "prog.strip", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-)
-test_process.wait()
-
-print_test_result(
-    test_process.returncode == 0, current_test, "Test application exited normally"
-)
-current_test += 1
-
-stop_session(session_info)
-
-# Check for statedump events in the resulting trace
-try:
-    babeltrace_process = subprocess.Popen(
-        [BABELTRACE_BIN, session_info.trace_path],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+    test_process = test_env.launch_test_application(
+        os.path.join(test_path, "prog.strip"),
     )
-except FileNotFoundError:
-    bail(
-        "Could not open {}. Please make sure it is installed.".format(BABELTRACE_BIN),
-        session_info,
-    )
+    test_process.wait_for_exit()
+    session.stop()
 
-start_event_found = False
-bin_info_event_found = False
-build_id_event_found = False
-debug_link_event_found = False
-end_event_found = False
+    received_events = {x: 0 for x in expected_events}
+    for msg in bt2.TraceCollectionMessageIterator(str(output_path)):
+        if type(msg) is bt2._EventMessageConst:
+            if msg.event.name in expected_events:
+                received_events[msg.event.name] += 1
 
-for event_line in babeltrace_process.stdout:
-    # Let babeltrace finish to get the return code
-    if (
-        start_event_found
-        and bin_info_event_found
-        and build_id_event_found
-        and debug_link_event_found
-        and end_event_found
-    ):
-        continue
+    for event, count in received_events.items():
+        tap.test(count > 0, "Event '{}' has at least 1 event".format(event))
 
-    event_line = event_line.decode("utf-8").replace("\n", "")
-    if re.search(r".*lttng_ust_statedump:start.*", event_line) is not None:
-        start_event_found = True
-    elif re.search(r".*lttng_ust_statedump:bin_info.*", event_line) is not None:
-        bin_info_event_found = True
-    elif re.search(r".*lttng_ust_statedump:build_id.*", event_line) is not None:
-        build_id_event_found = True
-    elif re.search(r".*lttng_ust_statedump:debug_link.*", event_line) is not None:
-        debug_link_event_found = True
-    elif re.search(r".*lttng_ust_statedump:end.*", event_line) is not None:
-        end_event_found = True
 
-babeltrace_process.wait()
+if __name__ == "__main__":
+    tap = lttngtest.TapGenerator(5)
+    with lttngtest.test_environment(with_sessiond=True, log=tap.diagnostic) as test_env:
+        test(tap, test_env)
 
-print_test_result(
-    babeltrace_process.returncode == 0, current_test, "Resulting trace is readable"
-)
-current_test += 1
-
-print_test_result(
-    start_event_found,
-    current_test,
-    "lttng_ust_statedump:start event found in resulting trace",
-)
-current_test += 1
-
-print_test_result(
-    bin_info_event_found,
-    current_test,
-    "lttng_ust_statedump:bin_info event found in resulting trace",
-)
-current_test += 1
-
-print_test_result(
-    build_id_event_found,
-    current_test,
-    "lttng_ust_statedump:build_id event found in resulting trace",
-)
-current_test += 1
-
-print_test_result(
-    debug_link_event_found,
-    current_test,
-    "lttng_ust_statedump:debug_link event found in resulting trace",
-)
-current_test += 1
-
-print_test_result(
-    end_event_found,
-    current_test,
-    "lttng_ust_statedump:end event found in resulting trace",
-)
-current_test += 1
-
-shutil.rmtree(session_info.tmp_directory)
+    sys.exit(0 if tap.is_successful else 1)
