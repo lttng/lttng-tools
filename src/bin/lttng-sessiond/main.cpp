@@ -1988,6 +1988,7 @@ static int _main(int argc, char **argv)
 	}
 
 	/* Initialization completed. */
+	DBG_FMT("Initialization complete; ready to accept commands");
 	sessiond_signal_parents();
 
 	/*

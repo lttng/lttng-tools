@@ -20,6 +20,7 @@ void sessiond_signal_parents()
 	 * external process that spawned us.
 	 */
 	if (the_config.sig_parent) {
+		DBG_FMT("Notifying parent of readiness: pid={}", the_ppid);
 		kill(the_ppid, SIGUSR1);
 	}
 
@@ -28,6 +29,7 @@ void sessiond_signal_parents()
 	 * ready.
 	 */
 	if (the_config.daemonize || the_config.background) {
+		DBG_FMT("Notifying fork parent of readiness: pid={}", the_child_ppid);
 		kill(the_child_ppid, SIGUSR1);
 	}
 }
