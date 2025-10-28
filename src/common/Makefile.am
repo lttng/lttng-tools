@@ -486,6 +486,13 @@ libstring_utils_la_SOURCES = \
 	string-utils/string-utils.hpp
 
 
+# libsystemd-utils
+noinst_LTLIBRARIES += libsystemd-utils.la
+libsystemd_utils_la_SOURCES = \
+	systemd-utils.cpp \
+	systemd-utils.hpp
+
+
 noinst_PROGRAMS = filter-grammar-test
 filter_grammar_test_SOURCES = filter-grammar-test.cpp
 filter_grammar_test_LDADD = libcommon-gpl.la
