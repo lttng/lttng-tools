@@ -2016,7 +2016,27 @@ __lttng_complete_stop_cmd() {
 
 # Adds completions for the arguments of the `status` command.
 __lttng_complete_status_cmd() {
-  __lttng_arguments $help_opt_specs
+  local specs=(
+    $help_opt_specs
+  )
+
+  # The forwarded `list` options require LTTng-tools ≥ 2.15
+  if ((minor_version >= 15)); then
+    specs+=(
+      '(-c --channel)'{-c+,--channel=}'[select specific channel(s)]: : __lttng_complete_channel_name all cur'
+      '--mem-usage=[set channel memory usage display mode]:memory usage mode:(compact full)'
+      '--style=[set command output style]:output style:(compact)'
+      '--no-truncate[do not truncate long output lines]'
+      '(-k --kernel)'{-k,--kernel}'[select Linux kernel tracing domain]'
+      '(-u --userspace)'{-u,--userspace}'[select user space tracing domain]'
+      '(-j --jul)'{-j,--jul}'[select `java.util.logging` tracing domain]'
+      '(-l --log4j)'{-l,--log4j}'[select Apache log4j 1.x tracing domain]'
+      '--log4j2[select Apache Log4j 2 tracing domain]'
+      '(-p --python)'{-p,--python}'[select Python tracing domain]'
+    )
+  fi
+
+  __lttng_arguments $specs
 }
 
 # Adds completions for the arguments of the `track` command.

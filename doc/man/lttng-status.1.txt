@@ -1,6 +1,6 @@
 lttng-status(1)
 ===============
-:revdate: 14 June 2021
+:revdate: 27 October 2025
 
 
 NAME
@@ -11,24 +11,96 @@ lttng-status - Show the status of the current LTTng recording session
 SYNOPSIS
 --------
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *status*
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *status* [option:--channel='CHANNEL']
+      [option:--kernel] [option:--userspace] [option:--jul] [option:--log4j] [option:--log4j2] [option:--python]
+      [option:--style=(**compact** | **breathe**)] [option:--no-truncate]
+      [option:--mem-usage=(**total** | **compact** | **full**)]
 
 
 DESCRIPTION
 -----------
-The `lttng status` command shows the status of the current recording
+The `lttng status` command shows the status of the _current_ recording
 session (see man:lttng-concepts(7) to learn more about the current
 recording session).
 
 This command is equivalent to:
 
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* 'CURSESSION'
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* 'CURSESSION' [option:--channel='CHANNEL']
+      [option:--kernel] [option:--userspace]
+      [option:--jul] [option:--log4j] [option:--log4j2] [option:--python]
+      [option:--style=(**compact** | **breathe**)] [option:--no-truncate]
+      [option:--mem-usage=(**total** | **compact** | **full**)]
 
 where `CURSESSION` is the name of the current recording session.
 
+This command effectively forwards all its options to the man:lttng-list(1)
+command.
+
 
 include::common-lttng-cmd-options-head.txt[]
+
+
+option:-c 'CHANNEL', option:--channel='CHANNEL'::
+    Only list the properties and recording event rules of the channel(s)
+    named 'CHANNEL'.
+
+option:-j, option:--jul::
+    Only list the `java.util.logging` recording event rules.
+
+option:-k, option:--kernel::
+    Only list the Linux kernel channels and their recording event
+    rules.
+
+option:-l, option:--log4j::
+    Only list the Apache log4j{nbsp}1.x recording event rules.
+
+option:--log4j2::
+    Only list the Apache Log4j{nbsp}2 recording event rules.
+
+option:--mem-usage='MODE'::
+    Set the channel memory usage display mode to 'MODE'.
++
+'MODE' is one of:
++
+--
+`total` (default)::
+    Show the total memory usage of the channel.
+
+`compact`::
+    Show the memory usage for each Unix user or process,
+    depending on the buffer ownership model of the channel (see the
+    nloption:--buffer-ownership option of man:lttng-enable-channel(1)).
+
+`full`::
+    Show the memory usage for each each CPU (if available).
+--
+
+option:--no-truncate::
+    Do :not: truncate long output lines.
++
+By default, the command truncates lines, adding an ellipsis,
+to fit the current terminal width.
+
+option:-p, option:--python::
+    Only list the Python recording event rules.
+
+option:--style='STYLE'::
+    Set the command output style to 'STYLE'.
++
+'STYLE' is one of:
++
+--
+`breathe` (default)::
+    Add empty lines to make blocks of related information stand out.
+
+`compact`::
+    Make the the output compact.
+--
+
+option:-u, option:--userspace::
+    Only list the user space channels and their recording event
+    rules.
 
 
 include::common-lttng-cmd-help-options.txt[]
