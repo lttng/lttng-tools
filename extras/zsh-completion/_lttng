@@ -695,7 +695,7 @@ __lttng_cur_session_name() {
   local cur_session_name
   local -a match
 
-  while read -r line; do
+  while read -r line || [[ -n $line ]]; do
     if [[ $line =~ 'session=([^[:blank:]]+)' ]]; then
       cur_session_name=$match[1]
       break
