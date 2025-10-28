@@ -759,6 +759,9 @@ __lttng_session_xml() {
 #     `arg`:
 #         Use `$line[1]` to find the name of the selected recording
 #         session.
+#
+#     Anything else:
+#         Use the current recording session name.
 __lttng_complete_channel_name() {
   local -r req_status=$1 session_name_src=$2
 
