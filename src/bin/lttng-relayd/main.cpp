@@ -969,13 +969,17 @@ void lttng_relay_notify_ready()
 {
 	/* When this counter reaches zero, all threads are ready. */
 	if (uatomic_sub_return(&lttng_relay_ready, 1) == 0) {
+		DBG_FMT("Initialization complete; ready to accept commands");
+
 		/* Notify the parent of the fork() process that we are ready. */
 		if (opt_daemon || opt_background) {
+			DBG_FMT("Notifying fork parent of readiness: pid={}", child_ppid);
 			kill(child_ppid, SIGUSR1);
 		}
 
 		/* Notify the parent process that we are ready. */
 		if (opt_sig_parent != 0) {
+			DBG_FMT("Notifying parent of readiness: pid={}", opt_sig_parent);
 			kill(opt_sig_parent, SIGUSR1);
 		}
 
