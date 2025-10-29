@@ -507,11 +507,22 @@ class _WaitTraceTestApplication:
                 if os.path.exists(self._compat_pathlike(sync_file_path)):
                     break
 
+                # Application has unexepectedly returned.
+                try:
+                    output = self._process.stderr.read().decode("utf-8")
+                except AttributeError as e:
+                    # e.g. AttributeError: 'NoneType' object has no attribute 'read'
+                    # When a process segfaults very early in startup
+                    output = (
+                        "<process has no stderr attribute>"
+                        if self._process.stderr is None
+                        else str(e)
+                    )
                 raise RuntimeError(
                     "Test application has unexpectedly returned while waiting for synchronization file to be created: sync_file=`{sync_file}`, return_code=`{return_code}`, output=`{output}`".format(
                         sync_file=sync_file_path,
                         return_code=self._process.returncode,
-                        output=self._process.stdout.read().decode("utf-8"),
+                        output=output,
                     )
                 )
 
