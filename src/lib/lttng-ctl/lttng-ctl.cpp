@@ -2686,42 +2686,43 @@ end:
 	return ret;
 }
 
-enum lttng_channel_get_watchdog_timer_interval_status
+enum lttng_channel_status
 lttng_channel_get_watchdog_timer_interval(const struct lttng_channel *chan,
 					  uint64_t *watchdog_timer_interval)
 {
 	if (!chan || !watchdog_timer_interval) {
-		return LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_INVALID;
+		return LTTNG_CHANNEL_STATUS_INVALID;
 	}
 
 	if (!chan->attr.extended.ptr) {
-		return LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_INVALID;
+		return LTTNG_CHANNEL_STATUS_INVALID;
 	}
 
 	const auto extended =
 		reinterpret_cast<const struct lttng_channel_extended *>(chan->attr.extended.ptr);
 
 	if (!extended->watchdog_timer_interval.is_set) {
-		return LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_UNSET;
+		return LTTNG_CHANNEL_STATUS_UNSET;
 	}
 
 	*watchdog_timer_interval = LTTNG_OPTIONAL_GET(extended->watchdog_timer_interval);
 
-	return LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_OK;
+	return LTTNG_CHANNEL_STATUS_OK;
 }
 
-enum lttng_error_code lttng_channel_set_watchdog_timer_interval(struct lttng_channel *chan,
-								uint64_t watchdog_timer_interval)
+enum lttng_channel_status
+lttng_channel_set_watchdog_timer_interval(struct lttng_channel *chan,
+					  uint64_t watchdog_timer_interval)
 {
 	if (!chan || !chan->attr.extended.ptr) {
-		return LTTNG_ERR_INVALID;
+		return LTTNG_CHANNEL_STATUS_INVALID;
 	}
 
 	auto extended = reinterpret_cast<struct lttng_channel_extended *>(chan->attr.extended.ptr);
 
 	LTTNG_OPTIONAL_SET(&extended->watchdog_timer_interval, watchdog_timer_interval);
 
-	return LTTNG_OK;
+	return LTTNG_CHANNEL_STATUS_OK;
 }
 
 int lttng_channel_get_blocking_timeout(const struct lttng_channel *chan, int64_t *blocking_timeout)

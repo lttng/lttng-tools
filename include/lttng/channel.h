@@ -35,23 +35,6 @@ enum lttng_channel_allocation_policy {
 	LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CHANNEL = 1,
 };
 
-/*!
-@brief
-    Return type of lttng_channel_get_watchdog_timer_interval().
-
-@ingroup api_channel
-*/
-enum lttng_channel_get_watchdog_timer_interval_status {
-	/// Success.
-	LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_OK = 0,
-
-	/// Unsatisfied precondition.
-	LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_INVALID = 1,
-
-	/// Watchdog timer isn't set.
-	LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_UNSET = 2,
-};
-
 enum lttng_channel_preallocation_policy {
 	LTTNG_CHANNEL_PREALLOCATION_POLICY_PREALLOCATE = 0,
 	LTTNG_CHANNEL_PREALLOCATION_POLICY_ON_DEMAND = 1,
@@ -682,11 +665,11 @@ LTTNG_EXPORT extern int lttng_channel_set_monitor_timer_interval(struct lttng_ch
     <strong>On success</strong>, this function sets \lt_p{*period} to
     the watchdog timer period (µs) property of \lt_p{channel}.
 
-@retval #LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_OK
+@retval #LTTNG_CHANNEL_STATUS_OK
     Success.
-@retval #LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_INVALID
+@retval #LTTNG_CHANNEL_STATUS_INVALID
     Unsatisfied precondition.
-@retval #LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_UNSET
+@retval #LTTNG_CHANNEL_STATUS_UNSET
     Watchdog timer isn't set.
 
 @pre
@@ -696,7 +679,7 @@ LTTNG_EXPORT extern int lttng_channel_set_monitor_timer_interval(struct lttng_ch
 @sa lttng_channel_get_watchdog_timer_interval() --
     Returns the watchdog timer period property of a channel summary.
 */
-LTTNG_EXPORT extern enum lttng_channel_get_watchdog_timer_interval_status
+LTTNG_EXPORT extern enum lttng_channel_status
 lttng_channel_get_watchdog_timer_interval(const struct lttng_channel *channel, uint64_t *period);
 
 /*!
@@ -713,9 +696,9 @@ lttng_channel_get_watchdog_timer_interval(const struct lttng_channel *channel, u
 @param[in] period
     Watchdog timer period property to set.
 
-@retval #LTTNG_OK
+@retval #LTTNG_CHANNEL_STATUS_OK
     Success.
-@retval #LTTNG_ERR_INVALID
+@retval #LTTNG_CHANNEL_STATUS__INVALID
     Unsatisfied precondition.
 
 @pre
@@ -727,7 +710,7 @@ lttng_channel_get_watchdog_timer_interval(const struct lttng_channel *channel, u
 @sa lttng_channel_set_watchdog_timer_interval() --
     Sets the watchdog timer period property of a channel summary.
 */
-LTTNG_EXPORT extern enum lttng_error_code lttng_channel_set_watchdog_timer_interval(struct lttng_channel *channel,
+LTTNG_EXPORT extern enum lttng_channel_status lttng_channel_set_watchdog_timer_interval(struct lttng_channel *channel,
 								  uint64_t period);
 
 /*!

@@ -24,7 +24,7 @@ def test_get_watchdog_timer_no_channel(tap, test_env):
         None, ctypes.pointer(ctypes.c_uint64(0))
     )
     tap.test(
-        ret != lttng.LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_OK,
+        ret != lttng.LTTNG_CHANNEL_STATUS_OK,
         "'lttng_channel_get_watchdog_timer_interval' rejects NULL channel",
     )
 
@@ -32,7 +32,7 @@ def test_get_watchdog_timer_no_channel(tap, test_env):
 def test_set_watchdog_timer_no_channel(tap, test_env):
     ret = lttng.lttng_channel_set_watchdog_timer_interval(None, ctypes.c_uint64(0))
     tap.test(
-        ret != lttng.LTTNG_OK,
+        ret != lttng.LTTNG_CHANNEL_STATUS_OK,
         "'lttng_channel_set_watchdog_timer_interval' rejects NULL channel",
     )
 
@@ -43,7 +43,7 @@ def test_get_watchdog_timer_no_channel_ext(tap, test_env):
         ctypes.pointer(ctypes.c_uint64(0)),
     )
     tap.test(
-        ret != lttng.LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_OK,
+        ret != lttng.LTTNG_CHANNEL_STATUS_OK,
         "'lttng_channel_get_watchdog_timer_interval' rejects channel with NULL extended attribute",
     )
 
@@ -53,7 +53,7 @@ def test_set_watchdog_timer_no_channel_ext(tap, test_env):
         ctypes.pointer(lttng.struct_lttng_channel()), ctypes.c_uint64(0)
     )
     tap.test(
-        ret != lttng.LTTNG_OK,
+        ret != lttng.LTTNG_CHANNEL_STATUS_OK,
         "'lttng_channel_set_watchdog_timer_interval' rejects channel with NULL extended attribute",
     )
 
@@ -69,7 +69,7 @@ def test_get_watchdog_timer_no_timer_set(tap, test_env):
         channel_instance, ctypes.pointer(ctypes.c_uint64(0))
     )
     tap.test(
-        ret != lttng.LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_OK,
+        ret != lttng.LTTNG_CHANNEL_STATUS_OK,
         "lttng_channel_get_watchdog_timer_interval with no timer set returns an error",
     )
 
@@ -78,7 +78,7 @@ def test_get_watchdog_timer_no_timer_interval(tap, test_env):
     channel_instance = common.get_channel_instance()
     ret = lttng.lttng_channel_get_watchdog_timer_interval(channel_instance, None)
     tap.test(
-        ret != lttng.LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_OK,
+        ret != lttng.LTTNG_CHANNEL_STATUS_OK,
         "'lttng_channel-get_watchdog_timer_interval' rejects a NULL destination pointer",
     )
 
@@ -94,8 +94,8 @@ def test_watchdog_timer_mock(tap, test_env):
         channel_instance, ctypes.pointer(attribute)
     )
     tap.test(
-        set_ret == lttng.LTTNG_OK
-        and get_ret == lttng.LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_OK
+        set_ret == lttng.LTTNG_CHANNEL_STATUS_OK
+        and get_ret == lttng.LTTNG_CHANNEL_STATUS_OK
         and attribute.value == expected_value,
         "'lttng_channel_get_watchdog_timer_interval' mock, set_ret=`{}`, get_ret=`{}`, value=`{}`, expected=`{}`".format(
             set_ret, get_ret, attribute.value, expected_value
@@ -147,10 +147,7 @@ def test_watchdog_timer_interval_with_session(tap, test_env):
     )
 
     test_pass = True
-    if (
-        res != lttng.LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_OK
-        or timer_interval.value != 2000000
-    ):
+    if res != lttng.LTTNG_CHANNEL_STATUS_OK or timer_interval.value != 2000000:
         tap.diagnostic(
             "Failed to validate timer interval: timer_interval={}, res={}".format(
                 timer_interval.value, res

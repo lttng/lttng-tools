@@ -1153,7 +1153,7 @@ int mi_lttng_channel_attr(struct mi_writer *writer, struct lttng_channel_attr *a
 	enum lttng_channel_allocation_policy allocation_policy;
 	enum lttng_channel_preallocation_policy preallocation_policy;
 	const char *allocation_policy_str, *preallocation_policy_str;
-	enum lttng_channel_get_watchdog_timer_interval_status watchdog_timer_status;
+	enum lttng_channel_status watchdog_timer_status;
 	bool print_watchdog_timer = false;
 
 	LTTNG_ASSERT(attr);
@@ -1176,12 +1176,12 @@ int mi_lttng_channel_attr(struct mi_writer *writer, struct lttng_channel_attr *a
 	watchdog_timer_status =
 		lttng_channel_get_watchdog_timer_interval(chan, &watchdog_timer_interval);
 	switch (watchdog_timer_status) {
-	case LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_INVALID:
+	case LTTNG_CHANNEL_STATUS_INVALID:
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
-	case LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_UNSET:
+	case LTTNG_CHANNEL_STATUS_UNSET:
 		break;
-	case LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_OK:
+	case LTTNG_CHANNEL_STATUS_OK:
 		print_watchdog_timer = true;
 		break;
 	}
