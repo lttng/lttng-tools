@@ -1304,39 +1304,6 @@ AC_CONFIG_FILES([
 	tests/regression/Makefile
 	tests/regression/kernel/Makefile
 	tests/regression/tools/Makefile
-	tests/regression/tools/streaming/Makefile
-	tests/regression/tools/filtering/Makefile
-	tests/regression/tools/health/Makefile
-	tests/regression/tools/tracefile-limits/Makefile
-	tests/regression/tools/snapshots/Makefile
-	tests/regression/tools/lttng-ctl/Makefile
-	tests/regression/tools/live/Makefile
-	tests/regression/tools/exclusion/Makefile
-	tests/regression/tools/save-load/Makefile
-	tests/regression/tools/save-load/configuration/Makefile
-	tests/regression/tools/mi/Makefile
-	tests/regression/tools/wildcard/Makefile
-	tests/regression/tools/channel/Makefile
-	tests/regression/tools/crash/Makefile
-	tests/regression/tools/regen-metadata/Makefile
-	tests/regression/tools/regen-statedump/Makefile
-	tests/regression/tools/notification/Makefile
-	tests/regression/tools/rotation/Makefile
-	tests/regression/tools/base-path/Makefile
-	tests/regression/tools/metadata/Makefile
-	tests/regression/tools/tracker/Makefile
-	tests/regression/tools/working-directory/Makefile
-	tests/regression/tools/relayd-grouping/Makefile
-	tests/regression/tools/clear/Makefile
-	tests/regression/tools/trigger/Makefile
-	tests/regression/tools/trigger/rate-policy/Makefile
-	tests/regression/tools/trigger/start-stop/Makefile
-	tests/regression/tools/trigger/utils/Makefile
-	tests/regression/tools/trigger/name/Makefile
-	tests/regression/tools/trigger/hidden/Makefile
-	tests/regression/tools/context/Makefile
-	tests/regression/tools/client/Makefile
-	tests/regression/tools/trace-format/Makefile
 	tests/regression/ust/Makefile
 	tests/regression/ust/nprocesses/Makefile
 	tests/regression/ust/high-throughput/Makefile
