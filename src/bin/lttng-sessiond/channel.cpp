@@ -589,8 +589,12 @@ struct lttng_channel *trace_ust_channel_to_lttng_channel(const struct ltt_ust_ch
 		case LTTNG_UST_ABI_CHAN_PER_CPU:
 			/* fall through */
 		case LTTNG_UST_ABI_CHAN_PER_CHANNEL:
-			lttng_channel_set_watchdog_timer_interval(
-				channel, LTTNG_OPTIONAL_GET(uchan->watchdog_timer_interval));
+			if (lttng_channel_set_watchdog_timer_interval(
+				    channel, LTTNG_OPTIONAL_GET(uchan->watchdog_timer_interval)) !=
+			    LTTNG_CHANNEL_STATUS_OK) {
+				ERR_FMT("Failed to set channel watchdog timer during conversion from ltt_ust_channel to lttng_channel");
+				goto end;
+			}
 			break;
 		default:
 			ERR_FMT("Watchdog timer is invalid for UST buffer type: buff_type={}",
