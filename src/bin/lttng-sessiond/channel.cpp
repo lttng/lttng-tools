@@ -539,6 +539,10 @@ struct lttng_channel *trace_ust_channel_to_lttng_channel(const struct ltt_ust_ch
 		ON_DEMAND:
 		preallocation_policy = LTTNG_CHANNEL_PREALLOCATION_POLICY_ON_DEMAND;
 		break;
+	default:
+		ERR_FMT("Unknown preallocation policy during conversion from ltt_ust_channel to lttng_channel: policy={}",
+			(int) uchan->preallocation_policy);
+		goto end;
 	}
 
 	channel = lttng_channel_create_internal();
