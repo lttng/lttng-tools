@@ -218,7 +218,6 @@ enum lttng_error_code channel_kernel_create(struct ltt_kernel_session *ksession,
 					    struct lttng_channel *attr,
 					    int kernel_pipe)
 {
-	enum lttng_error_code ret_code;
 	lttng::ctl::lttng_channel_uptr defattr;
 
 	LTTNG_ASSERT(ksession);
