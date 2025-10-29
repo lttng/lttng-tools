@@ -1669,16 +1669,16 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 
 	const auto watchdog_timer_period_us = [&channel_attr]() {
 		std::uint64_t period;
-		const lttng_channel_get_watchdog_timer_interval_status status =
+		const auto status =
 			lttng_channel_get_watchdog_timer_interval(&channel_attr, &period);
 
-		if (status == LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_INVALID) {
+		if (status == LTTNG_CHANNEL_STATUS_INVALID) {
 			LTTNG_THROW_ERROR(fmt::format(
 				"Failed to retrieve watchdog timer period from channel: channel_name=`{}`",
 				channel_attr.name));
 		}
 
-		return status == LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_OK ?
+		return status == LTTNG_CHANNEL_STATUS_OK ?
 			decltype(ls::recording_channel_configuration::watchdog_timer_period_us)(
 				period) :
 			nonstd::nullopt;

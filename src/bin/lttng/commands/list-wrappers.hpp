@@ -1821,7 +1821,7 @@ public:
 		std::uint64_t period;
 
 		if (lttng_channel_get_watchdog_timer_interval(&lib(), &period) ==
-		    LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_OK) {
+		    LTTNG_CHANNEL_STATUS_OK) {
 			return period;
 		}
 
