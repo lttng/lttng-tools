@@ -67,7 +67,8 @@ man:lttng-disable-rotation(1) command.
 
 [IMPORTANT]
 ====
-You may only use the `enable-rotation` command when:
+You may only use the `enable-rotation` command when all of the following
+conditions are true:
 
 * The selected recording session was created in normal mode or in
   network streaming mode (see man:lttng-create(1)).

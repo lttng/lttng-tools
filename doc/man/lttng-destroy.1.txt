@@ -59,7 +59,7 @@ might not be valid when the command exits, and there's no way to know
 when it/they become valid.
 
 If, for a recording session{nbsp}__RS__ to destroy with the `destroy`
-command, the following statements are true:
+command, all of the following statements are true:
 
 * You don't specify the option:--no-wait option.
 
