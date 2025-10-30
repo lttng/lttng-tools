@@ -14,6 +14,7 @@
 #define _LGPL_SOURCE
 #include "ust-consumer.hpp"
 
+#include <common/align.hpp>
 #include <common/common.hpp>
 #include <common/compat/endian.hpp>
 #include <common/consumer/consumer-channel.hpp>
@@ -1399,6 +1400,183 @@ end:
 	return ret;
 }
 
+template <typename ReportFn>
+static void report_channel_memory_usage_by_streams_fstat(const lttng_consumer_channel& channel,
+							 ReportFn&& report)
+{
+	for (std::size_t stream_idx = 0; stream_idx < channel.nr_stream_fds; stream_idx++) {
+		const auto stream_fd = channel.stream_fds[stream_idx];
+
+		struct stat file_status;
+		if (fstat(stream_fd, &file_status) == -1) {
+			LTTNG_THROW_POSIX(
+				fmt::format(
+					"Failed to fstat() stream file descriptor of channel: channel_key={}, channel_name=`{}`, stream_fd={}",
+					channel.key,
+					channel.name,
+					stream_fd),
+				errno);
+		}
+
+		const auto logical_size = static_cast<std::uint64_t>(file_status.st_size);
+		const auto physical_size = static_cast<std::uint64_t>(file_status.st_blocks) * 512;
+
+		report(logical_size, physical_size);
+	}
+}
+
+#ifdef __linux__
+template <typename ReportFn>
+static void report_channel_memory_usage_by_streams_mincore(lttng_consumer_channel& channel,
+							   ReportFn&& report)
+{
+	const long maybe_page_size = sysconf(_SC_PAGESIZE);
+
+	if (maybe_page_size < 0) {
+		LTTNG_THROW_POSIX("Failed to call sysconf(_SC_PAGESIZE)", errno);
+	}
+
+	const std::size_t page_size = static_cast<std::size_t>(maybe_page_size);
+
+	for (const auto& stream : channel.get_streams()) {
+		void *backend_addr;
+		unsigned long backend_size;
+		const auto get_area_ret = lttng_ust_ctl_stream_get_backend_area(
+			stream.ustream, &backend_addr, &backend_size);
+
+		if (get_area_ret) {
+			LTTNG_THROW_ERROR(fmt::format(
+				"Failed to get backend area of stream: ret={}", get_area_ret));
+		}
+
+		/*
+		 * mincore(2): The `addr` argument must be a multiple of the
+		 * system page size.
+		 */
+		LTTNG_ASSERT(
+			lttng_align_floor(reinterpret_cast<uintptr_t>(backend_addr), page_size) ==
+			reinterpret_cast<uintptr_t>(backend_addr));
+
+		/*
+		 * mincore(2): The `length` argument need not be a multiple of
+		 * the page size.
+		 */
+		backend_size = lttng_align_ceil(backend_size, page_size);
+
+		/*
+		 * mincore(2): The `vec` argument must point to an array
+		 * containing at least `(length+PAGE_SIZE-1) / PAGE_SIZE` bytes.
+		 *
+		 * To avoid dynamic allocation, process the ring-buffer in
+		 * batches of 4096 pages.
+		 */
+		unsigned char vec[4096];
+		const std::size_t total_page_count = backend_size / page_size;
+		const std::size_t loop_count = total_page_count / sizeof(vec);
+		const std::size_t rest = total_page_count % sizeof(vec);
+		char *current_addr = static_cast<char *>(backend_addr);
+
+		const auto report_mincore = [&vec, &report, &current_addr, page_size](
+						    const std::size_t page_count) {
+			const std::uint64_t logical_size = page_size * page_count;
+			const int result = ::mincore(current_addr, logical_size, vec);
+
+			std::uint64_t physical_size;
+			if (result == 0) {
+				physical_size = 0;
+				for (std::size_t j = 0; j < page_count; ++j) {
+					/*
+					 * mincore(2): On return, the least
+					 * significant bit of each byte will be
+					 * set if the corresponding page is
+					 * currently resident in memory, and be
+					 * clear otherwise.
+					 */
+					if (vec[j] & 1) {
+						physical_size += page_size;
+					}
+				}
+			} else {
+				/*
+				 * Something bad happened; assume full
+				 * physical memory usage.
+				 */
+				PWARN_FMT("Failed to determine memory usage using mincore()");
+				physical_size = logical_size;
+			}
+
+			report(logical_size, physical_size);
+			current_addr += logical_size;
+		};
+
+		for (std::size_t i = 0; i < loop_count; ++i) {
+			report_mincore(sizeof(vec));
+		}
+
+		if (rest > 0) {
+			report_mincore(rest);
+		}
+	}
+}
+
+/*
+ * Determine if the syscall `mincore(2)` is supported.
+ *
+ * This result is memoized.
+ */
+static bool system_supports_mincore()
+{
+	/* IIFE used to memoize the result in a thread-safe manner. */
+	static const bool supported = []() {
+		const long maybe_page_size = sysconf(_SC_PAGESIZE);
+
+		if (maybe_page_size < 0) {
+			return false;
+		}
+
+		const std::size_t page_size = static_cast<std::size_t>(maybe_page_size);
+
+		void *mem = mmap(nullptr, page_size, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+
+		if (mem == MAP_FAILED) {
+			PWARN_FMT(
+				"Failed to determine if mincore() is supported: mmap of test area failed");
+			return false;
+		}
+
+		unsigned char dummy;
+		const bool result = (mincore(mem, page_size, &dummy) == 0);
+
+		if (!result) {
+			PWARN_FMT(
+				"mincore() is not available. Stream memory usage will be estimated using fstat()");
+		}
+
+		std::ignore = munmap(mem, page_size);
+
+		return result;
+	}();
+
+	return supported;
+}
+
+template <typename ReportFn>
+static void report_channel_memory_usage(lttng_consumer_channel& channel, ReportFn&& report)
+{
+	if (system_supports_mincore()) {
+		report_channel_memory_usage_by_streams_mincore(channel, report);
+	} else {
+		report_channel_memory_usage_by_streams_fstat(channel, report);
+	}
+}
+#else
+template <typename ReportFn>
+static void report_channel_memory_usage(lttng_consumer_channel& channel, ReportFn&& report)
+{
+	report_channel_memory_usage_by_streams_fstat(channel, report);
+}
+#endif /* __linux__ */
+
 static void lttng_ustconsumer_get_channels_memory_usage(int socket, std::uint64_t channel_count)
 {
 	std::vector<std::uint64_t> channel_keys;
@@ -1430,57 +1608,56 @@ static void lttng_ustconsumer_get_channels_memory_usage(int socket, std::uint64_
 	 * Their content will be overwritten later with the actual command status and
 	 * the number of stream memory usage entries.
 	 */
-	reply_payload.resize(sizeof(generic_reply_header) + sizeof(command_specific_reply_header));
+	const auto reset_payload = [&reply_payload]() {
+		reply_payload.resize(sizeof(generic_reply_header) +
+				     sizeof(command_specific_reply_header));
+	};
 
 	std::size_t total_stream_count = 0;
-	for (const auto channel_key : channel_keys) {
-		auto *channel = consumer_find_channel(channel_key);
-		if (!channel) {
-			LTTNG_THROW_CHANNEL_NOT_FOUND_BY_KEY_ERROR(channel_key);
-		}
 
-		const lttng::pthread::lock_guard channel_lock(channel->lock);
-		DBG_FMT("Measuring memory usage of channel: key={}, channel_name=`{}`",
-			channel_key,
-			channel->name);
-
-		for (std::size_t stream_idx = 0; stream_idx < channel->nr_stream_fds;
-		     stream_idx++) {
-			const auto stream_fd = channel->stream_fds[stream_idx];
-
-			struct stat file_status;
-			if (fstat(stream_fd, &file_status) == -1) {
-				LTTNG_THROW_POSIX(
-					fmt::format(
-						"Failed to fstat stream file descriptor of channel: channel_key={}, channel_name=`{}`, stream_fd={}",
-						channel_key,
-						channel->name,
-						stream_fd),
-					errno);
+	try {
+		reset_payload();
+		const lttng::pthread::lock_guard consumer_data_lock(the_consumer_data.lock);
+		for (const auto channel_key : channel_keys) {
+			auto *channel = consumer_find_channel(channel_key);
+			if (!channel) {
+				LTTNG_THROW_CHANNEL_NOT_FOUND_BY_KEY_ERROR(channel_key);
 			}
 
-			const auto logical_size = static_cast<std::uint64_t>(file_status.st_size);
-			const auto physical_size =
-				static_cast<std::uint64_t>(file_status.st_blocks) * 512;
+			const lttng::pthread::lock_guard channel_lock(channel->lock);
+			DBG_FMT("Measuring memory usage of channel: key={}, channel_name=`{}`",
+				channel_key,
+				channel->name);
 
-			const lttcomm_stream_memory_usage stream_memory_usage = {
-				.channel_key = channel_key,
-				.logical_size_bytes = logical_size,
-				.physical_size_bytes = physical_size,
-			};
+			report_channel_memory_usage(
+				*channel,
+				[&reply_payload, channel_key](const uint64_t logical_size,
+							      const uint64_t physical_size) {
+					const lttcomm_stream_memory_usage stream_memory_usage = {
+						.channel_key = channel_key,
+						.logical_size_bytes = logical_size,
+						.physical_size_bytes = physical_size,
+					};
 
-			reply_payload.insert(
-				reply_payload.end(),
-				reinterpret_cast<const std::uint8_t *>(&stream_memory_usage),
-				reinterpret_cast<const std::uint8_t *>(&stream_memory_usage) +
-					sizeof(stream_memory_usage));
+					reply_payload.insert(reply_payload.end(),
+							     reinterpret_cast<const std::uint8_t *>(
+								     &stream_memory_usage),
+							     reinterpret_cast<const std::uint8_t *>(
+								     &stream_memory_usage) +
+								     sizeof(stream_memory_usage));
+				});
+
+			total_stream_count += channel->nr_stream_fds;
 		}
-
-		total_stream_count += channel->nr_stream_fds;
+		generic_reply_header.ret_code = LTTCOMM_CONSUMERD_SUCCESS;
+	} catch (const std::exception& exn) {
+		ERR_FMT("Exception while reporting channel memory usage: {}", exn.what());
+		reset_payload();
+		generic_reply_header.ret_code = LTTCOMM_CONSUMERD_UNKNOWN_ERROR;
+		total_stream_count = 0;
 	}
 
 	/* Update the payload headers. */
-	generic_reply_header.ret_code = LTTCOMM_CONSUMERD_SUCCESS;
 	generic_reply_header.payload_size = reply_payload.size() - sizeof(generic_reply_header);
 	std::memcpy(reply_payload.data(), &generic_reply_header, sizeof(generic_reply_header));
 
