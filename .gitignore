@@ -151,6 +151,11 @@ compile_commands.json
 /tests/utils/testapp/gen-data-pending
 /tests/utils/tap/clock
 /tests/utils/testapp/foobar_provider.h
+/tests/utils/testapp/gen-many-event-classes/gen-many-event-classes
+/tests/utils/testapp/gen-many-event-classes/emit-events.h
+/tests/utils/testapp/gen-many-event-classes/emit-events.c
+/tests/utils/testapp/gen-many-event-classes/instrumentation*.h
+/tests/utils/testapp/gen-many-event-classes/instrumentation*.c
 /tests/utils/testapp/gen-kernel-test-events
 /tests/utils/testapp/gen-ns-events
 /tests/utils/testapp/gen-syscall-events

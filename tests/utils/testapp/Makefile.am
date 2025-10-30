@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: 2013 EfficiOS Inc.
 
 AM_CPPFLAGS += -I$(top_srcdir)/tests/utils \
 	-I$(top_srcdir)/tests/utils/testapp
+BUILT_SOURCES =
 
 # Disable some warnings flags to accomodate the tracepoint headers
 WARN_FLAGS = \
@@ -56,6 +58,182 @@ gen_ust_nevents_str_SOURCES = \
 	gen-ust-nevents-str-tp.h
 gen_ust_nevents_str_LDADD = $(UST_LIBS) $(DL_LIBS) \
 		$(top_builddir)/tests/utils/libtestutils.la
+
+MANY_EVENTS_NUM_EVENTS_PER_SOURCE ?= 500
+# Note: $(wildcard,) is not portable and therefore the sources are listed manually
+MANY_EVENTS_GENERATED_SOURCES = \
+	gen-many-event-classes/emit-events.h \
+	gen-many-event-classes/emit-events.c \
+	gen-many-event-classes/instrumentation_0.h \
+	gen-many-event-classes/instrumentation_0.c \
+	gen-many-event-classes/instrumentation_1.h \
+	gen-many-event-classes/instrumentation_1.c \
+	gen-many-event-classes/instrumentation_2.h \
+	gen-many-event-classes/instrumentation_2.c \
+	gen-many-event-classes/instrumentation_3.h \
+	gen-many-event-classes/instrumentation_3.c \
+	gen-many-event-classes/instrumentation_4.h \
+	gen-many-event-classes/instrumentation_4.c \
+	gen-many-event-classes/instrumentation_5.h \
+	gen-many-event-classes/instrumentation_5.c \
+	gen-many-event-classes/instrumentation_6.h \
+	gen-many-event-classes/instrumentation_6.c \
+	gen-many-event-classes/instrumentation_7.h \
+	gen-many-event-classes/instrumentation_7.c \
+	gen-many-event-classes/instrumentation_8.h \
+	gen-many-event-classes/instrumentation_8.c \
+	gen-many-event-classes/instrumentation_9.h \
+	gen-many-event-classes/instrumentation_9.c
+
+CLEANFILES += $(MANY_EVENTS_GENERATED_SOURCES)
+# Mark generated sources as built sources so they're created before compilation
+BUILT_SOURCES += $(MANY_EVENTS_GENERATED_SOURCES)
+EXTRA_DIST += gen-many-event-classes/generate_many_event_classes.py
+
+noinst_LTLIBRARIES += \
+	gen-many-event-classes/libtp0.la \
+	gen-many-event-classes/libtp1.la \
+	gen-many-event-classes/libtp2.la \
+	gen-many-event-classes/libtp3.la \
+	gen-many-event-classes/libtp4.la \
+	gen-many-event-classes/libtp5.la \
+	gen-many-event-classes/libtp6.la \
+	gen-many-event-classes/libtp7.la \
+	gen-many-event-classes/libtp8.la \
+	gen-many-event-classes/libtp9.la
+
+nodist_gen_many_event_classes_libtp0_la_SOURCES = \
+	gen-many-event-classes/instrumentation_0.h \
+	gen-many-event-classes/instrumentation_0.c
+gen_many_event_classes_libtp0_la_LIBADD = \
+	$(UST_LIBS)
+gen_many_event_classes_libtp0_la_CPPFLAGS = \
+	$(AM_CPPFLAGS) \
+	-I$(abs_builddir)/gen-many-event-classes/
+
+nodist_gen_many_event_classes_libtp1_la_SOURCES = \
+	gen-many-event-classes/instrumentation_1.h \
+	gen-many-event-classes/instrumentation_1.c
+gen_many_event_classes_libtp1_la_LIBADD = \
+	$(UST_LIBS)
+gen_many_event_classes_libtp1_la_CPPFLAGS = \
+	$(AM_CPPFLAGS) \
+	-I$(abs_builddir)/gen-many-event-classes/
+
+nodist_gen_many_event_classes_libtp2_la_SOURCES = \
+	gen-many-event-classes/instrumentation_2.h \
+	gen-many-event-classes/instrumentation_2.c
+gen_many_event_classes_libtp2_la_LIBADD = \
+	$(UST_LIBS)
+gen_many_event_classes_libtp2_la_CPPFLAGS = \
+	$(AM_CPPFLAGS) \
+	-I$(abs_builddir)/gen-many-event-classes/
+
+nodist_gen_many_event_classes_libtp3_la_SOURCES = \
+	gen-many-event-classes/instrumentation_3.h \
+	gen-many-event-classes/instrumentation_3.c
+gen_many_event_classes_libtp3_la_LIBADD = \
+	$(UST_LIBS)
+gen_many_event_classes_libtp3_la_CPPFLAGS = \
+	$(AM_CPPFLAGS) \
+	-I$(abs_builddir)/gen-many-event-classes/
+
+nodist_gen_many_event_classes_libtp4_la_SOURCES = \
+	gen-many-event-classes/instrumentation_4.h \
+	gen-many-event-classes/instrumentation_4.c
+gen_many_event_classes_libtp4_la_LIBADD = \
+	$(UST_LIBS)
+gen_many_event_classes_libtp4_la_CPPFLAGS = \
+	$(AM_CPPFLAGS) \
+	-I$(abs_builddir)/gen-many-event-classes/
+
+nodist_gen_many_event_classes_libtp5_la_SOURCES = \
+	gen-many-event-classes/instrumentation_5.h \
+	gen-many-event-classes/instrumentation_5.c
+gen_many_event_classes_libtp5_la_LIBADD = \
+	$(UST_LIBS)
+gen_many_event_classes_libtp5_la_CPPFLAGS = \
+	$(AM_CPPFLAGS) \
+	-I$(abs_builddir)/gen-many-event-classes/
+
+nodist_gen_many_event_classes_libtp6_la_SOURCES = \
+	gen-many-event-classes/instrumentation_6.h \
+	gen-many-event-classes/instrumentation_6.c
+gen_many_event_classes_libtp6_la_LIBADD = \
+	$(UST_LIBS)
+gen_many_event_classes_libtp6_la_CPPFLAGS = \
+	$(AM_CPPFLAGS) \
+	-I$(abs_builddir)/gen-many-event-classes/
+
+nodist_gen_many_event_classes_libtp7_la_SOURCES = \
+	gen-many-event-classes/instrumentation_7.h \
+	gen-many-event-classes/instrumentation_7.c
+gen_many_event_classes_libtp7_la_LIBADD = \
+	$(UST_LIBS)
+gen_many_event_classes_libtp7_la_CPPFLAGS = \
+	$(AM_CPPFLAGS) \
+	-I$(abs_builddir)/gen-many-event-classes/
+
+nodist_gen_many_event_classes_libtp8_la_SOURCES = \
+	gen-many-event-classes/instrumentation_8.h \
+	gen-many-event-classes/instrumentation_8.c
+gen_many_event_classes_libtp8_la_LIBADD = \
+	$(UST_LIBS)
+gen_many_event_classes_libtp8_la_CPPFLAGS = \
+	$(AM_CPPFLAGS) \
+	-I$(abs_builddir)/gen-many-event-classes/
+
+nodist_gen_many_event_classes_libtp9_la_SOURCES = \
+	gen-many-event-classes/instrumentation_9.h \
+	gen-many-event-classes/instrumentation_9.c
+gen_many_event_classes_libtp9_la_LIBADD = \
+	$(UST_LIBS)
+gen_many_event_classes_libtp9_la_CPPFLAGS = \
+	$(AM_CPPFLAGS) \
+	-I$(abs_builddir)/gen-many-event-classes/
+
+noinst_PROGRAMS += gen-many-event-classes/gen-many-event-classes
+gen_many_event_classes_gen_many_event_classes_CPPFLAGS = \
+	$(AM_CPPFLAGS) \
+	-I$(abs_builddir)/gen-many-event-classes/
+
+gen_many_event_classes_gen_many_event_classes_CFLAGS = \
+	-Wno-redundant-decls \
+	-Wno-missing-field-initializers
+
+gen_many_event_classes_gen_many_event_classes_CXXFLAGS = \
+	-Wno-redundant-decls \
+	-Wno-missing-field-initializers
+
+gen_many_event_classes_gen_many_event_classes_SOURCES = \
+	gen-many-event-classes/gen-many-event-classes.cpp
+nodist_gen_many_event_classes_gen_many_event_classes_SOURCES = \
+	gen-many-event-classes/emit-events.c \
+	gen-many-event-classes/emit-events.h
+
+gen_many_event_classes_gen_many_event_classes_LDFLAGS = -static
+gen_many_event_classes_gen_many_event_classes_LDADD = \
+	$(UST_LIBS) \
+	$(DL_LIBS) \
+	$(top_builddir)/src/common/libcommon-lgpl.la \
+	$(top_builddir)/tests/utils/libtestutils.la \
+	$(top_builddir)/src/vendor/argpar/libargpar.la \
+	gen-many-event-classes/libtp0.la \
+	gen-many-event-classes/libtp1.la \
+	gen-many-event-classes/libtp2.la \
+	gen-many-event-classes/libtp3.la \
+	gen-many-event-classes/libtp4.la \
+	gen-many-event-classes/libtp5.la \
+	gen-many-event-classes/libtp6.la \
+	gen-many-event-classes/libtp7.la \
+	gen-many-event-classes/libtp8.la \
+	gen-many-event-classes/libtp9.la
+
+$(MANY_EVENTS_GENERATED_SOURCES): gen-many-event-classes/generate_many_event_classes.py
+	$(AM_V_GEN)$(PYTHON) $(srcdir)/gen-many-event-classes/generate_many_event_classes.py \
+		--output-dir $(builddir)/gen-many-event-classes/ \
+		--event-class-count $(MANY_EVENTS_NUM_EVENTS_PER_SOURCE) \
+		--event-source-count 10
 endif
 
 noinst_PROGRAMS += gen-kernel-test-events
@@ -132,7 +310,7 @@ userspace_probe_elf_cxx_binary_SOURCES = userspace-probe-elf-cxx-binary.cpp test
 userspace_probe_elf_cxx_binary_CFLAGS = $(AM_CFLAGS) -O0
 
 if TEST_SDT_UPROBE
-BUILT_SOURCES = foobar_provider.h
+BUILT_SOURCES += foobar_provider.h
 CLEANFILES += foobar_provider.h
 EXTRA_DIST += foobar_provider.d
 
@@ -184,6 +362,9 @@ EXTRA_DIST += gen-py-events.py
 all-local: libdynsym.strip-stamp
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
 		for script in $(TEST_DEPS); do \
+			if [ x"$$(dirname $$script)" != x"." ]; then \
+				mkdir -p $(builddir)/$$(dirname $$script); \
+			fi; \
 			cp -f $(srcdir)/$$script $(builddir); \
 		done; \
 	fi

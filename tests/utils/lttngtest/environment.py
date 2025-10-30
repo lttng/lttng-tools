@@ -1056,15 +1056,15 @@ class _Environment(logger._Logger):
         self._dummy_users[entry[2]] = name
         return (entry[2], name)
 
-    def create_temporary_directory(self, prefix=None):
-        # type: (Optional[str]) -> pathlib.Path
+    def create_temporary_directory(self, prefix=None, dir=None):
+        # type: (Optional[str], Optional[str]) -> pathlib.Path
         # Simply return a path that is contained within LTTNG_HOME; it will
         # be destroyed when the temporary home goes out of scope.
+        if dir is None:
+            dir = str(self.lttng_home_location) if self.lttng_home_location else None
+
         return pathlib.Path(
-            tempfile.mkdtemp(
-                prefix="tmp" if prefix is None else prefix,
-                dir=str(self.lttng_home_location) if self.lttng_home_location else None,
-            )
+            tempfile.mkdtemp(prefix="tmp" if prefix is None else prefix, dir=dir)
         )
 
     @staticmethod
@@ -1419,6 +1419,41 @@ class _Environment(logger._Logger):
             wait_before_last_event_file_path,
             extra_env_vars,
             emit_event_with_empty_field_name,
+        )
+
+    def launch_multi_event_wait_trace_test_application(
+        self,
+        event_count,  # type: int
+        wait_time_between_events_us=0,
+        wait_before_exit=False,
+        wait_before_exit_file_path=None,
+        run_as=None,
+        wait_before_last_event=False,
+        wait_before_last_event_file_path=None,
+    ):
+        # type: (int, int, bool, Optional[pathlib.Path], Optional[str], bool, Optional[pathlib.Path]) -> _WaitTraceTestApplication
+        """
+        Launch the gen-many-event-classes application that will wait before tracing `event_count` iterations.
+        Each iteration emits events from multiple event classes.
+        Note: text_size and fill_text parameters are not supported by this application.
+        """
+        return _WaitTraceTestApplication(
+            self._project_root
+            / "tests"
+            / "utils"
+            / "testapp"
+            / "gen-many-event-classes"
+            / "gen-many-event-classes",
+            event_count,
+            self,
+            wait_time_between_events_us,
+            wait_before_exit,
+            wait_before_exit_file_path,
+            run_as,
+            text_size=None,
+            fill_text=False,
+            wait_before_last_event=wait_before_last_event,
+            wait_before_last_event_file_path=wait_before_last_event_file_path,
         )
 
     def launch_test_application(self, path, extra_env_vars=dict(), **kwargs):
