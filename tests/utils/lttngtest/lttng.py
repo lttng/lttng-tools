@@ -819,7 +819,7 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
     def create_session(
         self, name=None, output=None, live=False, snapshot=False, shm_path=None
     ):
-        # type: (Optional[str], Optional[lttngctl.SessionOutputLocation], bool, Optional[pathlib.Path]) -> lttngctl.Session
+        # type: (Optional[str], Optional[lttngctl.SessionOutputLocation], bool, bool, Optional[pathlib.Path]) -> lttngctl.Session
         name = name if name else lttngctl.Session._generate_name()
         args = ["create", name]
 
