@@ -218,5 +218,4 @@ The LTTng-tools project follows a release cycle that alternates between
 development and release candidate (RC) phases. The master branch is
 feature-frozen during RC phases: only bug fixes are accepted during
 this period. However, patches adding new functionality may still be
-submitted and reviewed during the RC. The upcoming features and release
-dates are posted in a monthly digest on the mailing list.
+submitted and reviewed during the RC.
