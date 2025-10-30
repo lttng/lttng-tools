@@ -252,7 +252,7 @@ function test_ust_uid_streaming_rotate ()
 	rotate_session_ok "$session_name"
 
 	stop_lttng_tracing_ok "$session_name"
-	destroy_lttng_session_ok "$session_name" --no-wait
+	destroy_lttng_session_ok "$session_name" # need to wait due to use of rotate
 
 	if [ "$grouping" = "$GROUP_BY_SESSION" ]; then
 		validate_trace "$EVENT_NAME" "$TRACE_PATH/$session_name/$HOSTNAME*"
@@ -284,9 +284,8 @@ function test_ust_uid_streaming_rotate_custom_output ()
 	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT
 	rotate_session_ok "$session_name"
 
-
 	stop_lttng_tracing_ok "$session_name"
-	destroy_lttng_session_ok "$session_name" --no-wait
+	destroy_lttng_session_ok "$session_name" # need to wait due to use of rotate
 
 	if [ "$grouping" = "$GROUP_BY_SESSION" ]; then
 		validate_trace "$EVENT_NAME" "$TRACE_PATH/$session_name/$HOSTNAME-*/$custom_output"
@@ -318,7 +317,7 @@ function test_ust_pid_streaming_rotate ()
 	rotate_session_ok "$session_name"
 
 	stop_lttng_tracing_ok "$session_name"
-	destroy_lttng_session_ok "$session_name" --no-wait
+	destroy_lttng_session_ok "$session_name" # need to wait due to use of rotate
 
 	if [ "$grouping" = "$GROUP_BY_SESSION" ]; then
 		validate_trace "$EVENT_NAME" "$TRACE_PATH/$session_name/$HOSTNAME*"
