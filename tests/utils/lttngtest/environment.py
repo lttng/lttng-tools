@@ -989,7 +989,7 @@ class _Environment(logger._Logger):
 
     def create_dummy_user(self):
         # type: () -> (int, str)
-        # Create a dummy user. The uid and username will be eturned in a tuple.
+        # Create a dummy user. The uid and username will be returned in a tuple.
         # If the name already exists, an exception will be thrown.
         # The users will be removed when the environment is cleaned up.
         name = "".join([random.choice(string.ascii_lowercase) for x in range(10)])
