@@ -42,6 +42,7 @@ SERIAL_TESTS = tools/base-path/test_ust \
 	tools/wildcard/test_event_wildcard \
 	tools/crash/test_crash \
 	tools/regen-metadata/test_kernel \
+	tools/regen-metadata/test_regenerate_rotate.py \
 	tools/regen-metadata/test_ust \
 	tools/regen-statedump/test_kernel \
 	tools/regen-statedump/test_ust \

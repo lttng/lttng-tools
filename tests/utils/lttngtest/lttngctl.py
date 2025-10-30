@@ -731,8 +731,8 @@ class Session(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def rotate(self):
-        # type: () -> None
+    def rotate(self, wait=True):
+        # type: (bool) -> None
         raise NotImplementedError
 
     @abc.abstractmethod

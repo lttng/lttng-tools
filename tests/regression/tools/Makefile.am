@@ -215,6 +215,7 @@ noinst_SCRIPTS += \
 	notification/util_event_generator.py \
 	regen-metadata/test_ust \
 	regen-metadata/test_kernel \
+	regen-metadata/test_regenerate_rotate.py \
 	regen-statedump/test_ust \
 	regen-statedump/test_kernel \
 	relayd-grouping/test_ust \
