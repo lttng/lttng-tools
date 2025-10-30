@@ -66,7 +66,8 @@ See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 [IMPORTANT]
 ====
-You may only use the `rotate` command when:
+You may only use the `rotate` command when all of the following
+conditions are true:
 
 * The selected recording session was created in normal mode or in
   network streaming mode (see man:lttng-create(1)).

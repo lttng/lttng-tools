@@ -398,7 +398,8 @@ Snapshot mode::
 LTTng forces all the channels (see the ``<<channel,{sect-channel}>>''
 section below) to be created to be configured to be snapshot-ready.
 +
-LTTng takes a snapshot of such a recording session when:
+LTTng takes a snapshot of such a recording session when any of the
+following is true:
 +
 --
 * You run the man:lttng-snapshot(1) command.
