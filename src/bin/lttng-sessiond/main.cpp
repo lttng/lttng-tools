@@ -58,6 +58,7 @@
 #include <common/make-unique-wrapper.hpp>
 #include <common/path.hpp>
 #include <common/relayd/relayd.hpp>
+#include <common/systemd-utils.hpp>
 #include <common/utils.hpp>
 
 #include <lttng/event-internal.hpp>
@@ -1990,6 +1991,12 @@ static int _main(int argc, char **argv)
 	sessiond_signal_parents();
 
 	/*
+	 * Notify systemd that the daemon is ready, no-op on non-Linux
+	 * platforms.
+	 */
+	lttng::systemd::notify_ready();
+
+	/*
 	 * This is where we start awaiting program completion (e.g. through
 	 * signal that asks threads to teardown).
 	 */
@@ -2000,6 +2007,12 @@ static int _main(int argc, char **argv)
 stop_threads:
 
 	DBG("Terminating all threads");
+
+	/*
+	 * Notify systemd that the stopping process has started, no-op on
+	 * non-Linux platforms.
+	 */
+	lttng::systemd::notify_stopping();
 
 	/*
 	 * Ensure that the client thread is no longer accepting new commands,
