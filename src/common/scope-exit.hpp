@@ -23,9 +23,10 @@ struct is_invocation_noexcept
  * Generic utility to run a lambda (or any other invocable object) when leaving
  * a scope.
  *
- * Notably, this makes it easy to specify an action (e.g. restore a context)
- * that must occur at the end of a function or roll-back operations in an
- * exception-safe way.
+ * Typical usage examples include:
+ * • Specify an action (e.g. restore a context) that must occur at
+ *   the end of a function,
+ * • Specify roll-back operations in an exception-safe way.
  */
 template <typename ScopeExitInvocableType>
 class scope_exit {
