@@ -49,6 +49,7 @@
 #include <common/sessiond-comm/relayd.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/string-utils/format.hpp>
+#include <common/systemd-utils.hpp>
 #include <common/urcu.hpp>
 #include <common/uri.hpp>
 #include <common/utils.hpp>
@@ -859,6 +860,13 @@ int lttng_relay_stop_threads()
 
 	/* Stopping all threads */
 	DBG("Terminating all threads");
+
+	/*
+	 * Notify systemd that the stopping process has started, no-op on
+	 * non-Linux platforms.
+	 */
+	lttng::systemd::notify_stopping();
+
 	if (relayd_notify_thread_quit_pipe()) {
 		ERR("write error on thread quit pipe");
 		retval = -1;
@@ -970,6 +978,12 @@ void lttng_relay_notify_ready()
 		if (opt_sig_parent != 0) {
 			kill(opt_sig_parent, SIGUSR1);
 		}
+
+		/*
+		 * Notify systemd that the daemon is ready, no-op on non-Linux
+		 * platforms.
+		 */
+		lttng::systemd::notify_ready();
 	}
 }
 
