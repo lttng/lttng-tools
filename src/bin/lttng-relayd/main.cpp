@@ -953,12 +953,22 @@ static int set_signal_handler()
 	return ret;
 }
 
+/*
+ * Decrement the 'lttng_relay_ready' counter and signal readiness when it
+ * reaches zero.
+ */
 void lttng_relay_notify_ready()
 {
-	/* Notify the parent of the fork() process that we are ready. */
-	if (opt_daemon || opt_background) {
-		if (uatomic_sub_return(&lttng_relay_ready, 1) == 0) {
+	/* When this counter reaches zero, all threads are ready. */
+	if (uatomic_sub_return(&lttng_relay_ready, 1) == 0) {
+		/* Notify the parent of the fork() process that we are ready. */
+		if (opt_daemon || opt_background) {
 			kill(child_ppid, SIGUSR1);
+		}
+
+		/* Notify the parent process that we are ready. */
+		if (opt_sig_parent != 0) {
+			kill(opt_sig_parent, SIGUSR1);
 		}
 	}
 }
@@ -4632,11 +4642,6 @@ int main(int argc, char **argv)
 	 * This is where we start awaiting program completion (e.g. through
 	 * signal that asks threads to teardown).
 	 */
-
-	/* Initialization complete, signal parent PID if necessary. */
-	if (opt_sig_parent != 0) {
-		kill(opt_sig_parent, SIGUSR1);
-	}
 
 	ret = relayd_live_join();
 	if (ret) {
