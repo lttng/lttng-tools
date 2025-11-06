@@ -357,7 +357,7 @@ enum get_next_subbuffer_status {
  * Perform any operation required to acknowledge
  * the wake-up of a consumer stream (e.g. consume a byte on a wake-up pipe).
  *
- * Stream and channel locks are acquired during this call.
+ * Stream and channel locks are held during this call.
  */
 using on_wake_up_cb = int (*)(struct lttng_consumer_stream *);
 
@@ -365,14 +365,14 @@ using on_wake_up_cb = int (*)(struct lttng_consumer_stream *);
  * Perform any operation required before a consumer stream is put
  * to sleep before awaiting a data availability notification.
  *
- * Stream and channel locks are acquired during this call.
+ * Stream and channel locks are held during this call.
  */
 using on_sleep_cb = int (*)(struct lttng_consumer_stream *, struct lttng_consumer_local_data *);
 
 /*
  * Acquire the subbuffer at the current 'consumed' position.
  *
- * Stream and channel locks are acquired during this call.
+ * Stream and channel locks are held during this call.
  */
 using get_next_subbuffer_cb = enum get_next_subbuffer_status (*)(struct lttng_consumer_stream *,
 								 struct stream_subbuffer *);
@@ -381,7 +381,7 @@ using get_next_subbuffer_cb = enum get_next_subbuffer_status (*)(struct lttng_co
  * Populate the stream_subbuffer's info member. The info to populate
  * depends on the type (metadata/data) of the stream.
  *
- * Stream and channel locks are acquired during this call.
+ * Stream and channel locks are held during this call.
  */
 using extract_subbuffer_info_cb = int (*)(struct lttng_consumer_stream *,
 					  struct stream_subbuffer *);
@@ -389,14 +389,14 @@ using extract_subbuffer_info_cb = int (*)(struct lttng_consumer_stream *,
 /*
  * Invoked after a subbuffer's info has been filled.
  *
- * Stream and channel locks are acquired during this call.
+ * Stream and channel locks are held during this call.
  */
 using pre_consume_subbuffer_cb = int (*)(struct lttng_consumer_stream *, struct stream_subbuffer *);
 
 /*
  * Consume subbuffer contents.
  *
- * Stream and channel locks are acquired during this call.
+ * Stream and channel locks are held during this call.
  */
 using consume_subbuffer_cb = ssize_t (*)(struct lttng_consumer_local_data *,
 					 struct lttng_consumer_stream *,
@@ -406,14 +406,14 @@ using consume_subbuffer_cb = ssize_t (*)(struct lttng_consumer_local_data *,
  * Release the current subbuffer and advance the 'consumed' position by
  * one subbuffer.
  *
- * Stream and channel locks are acquired during this call.
+ * Stream and channel locks are held during this call.
  */
 using put_next_subbuffer_cb = int (*)(struct lttng_consumer_stream *, struct stream_subbuffer *);
 
 /*
  * Invoked after consuming a subbuffer.
  *
- * Stream and channel locks are acquired during this call.
+ * Stream and channel locks are held during this call.
  */
 using post_consume_cb = int (*)(lttng_consumer_stream&,
 				const struct stream_subbuffer *,
@@ -422,7 +422,7 @@ using post_consume_cb = int (*)(lttng_consumer_stream&,
 /*
  * Send a live beacon if no data is available.
  *
- * Stream and channel locks are acquired during this call.
+ * Stream and channel locks are held during this call.
  */
 using send_live_beacon_cb = int (*)(lttng_consumer_stream&);
 
@@ -437,7 +437,7 @@ using lock_cb = void (*)(struct lttng_consumer_stream *);
  * Unlock the stream and channel locks and any other stream-type specific
  * lock before sleeping until the next availability notification.
  *
- * Stream and channel locks are acquired during this call.
+ * Stream and channel locks are held during this call.
  */
 using unlock_cb = void (*)(struct lttng_consumer_stream *);
 
@@ -452,7 +452,7 @@ using assert_locked_cb = void (*)(struct lttng_consumer_stream *);
  * Invoked when a subbuffer's metadata version does not match the last
  * known metadata version.
  *
- * Stream and channel locks are acquired during this call.
+ * Stream and channel locks are held during this call.
  */
 using reset_metadata_cb = void (*)(struct lttng_consumer_stream *);
 
