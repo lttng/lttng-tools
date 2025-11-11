@@ -24,7 +24,8 @@ dist_noinst_DATA = CodingStyle.md
 TEST_DEPS = \
 	.shellcheckrc
 
-EXTRA_DIST = extras/lttng-bash_completion \
+EXTRA_DIST = CLAUDE.md \
+	     extras/lttng-bash_completion \
 	     extras/zsh-completion \
 	     LICENSES/BSD-2-Clause \
 	     LICENSES/BSD-3-Clause \
