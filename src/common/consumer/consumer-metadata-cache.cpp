@@ -25,6 +25,7 @@
 enum metadata_cache_update_version_status {
 	METADATA_CACHE_UPDATE_STATUS_VERSION_UPDATED,
 	METADATA_CACHE_UPDATE_STATUS_VERSION_NOT_UPDATED,
+	METADATA_CACHE_UPDATE_STATUS_OLDER_VERSION,
 };
 
 extern struct lttng_consumer_global_data the_consumer_data;
@@ -51,6 +52,12 @@ metadata_cache_update_version(struct consumer_metadata_cache *cache, uint64_t ve
 
 	if (cache->version == version) {
 		status = METADATA_CACHE_UPDATE_STATUS_VERSION_NOT_UPDATED;
+		goto end;
+	} else if (cache->version > version) {
+		ERR_FMT("Metadata cache version regression detected, dropping contents: current version={}, new version={}",
+			cache->version,
+			version);
+		status = METADATA_CACHE_UPDATE_STATUS_OLDER_VERSION;
 		goto end;
 	}
 
@@ -87,10 +94,14 @@ consumer_metadata_cache_write(struct consumer_metadata_cache *cache,
 	ASSERT_LOCKED(cache->lock);
 	original_size = cache->contents.size;
 
-	if (metadata_cache_update_version(cache, version) ==
-	    METADATA_CACHE_UPDATE_STATUS_VERSION_UPDATED) {
+	const auto version_update_result = metadata_cache_update_version(cache, version);
+	if (version_update_result == METADATA_CACHE_UPDATE_STATUS_VERSION_UPDATED) {
 		metadata_cache_reset(cache);
 		cache_is_invalidated = true;
+	} else if (version_update_result == METADATA_CACHE_UPDATE_STATUS_OLDER_VERSION) {
+		/* Stale contents, drop it. */
+		status = CONSUMER_METADATA_CACHE_WRITE_STATUS_NO_CHANGE;
+		goto end;
 	}
 
 	DBG("Writing %u bytes from offset %u in metadata cache", len, offset);

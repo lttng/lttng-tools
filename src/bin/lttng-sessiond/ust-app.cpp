@@ -994,8 +994,10 @@ push_data:
 		 * largest metadata_len_sent value of the concurrent
 		 * send.
 		 */
-		locked_registry->_metadata_len_sent =
-			std::max(locked_registry->_metadata_len_sent, new_metadata_len_sent);
+		if (locked_registry->_metadata_version == metadata_version) {
+			locked_registry->_metadata_len_sent = std::max(
+				locked_registry->_metadata_len_sent, new_metadata_len_sent);
+		}
 	}
 	free(metadata_str);
 	return len;
