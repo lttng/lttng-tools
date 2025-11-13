@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: LGPL-2.1-only
  */
 
-#include "common/time.hpp"
 #include "common/format.hpp"
+#include "common/time.hpp"
 
 int main()
 {
