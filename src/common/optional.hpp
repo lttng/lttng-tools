@@ -63,7 +63,14 @@
  * Since this returns the 'optional' by value, it is not suitable for all
  * wrapped optional types. It is meant to be used with PODs.
  */
-#define LTTNG_OPTIONAL_GET(optional) ::details::lttng_optional_get_value_impl(optional)
+#define LTTNG_OPTIONAL_GET(optional)                                                  \
+	({                                                                            \
+		DIAGNOSTIC_PUSH                                                       \
+		DIAGNOSTIC_IGNORE_ADDRESS_OF_PACKED_MEMBER                            \
+		auto _result = ::details::lttng_optional_get_value_impl(&(optional)); \
+		DIAGNOSTIC_POP                                                        \
+		_result;                                                              \
+	})
 
 /*
  * This macro is available as a 'convenience' to allow sites that assume
@@ -117,36 +124,83 @@ template <typename OptionalType, typename ValueType>
 inline void lttng_optional_set_impl(OptionalType *field_ptr, const ValueType& val)
 {
 	/*
+	 * Verify that is_set is at offset 0, so we can safely access it via
+	 * char pointer cast without computing member offsets.
+	 */
+	static_assert(offsetof(OptionalType, is_set) == 0,
+		      "is_set must be at offset 0 in the optional struct");
+
+	/*
 	 * Use memset and memcpy to avoid potential issues with
 	 * assignment to packed structures / unaligned access.
+	 *
+	 * Use char pointer to avoid alignment checks when accessing packed structs.
 	 */
-	memset(&field_ptr->is_set, 1, sizeof(field_ptr->is_set));
+	auto *const is_set_ptr = reinterpret_cast<char *>(field_ptr);
+	memset(is_set_ptr, 1, sizeof(field_ptr->is_set));
 
-	DIAGNOSTIC_PUSH
-	DIAGNOSTIC_IGNORE_ADDRESS_OF_PACKED_MEMBER
-	memcpy(&field_ptr->value, &val, sizeof(field_ptr->value));
-	DIAGNOSTIC_POP
+	/*
+	 * Use offsetof and sizeof on the value type to avoid any member access
+	 * that could trigger alignment checks on packed structs.
+	 */
+	using DecayedValueType = typename std::decay<ValueType>::type;
+	constexpr auto value_offset = offsetof(OptionalType, value);
+	auto *const value_ptr = reinterpret_cast<char *>(field_ptr) + value_offset;
+	memcpy(value_ptr, &val, sizeof(DecayedValueType));
 }
 
 /* Overload for r-value. */
 template <typename OptionalType, typename ValueType>
 inline void lttng_optional_set_impl(OptionalType *field_ptr, const ValueType&& val)
 {
-	const decltype(field_ptr->value) tmp_value = std::move(val);
-	memset(&field_ptr->is_set, 1, sizeof(field_ptr->is_set));
+	/*
+	 * Use std::decay on the template parameter type to strip any
+	 * cv-qualifiers and references, ensuring tmp_value has proper alignment.
+	 */
+	using DecayedValueType = typename std::decay<ValueType>::type;
+	const DecayedValueType tmp_value = std::move(val);
 
-	DIAGNOSTIC_PUSH
-	DIAGNOSTIC_IGNORE_ADDRESS_OF_PACKED_MEMBER
-	memcpy(&field_ptr->value, &tmp_value, sizeof(field_ptr->value));
-	DIAGNOSTIC_POP
+	/*
+	 * Verify that is_set is at offset 0, so we can safely access it via
+	 * char pointer cast without computing member offsets.
+	 */
+	static_assert(offsetof(OptionalType, is_set) == 0,
+		      "is_set must be at offset 0 in the optional struct");
+
+	/* Use char pointer to avoid alignment checks when accessing packed structs. */
+	auto *const is_set_ptr = reinterpret_cast<char *>(field_ptr);
+	memset(is_set_ptr, 1, sizeof(field_ptr->is_set));
+
+	/*
+	 * Use offsetof and sizeof on the decayed type to avoid any member access
+	 * that could trigger alignment checks on packed structs.
+	 */
+	constexpr auto value_offset = offsetof(OptionalType, value);
+	auto *const value_ptr = reinterpret_cast<char *>(field_ptr) + value_offset;
+	memcpy(value_ptr, &tmp_value, sizeof(DecayedValueType));
 }
 
 template <typename OptionalType,
-	  typename ValueType = typename std::decay<decltype(OptionalType::value)>::type>
-inline ValueType lttng_optional_get_value_impl(const OptionalType& field_ptr)
+	  typename ValueType =
+		  typename std::decay<decltype(std::declval<OptionalType>().value)>::type>
+inline ValueType lttng_optional_get_value_impl(const OptionalType *field_ptr)
 {
-	LTTNG_ASSERT(field_ptr.is_set);
-	return field_ptr.value;
+	/*
+	 * Use memcpy to avoid alignment issues when accessing members
+	 * of packed structs. This prevents undefined behavior when fields
+	 * are misaligned. We must avoid any direct member access including
+	 * the is_set field.
+	 */
+	uint8_t is_set;
+	auto *const is_set_ptr = reinterpret_cast<const char *>(field_ptr);
+	memcpy(&is_set, is_set_ptr, sizeof(uint8_t));
+	LTTNG_ASSERT(is_set);
+
+	ValueType result;
+	constexpr auto value_offset = offsetof(OptionalType, value);
+	auto *const value_ptr = reinterpret_cast<const char *>(field_ptr) + value_offset;
+	memcpy(&result, value_ptr, sizeof(ValueType));
+	return result;
 }
 
 template <typename OptionalType,

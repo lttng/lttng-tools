@@ -380,9 +380,13 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 		case LTTNG_DOMAIN_LOG4J: /* Fallthrough */
 		case LTTNG_DOMAIN_PYTHON: /* Fallthrough */
 		case LTTNG_DOMAIN_LOG4J2:
-			LTTNG_OPTIONAL_SET(&luc->watchdog_timer_interval,
-					   LTTNG_OPTIONAL_GET(extended->watchdog_timer_interval));
+		{
+			const auto watchdog_timer_value =
+				LTTNG_OPTIONAL_GET(extended->watchdog_timer_interval);
+
+			LTTNG_OPTIONAL_SET(&luc->watchdog_timer_interval, watchdog_timer_value);
 			break;
+		}
 		default:
 			ERR_FMT("Watchdog timer only valid for UST, JUL, LOG4J, PYTHON and LOG4J2 domains: domain={}",
 				static_cast<int>(domain));

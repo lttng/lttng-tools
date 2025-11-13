@@ -714,7 +714,8 @@ void lttng_trigger_set_credentials(struct lttng_trigger *trigger,
 {
 	/* Triggers do not use the group id to authenticate the user. */
 	LTTNG_ASSERT(creds);
-	LTTNG_OPTIONAL_SET(&trigger->creds.uid, LTTNG_OPTIONAL_GET(creds->uid));
+	const auto uid_value = LTTNG_OPTIONAL_GET(creds->uid);
+	LTTNG_OPTIONAL_SET(&trigger->creds.uid, uid_value);
 	LTTNG_OPTIONAL_UNSET(&trigger->creds.gid);
 }
 
