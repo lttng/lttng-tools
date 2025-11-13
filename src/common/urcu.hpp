@@ -111,7 +111,7 @@ template <typename ContainedType, typename NodeType, NodeType ContainedType::*Me
 class lfht_iteration_adapter {
 public:
 	/* Nested iterator class defines the iterator for lfht_iteration_adapter. */
-	class iterator : public std::iterator<std::input_iterator_tag, std::uint64_t> {
+	class iterator : public std::iterator<std::forward_iterator_tag, ContainedType *> {
 		/* Allow lfht_iteration_adapter to access private members of iterator. */
 		friend lfht_iteration_adapter;
 
@@ -298,7 +298,7 @@ template <typename ContainedType, cds_list_head ContainedType::*Member>
 class list_iteration_adapter {
 public:
 	/* Nested iterator class defines the iterator for list_iteration_adapter. */
-	class iterator : public std::iterator<std::input_iterator_tag, std::uint64_t> {
+	class iterator : public std::iterator<std::forward_iterator_tag, ContainedType *> {
 		/* Allow list_iteration_adapter to access private members of iterator. */
 		friend list_iteration_adapter;
 
