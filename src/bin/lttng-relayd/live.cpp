@@ -42,6 +42,8 @@
 
 #include <lttng/lttng.h>
 
+#include <vendor/optional.hpp>
+
 #include <fcntl.h>
 #include <getopt.h>
 #include <grp.h>
@@ -1808,7 +1810,8 @@ static int viewer_get_next_index(struct relay_connection *conn)
 	struct ctf_trace *ctf_trace = nullptr;
 	struct relay_viewer_stream *metadata_viewer_stream = nullptr;
 	bool viewer_stream_and_session_in_same_chunk, viewer_stream_one_rotation_behind;
-	uint64_t stream_file_chunk_id = -1ULL, viewer_session_chunk_id = -1ULL;
+	nonstd::optional<std::string> stream_file_chunk_id;
+	nonstd::optional<std::string> viewer_session_chunk_id;
 	enum lttng_trace_chunk_status status;
 	bool attached_sessions_have_new_streams = false;
 
@@ -1927,14 +1930,38 @@ static int viewer_get_next_index(struct relay_connection *conn)
 	 * after a session's destruction.
 	 */
 	if (vstream->stream_file.trace_chunk) {
-		status = lttng_trace_chunk_get_id(vstream->stream_file.trace_chunk,
-						  &stream_file_chunk_id);
-		LTTNG_ASSERT(status == LTTNG_TRACE_CHUNK_STATUS_OK);
+		uint64_t id;
+
+		status = lttng_trace_chunk_get_id(vstream->stream_file.trace_chunk, &id);
+		if (status == LTTNG_TRACE_CHUNK_STATUS_OK) {
+			try {
+				stream_file_chunk_id = std::to_string(id);
+			} catch (const std::exception& e) {
+				ERR_FMT("Failed to convert stream file trace chunk id to string: {}",
+					e.what());
+				ret = -1;
+				goto end;
+			}
+		} else {
+			LTTNG_ASSERT(status == LTTNG_TRACE_CHUNK_STATUS_NONE);
+		}
 	}
 	if (conn->viewer_session->current_trace_chunk) {
-		status = lttng_trace_chunk_get_id(conn->viewer_session->current_trace_chunk,
-						  &viewer_session_chunk_id);
-		LTTNG_ASSERT(status == LTTNG_TRACE_CHUNK_STATUS_OK);
+		uint64_t id;
+
+		status = lttng_trace_chunk_get_id(conn->viewer_session->current_trace_chunk, &id);
+		if (status == LTTNG_TRACE_CHUNK_STATUS_OK) {
+			try {
+				viewer_session_chunk_id = std::to_string(id);
+			} catch (const std::exception& e) {
+				ERR_FMT("Failed to convert viewer session trace chunk id to string: {}",
+					e.what());
+				ret = -1;
+				goto end;
+			}
+		} else {
+			LTTNG_ASSERT(status == LTTNG_TRACE_CHUNK_STATUS_NONE);
+		}
 	}
 
 	viewer_stream_and_session_in_same_chunk = lttng_trace_chunk_ids_equal(
@@ -1943,21 +1970,21 @@ static int viewer_get_next_index(struct relay_connection *conn)
 		vstream->last_seen_rotation_count + 1;
 
 	if (viewer_stream_and_session_in_same_chunk) {
-		DBG("Transition to latest chunk check (%s -> %s): Same chunk, no need to rotate",
-		    vstream->stream_file.trace_chunk ?
-			    std::to_string(stream_file_chunk_id).c_str() :
-			    "None",
-		    conn->viewer_session->current_trace_chunk ?
-			    std::to_string(viewer_session_chunk_id).c_str() :
-			    "None");
+		DBG_FMT("Transition to latest chunk check ({} -> {}): Same chunk, no need to rotate",
+			vstream->stream_file.trace_chunk ?
+				stream_file_chunk_id.value_or("anonymous") :
+				"None",
+			conn->viewer_session->current_trace_chunk ?
+				viewer_session_chunk_id.value_or("anonymous") :
+				"None");
 	} else if (viewer_stream_one_rotation_behind && !rstream->trace_chunk) {
-		DBG("Transition to latest chunk check (%s -> %s): One chunk behind relay stream which is being destroyed, no need to rotate",
-		    vstream->stream_file.trace_chunk ?
-			    std::to_string(stream_file_chunk_id).c_str() :
-			    "None",
-		    conn->viewer_session->current_trace_chunk ?
-			    std::to_string(viewer_session_chunk_id).c_str() :
-			    "None");
+		DBG_FMT("Transition to latest chunk check ({} -> {}): One chunk behind relay stream which is being destroyed, no need to rotate",
+			vstream->stream_file.trace_chunk ?
+				stream_file_chunk_id.value_or("anonymous") :
+				"None",
+			conn->viewer_session->current_trace_chunk ?
+				viewer_session_chunk_id.value_or("anonymous") :
+				"None");
 	} else if (vstream->stream_file.trace_chunk &&
 		   rstream->completed_rotation_count == vstream->last_seen_rotation_count &&
 		   !rstream->trace_chunk) {
@@ -1967,21 +1994,21 @@ static int viewer_get_next_index(struct relay_connection *conn)
 		 * rotations are the same and the relay stream trace chunk is null, don't rotate.
 		 * When the close finishes, the rotation count on the relay stream will go up.
 		 */
-		DBG("Transition to latest chunk check (%s -> %s): relay stream chunk is null, but viewer stream knows a chunk and isn't yet behind a rotation",
-		    vstream->stream_file.trace_chunk ?
-			    std::to_string(stream_file_chunk_id).c_str() :
-			    "None",
-		    conn->viewer_session->current_trace_chunk ?
-			    std::to_string(viewer_session_chunk_id).c_str() :
-			    "None");
+		DBG_FMT("Transition to latest chunk check ({} -> {}): relay stream chunk is null, but viewer stream knows a chunk and isn't yet behind a rotation",
+			vstream->stream_file.trace_chunk ?
+				stream_file_chunk_id.value_or("anonymous") :
+				"None",
+			conn->viewer_session->current_trace_chunk ?
+				viewer_session_chunk_id.value_or("anonymous") :
+				"None");
 	} else {
-		DBG("Transition to latest chunk check (%s -> %s): Viewer stream chunk ID and viewer session chunk ID differ, rotating viewer stream",
-		    vstream->stream_file.trace_chunk ?
-			    std::to_string(stream_file_chunk_id).c_str() :
-			    "None",
-		    conn->viewer_session->current_trace_chunk ?
-			    std::to_string(viewer_session_chunk_id).c_str() :
-			    "None");
+		DBG_FMT("Transition to latest chunk check ({} -> {}): Viewer stream chunk ID and viewer session chunk ID differ, rotating viewer stream",
+			vstream->stream_file.trace_chunk ?
+				stream_file_chunk_id.value_or("anonymous") :
+				"None",
+			conn->viewer_session->current_trace_chunk ?
+				viewer_session_chunk_id.value_or("anonymous") :
+				"None");
 
 		viewer_stream_rotate_to_trace_chunk(vstream,
 						    conn->viewer_session->current_trace_chunk);
