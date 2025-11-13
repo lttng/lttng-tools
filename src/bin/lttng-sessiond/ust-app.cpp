@@ -2612,8 +2612,10 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan, struct ltt_ust_
 	ua_chan->monitor_timer_interval = uchan->monitor_timer_interval;
 
 	if (uchan->watchdog_timer_interval.is_set) {
-		LTTNG_OPTIONAL_SET(&ua_chan->watchdog_timer_interval,
-				   LTTNG_OPTIONAL_GET(uchan->watchdog_timer_interval));
+		const auto watchdog_timer_value =
+			LTTNG_OPTIONAL_GET(uchan->watchdog_timer_interval);
+
+		LTTNG_OPTIONAL_SET(&ua_chan->watchdog_timer_interval, watchdog_timer_value);
 	} else {
 		LTTNG_OPTIONAL_UNSET(&ua_chan->watchdog_timer_interval);
 	}

@@ -172,18 +172,21 @@ ssize_t lttng_channel_create_from_buffer(const struct lttng_buffer_view *view,
 	extended->monitor_timer_interval = channel_comm->monitor_timer_interval;
 
 	if (channel_comm->watchdog_timer_interval.is_set) {
-		LTTNG_OPTIONAL_SET(&extended->watchdog_timer_interval,
-				   LTTNG_OPTIONAL_GET(channel_comm->watchdog_timer_interval));
+		const auto watchdog_timer_value =
+			LTTNG_OPTIONAL_GET(channel_comm->watchdog_timer_interval);
+
+		LTTNG_OPTIONAL_SET(&extended->watchdog_timer_interval, watchdog_timer_value);
 	}
 
 	extended->blocking_timeout = channel_comm->blocking_timeout;
 	extended->allocation_policy = channel_comm->allocation_policy;
 	extended->preallocation_policy = channel_comm->preallocation_policy;
 	if (channel_comm->automatic_memory_reclamation_maximal_age_us.is_set) {
-		LTTNG_OPTIONAL_SET(
-			&extended->automatic_memory_reclamation_maximal_age_us,
-			LTTNG_OPTIONAL_GET(
-				channel_comm->automatic_memory_reclamation_maximal_age_us));
+		const auto reclamation_age_value = LTTNG_OPTIONAL_GET(
+			channel_comm->automatic_memory_reclamation_maximal_age_us);
+
+		LTTNG_OPTIONAL_SET(&extended->automatic_memory_reclamation_maximal_age_us,
+				   reclamation_age_value);
 	}
 
 	*channel = local_channel;
@@ -238,17 +241,21 @@ int lttng_channel_serialize(struct lttng_channel *channel, struct lttng_dynamic_
 	channel_comm.monitor_timer_interval = extended->monitor_timer_interval;
 
 	if (extended->watchdog_timer_interval.is_set) {
-		LTTNG_OPTIONAL_SET(&channel_comm.watchdog_timer_interval,
-				   LTTNG_OPTIONAL_GET(extended->watchdog_timer_interval));
+		const auto watchdog_timer_value =
+			LTTNG_OPTIONAL_GET(extended->watchdog_timer_interval);
+
+		LTTNG_OPTIONAL_SET(&channel_comm.watchdog_timer_interval, watchdog_timer_value);
 	}
 
 	channel_comm.blocking_timeout = extended->blocking_timeout;
 	channel_comm.allocation_policy = extended->allocation_policy;
 	channel_comm.preallocation_policy = extended->preallocation_policy;
 	if (extended->automatic_memory_reclamation_maximal_age_us.is_set) {
-		LTTNG_OPTIONAL_SET(
-			&channel_comm.automatic_memory_reclamation_maximal_age_us,
-			LTTNG_OPTIONAL_GET(extended->automatic_memory_reclamation_maximal_age_us));
+		const auto reclamation_age_value =
+			LTTNG_OPTIONAL_GET(extended->automatic_memory_reclamation_maximal_age_us);
+
+		LTTNG_OPTIONAL_SET(&channel_comm.automatic_memory_reclamation_maximal_age_us,
+				   reclamation_age_value);
 	}
 
 	/* Header */
