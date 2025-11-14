@@ -384,7 +384,7 @@ LTTNG_EXPORT extern void lttng_channel_destroy(struct lttng_channel *channel);
       #lttng_domain.
     @lt_pre_not_null{channels}
 */
-LTTNG_EXPORT extern int lttng_list_channels(struct lttng_handle *handle,
+LTTNG_EXPORT extern int lttng_list_channels(const struct lttng_handle *handle,
 					    struct lttng_channel **channels);
 
 /*!
@@ -557,7 +557,7 @@ channel summaries of a given \lt_obj_session and \lt_obj_domain.
 @sa lttng_channel_get_lost_packet_count() --
     Returns the number of discarded packets (sub-buffers) of a channel.
 */
-LTTNG_EXPORT extern int lttng_channel_get_discarded_event_count(struct lttng_channel *channel,
+LTTNG_EXPORT extern int lttng_channel_get_discarded_event_count(const struct lttng_channel *channel,
 								uint64_t *count);
 
 /*!
@@ -600,7 +600,7 @@ channel summaries of a given \lt_obj_session and \lt_obj_domain.
 @sa lttng_channel_get_discarded_event_count() --
     Returns the number of discarded event records of a channel.
 */
-LTTNG_EXPORT extern int lttng_channel_get_lost_packet_count(struct lttng_channel *channel,
+LTTNG_EXPORT extern int lttng_channel_get_lost_packet_count(const struct lttng_channel *channel,
 							    uint64_t *count);
 
 /*!

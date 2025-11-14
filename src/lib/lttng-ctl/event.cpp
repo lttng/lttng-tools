@@ -64,7 +64,8 @@ void lttng_event_destroy(struct lttng_event *event)
 	free(event);
 }
 
-int lttng_event_get_filter_expression(struct lttng_event *event, const char **filter_expression)
+int lttng_event_get_filter_expression(const struct lttng_event *event,
+				      const char **filter_expression)
 {
 	int ret = 0;
 	struct lttng_event_extended *event_extended;
@@ -89,7 +90,7 @@ end:
 	return ret;
 }
 
-int lttng_event_get_exclusion_name_count(struct lttng_event *event)
+int lttng_event_get_exclusion_name_count(const struct lttng_event *event)
 {
 	int ret = 0;
 	struct lttng_event_extended *event_extended;
@@ -117,7 +118,7 @@ end:
 	return ret;
 }
 
-int lttng_event_get_exclusion_name(struct lttng_event *event,
+int lttng_event_get_exclusion_name(const struct lttng_event *event,
 				   size_t index,
 				   const char **exclusion_name)
 {
