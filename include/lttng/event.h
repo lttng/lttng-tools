@@ -1636,7 +1636,7 @@ struct lttng_event_field {
        session and tracing domain of \lt_p{handle}.
      @lt_pre_not_null{event_rules}
 */
-LTTNG_EXPORT extern int lttng_list_events(struct lttng_handle *handle,
+LTTNG_EXPORT extern int lttng_list_events(const struct lttng_handle *handle,
 					  const char *channel_name,
 					  struct lttng_event **event_rules);
 
@@ -1741,7 +1741,7 @@ LTTNG_EXPORT extern void lttng_event_destroy(struct lttng_event *event_rule);
     Indicates whether or not a recording event rule has an event payload
     and context filter.
 */
-LTTNG_EXPORT extern int lttng_event_get_filter_expression(struct lttng_event *event_rule,
+LTTNG_EXPORT extern int lttng_event_get_filter_expression(const struct lttng_event *event_rule,
 							  const char **filter_expr);
 
 /*!
@@ -1770,7 +1770,7 @@ LTTNG_EXPORT extern int lttng_event_get_filter_expression(struct lttng_event *ev
     Indicates whether or not a recording event rule has event name
     exclusion patterns.
 */
-LTTNG_EXPORT extern int lttng_event_get_exclusion_name_count(struct lttng_event *event_rule);
+LTTNG_EXPORT extern int lttng_event_get_exclusion_name_count(const struct lttng_event *event_rule);
 
 /*!
 @brief
@@ -1819,7 +1819,7 @@ LTTNG_EXPORT extern int lttng_event_get_exclusion_name_count(struct lttng_event 
     Returns the number of event name exclusion patterns of a recording
     event rule.
 */
-LTTNG_EXPORT extern int lttng_event_get_exclusion_name(struct lttng_event *event_rule,
+LTTNG_EXPORT extern int lttng_event_get_exclusion_name(const struct lttng_event *event_rule,
 						       size_t index,
 						       const char **event_name_exclusion);
 

@@ -92,7 +92,7 @@ LTTNG_EXPORT int lttng_opt_mi;
  *
  * If domain is unknown, default domain will be the kernel.
  */
-void lttng_ctl_copy_lttng_domain(struct lttng_domain *dst, struct lttng_domain *src)
+void lttng_ctl_copy_lttng_domain(struct lttng_domain *dst, const struct lttng_domain *src)
 {
 	if (src && dst) {
 		switch (src->type) {
@@ -682,7 +682,8 @@ end:
  *
  * The returned pointer will be NULL in case of malloc() error.
  */
-struct lttng_handle *lttng_create_handle(const char *session_name, struct lttng_domain *domain)
+struct lttng_handle *lttng_create_handle(const char *session_name,
+					 const struct lttng_domain *domain)
 {
 	int ret;
 	struct lttng_handle *handle = nullptr;
@@ -2337,7 +2338,7 @@ error:
  * Returns the number of lttng_channel entries in channels;
  * on error, returns a negative value.
  */
-int lttng_list_channels(struct lttng_handle *handle, struct lttng_channel **channels)
+int lttng_list_channels(const struct lttng_handle *handle, struct lttng_channel **channels)
 {
 	int ret, total_payload_received;
 	struct lttcomm_session_msg lsm;
@@ -2418,7 +2419,7 @@ end:
  * Returns the number of lttng_event entries in events;
  * on error, returns a negative value.
  */
-int lttng_list_events(struct lttng_handle *handle,
+int lttng_list_events(const struct lttng_handle *handle,
 		      const char *channel_name,
 		      struct lttng_event **events)
 {
@@ -2597,7 +2598,7 @@ void lttng_channel_set_default_attr(struct lttng_domain *domain, struct lttng_ch
 	attr->extended.ptr = extended;
 }
 
-int lttng_channel_get_discarded_event_count(struct lttng_channel *channel,
+int lttng_channel_get_discarded_event_count(const struct lttng_channel *channel,
 					    uint64_t *discarded_events)
 {
 	int ret = 0;
@@ -2623,7 +2624,7 @@ end:
 	return ret;
 }
 
-int lttng_channel_get_lost_packet_count(struct lttng_channel *channel, uint64_t *lost_packets)
+int lttng_channel_get_lost_packet_count(const struct lttng_channel *channel, uint64_t *lost_packets)
 {
 	int ret = 0;
 	struct lttng_channel_extended *chan_ext;

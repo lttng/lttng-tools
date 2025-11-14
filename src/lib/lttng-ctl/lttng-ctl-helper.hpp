@@ -15,7 +15,7 @@
 #include <stdio.h>
 
 /* Copy helper functions. */
-void lttng_ctl_copy_lttng_domain(struct lttng_domain *dst, struct lttng_domain *src);
+void lttng_ctl_copy_lttng_domain(struct lttng_domain *dst, const struct lttng_domain *src);
 
 /*
  * Sends the lttcomm message to the session daemon and fills buf if the

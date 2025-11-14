@@ -84,7 +84,7 @@ struct lttng_handle {
     Destroys a recording session handle.
 */
 LTTNG_EXPORT extern struct lttng_handle *lttng_create_handle(const char *session_name,
-							     struct lttng_domain *domain);
+							     const struct lttng_domain *domain);
 
 /*!
 @brief
