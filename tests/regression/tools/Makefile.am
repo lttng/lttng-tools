@@ -189,6 +189,7 @@ noinst_SCRIPTS += \
 	live/test_lttng_kernel \
 	live/test_lttng_ust \
 	live/test_lttng_ust_two_apps.py \
+	live/test_new_viewer_does_not_see_old_events.py \
 	live/test_miss_short_lived_app.py \
 	live/test_per_application_leaks.py \
 	live/test_ust \

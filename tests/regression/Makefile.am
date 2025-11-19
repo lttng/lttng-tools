@@ -84,6 +84,7 @@ TESTS = tools/clear/test_disallow.py \
 	tools/live/test_list_sessions.py \
 	tools/live/test_lttng_ust_two_apps.py \
 	tools/live/test_miss_short_lived_app.py \
+	tools/live/test_new_viewer_does_not_see_old_events.py \
 	tools/live/test_per_application_leaks.py \
 	tools/lttng-ctl/test_liblttng-ctl_abi.py \
 	tools/context/test_ust.py \
