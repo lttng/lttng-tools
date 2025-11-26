@@ -24,7 +24,7 @@ def test_get_preallocation_policy_no_channel(tap, test_env):
         None, ctypes.pointer(lttng.lttng_channel_preallocation_policy(0))
     )
     tap.test(
-        ret != lttng.LTTNG_OK,
+        ret != lttng.LTTNG_CHANNEL_STATUS_OK,
         "'lttng_channel_get_preallocation_policy' rejects NULL channel",
     )
 
@@ -34,7 +34,7 @@ def test_set_preallocation_policy_no_channel(tap, test_env):
         None, lttng.lttng_channel_preallocation_policy(0)
     )
     tap.test(
-        ret != lttng.LTTNG_OK,
+        ret != lttng.LTTNG_CHANNEL_STATUS_OK,
         "'lttng_channel_set_preallocation_policy' rejects NULL channel",
     )
 
@@ -45,7 +45,7 @@ def test_get_preallocation_policy_no_channel_ext(tap, test_env):
         ctypes.pointer(lttng.lttng_channel_preallocation_policy(0)),
     )
     tap.test(
-        ret != lttng.LTTNG_OK,
+        ret != lttng.LTTNG_CHANNEL_STATUS_OK,
         "'lttng_channel_get_preallocation_policy' rejects channel with NULL extended attribute",
     )
 
@@ -56,7 +56,7 @@ def test_set_preallocation_policy_no_channel_ext(tap, test_env):
         lttng.lttng_channel_preallocation_policy(0),
     )
     tap.test(
-        ret != lttng.LTTNG_OK,
+        ret != lttng.LTTNG_CHANNEL_STATUS_OK,
         "'lttng_channel_set_preallocation_policy' rejects channel with NULL extended attribute",
     )
 
@@ -65,7 +65,7 @@ def test_get_preallocation_policy_no_policy(tap, test_env):
     channel_instance = common.get_channel_instance()
     ret = lttng.lttng_channel_get_preallocation_policy(channel_instance, None)
     tap.test(
-        ret != lttng.LTTNG_OK,
+        ret != lttng.LTTNG_CHANNEL_STATUS_OK,
         "'lttng_channel_get_preallocation_policy' rejects a NULL destination pointer",
     )
 
@@ -81,8 +81,8 @@ def test_preallocation_policy_mock(tap, test_env):
         channel_instance, ctypes.pointer(attribute)
     )
     tap.test(
-        set_ret == lttng.LTTNG_OK
-        and get_ret == lttng.LTTNG_OK
+        set_ret == lttng.LTTNG_CHANNEL_STATUS_OK
+        and get_ret == lttng.LTTNG_CHANNEL_STATUS_OK
         and attribute.value == expected_value,
         "'lttng_channel_get_preallocation_ppolicy' mock, set_ret=`{}`, get_ret=`{}`, value=`{}`, expected=`{}`".format(
             set_ret, get_ret, attribute.value, expected_value
@@ -97,7 +97,7 @@ def test_set_preallocation_policy_invalid_value(tap, test_env):
         channel_instance, lttng.lttng_channel_preallocation_policy(invalid_value)
     )
     tap.test(
-        ret != lttng.LTTNG_OK,
+        ret != lttng.LTTNG_CHANNEL_STATUS_OK,
         "'lttng_channel_set_preallocation_policy' does not accept an invalid policy value",
     )
 
@@ -147,7 +147,7 @@ def test_preallocation_policy_with_session(tap, test_env):
 
     test_pass = True
     if (
-        res != lttng.LTTNG_OK
+        res != lttng.LTTNG_CHANNEL_STATUS_OK
         or attribute.value != lttng.LTTNG_CHANNEL_PREALLOCATION_POLICY_PREALLOCATE
     ):
         tap.diagnostic(

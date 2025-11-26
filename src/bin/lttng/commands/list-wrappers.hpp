@@ -1832,7 +1832,8 @@ public:
 	{
 		lttng_channel_preallocation_policy lib_policy;
 
-		if (lttng_channel_get_preallocation_policy(&lib(), &lib_policy) != LTTNG_OK) {
+		if (lttng_channel_get_preallocation_policy(&lib(), &lib_policy) !=
+		    LTTNG_CHANNEL_STATUS_OK) {
 			LTTNG_THROW_ERROR("Failed to get preallocation policy");
 		}
 

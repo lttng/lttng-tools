@@ -419,7 +419,7 @@ static int enable_channel(char *session_name, char *channel_list)
 		}
 
 		ret = lttng_channel_set_preallocation_policy(channel, opt_preallocation_policy);
-		if (ret != LTTNG_OK) {
+		if (ret != LTTNG_CHANNEL_STATUS_OK) {
 			ERR("Failed to set the channel's buffer preallocation policy");
 			error = 1;
 			goto error;
