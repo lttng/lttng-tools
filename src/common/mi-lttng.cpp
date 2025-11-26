@@ -1203,7 +1203,7 @@ int mi_lttng_channel_attr(struct mi_writer *writer, struct lttng_channel_attr *a
 	}
 
 	ret = lttng_channel_get_preallocation_policy(chan, &preallocation_policy);
-	if (ret != LTTNG_OK) {
+	if (ret != LTTNG_CHANNEL_STATUS_OK) {
 		goto end;
 	}
 

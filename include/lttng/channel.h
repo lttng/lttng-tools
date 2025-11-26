@@ -905,11 +905,11 @@ LTTNG_EXPORT extern enum lttng_error_code
 lttng_channel_set_allocation_policy(struct lttng_channel *channel,
 				    enum lttng_channel_allocation_policy policy);
 
-LTTNG_EXPORT extern enum lttng_error_code
+LTTNG_EXPORT extern enum lttng_channel_status
 lttng_channel_get_preallocation_policy(const struct lttng_channel *channel,
 				       enum lttng_channel_preallocation_policy *policy);
 
-LTTNG_EXPORT extern enum lttng_error_code
+LTTNG_EXPORT extern enum lttng_channel_status
 lttng_channel_set_preallocation_policy(struct lttng_channel *channel,
 				       enum lttng_channel_preallocation_policy policy);
 

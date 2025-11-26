@@ -1770,7 +1770,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 		lttng_channel_preallocation_policy policy;
 		const auto get_preallocation_policy_ret =
 			lttng_channel_get_preallocation_policy(&channel_attr, &policy);
-		LTTNG_ASSERT(get_preallocation_policy_ret == LTTNG_OK);
+		LTTNG_ASSERT(get_preallocation_policy_ret == LTTNG_CHANNEL_STATUS_OK);
 
 		switch (lttng::get_domain_class_from_lttng_domain_type(domain->type)) {
 		case lttng::domain_class::KERNEL_SPACE:
