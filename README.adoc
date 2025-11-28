@@ -52,7 +52,7 @@ endif::env-github[]
 You need the following dependencies to build and run the {lt}
 components:
 
-* **Linux kernel{nbsp}≥{nbsp}2.6.30**
+* **Linux kernel{nbsp}≥{nbsp}4.4.0**
 
 * **http://www.liburcu.org/[Userspace{nbsp}RCU]{nbsp}≥{nbsp}0.14.0**.
 +
