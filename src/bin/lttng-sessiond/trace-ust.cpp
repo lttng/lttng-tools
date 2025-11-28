@@ -402,9 +402,9 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 		strncpy(luc->name, DEFAULT_CHANNEL_NAME, sizeof(luc->name));
 	} else {
 		/* Copy channel name */
-		strncpy(luc->name, chan->name, sizeof(luc->name));
+		strncpy(luc->name, chan->name, sizeof(luc->name) - 1);
 	}
-	luc->name[LTTNG_UST_ABI_SYM_NAME_LEN - 1] = '\0';
+	luc->name[sizeof(luc->name) - 1] = '\0';
 
 	/* Init node */
 	lttng_ht_node_init_str(&luc->node, luc->name);
