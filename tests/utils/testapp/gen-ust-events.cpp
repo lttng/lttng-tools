@@ -196,7 +196,10 @@ int main(int argc, char **argv)
 	 * app has started BUT before it generates any events.
 	 */
 	if (application_in_main_file_path) {
-		fprintf(stderr, "%s: sync-application-in-main-touch: create %s\n", cmd_name, application_in_main_file_path);
+		fprintf(stderr,
+			"%s: sync-application-in-main-touch: create %s\n",
+			cmd_name,
+			application_in_main_file_path);
 		ret = create_file(application_in_main_file_path);
 		if (ret != 0) {
 			goto end;
@@ -204,7 +207,10 @@ int main(int argc, char **argv)
 	}
 
 	if (before_first_event_file_path) {
-		fprintf(stderr, "%s: sync-before-first-event: wait %s\n", cmd_name, before_first_event_file_path);
+		fprintf(stderr,
+			"%s: sync-before-first-event: wait %s\n",
+			cmd_name,
+			before_first_event_file_path);
 		ret = wait_on_file(before_first_event_file_path);
 		if (ret != 0) {
 			goto end;
@@ -214,7 +220,10 @@ int main(int argc, char **argv)
 	for (i = 0; nr_iter < 0 || i < nr_iter; i++) {
 		if (nr_iter >= 0 && i == nr_iter - 1) {
 			if (before_last_event_file_path_touch) {
-				fprintf(stderr, "%s: sync-before-last-event-touch: create %s\n", cmd_name, before_last_event_file_path_touch);
+				fprintf(stderr,
+					"%s: sync-before-last-event-touch: create %s\n",
+					cmd_name,
+					before_last_event_file_path_touch);
 				ret = create_file(before_last_event_file_path_touch);
 				if (ret != 0) {
 					goto end;
@@ -226,7 +235,10 @@ int main(int argc, char **argv)
 			 * event.
 			 */
 			if (before_last_event_file_path) {
-				fprintf(stderr, "%s: sync-before-last-event: wait %s\n", cmd_name, before_last_event_file_path);
+				fprintf(stderr,
+					"%s: sync-before-last-event: wait %s\n",
+					cmd_name,
+					before_last_event_file_path);
 				ret = wait_on_file(before_last_event_file_path);
 				if (ret != 0) {
 					goto end;
@@ -251,7 +263,10 @@ int main(int argc, char **argv)
 		 * that at least one tracepoint has been hit.
 		 */
 		if (after_first_event_file_path && first_event_file_created == 0) {
-			fprintf(stderr, "%s: sync-after-first-event: create %s\n", cmd_name, after_first_event_file_path);
+			fprintf(stderr,
+				"%s: sync-after-first-event: create %s\n",
+				cmd_name,
+				after_first_event_file_path);
 			ret = create_file(after_first_event_file_path);
 
 			if (ret != 0) {
@@ -269,13 +284,19 @@ int main(int argc, char **argv)
 		}
 
 		if (after_each_iter_file_path) {
-			fprintf(stderr, "%s: sync-after-each-iter: wait %s\n", cmd_name, after_each_iter_file_path);
+			fprintf(stderr,
+				"%s: sync-after-each-iter: wait %s\n",
+				cmd_name,
+				after_each_iter_file_path);
 			ret = wait_on_file(after_each_iter_file_path);
 			if (ret != 0) {
 				goto end;
 			}
 
-			fprintf(stderr, "%s: sync-after-each-iter: delete %s\n", cmd_name, after_each_iter_file_path);
+			fprintf(stderr,
+				"%s: sync-after-each-iter: delete %s\n",
+				cmd_name,
+				after_each_iter_file_path);
 			ret = delete_file(after_each_iter_file_path);
 			if (ret != 0) {
 				goto end;
@@ -292,7 +313,10 @@ int main(int argc, char **argv)
 	}
 
 	if (before_exit_file_path_touch) {
-		fprintf(stderr, "%s: sync-before-exit-touch: create %s\n", cmd_name, before_exit_file_path_touch);
+		fprintf(stderr,
+			"%s: sync-before-exit-touch: create %s\n",
+			cmd_name,
+			before_exit_file_path_touch);
 		ret = create_file(before_exit_file_path_touch);
 		if (ret != 0) {
 			goto end;
