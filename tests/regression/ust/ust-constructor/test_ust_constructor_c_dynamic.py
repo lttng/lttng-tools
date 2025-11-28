@@ -38,7 +38,9 @@ test = {
 tap = lttngtest.TapGenerator(7 + len(test["expected_events"]))
 with lttngtest.test_environment(with_sessiond=True, log=tap.diagnostic) as test_env:
     try:
-        test["application"] = os.path.join(test_env._project_root, test["application"])
+        test["application"] = os.path.join(
+            str(test_env._project_root), test["application"]
+        )
         outputlocation = ust.capture_trace(
             tap, test_env, test["application"], test["description"]
         )
