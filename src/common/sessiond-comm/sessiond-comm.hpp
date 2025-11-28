@@ -356,7 +356,7 @@ struct formatter<lttcomm_return_code> : formatter<std::string> {
 	typename FormatContextType::iterator format(lttcomm_return_code code,
 						    FormatContextType& ctx) const
 	{
-		const char *name;
+		const char *name = "UNKNOWN";
 
 		switch (code) {
 		case LTTCOMM_CONSUMERD_SUCCESS:
@@ -538,7 +538,7 @@ struct formatter<lttng_consumer_command> : formatter<std::string> {
 	typename FormatContextType::iterator format(lttng_consumer_command command_id,
 						    FormatContextType& ctx) const
 	{
-		const char *name;
+		const char *name = "UNKNOWN";
 
 		switch (command_id) {
 		case LTTNG_CONSUMER_ADD_CHANNEL:
