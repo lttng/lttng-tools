@@ -163,7 +163,7 @@ bool lttng::utils::fs_supports_madv_remove(const char *shm_path)
 /*
  * `MADV_REMOVE` is a Linux extension.
  */
-bool lttng::utils::fs_supports_madv_remove(const char *shm_path = nullptr)
+bool lttng::utils::fs_supports_madv_remove(const char *shm_path)
 {
 	return false;
 }
