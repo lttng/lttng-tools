@@ -21,6 +21,13 @@ elementFormDefault="qualified" version="2.12">
 	</xs:restriction>
 </xs:simpleType>
 
+<xs:simpleType name="positive_uint64_type">
+	<xs:restriction base="xs:integer">
+		<xs:minInclusive value="1"/>
+		<xs:maxInclusive value="18446744073709551615"/>
+	</xs:restriction>
+</xs:simpleType>
+
 <xs:simpleType name="uint32_type">
 	<xs:restriction base="xs:integer">
 		<xs:minInclusive value="0"/>
@@ -232,6 +239,25 @@ by its signed 32-bit representation when converted to msec.
 	</xs:sequence>
 </xs:complexType>
 
+<xs:complexType name="channel_reclaim_policy_type_periodic">
+	<xs:all>
+		<xs:element name="age_threshold" type="positive_uint64_type"/>
+	</xs:all>
+</xs:complexType>
+
+<xs:simpleType name="channel_reclaim_policy_type_consumed">
+	<xs:restriction base="xs:string">
+		<xs:maxLength value="0"/>
+	</xs:restriction>
+</xs:simpleType>
+
+<xs:complexType name="channel_reclaim_policy_type">
+	<xs:choice>
+		<xs:element name="periodic" type="channel_reclaim_policy_type_periodic"/>
+		<xs:element name="consumed" type="channel_reclaim_policy_type_consumed"/>
+	</xs:choice>
+</xs:complexType>
+
 <!-- Maps to struct lttng_channel -->
 <xs:complexType name="channel_type">
 	<xs:all>
@@ -253,6 +279,7 @@ by its signed 32-bit representation when converted to msec.
 		<xs:element name="watchdog_timer_interval" type="uint64_type" default="0" minOccurs="0"/>  <!-- usec -->
 		<xs:element name="allocation_policy" type="channel_allocation_policy_type" default="PER_CPU" minOccurs="0"/>
 		<xs:element name="preallocation_policy" type="channel_preallocation_policy_type" default="PREALLOCATE" minOccurs="0"/>
+		<xs:element name="reclaim_policy" type="channel_reclaim_policy_type" minOccurs="0"/>
 	</xs:all>
 </xs:complexType>
 

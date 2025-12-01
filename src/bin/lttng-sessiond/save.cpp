@@ -138,13 +138,64 @@ end:
 	return ret;
 }
 
+static int save_ust_channel_memory_reclamation_policy(const struct ltt_ust_channel& ust_chan,
+						      struct config_writer *writer)
+{
+	if (!ust_chan.automatic_memory_reclamation_maximal_age) {
+		return LTTNG_OK;
+	}
+
+	const auto age_threshold =
+		ust_chan.automatic_memory_reclamation_maximal_age.value().count();
+
+	int ret = config_writer_open_element(writer, config_element_channel_reclaim_policy);
+	if (ret) {
+		return LTTNG_ERR_SAVE_IO_FAIL;
+	}
+
+	if (age_threshold) {
+		ret = config_writer_open_element(writer,
+						 config_element_channel_reclaim_policy_periodic);
+		if (ret) {
+			return LTTNG_ERR_SAVE_IO_FAIL;
+		}
+		ret = config_writer_write_element_unsigned_int(
+			writer,
+			config_element_channel_reclaim_policy_periodic_age_threshold,
+			age_threshold);
+		if (ret) {
+			return LTTNG_ERR_SAVE_IO_FAIL;
+		}
+		ret = config_writer_close_element(writer);
+		if (ret) {
+			return LTTNG_ERR_SAVE_IO_FAIL;
+		}
+	} else {
+		ret = config_writer_open_element(writer,
+						 config_element_channel_reclaim_policy_consumed);
+		if (ret) {
+			return LTTNG_ERR_SAVE_IO_FAIL;
+		}
+		ret = config_writer_close_element(writer);
+		if (ret) {
+			return LTTNG_ERR_SAVE_IO_FAIL;
+		}
+	}
+
+	ret = config_writer_close_element(writer);
+	if (ret) {
+		return LTTNG_ERR_SAVE_IO_FAIL;
+	}
+
+	return LTTNG_OK;
+}
+
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
 static int save_ust_channel_attributes(struct config_writer *writer,
 				       const struct ltt_ust_channel *ust_chan,
 				       struct lttng_ust_abi_channel_attr *attr)
 {
 	int ret;
-	struct ltt_ust_channel *channel = nullptr;
 
 	ret = config_writer_write_element_string(writer,
 						 config_element_overwrite_mode,
@@ -248,9 +299,8 @@ static int save_ust_channel_attributes(struct config_writer *writer,
 	 * Fetch the monitor timer which is located in the parent of
 	 * lttng_ust_channel_attr
 	 */
-	channel = lttng::utils::container_of(attr, &ltt_ust_channel::attr);
 	ret = config_writer_write_element_unsigned_int(
-		writer, config_element_monitor_timer_interval, channel->monitor_timer_interval);
+		writer, config_element_monitor_timer_interval, ust_chan->monitor_timer_interval);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
@@ -260,19 +310,18 @@ static int save_ust_channel_attributes(struct config_writer *writer,
 	 * Fetch the watchdog timer which is located in the parent of
 	 * lttng_ust_channel_attr
 	 */
-	channel = lttng::utils::container_of(attr, &ltt_ust_channel::attr);
-	if (channel->watchdog_timer_interval.is_set) {
+	if (ust_chan->watchdog_timer_interval.is_set) {
 		ret = config_writer_write_element_unsigned_int(
 			writer,
 			config_element_watchdog_timer_interval,
-			LTTNG_OPTIONAL_GET(channel->watchdog_timer_interval));
+			LTTNG_OPTIONAL_GET(ust_chan->watchdog_timer_interval));
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
 		}
 	}
 
-	ret = LTTNG_OK;
+	ret = save_ust_channel_memory_reclamation_policy(*ust_chan, writer);
 end:
 	return ret;
 }
