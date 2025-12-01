@@ -24,10 +24,6 @@ export LTTNG_SESSIOND_PATH
 PATH="$bin/lttng:$bin/lttng-consumerd:$bin/lttng-crash:$bin/lttng-relayd:$bin/lttng-sessiond:$PATH"
 export PATH
 
-# Use local path to search manual pages.
-MANPATH="$builddir/doc/man"
-export MANPATH
-
 # Use local path to search manual pages for lttng --help.
 LTTNG_MANPATH="$builddir/doc/man"
 export LTTNG_MANPATH
