@@ -482,7 +482,7 @@ class _WaitTraceTestApplication:
                     "Test application has unexepectedly returned while waiting for synchronization file to be created: sync_file=`{sync_file}`, return_code=`{return_code}`, output=`{output}`".format(
                         sync_file=sync_file_path,
                         return_code=self._process.returncode,
-                        output=self._process.stderr.read().decode("utf-8"),
+                        output=self._process.stdout.read().decode("utf-8"),
                     )
                 )
 
