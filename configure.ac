@@ -624,10 +624,10 @@ AS_IF([test "x$with_lttng_ust" = "xyes"], [
   AC_DEFINE([HAVE_LIBLTTNG_UST_CTL], [1])
 
   # Check for liblttng-ust
-  PKG_CHECK_MODULES([UST], [lttng-ust >= $major_version.$minor_version])
+  PKG_CHECK_MODULES([UST], [lttng-ust >= $major_version.$minor_version lttng-ust < $major_version.$(( minor_version + 1))])
 
   # Check for liblttng-ust-ctl
-  PKG_CHECK_MODULES([UST_CTL], [lttng-ust-ctl >= $major_version.$minor_version])
+  PKG_CHECK_MODULES([UST_CTL], [lttng-ust-ctl >= $major_version.$minor_version lttng-ust-ctl < $major_version.$(( minor_version + 1))])
 
   AM_CPPFLAGS="$AM_CPPFLAGS $UST_CFLAGS"
 ])
