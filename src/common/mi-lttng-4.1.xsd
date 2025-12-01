@@ -27,6 +27,14 @@ SPDX-License-Identifier: MIT
 		</xs:restriction>
 	</xs:simpleType>
 
+	<!-- Maps to the uint64_t type, except 0 -->
+	<xs:simpleType name="positive_uint64_type">
+		<xs:restriction base="xs:integer">
+			<xs:minInclusive value="1" />
+			<xs:maxInclusive value="18446744073709551615" />
+		</xs:restriction>
+	</xs:simpleType>
+
 	<!-- Maps to the uint64_t type -->
 	<xs:simpleType name="ratio_type">
 		<xs:restriction base="xs:double">
@@ -50,6 +58,25 @@ SPDX-License-Identifier: MIT
 			<xs:enumeration value="ON_DEMAND" />
 		</xs:restriction>
 	</xs:simpleType>
+
+	<xs:complexType name="channel_reclaim_policy_type_periodic">
+		<xs:all>
+			<xs:element name="age_threshold" type="tns:positive_uint64_type"/>
+		</xs:all>
+	</xs:complexType>
+
+	<xs:simpleType name="channel_reclaim_policy_type_consumed">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="0"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:complexType name="channel_reclaim_policy_type">
+		<xs:choice>
+			<xs:element name="periodic" type="tns:channel_reclaim_policy_type_periodic"/>
+			<xs:element name="consumed" type="tns:channel_reclaim_policy_type_consumed"/>
+		</xs:choice>
+	</xs:complexType>
 
 	<!--
 	Maps to the range allowed for blocking timeout: -1 (block
@@ -704,6 +731,7 @@ SPDX-License-Identifier: MIT
 			<xs:element name="blocking_timeout" type="tns:blocking_timeout_type" default="0" minOccurs="0" />
 			<xs:element name="allocation_policy" type="tns:channel_allocation_policy_type" default="PER_CPU" minOccurs="0" />
 			<xs:element name="preallocation_policy" type="tns:channel_preallocation_policy_type" default="PREALLOCATE" minOccurs="0" />
+			<xs:element name="reclaim_policy" type="tns:channel_reclaim_policy_type" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 

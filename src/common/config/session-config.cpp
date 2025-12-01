@@ -132,6 +132,10 @@ const char *const config_element_channel_allocation_policy_per_cpu = "PER_CPU";
 const char *const config_element_channel_preallocation_policy = "preallocation_policy";
 const char *const config_element_channel_preallocation_policy_preallocate = "PREALLOCATE";
 const char *const config_element_channel_preallocation_policy_on_demand = "ON_DEMAND";
+const char *const config_element_channel_reclaim_policy = "reclaim_policy";
+const char *const config_element_channel_reclaim_policy_periodic = "periodic";
+const char *const config_element_channel_reclaim_policy_periodic_age_threshold = "age_threshold";
+const char *const config_element_channel_reclaim_policy_consumed = "consumed";
 const char *const config_element_domain = "domain";
 const char *const config_element_domains = "domains";
 const char *const config_element_event = "event";
@@ -2330,6 +2334,73 @@ static int process_channel_attr_node(xmlNodePtr attr_node,
 		free(const_cast<char *>(content.data()));
 
 		if (ret != LTTNG_OK) {
+			goto end;
+		}
+
+	} else if (!strcmp((const char *) attr_node->name, config_element_channel_reclaim_policy)) {
+		/* Channel reclaim policy */
+
+		const auto policy = xmlFirstElementChild(attr_node);
+		if (!policy) {
+			ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+			goto end;
+		}
+
+		const auto name = reinterpret_cast<const char *>(policy->name);
+
+		if (!strcmp(name, config_element_channel_reclaim_policy_periodic)) {
+			const auto age_threshold_node = xmlFirstElementChild(policy);
+
+			if (!age_threshold_node) {
+				ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+				goto end;
+			}
+
+			auto content = xmlNodeGetContent(age_threshold_node);
+
+			if (!content) {
+				ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+				goto end;
+			}
+			uint64_t age_threshold;
+
+			const int parser_result = parse_uint(content, &age_threshold);
+
+			free(content);
+
+			if (parser_result) {
+				ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+				goto end;
+			}
+
+			if (age_threshold == 0) {
+				ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+				goto end;
+			}
+
+			const auto status = lttng_channel_set_automatic_memory_reclamation_policy(
+				channel, age_threshold);
+
+			if (status != LTTNG_CHANNEL_STATUS_OK) {
+				ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+				goto end;
+			}
+
+		} else if (!strcmp(name, config_element_channel_reclaim_policy_consumed)) {
+			const auto status =
+				lttng_channel_set_automatic_memory_reclamation_policy(channel, 0);
+
+			if (status != LTTNG_CHANNEL_STATUS_OK) {
+				ret = -LTTNG_ERR_UNK;
+				goto end;
+			}
+
+		} else {
+			WARN_FMT("Invalid policy while loading channel attribute configuration: "
+				 "channel=`{}`, policy={}",
+				 channel->name,
+				 name);
+			ret = -LTTNG_ERR_INVALID_RECLAMATION_POLICY;
 			goto end;
 		}
 

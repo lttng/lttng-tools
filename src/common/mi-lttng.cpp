@@ -1167,6 +1167,54 @@ static const char *preallocation_policy_to_string(enum lttng_channel_preallocati
 	}
 }
 
+static int
+mi_emit_channel_reclamation_policy(const nonstd::optional<uint64_t>& memory_reclamation_policy,
+				   struct mi_writer *writer)
+{
+	if (!memory_reclamation_policy) {
+		return 0;
+	}
+
+	int ret = mi_lttng_writer_open_element(writer, config_element_channel_reclaim_policy);
+
+	if (ret) {
+		return ret;
+	}
+
+	const auto maximal_age_us = memory_reclamation_policy.value();
+
+	if (maximal_age_us) {
+		ret = mi_lttng_writer_open_element(writer,
+						   config_element_channel_reclaim_policy_periodic);
+		if (ret) {
+			return ret;
+		}
+		ret = mi_lttng_writer_write_element_unsigned_int(
+			writer,
+			config_element_channel_reclaim_policy_periodic_age_threshold,
+			maximal_age_us);
+		if (ret) {
+			return ret;
+		}
+		ret = mi_lttng_writer_close_element(writer);
+		if (ret) {
+			return ret;
+		}
+	} else {
+		ret = mi_lttng_writer_open_element(writer,
+						   config_element_channel_reclaim_policy_consumed);
+		if (ret) {
+			return ret;
+		}
+		ret = mi_lttng_writer_close_element(writer);
+		if (ret) {
+			return ret;
+		}
+	}
+
+	return mi_lttng_writer_close_element(writer);
+}
+
 int mi_lttng_channel_attr(struct mi_writer *writer, struct lttng_channel_attr *attr)
 {
 	int ret = 0;
@@ -1178,6 +1226,7 @@ int mi_lttng_channel_attr(struct mi_writer *writer, struct lttng_channel_attr *a
 	const char *allocation_policy_str, *preallocation_policy_str;
 	enum lttng_channel_status watchdog_timer_status;
 	bool print_watchdog_timer = false;
+	nonstd::optional<uint64_t> memory_reclamation_policy;
 
 	LTTNG_ASSERT(attr);
 
@@ -1232,6 +1281,19 @@ int mi_lttng_channel_attr(struct mi_writer *writer, struct lttng_channel_attr *a
 
 	preallocation_policy_str = preallocation_policy_to_string(preallocation_policy);
 	if (!preallocation_policy_str) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	uint64_t maximal_age_us;
+	ret = lttng_channel_get_automatic_memory_reclamation_policy(chan, &maximal_age_us);
+	switch (ret) {
+	case LTTNG_CHANNEL_STATUS_OK:
+		memory_reclamation_policy = maximal_age_us;
+		break;
+	case LTTNG_CHANNEL_STATUS_UNSET:
+		break;
+	default:
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
@@ -1312,6 +1374,12 @@ int mi_lttng_channel_attr(struct mi_writer *writer, struct lttng_channel_attr *a
 	/* Preallocation policy */
 	ret = mi_lttng_writer_write_element_string(
 		writer, config_element_channel_preallocation_policy, preallocation_policy_str);
+	if (ret) {
+		goto end;
+	}
+
+	/* Memory reclamation. */
+	ret = mi_emit_channel_reclamation_policy(memory_reclamation_policy, writer);
 	if (ret) {
 		goto end;
 	}
