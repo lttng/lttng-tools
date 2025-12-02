@@ -105,6 +105,7 @@ CLEANFILES += liblttngctl/lttngctl/lttng.py
 TESTS += \
 	liblttngctl/test_automatic_memory_reclamation_policy.py \
 	liblttngctl/test_preallocation_policy.py \
+	liblttngctl/test_reclaim_channel_memory.py \
 	liblttngctl/test_watchdog_timer.py
 endif
 
@@ -112,6 +113,7 @@ EXTRA_DIST += \
 	liblttngctl/common.py \
 	liblttngctl/test_automatic_memory_reclamation_policy.py \
 	liblttngctl/test_preallocation_policy.py \
+	liblttngctl/test_reclaim_channel_memory.py \
 	liblttngctl/test_watchdog_timer.py
 TESTS += test_ust_data
 endif
