@@ -1,6 +1,6 @@
 lttng-list(1)
 =============
-:revdate: 26 October 2025
+:revdate: 2 December 2025
 
 
 NAME
@@ -113,6 +113,59 @@ See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 List the channels and recording event rules of the current recording
 session (see man:lttng-concepts(7) to learn more) with the
 man:lttng-status(1) command.
+
+
+Visual language
+~~~~~~~~~~~~~~~
+The `lttng list` command uses a structured visual language designed to
+make complex tracing configurations easier to read and scan. It combines
+terminal colors, Unicode symbols, and indentation to express hierarchy,
+state, and metadata.
+
+Color semantics:
+
+[options="header"]
+|===
+|Color |Meaning
+
+|Green
+|Enabled, active, or valid items.
+
+|Red
+|Disabled, inactive, or invalid items.
+
+|Cyan
+|
+Important object nodes: recording sessions, tracing domains, channels,
+and event rules.
+
+Those nodes act as section headers.
+
+|Yellow
+|Metadata such as counts and timestamps.
+
+|Magenta
+|Warning information.
+|===
+
+Symbolic conventions:
+
+[options="header"]
+|===
+|Symbol |Meaning
+
+|`▶` and `◼`
+|Active/inactive recording session.
+
+|`✔` and `×`
+|Enabled/disabled channel or event rule.
+
+|`🞂`
+|Attribute or attribute group.
+
+|`┆`
+|Vertical continuation.
+|===
 
 
 include::common-lttng-cmd-options-head.txt[]
