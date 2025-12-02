@@ -1508,6 +1508,7 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr __attr
 	LTTNG_OPTIONAL(uint64_t) id_sessiond = {};
 	LTTNG_OPTIONAL(uint64_t) current_chunk_id = {};
 	LTTNG_OPTIONAL(time_t) creation_time = {};
+	enum lttng_trace_format trace_format = LTTNG_TRACE_FORMAT_CTF_1_8;
 	struct lttng_dynamic_buffer reply_payload;
 
 	lttng_dynamic_buffer_init(&reply_payload);
@@ -1566,7 +1567,8 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr __attr
 				 creation_time.is_set ? &creation_time.value : nullptr,
 				 conn->major,
 				 conn->minor,
-				 session_name_contains_creation_timestamp);
+				 session_name_contains_creation_timestamp,
+				 trace_format);
 	if (!session) {
 		ret = -1;
 		goto send_reply;
