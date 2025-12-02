@@ -427,7 +427,7 @@ class _WaitTraceTestApplication:
                     shutil.copy(lib, lib_dir)
 
             test_app_env["LD_LIBRARY_PATH"] = "{}:{}".format(
-                test_app_env["LD_LIBRARY_PATH"],
+                test_app_env.get("LD_LIBRARY_PATH", ""),
                 str(lib_dir),
             )
 
