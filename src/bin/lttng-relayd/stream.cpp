@@ -1239,6 +1239,10 @@ int stream_add_index(struct relay_stream *stream, const struct lttcomm_relayd_in
 
 	DBG("stream_add_index for stream %" PRIu64, stream->stream_handle);
 
+	if (stream->ctf_stream_id == -1ULL) {
+		stream->ctf_stream_id = index_info->stream_id;
+	}
+
 	/* Live beacon handling */
 	if (index_info->packet_size == 0) {
 		DBG("Received live beacon for stream %" PRIu64, stream->stream_handle);
@@ -1254,10 +1258,6 @@ int stream_add_index(struct relay_stream *stream, const struct lttcomm_relayd_in
 		goto end;
 	} else {
 		stream->beacon_ts_end = -1ULL;
-	}
-
-	if (stream->ctf_stream_id == -1ULL) {
-		stream->ctf_stream_id = index_info->stream_id;
 	}
 
 	index = relay_index_get_by_id_or_create(stream, index_info->net_seq_num);
