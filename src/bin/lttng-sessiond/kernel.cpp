@@ -224,6 +224,13 @@ int kernel_create_session(const ltt_session::locked_ref& session)
 							LTTNG_KERNEL_ABI_OUTPUT_FORMAT_CTF_2 :
 							LTTNG_KERNEL_ABI_OUTPUT_FORMAT_CTF_1_8);
 	if (ret) {
+		if (ret == -ENOSYS && session->trace_format == LTTNG_TRACE_FORMAT_CTF_2) {
+			ERR("Kernel tracer does not support CTF 2 trace format for session %" PRIu64
+			    " name: %s",
+			    session->id,
+			    session->name);
+			goto error;
+		}
 		WARN_FMT("Could not set kernel output format for session {} name: {}",
 			 session->id,
 			 session->name);
