@@ -1367,6 +1367,11 @@ static int stream_send_live_beacon(lttng_consumer_stream& stream)
 		goto end;
 	}
 
+	ret = lttng_ust_ctl_timestamp_sync(stream.ustream);
+	if (ret < 0) {
+		ERR("Failed to synchronize time for stream");
+		goto end;
+	}
 	ret = lttng_ustconsumer_get_current_timestamp(&stream, &ts);
 	if (ret < 0) {
 		ERR("Failed to get the current timestamp");

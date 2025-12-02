@@ -405,6 +405,12 @@ int lttng_ust_ctl_flush_events_or_populate_packet(struct lttng_ust_ctl_consumer_
 						  bool *packet_populated,
 						  bool *flush_done);
 int lttng_ust_ctl_clear_buffer(struct lttng_ust_ctl_consumer_stream *stream);
+/*
+ * Synchronize time for this stream so no packet header nor event can be
+ * produced with a timestamp prior to the current time after this
+ * function returns.
+ */
+int lttng_ust_ctl_timestamp_sync(struct lttng_ust_ctl_consumer_stream *stream);
 
 /* index */
 
