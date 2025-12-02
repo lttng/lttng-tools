@@ -104,6 +104,14 @@ by its signed 32-bit representation when converted to msec.
 	</xs:all>
 </xs:complexType>
 
+<!-- Trace format versions -->
+<xs:simpleType name="trace_format_type">
+  <xs:restriction base="xs:string">
+    <xs:enumeration value="CTF_1_8"/>
+    <xs:enumeration value="CTF_2"/>
+  </xs:restriction>
+</xs:simpleType>
+
 <xs:simpleType name="userspace_probe_lookup_method">
 	<xs:restriction base="xs:string">
 		<xs:enumeration value="DEFAULT"/>
@@ -537,6 +545,7 @@ by its signed 32-bit representation when converted to msec.
 	<xs:all>
 		<xs:element name="name" type="name_type"/>
 		<xs:element name="shared_memory_path" type="xs:string" minOccurs="0"/>
+		<xs:element name="trace_format" type="trace_format_type" minOccurs="0"/>
 		<xs:element name="domains" type="domain_list_type" minOccurs="0"/>
 		<xs:element name="started" type="xs:boolean" default="0" minOccurs="0"/>
 		<xs:element name="attributes" type="session_attributes_type" minOccurs="0"/>
