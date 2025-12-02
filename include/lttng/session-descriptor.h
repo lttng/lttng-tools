@@ -29,7 +29,7 @@ struct lttng_session_descriptor;
 
 /*!
 @brief
-    Return type of recording session descriptor fuctions.
+    Return type of recording session descriptor functions.
 
 Error status enumerators have a negative value.
 */
