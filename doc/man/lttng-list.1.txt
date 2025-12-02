@@ -199,7 +199,7 @@ option:--mem-usage='MODE'::
     nloption:--buffer-ownership option of man:lttng-enable-channel(1)).
 
 `full`::
-    Show the memory usage for each each CPU (if available).
+    Show the memory usage for each CPU (if available).
 --
 +
 Only available with the 'SESSION' argument.
