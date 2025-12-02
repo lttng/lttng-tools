@@ -668,7 +668,14 @@ int create_kernel_session(const ltt_session::locked_ref& session)
 
 	ret = kernel_create_session(session);
 	if (ret < 0) {
-		ret = LTTNG_ERR_KERN_SESS_FAIL;
+		/* Handle specific errno values */
+		if (ret == -ENOSYS && session->trace_format == LTTNG_TRACE_FORMAT_CTF_2) {
+			/* Kernel doesn't support CTF 2 format */
+			ret = LTTNG_ERR_UNSUPPORTED_TRACE_FORMAT;
+		} else {
+			/* Generic kernel session failure */
+			ret = LTTNG_ERR_KERN_SESS_FAIL;
+		}
 		goto error_create;
 	}
 
@@ -1434,7 +1441,9 @@ int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_error)
 			if ((*target_session)->kernel_session == nullptr) {
 				ret = create_kernel_session(*target_session);
 				if (ret != LTTNG_OK) {
-					ret = LTTNG_ERR_KERN_SESS_FAIL;
+					if (ret != LTTNG_ERR_UNSUPPORTED_TRACE_FORMAT) {
+						ret = LTTNG_ERR_KERN_SESS_FAIL;
+					}
 					goto error;
 				}
 			}
