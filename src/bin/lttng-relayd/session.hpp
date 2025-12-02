@@ -16,6 +16,7 @@
 #include <common/uuid.hpp>
 
 #include <lttng/constant.h>
+#include <lttng/session-descriptor.h>
 
 #include <inttypes.h>
 #include <limits.h>
@@ -79,7 +80,7 @@ struct relay_session {
 	/* major/minor version used for this session. */
 	uint32_t major;
 	uint32_t minor;
-
+	enum lttng_trace_format trace_format;
 	bool viewer_attached;
 	/* Tell if the session connection has been closed on the streaming side. */
 	bool connection_closed;
@@ -150,7 +151,8 @@ struct relay_session *session_create(const char *session_name,
 				     const time_t *creation_time,
 				     uint32_t major,
 				     uint32_t minor,
-				     bool session_name_contains_creation_timestamp);
+				     bool session_name_contains_creation_timestamp,
+				     enum lttng_trace_format trace_format);
 struct relay_session *session_get_by_id(uint64_t id);
 bool session_get(struct relay_session *session);
 void session_put(struct relay_session *session);

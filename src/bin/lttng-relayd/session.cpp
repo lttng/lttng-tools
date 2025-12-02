@@ -291,7 +291,8 @@ struct relay_session *session_create(const char *session_name,
 				     const time_t *creation_time,
 				     uint32_t major,
 				     uint32_t minor,
-				     bool session_name_contains_creation_time)
+				     bool session_name_contains_creation_time,
+				     enum lttng_trace_format trace_format)
 {
 	int ret;
 	struct relay_session *session = nullptr;
@@ -359,7 +360,7 @@ struct relay_session *session_create(const char *session_name,
 
 	session->major = major;
 	session->minor = minor;
-
+	session->trace_format = trace_format;
 	session->live_timer = live_timer;
 	session->snapshot = snapshot;
 	session->sessiond_uuid = sessiond_uuid;
