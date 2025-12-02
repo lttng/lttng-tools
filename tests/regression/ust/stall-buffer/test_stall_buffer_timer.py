@@ -96,15 +96,17 @@ def run_scenario(
     # 4.
     scenario(tap.diagnostic, test_env, session)
 
-    # 5. Wait for the watchdog timer to be run.
-    #
-    # If the stall fixup algorithm failed or the watchdog timer is not
-    # triggered, this will block indefinitely.
-    #
-    # But first, we sleep for 10 period of the watchdog timer.  This ought to
-    # give enough time for the stall fixup to happen.
-    time.sleep(10 * (watchdog_timer_period_us / 1000000))
-    session.rotate(wait=False)
+    # 5. If the watchdog timer is disabled, stop the session to force the
+    # stalled fixup to run. Otherwise, simply do a rotation of the session which will
+    # naturally wait for things to be balanced.
+    if disable_watchdog:
+        session.stop()
+    else:
+        # Wait 10 times the watchdog timer period. If for some reason the test
+        # failed with the watchdog timer enabled, then it probably means that
+        # the load on the system is slowing down the fixup algorithm.
+        time.sleep(10 * (watchdog_timer_period_us / 1000000))
+        session.rotate(wait=True)
 
     stats = TraceStats(str(session.output.path))
 
