@@ -27,6 +27,7 @@
 #include <lttng/location.h>
 #include <lttng/lttng-error.h>
 #include <lttng/rotation.h>
+#include <lttng/session-descriptor.h>
 
 #include <condition_variable>
 #include <iterator>
@@ -576,6 +577,10 @@ public:
 	 * Path where to keep the shared memory files.
 	 */
 	char shm_path[PATH_MAX] = {};
+	/*
+	 * Trace format version of the session.
+	 */
+	enum lttng_trace_format trace_format = LTTNG_TRACE_FORMAT_CTF_1_8;
 	/*
 	 * Node in ltt_sessions_ht_by_id.
 	 */
