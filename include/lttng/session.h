@@ -616,7 +616,6 @@ lttng_set_session_shm_path(); it returns
     Unsatisfied precondition.
 
 @pre
-    @lt_pre_conn
     @lt_pre_not_null{session}
     - The recording session summarized by \lt_p{session} is accessible
       within the connected session daemon.
