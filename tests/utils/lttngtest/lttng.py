@@ -817,9 +817,15 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
             return (out, err)
 
     def create_session(
-        self, name=None, output=None, live=False, snapshot=False, shm_path=None
+        self,
+        name=None,
+        output=None,
+        live=False,
+        snapshot=False,
+        shm_path=None,
+        trace_format=None,
     ):
-        # type: (Optional[str], Optional[lttngctl.SessionOutputLocation], bool, bool, Optional[pathlib.Path]) -> lttngctl.Session
+        # type: (Optional[str], Optional[lttngctl.SessionOutputLocation], bool, bool, Optional[pathlib.Path], Optional[lttngctl.TraceFormat]) -> lttngctl.Session
         name = name if name else lttngctl.Session._generate_name()
         args = ["create", name]
 
@@ -838,6 +844,8 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
             args.extend(["--shm-path", str(shm_path)])
         if snapshot:
             args.append("--snapshot")
+        if trace_format is not None:
+            args.extend(["--trace-format", trace_format.value])
         self._run_cmd(" ".join([shlex.quote(x) for x in args]))
         return _Session(self, name, output)
 

@@ -164,6 +164,12 @@ class SessionRegenerateTarget(enum.Enum):
 
 
 @enum.unique
+class TraceFormat(enum.Enum):
+    CTF_1_8 = "ctf-1.8"
+    CTF_2 = "ctf-2"
+
+
+@enum.unique
 class UserLogLevel(LogLevel):
     EMERGENCY = 0
     ALERT = 1
@@ -778,9 +784,15 @@ class Controller(abc.ABC):
 
     @abc.abstractmethod
     def create_session(
-        self, name=None, output=None, live=False, snapshot=False, shm_path=None
+        self,
+        name=None,
+        output=None,
+        live=False,
+        snapshot=False,
+        shm_path=None,
+        trace_format=None,
     ):
-        # type: (Optional[str], Optional[lttngctl.SessionOutputLocation], bool, Optional[pathlib.Path]) -> lttngctl.Session
+        # type: (Optional[str], Optional[lttngctl.SessionOutputLocation], bool, bool, Optional[pathlib.Path], Optional[TraceFormat]) -> lttngctl.Session
         """
         Create a session with an output. Don't specify an output
         to create a session without an output.
