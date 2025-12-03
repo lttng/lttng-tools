@@ -12,7 +12,7 @@ TESTDIR=$CURDIR/../../../
 
 SESSION_NAME="load-42"
 
-NUM_TESTS=94
+NUM_TESTS=99
 
 # shellcheck source-path=SCRIPTDIR/../../..
 source "$TESTDIR/utils/utils.sh"
@@ -115,6 +115,7 @@ function test_all_load()
 
 	destroy_lttng_session_ok $SESSION_NAME
 	destroy_lttng_session_ok "$SESSION_NAME-complex"
+	destroy_lttng_session_ok "$SESSION_NAME-ctf-1.8"
 	destroy_lttng_session_ok "$SESSION_NAME-trackers"
 	destroy_lttng_session_ok "tracker_legacy_all"
 	destroy_lttng_session_ok "tracker_legacy_none"
@@ -367,6 +368,13 @@ function test_trace_format()
 		"$SESSION_NAME" \
 		CTF_2 \
 		"With CTF 2: loads correctly"
+
+	# Test loading session with CTF 1.8 trace format.
+	test_trace_format_one \
+		"$CURDIR/$SESSION_NAME-ctf-1.8.lttng" \
+		"$SESSION_NAME-ctf-1.8" \
+		CTF_1_8 \
+		"With CTF 1.8: loads correctly"
 }
 
 start_lttng_sessiond
