@@ -12,6 +12,7 @@
 
 #include <common/macros.hpp>
 
+#include <cstdint>
 #include <limits.h>
 
 #define LTTNG_VIEWER_PATH_MAX	   4096
@@ -98,6 +99,14 @@ enum lttng_viewer_detach_session_return_code {
 	LTTNG_VIEWER_DETACH_SESSION_UNK = 2,
 	LTTNG_VIEWER_DETACH_SESSION_ERR = 3,
 };
+
+/* Common fields for both protocol versions */
+struct lttng_viewer_session_common {
+	uint64_t id;
+	uint32_t live_timer;
+	uint32_t clients;
+	uint32_t streams;
+} LTTNG_PACKED;
 
 struct lttng_viewer_session {
 	uint64_t id;
