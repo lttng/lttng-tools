@@ -187,7 +187,7 @@ static int list_sessions(uint64_t *session_id)
 {
 	struct lttng_viewer_cmd cmd;
 	struct lttng_viewer_list_sessions list;
-	struct lttng_viewer_session lsession;
+	struct lttng_viewer_session_2_4 lsession;
 	int i;
 	ssize_t ret_len;
 	int first_session = 0;
@@ -218,8 +218,8 @@ static int list_sessions(uint64_t *session_id)
 			diag("Error receiving session");
 			goto error;
 		}
-		if (lsession.streams > 0 && first_session <= 0) {
-			first_session = be64toh(lsession.id);
+		if (lsession.common.streams > 0 && first_session <= 0) {
+			first_session = be64toh(lsession.common.id);
 			*session_id = first_session;
 		}
 	}
