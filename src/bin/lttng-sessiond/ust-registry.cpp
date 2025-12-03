@@ -67,7 +67,8 @@ void ust_registry_channel_destroy_event(lsu::registry_channel *chan,
 	return;
 }
 
-lsu::registry_session *ust_registry_session_per_uid_create(const lttng::sessiond::trace::abi& abi,
+lsu::registry_session *ust_registry_session_per_uid_create(enum lttng_trace_format trace_format,
+							   const lttng::sessiond::trace::abi& abi,
 							   uint32_t major,
 							   uint32_t minor,
 							   const char *root_shm_path,
@@ -78,7 +79,8 @@ lsu::registry_session *ust_registry_session_per_uid_create(const lttng::sessiond
 							   uid_t tracing_uid)
 {
 	try {
-		return new lsu::registry_session_per_uid(abi,
+		return new lsu::registry_session_per_uid(trace_format,
+							 abi,
 							 major,
 							 minor,
 							 root_shm_path,
@@ -94,6 +96,7 @@ lsu::registry_session *ust_registry_session_per_uid_create(const lttng::sessiond
 }
 
 lsu::registry_session *ust_registry_session_per_pid_create(struct ust_app *app,
+							   enum lttng_trace_format trace_format,
 							   const lttng::sessiond::trace::abi& abi,
 							   uint32_t major,
 							   uint32_t minor,
@@ -104,8 +107,16 @@ lsu::registry_session *ust_registry_session_per_pid_create(struct ust_app *app,
 							   uint64_t tracing_id)
 {
 	try {
-		return new lsu::registry_session_per_pid(
-			*app, abi, major, minor, root_shm_path, shm_path, euid, egid, tracing_id);
+		return new lsu::registry_session_per_pid(*app,
+							 trace_format,
+							 abi,
+							 major,
+							 minor,
+							 root_shm_path,
+							 shm_path,
+							 euid,
+							 egid,
+							 tracing_id);
 	} catch (const std::exception& ex) {
 		ERR("Failed to create per-pid registry session: %s", ex.what());
 		return nullptr;

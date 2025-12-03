@@ -172,7 +172,8 @@ using registry_unsigned_enum = registry_typed_enum<uint64_t>;
  * Return new instance on success, nullptr on error.
  */
 lttng::sessiond::ust::registry_session *
-ust_registry_session_per_uid_create(const lttng::sessiond::trace::abi& abi,
+ust_registry_session_per_uid_create(enum lttng_trace_format trace_format,
+				    const lttng::sessiond::trace::abi& abi,
 				    uint32_t major,
 				    uint32_t minor,
 				    const char *root_shm_path,
@@ -189,6 +190,7 @@ ust_registry_session_per_uid_create(const lttng::sessiond::trace::abi& abi,
  */
 lttng::sessiond::ust::registry_session *
 ust_registry_session_per_pid_create(struct ust_app *app,
+				    enum lttng_trace_format trace_format,
 				    const lttng::sessiond::trace::abi& abi,
 				    uint32_t major,
 				    uint32_t minor,
@@ -206,6 +208,7 @@ void ust_registry_channel_destroy_event(lttng::sessiond::ust::registry_channel *
 
 static inline lttng::sessiond::ust::registry_session *
 ust_registry_session_per_uid_create(uint32_t bits_per_long __attribute__((unused)),
+				    enum lttng_trace_format trace_format __attribute__((unused)),
 				    uint32_t uint8_t_alignment __attribute__((unused)),
 				    uint32_t uint16_t_alignment __attribute__((unused)),
 				    uint32_t uint32_t_alignment __attribute__((unused)),
@@ -226,6 +229,7 @@ ust_registry_session_per_uid_create(uint32_t bits_per_long __attribute__((unused
 
 static inline lttng::sessiond::ust::registry_session *
 ust_registry_session_per_pid_create(struct ust_app *app __attribute__((unused)),
+				    enum lttng_trace_format trace_format __attribute__((unused)),
 				    uint32_t bits_per_long __attribute__((unused)),
 				    uint32_t uint8_t_alignment __attribute__((unused)),
 				    uint32_t uint16_t_alignment __attribute__((unused)),

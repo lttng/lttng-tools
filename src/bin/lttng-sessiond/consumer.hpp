@@ -272,7 +272,8 @@ void consumer_init_ask_channel_comm_msg(
 	const char *root_shm_path,
 	const char *shm_path,
 	struct lttng_trace_chunk *trace_chunk,
-	const struct lttng_credentials *buffer_credentials);
+	const struct lttng_credentials *buffer_credentials,
+	enum lttng_trace_format trace_format);
 
 void consumer_init_add_stream_comm_msg(struct lttcomm_consumer_msg *msg,
 				       uint64_t channel_key,
@@ -297,7 +298,8 @@ void consumer_init_add_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 					unsigned int live_timer_interval,
 					bool is_in_live_session,
 					unsigned int monitor_timer_interval,
-					struct lttng_trace_chunk *trace_chunk);
+					struct lttng_trace_chunk *trace_chunk,
+					enum lttng_trace_format trace_format);
 int consumer_is_data_pending(uint64_t session_id, struct consumer_output *consumer);
 int consumer_close_metadata(struct consumer_socket *socket, uint64_t metadata_key);
 int consumer_setup_metadata(struct consumer_socket *socket, uint64_t metadata_key);

@@ -245,7 +245,8 @@ static ssize_t consumer_stream_consume_mmap(struct lttng_consumer_local_data *ct
 
 	if (the_consumer_data.type == LTTNG_CONSUMER_KERNEL &&
 	    stream->chan->type == CONSUMER_CHANNEL_TYPE_METADATA &&
-	    !utils_force_experimental_ctf_2() && !stream->first_metadata_write_done) {
+	    stream->chan->trace_format != LTTNG_TRACE_FORMAT_CTF_2 &&
+	    !stream->first_metadata_write_done) {
 		/*
 		 * The kernel tracer does not write the CTF 1.x announcement
 		 * comment in the metadata stream, so we do it here on

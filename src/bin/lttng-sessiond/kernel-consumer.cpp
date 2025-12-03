@@ -155,7 +155,8 @@ static int kernel_consumer_add_channel(struct consumer_socket *sock,
 					   channel->channel->attr.live_timer_interval,
 					   ksession->is_live_session,
 					   channel_attr_extended->monitor_timer_interval,
-					   ksession->current_trace_chunk);
+					   ksession->current_trace_chunk,
+					   ksession->trace_format);
 
 	health_code_update();
 
@@ -238,7 +239,8 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 					   ksession->metadata->conf->attr.live_timer_interval,
 					   ksession->is_live_session,
 					   0,
-					   ksession->current_trace_chunk);
+					   ksession->current_trace_chunk,
+					   ksession->trace_format);
 
 	health_code_update();
 

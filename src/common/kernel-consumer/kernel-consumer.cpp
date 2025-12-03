@@ -563,25 +563,26 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		health_code_update();
 
 		DBG("consumer_add_channel %" PRIu64, msg.u.channel.channel_key);
-		new_channel = consumer_allocate_channel(msg.u.channel.channel_key,
-							msg.u.channel.session_id,
-							msg.u.channel.chunk_id.is_set ? &chunk_id :
-											nullptr,
-							msg.u.channel.pathname,
-							msg.u.channel.name,
-							msg.u.channel.relayd_id,
-							msg.u.channel.output,
-							msg.u.channel.tracefile_size,
-							msg.u.channel.tracefile_count,
-							0,
-							0,
-							msg.u.channel.monitor,
-							msg.u.channel.live_timer_interval,
-							msg.u.channel.is_live,
-							false,
-							nonstd::nullopt,
-							nullptr,
-							nullptr);
+		new_channel = consumer_allocate_channel(
+			msg.u.channel.channel_key,
+			msg.u.channel.session_id,
+			msg.u.channel.chunk_id.is_set ? &chunk_id : nullptr,
+			msg.u.channel.pathname,
+			msg.u.channel.name,
+			msg.u.channel.relayd_id,
+			msg.u.channel.output,
+			msg.u.channel.tracefile_size,
+			msg.u.channel.tracefile_count,
+			0,
+			0,
+			msg.u.channel.monitor,
+			msg.u.channel.live_timer_interval,
+			msg.u.channel.is_live,
+			false,
+			nonstd::nullopt,
+			nullptr,
+			nullptr,
+			static_cast<enum lttng_trace_format>(msg.u.channel.trace_format));
 		if (new_channel == nullptr) {
 			lttng_consumer_send_error(ctx->consumer_error_socket,
 						  LTTCOMM_CONSUMERD_OUTFD_ERROR);

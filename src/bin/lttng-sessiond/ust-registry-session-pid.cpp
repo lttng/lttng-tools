@@ -14,6 +14,7 @@ namespace lst = lttng::sessiond::trace;
 namespace lsu = lttng::sessiond::ust;
 
 lsu::registry_session_per_pid::registry_session_per_pid(const struct ust_app& app,
+							enum lttng_trace_format trace_format,
 							const struct lst::abi& in_abi,
 							uint32_t major,
 							uint32_t minor,
@@ -22,7 +23,8 @@ lsu::registry_session_per_pid::registry_session_per_pid(const struct ust_app& ap
 							uid_t euid,
 							gid_t egid,
 							uint64_t tracing_id) :
-	registry_session{ in_abi, major, minor, root_shm_path, shm_path, euid, egid, tracing_id },
+	registry_session{ trace_format, in_abi, major, minor,	  root_shm_path,
+			  shm_path,	euid,	egid,  tracing_id },
 	_tracer_patch_level_version{ app.version.patchlevel },
 	_vpid{ app.pid },
 	_procname{ app.name },

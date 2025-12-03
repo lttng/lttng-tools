@@ -37,7 +37,8 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 				struct consumer_output *consumer,
 				struct consumer_socket *socket,
 				lsu::registry_session *registry,
-				struct lttng_trace_chunk *trace_chunk)
+				struct lttng_trace_chunk *trace_chunk,
+				enum lttng_trace_format trace_format)
 {
 	int ret, output;
 	uint32_t chan_id;
@@ -169,7 +170,8 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 					   root_shm_path,
 					   shm_path,
 					   trace_chunk,
-					   &ua_sess->effective_credentials);
+					   &ua_sess->effective_credentials,
+					   trace_format);
 
 	health_code_update();
 
@@ -211,7 +213,8 @@ int ust_consumer_ask_channel(struct ust_app_session *ua_sess,
 			     struct consumer_output *consumer,
 			     struct consumer_socket *socket,
 			     lsu::registry_session *registry,
-			     struct lttng_trace_chunk *trace_chunk)
+			     struct lttng_trace_chunk *trace_chunk,
+			     enum lttng_trace_format trace_format)
 {
 	int ret;
 
@@ -228,7 +231,8 @@ int ust_consumer_ask_channel(struct ust_app_session *ua_sess,
 	}
 
 	pthread_mutex_lock(socket->lock);
-	ret = ask_channel_creation(ua_sess, ua_chan, consumer, socket, registry, trace_chunk);
+	ret = ask_channel_creation(
+		ua_sess, ua_chan, consumer, socket, registry, trace_chunk, trace_format);
 	pthread_mutex_unlock(socket->lock);
 	if (ret < 0) {
 		ERR("ask_channel_creation consumer command failed");

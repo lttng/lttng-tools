@@ -192,6 +192,7 @@ int kernel_create_session(const ltt_session::locked_ref& session)
 
 	lks->id = session->id;
 	lks->consumer_fds_sent = 0;
+	lks->trace_format = session->trace_format;
 	session->kernel_session = lks;
 
 	DBG("Kernel session created (fd: %d)", lks->fd);
@@ -219,7 +220,7 @@ int kernel_create_session(const ltt_session::locked_ref& session)
 	}
 
 	ret = kernctl_session_set_output_format(lks->fd,
-						utils_force_experimental_ctf_2() ?
+						session->trace_format == LTTNG_TRACE_FORMAT_CTF_2 ?
 							LTTNG_KERNEL_ABI_OUTPUT_FORMAT_CTF_2 :
 							LTTNG_KERNEL_ABI_OUTPUT_FORMAT_CTF_1_8);
 	if (ret) {

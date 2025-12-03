@@ -130,6 +130,8 @@ struct ltt_kernel_session {
 	bool is_live_session;
 	/* Current trace chunk of the ltt_session. */
 	struct lttng_trace_chunk *current_trace_chunk;
+	/* Trace format of the session. */
+	enum lttng_trace_format trace_format;
 	/* Tracker lists */
 	struct process_attr_tracker *tracker_pid;
 	struct process_attr_tracker *tracker_vpid;

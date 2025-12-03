@@ -2798,16 +2798,20 @@ static int setup_buffer_reg_pid(struct ust_app_session *ua_sess,
 	}
 
 	/* Initialize registry. */
-	reg_pid->registry->reg.ust = ust_registry_session_per_pid_create(
-		app,
-		app->abi,
-		app->version.major,
-		app->version.minor,
-		reg_pid->root_shm_path,
-		reg_pid->shm_path,
-		lttng_credentials_get_uid(&ua_sess->effective_credentials),
-		lttng_credentials_get_gid(&ua_sess->effective_credentials),
-		ua_sess->tracing_id);
+	{
+		const auto session = ltt_session::find_session(ua_sess->tracing_id);
+		reg_pid->registry->reg.ust = ust_registry_session_per_pid_create(
+			app,
+			session->trace_format,
+			app->abi,
+			app->version.major,
+			app->version.minor,
+			reg_pid->root_shm_path,
+			reg_pid->shm_path,
+			lttng_credentials_get_uid(&ua_sess->effective_credentials),
+			lttng_credentials_get_gid(&ua_sess->effective_credentials),
+			ua_sess->tracing_id);
+	}
 	if (!reg_pid->registry->reg.ust) {
 		/*
 		 * reg_pid->registry->reg.ust is NULL upon error, so we need to
@@ -2872,15 +2876,20 @@ static int setup_buffer_reg_uid(struct ltt_ust_session *usess,
 	}
 
 	/* Initialize registry. */
-	reg_uid->registry->reg.ust = ust_registry_session_per_uid_create(app->abi,
-									 app->version.major,
-									 app->version.minor,
-									 reg_uid->root_shm_path,
-									 reg_uid->shm_path,
-									 usess->uid,
-									 usess->gid,
-									 ua_sess->tracing_id,
-									 app->uid);
+	{
+		const auto session = ltt_session::find_session(ua_sess->tracing_id);
+		reg_uid->registry->reg.ust =
+			ust_registry_session_per_uid_create(session->trace_format,
+							    app->abi,
+							    app->version.major,
+							    app->version.minor,
+							    reg_uid->root_shm_path,
+							    reg_uid->shm_path,
+							    usess->uid,
+							    usess->gid,
+							    ua_sess->tracing_id,
+							    app->uid);
+	}
 	if (!reg_uid->registry->reg.ust) {
 		/*
 		 * reg_uid->registry->reg.ust is NULL upon error, so we need to
@@ -3250,7 +3259,8 @@ static int do_consumer_create_channel(struct ltt_ust_session *usess,
 				      struct ust_app_session *ua_sess,
 				      struct ust_app_channel *ua_chan,
 				      int bitness,
-				      lsu::registry_session *registry)
+				      lsu::registry_session *registry,
+				      enum lttng_trace_format trace_format)
 {
 	int ret;
 	unsigned int nb_fd = 0;
@@ -3284,8 +3294,13 @@ static int do_consumer_create_channel(struct ltt_ust_session *usess,
 	 * Ask consumer to create channel. The consumer will return the number of
 	 * stream we have to expect.
 	 */
-	ret = ust_consumer_ask_channel(
-		ua_sess, ua_chan, usess->consumer, socket, registry, usess->current_trace_chunk);
+	ret = ust_consumer_ask_channel(ua_sess,
+				       ua_chan,
+				       usess->consumer,
+				       socket,
+				       registry,
+				       usess->current_trace_chunk,
+				       trace_format);
 	if (ret < 0) {
 		goto error_ask;
 	}
@@ -3696,8 +3711,12 @@ static int create_channel_per_uid(struct ust_app *app,
 	 * Create the buffers on the consumer side. This call populates the
 	 * ust app channel object with all streams and data object.
 	 */
-	ret = do_consumer_create_channel(
-		usess, ua_sess, ua_chan, app->abi.bits_per_long, reg_uid->registry->reg.ust);
+	ret = do_consumer_create_channel(usess,
+					 ua_sess,
+					 ua_chan,
+					 app->abi.bits_per_long,
+					 reg_uid->registry->reg.ust,
+					 session->trace_format);
 	if (ret < 0) {
 		ERR("Error creating UST channel \"%s\" on the consumer daemon", ua_chan->name);
 
@@ -3808,8 +3827,12 @@ static int create_channel_per_pid(struct ust_app *app,
 	}
 
 	/* Create and get channel on the consumer side. */
-	ret = do_consumer_create_channel(
-		usess, &ua_sess.get(), ua_chan, app->abi.bits_per_long, registry);
+	ret = do_consumer_create_channel(usess,
+					 &ua_sess.get(),
+					 ua_chan,
+					 app->abi.bits_per_long,
+					 registry,
+					 session->trace_format);
 	if (ret < 0) {
 		ERR("Error creating UST channel \"%s\" on the consumer daemon", ua_chan->name);
 		goto error_remove_from_registry;
@@ -4160,7 +4183,8 @@ static int create_ust_app_metadata(const ust_app_session::locked_weak_ref& ua_se
 				       consumer,
 				       socket,
 				       locked_registry.get(),
-				       session->current_trace_chunk);
+				       session->current_trace_chunk,
+				       session->trace_format);
 	if (ret < 0) {
 		/* Nullify the metadata key so we don't try to close it later on. */
 		locked_registry->_metadata_key = 0;
