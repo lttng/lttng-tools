@@ -44,6 +44,12 @@ enum lttng_session_descriptor_status {
 	LTTNG_SESSION_DESCRIPTOR_STATUS_UNSET = 1,
 };
 
+enum lttng_trace_format {
+	LTTNG_TRACE_FORMAT_DEFAULT = 0,
+	LTTNG_TRACE_FORMAT_CTF_1_8 = 1,
+	LTTNG_TRACE_FORMAT_CTF_2 = 2,
+};
+
 /*!
 @brief
     Creates a recording session descriptor to create a no-output,
