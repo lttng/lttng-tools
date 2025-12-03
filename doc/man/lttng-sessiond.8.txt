@@ -1,6 +1,6 @@
 lttng-sessiond(8)
 =================
-:revdate: 1 April 2025
+:revdate: 7 October 2025
 :daemon-bin-name: lttng-sessiond
 :daemon-ini-section: sessiond
 
@@ -15,6 +15,7 @@ SYNOPSIS
 [verse]
 *lttng-sessiond* [option:--background | option:--daemonize] [option:--sig-parent]
                [option:--config='PATH'] [option:--group='GROUP'] [option:--load='PATH']
+               [option:--default-trace-format=(**ctf-1.8** | **ctf-2**)]
                [option:--agent-tcp-port='PORT'] [option:--pidfile='PATH']
                [option:--apps-sock='PATH'] [option:--client-sock='PATH']
                [option:--no-kernel | [option:--kmod-probes='PROBE'[,'PROBE']...]
@@ -154,6 +155,25 @@ receive client commands before it exits.
 +
 Use the option:--background option instead to keep the file descriptors
 open.
+
+option:--default-trace-format='FORMAT'::
+    Set the default trace format of recording sessions to 'FORMAT'.
++
+'FORMAT' is one of:
++
+--
+`ctf-1.8`:::
+    https://diamon.org/ctf/v1.8.3/[CTF 1.8] (legacy).
+
+`ctf-2`:::
+    https://diamon.org/ctf/[CTF 2] (preferred).
+--
++
+When a user application creates a recording session using the
+man:lttng-create(1) command or the liblttng-ctl API without explicitly
+specifying a trace format, `lttng-sessiond` uses 'FORMAT'.
++
+Default: `ctf-2`.
 
 option:-g 'GROUP', option:--group='GROUP'::
     Set the Unix tracing group to 'GROUP' instead of `tracing`.
