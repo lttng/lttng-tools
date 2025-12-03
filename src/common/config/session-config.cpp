@@ -3284,6 +3284,20 @@ static int process_session_node(xmlNodePtr session_node,
 			}
 
 			shm_path = node_content;
+		} else if (!strcmp((const char *) node->name, config_element_trace_format)) {
+			/* trace format */
+			xmlChar *node_content = xmlNodeGetContent(node);
+			if (!node_content) {
+				ret = -LTTNG_ERR_NOMEM;
+				goto error;
+			}
+			if (!strcmp((const char *) node_content,
+				    config_element_trace_format_ctf_1_8)) {
+				trace_format = LTTNG_TRACE_FORMAT_CTF_1_8;
+			} else {
+				trace_format = LTTNG_TRACE_FORMAT_CTF_2;
+			}
+			xmlFree(node_content);
 		} else {
 			/*
 			 * attributes, snapshot_mode, live_timer_interval, rotation_size,
