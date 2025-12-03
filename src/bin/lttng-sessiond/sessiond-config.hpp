@@ -10,6 +10,8 @@
 
 #include <common/macros.hpp>
 
+#include <lttng/session-descriptor.h>
+
 #include <stdbool.h>
 
 struct config_string {
@@ -40,6 +42,8 @@ struct sessiond_config {
 	bool background;
 	bool daemonize;
 	bool sig_parent;
+
+	enum lttng_trace_format default_trace_format;
 
 	struct config_string tracing_group_name;
 
