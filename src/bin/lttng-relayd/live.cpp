@@ -1224,6 +1224,42 @@ static int serialize_viewer_session_2_4(const struct relay_session *session,
 	return lttng_dynamic_buffer_append(out, &s, sizeof(s));
 }
 
+/* Serialize a single session entry for protocol 2.15 (variable-length strings). */
+static int serialize_viewer_session_2_15(const struct relay_session *session,
+					 struct lttng_dynamic_buffer *out)
+{
+	int ret;
+	struct lttng_viewer_session_2_15 s = {};
+	const size_t hostname_len = strlen(session->hostname);
+	const size_t session_name_len = strlen(session->session_name);
+
+	s.common.id = htobe64(session->id);
+	s.common.live_timer = htobe32(session->live_timer);
+	s.common.clients = htobe32(session->viewer_attached ? 1U : 0U);
+	s.common.streams = htobe32(session->stream_count);
+	s.hostname_len = htobe32(static_cast<uint32_t>(hostname_len));
+	s.session_name_len = htobe32(static_cast<uint32_t>(session_name_len));
+	s.trace_format =
+		htobe32(static_cast<uint32_t>(trace_format_to_live_format(session->trace_format)));
+
+	ret = lttng_dynamic_buffer_append(out, &s, sizeof(s));
+	if (ret) {
+		return ret;
+	}
+
+	ret = lttng_dynamic_buffer_append(out, session->hostname, hostname_len);
+	if (ret) {
+		return ret;
+	}
+
+	ret = lttng_dynamic_buffer_append(out, session->session_name, session_name_len);
+	if (ret) {
+		return ret;
+	}
+
+	return 0;
+}
+
 /*
  * Send the viewer the list of current sessions.
  * We need to create a copy of the hash table content because otherwise
