@@ -12,6 +12,7 @@
 
 #include <common/compat/time.hpp>
 #include <common/defaults.hpp>
+#include <common/error.hpp>
 #include <common/mi-lttng.hpp>
 #include <common/path.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
@@ -36,6 +37,7 @@ static char *opt_url;
 static char *opt_ctrl_url;
 static char *opt_data_url;
 static char *opt_shm_path;
+static char *opt_trace_format;
 static int opt_no_consumer;
 static int opt_no_output;
 static int opt_snapshot;
@@ -80,6 +82,7 @@ static struct poptOption long_options[] = {
 	  nullptr,
 	  nullptr },
 	{ "shm-path", 0, POPT_ARG_STRING, &opt_shm_path, 0, nullptr, nullptr },
+	{ "trace-format", 'F', POPT_ARG_STRING, &opt_trace_format, 0, nullptr, nullptr },
 	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
@@ -304,6 +307,17 @@ static int create_session(const char *session_name)
 		     strlen(session_name) == strlen(DEFAULT_SESSION_NAME))) {
 			ERR("%s is a reserved keyword for default session(s)",
 			    DEFAULT_SESSION_NAME);
+			ret = CMD_ERROR;
+			goto error;
+		}
+	}
+
+	if (opt_trace_format) {
+		if (strcmp(opt_trace_format, "ctf-2") != 0 &&
+		    strcmp(opt_trace_format, "ctf-1.8") != 0 &&
+		    strcmp(opt_trace_format, "default") != 0) {
+			ERR_FMT("Invalid trace format `{}`; expecting `ctf-1.8`, `ctf-2`, or `default`",
+				opt_trace_format);
 			ret = CMD_ERROR;
 			goto error;
 		}
