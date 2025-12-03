@@ -2332,7 +2332,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			msg.u.ask_channel.continuously_reclaimed,
 			automatic_memory_reclamation_max_age,
 			msg.u.ask_channel.root_shm_path,
-			msg.u.ask_channel.shm_path);
+			msg.u.ask_channel.shm_path,
+			static_cast<enum lttng_trace_format>(msg.u.ask_channel.trace_format));
 		if (!channel) {
 			goto end_channel_error;
 		}

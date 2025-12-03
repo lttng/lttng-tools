@@ -106,7 +106,8 @@ public:
 
 protected:
 	/* Prevent instanciation of this base class. */
-	registry_session(const struct lttng::sessiond::trace::abi& abi,
+	registry_session(enum lttng_trace_format trace_format,
+			 const struct lttng::sessiond::trace::abi& abi,
 			 unsigned int app_tracer_version_major,
 			 unsigned int app_tracer_version_minor,
 			 const char *root_shm_path,

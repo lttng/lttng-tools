@@ -1015,7 +1015,8 @@ struct lttng_consumer_channel *consumer_allocate_channel(
 	bool continuously_reclaimed,
 	nonstd::optional<std::chrono::microseconds> automatic_memory_reclamation_max_age,
 	const char *root_shm_path,
-	const char *shm_path)
+	const char *shm_path,
+	enum lttng_trace_format trace_format)
 {
 	struct lttng_consumer_channel *channel = nullptr;
 	struct lttng_trace_chunk *trace_chunk = nullptr;
@@ -1044,6 +1045,7 @@ struct lttng_consumer_channel *consumer_allocate_channel(
 	channel->relayd_id = relayd_id;
 	channel->tracefile_size = tracefile_size;
 	channel->tracefile_count = tracefile_count;
+	channel->trace_format = trace_format;
 
 	/* Only available (and needed) for user space channels. */
 	if (subbuffer_count > 0) {

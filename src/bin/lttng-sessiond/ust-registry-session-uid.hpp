@@ -22,7 +22,8 @@ namespace ust {
 
 class registry_session_per_uid : public registry_session {
 public:
-	registry_session_per_uid(const struct lttng::sessiond::trace::abi& trace_abi,
+	registry_session_per_uid(enum lttng_trace_format trace_format,
+				 const struct lttng::sessiond::trace::abi& trace_abi,
 				 uint32_t major,
 				 uint32_t minor,
 				 const char *root_shm_path,

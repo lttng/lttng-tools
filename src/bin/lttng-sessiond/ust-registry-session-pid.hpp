@@ -25,6 +25,7 @@ namespace ust {
 class registry_session_per_pid : public registry_session {
 public:
 	registry_session_per_pid(const struct ust_app& app,
+				 enum lttng_trace_format trace_format,
 				 const struct lttng::sessiond::trace::abi& trace_abi,
 				 uint32_t major,
 				 uint32_t minor,

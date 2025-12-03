@@ -233,7 +233,8 @@ void lsu::details::locked_registry_session_release(lsu::registry_session *sessio
 	pthread_mutex_unlock(&session->_lock);
 }
 
-lsu::registry_session::registry_session(const struct lst::abi& in_abi,
+lsu::registry_session::registry_session(enum lttng_trace_format trace_format,
+					const struct lst::abi& in_abi,
 					uint32_t major,
 					uint32_t minor,
 					const char *root_shm_path,
@@ -256,7 +257,7 @@ lsu::registry_session::registry_session(const struct lst::abi& in_abi,
 			_append_metadata_fragment(fragment);
 		};
 
-		if (utils_force_experimental_ctf_2()) {
+		if (trace_format == LTTNG_TRACE_FORMAT_CTF_2) {
 			return lttng::make_unique<ctf2::trace_class_visitor>(std::move(func));
 		}
 

@@ -996,6 +996,8 @@ struct lttcomm_consumer_msg {
 			uint8_t is_live;
 			/* timer to sample a channel's positions (usec). */
 			unsigned int monitor_timer_interval;
+			/* trace format (enum lttng_trace_format) */
+			uint8_t trace_format;
 		} LTTNG_PACKED channel; /* Only used by Kernel. */
 		struct {
 			uint64_t stream_key;
@@ -1067,6 +1069,8 @@ struct lttcomm_consumer_msg {
 			LTTNG_PACKED automatic_memory_reclamation_maximal_age_us;
 			char root_shm_path[PATH_MAX];
 			char shm_path[PATH_MAX];
+			/* trace format (enum lttng_trace_format) */
+			uint8_t trace_format;
 		} LTTNG_PACKED ask_channel;
 		struct {
 			uint64_t key;

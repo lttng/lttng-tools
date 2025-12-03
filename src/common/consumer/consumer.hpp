@@ -29,6 +29,7 @@
 #include <common/waiter.hpp>
 
 #include <lttng/lttng.h>
+#include <lttng/session-descriptor.h>
 
 #include <vendor/optional.hpp>
 
@@ -122,6 +123,8 @@ struct lttng_consumer_channel {
 	uint64_t session_id = 0;
 	/* Current trace chunk of the session in which this channel exists. */
 	struct lttng_trace_chunk *trace_chunk = nullptr;
+	/* Trace format of the session. */
+	enum lttng_trace_format trace_format = LTTNG_TRACE_FORMAT_CTF_1_8;
 	/*
 	 * Session id when requesting metadata to the session daemon for
 	 * a session with per-PID buffers.
@@ -1051,7 +1054,8 @@ struct lttng_consumer_channel *consumer_allocate_channel(
 	bool continuously_reclaimed,
 	nonstd::optional<std::chrono::microseconds> automatic_memory_reclamation_max_age,
 	const char *root_shm_path,
-	const char *shm_path);
+	const char *shm_path,
+	enum lttng_trace_format trace_format);
 void consumer_del_stream(struct lttng_consumer_stream *stream, struct lttng_ht *ht);
 void consumer_del_metadata_stream(struct lttng_consumer_stream *stream, struct lttng_ht *ht);
 int consumer_add_channel(struct lttng_consumer_channel *channel,

@@ -10,7 +10,8 @@
 namespace lst = lttng::sessiond::trace;
 namespace lsu = lttng::sessiond::ust;
 
-lsu::registry_session_per_uid::registry_session_per_uid(const struct lst::abi& in_abi,
+lsu::registry_session_per_uid::registry_session_per_uid(enum lttng_trace_format trace_format,
+							const struct lst::abi& in_abi,
 							uint32_t major,
 							uint32_t minor,
 							const char *root_shm_path,
@@ -19,7 +20,8 @@ lsu::registry_session_per_uid::registry_session_per_uid(const struct lst::abi& i
 							gid_t egid,
 							uint64_t tracing_id,
 							uid_t tracing_uid) :
-	registry_session{ in_abi, major, minor, root_shm_path, shm_path, euid, egid, tracing_id },
+	registry_session{ trace_format, in_abi, major, minor,	  root_shm_path,
+			  shm_path,	euid,	egid,  tracing_id },
 	_tracing_uid{ tracing_uid }
 {
 	const lttng::pthread::lock_guard registry_lock(_lock);

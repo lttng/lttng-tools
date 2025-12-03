@@ -980,7 +980,8 @@ void consumer_init_ask_channel_comm_msg(
 	const char *root_shm_path,
 	const char *shm_path,
 	struct lttng_trace_chunk *trace_chunk,
-	const struct lttng_credentials *buffer_credentials)
+	const struct lttng_credentials *buffer_credentials,
+	enum lttng_trace_format trace_format)
 {
 	LTTNG_ASSERT(msg);
 
@@ -1059,6 +1060,7 @@ void consumer_init_ask_channel_comm_msg(
 		strncpy(msg->u.ask_channel.shm_path, shm_path, sizeof(msg->u.ask_channel.shm_path));
 		msg->u.ask_channel.shm_path[sizeof(msg->u.ask_channel.shm_path) - 1] = '\0';
 	}
+	msg->u.ask_channel.trace_format = static_cast<uint8_t>(trace_format);
 }
 
 /*
@@ -1079,7 +1081,8 @@ void consumer_init_add_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 					unsigned int live_timer_interval,
 					bool is_in_live_session,
 					unsigned int monitor_timer_interval,
-					struct lttng_trace_chunk *trace_chunk)
+					struct lttng_trace_chunk *trace_chunk,
+					enum lttng_trace_format trace_format)
 {
 	LTTNG_ASSERT(msg);
 
@@ -1109,6 +1112,7 @@ void consumer_init_add_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 	msg->u.channel.live_timer_interval = live_timer_interval;
 	msg->u.channel.is_live = is_in_live_session;
 	msg->u.channel.monitor_timer_interval = monitor_timer_interval;
+	msg->u.channel.trace_format = static_cast<uint8_t>(trace_format);
 
 	strncpy(msg->u.channel.pathname, pathname, sizeof(msg->u.channel.pathname));
 	msg->u.channel.pathname[sizeof(msg->u.channel.pathname) - 1] = '\0';
