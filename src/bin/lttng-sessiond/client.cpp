@@ -2418,11 +2418,12 @@ skip_domain:
 
 		const auto domain =
 			lttng::get_domain_class_from_lttng_domain_type(cmd_ctx->lsm.domain.type);
-		const auto older_than_us = cmd_ctx->lsm.u.reclaim_channel_memory.older_than_us;
+		const auto older_than_age_us =
+			cmd_ctx->lsm.u.reclaim_channel_memory.older_than_age_us;
 
-		const auto reclaim_older_than = older_than_us > 0 ?
+		const auto reclaim_older_than = older_than_age_us > 0 ?
 			nonstd::optional<std::chrono::microseconds>(
-				std::chrono::microseconds(older_than_us)) :
+				std::chrono::microseconds(older_than_age_us)) :
 			nonstd::nullopt;
 
 		/*
