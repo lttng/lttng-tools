@@ -21,11 +21,13 @@
 #include "viewer-session.hpp"
 #include "viewer-stream.hpp"
 
+#include <common/buffer-view.hpp>
 #include <common/common.hpp>
 #include <common/compat/endian.hpp>
 #include <common/compat/poll.hpp>
 #include <common/compat/socket.hpp>
 #include <common/defaults.hpp>
+#include <common/dynamic-buffer.hpp>
 #include <common/fd-tracker/utils.hpp>
 #include <common/fs-handle.hpp>
 #include <common/futex.hpp>
@@ -1198,6 +1200,28 @@ static int viewer_connect(struct relay_connection *conn)
 
 end:
 	return ret;
+}
+
+/* Serialize a single session entry for protocol 2.4 (fixed-size strings). */
+static int serialize_viewer_session_2_4(const struct relay_session *session,
+					struct lttng_dynamic_buffer *out)
+{
+	struct lttng_viewer_session_2_4 s = {};
+
+	s.common.id = htobe64(session->id);
+	s.common.live_timer = htobe32(session->live_timer);
+	s.common.clients = htobe32(session->viewer_attached ? 1U : 0U);
+	s.common.streams = htobe32(session->stream_count);
+
+	if (lttng_strncpy(s.hostname, session->hostname, sizeof(s.hostname))) {
+		return -1;
+	}
+
+	if (lttng_strncpy(s.session_name, session->session_name, sizeof(s.session_name))) {
+		return -1;
+	}
+
+	return lttng_dynamic_buffer_append(out, &s, sizeof(s));
 }
 
 /*
