@@ -666,6 +666,10 @@ LTTNG_EXPORT extern enum lttng_session_descriptor_status
 lttng_session_descriptor_get_session_name(const struct lttng_session_descriptor *session_descriptor,
 					  const char **session_name);
 
+LTTNG_EXPORT extern enum lttng_session_descriptor_status
+lttng_session_descriptor_set_trace_format(struct lttng_session_descriptor *descriptor,
+					  enum lttng_trace_format format);
+
 /*!
 @brief
     Destroys the recording session descriptor \lt_p{session_descriptor}.

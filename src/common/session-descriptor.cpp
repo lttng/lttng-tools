@@ -955,6 +955,20 @@ bool lttng_session_descriptor_has_output_directory(const struct lttng_session_de
 	return false;
 }
 
+enum lttng_session_descriptor_status
+lttng_session_descriptor_set_trace_format(struct lttng_session_descriptor *descriptor,
+					  enum lttng_trace_format format)
+{
+	if (!descriptor ||
+	    (format != LTTNG_TRACE_FORMAT_DEFAULT && format != LTTNG_TRACE_FORMAT_CTF_1_8 &&
+	     format != LTTNG_TRACE_FORMAT_CTF_2)) {
+		return LTTNG_SESSION_DESCRIPTOR_STATUS_INVALID;
+	}
+
+	descriptor->trace_format = format;
+	return LTTNG_SESSION_DESCRIPTOR_STATUS_OK;
+}
+
 enum lttng_error_code
 lttng_session_descriptor_set_default_output(struct lttng_session_descriptor *descriptor,
 					    time_t *session_creation_time,
