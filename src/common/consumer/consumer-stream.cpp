@@ -358,12 +358,12 @@ static int consumer_stream_send_index(lttng_consumer_stream& stream,
 	return consumer_stream_write_index(stream, index);
 }
 
-static int reclaim_current_subbuffer(lttng_consumer_stream& stream,
-				     const struct stream_subbuffer *subbuffer [[maybe_unused]],
-				     struct lttng_consumer_local_data *ctx [[maybe_unused]])
+static int try_current_subbuffer_reclamation(lttng_consumer_stream& stream,
+					     const stream_subbuffer *subbuffer [[maybe_unused]],
+					     struct lttng_consumer_local_data *ctx [[maybe_unused]])
 {
 	try {
-		consumer_stream_reclaim_subbuffer(stream);
+		consumer_stream_try_reclaim_current_subbuffer(stream, *subbuffer);
 	} catch (const lttng::runtime_error& e) {
 		ERR_FMT("Failed to reclaim reader sub-buffer: channel_name=`{}`, stream_key={}: {}",
 			stream.chan->name,
@@ -895,9 +895,9 @@ struct lttng_consumer_stream *consumer_stream_create(struct lttng_consumer_chann
 			goto error;
 		}
 
-		if (stream->chan->continuously_reclaimed) {
-			const post_consume_cb reclaim_post_consume = reclaim_current_subbuffer;
-
+		if (the_consumer_data.type != LTTNG_CONSUMER_KERNEL) {
+			const post_consume_cb reclaim_post_consume =
+				try_current_subbuffer_reclamation;
 			ret = lttng_dynamic_array_add_element(
 				&stream->read_subbuffer_ops.post_consume_cbs,
 				&reclaim_post_consume);
@@ -1507,7 +1507,8 @@ int consumer_stream_send_live_beacon(lttng_consumer_stream& stream,
 	return consumer_stream_write_index(stream, index);
 }
 
-void consumer_stream_reclaim_subbuffer(lttng_consumer_stream& stream)
+void consumer_stream_try_reclaim_current_subbuffer(lttng_consumer_stream& stream,
+						   const stream_subbuffer& subbuffer)
 {
 	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
@@ -1515,7 +1516,7 @@ void consumer_stream_reclaim_subbuffer(lttng_consumer_stream& stream)
 			"Buffer reclamation is not available for kernel consumer streams");
 	case LTTNG_CONSUMER32_UST:
 	case LTTNG_CONSUMER64_UST:
-		lttng_ustconsumer_reclaim_current_subbuffer(stream);
+		lttng_ustconsumer_try_reclaim_current_subbuffer(stream, subbuffer);
 		break;
 	default:
 		ERR("Unknown consumer_data type");
@@ -1523,9 +1524,10 @@ void consumer_stream_reclaim_subbuffer(lttng_consumer_stream& stream)
 	}
 }
 
-std::uint64_t consumer_stream_reclaim_memory(lttng_consumer_stream& stream,
-					     const std::chrono::microseconds& age_limit,
-					     bool require_consumed)
+lttng::consumer::memory_reclaim_result
+consumer_stream_reclaim_memory(lttng_consumer_stream& stream,
+			       const std::chrono::microseconds& age_limit,
+			       bool require_consumed)
 {
 	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:

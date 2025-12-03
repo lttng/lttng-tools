@@ -77,32 +77,43 @@ void validate_agent_channel_name(lttng::domain_class domain, lttng::c_string_vie
 	}
 }
 
-void reclaim_consumer_channel_memory(
-	std::vector<lsc::stream_memory_reclamation_result_group>& result,
-	const std::vector<std::uint64_t>& consumer_channel_keys,
-	const nonstd::optional<std::chrono::microseconds>& reclaim_older_than,
-	bool require_consumed,
+/*
+ * Issue a memory reclamation request for the specified consumer channel keys
+ * (effectively stream groups).
+ *
+ * The results are matched back to the channel descriptions provided to
+ * populate the result vector providing proper stream group ownership
+ * information along with the reclaimed memory sizes (completed and pending).
+ */
+void issue_consumer_reclaim_channel_memory(
+	consumer_socket& consumer_socket,
 	lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness bitness,
-	const channel_description_map& channel_descriptions,
 	const ltt_session::locked_ref& session,
+	const channel_description_map& channel_descriptions,
 	bool is_per_cpu_stream,
-	consumer_socket& consumer_socket)
+	const std::vector<std::uint64_t>& target_consumer_channel_keys,
+	const nonstd::optional<std::chrono::microseconds>& reclaim_older_than_age,
+	bool only_reclaim_consumed_data,
+	std::vector<lsc::stream_memory_reclamation_result_group>& result)
 {
-	if (consumer_channel_keys.empty()) {
+	if (target_consumer_channel_keys.empty()) {
 		return;
 	}
 
 	std::size_t current_channel_index = 0;
-	const auto channels_reclaimed_memory = lttng::sessiond::consumer::reclaim_channels_memory(
-		consumer_socket, consumer_channel_keys, reclaim_older_than, require_consumed);
+	const auto channels_reclaimed_memory =
+		lttng::sessiond::consumer::reclaim_channels_memory(consumer_socket,
+								   target_consumer_channel_keys,
+								   reclaim_older_than_age,
+								   only_reclaim_consumed_data);
 
 	for (const auto& channel_reclaimed_memory : channels_reclaimed_memory) {
-		const auto it = channel_descriptions.find(
-			std::make_pair(consumer_channel_keys.at(current_channel_index), bitness));
+		const auto it = channel_descriptions.find(std::make_pair(
+			target_consumer_channel_keys.at(current_channel_index), bitness));
 		if (it == channel_descriptions.end()) {
 			LTTNG_THROW_ERROR(fmt::format(
 				"Consumer channel key not found in channel descriptions: key={}, bitness={}",
-				consumer_channel_keys.at(current_channel_index),
+				target_consumer_channel_keys.at(current_channel_index),
 				static_cast<int>(bitness)));
 		}
 
@@ -132,7 +143,9 @@ void reclaim_consumer_channel_memory(
 			};
 
 			streams_reclaimed_memory.emplace_back(
-				stream_identifier, stream_reclaimed_memory.reclaimed_bytes);
+				stream_identifier,
+				stream_reclaimed_memory.reclaimed_bytes,
+				stream_reclaimed_memory.pending_bytes_to_reclaim);
 		}
 
 		result.emplace_back(group_owner, std::move(streams_reclaimed_memory));
@@ -142,18 +155,19 @@ void reclaim_consumer_channel_memory(
 }
 } /* namespace */
 
-std::vector<lsc::stream_memory_reclamation_result_group>
-lsc::reclaim_channel_memory(const ltt_session::locked_ref& session,
-			    lttng::domain_class domain,
-			    lttng::c_string_view channel_name,
-			    const nonstd::optional<std::chrono::microseconds>& reclaim_older_than,
-			    bool require_consumed)
+std::vector<lsc::stream_memory_reclamation_result_group> lsc::reclaim_channel_memory(
+	const ltt_session::locked_ref& session,
+	lttng::domain_class domain,
+	lttng::c_string_view channel_name,
+	const nonstd::optional<std::chrono::microseconds>& reclaim_older_than_age,
+	bool require_consumed)
 {
 	DBG_FMT("Reclaiming memory for channel: session_name=`{}`, domain={}, channel_name=`{}`, age_older_than={}, require_consumed={}",
 		session->name,
 		domain,
 		channel_name,
-		reclaim_older_than ? fmt::format("{}us", reclaim_older_than->count()) : "none",
+		reclaim_older_than_age ? fmt::format("{}us", reclaim_older_than_age->count()) :
+					 "none",
 		require_consumed);
 
 	switch (domain) {
@@ -203,34 +217,36 @@ lsc::reclaim_channel_memory(const ltt_session::locked_ref& session,
 	}
 
 	std::vector<lsc::stream_memory_reclamation_result_group> result;
+	/* Handle 32-bit ABI stream groups. */
 	if (!consumer32_channel_keys.empty()) {
 		const lttng::urcu::read_lock_guard read_lock;
 
-		reclaim_consumer_channel_memory(
-			result,
-			consumer32_channel_keys,
-			reclaim_older_than,
-			require_consumed,
+		issue_consumer_reclaim_channel_memory(
+			*consumer_find_socket_by_bitness(32, session->ust_session->consumer),
 			lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness::ABI_32,
-			channel_descriptions,
 			session,
+			channel_descriptions,
 			is_per_cpu_stream,
-			*consumer_find_socket_by_bitness(32, session->ust_session->consumer));
+			consumer32_channel_keys,
+			reclaim_older_than_age,
+			require_consumed,
+			result);
 	}
 
+	/* Handle 64-bit ABI stream groups. */
 	if (!consumer64_channel_keys.empty()) {
 		const lttng::urcu::read_lock_guard read_lock;
 
-		reclaim_consumer_channel_memory(
-			result,
-			consumer64_channel_keys,
-			reclaim_older_than,
-			require_consumed,
+		issue_consumer_reclaim_channel_memory(
+			*consumer_find_socket_by_bitness(64, session->ust_session->consumer),
 			lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness::ABI_64,
-			channel_descriptions,
 			session,
+			channel_descriptions,
 			is_per_cpu_stream,
-			*consumer_find_socket_by_bitness(64, session->ust_session->consumer));
+			consumer64_channel_keys,
+			reclaim_older_than_age,
+			require_consumed,
+			result);
 	}
 
 	/* Log results. */

@@ -1942,11 +1942,11 @@ lsc::get_channels_memory_usage(consumer_socket& socket,
 	return result;
 }
 
-std::vector<lsc::stream_memory_reclamation_result_group>
-lsc::reclaim_channels_memory(consumer_socket& socket,
-			     const std::vector<std::uint64_t>& channel_keys,
-			     const nonstd::optional<std::chrono::microseconds>& reclaim_older_than,
-			     bool require_consumed)
+std::vector<lsc::stream_memory_reclamation_result_group> lsc::reclaim_channels_memory(
+	consumer_socket& socket,
+	const std::vector<std::uint64_t>& channel_keys,
+	const nonstd::optional<std::chrono::microseconds>& reclaim_older_than_age,
+	bool require_consumed)
 {
 	LTTNG_ASSERT(!channel_keys.empty());
 
@@ -1957,9 +1957,9 @@ lsc::reclaim_channels_memory(consumer_socket& socket,
 
 	header.u.reclaim_channels_memory.key_count = channel_keys.size();
 	header.u.reclaim_channels_memory.require_consumed = require_consumed;
-	if (reclaim_older_than) {
+	if (reclaim_older_than_age) {
 		LTTNG_OPTIONAL_SET(&header.u.reclaim_channels_memory.age_limit_us,
-				   static_cast<uint64_t>(reclaim_older_than->count()));
+				   static_cast<uint64_t>(reclaim_older_than_age->count()));
 	}
 
 	health_code_update();
@@ -2021,7 +2021,11 @@ lsc::reclaim_channels_memory(consumer_socket& socket,
 
 	std::size_t current_channel_index = 0;
 	auto current_channel_key = channel_keys[0];
-	for (const auto& stream_reclamation_result : stream_reclamation_results) {
+	/*
+	 * stream_reclamation_results are potentially unaligned (since they are packed), access them
+	 * by value.
+	 */
+	for (const auto stream_reclamation_result : stream_reclamation_results) {
 		if (stream_reclamation_result.channel_key != current_channel_key) {
 			/* First stream of a new channel; change the current channel index. */
 			current_channel_index++;
@@ -2035,7 +2039,8 @@ lsc::reclaim_channels_memory(consumer_socket& socket,
 		}
 
 		result[current_channel_index].streams_reclaimed_memory.emplace_back(
-			stream_reclamation_result.bytes_reclaimed);
+			stream_reclamation_result.bytes_reclaimed,
+			stream_reclamation_result.pending_bytes_to_reclaim);
 	}
 
 	return result;

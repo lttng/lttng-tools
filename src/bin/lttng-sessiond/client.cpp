@@ -2442,22 +2442,22 @@ skip_domain:
 			reclaim_older_than,
 			(*target_session)->output_traces);
 
-		/* Sum up all reclaimed bytes from all groups and streams. */
+		/* Sum up all reclaimed and pending bytes from all groups and streams. */
 		std::uint64_t reclaimed_bytes = 0;
+		std::uint64_t pending_bytes = 0;
 		for (const auto& group : results) {
 			for (const auto& stream : group.reclaimed_streams_memory) {
-				DBG_FMT("Bytes reclaimed: {}", stream.bytes_reclaimed);
+				DBG_FMT("Bytes reclaimed: {}, pending: {}",
+					stream.bytes_reclaimed,
+					stream.pending_bytes_to_reclaim);
 				reclaimed_bytes += stream.bytes_reclaimed;
+				pending_bytes += stream.pending_bytes_to_reclaim;
 			}
 		}
 
-		/*
-		 * At this point, pending_bytes is always 0 since the backend is synchronous.
-		 * Future commits will track pending reclamation for async completion.
-		 */
 		const lttng_reclaim_channel_memory_return reclaim_return = {
 			.reclaimed_memory_size_bytes = reclaimed_bytes,
-			.pending_memory_size_bytes = 0,
+			.pending_memory_size_bytes = pending_bytes,
 		};
 
 		setup_lttng_msg_no_cmd_header(cmd_ctx, &reclaim_return, sizeof(reclaim_return));

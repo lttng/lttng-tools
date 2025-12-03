@@ -465,6 +465,11 @@ using assert_locked_cb = void (*)(struct lttng_consumer_stream *);
  */
 using reset_metadata_cb = void (*)(struct lttng_consumer_stream *);
 
+struct consumer_stream_pending_reclamation {
+	unsigned long subbuffer_count;
+	nonstd::optional<std::chrono::microseconds> max_age;
+};
+
 /*
  * Internal representation of the streams, sessiond_key is used to identify
  * uniquely a stream.
@@ -723,6 +728,8 @@ struct lttng_consumer_stream {
 	struct metadata_bucket *metadata_bucket;
 
 	std::vector<struct stream_subbuffer_transaction_state> subbuffer_transaction_states = {};
+
+	nonstd::optional<consumer_stream_pending_reclamation> pending_memory_reclamation;
 };
 
 /*
