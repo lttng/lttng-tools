@@ -17,6 +17,7 @@ lttng_relayd_SOURCES = main.cpp lttng-relayd.hpp utils.hpp utils.cpp cmd.hpp \
                        cmd-2-2.cpp cmd-2-2.hpp \
                        cmd-2-4.cpp cmd-2-4.hpp \
                        cmd-2-11.cpp cmd-2-11.hpp \
+                       cmd-2-15.cpp cmd-2-15.hpp \
                        health-relayd.cpp health-relayd.hpp \
                        lttng-viewer-abi.hpp testpoint.hpp \
                        viewer-stream.hpp viewer-stream.cpp \
