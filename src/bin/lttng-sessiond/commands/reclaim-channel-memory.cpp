@@ -24,6 +24,10 @@ using channel_description_map = std::unordered_map<
 	std::pair<std::uint64_t, lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness>,
 	lttng::sessiond::user_space_consumer_channel_keys::iterator::key>;
 
+/*
+ * Provide a hash function for the channel description map key (pair of stream group id and
+ * bitness).
+ */
 namespace std {
 template <>
 struct hash<std::pair<std::uint64_t,
@@ -40,7 +44,7 @@ struct hash<std::pair<std::uint64_t,
 				lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness>::
 					    type>(p.second));
 
-		/* Combine the two hashes */
+		/* Combine the two hashes. */
 		return key_hash ^ bitness_hash;
 	}
 };
