@@ -3752,6 +3752,11 @@ cmd_create_session_from_descriptor(struct lttng_session_descriptor *descriptor,
 		break;
 	}
 
+	new_session->trace_format = lttng_session_descriptor_get_trace_format(descriptor);
+	if (new_session->trace_format == LTTNG_TRACE_FORMAT_DEFAULT) {
+		new_session->trace_format = the_config.default_trace_format;
+	}
+
 	ret_code = set_session_output_from_descriptor(
 		[new_session]() {
 			session_get(new_session);
