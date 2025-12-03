@@ -682,6 +682,28 @@ LTTNG_EXPORT extern enum lttng_session_descriptor_status
 lttng_session_descriptor_get_session_name(const struct lttng_session_descriptor *session_descriptor,
 					  const char **session_name);
 
+/*!
+@brief
+    Sets the trace format of the recording session descriptor
+    \lt_p{session_descriptor} to \lt_p{format}.
+
+Call this to set the trace format of the recording session to create
+from \lt_p{session_descriptor} before you call
+lttng_create_session_ext().
+
+@param[in] session_descriptor
+    Recording session descriptor of which to set the trace format.
+@param[in] format
+    Trace format of \lt_p{session_descriptor}.
+
+@retval #LTTNG_SESSION_DESCRIPTOR_STATUS_OK
+    Success.
+@retval #LTTNG_SESSION_DESCRIPTOR_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{session_descriptor}
+*/
 LTTNG_EXPORT extern enum lttng_session_descriptor_status
 lttng_session_descriptor_set_trace_format(struct lttng_session_descriptor *descriptor,
 					  enum lttng_trace_format format);
