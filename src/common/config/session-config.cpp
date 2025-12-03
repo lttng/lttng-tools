@@ -1272,6 +1272,7 @@ end:
 
 static int create_session(const char *name,
 			  xmlNodePtr output_node,
+			  enum lttng_trace_format trace_format,
 			  uint64_t live_timer_interval,
 			  const struct config_load_session_override_attr *overrides)
 {
@@ -1360,6 +1361,12 @@ static int create_session(const char *name,
 	}
 
 	if (session_descriptor == nullptr) {
+		ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+		goto end;
+	}
+
+	if (lttng_session_descriptor_set_trace_format(session_descriptor, trace_format) !=
+	    LTTNG_SESSION_DESCRIPTOR_STATUS_OK) {
 		ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
 		goto end;
 	}
@@ -3441,11 +3448,15 @@ static int process_session_node(xmlNodePtr session_node,
 		ret = create_snapshot_session(
 			(const char *) name, output_node, trace_format, overrides);
 	} else if (live_timer_interval && live_timer_interval != UINT64_MAX) {
-		ret = create_session(
-			(const char *) name, output_node, live_timer_interval, overrides);
+		ret = create_session((const char *) name,
+				     output_node,
+				     trace_format,
+				     live_timer_interval,
+				     overrides);
 	} else {
 		/* regular session */
-		ret = create_session((const char *) name, output_node, UINT64_MAX, overrides);
+		ret = create_session(
+			(const char *) name, output_node, trace_format, UINT64_MAX, overrides);
 	}
 	if (ret) {
 		goto error;
