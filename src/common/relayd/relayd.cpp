@@ -243,17 +243,18 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 	size_t hostname_len;
 	size_t base_path_len;
 	size_t msg_length;
-	char *dst;
 
 	if (!base_path) {
 		base_path = "";
 	}
-	/* The three names are sent with a '\0' delimiter between them. */
+
+	/* Calculate message size. */
 	session_name_len = strlen(session_name) + 1;
 	hostname_len = strlen(hostname) + 1;
 	base_path_len = strlen(base_path) + 1;
-
 	msg_length = sizeof(*msg) + session_name_len + hostname_len + base_path_len;
+
+	/* Allocate message. */
 	msg = zmalloc<lttcomm_relayd_create_session_2_11>(msg_length);
 	if (!msg) {
 		PERROR("zmalloc create_session_2_11 command message");
@@ -261,42 +262,22 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 		goto error;
 	}
 
-	LTTNG_ASSERT(session_name_len <= UINT32_MAX);
-	msg->base.session_name_len = htobe32(session_name_len);
-
-	LTTNG_ASSERT(hostname_len <= UINT32_MAX);
-	msg->base.hostname_len = htobe32(hostname_len);
-
-	LTTNG_ASSERT(base_path_len <= UINT32_MAX);
-	msg->base.base_path_len = htobe32(base_path_len);
-
-	dst = msg->names;
-	if (lttng_strncpy(dst, session_name, session_name_len)) {
-		ret = -1;
+	/* Populate base fields and names using common helper. */
+	ret = relayd_create_session_2_11_base_populate(&msg->base,
+						       msg->names,
+						       session_name,
+						       hostname,
+						       base_path,
+						       session_live_timer,
+						       snapshot,
+						       sessiond_session_id,
+						       sessiond_uuid,
+						       current_chunk_id,
+						       creation_time,
+						       session_name_contains_creation_time);
+	if (ret < 0) {
 		goto error;
 	}
-	dst += session_name_len;
-	if (lttng_strncpy(dst, hostname, hostname_len)) {
-		ret = -1;
-		goto error;
-	}
-	dst += hostname_len;
-	if (lttng_strncpy(dst, base_path, base_path_len)) {
-		ret = -1;
-		goto error;
-	}
-
-	msg->base.live_timer = htobe32(session_live_timer);
-	msg->base.snapshot = !!snapshot;
-
-	std::copy(sessiond_uuid.begin(), sessiond_uuid.end(), msg->base.sessiond_uuid);
-	msg->base.session_id = htobe64(sessiond_session_id);
-	msg->base.session_name_contains_creation_time = session_name_contains_creation_time;
-	if (current_chunk_id) {
-		LTTNG_OPTIONAL_SET(&msg->base.current_chunk_id, htobe64(*current_chunk_id));
-	}
-
-	msg->base.creation_time = htobe64((uint64_t) creation_time);
 
 	/* Send command */
 	ret = send_command(*rsock, RELAYD_CREATE_SESSION, msg, msg_length, 0);
@@ -327,6 +308,7 @@ error:
 	free(msg);
 	return ret;
 }
+
 /*
  * From 2.4 to 2.10, RELAYD_CREATE_SESSION takes additional parameters to
  * support the live reading capability.
