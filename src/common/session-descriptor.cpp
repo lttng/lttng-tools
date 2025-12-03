@@ -10,6 +10,7 @@
 #include <common/uri.hpp>
 
 #include <lttng/session-descriptor-internal.hpp>
+#include <lttng/session-descriptor.h>
 
 #include <stdio.h>
 #include <time.h>
@@ -844,6 +845,12 @@ enum lttng_session_descriptor_output_type
 lttng_session_descriptor_get_output_type(const struct lttng_session_descriptor *descriptor)
 {
 	return descriptor->output_type;
+}
+
+enum lttng_trace_format
+lttng_session_descriptor_get_trace_format(const struct lttng_session_descriptor *descriptor)
+{
+	return descriptor->trace_format;
 }
 
 void lttng_session_descriptor_get_local_output_uri(
