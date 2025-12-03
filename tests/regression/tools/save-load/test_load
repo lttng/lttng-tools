@@ -12,7 +12,7 @@ TESTDIR=$CURDIR/../../../
 
 SESSION_NAME="load-42"
 
-NUM_TESTS=90
+NUM_TESTS=94
 
 # shellcheck source-path=SCRIPTDIR/../../..
 source "$TESTDIR/utils/utils.sh"
@@ -356,6 +356,19 @@ function test_trace_format_one()
 	rm -f "$mi_output_file"
 }
 
+function test_trace_format()
+{
+	diag "Test trace format loading"
+
+	# Test loading session with CTF 2 trace format
+	# (`load-42.lttng` has CTF 2).
+	test_trace_format_one \
+		"$CURDIR/$SESSION_NAME.lttng" \
+		"$SESSION_NAME" \
+		CTF_2 \
+		"With CTF 2: loads correctly"
+}
+
 start_lttng_sessiond
 
 test_basic_load
@@ -367,5 +380,6 @@ test_override_session_name
 test_override_url_normal
 test_override_url_snapshot
 test_override_url_live
+test_trace_format
 
 stop_lttng_sessiond
