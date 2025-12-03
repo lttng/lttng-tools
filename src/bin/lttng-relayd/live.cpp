@@ -1272,96 +1272,68 @@ static int viewer_list_sessions(struct relay_connection *conn)
 {
 	int ret = 0;
 	struct lttng_viewer_list_sessions session_list;
-	struct lttng_viewer_session_2_4 *send_session_buf = nullptr;
-	uint32_t buf_count = SESSION_BUF_DEFAULT_COUNT;
 	uint32_t count = 0;
+	struct lttng_dynamic_buffer payload;
+	const auto proto_supports_ctf2 = conn->minor >= 15;
+	const auto serialize_viewer_session = proto_supports_ctf2 ? serialize_viewer_session_2_15 :
+								    serialize_viewer_session_2_4;
 
-	send_session_buf = calloc<lttng_viewer_session_2_4>(SESSION_BUF_DEFAULT_COUNT);
-	if (!send_session_buf) {
-		return -1;
-	}
+	lttng_dynamic_buffer_init(&payload);
 
 	for (auto *session :
 	     lttng::urcu::lfht_iteration_adapter<relay_session,
 						 decltype(relay_session::session_n),
 						 &relay_session::session_n>(*sessions_ht->ht)) {
-		struct lttng_viewer_session_2_4 *send_session;
-
 		health_code_update();
 
 		pthread_mutex_lock(&session->lock);
 		if (session->connection_closed) {
-			/* Skip closed session */
-			goto next_session;
+			pthread_mutex_unlock(&session->lock);
+			continue;
 		}
 
-		if (count >= buf_count) {
-			struct lttng_viewer_session_2_4 *newbuf;
-			const uint32_t new_buf_count = buf_count << 1;
+		/*
+		 * Skip CTF 2 sessions when the viewer is using protocol < 2.15.
+		 * Protocol 2.4 doesn't support communicating the trace format,
+		 * so viewers would incorrectly decode CTF 2 data as CTF 1.8.
+		 */
+		if (!proto_supports_ctf2 && session->trace_format == LTTNG_TRACE_FORMAT_CTF_2) {
+			pthread_mutex_unlock(&session->lock);
+			continue;
+		}
 
-			newbuf = (lttng_viewer_session_2_4 *) realloc(
-				send_session_buf, new_buf_count * sizeof(*send_session_buf));
-			if (!newbuf) {
-				ret = -1;
-				goto break_loop;
-			}
-			send_session_buf = newbuf;
-			buf_count = new_buf_count;
+		ret = serialize_viewer_session(session, &payload);
+
+		pthread_mutex_unlock(&session->lock);
+
+		if (ret) {
+			goto end;
 		}
-		send_session = &send_session_buf[count];
-		if (lttng_strncpy(send_session->session_name,
-				  session->session_name,
-				  sizeof(send_session->session_name))) {
-			ret = -1;
-			goto break_loop;
-		}
-		if (lttng_strncpy(send_session->hostname,
-				  session->hostname,
-				  sizeof(send_session->hostname))) {
-			ret = -1;
-			goto break_loop;
-		}
-		send_session->common.id = htobe64(session->id);
-		send_session->common.live_timer = htobe32(session->live_timer);
-		if (session->viewer_attached) {
-			send_session->common.clients = htobe32(1);
-		} else {
-			send_session->common.clients = htobe32(0);
-		}
-		send_session->common.streams = htobe32(session->stream_count);
+
 		count++;
-	next_session:
-		pthread_mutex_unlock(&session->lock);
-		continue;
-	break_loop:
-		pthread_mutex_unlock(&session->lock);
-		break;
-	}
-
-	if (ret < 0) {
-		goto end_free;
 	}
 
 	session_list.sessions_count = htobe32(count);
 
 	health_code_update();
-
 	ret = send_response(conn->sock, &session_list, sizeof(session_list));
 	if (ret < 0) {
-		goto end_free;
+		goto end;
 	}
 
 	health_code_update();
-
-	ret = send_response(conn->sock, send_session_buf, count * sizeof(*send_session_buf));
-	if (ret < 0) {
-		goto end_free;
+	if (payload.size > 0) {
+		ret = send_response(conn->sock, payload.data, payload.size);
+		if (ret < 0) {
+			goto end;
+		}
 	}
 	health_code_update();
 
 	ret = 0;
-end_free:
-	free(send_session_buf);
+
+end:
+	lttng_dynamic_buffer_reset(&payload);
 	return ret;
 }
 
