@@ -20,6 +20,7 @@
 #include <common/utils.hpp>
 
 #include <lttng/lttng.h>
+#include <lttng/session-descriptor.h>
 
 #include <ctype.h>
 #include <popt.h>
@@ -253,6 +254,26 @@ static struct lttng_session_descriptor *create_session_descriptor(const char *se
 	if (!descriptor) {
 		ERR("Failed to initialize session creation command.");
 		goto end;
+	}
+
+	if (opt_trace_format) {
+		enum lttng_trace_format format;
+
+		if (strcmp(opt_trace_format, "ctf-2") == 0) {
+			format = LTTNG_TRACE_FORMAT_CTF_2;
+		} else if (strcmp(opt_trace_format, "ctf-1.8") == 0) {
+			format = LTTNG_TRACE_FORMAT_CTF_1_8;
+		} else {
+			format = LTTNG_TRACE_FORMAT_DEFAULT;
+		}
+
+		if (lttng_session_descriptor_set_trace_format(descriptor, format) !=
+		    LTTNG_SESSION_DESCRIPTOR_STATUS_OK) {
+			ERR("Failed to set session trace format");
+			lttng_session_descriptor_destroy(descriptor);
+			descriptor = nullptr;
+			goto end;
+		}
 	}
 
 	if (!opt_url && !opt_ctrl_url && !opt_data_url && opt_live_timer && !check_relayd()) {
