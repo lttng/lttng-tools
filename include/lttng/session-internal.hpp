@@ -23,6 +23,9 @@ struct lttng_session_extended {
 	struct {
 		char value[LTTNG_PATH_MAX];
 	} LTTNG_PACKED shm_path;
+
+	/* enum lttng_trace_format */
+	uint8_t trace_format;
 } LTTNG_PACKED;
 
 #endif /* LTTNG_SESSION_INTERNAL_H */
