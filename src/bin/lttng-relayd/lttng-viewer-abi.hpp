@@ -115,6 +115,18 @@ struct lttng_viewer_session_2_4 {
 	char session_name[LTTNG_VIEWER_NAME_MAX];
 } LTTNG_PACKED;
 
+/* Protocol 2.15 session structure with variable-length strings and trace format */
+struct lttng_viewer_session_2_15 {
+	struct lttng_viewer_session_common common;
+	/* Length of hostname string (no null terminator) */
+	uint32_t hostname_len;
+	/* Length of session name string (no null terminator) */
+	uint32_t session_name_len;
+	uint32_t trace_format;
+	/* Hostname goes here (length: hostname_len, not null-terminated) */
+	/* Session name goes here (length: session_name_len, not null-terminated) */
+} LTTNG_PACKED;
+
 struct lttng_viewer_stream {
 	uint64_t id;
 	uint64_t ctf_trace_id;
@@ -145,7 +157,7 @@ struct lttng_viewer_connect {
  */
 struct lttng_viewer_list_sessions {
 	uint32_t sessions_count;
-	char session_list[]; /* struct lttng_viewer_session_2_4 */
+	char session_list[]; /* struct lttng_viewer_session_2_4 or lttng_viewer_session_2_15 */
 } LTTNG_PACKED;
 
 /*
