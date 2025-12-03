@@ -965,7 +965,9 @@ Even if the system is limited in memory, you want to keep the
 sub-buffers as large as possible to avoid a high sub-buffer switching
 frequency.
 
-Note that LTTng uses https://diamon.org/ctf/[CTF] as its trace format,
+Note that LTTng uses https://diamon.org/ctf/[CTF] as its trace format
+(see the nloption:--trace-format option of the man:lttng-create(1)
+command),
 which means event record data is very compact. For example, the average
 LTTng kernel event record weights about 32{nbsp}bytes. Therefore, a
 sub-buffer size of 1{nbsp}MiB is considered large.
