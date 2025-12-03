@@ -142,6 +142,18 @@ lttng_viewer_next_index_return_code_str(enum lttng_viewer_next_index_return_code
 	}
 }
 
+static lttng_live_trace_format trace_format_to_live_format(const lttng_trace_format format)
+{
+	switch (format) {
+	case LTTNG_TRACE_FORMAT_CTF_1_8:
+		return LTTNG_LIVE_TRACE_FORMAT_CTF_1_8;
+	case LTTNG_TRACE_FORMAT_CTF_2:
+		return LTTNG_LIVE_TRACE_FORMAT_CTF_2;
+	default:
+		abort();
+	}
+}
+
 static const char *lttng_viewer_attach_return_code_str(enum lttng_viewer_attach_return_code code)
 {
 	switch (code) {
