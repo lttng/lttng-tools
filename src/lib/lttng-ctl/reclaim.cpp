@@ -72,7 +72,7 @@ enum lttng_reclaim_channel_memory_status
 lttng_reclaim_channel_memory(const char *session_name,
 			     const char *channel_name,
 			     enum lttng_domain_type domain,
-			     uint64_t older_than_us,
+			     uint64_t older_than_age_us,
 			     struct lttng_reclaim_handle **handle)
 {
 	lttcomm_session_msg lsm = {};
@@ -104,7 +104,7 @@ lttng_reclaim_channel_memory(const char *session_name,
 		return LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_INVALID_PARAMETER;
 	}
 
-	lsm.u.reclaim_channel_memory.older_than_us = older_than_us;
+	lsm.u.reclaim_channel_memory.older_than_age_us = older_than_age_us;
 
 	/* Connect to session daemon. Socket is managed by stream_descriptor (RAII). */
 	const auto sessiond_socket_fd = connect_sessiond();
