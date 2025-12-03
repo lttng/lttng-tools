@@ -1230,6 +1230,13 @@ __lttng_complete_create_cmd() {
     )
   fi
 
+  # The `--trace-format` option requires LTTng-tools ≥ 2.15
+  if ((minor_version >= 15)); then
+    specs+=(
+      '(-F --trace-format)'{-F+,--trace-format=}'[set the trace format]:trace format:(ctf-1.8 ctf-2 default)'
+    )
+  fi
+
   # Add the remaining option groups
   specs+=(
     + '(output)'
