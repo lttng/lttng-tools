@@ -788,6 +788,7 @@ class _Environment(logger._Logger):
         skip_temporary_lttng_home=False,  # type: bool
         enable_kernel_domain=False,  # type: bool
         skip_temporary_lttng_rundir=False,  # type: bool
+        sessiond_extra_args=None,  # type: Optional[List[str]]
     ):
         super().__init__(log)
         signal.signal(signal.SIGTERM, self._handle_termination_signal)
@@ -841,6 +842,7 @@ class _Environment(logger._Logger):
         self._dummy_users = {}  # type: Dictionary[int, string]
         self.teardown_timeout = os.getenv("LTTNG_TEST_TEARDOWN_TIMEOUT", "60")
         self._sessiond = None
+        self._sessiond_extra_args = sessiond_extra_args if sessiond_extra_args else []
 
         # Start daemons as required
         self._relayd = (
@@ -1253,6 +1255,8 @@ class _Environment(logger._Logger):
                 sessiond_command.extend(["-vvv", "--verbose-consumer"])
             if not enable_kernel_domain:
                 sessiond_command.extend(["--no-kernel"])
+            if self._sessiond_extra_args:
+                sessiond_command.extend(self._sessiond_extra_args)
             self._lttng_sessiond_log_file = None
             if self.lttng_log_dir:
                 self._lttng_sessiond_log_file = tempfile.NamedTemporaryFile(
@@ -1643,8 +1647,9 @@ def test_environment(
     skip_temporary_lttng_home=False,
     enable_kernel_domain=False,
     skip_temporary_lttng_rundir=False,
+    sessiond_extra_args=None,
 ):
-    # type: (bool, Optional[Callable[[str], None]], bool) -> Iterator[_Environment]
+    # type: (bool, Optional[Callable[[str], None]], bool, dict, bool, bool, bool, Optional[List[str]]) -> Iterator[_Environment]
     env = _Environment(
         with_sessiond,
         log,
@@ -1653,6 +1658,7 @@ def test_environment(
         skip_temporary_lttng_home,
         enable_kernel_domain,
         skip_temporary_lttng_rundir,
+        sessiond_extra_args,
     )
     try:
         yield env
