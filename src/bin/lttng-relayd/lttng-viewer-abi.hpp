@@ -122,10 +122,16 @@ struct lttng_viewer_session_2_15 {
 	uint32_t hostname_len;
 	/* Length of session name string (no null terminator) */
 	uint32_t session_name_len;
-	uint32_t trace_format;
+	uint32_t trace_format; /* enum lttng_live_trace_format */
 	/* Hostname goes here (length: hostname_len, not null-terminated) */
 	/* Session name goes here (length: session_name_len, not null-terminated) */
 } LTTNG_PACKED;
+
+/* Trace format enumeration for live protocol */
+enum lttng_live_trace_format {
+	LTTNG_LIVE_TRACE_FORMAT_CTF_1_8 = 0,
+	LTTNG_LIVE_TRACE_FORMAT_CTF_2 = 1,
+};
 
 struct lttng_viewer_stream {
 	uint64_t id;
