@@ -414,6 +414,8 @@ static const char *lttng_error_code_str(lttng_error_code code)
 		return "Failed to flush stream buffer";
 	case LTTNG_ERR_INVALID_RECLAMATION_POLICY:
 		return "Invalid reclamation policy for this channel";
+	case LTTNG_ERR_UNSUPPORTED_TRACE_FORMAT:
+		return "Trace format is not supported";
 	case LTTNG_ERR_NR:
 		abort();
 	}

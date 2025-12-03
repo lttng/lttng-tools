@@ -689,6 +689,8 @@ enum lttng_error_code {
 	/// Invalid reclamation policy.
 	LTTNG_ERR_INVALID_RECLAMATION_POLICY = 171,
 
+	LTTNG_ERR_UNSUPPORTED_TRACE_FORMAT = 172,
+
 	/* MUST be last element of the manually-assigned section of the enum */
 	/// @cond INTERNAL_ERR_CODES
 	LTTNG_ERR_NR,
