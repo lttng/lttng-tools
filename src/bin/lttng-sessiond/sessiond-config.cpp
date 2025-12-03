@@ -151,6 +151,26 @@ int sessiond_config_apply_env_config(struct sessiond_config *config)
 	if (env_value) {
 		config_string_set_static(&config->kmod_extra_probes_list, env_value);
 	}
+
+	/*
+	 * Use getenv() instead of lttng_secure_getenv(): there is no security
+	 * concern with specifying a default trace format, so a non-privileged
+	 * user may set this.
+	 */
+	env_value = getenv("LTTNG_SESSIOND_DEFAULT_TRACE_FORMAT");
+	if (env_value) {
+		if (strcmp(env_value, "ctf-1.8") == 0) {
+			config->default_trace_format = LTTNG_TRACE_FORMAT_CTF_1_8;
+		} else if (strcmp(env_value, "ctf-2") == 0) {
+			config->default_trace_format = LTTNG_TRACE_FORMAT_CTF_2;
+		} else {
+			ERR_FMT("Invalid value `{}` for `LTTNG_SESSIOND_DEFAULT_TRACE_FORMAT` environment variable: "
+				"expecting `ctf-1.8` or `ctf-2`",
+				env_value);
+			ret = -1;
+			goto end;
+		}
+	}
 end:
 	return ret;
 }
