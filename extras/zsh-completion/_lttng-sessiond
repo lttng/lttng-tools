@@ -131,6 +131,13 @@ __lttng_complete_lttng_sessiond() {
     )
   fi
 
+  # LTTng-tools 2.15+
+  if ((minor_version >= 15)); then
+    specs+=(
+      '--default-trace-format=[set the default trace format of recording sessions]:trace format:(ctf-1.8 ctf-2)'
+    )
+  fi
+
   _arguments -C -s -w : $specs
 }
 
