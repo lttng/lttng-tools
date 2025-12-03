@@ -137,6 +137,20 @@ function test_overwrite()
 	destroy_lttng_session_ok $SESSION_NAME
 }
 
+function test_save_trace_format_one()
+{
+	local -r trace_format_opt=$1
+	local -r expected_format=$2
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH" --trace-format=$trace_format_opt
+	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	lttng_save $SESSION_NAME -f -o "$TRACE_PATH"
+	is_session_saved "$TRACE_PATH" $SESSION_NAME
+	check_saved_trace_format "$TRACE_PATH" $SESSION_NAME $expected_format
+	destroy_lttng_session_ok $SESSION_NAME
+}
+
 start_lttng_sessiond
 
 TESTS=(
