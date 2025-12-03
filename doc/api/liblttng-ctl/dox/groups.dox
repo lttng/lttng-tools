@@ -349,6 +349,8 @@ The recording session operations are:
       - lttng_session_get_creation_time()
       - lttng_set_session_shm_path()
       - lttng_data_pending()
+      - lttng_session_descriptor_set_trace_format()
+      - lttng_get_session_trace_format()
   <tr>
     <td>\lt_obj_c_domain access
     <td>
@@ -736,6 +738,15 @@ To create a recording session from a recording session descriptor:
      <dd>
        lttng_session_descriptor_live_network_create()
    </dl>
+
+-# <strong>Optional</strong>: Set the trace format of the recording
+   session descriptor with lttng_session_descriptor_set_trace_format().
+
+   The default trace format is #LTTNG_TRACE_FORMAT_DEFAULT:
+   the recording session will use the default trace format of the
+   \ref api-gen-sessiond-conn "connected session daemon" (see the
+   <code>\--default-trace-format</code> option of
+   \lt_man{lttng-sessiond,8}).
 
 -# Call lttng_create_session_ext(), passing the recording session
    descriptor of step&nbsp;1.
@@ -1415,7 +1426,8 @@ along with how to configure the sub-buffer size and count for them:
 </dl>
 
 Note that LTTng uses <a href="https://diamon.org/ctf/">CTF</a> as its
-trace format, which means event record data is very compact. For
+trace format (see lttng_session_descriptor_set_trace_format()),
+which means event record data is very compact. For
 example, the average LTTng kernel event record weights about
 32&nbsp;bytes. Therefore, a sub-buffer size of 1&nbsp;MiB is considered
 large.
