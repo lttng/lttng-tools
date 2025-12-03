@@ -2704,6 +2704,17 @@ static int save_session(const ltt_session::locked_ref& session,
 		}
 	}
 
+	ret = config_writer_write_element_string(writer,
+						 config_element_trace_format,
+						 session->trace_format ==
+								 LTTNG_TRACE_FORMAT_CTF_1_8 ?
+							 config_element_trace_format_ctf_1_8 :
+							 config_element_trace_format_ctf_2);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
 	ret = save_domains(writer, session);
 	if (ret != LTTNG_OK) {
 		goto end;
