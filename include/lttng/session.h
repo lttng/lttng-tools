@@ -13,7 +13,10 @@
 extern "C" {
 #endif
 
+#include <lttng/constant.h>
+#include <lttng/lttng-error.h>
 #include <lttng/lttng-export.h>
+#include <lttng/session-descriptor.h>
 
 /*!
 @addtogroup api_session
@@ -41,6 +44,11 @@ enum lttng_get_session_shm_path_status {
 
 	/// Unsatisfied precondition.
 	LTTNG_GET_SESSION_SHM_PATH_STATUS_INVALID_PARAMETER = -1,
+};
+
+enum lttng_get_session_trace_format_status {
+	LTTNG_GET_SESSION_TRACE_FORMAT_STATUS_OK = 0,
+	LTTNG_GET_SESSION_TRACE_FORMAT_STATUS_INVALID = -1,
 };
 
 /*!
@@ -628,6 +636,10 @@ lttng_set_session_shm_path(); it returns
 */
 LTTNG_EXPORT extern enum lttng_get_session_shm_path_status
 lttng_get_session_shm_path_override(const struct lttng_session *session, const char **shm_dir);
+
+LTTNG_EXPORT extern enum lttng_get_session_trace_format_status
+lttng_get_session_trace_format(const struct lttng_session *session,
+			       enum lttng_trace_format *format);
 
 /// @}
 
