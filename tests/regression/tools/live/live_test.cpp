@@ -28,6 +28,7 @@
 #include <tap/tap.h>
 #include <unistd.h>
 #include <urcu/list.h>
+#include <vector>
 
 #define SESSION1   "test1"
 #define RELAYD_URL "net://localhost"
@@ -151,7 +152,7 @@ static int establish_connection()
 
 	memset(&connect, 0, sizeof(connect));
 	connect.major = htobe32(VERSION_MAJOR);
-	connect.minor = htobe32(14);
+	connect.minor = htobe32(VERSION_MINOR);
 	connect.type = htobe32(LTTNG_VIEWER_CLIENT_COMMAND);
 
 	ret_len = lttng_live_send(control_sock, &cmd, sizeof(cmd));
@@ -187,7 +188,6 @@ static int list_sessions(uint64_t *session_id)
 {
 	struct lttng_viewer_cmd cmd;
 	struct lttng_viewer_list_sessions list;
-	struct lttng_viewer_session_2_4 lsession;
 	int i;
 	ssize_t ret_len;
 	int first_session = 0;
@@ -212,15 +212,42 @@ static int list_sessions(uint64_t *session_id)
 		goto error;
 	}
 
-	for (i = 0; i < be32toh(list.sessions_count); i++) {
-		ret_len = lttng_live_recv(control_sock, &lsession, sizeof(lsession));
-		if (ret_len < 0) {
-			diag("Error receiving session");
+	for (i = 0; i < (int) be32toh(list.sessions_count); i++) {
+		/* Protocol 2.15+: header + variable-length strings. */
+		struct lttng_viewer_session_2_15 s15;
+		uint32_t hostname_len, session_name_len;
+
+		ret_len = lttng_live_recv(control_sock, &s15, sizeof(s15));
+		if (ret_len <= 0) {
+			diag("Error receiving session header (2.15)");
 			goto error;
 		}
-		if (lsession.common.streams > 0 && first_session <= 0) {
-			first_session = be64toh(lsession.common.id);
-			*session_id = first_session;
+
+		hostname_len = be32toh(s15.hostname_len);
+		session_name_len = be32toh(s15.session_name_len);
+
+		if (hostname_len > 0) {
+			std::vector<char> hostname(hostname_len);
+			ret_len = lttng_live_recv(control_sock, hostname.data(), hostname_len);
+			if (ret_len <= 0) {
+				diag("Error receiving session hostname (2.15)");
+				goto error;
+			}
+		}
+
+		if (session_name_len > 0) {
+			std::vector<char> session_name(session_name_len);
+			ret_len = lttng_live_recv(
+				control_sock, session_name.data(), session_name_len);
+			if (ret_len <= 0) {
+				diag("Error receiving session name (2.15)");
+				goto error;
+			}
+		}
+
+		if (be32toh(s15.common.streams) > 0 && first_session <= 0) {
+			first_session = (int) be64toh(s15.common.id);
+			*session_id = be64toh(s15.common.id);
 		}
 	}
 
