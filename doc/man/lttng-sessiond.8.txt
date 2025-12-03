@@ -95,6 +95,7 @@ INI configuration file example:
 ----
 [sessiond]
 daemonize=yes
+default-trace-format=ctf-1.8
 extra-kmod-probes=my-driver,other-module
 ----
 
