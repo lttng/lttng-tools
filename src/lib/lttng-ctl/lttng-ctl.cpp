@@ -2267,6 +2267,20 @@ lttng_get_session_shm_path_override(const lttng_session *session, const char **s
 					LTTNG_GET_SESSION_SHM_PATH_STATUS_OK;
 }
 
+enum lttng_get_session_trace_format_status
+lttng_get_session_trace_format(const struct lttng_session *session, enum lttng_trace_format *format)
+{
+	struct lttng_session_extended *extended;
+
+	if (!session || !format || !session->extended.ptr) {
+		return LTTNG_GET_SESSION_TRACE_FORMAT_STATUS_INVALID;
+	}
+
+	extended = (lttng_session_extended *) session->extended.ptr;
+	*format = (enum lttng_trace_format) extended->trace_format;
+	return LTTNG_GET_SESSION_TRACE_FORMAT_STATUS_OK;
+}
+
 int lttng_set_session_shm_path(const char *session_name, const char *shm_path)
 {
 	int ret;
