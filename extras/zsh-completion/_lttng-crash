@@ -23,10 +23,10 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 #
 # This is a Zsh completion function for the lttng-crash(1) command (see
-# <https://lttng.org/>), for versions 2.7 to 2.14.
+# <https://lttng.org/>), for versions 2.7 to 2.15.
 #
 # If you want, at your own risk, the function to work with versions
-# above 2.14, set `LTTNG_ZSH_COMP_IGNORE_VERSION_LIMIT=1`.
+# above 2.15, set `LTTNG_ZSH_COMP_IGNORE_VERSION_LIMIT=1`.
 
 # Sets the `minor_version` variable to the minor version of LTTng-tools,
 # or to `0` if not found.
@@ -63,10 +63,10 @@ local -i minor_version
 
 __lttng_set_minor_version
 
-# Exit now with LTTng-tools < 2.7 or LTTng-tools > 2.14
+# Exit now with LTTng-tools < 2.7 or LTTng-tools > 2.15
 local -r ignore_version_limit=${LTTNG_ZSH_COMP_IGNORE_VERSION_LIMIT:-0}
 
-if ((minor_version < 7 || (minor_version > 14 && !ignore_version_limit))); then
+if ((minor_version < 7 || (minor_version > 15 && !ignore_version_limit))); then
   _message "completion not available for LTTng-tools 2.$minor_version; please update the completion files or set \`LTTNG_ZSH_COMP_IGNORE_VERSION_LIMIT=1\`"
   return 1
 fi
