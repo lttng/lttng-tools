@@ -144,6 +144,85 @@ error:
  * Length for both payloads is stored in the msg struct. A new dynamic size
  * payload size is introduced.
  */
+/*
+ * Common helper to populate base fields for 2.11+ create session messages.
+ * Returns 0 on success, negative value on error.
+ */
+static int relayd_create_session_2_11_base_populate(
+	struct lttcomm_relayd_create_session_2_11_base *base_header,
+	char *names_buffer,
+	const char *session_name,
+	const char *hostname,
+	const char *base_path,
+	int session_live_timer,
+	unsigned int snapshot,
+	uint64_t sessiond_session_id,
+	const lttng_uuid& sessiond_uuid,
+	const uint64_t *current_chunk_id,
+	time_t creation_time,
+	bool session_name_contains_creation_time)
+{
+	int ret;
+	size_t session_name_len;
+	size_t hostname_len;
+	size_t base_path_len;
+	char *dst;
+
+	if (!base_path) {
+		base_path = "";
+	}
+
+	/* The three names are sent with a '\0' delimiter between them. */
+	session_name_len = strlen(session_name) + 1;
+	hostname_len = strlen(hostname) + 1;
+	base_path_len = strlen(base_path) + 1;
+
+	/* Populate length fields in base header. */
+	LTTNG_ASSERT(session_name_len <= UINT32_MAX);
+	base_header->session_name_len = htobe32(session_name_len);
+
+	LTTNG_ASSERT(hostname_len <= UINT32_MAX);
+	base_header->hostname_len = htobe32(hostname_len);
+
+	LTTNG_ASSERT(base_path_len <= UINT32_MAX);
+	base_header->base_path_len = htobe32(base_path_len);
+
+	/* Copy names into the buffer. */
+	dst = names_buffer;
+	if (lttng_strncpy(dst, session_name, session_name_len)) {
+		ret = -1;
+		goto error;
+	}
+	dst += session_name_len;
+	if (lttng_strncpy(dst, hostname, hostname_len)) {
+		ret = -1;
+		goto error;
+	}
+	dst += hostname_len;
+	if (lttng_strncpy(dst, base_path, base_path_len)) {
+		ret = -1;
+		goto error;
+	}
+
+	/* Populate base fields. */
+	base_header->live_timer = htobe32(session_live_timer);
+	base_header->snapshot = !!snapshot;
+
+	std::copy(sessiond_uuid.begin(), sessiond_uuid.end(), base_header->sessiond_uuid);
+	base_header->session_id = htobe64(sessiond_session_id);
+	base_header->session_name_contains_creation_time = session_name_contains_creation_time;
+	if (current_chunk_id) {
+		LTTNG_OPTIONAL_SET(&base_header->current_chunk_id, htobe64(*current_chunk_id));
+	}
+
+	base_header->creation_time = htobe64((uint64_t) creation_time);
+
+	ret = 0;
+
+error:
+	return ret;
+}
+
 static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 				      const char *session_name,
 				      const char *hostname,
