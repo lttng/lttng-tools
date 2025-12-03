@@ -34,6 +34,14 @@ function get_env_value ()
 	fi
 }
 
+function get_env_value_ctf2 ()
+{
+	local metadata_file=$1
+	local key=$2
+
+	"$TESTDIR/utils/extract_ctf_2_prop.py" "$metadata_file" trace-class "environment/$key"
+}
+
 function iso8601_to_lttng_dir_datetime ()
 {
 	local result=$1
