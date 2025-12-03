@@ -173,10 +173,10 @@ int snapshot_output_init(const ltt_session::locked_ref& session,
 		goto error;
 	}
 
-	if (utils_force_experimental_ctf_2() && uris[0].dtype != LTTNG_DST_PATH) {
-		ERR_FMT("Disallowing the use of a network snapshot output with CTF 2 format: session_name=`{}`",
+	if (session->trace_format == LTTNG_TRACE_FORMAT_CTF_2 && uris[0].dtype != LTTNG_DST_PATH) {
+		ERR_FMT("CTF 2 trace format is not supported with network snapshot output: session_name=`{}`",
 			session->name);
-		ret = -LTTNG_ERR_INVALID;
+		ret = -LTTNG_ERR_UNSUPPORTED_TRACE_FORMAT;
 		goto error;
 	}
 
