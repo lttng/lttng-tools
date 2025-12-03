@@ -37,8 +37,7 @@ def context_trace_field_name(context_type):
     elif isinstance(context_type, lttngtest.VgidContextType):
         return "vgid"
     elif isinstance(context_type, lttngtest.JavaApplicationContextType):
-        # Depends on the trace format and will need to be adapted for CTF 2.
-        return "_app_{retriever}_{name}".format(
+        return "$app.{retriever}:{name}".format(
             retriever=context_type.retriever_name, name=context_type.field_name
         )
     else:

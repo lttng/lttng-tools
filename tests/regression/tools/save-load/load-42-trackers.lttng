@@ -64,6 +64,7 @@
 			</domain>
 		</domains>
 		<started>false</started>
+		<trace_format>CTF_2</trace_format>
 		<output>
 			<consumer_output>
 				<enabled>true</enabled>

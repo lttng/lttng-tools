@@ -21,15 +21,8 @@ source "$CURDIR/utils.sh"
 
 function test_kernel ()
 {
-	local metadata_path
-	local metadata
-	local metadata_env
-
 	local expected_path="${TRACE_PATH}/lttng-traces"
 	local session_name="kernel"
-
-	metadata=$(mktemp -t "tmp.test_kernel_metadata.XXXXXX")
-	metadata_env=$(mktemp -t "tmp.test_kernel_metadata_env.XXXXXX")
 
 	diag "Test Kernel metadata env field"
 	create_lttng_session_ok "$session_name"
@@ -41,16 +34,7 @@ function test_kernel ()
 	stop_lttng_tracing_ok "$session_name"
 	destroy_lttng_session_ok "$session_name"
 
-	# bt1 accepts only a directory while bt2 accepts either the metadata
-	# file directly or a directory with an immediate metadata file.
-	# Settle for the common denominator.
-	metadata_path=$(find "${expected_path}/${session_name}"* -name "metadata")
-	metadata_path=$(dirname "$metadata_path")
-
-	_run_babeltrace_cmd --output-format=ctf-metadata "${metadata_path}" > "$metadata"
-
-	# Extract "env" scope
-	awk '/env {/,/};/' < "$metadata" > "$metadata_env"
+	local metadata_path=$(find "${expected_path}/${session_name}"* -name "metadata")
 
 	# Construct the expected path from the env metadata and use it to
 	# validate that all information make sense. This information is present
@@ -58,20 +42,20 @@ function test_kernel ()
 
 	# Trace name
 	local trace_name
-	trace_name=$(get_env_value "$metadata_env" trace_name)
+	trace_name=$(get_env_value_ctf2 "$metadata_path" trace_name)
 	ok $? "Extracting trace_name from env metadata: \`$trace_name\`"
 	expected_path="${expected_path}/${trace_name}"
 
 	# Session creation time
 	local trace_creation_datetime
-	trace_creation_datetime=$(get_env_value "$metadata_env" trace_creation_datetime)
+	trace_creation_datetime=$(get_env_value_ctf2 "$metadata_path" trace_creation_datetime)
 	ok $? "Extracting trace_creation_datetime from env metadata: \`$trace_creation_datetime\`"
 	trace_creation_datetime=$(iso8601_to_lttng_dir_datetime "$trace_creation_datetime")
 	expected_path="${expected_path}-${trace_creation_datetime}"
 
 	# Domain
 	local domain
-	domain=$(get_env_value "$metadata_env" domain)
+	domain=$(get_env_value_ctf2 "$metadata_path" domain)
 	ok $? "Extracting domain from env metadata: \`$domain\`"
 	expected_path="${expected_path}/${domain}"
 
@@ -85,12 +69,9 @@ function test_kernel ()
 	# The hostname is not part of the lttng hierarchy still we can test for
 	# its validity here.
 	local hostname
-	hostname=$(get_env_value "$metadata_env" hostname)
+	hostname=$(get_env_value_ctf2 "$metadata_path" hostname)
 	ok $? "Extracting hostname from env metadata: \`$hostname\`"
 	is "$hostname" "$(hostname)" "Extracted hostname matches current hostname"
-
-	rm -f "$metadata"
-	rm -f "$metadata_env"
 }
 
 plan_tests $NUM_TESTS

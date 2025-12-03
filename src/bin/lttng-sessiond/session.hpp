@@ -580,7 +580,7 @@ public:
 	/*
 	 * Trace format version of the session.
 	 */
-	enum lttng_trace_format trace_format = LTTNG_TRACE_FORMAT_CTF_1_8;
+	enum lttng_trace_format trace_format;
 	/*
 	 * Node in ltt_sessions_ht_by_id.
 	 */
