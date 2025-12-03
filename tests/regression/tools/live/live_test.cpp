@@ -151,7 +151,7 @@ static int establish_connection()
 
 	memset(&connect, 0, sizeof(connect));
 	connect.major = htobe32(VERSION_MAJOR);
-	connect.minor = htobe32(VERSION_MINOR);
+	connect.minor = htobe32(14);
 	connect.type = htobe32(LTTNG_VIEWER_CLIENT_COMMAND);
 
 	ret_len = lttng_live_send(control_sock, &cmd, sizeof(cmd));
