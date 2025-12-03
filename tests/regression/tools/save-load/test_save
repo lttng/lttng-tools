@@ -15,7 +15,7 @@ EVENT_NAME="tp:tptest"
 
 DIR=$(readlink -f $TESTDIR)
 
-NUM_TESTS=41
+NUM_TESTS=57
 
 source $TESTDIR/utils/utils.sh
 
@@ -151,12 +151,21 @@ function test_save_trace_format_one()
 	destroy_lttng_session_ok $SESSION_NAME
 }
 
+function test_save_trace_format()
+{
+	diag "Test save trace format"
+
+	test_save_trace_format_one ctf-1.8 CTF_1_8
+	test_save_trace_format_one ctf-2 CTF_2
+}
+
 start_lttng_sessiond
 
 TESTS=(
 	test_basic_save
 	test_basic_save_all
 	test_overwrite
+	test_save_trace_format
 )
 
 for fct_test in ${TESTS[@]};
