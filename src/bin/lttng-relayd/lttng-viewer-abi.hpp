@@ -108,11 +108,9 @@ struct lttng_viewer_session_common {
 	uint32_t streams;
 } LTTNG_PACKED;
 
-struct lttng_viewer_session {
-	uint64_t id;
-	uint32_t live_timer;
-	uint32_t clients;
-	uint32_t streams;
+/* Protocol 2.4 session structure with fixed-size strings */
+struct lttng_viewer_session_2_4 {
+	struct lttng_viewer_session_common common;
 	char hostname[LTTNG_VIEWER_HOST_NAME_MAX];
 	char session_name[LTTNG_VIEWER_NAME_MAX];
 } LTTNG_PACKED;
@@ -147,7 +145,7 @@ struct lttng_viewer_connect {
  */
 struct lttng_viewer_list_sessions {
 	uint32_t sessions_count;
-	char session_list[]; /* struct lttng_viewer_session */
+	char session_list[]; /* struct lttng_viewer_session_2_4 */
 } LTTNG_PACKED;
 
 /*

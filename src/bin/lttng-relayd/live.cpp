@@ -1200,11 +1200,11 @@ static int viewer_list_sessions(struct relay_connection *conn)
 {
 	int ret = 0;
 	struct lttng_viewer_list_sessions session_list;
-	struct lttng_viewer_session *send_session_buf = nullptr;
+	struct lttng_viewer_session_2_4 *send_session_buf = nullptr;
 	uint32_t buf_count = SESSION_BUF_DEFAULT_COUNT;
 	uint32_t count = 0;
 
-	send_session_buf = calloc<lttng_viewer_session>(SESSION_BUF_DEFAULT_COUNT);
+	send_session_buf = calloc<lttng_viewer_session_2_4>(SESSION_BUF_DEFAULT_COUNT);
 	if (!send_session_buf) {
 		return -1;
 	}
@@ -1213,7 +1213,7 @@ static int viewer_list_sessions(struct relay_connection *conn)
 	     lttng::urcu::lfht_iteration_adapter<relay_session,
 						 decltype(relay_session::session_n),
 						 &relay_session::session_n>(*sessions_ht->ht)) {
-		struct lttng_viewer_session *send_session;
+		struct lttng_viewer_session_2_4 *send_session;
 
 		health_code_update();
 
@@ -1224,10 +1224,10 @@ static int viewer_list_sessions(struct relay_connection *conn)
 		}
 
 		if (count >= buf_count) {
-			struct lttng_viewer_session *newbuf;
+			struct lttng_viewer_session_2_4 *newbuf;
 			const uint32_t new_buf_count = buf_count << 1;
 
-			newbuf = (lttng_viewer_session *) realloc(
+			newbuf = (lttng_viewer_session_2_4 *) realloc(
 				send_session_buf, new_buf_count * sizeof(*send_session_buf));
 			if (!newbuf) {
 				ret = -1;
@@ -1249,14 +1249,14 @@ static int viewer_list_sessions(struct relay_connection *conn)
 			ret = -1;
 			goto break_loop;
 		}
-		send_session->id = htobe64(session->id);
-		send_session->live_timer = htobe32(session->live_timer);
+		send_session->common.id = htobe64(session->id);
+		send_session->common.live_timer = htobe32(session->live_timer);
 		if (session->viewer_attached) {
-			send_session->clients = htobe32(1);
+			send_session->common.clients = htobe32(1);
 		} else {
-			send_session->clients = htobe32(0);
+			send_session->common.clients = htobe32(0);
 		}
-		send_session->streams = htobe32(session->stream_count);
+		send_session->common.streams = htobe32(session->stream_count);
 		count++;
 	next_session:
 		pthread_mutex_unlock(&session->lock);
