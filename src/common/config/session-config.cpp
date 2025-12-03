@@ -204,6 +204,9 @@ const char *const config_element_max_size = "max_size";
 const char *const config_element_pid = "pid";
 const char *const config_element_pids = "pids";
 const char *const config_element_shared_memory_path = "shared_memory_path";
+const char *const config_element_trace_format = "trace_format";
+const char *const config_element_trace_format_ctf_1_8 = "CTF_1_8";
+const char *const config_element_trace_format_ctf_2 = "CTF_2";
 
 const char *const config_element_process_attr_id = "id";
 const char *const config_element_process_attr_tracker_pid = "pid_process_attr_tracker";
