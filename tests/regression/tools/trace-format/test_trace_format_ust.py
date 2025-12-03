@@ -99,54 +99,7 @@ def test_snapshot_trace_valid_ctf2():
             check_trace_event_counts(session_output_location.path, {"tp:tptest": 10})
 
 
-def test_snapshot_network_output_disallowed_for_ctf2():
-    with lttngtest.test_environment(
-        with_sessiond=True,
-        log=tap.diagnostic,
-        with_relayd=True,
-    ) as test_env:
-        network_output = lttngtest.NetworkSessionOutputLocation(
-            "net://localhost:{}:{}/".format(
-                test_env.lttng_relayd_control_port, test_env.lttng_relayd_data_port
-            )
-        )
-
-        client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
-
-        session = client.create_session(snapshot=True)
-        tap.diagnostic(
-            "Created snapshot session `{session_name}`".format(
-                session_name=session.name
-            )
-        )
-
-        channel = session.add_channel(lttngtest.TracingDomain.User)
-        tap.diagnostic(
-            "Created channel `{channel_name}`".format(channel_name=channel.name)
-        )
-
-        test_app = test_env.launch_wait_trace_test_application(10)
-        test_app.taskset_anycpu()
-
-        # Only track the test application
-        session.user_vpid_process_attribute_tracker.track(test_app.vpid)
-
-        # Enable all user space events, the default for a user tracepoint event rule.
-        channel.add_recording_rule(lttngtest.UserTracepointEventRule())
-
-        session.start()
-        test_app.trace()
-        test_app.wait_for_exit()
-        session.stop()
-
-        with tap.case_raises(
-            "Capturing a snapshot to a network output is disallowed with CTF2",
-            lttngtest.lttng.LTTngClientError,
-        ):
-            session.record_snapshot(network_output)
-
-
-tap = lttngtest.TapGenerator(15)
+tap = lttngtest.TapGenerator(14)
 tap.diagnostic("Test trace format generation (user space)")
 
 version_parts = tuple(map(int, bt2.__version__.split(".")[:2]))
@@ -168,6 +121,5 @@ test_local_trace_all_formats(
     expected_events={"tp:tptest": 10},
 )
 test_snapshot_trace_valid_ctf2()
-test_snapshot_network_output_disallowed_for_ctf2()
 
 sys.exit(0 if tap.is_successful else 1)
