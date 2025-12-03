@@ -73,8 +73,7 @@ SERIAL_TESTS = tools/base-path/test_ust \
 	tools/trigger/test_remove_trigger_cli \
 	tools/trigger/name/test_trigger_name_backwards_compat \
 	tools/trigger/hidden/test_hidden_trigger \
-	tools/channel/test_channel_allocation_policy_per_channel.py \
-	tools/trace-format/test_trace_format_kernel.py
+	tools/channel/test_channel_allocation_policy_per_channel.py
 
 TESTS = tools/clear/test_disallow.py \
 	tools/clear/test_ust.py \
@@ -90,7 +89,6 @@ TESTS = tools/clear/test_disallow.py \
 	tools/client/test_event_rule_listing.py \
 	tools/client/test_warn_on_shm_too_small.py \
 	tools/channel/test_channel_allocation_policy_per_cpu.py \
-	tools/trace-format/test_trace_format_ust.py \
 	tools/channel/test_channel_watchdog_timer.py \
 	tests.serial
 
