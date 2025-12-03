@@ -3063,6 +3063,18 @@ public:
 		return c_string_view();
 	}
 
+	lttng_trace_format trace_format() const
+	{
+		lttng_trace_format format;
+
+		if (lttng_get_session_trace_format(_lib_session, &format) !=
+		    LTTNG_GET_SESSION_TRACE_FORMAT_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to get recording session trace format");
+		}
+
+		return format;
+	}
+
 	const lttng_session& lib() const noexcept
 	{
 		return *_lib_session;
