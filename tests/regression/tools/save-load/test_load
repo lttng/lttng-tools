@@ -335,6 +335,27 @@ function test_override_session_name()
 	rm -f "${mi_output_file}"
 }
 
+function test_trace_format_one()
+{
+	local -r session_file=$1
+	local -r sess_name=$2
+	local -r expected_format=$3
+	local -r test_desc=$4
+	local mi_output_file
+
+	mi_output_file=$(mktemp -t "tmp.${FUNCNAME[0]}_output_file.XXXXXX")
+
+	lttng_load_ok -i "$session_file"
+	LTTNG_TEST_MI_CLIENT=1 OUTPUT_DEST="$mi_output_file" list_lttng_ok "$sess_name"
+
+	local mi_result
+
+	mi_result=$(get_session_trace_format "$mi_output_file")
+	is "$mi_result" "$expected_format" "$test_desc"
+	destroy_lttng_session_ok "$sess_name"
+	rm -f "$mi_output_file"
+}
+
 start_lttng_sessiond
 
 test_basic_load
