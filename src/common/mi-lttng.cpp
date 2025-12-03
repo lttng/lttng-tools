@@ -15,6 +15,7 @@
 #include <common/tracker.hpp>
 
 #include <lttng/channel.h>
+#include <lttng/session.h>
 #include <lttng/snapshot-internal.hpp>
 
 #define MI_SCHEMA_MAJOR_VERSION 4
@@ -996,6 +997,28 @@ int mi_lttng_session(struct mi_writer *writer, const struct lttng_session *sessi
 	ret = mi_lttng_writer_write_element_string(writer, config_element_path, session->path);
 	if (ret) {
 		goto end;
+	}
+
+	/* Trace format */
+	{
+		enum lttng_trace_format trace_format;
+
+		if (lttng_get_session_trace_format(session, &trace_format) !=
+		    LTTNG_GET_SESSION_TRACE_FORMAT_STATUS_OK) {
+			ERR("Failed to get session trace format");
+			ret = -1;
+			goto end;
+		}
+
+		ret = mi_lttng_writer_write_element_string(
+			writer,
+			config_element_trace_format,
+			trace_format == LTTNG_TRACE_FORMAT_CTF_1_8 ?
+				config_element_trace_format_ctf_1_8 :
+				config_element_trace_format_ctf_2);
+		if (ret) {
+			goto end;
+		}
 	}
 
 	/* Enabled ? */
