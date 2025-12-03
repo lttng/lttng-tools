@@ -47,6 +47,19 @@ function is_session_saved()
 	ok $? "Session $name.lttng file found!"
 }
 
+function check_saved_trace_format()
+{
+	local -r path=$1
+	local -r name=$2
+	local -r expected_format=$3
+	local result
+
+	result=$("$XML_EXTRACT" "$path/$name.lttng" "//sessions/session/trace_format/text()")
+	ok $? "Extraction of trace_format from saved session"
+	test "$result" = "$expected_format"
+	ok $? "Saved session contains trace_format $expected_format (got: $result)"
+}
+
 function test_basic_save()
 {
 	diag "Test basic save"
