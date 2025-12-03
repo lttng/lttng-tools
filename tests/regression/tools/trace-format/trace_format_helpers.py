@@ -11,7 +11,7 @@ import subprocess
 import json
 import sys
 import re
-from typing import Callable
+from typing import Callable, Optional
 
 # Import in-tree test utils
 test_utils_import_path = pathlib.Path(__file__).absolute().parents[3] / "utils"
@@ -427,7 +427,7 @@ def test_local_trace_all_formats(
     enable_kernel_domain,
     expected_events,
 ):
-    # type: (lttngtest.TapGenerator, Callable[[lttngtest._Environment], pathlib.Path], pathlib.Path, bool, dict[str, int]) -> None
+    # type: (lttngtest.TapGenerator, Callable[[lttngtest._Environment, Optional[lttngtest.TraceFormat]], pathlib.Path], pathlib.Path, bool, dict[str, int]) -> None
     with lttngtest.test_environment(with_sessiond=False) as text_trace_environment:
         ctf_1_8_text_folder = text_trace_environment.create_temporary_directory(
             "ctf 1.8"
@@ -443,14 +443,11 @@ def test_local_trace_all_formats(
         with lttngtest.test_environment(
             with_sessiond=True,
             log=tap.diagnostic,
-            extra_env_vars={
-                "LTTNG_EXPERIMENTAL_FORCE_CTF_2": "1",
-            },
             enable_kernel_domain=enable_kernel_domain,
         ) as ctf2_test_env:
             output_path = None
             with tap.case("Capture a local trace in CTF2 format"):
-                output_path = capture_local_trace(ctf2_test_env)
+                output_path = capture_local_trace(ctf2_test_env, None)
 
             check_ctf2_trace_smoketest(output_path, tap)
             with tap.case("Decode trace and count events by name"):
@@ -473,7 +470,9 @@ def test_local_trace_all_formats(
         ) as ctf_1_8_test_env:
             output_path = None
             with tap.case("Capture a local trace in CTF 1.8 format"):
-                output_path = capture_local_trace(ctf_1_8_test_env)
+                output_path = capture_local_trace(
+                    ctf_1_8_test_env, lttngtest.TraceFormat.CTF_1_8
+                )
 
             with tap.case("Decode trace and count events by name"):
                 check_trace_event_counts(output_path, expected_events)
