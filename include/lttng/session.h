@@ -46,8 +46,15 @@ enum lttng_get_session_shm_path_status {
 	LTTNG_GET_SESSION_SHM_PATH_STATUS_INVALID_PARAMETER = -1,
 };
 
+/*!
+@brief
+    Return type of lttng_get_session_trace_format().
+*/
 enum lttng_get_session_trace_format_status {
+	/// Success.
 	LTTNG_GET_SESSION_TRACE_FORMAT_STATUS_OK = 0,
+
+	/// Unsatisfied precondition.
 	LTTNG_GET_SESSION_TRACE_FORMAT_STATUS_INVALID = -1,
 };
 
@@ -637,6 +644,31 @@ lttng_set_session_shm_path(); it returns
 LTTNG_EXPORT extern enum lttng_get_session_shm_path_status
 lttng_get_session_shm_path_override(const struct lttng_session *session, const char **shm_dir);
 
+/*!
+@brief
+    Sets \lt_p{*format} to the trace format of the recording session
+    summarized by \lt_p{session}.
+
+@param[in] session
+    Summary of the recording session,
+    as obtained with lttng_list_sessions(),
+    of which to get the trace format.
+@param[out] format
+    <strong>On success</strong>, this function sets
+    \lt_p{*format} to the trace format of \lt_p{session}.
+
+@retval #LTTNG_GET_SESSION_TRACE_FORMAT_STATUS_OK
+    Success.
+@retval #LTTNG_GET_SESSION_TRACE_FORMAT_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{session}
+    @lt_pre_not_null{format}
+
+@sa lttng_session_descriptor_set_trace_format() --
+    Set the trace format of a recording session descriptor.
+*/
 LTTNG_EXPORT extern enum lttng_get_session_trace_format_status
 lttng_get_session_trace_format(const struct lttng_session *session,
 			       enum lttng_trace_format *format);
