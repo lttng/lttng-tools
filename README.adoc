@@ -68,9 +68,9 @@ Debian/Ubuntu package: `libxml2{nbh}dev`
 
 The following dependencies are optional:
 
-* **https://babeltrace.org/[Babeltrace{nbsp}2]**: default viewer
-  of the https://lttng.org/man/1/lttng-view/[`lttng view`] command,
-  `make{nbsp}check` and tests.
+* **https://babeltrace.org/[Babeltrace{nbsp}≥{nbsp}2.1]**: default
+  viewer of the https://lttng.org/man/1/lttng-view/[`lttng view`]
+  command, `make{nbsp}check` and tests.
 +
 Debian/Ubuntu package: `babeltrace2 libbabeltrace2-dev`
 

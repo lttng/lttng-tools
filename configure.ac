@@ -1206,8 +1206,8 @@ test "x$enable_tests" == "xyes"],
 AM_CONDITIONAL([BUILD_TESTS], [test x$build_tests = xyes])
 AS_IF([test "x$build_tests" = "xyes"],
   [
-    PKG_CHECK_MODULES([babeltrace2],[babeltrace2],,[
-    AC_MSG_ERROR([libbabeltrace2 is required to build tests])
+    PKG_CHECK_MODULES([babeltrace2],[babeltrace2 >= 2.1.0],,[
+    AC_MSG_ERROR([libbabeltrace2 >= 2.1.0 is required to build tests])
     ])
   ]
 )

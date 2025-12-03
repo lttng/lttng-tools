@@ -10,6 +10,41 @@
 
 #include <babeltrace2/babeltrace.h>
 
+namespace {
+
+bt_component_class_get_supported_mip_versions_method_status
+add_supported_mip_versions(bt_integer_range_set_unsigned *const supported_versions)
+{
+	if (bt_integer_range_set_unsigned_add_range(supported_versions, 0, 1) !=
+	    BT_INTEGER_RANGE_SET_ADD_RANGE_STATUS_OK) {
+		return BT_COMPONENT_CLASS_GET_SUPPORTED_MIP_VERSIONS_METHOD_STATUS_MEMORY_ERROR;
+	}
+
+	return BT_COMPONENT_CLASS_GET_SUPPORTED_MIP_VERSIONS_METHOD_STATUS_OK;
+}
+
+bt_component_class_get_supported_mip_versions_method_status
+event_name_get_supported_mip_versions(bt_self_component_class_filter *,
+				      const bt_value *,
+				      void *,
+				      bt_logging_level,
+				      bt_integer_range_set_unsigned *const supported_versions)
+{
+	return add_supported_mip_versions(supported_versions);
+}
+
+bt_component_class_get_supported_mip_versions_method_status
+field_stats_get_supported_mip_versions(bt_self_component_class_sink *,
+				       const bt_value *,
+				       void *,
+				       bt_logging_level,
+				       bt_integer_range_set_unsigned *const supported_versions)
+{
+	return add_supported_mip_versions(supported_versions);
+}
+
+} /* namespace */
+
 BT_PLUGIN_MODULE();
 
 BT_PLUGIN(lttngtest);
@@ -27,6 +62,8 @@ BT_PLUGIN_FILTER_COMPONENT_CLASS_MESSAGE_ITERATOR_CLASS_INITIALIZE_METHOD(
 	event_name, event_name_message_iterator_initialize);
 BT_PLUGIN_FILTER_COMPONENT_CLASS_MESSAGE_ITERATOR_CLASS_FINALIZE_METHOD(
 	event_name, event_name_message_iterator_finalize);
+BT_PLUGIN_FILTER_COMPONENT_CLASS_GET_SUPPORTED_MIP_VERSIONS_METHOD(
+	event_name, event_name_get_supported_mip_versions);
 
 /* sink.lttngtest.field_stats */
 /* Sink class to produce certain statistics for seen fields */
@@ -37,3 +74,5 @@ BT_PLUGIN_SINK_COMPONENT_CLASS_INITIALIZE_METHOD(field_stats, field_stats_initia
 BT_PLUGIN_SINK_COMPONENT_CLASS_FINALIZE_METHOD(field_stats, field_stats_finalize);
 BT_PLUGIN_SINK_COMPONENT_CLASS_GRAPH_IS_CONFIGURED_METHOD(field_stats,
 							  field_stats_graph_is_configured);
+BT_PLUGIN_SINK_COMPONENT_CLASS_GET_SUPPORTED_MIP_VERSIONS_METHOD(
+	field_stats, field_stats_get_supported_mip_versions);
