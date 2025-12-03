@@ -99,26 +99,6 @@ def test_snapshot_trace_valid_ctf2():
             check_trace_event_counts(session_output_location.path, {"tp:tptest": 10})
 
 
-def test_streaming_is_disallowed_for_ctf2():
-    with lttngtest.test_environment(
-        with_sessiond=True,
-        log=tap.diagnostic,
-    ) as test_env:
-
-        network_output = lttngtest.NetworkSessionOutputLocation(
-            "net://localhost:{}:{}/".format(
-                test_env.lttng_relayd_control_port, test_env.lttng_relayd_data_port
-            )
-        )
-
-        with tap.case_raises(
-            "Trace streaming is disallowed with CTF2", lttngtest.lttng.LTTngClientError
-        ):
-
-            client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
-            client.create_session(output=network_output)
-
-
 def test_snapshot_network_output_disallowed_for_ctf2():
     with lttngtest.test_environment(
         with_sessiond=True,
@@ -166,7 +146,7 @@ def test_snapshot_network_output_disallowed_for_ctf2():
             session.record_snapshot(network_output)
 
 
-tap = lttngtest.TapGenerator(16)
+tap = lttngtest.TapGenerator(15)
 tap.diagnostic("Test trace format generation (user space)")
 
 version_parts = tuple(map(int, bt2.__version__.split(".")[:2]))
@@ -188,7 +168,6 @@ test_local_trace_all_formats(
     expected_events={"tp:tptest": 10},
 )
 test_snapshot_trace_valid_ctf2()
-test_streaming_is_disallowed_for_ctf2()
 test_snapshot_network_output_disallowed_for_ctf2()
 
 sys.exit(0 if tap.is_successful else 1)
