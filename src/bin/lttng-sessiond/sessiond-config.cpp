@@ -36,6 +36,8 @@ static struct sessiond_config sessiond_config_build_defaults = {
 	.daemonize = false,
 	.sig_parent = false,
 
+	.default_trace_format = LTTNG_TRACE_FORMAT_CTF_1_8,
+
 	.tracing_group_name = { (char *) DEFAULT_TRACING_GROUP, false },
 
 	.kmod_probes_list = { nullptr, false },
