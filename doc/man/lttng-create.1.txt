@@ -1,6 +1,6 @@
 lttng-create(1)
 ===============
-:revdate: 7 December 2021
+:revdate: 7 October 2025
 
 
 NAME
@@ -15,12 +15,14 @@ Create a local mode recording session:
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* ['SESSION'] [option:--shm-path='DIR']
       [option:--no-output | option:--output='DIR' | option:--set-url=**file://**__DIR__]
+      [option:--trace-format=(**default** | **ctf-1.8** | **ctf-2**)]
 
 Create a network streaming mode recording session:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* ['SESSION'] [option:--shm-path='DIR']
       (option:--set-url='URL' | option:--ctrl-url='URL' option:--data-url='URL')
+      [option:--trace-format=(**default** | **ctf-1.8** | **ctf-2**)]
 
 Create a snapshot mode recording session:
 
@@ -28,12 +30,14 @@ Create a snapshot mode recording session:
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* ['SESSION'] option:--snapshot [option:--shm-path='DIR']
       [option:--no-output | option:--output='DIR' | option:--set-url='URL' |
        option:--ctrl-url='URL' option:--data-url='URL']
+      [option:--trace-format=(**default** | **ctf-1.8** | **ctf-2**)]
 
 Create a live mode recording session:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* ['SESSION'] option:--live[='DELAYUS']
       [option:--shm-path='DIR'] [option:--set-url='URL' | option:--ctrl-url='URL' option:--data-url='URL']
+      [option:--trace-format=(**default** | **ctf-1.8** | **ctf-2**)]
 
 DESCRIPTION
 -----------
@@ -89,6 +93,13 @@ In this case, the `create` command spawns a relay daemon as such:
 +
 Override the path of the relay daemon binary to spawn with the general
 genoption:--relayd-path option.
+
+By default, the `create` command creates a recording session for which
+LTTng will write traces using the configured default format of
+man:lttng-sessiond(8) (see its nloption:--default-trace-format
+option).
+Use the a specific format with the
+option:--trace-format option.
 
 On success, the `create` command sets the current recording session (see
 man:lttng-concepts(7) to learn more) to the created recording session.
@@ -342,6 +353,25 @@ option:--shm-path='DIR'::
 NOTE: As of LTTng{nbsp}{lttng_version}, LTTng only considers this option
 for user space (including Java and Python) channels, but this may change
 in the future.
+
+option:-F 'FORMAT', option:--trace-format='FORMAT'::
+    Set the output format of the created recording session to 'FORMAT'.
++
+'FORMAT' is one of:
++
+--
+`default`:::
+    Use the configured default format of man:lttng-sessiond(8)
+    (see its nloption:--default-trace-format option).
+
+`ctf-1.8`:::
+    https://diamon.org/ctf/v1.8.3/[CTF 1.8] (legacy).
+
+`ctf-2`:::
+    https://diamon.org/ctf/[CTF 2] (preferred).
+--
++
+Default: `default`.
 
 
 URL
