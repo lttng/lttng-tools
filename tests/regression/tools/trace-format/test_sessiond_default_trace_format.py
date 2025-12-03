@@ -97,7 +97,28 @@ def _test_default_trace_format_env_var():
             tap.diagnostic("Trace is in CTF 1.8 format as expected")
 
 
-tap = lttngtest.TapGenerator(3)
+def _test_session_trace_format_overrides_default():
+    with lttngtest.test_environment(
+        with_sessiond=True,
+        log=tap.diagnostic,
+        sessiond_extra_args=["--default-trace-format=ctf-1.8"],
+    ) as test_env:
+        with tap.case(
+            "`--trace-format=ctf-2` overrides `--default-trace-format=ctf-1.8`"
+        ):
+            trace_path = _capture_trace(test_env, tap, trace_format=lttngtest.TraceFormat.CTF_2)
+
+            if not _is_ctf2_trace(trace_path):
+                raise AssertionError(
+                    "Expected CTF 2 trace (`lttng create --trace-format=ctf-2` should override default), but got CTF 1.8 trace"
+                )
+
+            tap.diagnostic(
+                "Trace is in CTF 2 format as expected (`lttng create` overrides default)"
+            )
+
+
+tap = lttngtest.TapGenerator(4)
 tap.diagnostic(
     "Test `--default-trace-format` option and `LTTNG_SESSIOND_DEFAULT_TRACE_FORMAT` environment variable of `lttng-sessiond`"
 )
@@ -109,5 +130,6 @@ if tuple(map(int, bt2.__version__.split(".")[:2])) < (2, 1):
 _test_default_trace_format_ctf_1_8()
 _test_default_trace_format_ctf_2()
 _test_default_trace_format_env_var()
+_test_session_trace_format_overrides_default()
 
 sys.exit(0 if tap.is_successful else 1)
