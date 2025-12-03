@@ -29,6 +29,12 @@ function get_channel_allocation_policy()
     "$XML_EXTRACT" "$mi_path" "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:channels/lttng:channel[lttng:name='$channel_name']/lttng:attributes/lttng:allocation_policy/text()"
 }
 
+function get_session_trace_format()
+{
+    local mi_path=$1
+    "$XML_EXTRACT" "$mi_path" "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:trace_format/text()"
+}
+
 function test_basic_load()
 {
 	diag "Test basic load"
