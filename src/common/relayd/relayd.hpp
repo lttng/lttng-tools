@@ -13,6 +13,8 @@
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/trace-chunk.hpp>
 
+#include <lttng/session-descriptor.h>
+
 #include <stdbool.h>
 #include <unistd.h>
 
@@ -41,6 +43,7 @@ int relayd_create_session(struct lttcomm_relayd_sock *rsock,
 			  const uint64_t *current_chunk_id,
 			  time_t creation_time,
 			  bool session_name_contains_creation_time,
+			  enum lttng_trace_format trace_format,
 			  char *output_path);
 int relayd_add_stream(struct lttcomm_relayd_sock *sock,
 		      const char *channel_name,

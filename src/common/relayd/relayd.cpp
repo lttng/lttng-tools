@@ -477,6 +477,7 @@ int relayd_create_session(struct lttcomm_relayd_sock *rsock,
 			  const uint64_t *current_chunk_id,
 			  time_t creation_time,
 			  bool session_name_contains_creation_time,
+			  enum lttng_trace_format trace_format,
 			  char *output_path)
 {
 	int ret;
@@ -494,8 +495,8 @@ int relayd_create_session(struct lttcomm_relayd_sock *rsock,
 		/* From 2.4 to 2.10 */
 		ret = relayd_create_session_2_4(
 			rsock, session_name, hostname, session_live_timer, snapshot, &reply.generic);
-	} else {
-		/* From 2.11 to ... */
+	} else if (rsock->minor >= 11 && rsock->minor < 15) {
+		/* From 2.11 to 2.14 */
 		ret = relayd_create_session_2_11(rsock,
 						 session_name,
 						 hostname,
@@ -507,6 +508,22 @@ int relayd_create_session(struct lttcomm_relayd_sock *rsock,
 						 current_chunk_id,
 						 creation_time,
 						 session_name_contains_creation_time,
+						 &reply,
+						 output_path);
+	} else {
+		/* From 2.15 to ... */
+		ret = relayd_create_session_2_15(rsock,
+						 session_name,
+						 hostname,
+						 base_path,
+						 session_live_timer,
+						 snapshot,
+						 sessiond_session_id,
+						 sessiond_uuid,
+						 current_chunk_id,
+						 creation_time,
+						 session_name_contains_creation_time,
+						 trace_format,
 						 &reply,
 						 output_path);
 	}

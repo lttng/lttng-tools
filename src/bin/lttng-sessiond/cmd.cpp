@@ -877,7 +877,8 @@ static enum lttng_error_code send_consumer_relayd_socket(unsigned int session_id
 							 int session_live_timer,
 							 const uint64_t *current_chunk_id,
 							 time_t session_creation_time,
-							 bool session_name_contains_creation_time)
+							 bool session_name_contains_creation_time,
+							 enum lttng_trace_format trace_format)
 {
 	int ret;
 	struct lttcomm_relayd_sock *rsock = nullptr;
@@ -914,7 +915,8 @@ static enum lttng_error_code send_consumer_relayd_socket(unsigned int session_id
 					  session_live_timer,
 					  current_chunk_id,
 					  session_creation_time,
-					  session_name_contains_creation_time);
+					  session_name_contains_creation_time,
+					  trace_format);
 	if (ret < 0) {
 		status = LTTNG_ERR_ENABLE_CONSUMER_FAIL;
 		goto close_sock;
@@ -966,7 +968,8 @@ static enum lttng_error_code send_consumer_relayd_sockets(unsigned int session_i
 							  int session_live_timer,
 							  const uint64_t *current_chunk_id,
 							  time_t session_creation_time,
-							  bool session_name_contains_creation_time)
+							  bool session_name_contains_creation_time,
+							  enum lttng_trace_format trace_format)
 {
 	enum lttng_error_code status = LTTNG_OK;
 
@@ -985,7 +988,8 @@ static enum lttng_error_code send_consumer_relayd_sockets(unsigned int session_i
 						     session_live_timer,
 						     current_chunk_id,
 						     session_creation_time,
-						     session_name_contains_creation_time);
+						     session_name_contains_creation_time,
+						     trace_format);
 		if (status != LTTNG_OK) {
 			goto error;
 		}
@@ -1003,7 +1007,8 @@ static enum lttng_error_code send_consumer_relayd_sockets(unsigned int session_i
 						     session_live_timer,
 						     current_chunk_id,
 						     session_creation_time,
-						     session_name_contains_creation_time);
+						     session_name_contains_creation_time,
+						     trace_format);
 		if (status != LTTNG_OK) {
 			goto error;
 		}
@@ -1062,7 +1067,8 @@ int cmd_setup_relayd(const ltt_session::locked_ref& session)
 				session->live_timer,
 				current_chunk_id.is_set ? &current_chunk_id.value : nullptr,
 				session->creation_time,
-				session->name_contains_creation_time);
+				session->name_contains_creation_time,
+				session->trace_format);
 			pthread_mutex_unlock(socket->lock);
 			if (ret != LTTNG_OK) {
 				goto error;
@@ -1096,7 +1102,8 @@ int cmd_setup_relayd(const ltt_session::locked_ref& session)
 				session->live_timer,
 				current_chunk_id.is_set ? &current_chunk_id.value : nullptr,
 				session->creation_time,
-				session->name_contains_creation_time);
+				session->name_contains_creation_time,
+				session->trace_format);
 			pthread_mutex_unlock(socket->lock);
 			if (ret != LTTNG_OK) {
 				goto error;
@@ -5507,7 +5514,8 @@ static enum lttng_error_code set_relayd_for_snapshot(struct consumer_output *out
 			session->live_timer,
 			current_chunk_id.is_set ? &current_chunk_id.value : nullptr,
 			session->creation_time,
-			session->name_contains_creation_time);
+			session->name_contains_creation_time,
+			session->trace_format);
 		pthread_mutex_unlock(socket->lock);
 		if (status != LTTNG_OK) {
 			goto error;
