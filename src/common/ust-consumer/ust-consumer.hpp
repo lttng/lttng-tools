@@ -11,6 +11,7 @@
 
 #include <common/compat/errno.hpp>
 #include <common/consumer/consumer.hpp>
+#include <common/consumer/reclaim.hpp>
 #include <common/exception.hpp>
 
 #include <set>
@@ -80,8 +81,10 @@ int lttng_ustconsumer_fixup_stalled_channel(struct lttng_consumer_channel *chann
 
 void lttng_ustconsumer_quiescent_stalled_channel(struct lttng_consumer_channel& channel);
 
-void lttng_ustconsumer_reclaim_current_subbuffer(lttng_consumer_stream& stream);
-std::uint64_t
+void lttng_ustconsumer_try_reclaim_current_subbuffer(lttng_consumer_stream& stream,
+						     const stream_subbuffer& subbuffer);
+
+lttng::consumer::memory_reclaim_result
 lttng_ustconsumer_reclaim_stream_memory(lttng_consumer_stream& stream,
 					nonstd::optional<std::chrono::microseconds> age_limit,
 					bool require_consumed);
@@ -294,19 +297,21 @@ lttng_ustconsumer_quiescent_stalled_channel(struct lttng_consumer_channel& chann
 {
 }
 
-static inline void lttng_ustconsumer_reclaim_current_subbuffer(lttng_consumer_stream& stream
-							       [[maybe_unused]])
+static inline void lttng_ustconsumer_try_reclaim_current_subbuffer(lttng_consumer_stream& stream
+								   [[maybe_unused]],
+								   const stream_subbuffer& subbuffer
+								   [[maybe_unused]])
 {
 }
 
-static inline std::uint64_t
+static inline lttng::consumer::memory_reclaim_result
 lttng_ustconsumer_reclaim_stream_memory(lttng_consumer_stream& stream [[maybe_unused]],
 					nonstd::optional<std::chrono::microseconds> age_limit
 					[[maybe_unused]],
 					bool require_consumed [[maybe_unused]])
 {
 	std::abort();
-	return 0;
+	return {};
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */

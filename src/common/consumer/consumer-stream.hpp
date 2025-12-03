@@ -10,6 +10,8 @@
 
 #include "consumer.hpp"
 
+#include <common/consumer/reclaim.hpp>
+
 enum consumer_stream_open_packet_status {
 	CONSUMER_STREAM_OPEN_PACKET_STATUS_OPENED,
 	CONSUMER_STREAM_OPEN_PACKET_STATUS_NO_SPACE,
@@ -153,23 +155,24 @@ int consumer_stream_send_live_beacon(lttng_consumer_stream& stream,
 				     uint64_t stream_id);
 
 /*
- * Reclaim the current reader sub-buffer of a stream.
+ * Reclaim the current reader sub-buffer of a stream if it is eligible for
+ * reclamation.
  *
  * This function must be called with the stream and channel locks held.
  *
  * Throws on error.
  */
-void consumer_stream_reclaim_subbuffer(lttng_consumer_stream& stream);
+void consumer_stream_try_reclaim_current_subbuffer(lttng_consumer_stream& stream,
+						   const stream_subbuffer& subbuffer);
 
 /*
  * Reclaim memory from a stream.
  *
  * This function must be called with the stream and channel locks held.
- *
- * Returns the number of bytes reclaimed.
  */
-std::uint64_t consumer_stream_reclaim_memory(lttng_consumer_stream& stream,
-					     const std::chrono::microseconds& age_limit,
-					     bool require_consumed);
+lttng::consumer::memory_reclaim_result
+consumer_stream_reclaim_memory(lttng_consumer_stream& stream,
+			       const std::chrono::microseconds& age_limit,
+			       bool require_consumed);
 
 #endif /* LTTNG_CONSUMER_STREAM_H */

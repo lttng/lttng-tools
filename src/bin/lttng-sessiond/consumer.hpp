@@ -390,12 +390,15 @@ std::vector<channel_memory_usage>
 get_channels_memory_usage(consumer_socket& socket, const std::vector<std::uint64_t>& channel_keys);
 
 struct stream_memory_reclamation_result {
-	explicit stream_memory_reclamation_result(std::uint64_t reclaimed_bytes_) :
-		reclaimed_bytes{ reclaimed_bytes_ }
+	explicit stream_memory_reclamation_result(std::uint64_t reclaimed_bytes_,
+						  std::uint64_t pending_bytes_to_reclaim_) :
+		reclaimed_bytes{ reclaimed_bytes_ },
+		pending_bytes_to_reclaim{ pending_bytes_to_reclaim_ }
 	{
 	}
 
 	const std::uint64_t reclaimed_bytes;
+	const std::uint64_t pending_bytes_to_reclaim;
 };
 
 struct stream_memory_reclamation_result_group {
@@ -409,7 +412,7 @@ struct stream_memory_reclamation_result_group {
 std::vector<stream_memory_reclamation_result_group>
 reclaim_channels_memory(consumer_socket& socket,
 			const std::vector<std::uint64_t>& channel_keys,
-			const nonstd::optional<std::chrono::microseconds>& reclaim_older_than,
+			const nonstd::optional<std::chrono::microseconds>& reclaim_older_than_age,
 			bool require_consumed);
 
 } /* namespace consumer */

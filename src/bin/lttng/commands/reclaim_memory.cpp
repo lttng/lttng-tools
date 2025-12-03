@@ -102,7 +102,7 @@ struct reclaim_config {
 	std::string session_name;
 	channel_name_set channel_names;
 	lttng::domain_class domain;
-	nonstd::optional<std::chrono::microseconds> older_than;
+	nonstd::optional<std::chrono::microseconds> older_than_age;
 	bool no_wait;
 };
 
@@ -156,7 +156,7 @@ nonstd::optional<reclaim_config> parse_cli_args(int argc, const char **argv)
 	std::string target_session_name;
 	channel_name_set target_channel_names;
 	nonstd::optional<lttng::domain_class> target_domain;
-	nonstd::optional<std::chrono::microseconds> older_than;
+	nonstd::optional<std::chrono::microseconds> older_than_age;
 	bool target_all_channels = false;
 	bool no_wait = false;
 
@@ -185,17 +185,17 @@ nonstd::optional<reclaim_config> parse_cli_args(int argc, const char **argv)
 				break;
 			case reclaim_option_types::OPT_OLDER_THAN:
 			{
-				std::uint64_t older_than_value = 0;
+				std::uint64_t older_than_age_value = 0;
 
 				if (utils_parse_time_suffix(item->asOpt().arg(),
-							    &older_than_value) < 0) {
+							    &older_than_age_value) < 0) {
 					LTTNG_THROW_CLI_INVALID_USAGE(
 						fmt::format("Invalid value for --{} parameter: {}",
 							    item->asOpt().descr().long_name,
 							    item->asOpt().arg()));
 				}
 
-				older_than = std::chrono::microseconds(older_than_value);
+				older_than_age = std::chrono::microseconds(older_than_age_value);
 				break;
 			}
 			case reclaim_option_types::OPT_SESSION:
@@ -290,7 +290,7 @@ nonstd::optional<reclaim_config> parse_cli_args(int argc, const char **argv)
 	return reclaim_config{ .session_name = std::move(target_session_name),
 			       .channel_names = std::move(target_channel_names),
 			       .domain = *target_domain,
-			       .older_than = older_than,
+			       .older_than_age = older_than_age,
 			       .no_wait = no_wait };
 }
 
@@ -313,7 +313,7 @@ reclaim_result execute_reclaim(const reclaim_config& config)
 				config.session_name.c_str(),
 				channel_name.c_str(),
 				lttng::ctl::get_lttng_domain_type_from_domain_class(config.domain),
-				config.older_than ? config.older_than->count() : 0,
+				config.older_than_age ? config.older_than_age->count() : 0,
 				&raw_reclaimed_memory_handle);
 
 			lttng::ctl::lttng_reclaim_memory_handle_uptr request_handle{
@@ -379,18 +379,37 @@ void run_and_print_human_readable(const reclaim_config& config)
 	for (const auto& channel_result : result.reclaimed_per_channel) {
 		const auto& channel_name = channel_result.first;
 		const auto& reclaimed_amount = channel_result.second;
-		const auto human_readable_size =
+		const auto human_readable_reclaimed =
 			utils_string_from_size(reclaimed_amount.immediate_bytes);
+		const auto human_readable_pending =
+			utils_string_from_size(reclaimed_amount.deferred_bytes);
 
-		fmt::print("Channel `{}`: {} reclaimed\n", channel_name, human_readable_size);
+		if (reclaimed_amount.deferred_bytes > 0) {
+			fmt::print("Channel `{}`: {} reclaimed, {} pending\n",
+				   channel_name,
+				   human_readable_reclaimed,
+				   human_readable_pending);
+		} else {
+			fmt::print("Channel `{}`: {} reclaimed\n",
+				   channel_name,
+				   human_readable_reclaimed);
+		}
 	}
 
 	/* Only display the total if multiple channels were targeted. */
 	if (result.reclaimed_per_channel.size() > 1) {
-		const auto total_bytes = result.total_reclaimed_immediate();
-		const auto total_human_readable = utils_string_from_size(total_bytes);
+		const auto total_reclaimed = result.total_reclaimed_immediate();
+		const auto total_pending = result.total_reclaimed_deferred();
+		const auto total_reclaimed_human = utils_string_from_size(total_reclaimed);
+		const auto total_pending_human = utils_string_from_size(total_pending);
 
-		fmt::print("Total: {} reclaimed\n", total_human_readable);
+		if (total_pending > 0) {
+			fmt::print("Total: {} reclaimed, {} pending\n",
+				   total_reclaimed_human,
+				   total_pending_human);
+		} else {
+			fmt::print("Total: {} reclaimed\n", total_reclaimed_human);
+		}
 	}
 }
 
@@ -464,6 +483,12 @@ void run_and_print_machine_interface(const reclaim_config& config)
 				    "reclaimed_bytes",
 				    reclaimed_amount.immediate_bytes)) {
 				LTTNG_THROW_ERROR("Failed to write reclaimed bytes element");
+			}
+			if (mi_lttng_writer_write_element_unsigned_int(
+				    writer.get(),
+				    "pending_bytes",
+				    reclaimed_amount.deferred_bytes)) {
+				LTTNG_THROW_ERROR("Failed to write pending bytes element");
 			}
 		}
 	}

@@ -852,7 +852,7 @@ struct lttcomm_session_msg {
 		} LTTNG_PACKED create_session;
 		struct {
 			char channel_name[LTTNG_SYMBOL_NAME_LEN];
-			uint64_t older_than_us;
+			uint64_t older_than_age_us;
 		} LTTNG_PACKED reclaim_channel_memory;
 		struct {
 			char channel_name[LTTNG_SYMBOL_NAME_LEN];
@@ -1266,6 +1266,7 @@ struct lttcomm_stream_memory_reclamation_result {
 	/* Key of the stream's channel. */
 	uint64_t channel_key;
 	uint64_t bytes_reclaimed;
+	uint64_t pending_bytes_to_reclaim;
 } LTTNG_PACKED;
 
 struct lttcomm_consumer_channel_memory_reclamation_reply_header {

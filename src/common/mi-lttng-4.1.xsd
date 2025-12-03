@@ -757,6 +757,7 @@ SPDX-License-Identifier: MIT
 		<xs:all>
 			<xs:element name="name" type="tns:name_type" />
 			<xs:element name="reclaimed_bytes" type="tns:uint64_type" />
+			<xs:element name="pending_bytes" type="tns:uint64_type" />
 		</xs:all>
 	</xs:complexType>
 

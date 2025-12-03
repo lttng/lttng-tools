@@ -23,13 +23,18 @@ namespace sessiond {
 namespace commands {
 
 struct stream_memory_reclamation_result {
-	stream_memory_reclamation_result(stream_identifier _id, std::uint64_t bytes_reclaimed_) :
-		id(std::move(_id)), bytes_reclaimed(bytes_reclaimed_)
+	stream_memory_reclamation_result(stream_identifier _id,
+					 std::uint64_t bytes_reclaimed_,
+					 std::uint64_t pending_bytes_to_reclaim_) :
+		id(std::move(_id)),
+		bytes_reclaimed(bytes_reclaimed_),
+		pending_bytes_to_reclaim(pending_bytes_to_reclaim_)
 	{
 	}
 
 	const stream_identifier id;
 	const std::uint64_t bytes_reclaimed;
+	const std::uint64_t pending_bytes_to_reclaim;
 };
 
 struct stream_memory_reclamation_result_group {
@@ -49,7 +54,7 @@ std::vector<stream_memory_reclamation_result_group>
 reclaim_channel_memory(const ltt_session::locked_ref& session,
 		       lttng::domain_class domain,
 		       lttng::c_string_view channel_name,
-		       const nonstd::optional<std::chrono::microseconds>& reclaim_older_than,
+		       const nonstd::optional<std::chrono::microseconds>& reclaim_older_than_age,
 		       bool require_consumed);
 
 } /* namespace commands */

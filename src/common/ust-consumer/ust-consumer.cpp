@@ -1692,14 +1692,41 @@ static void destroy_subbuf_iter(lttng_ust_ctl_subbuf_iter *it)
 	LTTNG_ASSERT(ret == 0);
 }
 
-std::uint64_t
+static unsigned long get_current_consumed_position(lttng_consumer_stream& stream)
+{
+	unsigned long consumed_pos = 0;
+	const auto snapshot_ret = lttng_consumer_take_snapshot(&stream);
+
+	if (snapshot_ret < 0 && snapshot_ret != -ENODATA && snapshot_ret != -EAGAIN) {
+		LTTNG_THROW_ERROR(fmt::format(
+			"Failed to take position snapshot of stream: channel_name=`{}`, stream_key={}, error={}",
+			stream.chan->name,
+			stream.key,
+			snapshot_ret));
+	}
+
+	const auto consumed_ret = lttng_consumer_get_consumed_snapshot(&stream, &consumed_pos);
+	if (consumed_ret < 0) {
+		LTTNG_THROW_ERROR(fmt::format(
+			"Failed to get consumed position of stream: channel_name=`{}`, stream_key={}, error={}",
+			stream.chan->name,
+			stream.key,
+			consumed_ret));
+	}
+
+	return consumed_pos;
+}
+
+lttng::consumer::memory_reclaim_result
 lttng_ustconsumer_reclaim_stream_memory(lttng_consumer_stream& stream,
 					nonstd::optional<std::chrono::microseconds> age_limit,
 					bool require_consumed)
 {
-	DBG_FMT("Reclaiming stream memory: channel_name=`{}`, stream_key={}",
+	DBG_FMT("Reclaiming stream memory: channel_name=`{}`, stream_key={}, age_limit_us={}, require_consumed={}",
 		stream.chan->name,
-		stream.key);
+		stream.key,
+		age_limit ? std::to_string(age_limit->count()) : "none",
+		require_consumed);
 
 	std::uint64_t current_tracer_time;
 	const auto current_time_ret =
@@ -1712,8 +1739,21 @@ lttng_ustconsumer_reclaim_stream_memory(lttng_consumer_stream& stream,
 			current_time_ret));
 	}
 
-	bool should_flush = false;
+	bool should_flush_current_producer_buffer = false;
 	if (age_limit) {
+		/*
+		 * If an age limit is set, flush the current producer buffer if the last activity
+		 * timestamp is older than the expiry limit.
+		 *
+		 * Note that there is an inherent race condition here: if new data is written to the
+		 * buffer after checking the last activity timestamp but before flushing, we might
+		 * end up flushing data that is not older than the age limit. However, this is
+		 * acceptable since this function is a best-effort attempt to reclaim memory.
+		 *
+		 * While it is acceptable to flush more data than necessary, it is not acceptable to
+		 * lose that data if it is more recent than the age limit. The age check must be
+		 * repeated after flushing to ensure that no data newer than the age limit is lost.
+		 */
 		std::uint64_t expiry_limit = current_tracer_time;
 		lttng_ust_ctl_timestamp_add(stream.ustream,
 					    &expiry_limit,
@@ -1722,13 +1762,13 @@ lttng_ustconsumer_reclaim_stream_memory(lttng_consumer_stream& stream,
 		const auto compare_ret =
 			lttng_ust_ctl_last_activity_timestamp_compare(stream.ustream, expiry_limit);
 		if (compare_ret <= 0) {
-			should_flush = true;
+			should_flush_current_producer_buffer = true;
 		}
 	} else {
-		should_flush = true;
+		should_flush_current_producer_buffer = true;
 	}
 
-	if (should_flush) {
+	if (should_flush_current_producer_buffer) {
 		const auto flush_ret = lttng_ust_ctl_flush_buffer(stream.ustream, 1);
 		if (flush_ret) {
 			WARN_FMT(
@@ -1739,33 +1779,31 @@ lttng_ustconsumer_reclaim_stream_memory(lttng_consumer_stream& stream,
 
 	/* The iterator is initially invalid; call [...]_next() before accessing its value. */
 	auto subbuf_iter = lttng::make_unique_wrapper<lttng_ust_ctl_subbuf_iter,
-						      destroy_subbuf_iter>([&stream,
-									    require_consumed]() {
+						      destroy_subbuf_iter>([&stream]() {
+		/* NOLINTNEXTLINE(misc-const-correctness) */
 		lttng_ust_ctl_subbuf_iter *it = nullptr;
 
 		const auto err = lttng_ust_ctl_subbuf_iter_create(
-			stream.ustream,
-			require_consumed ? LTTNG_UST_CTL_SUBBUF_ITER_DELIVERED_CONSUMED :
-					   LTTNG_UST_CTL_SUBBUF_ITER_DELIVERED,
-			&it);
+			stream.ustream, LTTNG_UST_CTL_SUBBUF_ITER_DELIVERED, &it);
 		if (err) {
-			ERR_FMT("Failed to create sub-buffer iterator for stream: stream_name=`{}`, stream_key={}, error={}",
+			LTTNG_THROW_ERROR(fmt::format(
+				"Failed to create sub-buffer iterator for stream: stream_name=`{}`, stream_key={}, error={}",
 				stream.name,
 				stream.key,
-				-err);
+				-err));
 		}
 
 		return it;
 	}());
 
-	if (!subbuf_iter) {
-		LTTNG_THROW_ALLOCATION_FAILURE_ERROR(fmt::format(
-			"Failed to create sub-buffer iterator for stream: channel_name=`{}`, stream_key={}",
-			stream.chan->name,
-			stream.key));
-	}
+	const auto consumed_pos = get_current_consumed_position(stream);
+	DBG_FMT("Current consumed position for stream being reclaimed: channel_name=`{}`, stream_key={}, consumed_pos={}",
+		stream.chan->name,
+		stream.key,
+		consumed_pos);
 
 	unsigned int reclaimed_subbuf_count = 0;
+	unsigned int deferred_reclaim_subbuf_count = 0;
 	while (true) {
 		const auto next_ret = lttng_ust_ctl_subbuf_iter_next(subbuf_iter.get());
 		if (next_ret == 0) {
@@ -1814,7 +1852,7 @@ lttng_ustconsumer_reclaim_stream_memory(lttng_consumer_stream& stream,
 				allocated_ret));
 		}
 
-		DBG_FMT("Sub-buffer iterator properties: channel_name=`{}`, stream_key={}, position={}, allocated={}, current_timestamp={}, subbuf_timestamp={}",
+		DBG_FMT("Evaluating candidate sub-buffer for possible reclamation: channel_name=`{}`, stream_key={}, position={}, allocated={}, current_timestamp={}, subbuf_timestamp={}",
 			stream.chan->name,
 			stream.key,
 			subbuf_position,
@@ -1827,27 +1865,45 @@ lttng_ustconsumer_reclaim_stream_memory(lttng_consumer_stream& stream,
 		}
 
 		if (age_limit) {
-			std::uint64_t expiry_limit = subbuf_timestamp;
-			lttng_ust_ctl_timestamp_add(stream.ustream,
-						    &expiry_limit,
-						    std::chrono::nanoseconds(*age_limit).count());
+			std::uint64_t expiry_limit = current_tracer_time;
+			/* Negate age_limit to compute the expiry threshold in the past. */
+			const auto negative_age_limit_ns =
+				-std::chrono::duration_cast<std::chrono::nanoseconds>(*age_limit)
+					 .count();
+			const auto add_ret = lttng_ust_ctl_timestamp_add(
+				stream.ustream, &expiry_limit, negative_age_limit_ns);
+			if (add_ret < 0) {
+				LTTNG_THROW_ERROR(fmt::format(
+					"Failed to compute expiry limit by subtracting age from current timestamp: channel_name=`{}`, stream_key={}, error={}",
+					stream.chan->name,
+					stream.key,
+					add_ret));
+			}
 
-			/*
-			 * Timeline:
-			 * <----[subbuffer lifetime]---------------|---------------------|------>
-			 * 	                   ^               ^                     ^
-			 *            subbuffer end timestamp   current_tracer_time  expiry_limit
-			 *
-			 * expiry limit is the subbuffer's end timestamp shifted in the future
-			 * by the age limit. When that limit ends up _before_ the current time, the
-			 * subbuffer should be reclaimed.
-			 */
-			if (expiry_limit > current_tracer_time) {
+			if (subbuf_timestamp > expiry_limit) {
 				DBG_FMT("Sub-buffer is too recent, skipping: channel_name=`{}`, stream_key={}, subbuf_timestamp={}, oldest_data_limit={}",
 					stream.chan->name,
 					stream.key,
 					subbuf_timestamp,
 					expiry_limit);
+				continue;
+			}
+		}
+
+		/*
+		 * Skip the sub-buffer if its data has not yet been consumed.
+		 * Use signed comparison to handle 32-bit position wrap-around.
+		 * If (consumed_pos - subbuf_position) <= 0, the sub-buffer is at or
+		 * ahead of the consumed position, meaning it hasn't been consumed yet.
+		 */
+		if (require_consumed) {
+			if ((long) (consumed_pos - subbuf_position) <= 0) {
+				DBG_FMT("Sub-buffer not consumed yet, marking for later consumption: channel_name=`{}`, stream_key={}, subbuf_position={}, consumed_pos={}",
+					stream.chan->name,
+					stream.key,
+					subbuf_position,
+					consumed_pos);
+				deferred_reclaim_subbuf_count++;
 				continue;
 			}
 		}
@@ -1919,7 +1975,19 @@ lttng_ustconsumer_reclaim_stream_memory(lttng_consumer_stream& stream,
 		}
 	}
 
-	return reclaimed_subbuf_count * stream.max_sb_size;
+	lttng::consumer::memory_reclaim_result result;
+	result.bytes_reclaimed = reclaimed_subbuf_count * stream.max_sb_size;
+	result.pending_bytes_to_reclaim = deferred_reclaim_subbuf_count * stream.max_sb_size;
+
+	/* A reclamation shouldn't be ongoing. */
+	LTTNG_ASSERT(!stream.pending_memory_reclamation);
+	if (deferred_reclaim_subbuf_count != 0) {
+		stream.pending_memory_reclamation =
+			consumer_stream_pending_reclamation{ deferred_reclaim_subbuf_count,
+							     age_limit };
+	}
+
+	return result;
 }
 
 static void
@@ -1990,14 +2058,21 @@ lttng_ustconsumer_reclaim_channels_memory(int socket,
 					continue;
 				}
 
-				const auto bytes_reclaimed =
-					lttng_ustconsumer_reclaim_stream_memory(
-						*stream, age_limit, require_consumed);
+				const auto result = lttng_ustconsumer_reclaim_stream_memory(
+					*stream, age_limit, require_consumed);
+
+				DBG_FMT("Memory reclaim evaluation completed for stream: channel_name=`{}`, stream_key={}, bytes_reclaimed={}, pending_bytes_to_reclaim={}",
+					channel->name,
+					stream->key,
+					result.bytes_reclaimed,
+					result.pending_bytes_to_reclaim);
 
 				const lttcomm_stream_memory_reclamation_result
 					stream_reclamation_result = {
 						.channel_key = channel_key,
-						.bytes_reclaimed = bytes_reclaimed,
+						.bytes_reclaimed = result.bytes_reclaimed,
+						.pending_bytes_to_reclaim =
+							result.pending_bytes_to_reclaim,
 					};
 
 				reply_payload.insert(reply_payload.end(),
@@ -2016,14 +2091,15 @@ lttng_ustconsumer_reclaim_channels_memory(int socket,
 				     channel->streams.head)) {
 				const lttng::pthread::lock_guard stream_lock(stream->lock);
 
-				const auto bytes_reclaimed =
-					lttng_ustconsumer_reclaim_stream_memory(
-						*stream, age_limit, require_consumed);
+				const auto result = lttng_ustconsumer_reclaim_stream_memory(
+					*stream, age_limit, require_consumed);
 
 				const lttcomm_stream_memory_reclamation_result
 					stream_reclamation_result = {
 						.channel_key = channel_key,
-						.bytes_reclaimed = bytes_reclaimed,
+						.bytes_reclaimed = result.bytes_reclaimed,
+						.pending_bytes_to_reclaim =
+							result.pending_bytes_to_reclaim,
 					};
 
 				reply_payload.insert(reply_payload.end(),
@@ -4852,8 +4928,59 @@ void lttng_ustconsumer_quiescent_stalled_channel(struct lttng_consumer_channel& 
 		channel.subbuffer_count.value());
 }
 
-void lttng_ustconsumer_reclaim_current_subbuffer(lttng_consumer_stream& stream)
+static bool subbuffer_too_old(lttng_consumer_stream& stream,
+			      const stream_subbuffer& subbuffer,
+			      std::chrono::microseconds max_age)
 {
+	std::uint64_t current_tracer_time;
+	const auto current_time_ret =
+		lttng_ust_ctl_get_current_timestamp(stream.ustream, &current_tracer_time);
+	if (current_time_ret < 0) {
+		LTTNG_THROW_ERROR(fmt::format(
+			"Failed to get current tracer time for stream: channel_name=`{}`, stream_key={}, error={}",
+			stream.chan->name,
+			stream.key,
+			current_time_ret));
+	}
+
+	/* Turn the age into an absolute time in the tracer's timebase. */
+	auto expiry_limit = current_tracer_time;
+	const auto add_ret = lttng_ust_ctl_timestamp_add(
+		stream.ustream,
+		&expiry_limit,
+		-std::chrono::duration_cast<std::chrono::nanoseconds>(max_age).count());
+	if (add_ret < 0) {
+		LTTNG_THROW_ERROR(fmt::format(
+			"Failed to compute expiry limit by subtracting age from current timestamp: channel_name=`{}`, stream_key={}, error={}",
+			stream.chan->name,
+			stream.key,
+			add_ret));
+	}
+
+	/*
+	 * The subbuffer is too old if its end timestamp is less than or equal to the expiry limit.
+	 */
+	return subbuffer.info.data.timestamp_end <= expiry_limit;
+}
+
+void lttng_ustconsumer_try_reclaim_current_subbuffer(lttng_consumer_stream& stream,
+						     const stream_subbuffer& subbuffer)
+{
+	if (!stream.chan->continuously_reclaimed && !stream.pending_memory_reclamation) {
+		/* Nothing to do. */
+		return;
+	}
+
+	if (stream.pending_memory_reclamation && stream.pending_memory_reclamation->max_age) {
+		/* Evaluate age */
+		if (!subbuffer_too_old(
+			    stream, subbuffer, *stream.pending_memory_reclamation->max_age)) {
+			/* Reclamation is done (all other subbuffers are too recent). */
+			stream.pending_memory_reclamation.reset();
+			return;
+		}
+	}
+
 	const auto initial_reclaim_ret = lttng_ust_ctl_reclaim_reader_subbuf(stream.ustream);
 
 	/*
@@ -4920,5 +5047,12 @@ void lttng_ustconsumer_reclaim_current_subbuffer(lttng_consumer_stream& stream)
 				stream.chan->name,
 				stream.key),
 			errno);
+	}
+
+	if (stream.pending_memory_reclamation) {
+		/* Decrement pending count. */
+		if (--stream.pending_memory_reclamation->subbuffer_count == 0) {
+			stream.pending_memory_reclamation.reset();
+		}
 	}
 }

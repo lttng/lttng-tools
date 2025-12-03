@@ -222,9 +222,10 @@ lttng_reclaim_handle_get_reclaimed_memory_size_bytes(const struct lttng_reclaim_
     pending reclamation from the channel memory reclaim operation
     identified by \lt_p{handle}.
 
-Pending bytes are sub-buffers that were eligible for reclamation but
-are still being consumed (transferred to output destination). These
-bytes will be reclaimed once consumption completes.
+Pending bytes are sub-buffers that met the reclamation criteria but
+could not be immediately reclaimed because their data has not yet been
+consumed. These sub-buffers will be automatically reclaimed as they
+are consumed.
 
 The pending memory size is available immediately after
 lttng_reclaim_channel_memory() returns successfully.
