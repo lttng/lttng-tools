@@ -12,6 +12,7 @@
 
 #include "cmd-2-1.hpp"
 #include "cmd-2-11.hpp"
+#include "cmd-2-15.hpp"
 #include "cmd-2-2.hpp"
 #include "cmd-2-4.hpp"
 

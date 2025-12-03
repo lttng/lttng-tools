@@ -1520,13 +1520,13 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr __attr
 		/* From 2.4 to 2.10 */
 		ret = cmd_create_session_2_4(
 			payload, session_name, hostname, &live_timer, &snapshot);
-	} else {
+	} else if (conn->minor >= 11 && conn->minor < 15) {
 		bool has_current_chunk;
 		uint64_t current_chunk_id_value;
 		time_t creation_time_value;
 		uint64_t id_sessiond_value;
 
-		/* From 2.11 to ... */
+		/* From 2.11 to 2.14 */
 		ret = cmd_create_session_2_11(payload,
 					      session_name,
 					      hostname,
@@ -1539,6 +1539,37 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr __attr
 					      &current_chunk_id_value,
 					      &creation_time_value,
 					      &session_name_contains_creation_timestamp);
+		if (lttng_uuid_is_nil(sessiond_uuid)) {
+			/* The nil UUID is reserved for pre-2.11 clients. */
+			ERR("Illegal nil UUID announced by peer in create session command");
+			ret = -1;
+			goto send_reply;
+		}
+		LTTNG_OPTIONAL_SET(&id_sessiond, id_sessiond_value);
+		LTTNG_OPTIONAL_SET(&creation_time, creation_time_value);
+		if (has_current_chunk) {
+			LTTNG_OPTIONAL_SET(&current_chunk_id, current_chunk_id_value);
+		}
+	} else {
+		bool has_current_chunk;
+		uint64_t current_chunk_id_value;
+		time_t creation_time_value;
+		uint64_t id_sessiond_value;
+
+		/* From 2.15 to ... */
+		ret = cmd_create_session_2_15(payload,
+					      session_name,
+					      hostname,
+					      base_path,
+					      &live_timer,
+					      &snapshot,
+					      &id_sessiond_value,
+					      sessiond_uuid,
+					      &has_current_chunk,
+					      &current_chunk_id_value,
+					      &creation_time_value,
+					      &session_name_contains_creation_timestamp,
+					      &trace_format);
 		if (lttng_uuid_is_nil(sessiond_uuid)) {
 			/* The nil UUID is reserved for pre-2.11 clients. */
 			ERR("Illegal nil UUID announced by peer in create session command");
