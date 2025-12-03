@@ -400,7 +400,7 @@ Default: +{default_channel_tracefile_size}+.
 +
 NOTE: Data streams which LTTng writes for a channel configured with this
 option may inaccurately report discarded event records as of
-CTF{nbsp}1.8.
+CTF{nbsp}1.8 and CTF{nbsp}2.
 
 
 Timers
