@@ -29,6 +29,7 @@ struct lttng_session_descriptor {
 	 * session-creation time.
 	 */
 	enum lttng_session_descriptor_output_type output_type;
+	enum lttng_trace_format trace_format;
 	char *name;
 	union {
 		struct lttng_session_descriptor_network_location network;
@@ -55,6 +56,8 @@ struct lttng_session_descriptor_comm {
 	uint8_t type;
 	/* enum lttng_session_descriptor_output_type */
 	uint8_t output_type;
+	/* enum lttng_trace_format */
+	uint8_t trace_format;
 	/* Includes trailing null. */
 	uint32_t name_len;
 	/* Name follows, followed by URIs */
@@ -211,6 +214,7 @@ struct lttng_session_descriptor *lttng_session_descriptor_create(const char *nam
 
 	descriptor->type = LTTNG_SESSION_DESCRIPTOR_TYPE_REGULAR;
 	descriptor->output_type = LTTNG_SESSION_DESCRIPTOR_OUTPUT_TYPE_NONE;
+	descriptor->trace_format = LTTNG_TRACE_FORMAT_DEFAULT;
 	if (lttng_session_descriptor_set_session_name(descriptor, name)) {
 		goto error;
 	}
@@ -735,6 +739,14 @@ skip_name:
 		/* Already checked. */
 		abort();
 	}
+
+	if (base_header->trace_format != LTTNG_TRACE_FORMAT_DEFAULT &&
+	    base_header->trace_format != LTTNG_TRACE_FORMAT_CTF_1_8 &&
+	    base_header->trace_format != LTTNG_TRACE_FORMAT_CTF_2) {
+		ret = -1;
+		goto end;
+	}
+	(*descriptor)->trace_format = (enum lttng_trace_format) base_header->trace_format;
 	memset(uris, 0, sizeof(uris));
 	if (!*descriptor) {
 		ret = -1;
@@ -760,6 +772,7 @@ int lttng_session_descriptor_serialize(const struct lttng_session_descriptor *de
 		.base = {
 			.type = (uint8_t) descriptor->type,
 			.output_type = (uint8_t) descriptor->output_type,
+			.trace_format = (uint8_t) descriptor->trace_format,
 			.name_len = (uint32_t) (descriptor->name ?
 				strlen(descriptor->name) + 1 : 0),
 			.uri_count = 0,
