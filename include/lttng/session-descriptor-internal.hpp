@@ -47,6 +47,9 @@ lttng_session_descriptor_get_type(const struct lttng_session_descriptor *descrip
 enum lttng_session_descriptor_output_type
 lttng_session_descriptor_get_output_type(const struct lttng_session_descriptor *descriptor);
 
+enum lttng_trace_format
+lttng_session_descriptor_get_trace_format(const struct lttng_session_descriptor *descriptor);
+
 void lttng_session_descriptor_get_local_output_uri(
 	const struct lttng_session_descriptor *descriptor, struct lttng_uri *local_uri);
 
