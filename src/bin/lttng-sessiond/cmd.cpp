@@ -5534,6 +5534,15 @@ static enum lttng_error_code set_relayd_for_snapshot(struct consumer_output *out
 		}
 	}
 
+	if (session->trace_format == LTTNG_TRACE_FORMAT_CTF_2 && output->relay_minor_version < 15) {
+		ERR_FMT("CTF 2 format is not supported with `lttng-relayd` version {}.{}: session_name=`{}`",
+			output->relay_major_version,
+			output->relay_minor_version,
+			session->name);
+		status = LTTNG_ERR_UNSUPPORTED_TRACE_FORMAT;
+		goto error;
+	}
+
 error:
 	return status;
 }
