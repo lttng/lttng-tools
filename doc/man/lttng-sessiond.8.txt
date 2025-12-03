@@ -175,6 +175,8 @@ man:lttng-create(1) command or the liblttng-ctl API without explicitly
 specifying a trace format, `lttng-sessiond` uses 'FORMAT'.
 +
 Default: `ctf-2`.
++
+See also the `LTTNG_SESSIOND_DEFAULT_TRACE_FORMAT` environment variable.
 
 option:-g 'GROUP', option:--group='GROUP'::
     Set the Unix tracing group to 'GROUP' instead of `tracing`.
@@ -427,6 +429,14 @@ session daemons.
 
 `LTTNG_SESSION_CONFIG_XSD_PATH`::
     Recording session configuration XML schema definition (XSD) path.
+
+`LTTNG_SESSIOND_DEFAULT_TRACE_FORMAT`::
+    Default trace format of recording sessions.
++
+The value is either `ctf-1.8` or `ctf-2`.
++
+NOTE: The option:--default-trace-format option overrides this
+environment variable.
 
 `LTTNG_UST_CTL_PATH`::
     Colon-delimited paths of the directories where `lttng-sessiond`
