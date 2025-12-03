@@ -739,7 +739,8 @@ the per-user option because systems generally have more instrumented
 processes than Unix users running instrumented processes. However, the
 per-process model ensures that one process having a high event
 throughput won't fill all the shared sub-buffers of the same Unix user,
-only its own.
+only its own. It also provides complete isolation between processes:
+one process cannot read or corrupt the trace data of another.
 
 
 [[channel-buf-prealloc]]
