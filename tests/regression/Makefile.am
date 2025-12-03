@@ -90,6 +90,7 @@ TESTS = tools/clear/test_disallow.py \
 	tools/client/test_event_rule_listing.py \
 	tools/client/test_warn_on_shm_too_small.py \
 	tools/channel/test_channel_allocation_policy_per_cpu.py \
+	tools/trace-format/test_sessiond_default_trace_format.py \
 	tools/trace-format/test_trace_format_ust.py \
 	tools/channel/test_channel_watchdog_timer.py \
 	tests.serial

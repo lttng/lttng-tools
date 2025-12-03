@@ -50,7 +50,22 @@ def _capture_trace(test_env, tap, trace_format=None):
     return session_output_location.path
 
 
-tap = lttngtest.TapGenerator(0)
+def _test_default_trace_format_ctf_1_8():
+    with lttngtest.test_environment(
+        with_sessiond=True,
+        log=tap.diagnostic,
+        sessiond_extra_args=["--default-trace-format=ctf-1.8"],
+    ) as test_env:
+        with tap.case("`--default-trace-format=ctf-1.8` produces CTF 1.8 trace"):
+            trace_path = _capture_trace(test_env, tap)
+
+            if _is_ctf2_trace(trace_path):
+                raise AssertionError("Expected CTF 1.8 trace, but got CTF 2 trace")
+
+            tap.diagnostic("Trace has CTF 1.8 format as expected")
+
+
+tap = lttngtest.TapGenerator(1)
 tap.diagnostic(
     "Test `--default-trace-format` option and `LTTNG_SESSIOND_DEFAULT_TRACE_FORMAT` environment variable of `lttng-sessiond`"
 )
@@ -58,5 +73,7 @@ tap.diagnostic(
 if tuple(map(int, bt2.__version__.split(".")[:2])) < (2, 1):
     tap.missing_platform_requirement("Babeltrace 2.1.0 or later is required")
     sys.exit(0)
+
+_test_default_trace_format_ctf_1_8()
 
 sys.exit(0 if tap.is_successful else 1)
