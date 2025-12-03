@@ -6,6 +6,7 @@
 
 import pathlib
 import sys
+from typing import Optional
 
 # Import in-tree test utils
 test_utils_import_path = pathlib.Path(__file__).absolute().parents[3] / "utils"
@@ -21,14 +22,16 @@ from trace_format_helpers import (
 )
 
 
-def capture_local_ust_trace(environment):
-    # type: (lttngtest._Environment) -> pathlib.Path
+def capture_local_ust_trace(environment, trace_format=None):
+    # type: (lttngtest._Environment, Optional[lttngtest.TraceFormat]) -> pathlib.Path
     session_output_location = lttngtest.LocalSessionOutputLocation(
         environment.create_temporary_directory("ctf2-trace")
     )
     client = lttngtest.LTTngClient(environment, log=tap.diagnostic)
 
-    session = client.create_session(output=session_output_location)
+    session = client.create_session(
+        output=session_output_location, trace_format=trace_format
+    )
     tap.diagnostic("Created session `{session_name}`".format(session_name=session.name))
 
     channel = session.add_channel(lttngtest.TracingDomain.User)
@@ -55,7 +58,6 @@ def test_snapshot_trace_valid_ctf2():
     with lttngtest.test_environment(
         with_sessiond=True,
         log=tap.diagnostic,
-        extra_env_vars={"LTTNG_EXPERIMENTAL_FORCE_CTF_2": "1"},
     ) as test_env:
         session_output_location = lttngtest.LocalSessionOutputLocation(
             test_env.create_temporary_directory("ctf2-trace-snapshot")
@@ -101,7 +103,6 @@ def test_live_tracing_is_disallowed_for_ctf2():
     with lttngtest.test_environment(
         with_sessiond=True,
         log=tap.diagnostic,
-        extra_env_vars={"LTTNG_EXPERIMENTAL_FORCE_CTF_2": "1"},
     ) as test_env:
         network_output = lttngtest.NetworkSessionOutputLocation(
             "net://localhost:{}:{}/".format(
@@ -120,7 +121,6 @@ def test_streaming_is_disallowed_for_ctf2():
     with lttngtest.test_environment(
         with_sessiond=True,
         log=tap.diagnostic,
-        extra_env_vars={"LTTNG_EXPERIMENTAL_FORCE_CTF_2": "1"},
     ) as test_env:
 
         network_output = lttngtest.NetworkSessionOutputLocation(
@@ -142,7 +142,6 @@ def test_snapshot_network_output_disallowed_for_ctf2():
         with_sessiond=True,
         log=tap.diagnostic,
         with_relayd=True,
-        extra_env_vars={"LTTNG_EXPERIMENTAL_FORCE_CTF_2": "1"},
     ) as test_env:
         network_output = lttngtest.NetworkSessionOutputLocation(
             "net://localhost:{}:{}/".format(

@@ -7,6 +7,7 @@
 import pathlib
 import sys
 import os
+from typing import Optional
 
 # Import in-tree test utils
 test_utils_import_path = pathlib.Path(__file__).absolute().parents[3] / "utils"
@@ -20,15 +21,17 @@ from trace_format_helpers import (
 )
 
 
-def capture_local_kernel_trace(environment):
-    # type: (lttngtest._Environment) -> pathlib.Path
+def capture_local_kernel_trace(environment, trace_format=None):
+    # type: (lttngtest._Environment, Optional[lttngtest.TraceFormat]) -> pathlib.Path
     session_output_location = lttngtest.LocalSessionOutputLocation(
         environment.create_temporary_directory("trace")
     )
 
     client = lttngtest.LTTngClient(environment, log=tap.diagnostic)
 
-    session = client.create_session(output=session_output_location)
+    session = client.create_session(
+        output=session_output_location, trace_format=trace_format
+    )
     tap.diagnostic("Created session `{session_name}`".format(session_name=session.name))
 
     channel = session.add_channel(lttngtest.TracingDomain.User)
