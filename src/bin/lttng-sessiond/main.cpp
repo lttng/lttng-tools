@@ -50,6 +50,7 @@
 #include <common/daemonize.hpp>
 #include <common/defaults.hpp>
 #include <common/dynamic-buffer.hpp>
+#include <common/error.hpp>
 #include <common/exception.hpp>
 #include <common/futex.hpp>
 #include <common/ini-config/ini-config.hpp>
@@ -139,6 +140,7 @@ static const struct option long_options[] = {
 	{ "extra-kmod-probes", required_argument, nullptr, '\0' },
 	{ EVENT_NOTIFIER_ERROR_BUFFER_SIZE_KERNEL_OPTION_STR, required_argument, nullptr, '\0' },
 	{ EVENT_NOTIFIER_ERROR_BUFFER_SIZE_USERSPACE_OPTION_STR, required_argument, nullptr, '\0' },
+	{ "default-trace-format", required_argument, nullptr, '\0' },
 	{ nullptr, 0, nullptr, 0 }
 };
 
@@ -755,6 +757,22 @@ static int set_option(int opt, const char *arg, const char *optname)
 		DBG3("Number of event notifier error buffer userspace size to non default: %i",
 		     the_config.event_notifier_buffer_size_userspace);
 		goto end;
+	} else if (string_match(optname, "default-trace-format")) {
+		if (!arg || *arg == '\0') {
+			ret = -EINVAL;
+			goto end;
+		}
+		if (strcmp(arg, "ctf-1.8") == 0) {
+			the_config.default_trace_format = LTTNG_TRACE_FORMAT_CTF_1_8;
+		} else if (strcmp(arg, "ctf-2") == 0) {
+			the_config.default_trace_format = LTTNG_TRACE_FORMAT_CTF_2;
+		} else {
+			ERR_FMT("Wrong value in --{} parameter: expecting `ctf-1.8` or `ctf-2` instead of `{}`",
+				optname,
+				arg);
+			ret = -EINVAL;
+			goto end;
+		}
 	} else if (string_match(optname, "config") || opt == 'f') {
 		/* This is handled in set_options() thus silent skip. */
 		goto end;
