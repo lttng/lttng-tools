@@ -1201,7 +1201,8 @@ int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 				int session_live_timer,
 				const uint64_t *current_chunk_id,
 				time_t session_creation_time,
-				bool session_name_contains_creation_time)
+				bool session_name_contains_creation_time,
+				enum lttng_trace_format trace_format)
 {
 	int ret;
 	int fd;
@@ -1235,6 +1236,7 @@ int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 					    current_chunk_id,
 					    session_creation_time,
 					    session_name_contains_creation_time,
+					    trace_format,
 					    output_path);
 		if (ret < 0) {
 			/* Close the control socket. */
