@@ -1117,6 +1117,18 @@ int cmd_setup_relayd(const ltt_session::locked_ref& session)
 		session->consumer->relay_allows_clear = ksess->consumer->relay_allows_clear;
 	}
 
+	/* Validate that CTF 2 is not used with relay daemon < 2.15. */
+	if (session->consumer->type == CONSUMER_DST_NET &&
+	    session->trace_format == LTTNG_TRACE_FORMAT_CTF_2 &&
+	    session->consumer->relay_minor_version < 15) {
+		ERR_FMT("CTF 2 format is not supported with `lttng-relayd` version {}.{}: session_name=`{}`",
+			session->consumer->relay_major_version,
+			session->consumer->relay_minor_version,
+			session->name);
+		ret = LTTNG_ERR_UNSUPPORTED_TRACE_FORMAT;
+		goto error;
+	}
+
 error:
 	return ret;
 }
