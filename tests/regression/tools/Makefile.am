@@ -235,6 +235,7 @@ noinst_SCRIPTS += \
 	streaming/test_ust \
 	tracefile-limits/test_tracefile_count \
 	tracefile-limits/test_tracefile_size \
+	trace-format/test_sessiond_default_trace_format.py \
 	trace-format/test_trace_format_kernel.py \
 	trace-format/test_trace_format_ust.py \
 	trace-format/trace_format_helpers.py \
