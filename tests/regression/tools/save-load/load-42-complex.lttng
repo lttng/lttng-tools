@@ -134,6 +134,7 @@
 			</domain>
 		</domains>
 		<started>false</started>
+		<trace_format>CTF_2</trace_format>
 		<attributes>
 			<live_timer_interval>1000000</live_timer_interval>
 		</attributes>

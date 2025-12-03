@@ -12,19 +12,16 @@ CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../..
 SESSION_NAME="clock_override"
 
-NUM_TESTS=32
+NUM_TESTS=31
 EVENT_NAME="lttng_test_filter_event"
 
 TESTCMD="echo -n 10 > /proc/lttng-test-filter-event"
 
-METADATA_CLOCK_START_TOKEN="clock {"
-METADATA_CLOCK_END_TOKEN="};"
-
 METADATA_TOKEN_LIST=(
 	"name"
-	"uuid"
+	"uid"
 	"description"
-	"freq"
+	"frequency"
 )
 
 CLOCK_TOKEN_VALUE=(
@@ -44,28 +41,16 @@ function signal_cleanup()
 	full_cleanup
 }
 
-function extract_clock_metadata()
-{
-	local metadata_file=$1
-	local clock_metadata_file_destination=$2
-	cat $metadata_file \
-		| sed -n "/$METADATA_CLOCK_START_TOKEN/,/$METADATA_CLOCK_END_TOKEN/p" \
-		> $clock_metadata_file_destination
-	ok $? "Clock metadata extraction"
-}
-
 function extract_clock_metadata_token()
 {
-	local clock_metadata_file=$1
+	local ctf_metadata_file=$1
 	local token=$2
-	# Look for token and get value between ""
-	cat $clock_metadata_file | grep $token | awk -F"= |;" '{print $2}' | tr -d '"'
+	"$TESTDIR/utils/extract_ctf_2_prop.py" "$ctf_metadata_file" clock-class "$token"
 }
 
 function test_clock_override_metadata()
 {
 	local ctf_metadata_file=$(TMPDIR="$TRACE_PATH" mktemp -t ctf-metadata.XXXXXX)
-	local clock_metadata_file=$(TMPDIR="$TRACE_PATH" mktemp -t clock-metadata.XXXXXX)
 	local result=""
 
 	diag "Clock override plugin metadata test"
@@ -90,21 +75,18 @@ function test_clock_override_metadata()
 	_run_babeltrace_cmd -o ctf-metadata -w $ctf_metadata_file $TRACE_METADATA_DIR
 	ok $? "Metadata extraction from babeltrace"
 
-	extract_clock_metadata $ctf_metadata_file $clock_metadata_file
-
 	test ${#METADATA_TOKEN_LIST[@]} -eq ${#CLOCK_TOKEN_VALUE[@]}
 	ok $? "Tokens to check(${#METADATA_TOKEN_LIST[@]}) and provided values(${#CLOCK_TOKEN_VALUE[@]}) count is equal"
 
 	local counter=0
 	while [ "$counter" -lt "${#METADATA_TOKEN_LIST[@]}" ]; do
-		result=$(extract_clock_metadata_token $clock_metadata_file \
+		result=$(extract_clock_metadata_token $ctf_metadata_file \
 			${METADATA_TOKEN_LIST[$counter]})
 		test "$result" == "${CLOCK_TOKEN_VALUE[$counter]}"
 		ok $? "Token \"${METADATA_TOKEN_LIST[$counter]}\" expect:${CLOCK_TOKEN_VALUE[$counter]} got:$result"
 		let "counter++"
 	done
 	rm -rf $ctf_metadata_file
-	rm -rf $clock_metadata_file
 }
 
 function test_clock_override_timestamp()
