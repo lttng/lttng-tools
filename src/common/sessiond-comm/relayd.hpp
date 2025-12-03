@@ -193,7 +193,7 @@ struct lttcomm_relayd_create_session_2_4 {
 	uint32_t snapshot;
 } LTTNG_PACKED;
 
-struct lttcomm_relayd_create_session_2_11 {
+struct lttcomm_relayd_create_session_2_11_base {
 	uint32_t session_name_len;
 	uint32_t hostname_len;
 	/* Optional, set to 0 to indicate it is not user-specified. */
@@ -208,6 +208,10 @@ struct lttcomm_relayd_create_session_2_11 {
 	/* Session creation time, in seconds since UNIX Epoch. */
 	uint64_t creation_time;
 	LTTNG_OPTIONAL_COMM(uint64_t) LTTNG_PACKED current_chunk_id;
+} LTTNG_PACKED;
+
+struct lttcomm_relayd_create_session_2_11 {
+	struct lttcomm_relayd_create_session_2_11_base base;
 	/* Contains the session_name, hostname, base_path. */
 	char names[LTTNG_FLEXIBLE_ARRAY_MEMBER_LENGTH];
 } LTTNG_PACKED;

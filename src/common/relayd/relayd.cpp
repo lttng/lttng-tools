@@ -183,13 +183,13 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 	}
 
 	LTTNG_ASSERT(session_name_len <= UINT32_MAX);
-	msg->session_name_len = htobe32(session_name_len);
+	msg->base.session_name_len = htobe32(session_name_len);
 
 	LTTNG_ASSERT(hostname_len <= UINT32_MAX);
-	msg->hostname_len = htobe32(hostname_len);
+	msg->base.hostname_len = htobe32(hostname_len);
 
 	LTTNG_ASSERT(base_path_len <= UINT32_MAX);
-	msg->base_path_len = htobe32(base_path_len);
+	msg->base.base_path_len = htobe32(base_path_len);
 
 	dst = msg->names;
 	if (lttng_strncpy(dst, session_name, session_name_len)) {
@@ -207,17 +207,17 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 		goto error;
 	}
 
-	msg->live_timer = htobe32(session_live_timer);
-	msg->snapshot = !!snapshot;
+	msg->base.live_timer = htobe32(session_live_timer);
+	msg->base.snapshot = !!snapshot;
 
-	std::copy(sessiond_uuid.begin(), sessiond_uuid.end(), msg->sessiond_uuid);
-	msg->session_id = htobe64(sessiond_session_id);
-	msg->session_name_contains_creation_time = session_name_contains_creation_time;
+	std::copy(sessiond_uuid.begin(), sessiond_uuid.end(), msg->base.sessiond_uuid);
+	msg->base.session_id = htobe64(sessiond_session_id);
+	msg->base.session_name_contains_creation_time = session_name_contains_creation_time;
 	if (current_chunk_id) {
-		LTTNG_OPTIONAL_SET(&msg->current_chunk_id, htobe64(*current_chunk_id));
+		LTTNG_OPTIONAL_SET(&msg->base.current_chunk_id, htobe64(*current_chunk_id));
 	}
 
-	msg->creation_time = htobe64((uint64_t) creation_time);
+	msg->base.creation_time = htobe64((uint64_t) creation_time);
 
 	/* Send command */
 	ret = send_command(*rsock, RELAYD_CREATE_SESSION, msg, msg_length, 0);

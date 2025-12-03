@@ -49,20 +49,21 @@ int cmd_create_session_2_11(const struct lttng_buffer_view *payload,
 	}
 	memcpy(&header, payload->data, header_len);
 
-	header.session_name_len = be32toh(header.session_name_len);
-	header.hostname_len = be32toh(header.hostname_len);
-	header.base_path_len = be32toh(header.base_path_len);
-	header.live_timer = be32toh(header.live_timer);
-	header.current_chunk_id.value = be64toh(header.current_chunk_id.value);
-	header.current_chunk_id.is_set = !!header.current_chunk_id.is_set;
-	header.creation_time = be64toh(header.creation_time);
-	header.session_id = be64toh(header.session_id);
+	header.base.session_name_len = be32toh(header.base.session_name_len);
+	header.base.hostname_len = be32toh(header.base.hostname_len);
+	header.base.base_path_len = be32toh(header.base.base_path_len);
+	header.base.live_timer = be32toh(header.base.live_timer);
+	header.base.current_chunk_id.value = be64toh(header.base.current_chunk_id.value);
+	header.base.current_chunk_id.is_set = !!header.base.current_chunk_id.is_set;
+	header.base.creation_time = be64toh(header.base.creation_time);
+	header.base.session_id = be64toh(header.base.session_id);
 
-	std::copy(std::begin(header.sessiond_uuid),
-		  std::end(header.sessiond_uuid),
+	std::copy(std::begin(header.base.sessiond_uuid),
+		  std::end(header.base.sessiond_uuid),
 		  sessiond_uuid.begin());
 
-	received_names_size = header.session_name_len + header.hostname_len + header.base_path_len;
+	received_names_size =
+		header.base.session_name_len + header.base.hostname_len + header.base.base_path_len;
 	if (payload->size < header_len + received_names_size) {
 		ERR("Unexpected payload size in \"cmd_create_session_2_11\": expected >= %zu bytes, got %zu bytes",
 		    header_len + received_names_size,
@@ -72,54 +73,55 @@ int cmd_create_session_2_11(const struct lttng_buffer_view *payload,
 	}
 
 	/* Validate length against defined constant. */
-	if (header.session_name_len > LTTNG_NAME_MAX) {
+	if (header.base.session_name_len > LTTNG_NAME_MAX) {
 		ret = -ENAMETOOLONG;
 		ERR("Length of session name (%" PRIu32
 		    " bytes) received in create_session command exceeds maximum length (%d bytes)",
-		    header.session_name_len,
+		    header.base.session_name_len,
 		    LTTNG_NAME_MAX);
 		goto error;
-	} else if (header.session_name_len == 0) {
+	} else if (header.base.session_name_len == 0) {
 		ret = -EINVAL;
 		ERR("Illegal session name length of 0 received");
 		goto error;
 	}
-	if (header.hostname_len > LTTNG_HOST_NAME_MAX) {
+	if (header.base.hostname_len > LTTNG_HOST_NAME_MAX) {
 		ret = -ENAMETOOLONG;
 		ERR("Length of hostname (%" PRIu32
 		    " bytes) received in create_session command exceeds maximum length (%d bytes)",
-		    header.hostname_len,
+		    header.base.hostname_len,
 		    LTTNG_HOST_NAME_MAX);
 		goto error;
 	}
-	if (header.base_path_len > LTTNG_PATH_MAX) {
+	if (header.base.base_path_len > LTTNG_PATH_MAX) {
 		ret = -ENAMETOOLONG;
 		ERR("Length of base_path (%" PRIu32
 		    " bytes) received in create_session command exceeds maximum length (%d bytes)",
-		    header.base_path_len,
+		    header.base.base_path_len,
 		    PATH_MAX);
 		goto error;
 	}
 
 	offset = header_len;
-	session_name_view = lttng_buffer_view_from_view(payload, offset, header.session_name_len);
+	session_name_view =
+		lttng_buffer_view_from_view(payload, offset, header.base.session_name_len);
 	if (!lttng_buffer_view_is_valid(&session_name_view)) {
 		ERR("Invalid payload in \"cmd_create_session_2_11\": buffer too short to contain session name");
 		ret = -1;
 		goto error;
 	}
 
-	offset += header.session_name_len;
-	hostname_view = lttng_buffer_view_from_view(payload, offset, header.hostname_len);
+	offset += header.base.session_name_len;
+	hostname_view = lttng_buffer_view_from_view(payload, offset, header.base.hostname_len);
 	if (!lttng_buffer_view_is_valid(&hostname_view)) {
 		ERR("Invalid payload in \"cmd_create_session_2_11\": buffer too short to contain hostname");
 		ret = -1;
 		goto error;
 	}
 
-	offset += header.hostname_len;
-	base_path_view = lttng_buffer_view_from_view(payload, offset, header.base_path_len);
-	if (header.base_path_len > 0 && !lttng_buffer_view_is_valid(&base_path_view)) {
+	offset += header.base.hostname_len;
+	base_path_view = lttng_buffer_view_from_view(payload, offset, header.base.base_path_len);
+	if (header.base.base_path_len > 0 && !lttng_buffer_view_is_valid(&base_path_view)) {
 		ERR("Invalid payload in \"cmd_create_session_2_11\": buffer too short to contain base path");
 		ret = -1;
 		goto error;
@@ -152,13 +154,13 @@ int cmd_create_session_2_11(const struct lttng_buffer_view *payload,
 	strcpy(hostname, hostname_view.data);
 	strcpy(base_path, base_path_view.size ? base_path_view.data : "");
 
-	*live_timer = header.live_timer;
-	*snapshot = !!header.snapshot;
-	*current_chunk_id = header.current_chunk_id.value;
-	*has_current_chunk = header.current_chunk_id.is_set;
-	*creation_time = (time_t) header.creation_time;
-	*session_name_contains_creation_time = header.session_name_contains_creation_time;
-	*id_sessiond = header.session_id;
+	*live_timer = header.base.live_timer;
+	*snapshot = !!header.base.snapshot;
+	*current_chunk_id = header.base.current_chunk_id.value;
+	*has_current_chunk = header.base.current_chunk_id.is_set;
+	*creation_time = (time_t) header.base.creation_time;
+	*session_name_contains_creation_time = header.base.session_name_contains_creation_time;
+	*id_sessiond = header.base.session_id;
 
 	ret = 0;
 
