@@ -14,6 +14,7 @@
 #include <common/defaults.hpp>
 #include <common/index/ctf-index.hpp>
 #include <common/sessiond-comm/relayd.hpp>
+#include <common/string-utils/c-string-view.hpp>
 #include <common/string-utils/format.hpp>
 #include <common/trace-chunk.hpp>
 
@@ -22,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <vector>
 
 static bool relayd_supports_chunks(const struct lttcomm_relayd_sock *sock)
 {
@@ -306,6 +308,86 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 	}
 error:
 	free(msg);
+	return ret;
+}
+
+static int relayd_create_session_2_15(struct lttcomm_relayd_sock *rsock,
+				      lttng::c_string_view session_name,
+				      lttng::c_string_view hostname,
+				      lttng::c_string_view base_path,
+				      int session_live_timer,
+				      unsigned int snapshot,
+				      uint64_t sessiond_session_id,
+				      const lttng_uuid& sessiond_uuid,
+				      const uint64_t *current_chunk_id,
+				      time_t creation_time,
+				      bool session_name_contains_creation_time,
+				      enum lttng_trace_format trace_format,
+				      struct lttcomm_relayd_create_session_reply_2_11 *reply,
+				      char *output_path)
+{
+	int ret;
+
+	LTTNG_ASSERT(session_name.data());
+	LTTNG_ASSERT(hostname.data());
+
+	/* Calculate message size. */
+	const auto msg_length = sizeof(lttcomm_relayd_create_session_2_15) + session_name.len() +
+		1 + hostname.len() + 1 + (base_path.data() ? base_path.len() : 0) + 1;
+
+	/* Allocate message. */
+	std::vector<char> buffer(msg_length);
+	const auto msg = reinterpret_cast<lttcomm_relayd_create_session_2_15 *>(buffer.data());
+
+	/* Populate base fields and names using common helper. */
+	ret = relayd_create_session_2_11_base_populate(&msg->base,
+						       msg->names,
+						       session_name.data(),
+						       hostname.data(),
+						       base_path.data(),
+						       session_live_timer,
+						       snapshot,
+						       sessiond_session_id,
+						       sessiond_uuid,
+						       current_chunk_id,
+						       creation_time,
+						       session_name_contains_creation_time);
+	if (ret < 0) {
+		return ret;
+	}
+
+	/* Populate 2.15-specific field. */
+	msg->trace_format = htobe32(static_cast<uint32_t>(trace_format));
+
+	/* Send command */
+	ret = send_command(*rsock, RELAYD_CREATE_SESSION, msg, msg_length, 0);
+	if (ret < 0) {
+		return ret;
+	}
+
+	/* Receive response */
+	ret = recv_reply(*rsock, reply, sizeof(*reply));
+	if (ret < 0) {
+		return ret;
+	}
+
+	reply->generic.session_id = be64toh(reply->generic.session_id);
+	reply->generic.ret_code = be32toh(reply->generic.ret_code);
+	reply->output_path_length = be32toh(reply->output_path_length);
+	if (reply->output_path_length >= LTTNG_PATH_MAX) {
+		const auto output_path_length = reply->output_path_length;
+
+		ERR_FMT("Invalid session output path length in reply: length={}, max={}",
+			output_path_length,
+			LTTNG_PATH_MAX);
+		return -1;
+	}
+
+	ret = recv_reply(*rsock, output_path, reply->output_path_length);
+	if (ret < 0) {
+		return ret;
+	}
+
 	return ret;
 }
 
