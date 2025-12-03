@@ -253,9 +253,10 @@ EXTRA_DIST += $(noinst_SCRIPTS) \
 	base-path/load-stream-extra-path.lttng \
 	save-load/configuration/load-42-live.lttng \
 	save-load/configuration/load-42-snapshot.lttng \
-	save-load/load-42.lttng \
 	save-load/load-42-complex.lttng \
+	save-load/load-42-ctf-1.8.lttng \
 	save-load/load-42-trackers.lttng \
+	save-load/load-42.lttng \
 	save-load/tracker_legacy_none.lttng \
 	save-load/tracker_legacy_all.lttng \
 	save-load/tracker_legacy_selective.lttng \
