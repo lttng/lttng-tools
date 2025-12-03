@@ -4553,6 +4553,7 @@ void cmd_list_lttng_sessions(struct lttng_session *sessions,
 		extended[i].creation_time.value = (uint64_t) session->creation_time;
 		extended[i].creation_time.is_set = 1;
 		strncpy(extended[i].shm_path.value, session->shm_path, LTTNG_PATH_MAX);
+		extended[i].trace_format = (uint8_t) session->trace_format;
 		i++;
 	}
 }
