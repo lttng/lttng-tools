@@ -2088,6 +2088,12 @@ std::unique_ptr<node> node_from_session(const lttng::cli::session& session,
 				}
 			}
 
+			/* Trace format */
+			properties.emplace(make_string_property(
+				"Trace format",
+				session.trace_format() == LTTNG_TRACE_FORMAT_CTF_1_8 ? "CTF 1.8" :
+										       "CTF 2"));
+
 			/* Live timer period */
 			if (session.live_timer_period_us()) {
 				properties.emplace(make_period_property(
