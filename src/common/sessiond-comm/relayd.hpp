@@ -223,6 +223,13 @@ struct lttcomm_relayd_create_session_reply_2_11 {
 	char output_path[LTTNG_FLEXIBLE_ARRAY_MEMBER_LENGTH];
 } LTTNG_PACKED;
 
+struct lttcomm_relayd_create_session_2_15 {
+	struct lttcomm_relayd_create_session_2_11_base base;
+	uint32_t trace_format;
+	/* Contains the session_name, hostname, base_path. */
+	char names[LTTNG_FLEXIBLE_ARRAY_MEMBER_LENGTH];
+} LTTNG_PACKED;
+
 /*
  * Used to ask the relay to reset the metadata trace file (regeneration).
  * Send the new version of the metadata (starts at 0).
