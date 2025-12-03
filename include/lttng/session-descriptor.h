@@ -44,9 +44,25 @@ enum lttng_session_descriptor_status {
 	LTTNG_SESSION_DESCRIPTOR_STATUS_UNSET = 1,
 };
 
+/*!
+@brief
+    Trace format of a recording session.
+*/
 enum lttng_trace_format {
+	/*!
+	@brief
+	    Use the default trace format of the
+	    \ref api-gen-sessiond-conn "connected session daemon".
+
+	See the <code>\--default-trace-format</code> option of
+	\lt_man{lttng-sessiond,8}.
+	*/
 	LTTNG_TRACE_FORMAT_DEFAULT = 0,
+
+	/// <a href="https://diamon.org/ctf/v1.8.3/">Common Trace Format version&nbsp;1.8</a>.
 	LTTNG_TRACE_FORMAT_CTF_1_8 = 1,
+
+	/// <a href="https://diamon.org/ctf/">Common Trace Format version&nbsp;2</a>.
 	LTTNG_TRACE_FORMAT_CTF_2 = 2,
 };
 
