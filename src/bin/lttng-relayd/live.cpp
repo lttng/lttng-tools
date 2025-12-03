@@ -1527,6 +1527,20 @@ static int viewer_attach_session(struct relay_connection *conn)
 		goto send_reply;
 	}
 
+	/*
+	 * Reject CTF 2 sessions when the viewer is using protocol < 2.15.
+	 * Protocol 2.4 doesn't support communicating the trace format,
+	 * so viewers would incorrectly decode CTF 2 data as CTF 1.8.
+	 */
+	if (conn->minor < 15 && session->trace_format == LTTNG_TRACE_FORMAT_CTF_2) {
+		viewer_attach_status = LTTNG_VIEWER_ATTACH_UNK;
+		DBG_FMT("Relay session ID {} uses CTF 2 format which is not supported by viewer protocol 2.{}, returning status={}",
+			session_id,
+			conn->minor,
+			lttng_viewer_attach_return_code_str(viewer_attach_status));
+		goto send_reply;
+	}
+
 	switch (be32toh(request.seek)) {
 	case LTTNG_VIEWER_SEEK_BEGINNING:
 	case LTTNG_VIEWER_SEEK_LAST:
