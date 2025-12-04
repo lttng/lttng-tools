@@ -1,6 +1,6 @@
 lttng-concepts(7)
 =================
-:revdate: 24 September 2025
+:revdate: 4 December 2025
 :sect-event-rule: INSTRUMENTATION POINT, EVENT RULE, AND EVENT
 :sect-session: RECORDING SESSION
 :sect-domain: TRACING DOMAIN
@@ -363,6 +363,7 @@ if you don't specify one:
 * man:lttng-enable-event(1)
 * man:lttng-enable-rotation(1)
 * man:lttng-regenerate(1)
+* man:lttng-reclaim-memory(1)
 * man:lttng-rotate(1)
 * man:lttng-save(1)
 * man:lttng-snapshot(1)
