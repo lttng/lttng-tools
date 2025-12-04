@@ -459,6 +459,7 @@ __lttng_complete_trigger_name() {
     return
   fi
 
+  local line
   local -a trigger_names
 
   while read -r line; do
@@ -573,7 +574,7 @@ __lttng_complete_session_name() {
   # Append the name and info of one recording session at a time
   local -a session_names session_infos
   local -i index iprop
-  local session_name session_summary_xml snapshot_mode session_status session_info
+  local session_name session_summary_xml session_mode session_status session_info
 
   # For each recording session summary
   for index in {1..$session_count}; do
@@ -699,7 +700,7 @@ __lttng_cur_session_name() {
     return 1
   fi
 
-  local cur_session_name
+  local line cur_session_name
   local -a match
 
   while read -r line || [[ -n $line ]]; do
@@ -1405,6 +1406,7 @@ __lttng_complete_old_enabled_er_name_cond() {
     return
   fi
 
+  local line
   local -a er_names
 
   while read -r line; do
