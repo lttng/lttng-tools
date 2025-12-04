@@ -1,6 +1,6 @@
 lttng(1)
 ========
-:revdate: 14 June 2021
+:revdate: 4 December 2025
 
 
 NAME
@@ -216,6 +216,7 @@ Channel
 |man:lttng-add-context(1) |{cmd_descr_add_context}.
 |man:lttng-disable-channel(1) |{cmd_descr_disable_channel}.
 |man:lttng-enable-channel(1) |{cmd_descr_enable_channel}.
+|man:lttng-reclaim-memory(1) |{cmd_descr_reclaim_memory}.
 |===
 
 
