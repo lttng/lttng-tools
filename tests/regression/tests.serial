@@ -198,13 +198,18 @@ def run_test(test_script):
                     )
                     try:
                         current_test_process.terminate()
-                        current_test_process.wait(timeout=10)
+                        out, _ = current_test_process.communicate(timeout=10)
+                        stdout += out.decode("utf-8")
+                        f.write(out.decode("utf-8"))
                     except subprocess.TimeoutExpired:
                         logging.warning(
                             "Test process did not terminate before timeout, sending SIGKILL"
                         )
                         current_test_process.kill()
-                        current_test_process.wait()
+                        out, _ = current_test_process.communicate()
+                        stdout += out.decode("utf-8")
+                        f.write(out.decode("utf-8"))
+
                 continue
 
     return_code = current_test_process.returncode
