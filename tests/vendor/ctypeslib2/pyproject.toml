@@ -1,0 +1,71 @@
+[build-system]
+requires = ["setuptools>=56.2", "setuptools_scm[toml]>=7"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ctypeslib2"
+authors = [{name = "Loic Jaquemet", email = "loic.jaquemet+python@gmail.com"}]
+license = {text = "License :: OSI Approved :: MIT License"}
+description = "ctypeslib2 - FFI toolkit, relies on clang"
+readme = "README.md"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.8",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = ["clang>=11"]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/trolldbois/ctypeslib"
+Download = "https://github.com/trolldbois/ctypeslib/releases"
+
+[project.scripts]
+clang2py = "ctypeslib.clang2py:main"
+
+[tool.setuptools]
+packages = ["ctypeslib", "ctypeslib.codegen"]
+include-package-data = false
+
+[tool.setuptools.package-data]
+ctypeslib = [
+    "data/fundamental_type_name.tpl",
+    "data/headers.tpl",
+    "data/pointer_type.tpl",
+    "data/string_cast.tpl",
+    "data/structure_type.tpl",
+]
+
+[tool.setuptools_scm]
+
+[tool.black]
+line-length = 120
+target-version = ['py37']
+include = '\.pyi?$'
+exclude = '''
+
+(
+  /(
+      \.eggs         # exclude a few common directories in the
+    | \.git          # root of the project
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+  )/
+  | foo.py           # also separately exclude a file named foo.py in
+                     # the root of the project
+)
+'''
+
+[tool.pylint]
+max-line-length = 120
+
+[tool.coverage.run]
+relative_files = true

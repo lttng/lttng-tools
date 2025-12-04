@@ -1,0 +1,44 @@
+name: Build and Release on PyPI
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Build wheel
+        run: |
+          pip install build twine
+          python -m build
+          python -m twine check dist/*
+      - name: Upload Python package dist artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-dist
+          path: dist
+
+  pypi-publish:
+    name: Upload release to PyPI
+    runs-on: ubuntu-latest
+    needs: build-release
+    environment:
+      name: pypi
+      url: https://pypi.org/p/ctypeslib2
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    steps:
+    - name: Download Python package dist artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: python-package-dist
+        path: dist
+    - name: Publish package distributions to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
