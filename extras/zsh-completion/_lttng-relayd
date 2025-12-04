@@ -74,6 +74,10 @@ __lttng_complete_lttng_relayd() {
   _arguments -C -s -w : $specs
 }
 
+# Ensure predictable Zsh behavior and prevent option leakage
+emulate -L zsh
+setopt extended_glob
+
 # First, set the `minor_version` variable to the minor version of
 # LTTng-tools. Some features depend on a specific version and this
 # completion function supports many versions from LTTng-tools 2.5.
