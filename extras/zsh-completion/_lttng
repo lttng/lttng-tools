@@ -1624,11 +1624,11 @@ __lttng_complete_enable_channel_cmd() {
   # Add the remaining option groups
   specs+=(
     + '(domain)'
-    '(--blocking-timeout --buffers-uid --buffers-pid)'{-k,--kernel}'[select the Linux kernel tracing domain]'
+    '(--blocking-timeout --buffers-uid --buffers-pid --auto-reclaim-memory-older-than)'{-k,--kernel}'[select the Linux kernel tracing domain]'
     '(--buffers-global)'{-u,--userspace}'[select the user space tracing domain]'
     + '(loss-mode)'
     '--discard[discard event records with no available sub-buffer]'
-    '(--blocking-timeout)--overwrite[overwrite oldest sub-buffer with no available sub-buffer]'
+    '(--blocking-timeout --auto-reclaim-memory-older-than)--overwrite[overwrite oldest sub-buffer with no available sub-buffer]'
     + '(buffer-ownership)'
     '(-k --kernel)--buffers-uid[use per-user ring buffers]'
     '(-k --kernel)--buffers-pid[use per-process ring buffers]'
@@ -1639,6 +1639,13 @@ __lttng_complete_enable_channel_cmd() {
   if ((minor_version >= 14)); then
     specs+=(
       '--buffer-ownership=[set the ownership of ring buffers]: : __lttng_complete_buffer_ownership'
+    )
+  fi
+
+  # The `--auto-reclaim-memory-older-than` option requires LTTng-tools ≥ 2.15
+  if ((minor_version >= 15)); then
+    specs+=(
+      '(-k --kernel --overwrite)--auto-reclaim-memory-older-than=[automatically reclaim sub-buffer memory]:age (µs; `ms`/`s`/`m`/`h` suffixes supported):'
     )
   fi
 
