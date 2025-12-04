@@ -68,8 +68,6 @@ __lttng_complete_probe_modules() {
   probe_files=(${probe_files%.ko})
 
   # Add completions
-  local expl
-
   compadd "$@" -a - probe_files
 }
 
