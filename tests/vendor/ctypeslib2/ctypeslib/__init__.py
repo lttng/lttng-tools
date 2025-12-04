@@ -19,16 +19,16 @@ import importlib.metadata
 from importlib.metadata import PackageNotFoundError
 
 try:
-    __version__ = importlib.metadata.version('ctypeslib22')
+    __version__ = importlib.metadata.version("ctypeslib22")
 except PackageNotFoundError:
-    __version__ = 'Please install the latest version of this python package'
+    __version__ = "Please install the latest version of this python package"
 
 
 def __find_clang_libraries():
-    """ configure python-clang to use the local clang library """
+    """configure python-clang to use the local clang library"""
     _libs = []
     # try for a file with a version match with the clang python package version
-    version_major = __clang_py_version__.split('.')[0]
+    version_major = __clang_py_version__.split(".")[0]
     # try default system name
     v_list = [f"clang-{__clang_py_version__}", f"clang-{version_major}", "libclang", "clang"]
     # tries clang version 16 to 7
@@ -43,9 +43,10 @@ def __find_clang_libraries():
             _libs.append(_filename)
     # On darwin, also consider either Xcode or CommandLineTools.
     if os.name == "posix" and sys.platform == "darwin":
-        for _ in ['/Library/Developer/CommandLineTools/usr/lib/libclang.dylib',
-                  '/Applications/Xcode.app/Contents/Frameworks/libclang.dylib',
-                  ]:
+        for _ in [
+            "/Library/Developer/CommandLineTools/usr/lib/libclang.dylib",
+            "/Applications/Xcode.app/Contents/Frameworks/libclang.dylib",
+        ]:
             if os.path.exists(_):
                 _libs.insert(0, _)
     return _libs
@@ -57,9 +58,9 @@ def clang_version():
     get_version = cindex.conf.get_cindex_library().clang_getClangVersion
     get_version.restype = ctypes.c_char_p
     version_string = get_version()
-    version = 'Unknown'
+    version = "Unknown"
     if version_string and len(version_string) > 0:
-        version_groups = re.match(br'.+version ((\d+\.)?(\d+\.)?(\*|\d+))', version_string)
+        version_groups = re.match(rb".+version ((\d+\.)?(\d+\.)?(\*|\d+))", version_string)
         if version_groups and len(version_groups.groups()) > 0:
             version = version_groups.group(1).decode()
     return version
@@ -78,7 +79,7 @@ def __configure_clang_cindex():
     """
     # first, use environment variables set by user
     __libs = []
-    __lib_path = os.environ.get('CLANG_LIBRARY_PATH')
+    __lib_path = os.environ.get("CLANG_LIBRARY_PATH")
     if __lib_path is not None:
         if not os.path.exists(__lib_path):
             warnings.warn("Filepath in CLANG_LIBRARY_PATH does not exist", RuntimeWarning)
@@ -106,23 +107,33 @@ try:
     from clang import cindex
     from ctypeslib.codegen.codegenerator import translate, translate_files
 
-    __clang_py_version__ = importlib.metadata.version('clang')
+    try:
+        __clang_py_version__ = importlib.metadata.version("clang")
+    except PackageNotFoundError:
+        # python3-clang as packaged in Debian doesn't set the version, but the
+        # default library name will provide an indication.
+        # @see https://salsa.debian.org/pkg-llvm-team/llvm-toolchain/-/blob/18/debian/patches/python-clangpath.diff
+        __clang_py_version__ = cindex.conf.get_filename().split("-")[1].split(".")[0]
     __clang_library_filename = __configure_clang_cindex()
     if __clang_library_filename is None:
         warnings.warn("Could not find the clang library. please install llvm libclang", RuntimeWarning)
         # do not fail - maybe the user has a plan
     else:
         # set a warning if major versions differs.
-        if clang_version().split('.')[0] != clang_py_version().split('.')[0]:
-            clang_major = clang_version().split('.')[0]
-            warnings.warn(f"Version of python-clang ({clang_py_version()}) and "
-                          f"clang C library ({clang_version()}) are different. "
-                          f"Did you try pip install clang=={clang_major}.*", RuntimeWarning)
+        if clang_version().split(".")[0] != clang_py_version().split(".")[0]:
+            clang_major = clang_version().split(".")[0]
+            warnings.warn(
+                f"Version of python-clang ({clang_py_version()}) and "
+                f"clang C library ({clang_version()}) are different. "
+                f"Did you try pip install clang=={clang_major}.*",
+                RuntimeWarning,
+            )
 except ImportError as e:
     __clang_py_version__ = None
-    warnings.warn("Could not find a version of python-clang installed. "
-                  "Please pip install clang==<version>.*", RuntimeWarning)
+    warnings.warn(
+        "Could not find a version of python-clang installed. " "Please pip install clang==<version>.*", RuntimeWarning
+    )
     raise e
 
 
-__all__ = ['translate', 'translate_files', 'clang_version', 'clang_py_version']
+__all__ = ["translate", "translate_files", "clang_version", "clang_py_version"]
