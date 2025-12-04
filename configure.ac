@@ -1344,6 +1344,7 @@ AC_CONFIG_FILES([
 	tests/utils/Makefile
 	tests/utils/testapp/Makefile
 	tests/utils/testapp/gen-ust-events-constructor/Makefile
+	tests/vendor/Makefile
 ])
 
 # Inject variable into python test script.

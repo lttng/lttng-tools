@@ -1,0 +1,26 @@
+ctypeslib TODO list
+==================
+
+re-visit the dependency graph, so that most structure are codegen in a single declaration
+
+Test clang2py for
+ -c comments
+ -d docstrings
+ -e show location
+ -l includes dlls
+ -m import python module
+ -p preload dll
+ -q
+ -r regexp for symbol to include
+ -s symbol in particualr
+ -t target
+ -v verbose
+ -V version
+ -w windows dlls standard
+ -x exludes functions
+ --show-ids
+ --max-depth
+ --clang-args with a variety of args (targets ?)
+
+
+- Todo: struct__IO_FILE is used in gen in POINTER before typedef

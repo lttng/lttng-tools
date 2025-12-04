@@ -1,0 +1,919 @@
+running lint
+running egg_info
+writing requirements to ctypeslib2.egg-info/requires.txt
+writing ctypeslib2.egg-info/PKG-INFO
+writing top-level names to ctypeslib2.egg-info/top_level.txt
+writing dependency_links to ctypeslib2.egg-info/dependency_links.txt
+reading manifest file 'ctypeslib2.egg-info/SOURCES.txt'
+writing manifest file 'ctypeslib2.egg-info/SOURCES.txt'
+running build_ext
+************* Module ctypeslib
+C:  1, 0: Missing module docstring (missing-docstring)
+************* Module ctypeslib.dynamic_module
+W: 25, 0: TODO: (fixme)
+W:169, 0: XXX This should assert that the correct calling convention (fixme)
+W:195, 0: XXX Not sure this is approach makes sense. (fixme)
+C: 69, 0: Line too long (90/80) (line-too-long)
+C: 21, 0: Invalid constant name "gen_dir" (invalid-name)
+R: 31, 0: Too many local variables (17/15) (too-many-locals)
+W: 31, 0: Dangerous default value ['-c'] as argument (dangerous-default-value)
+E: 63,12: No name 'h2xml' in module 'ctypeslib' (no-name-in-module)
+W: 75,12: Access to a protected member _getframe of a client class (protected-access)
+W: 72,12: Unused variable 'data' (unused-variable)
+C:102, 0: Missing class docstring (missing-docstring)
+C:119, 4: Missing method docstring (missing-docstring)
+R:102, 0: Too few public methods (0/2) (too-few-public-methods)
+C:139, 0: Missing class docstring (missing-docstring)
+E:185,28: Instance of 'list' has no 'items' member (but some types could not be inferred) (maybe-no-member)
+R:143, 0: Too many public methods (34/20) (too-many-public-methods)
+C:256, 4: Missing method docstring (missing-docstring)
+W:273, 8: Use of exec (exec-used)
+R:204, 0: Too few public methods (1/2) (too-few-public-methods)
+W: 18, 0: Unused import ctypeslib (unused-import)
+W:  7, 0: Unused import time (unused-import)
+************* Module ctypeslib.clang2py
+C: 57, 0: Line too long (112/80) (line-too-long)
+C: 63, 0: Line too long (87/80) (line-too-long)
+C: 66, 0: Line too long (84/80) (line-too-long)
+C: 68, 0: Line too long (98/80) (line-too-long)
+C: 71, 0: Line too long (87/80) (line-too-long)
+C: 73, 0: Line too long (82/80) (line-too-long)
+C:108, 0: Line too long (96/80) (line-too-long)
+C:138, 0: Line too long (87/80) (line-too-long)
+C:143, 0: Line too long (83/80) (line-too-long)
+C:148, 0: Line too long (88/80) (line-too-long)
+C:163, 0: Line too long (86/80) (line-too-long)
+C:165, 0: Line too long (97/80) (line-too-long)
+C:166, 0: Line too long (116/80) (line-too-long)
+C:  1, 0: Missing module docstring (missing-docstring)
+C: 12, 0: Invalid constant name "log" (invalid-name)
+C: 15, 0: Invalid constant name "windows_dll_names" (invalid-name)
+R: 47, 0: Too many local variables (28/15) (too-many-locals)
+C: 47, 0: Missing function docstring (missing-docstring)
+C: 51, 4: Missing function docstring (missing-docstring)
+W: 51,29: Unused argument 'opt' (unused-argument)
+W: 51,21: Unused argument 'option' (unused-argument)
+W: 51,34: Unused argument 'value' (unused-argument)
+W:182,30: Used builtin function 'map' (bad-builtin)
+C:193, 4: Missing function docstring (missing-docstring)
+C:235,31: Invalid variable name "e" (invalid-name)
+R: 47, 0: Too many branches (19/12) (too-many-branches)
+W:235,31: Unused variable 'e' (unused-variable)
+W:205, 4: Unused variable 'preloaded_dlls' (unused-variable)
+************* Module ctypeslib.codegen
+C:  1, 0: Missing module docstring (missing-docstring)
+************* Module ctypeslib.codegen.codegenerator
+W: 52, 0: FIXME ignore (fixme)
+W: 71, 0: FIXME ignore (fixme)
+W:152, 0: FIXME (fixme)
+W:229, 0: FIXME, kinda useless really. (fixme)
+W:362, 0: FIXME should be in parser (fixme)
+W:383, 0: XXX (fixme)
+W:417, 0: FIXME - need a real dependency graph maker (fixme)
+W:499, 0: XXX we have parsed the COM interface methods but should (fixme)
+W:548, 0: FIXME: Python bitfield is int32 only. (fixme)
+C: 51, 0: Line too long (98/80) (line-too-long)
+C: 70, 0: Line too long (85/80) (line-too-long)
+C:313, 0: Line too long (93/80) (line-too-long)
+C:318, 0: Line too long (87/80) (line-too-long)
+C:346, 0: Line too long (91/80) (line-too-long)
+C:457, 0: Line too long (98/80) (line-too-long)
+C:461, 0: Line too long (88/80) (line-too-long)
+C:463, 0: Line too long (86/80) (line-too-long)
+C:465, 0: Line too long (82/80) (line-too-long)
+C:672, 0: Line too long (87/80) (line-too-long)
+C:775, 0: Line too long (83/80) (line-too-long)
+C:794, 0: Line too long (92/80) (line-too-long)
+C:807, 0: Line too long (83/80) (line-too-long)
+C: 13, 0: Invalid constant name "log" (invalid-name)
+R: 20, 0: Too many instance attributes (30/7) (too-many-instance-attributes)
+C:619, 8: Invalid attribute name "_STRING_defined" (invalid-name)
+C:628, 8: Invalid attribute name "_WSTRING_defined" (invalid-name)
+C: 53, 8: Invalid attribute name "enable_fundamental_type_wrappers" (invalid-name)
+C: 20, 0: Missing class docstring (missing-docstring)
+R: 22, 4: Too many arguments (8/5) (too-many-arguments)
+W: 22, 4: Dangerous default value [] as argument (dangerous-default-value)
+E: 45, 4: An attribute affected in ctypeslib.codegen.codegenerator line 53 hide this method (method-hidden)
+C: 45, 4: Invalid method name "enable_fundamental_type_wrappers" (invalid-name)
+E: 64, 4: An attribute affected in ctypeslib.codegen.codegenerator line 72 hide this method (method-hidden)
+W: 80,20: Access to a protected member _type_ of a client class (protected-access)
+C: 88, 4: Missing method docstring (missing-docstring)
+C:106, 4: Invalid argument name "t" (invalid-name)
+C:150, 4: Invalid method name "Alias" (invalid-name)
+C:161, 4: Invalid method name "Macro" (invalid-name)
+W:164,12: Specify string format arguments as logging function parameters (logging-not-lazy)
+E:171, 8: Instance of 'Generator' has no 'macros' member (no-member)
+W:182, 8: Unreachable code (unreachable)
+E:183,20: Undefined variable 'mcode' (undefined-variable)
+E:185,39: Undefined variable 'mcode' (undefined-variable)
+E:187,34: Undefined variable 'mcode' (undefined-variable)
+C:192, 4: Invalid method name "Typedef" (invalid-name)
+C:192, 4: Invalid argument name "tp" (invalid-name)
+C:192, 4: Missing method docstring (missing-docstring)
+C:228, 4: Invalid argument name "tp" (invalid-name)
+C:228, 4: Missing method docstring (missing-docstring)
+C:240, 4: Invalid method name "ArrayType" (invalid-name)
+C:240, 4: Invalid argument name "tp" (invalid-name)
+C:240, 4: Missing method docstring (missing-docstring)
+C:248, 4: Invalid method name "FunctionType" (invalid-name)
+C:248, 4: Invalid argument name "tp" (invalid-name)
+C:248, 4: Missing method docstring (missing-docstring)
+C:256, 4: Invalid method name "Argument" (invalid-name)
+C:256, 4: Invalid argument name "tp" (invalid-name)
+C:256, 4: Missing method docstring (missing-docstring)
+C:261, 4: Invalid method name "PointerType" (invalid-name)
+C:261, 4: Invalid argument name "tp" (invalid-name)
+C:261, 4: Missing method docstring (missing-docstring)
+C:275, 4: Invalid method name "CvQualifiedType" (invalid-name)
+C:275, 4: Invalid argument name "tp" (invalid-name)
+C:275, 4: Missing method docstring (missing-docstring)
+C:282, 4: Invalid method name "Variable" (invalid-name)
+C:282, 4: Invalid argument name "tp" (invalid-name)
+C:282, 4: Missing method docstring (missing-docstring)
+C:361, 4: Invalid method name "EnumValue" (invalid-name)
+C:361, 4: Invalid argument name "tp" (invalid-name)
+C:361, 4: Missing method docstring (missing-docstring)
+C:372, 4: Invalid method name "Enumeration" (invalid-name)
+C:372, 4: Invalid argument name "tp" (invalid-name)
+C:372, 4: Missing method docstring (missing-docstring)
+C:410, 4: Invalid method name "Structure" (invalid-name)
+C:410, 4: Missing method docstring (missing-docstring)
+W:414,12: Specify string format arguments as logging function parameters (logging-not-lazy)
+C:422,12: Invalid variable name "b" (invalid-name)
+W:431,12: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:438,12: Specify string format arguments as logging function parameters (logging-not-lazy)
+C:449, 4: Invalid method name "StructureHead" (invalid-name)
+C:449, 4: Missing method docstring (missing-docstring)
+W:450, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:472, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+C:474, 4: Invalid method name "StructureBody" (invalid-name)
+C:474, 4: Missing method docstring (missing-docstring)
+W:475, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+C:478,12: Invalid variable name "m" (invalid-name)
+W:491, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+C:512,20: Invalid variable name "b" (invalid-name)
+C:517,12: Invalid variable name "f" (invalid-name)
+C:522,12: Invalid variable name "f" (invalid-name)
+C:537,16: Invalid variable name "f" (invalid-name)
+W:558, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+R:474, 4: Too many branches (23/12) (too-many-branches)
+W:536,12: Unused variable 'index' (unused-variable)
+W:549,20: Unused variable 'TypeKind' (unused-variable)
+C:561, 4: Missing method docstring (missing-docstring)
+W:571,23: Access to a protected member _name of a client class (protected-access)
+C:576, 4: Invalid method name "need_CLibraries" (invalid-name)
+C:576, 4: Missing method docstring (missing-docstring)
+C:586, 4: Invalid method name "need_WinLibraries" (invalid-name)
+C:586, 4: Missing method docstring (missing-docstring)
+C:594, 4: Invalid argument name "cc" (invalid-name)
+C:594, 4: Missing method docstring (missing-docstring)
+C:615, 4: Invalid method name "need_STRING" (invalid-name)
+C:615, 4: Missing method docstring (missing-docstring)
+C:624, 4: Invalid method name "need_WSTRING" (invalid-name)
+C:624, 4: Missing method docstring (missing-docstring)
+C:634, 4: Invalid method name "Function" (invalid-name)
+C:634, 4: Missing method docstring (missing-docstring)
+C:643,16: Invalid variable name "cc" (invalid-name)
+C:645,16: Invalid variable name "cc" (invalid-name)
+C:669,16: Invalid function name "typeString" (invalid-name)
+C:669,16: Missing function docstring (missing-docstring)
+C:676,16: Invalid variable name "argsAndTypes" (invalid-name)
+C:694, 4: Invalid method name "FundamentalType" (invalid-name)
+W:702, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:719, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:731,-1: String statement has no effect (pointless-string-statement)
+C:740, 4: Missing method docstring (missing-docstring)
+C:743,12: Invalid variable name "l" (invalid-name)
+C:747, 4: Missing method docstring (missing-docstring)
+C:752, 4: Invalid argument name "a" (invalid-name)
+C:752, 4: Invalid argument name "b" (invalid-name)
+C:752, 4: Missing method docstring (missing-docstring)
+C:762, 4: Missing method docstring (missing-docstring)
+C:774, 4: Missing method docstring (missing-docstring)
+C:793, 4: Missing method docstring (missing-docstring)
+R: 20, 0: Too many public methods (34/20) (too-many-public-methods)
+W: 90, 8: Attribute 'parser' defined outside __init__ (attribute-defined-outside-init)
+W:767,12: Attribute 'more' defined outside __init__ (attribute-defined-outside-init)
+R:817, 0: Too many arguments (15/5) (too-many-arguments)
+R:817, 0: Too many local variables (26/15) (too-many-locals)
+W:817, 0: Dangerous default value [] as argument (dangerous-default-value)
+W:817, 0: Dangerous default value [] as argument (dangerous-default-value)
+C:817, 0: Missing function docstring (missing-docstring)
+W:873,12: Specify string format arguments as logging function parameters (logging-not-lazy)
+C:878,16: Invalid variable name "s" (invalid-name)
+R:817, 0: Too many branches (17/12) (too-many-branches)
+W: 15, 0: Unused import code (unused-import)
+************* Module ctypeslib.codegen.cursorhandler
+W: 53, 0: TODO until attr is exposed by clang: (fixme)
+W: 61, 0: TODO until attr is exposed by clang: (fixme)
+W:177, 0: FIXME to UT (fixme)
+W:207, 0: FIXME which UT/case ? (fixme)
+W:264, 0: FIXME: Need working int128, long_double, etc... (fixme)
+W:268, 0: FIXME: because c_long_double_t or c_unint128 are not real ctypes (fixme)
+W:274, 0: FIXME recurse on child (fixme)
+W:432, 0: FIXME BUG: token.location not in cursor.extent %s' % (fixme)
+W:434, 0: FIXME (fixme)
+W:443, 0: FIXME BUG: token.location not in cursor.extent (fixme)
+W:465, 0: FIXME python 3 (fixme)
+W:529, 0: FIXME, handling anonymous field by adding a child id. (fixme)
+W:532, 0: TODO unittest: try redefinition. (fixme)
+W:540, 0: FIXME: lets ignore bases for now. (fixme)
+W:542, 0: FIXME: support CXX (fixme)
+W:596, 0: FIXME: make a test case for that. (fixme)
+W:717, 0: FIXME: why are s.members already typedesc objet ? (fixme)
+W:810, 0: FIXME (fixme)
+W:843, 0: FIXME if c++ class ? (fixme)
+W:919, 0: TODO: optionalize macro parsing. It takes a LOT of time. (fixme)
+W:940, 0: FIXME, there are probable a lot of others. (fixme)
+C:289, 0: Line too long (90/80) (line-too-long)
+C:313, 0: Line too long (81/80) (line-too-long)
+C:314, 0: Line too long (117/80) (line-too-long)
+C:315, 0: Line too long (105/80) (line-too-long)
+C:334, 0: Unnecessary parens after 'if' keyword (superfluous-parens)
+C:405, 0: Line too long (82/80) (line-too-long)
+C:410, 0: Line too long (92/80) (line-too-long)
+C:548, 0: Line too long (87/80) (line-too-long)
+C:695, 0: Line too long (96/80) (line-too-long)
+C:723, 0: Line too long (89/80) (line-too-long)
+C:724, 0: Line too long (81/80) (line-too-long)
+C:782, 0: Line too long (87/80) (line-too-long)
+C:786, 0: Line too long (88/80) (line-too-long)
+C:794, 0: Line too long (95/80) (line-too-long)
+C:897, 0: Line too long (82/80) (line-too-long)
+C: 13, 0: Invalid constant name "log" (invalid-name)
+C: 50, 4: Invalid method name "UNEXPOSED_ATTR" (invalid-name)
+C: 50, 4: Missing method docstring (missing-docstring)
+W: 55, 8: Unnecessary pass statement (unnecessary-pass)
+W: 51, 8: Unused variable 'parent' (unused-variable)
+R: 50, 4: Method could be a function (no-self-use)
+C: 58, 4: Invalid method name "PACKED_ATTR" (invalid-name)
+C: 58, 4: Missing method docstring (missing-docstring)
+W: 63, 8: Unnecessary pass statement (unnecessary-pass)
+W: 59, 8: Unused variable 'parent' (unused-variable)
+R: 58, 4: Method could be a function (no-self-use)
+W: 85,-1: String statement has no effect (pointless-string-statement)
+C: 87, 4: Invalid method name "UNEXPOSED_EXPR" (invalid-name)
+C: 87, 4: Missing method docstring (missing-docstring)
+C: 96, 4: Invalid method name "DECL_REF_EXPR" (invalid-name)
+C: 96, 4: Missing method docstring (missing-docstring)
+R: 96, 4: Method could be a function (no-self-use)
+C:100, 4: Invalid method name "INIT_LIST_EXPR" (invalid-name)
+C:107, 4: Invalid method name "GNU_NULL_EXPR" (invalid-name)
+C:107, 4: Missing method docstring (missing-docstring)
+W:107,28: Unused argument 'cursor' (unused-argument)
+R:107, 4: Method could be a function (no-self-use)
+C:121, 4: Invalid method name "TYPE_REF" (invalid-name)
+C:121, 4: Missing method docstring (missing-docstring)
+W:148, 4: String statement has no effect (pointless-string-statement)
+C:151, 4: Invalid method name "ENUM_CONSTANT_DECL" (invalid-name)
+C:162, 4: Invalid method name "ENUM_DECL" (invalid-name)
+C:175, 4: Invalid method name "FUNCTION_DECL" (invalid-name)
+C:197, 4: Invalid method name "PARM_DECL" (invalid-name)
+W:243,12: Redefining name 'code' from outer scope (line 16) (redefined-outer-name)
+C:222, 4: Invalid method name "TYPEDEF_DECL" (invalid-name)
+W:234, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:235, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:240,12: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:243,12: Reimport 'code' (imported line 16) (reimported)
+C:255, 4: Invalid method name "VAR_DECL" (invalid-name)
+W:275,12: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:277,12: Unreachable code (unreachable)
+W:313, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+C:343,46: Invalid variable name "e" (invalid-name)
+W:344,20: Specify string format arguments as logging function parameters (logging-not-lazy)
+C:360,42: Invalid variable name "e" (invalid-name)
+W:361,16: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:343,46: Unused variable 'e' (unused-variable)
+W:370, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:409, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:413, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:416,12: Specify string format arguments as logging function parameters (logging-not-lazy)
+E:421,30: Class 'TokenKind' has no 'PUNCTUATION' member (no-member)
+W:424,16: Specify string format arguments as logging function parameters (logging-not-lazy)
+E:426,31: Class 'TokenKind' has no 'COMMENT' member (no-member)
+W:427,16: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:431,16: Specify string format arguments as logging function parameters (logging-not-lazy)
+R:399, 4: Too many branches (15/12) (too-many-branches)
+R:399, 4: Method could be a function (no-self-use)
+C:508, 4: Invalid method name "STRUCT_DECL" (invalid-name)
+C:516, 4: Invalid method name "UNION_DECL" (invalid-name)
+W:536,12: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:546,12: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:550, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:556,12: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:559, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:575, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:586,16: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:590, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:598,16: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:689,20: Redefining built-in 'next' (redefined-builtin)
+C:608, 4: Invalid argument name "s" (invalid-name)
+C:633,12: Invalid variable name "m" (invalid-name)
+W:669,12: Specify string format arguments as logging function parameters (logging-not-lazy)
+C:671,16: Invalid variable name "m" (invalid-name)
+C:685,16: Invalid variable name "m" (invalid-name)
+R:608, 4: Too many branches (18/12) (too-many-branches)
+R:608, 4: Method could be a function (no-self-use)
+C:701, 4: Invalid argument name "s" (invalid-name)
+W:703, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+C:719,12: Invalid variable name "m" (invalid-name)
+W:723,12: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:728,16: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:738,16: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:745,12: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:758, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+R:768, 4: Too many arguments (6/5) (too-many-arguments)
+W:790,12: Redefining built-in 'bytes' (redefined-builtin)
+W:773, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+C:815, 4: Invalid method name "FIELD_DECL" (invalid-name)
+C:830,19: Invalid variable name "_f" (invalid-name)
+W:836,12: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:842,16: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:853,16: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:884,16: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:891,16: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:892,16: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:897,20: Specify string format arguments as logging function parameters (logging-not-lazy)
+R:815, 4: Too many branches (18/12) (too-many-branches)
+R:815, 4: Too many statements (52/50) (too-many-statements)
+W:824, 8: Unused variable 'record_name' (unused-variable)
+C:914, 4: Invalid method name "MACRO_DEFINITION" (invalid-name)
+C:936,12: Invalid variable name "t" (invalid-name)
+E:937,25: Class 'TokenKind' has no 'COMMENT' member (no-member)
+W:944, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+C:948,47: Invalid variable name "e" (invalid-name)
+W:949,12: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:954,12: Unnecessary pass statement (unnecessary-pass)
+W:948,47: Unused variable 'e' (unused-variable)
+R: 19, 0: Too many public methods (35/20) (too-many-public-methods)
+W: 16, 0: Unused import code (unused-import)
+************* Module ctypeslib.codegen.clangparser
+W: 36, 0: FIXME, macro definition __SIZEOF_DOUBLE__ (fixme)
+W: 48, 0: FIXME (fixme)
+W: 56, 0: FIXME (fixme)
+W:129, 0: FIXME: go back on dependencies ? (fixme)
+W:220, 0: FIXME : Float && http://en.wikipedia.org/wiki/Long_double (fixme)
+W:320, 0: FIXME , why do we get different location types (fixme)
+W:325, 0: FIXME make this optional to be able to see internals (fixme)
+W:326, 0: FIXME macro/alias are here (fixme)
+C: 88, 0: Line too long (90/80) (line-too-long)
+C:100, 0: Line too long (83/80) (line-too-long)
+C:226, 0: Line too long (97/80) (line-too-long)
+C:306, 0: Line too long (82/80) (line-too-long)
+C: 15, 0: Invalid constant name "log" (invalid-name)
+R: 21, 0: Too many instance attributes (11/7) (too-many-instance-attributes)
+C: 21, 0: Invalid class name "Clang_Parser" (invalid-name)
+C: 68, 8: Invalid attribute name "tu" (invalid-name)
+C: 90, 4: Missing method docstring (missing-docstring)
+C:111,16: Invalid variable name "x" (invalid-name)
+C:122, 4: Invalid method name "startElement" (invalid-name)
+W:135, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+C:152,41: Invalid variable name "e" (invalid-name)
+W:152,41: Unused variable 'e' (unused-variable)
+W:160,12: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:164, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:178, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+C:187, 8: Invalid variable name "tu" (invalid-name)
+W:241, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+C:246, 4: Missing method docstring (missing-docstring)
+C:249, 4: Missing method docstring (missing-docstring)
+C:264, 4: Missing method docstring (missing-docstring)
+C:270,12: Invalid variable name "m" (invalid-name)
+C:276, 4: Missing method docstring (missing-docstring)
+C:283,12: Invalid variable name "a" (invalid-name)
+C:285,12: Invalid variable name "a" (invalid-name)
+C:289,18: Invalid variable name "a" (invalid-name)
+C:304, 4: Missing method docstring (missing-docstring)
+W:317,16: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:323,16: Specify string format arguments as logging function parameters (logging-not-lazy)
+C:329,12: Invalid variable name "_x" (invalid-name)
+W:336,16: Specify string format arguments as logging function parameters (logging-not-lazy)
+W: 79, 8: Attribute 'tu_options' defined outside __init__ (attribute-defined-outside-init)
+W:  4, 0: Unused import CursorKind (unused-import)
+W: 18, 0: Unused import code (unused-import)
+W:  4, 0: Unused import TokenKind (unused-import)
+W: 10, 0: Unused import log_entity (unused-import)
+************* Module ctypeslib.codegen.util
+C: 72, 0: Line too long (81/80) (line-too-long)
+C:  1, 0: Missing module docstring (missing-docstring)
+C: 10, 0: Invalid constant name "log" (invalid-name)
+W: 13, 0: Dangerous default value [] as argument (dangerous-default-value)
+C: 96, 0: Missing function docstring (missing-docstring)
+C: 97, 4: Invalid argument name "f" (invalid-name)
+C: 97, 4: Missing function docstring (missing-docstring)
+C: 98, 8: Invalid variable name "g" (invalid-name)
+C:110, 0: Missing function docstring (missing-docstring)
+C:111, 4: Invalid function name "fn" (invalid-name)
+C:111, 4: Missing function docstring (missing-docstring)
+W:117, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+************* Module ctypeslib.codegen.handler
+W: 74, 0: FIXME see cindex.SpellingCache (fixme)
+W: 80, 0: FIXME: test case ? I want this func to be neutral on C valid (fixme)
+W: 97, 0: FIXME: should not get Type (fixme)
+W:183, 0: TODO FIXME: 100% cursor/type Kind coverage (fixme)
+C:  9, 0: Invalid constant name "log" (invalid-name)
+C: 47, 4: Missing method docstring (missing-docstring)
+C: 50, 4: Missing method docstring (missing-docstring)
+C: 53, 4: Missing method docstring (missing-docstring)
+C: 56, 4: Missing method docstring (missing-docstring)
+R: 59, 4: Method could be a function (no-self-use)
+R: 66, 4: Method could be a function (no-self-use)
+C: 75,15: Invalid variable name "v" (invalid-name)
+R: 72, 4: Method could be a function (no-self-use)
+C: 90, 4: Missing method docstring (missing-docstring)
+C:112, 4: Invalid argument name "t" (invalid-name)
+C:112, 4: Missing method docstring (missing-docstring)
+C:116, 4: Invalid argument name "t" (invalid-name)
+C:116, 4: Missing method docstring (missing-docstring)
+R:116, 4: Method could be a function (no-self-use)
+C:119, 4: Invalid argument name "t" (invalid-name)
+C:119, 4: Missing method docstring (missing-docstring)
+R:119, 4: Method could be a function (no-self-use)
+C:125, 4: Invalid argument name "t" (invalid-name)
+C:125, 4: Missing method docstring (missing-docstring)
+R:125, 4: Method could be a function (no-self-use)
+C:128, 4: Invalid argument name "t" (invalid-name)
+C:128, 4: Missing method docstring (missing-docstring)
+R:128, 4: Method could be a function (no-self-use)
+R:135, 4: Method could be a function (no-self-use)
+C:154, 4: Missing method docstring (missing-docstring)
+C:157, 4: Missing method docstring (missing-docstring)
+C:160, 4: Missing method docstring (missing-docstring)
+C:163, 4: Missing method docstring (missing-docstring)
+C:170, 4: Missing method docstring (missing-docstring)
+W:170, 0: Unused argument 'args' (unused-argument)
+C:175, 4: Missing method docstring (missing-docstring)
+W:179, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:175, 0: Unused argument 'args' (unused-argument)
+W:186,12: Specify string format arguments as logging function parameters (logging-not-lazy)
+W: 12, 0: Unused import code (unused-import)
+************* Module ctypeslib.codegen.typehandler
+W:101, 0: FIXME catch InvalidDefinitionError and return a void * (fixme)
+W:157, 0: FIXME: useful or not ? (fixme)
+W:161, 0: FIXME VARIABLEARRAY DEPENDENTSIZEDARRAY (fixme)
+W:168, 0: FIXME test_struct_with_pointer x_n_t g[1] (fixme)
+C: 11, 0: Invalid constant name "log" (invalid-name)
+W: 71,-1: String statement has no effect (pointless-string-statement)
+C: 82, 4: Invalid method name "ENUM" (invalid-name)
+C: 96, 4: Invalid method name "POINTER" (invalid-name)
+W:111, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:130,16: Specify string format arguments as logging function parameters (logging-not-lazy)
+C:135,49: Invalid variable name "e" (invalid-name)
+W:139, 8: Specify string format arguments as logging function parameters (logging-not-lazy)
+W:135,49: Unused variable 'e' (unused-variable)
+C:188, 4: Invalid method name "FUNCTIONPROTO" (invalid-name)
+C:206, 4: Invalid method name "FUNCTIONNOPROTO" (invalid-name)
+C:221, 4: Invalid method name "RECORD" (invalid-name)
+C:240, 4: Invalid method name "UNEXPOSED" (invalid-name)
+R: 17, 0: Too many public methods (25/20) (too-many-public-methods)
+W: 14, 0: Unused import code (unused-import)
+************* Module ctypeslib.codegen.typedesc
+W:135, 0: FIXME (fixme)
+W:138, 0: FIXME Pointertype subtype name should not be str') (fixme)
+C:  1, 0: Missing module docstring (missing-docstring)
+C:  4, 0: Invalid class name "T" (invalid-name)
+C:  4, 0: Missing class docstring (missing-docstring)
+R:  4, 0: Too few public methods (0/2) (too-few-public-methods)
+R: 10, 0: Too few public methods (0/2) (too-few-public-methods)
+C: 26, 4: Missing method docstring (missing-docstring)
+C: 31, 4: Invalid method name "iterArgTypes" (invalid-name)
+C: 31, 4: Missing method docstring (missing-docstring)
+C: 32,12: Invalid variable name "a" (invalid-name)
+C: 35, 4: Invalid method name "iterArgNames" (invalid-name)
+C: 35, 4: Missing method docstring (missing-docstring)
+C: 36,12: Invalid variable name "a" (invalid-name)
+C: 39, 4: Invalid argument name "cb" (invalid-name)
+C: 39, 4: Missing method docstring (missing-docstring)
+R: 49, 0: Too few public methods (0/2) (too-few-public-methods)
+R: 59, 0: Too few public methods (0/2) (too-few-public-methods)
+C: 72, 0: Missing class docstring (missing-docstring)
+R: 72, 0: Too few public methods (0/2) (too-few-public-methods)
+C: 78, 0: Missing class docstring (missing-docstring)
+C: 88, 0: Missing class docstring (missing-docstring)
+C: 95, 0: Missing class docstring (missing-docstring)
+C:103, 0: Missing class docstring (missing-docstring)
+C:112, 0: Missing class docstring (missing-docstring)
+C:120, 0: Missing class docstring (missing-docstring)
+R:120, 0: Too few public methods (0/2) (too-few-public-methods)
+W:310,12: Attribute 'arguments' defined outside __init__ (attribute-defined-outside-init)
+C:129, 0: Missing class docstring (missing-docstring)
+E:138,12: Undefined variable 'log' (undefined-variable)
+R:129, 0: Too few public methods (0/2) (too-few-public-methods)
+C:143, 0: Missing class docstring (missing-docstring)
+R:143, 0: Too few public methods (0/2) (too-few-public-methods)
+C:150, 0: Missing class docstring (missing-docstring)
+R:150, 0: Too few public methods (0/2) (too-few-public-methods)
+C:158, 0: Missing class docstring (missing-docstring)
+C:164, 4: Missing method docstring (missing-docstring)
+R:158, 0: Too few public methods (1/2) (too-few-public-methods)
+C:168, 0: Missing class docstring (missing-docstring)
+C:174, 4: Missing method docstring (missing-docstring)
+R:168, 0: Too few public methods (1/2) (too-few-public-methods)
+C:178, 0: Invalid class name "_Struct_Union_Base" (invalid-name)
+C:178, 0: Missing class docstring (missing-docstring)
+C:180, 4: Missing method docstring (missing-docstring)
+E:181,15: Instance of '_Struct_Union_Base' has no 'struct_body' member (no-member)
+C:183, 4: Missing method docstring (missing-docstring)
+E:184,15: Instance of '_Struct_Union_Base' has no 'struct_head' member (no-member)
+R:187, 0: Too many instance attributes (9/7) (too-many-instance-attributes)
+C:187, 0: Missing class docstring (missing-docstring)
+R:189, 4: Too many arguments (8/5) (too-many-arguments)
+R:202, 0: Too many instance attributes (9/7) (too-many-instance-attributes)
+C:202, 0: Missing class docstring (missing-docstring)
+R:204, 4: Too many arguments (8/5) (too-many-arguments)
+R:224, 4: Too many arguments (8/5) (too-many-arguments)
+R:220, 0: Too few public methods (0/2) (too-few-public-methods)
+C:235, 0: Missing class docstring (missing-docstring)
+R:235, 0: Too few public methods (0/2) (too-few-public-methods)
+C:244, 0: Missing class docstring (missing-docstring)
+C:252, 4: Invalid argument name "v" (invalid-name)
+C:252, 4: Missing method docstring (missing-docstring)
+R:244, 0: Too few public methods (1/2) (too-few-public-methods)
+C:256, 0: Missing class docstring (missing-docstring)
+R:256, 0: Too few public methods (0/2) (too-few-public-methods)
+C:264, 0: Missing class docstring (missing-docstring)
+R:264, 0: Too few public methods (0/2) (too-few-public-methods)
+************* Module ctypeslib.contrib
+C:  1, 0: Missing module docstring (missing-docstring)
+************* Module ctypeslib.contrib.pythonhdr
+C: 58, 4: Invalid constant name "Py_ssize_t" (invalid-name)
+C: 60, 4: Invalid constant name "Py_ssize_t" (invalid-name)
+C: 82, 0: Invalid function name "make_PyObject" (invalid-name)
+C: 82, 0: Missing function docstring (missing-docstring)
+W: 83, 4: Using global for 'PyObject' but no assignment is done (global-variable-not-assigned)
+C: 83, 4: Invalid constant name "PyObject" (invalid-name)
+R: 85, 4: Too few public methods (0/2) (too-few-public-methods)
+W:125, 4: Access to a protected member _fields_ of a client class (protected-access)
+E:128, 3: Class 'object' has no '__basicsize__' member (no-member)
+E:128,40: Undefined variable 'PyObject' (undefined-variable)
+E:131,21: Undefined variable 'PyObject' (undefined-variable)
+E:131,34: Class 'object' has no '__basicsize__' member (no-member)
+E:133,15: Undefined variable 'PyObject' (undefined-variable)
+C:137, 0: Invalid constant name "PyObject_AsCharBuffer" (invalid-name)
+C:144, 0: Invalid constant name "PyObject_AsReadBuffer" (invalid-name)
+C:150, 0: Invalid constant name "PyObject_CheckReadBuffer" (invalid-name)
+C:154, 0: Invalid constant name "PyObject_AsWriteBuffer" (invalid-name)
+C:162, 0: Invalid constant name "Py_END_OF_BUFFER" (invalid-name)
+C:164, 0: Invalid constant name "PyBuffer_FromReadWriteObject" (invalid-name)
+C:170, 0: Invalid constant name "PyBuffer_FromMemory" (invalid-name)
+C:175, 0: Invalid constant name "PyBuffer_FromReadWriteMemory" (invalid-name)
+C:180, 0: Invalid constant name "PyBuffer_New" (invalid-name)
+C:192, 4: Missing class docstring (missing-docstring)
+R:192, 4: Too few public methods (0/2) (too-few-public-methods)
+C:194, 4: Invalid constant name "FILE_ptr" (invalid-name)
+C:196, 4: Invalid constant name "PyFile_FromFile" (invalid-name)
+C:203, 4: Invalid constant name "PyFile_AsFile" (invalid-name)
+C:211, 0: Invalid constant name "PyCell_New" (invalid-name)
+C:215, 0: Invalid constant name "PyCell_Get" (invalid-name)
+C:219, 0: Invalid constant name "PyCell_Set" (invalid-name)
+C:226, 0: Invalid constant name "PyString_AsStringAndSize" (invalid-name)
+C:235, 0: Invalid constant name "PyThreadState_SetAsyncExc" (invalid-name)
+C:242, 0: Invalid constant name "PyOS_InputHook" (invalid-name)
+E:242,17: Class 'CFunctionType' has no 'in_dll' member (but some types could not be inferred) (maybe-no-member)
+C:247, 0: Invalid constant name "PyMem_Malloc" (invalid-name)
+C:251, 0: Invalid constant name "PyMem_Realloc" (invalid-name)
+C:256, 0: Invalid constant name "PyMem_Free" (invalid-name)
+************* Module ctypeslib.contrib.get_exports
+C:  1, 0: Missing module docstring (missing-docstring)
+W: 25, 4: Redefining name 'name' from outer scope (line 153) (redefined-outer-name)
+W: 24, 4: Redefining name 'type_' from outer scope (line 157) (redefined-outer-name)
+C: 21, 4: Invalid variable name "l" (invalid-name)
+W: 34,36: Redefining name 'name' from outer scope (line 153) (redefined-outer-name)
+W: 34,42: Redefining name 'data_dict' from outer scope (line 151) (redefined-outer-name)
+W: 34, 0: Dangerous default value ctypes.__dict__ ({}) as argument (dangerous-default-value)
+C: 49, 4: Invalid class name "ret_val" (invalid-name)
+C: 49, 4: Missing class docstring (missing-docstring)
+R: 49, 4: Too few public methods (0/2) (too-few-public-methods)
+C: 56, 0: Invalid constant name "winnt" (invalid-name)
+C:151, 0: Invalid constant name "data_dict" (invalid-name)
+C:170, 0: Missing class docstring (missing-docstring)
+R:174, 0: Too many local variables (26/15) (too-many-locals)
+W:292,12: Redefining name 'names' from outer scope (line 314) (redefined-outer-name)
+W:294,16: Redefining name 'name' from outer scope (line 153) (redefined-outer-name)
+W:195,20: Access to a protected member _handle of a client class (protected-access)
+C:199,12: Invalid variable name "fileH" (invalid-name)
+C:203,12: Invalid variable name "m" (invalid-name)
+C:210,12: Invalid variable name "fileH" (invalid-name)
+C:215,12: Invalid variable name "mapH" (invalid-name)
+C:258, 8: Invalid variable name "ImageRvaToVa" (invalid-name)
+W:260,22: Redefining name 'type_' from outer scope (line 157) (redefined-outer-name)
+C:260, 4: Missing function docstring (missing-docstring)
+C:261, 8: Invalid variable name "va" (invalid-name)
+C:263,12: Invalid variable name "va" (invalid-name)
+E:269,33: Undefined variable 'PIMAGE_DOS_HEADER' (undefined-variable)
+E:272,50: Undefined variable 'PIMAGE_NT_HEADERS' (undefined-variable)
+E:274,50: Undefined variable 'PIMAGE_NT_HEADERS' (undefined-variable)
+E:287,12: Undefined variable 'PIMAGE_EXPORT_DIRECTORY' (undefined-variable)
+C:289, 8: Invalid variable name "nNames" (invalid-name)
+C:291,12: Invalid variable name "PNamesType" (invalid-name)
+R:174, 0: Too many branches (26/12) (too-many-branches)
+C:314, 4: Invalid constant name "names" (invalid-name)
+************* Module ctypeslib.util
+C:  1, 0: Missing module docstring (missing-docstring)
+W:  1, 0: Relative import 'byref_at', should be 'ctypeslib.util.byref_at' (relative-import)
+************* Module ctypeslib.util.byref_at
+C:  1, 0: Missing module docstring (missing-docstring)
+W:  1, 0: Wildcard import ctypes (wildcard-import)
+C:  4, 0: Missing function docstring (missing-docstring)
+C:  7, 4: Missing class docstring (missing-docstring)
+C:  9, 8: Invalid class name "value" (invalid-name)
+C:  9, 8: Missing class docstring (missing-docstring)
+R:  9, 8: Too few public methods (0/2) (too-few-public-methods)
+E: 20,47: Class 'object' has no '__basicsize__' member (no-member)
+R:  7, 4: Too few public methods (0/2) (too-few-public-methods)
+E: 37,13: Class 'PyCArgObject' has no 'from_address' member (no-member)
+E: 44,11: Class 'PyCArgObject' has no 'p' member (no-member)
+C: 46, 0: Invalid constant name "_byref_pointer_offset" (invalid-name)
+E: 59, 4: Class 'c_void_p' has no 'from_address' member (no-member)
+W:  1, 0: Unused import c_wchar from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import c_bool from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import CFUNCTYPE from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import DEFAULT_MODE from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import c_uint64 from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import pointer from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import alignment from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import c_ulonglong from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import get_errno from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import c_int32 from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import ARRAY from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import c_ushort from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import c_uint32 from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import c_voidp from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import CDLL from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import c_ubyte from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import RTLD_GLOBAL from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import c_ulong from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import SetPointerType from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import resize from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import memmove from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import cast from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import c_int8 from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import ArgumentError from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import c_ssize_t from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import c_buffer from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import c_int64 from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import c_longdouble from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import cdll from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import memset from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import pythonapi from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import string_at from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import PYFUNCTYPE from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import create_string_buffer from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import set_errno from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import c_uint16 from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import BigEndianStructure from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import pydll from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import create_unicode_buffer from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import c_char_p from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import c_uint from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import py_object from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import LittleEndianStructure from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import RTLD_LOCAL from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import PyDLL from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import c_int16 from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import c_size_t from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import c_uint8 from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import wstring_at from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import c_wchar_p from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import set_conversion_mode from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import LibraryLoader from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import Array from wildcard import (unused-wildcard-import)
+W:  1, 0: Unused import POINTER from wildcard import (unused-wildcard-import)
+R:  1, 0: Similar lines in 2 files
+==ctypeslib.codegen.codegenerator:565
+==ctypeslib.dynamic_module:185
+            try:
+                getattr(dll, name)
+            except AttributeError:
+                pass
+            else: (duplicate-code)
+R: 85, 4: Abstract class not referenced (abstract-class-not-used)
+
+
+Report
+======
+2106 statements analysed.
+
+Duplication
+-----------
+
++-------------------------+------+---------+-----------+
+|                         |now   |previous |difference |
++=========================+======+=========+===========+
+|nb duplicated lines      |5     |5        |=          |
++-------------------------+------+---------+-----------+
+|percent duplicated lines |0.118 |0.118    |=          |
++-------------------------+------+---------+-----------+
+
+
+
+Messages by category
+--------------------
+
++-----------+-------+---------+-----------+
+|type       |number |previous |difference |
++===========+=======+=========+===========+
+|convention |326    |326      |=          |
++-----------+-------+---------+-----------+
+|refactor   |65     |65       |=          |
++-----------+-------+---------+-----------+
+|warning    |239    |239      |=          |
++-----------+-------+---------+-----------+
+|error      |28     |28       |=          |
++-----------+-------+---------+-----------+
+
+
+
+% errors / warnings by module
+-----------------------------
+
++--------------------------------+------+--------+---------+-----------+
+|module                          |error |warning |refactor |convention |
++================================+======+========+=========+===========+
+|ctypeslib.codegen.codegenerator |21.43 |13.81   |10.77    |28.83      |
++--------------------------------+------+--------+---------+-----------+
+|ctypeslib.contrib.pythonhdr     |21.43 |0.84    |3.08     |8.28       |
++--------------------------------+------+--------+---------+-----------+
+|ctypeslib.util.byref_at         |14.29 |23.01   |6.15     |1.84       |
++--------------------------------+------+--------+---------+-----------+
+|ctypeslib.contrib.get_exports   |14.29 |3.77    |4.62     |5.52       |
++--------------------------------+------+--------+---------+-----------+
+|ctypeslib.codegen.cursorhandler |10.71 |32.64   |18.46    |15.34      |
++--------------------------------+------+--------+---------+-----------+
+|ctypeslib.codegen.typedesc      |10.71 |1.26    |32.31    |11.66      |
++--------------------------------+------+--------+---------+-----------+
+|ctypeslib.dynamic_module        |7.14  |3.77    |6.15     |1.84       |
++--------------------------------+------+--------+---------+-----------+
+|ctypeslib.codegen.clangparser   |0.00  |9.21    |1.54     |6.75       |
++--------------------------------+------+--------+---------+-----------+
+|ctypeslib.codegen.typehandler   |0.00  |4.18    |1.54     |2.45       |
++--------------------------------+------+--------+---------+-----------+
+|ctypeslib.codegen.handler       |0.00  |3.77    |12.31    |7.06       |
++--------------------------------+------+--------+---------+-----------+
+|ctypeslib.clang2py              |0.00  |2.51    |3.08     |6.13       |
++--------------------------------+------+--------+---------+-----------+
+|ctypeslib.codegen.util          |0.00  |0.84    |0.00     |3.07       |
++--------------------------------+------+--------+---------+-----------+
+|ctypeslib.util.__init__         |0.00  |0.42    |0.00     |0.31       |
++--------------------------------+------+--------+---------+-----------+
+
+
+
+Messages
+--------
+
++-------------------------------+------------+
+|message id                     |occurrences |
++===============================+============+
+|invalid-name                   |164         |
++-------------------------------+------------+
+|missing-docstring              |115         |
++-------------------------------+------------+
+|logging-not-lazy               |66          |
++-------------------------------+------------+
+|unused-wildcard-import         |54          |
++-------------------------------+------------+
+|fixme                          |51          |
++-------------------------------+------------+
+|line-too-long                  |46          |
++-------------------------------+------------+
+|too-few-public-methods         |23          |
++-------------------------------+------------+
+|no-self-use                    |14          |
++-------------------------------+------------+
+|unused-variable                |12          |
++-------------------------------+------------+
+|no-member                      |12          |
++-------------------------------+------------+
+|undefined-variable             |11          |
++-------------------------------+------------+
+|unused-import                  |10          |
++-------------------------------+------------+
+|redefined-outer-name           |8           |
++-------------------------------+------------+
+|too-many-branches              |7           |
++-------------------------------+------------+
+|unused-argument                |6           |
++-------------------------------+------------+
+|too-many-arguments             |6           |
++-------------------------------+------------+
+|dangerous-default-value        |6           |
++-------------------------------+------------+
+|protected-access               |5           |
++-------------------------------+------------+
+|too-many-public-methods        |4           |
++-------------------------------+------------+
+|too-many-locals                |4           |
++-------------------------------+------------+
+|too-many-instance-attributes   |4           |
++-------------------------------+------------+
+|pointless-string-statement     |4           |
++-------------------------------+------------+
+|attribute-defined-outside-init |4           |
++-------------------------------+------------+
+|unnecessary-pass               |3           |
++-------------------------------+------------+
+|unreachable                    |2           |
++-------------------------------+------------+
+|redefined-builtin              |2           |
++-------------------------------+------------+
+|method-hidden                  |2           |
++-------------------------------+------------+
+|maybe-no-member                |2           |
++-------------------------------+------------+
+|wildcard-import                |1           |
++-------------------------------+------------+
+|too-many-statements            |1           |
++-------------------------------+------------+
+|superfluous-parens             |1           |
++-------------------------------+------------+
+|relative-import                |1           |
++-------------------------------+------------+
+|reimported                     |1           |
++-------------------------------+------------+
+|no-name-in-module              |1           |
++-------------------------------+------------+
+|global-variable-not-assigned   |1           |
++-------------------------------+------------+
+|exec-used                      |1           |
++-------------------------------+------------+
+|duplicate-code                 |1           |
++-------------------------------+------------+
+|bad-builtin                    |1           |
++-------------------------------+------------+
+|abstract-class-not-used        |1           |
++-------------------------------+------------+
+
+
+
+Global evaluation
+-----------------
+Your code has been rated at 6.34/10 (previous run: 6.34/10, +0.00)
+
+Raw metrics
+-----------
+
++----------+-------+------+---------+-----------+
+|type      |number |%     |previous |difference |
++==========+=======+======+=========+===========+
+|code      |2657   |68.01 |2657     |=          |
++----------+-------+------+---------+-----------+
+|docstring |443    |11.34 |443      |=          |
++----------+-------+------+---------+-----------+
+|comment   |368    |9.42  |368      |=          |
++----------+-------+------+---------+-----------+
+|empty     |439    |11.24 |439      |=          |
++----------+-------+------+---------+-----------+
+
+
+
+External dependencies
+---------------------
+::
+
+    clang 
+      \-cindex 
+        \-Cursor (ctypeslib.codegen.util)
+        \-CursorKind (ctypeslib.codegen.handler,ctypeslib.codegen.clangparser,ctypeslib.codegen.cursorhandler)
+        \-Index (ctypeslib.codegen.clangparser)
+        \-TokenKind (ctypeslib.codegen.clangparser,ctypeslib.codegen.cursorhandler)
+        \-TranslationUnit (ctypeslib.codegen.clangparser,ctypeslib.codegen.util)
+        \-TypeKind (ctypeslib.codegen.typehandler,ctypeslib.codegen.handler,ctypeslib.codegen.clangparser,ctypeslib.codegen.codegenerator,ctypeslib.codegen.cursorhandler)
+    ctypeslib (ctypeslib.dynamic_module)
+      \-codegen 
+      | \-clangparser (ctypeslib.codegen.codegenerator)
+      | \-codegenerator (ctypeslib.dynamic_module)
+      | | \-generate_code (ctypeslib.clang2py)
+      | \-cursorhandler (ctypeslib.codegen.clangparser)
+      | \-gccxmlparser (ctypeslib.dynamic_module)
+      | \-handler 
+      | | \-ClangHandler (ctypeslib.codegen.cursorhandler,ctypeslib.codegen.typehandler)
+      | | \-CursorKindException (ctypeslib.codegen.cursorhandler)
+      | | \-DuplicateDefinitionException (ctypeslib.codegen.clangparser,ctypeslib.codegen.cursorhandler)
+      | | \-InvalidDefinitionError (ctypeslib.codegen.clangparser,ctypeslib.codegen.cursorhandler,ctypeslib.codegen.typehandler)
+      | \-typedesc (ctypeslib.codegen.handler,ctypeslib.codegen.clangparser,ctypeslib.codegen.typehandler,ctypeslib.codegen.cursorhandler,ctypeslib.dynamic_module,ctypeslib.clang2py,ctypeslib.codegen.codegenerator)
+      | \-typehandler (ctypeslib.codegen.clangparser)
+      | \-util (ctypeslib.codegen.clangparser)
+      |   \-log_entity (ctypeslib.codegen.handler,ctypeslib.codegen.clangparser,ctypeslib.codegen.cursorhandler,ctypeslib.codegen.typehandler)
+      \-h2xml (ctypeslib.dynamic_module)
+    pkg_resources (ctypeslib.clang2py)
+
+
+
+Statistics by type
+------------------
+
++---------+-------+-----------+-----------+------------+---------+
+|type     |number |old number |difference |%documented |%badname |
++=========+=======+===========+===========+============+=========+
+|module   |16     |16         |=          |43.75       |0.00     |
++---------+-------+-----------+-----------+------------+---------+
+|class    |43     |43         |=          |34.88       |11.63    |
++---------+-------+-----------+-----------+------------+---------+
+|method   |159    |159        |=          |58.49       |29.56    |
++---------+-------+-----------+-----------+------------+---------+
+|function |21     |21         |=          |42.86       |14.29    |
++---------+-------+-----------+-----------+------------+---------+
+
+
+
