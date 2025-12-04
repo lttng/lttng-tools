@@ -20,19 +20,17 @@ enum lttng_error_code lttng_domain_type_parse(const char *str, enum lttng_domain
 		return LTTNG_ERR_INVALID;
 	}
 
-	if (strcasecmp(str, "none") == 0) {
-		/* fallthrough */
-	} else if (strcasecmp(str, config_domain_type_kernel) == 0) {
+	if (strcmp(str, "kernel") == 0) {
 		dt = LTTNG_DOMAIN_KERNEL;
-	} else if (strcasecmp(str, config_domain_type_ust) == 0) {
+	} else if (strcmp(str, "user") == 0) {
 		dt = LTTNG_DOMAIN_UST;
-	} else if (strcasecmp(str, config_domain_type_jul) == 0) {
+	} else if (strcmp(str, "jul") == 0) {
 		dt = LTTNG_DOMAIN_JUL;
-	} else if (strcasecmp(str, config_domain_type_log4j) == 0) {
+	} else if (strcmp(str, "log4j") == 0) {
 		dt = LTTNG_DOMAIN_LOG4J;
-	} else if (strcasecmp(str, config_domain_type_log4j2) == 0) {
+	} else if (strcmp(str, "log4j2") == 0) {
 		dt = LTTNG_DOMAIN_LOG4J2;
-	} else if (strcasecmp(str, config_domain_type_python) == 0) {
+	} else if (strcmp(str, "python") == 0) {
 		dt = LTTNG_DOMAIN_PYTHON;
 	} else {
 		return LTTNG_ERR_UNK;
