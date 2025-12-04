@@ -74,8 +74,6 @@ enum {
 
 	OPT_CHANNEL_NAME,
 	OPT_DOMAIN,
-	OPT_DOMAIN_UST,
-	OPT_DOMAIN_KERNEL,
 	OPT_THRESHOLD_RATIO,
 };
 
@@ -83,8 +81,6 @@ static const struct argpar_opt_descr buffer_usage_opt_descriptions[] = {
 	{ OPT_SESSION_NAME, 's', "session", true },
 	{ OPT_CHANNEL_NAME, 'c', "channel", true },
 	{ OPT_DOMAIN, 'd', "domain", true },
-	{ OPT_DOMAIN_UST, 'u', "userspace", false },
-	{ OPT_DOMAIN_KERNEL, 'k', "kernel", false },
 	{ OPT_THRESHOLD_SIZE, 't', "threshold-size", true },
 	{ OPT_THRESHOLD_RATIO, 'r', "threshold-ratio", true },
 	ARGPAR_OPT_DESCR_SENTINEL
@@ -768,29 +764,19 @@ parse_buffer_usage(int *argc, const char ***argv, int argc_offset, const char *c
 
 				break;
 			case OPT_DOMAIN:
-			case OPT_DOMAIN_UST:
-			case OPT_DOMAIN_KERNEL:
 				if (res.domain_type != LTTNG_DOMAIN_NONE) {
 					error = true;
-					ERR_FMT("{}domain type already set. Only one of `-d/--domain`, `-u/--userspace`, and `-k/--kernel` may be given.",
-						prefix);
+					ERR_FMT("{}domain type already set.", prefix);
 					break;
 				}
 
-				if (descr->id == OPT_DOMAIN_UST) {
-					res.domain_type = LTTNG_DOMAIN_UST;
-				} else if (descr->id == OPT_DOMAIN_KERNEL) {
-					res.domain_type = LTTNG_DOMAIN_KERNEL;
-				} else {
-					if (lttng_domain_type_parse(arg, &res.domain_type) !=
-					    LTTNG_OK) {
-						error = true;
-						res.domain_type = LTTNG_DOMAIN_NONE;
-						ERR_FMT("{}Unable to parse `{}` into LTTng domain type",
-							prefix,
-							arg);
-						break;
-					}
+				if (lttng_domain_type_parse(arg, &res.domain_type) != LTTNG_OK) {
+					error = true;
+					res.domain_type = LTTNG_DOMAIN_NONE;
+					ERR_FMT("{}Unable to parse `{}` into LTTng domain type",
+						prefix,
+						arg);
+					break;
 				}
 
 				break;
@@ -861,8 +847,7 @@ parse_buffer_usage(int *argc, const char ***argv, int argc_offset, const char *c
 
 	if (res.domain_type == LTTNG_DOMAIN_NONE) {
 		error = true;
-		ERR_FMT("{}One of `-u/--userspace`, `-k/--kernel`, or `-d/--domain` must be given",
-			prefix);
+		ERR_FMT("{}`-d/--domain` is required", prefix);
 	}
 
 	if (!has_threshold_ratio && !has_threshold_bytes) {
