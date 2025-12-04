@@ -938,14 +938,13 @@ AS_IF([test "x$enable_test_python2_agent" = "xyes" -o "x$test_python2_agent_auto
 
 ])
 
+AS_IF([test -z "$PYTHON3"], [
+	PYTHON3=python3
+], [
+	AC_MSG_WARN([Using user-defined PYTHON3 ($PYTHON3) for python3 checks])
+])
+AC_PATH_PROG([PYTHON3_BIN],[$PYTHON3])
 AS_IF([test "x$enable_test_python3_agent" = "xyes" -o "x$test_python3_agent_autodetect" = "xyes" ], [
-	AS_IF([test -z "$PYTHON3"], [
-		PYTHON3=python3
-	], [
-		AC_MSG_WARN([Using user-defined PYTHON3 ($PYTHON3) for lttng-ust python3 agent check])
-	])
-
-	AC_PATH_PROG([PYTHON3_BIN],[$PYTHON3])
 	AS_IF([test -z "$PYTHON3_BIN"], [
 		AS_IF([test -z "$test_python3_agent_autodetect"],[
 			AC_MSG_ERROR([No python3 interpreter found. PYTHON3 can be set to override default interpreter path])
@@ -1267,8 +1266,37 @@ lttnglibexecdir="${libdir}/lttng/libexec"
 AC_SUBST(lttnglibexecdir)
 
 AC_ARG_VAR([CLANG2PY], [Path for clang2py])
-AC_PATH_PROG([CLANG2PY], [clang2py], [], [$PATH])
-AM_CONDITIONAL([HAVE_CLANG2PY], [test "$CLANG2PY" != ""])
+AS_IF([test "x$build_tests" = "xyes"], [
+	AC_PATH_PROG([CLANG2PY], [clang2py], [], [$PATH])
+	AS_IF([test "$CLANG2PY" = "" && test -n "$PYTHON3_BIN"], [
+		# Check to see if the vendored version can be used.
+		# Requires python3-clang
+		AC_MSG_CHECKING([for python3 clang])
+		AS_IF([$PYTHON3_BIN -c "import clang" 2>/dev/null], [
+			python3_clang=yes
+			AC_MSG_RESULT([yes])
+		], [
+			AC_MSG_RESULT([no])
+		])
+
+		# Requires libclang
+		# Don't use AC_SEARCH_LIBS as that will always append to LIBS
+		AC_CHECK_LIB([clang-19], [clang_createIndex], [libclang=yes], [
+			AC_CHECK_LIB([clang-18], [clang_createIndex], [libclang=yes], [
+				AC_CHECK_LIB([clang-17], [clang_createIndex], [libclang=yes], [])
+			])
+		])
+
+		AS_IF([test "x$python3_clang" = "xyes" && test "x$libclang" = "xyes"], [
+			CLANG2PY="\$(realpath \$(top_srcdir)/tests/vendor/ctypeslib2/ctypeslib/clang2py.py)"
+			# Append to PYTHONPATH
+			PYTHONPATH="\$(realpath \$(top_srcdir)/tests/vendor/ctypeslib2/):$PYTHONPATH"
+			AC_SUBST([PYTHONPATH])
+		], [])
+	])
+])
+AM_CONDITIONAL([HAVE_CLANG2PY], [test "$CLANG2PY" != "" && test "x$with_lttng_ust" = "xyes"])
+
 
 AC_CONFIG_FILES([
 	Makefile
