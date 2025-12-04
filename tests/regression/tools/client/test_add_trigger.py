@@ -171,7 +171,7 @@ def test_buffer_usage_invalid(test_env, tap):
         "session": "example_session",
         "channel": "example_channel",
         "threshold-ratio": "1.0",
-        "domain": "ust",
+        "domain": "user",
     }
     cases = [
         {
@@ -240,15 +240,17 @@ def test_buffer_usage_invalid(test_env, tap):
 def test_buffer_usage(test_env, tap):
     client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
     usages = ["low", "high"]
-    domains = [
-        "jul",
-        "log4j",
-        "log4j2",
-        "python",
-        "ust",
-    ]
+
+    # Maps CLI domain option to MI output domain name
+    domains = {
+        "jul": "JUL",
+        "log4j": "LOG4J",
+        "log4j2": "LOG4J2",
+        "python": "PYTHON",
+        "user": "UST",
+    }
     if test_env.run_kernel_tests():
-        domains.append("kernel")
+        domains["kernel"] = "KERNEL"
 
     passed = 0
     expected_passes = len(domains) * len(usages)
@@ -256,11 +258,11 @@ def test_buffer_usage(test_env, tap):
         usage_condition = (
             "channel-buffer-usage-ge" if usage == "high" else "channel-buffer-usage-le"
         )
-        for domain in domains:
+        for cli_domain, expected_mi_domain in domains.items():
             try:
                 client._run_cmd(
                     "add-trigger --condition={} -d '{}' -r 0.5 -s example_session -c example_channel --action notify".format(
-                        usage_condition, domain
+                        usage_condition, cli_domain
                     )
                 )
             except RuntimeError as e:
@@ -303,10 +305,10 @@ def test_buffer_usage(test_env, tap):
                 )
                 test_passed = False
 
-            if condition.find("mi:domain", ns).text != domain.upper():
+            if condition.find("mi:domain", ns).text != expected_mi_domain:
                 tap.diagnostic(
-                    "Channel name does not match: {} != {}".format(
-                        trigger.find("mi:domain", ns).text, domain.upper()
+                    "Domain does not match: {} != {}".format(
+                        condition.find("mi:domain", ns).text, expected_mi_domain
                     )
                 )
                 test_passed = False
