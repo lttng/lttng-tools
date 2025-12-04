@@ -2590,12 +2590,6 @@ void *consumer_thread_data_poll(void *data)
 			goto end;
 		}
 
-		if (caa_unlikely(data_consumption_paused)) {
-			DBG("Data consumption paused, sleeping...");
-			sleep(1);
-			goto restart;
-		}
-
 		/*
 		 * If the consumer_data_pipe triggered poll go directly to the
 		 * beginning of the loop to update the array. We want to prioritize
@@ -2628,6 +2622,12 @@ void *consumer_thread_data_poll(void *data)
 
 			/* Continue to update the local streams and handle prio ones */
 			continue;
+		}
+
+		if (caa_unlikely(data_consumption_paused)) {
+			DBG("Data consumption paused, sleeping...");
+			sleep(1);
+			goto restart;
 		}
 
 		/* Handle wakeup pipe. */
