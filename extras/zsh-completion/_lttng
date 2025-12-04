@@ -1624,7 +1624,7 @@ __lttng_complete_enable_channel_cmd() {
   # Add the remaining option groups
   specs+=(
     + '(domain)'
-    '(--blocking-timeout --buffers-uid --buffers-pid --auto-reclaim-memory-older-than)'{-k,--kernel}'[select the Linux kernel tracing domain]'
+    '(--blocking-timeout --buffers-uid --buffers-pid --auto-reclaim-memory-older-than --buffer-preallocation)'{-k,--kernel}'[select the Linux kernel tracing domain]'
     '(--buffers-global)'{-u,--userspace}'[select the user space tracing domain]'
     + '(loss-mode)'
     '--discard[discard event records with no available sub-buffer]'
@@ -1642,10 +1642,12 @@ __lttng_complete_enable_channel_cmd() {
     )
   fi
 
-  # The `--auto-reclaim-memory-older-than` option requires LTTng-tools ≥ 2.15
+  # The `--auto-reclaim-memory-older-than` and `--buffer-preallocation`
+  # options require LTTng-tools ≥ 2.15
   if ((minor_version >= 15)); then
     specs+=(
       '(-k --kernel --overwrite)--auto-reclaim-memory-older-than=[automatically reclaim sub-buffer memory]:age (µs; `ms`/`s`/`m`/`h` suffixes supported):'
+      '(-k --kernel)--buffer-preallocation=[set the sub-buffer preallocation policy]:policy:(on-demand preallocate)'
     )
   fi
 
