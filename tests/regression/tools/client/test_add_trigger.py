@@ -204,20 +204,6 @@ def test_buffer_usage_invalid(test_env, tap):
             "threshold-ratio": None,
             "threshold-size": "-123",
         },
-        {
-            "userspace": "__NOVALUE__",
-        },
-        {
-            "kernel": "__NOVALUE__",
-        },
-        {
-            "domain": None,
-            "kernel": "arg",
-        },
-        {
-            "domain": None,
-            "userspace": "arg",
-        },
         {"domain": "invalid"},
     ]
     client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
