@@ -112,12 +112,6 @@ __lttng_mi_run() {
   fi
 }
 
-# Call this instead of _arguments() within this function when you don't
-# need the `-C` option.
-__lttng_arguments() {
-  _arguments -s -W : "$@"
-}
-
 # Returns whether or not the verbose style is enabled for the given
 # argument (`$1`) and tag (`$2`), using `$curcontext` for the other
 # parts of the full completion context.
@@ -1025,7 +1019,7 @@ __lttng_complete_add_context_cmd() {
   fi
 
   # Add completions
-  __lttng_arguments $specs
+  _arguments -s -W : $specs
 }
 
 # Adds completions for log level names.
@@ -1151,7 +1145,7 @@ __lttng_complete_add_trigger_cmd() {
   )
 
   # Add completions
-  __lttng_arguments $specs
+  _arguments -s -W : $specs
 }
 
 # Adds completions for the arguments of the `clear` command.
@@ -1163,7 +1157,7 @@ __lttng_complete_clear_cmd() {
   )
 
   # Add completions
-  __lttng_arguments $specs
+  _arguments -s -W : $specs
 }
 
 # Adds completions for the arguments of the `create` command.
@@ -1201,7 +1195,7 @@ __lttng_complete_create_cmd() {
   )
 
   # Add completions
-  __lttng_arguments $specs
+  _arguments -s -W : $specs
 }
 
 # Adds completions for the arguments of the `destroy` command.
@@ -1231,7 +1225,7 @@ __lttng_complete_destroy_cmd() {
   fi
 
   # Add completions
-  __lttng_arguments $specs
+  _arguments -s -W : $specs
 }
 
 # Adds completions for the arguments of the `disable-channel` command.
@@ -1246,7 +1240,7 @@ __lttng_complete_disable_channel_cmd() {
   )
 
   # Add completions
-  __lttng_arguments $specs
+  _arguments -s -W : $specs
 }
 
 # Prints the XML tracing domain name value depending on the tracing
@@ -1414,7 +1408,7 @@ __lttng_complete_disable_event_cmd() {
   fi
 
   # Add completions
-  __lttng_arguments $specs
+  _arguments -s -W : $specs
 }
 
 # Adds completions for the arguments of the `disable-rotation` command.
@@ -1426,7 +1420,7 @@ __lttng_complete_disable_rotation_cmd() {
     '--size[disable the size-based rotation schedule]'
   )
 
-  __lttng_arguments $specs
+  _arguments -s -W : $specs
 }
 
 # Adds completions for a channel output type (`mmap` and, possibly,
@@ -1591,7 +1585,7 @@ __lttng_complete_enable_channel_cmd() {
   fi
 
   # Add completions
-  __lttng_arguments $specs
+  _arguments -s -W : $specs
 }
 
 # Adds completions for the arguments of the `enable-event` command.
@@ -1691,7 +1685,7 @@ __lttng_complete_enable_event_cmd() {
     + '(domain)' $domain_specs
   )
 
-  __lttng_arguments $specs
+  _arguments -s -W : $specs
 }
 
 # Adds completions for the arguments of the `enable-rotation` command.
@@ -1704,7 +1698,7 @@ __lttng_complete_enable_rotation_cmd() {
   )
 
   # Add completions
-  __lttng_arguments $specs
+  _arguments -s -W : $specs
 }
 
 # Adds completions for the arguments of the `help` command.
@@ -1715,7 +1709,7 @@ __lttng_complete_help_cmd() {
   )
 
   # Add completions
-  __lttng_arguments $specs
+  _arguments -s -W : $specs
 }
 
 # Adds completions for the arguments of the `list` command.
@@ -1776,12 +1770,12 @@ __lttng_complete_list_cmd() {
   fi
 
   # Add completions
-  __lttng_arguments $specs
+  _arguments -s -W : $specs
 }
 
 # Adds completions for the arguments of the `list-triggers` command.
 __lttng_complete_list_triggers_cmd() {
-  __lttng_arguments $help_opt_specs
+  _arguments -s -W : $help_opt_specs
 }
 
 # Adds completions for the arguments of the `load` command.
@@ -1802,7 +1796,7 @@ __lttng_complete_load_cmd() {
   fi
 
   # Add completions
-  __lttng_arguments $specs
+  _arguments -s -W : $specs
 }
 
 # Adds completions for the arguments of the `metadata` command
@@ -1815,7 +1809,7 @@ __lttng_complete_metadata_cmd() {
   )
 
   # Add completions
-  __lttng_arguments $specs
+  _arguments -s -W : $specs
 }
 
 # Adds completions for the arguments of the `regenerate` command.
@@ -1827,7 +1821,7 @@ __lttng_complete_regenerate_cmd() {
   )
 
   # Add completions
-  __lttng_arguments $specs
+  _arguments -s -W : $specs
 }
 
 # Adds completions for the arguments of the `reclaim-memory` command.
@@ -1844,7 +1838,7 @@ __lttng_complete_reclaim_memory_cmd() {
   )
 
   # Add completions
-  __lttng_arguments $specs
+  _arguments -s -W : $specs
 }
 
 # Adds completions for the arguments of the `remove-trigger` command.
@@ -1856,7 +1850,7 @@ __lttng_complete_remove_trigger_cmd() {
   )
 
   # Add completions
-  __lttng_arguments $specs
+  _arguments -s -W : $specs
 }
 
 # Adds completions for the arguments of the `rotate` command.
@@ -1868,7 +1862,7 @@ __lttng_complete_rotate_cmd() {
   )
 
   # Add completions
-  __lttng_arguments $specs
+  _arguments -s -W : $specs
 }
 
 # Adds completions for the arguments of the `save` command.
@@ -1882,7 +1876,7 @@ __lttng_complete_save_cmd() {
   )
 
   # Add completions
-  __lttng_arguments $specs
+  _arguments -s -W : $specs
 }
 
 # Adds completions for the arguments of the `set-session` command.
@@ -1893,7 +1887,7 @@ __lttng_complete_set_session_cmd() {
   )
 
   # Add completions
-  __lttng_arguments $specs
+  _arguments -s -W : $specs
 }
 
 # Adds completions for the arguments of the `snapshot` command.
@@ -1943,7 +1937,7 @@ __lttng_complete_snapshot_cmd() {
     esac
 
     # Add completions
-    __lttng_arguments $specs
+    _arguments -s -W : $specs
     return
   fi
 
@@ -1967,7 +1961,7 @@ __lttng_complete_start_cmd() {
   fi
 
   # Add completions
-  __lttng_arguments $specs
+  _arguments -s -W : $specs
 }
 
 # Adds completions for the arguments of the `stop` command.
@@ -1988,7 +1982,7 @@ __lttng_complete_stop_cmd() {
   fi
 
   # Add completions
-  __lttng_arguments $specs
+  _arguments -s -W : $specs
 }
 
 # Adds completions for the arguments of the `status` command.
@@ -2013,7 +2007,7 @@ __lttng_complete_status_cmd() {
     )
   fi
 
-  __lttng_arguments $specs
+  _arguments -s -W : $specs
 }
 
 # Adds completions for the arguments of the `track` command.
@@ -2044,7 +2038,7 @@ __lttng_complete_track_cmd() {
   )
 
   # Add completions
-  __lttng_arguments $specs
+  _arguments -s -W : $specs
 }
 
 # Adds completions for the arguments of the `untrack` command.
@@ -2056,7 +2050,7 @@ __lttng_complete_untrack_cmd() {
 
 # Adds completions for the arguments of the `version` command.
 __lttng_complete_version_cmd() {
-  __lttng_arguments $help_opt_specs
+  _arguments -s -W : $help_opt_specs
 }
 
 # Adds completions for the arguments of the `view` command.
@@ -2069,7 +2063,7 @@ __lttng_complete_view_cmd() {
   )
 
   # Add completions
-  __lttng_arguments $specs
+  _arguments -s -W : $specs
 }
 
 # Add completions for the specific `lttng` command named `$line[1]`.
