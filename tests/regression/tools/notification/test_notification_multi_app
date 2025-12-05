@@ -57,6 +57,8 @@ function start_client {
 	local nr_expected_notification=$8
 	local use_action_list=$9
 
+	# Make sure the output file is created synchronously.
+	touch ${output_file}
 	${CURDIR}/base_client ${session_name} ${channel_name} ${domain_type} ${buffer_usage_type} ${buffer_usage_threshold_type} ${buffer_usage_threshold_value} ${nr_expected_notification} ${use_action_list} > ${output_file} &
 	pid=$!
 
@@ -133,7 +135,6 @@ function test_multi_app ()
 	local domain_type=$1
 	local event_generator_pid=$2
 
-	local app_pids=()
 	local low_output_file_pattern="low_app_output_file_"
 	local high_output_file_pattern="high_app_output_file_"
 	local output_dir=$(mktemp -d -t "tmp.test_${FUNCNAME[0]}_output_dir.XXXXXX")
@@ -249,6 +250,9 @@ function test_multi_app ()
 		rm -rf "${pipe}"
 	done
 
+	wait "${app_pids[@]}"
+	app_pids=()
+
 	rm -rf $output_dir
 }
 
@@ -344,7 +348,6 @@ function test_on_register_evaluation ()
 	local domain_type=$1
 	local event_generator_pid=$2
 
-	local app_pids=()
 	local high_output_file_pattern="high_app_output_file_on_register_evaluation"
 
 	local output_dir=$(mktemp -d -t "tmp.test_${FUNCNAME[0]}_output_dir.XXXXXX")
@@ -429,6 +432,9 @@ function test_on_register_evaluation ()
 	for pipe in "${consumerd_pipe[@]}"; do
 		rm -rf "${pipe}"
 	done
+
+	wait "${app_pids[@]}"
+	app_pids=()
 
 	rm -rf "$output_dir"
 }
