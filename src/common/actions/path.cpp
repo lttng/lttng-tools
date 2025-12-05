@@ -99,9 +99,12 @@ int lttng_action_path_copy(const struct lttng_action_path *src, struct lttng_act
 	LTTNG_ASSERT(src);
 	LTTNG_ASSERT(dst);
 
+	const auto path_size = lttng_dynamic_array_get_count(&src->indexes);
+
 	new_path = lttng_action_path_create(
-		(uint64_t *) lttng_dynamic_array_get_element(&src->indexes, 0),
-		lttng_dynamic_array_get_count(&src->indexes));
+		path_size > 0 ? (uint64_t *) lttng_dynamic_array_get_element(&src->indexes, 0) :
+				nullptr,
+		path_size);
 	if (!new_path) {
 		ret = -1;
 	} else {
