@@ -52,7 +52,7 @@ __lttng_complete_lttng_relayd() {
     )
   fi
 
-  _arguments -C -s -w : $specs
+  _arguments -s -w : $specs
 }
 
 # Ensure predictable Zsh behavior and prevent option leakage
