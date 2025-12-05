@@ -105,9 +105,7 @@ __lttng_mi_run() {
     return 1
   fi
 
-  __lttng_run --mi=xml "$@"
-
-  if (($? != 0)); then
+  if ! __lttng_run --mi=xml "$@"; then
     # Command failed
     _message -e descriptions $msg
     return 1
@@ -365,18 +363,14 @@ __lttng_complete_context_type() {
   local -r msg='context type'
   local list_xml
 
-  list_xml=$(__lttng_mi_run $msg add-context --list)
-
-  if (($? != 0)); then
+  if ! list_xml=$(__lttng_mi_run $msg add-context --list); then
     return 1
   fi
 
   # Convert to one context field type per line
   local lines
 
-  lines=$(__lttng_xmllint_xpath $list_xml '//*[local-name()="symbol"]/text()')
-
-  if (($? != 0)); then
+  if ! lines=$(__lttng_xmllint_xpath $list_xml '//*[local-name()="symbol"]/text()'); then
     _guard '^-*' $msg
     return
   fi
@@ -416,9 +410,7 @@ __lttng_complete_trigger_name() {
   local msg='trigger name'
   local list_xml
 
-  list_xml=$(__lttng_mi_run $msg list-triggers)
-
-  if (($? != 0)); then
+  if ! list_xml=$(__lttng_mi_run $msg list-triggers); then
     return 1
   fi
 
@@ -432,9 +424,7 @@ __lttng_complete_trigger_name() {
   # Convert to one trigger name per line
   local lines
 
-  lines=$(__lttng_xmllint_xpath $list_xml "//*[local-name()='trigger']$owner_uid_xpath/*[local-name()='name']/text()")
-
-  if (($? != 0)); then
+  if ! lines=$(__lttng_xmllint_xpath $list_xml "//*[local-name()='trigger']$owner_uid_xpath/*[local-name()='name']/text()"); then
     _guard '^-*' $msg
     return
   fi
@@ -535,9 +525,7 @@ __lttng_complete_session_name() {
   # Get XML document (summary of recording sessions)
   local session_summaries_xml
 
-  session_summaries_xml=$(__lttng_mi_run 'recording session name' list)
-
-  if (($? != 0)); then
+  if ! session_summaries_xml=$(__lttng_mi_run 'recording session name' list); then
     return 1
   fi
 
@@ -559,23 +547,17 @@ __lttng_complete_session_name() {
   # For each recording session summary
   for index in {1..$session_count}; do
     # Get recording session summary XML node
-    session_summary_xml=$(__lttng_xmllint_xpath $session_summaries_xml "//*[local-name()='session'][$index]")
-
-    if (($? != 0)); then
+    if ! session_summary_xml=$(__lttng_xmllint_xpath $session_summaries_xml "//*[local-name()='session'][$index]"); then
       continue
     fi
 
     # Get recording session name
-    session_name=$(__lttng_name_prop_from_xml $session_summary_xml session)
-
-    if (($? != 0)); then
+    if ! session_name=$(__lttng_name_prop_from_xml $session_summary_xml session); then
       continue
     fi
 
     # Get recording session status
-    session_status=$(__lttng_enabled_prop_from_xml $session_summary_xml session)
-
-    if (($? != 0)); then
+    if ! session_status=$(__lttng_enabled_prop_from_xml $session_summary_xml session); then
       continue
     fi
 
@@ -770,9 +752,7 @@ __lttng_complete_channel_name() {
 
   if [[ -z $session_name ]]; then
     # Fall back to current recording session
-    session_name=$(__lttng_cur_session_name)
-
-    if (($? != 0)); then
+    if ! session_name=$(__lttng_cur_session_name); then
       _guard '^-*' 'channel name'
       return
     fi
@@ -781,9 +761,7 @@ __lttng_complete_channel_name() {
   # Get XML document (detailed recording session)
   local session_xml
 
-  session_xml=$(__lttng_session_xml 'channel name' $session_name)
-
-  if (($? != 0)); then
+  if ! session_xml=$(__lttng_session_xml 'channel name' $session_name); then
     return 1
   fi
 
@@ -806,16 +784,12 @@ __lttng_complete_channel_name() {
   # For each tracing domain
   for domain_index in {1..$domain_count}; do
     # Get tracing domain XML node
-    domain_xml=$(__lttng_xmllint_xpath $session_xml "//*[local-name()='domain'][$domain_index]")
-
-    if (($? != 0)); then
+    if ! domain_xml=$(__lttng_xmllint_xpath $session_xml "//*[local-name()='domain'][$domain_index]"); then
       continue
     fi
 
     # Get tracing domain type
-    domain=$(__lttng_xmllint_xpath $domain_xml '/*/*[local-name()="type"]/text()')
-
-    if (($? != 0)); then
+    if ! domain=$(__lttng_xmllint_xpath $domain_xml '/*/*[local-name()="type"]/text()'); then
       continue
     fi
 
@@ -848,23 +822,17 @@ __lttng_complete_channel_name() {
     # For each channel
     for channel_index in {1..$channel_count}; do
       # Get channel XML node
-      channel_xml=$(__lttng_xmllint_xpath $domain_xml "//*[local-name()='channel'][$channel_index]")
-
-      if (($? != 0)); then
+      if ! channel_xml=$(__lttng_xmllint_xpath $domain_xml "//*[local-name()='channel'][$channel_index]"); then
         continue
       fi
 
       # Get channel name
-      channel_name=$(__lttng_name_prop_from_xml $channel_xml channel)
-
-      if (($? != 0)); then
+      if ! channel_name=$(__lttng_name_prop_from_xml $channel_xml channel); then
         continue
       fi
 
       # Get channel status
-      channel_status=$(__lttng_enabled_prop_from_xml $channel_xml channel)
-
-      if (($? != 0)); then
+      if ! channel_status=$(__lttng_enabled_prop_from_xml $channel_xml channel); then
         continue
       fi
 
@@ -876,9 +844,7 @@ __lttng_complete_channel_name() {
       fi
 
       # Get channel event record loss mode
-      channel_erl_mode=$(__lttng_xmllint_xpath $channel_xml '//*[local-name()="attributes"]/*[local-name()="overwrite_mode"]/text()')
-
-      if (($? != 0)); then
+      if ! channel_erl_mode=$(__lttng_xmllint_xpath $channel_xml '//*[local-name()="attributes"]/*[local-name()="overwrite_mode"]/text()'); then
         continue
       fi
 
@@ -995,9 +961,7 @@ __lttng_complete_ip_name() {
   # Get XML list of available instrumentation point names
   local list_xml
 
-  list_xml=$(__lttng_mi_run $msg list $list_opts)
-
-  if (($? != 0)); then
+  if ! list_xml=$(__lttng_mi_run $msg list $list_opts); then
     return 1
   fi
 
@@ -1334,9 +1298,7 @@ __lttng_complete_old_enabled_er_name_cond() {
     session_name=$opt_args[--session]
   else
     # Fall back to current recording session
-    session_name=$(__lttng_cur_session_name)
-
-    if (($? != 0)); then
+    if ! session_name=$(__lttng_cur_session_name); then
       _guard '^-*' $msg
     fi
   fi
@@ -1354,9 +1316,7 @@ __lttng_complete_old_enabled_er_name_cond() {
   local domain_xpath
   local xml_domain_val
 
-  xml_domain_val=$(__lttng_xml_domain_name_from_opt)
-
-  if (($? == 0)); then
+  if xml_domain_val=$(__lttng_xml_domain_name_from_opt); then
     domain_xpath="*[local-name() = 'domain'][*[local-name() = 'type'] = '$xml_domain_val']//"
   fi
 
@@ -1370,18 +1330,14 @@ __lttng_complete_old_enabled_er_name_cond() {
   # Get XML document (detailed recording session)
   local session_xml
 
-  session_xml=$(__lttng_session_xml $msg $session_name)
-
-  if (($? != 0)); then
+  if ! session_xml=$(__lttng_session_xml $msg $session_name); then
     return 1
   fi
 
   # Convert to one recording event rule name per line
   local lines
 
-  lines=$(__lttng_xmllint_xpath $session_xml "//$domain_xpath${channel_xpath}*[local-name() = 'event']${ip_type_xpath}[*[local-name() = 'enabled'] = 'true']/*[local-name() = 'name']/text()")
-
-  if (($? != 0)); then
+  if ! lines=$(__lttng_xmllint_xpath $session_xml "//$domain_xpath${channel_xpath}*[local-name() = 'event']${ip_type_xpath}[*[local-name() = 'enabled'] = 'true']/*[local-name() = 'name']/text()"); then
     _guard '^-*' $msg
     return
   fi
@@ -1952,9 +1908,7 @@ __lttng_complete_snapshot_cmd() {
   local curcontext=$curcontext state state_descr line
   local -A opt_args
 
-  _arguments -C -s -W : $specs
-
-  if (($? == 0)); then
+  if _arguments -C -s -W : $specs; then
     # Completions added: we're done
     return
   fi
