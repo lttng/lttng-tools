@@ -190,6 +190,12 @@ function test_multi_app ()
 	# Test notification reception
 	for (( i = 0; i < $nr_notification_expected; i++ )); do
 
+		# Put application in active mode and synchronize on state file.
+		kill -s SIGUSR1 $event_generator_pid
+		while [ -f "${TESTAPP_STATE_FILE}" ]; do
+			sleep 0.5
+		done
+
 		# Stop consumerd consumption to force high notification
 		start_lttng_tracing_ok $SESSION_NAME
 		for pipe in "${consumerd_pipe[@]}"; do
@@ -220,12 +226,6 @@ function test_multi_app ()
 			# Error occurred bail out
 			break;
 		fi
-
-		# Put application in active mode and synchronize on state file.
-		kill -s SIGUSR1 $event_generator_pid
-		while [ -f "${TESTAPP_STATE_FILE}" ]; do
-			sleep 0.5
-		done
 	done
 
 	wait_for_message $output_dir "${low_output_file_pattern}" "exit: 0"
@@ -391,6 +391,12 @@ function test_on_register_evaluation ()
 	start_client $high_app_output_path $SESSION_NAME $CHANNEL_NAME $domain_string HIGH RATIO 0.420 1 0
 
 	wait_for_message $output_dir "${high_app_output_file}" "sync: ready"
+
+	# Put application in active mode and synchronize on state file.
+	kill -s SIGUSR1 $event_generator_pid
+	while [ -f "${TESTAPP_STATE_FILE}" ]; do
+		sleep 0.5
+	done
 
 	# Stop consumerd consumption to force high notification
 	start_lttng_tracing_ok $SESSION_NAME

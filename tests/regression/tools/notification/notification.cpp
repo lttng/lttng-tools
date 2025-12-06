@@ -2550,11 +2550,7 @@ int main(int argc, const char *argv[])
 		goto error;
 	}
 
-	/*
-	 * Test cases are responsible for resuming the app when needed
-	 * and making sure it's suspended when returning.
-	 */
-	suspend_application();
+	/* The application is started in suspended state. */
 
 	switch (test_scenario) {
 	case 1:
