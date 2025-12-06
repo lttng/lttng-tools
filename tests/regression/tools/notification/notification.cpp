@@ -662,43 +662,43 @@ end:
 	return ret;
 }
 
-void wait_on_file(const char *path, bool file_exist)
+void wait_on_file(const char *path, bool expect_file_exist)
 {
 	if (!path) {
 		return;
 	}
 	for (;;) {
-		int ret;
+		bool file_exist;
 		struct stat buf;
+		int ret;
 
 		ret = stat(path, &buf);
-		if (ret == -1 && errno == ENOENT) {
-			if (file_exist) {
-				/*
-				 * The file does not exist. wait a bit and
-				 * continue looping until it does.
-				 */
-				(void) poll(nullptr, 0, 10);
-				continue;
+		if (ret == -1) {
+			switch (errno) {
+			case ENOENT:
+				/* The file does not exist. */
+				file_exist = false;
+				break;
+			default:
+				perror("stat");
+				exit(EXIT_FAILURE);
 			}
-
+		} else {
+			/* The file exists. */
+			file_exist = true;
+		}
+		if (file_exist == expect_file_exist) {
 			/*
-			 * File does not exist and the exit condition we want.
+			 * This is the expected condition.
 			 * Break from the loop and return.
 			 */
 			break;
 		}
-		if (ret) {
-			perror("stat");
-			exit(EXIT_FAILURE);
-		}
 		/*
-		 * stat() returned 0, so the file exists. break now only if
-		 * that's the exit condition we want.
+		 * Did not encounter the expected condition.
+		 * Retry after a short delay.
 		 */
-		if (file_exist) {
-			break;
-		}
+		(void) poll(nullptr, 0, 10);
 	}
 }
 
