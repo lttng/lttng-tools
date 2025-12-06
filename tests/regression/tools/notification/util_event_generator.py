@@ -128,7 +128,7 @@ def event_generator(
     global generator_suspended
     global generator_quit
 
-    generator_suspended = False
+    generator_suspended = True
     generator_quit = False
     run = False
 
