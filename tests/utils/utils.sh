@@ -1297,6 +1297,10 @@ function stop_lttng_sessiond_opt()
 				fail "Wait after kill session daemon"
 			fi
 		fi
+
+		# Reset SESSIOND pids for tests that spawn the session daemon
+		# multiple times.
+		LTTNG_SESSIOND_PIDS=()
 	fi
 	if [ "$signal" = "SIGKILL" ]; then
 		if [ "$(id -u)" -eq "0" ]; then
