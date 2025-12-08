@@ -1668,7 +1668,7 @@ int lttng_list_tracepoints(struct lttng_handle *handle, struct lttng_event **eve
 	size_t cmd_header_len;
 	unsigned int nb_events = 0;
 
-	if (handle == nullptr) {
+	if (handle == nullptr || events == nullptr) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
@@ -1740,7 +1740,7 @@ int lttng_list_tracepoint_fields(struct lttng_handle *handle, struct lttng_event
 
 	lttng_payload_init(&reply);
 
-	if (handle == nullptr) {
+	if (handle == nullptr || fields == nullptr) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
