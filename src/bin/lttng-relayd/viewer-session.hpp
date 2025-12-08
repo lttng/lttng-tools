@@ -84,7 +84,8 @@ void viewer_session_destroy(struct relay_viewer_session *vsession);
 void viewer_session_close(struct relay_viewer_session *vsession);
 
 enum lttng_viewer_attach_return_code viewer_session_attach(struct relay_viewer_session *vsession,
-							   struct relay_session *session);
+							   struct relay_session *session,
+							   enum lttng_viewer_seek seek_type);
 int viewer_session_is_attached(struct relay_viewer_session *vsession,
 			       struct relay_session *session);
 void viewer_session_close_one_session(struct relay_viewer_session *vsession,

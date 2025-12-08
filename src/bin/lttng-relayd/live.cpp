@@ -1485,15 +1485,6 @@ static int viewer_attach_session(struct relay_connection *conn)
 		goto send_reply;
 	}
 
-	send_streams = 1;
-	viewer_attach_status = viewer_session_attach(conn->viewer_session, session);
-	if (viewer_attach_status != LTTNG_VIEWER_ATTACH_OK) {
-		DBG("Error attaching to relay session %" PRIu64 ", returning status=%s",
-		    session_id,
-		    lttng_viewer_attach_return_code_str(viewer_attach_status));
-		goto send_reply;
-	}
-
 	switch (be32toh(request.seek)) {
 	case LTTNG_VIEWER_SEEK_BEGINNING:
 	case LTTNG_VIEWER_SEEK_LAST:
@@ -1505,7 +1496,15 @@ static int viewer_attach_session(struct relay_connection *conn)
 		    session_id,
 		    lttng_viewer_attach_return_code_str(viewer_attach_status));
 		viewer_attach_status = LTTNG_VIEWER_ATTACH_SEEK_ERR;
-		send_streams = 0;
+		goto send_reply;
+	}
+
+	send_streams = 1;
+	viewer_attach_status = viewer_session_attach(conn->viewer_session, session, seek_type);
+	if (viewer_attach_status != LTTNG_VIEWER_ATTACH_OK) {
+		DBG("Error attaching to relay session %" PRIu64 ", returning status=%s",
+		    session_id,
+		    lttng_viewer_attach_return_code_str(viewer_attach_status));
 		goto send_reply;
 	}
 

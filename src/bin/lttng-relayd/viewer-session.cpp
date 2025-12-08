@@ -73,7 +73,8 @@ end:
 
 /* The existence of session must be guaranteed by the caller. */
 enum lttng_viewer_attach_return_code viewer_session_attach(struct relay_viewer_session *vsession,
-							   struct relay_session *session)
+							   struct relay_session *session,
+							   enum lttng_viewer_seek seek_type)
 {
 	enum lttng_viewer_attach_return_code viewer_attach_status = LTTNG_VIEWER_ATTACH_OK;
 
@@ -121,13 +122,8 @@ enum lttng_viewer_attach_return_code viewer_session_attach(struct relay_viewer_s
 		uint32_t total = 0;
 		uint32_t unsent = 0;
 		bool closed = false;
-		const int make_viewer_streams_ret = make_viewer_streams(session,
-									vsession,
-									LTTNG_VIEWER_SEEK_BEGINNING,
-									&total,
-									&unsent,
-									&created,
-									&closed);
+		const int make_viewer_streams_ret = make_viewer_streams(
+			session, vsession, seek_type, &total, &unsent, &created, &closed);
 
 		if (make_viewer_streams_ret == 0) {
 			DBG("Created %d new viewer streams while attaching to relay session %" PRIu64,
