@@ -123,12 +123,14 @@ if __name__ == "__main__":
         pathlib.Path(__file__).absolute().parents[1] / ".libs/liblttng-ust-ctl-fuzz.so"
     )
 
-    if not os.path.exists(path_to_fuzz_lib):
+    if not os.path.exists(str(path_to_fuzz_lib)):
         tap.bail_out(
             "Path to LTTng ust-ctl fuzz does not exists: {}".format(path_to_fuzz_lib)
         )
 
-    os.environ["LTTNG_SESSIOND_ENV_VARS"] = "LD_PRELOAD={}".format(path_to_fuzz_lib)
+    os.environ["LTTNG_SESSIOND_ENV_VARS"] = "LD_PRELOAD={}".format(
+        str(path_to_fuzz_lib)
+    )
 
     with lttngtest.test_environment(with_sessiond=True, log=tap.diagnostic) as test_env:
 
