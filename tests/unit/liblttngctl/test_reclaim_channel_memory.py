@@ -25,7 +25,9 @@ def test_reclaim_channel_memory_no_session_string(
     reclaimed_memory_size_bytes = ctypes.c_uint64(0)
     ret = lttng.lttng_reclaim_channel_memory(
         None,
-        channel_name.encode(),
+        ctypes.cast(
+            channel_name.encode(), lttng.lttng_reclaim_channel_memory.argtypes[1]
+        ),
         lttng.LTTNG_DOMAIN_UST,
         ctypes.c_uint64(0),
         ctypes.pointer(reclaimed_memory_size_bytes),
@@ -41,7 +43,9 @@ def test_reclaim_channel_memory_no_channel_string(
 ):
     reclaimed_memory_size_bytes = ctypes.c_uint64(0)
     ret = lttng.lttng_reclaim_channel_memory(
-        session_name.encode(),
+        ctypes.cast(
+            session_name.encode(), lttng.lttng_reclaim_channel_memory.argtypes[0]
+        ),
         None,
         lttng.LTTNG_DOMAIN_UST,
         ctypes.c_uint64(0),
@@ -56,9 +60,11 @@ def test_reclaim_channel_memory_no_channel_string(
 def test_reclaim_channel_memory_no_memory_size(
     session_name, channel_name, tap, test_env
 ):
+    session_name_enc = session_name.encode()
+    channel_name_enc = channel_name.encode()
     ret = lttng.lttng_reclaim_channel_memory(
-        session_name.encode(),
-        channel_name.encode(),
+        ctypes.cast(session_name_enc, lttng.lttng_reclaim_channel_memory.argtypes[0]),
+        ctypes.cast(channel_name_enc, lttng.lttng_reclaim_channel_memory.argtypes[1]),
         lttng.LTTNG_DOMAIN_UST,
         ctypes.c_uint64(0),
         None,
@@ -71,13 +77,19 @@ def test_reclaim_channel_memory_no_memory_size(
 
 def test_reclaim_channel_memory_no_sessiond(session_name, channel_name, tap, test_env):
     reclaimed_memory_size_bytes = ctypes.c_uint64(0)
+    session_name_enc = session_name.encode()
+    channel_name_enc = channel_name.encode()
     # Set a fake directory to force the connection to fail
     old_rundir = os.environ["LTTNG_RUNDIR"]
     os.environ["LTTNG_RUNDIR"] = "/fake"
     try:
         ret = lttng.lttng_reclaim_channel_memory(
-            session_name.encode(),
-            channel_name.encode(),
+            ctypes.cast(
+                session_name_enc, lttng.lttng_reclaim_channel_memory.argtypes[0]
+            ),
+            ctypes.cast(
+                channel_name_enc, lttng.lttng_reclaim_channel_memory.argtypes[1]
+            ),
             lttng.LTTNG_DOMAIN_UST,
             ctypes.c_uint64(0),
             ctypes.pointer(reclaimed_memory_size_bytes),
@@ -95,9 +107,11 @@ def test_reclaim_channel_memory_invalid_domain_value(
     session_name, channel_name, tap, test_env
 ):
     reclaimed_memory_size_bytes = ctypes.c_uint64(0)
+    session_name_enc = session_name.encode()
+    channel_name_enc = channel_name.encode()
     ret = lttng.lttng_reclaim_channel_memory(
-        session_name.encode(),
-        channel_name.encode(),
+        ctypes.cast(session_name_enc, lttng.lttng_reclaim_channel_memory.argtypes[0]),
+        ctypes.cast(channel_name_enc, lttng.lttng_reclaim_channel_memory.argtypes[1]),
         lttng.LTTNG_DOMAIN_NR + 1,
         ctypes.c_uint64(0),
         ctypes.pointer(reclaimed_memory_size_bytes),
@@ -112,9 +126,11 @@ def test_reclaim_channel_memory_with_sessiond(
     session_name, channel_name, tap, test_env
 ):
     reclaimed_memory_size_bytes = ctypes.c_uint64(0)
+    session_name_enc = session_name.encode()
+    channel_name_enc = channel_name.encode()
     ret = lttng.lttng_reclaim_channel_memory(
-        session_name.encode(),
-        channel_name.encode(),
+        ctypes.cast(session_name_enc, lttng.lttng_reclaim_channel_memory.argtypes[0]),
+        ctypes.cast(channel_name_enc, lttng.lttng_reclaim_channel_memory.argtypes[1]),
         lttng.LTTNG_DOMAIN_UST,
         ctypes.c_uint64(0),
         ctypes.pointer(reclaimed_memory_size_bytes),

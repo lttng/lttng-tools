@@ -39,9 +39,15 @@ def get_sets(session_name, channel_name, tap, test_name):
         ctypes.c_void_p(None),
         ctypes.POINTER(lttng.struct_lttng_data_stream_info_sets),
     )
+    session_name_enc = session_name.encode()
+    channel_name_enc = channel_name.encode()
     ret = lttng.lttng_channel_get_data_stream_info_sets(
-        session_name.encode(),
-        channel_name.encode(),
+        ctypes.cast(
+            session_name_enc, lttng.lttng_channel_get_data_stream_info_sets.argtypes[0]
+        ),
+        ctypes.cast(
+            channel_name_enc, lttng.lttng_channel_get_data_stream_info_sets.argtypes[1]
+        ),
         lttng.LTTNG_DOMAIN_UST,
         ctypes.pointer(sets),
     )
@@ -108,7 +114,10 @@ def test_channel_get_data_stream_info_sets_no_session_string(
     )
     ret = lttng.lttng_channel_get_data_stream_info_sets(
         None,
-        channel_name.encode(),
+        ctypes.cast(
+            channel_name.encode(),
+            lttng.lttng_channel_get_data_stream_info_sets.argtypes[1],
+        ),
         lttng.LTTNG_DOMAIN_UST,
         ctypes.pointer(sets),
     )
@@ -126,7 +135,10 @@ def test_channel_get_data_stream_info_sets_no_channel_string(
         ctypes.POINTER(lttng.struct_lttng_data_stream_info_sets),
     )
     ret = lttng.lttng_channel_get_data_stream_info_sets(
-        session_name.encode(),
+        ctypes.cast(
+            session_name.encode(),
+            lttng.lttng_channel_get_data_stream_info_sets.argtypes[0],
+        ),
         None,
         lttng.LTTNG_DOMAIN_UST,
         ctypes.pointer(sets),
@@ -140,9 +152,15 @@ def test_channel_get_data_stream_info_sets_no_channel_string(
 def test_channel_get_data_stream_info_sets_no_sets(
     session_name, channel_name, tap, test_env
 ):
+    session_name_enc = session_name.encode()
+    channel_name_enc = channel_name.encode()
     ret = lttng.lttng_channel_get_data_stream_info_sets(
-        session_name.encode(),
-        channel_name.encode(),
+        ctypes.cast(
+            session_name_enc, lttng.lttng_channel_get_data_stream_info_sets.argtypes[0]
+        ),
+        ctypes.cast(
+            channel_name_enc, lttng.lttng_channel_get_data_stream_info_sets.argtypes[1]
+        ),
         lttng.LTTNG_DOMAIN_UST,
         None,
     )
@@ -159,6 +177,8 @@ def test_channel_get_data_stream_info_sets_no_sessiond(
         ctypes.c_void_p(None),
         ctypes.POINTER(lttng.struct_lttng_data_stream_info_sets),
     )
+    session_name_enc = session_name.encode()
+    channel_name_enc = channel_name.encode()
     # Set fake directories to force the connection to fail
     old_rundir = os.environ.get("LTTNG_RUNDIR")
     old_lttng_home = os.environ.get("LTTNG_HOME")
@@ -166,8 +186,14 @@ def test_channel_get_data_stream_info_sets_no_sessiond(
     os.environ["LTTNG_HOME"] = "/fake"
     try:
         ret = lttng.lttng_channel_get_data_stream_info_sets(
-            session_name.encode(),
-            channel_name.encode(),
+            ctypes.cast(
+                session_name_enc,
+                lttng.lttng_channel_get_data_stream_info_sets.argtypes[0],
+            ),
+            ctypes.cast(
+                channel_name_enc,
+                lttng.lttng_channel_get_data_stream_info_sets.argtypes[1],
+            ),
             lttng.LTTNG_DOMAIN_UST,
             ctypes.pointer(sets),
         )
@@ -194,9 +220,17 @@ def test_channel_get_data_stream_info_sets_invalid_domain_value(
         ctypes.c_void_p(None),
         ctypes.POINTER(lttng.struct_lttng_data_stream_info_sets),
     )
+    session_name_enc = session_name.encode()
+    channel_name_enc = channel_name.encode()
     ret = lttng.lttng_channel_get_data_stream_info_sets(
-        session_name.encode(),
-        channel_name.encode(),
+        ctypes.cast(
+            session_name_enc,
+            lttng.lttng_channel_get_data_stream_info_sets.argtypes[0],
+        ),
+        ctypes.cast(
+            channel_name_enc,
+            lttng.lttng_channel_get_data_stream_info_sets.argtypes[1],
+        ),
         lttng.LTTNG_DOMAIN_NR + 1,
         ctypes.pointer(sets),
     )
@@ -213,9 +247,17 @@ def test_channel_get_data_stream_info_sets_with_sessiond(
         ctypes.c_void_p(None),
         ctypes.POINTER(lttng.struct_lttng_data_stream_info_sets),
     )
+    session_name_enc = session_name.encode()
+    channel_name_enc = channel_name.encode()
     ret = lttng.lttng_channel_get_data_stream_info_sets(
-        session_name.encode(),
-        channel_name.encode(),
+        ctypes.cast(
+            session_name_enc,
+            lttng.lttng_channel_get_data_stream_info_sets.argtypes[0],
+        ),
+        ctypes.cast(
+            channel_name_enc,
+            lttng.lttng_channel_get_data_stream_info_sets.argtypes[1],
+        ),
         lttng.LTTNG_DOMAIN_UST,
         ctypes.pointer(sets),
     )
