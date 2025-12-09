@@ -1109,16 +1109,412 @@ __lttng_complete_log_level_name() {
   __lttng_complete_log_level "log level name"
 }
 
-# Adds completions for a trigger condition type.
-__lttng_complete_trigger_condition_type() {
+# Adds completions for a trigger rate policy.
+__lttng_complete_trigger_rate_policy() {
   local -r types=(
-    'event-rule-matches:an event rule matches an event'
+    'once-after:execute the action once after N execution requests'
+    'every:execute the action every N execution requests'
   )
 
   # Add completions
-  local expl
+  _describe 'trigger rate policy type' types -qS ':'
+}
 
-  _describe 'trigger condition type' types
+# Adds completions for a `notify` trigger action.
+#
+# `$1` is the index, in the `words` array, of the word following the
+# action type. `CURRENT` is greater than or equal to `$1`.
+__lttng_complete_trigger_action_notify() {
+  local -i start_index=$1
+  local in_opt_val
+  local long_opts=(
+    '--rate-policy:set the rate policy'
+    '--action:set the type of the next trigger action'
+  )
+  local -i word_index
+
+  # Check all the next words in order up to (and excluding) the
+  # current one.
+  for word_index in {$start_index..$#words}; do
+    if ((word_index == CURRENT)); then
+      break
+    fi
+
+    local word=$words[word_index]
+
+    case $word in
+      --rate-policy=*)
+        # Remove `--rate-policy` from possible options
+        long_opts=("${(@)long_opts:#--rate-policy:*}")
+        ;;
+      --rate-policy)
+        # Next: value of `--rate-policy` option
+        in_opt_val=rate-policy
+        ;;
+      --action=*)
+        # Defer to action handling dispatch. Action type is what
+        # follows `--action=` here.
+        __lttng_complete_trigger_action $((word_index + 1)) ${word#--action=}
+        return
+        ;;
+      --action)
+        # Next: value of `--action` option
+        in_opt_val=action
+        ;;
+      *)
+        # Anything else: check for option value, or ignore otherwise
+        case $in_opt_val in
+          rate-policy)
+            # Remove `--rate-policy` from possible options
+            long_opts=("${(@)long_opts:#--rate-policy:*}")
+            ;;
+          action)
+            # Defer to action handling dispatch. Action type is
+            # the whole current word.
+            __lttng_complete_trigger_action $((word_index + 1)) $word
+            return
+            ;;
+        esac
+
+        # Next: not the value of any known option
+        in_opt_val=
+        ;;
+    esac
+  done
+
+  # Try to offer option-specific completions
+  if [[ $in_opt_val == rate-policy ]] || compset -P '--rate-policy=*:'; then
+    _message -e descriptions 'execution request count'
+    return
+  elif [[ $in_opt_val == rate-policy ]] || compset -P '--rate-policy='; then
+    __lttng_complete_trigger_rate_policy
+    return
+  elif [[ $in_opt_val == action ]] || compset -P '--action='; then
+    __lttng_complete_trigger_action_type
+    return
+  else
+    # Offer all possible options
+    _describe -O option long_opts -qS=
+    return
+  fi
+
+  return 1
+}
+
+# Adds completions for a `start-session`, `stop-session`, or
+# `rotate-session` trigger action.
+#
+# `$1` is the index, in the `words` array, of the word following the
+# action type. `CURRENT` is greater than or equal to `$1`.
+__lttng_complete_trigger_action_session() {
+  local -i start_index=$1
+  local in_opt_val
+  local long_opts=(
+    '--rate-policy:set the rate policy'
+    '--action:set the type of the next trigger action'
+  )
+  local -i word_index
+  local -i has_session_name=0
+
+  # Check all the next words in order up to (and excluding) the
+  # current one.
+  for word_index in {$start_index..$#words}; do
+    if ((word_index == CURRENT)); then
+      break
+    fi
+
+    local word=$words[word_index]
+
+    case $word in
+      --rate-policy=*)
+        # Remove `--rate-policy` from possible options
+        long_opts=("${(@)long_opts:#--rate-policy:*}")
+        ;;
+      --rate-policy)
+        # Next: value of `--rate-policy` option
+        in_opt_val=rate-policy
+        ;;
+      --action=*)
+        # Defer to action handling dispatch. Action type is what
+        # follows `--action=` here.
+        __lttng_complete_trigger_action $((word_index + 1)) ${word#--action=}
+        return
+        ;;
+      --action)
+        # Next: value of `--action` option
+        in_opt_val=action
+        ;;
+      *)
+        # Anything else: check for option value, or ignore otherwise
+        case $in_opt_val in
+          rate-policy)
+            # Remove `--rate-policy` from possible options
+            long_opts=("${(@)long_opts:#--rate-policy:*}")
+            ;;
+          action)
+            # Defer to action handling dispatch. Action type is
+            # the whole current word.
+            __lttng_complete_trigger_action $((word_index + 1)) $word
+            return
+            ;;
+          *)
+            # Positional argument: session name
+            has_session_name=1
+            ;;
+        esac
+
+        # Next: not the value of any known option
+        in_opt_val=
+        ;;
+    esac
+  done
+
+  # Try to offer option-specific completions
+  if [[ $in_opt_val == rate-policy ]] || compset -P '--rate-policy='; then
+    __lttng_complete_trigger_rate_policy
+    return
+  elif [[ $in_opt_val == action ]] || compset -P '--action='; then
+    __lttng_complete_trigger_action_type
+    return
+  elif [[ $PREFIX != -* ]] && ((! has_session_name)); then
+    # Recording session name is the first position argument
+    __lttng_complete_session_name all all
+    return
+  else
+    # Offer all possible options
+    _describe -O option long_opts -qS=
+    return
+  fi
+}
+
+# Adds completions for a `snapshot-session` trigger action.
+#
+# `$1` is the index, in the `words` array, of the word following the
+# action type. `CURRENT` is greater than or equal to `$1`.
+__lttng_complete_trigger_action_snapshot_session() {
+  local -i start_index=$1
+  local in_opt_val
+  local long_opts=(
+    '--name:set the snapshot output name'
+    '--max-size:set the maximum total size of all snapshot files'
+    '--path:set the local output destination directory'
+    '--url:set the output URL'
+    '--ctrl-url:set the control URL'
+    '--data-url:set the trace data output URL'
+    '--rate-policy:set the rate policy'
+    '--action:set the type of the next trigger action'
+  )
+  local short_opts=(
+    '-n:set the snapshot output name'
+    '-m:set the maximum total size of all snapshot files'
+  )
+  local -i word_index
+  local session_name
+
+  # Check all the next words in order up to (and excluding) the
+  # current one.
+  for word_index in {$start_index..$#words}; do
+    if ((word_index == CURRENT)); then
+      break
+    fi
+
+    local word=$words[word_index]
+
+    case $word in
+      --name=*)
+        # Remove `--name` and `-n` from possible options
+        long_opts=("${(@)long_opts:#--name:*}")
+        short_opts=("${(@)short_opts:#-n:*}")
+        ;;
+      --name|-n)
+        # Next: value of `--name`/`-n` option
+        in_opt_val=name
+        ;;
+      --max-size=*)
+        # Remove `--max-size` and `-m` from possible options
+        long_opts=("${(@)long_opts:#--max-size:*}")
+        short_opts=("${(@)short_opts:#-m:*}")
+        ;;
+      --max-size|-m)
+        # Next: value of `--max-size`/`-m` option
+        in_opt_val=max-size
+        ;;
+      --path=*)
+        # Remove `--path` and `--*url` from possible options
+        long_opts=("${(@)long_opts:#--path:*}")
+        long_opts=("${(@)long_opts:#--*url:*}")
+        ;;
+      --path)
+        # Next: value of `--path` option
+        in_opt_val=path
+        ;;
+      --url=*)
+        # Remove `--path` and `--*url` from possible options
+        long_opts=("${(@)long_opts:#--path:*}")
+        long_opts=("${(@)long_opts:#--*url:*}")
+        ;;
+      --url)
+        # Next: value of `--url` option
+        in_opt_val=url
+        ;;
+      --ctrl-url=*)
+        # Remove `--path`, `--url`, and `--ctrl-url` from possible options
+        long_opts=("${(@)long_opts:#--path:*}")
+        long_opts=("${(@)long_opts:#--ctrl-url:*}")
+        long_opts=("${(@)long_opts:#--url:*}")
+        ;;
+      --ctrl-url)
+        # Next: value of `--ctrl-url` option
+        in_opt_val=ctrl-url
+        ;;
+      --data-url=*)
+        # Remove `--path`, `--url`, and `--data-url` from possible options
+        long_opts=("${(@)long_opts:#--path:*}")
+        long_opts=("${(@)long_opts:#--data-url:*}")
+        long_opts=("${(@)long_opts:#--url:*}")
+        ;;
+      --data-url)
+        # Next: value of `--data-url` option
+        in_opt_val=data-url
+        ;;
+      --rate-policy=*)
+        # Remove `--rate-policy` from possible options
+        long_opts=("${(@)long_opts:#--rate-policy:*}")
+        ;;
+      --rate-policy)
+        # Next: value of `--rate-policy` option
+        in_opt_val=rate-policy
+        ;;
+      --action=*)
+        # Defer to action handling dispatch. Action type is what
+        # follows `--action=` here.
+        __lttng_complete_trigger_action $((word_index + 1)) ${word#--action=}
+        return
+        ;;
+      --action)
+        # Next: value of `--action` option
+        in_opt_val=action
+        ;;
+      *)
+        # Anything else: check for option value, or ignore otherwise
+        case $in_opt_val in
+          name)
+            # Remove `--name` and `-n` from possible options
+            long_opts=("${(@)long_opts:#--name:*}")
+            short_opts=("${(@)short_opts:#-n:*}")
+            ;;
+          max-size)
+            # Remove `--max-size` and `-m` from possible options
+            long_opts=("${(@)long_opts:#--max-size:*}")
+            short_opts=("${(@)short_opts:#-m:*}")
+            ;;
+          path)
+            # Remove `--path` and `--*url` from possible options
+            long_opts=("${(@)long_opts:#--path:*}")
+            long_opts=("${(@)long_opts:#--*url:*}")
+            ;;
+          url)
+            # Remove `--path` and `--*url` from possible options
+            long_opts=("${(@)long_opts:#--path:*}")
+            long_opts=("${(@)long_opts:#--*url:*}")
+            ;;
+          ctrl-url)
+            # Remove `--path`, `--url`, and `--ctrl-url` from
+            # possible options.
+            long_opts=("${(@)long_opts:#--path:*}")
+            long_opts=("${(@)long_opts:#--ctrl-url:*}")
+            long_opts=("${(@)long_opts:#--url:*}")
+            ;;
+          data-url)
+            # Remove `--path`, `--url`, and `--data-url` from
+            # possible options.
+            long_opts=("${(@)long_opts:#--path:*}")
+            long_opts=("${(@)long_opts:#--data-url:*}")
+            long_opts=("${(@)long_opts:#--url:*}")
+            ;;
+          rate-policy)
+            # Remove `--rate-policy` from possible options
+            long_opts=("${(@)long_opts:#--rate-policy:*}")
+            ;;
+          action)
+            # Defer to action handling dispatch. Action type is
+            # the whole current word.
+            __lttng_complete_trigger_action $((word_index + 1)) $word
+            return
+            ;;
+          *)
+            # Set recording session name from positional argument
+            session_name=$word
+        esac
+
+        # Next: not the value of any known option
+        in_opt_val=
+        ;;
+    esac
+  done
+
+  # Try to offer option-specific completions
+  if [[ $in_opt_val == name ]] || compset -P '--name='; then
+    _message -e descriptions 'snapshot output name'
+    return
+  elif [[ $in_opt_val == max-size ]] || compset -P '--max-size='; then
+    _message -e descriptions 'maximum size (bytes; `k`/`M`/`G` suffixes supported)'
+    return
+  elif [[ $in_opt_val == path ]] || compset -P '--path='; then
+    _files -/
+    return
+  elif [[ $in_opt_val == url ]] || compset -P '--url='; then
+    _message -e descriptions 'output URL'
+    return
+  elif [[ $in_opt_val == ctrl-url ]] || compset -P '--ctrl-url='; then
+    _message -e descriptions 'control URL'
+    return
+  elif [[ $in_opt_val == data-url ]] || compset -P '--data-url='; then
+    _message -e descriptions 'trace data output URL'
+    return
+  elif [[ $in_opt_val == rate-policy ]] || compset -P '--rate-policy='; then
+    __lttng_complete_trigger_rate_policy
+    return
+  elif [[ $in_opt_val == action ]] || compset -P '--action='; then
+    __lttng_complete_trigger_action_type
+    return
+  elif [[ $PREFIX != -* && -z $session_name ]]; then
+    # Recording session name is the first position argument
+    __lttng_complete_session_name all snapshot
+    return
+  else
+    # Offer all possible options
+    _describe -O option long_opts -qS= -- short_opts
+    return
+  fi
+}
+
+# Adds completions for a trigger action.
+#
+# `$1` is the index, in the `words` array, of the word following the
+# action type. `CURRENT` is greater than or equal to `$1`.
+__lttng_complete_trigger_action() {
+  local -ir start_index=$1
+  local -r action_type=$2
+
+  case $action_type in
+    notify)
+      __lttng_complete_trigger_action_notify $start_index
+      return
+      ;;
+    (start|stop|rotate)-session)
+      __lttng_complete_trigger_action_session $start_index
+      return
+      ;;
+    snapshot-session)
+      __lttng_complete_trigger_action_snapshot_session $start_index
+      return
+      ;;
+    *)
+      _message "unknown action type \`$action_type\`"
+      return
+      ;;
+  esac
 }
 
 # Adds completions for a trigger action type.
@@ -1135,33 +1531,739 @@ __lttng_complete_trigger_action_type() {
   _describe 'trigger action type' types
 }
 
-# Adds completions for the arguments of the `add-trigger` command.
-#
-# Note that those completions are incomplete, in that:
-#
-# • A valid event rule specification, as per lttng-event-rule(7),
-#   must follow `--condition=event-rule-matches`.
-#
-# • `--capture` options are possible within an `event-rule-matches`
-#   condition specifier.
-#
-# • The `--rate-policy` option and other arguments, sometimes mandatory,
-#   are possible within an action specifier.
-#
-# Having full completion for condition and action specifiers require
-# more Zsh magic as _arguments(), like most command-line argument
-# parsers, doesn't take option positions into account.
-__lttng_complete_add_trigger_cmd() {
-  local -r specs=(
-    $help_opt_specs
-    '(-n --name)'{-n+,--name=}'[set the trigger name]:new trigger name:'
-    '--owner-uid=[add the trigger as another Unix user]: : __lttng_complete_uid'
-    '--condition=[set the condition type and arguments]: : __lttng_complete_trigger_condition_type'
-    '*--action=[set the action type and arguments]: : __lttng_complete_trigger_action_type'
+# Adds completions for a new-style tracing domain type.
+__lttng_complete_new_domain_type() {
+  local -r types=(
+    'kernel:Linux kernel'
+    'user:user space tracing'
+    'jul:`java.util.logging`'
+    'log4j:Apache log4j 1.x'
+    'log4j2:Apache Log4j 2'
+    'python:Python'
   )
 
   # Add completions
-  _arguments -s -W : $specs
+  _describe 'tracing domain type' types
+}
+
+# Sets an entry of the `opt_args` associative array from the new-style
+# tracing domain type name (`$1`).
+__lttng_set_opt_args_from_new_domain_type() {
+  local -r domain_type=$1
+
+  case $domain_type in
+    kernel*|*probe*|*syscall*) opt_args[-k]=1;;
+    user*) opt_args[-u]=1;;
+    jul*) opt_args[-j]=1;;
+    log4j*) opt_args[-l]=1;;
+    log4j2*) opt_args[--log4j2]=1;;
+    python*) opt_args[-p]=1;;
+  esac
+}
+
+# Adds completions for a new-style instrumentation point type.
+#
+# Parameters:
+#
+# `$1`:
+#     `1` to exclude Linux kernel types.
+#
+# `$2`:
+#     `1` to exclude probe types.
+#
+# `$3`:
+#     `1` to _only_ offer probe types.
+__lttng_complete_inst_point_type() {
+  local -ir exclude_kernel_types=$1
+  local -ir exclude_probe_types=$2
+  local -ir only_probe_types=$3
+  local -a types
+  local -r probe_types=(
+    {'kernel\:',}'kprobe:Linux kprobe'
+    {'kernel\:',}'uprobe:Linux user space probe'
+  )
+
+  if ((only_probe_types)); then
+    # Only offer `kernel:kprobe` and `kernel:uprobe`
+    types=($probe_types)
+  else
+    # Start with non-kernel types (always available)
+    if ((! exclude_kernel_types)); then
+      types+=(
+        kernel{,'\:tracepoint'}':LTTng kernel tracepoint'
+        {kernel,}'syscall\:entry:Linux system call entry'
+        {kernel,}'syscall\:exit:Linux system call exit'
+        {'kernel\:',}syscall{'\:entry+exit',}':Linux system call entry and exit'
+      )
+
+      if ((! exclude_probe_types)); then
+        types+=($probe_types)
+      fi
+    fi
+
+    types+=(
+      user{,'\:tracepoint'}':LTTng user space tracepoint'
+      jul{,'\:logging'}':`java.util.logging` logging statement'
+      log4j{,'\:logging'}':Apache log4j 1.x logging statement'
+      log4j2{,'\:logging'}':Apache Log4j 2 logging statement'
+      python{,'\:logging'}':Python logging statement'
+    )
+  fi
+
+  # Add completions
+  _describe 'instrumentation point type' types -o nosort
+}
+
+# Adds completions for an `event-rule-matches` trigger condition.
+#
+# `$1` is the index, in the `words` array, of the word following the
+# condition type. `CURRENT` is greater than or equal to `$1`.
+__lttng_complete_trigger_cond_event_rule_matches() {
+  local -i start_index=$1
+  local in_opt_val
+  local ip_type
+  local long_opts=(
+    '--type:set the instrumentation point type'
+    '--name:set the instrumentation point name pattern'
+    '--exclude-name:add an instrumentation point name exclusion pattern'
+    '--log-level:set the log level rule'
+    '--filter:set the filter expression'
+    '--location:set the probe location'
+    '--event-name:set the event name'
+    '--capture:add a capture descriptor'
+    '--action:set the type of the next trigger action'
+  )
+  local short_opts=(
+    '-t:set the instrumentation point type'
+    '-n:set the instrumentation point name pattern'
+    '-x:add an instrumentation point name exclusion pattern'
+    '-l:set the log level rule'
+    '-f:set the filter expression'
+    '-L:set the probe location'
+    '-E:set the event name'
+  )
+  local -i word_index
+  local -i has_exclude_name_or_log_level_opt=0
+  local -i has_filter_or_name_opt=0
+  local -i has_location_or_event_name_opt=0
+
+  # Check all the next words in order up to (and excluding) the
+  # current one.
+  for word_index in {$start_index..$#words}; do
+    if ((word_index == CURRENT)); then
+      break
+    fi
+
+    local word=$words[word_index]
+
+    case $word in
+      --type=*)
+        # Remove `--type` and `-t` from possible options
+        long_opts=("${(@)long_opts:#--type:*}")
+        short_opts=("${(@)short_opts:#-t:*}")
+
+        # Save the event rule type
+        ip_type=${word#--type=}
+        ;;
+      --type|-t)
+        # Next: value of `--type`/`-t` option
+        in_opt_val=type
+        ;;
+      --name=*)
+        has_filter_or_name_opt=1
+
+        # Remove `--name` and `-n` from possible options
+        long_opts=("${(@)long_opts:#--name:*}")
+        short_opts=("${(@)short_opts:#-n:*}")
+        ;;
+      --name|-n)
+        # Next: value of `--name`/`-n` option
+        in_opt_val=name
+        ;;
+      --exclude-name=*)
+        has_exclude_name_or_log_level_opt=1
+        ;;
+      --exclude-name|-x)
+        # Next: value of `--exclude-name`/`-x` option
+        in_opt_val=exclude-name
+        ;;
+      --log-level=*)
+        has_exclude_name_or_log_level_opt=1
+
+        # Remove `--log-level` and `-l` from possible options
+        long_opts=("${(@)long_opts:#--log-level:*}")
+        short_opts=("${(@)short_opts:#-l:*}")
+        ;;
+      --log-level|-l)
+        # Next: value of `--log-level`/`-l` option
+        in_opt_val=log-level
+        ;;
+      --filter=*)
+        has_filter_or_name_opt=1
+
+        # Remove `--filter` and `-f` from possible options
+        long_opts=("${(@)long_opts:#--filter:*}")
+        short_opts=("${(@)short_opts:#-f:*}")
+        ;;
+      --filter|-f)
+        # Next: value of `--filter`/`-f` option
+        in_opt_val=filter
+        ;;
+      --location=*)
+        has_location_or_event_name_opt=1
+
+        # Remove `--location` and `-L` from possible options
+        long_opts=("${(@)long_opts:#--location:*}")
+        short_opts=("${(@)short_opts:#-L:*}")
+        ;;
+      --location|-L)
+        # Next: value of `--location`/`-L` option
+        in_opt_val=location
+        ;;
+      --event-name=*)
+        has_location_or_event_name_opt=1
+
+        # Remove `--event-name` and `-E` from possible options
+        long_opts=("${(@)long_opts:#--event-name:*}")
+        short_opts=("${(@)short_opts:#-E:*}")
+        ;;
+      --event-name|-E)
+        # Next: value of `--event-name`/`-E` option
+        in_opt_val=event-name
+        ;;
+      --capture)
+        # Next: value of `--capture` option
+        in_opt_val=capture
+        ;;
+      --action=*)
+        # Defer to action handling dispatch. Action type is what
+        # follows `--action=` here.
+        __lttng_complete_trigger_action $((word_index + 1)) ${word#--action=}
+        return
+        ;;
+      --action)
+        # Next: value of `--action` option
+        in_opt_val=action
+        ;;
+      *)
+        # Anything else: check for option value, or ignore otherwise
+        case $in_opt_val in
+          type)
+            # Remove `--type` and `-t` from possible options
+            long_opts=("${(@)long_opts:#--type:*}")
+            short_opts=("${(@)short_opts:#-t:*}")
+
+            # Save the event rule type
+            ip_type=$word
+            ;;
+          name)
+            has_filter_or_name_opt=1
+
+            # Remove `--name` and `-n` from possible options
+            long_opts=("${(@)long_opts:#--name:*}")
+            short_opts=("${(@)short_opts:#-n:*}")
+            ;;
+          exclude-name)
+            has_exclude_name_or_log_level_opt=1;;
+          log-level)
+            has_exclude_name_or_log_level_opt=1
+
+            # Remove `--log-level` and `-l` from possible options
+            long_opts=("${(@)long_opts:#--log-level:*}")
+            short_opts=("${(@)short_opts:#-l:*}")
+            ;;
+          filter)
+            has_filter_or_name_opt=1
+
+            # Remove `--filter` and `-f` from possible options
+            long_opts=("${(@)long_opts:#--filter:*}")
+            short_opts=("${(@)short_opts:#-f:*}")
+            ;;
+          location)
+            has_location_or_event_name_opt=1
+
+            # Remove `--location` and `-L` from possible options
+            long_opts=("${(@)long_opts:#--location:*}")
+            short_opts=("${(@)short_opts:#-L:*}")
+            ;;
+          event-name)
+            has_location_or_event_name_opt=1
+
+            # Remove `--event-name` and `-E` from possible options
+            long_opts=("${(@)long_opts:#--event-name:*}")
+            short_opts=("${(@)short_opts:#-E:*}")
+            ;;
+          action)
+            # Defer to action handling dispatch. Action type is
+            # the whole current word.
+            __lttng_complete_trigger_action $((word_index + 1)) $word
+            return
+            ;;
+        esac
+
+        # Next: not the value of any known option
+        in_opt_val=0
+        ;;
+    esac
+  done
+
+  # Exclude groups of options
+  if ((has_filter_or_name_opt || has_exclude_name_or_log_level_opt)); then
+    # Remove probe options from possible options
+    long_opts=("${(@)long_opts:#--event-name:*}")
+    short_opts=("${(@)short_opts:#-E:*}")
+    long_opts=("${(@)long_opts:#--location:*}")
+    short_opts=("${(@)short_opts:#-L:*}")
+  fi
+
+  if ((has_location_or_event_name_opt)); then
+    # Remove non-probe options from possible options
+    long_opts=("${(@)long_opts:#--filter:*}")
+    short_opts=("${(@)short_opts:#-f:*}")
+    long_opts=("${(@)long_opts:#--log-level:*}")
+    short_opts=("${(@)short_opts:#-l:*}")
+    long_opts=("${(@)long_opts:#--name:*}")
+    short_opts=("${(@)short_opts:#-n:*}")
+    long_opts=("${(@)long_opts:#--exclude-name:*}")
+    short_opts=("${(@)short_opts:#-x:*}")
+  fi
+
+  # Filter options based on `--type`/`t`
+  case $ip_type in
+    kernel(|:tracepoint|:syscall*))
+      long_opts=("${(@)long_opts:#--exclude-name:*}")
+      short_opts=("${(@)short_opts:#-x:*}")
+      long_opts=("${(@)long_opts:#--log-level:*}")
+      short_opts=("${(@)short_opts:#-l:*}")
+      long_opts=("${(@)long_opts:#--location:*}")
+      short_opts=("${(@)short_opts:#-L:*}")
+      long_opts=("${(@)long_opts:#--event-name:*}")
+      short_opts=("${(@)short_opts:#-E:*}")
+      ;;
+    *probe*)
+      long_opts=("${(@)long_opts:#--name:*}")
+      short_opts=("${(@)short_opts:#-n:*}")
+      long_opts=("${(@)long_opts:#--exclude-name:*}")
+      short_opts=("${(@)short_opts:#-x:*}")
+      long_opts=("${(@)long_opts:#--log-level:*}")
+      short_opts=("${(@)short_opts:#-l:*}")
+      long_opts=("${(@)long_opts:#--filter:*}")
+      short_opts=("${(@)short_opts:#-f:*}")
+      ;;
+    user*)
+      long_opts=("${(@)long_opts:#--location:*}")
+      short_opts=("${(@)short_opts:#-L:*}")
+      long_opts=("${(@)long_opts:#--event-name:*}")
+      short_opts=("${(@)short_opts:#-E:*}")
+      ;;
+    *jul*|*log4j*|*python*|*logging*)
+      long_opts=("${(@)long_opts:#--exclude-name:*}")
+      short_opts=("${(@)short_opts:#-x:*}")
+      long_opts=("${(@)long_opts:#--location:*}")
+      short_opts=("${(@)short_opts:#-L:*}")
+      long_opts=("${(@)long_opts:#--event-name:*}")
+      short_opts=("${(@)short_opts:#-E:*}")
+      ;;
+  esac
+
+  # Try to offer option-specific completions
+  if [[ $in_opt_val == type ]] || compset -P '--type='; then
+    __lttng_complete_inst_point_type \
+      $has_exclude_name_or_log_level_opt \
+      $has_filter_or_name_opt \
+      $has_location_or_event_name_opt
+    return
+  elif [[ $in_opt_val == name ]] || compset -P '--name='; then
+    _message -e descriptions 'instrumentation point name pattern'
+    return
+  elif [[ $in_opt_val == exclude-name ]] || compset -P '--exclude-name='; then
+    _message -e descriptions 'instrumentation point name exclusion pattern'
+    return
+  elif [[ $in_opt_val == log-level ]] || compset -P '--log-level='; then
+    # __lttng_complete_log_level() relies on `$opt_args` for the
+    # tracing domain.
+    __lttng_set_opt_args_from_new_domain_type $ip_type
+    __lttng_complete_log_level 'log level rule'
+    return
+  elif [[ $in_opt_val == filter ]] || compset -P '--filter='; then
+    _message -e descriptions 'filter expression'
+    return
+  elif [[ $in_opt_val == location ]] || compset -P '--location='; then
+    case $ip_type in
+      *kprobe*)
+        _message -e descriptions 'Linux kprobe location'
+        return
+        ;;
+      *uprobe*)
+        _message -e descriptions 'Linux user space probe location'
+        return
+        ;;
+      *)
+        _message -e descriptions 'probe location'
+        return
+        ;;
+    esac
+  elif [[ $in_opt_val == event-name ]] || compset -P '--event-name='; then
+    _message -e descriptions 'event name'
+    return
+  elif [[ $in_opt_val == capture ]] || compset -P '--capture='; then
+    _message -e descriptions 'capture descriptor'
+    return
+  elif [[ $in_opt_val == action ]] || compset -P '--action='; then
+    __lttng_complete_trigger_action_type
+    return
+  else
+    # Offer all possible options
+    _describe -O option long_opts -qS= -- short_opts
+    return
+  fi
+
+  return 1
+}
+
+# Adds completions for a "simple" trigger condition (anything except
+# `event-rule-matches`).
+#
+# Parameters:
+#
+# `$1`:
+#     The index, in the `words` array, of the word following the
+#     condition type. `CURRENT` is greater than or equal to `$1`.
+#
+# `$2`:
+#     `1` to handle channel and tracing domain options.
+#
+# `$3`:
+#     `1` to handle a `--threshold-ratio` option.
+#
+# `$4`:
+#     `1` to handle `--threshold-size`/`-t` options.
+__lttng_complete_trigger_cond_simple() {
+  local -i start_index=$1
+  local -i with_channel_domain_opts=$2
+  local -i with_threshold_ratio_opt=$3
+  local -i with_threshold_size_opts=$4
+  local in_opt_val
+  local long_opts=(
+    '--session:set the target recording session name'
+    '--action:set the type of the next trigger action'
+  )
+  local short_opts=(
+    '-s:set the target recording session name'
+  )
+
+  if ((with_channel_domain_opts)); then
+    long_opts+=(
+      '--channel:set the target channel name'
+      '--domain:set the target tracing domain'
+    )
+    short_opts+=(
+      '-c:set the target channel name'
+      '-d:set the target tracing domain'
+    )
+  fi
+
+  if ((with_threshold_ratio_opt)); then
+    long_opts+=(
+      '--threshold-ratio:set the threshold as a ratio of the total buffer size'
+    )
+  fi
+
+  if ((with_threshold_size_opts)); then
+    long_opts+=(
+      '--threshold-size:set the threshold size'
+    )
+    short_opts+=(
+      '-t:set the threshold size'
+    )
+  fi
+
+  local -i word_index
+  local session_name
+  local domain_type
+
+  # Check all the next words in order up to (and excluding) the
+  # current one.
+  for word_index in {$start_index..$#words}; do
+    if ((word_index == CURRENT)); then
+      break
+    fi
+
+    local word=$words[word_index]
+
+    case $word in
+      --session=*)
+        # Remove `--session` and `-s` from possible options
+        long_opts=("${(@)long_opts:#--session:*}")
+        short_opts=("${(@)short_opts:#-s:*}")
+
+        # Save the recording session name
+        session_name=${word#--session=}
+        ;;
+      --session|-s)
+        # Next: value of `--session`/`-s` option
+        in_opt_val=session;;
+      --channel=*)
+        # Remove `--channel` and `-d` from possible options
+        long_opts=("${(@)long_opts:#--channel:*}")
+        short_opts=("${(@)short_opts:#-c:*}")
+        ;;
+      --channel|-c)
+        # Next: value of `--channel`/`-c` option
+        in_opt_val=channel;;
+      --domain=*)
+        # Remove `--domain` and `-d` from possible options
+        long_opts=("${(@)long_opts:#--domain:*}")
+        short_opts=("${(@)short_opts:#-d:*}")
+
+        # Save the tracing domain type name
+        domain_type=${word#--domain=}
+        ;;
+      --domain|-d)
+        # Next: value of `--domain`/`-d` option
+        in_opt_val=domain;;
+      --threshold-(size|ratio)=*)
+        # Remove `--threshold-size`, `-t`, and `--threshold-ratio` from
+        # possible options.
+        long_opts=("${(@)long_opts:#--threshold-*:*}")
+        short_opts=("${(@)short_opts:#-t:*}")
+        ;;
+      --threshold-size|-t)
+        # Next: value of `--threshold-size`/`-t` option
+        in_opt_val=threshold-size;;
+      --threshold-ratio)
+        # Next: value of `--threshold-ratio` option
+        in_opt_val=threshold-ratio;;
+      --action=*)
+        # Defer to action handling dispatch. Action type is what
+        # follows `--action=` here.
+        __lttng_complete_trigger_action $((word_index + 1)) ${word#--action=}
+        return
+        ;;
+      --action)
+        # Next: value of `--action` option
+        in_opt_val=action;;
+      *)
+        # Anything else: check for option value, or ignore otherwise
+        case $in_opt_val in
+          session)
+            # Remove `--session` and `-s` from possible options
+            long_opts=("${(@)long_opts:#--session:*}")
+            short_opts=("${(@)short_opts:#-s:*}")
+
+            # Save the recording session name
+            session_name=$word
+            ;;
+          channel)
+            # Remove `--channel` and `-c` from possible options
+            long_opts=("${(@)long_opts:#--channel:*}")
+            short_opts=("${(@)short_opts:#-c:*}")
+            ;;
+          domain)
+            # Remove `--domain` and `-d` from possible options
+            long_opts=("${(@)long_opts:#--domain:*}")
+            short_opts=("${(@)short_opts:#-d:*}")
+
+            # Save the tracing domain type
+            domain_type=$word
+            ;;
+          threshold-*)
+            # Remove `--threshold-size`, `-t`, and `--threshold-ratio`
+            # from possible options.
+            long_opts=("${(@)long_opts:#--threshold-*:*}")
+            short_opts=("${(@)short_opts:#-t:*}")
+            ;;
+          action)
+            # Defer to action handling dispatch. Action type is
+            # the whole current word.
+            __lttng_complete_trigger_action $((word_index + 1)) $word
+            return
+            ;;
+        esac
+
+        # Next: not the value of any known option
+        in_opt_val=
+        ;;
+    esac
+  done
+
+  # Try to offer option-specific completions
+  if [[ $in_opt_val == session ]] || compset -P '--session='; then
+    __lttng_complete_session_name all all
+    return
+  elif [[ $in_opt_val == channel ]] || compset -P '--channel='; then
+    if ((with_channel_domain_opts)); then
+      # __lttng_complete_channel_name() relies on `$line[1]` for the
+      # recording session name and on `$opt_args` for the
+      # tracing domain.
+      line=($session_name)
+      opt_args=()
+      __lttng_set_opt_args_from_new_domain_type $domain_type
+      __lttng_complete_channel_name all arg
+      return
+    fi
+  elif [[ $in_opt_val == domain ]] || compset -P '--domain='; then
+    if ((with_channel_domain_opts)); then
+      __lttng_complete_new_domain_type
+      return
+    fi
+  elif [[ $in_opt_val == threshold-size ]] || compset -P '--threshold-size='; then
+    if ((with_threshold_size_opts)); then
+      _message -e descriptions 'threshold size (bytes; `k`/`M`/`G` suffixes supported)'
+      return
+    fi
+  elif [[ $in_opt_val == threshold-ratio ]] || compset -P '--threshold-ratio='; then
+    if ((with_threshold_ratio_opt)); then
+      _message -e descriptions 'threshold ratio (0 to 1)'
+      return
+    fi
+  elif [[ $in_opt_val == action ]] || compset -P '--action='; then
+    __lttng_complete_trigger_action_type
+    return
+  else
+    # Offer all possible options
+    _describe -O option long_opts -qS= -- short_opts
+    return
+  fi
+
+  return 1
+}
+
+# Adds completions for a trigger condition.
+#
+# `$1` is the index, in the `words` array, of the word following the
+# condition type. `CURRENT` is greater than or equal to `$1`.
+__lttng_complete_trigger_cond() {
+  local -ir start_index=$1
+  local -r cond_type=$2
+
+  case $cond_type in
+    event-rule-matches)
+      __lttng_complete_trigger_cond_event_rule_matches $start_index
+      return
+      ;;
+    channel-buffer-usage-[lg]e)
+      __lttng_complete_trigger_cond_simple $start_index 1 1 1
+      return
+      ;;
+    session-consumed-size-ge)
+      __lttng_complete_trigger_cond_simple $start_index 0 0 1
+      return
+      ;;
+    session-rotation-(starts|finishes))
+      __lttng_complete_trigger_cond_simple $start_index 0 0 0
+      return
+      ;;
+    *)
+      _message "unknown condition type \`$cond_type\`"
+      return
+      ;;
+  esac
+}
+
+# Adds completions for a trigger condition type.
+__lttng_complete_trigger_cond_type() {
+  local types=(
+    'event-rule-matches:an event rule matches an event'
+  )
+
+  if ((minor_version >= 15)); then
+    types+=(
+      'channel-buffer-usage-ge:channel buffer size becomes ≥ some threshold'
+      'channel-buffer-usage-le:channel buffer size becomes ≤ some threshold'
+      'session-consumed-size-ge:recording session consumed size becomes ≥ some threshold'
+      'session-rotation-finishes:recording session rotation operation finishes'
+      'session-rotation-starts:recording session rotation operation starts'
+    )
+  fi
+
+  # Add completions
+  _describe 'trigger condition type' types
+}
+
+# Adds completions for the arguments of the `add-trigger` command.
+__lttng_complete_add_trigger_cmd() {
+  local in_opt_val
+  local opts=(
+    '--name:set the trigger name'
+    '--owner-uid:add the trigger to another Unix user'
+    '--condition:set the type of the trigger condition'
+  )
+  local -i word_index
+
+  # Check all words in order up to (and excluding) the current one
+  for word_index in {1..$#words}; do
+    if ((word_index == CURRENT)); then
+      break
+    fi
+
+    local word=$words[word_index]
+
+    case $word in
+      -h|--help)
+        # Exit now: nothing to complete if help is wanted
+        return 1;;
+      --name=*)
+        # Remove `--name` from possible options
+        opts=("${(@)opts:#--name:*}");;
+      --name)
+        # Next: value of `--name` option
+        in_opt_val=name;;
+      --owner-uid=*)
+        # Remove `--owner-uid` from possible options
+        opts=("${(@)opts:#--owner-uid:*}");;
+      --owner-uid)
+        # Next: value of `--owner-uid` option
+        in_opt_val=owner-uid;;
+      --condition=*)
+        # Defer to condition handling dispatch. Condition type is what
+        # follows `--condition=` here.
+        __lttng_complete_trigger_cond $((word_index + 1)) ${word#--condition=}
+        return
+        ;;
+      --condition)
+        # Next: value of `--condition` option
+        in_opt_val=condition;;
+      *)
+        # Anything else: check for option value, or ignore otherwise
+        case $in_opt_val in
+          name)
+            # Remove `--name` from possible options
+            opts=("${(@)opts:#--name:*}");;
+          owner-uid)
+            # Remove `--owner-uid` from possible options
+            opts=("${(@)opts:#--owner-uid:*}");;
+          condition)
+            # Defer to condition handling dispatch. Condition type is
+            # the whole current word.
+            __lttng_complete_trigger_cond $((word_index + 1)) $word
+            return
+            ;;
+        esac
+
+        # Next: not the value of any known option
+        in_opt_val=
+        ;;
+    esac
+  done
+
+  # Try to offer option-specific completions
+  if [[ $in_opt_val == name ]] || compset -P '--name='; then
+    _message -e descriptions 'trigger name'
+    return
+  elif [[ $in_opt_val == owner-uid ]] || compset -P '--owner-uid='; then
+    __lttng_complete_uid
+    return
+  elif [[ $in_opt_val == condition ]] || compset -P '--condition='; then
+    __lttng_complete_trigger_cond_type
+    return
+  else
+    # Offer all possible options
+    local -r help_opts=({-h,--help}':show help')
+
+    _describe -O option opts -qS= -- help_opts
+    return
+  fi
 }
 
 # Adds completions for the arguments of the `clear` command.
