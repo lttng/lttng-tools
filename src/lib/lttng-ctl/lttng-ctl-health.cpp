@@ -281,7 +281,8 @@ void lttng_health_destroy(struct lttng_health *lh)
 
 int lttng_health_query(struct lttng_health *health)
 {
-	int sock, ret, i, tracing_group;
+	int sock, ret, i;
+	bool tracing_group;
 	struct health_comm_msg msg;
 	struct health_comm_reply reply;
 
@@ -289,7 +290,7 @@ int lttng_health_query(struct lttng_health *health)
 		return -EINVAL;
 	}
 
-	tracing_group = lttng_check_tracing_group();
+	tracing_group = lttng_check_in_tracing_group();
 retry:
 	ret = set_health_socket_path(health, tracing_group);
 	if (ret) {
@@ -300,7 +301,7 @@ retry:
 	if (sock < 0) {
 		if (tracing_group) {
 			/* For tracing group, fallback to per-user */
-			tracing_group = 0;
+			tracing_group = false;
 			goto retry;
 		}
 		ret = -1;

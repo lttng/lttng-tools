@@ -251,13 +251,13 @@ end:
 /*
  * Check if we are in the specified group.
  *
- * If yes return 1, else return -1.
+ * If yes return true, else false.
  */
-int lttng_check_tracing_group()
+bool lttng_check_in_tracing_group()
 {
 	gid_t *grp_list, tracing_gid;
 	int grp_list_size, grp_id, i;
-	int ret = -1;
+	bool in_tracing_group = false;
 	const char *grp_name = tracing_group;
 
 	/* Get GID of group 'tracing' */
@@ -287,7 +287,7 @@ int lttng_check_tracing_group()
 
 	for (i = 0; i < grp_list_size; i++) {
 		if (grp_list[i] == tracing_gid) {
-			ret = 1;
+			in_tracing_group = true;
 			break;
 		}
 	}
@@ -296,7 +296,7 @@ free_list:
 	free(grp_list);
 
 end:
-	return ret;
+	return in_tracing_group;
 }
 
 /*
@@ -341,21 +341,21 @@ error:
  */
 static int set_session_daemon_path()
 {
-	int in_tgroup = 0; /* In tracing group. */
+	bool in_tracing_group = false;
 	uid_t uid;
 
 	uid = getuid();
 
 	if (uid != 0) {
 		/* Are we in the tracing group ? */
-		in_tgroup = lttng_check_tracing_group();
+		in_tracing_group = lttng_check_in_tracing_group();
 	}
 
 	auto rundir = lttng::make_unique_wrapper<char, lttng::memory::free>();
-	if ((uid == 0) || in_tgroup == 1) {
+	if ((uid == 0) || in_tracing_group == 1) {
 		int ret = -1;
 
-		rundir.reset(utils_get_rundir(in_tgroup));
+		rundir.reset(utils_get_rundir(in_tracing_group));
 		if (!rundir) {
 			goto error;
 		}
@@ -376,7 +376,7 @@ static int set_session_daemon_path()
 			goto error;
 		}
 
-		if (in_tgroup) {
+		if (in_tracing_group) {
 			/* Tracing group. */
 			ret = try_connect_sessiond(sessiond_sock_path);
 			if (ret >= 0) {
