@@ -72,7 +72,7 @@ static inline int lttng_ctl_ask_sessiond(struct lttcomm_session_msg *lsm, void *
 	return lttng_ctl_ask_sessiond_varlen_no_cmd_header(lsm, nullptr, 0, buf);
 }
 
-int lttng_check_tracing_group();
+bool lttng_check_in_tracing_group();
 
 int connect_sessiond();
 
