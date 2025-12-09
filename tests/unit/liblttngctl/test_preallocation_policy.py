@@ -114,14 +114,15 @@ def test_preallocation_policy_with_session(tap, test_env):
         ctypes.c_void_p(None), ctypes.POINTER(lttng.struct_lttng_domain)
     )
     domain_count = lttng.lttng_list_domains(
-        session_name, ctypes.pointer(domain_array_head)
+        ctypes.cast(session_name, lttng.lttng_list_domains.argtypes[0]),
+        ctypes.pointer(domain_array_head),
     )
     tap.diagnostic("Domains for session '{}': {}".format(session_name, domain_count))
     if domain_count <= 0:
         domain_array_head = None
 
     handle_instance = lttng.lttng_create_handle(
-        session_name,
+        ctypes.cast(session_name, lttng.lttng_create_handle.argtypes[0]),
         (domain_array_head if domain_array_head else None),
     )
     channel_array_head = ctypes.cast(
