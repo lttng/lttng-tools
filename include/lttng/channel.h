@@ -710,8 +710,8 @@ lttng_channel_get_watchdog_timer_interval(const struct lttng_channel *channel, u
 @sa lttng_channel_set_watchdog_timer_interval() --
     Sets the watchdog timer period property of a channel summary.
 */
-LTTNG_EXPORT extern enum lttng_channel_status lttng_channel_set_watchdog_timer_interval(struct lttng_channel *channel,
-								  uint64_t period);
+LTTNG_EXPORT extern enum lttng_channel_status
+lttng_channel_set_watchdog_timer_interval(struct lttng_channel *channel, uint64_t period);
 
 /*!
 @brief
