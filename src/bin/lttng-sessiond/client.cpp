@@ -1117,7 +1117,7 @@ lttng_data_stream_info_sets lttng_data_stream_info_sets_create_from_memory_usage
 	sets.sets.reserve(groups.size());
 
 	for (const auto& group : groups) {
-		lttng_data_stream_info_set set;
+		lttng_data_stream_info_set set{};
 
 		/* Set owner information */
 		switch (group.owner.owner_type) {
@@ -1142,6 +1142,8 @@ lttng_data_stream_info_sets lttng_data_stream_info_sets_create_from_memory_usage
 		case lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness::ABI_64:
 			set.bitness = LTTNG_APP_BITNESS_64;
 			break;
+		default:
+			std::abort();
 		}
 
 		set.streams.reserve(group.streams_memory_usage.size());
