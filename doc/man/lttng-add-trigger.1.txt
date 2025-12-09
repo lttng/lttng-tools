@@ -1,6 +1,6 @@
 lttng-add-trigger(1)
 ====================
-:revdate: 14 June 2021
+:revdate: 9 December 2025
 
 
 NAME
@@ -227,7 +227,11 @@ Take a recording session snapshot::
     Synopsis:
 +
 [verse]
-option:--action=**snapshot-session** 'SESSION' [nloption:--rate-policy='POLICY']
+option:--action=**snapshot-session** 'SESSION' [nloption:--name='NAME']
+                          [nloption:--max-size='SIZE']
+                          [nloption:--path='PATH' | nloption:--url='URL' |
+                           (nloption:--ctrl-url='URL' nloption:--data-url='URL')]
+                          [nloption:--rate-policy='POLICY']
 {nbsp}
 +
 Takes a snapshot of the recording session named 'SESSION' like
@@ -240,6 +244,15 @@ named 'SESSION', if any, must be a snapshot-mode recording session
 If no recording session has the name 'SESSION' when LTTng is ready to
 execute the action, LTTng does nothing.
 +
+See the `add-output` action of the man:lttng-snapshot(1) command
+to learn about the snapshot output options:
+nloption:--name/nloption:-n,
+nloption:--max-size/nloption:-m,
+nloption:--url,
+nloption:--ctrl-url/nloption:-C, and
+nloption:--data-url/nloption:-D. The nloption:--path option specifies
+to write the snapshot to the local directory{nbsp}__PATH__.
+
 See below for the nloption:--rate-policy option.
 
 Common action options (as of LTTng{nbsp}{lttng_version}):
