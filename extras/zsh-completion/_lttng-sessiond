@@ -35,7 +35,7 @@ __lttng_complete_probe_modules() {
     fi
   fi
 
-  local -a probe_files=("$dir"/**/lttng-probe-*.(ko|ko.gz|ko.zst)(:t))
+  local probe_files=("$dir"/**/lttng-probe-*.(ko|ko.gz|ko.zst)(:t))
 
   if (($#probe_files == 0)); then
     _message "no probe modules found in \"$dir\""

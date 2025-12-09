@@ -1491,10 +1491,10 @@ __lttng_complete_enable_channel_cmd_names() {
 
 # Adds completions for a buffer ownership.
 __lttng_complete_buffer_ownership() {
-  local -ra kernel_choices=(
+  local -r kernel_choices=(
     'system:use global ring buffers'
   )
-  local -ra user_choices=(
+  local -r user_choices=(
     'user:use per-user ring buffers'
     'process:use per-process ring buffers'
   )
