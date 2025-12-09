@@ -375,13 +375,13 @@ __lttng_complete_context_type() {
     if (($types[(Ie)$line])); then
       # Statically-known context field type
       static_items+=$line
-    elif [[ $line = perf:cpu:* && $domain != u ]]; then
+    elif [[ $line == perf:cpu:* && $domain != u ]]; then
       # Per-CPU perf counter
       perf_items+=$line
-    elif [[ $line = perf:thread:* && $domain != k ]]; then
+    elif [[ $line == perf:thread:* && $domain != k ]]; then
       # Per-thread perf counter
       perf_items+=$line
-    elif [[ $line = perf:* && $domain != u ]]; then
+    elif [[ $line == perf:* && $domain != u ]]; then
       # Other perf counter (Linux kernel tracing domain or none)
       perf_items+=$line
     fi
@@ -739,13 +739,13 @@ __lttng_complete_channel_name() {
   # Find the recording session name to use
   local session_name
 
-  if [[ $session_name_src = opt ]]; then
+  if [[ $session_name_src == opt ]]; then
     if (($+opt_args[-s])); then
       session_name=$opt_args[-s]
     elif (($+opt_args[--session])); then
       session_name=$opt_args[--session]
     fi
-  elif [[ $session_name_src = arg ]]; then
+  elif [[ $session_name_src == arg ]]; then
     session_name=$line[1]
   fi
 
@@ -795,7 +795,7 @@ __lttng_complete_channel_name() {
     fi
 
     # Skip unexpected tracing domains
-    if [[ $domain = KERNEL ]]; then
+    if [[ $domain == KERNEL ]]; then
       if __lttng_user_domain_opt_is_set; then
         # Skip unexpected Linux kernel tracing domain
         continue
@@ -804,7 +804,7 @@ __lttng_complete_channel_name() {
       domain='Linux kernel'
     fi
 
-    if [[ $domain = UST ]]; then
+    if [[ $domain == UST ]]; then
       if __lttng_kernel_domain_opt_is_set; then
         # Skip unexpected user space tracing domain
         continue
@@ -850,9 +850,9 @@ __lttng_complete_channel_name() {
         continue
       fi
 
-      if [[ $channel_erl_mode = DISCARD ]]; then
+      if [[ $channel_erl_mode == DISCARD ]]; then
         channel_erl_mode=discard
-      elif [[ $channel_erl_mode = OVERWRITE ]]; then
+      elif [[ $channel_erl_mode == OVERWRITE ]]; then
         channel_erl_mode=overwrite
       fi
 
@@ -1923,7 +1923,7 @@ __lttng_complete_snapshot_cmd() {
     '(-C --ctrl-url -D --data-url): :_guard "^-*" "snapshot output URL"'
   )
 
-  if [[ $state[1] = action-args ]]; then
+  if [[ $state[1] == action-args ]]; then
     # Add completions for the arguments of the specific snapshot action
     curcontext=${curcontext%:*:*}:lttng-snapshot-$line[1]:
 
@@ -2176,7 +2176,7 @@ if ((main_ret == 0)); then
   return
 fi
 
-if [[ $state[1] = cmd-args ]]; then
+if [[ $state[1] == cmd-args ]]; then
   # Add completions for the arguments of the specific command
   __lttng_complete_cmd
   return
