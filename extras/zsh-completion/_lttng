@@ -1936,7 +1936,7 @@ __lttng_complete_snapshot_cmd() {
         specs=($common_session_specs);;
       *)
         _message "unknown snapshot action \`$line[1]\`"
-        return 1
+        return
         ;;
     esac
 
@@ -2094,7 +2094,7 @@ __lttng_complete_cmd() {
 
   if ! typeset -f $func_name >/dev/null; then
     _message "unknown command \`$line[1]\`"
-    return 1
+    return
   fi
 
   local -A opt_args
@@ -2124,7 +2124,7 @@ local -r ignore_version_limit=${LTTNG_ZSH_COMP_IGNORE_VERSION_LIMIT:-0}
 
 if ((minor_version < 5 || (minor_version > 15 && !ignore_version_limit))); then
   _message "completion not available for LTTng-tools 2.$minor_version; please update the completion files or set \`LTTNG_ZSH_COMP_IGNORE_VERSION_LIMIT=1\`"
-  return 1
+  return
 fi
 
 # Common help option specifications
