@@ -1488,14 +1488,13 @@ static int viewer_attach_session(struct relay_connection *conn)
 	switch (be32toh(request.seek)) {
 	case LTTNG_VIEWER_SEEK_BEGINNING:
 	case LTTNG_VIEWER_SEEK_LAST:
-		viewer_attach_status = LTTNG_VIEWER_ATTACH_OK;
 		seek_type = (lttng_viewer_seek) be32toh(request.seek);
 		break;
 	default:
+		viewer_attach_status = LTTNG_VIEWER_ATTACH_SEEK_ERR;
 		ERR("Wrong seek parameter for relay session %" PRIu64 ", returning status=%s",
 		    session_id,
 		    lttng_viewer_attach_return_code_str(viewer_attach_status));
-		viewer_attach_status = LTTNG_VIEWER_ATTACH_SEEK_ERR;
 		goto send_reply;
 	}
 
