@@ -71,7 +71,10 @@ def validate_trace(trace_location):
     mux = graph.add_component(muxer, "filter")
     sink = graph.add_component(dummy, "sink")
 
+    print(src.output_ports)
     for src_name in tuple(src.output_ports):
+        print(src_name)
+        print(tuple(mux.input_ports.values())[-1])
         graph.connect_ports(
             src.output_ports[src_name], tuple(mux.input_ports.values())[-1]
         )
