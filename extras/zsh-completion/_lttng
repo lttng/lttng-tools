@@ -1030,11 +1030,14 @@ __lttng_complete_add_context_cmd() {
   _arguments -s -W : $specs
 }
 
-# Adds completions for log level names.
+# Adds completions for log level names/rule.
 #
 # This function relies on the tracing domain options of `$opt_args` to
 # restrict the offered completions.
+#
+# `$1` is the title of the message to show.
 __lttng_complete_log_level() {
+  local -r title=$1
   local -a log_levels
 
   # Fill the `log_levels` array depending on the tracing domain option
@@ -1090,13 +1093,20 @@ __lttng_complete_log_level() {
     )
   else
     # No tracing domain option
-    _guard '^-*' 'log level name'
+    _guard '^-*' "$title (no tracing domain option found)"
+    return
   fi
 
   # Add completions
   local expl
 
-  _wanted log-levels expl 'log level name' compadd -a log_levels
+  _wanted log-levels expl $title compadd -a log_levels -o nosort
+}
+
+# Forwards to __lttng_complete_log_level() when completing the
+# log level options of the `enable-event` command.
+__lttng_complete_log_level_name() {
+  __lttng_complete_log_level "log level name"
 }
 
 # Adds completions for a trigger condition type.
@@ -1680,8 +1690,8 @@ __lttng_complete_enable_event_cmd() {
     '(-s --session)'{-s+,--session=}'[select a specific recording session]: : __lttng_complete_session_name all all'
     '(-c --channel)'{-c+,--channel=}'[select a specific channel]: : __lttng_complete_channel_name all opt'
     + '(log-level)'
-    "($kernel_opts_excl)--loglevel=[only match events with specific log levels]: : __lttng_complete_log_level"
-    "($kernel_opts_excl)--loglevel-only=[only match events with an exact log level]: : __lttng_complete_log_level"
+    "($kernel_opts_excl)--loglevel=[only match events with specific log levels]: : __lttng_complete_log_level_name"
+    "($kernel_opts_excl)--loglevel-only=[only match events with an exact log level]: : __lttng_complete_log_level_name"
     + '(names)'
     {-a,--all}'[match events regardless of their name]'
     ': :_sequence __lttng_complete_ip_name'
