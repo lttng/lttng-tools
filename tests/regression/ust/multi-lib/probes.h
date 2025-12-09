@@ -15,6 +15,7 @@
 #define PROBES_H
 
 #include <lttng/tracepoint.h>
+
 #include <stdint.h>
 
 /* clang-format off */

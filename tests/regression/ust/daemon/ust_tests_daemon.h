@@ -12,6 +12,7 @@
 #define _TRACEPOINT_UST_TESTS_DAEMON_H
 
 #include <lttng/tracepoint.h>
+
 #include <sys/types.h>
 
 /* clang-format off */
