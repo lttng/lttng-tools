@@ -78,16 +78,17 @@ __lttng_run() {
 }
 
 # Runs the `lttng --mi=xml` command using the selected tracing group
-# (`$tracing_group`) with:
+# (`$tracing_group`) and sets `REPLY` to the XML output considering:
 #
 # `$1`:
-#     A message of what's expected to show on error.
+#     A message of what's expected to show on failure.
 #
 # Other arguments:
 #     Passed to the command as is.
 #
 # This function returns 1 with LTTng-tools < 2.6 and if `xmllint` isn't
-# available.
+# available. In this case, this function adds completion through
+# _message(). Because of this, do NOT call this function in a subshell.
 __lttng_mi_run() {
   local -r msg=$1
 
@@ -105,7 +106,7 @@ __lttng_mi_run() {
     return 1
   fi
 
-  if ! __lttng_run --mi=xml "$@"; then
+  if ! REPLY=$(__lttng_run --mi=xml "$@"); then
     # Command failed
     _message -e descriptions $msg
     return 1
@@ -355,11 +356,12 @@ __lttng_complete_context_type() {
 
   # Get XML list of available context field types
   local -r msg='context type'
-  local list_xml
 
-  if ! list_xml=$(__lttng_mi_run $msg add-context --list); then
-    return 1
+  if ! __lttng_mi_run $msg add-context --list; then
+    return 0
   fi
+
+  local list_xml=$REPLY
 
   # Convert to one context field type per line
   local lines
@@ -402,11 +404,12 @@ __lttng_complete_context_type() {
 __lttng_complete_trigger_name() {
   # Get XML list of available triggers
   local msg='trigger name'
-  local list_xml
 
-  if ! list_xml=$(__lttng_mi_run $msg list-triggers); then
-    return 1
+  if ! __lttng_mi_run $msg list-triggers; then
+    return 0
   fi
+
+  local list_xml=$REPLY
 
   # Create the owner UID predicate XPath part
   local owner_uid_xpath
@@ -449,15 +452,16 @@ __lttng_xmllint_xpath() {
   xmllint --xpath $xpath - <<< $xml 2>/dev/null
 }
 
-# Prints the equivalent recording session status adjective (`active` or
-# `inactive`) for an `enabled` XML property, or `unknown` on error.
+# Sets `REPLY` to the equivalent recording session status adjective
+# (`active` or `inactive`) for an `enabled` XML property, or `unknown`
+# on error.
 __lttng_session_status_from_enabled_prop() {
   local -r prop=$1
 
   case $prop in
-    true) echo -n active;;
-    false) echo -n inactive;;
-    *) echo -n unknown;;
+    true) REPLY=active;;
+    false) REPLY=inactive;;
+    *) REPLY=unknown;;
   esac
 }
 
@@ -517,11 +521,11 @@ __lttng_complete_session_name() {
   local -r req_status=$1 req_mode=$2
 
   # Get XML document (summary of recording sessions)
-  local session_summaries_xml
-
-  if ! session_summaries_xml=$(__lttng_mi_run 'recording session name' list); then
-    return 1
+  if ! __lttng_mi_run 'recording session name' list; then
+    return 0
   fi
+
+  local session_summaries_xml=$REPLY
 
   # Count recording sessions
   local -i session_count
@@ -555,7 +559,8 @@ __lttng_complete_session_name() {
       continue
     fi
 
-    session_status=$(__lttng_session_status_from_enabled_prop $session_status)
+    __lttng_session_status_from_enabled_prop $session_status
+    session_status=$REPLY
 
     if [[ $req_status != all && $req_status != $session_status ]]; then
       # Skip recording session with unexpected status
@@ -648,7 +653,8 @@ __lttng_complete_session_name() {
   fi
 }
 
-# Prints the name of the Unix user's current recording session, if any.
+# Sets `REPLY` to the name of the Unix user's current recording session,
+# if any.
 __lttng_cur_session_name() {
   local -r lttngrc_path=${LTTNG_HOME:-$HOME}/.lttngrc
 
@@ -670,25 +676,28 @@ __lttng_cur_session_name() {
     return 1
   fi
 
-  echo -n $cur_session_name
+  REPLY=$cur_session_name
 }
 
-# Prints the equivalent status adjective (`enabled` or `disabled`) for
-# an `enabled` XML property, or `unknown` on error.
+# Sets `REPLY` to the equivalent status adjective (`enabled` or
+# `disabled`) for an `enabled` XML property, or `unknown` on error.
 __lttng_status_from_enabled_prop() {
   local -r prop=$1
 
   case $prop in
-    true) echo -n enabled;;
-    false) echo -n disabled;;
-    *) echo -n unknown;;
+    true) REPLY=enabled;;
+    false) REPLY=disabled;;
+    *) REPLY=unknown;;
   esac
 }
 
-# Prints the XML document of `lttng list $2` (specifics of a single
-# recording session).
+# Sets `REPLY` to the XML document of `lttng list $2` (specifics of a
+# single recording session).
 #
 # `$1` is a message of what's expected to show on error.
+#
+# This function calls __lttng_mi_run(); see notes
+# about __lttng_mi_run().
 __lttng_session_xml() {
   local -r msg=$1 session_name=$2
 
@@ -746,18 +755,20 @@ __lttng_complete_channel_name() {
 
   if [[ -z $session_name ]]; then
     # Fall back to current recording session
-    if ! session_name=$(__lttng_cur_session_name); then
+    if ! __lttng_cur_session_name; then
       _guard '^-*' 'channel name'
       return
     fi
+
+    session_name=$REPLY
   fi
 
   # Get XML document (detailed recording session)
-  local session_xml
-
-  if ! session_xml=$(__lttng_session_xml 'channel name' $session_name); then
-    return 1
+  if ! __lttng_session_xml 'channel name' $session_name; then
+    return 0
   fi
+
+  local session_xml=$REPLY
 
   # Count tracing domains
   local -i domain_count
@@ -830,7 +841,8 @@ __lttng_complete_channel_name() {
         continue
       fi
 
-      channel_status=$(__lttng_status_from_enabled_prop $channel_status)
+      __lttng_status_from_enabled_prop $channel_status
+      channel_status=$REPLY
 
       if [[ $req_status != all && $req_status != $channel_status ]]; then
         # Skip channel with unexpected status
@@ -953,11 +965,11 @@ __lttng_complete_ip_name() {
   fi
 
   # Get XML list of available instrumentation point names
-  local list_xml
-
-  if ! list_xml=$(__lttng_mi_run $msg list $list_opts); then
-    return 1
+  if ! __lttng_mi_run $msg list $list_opts; then
+    return 0
   fi
+
+  local list_xml=$REPLY
 
   # Convert to one instrumentation point name per line
   local ip_names
@@ -1243,38 +1255,38 @@ __lttng_complete_disable_channel_cmd() {
   _arguments -s -W : $specs
 }
 
-# Prints the XML tracing domain name value depending on the tracing
-# domain option (in `$opt_args`), or prints nothing and returns 1 when
-# not available.
+# Sets `REPLY` to the XML tracing domain name value depending on the
+# tracing domain option (in `$opt_args`), or prints nothing and
+# returns 1 when not available.
 __lttng_xml_domain_name_from_opt() {
   if __lttng_kernel_domain_opt_is_set; then
-    echo -n KERNEL
+    REPLY=KERNEL
   elif __lttng_user_domain_opt_is_set; then
-    echo -n UST
+    REPLY=UST
   elif __lttng_jul_domain_opt_is_set; then
-    echo -n JUL
+    REPLY=JUL
   elif __lttng_log4j1_domain_opt_is_set; then
-    echo -n LOG4J
+    REPLY=LOG4J
   elif __lttng_log4j2_domain_opt_is_set; then
-    echo -n LOG4J2
+    REPLY=LOG4J2
   elif __lttng_python_domain_opt_is_set; then
-    echo -n PYTHON
+    REPLY=PYTHON
   else
     return 1
   fi
 }
 
-# Prints the XML instrumentation point type value depending on the
-# instrumentation point option (in `$opt_args`).
+# Sets `REPLY` to the XML instrumentation point type value depending on
+# the instrumentation point option (in `$opt_args`).
 __lttng_xml_ip_type_from_opt() {
   if (($+opt_args[--syscall] || $+opt_args[ip---syscall])); then
-    echo -n SYSCALL
+    REPLY=SYSCALL
   elif (($+opt_args[--probe] || $+opt_args[ip---probe])); then
-    echo -n PROBE
+    REPLY=PROBE
   elif (($+opt_args[--function] || $+opt_args[ip---function])); then
-    echo -n FUNCTION
+    REPLY=FUNCTION
   else
-    echo -n TRACEPOINT
+    REPLY=TRACEPOINT
   fi
 }
 
@@ -1292,9 +1304,11 @@ __lttng_complete_old_enabled_er_name_cond() {
     session_name=$opt_args[--session]
   else
     # Fall back to current recording session
-    if ! session_name=$(__lttng_cur_session_name); then
+    if ! __lttng_cur_session_name; then
       _guard '^-*' $msg
     fi
+
+    session_name=$REPLY
   fi
 
   # Find the channel name to use (`channel0` is the default name)
@@ -1308,25 +1322,25 @@ __lttng_complete_old_enabled_er_name_cond() {
 
   # Create tracing domain XPath part
   local domain_xpath
-  local xml_domain_val
 
-  if xml_domain_val=$(__lttng_xml_domain_name_from_opt); then
-    domain_xpath="*[local-name() = 'domain'][*[local-name() = 'type'] = '$xml_domain_val']//"
+  if __lttng_xml_domain_name_from_opt; then
+    domain_xpath="*[local-name() = 'domain'][*[local-name() = 'type'] = '$REPLY']//"
   fi
 
   # Create channel XPath part
   local -r channel_xpath="*[local-name() = 'channel'][*[local-name() = 'name'] = '$channel_name']//"
 
   # Create instrumentation point type XPath part
-  local -r xml_ip_type_val=$(__lttng_xml_ip_type_from_opt)
-  local -r ip_type_xpath="[*[local-name() = 'type'] = '$xml_ip_type_val']"
+  __lttng_xml_ip_type_from_opt
+
+  local -r ip_type_xpath="[*[local-name() = 'type'] = '$REPLY']"
 
   # Get XML document (detailed recording session)
-  local session_xml
-
-  if ! session_xml=$(__lttng_session_xml $msg $session_name); then
-    return 1
+  if ! __lttng_session_xml $msg $session_name; then
+    return 0
   fi
+
+  local session_xml=$REPLY
 
   # Convert to one recording event rule name per line
   local lines
@@ -2101,6 +2115,9 @@ __lttng_complete_cmd() {
 # Ensure predictable Zsh behavior and prevent option leakage
 emulate -L zsh
 setopt extended_glob
+
+# Make `REPLY` local to this function
+local REPLY
 
 # Save program name
 local -r prog_name=$words[1]
