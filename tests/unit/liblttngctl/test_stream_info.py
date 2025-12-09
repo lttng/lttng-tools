@@ -159,9 +159,11 @@ def test_channel_get_data_stream_info_sets_no_sessiond(
         ctypes.c_void_p(None),
         ctypes.POINTER(lttng.struct_lttng_data_stream_info_sets),
     )
-    # Set a fake directory to force the connection to fail
-    old_rundir = os.environ["LTTNG_RUNDIR"]
+    # Set fake directories to force the connection to fail
+    old_rundir = os.environ.get("LTTNG_RUNDIR")
+    old_lttng_home = os.environ.get("LTTNG_HOME")
     os.environ["LTTNG_RUNDIR"] = "/fake"
+    os.environ["LTTNG_HOME"] = "/fake"
     try:
         ret = lttng.lttng_channel_get_data_stream_info_sets(
             session_name.encode(),
@@ -170,7 +172,14 @@ def test_channel_get_data_stream_info_sets_no_sessiond(
             ctypes.pointer(sets),
         )
     finally:
-        os.environ["LTTNG_RUNDIR"] = old_rundir
+        if old_rundir is not None:
+            os.environ["LTTNG_RUNDIR"] = old_rundir
+        else:
+            del os.environ["LTTNG_RUNDIR"]
+        if old_lttng_home is not None:
+            os.environ["LTTNG_HOME"] = old_lttng_home
+        else:
+            del os.environ["LTTNG_HOME"]
 
     tap.test(
         ret != lttng.LTTNG_CHANNEL_GET_DATA_STREAM_INFO_SETS_STATUS_OK,
