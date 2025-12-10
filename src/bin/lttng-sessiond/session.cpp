@@ -1704,7 +1704,15 @@ void ls::user_space_consumer_channel_keys::iterator::_skip_to_next_app_per_pid(
 			return;
 		}
 
-		const auto& app = *lttng::utils::container_of(app_node, &ust_app::pid_n);
+		auto& app = *lttng::utils::container_of(app_node, &ust_app::pid_n);
+		if (!ust_app_get(app)) {
+			/* Application is being torn down. Skip it. */
+			continue;
+		}
+
+		/* Hold a reference on the current app to prevent its teardown. */
+		_position._per_pid.current_app = ust_app_reference{ &app };
+
 		auto app_session = ust_app_lookup_app_session(&_creation_context._session, &app);
 
 		if (!app_session) {

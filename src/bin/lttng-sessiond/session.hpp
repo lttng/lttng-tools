@@ -181,6 +181,7 @@ public:
 					current_app_session;
 				lttng::sessiond::ust::registry_session *current_registry_session =
 					nullptr;
+				ust_app_reference current_app;
 			} _per_pid;
 			struct {
 				const cds_list_head *registry_list_head = nullptr;
