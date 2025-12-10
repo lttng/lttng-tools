@@ -1507,7 +1507,9 @@ def get_machine():
     """
     Returns a machine identifier
     """
-    return "{}-{}".format(platform.machine(), platform.system().lower())
+    return "{}-{}-{}".format(
+        platform.machine(), platform.architecture()[0], platform.system().lower()
+    )
 
 
 def count_events(trace_path, ignore_exceptions=False):
