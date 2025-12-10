@@ -1166,6 +1166,7 @@ AS_CASE([$host_os],
 )
 AC_SUBST(OSTYPE)
 AM_CONDITIONAL([IS_LINUX], [test $OSTYPE = "linux"])
+AM_CONDITIONAL([IS_X86_64], [test "$host_cpu" = "x86_64" || test "$host_cpu" = "amd64"])
 
 
 
