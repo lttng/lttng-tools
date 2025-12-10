@@ -344,9 +344,10 @@ def validate_trace(trace_location):
     sink = graph.add_component(dummy, "sink")
 
     for src_name in tuple(src.output_ports):
-        graph.connect_ports(
-            src.output_ports[src_name], tuple(mux.input_ports.values())[-1]
-        )
+        available_input_ports = [
+            x for x in mux.input_ports.values() if not x.is_connected
+        ]
+        graph.connect_ports(src.output_ports[src_name], available_input_ports[0])
 
     graph.connect_ports(mux.output_ports["out"], sink.input_ports["in"])
 
