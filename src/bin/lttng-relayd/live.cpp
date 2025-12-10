@@ -444,8 +444,8 @@ int make_viewer_streams(struct relay_session *relay_session,
 		}
 
 		if (viewer_stream->sent_flag) {
-			ERR("logic error -> viewer stream %ld is in unannounced_stream_list is marked as sent",
-			    viewer_stream->stream->stream_handle);
+			ERR_FMT("Logic error while making viewer streams: stream in unannounced stream list is marked as sent: stream_handle={}",
+				viewer_stream->stream->stream_handle);
 			abort();
 		}
 
