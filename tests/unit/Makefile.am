@@ -98,7 +98,7 @@ if HAVE_CLANG2PY
 CLANG_ARGS=-I$(top_srcdir)/include -I$(top_srcdir)/src
 liblttngctl/lttngctl/lttng.py: $(top_srcdir)/include/lttng/lttng.h $(LIBLTTNG_CTL)
 	mkdir -p $(dir $@)
-	PYTHONPATH=$(PYTHONPATH) $(PYTHON3_BIN) $(CLANG2PY) -i --clang-args="$(CLANG_ARGS)" -l $(abs_top_builddir)/src/lib/lttng-ctl/.libs/liblttng-ctl.so $(top_srcdir)/include/lttng/lttng.h > liblttngctl/lttngctl/lttng.py
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON3_BIN) $(CLANG2PY) -i --clang-args="$(CLANG_ARGS)" -l $(abs_top_builddir)/src/lib/lttng-ctl/.libs/liblttng-ctl.so $(top_srcdir)/include/lttng/lttng.h > liblttngctl/lttngctl/lttng.py || rm -f liblttngctl/lttngctl/lttng.py
 
 # BUILT_SOURCES can't be used since it's evaluated early during `make dist` on a clean
 # tree, and this target requires a tree that's in the process of being built.
