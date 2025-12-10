@@ -4198,7 +4198,7 @@ error:
 }
 
 /*
- * Return ust app pointer or NULL if not found. RCU read side lock MUST be
+ * Return ust app pointer or nullopt if not found. RCU read side lock MUST be
  * acquired before calling this function.
  */
 struct ust_app *ust_app_find_by_pid(pid_t pid)
@@ -4733,6 +4733,15 @@ int ust_app_list_events(struct lttng_event **events)
 
 		health_code_update();
 
+		if (!ust_app_get(*app)) {
+			/* Application unregistered concurrently, skip it. */
+			DBG("Could not get application reference as it is being torn down; skipping application");
+			continue;
+		}
+
+		/* Prevent app teardown during use. */
+		const ust_app_reference app_ref(app);
+
 		if (!app->compatible) {
 			/*
 			 * TODO: In time, we should notice the caller of this error by
@@ -4777,7 +4786,7 @@ int ust_app_list_events(struct lttng_event **events)
 				}
 
 				pthread_mutex_unlock(&app->sock_lock);
-				goto rcu_error;
+				goto error;
 			}
 
 			health_code_update();
@@ -4809,7 +4818,7 @@ int ust_app_list_events(struct lttng_event **events)
 					}
 
 					pthread_mutex_unlock(&app->sock_lock);
-					goto rcu_error;
+					goto error;
 				}
 				/* Zero the new memory */
 				memset(new_tmp_event + nbmem,
@@ -4852,7 +4861,6 @@ int ust_app_list_events(struct lttng_event **events)
 
 	DBG2("UST app list events done (%zu events)", count);
 
-rcu_error:
 error:
 	health_code_update();
 	return ret;
@@ -4882,6 +4890,14 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 		struct lttng_ust_abi_field_iter uiter;
 
 		health_code_update();
+
+		if (!ust_app_get(*app)) {
+			/* Application unregistered concurrently, skip it. */
+			DBG("Could not get application reference as it is being torn down; skipping application");
+			continue;
+		}
+		/* Prevent app teardown during use. */
+		const ust_app_reference app_ref(app);
 
 		if (!app->compatible) {
 			/*
@@ -4927,7 +4943,7 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 					    release_ret);
 				}
 
-				goto rcu_error;
+				goto error;
 			}
 
 			health_code_update();
@@ -4958,7 +4974,7 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 						    release_ret);
 					}
 
-					goto rcu_error;
+					goto error;
 				}
 
 				/* Zero the new memory */
@@ -4998,7 +5014,6 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 
 	DBG2("UST app list event fields done (%zu events)", count);
 
-rcu_error:
 error:
 	health_code_update();
 	return ret;
@@ -5019,6 +5034,14 @@ void ust_app_clean_list()
 							 decltype(ust_app::notify_sock_n),
 							 &ust_app::notify_sock_n>(
 			     *ust_app_ht_by_notify_sock->ht)) {
+			if (!ust_app_get(*app)) {
+				/* Application unregistered concurrently, skip it. */
+				DBG("Could not get application reference as it is being torn down; skipping application");
+				continue;
+			}
+			/* Prevent app teardown during use. */
+			const ust_app_reference app_ref(app);
+
 			/*
 			 * Assert that all notifiers are gone as all triggers
 			 * are unregistered prior to this clean-up.
@@ -5036,8 +5059,20 @@ void ust_app_clean_list()
 								     decltype(ust_app::sock_n),
 								     &ust_app::sock_n>(
 			     *ust_app_ht_by_sock->ht)) {
+			if (!ust_app_get(*app)) {
+				/* Application unregistered concurrently, skip it. */
+				DBG("Could not get application reference as it is being torn down; skipping application");
+				continue;
+			}
+			/* Prevent app teardown during use. */
+			const ust_app_reference app_ref(app);
+
 			ret = cds_lfht_del(ust_app_ht_by_sock->ht, &app->sock_n.node);
 			LTTNG_ASSERT(!ret);
+			/*
+			 * Release socket reference to the application to trigger its eventual
+			 * teardown.
+			 */
 			ust_app_put(app);
 		}
 	}
@@ -5101,6 +5136,15 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_ch
 	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
 		     *ust_app_ht->ht)) {
 		struct lttng_ht_iter uiter;
+
+		if (!ust_app_get(*app)) {
+			/* Application unregistered concurrently, skip it. */
+			DBG("Could not get application reference as it is being torn down; skipping application");
+			continue;
+		}
+		/* Prevent app teardown during use. */
+		const ust_app_reference app_ref(app);
+
 		if (!app->compatible) {
 			/*
 			 * TODO: In time, we should notice the caller of this error by
@@ -5108,6 +5152,7 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_ch
 			 */
 			continue;
 		}
+
 		ua_sess = ust_app_lookup_app_session(usess, app);
 		if (ua_sess == nullptr) {
 			continue;
@@ -5151,6 +5196,14 @@ int ust_app_enable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_cha
 	for (auto *app :
 	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
 		     *ust_app_ht->ht)) {
+		if (!ust_app_get(*app)) {
+			/* Application unregistered concurrently, skip it. */
+			DBG("Could not get application reference as it is being torn down; skipping application");
+			continue;
+		}
+		/* Prevent app teardown during use. */
+		const ust_app_reference app_ref(app);
+
 		if (!app->compatible) {
 			/*
 			 * TODO: In time, we should notice the caller of this error by
@@ -5158,6 +5211,7 @@ int ust_app_enable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_cha
 			 */
 			continue;
 		}
+
 		ua_sess = ust_app_lookup_app_session(usess, app);
 		if (ua_sess == nullptr) {
 			continue;
@@ -5199,9 +5253,18 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 	for (auto *app :
 	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
 		     *ust_app_ht->ht)) {
+		if (!ust_app_get(*app)) {
+			/* Application unregistered concurrently, skip it. */
+			DBG("Could not get application reference as it is being torn down; skipping application");
+			continue;
+		}
+		/* Prevent app teardown during use. */
+		const ust_app_reference app_ref(app);
+
 		if (!app->compatible) {
 			continue;
 		}
+
 		ua_sess = ust_app_lookup_app_session(usess, app);
 		if (ua_sess == nullptr) {
 			/* Next app */
@@ -5382,6 +5445,14 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 	for (auto *app :
 	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
 		     *ust_app_ht->ht)) {
+		if (!ust_app_get(*app)) {
+			/* Application unregistered concurrently, skip it. */
+			DBG("Could not get application reference as it is being torn down; skipping application");
+			continue;
+		}
+		/* Prevent app teardown during use. */
+		const ust_app_reference app_ref(app);
+
 		if (!app->compatible) {
 			/*
 			 * TODO: In time, we should notice the caller of this error by
@@ -5389,6 +5460,7 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 			 */
 			continue;
 		}
+
 		ua_sess = ust_app_lookup_app_session(usess, app);
 		if (!ua_sess) {
 			/* The application has problem or is probably dead. */
@@ -5462,6 +5534,14 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 	for (auto *app :
 	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
 		     *ust_app_ht->ht)) {
+		if (!ust_app_get(*app)) {
+			/* Application unregistered concurrently, skip it. */
+			DBG("Could not get application reference as it is being torn down; skipping application");
+			continue;
+		}
+		/* Prevent app teardown during use. */
+		const ust_app_reference app_ref(app);
+
 		if (!app->compatible) {
 			/*
 			 * TODO: In time, we should notice the caller of this error by
@@ -5819,6 +5899,14 @@ static int ust_app_flush_session(struct ltt_ust_session *usess)
 		     lttng::urcu::lfht_iteration_adapter<ust_app,
 							 decltype(ust_app::pid_n),
 							 &ust_app::pid_n>(*ust_app_ht->ht)) {
+			if (!ust_app_get(*app)) {
+				/* Application unregistered concurrently, skip it. */
+				DBG("Could not get application reference as it is being torn down; skipping application");
+				continue;
+			}
+			/* Prevent app teardown during use. */
+			const ust_app_reference app_ref(app);
+
 			auto *ua_sess = ust_app_lookup_app_session(usess, app);
 			if (ua_sess == nullptr) {
 				continue;
@@ -5955,11 +6043,18 @@ static int ust_app_clear_quiescent_session(struct ltt_ust_session *usess)
 		     lttng::urcu::lfht_iteration_adapter<ust_app,
 							 decltype(ust_app::pid_n),
 							 &ust_app::pid_n>(*ust_app_ht->ht)) {
+			if (!ust_app_get(*app)) {
+				/* Application unregistered concurrently, skip it. */
+				DBG("Could not get application reference as it is being torn down; skipping application");
+				continue;
+			}
+			/* Prevent app teardown during use. */
+			const ust_app_reference app_ref(app);
+
 			auto *ua_sess = ust_app_lookup_app_session(usess, app);
 			if (ua_sess == nullptr) {
 				continue;
 			}
-
 			(void) ust_app_clear_quiescent_app_session(app, ua_sess);
 		}
 
@@ -6056,6 +6151,14 @@ int ust_app_start_trace_all(struct ltt_ust_session *usess)
 	for (auto *app :
 	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
 		     *ust_app_ht->ht)) {
+		if (!ust_app_get(*app)) {
+			/* Application unregistered concurrently, skip it. */
+			DBG("Could not get application reference as it is being torn down; skipping application");
+			continue;
+		}
+		/* Prevent app teardown during use. */
+		const ust_app_reference app_ref(app);
+
 		ust_app_global_update(usess, app);
 	}
 
@@ -6082,6 +6185,14 @@ int ust_app_stop_trace_all(struct ltt_ust_session *usess)
 	for (auto *app :
 	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
 		     *ust_app_ht->ht)) {
+		if (!ust_app_get(*app)) {
+			/* Application unregistered concurrently, skip it. */
+			DBG("Could not get application reference as it is being torn down; skipping application");
+			continue;
+		}
+		/* Prevent app teardown during use. */
+		const ust_app_reference app_ref(app);
+
 		ret = ust_app_stop_trace(usess, app);
 		if (ret < 0) {
 			/* Continue to next apps even on error */
@@ -6105,6 +6216,14 @@ int ust_app_destroy_trace_all(struct ltt_ust_session *usess)
 	for (auto *app :
 	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
 		     *ust_app_ht->ht)) {
+		if (!ust_app_get(*app)) {
+			/* Application unregistered concurrently, skip it. */
+			DBG("Could not get application reference as it is being torn down; skipping application");
+			continue;
+		}
+		/* Prevent app teardown during use. */
+		const ust_app_reference app_ref(app);
+
 		(void) destroy_trace(usess, app);
 	}
 
@@ -6495,6 +6614,14 @@ void ust_app_global_update_all(struct ltt_ust_session *usess)
 	for (auto *app :
 	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
 		     *ust_app_ht->ht)) {
+		if (!ust_app_get(*app)) {
+			/* Application unregistered concurrently, skip it. */
+			DBG("Could not get application reference as it is being torn down; skipping application");
+			continue;
+		}
+		/* Prevent app teardown during use. */
+		const ust_app_reference app_ref(app);
+
 		ust_app_global_update(usess, app);
 	}
 }
@@ -6505,6 +6632,14 @@ void ust_app_global_update_all_event_notifier_rules()
 	for (auto *app :
 	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
 		     *ust_app_ht->ht)) {
+		if (!ust_app_get(*app)) {
+			/* Application unregistered concurrently, skip it. */
+			DBG("Could not get application reference as it is being torn down; skipping application");
+			continue;
+		}
+		/* Prevent app teardown during use. */
+		const ust_app_reference app_ref(app);
+
 		ust_app_global_update_event_notifier_rules(app);
 	}
 }
@@ -6532,6 +6667,14 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 	for (auto *app :
 	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
 		     *ust_app_ht->ht)) {
+		if (!ust_app_get(*app)) {
+			/* Application unregistered concurrently, skip it. */
+			DBG("Could not get application reference as it is being torn down; skipping application");
+			continue;
+		}
+		/* Prevent app teardown during use. */
+		const ust_app_reference app_ref(app);
+
 		if (!app->compatible) {
 			/*
 			 * TODO: In time, we should notice the caller of this error by
@@ -6539,6 +6682,7 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 			 */
 			continue;
 		}
+
 		ua_sess = ust_app_lookup_app_session(usess, app);
 		if (ua_sess == nullptr) {
 			continue;
@@ -7444,9 +7588,19 @@ enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *uses
 			char pathname[PATH_MAX];
 			size_t consumer_path_offset = 0;
 
+			if (!ust_app_get(*app)) {
+				/* Application unregistered concurrently, skip it. */
+				DBG("Could not get application reference as it is being torn down; skipping application");
+				continue;
+			}
+			/* Prevent app teardown during use. */
+			const ust_app_reference app_ref(app);
+
 			ua_sess = ust_app_lookup_app_session(usess, app);
 			if (!ua_sess) {
-				/* Session not associated with this app. */
+				/*
+				 * Session not associated with this app. Continue loop to next app.
+				 */
 				continue;
 			}
 
@@ -7488,8 +7642,10 @@ enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *uses
 								  nb_packets_per_stream);
 				switch (status) {
 				case LTTNG_OK:
+					/* Break switch */
 					break;
 				case LTTNG_ERR_CHAN_NOT_FOUND:
+					/* Continue loop to next channel. */
 					continue;
 				default:
 					goto error;
@@ -7499,6 +7655,7 @@ enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *uses
 			registry = ust_app_get_session_registry(ua_sess->get_identifier());
 			if (!registry) {
 				DBG("Application session is being torn down. Skip application.");
+				/* Continue loop to next app. */
 				continue;
 			}
 			status = consumer_snapshot_channel(socket,
@@ -7509,8 +7666,10 @@ enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *uses
 							   0);
 			switch (status) {
 			case LTTNG_OK:
+				/* Break switch */
 				break;
 			case LTTNG_ERR_CHAN_NOT_FOUND:
+				/* Continue loop to next app. */
 				continue;
 			default:
 				goto error;
@@ -7568,6 +7727,14 @@ uint64_t ust_app_get_size_one_more_packet_per_stream(const struct ltt_ust_sessio
 		     lttng::urcu::lfht_iteration_adapter<ust_app,
 							 decltype(ust_app::pid_n),
 							 &ust_app::pid_n>(*ust_app_ht->ht)) {
+			if (!ust_app_get(*app)) {
+				/* Application unregistered concurrently, skip it. */
+				DBG("Could not get application reference as it is being torn down; skipping application");
+				continue;
+			}
+			/* Prevent app teardown during use. */
+			const ust_app_reference app_ref(app);
+
 			const auto *ua_sess = ust_app_lookup_app_session(usess, app);
 			if (!ua_sess) {
 				/* Session not associated with this app. */
@@ -7656,6 +7823,14 @@ int ust_app_pid_get_channel_runtime_stats(struct ltt_ust_session *usess,
 		     *ust_app_ht->ht)) {
 		struct lttng_ht_iter uiter;
 
+		if (!ust_app_get(*app)) {
+			/* Application unregistered concurrently, skip it. */
+			DBG("Could not get application reference as it is being torn down; skipping application");
+			continue;
+		}
+		/* Prevent app teardown during use. */
+		const ust_app_reference app_ref(app);
+
 		ua_sess = ust_app_lookup_app_session(usess, app);
 		if (ua_sess == nullptr) {
 			continue;
@@ -7731,6 +7906,14 @@ int ust_app_regenerate_statedump_all(struct ltt_ust_session *usess)
 	for (auto *app :
 	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
 		     *ust_app_ht->ht)) {
+		if (!ust_app_get(*app)) {
+			/* Application unregistered concurrently, skip it. */
+			DBG("Could not get application reference as it is being torn down; skipping application");
+			continue;
+		}
+		/* Prevent app teardown during use. */
+		const ust_app_reference app_ref(app);
+
 		if (!app->compatible) {
 			continue;
 		}
@@ -7819,26 +8002,23 @@ enum lttng_error_code ust_app_rotate_session(const ltt_session::locked_ref& sess
 	case LTTNG_BUFFER_PER_PID:
 	{
 		/* Iterate on all apps. */
-		for (auto raw_app :
+		for (auto *app :
 		     lttng::urcu::lfht_iteration_adapter<ust_app,
 							 decltype(ust_app::pid_n),
 							 &ust_app::pid_n>(*ust_app_ht->ht)) {
 			struct consumer_socket *socket;
 			struct ust_app_session *ua_sess;
 			lsu::registry_session *registry;
-			bool app_reference_taken;
 
-			app_reference_taken = ust_app_get(*raw_app);
-			if (!app_reference_taken) {
+			if (!ust_app_get(*app)) {
 				/* Application unregistered concurrently, skip it. */
 				DBG("Could not get application reference as it is being torn down; skipping application");
 				continue;
 			}
+			/* Prevent app teardown during use. */
+			const ust_app_reference app_ref(app);
 
-			ust_app_reference app(raw_app);
-			raw_app = nullptr;
-
-			ua_sess = ust_app_lookup_app_session(usess, app.get());
+			ua_sess = ust_app_lookup_app_session(usess, app);
 			if (!ua_sess) {
 				/* Session not associated with this app. */
 				continue;
@@ -7960,6 +8140,14 @@ enum lttng_error_code ust_app_create_channel_subdirectories(const struct ltt_ust
 		     lttng::urcu::lfht_iteration_adapter<ust_app,
 							 decltype(ust_app::pid_n),
 							 &ust_app::pid_n>(*ust_app_ht->ht)) {
+			if (!ust_app_get(*app)) {
+				/* Application unregistered concurrently, skip it. */
+				DBG("Could not get application reference as it is being torn down; skipping application");
+				continue;
+			}
+			/* Prevent app teardown during use. */
+			const ust_app_reference app_ref(app);
+
 			const auto ua_sess = ust_app_lookup_app_session(usess, app);
 			if (!ua_sess) {
 				/* Session not associated with this app. */
