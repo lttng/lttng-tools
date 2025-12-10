@@ -123,7 +123,13 @@ struct lttng_consumer_channel {
 	uint64_t session_id = 0;
 	/* Current trace chunk of the session in which this channel exists. */
 	struct lttng_trace_chunk *trace_chunk = nullptr;
-	/* Trace format of the session. */
+	/*
+	 * Trace format of the session.
+	 *
+	 * Currently only used to determine whether to prepend the CTF 1.x
+	 * metadata announcement comment for kernel metadata streams (the kernel
+	 * tracer doesn't write it, so the consumer does).
+	 */
 	enum lttng_trace_format trace_format = LTTNG_TRACE_FORMAT_CTF_1_8;
 	/*
 	 * Session id when requesting metadata to the session daemon for
