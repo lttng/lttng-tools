@@ -323,12 +323,7 @@ static enum owner_id_allocation_status ust_app_allocate_owner_id(struct ust_app&
  */
 static void ust_app_release_owner_id(struct ust_app& app)
 {
-	const uint64_t owner_id = app.owner_id_n.key;
-
-	const lttng::urcu::read_lock_guard read_lock;
-	struct lttng_ht_iter iter;
-	lttng_ht_lookup(ust_app_ht_by_owner_id, reinterpret_cast<const void *>(&owner_id), &iter);
-	lttng_ht_del(ust_app_ht_by_owner_id, &iter);
+	cds_lfht_del(ust_app_ht_by_owner_id->ht, &app.owner_id_n.node);
 }
 
 /*
