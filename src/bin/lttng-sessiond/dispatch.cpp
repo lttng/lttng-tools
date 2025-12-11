@@ -39,7 +39,6 @@ struct thread_notifiers {
 static void update_ust_app(int app_sock)
 {
 	const struct ltt_session_list *session_list = session_get_list();
-	struct ust_app *app;
 
 	/* Consumer is in an ERROR state. Stop any application update. */
 	if (uatomic_read(&the_ust_consumerd_state) == CONSUMER_ERROR) {
@@ -49,8 +48,8 @@ static void update_ust_app(int app_sock)
 
 	const lttng::urcu::read_lock_guard read_lock;
 	LTTNG_ASSERT(app_sock >= 0);
-	app = ust_app_find_by_sock(app_sock);
-	if (app == nullptr) {
+	auto app = ust_app_find_by_sock(app_sock);
+	if (!app) {
 		/*
 		 * Application can be unregistered before so
 		 * this is possible hence simply stopping the
@@ -61,7 +60,7 @@ static void update_ust_app(int app_sock)
 	}
 
 	/* Update all event notifiers for the app. */
-	ust_app_global_update_event_notifier_rules(app);
+	ust_app_global_update_event_notifier_rules(app->get());
 
 	/* For all tracing session(s) */
 	for (auto *sess : lttng::urcu::list_iteration_adapter<ltt_session, &ltt_session::list>(
@@ -74,7 +73,7 @@ static void update_ust_app(int app_sock)
 			goto unlock_session;
 		}
 
-		ust_app_global_update(sess->ust_session, app);
+		ust_app_global_update(sess->ust_session, app->get());
 	unlock_session:
 		session_unlock(sess);
 		session_put(sess);
