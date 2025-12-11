@@ -19,6 +19,8 @@
 #include <common/scope-exit.hpp>
 #include <common/uuid.hpp>
 
+#include <vendor/optional.hpp>
+
 #include <list>
 #include <stdint.h>
 
@@ -495,7 +497,13 @@ void ust_app_global_update_all_event_notifier_rules();
 
 void ust_app_clean_list();
 int ust_app_ht_alloc();
-struct ust_app *ust_app_find_by_pid(pid_t pid);
+
+bool ust_app_get(ust_app& app);
+void ust_app_put(ust_app *app);
+using ust_app_reference =
+	std::unique_ptr<ust_app, lttng::memory::create_deleter_class<ust_app, ust_app_put>::deleter>;
+
+nonstd::optional<ust_app_reference> ust_app_find_by_pid(pid_t pid);
 struct ust_app_stream *ust_app_alloc_stream();
 int ust_app_recv_registration(int sock, struct ust_register_msg *msg);
 int ust_app_recv_notify(int sock);
@@ -508,7 +516,7 @@ enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *uses
 					      uint64_t nb_packets_per_stream);
 uint64_t ust_app_get_size_one_more_packet_per_stream(const struct ltt_ust_session *usess,
 						     uint64_t cur_nr_packets);
-struct ust_app *ust_app_find_by_sock(int sock);
+nonstd::optional<ust_app_reference> ust_app_find_by_sock(int sock);
 int ust_app_uid_get_channel_runtime_stats(uint64_t ust_session_id,
 					  struct cds_list_head *buffer_reg_uid_list,
 					  struct consumer_output *consumer,
@@ -543,11 +551,6 @@ lttng_ht *ust_app_get_all();
 bool ust_app_supports_notifiers(const struct ust_app *app);
 bool ust_app_supports_counters(const struct ust_app *app);
 
-bool ust_app_get(ust_app& app);
-void ust_app_put(ust_app *app);
-
-using ust_app_reference =
-	std::unique_ptr<ust_app, lttng::memory::create_deleter_class<ust_app, ust_app_put>::deleter>;
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -749,14 +752,28 @@ static inline bool ust_app_supports_counters(const struct ust_app *app __attribu
 	return false;
 }
 
-static inline struct ust_app *ust_app_find_by_sock(int sock __attribute__((unused)))
+static inline bool ust_app_get(ust_app& app __attribute__((unused)))
 {
-	return NULL;
+	return false;
 }
 
-static inline struct ust_app *ust_app_find_by_pid(pid_t pid __attribute__((unused)))
+static inline void ust_app_put(ust_app *app __attribute__((unused)))
 {
-	return NULL;
+}
+
+using ust_app_reference =
+	std::unique_ptr<ust_app, lttng::memory::create_deleter_class<ust_app, ust_app_put>::deleter>;
+
+static inline nonstd::optional<ust_app_reference> ust_app_find_by_sock(int sock
+								       __attribute__((unused)))
+{
+	return nonstd::nullopt;
+}
+
+static inline nonstd::optional<ust_app_reference> ust_app_find_by_pid(pid_t pid
+								      __attribute__((unused)))
+{
+	return nonstd::nullopt;
 }
 
 static inline uint64_t
@@ -827,13 +844,6 @@ static inline int ust_app_release_object(struct ust_app *app __attribute__((unus
 	return 0;
 }
 
-static inline void ust_app_get(ust_app& app __attribute__((unused)))
-{
-}
-
-static inline void ust_app_put(ust_app *app __attribute__((unused)))
-{
-}
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */
 

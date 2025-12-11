@@ -1001,7 +1001,6 @@ trace_ust_process_attr_tracker_inclusion_set_add_value(struct ltt_ust_session *s
 	struct process_attr_tracker *tracker;
 	int integral_value;
 	enum process_attr_tracker_status status;
-	struct ust_app *app;
 
 	/*
 	 * Convert process attribute tracker value to the integral
@@ -1080,8 +1079,7 @@ trace_ust_process_attr_tracker_inclusion_set_add_value(struct ltt_ust_session *s
 	/* Add session to application */
 	switch (process_attr) {
 	case LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID:
-		app = ust_app_find_by_pid(integral_value);
-		if (app) {
+		if (ust_app_find_by_pid(integral_value)) {
 			should_update_apps = true;
 		}
 		break;
@@ -1108,7 +1106,6 @@ trace_ust_process_attr_tracker_inclusion_set_remove_value(struct ltt_ust_session
 	struct process_attr_tracker *tracker;
 	int integral_value;
 	enum process_attr_tracker_status status;
-	struct ust_app *app;
 
 	/*
 	 * Convert process attribute tracker value to the integral
@@ -1187,8 +1184,7 @@ trace_ust_process_attr_tracker_inclusion_set_remove_value(struct ltt_ust_session
 	/* Add session to application */
 	switch (process_attr) {
 	case LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID:
-		app = ust_app_find_by_pid(integral_value);
-		if (app) {
+		if (ust_app_find_by_pid(integral_value)) {
 			should_update_apps = true;
 		}
 		break;

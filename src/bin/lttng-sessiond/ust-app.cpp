@@ -1470,7 +1470,7 @@ error:
  * Find an ust_app using the sock and return it. RCU read side lock must be
  * held before calling this helper function.
  */
-struct ust_app *ust_app_find_by_sock(int sock)
+nonstd::optional<ust_app_reference> ust_app_find_by_sock(int sock)
 {
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
@@ -1481,20 +1481,19 @@ struct ust_app *ust_app_find_by_sock(int sock)
 	node = lttng_ht_iter_get_node<lttng_ht_node_ulong>(&iter);
 	if (node == nullptr) {
 		DBG2("UST app find by sock %d not found", sock);
-		goto error;
+		return nonstd::nullopt;
 	}
 
-	return lttng::utils::container_of(node, &ust_app::sock_n);
-
-error:
-	return nullptr;
+	auto raw_app = lttng::utils::container_of(node, &ust_app::sock_n);
+	return ust_app_get(*raw_app) ? nonstd::make_optional<ust_app_reference>(raw_app) :
+				       nonstd::nullopt;
 }
 
 /*
  * Find an ust_app using the notify sock and return it. RCU read side lock must
  * be held before calling this helper function.
  */
-static struct ust_app *find_app_by_notify_sock(int sock)
+static nonstd::optional<ust_app_reference> find_app_by_notify_sock(int sock)
 {
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
@@ -1505,13 +1504,11 @@ static struct ust_app *find_app_by_notify_sock(int sock)
 	node = lttng_ht_iter_get_node<lttng_ht_node_ulong>(&iter);
 	if (node == nullptr) {
 		DBG2("UST app find by notify sock %d not found", sock);
-		goto error;
+		return nonstd::nullopt;
 	}
 
-	return lttng::utils::container_of(node, &ust_app::notify_sock_n);
-
-error:
-	return nullptr;
+	auto app = lttng::utils::container_of(node, &ust_app::notify_sock_n);
+	return ust_app_get(*app) ? nonstd::make_optional<ust_app_reference>(app) : nonstd::nullopt;
 }
 
 /*
@@ -4005,9 +4002,8 @@ error:
  * Return ust app pointer or nullopt if not found. RCU read side lock MUST be
  * acquired before calling this function.
  */
-struct ust_app *ust_app_find_by_pid(pid_t pid)
+nonstd::optional<ust_app_reference> ust_app_find_by_pid(pid_t pid)
 {
-	struct ust_app *app = nullptr;
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
 
@@ -4015,15 +4011,14 @@ struct ust_app *ust_app_find_by_pid(pid_t pid)
 	node = lttng_ht_iter_get_node<lttng_ht_node_ulong>(&iter);
 	if (node == nullptr) {
 		DBG2("UST app no found with pid %d", pid);
-		goto error;
+		return nonstd::nullopt;
 	}
 
 	DBG2("Found UST app by pid %d", pid);
 
-	app = lttng::utils::container_of(node, &ust_app::pid_n);
-
-error:
-	return app;
+	auto raw_app = lttng::utils::container_of(node, &ust_app::pid_n);
+	return ust_app_get(*raw_app) ? nonstd::make_optional(ust_app_reference{ raw_app }) :
+				       nonstd::nullopt;
 }
 
 /*
@@ -6596,7 +6591,6 @@ static int handle_app_register_channel_notification(int sock,
 	int ret, ret_code = 0;
 	uint32_t chan_id;
 	uint64_t chan_reg_key;
-	struct ust_app *app;
 	struct ust_app_channel *ua_chan;
 	struct ust_app_session *ua_sess;
 	auto ust_ctl_context_fields =
@@ -6606,14 +6600,14 @@ static int handle_app_register_channel_notification(int sock,
 	const lttng::urcu::read_lock_guard read_lock_guard;
 
 	/* Lookup application. If not found, there is a code flow error. */
-	app = find_app_by_notify_sock(sock);
+	auto app = find_app_by_notify_sock(sock);
 	if (!app) {
 		DBG("Application socket %d is being torn down. Abort event notify", sock);
 		return -1;
 	}
 
 	/* Lookup channel by UST object descriptor. */
-	ua_chan = find_channel_by_objd(app, cobjd);
+	ua_chan = find_channel_by_objd(app->get(), cobjd);
 	if (!ua_chan) {
 		DBG("Application channel is being torn down. Abort event notify");
 		return 0;
@@ -6697,8 +6691,8 @@ static int handle_app_register_channel_notification(int sock,
 
 			if (!context_fields_match) {
 				ERR("Registering application channel due to context field mismatch: pid = %d, sock = %d",
-				    app->pid,
-				    app->sock);
+				    (*app)->pid,
+				    (*app)->sock);
 				ret_code = -EINVAL;
 				goto reply;
 			}
@@ -6725,17 +6719,17 @@ reply:
 	if (ret < 0) {
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			DBG3("UST app reply channel failed. Application died: pid = %d, sock = %d",
-			     app->pid,
-			     app->sock);
+			     (*app)->pid,
+			     (*app)->sock);
 		} else if (ret == -EAGAIN) {
 			WARN("UST app reply channel failed. Communication time out: pid = %d, sock = %d",
-			     app->pid,
-			     app->sock);
+			     (*app)->pid,
+			     (*app)->sock);
 		} else {
 			ERR("UST app reply channel failed with ret %d: pid = %d, sock = %d",
 			    ret,
-			    app->pid,
-			    app->sock);
+			    (*app)->pid,
+			    (*app)->sock);
 		}
 
 		return ret;
@@ -6769,7 +6763,6 @@ static int add_event_ust_registry(int sock,
 	int ret, ret_code;
 	lsu::event_id event_id = 0;
 	uint64_t chan_reg_key;
-	struct ust_app *app;
 	struct ust_app_channel *ua_chan;
 	struct ust_app_session *ua_sess;
 	const lttng::urcu::read_lock_guard rcu_lock;
@@ -6780,14 +6773,14 @@ static int add_event_ust_registry(int sock,
 		lttng::make_unique_wrapper<char, lttng::memory::free>(raw_model_emf_uri);
 
 	/* Lookup application. If not found, there is a code flow error. */
-	app = find_app_by_notify_sock(sock);
+	auto app = find_app_by_notify_sock(sock);
 	if (!app) {
 		DBG("Application socket %d is being torn down. Abort event notify", sock);
 		return -1;
 	}
 
 	/* Lookup channel by UST object descriptor. */
-	ua_chan = find_channel_by_objd(app, cobjd);
+	ua_chan = find_channel_by_objd(app->get(), cobjd);
 	if (!ua_chan) {
 		DBG("Application channel is being torn down. Abort event notify");
 		return 0;
@@ -6831,7 +6824,7 @@ static int add_event_ust_registry(int sock,
 						nonstd::optional<std::string>(model_emf_uri.get()) :
 						nonstd::nullopt,
 					ua_sess->buffer_type,
-					*app,
+					**app,
 					event_id);
 				ret_code = 0;
 			} catch (const std::exception& ex) {
@@ -6856,17 +6849,17 @@ static int add_event_ust_registry(int sock,
 	if (ret < 0) {
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			DBG3("UST app reply event failed. Application died: pid = %d, sock = %d.",
-			     app->pid,
-			     app->sock);
+			     (*app)->pid,
+			     (*app)->sock);
 		} else if (ret == -EAGAIN) {
 			WARN("UST app reply event failed. Communication time out: pid = %d, sock = %d",
-			     app->pid,
-			     app->sock);
+			     (*app)->pid,
+			     (*app)->sock);
 		} else {
 			ERR("UST app reply event failed with ret %d: pid = %d, sock = %d",
 			    ret,
-			    app->pid,
-			    app->sock);
+			    (*app)->pid,
+			    (*app)->sock);
 		}
 		/*
 		 * No need to wipe the create event since the application socket will
@@ -6894,7 +6887,6 @@ static int add_enum_ust_registry(int sock,
 				 size_t nr_entries)
 {
 	int ret = 0;
-	struct ust_app *app;
 	struct ust_app_session *ua_sess;
 	uint64_t enum_id = -1ULL;
 	const lttng::urcu::read_lock_guard read_lock_guard;
@@ -6903,7 +6895,7 @@ static int add_enum_ust_registry(int sock,
 			raw_entries);
 
 	/* Lookup application. If not found, there is a code flow error. */
-	app = find_app_by_notify_sock(sock);
+	auto app = find_app_by_notify_sock(sock);
 	if (!app) {
 		/* Return an error since this is not an error */
 		DBG("Application socket %d is being torn down. Aborting enum registration", sock);
@@ -6911,7 +6903,7 @@ static int add_enum_ust_registry(int sock,
 	}
 
 	/* Lookup session by UST object descriptor. */
-	ua_sess = find_session_by_objd(app, sobjd);
+	ua_sess = find_session_by_objd(app->get(), sobjd);
 	if (!ua_sess) {
 		/* Return an error since this is not an error */
 		DBG("Application session is being torn down (session not found). Aborting enum registration.");
@@ -6938,7 +6930,7 @@ static int add_enum_ust_registry(int sock,
 		ERR("%s: %s",
 		    lttng::format(
 			    "Failed to create or find enumeration provided by application: app = {}, enumeration name = {}",
-			    *app,
+			    **app,
 			    name)
 			    .c_str(),
 		    ex.what());
@@ -6954,17 +6946,17 @@ static int add_enum_ust_registry(int sock,
 	if (ret < 0) {
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			DBG3("UST app reply enum failed. Application died: pid = %d, sock = %d",
-			     app->pid,
-			     app->sock);
+			     (*app)->pid,
+			     (*app)->sock);
 		} else if (ret == -EAGAIN) {
 			WARN("UST app reply enum failed. Communication time out: pid = %d, sock = %d",
-			     app->pid,
-			     app->sock);
+			     (*app)->pid,
+			     (*app)->sock);
 		} else {
 			ERR("UST app reply enum failed with ret %d: pid = %d, sock = %d",
 			    ret,
-			    app->pid,
-			    app->sock);
+			    (*app)->pid,
+			    (*app)->sock);
 		}
 		/*
 		 * No need to wipe the create enum since the application socket will
@@ -7037,7 +7029,7 @@ int ust_app_recv_notify(int sock)
 
 		{
 			const lttng::urcu::read_lock_guard rcu_lock;
-			const struct ust_app *app = find_app_by_notify_sock(sock);
+			auto app = find_app_by_notify_sock(sock);
 			if (!app) {
 				DBG("Application socket %d is being torn down. Abort event notify",
 				    sock);
@@ -7172,7 +7164,6 @@ void ust_app_notify_sock_unregister(int sock)
 {
 	int err_enomem = 0;
 	struct lttng_ht_iter iter;
-	struct ust_app *app;
 	struct ust_app_notify_sock_obj *obj;
 
 	LTTNG_ASSERT(sock >= 0);
@@ -7206,12 +7197,12 @@ void ust_app_notify_sock_unregister(int sock)
 	 * unregistration process so we can safely close the notify socket in a
 	 * call RCU.
 	 */
-	app = find_app_by_notify_sock(sock);
+	auto app = find_app_by_notify_sock(sock);
 	if (!app) {
 		goto close_socket;
 	}
 
-	iter.iter.node = &app->notify_sock_n.node;
+	iter.iter.node = &((*app)->notify_sock_n.node);
 
 	/*
 	 * Whatever happens here either we fail or succeed, in both cases we have
