@@ -54,10 +54,17 @@ def __find_clang_libraries():
 
 def clang_version():
     """Pull the clang C library version from the API"""
+
     # avoid loading the cindex API (cindex.conf.lib) to avoid version conflicts
+    class CXString(ctypes.Structure):
+        _fields_ = [
+            ("data", ctypes.c_char_p),
+            ("private_flags", ctypes.c_uint),
+        ]
+
     get_version = cindex.conf.get_cindex_library().clang_getClangVersion
-    get_version.restype = ctypes.c_char_p
-    version_string = get_version()
+    get_version.restype = CXString
+    version_string = get_version().data
     version = "Unknown"
     if version_string and len(version_string) > 0:
         version_groups = re.match(rb".+version ((\d+\.)?(\d+\.)?(\*|\d+))", version_string)
