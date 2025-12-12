@@ -650,6 +650,7 @@ enum consumer_channel_type {
 enum lttng_consumer_error_msg_type : std::uint8_t {
 	LTTNG_CONSUMER_ERROR_MSG_TYPE_ERROR_CODE,
 	LTTNG_CONSUMER_ERROR_MSG_TYPE_OWNER_RECLAIM_NOTIFICATION,
+	LTTNG_CONSUMER_ERROR_MSG_TYPE_MEMORY_RECLAIM_COMPLETE,
 };
 
 /* lttng socket protocol. */
@@ -1188,6 +1189,8 @@ struct lttcomm_consumer_msg {
 			uint64_t key_count; /* Number of keys in payload. */
 			LTTNG_OPTIONAL_COMM(uint64_t) LTTNG_PACKED age_limit_us;
 			uint8_t require_consumed;
+			/* Token for async completion tracking. */
+			uint64_t memory_reclaim_request_token;
 		} LTTNG_PACKED reclaim_channels_memory;
 	} u;
 } LTTNG_PACKED;
@@ -1210,6 +1213,14 @@ struct lttcomm_consumer_error_msg_owner_reclaim_notification {
 	/* List of owners that are safe to reclaim. */
 	uint32_t owners[];
 } LTTNG_PACKED;
+
+struct lttcomm_consumer_error_msg_memory_reclaim_complete_notification {
+	/* Token of the memory reclamation request that was completed. */
+	uint64_t memory_reclaim_request_token;
+	/* Whether the reclamation was successful (non-zero = success). */
+	uint8_t success;
+} LTTNG_PACKED;
+
 /*
  * Channel monitoring message returned to the session daemon on every
  * monitor timer expiration.
