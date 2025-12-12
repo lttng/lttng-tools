@@ -145,7 +145,7 @@ static const char *get_thread_name(int comp, int nr)
  *
  * Returns 0 on success or a negative errno.
  */
-static int set_health_socket_path(struct lttng_health *lh, int tracing_group)
+static int set_health_socket_path(struct lttng_health *lh, int in_tracing_group)
 {
 	int ret;
 	const char *health_unix_sock_fmt_string;
@@ -182,7 +182,7 @@ static int set_health_socket_path(struct lttng_health *lh, int tracing_group)
 
 	bool use_default_rundir_path = false;
 	auto rundir_path = lttng::make_unique_wrapper<char, lttng::memory::free>(
-		utils_get_rundir(tracing_group));
+		utils_get_rundir(in_tracing_group));
 	if (!rundir_path) {
 		use_default_rundir_path = true;
 	}
@@ -282,7 +282,7 @@ void lttng_health_destroy(struct lttng_health *lh)
 int lttng_health_query(struct lttng_health *health)
 {
 	int sock, ret, i;
-	bool tracing_group;
+	bool in_tracing_group;
 	struct health_comm_msg msg;
 	struct health_comm_reply reply;
 
@@ -290,18 +290,18 @@ int lttng_health_query(struct lttng_health *health)
 		return -EINVAL;
 	}
 
-	tracing_group = lttng_check_in_tracing_group();
+	in_tracing_group = lttng_check_in_tracing_group();
 retry:
-	ret = set_health_socket_path(health, tracing_group);
+	ret = set_health_socket_path(health, in_tracing_group);
 	if (ret) {
 		goto error;
 	}
 	/* Connect to component */
 	sock = lttcomm_connect_unix_sock(health->health_sock_path);
 	if (sock < 0) {
-		if (tracing_group) {
+		if (in_tracing_group) {
 			/* For tracing group, fallback to per-user */
-			tracing_group = false;
+			in_tracing_group = false;
 			goto retry;
 		}
 		ret = -1;
