@@ -890,7 +890,7 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
             raise TypeError("LTTngClient only supports local or no output")
 
         if live:
-            args.append("--live")
+            args.append("--live={}".format(live) if type(live) is int else "--live")
         if shm_path is not None:
             args.extend(["--shm-path", str(shm_path)])
         if snapshot:
