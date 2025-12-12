@@ -259,6 +259,18 @@ struct formatter<lttng_reclaim_channel_memory_status> : formatter<std::string> {
 		case LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_INVALID_PARAMETER:
 			name = "Invalid parameter";
 			break;
+		case LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_RECLAMATION_IN_PROGRESS:
+			name = "Reclamation in progress";
+			break;
+		case LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_NOT_SUPPORTED:
+			name = "Not supported";
+			break;
+		case LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_SESSION_NOT_FOUND:
+			name = "Session not found";
+			break;
+		case LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_CHANNEL_NOT_FOUND:
+			name = "Channel not found";
+			break;
 		}
 
 		return format_to(ctx.out(), name);
