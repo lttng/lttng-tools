@@ -138,6 +138,8 @@ class periodic_task : public task {
 	friend class scheduler;
 
 public:
+	using sptr = std::shared_ptr<periodic_task>;
+
 	/*
 	 * Periodic task are automatically rescheduled following their period.
 	 * Note that the scheduler cannot guarantee the deadlines are honored.
