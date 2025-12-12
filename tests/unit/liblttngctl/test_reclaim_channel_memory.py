@@ -128,6 +128,70 @@ def test_reclaim_channel_memory_invalid_domain_value(
         lttng.lttng_reclaim_handle_destroy(handle)
 
 
+def test_reclaim_channel_memory_kernel_domain(
+    session_name, channel_name, tap, test_env
+):
+    handle = ctypes.POINTER(lttng.struct_lttng_reclaim_handle)()
+    ret = lttng.lttng_reclaim_channel_memory(
+        session_name.encode(),
+        channel_name.encode(),
+        lttng.LTTNG_DOMAIN_KERNEL,
+        ctypes.c_uint64(0),
+        ctypes.pointer(handle),
+    )
+    tap.test(
+        ret == lttng.LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_NOT_SUPPORTED
+        or ret == lttng.LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_CHANNEL_NOT_FOUND,
+        "lttng_reclaim_channel_memory returns NOT_SUPPORTED or CHANNEL_NOT_FOUND for kernel domain: ret=`{}`".format(
+            ret
+        ),
+    )
+    if handle:
+        lttng.lttng_reclaim_handle_destroy(handle)
+
+
+def test_reclaim_channel_memory_nonexistent_session(
+    session_name, channel_name, tap, test_env
+):
+    handle = ctypes.POINTER(lttng.struct_lttng_reclaim_handle)()
+    ret = lttng.lttng_reclaim_channel_memory(
+        b"nonexistent_session_12345",
+        channel_name.encode(),
+        lttng.LTTNG_DOMAIN_UST,
+        ctypes.c_uint64(0),
+        ctypes.pointer(handle),
+    )
+    tap.test(
+        ret == lttng.LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_SESSION_NOT_FOUND,
+        "lttng_reclaim_channel_memory returns SESSION_NOT_FOUND for nonexistent session: ret=`{}`".format(
+            ret
+        ),
+    )
+    if handle:
+        lttng.lttng_reclaim_handle_destroy(handle)
+
+
+def test_reclaim_channel_memory_nonexistent_channel(
+    session_name, channel_name, tap, test_env
+):
+    handle = ctypes.POINTER(lttng.struct_lttng_reclaim_handle)()
+    ret = lttng.lttng_reclaim_channel_memory(
+        session_name.encode(),
+        b"nonexistent_channel_12345",
+        lttng.LTTNG_DOMAIN_UST,
+        ctypes.c_uint64(0),
+        ctypes.pointer(handle),
+    )
+    tap.test(
+        ret == lttng.LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_CHANNEL_NOT_FOUND,
+        "lttng_reclaim_channel_memory returns CHANNEL_NOT_FOUND for nonexistent channel: ret=`{}`".format(
+            ret
+        ),
+    )
+    if handle:
+        lttng.lttng_reclaim_handle_destroy(handle)
+
+
 def test_reclaim_channel_memory_with_sessiond(
     session_name, channel_name, tap, test_env
 ):
@@ -157,14 +221,192 @@ def test_reclaim_channel_memory_with_sessiond(
     )
 
 
+#
+# lttng_reclaim_handle tests
+#
+
+
+def test_reclaim_handle_destroy_null(session_name, channel_name, tap, test_env):
+    # Destroying a NULL handle should be safe (no crash)
+    lttng.lttng_reclaim_handle_destroy(None)
+    tap.test(True, "lttng_reclaim_handle_destroy accepts NULL handle without crash")
+
+
+def test_reclaim_handle_wait_for_completion_null_handle(
+    session_name, channel_name, tap, test_env
+):
+    ret = lttng.lttng_reclaim_handle_wait_for_completion(None, 1000)
+    tap.test(
+        ret == lttng.LTTNG_RECLAIM_HANDLE_STATUS_INVALID,
+        "lttng_reclaim_handle_wait_for_completion returns INVALID for NULL handle: ret=`{}`".format(
+            ret
+        ),
+    )
+
+
+def test_reclaim_handle_wait_for_completion_valid(
+    session_name, channel_name, tap, test_env
+):
+    handle = ctypes.POINTER(lttng.struct_lttng_reclaim_handle)()
+    ret = lttng.lttng_reclaim_channel_memory(
+        session_name.encode(),
+        channel_name.encode(),
+        lttng.LTTNG_DOMAIN_UST,
+        ctypes.c_uint64(0),
+        ctypes.pointer(handle),
+    )
+    if ret != lttng.LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_OK or not handle:
+        tap.skip("Could not create reclaim handle for wait_for_completion test")
+        return
+
+    wait_ret = lttng.lttng_reclaim_handle_wait_for_completion(handle, 0)
+    lttng.lttng_reclaim_handle_destroy(handle)
+
+    tap.test(
+        wait_ret == lttng.LTTNG_RECLAIM_HANDLE_STATUS_COMPLETED
+        or wait_ret == lttng.LTTNG_RECLAIM_HANDLE_STATUS_TIMEOUT,
+        "lttng_reclaim_handle_wait_for_completion returns COMPLETED or TIMEOUT: ret=`{}`".format(
+            wait_ret
+        ),
+    )
+
+
+def test_reclaim_handle_get_reclaimed_memory_size_null_handle(
+    session_name, channel_name, tap, test_env
+):
+    memory_size = ctypes.c_uint64(0)
+    ret = lttng.lttng_reclaim_handle_get_reclaimed_memory_size_bytes(
+        None, ctypes.pointer(memory_size)
+    )
+    tap.test(
+        ret == lttng.LTTNG_RECLAIM_HANDLE_STATUS_INVALID,
+        "lttng_reclaim_handle_get_reclaimed_memory_size_bytes returns INVALID for NULL handle: ret=`{}`".format(
+            ret
+        ),
+    )
+
+
+def test_reclaim_handle_get_reclaimed_memory_size_null_output(
+    session_name, channel_name, tap, test_env
+):
+    handle = ctypes.POINTER(lttng.struct_lttng_reclaim_handle)()
+    ret = lttng.lttng_reclaim_channel_memory(
+        session_name.encode(),
+        channel_name.encode(),
+        lttng.LTTNG_DOMAIN_UST,
+        ctypes.c_uint64(0),
+        ctypes.pointer(handle),
+    )
+    if ret != lttng.LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_OK or not handle:
+        tap.skip(
+            "Could not create reclaim handle for get_reclaimed_memory_size NULL output test"
+        )
+        return
+
+    get_ret = lttng.lttng_reclaim_handle_get_reclaimed_memory_size_bytes(handle, None)
+    lttng.lttng_reclaim_handle_destroy(handle)
+
+    tap.test(
+        get_ret == lttng.LTTNG_RECLAIM_HANDLE_STATUS_INVALID,
+        "lttng_reclaim_handle_get_reclaimed_memory_size_bytes returns INVALID for NULL output: ret=`{}`".format(
+            get_ret
+        ),
+    )
+
+
+def test_reclaim_handle_get_pending_memory_size_null_handle(
+    session_name, channel_name, tap, test_env
+):
+    memory_size = ctypes.c_uint64(0)
+    ret = lttng.lttng_reclaim_handle_get_pending_memory_size_bytes(
+        None, ctypes.pointer(memory_size)
+    )
+    tap.test(
+        ret == lttng.LTTNG_RECLAIM_HANDLE_STATUS_INVALID,
+        "lttng_reclaim_handle_get_pending_memory_size_bytes returns INVALID for NULL handle: ret=`{}`".format(
+            ret
+        ),
+    )
+
+
+def test_reclaim_handle_get_pending_memory_size_null_output(
+    session_name, channel_name, tap, test_env
+):
+    handle = ctypes.POINTER(lttng.struct_lttng_reclaim_handle)()
+    ret = lttng.lttng_reclaim_channel_memory(
+        session_name.encode(),
+        channel_name.encode(),
+        lttng.LTTNG_DOMAIN_UST,
+        ctypes.c_uint64(0),
+        ctypes.pointer(handle),
+    )
+    if ret != lttng.LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_OK or not handle:
+        tap.skip(
+            "Could not create reclaim handle for get_pending_memory_size NULL output test"
+        )
+        return
+
+    get_ret = lttng.lttng_reclaim_handle_get_pending_memory_size_bytes(handle, None)
+    lttng.lttng_reclaim_handle_destroy(handle)
+
+    tap.test(
+        get_ret == lttng.LTTNG_RECLAIM_HANDLE_STATUS_INVALID,
+        "lttng_reclaim_handle_get_pending_memory_size_bytes returns INVALID for NULL output: ret=`{}`".format(
+            get_ret
+        ),
+    )
+
+
+def test_reclaim_handle_get_pending_memory_size_valid(
+    session_name, channel_name, tap, test_env
+):
+    handle = ctypes.POINTER(lttng.struct_lttng_reclaim_handle)()
+    ret = lttng.lttng_reclaim_channel_memory(
+        session_name.encode(),
+        channel_name.encode(),
+        lttng.LTTNG_DOMAIN_UST,
+        ctypes.c_uint64(0),
+        ctypes.pointer(handle),
+    )
+    if ret != lttng.LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_OK or not handle:
+        tap.skip("Could not create reclaim handle for get_pending_memory_size test")
+        return
+
+    pending_memory_size = ctypes.c_uint64(0)
+    get_ret = lttng.lttng_reclaim_handle_get_pending_memory_size_bytes(
+        handle, ctypes.pointer(pending_memory_size)
+    )
+    lttng.lttng_reclaim_handle_destroy(handle)
+
+    tap.test(
+        get_ret == lttng.LTTNG_RECLAIM_HANDLE_STATUS_OK,
+        "lttng_reclaim_handle_get_pending_memory_size_bytes succeeds: ret=`{}`, pending_bytes=`{}`".format(
+            get_ret, pending_memory_size.value
+        ),
+    )
+
+
 if __name__ == "__main__":
     tests = [
+        # lttng_reclaim_channel_memory tests
         test_reclaim_channel_memory_no_session_string,
         test_reclaim_channel_memory_no_channel_string,
         test_reclaim_channel_memory_no_handle,
         test_reclaim_channel_memory_no_sessiond,
         test_reclaim_channel_memory_invalid_domain_value,
+        test_reclaim_channel_memory_kernel_domain,
+        test_reclaim_channel_memory_nonexistent_session,
+        test_reclaim_channel_memory_nonexistent_channel,
         test_reclaim_channel_memory_with_sessiond,  # simple integration test
+        # lttng_reclaim_handle tests
+        test_reclaim_handle_destroy_null,
+        test_reclaim_handle_wait_for_completion_null_handle,
+        test_reclaim_handle_wait_for_completion_valid,
+        test_reclaim_handle_get_reclaimed_memory_size_null_handle,
+        test_reclaim_handle_get_reclaimed_memory_size_null_output,
+        test_reclaim_handle_get_pending_memory_size_null_handle,
+        test_reclaim_handle_get_pending_memory_size_null_output,
+        test_reclaim_handle_get_pending_memory_size_valid,
     ]
     tap = lttngtest.TapGenerator(len(tests))
 
