@@ -39,7 +39,7 @@ lttcomm_recv_payload_fds_unix_sock_non_block(int sock, size_t nb_fd, struct lttn
 
 ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len);
 ssize_t lttcomm_recv_unix_sock_non_block(int sock, void *buf, size_t len);
-ssize_t lttcomm_send_unix_sock(int sock, const void *buf, size_t len);
+ssize_t lttcomm_send_unix_sock(int sock, const void *buf, size_t len, bool quiet_on_closed = false);
 ssize_t lttcomm_send_unix_sock_non_block(int sock, const void *buf, size_t len);
 
 ssize_t lttcomm_send_creds_unix_sock(int sock, const void *buf, size_t len);
