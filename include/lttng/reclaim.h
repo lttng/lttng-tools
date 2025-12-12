@@ -44,6 +44,18 @@ enum lttng_reclaim_channel_memory_status {
 
 	/// Unsatisfied precondition.
 	LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_INVALID_PARAMETER = -2,
+
+	/// A memory reclamation request is already in progress for this channel.
+	LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_RECLAMATION_IN_PROGRESS = -3,
+
+	/// Memory reclamation is not supported for this channel.
+	LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_NOT_SUPPORTED = -4,
+
+	/// Session not found.
+	LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_SESSION_NOT_FOUND = -5,
+
+	/// Channel not found.
+	LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_CHANNEL_NOT_FOUND = -6,
 };
 
 /*!
