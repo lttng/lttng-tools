@@ -31,6 +31,16 @@ import contextlib
 import bt2
 
 
+def shutil_ignore_sockets(directory, directory_contents):
+    ignore = list()
+    for entry in directory_contents:
+        full_path = pathlib.Path(os.path.join(directory, entry))
+        if full_path.is_socket():
+            ignore.append(entry)
+
+    return ignore
+
+
 class TemporaryDirectory:
     def __init__(self, prefix):
         # type: (str) -> None
@@ -45,7 +55,14 @@ class TemporaryDirectory:
             if os.getenv("LTTNG_TEST_PRESERVE_TEST_ENV", "0") != "0":
                 destination = os.getenv("LTTNG_TEST_PRESERVE_TEST_ENV_DIR", None)
                 if destination is not None and pathlib.Path(destination).is_dir():
-                    shutil.move(self._directory_path, destination)
+                    shutil.copytree(
+                        self._directory_path,
+                        os.path.join(
+                            destination, os.path.basename(self._directory_path)
+                        ),
+                        ignore=shutil_ignore_sockets,
+                    )
+                    shutil.rmtree(self._directory_path, ignore_errors=True)
             else:
                 shutil.rmtree(self._directory_path, ignore_errors=True)
 
