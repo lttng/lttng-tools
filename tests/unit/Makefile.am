@@ -92,7 +92,6 @@ noinst_PROGRAMS += \
 	test_ust_data
 
 CLEANFILES=
-if IS_X86_64
 if HAVE_CLANG2PY
 
 CLANG_ARGS=-I$(top_srcdir)/include -I$(top_srcdir)/src
@@ -109,7 +108,6 @@ TESTS += \
 	liblttngctl/test_reclaim_channel_memory.py \
 	liblttngctl/test_stream_info.py \
 	liblttngctl/test_watchdog_timer.py
-endif
 endif
 
 EXTRA_DIST += \
@@ -253,12 +251,8 @@ test_poller_SOURCES = test_poller.cpp
 test_poller_LDADD = $(LIBTAP) $(LIBCOMMON_GPL)
 
 # Copy test scripts to the builddir for OOT builds
-if IS_X86_64
 if HAVE_CLANG2PY
 all-local: liblttngctl/lttngctl/lttng.py
-else
-all-local:
-endif
 else
 all-local:
 endif
