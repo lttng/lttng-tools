@@ -270,11 +270,13 @@ end:
  *
  * Return the size of sent data.
  */
-ssize_t lttcomm_send_unix_sock(int sock, const void *buf, size_t len)
+ssize_t lttcomm_send_unix_sock(int sock, const void *buf, size_t len, bool quiet_on_closed)
 {
 	struct msghdr msg;
 	struct iovec iov[1];
 	ssize_t ret;
+
+	quiet_on_closed |= lttng_opt_quiet;
 
 	LTTNG_ASSERT(sock);
 	LTTNG_ASSERT(buf);
@@ -298,7 +300,7 @@ ssize_t lttcomm_send_unix_sock(int sock, const void *buf, size_t len)
 				 * deactivated.
 				 * We consider EPIPE as expected.
 				 */
-				if (errno != EPIPE || !lttng_opt_quiet) {
+				if (errno != EPIPE || !quiet_on_closed) {
 					PERROR("sendmsg");
 				}
 				goto end;
