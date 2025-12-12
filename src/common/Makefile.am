@@ -266,6 +266,8 @@ libconsumer_la_SOURCES = \
 	consumer/monitor-timer-task.hpp \
 	consumer/memory-reclaim-timer-task.cpp \
 	consumer/memory-reclaim-timer-task.hpp \
+	consumer/pending-memory-reclamation-tracker.cpp \
+	consumer/pending-memory-reclamation-tracker.hpp \
 	consumer/reclaim.hpp \
 	consumer/watchdog-timer-task.cpp \
 	consumer/watchdog-timer-task.hpp
