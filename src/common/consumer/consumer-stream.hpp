@@ -169,10 +169,14 @@ void consumer_stream_try_reclaim_current_subbuffer(lttng_consumer_stream& stream
  * Reclaim memory from a stream.
  *
  * This function must be called with the stream and channel locks held.
+ *
+ * If request_token is set, the consumer will track completion of pending
+ * reclamation and send an async notification when complete.
  */
-lttng::consumer::memory_reclaim_result
-consumer_stream_reclaim_memory(lttng_consumer_stream& stream,
-			       const std::chrono::microseconds& age_limit,
-			       bool require_consumed);
+lttng::consumer::memory_reclaim_result consumer_stream_reclaim_memory(
+	lttng_consumer_stream& stream,
+	const std::chrono::microseconds& age_limit,
+	bool require_consumed,
+	const nonstd::optional<std::uint64_t>& request_token = nonstd::nullopt);
 
 #endif /* LTTNG_CONSUMER_STREAM_H */

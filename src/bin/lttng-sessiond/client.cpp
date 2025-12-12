@@ -18,6 +18,7 @@
 #include "kernel.hpp"
 #include "lttng-sessiond.hpp"
 #include "manage-consumer.hpp"
+#include "pending-memory-reclamation-request.hpp"
 #include "save.hpp"
 #include "testpoint.hpp"
 #include "utils.hpp"
@@ -60,6 +61,7 @@
 #include <stdint.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <vector>
 
 namespace ls = lttng::sessiond;
 
@@ -2382,88 +2384,9 @@ skip_domain:
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_RECLAIM_CHANNEL_MEMORY:
-	{
-		DBG("Client reclaim channel memory \"%s\"", (*target_session)->name);
-
-		const auto can_reclaim_memory = [&target_session]() {
-			const auto ust_session = (*target_session)->ust_session;
-
-			if (ust_session) {
-				if (ust_session->supports_madv_remove()) {
-					return true;
-				}
-				WARN_FMT(
-					"Reclaim of memory requires that MADV_REMOVE is supported by the file-system "
-					"containing the shared memory path: "
-					"session_name=`{}`, shm_path=`{}`",
-					(*target_session)->name,
-					ust_session->shm_path);
-			}
-
-			return false;
-		}();
-
-		if (!can_reclaim_memory) {
-			ret = LTTNG_ERR_NOT_SUPPORTED;
-			goto error;
-		}
-
-		/* Validate that channel_name is null-terminated. */
-		const auto channel_name = cmd_ctx->lsm.u.reclaim_channel_memory.channel_name;
-		if (strnlen(channel_name,
-			    sizeof(cmd_ctx->lsm.u.reclaim_channel_memory.channel_name)) ==
-		    sizeof(cmd_ctx->lsm.u.reclaim_channel_memory.channel_name)) {
-			LTTNG_THROW_INVALID_ARGUMENT_ERROR("Channel name is not null-terminated");
-		}
-
-		const auto domain =
-			lttng::get_domain_class_from_lttng_domain_type(cmd_ctx->lsm.domain.type);
-		const auto older_than_age_us =
-			cmd_ctx->lsm.u.reclaim_channel_memory.older_than_age_us;
-
-		const auto reclaim_older_than = older_than_age_us > 0 ?
-			nonstd::optional<std::chrono::microseconds>(
-				std::chrono::microseconds(older_than_age_us)) :
-			nonstd::nullopt;
-
-		/*
-		 * Perform the actual reclaim operation. Note that we require the data to
-		 * be consumed by the consumer for sub-buffers to be reclaimed when an output
-		 * is configured (i.e. when streaming locally or to a relay daemon).
-		 *
-		 * Reclaiming memory on a snapshot (or no-output) session will always
-		 * reclaim all the data that is older than the specified threshold and result
-		 * in the loss of recorded data.
-		 */
-		const auto results = lttng::sessiond::commands::reclaim_channel_memory(
-			*target_session,
-			domain,
-			lttng::c_string_view(channel_name),
-			reclaim_older_than,
-			(*target_session)->output_traces);
-
-		/* Sum up all reclaimed and pending bytes from all groups and streams. */
-		std::uint64_t reclaimed_bytes = 0;
-		std::uint64_t pending_bytes = 0;
-		for (const auto& group : results) {
-			for (const auto& stream : group.reclaimed_streams_memory) {
-				DBG_FMT("Bytes reclaimed: {}, pending: {}",
-					stream.bytes_reclaimed,
-					stream.pending_bytes_to_reclaim);
-				reclaimed_bytes += stream.bytes_reclaimed;
-				pending_bytes += stream.pending_bytes_to_reclaim;
-			}
-		}
-
-		const lttng_reclaim_channel_memory_return reclaim_return = {
-			.reclaimed_memory_size_bytes = reclaimed_bytes,
-			.pending_memory_size_bytes = pending_bytes,
-		};
-
-		setup_lttng_msg_no_cmd_header(cmd_ctx, &reclaim_return, sizeof(reclaim_return));
+		cmd_reclaim_channel_memory(*target_session, cmd_ctx, sock);
 		ret = LTTNG_OK;
 		break;
-	}
 	case LTTCOMM_SESSIOND_COMMAND_GET_CHANNEL_DATA_STREAM_INFO_SETS:
 	{
 		DBG("Client get channel data stream info sets \"%s\"", (*target_session)->name);
@@ -2984,8 +2907,8 @@ void *thread_manage_clients(void *data)
 
 		if (ret != LTTNG_OK) {
 			/*
-			 * Reset the payload contents as the command may have left them in an
-			 * inconsistent state.
+			 * Reset the payload contents as the command may have left them in
+			 * an inconsistent state.
 			 */
 			setup_empty_lttng_msg(&cmd_ctx);
 		}

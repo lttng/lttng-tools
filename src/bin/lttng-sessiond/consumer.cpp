@@ -53,6 +53,11 @@ std::vector<std::uint8_t> consumer_request(consumer_socket& socket,
 	const auto recv_reply_header_ret =
 		consumer_socket_recv(&socket, &reply_header, sizeof(reply_header));
 	if (recv_reply_header_ret < 0) {
+		if (errno == 0) {
+			/* Our peer closed the connection unexpectedly. */
+			errno = ECONNRESET;
+		}
+
 		LTTNG_THROW_POSIX("Failed to receive command reply header from consumer daemon",
 				  errno);
 	}
@@ -1946,7 +1951,8 @@ std::vector<lsc::stream_memory_reclamation_result_group> lsc::reclaim_channels_m
 	consumer_socket& socket,
 	const std::vector<std::uint64_t>& channel_keys,
 	const nonstd::optional<std::chrono::microseconds>& reclaim_older_than_age,
-	bool require_consumed)
+	bool require_consumed,
+	std::uint64_t memory_reclaim_request_token)
 {
 	LTTNG_ASSERT(!channel_keys.empty());
 
@@ -1957,6 +1963,8 @@ std::vector<lsc::stream_memory_reclamation_result_group> lsc::reclaim_channels_m
 
 	header.u.reclaim_channels_memory.key_count = channel_keys.size();
 	header.u.reclaim_channels_memory.require_consumed = require_consumed;
+	header.u.reclaim_channels_memory.memory_reclaim_request_token =
+		memory_reclaim_request_token;
 	if (reclaim_older_than_age) {
 		LTTNG_OPTIONAL_SET(&header.u.reclaim_channels_memory.age_limit_us,
 				   static_cast<uint64_t>(reclaim_older_than_age->count()));

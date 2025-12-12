@@ -18,6 +18,7 @@
 #include <common/consumer/consumer-testpoint.hpp>
 #include <common/consumer/consumer-timer.hpp>
 #include <common/consumer/consumer.hpp>
+#include <common/consumer/memory-reclaim-timer-task.hpp>
 #include <common/dynamic-array.hpp>
 #include <common/index/ctf-index.hpp>
 #include <common/index/index.hpp>
@@ -1272,6 +1273,12 @@ restart:
 void lttng_consumer_set_error_sock(struct lttng_consumer_local_data *ctx, int sock)
 {
 	ctx->consumer_error_socket.fd = sock;
+
+	/* Initialize the pending memory reclaim tracker with the error socket and scheduler. */
+	lttng::consumerd::the_pending_memory_reclamation_tracker.set_error_socket(
+		ctx->consumer_error_socket);
+	lttng::consumerd::the_pending_memory_reclamation_tracker.set_scheduler(
+		ctx->timer_task_scheduler);
 }
 
 /*

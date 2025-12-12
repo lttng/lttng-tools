@@ -360,6 +360,11 @@ reclaim_result execute_reclaim(const reclaim_config& config)
 						      get_pending_status));
 		}
 
+		if (!config.no_wait) {
+			reclaimed_bytes += pending_bytes;
+			pending_bytes = 0;
+		}
+
 		result.reclaimed_per_channel.emplace(
 			std::move(op.first), reclamation_amount{ reclaimed_bytes, pending_bytes });
 	}

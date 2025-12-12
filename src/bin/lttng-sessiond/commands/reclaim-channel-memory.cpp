@@ -15,6 +15,7 @@
 #include <common/urcu.hpp>
 
 #include <bin/lttng-sessiond/consumer.hpp>
+#include <bin/lttng-sessiond/pending-memory-reclamation-request.hpp>
 #include <numeric>
 #include <unordered_map>
 
@@ -94,6 +95,7 @@ void issue_consumer_reclaim_channel_memory(
 	const std::vector<std::uint64_t>& target_consumer_channel_keys,
 	const nonstd::optional<std::chrono::microseconds>& reclaim_older_than_age,
 	bool only_reclaim_consumed_data,
+	std::uint64_t memory_reclaim_request_token,
 	std::vector<lsc::stream_memory_reclamation_result_group>& result)
 {
 	if (target_consumer_channel_keys.empty()) {
@@ -105,7 +107,8 @@ void issue_consumer_reclaim_channel_memory(
 		lttng::sessiond::consumer::reclaim_channels_memory(consumer_socket,
 								   target_consumer_channel_keys,
 								   reclaim_older_than_age,
-								   only_reclaim_consumed_data);
+								   only_reclaim_consumed_data,
+								   memory_reclaim_request_token);
 
 	for (const auto& channel_reclaimed_memory : channels_reclaimed_memory) {
 		const auto it = channel_descriptions.find(std::make_pair(
@@ -155,12 +158,14 @@ void issue_consumer_reclaim_channel_memory(
 }
 } /* namespace */
 
-std::vector<lsc::stream_memory_reclamation_result_group> lsc::reclaim_channel_memory(
+lsc::reclaim_channel_memory_result lsc::reclaim_channel_memory(
 	const ltt_session::locked_ref& session,
 	lttng::domain_class domain,
 	lttng::c_string_view channel_name,
 	const nonstd::optional<std::chrono::microseconds>& reclaim_older_than_age,
-	bool require_consumed)
+	bool require_consumed,
+	lsc::completion_callback_t on_complete,
+	lsc::cancellation_callback_t on_cancel)
 {
 	DBG_FMT("Reclaiming memory for channel: session_name=`{}`, domain={}, channel_name=`{}`, age_older_than={}, require_consumed={}",
 		session->name,
@@ -216,64 +221,117 @@ std::vector<lsc::stream_memory_reclamation_result_group> lsc::reclaim_channel_me
 			consumer_channel_description);
 	}
 
+	const unsigned int consumer_count = (!consumer32_channel_keys.empty() ? 1 : 0) +
+		(!consumer64_channel_keys.empty() ? 1 : 0);
+
+	/*
+	 * Create the completion tracking request before issuing reclaim operations.
+	 * The consumers will signal completion on their own when they're done.
+	 */
+	DBG_FMT("Creating completion tracking request: consumer_count={}", consumer_count);
+
+	const auto token = lttng::sessiond::the_pending_memory_reclamation_registry.create_request(
+		*session,
+		channel_name,
+		consumer_count,
+		std::move(on_complete),
+		std::move(on_cancel));
+
+	/*
+	 * Issue reclaim requests with the token. Consumers will report completion
+	 * when they're done processing any pending sub-buffers.
+	 */
 	std::vector<lsc::stream_memory_reclamation_result_group> result;
+
 	/* Handle 32-bit ABI stream groups. */
 	if (!consumer32_channel_keys.empty()) {
 		const lttng::urcu::read_lock_guard read_lock;
 
-		issue_consumer_reclaim_channel_memory(
-			*consumer_find_socket_by_bitness(32, session->ust_session->consumer),
-			lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness::ABI_32,
-			session,
-			channel_descriptions,
-			is_per_cpu_stream,
-			consumer32_channel_keys,
-			reclaim_older_than_age,
-			require_consumed,
-			result);
+		try {
+			issue_consumer_reclaim_channel_memory(
+				*consumer_find_socket_by_bitness(32,
+								 session->ust_session->consumer),
+				lttng::sessiond::user_space_consumer_channel_keys::
+					consumer_bitness::ABI_32,
+				session,
+				channel_descriptions,
+				is_per_cpu_stream,
+				consumer32_channel_keys,
+				reclaim_older_than_age,
+				require_consumed,
+				token,
+				result);
+		} catch (const std::exception& e) {
+			/* Clean up the pending request on error. */
+			lttng::sessiond::the_pending_memory_reclamation_registry.cancel_request(
+				token);
+			throw;
+		}
 	}
 
 	/* Handle 64-bit ABI stream groups. */
 	if (!consumer64_channel_keys.empty()) {
 		const lttng::urcu::read_lock_guard read_lock;
 
-		issue_consumer_reclaim_channel_memory(
-			*consumer_find_socket_by_bitness(64, session->ust_session->consumer),
-			lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness::ABI_64,
-			session,
-			channel_descriptions,
-			is_per_cpu_stream,
-			consumer64_channel_keys,
-			reclaim_older_than_age,
-			require_consumed,
-			result);
+		try {
+			issue_consumer_reclaim_channel_memory(
+				*consumer_find_socket_by_bitness(64,
+								 session->ust_session->consumer),
+				lttng::sessiond::user_space_consumer_channel_keys::
+					consumer_bitness::ABI_64,
+				session,
+				channel_descriptions,
+				is_per_cpu_stream,
+				consumer64_channel_keys,
+				reclaim_older_than_age,
+				require_consumed,
+				token,
+				result);
+		} catch (const std::exception& e) {
+			/* Clean up the pending request on error. */
+			lttng::sessiond::the_pending_memory_reclamation_registry.cancel_request(
+				token);
+			throw;
+		}
 	}
 
 	/* Log results. */
 	for (const auto& stream_group : result) {
-		DBG_FMT("Reclaimed memory for streams in group:session_name=`{}`, domain={}, channel_name=`{}`, "
-			"owner_type={}, bitness={}, streams_count={}, total_reclaimed={} bytes",
+		const auto total_reclaimed = std::accumulate(
+			stream_group.reclaimed_streams_memory.begin(),
+			stream_group.reclaimed_streams_memory.end(),
+			0ULL,
+			[](std::uint64_t sum,
+			   const lsc::stream_memory_reclamation_result& stream_result) {
+				return sum + stream_result.bytes_reclaimed;
+			});
+		const auto total_pending = std::accumulate(
+			stream_group.reclaimed_streams_memory.begin(),
+			stream_group.reclaimed_streams_memory.end(),
+			0ULL,
+			[](std::uint64_t sum,
+			   const lsc::stream_memory_reclamation_result& stream_result) {
+				return sum + stream_result.pending_bytes_to_reclaim;
+			});
+
+		DBG_FMT("Reclaimed memory for streams in group: session_name=`{}`, domain={}, channel_name=`{}`, "
+			"owner_type={}, bitness={}, streams_count={}, total_reclaimed={}, total_pending={}",
 			session->name,
 			domain,
 			channel_name,
 			stream_group.owner.owner_type,
 			stream_group.owner.bitness,
 			stream_group.reclaimed_streams_memory.size(),
-			std::accumulate(
-				stream_group.reclaimed_streams_memory.begin(),
-				stream_group.reclaimed_streams_memory.end(),
-				0ULL,
-				[](std::uint64_t sum,
-				   const lsc::stream_memory_reclamation_result& stream_result) {
-					return sum + stream_result.bytes_reclaimed;
-				}));
+			total_reclaimed,
+			total_pending);
 
 		for (const auto& stream_result : stream_group.reclaimed_streams_memory) {
-			DBG_FMT("Reclaimed stream memory: id={}, bytes_reclaimed={}",
+			DBG_FMT("Reclaimed stream memory: id={}, bytes_reclaimed={}, pending_bytes={}",
 				stream_result.id,
-				stream_result.bytes_reclaimed);
+				stream_result.bytes_reclaimed,
+				stream_result.pending_bytes_to_reclaim);
 		}
 	}
 
-	return result;
+	return { std::move(result), token };
 }

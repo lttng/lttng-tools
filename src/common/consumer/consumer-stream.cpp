@@ -1527,7 +1527,8 @@ void consumer_stream_try_reclaim_current_subbuffer(lttng_consumer_stream& stream
 lttng::consumer::memory_reclaim_result
 consumer_stream_reclaim_memory(lttng_consumer_stream& stream,
 			       const std::chrono::microseconds& age_limit,
-			       bool require_consumed)
+			       bool require_consumed,
+			       const nonstd::optional<std::uint64_t>& request_token)
 {
 	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
@@ -1535,7 +1536,8 @@ consumer_stream_reclaim_memory(lttng_consumer_stream& stream,
 			"Buffer reclamation is not available for kernel consumer streams");
 	case LTTNG_CONSUMER32_UST:
 	case LTTNG_CONSUMER64_UST:
-		return lttng_ustconsumer_reclaim_stream_memory(stream, age_limit, require_consumed);
+		return lttng_ustconsumer_reclaim_stream_memory(
+			stream, age_limit, require_consumed, request_token);
 		break;
 	default:
 		ERR("Unknown consumer_data type");

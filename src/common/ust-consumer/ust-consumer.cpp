@@ -1717,10 +1717,11 @@ static unsigned long get_current_consumed_position(lttng_consumer_stream& stream
 	return consumed_pos;
 }
 
-lttng::consumer::memory_reclaim_result
-lttng_ustconsumer_reclaim_stream_memory(lttng_consumer_stream& stream,
-					nonstd::optional<std::chrono::microseconds> age_limit,
-					bool require_consumed)
+lttng::consumer::memory_reclaim_result lttng_ustconsumer_reclaim_stream_memory(
+	lttng_consumer_stream& stream,
+	nonstd::optional<std::chrono::microseconds> age_limit,
+	bool require_consumed,
+	const nonstd::optional<std::uint64_t>& memory_reclaim_request_token)
 {
 	DBG_FMT("Reclaiming stream memory: channel_name=`{}`, stream_key={}, age_limit_us={}, require_consumed={}",
 		stream.chan->name,
@@ -1979,22 +1980,95 @@ lttng_ustconsumer_reclaim_stream_memory(lttng_consumer_stream& stream,
 	result.bytes_reclaimed = reclaimed_subbuf_count * stream.max_sb_size;
 	result.pending_bytes_to_reclaim = deferred_reclaim_subbuf_count * stream.max_sb_size;
 
-	/* A reclamation shouldn't be ongoing. */
-	LTTNG_ASSERT(!stream.pending_memory_reclamation);
-	if (deferred_reclaim_subbuf_count != 0) {
-		stream.pending_memory_reclamation =
-			consumer_stream_pending_reclamation{ deferred_reclaim_subbuf_count,
-							     age_limit };
+	if (deferred_reclaim_subbuf_count == 0) {
+		return result;
+	}
+
+	/* Handle deferred memory reclamation. */
+
+	/*
+	 * Handle existing pending reclamation.
+	 *
+	 * User requests (with a token) take precedence over timer-initiated requests
+	 * (without a token). If there's an existing tokenless pending reclamation,
+	 * overwrite it with the user's token. This ensures the user gets notified
+	 * when the pending buffers complete.
+	 *
+	 * Concurrent user requests for the same channel are rejected at the session
+	 * daemon level, so we should never see two pending reclamations with tokens.
+	 */
+	if (stream.pending_memory_reclamation) {
+		if (memory_reclaim_request_token) {
+			/*
+			 * User request arriving while a pending reclamation exists.
+			 * This should only happen if the existing reclamation is tokenless
+			 * (timer-initiated).
+			 */
+			LTTNG_ASSERT(
+				!stream.pending_memory_reclamation->memory_reclaim_request_token);
+
+			DBG_FMT("Overwriting tokenless pending reclamation with user token: "
+				"channel_name=`{}`, stream_key={}, token={}, "
+				"existing_subbuffer_count={}, new_subbuffer_count={}",
+				stream.chan->name,
+				stream.key,
+				*memory_reclaim_request_token,
+				stream.pending_memory_reclamation->subbuffer_count,
+				deferred_reclaim_subbuf_count);
+
+			/*
+			 * Overwrite the existing pending reclamation with the new parameters.
+			 * Users (interactive requests) take precedence over timer-initiated ones.
+			 */
+			stream.pending_memory_reclamation =
+				consumer_stream_pending_reclamation{ deferred_reclaim_subbuf_count,
+								     age_limit,
+								     memory_reclaim_request_token };
+
+			/* Register with the tracker for async completion notification. */
+			lttng::consumerd::the_pending_memory_reclamation_tracker.register_stream(
+				*memory_reclaim_request_token);
+		} else {
+			/* Timer-initiated request while another pending reclamation exists. */
+			if (!stream.pending_memory_reclamation->memory_reclaim_request_token) {
+				/*
+				 * If the current request has a token, it means it was initiated
+				 * by the user; let it complete. The timer-initiated request can
+				 * be skipped; it will re-fire later.
+				 *
+				 * Otherwise, it's a new timer-initiated request; overwrite the
+				 * existing one with the new parameters.
+				 */
+				stream.pending_memory_reclamation =
+					consumer_stream_pending_reclamation{
+						deferred_reclaim_subbuf_count,
+						age_limit,
+						nonstd::nullopt
+					};
+			}
+		}
+	} else {
+		/* Register the new deferred memory reclamation request. */
+		stream.pending_memory_reclamation = consumer_stream_pending_reclamation{
+			deferred_reclaim_subbuf_count, age_limit, memory_reclaim_request_token
+		};
+
+		/* Register this stream with the tracker for async completion notification. */
+		if (memory_reclaim_request_token) {
+			lttng::consumerd::the_pending_memory_reclamation_tracker.register_stream(
+				*memory_reclaim_request_token);
+		}
 	}
 
 	return result;
 }
 
-static void
-lttng_ustconsumer_reclaim_channels_memory(int socket,
-					  std::uint64_t channel_count,
-					  nonstd::optional<std::chrono::microseconds> age_limit,
-					  bool require_consumed)
+static void lttng_ustconsumer_reclaim_channels_memory(
+	int socket,
+	std::uint64_t channel_count,
+	nonstd::optional<std::chrono::microseconds> age_limit,
+	bool require_consumed,
+	const nonstd::optional<std::uint64_t>& memory_reclaim_request_token)
 {
 	std::vector<std::uint64_t> channel_keys;
 
@@ -2036,9 +2110,28 @@ lttng_ustconsumer_reclaim_channels_memory(int socket,
 		}
 
 		const lttng::pthread::lock_guard channel_lock(channel->lock);
-		DBG_FMT("Reclaiming memory channel: key={}, channel_name=`{}`",
+		DBG_FMT("Reclaiming memory channel: key={}, channel_name=`{}`, memory_reclaim_request_token={}",
 			channel_key,
-			channel->name);
+			channel->name,
+			memory_reclaim_request_token ?
+				std::to_string(*memory_reclaim_request_token) :
+				"none");
+
+		/*
+		 * Suspend the channel's memory reclaim timer task during the user request.
+		 * It will be resumed when the request completes.
+		 */
+		if (memory_reclaim_request_token && channel->memory_reclaim_timer_task) {
+			/*
+			 * Since only one memory reclamation request can be active per channel at a
+			 * time, cancel any ongoing timer task before proceeding with the user
+			 * request.
+			 */
+			DBG_FMT("Suspending memory reclaim timer task for channel: key={}, channel_name=`{}`",
+				channel_key,
+				channel->name);
+			channel->memory_reclaim_timer_task->cancel();
+		}
 
 		if (channel->monitor) {
 			const lttng::urcu::read_lock_guard read_lock;
@@ -2059,7 +2152,10 @@ lttng_ustconsumer_reclaim_channels_memory(int socket,
 				}
 
 				const auto result = lttng_ustconsumer_reclaim_stream_memory(
-					*stream, age_limit, require_consumed);
+					*stream,
+					age_limit,
+					require_consumed,
+					memory_reclaim_request_token);
 
 				DBG_FMT("Memory reclaim evaluation completed for stream: channel_name=`{}`, stream_key={}, bytes_reclaimed={}, pending_bytes_to_reclaim={}",
 					channel->name,
@@ -2092,7 +2188,10 @@ lttng_ustconsumer_reclaim_channels_memory(int socket,
 				const lttng::pthread::lock_guard stream_lock(stream->lock);
 
 				const auto result = lttng_ustconsumer_reclaim_stream_memory(
-					*stream, age_limit, require_consumed);
+					*stream,
+					age_limit,
+					require_consumed,
+					memory_reclaim_request_token);
 
 				const lttcomm_stream_memory_reclamation_result
 					stream_reclamation_result = {
@@ -2132,6 +2231,18 @@ lttng_ustconsumer_reclaim_channels_memory(int socket,
 				"Failed to send channel memory reclamation reply to session daemon: payload_size={} bytes",
 				reply_payload.size()),
 			errno);
+	}
+
+	/*
+	 * If a token was provided, ensure completion is sent.
+	 *
+	 * If any streams had pending reclamation, they registered with the tracker
+	 * and completion will be sent when all streams complete. If no streams
+	 * had pending reclamation (immediate completion), send the notification now.
+	 */
+	if (memory_reclaim_request_token) {
+		lttng::consumerd::the_pending_memory_reclamation_tracker
+			.complete_if_no_pending_streams(*memory_reclaim_request_token);
 	}
 }
 
@@ -3267,11 +3378,18 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 					msg.u.reclaim_channels_memory.age_limit_us.value);
 			}
 
+			/*
+			 * Copy from packed struct field to avoid reference binding issues.
+			 */
+			const auto memory_reclaim_request_token =
+				msg.u.reclaim_channels_memory.memory_reclaim_request_token;
+
 			lttng_ustconsumer_reclaim_channels_memory(
 				sock,
 				msg.u.reclaim_channels_memory.key_count,
 				age_limit,
-				msg.u.reclaim_channels_memory.require_consumed);
+				msg.u.reclaim_channels_memory.require_consumed,
+				nonstd::optional<std::uint64_t>(memory_reclaim_request_token));
 		} catch (lttng::consumerd::exceptions::channel_not_found_error& ex) {
 			ERR_FMT("Failed to reclaim memory of channels: {}", ex.what());
 			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
@@ -4976,7 +5094,16 @@ void lttng_ustconsumer_try_reclaim_current_subbuffer(lttng_consumer_stream& stre
 		if (!subbuffer_too_old(
 			    stream, subbuffer, *stream.pending_memory_reclamation->max_age)) {
 			/* Reclamation is done (all other subbuffers are too recent). */
+			const auto token =
+				stream.pending_memory_reclamation->memory_reclaim_request_token;
 			stream.pending_memory_reclamation.reset();
+
+			if (token) {
+				/* Notify tracker that this stream has completed. */
+				lttng::consumerd::the_pending_memory_reclamation_tracker
+					.stream_completed(stream, *token);
+			}
+
 			return;
 		}
 	}
@@ -5052,7 +5179,15 @@ void lttng_ustconsumer_try_reclaim_current_subbuffer(lttng_consumer_stream& stre
 	if (stream.pending_memory_reclamation) {
 		/* Decrement pending count. */
 		if (--stream.pending_memory_reclamation->subbuffer_count == 0) {
+			const auto token =
+				stream.pending_memory_reclamation->memory_reclaim_request_token;
 			stream.pending_memory_reclamation.reset();
+
+			/* Notify tracker that this stream has completed. */
+			if (token) {
+				lttng::consumerd::the_pending_memory_reclamation_tracker
+					.stream_completed(stream, *token);
+			}
 		}
 	}
 }

@@ -192,6 +192,10 @@ int cmd_rotation_set_schedule(const ltt_session::locked_ref& session,
 			      enum lttng_rotation_schedule_type schedule_type,
 			      uint64_t value);
 
+void cmd_reclaim_channel_memory(ltt_session::locked_ref& session,
+				struct command_ctx *cmd_ctx,
+				int *sock);
+
 const struct cmd_completion_handler *cmd_pop_completion_handler();
 int start_kernel_session(struct ltt_kernel_session *ksess);
 int stop_kernel_session(struct ltt_kernel_session *ksess);

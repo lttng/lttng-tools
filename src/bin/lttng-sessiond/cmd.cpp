@@ -25,6 +25,7 @@
 #include "lttng-syscall.hpp"
 #include "notification-thread-commands.hpp"
 #include "notification-thread.hpp"
+#include "pending-memory-reclamation-request.hpp"
 #include "recording-channel-configuration.hpp"
 #include "rotation-thread.hpp"
 #include "session.hpp"
@@ -47,8 +48,10 @@
 #include <common/relayd/relayd.hpp>
 #include <common/scope-exit.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/stream-descriptor.hpp>
 #include <common/string-utils/string-utils.hpp>
 #include <common/trace-chunk.hpp>
+#include <common/unix.hpp>
 #include <common/urcu.hpp>
 #include <common/utils.hpp>
 
@@ -67,6 +70,7 @@
 #include <lttng/kernel.h>
 #include <lttng/location-internal.hpp>
 #include <lttng/lttng-error.h>
+#include <lttng/reclaim-internal.hpp>
 #include <lttng/rotate-internal.hpp>
 #include <lttng/session-descriptor-internal.hpp>
 #include <lttng/session-internal.hpp>
@@ -75,11 +79,14 @@
 #include <lttng/userspace-probe-internal.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <inttypes.h>
+#include <memory>
 #include <stdio.h>
 #include <sys/stat.h>
 #include <urcu/list.h>
 #include <urcu/uatomic.h>
+#include <vector>
 
 /* Sleep for 100ms between each check for the shm path's deletion. */
 #define SESSION_DESTROY_SHM_PATH_CHECK_DELAY_US 100000
@@ -6484,6 +6491,246 @@ static enum lttng_error_code wait_on_path(void *path_data)
 		usleep(SESSION_DESTROY_SHM_PATH_CHECK_DELAY_US);
 	}
 	return LTTNG_OK;
+}
+
+/*
+ * Send response to client for memory reclaim command. When ret_code is LTTNG_OK and
+ * sizes are provided, the payload includes the reclaimed/pending amounts.
+ * The header and payload (when applicable) are merged into a single
+ * buffer and sent in one shot.
+ */
+static void send_reclaim_channel_memory_response(int client_socket,
+						 enum lttng_error_code ret_code,
+						 std::uint64_t reclaimed,
+						 std::uint64_t pending)
+{
+	const bool has_payload = ret_code == LTTNG_OK;
+
+	struct lttcomm_lttng_msg llm = {
+		.cmd_type = LTTCOMM_SESSIOND_COMMAND_RECLAIM_CHANNEL_MEMORY,
+		.ret_code = ret_code,
+		.cmd_header_size = 0,
+		.data_size = static_cast<uint32_t>(
+			has_payload ? sizeof(lttng_reclaim_channel_memory_return) : 0),
+		.fd_count = 0,
+	};
+
+	std::vector<char> buffer(sizeof(llm) +
+				 (has_payload ? sizeof(lttng_reclaim_channel_memory_return) : 0));
+	memcpy(buffer.data(), &llm, sizeof(llm));
+
+	if (has_payload) {
+		const lttng_reclaim_channel_memory_return reclaim_return = {
+			.reclaimed_memory_size_bytes = reclaimed,
+			.pending_memory_size_bytes = pending,
+		};
+		memcpy(buffer.data() + sizeof(llm), &reclaim_return, sizeof(reclaim_return));
+
+		DBG_FMT("Sending reclaim result to client: socket={}, reclaimed={}, pending={}",
+			client_socket,
+			reclaimed,
+			pending);
+	} else {
+		DBG_FMT("Sending reclaim error to client: socket={}, ret_code={}",
+			client_socket,
+			static_cast<int>(ret_code));
+	}
+
+	if (lttcomm_send_unix_sock(client_socket, buffer.data(), buffer.size()) !=
+	    static_cast<ssize_t>(buffer.size())) {
+		LTTNG_THROW_POSIX(
+			fmt::format("Failed to send reclaim response to client: socket={}",
+				    client_socket),
+			errno);
+	}
+}
+
+/*
+ * Reclaim channel memory for the given session and channel.
+ *
+ * This function takes immediate ownership of the socket by wrapping it in an RAII
+ * manager. *sock is set to -1 at the start to indicate ownership transfer. The socket
+ * is closed automatically when the RAII wrapper is destroyed, either on exception or
+ * when the completion/cancellation callbacks are released.
+ */
+void cmd_reclaim_channel_memory(ltt_session::locked_ref& session,
+				struct command_ctx *cmd_ctx,
+				int *_sock)
+{
+	DBG("Client reclaim channel memory \"%s\"", session->name);
+
+	if (!session->ust_session->supports_madv_remove()) {
+		LTTNG_THROW_CTL(
+			fmt::format(
+				"Reclaim of memory requires that MADV_REMOVE is supported by the file-system "
+				"containing the shared memory path: "
+				"session_name=`{}`, shm_path=`{}`",
+				session->name,
+				session->ust_session->shm_path),
+			LTTNG_ERR_NOT_SUPPORTED);
+	}
+
+	/* Validate that channel_name is null-terminated. */
+	const auto channel_name = cmd_ctx->lsm.u.reclaim_channel_memory.channel_name;
+	if (strnlen(channel_name, sizeof(cmd_ctx->lsm.u.reclaim_channel_memory.channel_name)) ==
+	    sizeof(cmd_ctx->lsm.u.reclaim_channel_memory.channel_name)) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR("Channel name is not null-terminated");
+	}
+
+	/* Check if a reclamation request is already in progress for this channel. */
+	if (session->has_pending_recording_channel_memory_reclamation(channel_name)) {
+		/*
+		 * LTTNG_ERR_ROTATION_PENDING is translated to
+		 * LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_RECLAMATION_IN_PROGRESS by
+		 * liblttng-ctl.
+		 */
+		LTTNG_THROW_CTL(
+			fmt::format(
+				"Reclamation of channel memory is already in progress: session_name=`{}`, channel_name=`{}`",
+				session->name,
+				channel_name),
+			LTTNG_ERR_ROTATION_PENDING);
+	}
+
+	const auto domain =
+		lttng::get_domain_class_from_lttng_domain_type(cmd_ctx->lsm.domain.type);
+
+	const auto reclaim_older_than = cmd_ctx->lsm.u.reclaim_channel_memory.older_than_age_us >
+			0 ?
+		nonstd::optional<std::chrono::microseconds>(std::chrono::microseconds(
+			cmd_ctx->lsm.u.reclaim_channel_memory.older_than_age_us)) :
+		nonstd::nullopt;
+
+	/*
+	 * Wrap the socket in a shared_ptr to an RAII wrapper. This ensures the
+	 * socket is closed on any exit path (exception, callback destruction, etc.).
+	 * Both the completion and cancellation callbacks capture this shared_ptr,
+	 * and the socket will be closed when the last reference is released.
+	 */
+	auto client_socket = std::make_shared<lttng::stream_descriptor>(*_sock);
+	*_sock = -1;
+
+	lttng::sessiond::commands::reclaim_channel_memory_result reclaim_result;
+	std::uint64_t reclaimed_bytes = 0;
+	std::uint64_t pending_bytes = 0;
+
+	try {
+		/*
+		 * Perform the reclaim operation. If there are pending bytes, the function
+		 * will create a completion tracking request and return its token.
+		 *
+		 * The callbacks capture a shared_ptr to the socket wrapper. When the last
+		 * reference is released (either through callback execution or destruction),
+		 * the socket is closed automatically via RAII.
+		 */
+		reclaim_result = ls::commands::reclaim_channel_memory(
+			session,
+			domain,
+			lttng::c_string_view(channel_name),
+			reclaim_older_than,
+			session->output_traces,
+			[client_socket](bool success) {
+				/*
+				 * Completion callback: Send async completion status to client.
+				 * The memory amounts were already sent in the initial response.
+				 * The socket is closed automatically when the shared_ptr is
+				 * released.
+				 */
+				const lttng_reclaim_channel_memory_async_completion completion = {
+					.status = static_cast<int8_t>(
+						success ?
+							LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_OK :
+							LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_ERROR),
+				};
+
+				DBG_FMT("Sending reclaim async completion to client: socket={}, success={}",
+					client_socket->fd(),
+					success);
+				/*
+				 * Client may not be waiting for a reply; we don't want to log
+				 * an error if it closed the socket already.
+				 */
+				if (lttcomm_send_unix_sock(client_socket->fd(),
+							   &completion,
+							   sizeof(completion),
+							   true) != (ssize_t) sizeof(completion)) {
+					if (errno != EPIPE) {
+						ERR_FMT("Failed to send reclaim async completion to client: socket={}",
+							client_socket->fd());
+					}
+				}
+			},
+			[client_socket]() {
+				/*
+				 * Cancellation callback: The socket is closed automatically
+				 * when the shared_ptr is released.
+				 */
+				DBG_FMT("Cancelling reclaim request: socket={}",
+					client_socket->fd());
+			});
+
+		/* Sum up all reclaimed and pending bytes from all groups and streams. */
+		for (const auto& group : reclaim_result.groups) {
+			for (const auto& stream : group.reclaimed_streams_memory) {
+				DBG_FMT("Bytes reclaimed: {}, pending: {}",
+					stream.bytes_reclaimed,
+					stream.pending_bytes_to_reclaim);
+				reclaimed_bytes += stream.bytes_reclaimed;
+				pending_bytes += stream.pending_bytes_to_reclaim;
+			}
+		}
+	} catch (const std::exception& e) {
+		/* On exception, transfer socket ownership back to caller and re-throw. */
+		ERR_FMT("Failed to setup channel memory reclamation request: session=`{}`, channel=`{}`, error=`{}`",
+			session->name,
+			channel_name,
+			e.what());
+		*_sock = client_socket->release();
+		throw;
+	}
+
+	const auto token = reclaim_result.token;
+
+	DBG_FMT("Memory reclaim operation completed: session=`{}`, channel=`{}`, token={}, "
+		"reclaimed_bytes={}, pending_bytes={}",
+		session->name,
+		channel_name,
+		token,
+		reclaimed_bytes,
+		pending_bytes);
+
+	/*
+	 * Send result immediately to the client. We send this ourselves
+	 * (not via setup_lttng_msg_no_cmd_header) because we want to keep
+	 * the socket open for the deferred completion status if needed.
+	 */
+	send_reclaim_channel_memory_response(
+		client_socket->fd(), LTTNG_OK, reclaimed_bytes, pending_bytes);
+
+	DBG_FMT("Memory reclamation request allowed to complete: session=`{}`, channel=`{}`, token={}, "
+		"reclaimed_bytes={}, pending_bytes={}",
+		session->name,
+		channel_name,
+		token,
+		reclaimed_bytes,
+		pending_bytes);
+
+	/*
+	 * Release the session's lock and reference since the completion callback
+	 * may need to lock the session.
+	 */
+	session.reset();
+
+	/*
+	 * Now that the initial response has been sent, allow the request
+	 * to complete. This prevents the race where consumers complete and
+	 * try to send the final status before the initial response with the
+	 * memory amounts.
+	 *
+	 * If there are no pending bytes or no consumers, the completion
+	 * callback is invoked immediately.
+	 */
+	ls::the_pending_memory_reclamation_registry.allow_completion(token);
 }
 
 /*

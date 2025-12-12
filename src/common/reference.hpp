@@ -62,6 +62,11 @@ public:
 		_value = nullptr;
 	}
 
+	void reset() noexcept
+	{
+		_clean_up();
+	}
+
 	~non_copyable_reference()
 	{
 		_clean_up();
