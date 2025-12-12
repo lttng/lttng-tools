@@ -468,6 +468,8 @@ using reset_metadata_cb = void (*)(struct lttng_consumer_stream *);
 struct consumer_stream_pending_reclamation {
 	unsigned long subbuffer_count;
 	nonstd::optional<std::chrono::microseconds> max_age;
+	/* Token for async completion tracking. */
+	nonstd::optional<std::uint64_t> memory_reclaim_request_token;
 };
 
 /*
@@ -952,8 +954,11 @@ public:
 	std::uint64_t channel_key;
 };
 } /* namespace exceptions */
+
 } /* namespace consumerd */
 } /* namespace lttng */
+
+#include <common/consumer/pending-memory-reclamation-tracker.hpp>
 
 /*
  * Set to nonzero when the consumer is exiting. Updated by signal

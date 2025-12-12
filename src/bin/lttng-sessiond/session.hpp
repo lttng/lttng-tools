@@ -18,6 +18,7 @@
 #include <common/dynamic-array.hpp>
 #include <common/exception.hpp>
 #include <common/hashtable/hashtable.hpp>
+#include <common/macros.hpp>
 #include <common/make-unique-wrapper.hpp>
 #include <common/pthread-lock.hpp>
 #include <common/reference.hpp>
@@ -34,6 +35,8 @@
 #include <limits.h>
 #include <mutex>
 #include <stdbool.h>
+#include <string>
+#include <unordered_set>
 #include <urcu/list.h>
 #include <utility>
 
@@ -423,6 +426,12 @@ struct ltt_session {
 	friend lttng::sessiond::user_space_consumer_channel_keys::iterator;
 
 private:
+	/*
+	 * Set of channel names that have a user-initiated reclamation request
+	 * in progress. Used to reject concurrent requests on the same channel.
+	 */
+	std::unordered_set<std::string> _channels_with_pending_reclaim;
+
 	static void _locked_session_release(ltt_session *session);
 	static void _locked_const_session_release(const ltt_session *session);
 	static void _const_session_put(const ltt_session *session);
@@ -479,6 +488,11 @@ public:
 
 	void lock() const noexcept;
 	void unlock() const noexcept;
+
+	bool has_pending_recording_channel_memory_reclamation(
+		const lttng::c_string_view channel_name) const;
+	void add_pending_reclamation(std::string channel_name);
+	void remove_pending_reclamation(const lttng::c_string_view channel_name);
 
 	lttng::sessiond::domain& get_domain(lttng::domain_class domain);
 	const lttng::sessiond::domain& get_domain(lttng::domain_class domain) const;

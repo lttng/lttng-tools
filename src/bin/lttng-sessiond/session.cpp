@@ -10,6 +10,7 @@
 #include "cmd.hpp"
 #include "kernel.hpp"
 #include "lttng-sessiond.hpp"
+#include "pending-memory-reclamation-request.hpp"
 #include "session.hpp"
 #include "timer.hpp"
 #include "trace-ust.hpp"
@@ -1961,4 +1962,34 @@ ls::ust::registry_session *
 ls::user_space_consumer_channel_keys::iterator::_get_registry_session_per_uid()
 {
 	return _position._per_uid.current_registry->registry->reg.ust;
+}
+
+bool ltt_session::has_pending_recording_channel_memory_reclamation(
+	const lttng::c_string_view channel_name) const
+{
+	ASSERT_LOCKED(_lock);
+	return _channels_with_pending_reclaim.count(channel_name) > 0;
+}
+
+void ltt_session::add_pending_reclamation(std::string channel_name)
+{
+	ASSERT_LOCKED(_lock);
+	const auto result = _channels_with_pending_reclaim.emplace(std::move(channel_name));
+	if (!result.second) {
+		LTTNG_THROW_ERROR(fmt::format(
+			"Channel already present in pending reclaim set: session_name=`{}`, channel_name=`{}`",
+			name,
+			*result.first));
+	}
+}
+
+void ltt_session::remove_pending_reclamation(const lttng::c_string_view channel_name)
+{
+	ASSERT_LOCKED(_lock);
+	if (_channels_with_pending_reclaim.erase(channel_name) != 1) {
+		LTTNG_THROW_ERROR(fmt::format(
+			"Failed to remove channel from pending reclaim set: session_name=`{}`, channel_name=`{}`",
+			name,
+			channel_name));
+	}
 }

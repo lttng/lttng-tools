@@ -9,6 +9,7 @@
 
 #include "health-sessiond.hpp"
 #include "manage-consumer.hpp"
+#include "pending-memory-reclamation-request.hpp"
 #include "testpoint.hpp"
 #include "thread.hpp"
 #include "ust-consumer.hpp"
@@ -186,6 +187,39 @@ consumerd_error_msg_handling_status handle_consumerd_error_msg_owner_reclaim_not
 	return CONSUMERD_ERROR_MSG_HANDLING_STATUS_OK;
 }
 
+/*
+ * Handle memory reclamation completion notification from a consumer daemon.
+ */
+consumerd_error_msg_handling_status
+handle_consumerd_error_msg_memory_reclaim_complete(const lttng_payload_view *msg_payload_view)
+{
+	const lttcomm_consumer_error_msg_memory_reclaim_complete_notification *payload;
+
+	if (msg_payload_view->buffer.size < sizeof(*payload)) {
+		ERR_FMT("Consumer memory reclaim complete notification payload too short: "
+			"expected_minimum_size={}, actual_size={}",
+			sizeof(*payload),
+			msg_payload_view->buffer.size);
+		return CONSUMERD_ERROR_MSG_HANDLING_STATUS_FATAL_ERROR;
+	}
+
+	payload = reinterpret_cast<decltype(payload)>(msg_payload_view->buffer.data);
+
+	DBG_FMT("Received memory reclaim completion notification: token={}, success={}",
+		payload->memory_reclaim_request_token,
+		payload->success);
+
+	/*
+	 * Acquire the session list lock since completing the request may release the session
+	 * and consequently modify the session list.
+	 */
+	const std::lock_guard<std::mutex> session_list_lock(session_get_list()->lock);
+	lttng::sessiond::the_pending_memory_reclamation_registry.consumer_completed(
+		payload->memory_reclaim_request_token, payload->success != 0);
+
+	return CONSUMERD_ERROR_MSG_HANDLING_STATUS_OK;
+}
+
 consumerd_error_msg_handling_status
 dispatch_consumer_error_msg(struct lttng_payload_view *msg_payload_view)
 {
@@ -203,6 +237,9 @@ dispatch_consumer_error_msg(struct lttng_payload_view *msg_payload_view)
 		return handle_consumerd_error_msg_error_code(&msg_specific_payload_view);
 	case LTTNG_CONSUMER_ERROR_MSG_TYPE_OWNER_RECLAIM_NOTIFICATION:
 		return handle_consumerd_error_msg_owner_reclaim_notification(
+			&msg_specific_payload_view);
+	case LTTNG_CONSUMER_ERROR_MSG_TYPE_MEMORY_RECLAIM_COMPLETE:
+		return handle_consumerd_error_msg_memory_reclaim_complete(
 			&msg_specific_payload_view);
 	default:
 		ERR_FMT("Unknown consumer daemon error message type: "

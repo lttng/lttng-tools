@@ -408,12 +408,16 @@ struct stream_memory_reclamation_result_group {
 /*
  * The returned stream group reclaimed memory vector is in the same order as the channel keys
  * provided in the request.
+ *
+ * If memory_reclaim_request_token is non-zero, the consumer will track completion of pending
+ * reclamation and send an async notification when complete.
  */
 std::vector<stream_memory_reclamation_result_group>
 reclaim_channels_memory(consumer_socket& socket,
 			const std::vector<std::uint64_t>& channel_keys,
 			const nonstd::optional<std::chrono::microseconds>& reclaim_older_than_age,
-			bool require_consumed);
+			bool require_consumed,
+			std::uint64_t memory_reclaim_request_token);
 
 } /* namespace consumer */
 } /* namespace sessiond */

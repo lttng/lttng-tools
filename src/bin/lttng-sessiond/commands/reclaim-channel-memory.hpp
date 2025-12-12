@@ -14,6 +14,7 @@
 
 #include <bin/lttng-sessiond/commands/get-channel-memory-usage.hpp>
 #include <bin/lttng-sessiond/domain.hpp>
+#include <bin/lttng-sessiond/pending-memory-reclamation-request.hpp>
 #include <bin/lttng-sessiond/session.hpp>
 #include <chrono>
 #include <vector>
@@ -50,12 +51,24 @@ struct stream_memory_reclamation_result_group {
 	const std::vector<stream_memory_reclamation_result> reclaimed_streams_memory;
 };
 
-std::vector<stream_memory_reclamation_result_group>
+struct reclaim_channel_memory_result {
+	std::vector<stream_memory_reclamation_result_group> groups;
+	/* Token for tracking async completion. */
+	lttng::sessiond::pending_memory_reclamation_registry::token_t token;
+};
+
+/* Completion callback signature: bool parameter indicates success (true) or failure (false). */
+using completion_callback_t = std::function<void(bool)>;
+using cancellation_callback_t = std::function<void()>;
+
+reclaim_channel_memory_result
 reclaim_channel_memory(const ltt_session::locked_ref& session,
 		       lttng::domain_class domain,
 		       lttng::c_string_view channel_name,
 		       const nonstd::optional<std::chrono::microseconds>& reclaim_older_than_age,
-		       bool require_consumed);
+		       bool require_consumed,
+		       completion_callback_t on_complete,
+		       cancellation_callback_t on_cancel);
 
 } /* namespace commands */
 } /* namespace sessiond */

@@ -10,6 +10,7 @@
 
 #include <common/macros.hpp>
 #include <common/make-unique.hpp>
+#include <common/poller.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/stream-descriptor.hpp>
 
@@ -54,20 +55,27 @@ struct lttng_reclaim_handle {
 	nonstd::optional<lttng_reclaim_handle_status> async_reclaim_status;
 };
 
-/*
- * Reclaim memory for a channel in a session.
- *
- * This function sends the reclaim command to the session daemon and waits
- * for the initial response, which contains:
- *   - The number of bytes reclaimed immediately
- *   - The number of bytes pending reclamation (awaiting consumption)
- *
- * On success, the handle is populated with the result and can be queried
- * immediately. The socket connection to the session daemon is kept open
- * in the handle to allow for async completion tracking.
- *
- * Return LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_OK on success else a negative value.
- */
+namespace {
+lttng_reclaim_channel_memory_status lttng_error_code_to_reclaim_status(lttng_error_code error_code)
+{
+	switch (error_code) {
+	case LTTNG_OK:
+		return LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_OK;
+	case LTTNG_ERR_SESS_NOT_FOUND:
+		return LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_SESSION_NOT_FOUND;
+	case LTTNG_ERR_CHAN_NOT_FOUND:
+	case LTTNG_ERR_UST_CHAN_NOT_FOUND:
+		return LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_CHANNEL_NOT_FOUND;
+	case LTTNG_ERR_NOT_SUPPORTED:
+		return LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_NOT_SUPPORTED;
+	case LTTNG_ERR_ROTATION_PENDING:
+		return LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_RECLAMATION_IN_PROGRESS;
+	default:
+		return LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_ERROR;
+	}
+}
+} /* namespace */
+
 enum lttng_reclaim_channel_memory_status
 lttng_reclaim_channel_memory(const char *session_name,
 			     const char *channel_name,
@@ -128,14 +136,17 @@ lttng_reclaim_channel_memory(const char *session_name,
 
 	/* Check return code. */
 	if (llm.ret_code != LTTNG_OK) {
-		return LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_ERROR;
+		return lttng_error_code_to_reclaim_status(
+			static_cast<lttng_error_code>(llm.ret_code));
 	}
 
 	/* Validate expected payload size. */
 	if (llm.data_size != sizeof(reclaim_return)) {
-		ERR_FMT("Unexpected payload size from session daemon: expected_size={}, got={}",
+		/* Packed fields can't be bound to references; copy to local. */
+		const auto data_size = llm.data_size;
+		ERR_FMT("Unexpected payload size from session daemon: expected={}, got={}",
 			sizeof(reclaim_return),
-			llm.data_size);
+			data_size);
 		return LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_ERROR;
 	}
 
@@ -150,11 +161,7 @@ lttng_reclaim_channel_memory(const char *session_name,
 	try {
 		auto _handle = new lttng_reclaim_handle(std::move(sessiond_socket));
 
-		_handle->result.reclaimed_memory_size_bytes =
-			reclaim_return.reclaimed_memory_size_bytes;
-		_handle->result.pending_memory_size_bytes =
-			reclaim_return.pending_memory_size_bytes;
-
+		_handle->result = reclaim_return;
 		*handle = _handle;
 	} catch (const std::exception& e) {
 		ERR_FMT("Failed to allocate reclaim handle: {}", e.what());
@@ -169,21 +176,6 @@ void lttng_reclaim_handle_destroy(lttng_reclaim_handle *handle)
 	delete handle;
 }
 
-/*
- * Wait for the completion of pending memory reclamation.
- *
- * If there are no pending bytes (all memory was reclaimed immediately),
- * this function returns LTTNG_RECLAIM_HANDLE_STATUS_COMPLETED right away.
- *
- * If there are pending bytes, this function waits for the session daemon
- * to send a completion notification indicating all pending sub-buffers
- * have been consumed and reclaimed.
- *
- * Note: As of this implementation, the backend is synchronous and all
- * reclamation completes immediately. This function is provided for API
- * completeness and will be extended in future commits to support true
- * asynchronous completion tracking.
- */
 enum lttng_reclaim_handle_status
 lttng_reclaim_handle_wait_for_completion(lttng_reclaim_handle *handle, int timeout_ms)
 {
@@ -193,20 +185,86 @@ lttng_reclaim_handle_wait_for_completion(lttng_reclaim_handle *handle, int timeo
 	}
 
 	/*
-	 * Check if an async error was reported. If the optional has a value
-	 * and it's not OK, an error occurred during async reclamation.
+	 * Check if we already received the async status (from a previous call
+	 * or if it was set during initial processing).
 	 */
 	if (handle->async_reclaim_status.has_value()) {
 		return *handle->async_reclaim_status;
 	}
 
 	/*
-	 * Currently, the backend is synchronous and completes immediately.
-	 * When async completion tracking is implemented, this function will
-	 * wait for a completion notification from the session daemon.
+	 * If there are no pending bytes, the reclamation completed immediately
+	 * and there's nothing to wait for.
 	 */
-	(void) timeout_ms;
+	if (handle->result.pending_memory_size_bytes == 0) {
+		handle->async_reclaim_status = LTTNG_RECLAIM_HANDLE_STATUS_COMPLETED;
+		return LTTNG_RECLAIM_HANDLE_STATUS_COMPLETED;
+	}
 
+	/*
+	 * Wait for the session daemon to send a completion status.
+	 * The session daemon sends an lttcomm_lttng_msg with ret_code and data_size=0.
+	 */
+	lttng::poller waiter;
+	bool socket_readable = false;
+	bool socket_error = false;
+
+	waiter.add(handle->socket,
+		   lttng::poller::event_type::READABLE | lttng::poller::event_type::ERROR |
+			   lttng::poller::event_type::CLOSED,
+		   [&socket_readable, &socket_error](lttng::poller::event_type events) {
+			   socket_readable = (events & lttng::poller::event_type::READABLE) !=
+				   lttng::poller::event_type::NONE;
+
+			   socket_error = (events &
+					   (lttng::poller::event_type::ERROR |
+					    lttng::poller::event_type::CLOSED)) !=
+				   lttng::poller::event_type::NONE;
+		   });
+
+	try {
+		if (timeout_ms < 0) {
+			waiter.poll(lttng::poller::timeout_type::WAIT_FOREVER);
+		} else if (timeout_ms == 0) {
+			waiter.poll(lttng::poller::timeout_type::NO_WAIT);
+		} else {
+			waiter.poll(lttng::poller::timeout_ms(timeout_ms));
+		}
+	} catch (const std::exception& e) {
+		ERR_FMT("Failed to poll on reclaim handle socket: {}", e.what());
+		handle->async_reclaim_status = LTTNG_RECLAIM_HANDLE_STATUS_ERROR;
+		return LTTNG_RECLAIM_HANDLE_STATUS_ERROR;
+	}
+
+	if (socket_error && !socket_readable) {
+		DBG("Socket error while waiting for reclaim completion");
+		handle->async_reclaim_status = LTTNG_RECLAIM_HANDLE_STATUS_ERROR;
+		return LTTNG_RECLAIM_HANDLE_STATUS_ERROR;
+	}
+
+	if (!socket_readable) {
+		/* Timeout; status not yet available. */
+		return LTTNG_RECLAIM_HANDLE_STATUS_TIMEOUT;
+	}
+
+	/* Read the async completion message. */
+	lttng_reclaim_channel_memory_async_completion completion = {};
+	const auto recv_ret =
+		lttcomm_recv_unix_sock(handle->socket.fd(), &completion, sizeof(completion));
+	if (recv_ret <= 0) {
+		ERR_FMT("Failed to receive reclaim async completion: recv_ret={}", recv_ret);
+		handle->async_reclaim_status = LTTNG_RECLAIM_HANDLE_STATUS_ERROR;
+		return LTTNG_RECLAIM_HANDLE_STATUS_ERROR;
+	}
+
+	/* Check the status code. */
+	if (completion.status != LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_OK) {
+		DBG_FMT("Reclaim async completion returned error: status={}", completion.status);
+		handle->async_reclaim_status = LTTNG_RECLAIM_HANDLE_STATUS_ERROR;
+		return LTTNG_RECLAIM_HANDLE_STATUS_ERROR;
+	}
+
+	handle->async_reclaim_status = LTTNG_RECLAIM_HANDLE_STATUS_COMPLETED;
 	return LTTNG_RECLAIM_HANDLE_STATUS_COMPLETED;
 }
 
