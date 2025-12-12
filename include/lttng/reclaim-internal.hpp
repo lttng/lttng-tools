@@ -13,10 +13,23 @@
 #include <lttng/domain.h>
 #include <lttng/lttng.h>
 
-/* For the LTTCOMM_SESSIOND_COMMAND_RECLAIM_CHANNEL_MEMORY command. */
+/*
+ * Payload for the LTTCOMM_SESSIOND_COMMAND_RECLAIM_CHANNEL_MEMORY command.
+ * Sent after the lttcomm_lttng_msg header on success.
+ */
 struct lttng_reclaim_channel_memory_return {
 	uint64_t reclaimed_memory_size_bytes;
 	uint64_t pending_memory_size_bytes;
+} LTTNG_PACKED;
+
+/*
+ * Async completion message sent by the session daemon when all pending
+ * memory reclamation has completed. This is sent after the initial
+ * lttng_reclaim_channel_memory_return response.
+ */
+struct lttng_reclaim_channel_memory_async_completion {
+	/* lttng_reclaim_channel_memory_status code. */
+	int8_t status;
 } LTTNG_PACKED;
 
 #endif /* LTTNG_RECLAIM_INTERNAL_ABI_H */
