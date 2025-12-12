@@ -22,7 +22,7 @@ bool is_valid_fd(int fd)
 {
 	return fd >= 0;
 }
-} // anonymous namespace
+} /* anonymous namespace */
 
 lttng::file_descriptor::file_descriptor(int raw_fd) noexcept : _raw_fd{ raw_fd }
 {
@@ -53,6 +53,14 @@ int lttng::file_descriptor::fd() const noexcept
 {
 	LTTNG_ASSERT(is_valid_fd(_raw_fd));
 	return _raw_fd;
+}
+
+int lttng::file_descriptor::release() noexcept
+{
+	const auto temp_fd = _raw_fd;
+
+	_raw_fd = -1;
+	return temp_fd;
 }
 
 void lttng::file_descriptor::_cleanup() noexcept

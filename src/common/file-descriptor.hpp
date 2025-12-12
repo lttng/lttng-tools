@@ -26,6 +26,7 @@ public:
 	virtual ~file_descriptor() noexcept;
 
 	int fd() const noexcept;
+	int release() noexcept;
 
 protected:
 	void _cleanup() noexcept;
