@@ -9,8 +9,8 @@
 # If you want, at your own risk, the function to work with versions
 # above 2.15, set `LTTNG_ZSH_COMP_IGNORE_VERSION_LIMIT=1`.
 
-# Sets the `minor_version` variable to the minor version of LTTng-tools,
-# or to `0` if not found.
+# Sets the `minor_version` parameter to the minor version of
+# LTTng-tools, or to `0` if not found.
 __lttng_set_minor_version() {
   minor_version=0
 
@@ -124,7 +124,7 @@ __lttng_complete_lttng_sessiond() {
 emulate -L zsh
 setopt extended_glob
 
-# First, set the `minor_version` variable to the minor version of
+# First, set the `minor_version` parameter to the minor version of
 # LTTng-tools. Some features depend on a specific version and this
 # completion function supports many versions from LTTng-tools 2.5.
 local -i minor_version

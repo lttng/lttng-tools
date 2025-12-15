@@ -21,7 +21,7 @@ $ mkdir -p ~/.zsh/completion
 ----
 
 . In your `pass:[~/.zshrc]` file, add your completion directory to
-  the `fpath` variable:
+  the `fpath` parameter:
 +
 ----
 fpath=(~/.zsh/completion $fpath)
