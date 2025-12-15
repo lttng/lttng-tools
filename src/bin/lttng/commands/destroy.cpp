@@ -350,9 +350,13 @@ int cmd_destroy(int argc, const char **argv)
 	const char *leftover = nullptr;
 	lttng::cli::session_spec spec(lttng::cli::session_spec::type::NAME);
 	const lttng::cli::session_list sessions;
+	const char *explicit_session_name = nullptr;
 
 	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
+
+	const auto implicit_session_name =
+		lttng::make_unique_wrapper<char, lttng::memory::free>(get_session_name_quiet());
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
@@ -406,7 +410,18 @@ int cmd_destroy(int argc, const char **argv)
 		}
 	}
 
-	spec.value = poptGetArg(pc);
+	explicit_session_name = poptGetArg(pc);
+	if (spec.type_ != lttng::cli::session_spec::type::ALL) {
+		if (explicit_session_name) {
+			spec.value = explicit_session_name;
+		} else if (implicit_session_name) {
+			spec.value = implicit_session_name.get();
+		} else {
+			command_ret = CMD_ERROR;
+			ERR("A session name must be provided.");
+			goto end;
+		}
+	}
 
 	command_ret = destroy_sessions(spec);
 
