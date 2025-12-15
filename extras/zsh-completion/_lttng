@@ -292,8 +292,7 @@ __lttng_complete_uid() {
   done < /etc/passwd
 
   # Add completions
-  local expl
-
+  expl=
   _wanted users expl 'user ID' compadd -d names -a uids
 }
 
@@ -430,8 +429,7 @@ __lttng_complete_trigger_name() {
   done <<< $lines
 
   # Add completions
-  local expl
-
+  expl=
   _wanted triggers expl $msg compadd -a trigger_names
 }
 
@@ -636,7 +634,7 @@ __lttng_complete_session_name() {
   done
 
   # Add completions
-  local expl
+  expl=
 
   if __lttng_style_is_verbose session sessions; then
     # Verbose mode (list with infos)
@@ -906,7 +904,7 @@ __lttng_complete_channel_name() {
   done
 
   # Add completions
-  local expl
+  expl=
 
   if __lttng_style_is_verbose channel channels; then
     # Verbose mode (list with infos).
@@ -990,14 +988,13 @@ __lttng_complete_ip_name() {
   done <<< $ip_names
 
   # Add completions
-  local expl
-
+  expl=
   _wanted instrumentation-points expl $msg compadd "$@" -a items
 }
 
 # Adds completions for the arguments of the `add-context` command.
 __lttng_complete_add_context_cmd() {
-  local specs=(
+  specs=(
     $help_opt_specs
     '(- : *)--list[list the available context field types]'
     '(--list -s --session)'{-s+,--session=}'[select a specific recording session]: : __lttng_complete_session_name inactive all'
@@ -1098,8 +1095,7 @@ __lttng_complete_log_level() {
   fi
 
   # Add completions
-  local expl
-
+  expl=
   _wanted log-levels expl $title compadd -a log_levels -o nosort
 }
 
@@ -1125,13 +1121,7 @@ __lttng_complete_trigger_rate_policy() {
 # `$1` is the index, in the `words` array, of the word following the
 # action type. `CURRENT` is greater than or equal to `$1`.
 __lttng_complete_trigger_action_notify() {
-  local -i start_index=$1
-  local in_opt_val
-  local long_opts=(
-    '--rate-policy:set the rate policy'
-    '--action:set the type of the next trigger action'
-  )
-  local -i word_index
+  local -ir start_index=$1
 
   # Check all the next words in order up to (and excluding) the
   # current one.
@@ -1140,7 +1130,7 @@ __lttng_complete_trigger_action_notify() {
       break
     fi
 
-    local word=$words[word_index]
+    word=$words[word_index]
 
     case $word in
       --rate-policy=*)
@@ -1207,13 +1197,7 @@ __lttng_complete_trigger_action_notify() {
 # `$1` is the index, in the `words` array, of the word following the
 # action type. `CURRENT` is greater than or equal to `$1`.
 __lttng_complete_trigger_action_session() {
-  local -i start_index=$1
-  local in_opt_val
-  local long_opts=(
-    '--rate-policy:set the rate policy'
-    '--action:set the type of the next trigger action'
-  )
-  local -i word_index
+  local -ir start_index=$1
   local -i has_session_name=0
 
   # Check all the next words in order up to (and excluding) the
@@ -1223,7 +1207,7 @@ __lttng_complete_trigger_action_session() {
       break
     fi
 
-    local word=$words[word_index]
+    word=$words[word_index]
 
     case $word in
       --rate-policy=*)
@@ -1292,24 +1276,22 @@ __lttng_complete_trigger_action_session() {
 # `$1` is the index, in the `words` array, of the word following the
 # action type. `CURRENT` is greater than or equal to `$1`.
 __lttng_complete_trigger_action_snapshot_session() {
-  local -i start_index=$1
-  local in_opt_val
-  local long_opts=(
+  local -ir start_index=$1
+  local session_name
+
+  # Append specific options to `long_opts`
+  long_opts+=(
     '--name:set the snapshot output name'
     '--max-size:set the maximum total size of all snapshot files'
     '--path:set the local output destination directory'
     '--url:set the output URL'
     '--ctrl-url:set the control URL'
     '--data-url:set the trace data output URL'
-    '--rate-policy:set the rate policy'
-    '--action:set the type of the next trigger action'
   )
-  local short_opts=(
+  short_opts=(
     '-n:set the snapshot output name'
     '-m:set the maximum total size of all snapshot files'
   )
-  local -i word_index
-  local session_name
 
   # Check all the next words in order up to (and excluding) the
   # current one.
@@ -1318,7 +1300,7 @@ __lttng_complete_trigger_action_snapshot_session() {
       break
     fi
 
-    local word=$words[word_index]
+    word=$words[word_index]
 
     case $word in
       --name=*)
@@ -1497,6 +1479,14 @@ __lttng_complete_trigger_action() {
   local -ir start_index=$1
   local -r action_type=$2
 
+  # Common initial state for all action completion functions
+  in_opt_val=
+  long_opts=(
+    '--rate-policy:set the rate policy'
+    '--action:set the type of the next trigger action'
+  )
+  short_opts=()
+
   case $action_type in
     notify)
       __lttng_complete_trigger_action_notify $start_index
@@ -1619,10 +1609,13 @@ __lttng_complete_inst_point_type() {
 # `$1` is the index, in the `words` array, of the word following the
 # condition type. `CURRENT` is greater than or equal to `$1`.
 __lttng_complete_trigger_cond_event_rule_matches() {
-  local -i start_index=$1
-  local in_opt_val
+  local -ir start_index=$1
   local ip_type
-  local long_opts=(
+  local -i has_exclude_name_or_log_level_opt=0
+  local -i has_filter_or_name_opt=0
+  local -i has_location_or_event_name_opt=0
+
+  long_opts=(
     '--type:set the instrumentation point type'
     '--name:set the instrumentation point name pattern'
     '--exclude-name:add an instrumentation point name exclusion pattern'
@@ -1633,7 +1626,7 @@ __lttng_complete_trigger_cond_event_rule_matches() {
     '--capture:add a capture descriptor'
     '--action:set the type of the next trigger action'
   )
-  local short_opts=(
+  short_opts=(
     '-t:set the instrumentation point type'
     '-n:set the instrumentation point name pattern'
     '-x:add an instrumentation point name exclusion pattern'
@@ -1642,10 +1635,6 @@ __lttng_complete_trigger_cond_event_rule_matches() {
     '-L:set the probe location'
     '-E:set the event name'
   )
-  local -i word_index
-  local -i has_exclude_name_or_log_level_opt=0
-  local -i has_filter_or_name_opt=0
-  local -i has_location_or_event_name_opt=0
 
   # Check all the next words in order up to (and excluding) the
   # current one.
@@ -1654,7 +1643,7 @@ __lttng_complete_trigger_cond_event_rule_matches() {
       break
     fi
 
-    local word=$words[word_index]
+    word=$words[word_index]
 
     case $word in
       --type=*)
@@ -1939,16 +1928,18 @@ __lttng_complete_trigger_cond_event_rule_matches() {
 # `$4`:
 #     `1` to handle `--threshold-size`/`-t` options.
 __lttng_complete_trigger_cond_simple() {
-  local -i start_index=$1
-  local -i with_channel_domain_opts=$2
-  local -i with_threshold_ratio_opt=$3
-  local -i with_threshold_size_opts=$4
-  local in_opt_val
-  local long_opts=(
+  local -ir start_index=$1
+  local -ir with_channel_domain_opts=$2
+  local -ir with_threshold_ratio_opt=$3
+  local -ir with_threshold_size_opts=$4
+  local session_name
+  local domain_type
+
+  long_opts=(
     '--session:set the target recording session name'
     '--action:set the type of the next trigger action'
   )
-  local short_opts=(
+  short_opts=(
     '-s:set the target recording session name'
   )
 
@@ -1978,10 +1969,6 @@ __lttng_complete_trigger_cond_simple() {
     )
   fi
 
-  local -i word_index
-  local session_name
-  local domain_type
-
   # Check all the next words in order up to (and excluding) the
   # current one.
   for word_index in {$start_index..$#words}; do
@@ -1989,7 +1976,7 @@ __lttng_complete_trigger_cond_simple() {
       break
     fi
 
-    local word=$words[word_index]
+    word=$words[word_index]
 
     case $word in
       --session=*)
@@ -2137,6 +2124,11 @@ __lttng_complete_trigger_cond() {
   local -ir start_index=$1
   local -r cond_type=$2
 
+  # Common initial state for all condition completion functions
+  long_opts=()
+  short_opts=()
+  in_opt_val=
+
   case $cond_type in
     event-rule-matches)
       __lttng_complete_trigger_cond_event_rule_matches $start_index
@@ -2183,13 +2175,17 @@ __lttng_complete_trigger_cond_type() {
 
 # Adds completions for the arguments of the `add-trigger` command.
 __lttng_complete_add_trigger_cmd() {
+  # Shared variables used by called functions
   local in_opt_val
+  local -a long_opts short_opts
+  local -i word_index
+  local word
+
   local opts=(
     '--name:set the trigger name'
     '--owner-uid:add the trigger to another Unix user'
     '--condition:set the type of the trigger condition'
   )
-  local -i word_index
 
   # Check all words in order up to (and excluding) the current one
   for word_index in {1..$#words}; do
@@ -2197,7 +2193,7 @@ __lttng_complete_add_trigger_cmd() {
       break
     fi
 
-    local word=$words[word_index]
+    word=$words[word_index]
 
     case $word in
       -h|--help)
@@ -2268,7 +2264,7 @@ __lttng_complete_add_trigger_cmd() {
 
 # Adds completions for the arguments of the `clear` command.
 __lttng_complete_clear_cmd() {
-  local -r specs=(
+  specs=(
     $help_opt_specs
     '(-a --all):: : __lttng_complete_session_name all all'
     '(1 -a --all)'{-a,--all}'[clear all recording sessions]'
@@ -2280,7 +2276,7 @@ __lttng_complete_clear_cmd() {
 
 # Adds completions for the arguments of the `create` command.
 __lttng_complete_create_cmd() {
-  local specs=(
+  specs=(
     $help_opt_specs
     ':: :_guard "^-*" "new recording session name"'
     '(-C --ctrl-url output)'{-C+,--ctrl-url=}'[set the control URL]:control URL:'
@@ -2318,7 +2314,7 @@ __lttng_complete_create_cmd() {
 
 # Adds completions for the arguments of the `destroy` command.
 __lttng_complete_destroy_cmd() {
-  local specs=(
+  specs=(
     $help_opt_specs
   )
 
@@ -2348,7 +2344,7 @@ __lttng_complete_destroy_cmd() {
 
 # Adds completions for the arguments of the `disable-channel` command.
 __lttng_complete_disable_channel_cmd() {
-  local -r specs=(
+  specs=(
     $help_opt_specs
     '(-s --session)'{-s+,--session=}'[select a specific recording session]: : __lttng_complete_session_name all all'
     ': : _sequence __lttng_complete_channel_name enabled opt'
@@ -2469,15 +2465,15 @@ __lttng_complete_old_enabled_er_name_cond() {
   done <<< $lines
 
   # Add completions
-  local expl
-
+  expl=
   _wanted -C event events expl $msg compadd "$@" -a er_names
 }
 
 # Adds completions for the arguments of the `disable-event` command.
 __lttng_complete_disable_event_cmd() {
   local -r kernel_ip_opt_excl=(--syscall --probe --function)
-  local specs=(
+
+  specs=(
     $help_opt_specs
     '(-s --session)'{-s+,--session=}'[select a specific recording session]: : __lttng_complete_session_name all all'
     '(-c --channel)'{-c+,--channel=}'[select a specific channel]: : __lttng_complete_channel_name all opt'
@@ -2533,7 +2529,7 @@ __lttng_complete_disable_event_cmd() {
 
 # Adds completions for the arguments of the `disable-rotation` command.
 __lttng_complete_disable_rotation_cmd() {
-  local -r specs=(
+  specs=(
     $help_opt_specs
     '(-s --session)'{-s+,--session=}'[select a specific recording session]: : __lttng_complete_session_name all all'
     '--timer[disable the periodic rotation schedule]'
@@ -2561,8 +2557,7 @@ __lttng_complete_channel_output_type() {
     output_types+=(splice)
   fi
 
-  local expl
-
+  expl=
   _wanted -C 'output-opt' values expl 'output type' compadd -a output_types
 }
 
@@ -2640,7 +2635,7 @@ __lttng_complete_buffer_alloc() {
 
 # Adds completions for the arguments of the `enable-channel` command.
 __lttng_complete_enable_channel_cmd() {
-  local specs=(
+  specs=(
     $help_opt_specs
     '--switch-timer=[set the switch timer period]:switch timer period (µs):'
     '--read-timer=[set the read timer period]:read timer period (µs):'
@@ -2785,7 +2780,7 @@ __lttng_complete_enable_event_cmd() {
   # instrumentation point names (__lttng_complete_ip_name()) because,
   # interactively, it seems to be more common/useful than disabling
   # existing recording event rules.
-  local -r specs=(
+  specs=(
     $help_opt_specs
     '(--probe --userspace-probe --function -f --filter)'{-f+,--filter=}'[only match events which satisfy an expression]:filter expression:'
     "($exclude_opt_excl)"{-x+,--exclude=}'[exclude event name patterns]:comma-separated list of patterns:'
@@ -2806,7 +2801,7 @@ __lttng_complete_enable_event_cmd() {
 
 # Adds completions for the arguments of the `enable-rotation` command.
 __lttng_complete_enable_rotation_cmd() {
-  local -r specs=(
+  specs=(
     $help_opt_specs
     '(-s --session)'{-s+,--session=}'[select a specific recording session]: : __lttng_complete_session_name all all'
     '--timer=[rotate periodically]:period (µs; `ms`/`s`/`m`/`h` suffixes supported):'
@@ -2819,7 +2814,7 @@ __lttng_complete_enable_rotation_cmd() {
 
 # Adds completions for the arguments of the `help` command.
 __lttng_complete_help_cmd() {
-  local -r specs=(
+  specs=(
     $help_opt_specs
     ': : __lttng_complete_cmd_name'
   )
@@ -2842,7 +2837,8 @@ __lttng_complete_list_cmd() {
     -p --python
        --syscall
   )
-  local specs=(
+
+  specs=(
     $help_opt_specs
     '(-d --domain -f --fields -c --channel --mem-usage 1)'{-f,--fields}'[show user space tracepoint fields]'
     "($domain_opt_excl)"{-d,--domain}'[show tracing domains]'
@@ -2896,7 +2892,7 @@ __lttng_complete_list_triggers_cmd() {
 
 # Adds completions for the arguments of the `load` command.
 __lttng_complete_load_cmd() {
-  local specs=(
+  specs=(
     $help_opt_specs
     '(-f --force)'{-f,--force}'[overwrite existing recording sessions]'
     '(-i --input-path)'{-i+,--input-path=}'[load recording session configurations from a specific path]:recording session configuration path:_files'
@@ -2918,7 +2914,7 @@ __lttng_complete_load_cmd() {
 # Adds completions for the arguments of the `metadata` command
 # (deprecated).
 __lttng_complete_metadata_cmd() {
-  local -r specs=(
+  specs=(
     $help_opt_specs
     ':action:(regenerate)'
     '(-s --session)'{-s+,--session=}'[select a specific recording session]: : __lttng_complete_session_name all all'
@@ -2930,7 +2926,7 @@ __lttng_complete_metadata_cmd() {
 
 # Adds completions for the arguments of the `regenerate` command.
 __lttng_complete_regenerate_cmd() {
-  local -r specs=(
+  specs=(
     $help_opt_specs
     ':trace data type:(metadata statedump)'
     '(-s --session)'{-s+,--session=}'[select a specific recording session]: : __lttng_complete_session_name all all'
@@ -2942,7 +2938,7 @@ __lttng_complete_regenerate_cmd() {
 
 # Adds completions for the arguments of the `reclaim-memory` command.
 __lttng_complete_reclaim_memory_cmd() {
-  local -r specs=(
+  specs=(
     $help_opt_specs
     '(-s --session)'{-s+,--session=}'[select a specific recording session]: : __lttng_complete_session_name all all'
     '(-n --no-wait)'{-n,--no-wait}'[exit immediately]'
@@ -2959,7 +2955,7 @@ __lttng_complete_reclaim_memory_cmd() {
 
 # Adds completions for the arguments of the `remove-trigger` command.
 __lttng_complete_remove_trigger_cmd() {
-  local -r specs=(
+  specs=(
     $help_opt_specs
     '--owner-uid=[remove the trigger as another Unix user]: : __lttng_complete_uid'
     ': : __lttng_complete_trigger_name'
@@ -2971,7 +2967,7 @@ __lttng_complete_remove_trigger_cmd() {
 
 # Adds completions for the arguments of the `rotate` command.
 __lttng_complete_rotate_cmd() {
-  local -r specs=(
+  specs=(
     $help_opt_specs
     '(-n --no-wait)'{-n,--no-wait}'[exit immediately]'
     ': : __lttng_complete_session_name all all'
@@ -2983,7 +2979,7 @@ __lttng_complete_rotate_cmd() {
 
 # Adds completions for the arguments of the `save` command.
 __lttng_complete_save_cmd() {
-  local -r specs=(
+  specs=(
     $help_opt_specs
     '(-f --force)'{-f,--force}'[overwrite existing recording session configuration files]'
     '(-o --output-path)'{-o+,--output-path=}'[save recording session configuration files to a specific directory]:recording session configuration directory:_files -/'
@@ -2997,7 +2993,7 @@ __lttng_complete_save_cmd() {
 
 # Adds completions for the arguments of the `set-session` command.
 __lttng_complete_set_session_cmd() {
-  local -r specs=(
+  specs=(
     $help_opt_specs
     ': : __lttng_complete_session_name all all'
   )
@@ -3008,7 +3004,7 @@ __lttng_complete_set_session_cmd() {
 
 # Adds completions for the arguments of the `snapshot` command.
 __lttng_complete_snapshot_cmd() {
-  local specs=(
+  specs=(
     $help_opt_specs
     '(-): : __lttng_complete_snapshot_action_name' \
     '(-)*:: :->action-args' \
@@ -3062,7 +3058,7 @@ __lttng_complete_snapshot_cmd() {
 
 # Adds completions for the arguments of the `start` command.
 __lttng_complete_start_cmd() {
-  local specs=(
+  specs=(
     $help_opt_specs
     + '(session)'
     ': : __lttng_complete_session_name inactive all'
@@ -3082,7 +3078,7 @@ __lttng_complete_start_cmd() {
 
 # Adds completions for the arguments of the `stop` command.
 __lttng_complete_stop_cmd() {
-  local specs=(
+  specs=(
     $help_opt_specs
     '(-n --no-wait)'{-n,--no-wait}'[exit immediately]'
     + '(session)'
@@ -3103,7 +3099,7 @@ __lttng_complete_stop_cmd() {
 
 # Adds completions for the arguments of the `status` command.
 __lttng_complete_status_cmd() {
-  local specs=(
+  specs=(
     $help_opt_specs
   )
 
@@ -3128,7 +3124,7 @@ __lttng_complete_status_cmd() {
 
 # Adds completions for the arguments of the `track` command.
 __lttng_complete_track_cmd() {
-  local specs=(
+  specs=(
     $help_opt_specs
     '(-s --session)'{-s+,--session=}'[select a specific recording session]: : __lttng_complete_session_name all all'
     '(-a --all)'{-a,--all}'[add all possible values to the selected inclusion sets]'
@@ -3171,7 +3167,7 @@ __lttng_complete_version_cmd() {
 
 # Adds completions for the arguments of the `view` command.
 __lttng_complete_view_cmd() {
-  local -r specs=(
+  specs=(
     $help_opt_specs
     '(-e --viewer)'{-e+,--viewer=}'[set the trace reader path]:trace reader path:_files'
     '(-t --trace-path): : __lttng_complete_session_name all all'
@@ -3187,6 +3183,10 @@ __lttng_complete_cmd() {
   # An lttng(1) command: replace `lttng` with `lttng-$line[1]` (for
   # example, `lttng-add-trigger`).
   curcontext=${curcontext%:*:*}:lttng-$line[1]:
+
+  # Shared variables used by called functions
+  local expl
+  local -a specs
 
   # Keep the tracing group: we need to execute `lttng` for some
   # completions and use the required tracing group to connect to the
