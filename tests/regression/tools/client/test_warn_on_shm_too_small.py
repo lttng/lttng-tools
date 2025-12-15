@@ -83,7 +83,7 @@ def test_shm_warning(tap, test_env, tests):
         for channel in range(test["nchannels"]):
             channel = session.add_channel(
                 lttngtest.lttngctl.TracingDomain.User,
-                lttngtest.lttngctl.BufferSharingPolicy.PerUID,
+                buffer_sharing_policy=lttngtest.lttngctl.BufferSharingPolicy.PerUID,
                 subbuf_size="{}M".format(subbuf_size),
                 subbuf_count=subbuf_count,
             )

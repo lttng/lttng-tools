@@ -24,7 +24,7 @@ def test(tap, test_env, wait=False):
     session = client.create_session()
     channel = session.add_channel(
         lttngtest.lttngctl.TracingDomain.User,
-        lttngtest.lttngctl.BufferSharingPolicy.PerUID,
+        buffer_sharing_policy=lttngtest.lttngctl.BufferSharingPolicy.PerUID,
     )
     channel.add_recording_rule(lttngtest.lttngctl.UserTracepointEventRule("tp:tptest"))
     session.start()

@@ -119,6 +119,27 @@ class BufferAllocationPolicy(enum.Enum):
 
 
 @enum.unique
+class BufferPreAllocationPolicy(enum.Enum):
+    """Buffer preallocation policy."""
+
+    PreAllocate = "Pre-allocate allocation"
+    OnDemand = "On-demand allocation"
+
+    def __repr__(self):
+        return "<%s.%s>" % (self.__class__.__name__, self.name)
+
+    def as_arg(self):
+        """
+        Return the string value for lttng cli
+        """
+        if self.name == "PreAllocate":
+            return "preallocate"
+        elif self.name == "OnDemand":
+            return "on-demand"
+        assert False
+
+
+@enum.unique
 class EventRecordLossMode(enum.Enum):
     """Event record loss mode."""
 
