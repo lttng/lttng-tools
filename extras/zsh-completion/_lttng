@@ -164,6 +164,52 @@ __lttng_python_domain_opt_is_set() {
     $+opt_args[domain--p] || $+opt_args[domain---python]))
 }
 
+# Usage:
+#
+#     __lttng_exclude_opts OPT...
+#
+# Excludes one or more options OPT from the possible options.
+#
+# Each OPT must match `--*` (long) or `-*` (short).
+#
+# This function removes description lines from the `long_opts` and
+# `short_opts` variables.
+__lttng_exclude_opts() {
+  local opt
+
+  for opt in "$@"; do
+    if [[ $opt == --* ]]; then
+      long_opts=("${(@)long_opts:#$opt:*}")
+    elif [[ $opt == -* ]]; then
+      short_opts=("${(@)short_opts:#$opt:*}")
+    fi
+  done
+}
+
+# Usage:
+#
+#     __lttng_add_opts LONGOPT [SHORTOPT] DESCR
+#
+# Adds an option LONGOPT to `long_opts` and optionally short option
+# SHORTOPT to `short_opts` with the description DESCR.
+__lttng_add_opts() {
+  local -r long_opt=$1
+  local short_opt descr
+
+  if [[ $2 == -* ]]; then
+    short_opt=$2
+    descr=$3
+  else
+    descr=$2
+  fi
+
+  long_opts+=("$long_opt:$descr")
+
+  if [[ -n $short_opt ]]; then
+    short_opts+=("$short_opt:$descr")
+  fi
+}
+
 # Adds completions for the name of an `lttng` command.
 __lttng_complete_cmd_name() {
   # LTTng-tools 2.5+
@@ -1134,8 +1180,7 @@ __lttng_complete_trigger_action_notify() {
 
     case $word in
       --rate-policy=*)
-        # Remove `--rate-policy` from possible options
-        long_opts=("${(@)long_opts:#--rate-policy:*}")
+        __lttng_exclude_opts --rate-policy
         ;;
       --rate-policy)
         # Next: value of `--rate-policy` option
@@ -1155,8 +1200,7 @@ __lttng_complete_trigger_action_notify() {
         # Anything else: check for option value, or ignore otherwise
         case $in_opt_val in
           rate-policy)
-            # Remove `--rate-policy` from possible options
-            long_opts=("${(@)long_opts:#--rate-policy:*}")
+            __lttng_exclude_opts --rate-policy
             ;;
           action)
             # Defer to action handling dispatch. Action type is
@@ -1211,8 +1255,7 @@ __lttng_complete_trigger_action_session() {
 
     case $word in
       --rate-policy=*)
-        # Remove `--rate-policy` from possible options
-        long_opts=("${(@)long_opts:#--rate-policy:*}")
+        __lttng_exclude_opts --rate-policy
         ;;
       --rate-policy)
         # Next: value of `--rate-policy` option
@@ -1232,8 +1275,7 @@ __lttng_complete_trigger_action_session() {
         # Anything else: check for option value, or ignore otherwise
         case $in_opt_val in
           rate-policy)
-            # Remove `--rate-policy` from possible options
-            long_opts=("${(@)long_opts:#--rate-policy:*}")
+            __lttng_exclude_opts --rate-policy
             ;;
           action)
             # Defer to action handling dispatch. Action type is
@@ -1279,19 +1321,13 @@ __lttng_complete_trigger_action_snapshot_session() {
   local -ir start_index=$1
   local session_name
 
-  # Append specific options to `long_opts`
-  long_opts+=(
-    '--name:set the snapshot output name'
-    '--max-size:set the maximum total size of all snapshot files'
-    '--path:set the local output destination directory'
-    '--url:set the output URL'
-    '--ctrl-url:set the control URL'
-    '--data-url:set the trace data output URL'
-  )
-  short_opts=(
-    '-n:set the snapshot output name'
-    '-m:set the maximum total size of all snapshot files'
-  )
+  # Append specific options to `long_opts` and `short_opts`
+  __lttng_add_opts --name -n 'set the snapshot output name'
+  __lttng_add_opts --max-size -m 'set the maximum total size of all snapshot files'
+  __lttng_add_opts --path 'set the local output destination directory'
+  __lttng_add_opts --url 'set the output URL'
+  __lttng_add_opts --ctrl-url 'set the control URL'
+  __lttng_add_opts --data-url 'set the trace data output URL'
 
   # Check all the next words in order up to (and excluding) the
   # current one.
@@ -1304,64 +1340,49 @@ __lttng_complete_trigger_action_snapshot_session() {
 
     case $word in
       --name=*)
-        # Remove `--name` and `-n` from possible options
-        long_opts=("${(@)long_opts:#--name:*}")
-        short_opts=("${(@)short_opts:#-n:*}")
+        __lttng_exclude_opts --name -n
         ;;
       --name|-n)
         # Next: value of `--name`/`-n` option
         in_opt_val=name
         ;;
       --max-size=*)
-        # Remove `--max-size` and `-m` from possible options
-        long_opts=("${(@)long_opts:#--max-size:*}")
-        short_opts=("${(@)short_opts:#-m:*}")
+        __lttng_exclude_opts --max-size -m
         ;;
       --max-size|-m)
         # Next: value of `--max-size`/`-m` option
         in_opt_val=max-size
         ;;
       --path=*)
-        # Remove `--path` and `--*url` from possible options
-        long_opts=("${(@)long_opts:#--path:*}")
-        long_opts=("${(@)long_opts:#--*url:*}")
+        __lttng_exclude_opts --path --url --ctrl-url --data-url
         ;;
       --path)
         # Next: value of `--path` option
         in_opt_val=path
         ;;
       --url=*)
-        # Remove `--path` and `--*url` from possible options
-        long_opts=("${(@)long_opts:#--path:*}")
-        long_opts=("${(@)long_opts:#--*url:*}")
+        __lttng_exclude_opts --path --url --ctrl-url --data-url
         ;;
       --url)
         # Next: value of `--url` option
         in_opt_val=url
         ;;
       --ctrl-url=*)
-        # Remove `--path`, `--url`, and `--ctrl-url` from possible options
-        long_opts=("${(@)long_opts:#--path:*}")
-        long_opts=("${(@)long_opts:#--ctrl-url:*}")
-        long_opts=("${(@)long_opts:#--url:*}")
+        __lttng_exclude_opts --path --url --ctrl-url
         ;;
       --ctrl-url)
         # Next: value of `--ctrl-url` option
         in_opt_val=ctrl-url
         ;;
       --data-url=*)
-        # Remove `--path`, `--url`, and `--data-url` from possible options
-        long_opts=("${(@)long_opts:#--path:*}")
-        long_opts=("${(@)long_opts:#--data-url:*}")
-        long_opts=("${(@)long_opts:#--url:*}")
+        __lttng_exclude_opts --path --url --data-url
         ;;
       --data-url)
         # Next: value of `--data-url` option
         in_opt_val=data-url
         ;;
       --rate-policy=*)
-        # Remove `--rate-policy` from possible options
-        long_opts=("${(@)long_opts:#--rate-policy:*}")
+        __lttng_exclude_opts --rate-policy
         ;;
       --rate-policy)
         # Next: value of `--rate-policy` option
@@ -1381,42 +1402,25 @@ __lttng_complete_trigger_action_snapshot_session() {
         # Anything else: check for option value, or ignore otherwise
         case $in_opt_val in
           name)
-            # Remove `--name` and `-n` from possible options
-            long_opts=("${(@)long_opts:#--name:*}")
-            short_opts=("${(@)short_opts:#-n:*}")
+            __lttng_exclude_opts --name -n
             ;;
           max-size)
-            # Remove `--max-size` and `-m` from possible options
-            long_opts=("${(@)long_opts:#--max-size:*}")
-            short_opts=("${(@)short_opts:#-m:*}")
+            __lttng_exclude_opts --max-size -m
             ;;
           path)
-            # Remove `--path` and `--*url` from possible options
-            long_opts=("${(@)long_opts:#--path:*}")
-            long_opts=("${(@)long_opts:#--*url:*}")
+            __lttng_exclude_opts --path --url --ctrl-url --data-url
             ;;
           url)
-            # Remove `--path` and `--*url` from possible options
-            long_opts=("${(@)long_opts:#--path:*}")
-            long_opts=("${(@)long_opts:#--*url:*}")
+            __lttng_exclude_opts --path --url --ctrl-url --data-url
             ;;
           ctrl-url)
-            # Remove `--path`, `--url`, and `--ctrl-url` from
-            # possible options.
-            long_opts=("${(@)long_opts:#--path:*}")
-            long_opts=("${(@)long_opts:#--ctrl-url:*}")
-            long_opts=("${(@)long_opts:#--url:*}")
+            __lttng_exclude_opts --path --url --ctrl-url
             ;;
           data-url)
-            # Remove `--path`, `--url`, and `--data-url` from
-            # possible options.
-            long_opts=("${(@)long_opts:#--path:*}")
-            long_opts=("${(@)long_opts:#--data-url:*}")
-            long_opts=("${(@)long_opts:#--url:*}")
+            __lttng_exclude_opts --path --url --data-url
             ;;
           rate-policy)
-            # Remove `--rate-policy` from possible options
-            long_opts=("${(@)long_opts:#--rate-policy:*}")
+            __lttng_exclude_opts --rate-policy
             ;;
           action)
             # Defer to action handling dispatch. Action type is
@@ -1481,11 +1485,10 @@ __lttng_complete_trigger_action() {
 
   # Common initial state for all action completion functions
   in_opt_val=
-  long_opts=(
-    '--rate-policy:set the rate policy'
-    '--action:set the type of the next trigger action'
-  )
+  long_opts=()
   short_opts=()
+  __lttng_add_opts --rate-policy 'set the rate policy'
+  __lttng_add_opts --action 'set the type of the next trigger action'
 
   case $action_type in
     notify)
@@ -1615,26 +1618,14 @@ __lttng_complete_trigger_cond_event_rule_matches() {
   local -i has_filter_or_name_opt=0
   local -i has_location_or_event_name_opt=0
 
-  long_opts=(
-    '--type:set the instrumentation point type'
-    '--name:set the instrumentation point name pattern'
-    '--exclude-name:add an instrumentation point name exclusion pattern'
-    '--log-level:set the log level rule'
-    '--filter:set the filter expression'
-    '--location:set the probe location'
-    '--event-name:set the event name'
-    '--capture:add a capture descriptor'
-    '--action:set the type of the next trigger action'
-  )
-  short_opts=(
-    '-t:set the instrumentation point type'
-    '-n:set the instrumentation point name pattern'
-    '-x:add an instrumentation point name exclusion pattern'
-    '-l:set the log level rule'
-    '-f:set the filter expression'
-    '-L:set the probe location'
-    '-E:set the event name'
-  )
+  __lttng_add_opts --type -t 'set the instrumentation point type'
+  __lttng_add_opts --name -n 'set the instrumentation point name pattern'
+  __lttng_add_opts --exclude-name -x 'add an instrumentation point name exclusion pattern'
+  __lttng_add_opts --log-level -l 'set the log level rule'
+  __lttng_add_opts --filter -f 'set the filter expression'
+  __lttng_add_opts --location -L 'set the probe location'
+  __lttng_add_opts --event-name -E 'set the event name'
+  __lttng_add_opts --capture 'add a capture descriptor'
 
   # Check all the next words in order up to (and excluding) the
   # current one.
@@ -1647,9 +1638,7 @@ __lttng_complete_trigger_cond_event_rule_matches() {
 
     case $word in
       --type=*)
-        # Remove `--type` and `-t` from possible options
-        long_opts=("${(@)long_opts:#--type:*}")
-        short_opts=("${(@)short_opts:#-t:*}")
+        __lttng_exclude_opts --type -t
 
         # Save the event rule type
         ip_type=${word#--type=}
@@ -1660,10 +1649,7 @@ __lttng_complete_trigger_cond_event_rule_matches() {
         ;;
       --name=*)
         has_filter_or_name_opt=1
-
-        # Remove `--name` and `-n` from possible options
-        long_opts=("${(@)long_opts:#--name:*}")
-        short_opts=("${(@)short_opts:#-n:*}")
+        __lttng_exclude_opts --name -n
         ;;
       --name|-n)
         # Next: value of `--name`/`-n` option
@@ -1678,10 +1664,7 @@ __lttng_complete_trigger_cond_event_rule_matches() {
         ;;
       --log-level=*)
         has_exclude_name_or_log_level_opt=1
-
-        # Remove `--log-level` and `-l` from possible options
-        long_opts=("${(@)long_opts:#--log-level:*}")
-        short_opts=("${(@)short_opts:#-l:*}")
+        __lttng_exclude_opts --log-level -l
         ;;
       --log-level|-l)
         # Next: value of `--log-level`/`-l` option
@@ -1689,10 +1672,7 @@ __lttng_complete_trigger_cond_event_rule_matches() {
         ;;
       --filter=*)
         has_filter_or_name_opt=1
-
-        # Remove `--filter` and `-f` from possible options
-        long_opts=("${(@)long_opts:#--filter:*}")
-        short_opts=("${(@)short_opts:#-f:*}")
+        __lttng_exclude_opts --filter -f
         ;;
       --filter|-f)
         # Next: value of `--filter`/`-f` option
@@ -1700,10 +1680,7 @@ __lttng_complete_trigger_cond_event_rule_matches() {
         ;;
       --location=*)
         has_location_or_event_name_opt=1
-
-        # Remove `--location` and `-L` from possible options
-        long_opts=("${(@)long_opts:#--location:*}")
-        short_opts=("${(@)short_opts:#-L:*}")
+        __lttng_exclude_opts --location -L
         ;;
       --location|-L)
         # Next: value of `--location`/`-L` option
@@ -1711,10 +1688,7 @@ __lttng_complete_trigger_cond_event_rule_matches() {
         ;;
       --event-name=*)
         has_location_or_event_name_opt=1
-
-        # Remove `--event-name` and `-E` from possible options
-        long_opts=("${(@)long_opts:#--event-name:*}")
-        short_opts=("${(@)short_opts:#-E:*}")
+        __lttng_exclude_opts --event-name -E
         ;;
       --event-name|-E)
         # Next: value of `--event-name`/`-E` option
@@ -1738,49 +1712,32 @@ __lttng_complete_trigger_cond_event_rule_matches() {
         # Anything else: check for option value, or ignore otherwise
         case $in_opt_val in
           type)
-            # Remove `--type` and `-t` from possible options
-            long_opts=("${(@)long_opts:#--type:*}")
-            short_opts=("${(@)short_opts:#-t:*}")
+            __lttng_exclude_opts --type -t
 
             # Save the event rule type
             ip_type=$word
             ;;
           name)
             has_filter_or_name_opt=1
-
-            # Remove `--name` and `-n` from possible options
-            long_opts=("${(@)long_opts:#--name:*}")
-            short_opts=("${(@)short_opts:#-n:*}")
+            __lttng_exclude_opts --name -n
             ;;
           exclude-name)
             has_exclude_name_or_log_level_opt=1;;
           log-level)
             has_exclude_name_or_log_level_opt=1
-
-            # Remove `--log-level` and `-l` from possible options
-            long_opts=("${(@)long_opts:#--log-level:*}")
-            short_opts=("${(@)short_opts:#-l:*}")
+            __lttng_exclude_opts --log-level -l
             ;;
           filter)
             has_filter_or_name_opt=1
-
-            # Remove `--filter` and `-f` from possible options
-            long_opts=("${(@)long_opts:#--filter:*}")
-            short_opts=("${(@)short_opts:#-f:*}")
+            __lttng_exclude_opts --filter -f
             ;;
           location)
             has_location_or_event_name_opt=1
-
-            # Remove `--location` and `-L` from possible options
-            long_opts=("${(@)long_opts:#--location:*}")
-            short_opts=("${(@)short_opts:#-L:*}")
+            __lttng_exclude_opts --location -L
             ;;
           event-name)
             has_location_or_event_name_opt=1
-
-            # Remove `--event-name` and `-E` from possible options
-            long_opts=("${(@)long_opts:#--event-name:*}")
-            short_opts=("${(@)short_opts:#-E:*}")
+            __lttng_exclude_opts --event-name -E
             ;;
           action)
             # Defer to action handling dispatch. Action type is
@@ -1799,59 +1756,27 @@ __lttng_complete_trigger_cond_event_rule_matches() {
   # Exclude groups of options
   if ((has_filter_or_name_opt || has_exclude_name_or_log_level_opt)); then
     # Remove probe options from possible options
-    long_opts=("${(@)long_opts:#--event-name:*}")
-    short_opts=("${(@)short_opts:#-E:*}")
-    long_opts=("${(@)long_opts:#--location:*}")
-    short_opts=("${(@)short_opts:#-L:*}")
+    __lttng_exclude_opts --event-name -E --location -L
   fi
 
   if ((has_location_or_event_name_opt)); then
     # Remove non-probe options from possible options
-    long_opts=("${(@)long_opts:#--filter:*}")
-    short_opts=("${(@)short_opts:#-f:*}")
-    long_opts=("${(@)long_opts:#--log-level:*}")
-    short_opts=("${(@)short_opts:#-l:*}")
-    long_opts=("${(@)long_opts:#--name:*}")
-    short_opts=("${(@)short_opts:#-n:*}")
-    long_opts=("${(@)long_opts:#--exclude-name:*}")
-    short_opts=("${(@)short_opts:#-x:*}")
+    __lttng_exclude_opts --filter -f --log-level -l --name -n --exclude-name -x
   fi
 
-  # Filter options based on `--type`/`t`
+  # Filter options based on `--type`/`-t`
   case $ip_type in
     kernel(|:tracepoint|:syscall*))
-      long_opts=("${(@)long_opts:#--exclude-name:*}")
-      short_opts=("${(@)short_opts:#-x:*}")
-      long_opts=("${(@)long_opts:#--log-level:*}")
-      short_opts=("${(@)short_opts:#-l:*}")
-      long_opts=("${(@)long_opts:#--location:*}")
-      short_opts=("${(@)short_opts:#-L:*}")
-      long_opts=("${(@)long_opts:#--event-name:*}")
-      short_opts=("${(@)short_opts:#-E:*}")
+      __lttng_exclude_opts --exclude-name -x --log-level -l --location -L --event-name -E
       ;;
     *probe*)
-      long_opts=("${(@)long_opts:#--name:*}")
-      short_opts=("${(@)short_opts:#-n:*}")
-      long_opts=("${(@)long_opts:#--exclude-name:*}")
-      short_opts=("${(@)short_opts:#-x:*}")
-      long_opts=("${(@)long_opts:#--log-level:*}")
-      short_opts=("${(@)short_opts:#-l:*}")
-      long_opts=("${(@)long_opts:#--filter:*}")
-      short_opts=("${(@)short_opts:#-f:*}")
+      __lttng_exclude_opts --name -n --exclude-name -x --log-level -l --filter -f
       ;;
     user*)
-      long_opts=("${(@)long_opts:#--location:*}")
-      short_opts=("${(@)short_opts:#-L:*}")
-      long_opts=("${(@)long_opts:#--event-name:*}")
-      short_opts=("${(@)short_opts:#-E:*}")
+      __lttng_exclude_opts --location -L --event-name -E
       ;;
     *jul*|*log4j*|*python*|*logging*)
-      long_opts=("${(@)long_opts:#--exclude-name:*}")
-      short_opts=("${(@)short_opts:#-x:*}")
-      long_opts=("${(@)long_opts:#--location:*}")
-      short_opts=("${(@)short_opts:#-L:*}")
-      long_opts=("${(@)long_opts:#--event-name:*}")
-      short_opts=("${(@)short_opts:#-E:*}")
+      __lttng_exclude_opts --exclude-name -x --location -L --event-name -E
       ;;
   esac
 
@@ -1935,38 +1860,19 @@ __lttng_complete_trigger_cond_simple() {
   local session_name
   local domain_type
 
-  long_opts=(
-    '--session:set the target recording session name'
-    '--action:set the type of the next trigger action'
-  )
-  short_opts=(
-    '-s:set the target recording session name'
-  )
+  __lttng_add_opts --session -s 'set the target recording session name'
 
   if ((with_channel_domain_opts)); then
-    long_opts+=(
-      '--channel:set the target channel name'
-      '--domain:set the target tracing domain'
-    )
-    short_opts+=(
-      '-c:set the target channel name'
-      '-d:set the target tracing domain'
-    )
+    __lttng_add_opts --channel -c 'set the target channel name'
+    __lttng_add_opts --domain -d 'set the target tracing domain'
   fi
 
   if ((with_threshold_ratio_opt)); then
-    long_opts+=(
-      '--threshold-ratio:set the threshold as a ratio of the total buffer size'
-    )
+    __lttng_add_opts --threshold-ratio 'set the threshold as a ratio of the total buffer size'
   fi
 
   if ((with_threshold_size_opts)); then
-    long_opts+=(
-      '--threshold-size:set the threshold size'
-    )
-    short_opts+=(
-      '-t:set the threshold size'
-    )
+    __lttng_add_opts --threshold-size -t 'set the threshold size'
   fi
 
   # Check all the next words in order up to (and excluding) the
@@ -1980,9 +1886,7 @@ __lttng_complete_trigger_cond_simple() {
 
     case $word in
       --session=*)
-        # Remove `--session` and `-s` from possible options
-        long_opts=("${(@)long_opts:#--session:*}")
-        short_opts=("${(@)short_opts:#-s:*}")
+        __lttng_exclude_opts --session -s
 
         # Save the recording session name
         session_name=${word#--session=}
@@ -1991,17 +1895,13 @@ __lttng_complete_trigger_cond_simple() {
         # Next: value of `--session`/`-s` option
         in_opt_val=session;;
       --channel=*)
-        # Remove `--channel` and `-d` from possible options
-        long_opts=("${(@)long_opts:#--channel:*}")
-        short_opts=("${(@)short_opts:#-c:*}")
+        __lttng_exclude_opts --channel -c
         ;;
       --channel|-c)
         # Next: value of `--channel`/`-c` option
         in_opt_val=channel;;
       --domain=*)
-        # Remove `--domain` and `-d` from possible options
-        long_opts=("${(@)long_opts:#--domain:*}")
-        short_opts=("${(@)short_opts:#-d:*}")
+        __lttng_exclude_opts --domain -d
 
         # Save the tracing domain type name
         domain_type=${word#--domain=}
@@ -2010,10 +1910,7 @@ __lttng_complete_trigger_cond_simple() {
         # Next: value of `--domain`/`-d` option
         in_opt_val=domain;;
       --threshold-(size|ratio)=*)
-        # Remove `--threshold-size`, `-t`, and `--threshold-ratio` from
-        # possible options.
-        long_opts=("${(@)long_opts:#--threshold-*:*}")
-        short_opts=("${(@)short_opts:#-t:*}")
+        __lttng_exclude_opts --threshold-size --threshold-ratio -t
         ;;
       --threshold-size|-t)
         # Next: value of `--threshold-size`/`-t` option
@@ -2034,31 +1931,22 @@ __lttng_complete_trigger_cond_simple() {
         # Anything else: check for option value, or ignore otherwise
         case $in_opt_val in
           session)
-            # Remove `--session` and `-s` from possible options
-            long_opts=("${(@)long_opts:#--session:*}")
-            short_opts=("${(@)short_opts:#-s:*}")
+            __lttng_exclude_opts --session -s
 
             # Save the recording session name
             session_name=$word
             ;;
           channel)
-            # Remove `--channel` and `-c` from possible options
-            long_opts=("${(@)long_opts:#--channel:*}")
-            short_opts=("${(@)short_opts:#-c:*}")
+            __lttng_exclude_opts --channel -c
             ;;
           domain)
-            # Remove `--domain` and `-d` from possible options
-            long_opts=("${(@)long_opts:#--domain:*}")
-            short_opts=("${(@)short_opts:#-d:*}")
+            __lttng_exclude_opts --domain -d
 
             # Save the tracing domain type
             domain_type=$word
             ;;
           threshold-*)
-            # Remove `--threshold-size`, `-t`, and `--threshold-ratio`
-            # from possible options.
-            long_opts=("${(@)long_opts:#--threshold-*:*}")
-            short_opts=("${(@)short_opts:#-t:*}")
+            __lttng_exclude_opts --threshold-size --threshold-ratio -t
             ;;
           action)
             # Defer to action handling dispatch. Action type is
@@ -2128,6 +2016,7 @@ __lttng_complete_trigger_cond() {
   long_opts=()
   short_opts=()
   in_opt_val=
+  __lttng_add_opts --action 'set the type of the next trigger action'
 
   case $cond_type in
     event-rule-matches)
@@ -2181,11 +2070,9 @@ __lttng_complete_add_trigger_cmd() {
   local -i word_index
   local word
 
-  long_opts=(
-    '--name:set the trigger name'
-    '--owner-uid:add the trigger to another Unix user'
-    '--condition:set the type of the trigger condition'
-  )
+  __lttng_add_opts --name 'set the trigger name'
+  __lttng_add_opts --owner-uid 'add the trigger to another Unix user'
+  __lttng_add_opts --condition 'set the type of the trigger condition'
 
   # Check all words in order up to (and excluding) the current one
   for word_index in {1..$#words}; do
@@ -2200,14 +2087,12 @@ __lttng_complete_add_trigger_cmd() {
         # Exit now: nothing to complete if help is wanted
         return 1;;
       --name=*)
-        # Remove `--name` from possible options
-        long_opts=("${(@)long_opts:#--name:*}");;
+        __lttng_exclude_opts --name;;
       --name)
         # Next: value of `--name` option
         in_opt_val=name;;
       --owner-uid=*)
-        # Remove `--owner-uid` from possible options
-        long_opts=("${(@)long_opts:#--owner-uid:*}");;
+        __lttng_exclude_opts --owner-uid;;
       --owner-uid)
         # Next: value of `--owner-uid` option
         in_opt_val=owner-uid;;
@@ -2224,11 +2109,9 @@ __lttng_complete_add_trigger_cmd() {
         # Anything else: check for option value, or ignore otherwise
         case $in_opt_val in
           name)
-            # Remove `--name` from possible options
-            long_opts=("${(@)long_opts:#--name:*}");;
+            __lttng_exclude_opts --name;;
           owner-uid)
-            # Remove `--owner-uid` from possible options
-            long_opts=("${(@)long_opts:#--owner-uid:*}");;
+            __lttng_exclude_opts --owner-uid;;
           condition)
             # Defer to condition handling dispatch. Condition type is
             # the whole current word.
