@@ -60,8 +60,8 @@
 # `triggers` tag:
 #     Trigger names.
 
-# Sets the `minor_version` variable to the minor version of LTTng-tools,
-# or to `0` if not found.
+# Sets the `minor_version` parameter to the minor version of
+# LTTng-tools, or to `0` if not found.
 __lttng_set_minor_version() {
   minor_version=0
 
@@ -182,7 +182,7 @@ __lttng_python_domain_opt_is_set() {
 # Each OPT must match `--*` (long) or `-*` (short).
 #
 # This function removes description lines from the `long_opts` and
-# `short_opts` variables.
+# `short_opts` arrays.
 __lttng_exclude_opts() {
   local opt
 
@@ -1201,7 +1201,7 @@ __lttng_complete_trigger_rate_policy() {
 # Tries to complete common trigger action options (`--rate-policy`
 # and `--action`).
 #
-# Uses the `in_opt_val` variable.
+# Uses the `in_opt_val` parameter.
 #
 # Sets `opt_completed` to `1` if an option was recognized and completion
 # attempted, or `0` otherwise.
@@ -2121,7 +2121,7 @@ __lttng_complete_trigger_cond_type() {
 
 # Adds completions for the arguments of the `add-trigger` command.
 __lttng_complete_add_trigger_cmd() {
-  # Shared variables used by called functions
+  # Shared parameters used by called functions
   local in_opt_val
   local -a long_opts short_opts
   local -i word_index
@@ -3126,7 +3126,7 @@ __lttng_complete_cmd() {
   # example, `lttng-add-trigger`).
   curcontext=${curcontext%:*:*}:lttng-$line[1]:
 
-  # Shared variables used by called functions
+  # Shared parameters used by called functions
   local expl
   local -a specs
 
@@ -3166,7 +3166,7 @@ local REPLY
 # Save program name
 local -r prog_name=$words[1]
 
-# First, set the `minor_version` variable to the minor version of
+# First, set the `minor_version` parameter to the minor version of
 # LTTng-tools. Some features depend on a specific version and this
 # completion function supports many versions from LTTng-tools 2.5.
 local -i minor_version
