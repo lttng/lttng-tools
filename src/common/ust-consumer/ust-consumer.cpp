@@ -1756,9 +1756,17 @@ lttng::consumer::memory_reclaim_result lttng_ustconsumer_reclaim_stream_memory(
 		 * repeated after flushing to ensure that no data newer than the age limit is lost.
 		 */
 		std::uint64_t expiry_limit = current_tracer_time;
-		lttng_ust_ctl_timestamp_add(stream.ustream,
-					    &expiry_limit,
-					    -std::chrono::nanoseconds(*age_limit).count());
+		const auto add_ret =
+			lttng_ust_ctl_timestamp_add(stream.ustream,
+						    &expiry_limit,
+						    -std::chrono::nanoseconds(*age_limit).count());
+		if (add_ret < 0) {
+			LTTNG_THROW_ERROR(lttng::format(
+				"Failed to compute expiry limit by subtracting age from current timestamp: channel_name=`{}`, stream_key={}, error={}",
+				stream.chan->name,
+				stream.key,
+				add_ret));
+		}
 
 		const auto compare_ret =
 			lttng_ust_ctl_last_activity_timestamp_compare(stream.ustream, expiry_limit);

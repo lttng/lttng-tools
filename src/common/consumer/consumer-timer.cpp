@@ -268,7 +268,8 @@ int consumer_timer_memory_reclaim_start(lttng_consumer_channel& channel,
 		channel.name,
 		channel.key,
 		channel.session_id,
-		std::chrono::duration_cast<std::chrono::nanoseconds>(period).count());
+		std::chrono::duration_cast<std::chrono::nanoseconds>(period).count(),
+		max_age.count());
 
 	try {
 		channel.memory_reclaim_timer_task =
