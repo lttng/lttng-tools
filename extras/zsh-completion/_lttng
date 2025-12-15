@@ -1159,7 +1159,7 @@ __lttng_complete_trigger_rate_policy() {
   )
 
   # Add completions
-  _describe 'trigger rate policy type' types -qS ':'
+  _describe 'trigger rate policy type' types -S ':'
 }
 
 # Adds completions for a `notify` trigger action.
