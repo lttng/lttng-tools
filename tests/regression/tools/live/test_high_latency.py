@@ -64,7 +64,7 @@ def test(tap, test_env, delay="300ms", command_timeout_seconds=30):
         session = client.create_session(output=output, live=True)
         channel = session.add_channel(
             lttngtest.lttngctl.TracingDomain.User,
-            lttngtest.lttngctl.BufferSharingPolicy.PerUID,
+            buffer_sharing_policy=lttngtest.lttngctl.BufferSharingPolicy.PerUID,
         )
         channel.add_recording_rule(
             lttngtest.lttngctl.UserTracepointEventRule("tp:tptest")
@@ -87,10 +87,10 @@ def test(tap, test_env, delay="300ms", command_timeout_seconds=30):
         t2, channel = time_function(
             tap,
             session2.add_channel,
-            args=(
-                lttngtest.lttngctl.TracingDomain.User,
-                lttngtest.lttngctl.BufferSharingPolicy.PerUID,
-            ),
+            args=(lttngtest.lttngctl.TracingDomain.User,),
+            kwargs={
+                "buffer_sharing_policy": lttngtest.lttngctl.BufferSharingPolicy.PerUID
+            },
         )
 
         # Add recording rule (checkout timeout)

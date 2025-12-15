@@ -232,6 +232,7 @@ noinst_SCRIPTS += \
 	snapshots/test_ust_long \
 	snapshots/test_ust_streaming \
 	snapshots/ust_test \
+	sparse-buffer/test_sparse_buffer.py \
 	streaming/test_high_throughput_limits \
 	streaming/test_kernel \
 	streaming/test_ust \

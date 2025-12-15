@@ -523,9 +523,13 @@ class _Session(lttngctl.Session):
         tracefile_count=None,
         event_record_loss_mode=None,
         watchdog_timer_period_us=None,
+        buffer_preallocation_policy=None,
+        auto_reclaim_memory_older_than=None,
+        auto_reclaim_memory_consumed=False,
     ):
         # type: (lttngctl.TracingDomain, Optional[str], lttngctl.BufferSharingPolicy, lttngctl.BufferAllocationPolicy, Optional[int], Optional[int], Optional[int], Optional[int], Optional[lttngctl.EventRecordLossMode], Optional[int]) -> lttngctl.Channel
-        channel_name = lttngctl.Channel._generate_name()
+        if channel_name is None:
+            channel_name = lttngctl.Channel._generate_name()
         domain_option_name = _get_domain_option_name(domain)
         buffer_sharing_policy_cli_arg = (
             "--buffer-ownership=user"
@@ -537,7 +541,6 @@ class _Session(lttngctl.Session):
             if buffer_allocation_policy == lttngctl.BufferAllocationPolicy.PerCPU
             else "--buffer-allocation=per-channel"
         )
-
         args = [
             "enable-channel",
             "--session",
@@ -564,7 +567,18 @@ class _Session(lttngctl.Session):
             )
         if watchdog_timer_period_us is not None:
             args.append("--watchdog-timer={}".format(watchdog_timer_period_us))
-
+        if buffer_preallocation_policy:
+            args.append(
+                "--buffer-preallocation={}".format(buffer_preallocation_policy.as_arg())
+            )
+        if auto_reclaim_memory_older_than:
+            args.append(
+                "--auto-reclaim-memory-older-than={}".format(
+                    auto_reclaim_memory_older_than
+                )
+            )
+        if auto_reclaim_memory_consumed:
+            args.append("--auto-reclaim-memory-consumed")
         self._client._run_cmd(" ".join([shlex.quote(x) for x in args]))
         return _Channel(self._client, channel_name, domain, self)
 
@@ -602,6 +616,43 @@ class _Session(lttngctl.Session):
         self._client._run_cmd(
             " ".join([shlex.quote(x) for x in args]), timeout_s=timeout_s
         )
+
+    def reclaim_memory(
+        self,
+        wait=True,
+        older_than_us=None,
+        session=None,
+        channels=None,
+        all_channels=False,
+    ):
+        args = [
+            "reclaim-memory",
+            "--userspace",
+        ]
+
+        if not wait:
+            args.append("--no-wait")
+
+        if older_than_us:
+
+            if not isinstance(older_than_us, int):
+                raise Exception(
+                    "Parameter `older_than_us={}` is not an integer".format(
+                        older_than_us
+                    )
+                )
+
+            args.append("--older-than={}".format(older_than_us))
+
+        if session:
+            args.append("--session={}".format(session))
+
+        if channels:
+            args.extend(channels)
+        elif all_channels:
+            args.append("--all")
+
+        self._client._run_cmd(" ".join([shlex.quote(arg) for arg in args]))
 
     def rotate(self, wait=True):
         # type: (bool) -> None
