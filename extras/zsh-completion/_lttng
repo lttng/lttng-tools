@@ -1163,15 +1163,10 @@ __lttng_complete_trigger_rate_policy() {
 }
 
 # Adds completions for a `notify` trigger action.
-#
-# `$1` is the index, in the `words` array, of the word following the
-# action type. `CURRENT` is greater than or equal to `$1`.
 __lttng_complete_trigger_action_notify() {
-  local -ir start_index=$1
-
   # Check all the next words in order up to (and excluding) the
   # current one.
-  for word_index in {$start_index..$#words}; do
+  for word_index in {$word_index..$#words}; do
     if ((word_index == CURRENT)); then
       break
     fi
@@ -1189,7 +1184,8 @@ __lttng_complete_trigger_action_notify() {
       --action=*)
         # Defer to action handling dispatch. Action type is what
         # follows `--action=` here.
-        __lttng_complete_trigger_action $((word_index + 1)) ${word#--action=}
+        ((word_index++))
+        __lttng_complete_trigger_action ${word#--action=}
         return
         ;;
       --action)
@@ -1205,7 +1201,8 @@ __lttng_complete_trigger_action_notify() {
           action)
             # Defer to action handling dispatch. Action type is
             # the whole current word.
-            __lttng_complete_trigger_action $((word_index + 1)) $word
+            ((word_index++))
+            __lttng_complete_trigger_action $word
             return
             ;;
         esac
@@ -1237,16 +1234,12 @@ __lttng_complete_trigger_action_notify() {
 
 # Adds completions for a `start-session`, `stop-session`, or
 # `rotate-session` trigger action.
-#
-# `$1` is the index, in the `words` array, of the word following the
-# action type. `CURRENT` is greater than or equal to `$1`.
 __lttng_complete_trigger_action_session() {
-  local -ir start_index=$1
   local -i has_session_name=0
 
   # Check all the next words in order up to (and excluding) the
   # current one.
-  for word_index in {$start_index..$#words}; do
+  for word_index in {$word_index..$#words}; do
     if ((word_index == CURRENT)); then
       break
     fi
@@ -1264,7 +1257,8 @@ __lttng_complete_trigger_action_session() {
       --action=*)
         # Defer to action handling dispatch. Action type is what
         # follows `--action=` here.
-        __lttng_complete_trigger_action $((word_index + 1)) ${word#--action=}
+        ((word_index++))
+        __lttng_complete_trigger_action ${word#--action=}
         return
         ;;
       --action)
@@ -1280,7 +1274,8 @@ __lttng_complete_trigger_action_session() {
           action)
             # Defer to action handling dispatch. Action type is
             # the whole current word.
-            __lttng_complete_trigger_action $((word_index + 1)) $word
+            ((word_index++))
+            __lttng_complete_trigger_action $word
             return
             ;;
           *)
@@ -1314,11 +1309,7 @@ __lttng_complete_trigger_action_session() {
 }
 
 # Adds completions for a `snapshot-session` trigger action.
-#
-# `$1` is the index, in the `words` array, of the word following the
-# action type. `CURRENT` is greater than or equal to `$1`.
 __lttng_complete_trigger_action_snapshot_session() {
-  local -ir start_index=$1
   local session_name
 
   # Append specific options to `long_opts` and `short_opts`
@@ -1331,7 +1322,7 @@ __lttng_complete_trigger_action_snapshot_session() {
 
   # Check all the next words in order up to (and excluding) the
   # current one.
-  for word_index in {$start_index..$#words}; do
+  for word_index in {$word_index..$#words}; do
     if ((word_index == CURRENT)); then
       break
     fi
@@ -1391,7 +1382,8 @@ __lttng_complete_trigger_action_snapshot_session() {
       --action=*)
         # Defer to action handling dispatch. Action type is what
         # follows `--action=` here.
-        __lttng_complete_trigger_action $((word_index + 1)) ${word#--action=}
+        ((word_index++))
+        __lttng_complete_trigger_action ${word#--action=}
         return
         ;;
       --action)
@@ -1425,7 +1417,8 @@ __lttng_complete_trigger_action_snapshot_session() {
           action)
             # Defer to action handling dispatch. Action type is
             # the whole current word.
-            __lttng_complete_trigger_action $((word_index + 1)) $word
+            ((word_index++))
+            __lttng_complete_trigger_action $word
             return
             ;;
           *)
@@ -1476,12 +1469,8 @@ __lttng_complete_trigger_action_snapshot_session() {
 }
 
 # Adds completions for a trigger action.
-#
-# `$1` is the index, in the `words` array, of the word following the
-# action type. `CURRENT` is greater than or equal to `$1`.
 __lttng_complete_trigger_action() {
-  local -ir start_index=$1
-  local -r action_type=$2
+  local -r action_type=$1
 
   # Common initial state for all action completion functions
   in_opt_val=
@@ -1492,15 +1481,15 @@ __lttng_complete_trigger_action() {
 
   case $action_type in
     notify)
-      __lttng_complete_trigger_action_notify $start_index
+      __lttng_complete_trigger_action_notify
       return
       ;;
     (start|stop|rotate)-session)
-      __lttng_complete_trigger_action_session $start_index
+      __lttng_complete_trigger_action_session
       return
       ;;
     snapshot-session)
-      __lttng_complete_trigger_action_snapshot_session $start_index
+      __lttng_complete_trigger_action_snapshot_session
       return
       ;;
     *)
@@ -1608,11 +1597,7 @@ __lttng_complete_inst_point_type() {
 }
 
 # Adds completions for an `event-rule-matches` trigger condition.
-#
-# `$1` is the index, in the `words` array, of the word following the
-# condition type. `CURRENT` is greater than or equal to `$1`.
 __lttng_complete_trigger_cond_event_rule_matches() {
-  local -ir start_index=$1
   local ip_type
   local -i has_exclude_name_or_log_level_opt=0
   local -i has_filter_or_name_opt=0
@@ -1629,7 +1614,7 @@ __lttng_complete_trigger_cond_event_rule_matches() {
 
   # Check all the next words in order up to (and excluding) the
   # current one.
-  for word_index in {$start_index..$#words}; do
+  for word_index in {$word_index..$#words}; do
     if ((word_index == CURRENT)); then
       break
     fi
@@ -1701,7 +1686,8 @@ __lttng_complete_trigger_cond_event_rule_matches() {
       --action=*)
         # Defer to action handling dispatch. Action type is what
         # follows `--action=` here.
-        __lttng_complete_trigger_action $((word_index + 1)) ${word#--action=}
+        ((word_index++))
+        __lttng_complete_trigger_action ${word#--action=}
         return
         ;;
       --action)
@@ -1742,7 +1728,8 @@ __lttng_complete_trigger_cond_event_rule_matches() {
           action)
             # Defer to action handling dispatch. Action type is
             # the whole current word.
-            __lttng_complete_trigger_action $((word_index + 1)) $word
+            ((word_index++))
+            __lttng_complete_trigger_action $word
             return
             ;;
         esac
@@ -1841,22 +1828,17 @@ __lttng_complete_trigger_cond_event_rule_matches() {
 # Parameters:
 #
 # `$1`:
-#     The index, in the `words` array, of the word following the
-#     condition type. `CURRENT` is greater than or equal to `$1`.
-#
-# `$2`:
 #     `1` to handle channel and tracing domain options.
 #
-# `$3`:
+# `$2`:
 #     `1` to handle a `--threshold-ratio` option.
 #
-# `$4`:
+# `$3`:
 #     `1` to handle `--threshold-size`/`-t` options.
 __lttng_complete_trigger_cond_simple() {
-  local -ir start_index=$1
-  local -ir with_channel_domain_opts=$2
-  local -ir with_threshold_ratio_opt=$3
-  local -ir with_threshold_size_opts=$4
+  local -ir with_channel_domain_opts=$1
+  local -ir with_threshold_ratio_opt=$2
+  local -ir with_threshold_size_opts=$3
   local session_name
   local domain_type
 
@@ -1877,7 +1859,7 @@ __lttng_complete_trigger_cond_simple() {
 
   # Check all the next words in order up to (and excluding) the
   # current one.
-  for word_index in {$start_index..$#words}; do
+  for word_index in {$word_index..$#words}; do
     if ((word_index == CURRENT)); then
       break
     fi
@@ -1921,7 +1903,8 @@ __lttng_complete_trigger_cond_simple() {
       --action=*)
         # Defer to action handling dispatch. Action type is what
         # follows `--action=` here.
-        __lttng_complete_trigger_action $((word_index + 1)) ${word#--action=}
+        ((word_index++))
+        __lttng_complete_trigger_action ${word#--action=}
         return
         ;;
       --action)
@@ -1951,7 +1934,8 @@ __lttng_complete_trigger_cond_simple() {
           action)
             # Defer to action handling dispatch. Action type is
             # the whole current word.
-            __lttng_complete_trigger_action $((word_index + 1)) $word
+            ((word_index++))
+            __lttng_complete_trigger_action $word
             return
             ;;
         esac
@@ -2005,12 +1989,8 @@ __lttng_complete_trigger_cond_simple() {
 }
 
 # Adds completions for a trigger condition.
-#
-# `$1` is the index, in the `words` array, of the word following the
-# condition type. `CURRENT` is greater than or equal to `$1`.
 __lttng_complete_trigger_cond() {
-  local -ir start_index=$1
-  local -r cond_type=$2
+  local -r cond_type=$1
 
   # Common initial state for all condition completion functions
   long_opts=()
@@ -2020,19 +2000,19 @@ __lttng_complete_trigger_cond() {
 
   case $cond_type in
     event-rule-matches)
-      __lttng_complete_trigger_cond_event_rule_matches $start_index
+      __lttng_complete_trigger_cond_event_rule_matches
       return
       ;;
     channel-buffer-usage-[lg]e)
-      __lttng_complete_trigger_cond_simple $start_index 1 1 1
+      __lttng_complete_trigger_cond_simple 1 1 1
       return
       ;;
     session-consumed-size-ge)
-      __lttng_complete_trigger_cond_simple $start_index 0 0 1
+      __lttng_complete_trigger_cond_simple 0 0 1
       return
       ;;
     session-rotation-(starts|finishes))
-      __lttng_complete_trigger_cond_simple $start_index 0 0 0
+      __lttng_complete_trigger_cond_simple 0 0 0
       return
       ;;
     *)
@@ -2099,7 +2079,8 @@ __lttng_complete_add_trigger_cmd() {
       --condition=*)
         # Defer to condition handling dispatch. Condition type is what
         # follows `--condition=` here.
-        __lttng_complete_trigger_cond $((word_index + 1)) ${word#--condition=}
+        ((word_index++))
+        __lttng_complete_trigger_cond ${word#--condition=}
         return
         ;;
       --condition)
@@ -2115,7 +2096,8 @@ __lttng_complete_add_trigger_cmd() {
           condition)
             # Defer to condition handling dispatch. Condition type is
             # the whole current word.
-            __lttng_complete_trigger_cond $((word_index + 1)) $word
+            ((word_index++))
+            __lttng_complete_trigger_cond $word
             return
             ;;
         esac
