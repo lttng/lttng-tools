@@ -2181,7 +2181,7 @@ __lttng_complete_add_trigger_cmd() {
   local -i word_index
   local word
 
-  local opts=(
+  long_opts=(
     '--name:set the trigger name'
     '--owner-uid:add the trigger to another Unix user'
     '--condition:set the type of the trigger condition'
@@ -2201,13 +2201,13 @@ __lttng_complete_add_trigger_cmd() {
         return 1;;
       --name=*)
         # Remove `--name` from possible options
-        opts=("${(@)opts:#--name:*}");;
+        long_opts=("${(@)long_opts:#--name:*}");;
       --name)
         # Next: value of `--name` option
         in_opt_val=name;;
       --owner-uid=*)
         # Remove `--owner-uid` from possible options
-        opts=("${(@)opts:#--owner-uid:*}");;
+        long_opts=("${(@)long_opts:#--owner-uid:*}");;
       --owner-uid)
         # Next: value of `--owner-uid` option
         in_opt_val=owner-uid;;
@@ -2225,10 +2225,10 @@ __lttng_complete_add_trigger_cmd() {
         case $in_opt_val in
           name)
             # Remove `--name` from possible options
-            opts=("${(@)opts:#--name:*}");;
+            long_opts=("${(@)long_opts:#--name:*}");;
           owner-uid)
             # Remove `--owner-uid` from possible options
-            opts=("${(@)opts:#--owner-uid:*}");;
+            long_opts=("${(@)long_opts:#--owner-uid:*}");;
           condition)
             # Defer to condition handling dispatch. Condition type is
             # the whole current word.
@@ -2257,7 +2257,7 @@ __lttng_complete_add_trigger_cmd() {
     # Offer all possible options
     local -r help_opts=({-h,--help}':show help')
 
-    _describe -O option opts -qS= -- help_opts
+    _describe -O option long_opts -qS= -- help_opts
     return
   fi
 }
