@@ -184,6 +184,7 @@ noinst_SCRIPTS += \
 	live/test_early_inactive_app.py \
 	live/test_high_latency.py \
 	live/test_kernel \
+	live/test_list_sessions.py \
 	live/test_lttng_kernel \
 	live/test_lttng_ust \
 	live/test_lttng_ust_two_apps.py \
