@@ -142,7 +142,7 @@ nonstd::optional<reclaim_config> parse_cli_args(int argc, const char **argv)
 	constexpr argpar_opt_descr reclaim_argpar_options[] = {
 		{ reclaim_option_types::OPT_HELP, 'h', "help", false },
 		{ reclaim_option_types::OPT_LIST_OPTIONS, '\0', "list-options", false },
-		{ reclaim_option_types::OPT_OLDER_THAN, '\0', "older-than", false },
+		{ reclaim_option_types::OPT_OLDER_THAN, '\0', "older-than", true },
 		{ reclaim_option_types::OPT_USER_SPACE, 'u', "userspace", false },
 		{ reclaim_option_types::OPT_SESSION, 's', "session", true },
 		{ reclaim_option_types::OPT_ALL_CHANNELS, 'a', "all", false },
