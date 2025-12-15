@@ -1162,6 +1162,33 @@ __lttng_complete_trigger_rate_policy() {
   _describe 'trigger rate policy type' types -S ':'
 }
 
+# Tries to complete common trigger action options (`--rate-policy`
+# and `--action`).
+#
+# Uses the `in_opt_val` variable.
+#
+# Sets `opt_completed` to `1` if an option was recognized and completion
+# attempted, or `0` otherwise.
+#
+# Returns the status of the completion function when `opt_completed`
+# is `1`.
+__lttng_try_complete_action_opt() {
+  opt_completed=1
+
+  if [[ $in_opt_val == rate-policy ]] || compset -P '--rate-policy=*:'; then
+    _message -e descriptions 'execution request count'
+    return
+  elif [[ $in_opt_val == rate-policy ]] || compset -P '--rate-policy='; then
+    __lttng_complete_trigger_rate_policy
+    return
+  elif [[ $in_opt_val == action ]] || compset -P '--action='; then
+    __lttng_complete_trigger_action_type
+    return
+  fi
+
+  opt_completed=0
+}
+
 # Adds completions for a `notify` trigger action.
 __lttng_complete_trigger_action_notify() {
   # Check all the next words in order up to (and excluding) the
@@ -1213,23 +1240,17 @@ __lttng_complete_trigger_action_notify() {
     esac
   done
 
-  # Try to offer option-specific completions
-  if [[ $in_opt_val == rate-policy ]] || compset -P '--rate-policy=*:'; then
-    _message -e descriptions 'execution request count'
-    return
-  elif [[ $in_opt_val == rate-policy ]] || compset -P '--rate-policy='; then
-    __lttng_complete_trigger_rate_policy
-    return
-  elif [[ $in_opt_val == action ]] || compset -P '--action='; then
-    __lttng_complete_trigger_action_type
-    return
-  else
-    # Offer all possible options
-    _describe -O option long_opts -qS=
-    return
+  # Try to complete common action options
+  __lttng_try_complete_action_opt
+
+  local -ir ret=$?
+
+  if ((opt_completed)); then
+    return $ret
   fi
 
-  return 1
+  # Offer all possible options
+  _describe -O option long_opts -qS=
 }
 
 # Adds completions for a `start-session`, `stop-session`, or
@@ -1290,22 +1311,23 @@ __lttng_complete_trigger_action_session() {
     esac
   done
 
-  # Try to offer option-specific completions
-  if [[ $in_opt_val == rate-policy ]] || compset -P '--rate-policy='; then
-    __lttng_complete_trigger_rate_policy
-    return
-  elif [[ $in_opt_val == action ]] || compset -P '--action='; then
-    __lttng_complete_trigger_action_type
-    return
-  elif [[ $PREFIX != -* ]] && ((! has_session_name)); then
-    # Recording session name is the first position argument
+  # Try to complete common action options
+  __lttng_try_complete_action_opt
+
+  local -ir ret=$?
+
+  if ((opt_completed)); then
+    return $ret
+  fi
+
+  if [[ $PREFIX != -* ]] && ((! has_session_name)); then
+    # Recording session name is the first positional argument
     __lttng_complete_session_name all all
     return
-  else
-    # Offer all possible options
-    _describe -O option long_opts -qS=
-    return
   fi
+
+  # Offer all possible options
+  _describe -O option long_opts -qS=
 }
 
 # Adds completions for a `snapshot-session` trigger action.
@@ -1432,6 +1454,15 @@ __lttng_complete_trigger_action_snapshot_session() {
     esac
   done
 
+  # Try to complete common action options
+  __lttng_try_complete_action_opt
+
+  local -ir ret=$?
+
+  if ((opt_completed)); then
+    return $ret
+  fi
+
   # Try to offer option-specific completions
   if [[ $in_opt_val == name ]] || compset -P '--name='; then
     _message -e descriptions 'snapshot output name'
@@ -1451,26 +1482,20 @@ __lttng_complete_trigger_action_snapshot_session() {
   elif [[ $in_opt_val == data-url ]] || compset -P '--data-url='; then
     _message -e descriptions 'trace data output URL'
     return
-  elif [[ $in_opt_val == rate-policy ]] || compset -P '--rate-policy='; then
-    __lttng_complete_trigger_rate_policy
-    return
-  elif [[ $in_opt_val == action ]] || compset -P '--action='; then
-    __lttng_complete_trigger_action_type
-    return
   elif [[ $PREFIX != -* && -z $session_name ]]; then
-    # Recording session name is the first position argument
+    # Recording session name is the first positional argument
     __lttng_complete_session_name all snapshot
     return
-  else
-    # Offer all possible options
-    _describe -O option long_opts -qS= -- short_opts
-    return
   fi
+
+  # Offer all possible options
+  _describe -O option long_opts -qS= -- short_opts
 }
 
 # Adds completions for a trigger action.
 __lttng_complete_trigger_action() {
   local -r action_type=$1
+  local -i opt_completed
 
   # Common initial state for all action completion functions
   in_opt_val=
