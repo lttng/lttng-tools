@@ -72,19 +72,24 @@ __lttng_set_minor_version() {
   fi
 }
 
-# Runs the `lttng` command with `"$@"` using `$tracing_group`.
+# Usage:
+#
+#     __lttng_run [ARG]...
+#
+# Runs the `lttng` command with the given ARG arguments
+# using `tracing_group`.
 __lttng_run() {
   $prog_name --no-sessiond --group=$tracing_group "$@" 2>/dev/null
 }
 
-# Runs the `lttng --mi=xml` command using the selected tracing group
-# (`$tracing_group`) and sets `REPLY` to the XML output considering:
+# Usage:
 #
-# `$1`:
-#     A message of what's expected to show on failure.
+#     __lttng_mi_run MSG [ARG]...
 #
-# Other arguments:
-#     Passed to the command as is.
+# Runs the `__lttng_run --mi=xml` command with the given ARG values, and
+# sets `REPLY` to the XML output.
+#
+# On failure, show MSG.
 #
 # This function returns 1 with LTTng-tools < 2.6 and if `xmllint` isn't
 # available. In this case, this function adds completion through
@@ -113,9 +118,13 @@ __lttng_mi_run() {
   fi
 }
 
+# Usage:
+#
+#     __lttng_style_is_verbose ARG TAG
+#
 # Returns whether or not the verbose style is enabled for the given
-# argument (`$1`) and tag (`$2`), using `$curcontext` for the other
-# parts of the full completion context.
+# argument ARG and tag TAG, using `curcontext` for the other parts of
+# the full completion context.
 __lttng_style_is_verbose() {
   local -r arg=$1 tag=$2
   local -r ccparts=("${(@s.:.)curcontext}")
@@ -124,41 +133,41 @@ __lttng_style_is_verbose() {
 }
 
 # Returns 0 if a Linux kernel tracing domain option is set in
-# `$opt_args`, or `1` otherwise.
+# `opt_args`, or 1 otherwise.
 __lttng_kernel_domain_opt_is_set() {
   (($+opt_args[-k] || $+opt_args[--kernel] ||
     $+opt_args[domain--k] || $+opt_args[domain---kernel]))
 }
 
 # Returns 0 if a user space tracing domain option is set in
-# `$opt_args`, or `1` otherwise.
+# `opt_args`, or 1 otherwise.
 __lttng_user_domain_opt_is_set() {
   (($+opt_args[-u] || $+opt_args[--userspace] ||
     $+opt_args[domain--u] || $+opt_args[domain---userspace]))
 }
 
 # Returns 0 if a `java.util.logging` tracing domain option is set in
-# `$opt_args`, or `1` otherwise.
+# `opt_args`, or 1 otherwise.
 __lttng_jul_domain_opt_is_set() {
   (($+opt_args[-j] || $+opt_args[--jul] ||
     $+opt_args[domain--j] || $+opt_args[domain---jul]))
 }
 
 # Returns 0 if an Apache log4j 1.x tracing domain option is set in
-# `$opt_args`, or `1` otherwise.
+# `opt_args`, or 1 otherwise.
 __lttng_log4j1_domain_opt_is_set() {
   (($+opt_args[-l] || $+opt_args[--log4j] ||
     $+opt_args[domain--l] || $+opt_args[domain---log4j]))
 }
 
 # Returns 0 if an Apache Log4j 2 tracing domain option is set in
-# `$opt_args`, or `1` otherwise.
+# `opt_args`, or 1 otherwise.
 __lttng_log4j2_domain_opt_is_set() {
   (($+opt_args[--log4j2] || $+opt_args[domain---log4j2]))
 }
 
-# Returns 0 if a Python tracing domain option is set in `$opt_args`,
-# or `1` otherwise.
+# Returns 0 if a Python tracing domain option is set in `opt_args`,
+# or 1 otherwise.
 __lttng_python_domain_opt_is_set() {
   (($+opt_args[-p] || $+opt_args[--python] ||
     $+opt_args[domain--p] || $+opt_args[domain---python]))
@@ -348,7 +357,7 @@ __lttng_complete_uid() {
 # This function replaces the argument field of the current context with
 # `type-option`.
 #
-# This function relies on the tracing domain options of `$opt_args` to
+# This function relies on the tracing domain options of `opt_args` to
 # restrict the offered completions. Without a tracing domain option,
 # this function adds all the possible context field type completions.
 #
@@ -440,7 +449,7 @@ __lttng_complete_context_type() {
 
 # Adds completions for a trigger name.
 #
-# Relies on `$opt_args[--owner-uid]` to restrict the offered
+# Relies on `opt_args[--owner-uid]` to restrict the offered
 # completions.
 __lttng_complete_trigger_name() {
   # Get XML list of available triggers
@@ -479,22 +488,25 @@ __lttng_complete_trigger_name() {
   _wanted triggers expl $msg compadd -a trigger_names
 }
 
-# Runs `xmllint` with:
+# Usage:
 #
-# `$1`:
-#     An XML document to parse.
+#     __lttng_xmllint_xpath XMLDOC XPATH
 #
-# `$2`:
-#     An XPath to extract data.
+# Runs `xmllint` with XML document XMLDOC and XPath XPATH
+# to extract data.
 __lttng_xmllint_xpath() {
   local -r xml=$1 xpath=$2
 
   xmllint --xpath $xpath - <<< $xml 2>/dev/null
 }
 
+# Usage:
+#
+#     __lttng_session_status_from_enabled_prop PROP
+#
 # Sets `REPLY` to the equivalent recording session status adjective
-# (`active` or `inactive`) for an `enabled` XML property, or `unknown`
-# on error.
+# (`active` or `inactive`) for an `enabled` XML property PROP, or
+# `unknown` on error.
 __lttng_session_status_from_enabled_prop() {
   local -r prop=$1
 
@@ -505,58 +517,69 @@ __lttng_session_status_from_enabled_prop() {
   esac
 }
 
-# Prints the value of the immediate XML property named `$3` of the child
-# node named `$2` within the parent node `$1`.
+# Usage:
+#
+#     __lttng_immediate_prop_from_xml NODEXML NODENAME PROPNAME
+#
+# Prints the value of the immediate XML property named PROPNAME of the
+# child node named NODENAME within the parent node NODEXML.
 __lttng_immediate_prop_from_xml() {
   local -r node_xml=$1 node_name=$2 prop_name=$3
 
   __lttng_xmllint_xpath $node_xml "/*[local-name()='$node_name']/*[local-name()='$prop_name']/text()"
 }
 
+# Usage:
+#
+#     __lttng_name_prop_from_xml NODEXML NODENAME
+#
 # Prints the value of the immediate XML `name` property of the child
-# node named `$2` within the parent node `$1`.
+# node named NODENAME within the parent node NODEXML.
 __lttng_name_prop_from_xml() {
   local -r node_xml=$1 node_name=$2
 
   __lttng_immediate_prop_from_xml $node_xml $node_name name
 }
 
+# Usage:
+#
+#     __lttng_enabled_prop_from_xml NODEXML NODENAME
+#
 # Prints the value of the immediate XML `enabled` property of the child
-# node named `$2` within the parent node `$1`.
+# node named NODENAME within the parent node NODEXML.
 __lttng_enabled_prop_from_xml() {
   local -r node_xml=$1 node_name=$2
 
   __lttng_immediate_prop_from_xml $node_xml $node_name enabled
 }
 
+# Usage:
+#
+#     __lttng_complete_session_name REQSTATUS REQMODE
+#
 # Adds completions for a recording session name.
 #
-# Arguments:
+# REQSTATUS is one of:
 #
-# `$1`:
-#     One of:
+# `all`:
+#     Add completions for active and inactive recording sessions.
 #
-#     `all`:
-#         Add completions for active and inactive recording sessions.
+# `active`:
+#     Only add completions for active recording sessions.
 #
-#     `active`:
-#         Only add completions for active recording sessions.
+# `inactive`:
+#     Only add completions for inactive recording sessions.
 #
-#     `inactive`:
-#         Only add completions for inactive recording sessions.
+# REQMODE is one of:
 #
-# `$2`:
-#     One of:
+# `all`:
+#     Add completions for recording sessions regardless of their mode.
 #
-#     `all`:
-#         Add completions for recording sessions regardless of their
-#         mode.
+# `snapshot`:
+#     Only add completions for snapshot recording sessions.
 #
-#     `snapshot`:
-#         Only add completions for snapshot recording sessions.
-#
-#     `live`:
-#         Only add completions for LTTng live recording sessions.
+# `live`:
+#     Only add completions for LTTng live recording sessions.
 __lttng_complete_session_name() {
   local -r req_status=$1 req_mode=$2
 
@@ -719,8 +742,12 @@ __lttng_cur_session_name() {
   REPLY=$cur_session_name
 }
 
+# Usage:
+#
+#     __lttng_status_from_enabled_prop PROP
+#
 # Sets `REPLY` to the equivalent status adjective (`enabled` or
-# `disabled`) for an `enabled` XML property, or `unknown` on error.
+# `disabled`) for an `enabled` XML property PROP, or `unknown` on error.
 __lttng_status_from_enabled_prop() {
   local -r prop=$1
 
@@ -731,50 +758,55 @@ __lttng_status_from_enabled_prop() {
   esac
 }
 
-# Sets `REPLY` to the XML document of `lttng list $2` (specifics of a
-# single recording session).
+# Usage:
 #
-# `$1` is a message of what's expected to show on error.
+#     __lttng_session_xml MSG SESSIONNAME
 #
-# This function calls __lttng_mi_run(); see notes
-# about __lttng_mi_run().
+# Sets `REPLY` to the XML document of `lttng list SESSIONNAME`
+# (specifics of a single recording session).
+#
+# On error, show MSG.
+#
+# This function calls __lttng_mi_run(); see notes about
+# __lttng_mi_run().
 __lttng_session_xml() {
   local -r msg=$1 session_name=$2
 
   __lttng_mi_run $msg list $session_name
 }
 
+# Usage:
+#
+#     __lttng_complete_channel_name REQSTATUS SRC
+#
 # Adds completions for a channel name.
 #
-# This function relies on the tracing domain options of `$opt_args`,
-# `$opt_args[-s]`, `$opt_args[--session]`, and the first non-option
+# This function relies on the tracing domain options of `opt_args`,
+# `opt_args[-s]`, `opt_args[--session]`, and the first non-option
 # argument to restrict the offered completions.
 #
-# Arguments:
+# REQSTATUS is one of:
 #
-# `$1`:
-#     One of:
+# `all`:
+#     Add completions for enabled and disabled channels.
 #
-#     `all`:
-#         Add completions for enabled and disabled channels.
+# `enabled`:
+#     Only add completions for enabled channels.
 #
-#     `enabled`:
-#         Only add completions for enabled channels.
+# `disabled`:
+#     Only add completions for disabled channels.
 #
-#     `disabled`:
-#         Only add completions for disabled channels.
+# SRC is one of:
 #
-# `$2`:
-#     `opt`:
-#         Use `$opt_args[-s]` and `$opt_args[--session]` to find the
-#         name of the selected recording session.
+# `opt`:
+#     Use `opt_args[-s]` and `opt_args[--session]` to find the name of
+#     the selected recording session.
 #
-#     `arg`:
-#         Use `$line[1]` to find the name of the selected recording
-#         session.
+# `arg`:
+#     Use `line[1]` to find the name of the selected recording session.
 #
-#     Anything else:
-#         Use the current recording session name.
+# Anything else:
+#     Use the current recording session name.
 __lttng_complete_channel_name() {
   local -r req_status=$1 session_name_src=$2
 
@@ -966,10 +998,10 @@ __lttng_complete_channel_name() {
   fi
 }
 
-# Add completions for instrumentation point names.
+# Adds completions for instrumentation point names.
 #
-# This function relies on the tracing domain options of `$opt_args` and
-# `$opt_args[ip---syscall]` to restrict the offered completions.
+# This function relies on the tracing domain options of `opt_args` and
+# `opt_args[ip---syscall]` to restrict the offered completions.
 __lttng_complete_ip_name() {
   local msg
   local -a list_opts
@@ -1073,12 +1105,16 @@ __lttng_complete_add_context_cmd() {
   _arguments -s -W : $specs
 }
 
+# Usage:
+#
+#     __lttng_complete_log_level TITLE
+#
 # Adds completions for log level names/rule.
 #
-# This function relies on the tracing domain options of `$opt_args` to
+# This function relies on the tracing domain options of `opt_args` to
 # restrict the offered completions.
 #
-# `$1` is the title of the message to show.
+# TITLE is the title of the message to show.
 __lttng_complete_log_level() {
   local -r title=$1
   local -a log_levels
@@ -1492,7 +1528,11 @@ __lttng_complete_trigger_action_snapshot_session() {
   _describe -O option long_opts -qS= -- short_opts
 }
 
-# Adds completions for a trigger action.
+# Usage:
+#
+#     __lttng_complete_trigger_action ACTIONTYPE
+#
+# Adds completions for a trigger action of type ACTIONTYPE.
 __lttng_complete_trigger_action() {
   local -r action_type=$1
   local -i opt_completed
@@ -1553,8 +1593,12 @@ __lttng_complete_new_domain_type() {
   _describe 'tracing domain type' types
 }
 
+# Usage:
+#
+#     __lttng_set_opt_args_from_new_domain_type DOMAINTYPE
+#
 # Sets an entry of the `opt_args` associative array from the new-style
-# tracing domain type name (`$1`).
+# tracing domain type name DOMAINTYPE.
 __lttng_set_opt_args_from_new_domain_type() {
   local -r domain_type=$1
 
@@ -1568,17 +1612,19 @@ __lttng_set_opt_args_from_new_domain_type() {
   esac
 }
 
+# Usage:
+#
+#     __lttng_complete_inst_point_type EXCLKERNEL EXCLPROBE ONLYPROBE
+#
 # Adds completions for a new-style instrumentation point type.
 #
-# Parameters:
-#
-# `$1`:
+# EXCLKERNEL:
 #     `1` to exclude Linux kernel types.
 #
-# `$2`:
+# EXCLPROBE:
 #     `1` to exclude probe types.
 #
-# `$3`:
+# ONLYPROBE:
 #     `1` to _only_ offer probe types.
 __lttng_complete_inst_point_type() {
   local -ir exclude_kernel_types=$1
@@ -1806,7 +1852,7 @@ __lttng_complete_trigger_cond_event_rule_matches() {
     _message -e descriptions 'instrumentation point name exclusion pattern'
     return
   elif [[ $in_opt_val == log-level ]] || compset -P '--log-level='; then
-    # __lttng_complete_log_level() relies on `$opt_args` for the
+    # __lttng_complete_log_level() relies on `opt_args` for the
     # tracing domain.
     __lttng_set_opt_args_from_new_domain_type $ip_type
     __lttng_complete_log_level 'log level rule'
@@ -1847,18 +1893,20 @@ __lttng_complete_trigger_cond_event_rule_matches() {
   return 1
 }
 
+# Usage:
+#
+#     __lttng_complete_trigger_cond_simple WITHCHANDOMAIN WITHRATIO WITHSIZE
+#
 # Adds completions for a "simple" trigger condition (anything except
 # `event-rule-matches`).
 #
-# Parameters:
-#
-# `$1`:
+# WITHCHANDOMAIN:
 #     `1` to handle channel and tracing domain options.
 #
-# `$2`:
+# WITHRATIO:
 #     `1` to handle a `--threshold-ratio` option.
 #
-# `$3`:
+# WITHSIZE:
 #     `1` to handle `--threshold-size`/`-t` options.
 __lttng_complete_trigger_cond_simple() {
   local -ir with_channel_domain_opts=$1
@@ -1977,8 +2025,8 @@ __lttng_complete_trigger_cond_simple() {
     return
   elif [[ $in_opt_val == channel ]] || compset -P '--channel='; then
     if ((with_channel_domain_opts)); then
-      # __lttng_complete_channel_name() relies on `$line[1]` for the
-      # recording session name and on `$opt_args` for the
+      # __lttng_complete_channel_name() relies on `line[1]` for the
+      # recording session name and on `opt_args` for the
       # tracing domain.
       line=($session_name)
       opt_args=()
@@ -2013,7 +2061,11 @@ __lttng_complete_trigger_cond_simple() {
   return 1
 }
 
-# Adds completions for a trigger condition.
+# Usage:
+#
+#     __lttng_complete_trigger_cond CONDTYPE
+#
+# Adds completions for a trigger condition of type CONDTYPE.
 __lttng_complete_trigger_cond() {
   local -r cond_type=$1
 
@@ -2248,7 +2300,7 @@ __lttng_complete_disable_channel_cmd() {
 }
 
 # Sets `REPLY` to the XML tracing domain name value depending on the
-# tracing domain option (in `$opt_args`), or prints nothing and
+# tracing domain option (in `opt_args`), or prints nothing and
 # returns 1 when not available.
 __lttng_xml_domain_name_from_opt() {
   if __lttng_kernel_domain_opt_is_set; then
@@ -2269,7 +2321,7 @@ __lttng_xml_domain_name_from_opt() {
 }
 
 # Sets `REPLY` to the XML instrumentation point type value depending on
-# the instrumentation point option (in `$opt_args`).
+# the instrumentation point option (in `opt_args`).
 __lttng_xml_ip_type_from_opt() {
   if (($+opt_args[--syscall] || $+opt_args[ip---syscall])); then
     REPLY=SYSCALL
@@ -2436,7 +2488,7 @@ __lttng_complete_disable_rotation_cmd() {
 # `output-opt`.
 #
 # This function relies on the user space tracing domain options of
-# `$opt_args` to restrict the offered completions. Without the user
+# `opt_args` to restrict the offered completions. Without the user
 # space tracing domain option, this function adds the `splice`
 # completion too.
 __lttng_complete_channel_output_type() {
@@ -2454,7 +2506,7 @@ __lttng_complete_channel_output_type() {
 # Adds completions for the non-option argument of the `enable-channel`
 # command.
 #
-# This function either, depending on the keys of `$opt_args`:
+# This function either, depending on the keys of `opt_args`:
 #
 # At least one creation option:
 #     Shows a message to enter the new channel name.
@@ -2470,7 +2522,7 @@ __lttng_complete_enable_channel_cmd_names() {
     domain---userspace domain--u
   )
 
-  # For each key of `$opt_args`
+  # For each key of `opt_args`
   for key in "${(@k)opt_args}"; do
     if (($enable_opts[(Ie)$key])); then
       # Enabling option exists: skip
@@ -3068,7 +3120,7 @@ __lttng_complete_view_cmd() {
   _arguments -s -W : $specs
 }
 
-# Add completions for the specific `lttng` command named `$line[1]`.
+# Adds completions for the specific `lttng` command named `line[1]`.
 __lttng_complete_cmd() {
   # An lttng(1) command: replace `lttng` with `lttng-$line[1]` (for
   # example, `lttng-add-trigger`).
