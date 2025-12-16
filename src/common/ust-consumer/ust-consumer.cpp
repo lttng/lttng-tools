@@ -1811,6 +1811,22 @@ lttng::consumer::memory_reclaim_result lttng_ustconsumer_reclaim_stream_memory(
 		stream.key,
 		consumed_pos);
 
+	nonstd::optional<std::uint64_t> expiry_limit;
+	if (age_limit) {
+		expiry_limit = current_tracer_time;
+		const auto negative_age_limit_ns =
+			-std::chrono::duration_cast<std::chrono::nanoseconds>(*age_limit).count();
+		const auto add_ret = lttng_ust_ctl_timestamp_add(
+			stream.ustream, &(*expiry_limit), negative_age_limit_ns);
+		if (add_ret < 0) {
+			LTTNG_THROW_ERROR(fmt::format(
+				"Failed to compute expiry limit by subtracting age from current timestamp: channel_name=`{}`, stream_key={}, error={}",
+				stream.chan->name,
+				stream.key,
+				add_ret));
+		}
+	}
+
 	unsigned int reclaimed_subbuf_count = 0;
 	unsigned int deferred_reclaim_subbuf_count = 0;
 	while (true) {
@@ -1873,30 +1889,13 @@ lttng::consumer::memory_reclaim_result lttng_ustconsumer_reclaim_stream_memory(
 			continue;
 		}
 
-		if (age_limit) {
-			std::uint64_t expiry_limit = current_tracer_time;
-			/* Negate age_limit to compute the expiry threshold in the past. */
-			const auto negative_age_limit_ns =
-				-std::chrono::duration_cast<std::chrono::nanoseconds>(*age_limit)
-					 .count();
-			const auto add_ret = lttng_ust_ctl_timestamp_add(
-				stream.ustream, &expiry_limit, negative_age_limit_ns);
-			if (add_ret < 0) {
-				LTTNG_THROW_ERROR(fmt::format(
-					"Failed to compute expiry limit by subtracting age from current timestamp: channel_name=`{}`, stream_key={}, error={}",
-					stream.chan->name,
-					stream.key,
-					add_ret));
-			}
-
-			if (subbuf_timestamp > expiry_limit) {
-				DBG_FMT("Sub-buffer is too recent, skipping: channel_name=`{}`, stream_key={}, subbuf_timestamp={}, oldest_data_limit={}",
-					stream.chan->name,
-					stream.key,
-					subbuf_timestamp,
-					expiry_limit);
-				continue;
-			}
+		if (expiry_limit && subbuf_timestamp > *expiry_limit) {
+			DBG_FMT("Sub-buffer is too recent, skipping: channel_name=`{}`, stream_key={}, subbuf_timestamp={}, oldest_data_limit={}",
+				stream.chan->name,
+				stream.key,
+				subbuf_timestamp,
+				*expiry_limit);
+			continue;
 		}
 
 		/*
