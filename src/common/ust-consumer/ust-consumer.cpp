@@ -1773,9 +1773,21 @@ lttng::consumer::memory_reclaim_result lttng_ustconsumer_reclaim_stream_memory(
 		if (compare_ret <= 0) {
 			should_flush_current_producer_buffer = true;
 		}
+
+		DBG_FMT("Last activity timestamp check for stream: channel_name=`{}`, stream_key={}, current_tracer_time={}, last_activity_compare_expiry_limit={}, compare_ret={}",
+			stream.chan->name,
+			stream.key,
+			current_tracer_time,
+			expiry_limit,
+			compare_ret);
 	} else {
 		should_flush_current_producer_buffer = true;
 	}
+
+	DBG_FMT("Should flush current producer buffer: channel_name=`{}`, stream_key={}, should_flush={}",
+		stream.chan->name,
+		stream.key,
+		should_flush_current_producer_buffer);
 
 	if (should_flush_current_producer_buffer) {
 		const auto flush_ret = lttng_ust_ctl_flush_buffer(stream.ustream, 1);
