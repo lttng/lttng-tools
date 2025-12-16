@@ -1695,7 +1695,7 @@ static void destroy_subbuf_iter(lttng_ust_ctl_subbuf_iter *it)
 static unsigned long get_current_consumed_position(lttng_consumer_stream& stream)
 {
 	unsigned long consumed_pos = 0;
-	const auto snapshot_ret = lttng_consumer_take_snapshot(&stream);
+	const auto snapshot_ret = lttng_consumer_sample_snapshot_positions(&stream);
 
 	if (snapshot_ret < 0 && snapshot_ret != -ENODATA && snapshot_ret != -EAGAIN) {
 		LTTNG_THROW_ERROR(fmt::format(
@@ -1720,7 +1720,7 @@ static unsigned long get_current_consumed_position(lttng_consumer_stream& stream
 static unsigned long get_current_produced_position(lttng_consumer_stream& stream)
 {
 	unsigned long produced_pos = 0;
-	const auto snapshot_ret = lttng_consumer_take_snapshot(&stream);
+	const auto snapshot_ret = lttng_consumer_sample_snapshot_positions(&stream);
 
 	if (snapshot_ret < 0 && snapshot_ret != -ENODATA && snapshot_ret != -EAGAIN) {
 		LTTNG_THROW_ERROR(fmt::format(
@@ -1764,6 +1764,22 @@ lttng::consumer::memory_reclaim_result lttng_ustconsumer_reclaim_stream_memory(
 			stream.key,
 			current_time_ret));
 	}
+
+	/*
+	 * If we observe a buffer that is being produced but has data that is older
+	 * than the age limit, we flush it to make sure that we can reclaim that
+	 * memory. However, doing so sets its timestamp_end value to the current time, which
+	 * may be newer than the age limit.
+	 *
+	 * To reclaim the memory safely:
+	 *   - produced position is sampled,
+	 *   - buffer is flushed, sampling the produced position at the time of flushing,
+	 *  - if the produced position moved, we know that new data was written to the buffer
+	 * between the sampling and the flushing, so we do not reclaim that memory.
+	 *  - if the produced position did not move, we can safely reclaim memory up to the flushed
+	 *    position.
+	 */
+	const unsigned long produced_position_before_flush = get_current_produced_position(stream);
 
 	bool should_flush_current_producer_buffer = false;
 	if (age_limit) {
@@ -1814,18 +1830,30 @@ lttng::consumer::memory_reclaim_result lttng_ustconsumer_reclaim_stream_memory(
 		stream.key,
 		should_flush_current_producer_buffer);
 
-	bool flush_moved_position = false;
+	/* If set, reclaim that subbuffer regardless of its age. */
+	nonstd::optional<unsigned long> age_override_buffer_position;
 	if (should_flush_current_producer_buffer) {
-		const auto produced_position_before = get_current_produced_position(stream);
-		const auto flush_ret = lttng_ust_ctl_flush_buffer(stream.ustream, 1);
+		unsigned long produced_position_at_flush;
+		const auto flush_ret = lttng_ust_ctl_flush_buffer_with_old_position(
+			stream.ustream, 1, &produced_position_at_flush);
 		if (flush_ret) {
 			WARN_FMT(
 				"Failed to flush stream when reclaiming buffer memory: flush_ret={}",
 				flush_ret);
 		}
 
-		const auto produced_position_after = get_current_produced_position(stream);
-		flush_moved_position = (produced_position_after != produced_position_before);
+		const unsigned long produced_position_after_flush =
+			get_current_produced_position(stream);
+
+		if (produced_position_before_flush == produced_position_at_flush &&
+		    produced_position_before_flush != produced_position_after_flush) {
+			/*
+			 * No new data was written to the buffer between sampling and flushing,
+			 * we can reclaim memory up to the flushed position safely.
+			 */
+			age_override_buffer_position =
+				lttng_align_floor(produced_position_at_flush, stream.max_sb_size);
+		}
 	}
 
 	/* The iterator is initially invalid; call [...]_next() before accessing its value. */
@@ -1881,10 +1909,7 @@ lttng::consumer::memory_reclaim_result lttng_ustconsumer_reclaim_stream_memory(
 	 * In the case where we require the subbuffer to be consumed before reclaiming it, we can
 	 * queue it for later reclamation instead of reclaiming it immediately.
 	 */
-	unsigned int deferred_reclaim_subbuf_count = should_flush_current_producer_buffer &&
-			age_limit && require_consumed && flush_moved_position ?
-		1 :
-		0;
+	unsigned int deferred_reclaim_subbuf_count = 0;
 	while (true) {
 		const auto next_ret = lttng_ust_ctl_subbuf_iter_next(subbuf_iter.get());
 		if (next_ret == 0) {
@@ -1946,12 +1971,22 @@ lttng::consumer::memory_reclaim_result lttng_ustconsumer_reclaim_stream_memory(
 		}
 
 		if (expiry_limit && subbuf_timestamp > *expiry_limit) {
-			DBG_FMT("Sub-buffer is too recent, skipping: channel_name=`{}`, stream_key={}, subbuf_timestamp={}, oldest_data_limit={}",
-				stream.chan->name,
-				stream.key,
-				subbuf_timestamp,
-				*expiry_limit);
-			continue;
+			if (age_override_buffer_position &&
+			    *age_override_buffer_position == subbuf_position) {
+				DBG_FMT("Sub-buffer is too recent but age override is set, proceeding: channel_name=`{}`, stream_key={}, subbuf_position={}, subbuf_timestamp={}, oldest_data_limit={}",
+					stream.chan->name,
+					stream.key,
+					subbuf_position,
+					subbuf_timestamp,
+					*expiry_limit);
+			} else {
+				DBG_FMT("Sub-buffer is too recent, skipping: channel_name=`{}`, stream_key={}, subbuf_timestamp={}, oldest_data_limit={}",
+					stream.chan->name,
+					stream.key,
+					subbuf_timestamp,
+					*expiry_limit);
+				continue;
+			}
 		}
 
 		/*
