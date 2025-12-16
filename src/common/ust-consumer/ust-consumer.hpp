@@ -244,6 +244,14 @@ static inline int lttng_ustconsumer_flush_buffer(struct lttng_consumer_stream *s
 	return -ENOSYS;
 }
 
+static inline int lttng_ustconsumer_flush_buffer_with_old_position(
+	struct lttng_consumer_stream *stream __attribute__((unused)),
+	int producer __attribute__((unused)),
+	unsigned long *old_position __attribute__((unused)))
+{
+	return -ENOSYS;
+}
+
 static inline int lttng_ustconsumer_clear_buffer(struct lttng_consumer_stream *stream
 						 __attribute__((unused)))
 {
