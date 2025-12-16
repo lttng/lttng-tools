@@ -1717,6 +1717,31 @@ static unsigned long get_current_consumed_position(lttng_consumer_stream& stream
 	return consumed_pos;
 }
 
+static unsigned long get_current_produced_position(lttng_consumer_stream& stream)
+{
+	unsigned long produced_pos = 0;
+	const auto snapshot_ret = lttng_consumer_take_snapshot(&stream);
+
+	if (snapshot_ret < 0 && snapshot_ret != -ENODATA && snapshot_ret != -EAGAIN) {
+		LTTNG_THROW_ERROR(fmt::format(
+			"Failed to take position snapshot of stream: channel_name=`{}`, stream_key={}, error={}",
+			stream.chan->name,
+			stream.key,
+			snapshot_ret));
+	}
+
+	const auto produced_ret = lttng_consumer_get_produced_snapshot(&stream, &produced_pos);
+	if (produced_ret < 0) {
+		LTTNG_THROW_ERROR(fmt::format(
+			"Failed to get produced position of stream: channel_name=`{}`, stream_key={}, error={}",
+			stream.chan->name,
+			stream.key,
+			produced_ret));
+	}
+
+	return produced_pos;
+}
+
 lttng::consumer::memory_reclaim_result lttng_ustconsumer_reclaim_stream_memory(
 	lttng_consumer_stream& stream,
 	nonstd::optional<std::chrono::microseconds> age_limit,
@@ -1789,13 +1814,18 @@ lttng::consumer::memory_reclaim_result lttng_ustconsumer_reclaim_stream_memory(
 		stream.key,
 		should_flush_current_producer_buffer);
 
+	bool flush_moved_position = false;
 	if (should_flush_current_producer_buffer) {
+		const auto produced_position_before = get_current_produced_position(stream);
 		const auto flush_ret = lttng_ust_ctl_flush_buffer(stream.ustream, 1);
 		if (flush_ret) {
 			WARN_FMT(
 				"Failed to flush stream when reclaiming buffer memory: flush_ret={}",
 				flush_ret);
 		}
+
+		const auto produced_position_after = get_current_produced_position(stream);
+		flush_moved_position = (produced_position_after != produced_position_before);
 	}
 
 	/* The iterator is initially invalid; call [...]_next() before accessing its value. */
@@ -1840,7 +1870,21 @@ lttng::consumer::memory_reclaim_result lttng_ustconsumer_reclaim_stream_memory(
 	}
 
 	unsigned int reclaimed_subbuf_count = 0;
-	unsigned int deferred_reclaim_subbuf_count = 0;
+	/*
+	 * When a subbuffer is flushed, it affects its "timestamp". For instance, if a subbuffer
+	 * contained data up to time T1, flushing it will set its timestamp_end to the current
+	 * time T2 > T1.
+	 *
+	 * When we encounter this freshly-flushed subbuffer during the iteration, it will
+	 * fail the age check (if any), and we will skip it. However, it still has to be reclaimed.
+	 *
+	 * In the case where we require the subbuffer to be consumed before reclaiming it, we can
+	 * queue it for later reclamation instead of reclaiming it immediately.
+	 */
+	unsigned int deferred_reclaim_subbuf_count = should_flush_current_producer_buffer &&
+			age_limit && require_consumed && flush_moved_position ?
+		1 :
+		0;
 	while (true) {
 		const auto next_ret = lttng_ust_ctl_subbuf_iter_next(subbuf_iter.get());
 		if (next_ret == 0) {
@@ -1978,7 +2022,7 @@ lttng::consumer::memory_reclaim_result lttng_ustconsumer_reclaim_stream_memory(
 		reclaimed_subbuf_count++;
 	}
 
-	if (reclaimed_subbuf_count != 0) {
+	if (reclaimed_subbuf_count > 0) {
 		/*
 		 * The reader sub-buffer was exchanged with the iterator's current sub-buffer,
 		 * so it is "allocated". Reclaim it to reduce the memory footprint.
@@ -5108,25 +5152,6 @@ void lttng_ustconsumer_try_reclaim_current_subbuffer(lttng_consumer_stream& stre
 		return;
 	}
 
-	if (stream.pending_memory_reclamation && stream.pending_memory_reclamation->max_age) {
-		/* Evaluate age */
-		if (!subbuffer_too_old(
-			    stream, subbuffer, *stream.pending_memory_reclamation->max_age)) {
-			/* Reclamation is done (all other subbuffers are too recent). */
-			const auto token =
-				stream.pending_memory_reclamation->memory_reclaim_request_token;
-			stream.pending_memory_reclamation.reset();
-
-			if (token) {
-				/* Notify tracker that this stream has completed. */
-				lttng::consumerd::the_pending_memory_reclamation_tracker
-					.stream_completed(stream, *token);
-			}
-
-			return;
-		}
-	}
-
 	const auto initial_reclaim_ret = lttng_ust_ctl_reclaim_reader_subbuf(stream.ustream);
 
 	/*
@@ -5207,6 +5232,27 @@ void lttng_ustconsumer_try_reclaim_current_subbuffer(lttng_consumer_stream& stre
 				lttng::consumerd::the_pending_memory_reclamation_tracker
 					.stream_completed(stream, *token);
 			}
+
+			DBG_FMT("Completed pending reclamation operation, reclaimed all pending subbuffers: channel_name=`{}`, stream_key={}",
+				stream.chan->name,
+				stream.key);
+		} else if (!subbuffer_too_old(stream,
+					      subbuffer,
+					      *stream.pending_memory_reclamation->max_age)) {
+			/* Reclamation is done (all other subbuffers are too recent). */
+			const auto token =
+				stream.pending_memory_reclamation->memory_reclaim_request_token;
+			stream.pending_memory_reclamation.reset();
+
+			if (token) {
+				/* Notify tracker that this stream has completed. */
+				lttng::consumerd::the_pending_memory_reclamation_tracker
+					.stream_completed(stream, *token);
+			}
+
+			DBG_FMT("Subbuffer was not old enough, clearing pending reclamation operation: channel_name=`{}`, stream_key={}",
+				stream.chan->name,
+				stream.key);
 		}
 	}
 }
