@@ -5274,7 +5274,8 @@ enum lttng_error_code cmd_unregister_trigger(const struct lttng_credentials *cmd
 	 */
 	lttng_trigger_set_as_unregistered(sessiond_trigger);
 
-	ret_code = notification_thread_command_unregister_trigger(notification_thread, trigger);
+	ret_code = notification_thread_command_unregister_trigger(notification_thread,
+								  sessiond_trigger);
 	if (ret_code != LTTNG_OK) {
 		DBG("Failed to unregister trigger from notification thread: trigger name = '%s', trigger owner uid = %d, error code = %d",
 		    trigger_name,
@@ -5289,8 +5290,8 @@ enum lttng_error_code cmd_unregister_trigger(const struct lttng_credentials *cmd
 	 * the tracers from producing notifications associated with this
 	 * event notifier.
 	 */
-	if (lttng_trigger_needs_tracer_notifier(trigger)) {
-		ret_code = synchronize_tracer_notifier_unregister(trigger);
+	if (lttng_trigger_needs_tracer_notifier(sessiond_trigger)) {
+		ret_code = synchronize_tracer_notifier_unregister(sessiond_trigger);
 		if (ret_code != LTTNG_OK) {
 			ERR("Error unregistering trigger to tracer.");
 			goto end;
