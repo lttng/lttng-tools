@@ -24,6 +24,10 @@ def extract_prop(metadata_path, fragment_type, prop_path):
         if not fragment:
             continue
 
+        # Decode explicitly for older Python interpreters (3.5)
+        if type(fragment) is bytes:
+            fragment = fragment.decode("utf-8")
+
         obj = json.loads(fragment)
 
         if obj.get("type") != fragment_type:
