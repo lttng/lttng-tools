@@ -134,7 +134,7 @@ def test_snapshot_traces():
             if not metadata_files:
                 raise Exception("No metadata file found in CTF 2 trace")
 
-            with open(metadata_files[0], "rb") as f:
+            with open(str(metadata_files[0]), "rb") as f:
                 first_byte = f.read(1)
 
                 if first_byte != b"\x1e":
@@ -151,7 +151,7 @@ def test_snapshot_traces():
             if not metadata_files:
                 raise Exception("No metadata file found in CTF 1.8 trace")
 
-            with open(metadata_files[0], "rb") as f:
+            with open(str(metadata_files[0]), "rb") as f:
                 if f.read(1) == b"\x1e":
                     raise Exception(
                         "CTF 1.8 metadata unexpectedly starts with RS (0x1e)"
