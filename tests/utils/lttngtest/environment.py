@@ -477,9 +477,13 @@ class _WaitTraceTestApplication:
                 break
 
             if self._process.poll() is not None:
-                # Application has unexepectedly returned.
+                # Application has exited. Re-check for the file since it could
+                # have been created between the existence check and the poll.
+                if os.path.exists(self._compat_pathlike(sync_file_path)):
+                    break
+
                 raise RuntimeError(
-                    "Test application has unexepectedly returned while waiting for synchronization file to be created: sync_file=`{sync_file}`, return_code=`{return_code}`, output=`{output}`".format(
+                    "Test application has unexpectedly returned while waiting for synchronization file to be created: sync_file=`{sync_file}`, return_code=`{return_code}`, output=`{output}`".format(
                         sync_file=sync_file_path,
                         return_code=self._process.returncode,
                         output=self._process.stdout.read().decode("utf-8"),
@@ -527,9 +531,9 @@ class _WaitTraceTestApplication:
     def trace(self):
         # type: () -> None
         if self._process.poll() is not None:
-            # Application has unexepectedly returned.
+            # Application has unexpectedly returned.
             raise RuntimeError(
-                "Test application has unexepectedly before tracing with return code `{return_code}`".format(
+                "Test application has unexpectedly returned before tracing with return code `{return_code}`".format(
                     return_code=self._process.returncode
                 )
             )
