@@ -39,7 +39,7 @@ LTTNG_TEST_VERBOSE_SESSIOND="${LTTNG_TEST_VERBOSE_SESSIOND:-}"
 OUTPUT_DEST="${OUTPUT_DEST:-}"  # For 'lttng', some scripts set this to catch a command output
 ERROR_OUTPUT_DEST="${ERROR_OUTPUT_DEST:-}"  # For 'lttng', some scripts set this to catch a command error output
 MI_XSD_MAJOR_VERSION=4
-MI_XSD_MINOR_VERSION=1
+MI_XSD_MINOR_VERSION=2
 MI_XSD_PATH="$ABS_BUILDDIR/src/common/mi-lttng-${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}.xsd"
 MI_VALIDATE_BIN="$ABS_TESTDIR/utils/xml-utils/validate_xml"
 

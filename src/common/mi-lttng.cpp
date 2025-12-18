@@ -19,7 +19,7 @@
 #include <lttng/snapshot-internal.hpp>
 
 #define MI_SCHEMA_MAJOR_VERSION 4
-#define MI_SCHEMA_MINOR_VERSION 1
+#define MI_SCHEMA_MINOR_VERSION 2
 
 /* Machine interface namespace URI */
 const char *const mi_lttng_xmlns = "xmlns";

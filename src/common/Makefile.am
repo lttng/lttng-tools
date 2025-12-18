@@ -500,7 +500,7 @@ filter_grammar_test_SOURCES = filter-grammar-test.cpp
 filter_grammar_test_LDADD = libcommon-gpl.la
 
 EXTRA_DIST = \
-	mi-lttng-4.1.xsd \
+	mi-lttng-4.2.xsd \
 	session.xsd
 
 xmldir = $(datadir)/xml/lttng
