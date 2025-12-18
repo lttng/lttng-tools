@@ -1335,7 +1335,7 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 			read_len = lttng_consumer_on_read_subbuffer_mmap(
 				&stream, &subbuf_view, packet_length_padded - packet_length);
 			if (read_len < length) {
-				WARN("Failed to write terminal packet to stream, read %ld of %ld",
+				WARN("Failed to write terminal packet to stream, read %zd of %" PRIu64,
 				     read_len,
 				     length);
 				return -EPERM;
