@@ -267,8 +267,12 @@ AC_DEFINE_UNQUOTED([VERSION_MINOR], $minor_version, [LTTng-Tools minor version n
 AC_DEFINE_UNQUOTED([VERSION_PATCHLEVEL], $patchlevel_version, [LTTng-Tools patchlevel version number])
 
 version_name="Péché Mortel"
-version_description="This release is named after Péché Mortel, the iconic Imperial Stout from Montréal’s Dieu du Ciel! and a long-time team favorite.\n\nDeep black and unapologetically intense, Péché Mortel pours with a dense, mocha-tinted head and an aroma that immediately announces freshly roasted coffee. Decadent and dangerously drinkable, it is the ideal companion for long, cold winter evenings."
-version_description_c=$(echo $version_description | $SED 's/"/\\"/g')
+version_description="This release is named after Péché Mortel, the iconic Imperial Stout from Montréal's Dieu du Ciel! and a long-time team favorite.\n\nDeep black and unapologetically intense, Péché Mortel pours with a dense, mocha-tinted head and an aroma that immediately announces freshly roasted coffee. Decadent and dangerously drinkable, it is the ideal companion for long, cold winter evenings."
+
+# Use printf '%s' rather than echo or AS_ECHO to prevent interpretation of
+# escape sequences (e.g. '\n'). BSD echo, used on macOS, interprets them while
+# GNU echo does not by default, causing build failures on macOS.
+version_description_c=$(printf '%s' "$version_description" | $SED 's/"/\\"/g')
 
 AC_DEFINE_UNQUOTED([VERSION_NAME], ["$version_name"], "")
 AC_DEFINE_UNQUOTED([VERSION_DESCRIPTION], ["$version_description_c"], "")
@@ -1396,10 +1400,12 @@ AS_ECHO
 AS_ECHO("${PPRINT_COLOR_BLDBLU}LTTng-tools $PACKAGE_VERSION \"$version_name\"$PPRINT_COLOR_RST")
 AS_ECHO
 
+# Use printf '%b' rather than echo or AS_ECHO to interpret escape sequences
+# (e.g. '\n') for proper display. AS_ECHO does not interpret them.
 AS_IF([test -n "$report_fold"], [
-	AS_ECHO("`AS_ECHO("$version_description") | $report_fold -s`")
+	AS_ECHO(["`printf '%b' "$version_description" | $report_fold -s`"])
 ], [
-	AS_ECHO("$version_description")
+	printf '%b\n' "$version_description"
 ])
 
 AS_ECHO
