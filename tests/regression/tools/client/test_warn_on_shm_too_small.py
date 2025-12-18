@@ -55,7 +55,7 @@ def test_shm_warning(tap, test_env, tests):
 
     client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
     for test in tests:
-        subbuf_count = 2 if test["snapshot"] else 1
+        subbuf_count = 2
         subbuf_size = (
             test["target_usage_mib"] / ncpus / test["nchannels"] / subbuf_count
         )
