@@ -668,7 +668,7 @@ def test_temporal_backlog(
     A second user application is spawned, emitting a single event. A snapshot
     record is made. Only a single event should be in the final trace.
     """
-    max_age_us = 100000
+    max_age_us = 5000000
 
     session = client.create_session(
         output=lttngtest.LocalSessionOutputLocation(
@@ -704,12 +704,23 @@ def test_temporal_backlog(
     run_user_app()
     memory_usage_after_first_app = get_memory_usage()
 
-    time.sleep((max_age_us * 10) / 1000000)
+    # Add some slack to ensure the sub-buffer is old enough to be reclaimed.
+    # This is needed to account for the time imprecision on 32-bit platforms
+    # (~260ms).
+    time.sleep(((max_age_us) / 1000000) + 0.3)
 
     # Wait for the memory reclaim timer to fire using GDB synchronization.
     wait_for_memory_reclaim_timer(test_env, tap.diagnostic, [channel_on_demand.name])
 
     memory_usage_after_timer = get_memory_usage()
+
+    # There is a race here: the timer may fire again before we take the
+    # snapshot/rotate. To reduce the likelihood of that happening,
+    # we increase the max age to account for slow platforms. Still, this
+    # is not foolproof. We measure the time between the completion of the second
+    # application and the snapshot/rotate. If more than max_age_us passed,
+    # the test should be skipped.
+    time_before_second_app = time.monotonic()
     run_user_app()
 
     trace_path = None
@@ -722,6 +733,15 @@ def test_temporal_backlog(
         session.rotate()
         trace_path = session.output.path / "archives"
         expected_event_count = 2
+
+    time_after_snapshot_rotate = time.monotonic()
+    elapsed_us = (time_after_snapshot_rotate - time_before_second_app) * 1000000
+    if elapsed_us > max_age_us:
+        raise lttngtest.TestSkipped(
+            "Elapsed time ({:.0f} us) exceeded max_age_us ({} us); the test is unreliable".format(
+                elapsed_us, max_age_us
+            )
+        )
 
     tap.diagnostic(
         "memory_usage_before_app={}, expected == 0".format(memory_usage_before_app)
@@ -1377,17 +1397,19 @@ def test_load_save_reclaim_policy_consumed(tap, test_env, client):
 
 
 def run_test(test, variant):
+    test_name = "{}({})".format(
+        test.__name__,
+        ", ".join(["{}={}".format(key, value) for key, value in variant.items()]),
+    )
     try:
-        test_name = "{}({})".format(
-            test.__name__,
-            ", ".join(["{}={}".format(key, value) for key, value in variant.items()]),
-        )
         with lttngtest.test_environment(
             with_sessiond=True, log=tap.diagnostic
         ) as test_env:
             client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
             test(tap, test_env, client, **variant)
             tap.ok(test_name)
+    except lttngtest.TestSkipped as skip:
+        tap.skip("{} - {}".format(test_name, str(skip)))
     except AssertionError:
         _, _, bt = sys.exc_info()
         traceback.print_tb(bt)

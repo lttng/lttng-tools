@@ -46,6 +46,14 @@ class BailOut(RuntimeError):
         super().__init__(msg)
 
 
+class TestSkipped(Exception):
+    """Raised when a test should be skipped due to environmental conditions."""
+
+    def __init__(self, msg):
+        # type: (str) -> None
+        super().__init__(msg)
+
+
 class TestCase:
     def __init__(
         self,
