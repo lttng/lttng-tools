@@ -964,22 +964,26 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 	std::copy(uuid.begin(), uuid.end(), msg->u.ask_channel.uuid);
 
 	if (pathname) {
-		strncpy(msg->u.ask_channel.pathname, pathname, sizeof(msg->u.ask_channel.pathname));
+		strncpy(msg->u.ask_channel.pathname,
+			pathname,
+			sizeof(msg->u.ask_channel.pathname) - 1);
 		msg->u.ask_channel.pathname[sizeof(msg->u.ask_channel.pathname) - 1] = '\0';
 	}
 
-	strncpy(msg->u.ask_channel.name, name, sizeof(msg->u.ask_channel.name));
+	strncpy(msg->u.ask_channel.name, name, sizeof(msg->u.ask_channel.name) - 1);
 	msg->u.ask_channel.name[sizeof(msg->u.ask_channel.name) - 1] = '\0';
 
 	if (root_shm_path) {
 		strncpy(msg->u.ask_channel.root_shm_path,
 			root_shm_path,
-			sizeof(msg->u.ask_channel.root_shm_path));
+			sizeof(msg->u.ask_channel.root_shm_path) - 1);
 		msg->u.ask_channel.root_shm_path[sizeof(msg->u.ask_channel.root_shm_path) - 1] =
 			'\0';
 	}
 	if (shm_path) {
-		strncpy(msg->u.ask_channel.shm_path, shm_path, sizeof(msg->u.ask_channel.shm_path));
+		strncpy(msg->u.ask_channel.shm_path,
+			shm_path,
+			sizeof(msg->u.ask_channel.shm_path) - 1);
 		msg->u.ask_channel.shm_path[sizeof(msg->u.ask_channel.shm_path) - 1] = '\0';
 	}
 }
