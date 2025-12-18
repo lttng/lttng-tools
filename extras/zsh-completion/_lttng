@@ -2575,6 +2575,25 @@ __lttng_complete_buffer_alloc() {
   _describe 'buffer allocation policy' choices
 }
 
+# Adds completions for an automatic memory reclaim strategy.
+__lttng_complete_auto_reclaim_memory() {
+  if compset -P older-than:; then
+    _message -e descriptions 'age (µs; `ms`/`s`/`m`/`h` suffixes supported)'
+    return
+  fi
+
+  local -r strategies=(
+    'off:no automatic memory reclamation'
+    'consumed:reclaim memory as soon as sub-buffers are consumed'
+  )
+  local -r strategies_with_arg=(
+    'older-than:reclaim memory of sub-buffers older than some age'
+  )
+
+  # Add completions
+  _describe 'automatic memory reclaim strategy' strategies -- strategies_with_arg -qS:
+}
+
 # Adds completions for the arguments of the `enable-channel` command.
 __lttng_complete_enable_channel_cmd() {
   specs=(
@@ -2609,11 +2628,11 @@ __lttng_complete_enable_channel_cmd() {
   # Add the remaining option groups
   specs+=(
     + '(domain)'
-    '(--blocking-timeout --buffers-uid --buffers-pid --auto-reclaim-memory-older-than --buffer-preallocation --watchdog-timer)'{-k,--kernel}'[select the Linux kernel tracing domain]'
+    '(--blocking-timeout --buffers-uid --buffers-pid --auto-reclaim-memory --buffer-preallocation --watchdog-timer)'{-k,--kernel}'[select the Linux kernel tracing domain]'
     '(--buffers-global)'{-u,--userspace}'[select the user space tracing domain]'
     + '(loss-mode)'
     '--discard[discard event records with no available sub-buffer]'
-    '(--blocking-timeout --auto-reclaim-memory-older-than)--overwrite[overwrite oldest sub-buffer with no available sub-buffer]'
+    '(--blocking-timeout --auto-reclaim-memory)--overwrite[overwrite oldest sub-buffer with no available sub-buffer]'
     + '(buffer-ownership)'
     '(-k --kernel)--buffers-uid[use per-user ring buffers]'
     '(-k --kernel)--buffers-pid[use per-process ring buffers]'
@@ -2627,11 +2646,11 @@ __lttng_complete_enable_channel_cmd() {
     )
   fi
 
-  # The `--auto-reclaim-memory-older-than`, `--buffer-preallocation`,
+  # The `--auto-reclaim-memory`, `--buffer-preallocation`,
   # and `--watchdog-timer` options require LTTng-tools ≥ 2.15
   if ((minor_version >= 15)); then
     specs+=(
-      '(-k --kernel --overwrite)--auto-reclaim-memory-older-than=[automatically reclaim sub-buffer memory]:age (µs; `ms`/`s`/`m`/`h` suffixes supported):'
+      '(-k --kernel --overwrite)--auto-reclaim-memory=[set automatic memory reclamation strategy]: : __lttng_complete_auto_reclaim_memory'
       '(-k --kernel)--buffer-preallocation=[set the sub-buffer preallocation policy]:policy:(on-demand preallocate)'
       '(-k --kernel)--watchdog-timer=[set the watchdog timer period]:watchdog timer period (µs):'
     )
