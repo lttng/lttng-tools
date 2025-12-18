@@ -573,12 +573,12 @@ class _Session(lttngctl.Session):
             )
         if auto_reclaim_memory_older_than:
             args.append(
-                "--auto-reclaim-memory-older-than={}".format(
+                "--auto-reclaim-memory=older-than:{}".format(
                     auto_reclaim_memory_older_than
                 )
             )
-        if auto_reclaim_memory_consumed:
-            args.append("--auto-reclaim-memory-consumed")
+        elif auto_reclaim_memory_consumed:
+            args.append("--auto-reclaim-memory=consumed")
         self._client._run_cmd(" ".join([shlex.quote(x) for x in args]))
         return _Channel(self._client, channel_name, domain, self)
 

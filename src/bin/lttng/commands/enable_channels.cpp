@@ -48,11 +48,17 @@ static struct {
 	bool set;
 	uint64_t interval;
 } opt_watchdog_timer;
+enum class auto_reclaim_memory_strategy {
+	OFF,
+	CONSUMED,
+	OLDER_THAN,
+};
+
 static struct {
 	bool set;
-	uint64_t interval;
-} opt_auto_reclaim_older_than_age;
-static bool opt_auto_reclaim_consumed = false;
+	auto_reclaim_memory_strategy strategy;
+	uint64_t older_than_age;
+} opt_auto_reclaim_memory;
 static struct {
 	bool set;
 	int64_t value;
@@ -74,8 +80,7 @@ enum {
 	OPT_NUM_SUBBUF,
 	OPT_SWITCH_TIMER,
 	OPT_MONITOR_TIMER,
-	OPT_AUTO_RECLAIM_OLDER_THAN_AGE,
-	OPT_AUTO_RECLAIM_CONSUMED,
+	OPT_AUTO_RECLAIM_MEMORY,
 	OPT_READ_TIMER,
 	OPT_USERSPACE,
 	OPT_LIST_OPTIONS,
@@ -107,8 +112,7 @@ static struct poptOption long_options[] = {
 	{ "switch-timer", 0, POPT_ARG_INT, nullptr, OPT_SWITCH_TIMER, nullptr, nullptr },
 	{ "monitor-timer", 0, POPT_ARG_INT, nullptr, OPT_MONITOR_TIMER, nullptr, nullptr },
 	{ "watchdog-timer", 0, POPT_ARG_INT, nullptr, OPT_WATCHDOG_TIMER, nullptr, nullptr },
-	{ "auto-reclaim-memory-older-than", 0, POPT_ARG_STRING, nullptr, OPT_AUTO_RECLAIM_OLDER_THAN_AGE, nullptr, nullptr },
-	{ "auto-reclaim-memory-consumed", 0, POPT_ARG_NONE, nullptr, OPT_AUTO_RECLAIM_CONSUMED, nullptr, nullptr },
+	{ "auto-reclaim-memory", 0, POPT_ARG_STRING, nullptr, OPT_AUTO_RECLAIM_MEMORY, nullptr, nullptr },
 	{ "read-timer", 0, POPT_ARG_INT, nullptr, OPT_READ_TIMER, nullptr, nullptr },
 	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
 	{ "output", 0, POPT_ARG_STRING, &opt_output, 0, nullptr, nullptr },
@@ -425,20 +429,32 @@ static int enable_channel(char *session_name, char *channel_list)
 			goto error;
 		}
 
-		if (opt_auto_reclaim_older_than_age.set) {
-			ret = lttng_channel_set_automatic_memory_reclamation_policy(
-				channel, opt_auto_reclaim_older_than_age.interval);
-			if (ret != LTTNG_CHANNEL_STATUS_OK) {
-				ERR("Failed to set the channel's automatic memory reclamation policy");
-				error = 1;
-				goto error;
-			}
-		} else if (opt_auto_reclaim_consumed) {
-			ret = lttng_channel_set_automatic_memory_reclamation_policy(channel, 0);
-			if (ret != LTTNG_CHANNEL_STATUS_OK) {
-				ERR("Failed to set the channel's automatic memory reclamation policy to 'consumed'");
-				error = 1;
-				goto error;
+		if (opt_auto_reclaim_memory.set) {
+			uint64_t reclaim_age = 0;
+
+			switch (opt_auto_reclaim_memory.strategy) {
+			case auto_reclaim_memory_strategy::CONSUMED:
+				reclaim_age = 0;
+				ret = lttng_channel_set_automatic_memory_reclamation_policy(
+					channel, reclaim_age);
+				if (ret != LTTNG_CHANNEL_STATUS_OK) {
+					ERR("Failed to set the channel's automatic memory reclamation policy to 'consumed'");
+					error = 1;
+					goto error;
+				}
+				break;
+			case auto_reclaim_memory_strategy::OLDER_THAN:
+				reclaim_age = opt_auto_reclaim_memory.older_than_age;
+				ret = lttng_channel_set_automatic_memory_reclamation_policy(
+					channel, reclaim_age);
+				if (ret != LTTNG_CHANNEL_STATUS_OK) {
+					ERR("Failed to set the channel's automatic memory reclamation policy");
+					error = 1;
+					goto error;
+				}
+				break;
+			default:
+				break;
 			}
 		}
 
@@ -765,31 +781,55 @@ int cmd_enable_channels(int argc, const char **argv)
 			    USEC_UNIT);
 			break;
 		}
-		case OPT_AUTO_RECLAIM_OLDER_THAN_AGE:
+		case OPT_AUTO_RECLAIM_MEMORY:
 		{
-			uint64_t v;
+			const auto value_ptr =
+				lttng::make_unique_wrapper<char, lttng::memory::free>(
+					poptGetOptArg(pc));
+			const lttng::c_string_view value(value_ptr.get());
+			static constexpr auto older_than_prefix = "older-than:";
 
-			errno = 0;
-			opt_arg = poptGetOptArg(pc);
+			if (value == "off") {
+				opt_auto_reclaim_memory.set = true;
+				opt_auto_reclaim_memory.strategy =
+					auto_reclaim_memory_strategy::OFF;
+				DBG("Automatic memory reclaim disabled");
+			} else if (value == "consumed") {
+				opt_auto_reclaim_memory.set = true;
+				opt_auto_reclaim_memory.strategy =
+					auto_reclaim_memory_strategy::CONSUMED;
+				DBG("Automatic memory reclaim set to when consumed");
+			} else if (strncmp(value.data(),
+					   older_than_prefix,
+					   strlen(older_than_prefix)) == 0) {
+				const auto age_str = value.data() +
+					lttng::c_string_view(older_than_prefix).len();
+				uint64_t age_us;
 
-			if (utils_parse_time_suffix(opt_arg, &v) < 0) {
-				ERR("Wrong value for --auto-reclaim-memory-older-than parameter: %s",
-				    opt_arg);
+				if (utils_parse_time_suffix(age_str, &age_us) < 0) {
+					ERR_FMT("Wrong value for `--auto-reclaim-memory=older-than:` parameter: `{}`",
+						age_str);
+					ret = CMD_ERROR;
+					goto end;
+				}
+
+				opt_auto_reclaim_memory.set = true;
+				opt_auto_reclaim_memory.strategy =
+					auto_reclaim_memory_strategy::OLDER_THAN;
+				opt_auto_reclaim_memory.older_than_age = age_us;
+				DBG_FMT("Automatic memory reclaim set to older than {} {}",
+					age_us,
+					USEC_UNIT);
+			} else {
+				ERR_FMT("Wrong value for `--auto-reclaim-memory`: `{}`: "
+					"expecting `off`, `consumed`, or `older-than:AGE`",
+					value.data());
 				ret = CMD_ERROR;
 				goto end;
 			}
 
-			opt_auto_reclaim_older_than_age.set = true;
-			opt_auto_reclaim_older_than_age.interval = v;
-			DBG("Channel automatic memory reclamation set to older than %" PRIu64 " %s",
-			    opt_monitor_timer.interval,
-			    USEC_UNIT);
 			break;
 		}
-		case OPT_AUTO_RECLAIM_CONSUMED:
-			opt_auto_reclaim_consumed = true;
-			DBG("Channel automatic memory reclamation set to when consumed");
-			break;
 		case OPT_BLOCKING_TIMEOUT:
 		{
 			uint64_t v;
@@ -964,12 +1004,6 @@ int cmd_enable_channels(int argc, const char **argv)
 	    opt_blocking_timeout.value != 0) {
 		ERR("You cannot specify --overwrite and --blocking-timeout=N, "
 		    "where N is different than 0");
-		ret = CMD_ERROR;
-		goto end;
-	}
-
-	if (opt_auto_reclaim_older_than_age.set && opt_auto_reclaim_consumed) {
-		ERR("You cannot specify --auto-reclaim-memory-older-than and --auto-reclaim-memory-consumed.");
 		ret = CMD_ERROR;
 		goto end;
 	}

@@ -1,6 +1,6 @@
 lttng-enable-channel(1)
 =======================
-:revdate: 24 September 2025
+:revdate: 18 December 2025
 
 
 NAME
@@ -28,7 +28,7 @@ Create a user space channel:
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *enable-channel* option:--userspace
       [option:--overwrite |
        [option:--discard] [option:--blocking-timeout='TIMEOUTUS']
-       [option:--auto-reclaim-memory-older-than='AGEUS']]
+       [option:--auto-reclaim-memory=(**off** | **consumed** | **older-than:**__AGEUS__)]]
       [option:--output=**mmap**] [option:--buffer-ownership=(**user** | **process**)]
       [option:--buffer-allocation=(**per-cpu** | **per-channel**)]
       [option:--buffer-preallocation=(**preallocate** | **on-demand**)]
@@ -253,17 +253,35 @@ Only available with the option:--userspace option.
 
 Automatic memory reclaim
 ~~~~~~~~~~~~~~~~~~~~~~~~
-option:--auto-reclaim-memory-older-than='AGEUS'::
-    LTTng may automatically reclaim the memory of the
-    created channel.
+option:--auto-reclaim-memory='STRATEGY'::
+    Set the automatic memory reclamation strategy for the created
+    channel.
++
+'STRATEGY' is one of:
++
+--
+`off` (default)::
+    No automatic memory reclamation.
+
+`consumed`::
+    LTTng automatically reclaims the memory of sub-buffers
+    as soon as they're consumed (read).
++
+This strategy is not available for channels of recording sessions
+in snapshot mode or without an output.
+
+**older-than:**__AGEUS__::
+    LTTng automatically reclaims the memory of sub-buffers
+    of which the _closing time_ exceeds __AGEUS__{nbsp}µs.
 +
 This is more or less equivalent to automatically running the
 man:lttng-reclaim-memory(1) command. LTTng automatically evaluates
 the eligibility of sub-buffers for a memory reclaim operation at
-regular intervals (every half 'AGEUS'{nbsp}µs, but also
+regular intervals (every half __AGEUS__{nbsp}µs, but also
 at least a period defined at build time) and reclaims sub-buffers
 of which the age of the _closing time_ have exceeded
-'AGEUS'{nbsp}µs.
+__AGEUS__{nbsp}µs.
+--
 +
 Only available with the option:--userspace and
 option:--discard options.
@@ -512,14 +530,13 @@ $ lttng enable-channel --userspace \
 .Create a user space channel with an ``on-demand'' preallocation policy and an automatic memory reclaim.
 ====
 See the option:--buffer-preallocation and
-option:--auto-reclaim-memory-older-than options.
-
-LTTng will automatically reclaim the memory of
+option:--auto-reclaim-memory options.
 
 [role="term"]
 ----
 $ lttng enable-channel --userspace my-channel \
-                       --buffer-preallocation=on-demand
+                       --buffer-preallocation=on-demand \
+                       --auto-reclaim-memory=older-than:30s
 ----
 ====
 

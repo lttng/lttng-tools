@@ -458,7 +458,7 @@ def test_memory_reclamation_convergence_consumed(
     to the same amount, no matter the buffer preallocation policy.
     """
 
-    # --auto-reclaim-consumed is invalid in snapshot mode.
+    # --auto-reclaim-memory=consumed is invalid in snapshot mode.
     if snapshot:
         return
 
@@ -661,7 +661,7 @@ def test_temporal_backlog(
     do not end up in the final trace.
 
     This is done by creating a snapshot session. A channel with the
-    auto-reclaim-memory-older-than option is created using a grace period.
+    --auto-reclaim-memory=older-than: option is created using a grace period.
 
     The session is started and the memory usage of the channel is sampled. It
     should be 0.
@@ -1249,8 +1249,8 @@ def test_reclaim_memory_command_unknown_channel(tap, test_env, client):
 
 def test_auto_reclaim_memory_consumed_snapshot_mode(tap, test_env, client):
     """
-    Ensure that the `--auto-reclaim-consumed` option of the `enable-channel`
-    command is invalid for session in snapshot mode.
+    Ensure that the `--auto-reclaim-memory=consumed` option of the
+    `enable-channel` command is invalid for session in snapshot mode.
     """
     session = client.create_session(
         output=lttngtest.LocalSessionOutputLocation(
@@ -1269,7 +1269,7 @@ def test_auto_reclaim_memory_consumed_snapshot_mode(tap, test_env, client):
         )
         tap.diagnostic("Expected LTTngClientError but command succeeded")
         assert (
-            not "lttng enable-channel --auto-reclaim-consumed succeed on session with snapshot mode"
+            not "lttng enable-channel --auto-reclaim-memory=consumed succeed on session with snapshot mode"
         )
     except lttngtest.LTTngClientError as ex:
         expected_error = "Error: Failed to enable channel `{}` under session `{}`: Invalid reclamation policy for this channel".format(
@@ -1285,8 +1285,8 @@ def test_auto_reclaim_memory_consumed_snapshot_mode(tap, test_env, client):
 
 def test_auto_reclaim_memory_consumed_no_output(tap, test_env, client):
     """
-    Ensure that the `--auto-reclaim-consumed` option of the `enable-channel`
-    command is invalid for session without output.
+    Ensure that the `--auto-reclaim-memory=consumed` option of the
+    `enable-channel` command is invalid for session without output.
     """
     session = client.create_session()
 
@@ -1300,7 +1300,7 @@ def test_auto_reclaim_memory_consumed_no_output(tap, test_env, client):
         )
         tap.diagnostic("Expected LTTngClientError but command succeeded")
         assert (
-            not "lttng enable-channel --auto-reclaim-consumed succeed on session without output"
+            not "lttng enable-channel --auto-reclaim-memory=consumed succeed on session without output"
         )
     except lttngtest.LTTngClientError as ex:
         expected_error = "Error: Failed to enable channel `{}` under session `{}`: Invalid reclamation policy for this channel".format(
