@@ -254,14 +254,14 @@ Only available with the option:--userspace option.
 Automatic memory reclaim
 ~~~~~~~~~~~~~~~~~~~~~~~~
 option:--auto-reclaim-memory='STRATEGY'::
-    Set the automatic memory reclamation strategy for the created
-    channel.
+    Set the automatic memory reclaim strategy to 'STRATEGY'
+    for the created channel.
 +
 'STRATEGY' is one of:
 +
 --
 `off` (default)::
-    No automatic memory reclamation.
+    No automatic memory reclaim.
 
 `consumed`::
     LTTng automatically reclaims the memory of sub-buffers
@@ -274,6 +274,9 @@ in snapshot mode or without an output.
     LTTng automatically reclaims the memory of sub-buffers
     of which the _closing time_ exceeds __AGEUS__{nbsp}µs.
 +
+The `ms`{nbsp}(milliseconds), `s`{nbsp}(seconds), `m`{nbsp}(minutes),
+and `h`{nbsp}(hours) suffixes are supported.
++
 This is more or less equivalent to automatically running the
 man:lttng-reclaim-memory(1) command. LTTng automatically evaluates
 the eligibility of sub-buffers for a memory reclaim operation at
@@ -281,6 +284,16 @@ regular intervals (every half __AGEUS__{nbsp}µs, but also
 at least a period defined at build time) and reclaims sub-buffers
 of which the age of the _closing time_ have exceeded
 __AGEUS__{nbsp}µs.
++
+More specifically:
+
+If __AGEUS__{nbsp}>{nbsp}last stream activity age:::
+    Only sub-buffers of which the age, at the moment of closing them,
+    is greater than{nbsp}__AGEUS__ are eligible for a memory reclaim.
+
+If __AGEUS__{nbsp}<{nbsp}last stream activity age:::
+    _All_ sub-buffers are eligible and LTTng flushes the targeted
+    channel so that any open sub-buffer gets closed to become eligible.
 --
 +
 Only available with the option:--userspace and
