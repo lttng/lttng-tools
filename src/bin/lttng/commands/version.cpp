@@ -12,10 +12,13 @@
 #include <common/mi-lttng.hpp>
 #include <common/mint.hpp>
 
+#include <algorithm>
+#include <limits>
 #include <popt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -25,6 +28,97 @@ static const char help_msg[] =
 #include <lttng-version.1.h>
 	;
 #endif
+
+namespace {
+
+/*
+ * Returns the wrap width: minimum of 80 and the terminal width.
+ *
+ * If terminal width cannot be determined, returns 80.
+ */
+std::size_t get_wrap_width() noexcept
+{
+	constexpr std::size_t default_width = 80;
+	struct winsize ws;
+
+	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0) {
+		return std::min(static_cast<std::size_t>(ws.ws_col), default_width);
+	}
+
+	return default_width;
+}
+
+/*
+ * Wraps text at word boundaries to fit within `width` columns.
+ *
+ * Handles embedded newlines (\n) by starting a new line.
+ * Double newlines (\n\n) result in a blank line (paragraph break).
+ */
+std::string wrap_text(const char *text, std::size_t width)
+{
+	std::string result;
+	std::size_t current_line_len = 0;
+	const char *word_start = text;
+
+	while (*word_start != '\0') {
+		/* Handle newlines */
+		if (*word_start == '\n') {
+			result += '\n';
+			current_line_len = 0;
+			++word_start;
+			continue;
+		}
+
+		/* Skip leading spaces at the start of a line */
+		if (current_line_len == 0) {
+			while (*word_start == ' ') {
+				++word_start;
+			}
+
+			if (*word_start == '\0') {
+				break;
+			}
+		}
+
+		/* Find end of current word */
+		const char *word_end = word_start;
+
+		while (*word_end != '\0' && *word_end != ' ' && *word_end != '\n') {
+			++word_end;
+		}
+
+		const std::size_t word_len = word_end - word_start;
+
+		/* Check if the word fits on the current line */
+		if (current_line_len > 0 && current_line_len + 1 + word_len > width) {
+			/* Start a new line */
+			result += '\n';
+			current_line_len = 0;
+		}
+
+		/* Add space between words on the same line */
+		if (current_line_len > 0) {
+			result += ' ';
+			++current_line_len;
+		}
+
+		/* Add the word */
+		result.append(word_start, word_len);
+		current_line_len += word_len;
+
+		/* Move to next word */
+		word_start = word_end;
+
+		/* Skip spaces between words (but not newlines) */
+		while (*word_start == ' ') {
+			++word_start;
+		}
+	}
+
+	return result;
+}
+
+} /* namespace */
 
 enum {
 	OPT_HELP = 1,
@@ -150,9 +244,11 @@ int cmd_version(int argc, const char **argv)
 			lttng::mint_print(" - [*y]{}[/]", GIT_VERSION);
 		}
 
+		const auto wrapped_description = wrap_text(VERSION_DESCRIPTION, get_wrap_width());
+
 		lttng::mint_print("\n\n[c]{}[/]\n\n"
 				  "[!]Web site[/]: https://lttng.org\n\n",
-				  VERSION_DESCRIPTION);
+				  wrapped_description);
 		lttng::mint_print("[-]{}[/]\n", lttng_license);
 
 		if (EXTRA_VERSION_NAME[0] != '\0' || EXTRA_VERSION_DESCRIPTION[0] != '\0' ||
