@@ -266,8 +266,8 @@ AC_DEFINE_UNQUOTED([VERSION_MAJOR], $major_version, [LTTng-Tools major version n
 AC_DEFINE_UNQUOTED([VERSION_MINOR], $minor_version, [LTTng-Tools minor version number])
 AC_DEFINE_UNQUOTED([VERSION_PATCHLEVEL], $patchlevel_version, [LTTng-Tools patchlevel version number])
 
-version_name="P-Beer"
-version_description="An alcoholic drink made from yeast-fermented malt flavored with hops."
+version_name="Péché Mortel"
+version_description="This release is named after Péché Mortel, the iconic Imperial Stout from Montréal’s Dieu du Ciel! and a long-time team favorite. Deep black and unapologetically intense, Péché Mortel pours with a dense, mocha-tinted head and an aroma that immediately announces freshly roasted coffee. Decadent and dangerously drinkable, it is the ideal companion for long, cold winter evenings."
 version_description_c=$(echo $version_description | $SED 's/"/\\"/g')
 
 AC_DEFINE_UNQUOTED([VERSION_NAME], ["$version_name"], "")
