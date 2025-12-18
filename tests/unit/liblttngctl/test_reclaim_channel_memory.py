@@ -132,9 +132,11 @@ def test_reclaim_channel_memory_kernel_domain(
     session_name, channel_name, tap, test_env
 ):
     handle = ctypes.POINTER(lttng.struct_lttng_reclaim_handle)()
+    session_name_enc = session_name.encode()
+    channel_name_enc = channel_name.encode()
     ret = lttng.lttng_reclaim_channel_memory(
-        session_name.encode(),
-        channel_name.encode(),
+        ctypes.cast(session_name_enc, lttng.lttng_reclaim_channel_memory.argtypes[0]),
+        ctypes.cast(channel_name_enc, lttng.lttng_reclaim_channel_memory.argtypes[1]),
         lttng.LTTNG_DOMAIN_KERNEL,
         ctypes.c_uint64(0),
         ctypes.pointer(handle),
@@ -154,9 +156,13 @@ def test_reclaim_channel_memory_nonexistent_session(
     session_name, channel_name, tap, test_env
 ):
     handle = ctypes.POINTER(lttng.struct_lttng_reclaim_handle)()
+    nonexistent_session_name = b"nonexistent_session_12345"
+    channel_name_enc = channel_name.encode()
     ret = lttng.lttng_reclaim_channel_memory(
-        b"nonexistent_session_12345",
-        channel_name.encode(),
+        ctypes.cast(
+            nonexistent_session_name, lttng.lttng_reclaim_channel_memory.argtypes[0]
+        ),
+        ctypes.cast(channel_name_enc, lttng.lttng_reclaim_channel_memory.argtypes[1]),
         lttng.LTTNG_DOMAIN_UST,
         ctypes.c_uint64(0),
         ctypes.pointer(handle),
@@ -175,9 +181,13 @@ def test_reclaim_channel_memory_nonexistent_channel(
     session_name, channel_name, tap, test_env
 ):
     handle = ctypes.POINTER(lttng.struct_lttng_reclaim_handle)()
+    session_name_enc = session_name.encode()
+    nonexistent_channel_name = b"nonexistent_channel_12345"
     ret = lttng.lttng_reclaim_channel_memory(
-        session_name.encode(),
-        b"nonexistent_channel_12345",
+        ctypes.cast(session_name_enc, lttng.lttng_reclaim_channel_memory.argtypes[0]),
+        ctypes.cast(
+            nonexistent_channel_name, lttng.lttng_reclaim_channel_memory.argtypes[1]
+        ),
         lttng.LTTNG_DOMAIN_UST,
         ctypes.c_uint64(0),
         ctypes.pointer(handle),
@@ -248,9 +258,11 @@ def test_reclaim_handle_wait_for_completion_valid(
     session_name, channel_name, tap, test_env
 ):
     handle = ctypes.POINTER(lttng.struct_lttng_reclaim_handle)()
+    session_name_enc = session_name.encode()
+    channel_name_enc = channel_name.encode()
     ret = lttng.lttng_reclaim_channel_memory(
-        session_name.encode(),
-        channel_name.encode(),
+        ctypes.cast(session_name_enc, lttng.lttng_reclaim_channel_memory.argtypes[0]),
+        ctypes.cast(channel_name_enc, lttng.lttng_reclaim_channel_memory.argtypes[1]),
         lttng.LTTNG_DOMAIN_UST,
         ctypes.c_uint64(0),
         ctypes.pointer(handle),
@@ -290,9 +302,11 @@ def test_reclaim_handle_get_reclaimed_memory_size_null_output(
     session_name, channel_name, tap, test_env
 ):
     handle = ctypes.POINTER(lttng.struct_lttng_reclaim_handle)()
+    session_name_enc = session_name.encode()
+    channel_name_enc = channel_name.encode()
     ret = lttng.lttng_reclaim_channel_memory(
-        session_name.encode(),
-        channel_name.encode(),
+        ctypes.cast(session_name_enc, lttng.lttng_reclaim_channel_memory.argtypes[0]),
+        ctypes.cast(channel_name_enc, lttng.lttng_reclaim_channel_memory.argtypes[1]),
         lttng.LTTNG_DOMAIN_UST,
         ctypes.c_uint64(0),
         ctypes.pointer(handle),
@@ -333,9 +347,11 @@ def test_reclaim_handle_get_pending_memory_size_null_output(
     session_name, channel_name, tap, test_env
 ):
     handle = ctypes.POINTER(lttng.struct_lttng_reclaim_handle)()
+    session_name_enc = session_name.encode()
+    channel_name_enc = channel_name.encode()
     ret = lttng.lttng_reclaim_channel_memory(
-        session_name.encode(),
-        channel_name.encode(),
+        ctypes.cast(session_name_enc, lttng.lttng_reclaim_channel_memory.argtypes[0]),
+        ctypes.cast(channel_name_enc, lttng.lttng_reclaim_channel_memory.argtypes[1]),
         lttng.LTTNG_DOMAIN_UST,
         ctypes.c_uint64(0),
         ctypes.pointer(handle),
@@ -361,9 +377,11 @@ def test_reclaim_handle_get_pending_memory_size_valid(
     session_name, channel_name, tap, test_env
 ):
     handle = ctypes.POINTER(lttng.struct_lttng_reclaim_handle)()
+    session_name_enc = session_name.encode()
+    channel_name_enc = channel_name.encode()
     ret = lttng.lttng_reclaim_channel_memory(
-        session_name.encode(),
-        channel_name.encode(),
+        ctypes.cast(session_name_enc, lttng.lttng_reclaim_channel_memory.argtypes[0]),
+        ctypes.cast(channel_name_enc, lttng.lttng_reclaim_channel_memory.argtypes[1]),
         lttng.LTTNG_DOMAIN_UST,
         ctypes.c_uint64(0),
         ctypes.pointer(handle),
