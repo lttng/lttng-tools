@@ -393,14 +393,14 @@ void run_and_print_human_readable(const reclaim_config& config)
 				   channel_name,
 				   reclaimed_amount.immediate_subbuffers,
 				   reclaimed_amount.immediate_subbuffers == 1 ? "sub-buffer" :
-									       "sub-buffers",
+										"sub-buffers",
 				   reclaimed_amount.deferred_subbuffers);
 		} else {
 			fmt::print("Channel `{}`: {} {} reclaimed\n",
 				   channel_name,
 				   reclaimed_amount.immediate_subbuffers,
 				   reclaimed_amount.immediate_subbuffers == 1 ? "sub-buffer" :
-									       "sub-buffers");
+										"sub-buffers");
 		}
 	}
 
