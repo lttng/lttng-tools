@@ -66,7 +66,7 @@ The LTTng tracers flush for the targeted channel so that any open
 sub-buffer gets closed to become eligible.
 
 By default, the command waits for the memory reclaim operation to
-complete and displays the amount of reclaimed memory. Use the
+complete and displays the number of reclaimed sub-buffers. Use the
 option:--no-wait option to exit immediately without waiting for
 completion.
 

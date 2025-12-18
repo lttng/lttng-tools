@@ -18,8 +18,8 @@
  * Sent after the lttcomm_lttng_msg header on success.
  */
 struct lttng_reclaim_channel_memory_return {
-	uint64_t reclaimed_memory_size_bytes;
-	uint64_t pending_memory_size_bytes;
+	uint64_t reclaimed_subbuffer_count;
+	uint64_t pending_subbuffer_count;
 } LTTNG_PACKED;
 
 /*

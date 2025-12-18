@@ -49,36 +49,36 @@ def test(tap, test_env, wait=False):
                 command_output, "channels"
             )
 
-            # Look for matching channel with valid reclaimed_bytes
+            # Look for matching channel with valid reclaimed_subbuffers
             test_pass = False
             for chan in channels_elem:
                 name_elem = lttngtest.LTTngClient._mi_find_in_element(chan, "name")
                 reclaimed_elem = lttngtest.LTTngClient._mi_find_in_element(
-                    chan, "reclaimed_bytes"
+                    chan, "reclaimed_subbuffers"
                 )
 
                 if name_elem is not None and name_elem.text == channel.name:
                     if reclaimed_elem is not None and reclaimed_elem.text is not None:
                         try:
-                            # Check if reclaimed_bytes is a valid number
+                            # Check if reclaimed_subbuffers is a valid number
                             reclaimed_value = int(reclaimed_elem.text)
                             test_pass = True
                             tap.diagnostic(
-                                "Channel '{}' has {} bytes reclaimed".format(
+                                "Channel '{}' has {} sub-buffer(s) reclaimed".format(
                                     channel.name, reclaimed_value
                                 )
                             )
                             break
                         except (ValueError, TypeError):
                             tap.diagnostic(
-                                "reclaimed_bytes value '{}' is not a valid number".format(
+                                "reclaimed_subbuffers value '{}' is not a valid number".format(
                                     reclaimed_elem.text
                                 )
                             )
 
             if not test_pass:
                 tap.diagnostic(
-                    "Could not find channel '{}' with valid reclaimed_bytes in XML output: {}".format(
+                    "Could not find channel '{}' with valid reclaimed_subbuffers in XML output: {}".format(
                         channel.name, output
                     )
                 )
