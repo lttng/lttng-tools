@@ -357,8 +357,12 @@ def test_memory_reclamation_convergence(
     app.wait_for_exit()
 
     # Sample memory usage resulting from the application using the buffers.
-    preallocate_memory_usage_before_timer = get_memory_usage(non_reclaimed_channel_preallocate)
-    on_demand_memory_usage_before_timer = get_memory_usage(non_reclaimed_channel_on_demand)
+    preallocate_memory_usage_before_timer = get_memory_usage(
+        non_reclaimed_channel_preallocate
+    )
+    on_demand_memory_usage_before_timer = get_memory_usage(
+        non_reclaimed_channel_on_demand
+    )
 
     # Wait enough time for the grace period to be exceeded.
     # We can't simply wait for the timer since the timer can fire "too close" to the
@@ -417,10 +421,7 @@ def test_memory_reclamation_convergence(
             preallocate_memory_usage_before_timer,
         )
     )
-    assert (
-        preallocate_memory_usage_after_timer
-        < preallocate_memory_usage_before_timer
-    )
+    assert preallocate_memory_usage_after_timer < preallocate_memory_usage_before_timer
 
     tap.diagnostic(
         "on_demand_memory_usage_after_timer={}, expected < {}".format(
@@ -428,10 +429,7 @@ def test_memory_reclamation_convergence(
             on_demand_memory_usage_before_timer,
         )
     )
-    assert (
-        on_demand_memory_usage_after_timer
-        < on_demand_memory_usage_before_timer
-    )
+    assert on_demand_memory_usage_after_timer < on_demand_memory_usage_before_timer
 
     tap.diagnostic(
         "on_demand_memory_usage_after_timer={}, expected == preallocate_memory_usage_after_timer={}".format(
@@ -439,10 +437,7 @@ def test_memory_reclamation_convergence(
             preallocate_memory_usage_after_timer,
         )
     )
-    assert (
-        on_demand_memory_usage_after_timer
-        == preallocate_memory_usage_after_timer
-    )
+    assert on_demand_memory_usage_after_timer == preallocate_memory_usage_after_timer
 
 
 def test_memory_reclamation_convergence_consumed(
@@ -634,9 +629,7 @@ def test_no_events_memory_reclaim(
     )
 
     tap.diagnostic(
-        "memory_usage_before_timer={}, expected > 0".format(
-            memory_usage_before_timer
-        )
+        "memory_usage_before_timer={}, expected > 0".format(memory_usage_before_timer)
     )
     assert memory_usage_before_timer > 0
 
@@ -1437,16 +1430,13 @@ if __name__ == "__main__":
         options = {
             "event_record_loss_mode": [
                 lttngtest.EventRecordLossMode.Discard,
-                lttngtest.EventRecordLossMode.Overwrite
+                lttngtest.EventRecordLossMode.Overwrite,
             ],
             "buffer_allocation_policy": [
                 lttngtest.BufferAllocationPolicy.PerCPU,
-                lttngtest.BufferAllocationPolicy.PerChannel
+                lttngtest.BufferAllocationPolicy.PerChannel,
             ],
-            "snapshot": [
-                True,
-                False
-            ],
+            "snapshot": [True, False],
         }
 
         keys = options.keys()
