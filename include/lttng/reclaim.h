@@ -166,8 +166,8 @@ LTTNG_EXPORT extern void lttng_reclaim_handle_destroy(struct lttng_reclaim_handl
 If this function returns #LTTNG_RECLAIM_HANDLE_STATUS_COMPLETED, then
 the memory reclaim operation identified by \lt_p{handle} completed. This
 does not indicate whether the memory reclaim operation itself succeeded;
-use lttng_reclaim_handle_get_reclaimed_memory_size_bytes() to get
-the reclaimed amount.
+use lttng_reclaim_handle_get_reclaimed_subbuffer_count() to get
+the reclaimed count.
 
 @param[in] handle
     Channel memory reclaim operation handle of which to wait for
@@ -192,27 +192,27 @@ the reclaimed amount.
 @pre
     @lt_pre_not_null{handle}
 
-@sa lttng_reclaim_handle_get_reclaimed_memory_size_bytes() --
-    Returns the number of bytes reclaimed.
+@sa lttng_reclaim_handle_get_reclaimed_subbuffer_count() --
+    Returns the number of sub-buffers reclaimed.
 */
 LTTNG_EXPORT extern enum lttng_reclaim_handle_status
 lttng_reclaim_handle_wait_for_completion(struct lttng_reclaim_handle *handle, int timeout_ms);
 
 /*!
 @brief
-    Sets \lt_p{*memory_size_bytes} to the total number of bytes
+    Sets \lt_p{*count} to the total number of sub-buffers
     successfully reclaimed by the channel memory reclaim operation
     identified by \lt_p{handle}.
 
-The reclaimed memory size is available immediately after
+The reclaimed sub-buffer count is available immediately after
 lttng_reclaim_channel_memory() returns successfully.
 
 @param[in] handle
     Handle of the channel memory reclaim operation from which to get
-    the number of reclaimed bytes.
-@param[out] memory_size_bytes
+    the number of reclaimed sub-buffers.
+@param[out] count
     <strong>On success</strong>, this function sets
-    \lt_p{*memory_size_bytes} to the number of bytes successfully
+    \lt_p{*count} to the number of sub-buffers successfully
     reclaimed.
 
 @retval #LTTNG_RECLAIM_HANDLE_STATUS_OK
@@ -222,32 +222,32 @@ lttng_reclaim_channel_memory() returns successfully.
 
 @pre
     @lt_pre_not_null{handle}
-    @lt_pre_not_null{memory_size_bytes}
+    @lt_pre_not_null{count}
 */
 LTTNG_EXPORT extern enum lttng_reclaim_handle_status
-lttng_reclaim_handle_get_reclaimed_memory_size_bytes(const struct lttng_reclaim_handle *handle,
-						     uint64_t *memory_size_bytes);
+lttng_reclaim_handle_get_reclaimed_subbuffer_count(const struct lttng_reclaim_handle *handle,
+						   uint64_t *count);
 
 /*!
 @brief
-    Sets \lt_p{*memory_size_bytes} to the total number of bytes
+    Sets \lt_p{*count} to the total number of sub-buffers
     pending reclamation from the channel memory reclaim operation
     identified by \lt_p{handle}.
 
-Pending bytes are sub-buffers that met the reclamation criteria but
+Pending sub-buffers are sub-buffers that met the reclamation criteria but
 could not be immediately reclaimed because their data has not yet been
 consumed. These sub-buffers will be automatically reclaimed as they
 are consumed.
 
-The pending memory size is available immediately after
+The pending sub-buffer count is available immediately after
 lttng_reclaim_channel_memory() returns successfully.
 
 @param[in] handle
     Handle of the channel memory reclaim operation from which to get
-    the number of pending bytes.
-@param[out] memory_size_bytes
+    the number of pending sub-buffers.
+@param[out] count
     <strong>On success</strong>, this function sets
-    \lt_p{*memory_size_bytes} to the number of bytes pending
+    \lt_p{*count} to the number of sub-buffers pending
     reclamation.
 
 @retval #LTTNG_RECLAIM_HANDLE_STATUS_OK
@@ -257,11 +257,11 @@ lttng_reclaim_channel_memory() returns successfully.
 
 @pre
     @lt_pre_not_null{handle}
-    @lt_pre_not_null{memory_size_bytes}
+    @lt_pre_not_null{count}
 */
 LTTNG_EXPORT extern enum lttng_reclaim_handle_status
-lttng_reclaim_handle_get_pending_memory_size_bytes(const struct lttng_reclaim_handle *handle,
-						   uint64_t *memory_size_bytes);
+lttng_reclaim_handle_get_pending_subbuffer_count(const struct lttng_reclaim_handle *handle,
+						 uint64_t *count);
 
 /// @}
 

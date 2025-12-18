@@ -1276,8 +1276,8 @@ struct lttcomm_consumer_channel_memory_usage_reply_header {
 struct lttcomm_stream_memory_reclamation_result {
 	/* Key of the stream's channel. */
 	uint64_t channel_key;
-	uint64_t bytes_reclaimed;
-	uint64_t pending_bytes_to_reclaim;
+	uint64_t subbuffers_reclaimed;
+	uint64_t pending_subbuffers_to_reclaim;
 } LTTNG_PACKED;
 
 struct lttcomm_consumer_channel_memory_reclamation_reply_header {

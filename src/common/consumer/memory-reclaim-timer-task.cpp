@@ -30,8 +30,8 @@ void lttng::consumer::memory_reclaim_timer_task::_run(lttng::scheduling::absolut
 		 */
 		const bool require_consumed = _channel.monitor;
 
-		std::uint64_t bytes_reclaimed = 0;
-		std::uint64_t pending_bytes_to_reclaim = 0;
+		std::uint64_t subbuffers_reclaimed = 0;
+		std::uint64_t pending_subbuffers_to_reclaim = 0;
 		if (_channel.monitor) {
 			const lttng::urcu::read_lock_guard read_lock;
 			for (auto *stream : lttng::urcu::lfht_filtered_iteration_adapter<
@@ -52,8 +52,9 @@ void lttng::consumer::memory_reclaim_timer_task::_run(lttng::scheduling::absolut
 
 				const auto result = consumer_stream_reclaim_memory(
 					*stream, _age_limit, require_consumed);
-				bytes_reclaimed += result.bytes_reclaimed;
-				pending_bytes_to_reclaim += result.pending_bytes_to_reclaim;
+				subbuffers_reclaimed += result.subbuffers_reclaimed;
+				pending_subbuffers_to_reclaim +=
+					result.pending_subbuffers_to_reclaim;
 			}
 		} else {
 			for (auto *stream :
@@ -64,16 +65,17 @@ void lttng::consumer::memory_reclaim_timer_task::_run(lttng::scheduling::absolut
 
 				const auto result = consumer_stream_reclaim_memory(
 					*stream, _age_limit, require_consumed);
-				bytes_reclaimed += result.bytes_reclaimed;
-				pending_bytes_to_reclaim += result.pending_bytes_to_reclaim;
+				subbuffers_reclaimed += result.subbuffers_reclaimed;
+				pending_subbuffers_to_reclaim +=
+					result.pending_subbuffers_to_reclaim;
 			}
 		}
 
-		DBG_FMT("Reclaimed memory from channel: channel_name=`{}`, key={}, bytes_reclaimed={}, pending_bytes_to_reclaim={}",
+		DBG_FMT("Reclaimed sub-buffers from channel: channel_name=`{}`, key={}, subbuffers_reclaimed={}, pending_subbuffers_to_reclaim={}",
 			_channel.name,
 			_channel.key,
-			bytes_reclaimed,
-			pending_bytes_to_reclaim);
+			subbuffers_reclaimed,
+			pending_subbuffers_to_reclaim);
 	} catch (const std::exception& ex) {
 		ERR_FMT("Failed to reclaim channel memory: channel_name=`{}`, key={}, error=`{}`",
 			_channel.name,

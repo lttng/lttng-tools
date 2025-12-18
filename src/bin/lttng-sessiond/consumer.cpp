@@ -2047,8 +2047,8 @@ std::vector<lsc::stream_memory_reclamation_result_group> lsc::reclaim_channels_m
 		}
 
 		result[current_channel_index].streams_reclaimed_memory.emplace_back(
-			stream_reclamation_result.bytes_reclaimed,
-			stream_reclamation_result.pending_bytes_to_reclaim);
+			stream_reclamation_result.subbuffers_reclaimed,
+			stream_reclamation_result.pending_subbuffers_to_reclaim);
 	}
 
 	return result;

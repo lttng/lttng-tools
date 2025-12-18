@@ -25,17 +25,17 @@ namespace commands {
 
 struct stream_memory_reclamation_result {
 	stream_memory_reclamation_result(stream_identifier _id,
-					 std::uint64_t bytes_reclaimed_,
-					 std::uint64_t pending_bytes_to_reclaim_) :
+					 std::uint64_t subbuffers_reclaimed_,
+					 std::uint64_t pending_subbuffers_to_reclaim_) :
 		id(std::move(_id)),
-		bytes_reclaimed(bytes_reclaimed_),
-		pending_bytes_to_reclaim(pending_bytes_to_reclaim_)
+		subbuffers_reclaimed(subbuffers_reclaimed_),
+		pending_subbuffers_to_reclaim(pending_subbuffers_to_reclaim_)
 	{
 	}
 
 	const stream_identifier id;
-	const std::uint64_t bytes_reclaimed;
-	const std::uint64_t pending_bytes_to_reclaim;
+	const std::uint64_t subbuffers_reclaimed;
+	const std::uint64_t pending_subbuffers_to_reclaim;
 };
 
 struct stream_memory_reclamation_result_group {

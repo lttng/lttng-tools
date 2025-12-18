@@ -59,13 +59,15 @@ using channel_name_set = std::set<std::string>;
 
 struct reclamation_amount {
 	reclamation_amount() = delete;
-	reclamation_amount(std::uint64_t immediate_bytes_, std::uint64_t deferred_bytes_) :
-		immediate_bytes(immediate_bytes_), deferred_bytes(deferred_bytes_)
+	reclamation_amount(std::uint64_t immediate_subbuffers_,
+			   std::uint64_t deferred_subbuffers_) :
+		immediate_subbuffers(immediate_subbuffers_),
+		deferred_subbuffers(deferred_subbuffers_)
 	{
 	}
 
-	const std::uint64_t immediate_bytes;
-	const std::uint64_t deferred_bytes;
+	const std::uint64_t immediate_subbuffers;
+	const std::uint64_t deferred_subbuffers;
 };
 
 struct reclaim_result {
@@ -81,7 +83,7 @@ struct reclaim_result {
 			0ULL,
 			[](std::uint64_t acc,
 			   const std::pair<const std::string, reclamation_amount>& entry) {
-				return acc + entry.second.immediate_bytes;
+				return acc + entry.second.immediate_subbuffers;
 			});
 	}
 
@@ -93,7 +95,7 @@ struct reclaim_result {
 			0ULL,
 			[](std::uint64_t acc,
 			   const std::pair<const std::string, reclamation_amount>& entry) {
-				return acc + entry.second.deferred_bytes;
+				return acc + entry.second.deferred_subbuffers;
 			});
 	}
 };
@@ -344,29 +346,30 @@ reclaim_result execute_reclaim(const reclaim_config& config)
 			}
 		}
 
-		std::uint64_t reclaimed_bytes = 0;
-		const auto get_size_status = lttng_reclaim_handle_get_reclaimed_memory_size_bytes(
-			op.second.get(), &reclaimed_bytes);
-		if (get_size_status != LTTNG_RECLAIM_HANDLE_STATUS_OK) {
-			LTTNG_THROW_ERROR(fmt::format("Failed to get reclaimed memory size: {}",
-						      get_size_status));
+		std::uint64_t reclaimed_subbuffers = 0;
+		const auto get_count_status = lttng_reclaim_handle_get_reclaimed_subbuffer_count(
+			op.second.get(), &reclaimed_subbuffers);
+		if (get_count_status != LTTNG_RECLAIM_HANDLE_STATUS_OK) {
+			LTTNG_THROW_ERROR(fmt::format(
+				"Failed to get reclaimed sub-buffer count: {}", get_count_status));
 		}
 
-		std::uint64_t pending_bytes = 0;
-		const auto get_pending_status = lttng_reclaim_handle_get_pending_memory_size_bytes(
-			op.second.get(), &pending_bytes);
+		std::uint64_t pending_subbuffers = 0;
+		const auto get_pending_status = lttng_reclaim_handle_get_pending_subbuffer_count(
+			op.second.get(), &pending_subbuffers);
 		if (get_pending_status != LTTNG_RECLAIM_HANDLE_STATUS_OK) {
-			LTTNG_THROW_ERROR(fmt::format("Failed to get pending memory size: {}",
+			LTTNG_THROW_ERROR(fmt::format("Failed to get pending sub-buffer count: {}",
 						      get_pending_status));
 		}
 
 		if (!config.no_wait) {
-			reclaimed_bytes += pending_bytes;
-			pending_bytes = 0;
+			reclaimed_subbuffers += pending_subbuffers;
+			pending_subbuffers = 0;
 		}
 
-		result.reclaimed_per_channel.emplace(
-			std::move(op.first), reclamation_amount{ reclaimed_bytes, pending_bytes });
+		result.reclaimed_per_channel.emplace(std::move(op.first),
+						     reclamation_amount{ reclaimed_subbuffers,
+									 pending_subbuffers });
 	}
 
 	return result;
@@ -384,20 +387,20 @@ void run_and_print_human_readable(const reclaim_config& config)
 	for (const auto& channel_result : result.reclaimed_per_channel) {
 		const auto& channel_name = channel_result.first;
 		const auto& reclaimed_amount = channel_result.second;
-		const auto human_readable_reclaimed =
-			utils_string_from_size(reclaimed_amount.immediate_bytes);
-		const auto human_readable_pending =
-			utils_string_from_size(reclaimed_amount.deferred_bytes);
 
-		if (reclaimed_amount.deferred_bytes > 0) {
-			fmt::print("Channel `{}`: {} reclaimed, {} pending\n",
+		if (reclaimed_amount.deferred_subbuffers > 0) {
+			fmt::print("Channel `{}`: {} {} reclaimed, {} pending\n",
 				   channel_name,
-				   human_readable_reclaimed,
-				   human_readable_pending);
+				   reclaimed_amount.immediate_subbuffers,
+				   reclaimed_amount.immediate_subbuffers == 1 ? "sub-buffer" :
+									       "sub-buffers",
+				   reclaimed_amount.deferred_subbuffers);
 		} else {
-			fmt::print("Channel `{}`: {} reclaimed\n",
+			fmt::print("Channel `{}`: {} {} reclaimed\n",
 				   channel_name,
-				   human_readable_reclaimed);
+				   reclaimed_amount.immediate_subbuffers,
+				   reclaimed_amount.immediate_subbuffers == 1 ? "sub-buffer" :
+									       "sub-buffers");
 		}
 	}
 
@@ -405,15 +408,16 @@ void run_and_print_human_readable(const reclaim_config& config)
 	if (result.reclaimed_per_channel.size() > 1) {
 		const auto total_reclaimed = result.total_reclaimed_immediate();
 		const auto total_pending = result.total_reclaimed_deferred();
-		const auto total_reclaimed_human = utils_string_from_size(total_reclaimed);
-		const auto total_pending_human = utils_string_from_size(total_pending);
 
 		if (total_pending > 0) {
-			fmt::print("Total: {} reclaimed, {} pending\n",
-				   total_reclaimed_human,
-				   total_pending_human);
+			fmt::print("Total: {} {} reclaimed, {} pending\n",
+				   total_reclaimed,
+				   total_reclaimed == 1 ? "sub-buffer" : "sub-buffers",
+				   total_pending);
 		} else {
-			fmt::print("Total: {} reclaimed\n", total_reclaimed_human);
+			fmt::print("Total: {} {} reclaimed\n",
+				   total_reclaimed,
+				   total_reclaimed == 1 ? "sub-buffer" : "sub-buffers");
 		}
 	}
 }
@@ -485,15 +489,15 @@ void run_and_print_machine_interface(const reclaim_config& config)
 			}
 			if (mi_lttng_writer_write_element_unsigned_int(
 				    writer.get(),
-				    "reclaimed_bytes",
-				    reclaimed_amount.immediate_bytes)) {
-				LTTNG_THROW_ERROR("Failed to write reclaimed bytes element");
+				    "reclaimed_subbuffers",
+				    reclaimed_amount.immediate_subbuffers)) {
+				LTTNG_THROW_ERROR("Failed to write reclaimed subbuffers element");
 			}
 			if (mi_lttng_writer_write_element_unsigned_int(
 				    writer.get(),
-				    "pending_bytes",
-				    reclaimed_amount.deferred_bytes)) {
-				LTTNG_THROW_ERROR("Failed to write pending bytes element");
+				    "pending_subbuffers",
+				    reclaimed_amount.deferred_subbuffers)) {
+				LTTNG_THROW_ERROR("Failed to write pending subbuffers element");
 			}
 		}
 	}

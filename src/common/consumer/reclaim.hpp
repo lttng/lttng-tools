@@ -13,8 +13,8 @@
 namespace lttng {
 namespace consumer {
 struct memory_reclaim_result {
-	std::uint64_t bytes_reclaimed = 0;
-	std::uint64_t pending_bytes_to_reclaim = 0;
+	std::uint64_t subbuffers_reclaimed = 0;
+	std::uint64_t pending_subbuffers_to_reclaim = 0;
 };
 } /* namespace consumer */
 } /* namespace lttng */

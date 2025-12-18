@@ -216,17 +216,17 @@ def test_reclaim_channel_memory_with_sessiond(
         ctypes.pointer(handle),
     )
 
-    reclaimed_memory_size_bytes = ctypes.c_uint64(0)
+    reclaimed_subbuffer_count = ctypes.c_uint64(0)
     if ret == lttng.LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_OK and handle:
-        lttng.lttng_reclaim_handle_get_reclaimed_memory_size_bytes(
-            handle, ctypes.pointer(reclaimed_memory_size_bytes)
+        lttng.lttng_reclaim_handle_get_reclaimed_subbuffer_count(
+            handle, ctypes.pointer(reclaimed_subbuffer_count)
         )
         lttng.lttng_reclaim_handle_destroy(handle)
 
     tap.test(
         ret == lttng.LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_OK,
-        "lttng_reclaim_channel_memory_status passes: ret=`{}`, reclaimed_memory_size_bytes=`{}`".format(
-            ret, reclaimed_memory_size_bytes.value
+        "lttng_reclaim_channel_memory_status passes: ret=`{}`, reclaimed_subbuffer_count=`{}`".format(
+            ret, reclaimed_subbuffer_count.value
         ),
     )
 
@@ -283,22 +283,22 @@ def test_reclaim_handle_wait_for_completion_valid(
     )
 
 
-def test_reclaim_handle_get_reclaimed_memory_size_null_handle(
+def test_reclaim_handle_get_reclaimed_subbuffer_count_null_handle(
     session_name, channel_name, tap, test_env
 ):
-    memory_size = ctypes.c_uint64(0)
-    ret = lttng.lttng_reclaim_handle_get_reclaimed_memory_size_bytes(
-        None, ctypes.pointer(memory_size)
+    count = ctypes.c_uint64(0)
+    ret = lttng.lttng_reclaim_handle_get_reclaimed_subbuffer_count(
+        None, ctypes.pointer(count)
     )
     tap.test(
         ret == lttng.LTTNG_RECLAIM_HANDLE_STATUS_INVALID,
-        "lttng_reclaim_handle_get_reclaimed_memory_size_bytes returns INVALID for NULL handle: ret=`{}`".format(
+        "lttng_reclaim_handle_get_reclaimed_subbuffer_count returns INVALID for NULL handle: ret=`{}`".format(
             ret
         ),
     )
 
 
-def test_reclaim_handle_get_reclaimed_memory_size_null_output(
+def test_reclaim_handle_get_reclaimed_subbuffer_count_null_output(
     session_name, channel_name, tap, test_env
 ):
     handle = ctypes.POINTER(lttng.struct_lttng_reclaim_handle)()
@@ -313,37 +313,37 @@ def test_reclaim_handle_get_reclaimed_memory_size_null_output(
     )
     if ret != lttng.LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_OK or not handle:
         tap.skip(
-            "Could not create reclaim handle for get_reclaimed_memory_size NULL output test"
+            "Could not create reclaim handle for get_reclaimed_subbuffer_count NULL output test"
         )
         return
 
-    get_ret = lttng.lttng_reclaim_handle_get_reclaimed_memory_size_bytes(handle, None)
+    get_ret = lttng.lttng_reclaim_handle_get_reclaimed_subbuffer_count(handle, None)
     lttng.lttng_reclaim_handle_destroy(handle)
 
     tap.test(
         get_ret == lttng.LTTNG_RECLAIM_HANDLE_STATUS_INVALID,
-        "lttng_reclaim_handle_get_reclaimed_memory_size_bytes returns INVALID for NULL output: ret=`{}`".format(
+        "lttng_reclaim_handle_get_reclaimed_subbuffer_count returns INVALID for NULL output: ret=`{}`".format(
             get_ret
         ),
     )
 
 
-def test_reclaim_handle_get_pending_memory_size_null_handle(
+def test_reclaim_handle_get_pending_subbuffer_count_null_handle(
     session_name, channel_name, tap, test_env
 ):
-    memory_size = ctypes.c_uint64(0)
-    ret = lttng.lttng_reclaim_handle_get_pending_memory_size_bytes(
-        None, ctypes.pointer(memory_size)
+    count = ctypes.c_uint64(0)
+    ret = lttng.lttng_reclaim_handle_get_pending_subbuffer_count(
+        None, ctypes.pointer(count)
     )
     tap.test(
         ret == lttng.LTTNG_RECLAIM_HANDLE_STATUS_INVALID,
-        "lttng_reclaim_handle_get_pending_memory_size_bytes returns INVALID for NULL handle: ret=`{}`".format(
+        "lttng_reclaim_handle_get_pending_subbuffer_count returns INVALID for NULL handle: ret=`{}`".format(
             ret
         ),
     )
 
 
-def test_reclaim_handle_get_pending_memory_size_null_output(
+def test_reclaim_handle_get_pending_subbuffer_count_null_output(
     session_name, channel_name, tap, test_env
 ):
     handle = ctypes.POINTER(lttng.struct_lttng_reclaim_handle)()
@@ -358,22 +358,22 @@ def test_reclaim_handle_get_pending_memory_size_null_output(
     )
     if ret != lttng.LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_OK or not handle:
         tap.skip(
-            "Could not create reclaim handle for get_pending_memory_size NULL output test"
+            "Could not create reclaim handle for get_pending_subbuffer_count NULL output test"
         )
         return
 
-    get_ret = lttng.lttng_reclaim_handle_get_pending_memory_size_bytes(handle, None)
+    get_ret = lttng.lttng_reclaim_handle_get_pending_subbuffer_count(handle, None)
     lttng.lttng_reclaim_handle_destroy(handle)
 
     tap.test(
         get_ret == lttng.LTTNG_RECLAIM_HANDLE_STATUS_INVALID,
-        "lttng_reclaim_handle_get_pending_memory_size_bytes returns INVALID for NULL output: ret=`{}`".format(
+        "lttng_reclaim_handle_get_pending_subbuffer_count returns INVALID for NULL output: ret=`{}`".format(
             get_ret
         ),
     )
 
 
-def test_reclaim_handle_get_pending_memory_size_valid(
+def test_reclaim_handle_get_pending_subbuffer_count_valid(
     session_name, channel_name, tap, test_env
 ):
     handle = ctypes.POINTER(lttng.struct_lttng_reclaim_handle)()
@@ -387,19 +387,19 @@ def test_reclaim_handle_get_pending_memory_size_valid(
         ctypes.pointer(handle),
     )
     if ret != lttng.LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_OK or not handle:
-        tap.skip("Could not create reclaim handle for get_pending_memory_size test")
+        tap.skip("Could not create reclaim handle for get_pending_subbuffer_count test")
         return
 
-    pending_memory_size = ctypes.c_uint64(0)
-    get_ret = lttng.lttng_reclaim_handle_get_pending_memory_size_bytes(
-        handle, ctypes.pointer(pending_memory_size)
+    pending_subbuffer_count = ctypes.c_uint64(0)
+    get_ret = lttng.lttng_reclaim_handle_get_pending_subbuffer_count(
+        handle, ctypes.pointer(pending_subbuffer_count)
     )
     lttng.lttng_reclaim_handle_destroy(handle)
 
     tap.test(
         get_ret == lttng.LTTNG_RECLAIM_HANDLE_STATUS_OK,
-        "lttng_reclaim_handle_get_pending_memory_size_bytes succeeds: ret=`{}`, pending_bytes=`{}`".format(
-            get_ret, pending_memory_size.value
+        "lttng_reclaim_handle_get_pending_subbuffer_count succeeds: ret=`{}`, pending_subbuffers=`{}`".format(
+            get_ret, pending_subbuffer_count.value
         ),
     )
 
@@ -420,11 +420,11 @@ if __name__ == "__main__":
         test_reclaim_handle_destroy_null,
         test_reclaim_handle_wait_for_completion_null_handle,
         test_reclaim_handle_wait_for_completion_valid,
-        test_reclaim_handle_get_reclaimed_memory_size_null_handle,
-        test_reclaim_handle_get_reclaimed_memory_size_null_output,
-        test_reclaim_handle_get_pending_memory_size_null_handle,
-        test_reclaim_handle_get_pending_memory_size_null_output,
-        test_reclaim_handle_get_pending_memory_size_valid,
+        test_reclaim_handle_get_reclaimed_subbuffer_count_null_handle,
+        test_reclaim_handle_get_reclaimed_subbuffer_count_null_output,
+        test_reclaim_handle_get_pending_subbuffer_count_null_handle,
+        test_reclaim_handle_get_pending_subbuffer_count_null_output,
+        test_reclaim_handle_get_pending_subbuffer_count_valid,
     ]
     tap = lttngtest.TapGenerator(len(tests))
 

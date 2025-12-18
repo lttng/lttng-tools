@@ -6522,12 +6522,12 @@ static void send_reclaim_channel_memory_response(int client_socket,
 
 	if (has_payload) {
 		const lttng_reclaim_channel_memory_return reclaim_return = {
-			.reclaimed_memory_size_bytes = reclaimed,
-			.pending_memory_size_bytes = pending,
+			.reclaimed_subbuffer_count = reclaimed,
+			.pending_subbuffer_count = pending,
 		};
 		memcpy(buffer.data() + sizeof(llm), &reclaim_return, sizeof(reclaim_return));
 
-		DBG_FMT("Sending reclaim result to client: socket={}, reclaimed={}, pending={}",
+		DBG_FMT("Sending reclaim result to client: socket={}, reclaimed_subbuffers={}, pending_subbuffers={}",
 			client_socket,
 			reclaimed,
 			pending);
@@ -6612,12 +6612,12 @@ void cmd_reclaim_channel_memory(ltt_session::locked_ref& session,
 	*_sock = -1;
 
 	lttng::sessiond::commands::reclaim_channel_memory_result reclaim_result;
-	std::uint64_t reclaimed_bytes = 0;
-	std::uint64_t pending_bytes = 0;
+	std::uint64_t reclaimed_subbuffers = 0;
+	std::uint64_t pending_subbuffers = 0;
 
 	try {
 		/*
-		 * Perform the reclaim operation. If there are pending bytes, the function
+		 * Perform the reclaim operation. If there are pending sub-buffers, the function
 		 * will create a completion tracking request and return its token.
 		 *
 		 * The callbacks capture a shared_ptr to the socket wrapper. When the last
@@ -6670,14 +6670,14 @@ void cmd_reclaim_channel_memory(ltt_session::locked_ref& session,
 					client_socket->fd());
 			});
 
-		/* Sum up all reclaimed and pending bytes from all groups and streams. */
+		/* Sum up all reclaimed and pending sub-buffers from all groups and streams. */
 		for (const auto& group : reclaim_result.groups) {
 			for (const auto& stream : group.reclaimed_streams_memory) {
-				DBG_FMT("Bytes reclaimed: {}, pending: {}",
-					stream.bytes_reclaimed,
-					stream.pending_bytes_to_reclaim);
-				reclaimed_bytes += stream.bytes_reclaimed;
-				pending_bytes += stream.pending_bytes_to_reclaim;
+				DBG_FMT("Sub-buffers reclaimed: {}, pending: {}",
+					stream.subbuffers_reclaimed,
+					stream.pending_subbuffers_to_reclaim);
+				reclaimed_subbuffers += stream.subbuffers_reclaimed;
+				pending_subbuffers += stream.pending_subbuffers_to_reclaim;
 			}
 		}
 	} catch (const std::exception& e) {
@@ -6692,13 +6692,13 @@ void cmd_reclaim_channel_memory(ltt_session::locked_ref& session,
 
 	const auto token = reclaim_result.token;
 
-	DBG_FMT("Memory reclaim operation completed: session=`{}`, channel=`{}`, token={}, "
-		"reclaimed_bytes={}, pending_bytes={}",
+	DBG_FMT("Sub-buffer reclaim operation completed: session=`{}`, channel=`{}`, token={}, "
+		"reclaimed_subbuffers={}, pending_subbuffers={}",
 		session->name,
 		channel_name,
 		token,
-		reclaimed_bytes,
-		pending_bytes);
+		reclaimed_subbuffers,
+		pending_subbuffers);
 
 	/*
 	 * Send result immediately to the client. We send this ourselves
@@ -6706,15 +6706,15 @@ void cmd_reclaim_channel_memory(ltt_session::locked_ref& session,
 	 * the socket open for the deferred completion status if needed.
 	 */
 	send_reclaim_channel_memory_response(
-		client_socket->fd(), LTTNG_OK, reclaimed_bytes, pending_bytes);
+		client_socket->fd(), LTTNG_OK, reclaimed_subbuffers, pending_subbuffers);
 
-	DBG_FMT("Memory reclamation request allowed to complete: session=`{}`, channel=`{}`, token={}, "
-		"reclaimed_bytes={}, pending_bytes={}",
+	DBG_FMT("Sub-buffer reclamation request allowed to complete: session=`{}`, channel=`{}`, token={}, "
+		"reclaimed_subbuffers={}, pending_subbuffers={}",
 		session->name,
 		channel_name,
 		token,
-		reclaimed_bytes,
-		pending_bytes);
+		reclaimed_subbuffers,
+		pending_subbuffers);
 
 	/*
 	 * Release the session's lock and reference since the completion callback
@@ -6726,9 +6726,9 @@ void cmd_reclaim_channel_memory(ltt_session::locked_ref& session,
 	 * Now that the initial response has been sent, allow the request
 	 * to complete. This prevents the race where consumers complete and
 	 * try to send the final status before the initial response with the
-	 * memory amounts.
+	 * sub-buffer counts.
 	 *
-	 * If there are no pending bytes or no consumers, the completion
+	 * If there are no pending sub-buffers or no consumers, the completion
 	 * callback is invoked immediately.
 	 */
 	ls::the_pending_memory_reclamation_registry.allow_completion(token);

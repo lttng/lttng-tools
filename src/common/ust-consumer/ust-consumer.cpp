@@ -2075,8 +2075,8 @@ lttng::consumer::memory_reclaim_result lttng_ustconsumer_reclaim_stream_memory(
 	}
 
 	lttng::consumer::memory_reclaim_result result;
-	result.bytes_reclaimed = reclaimed_subbuf_count * stream.max_sb_size;
-	result.pending_bytes_to_reclaim = deferred_reclaim_subbuf_count * stream.max_sb_size;
+	result.subbuffers_reclaimed = reclaimed_subbuf_count;
+	result.pending_subbuffers_to_reclaim = deferred_reclaim_subbuf_count;
 
 	if (deferred_reclaim_subbuf_count == 0) {
 		return result;
@@ -2255,18 +2255,18 @@ static void lttng_ustconsumer_reclaim_channels_memory(
 					require_consumed,
 					memory_reclaim_request_token);
 
-				DBG_FMT("Memory reclaim evaluation completed for stream: channel_name=`{}`, stream_key={}, bytes_reclaimed={}, pending_bytes_to_reclaim={}",
+				DBG_FMT("Memory reclaim evaluation completed for stream: channel_name=`{}`, stream_key={}, subbuffers_reclaimed={}, pending_subbuffers_to_reclaim={}",
 					channel->name,
 					stream->key,
-					result.bytes_reclaimed,
-					result.pending_bytes_to_reclaim);
+					result.subbuffers_reclaimed,
+					result.pending_subbuffers_to_reclaim);
 
 				const lttcomm_stream_memory_reclamation_result
 					stream_reclamation_result = {
 						.channel_key = channel_key,
-						.bytes_reclaimed = result.bytes_reclaimed,
-						.pending_bytes_to_reclaim =
-							result.pending_bytes_to_reclaim,
+						.subbuffers_reclaimed = result.subbuffers_reclaimed,
+						.pending_subbuffers_to_reclaim =
+							result.pending_subbuffers_to_reclaim,
 					};
 
 				reply_payload.insert(reply_payload.end(),
@@ -2294,9 +2294,9 @@ static void lttng_ustconsumer_reclaim_channels_memory(
 				const lttcomm_stream_memory_reclamation_result
 					stream_reclamation_result = {
 						.channel_key = channel_key,
-						.bytes_reclaimed = result.bytes_reclaimed,
-						.pending_bytes_to_reclaim =
-							result.pending_bytes_to_reclaim,
+						.subbuffers_reclaimed = result.subbuffers_reclaimed,
+						.pending_subbuffers_to_reclaim =
+							result.pending_subbuffers_to_reclaim,
 					};
 
 				reply_payload.insert(reply_payload.end(),

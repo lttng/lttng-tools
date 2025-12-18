@@ -27,14 +27,14 @@
  * and maintains the connection to the session daemon for async completion.
  *
  * After lttng_reclaim_channel_memory() returns successfully, the result
- * (reclaimed and pending byte counts) is immediately available via
- * lttng_reclaim_handle_get_reclaimed_memory_size_bytes() and
- * lttng_reclaim_handle_get_pending_memory_size_bytes().
+ * (reclaimed and pending sub-buffer counts) is immediately available via
+ * lttng_reclaim_handle_get_reclaimed_subbuffer_count() and
+ * lttng_reclaim_handle_get_pending_subbuffer_count().
  *
- * If there are pending bytes (sub-buffers awaiting consumption), users can
+ * If there are pending sub-buffers (awaiting consumption), users can
  * call lttng_reclaim_handle_wait_for_completion() to wait for all pending
  * reclamation to complete. The session daemon will send a completion
- * notification when all pending bytes have been reclaimed.
+ * notification when all pending sub-buffers have been reclaimed.
  *
  * The socket connection to the session daemon is kept open until the handle
  * is destroyed, allowing for async completion tracking.
@@ -193,10 +193,10 @@ lttng_reclaim_handle_wait_for_completion(lttng_reclaim_handle *handle, int timeo
 	}
 
 	/*
-	 * If there are no pending bytes, the reclamation completed immediately
+	 * If there are no pending sub-buffers, the reclamation completed immediately
 	 * and there's nothing to wait for.
 	 */
-	if (handle->result.pending_memory_size_bytes == 0) {
+	if (handle->result.pending_subbuffer_count == 0) {
 		handle->async_reclaim_status = LTTNG_RECLAIM_HANDLE_STATUS_COMPLETED;
 		return LTTNG_RECLAIM_HANDLE_STATUS_COMPLETED;
 	}
@@ -269,37 +269,37 @@ lttng_reclaim_handle_wait_for_completion(lttng_reclaim_handle *handle, int timeo
 }
 
 lttng_reclaim_handle_status
-lttng_reclaim_handle_get_reclaimed_memory_size_bytes(const lttng_reclaim_handle *handle,
-						     uint64_t *memory_size_bytes)
+lttng_reclaim_handle_get_reclaimed_subbuffer_count(const lttng_reclaim_handle *handle,
+						   uint64_t *count)
 {
 	if (!handle) {
 		DBG_FMT("Invalid pre-condition: handle is null");
 		return LTTNG_RECLAIM_HANDLE_STATUS_INVALID;
 	}
 
-	if (!memory_size_bytes) {
-		DBG_FMT("Invalid pre-condition: memory_size_bytes is null");
+	if (!count) {
+		DBG_FMT("Invalid pre-condition: count is null");
 		return LTTNG_RECLAIM_HANDLE_STATUS_INVALID;
 	}
 
-	*memory_size_bytes = handle->result.reclaimed_memory_size_bytes;
+	*count = handle->result.reclaimed_subbuffer_count;
 	return LTTNG_RECLAIM_HANDLE_STATUS_OK;
 }
 
 lttng_reclaim_handle_status
-lttng_reclaim_handle_get_pending_memory_size_bytes(const lttng_reclaim_handle *handle,
-						   uint64_t *memory_size_bytes)
+lttng_reclaim_handle_get_pending_subbuffer_count(const lttng_reclaim_handle *handle,
+						 uint64_t *count)
 {
 	if (!handle) {
 		DBG_FMT("Invalid pre-condition: handle is null");
 		return LTTNG_RECLAIM_HANDLE_STATUS_INVALID;
 	}
 
-	if (!memory_size_bytes) {
-		DBG_FMT("Invalid pre-condition: memory_size_bytes is null");
+	if (!count) {
+		DBG_FMT("Invalid pre-condition: count is null");
 		return LTTNG_RECLAIM_HANDLE_STATUS_INVALID;
 	}
 
-	*memory_size_bytes = handle->result.pending_memory_size_bytes;
+	*count = handle->result.pending_subbuffer_count;
 	return LTTNG_RECLAIM_HANDLE_STATUS_OK;
 }

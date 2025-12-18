@@ -147,8 +147,8 @@ void issue_consumer_reclaim_channel_memory(
 
 			streams_reclaimed_memory.emplace_back(
 				stream_identifier,
-				stream_reclaimed_memory.reclaimed_bytes,
-				stream_reclaimed_memory.pending_bytes_to_reclaim);
+				stream_reclaimed_memory.subbuffers_reclaimed,
+				stream_reclaimed_memory.pending_subbuffers_to_reclaim);
 		}
 
 		result.emplace_back(group_owner, std::move(streams_reclaimed_memory));
@@ -303,7 +303,7 @@ lsc::reclaim_channel_memory_result lsc::reclaim_channel_memory(
 			0ULL,
 			[](std::uint64_t sum,
 			   const lsc::stream_memory_reclamation_result& stream_result) {
-				return sum + stream_result.bytes_reclaimed;
+				return sum + stream_result.subbuffers_reclaimed;
 			});
 		const auto total_pending = std::accumulate(
 			stream_group.reclaimed_streams_memory.begin(),
@@ -311,10 +311,10 @@ lsc::reclaim_channel_memory_result lsc::reclaim_channel_memory(
 			0ULL,
 			[](std::uint64_t sum,
 			   const lsc::stream_memory_reclamation_result& stream_result) {
-				return sum + stream_result.pending_bytes_to_reclaim;
+				return sum + stream_result.pending_subbuffers_to_reclaim;
 			});
 
-		DBG_FMT("Reclaimed memory for streams in group: session_name=`{}`, domain={}, channel_name=`{}`, "
+		DBG_FMT("Reclaimed sub-buffers for streams in group: session_name=`{}`, domain={}, channel_name=`{}`, "
 			"owner_type={}, bitness={}, streams_count={}, total_reclaimed={}, total_pending={}",
 			session->name,
 			domain,
@@ -326,10 +326,10 @@ lsc::reclaim_channel_memory_result lsc::reclaim_channel_memory(
 			total_pending);
 
 		for (const auto& stream_result : stream_group.reclaimed_streams_memory) {
-			DBG_FMT("Reclaimed stream memory: id={}, bytes_reclaimed={}, pending_bytes={}",
+			DBG_FMT("Reclaimed stream sub-buffers: id={}, subbuffers_reclaimed={}, pending_subbuffers={}",
 				stream_result.id,
-				stream_result.bytes_reclaimed,
-				stream_result.pending_bytes_to_reclaim);
+				stream_result.subbuffers_reclaimed,
+				stream_result.pending_subbuffers_to_reclaim);
 		}
 	}
 
