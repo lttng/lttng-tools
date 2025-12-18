@@ -13,7 +13,7 @@ SYNOPSIS
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *reclaim-memory* option:--userspace
       [option:--no-wait] [option:--older-than='AGEUS']
-      [option:--session='SESSION'] ([option:--all] | 'CHANNEL'...)
+      [option:--session='SESSION'] (option:--all | 'CHANNEL'...)
 
 
 DESCRIPTION
