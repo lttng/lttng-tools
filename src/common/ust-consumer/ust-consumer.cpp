@@ -1811,7 +1811,16 @@ lttng::consumer::memory_reclaim_result lttng_ustconsumer_reclaim_stream_memory(
 
 		const auto compare_ret =
 			lttng_ust_ctl_last_activity_timestamp_compare(stream.ustream, expiry_limit);
-		if (compare_ret <= 0) {
+		/*
+		 * Since the last_activity time is rather coarse on 32-bit platforms (~260ms
+		 * granularity), we prefer '<' rather than '<=' to remain more conservative.
+		 *
+		 * The assumption here is that this is preferable since:
+		 *   - an interactive user (or of the library) probably doesn't care for the
+		 *     difference,
+		 *   - a timer-based reclaim will re-fire and take care of this soon.
+		 */
+		if (compare_ret < 0) {
 			should_flush_current_producer_buffer = true;
 		}
 
@@ -1970,7 +1979,7 @@ lttng::consumer::memory_reclaim_result lttng_ustconsumer_reclaim_stream_memory(
 			continue;
 		}
 
-		if (expiry_limit && subbuf_timestamp > *expiry_limit) {
+		if (expiry_limit && subbuf_timestamp >= *expiry_limit) {
 			if (age_override_buffer_position &&
 			    *age_override_buffer_position == subbuf_position) {
 				DBG_FMT("Sub-buffer is too recent but age override is set, proceeding: channel_name=`{}`, stream_key={}, subbuf_position={}, subbuf_timestamp={}, oldest_data_limit={}",
