@@ -154,10 +154,10 @@ Symbolic conventions:
 |===
 |Symbol |Meaning
 
-|`▶` and `◼`
+|`●` and `◼`
 |Active/inactive recording session.
 
-|`✔` and `×`
+|`✔` and `✗`
 |Enabled/disabled channel or event rule.
 
 |`🞂`

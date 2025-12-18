@@ -669,10 +669,10 @@ private:
 							  locale_supports_utf8() ? "✔" : "+");
 			case group_node::type::DISABLED:
 				return lttng::mint_format("[r!*]{}[/]",
-							  locale_supports_utf8() ? "×" : "x");
+							  locale_supports_utf8() ? "✗" : "x");
 			case group_node::type::ACTIVE:
 				return lttng::mint_format("[g!*]{}[/]",
-							  locale_supports_utf8() ? "▶" : ">");
+							  locale_supports_utf8() ? "●" : "o");
 			case group_node::type::INACTIVE:
 				return lttng::mint_format("[r!*]{}[/]",
 							  locale_supports_utf8() ? "◼" : "#");
