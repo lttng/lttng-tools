@@ -144,7 +144,7 @@ unsigned long estimate_session_minimum_shm_size(const struct lttng_session *sess
 			 * This assumes per-uid or per-pid buffers with a minimum of one uid
 			 * or pid.
 			 */
-			est_min_size += ((ncpus + session->snapshot_mode) *
+			est_min_size += ((ncpus + 1) *
 					 channel->attr.num_subbuf * channel->attr.subbuf_size);
 		}
 	}
