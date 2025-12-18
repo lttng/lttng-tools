@@ -2,6 +2,6 @@
 host=review.lttng.org
 port=29418
 project=lttng-tools.git
-defaultbranch=master
+defaultbranch=stable-2.15
 defaultremote=review
 defaultrebase=0
