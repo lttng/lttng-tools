@@ -140,12 +140,39 @@ unsigned long estimate_session_minimum_shm_size(const struct lttng_session *sess
 
 		for (int channel_x = 0; channel_x < channel_count; channel_x++) {
 			auto channel = &channels.get()[channel_x];
+			enum lttng_channel_allocation_policy allocation_policy = {};
+			if (lttng_channel_get_allocation_policy(channel, &allocation_policy) !=
+			    LTTNG_OK) {
+				LTTNG_THROW_ERROR(lttng::format(
+					"Failed to get allocation policy for session '{}' channel '{}'",
+					session->name,
+					channel->name));
+			}
+
+			/* There is always an extra sub-buffer allocated */
+			auto buffer_count = 1;
+			switch (allocation_policy) {
+			case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU:
+				buffer_count = ncpus;
+				break;
+			case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CHANNEL:
+				buffer_count = 1;
+				break;
+			default:
+				LTTNG_THROW_ERROR(lttng::format(
+					"Unknown allocation policy for session '{}' channel '{}': {}",
+					session->name,
+					channel->name,
+					int(allocation_policy)));
+				break;
+			}
+
 			/*
 			 * This assumes per-uid or per-pid buffers with a minimum of one uid
 			 * or pid.
 			 */
-			est_min_size += ((ncpus + 1) *
-					 channel->attr.num_subbuf * channel->attr.subbuf_size);
+			est_min_size += buffer_count * (channel->attr.num_subbuf + 1) *
+				channel->attr.subbuf_size;
 		}
 	}
 

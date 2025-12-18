@@ -55,10 +55,17 @@ def test_shm_warning(tap, test_env, tests):
 
     client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
     for test in tests:
+        buffer_allocation_policy = test["buffer_allocation_policy"]
         subbuf_count = 2
         subbuf_size = (
             test["target_usage_mib"] / ncpus / test["nchannels"] / subbuf_count
         )
+        if (
+            buffer_allocation_policy
+            == lttngtest.lttngctl.BufferAllocationPolicy.PerChannel
+        ):
+            subbuf_size *= ncpus
+
         if not math.log(subbuf_size, 2).is_integer():
             tag.diagnostic(subbuf_size)
             tap.skip("Sub-buffer size {} is not a power of 2".format(subbuf_size))
@@ -66,13 +73,14 @@ def test_shm_warning(tap, test_env, tests):
         subbuf_size = int(subbuf_size)
 
         tap.diagnostic(
-            "Case: nCPUs {} with {} channels of {} sub-buffer(s) of size {}M [{}] {} warn".format(
+            "Case: nCPUs {} with {} channels of {} sub-buffer(s) of size {}M [{}] {} warn, allocation_policy={}".format(
                 ncpus,
                 test["nchannels"],
                 subbuf_count,
                 subbuf_size,
                 "snapshot enabled" if test["snapshot"] else "snapshot disabled",
                 "should" if test["warning_expected"] else "should not",
+                buffer_allocation_policy,
             )
         )
 
@@ -86,6 +94,7 @@ def test_shm_warning(tap, test_env, tests):
                 buffer_sharing_policy=lttngtest.lttngctl.BufferSharingPolicy.PerUID,
                 subbuf_size="{}M".format(subbuf_size),
                 subbuf_count=subbuf_count,
+                buffer_allocation_policy=buffer_allocation_policy,
             )
             channel.add_recording_rule(
                 lttngtest.lttngctl.UserTracepointEventRule("tp:tptest")
@@ -110,42 +119,77 @@ if __name__ == "__main__":
             "target_usage_mib": 32,
             "snapshot": False,
             "nchannels": 1,
+            "buffer_allocation_policy": lttngtest.lttngctl.BufferAllocationPolicy.PerCPU,
         },
         {
             "warning_expected": True,
             "target_usage_mib": 64,
             "snapshot": False,
             "nchannels": 1,
+            "buffer_allocation_policy": lttngtest.lttngctl.BufferAllocationPolicy.PerCPU,
         },
         {
             "warning_expected": True,
             "target_usage_mib": 128,
             "snapshot": False,
             "nchannels": 1,
+            "buffer_allocation_policy": lttngtest.lttngctl.BufferAllocationPolicy.PerCPU,
         },
         {
             "warning_expected": False,
             "target_usage_mib": 32,
             "snapshot": True,
             "nchannels": 1,
+            "buffer_allocation_policy": lttngtest.lttngctl.BufferAllocationPolicy.PerCPU,
         },
         {
             "warning_expected": True,
             "target_usage_mib": 64,
             "snapshot": True,
             "nchannels": 1,
+            "buffer_allocation_policy": lttngtest.lttngctl.BufferAllocationPolicy.PerCPU,
         },
         {
             "warning_expected": False,
             "target_usage_mib": 32,
             "snapshot": False,
             "nchannels": 2,
+            "buffer_allocation_policy": lttngtest.lttngctl.BufferAllocationPolicy.PerCPU,
         },
         {
             "warning_expected": True,
             "target_usage_mib": 64,
             "snapshot": False,
             "nchannels": 2,
+            "buffer_allocation_policy": lttngtest.lttngctl.BufferAllocationPolicy.PerCPU,
+        },
+        {
+            "warning_expected": True,
+            "target_usage_mib": 64,
+            "snapshot": False,
+            "nchannels": 2,
+            "buffer_allocation_policy": lttngtest.lttngctl.BufferAllocationPolicy.PerChannel,
+        },
+        {
+            "warning_expected": False,
+            "target_usage_mib": 32,
+            "snapshot": False,
+            "nchannels": 2,
+            "buffer_allocation_policy": lttngtest.lttngctl.BufferAllocationPolicy.PerChannel,
+        },
+        {
+            "warning_expected": True,
+            "target_usage_mib": 64,
+            "snapshot": True,
+            "nchannels": 2,
+            "buffer_allocation_policy": lttngtest.lttngctl.BufferAllocationPolicy.PerChannel,
+        },
+        {
+            "warning_expected": False,
+            "target_usage_mib": 32,
+            "snapshot": True,
+            "nchannels": 2,
+            "buffer_allocation_policy": lttngtest.lttngctl.BufferAllocationPolicy.PerChannel,
         },
     ]
 
