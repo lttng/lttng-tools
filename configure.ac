@@ -1,7 +1,7 @@
 dnl SPDX-License-Identifier: GPL-2.0-only
 dnl SPDX-FileCopyrightText: 2011-2025 EfficiOS Inc.
 AC_PREREQ([2.64])
-AC_INIT([lttng-tools],[2.15.0-pre],[jeremie.galarneau@efficios.com],[],[https://lttng.org])
+AC_INIT([lttng-tools],[2.16.0-pre],[jeremie.galarneau@efficios.com],[],[https://lttng.org])
 
 AC_CONFIG_HEADERS([include/config.h])
 AC_CONFIG_AUX_DIR([config])
@@ -266,8 +266,8 @@ AC_DEFINE_UNQUOTED([VERSION_MAJOR], $major_version, [LTTng-Tools major version n
 AC_DEFINE_UNQUOTED([VERSION_MINOR], $minor_version, [LTTng-Tools minor version number])
 AC_DEFINE_UNQUOTED([VERSION_PATCHLEVEL], $patchlevel_version, [LTTng-Tools patchlevel version number])
 
-version_name="Péché Mortel"
-version_description="This release is named after Péché Mortel, the iconic Imperial Stout from Montréal's Dieu du Ciel! and a long-time team favorite.\n\nDeep black and unapologetically intense, Péché Mortel pours with a dense, mocha-tinted head and an aroma that immediately announces freshly roasted coffee. Decadent and dangerously drinkable, it is the ideal companion for long, cold winter evenings."
+version_name="Q-Beer"
+version_description="An alcoholic drink made from yeast-fermented malt flavored with hops."
 
 # Use printf '%s' rather than echo or AS_ECHO to prevent interpretation of
 # escape sequences (e.g. '\n'). BSD echo, used on macOS, interprets them while
