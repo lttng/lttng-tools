@@ -52,7 +52,11 @@ class TemporaryDirectory:
             for func, args, kwargs in self._cleanup_callbacks:
                 func(*args, **kwargs)
         finally:
-            if os.getenv("LTTNG_TEST_PRESERVE_TEST_ENV", "0") != "0":
+            preserve_env = os.getenv("LTTNG_TEST_PRESERVE_TEST_ENV", "0") != "0" or (
+                os.getenv("LTTNG_TEST_PRESERVE_TEST_ENV_ON_FAILURE", "0") != "0"
+                and sys.exception() is not None
+            )
+            if preserve_env:
                 destination = os.getenv("LTTNG_TEST_PRESERVE_TEST_ENV_DIR", None)
                 if destination is not None and pathlib.Path(destination).is_dir():
                     shutil.copytree(
