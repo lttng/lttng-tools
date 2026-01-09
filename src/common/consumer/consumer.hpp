@@ -695,6 +695,11 @@ struct lttng_consumer_stream {
 	 * file before writing in it (regeneration).
 	 */
 	unsigned int reset_metadata_flag:1;
+	/*
+	 * Indicates whether the tracer supports announcing metadata coherency
+	 * through the metadata packet header.
+	 */
+	bool tracer_supports_metadata_coherency_indicator:1;
 	struct {
 		/*
 		 * Invoked in the order of declaration.

@@ -1762,7 +1762,8 @@ static int put_next_subbuffer(struct lttng_consumer_stream *stream,
 
 static bool is_get_next_check_metadata_available(int tracer_fd)
 {
-	const int ret = kernctl_get_next_subbuf_metadata_check(tracer_fd, nullptr);
+	bool unused;
+	const int ret = kernctl_get_next_subbuf_metadata_check(tracer_fd, &unused);
 	const bool available = ret != -ENOTTY;
 
 	if (ret == 0) {
@@ -1784,15 +1785,18 @@ static int lttng_kconsumer_set_stream_ops(struct lttng_consumer_stream *stream)
 {
 	int ret = 0;
 
-	if (stream->metadata_flag && stream->chan->is_live) {
+	if (stream->metadata_flag) {
 		DBG("Attempting to enable metadata bucketization for live consumers");
-		if (is_get_next_check_metadata_available(stream->wait_fd)) {
+		if (stream->tracer_supports_metadata_coherency_indicator) {
 			DBG("Kernel tracer supports get_next_subbuffer_metadata_check, metadata will be accumulated until a coherent state is reached");
 			stream->read_subbuffer_ops.get_next_subbuffer =
 				get_next_subbuffer_metadata_check;
-			ret = consumer_stream_enable_metadata_bucketization(stream);
-			if (ret) {
-				goto end;
+
+			if (stream->chan->is_live) {
+				ret = consumer_stream_enable_metadata_bucketization(stream);
+				if (ret) {
+					goto end;
+				}
 			}
 		} else {
 			/*
@@ -1806,12 +1810,11 @@ static int lttng_kconsumer_set_stream_ops(struct lttng_consumer_stream *stream)
 			WARN("Kernel tracer does not support get_next_subbuffer_metadata_check which may cause live clients to fail to parse the metadata stream");
 			metadata_bucket_destroy(stream->metadata_bucket);
 			stream->metadata_bucket = nullptr;
+			stream->read_subbuffer_ops.get_next_subbuffer = get_next_subbuffer_mmap;
 		}
 
 		stream->read_subbuffer_ops.on_sleep = signal_metadata;
-	}
-
-	if (!stream->read_subbuffer_ops.get_next_subbuffer) {
+	} else {
 		if (stream->chan->output == CONSUMER_CHANNEL_MMAP) {
 			stream->read_subbuffer_ops.get_next_subbuffer = get_next_subbuffer_mmap;
 		} else {
@@ -1870,6 +1873,9 @@ int lttng_kconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 			goto error_close_fd;
 		}
 	}
+
+	stream->tracer_supports_metadata_coherency_indicator =
+		is_get_next_check_metadata_available(stream->wait_fd);
 
 	ret = lttng_kconsumer_set_stream_ops(stream);
 	if (ret) {

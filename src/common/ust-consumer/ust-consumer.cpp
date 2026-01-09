@@ -3132,6 +3132,8 @@ int lttng_ustconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 		}
 	}
 
+	stream->tracer_supports_metadata_coherency_indicator = true;
+
 	lttng_ustconsumer_set_stream_ops(stream);
 	ret = 0;
 
