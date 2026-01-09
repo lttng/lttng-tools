@@ -36,6 +36,7 @@
 #include <chrono>
 #include <cstdint>
 #include <limits.h>
+#include <limits>
 #include <mutex>
 #include <poll.h>
 #include <set>
@@ -477,6 +478,11 @@ struct consumer_stream_pending_reclamation {
  * uniquely a stream.
  */
 struct lttng_consumer_stream {
+	bool has_network_destination() const noexcept
+	{
+		return net_seq_idx != std::numeric_limits<std::uint64_t>::max();
+	}
+
 	/* HT node used by the data_ht and metadata_ht */
 	struct lttng_ht_node_u64 node;
 	/* stream indexed per channel key node */

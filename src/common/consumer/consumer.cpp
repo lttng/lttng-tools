@@ -722,7 +722,7 @@ int consumer_send_relayd_stream(struct lttng_consumer_stream *stream, char *path
 	struct consumer_relayd_sock_pair *relayd;
 
 	LTTNG_ASSERT(stream);
-	LTTNG_ASSERT(stream->net_seq_idx != -1ULL);
+	LTTNG_ASSERT(stream->has_network_destination());
 	LTTNG_ASSERT(path);
 
 	/* The stream is not metadata. Get relayd reference if exists. */
@@ -1653,10 +1653,10 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(struct lttng_consumer_stream *stre
 
 	/* RCU lock for the relayd pointer */
 	const lttng::urcu::read_lock_guard read_lock;
-	LTTNG_ASSERT(stream->net_seq_idx != (uint64_t) -1ULL || stream->trace_chunk);
+	LTTNG_ASSERT(stream->has_network_destination() || stream->trace_chunk);
 
 	/* Flag that the current stream if set for network streaming. */
-	if (stream->net_seq_idx != (uint64_t) -1ULL) {
+	if (stream->has_network_destination()) {
 		relayd = consumer_find_relayd(stream->net_seq_idx);
 		if (relayd == nullptr) {
 			ret = -EPIPE;
@@ -1832,7 +1832,7 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(struct lttng_consumer_local_data
 	const lttng::urcu::read_lock_guard read_lock;
 
 	/* Flag that the current stream if set for network streaming. */
-	if (stream->net_seq_idx != (uint64_t) -1ULL) {
+	if (stream->has_network_destination()) {
 		relayd = consumer_find_relayd(stream->net_seq_idx);
 		if (relayd == nullptr) {
 			written = -ret;
@@ -4581,7 +4581,7 @@ int lttng_consumer_rotate_stream(struct lttng_consumer_stream *stream)
 		stream->trace_chunk = stream->chan->trace_chunk;
 	}
 
-	if (stream->net_seq_idx == (uint64_t) -1ULL) {
+	if (!stream->has_network_destination()) {
 		ret = rotate_local_stream(stream);
 		if (ret < 0) {
 			ERR("Failed to rotate stream, ret = %i", ret);
