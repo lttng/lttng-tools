@@ -946,7 +946,8 @@ static int consumer_metadata_stream_dump(struct lttng_consumer_stream *stream)
 		 * Reset the position pushed from the metadata cache so it
 		 * will write from the beginning on the next push.
 		 */
-		stream->ust_metadata_cache_consumed = 0;
+		LTTNG_ASSERT(stream->read_subbuffer_ops.reset_metadata);
+		stream->read_subbuffer_ops.reset_metadata(stream);
 		ret = consumer_metadata_wakeup_pipe(stream->chan);
 		break;
 	default:
@@ -3970,9 +3971,9 @@ end:
  *
  * Returns 0 on success, < 0 on error
  */
-int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
-				  uint64_t key,
-				  uint64_t relayd_id)
+static int lttng_consumer_rotate_data_channel(struct lttng_consumer_channel *channel,
+					      uint64_t key,
+					      uint64_t relayd_id)
 {
 	int ret;
 	struct lttng_dynamic_array stream_rotation_positions;
@@ -3992,8 +3993,6 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 				 sizeof(struct relayd_stream_rotation_position),
 				 nullptr);
 	lttng_dynamic_pointer_array_init(&streams_packet_to_open, nullptr);
-
-	const lttng::pthread::lock_guard channel_lock(channel->lock);
 
 	LTTNG_ASSERT(channel->trace_chunk);
 	chunk_status = lttng_trace_chunk_get_id(channel->trace_chunk, &next_chunk_id);
@@ -4017,91 +4016,65 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 		}
 
 		/*
-		 * Do not flush a packet when rotating from a NULL trace
-		 * chunk. The stream has no means to output data, and the prior
-		 * rotation which rotated to NULL performed that side-effect
-		 * already. No new data can be produced when a stream has no
-		 * associated trace chunk (e.g. a stop followed by a rotate).
+		 * Do not flush a packet when rotating from a NULL trace chunk. The stream has no
+		 * means to output data, and the prior rotation which rotated to NULL performed that
+		 * side-effect already. No new data can be produced when a stream has no associated
+		 * trace chunk (e.g. a stop followed by a rotate).
 		 */
 		if (stream.trace_chunk) {
 			bool flush_active;
 
-			if (stream.metadata_flag) {
-				/*
-				 * Don't produce an empty metadata packet,
-				 * simply close the current one.
-				 *
-				 * Metadata is regenerated on every trace chunk
-				 * switch; there is no concern that no data was
-				 * produced.
-				 */
+			/*
+			 * Only flush an empty packet if the "packet open" could not be performed on
+			 * transition to a new trace chunk and no packets were consumed within the
+			 * chunk's lifetime.
+			 */
+			if (stream.opened_packet_in_current_trace_chunk) {
 				flush_active = true;
 			} else {
 				/*
-				 * Only flush an empty packet if the "packet
-				 * open" could not be performed on transition
-				 * to a new trace chunk and no packets were
-				 * consumed within the chunk's lifetime.
+				 * Stream could have been full at the time of rotation, but then
+				 * have had no activity at all.
+				 *
+				 * It is important to flush a packet to prevent 0-length files from
+				 * being produced as most viewers choke on them.
+				 *
+				 * Unfortunately viewers will not be able to know that tracing was
+				 * active for this stream during this trace chunk's lifetime.
 				 */
-				if (stream.opened_packet_in_current_trace_chunk) {
-					flush_active = true;
-				} else {
-					/*
-					 * Stream could have been full at the
-					 * time of rotation, but then have had
-					 * no activity at all.
-					 *
-					 * It is important to flush a packet
-					 * to prevent 0-length files from being
-					 * produced as most viewers choke on
-					 * them.
-					 *
-					 * Unfortunately viewers will not be
-					 * able to know that tracing was active
-					 * for this stream during this trace
-					 * chunk's lifetime.
-					 */
-					ret = sample_stream_positions(
-						&stream, &produced_pos, &consumed_pos);
-					if (ret) {
-						goto end;
+				ret = sample_stream_positions(
+					&stream, &produced_pos, &consumed_pos);
+				if (ret) {
+					goto end;
+				}
+
+				/*
+				 * Don't flush an empty packet if data was produced; it will be
+				 * consumed before the rotation completes.
+				 */
+				flush_active = produced_pos != consumed_pos;
+				if (!flush_active) {
+					const char *trace_chunk_name;
+					uint64_t trace_chunk_id;
+
+					chunk_status = lttng_trace_chunk_get_name(
+						stream.trace_chunk, &trace_chunk_name, nullptr);
+					if (chunk_status == LTTNG_TRACE_CHUNK_STATUS_NONE) {
+						trace_chunk_name = "none";
 					}
 
-					/*
-					 * Don't flush an empty packet if data
-					 * was produced; it will be consumed
-					 * before the rotation completes.
-					 */
-					flush_active = produced_pos != consumed_pos;
-					if (!flush_active) {
-						const char *trace_chunk_name;
-						uint64_t trace_chunk_id;
+					/* Consumer trace chunks are never anonymous. */
+					chunk_status = lttng_trace_chunk_get_id(stream.trace_chunk,
+										&trace_chunk_id);
+					LTTNG_ASSERT(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
 
-						chunk_status = lttng_trace_chunk_get_name(
-							stream.trace_chunk,
-							&trace_chunk_name,
-							nullptr);
-						if (chunk_status == LTTNG_TRACE_CHUNK_STATUS_NONE) {
-							trace_chunk_name = "none";
-						}
-
-						/*
-						 * Consumer trace chunks are
-						 * never anonymous.
-						 */
-						chunk_status = lttng_trace_chunk_get_id(
-							stream.trace_chunk, &trace_chunk_id);
-						LTTNG_ASSERT(chunk_status ==
-							     LTTNG_TRACE_CHUNK_STATUS_OK);
-
-						DBG("Unable to open packet for stream during trace chunk's lifetime. "
-						    "Flushing an empty packet to prevent an empty file from being created: "
-						    "stream id = %" PRIu64
-						    ", trace chunk name = `%s`, trace chunk id = %" PRIu64,
-						    stream.key,
-						    trace_chunk_name,
-						    trace_chunk_id);
-					}
+					DBG("Unable to open packet for stream during trace chunk's lifetime. "
+					    "Flushing an empty packet to prevent an empty file from being created: "
+					    "stream id = %" PRIu64
+					    ", trace chunk name = `%s`, trace chunk id = %" PRIu64,
+					    stream.key,
+					    trace_chunk_name,
+					    trace_chunk_id);
 				}
 			}
 
@@ -4202,7 +4175,7 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 
 		stream.opened_packet_in_current_trace_chunk = false;
 
-		if (rotating_to_new_chunk && !stream.metadata_flag) {
+		if (rotating_to_new_chunk) {
 			/*
 			 * Attempt to flush an empty packet as close to the
 			 * rotation point as possible. In the event where a
@@ -4232,7 +4205,7 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 			 *   - This stream completes its rotation long after the
 			 *     rotation was initiated
 			 *   - The session is stopped before any event can be
-			 *     produced	in this stream's buffers.
+			 *     produced in this stream's buffers.
 			 *
 			 * The resulting trace chunk will have a single packet
 			 * temporaly at the end of the trace chunk for this
@@ -4330,6 +4303,175 @@ end:
 	return ret;
 }
 
+/*
+ * Announce the rotation of a metadata channel to the relayd. The relay daemon performs the rotation
+ * of metadata channels immediately upon receiving the rotation command; the position is not
+ * considered.
+ */
+int lttng_consumer_rotate_metadata_relayd_stream(
+	lttng_consumer_stream& metadata_stream,
+	lttng_consumer_stream::rotation_parameters& rotation_params)
+{
+	LTTNG_ASSERT(metadata_stream.metadata_flag);
+	ASSERT_RCU_READ_LOCKED();
+
+	const auto relayd = consumer_find_relayd(rotation_params.relayd_id.value());
+	if (!relayd) {
+		ERR_FMT("Failed to find relay daemon during metadata stream rotation: sessiond_id={}, relayd_id={}",
+			metadata_stream.chan->session_id,
+			*rotation_params.relayd_id);
+		return -1;
+	}
+
+	const lttng::pthread::lock_guard relayd_socket_lock(relayd->ctrl_sock_mutex);
+	const struct relayd_stream_rotation_position position = {
+		.stream_id = metadata_stream.relayd_stream_id,
+		.rotate_at_seq_num = 0,
+	};
+
+	return relayd_rotate_streams(
+		&relayd->control_sock,
+		1,
+		rotation_params.next_chunk_id ? &rotation_params.next_chunk_id.value() : nullptr,
+		&position);
+}
+
+/*
+ * Initiate the rotation of a metadata channel.
+ *
+ * Metadata channels are handled differently than data channels since they have distinct concerns:
+ * a trace archive needs the full metadata content to be decoded.
+ *
+ * The kernel and user space domains can both generate metadata that exceeds the capacity of the
+ * metadata ring-buffer. As such, it is not sufficient to identify a position in the ring-buffer
+ * from which to rotate; we need to ensure that the full metadata content has been consumed.
+ *
+ * The approach taken here is to rotate once the metadata stream has reached a coherence point;
+ * that is, a point where all metadata content produced up to the moment of the rotation has
+ * been flushed to the ring-buffer and consumed.
+ *
+ * Since the consumer has no visibility into the kernel metadata cache, it cannot determine and
+ * announce a rotation position as it does for data channels. Instead, it signals the relayd to
+ * rotate once the coherence point has been reached (or simply rotates the local files to the next
+ * chunk).
+ *
+ * The metadata stream can be rotated immediately if:
+ *   1) The stream sits at a coherence point (the last packet had the coherent flag set),
+ *   2) There is no unconsumed data in the ring-buffer, nor the cache.
+ *
+ * Otherwise, the consumer marks the stream as pending rotation, and the rotation will be
+ * completed once the coherence point is reached.
+ */
+static int lttng_consumer_rotate_metadata_channel(struct lttng_consumer_channel *channel,
+						  uint64_t key [[maybe_unused]],
+						  uint64_t relayd_id)
+{
+	const auto is_userspace_consumer = the_consumer_data.type == LTTNG_CONSUMER32_UST ||
+		the_consumer_data.type == LTTNG_CONSUMER64_UST;
+	const lttng::pthread::lock_guard stream_lock(channel->metadata_stream->lock);
+	bool data_left_in_ring_buffer = false;
+
+	const auto snapshot_ret = lttng_consumer_take_snapshot(channel->metadata_stream);
+	if (snapshot_ret < 0 && snapshot_ret != -ENODATA && snapshot_ret != -EAGAIN) {
+		ERR_FMT("Failed to sample snapshot position during channel rotation: ret={}",
+			snapshot_ret);
+		return -1;
+	} else if (snapshot_ret == 0) {
+		unsigned long produced_pos = 0, consumed_pos = 0;
+
+		const auto get_produced_ret = lttng_consumer_get_produced_snapshot(
+			channel->metadata_stream, &produced_pos);
+		if (get_produced_ret < 0) {
+			ERR_FMT("Failed to sample produced position during metadata channel rotation: ret={}",
+				get_produced_ret);
+			return -1;
+		}
+
+		const auto get_consumed_ret = lttng_consumer_get_consumed_snapshot(
+			channel->metadata_stream, &consumed_pos);
+		if (get_consumed_ret < 0) {
+			ERR_FMT("Failed to sample consumed position during metadata channel rotation: ret={}",
+				get_consumed_ret);
+			return -1;
+		}
+
+		data_left_in_ring_buffer = produced_pos != consumed_pos;
+	}
+
+	bool data_left_in_cache = false;
+	if (is_userspace_consumer) {
+		const lttng::pthread::lock_guard metadata_cache_lock(channel->metadata_cache->lock);
+
+		data_left_in_cache = channel->metadata_stream->ust_metadata_cache_consumed !=
+			channel->metadata_cache->contents.size;
+	}
+
+	lttng_consumer_stream::rotation_parameters pending_rotation;
+
+	if (channel->metadata_stream->has_network_destination()) {
+		pending_rotation.relayd_id = relayd_id;
+	}
+
+	if (channel->trace_chunk != channel->metadata_stream->trace_chunk) {
+		std::uint64_t next_chunk_id;
+		lttng_trace_chunk_status chunk_status;
+
+		chunk_status = lttng_trace_chunk_get_id(channel->trace_chunk, &next_chunk_id);
+		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+			ERR("Failed to get next trace chunk id during metadata channel rotation");
+			return -1;
+		}
+
+		pending_rotation.next_chunk_id = next_chunk_id;
+	}
+
+	if (data_left_in_cache || data_left_in_ring_buffer ||
+	    !channel->metadata_stream->is_metadata_coherent) {
+		/* Rotation is deferred. */
+		DBG_FMT("Metadata channel marked as pending rotation: session_id={}, data_left_in_cache={}, data_left_in_ring_buffer={}, stream_is_coherent={}",
+			channel->session_id,
+			data_left_in_cache,
+			data_left_in_ring_buffer,
+			/* Using a lambda as fmtlib attempts to bind the bitfield as a bool ref. */
+			[channel]() { return channel->metadata_stream->is_metadata_coherent; }());
+
+		channel->metadata_stream->pending_metadata_rotation = pending_rotation;
+		return 0;
+	}
+
+	/* Ready to rotate immediately. */
+	DBG_FMT("Metadata channel is ready to rotate immediately: session_id={}",
+		channel->session_id);
+
+	channel->metadata_stream->rotate_ready = true;
+
+	if (channel->metadata_stream->has_network_destination()) {
+		const auto announce_ret = lttng_consumer_rotate_metadata_relayd_stream(
+			*channel->metadata_stream, pending_rotation);
+		if (announce_ret < 0) {
+			ERR_FMT("Failed to announce metadata stream rotation to relay daemon: sessiond_id={}, relayd_id={}",
+				channel->session_id,
+				relayd_id);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
+				  uint64_t key,
+				  uint64_t relayd_id)
+{
+	const lttng::pthread::lock_guard channel_lock(channel->lock);
+
+	if (channel->type == CONSUMER_CHANNEL_TYPE_METADATA) {
+		return lttng_consumer_rotate_metadata_channel(channel, key, relayd_id);
+	} else {
+		return lttng_consumer_rotate_data_channel(channel, key, relayd_id);
+	}
+}
+
 static int consumer_clear_buffer(struct lttng_consumer_stream *stream)
 {
 	int ret = 0;
@@ -4415,13 +4557,23 @@ error:
 int lttng_consumer_stream_is_rotate_ready(struct lttng_consumer_stream *stream)
 {
 	DBG("Check is rotate ready for stream %" PRIu64 " ready %u rotate_position %" PRIu64
-	    " last_sequence_number %" PRIu64,
+	    " last_sequence_number %" PRIu64 ", is_metadata_stream=%s",
 	    stream->key,
 	    stream->rotate_ready,
 	    stream->rotate_position,
-	    stream->last_sequence_number);
+	    stream->last_sequence_number,
+	    stream->metadata_flag ? "true" : "false");
 	if (stream->rotate_ready) {
 		return 1;
+	}
+
+	if (stream->metadata_flag) {
+		/*
+		 * Metadata stream rotation doesn't use sequence numbers to determine the rotation
+		 * position. A post-consumption callback sets the rotate_ready flag when the
+		 * metadata stream reaches a coherence point.
+		 */
+		return 0;
 	}
 
 	/*
@@ -4468,6 +4620,7 @@ void lttng_consumer_reset_stream_rotate_state(struct lttng_consumer_stream *stre
 	DBG("lttng_consumer_reset_stream_rotate_state for stream %" PRIu64, stream->key);
 	stream->rotate_position = -1ULL;
 	stream->rotate_ready = false;
+	stream->pending_metadata_rotation = nonstd::nullopt;
 }
 
 /*
@@ -4567,6 +4720,8 @@ int lttng_consumer_rotate_stream(struct lttng_consumer_stream *stream)
 		 * regeneration will happen when the next trace chunk is
 		 * created.
 		 */
+		DBG_FMT("Re-dumping metadata stream contents following rotation of metadata stream: sessiond_id={}",
+			stream->chan->session_id);
 		ret = consumer_metadata_stream_dump(stream);
 		if (ret) {
 			goto error;

@@ -1353,7 +1353,7 @@ static void metadata_stream_reset_cache_consumed_position(struct lttng_consumer_
 {
 	ASSERT_LOCKED(stream->lock);
 
-	DBG("Reset metadata cache of session %" PRIu64, stream->chan->session_id);
+	DBG_FMT("Resetting consumed metadata position: session_id={}", stream->chan->session_id);
 	stream->ust_metadata_cache_consumed = 0;
 }
 
@@ -2370,97 +2370,99 @@ int lttng_ustconsumer_recv_metadata(int sock,
 				    bool invoked_by_timer,
 				    int wait)
 {
-	int ret, ret_code = LTTCOMM_CONSUMERD_SUCCESS;
-	char *metadata_str;
-	enum consumer_metadata_cache_write_status cache_write_status;
+	int ret_code = LTTCOMM_CONSUMERD_SUCCESS;
 
-	DBG("UST consumer push metadata key %" PRIu64 " of len %" PRIu64, key, len);
-
-	metadata_str = calloc<char>(len);
+	char *metadata_str = calloc<char>(len);
 	if (!metadata_str) {
 		PERROR("zmalloc metadata string");
-		ret_code = LTTCOMM_CONSUMERD_ENOMEM;
-		goto end;
+		return LTTCOMM_CONSUMERD_ENOMEM;
 	}
 
-	health_code_update();
+	{
+		const lttng::pthread::lock_guard channel_lock(channel->lock);
+		enum consumer_metadata_cache_write_status cache_write_status;
 
-	/* Receive metadata string. */
-	ret = lttcomm_recv_unix_sock(sock, metadata_str, len);
-	if (ret < 0) {
-		/* Session daemon is dead so return gracefully. */
-		ret_code = ret;
-		goto end_free;
-	}
+		DBG("UST consumer push metadata key %" PRIu64 " of len %" PRIu64, key, len);
 
-	health_code_update();
+		health_code_update();
 
-	pthread_mutex_lock(&channel->metadata_cache->lock);
-	cache_write_status = consumer_metadata_cache_write(
-		channel->metadata_cache, offset, len, version, metadata_str);
-	pthread_mutex_unlock(&channel->metadata_cache->lock);
-	switch (cache_write_status) {
-	case CONSUMER_METADATA_CACHE_WRITE_STATUS_NO_CHANGE:
-		/*
-		 * The write entirely overlapped with existing contents of the
-		 * same metadata version (same content); there is nothing to do.
-		 */
-		break;
-	case CONSUMER_METADATA_CACHE_WRITE_STATUS_INVALIDATED:
-		/*
-		 * The metadata cache was invalidated (previously pushed
-		 * content has been overwritten). Reset the stream's consumed
-		 * metadata position to ensure the metadata poll thread consumes
-		 * the whole cache.
-		 */
+		/* Receive metadata string. */
+		int ret = lttcomm_recv_unix_sock(sock, metadata_str, len);
+		if (ret < 0) {
+			/* Session daemon is dead so return gracefully. */
+			ret_code = ret;
+			goto end;
+		}
 
-		/*
-		 * channel::metadata_stream can be null when the metadata
-		 * channel is under a snapshot session type. No need to update
-		 * the stream position in that scenario.
-		 */
-		if (channel->metadata_stream != nullptr) {
+		health_code_update();
+
+		if (channel->metadata_stream) {
+			/* metadata_stream will be null for no-output sessions. */
 			pthread_mutex_lock(&channel->metadata_stream->lock);
-			metadata_stream_reset_cache_consumed_position(channel->metadata_stream);
-			pthread_mutex_unlock(&channel->metadata_stream->lock);
-		} else {
-			/* Validate we are in snapshot mode. */
-			LTTNG_ASSERT(!channel->monitor);
 		}
-		/* Fall-through. */
-	case CONSUMER_METADATA_CACHE_WRITE_STATUS_APPENDED_CONTENT:
-		/*
-		 * In both cases, the metadata poll thread has new data to
-		 * consume.
-		 */
-		ret = consumer_metadata_wakeup_pipe(channel);
-		if (ret) {
+
+		pthread_mutex_lock(&channel->metadata_cache->lock);
+
+		cache_write_status = consumer_metadata_cache_write(
+			channel->metadata_cache, offset, len, version, metadata_str);
+
+		switch (cache_write_status) {
+		case CONSUMER_METADATA_CACHE_WRITE_STATUS_NO_CHANGE:
+			/*
+			 * The write entirely overlapped with existing contents of the
+			 * same metadata version (same content); there is nothing to do.
+			 */
+			break;
+		case CONSUMER_METADATA_CACHE_WRITE_STATUS_INVALIDATED:
+			/*
+			 * The metadata cache was invalidated (previously pushed
+			 * content has been overwritten). Reset the stream's consumed
+			 * metadata position to ensure the metadata poll thread consumes
+			 * the whole cache.
+			 *
+			 * channel::metadata_stream can be null when the metadata
+			 * channel is under a snapshot session type. No need to update
+			 * the stream position in that scenario.
+			 */
+			if (channel->metadata_stream != nullptr) {
+				metadata_stream_reset_cache_consumed_position(
+					channel->metadata_stream);
+			} else {
+				LTTNG_ASSERT(!channel->monitor);
+			}
+			/* Fall-through. */
+		case CONSUMER_METADATA_CACHE_WRITE_STATUS_APPENDED_CONTENT:
+			ret = consumer_metadata_wakeup_pipe(channel);
+			if (ret) {
+				ret_code = LTTCOMM_CONSUMERD_ERROR_METADATA;
+			}
+			break;
+		case CONSUMER_METADATA_CACHE_WRITE_STATUS_ERROR:
+			/* Unable to handle metadata. Notify session daemon. */
 			ret_code = LTTCOMM_CONSUMERD_ERROR_METADATA;
-			goto end_free;
+			/*
+			 * Skip metadata flush on write error since the offset and len might
+			 * not have been updated which could create an infinite loop below when
+			 * waiting for the metadata cache to be flushed.
+			 */
+			break;
+		default:
+			abort();
 		}
-		break;
-	case CONSUMER_METADATA_CACHE_WRITE_STATUS_ERROR:
-		/* Unable to handle metadata. Notify session daemon. */
-		ret_code = LTTCOMM_CONSUMERD_ERROR_METADATA;
-		/*
-		 * Skip metadata flush on write error since the offset and len might
-		 * not have been updated which could create an infinite loop below when
-		 * waiting for the metadata cache to be flushed.
-		 */
-		goto end_free;
-	default:
-		abort();
+
+		pthread_mutex_unlock(&channel->metadata_cache->lock);
+
+		if (channel->metadata_stream) {
+			pthread_mutex_unlock(&channel->metadata_stream->lock);
+		}
 	}
 
-	if (!wait) {
-		goto end_free;
+	if (wait && ret_code == LTTCOMM_CONSUMERD_SUCCESS) {
+		consumer_wait_metadata_cache_flushed(channel, offset + len, invoked_by_timer);
 	}
 
-	consumer_wait_metadata_cache_flushed(channel, offset + len, invoked_by_timer);
-
-end_free:
-	free(metadata_str);
 end:
+	free(metadata_str);
 	return ret_code;
 }
 
@@ -3796,40 +3798,15 @@ static int commit_one_metadata_packet(struct lttng_consumer_stream *stream)
 
 	pthread_mutex_lock(&stream->chan->metadata_cache->lock);
 	if (stream->chan->metadata_cache->contents.size == stream->ust_metadata_cache_consumed) {
-		/*
-		 * In the context of a user space metadata channel, a
-		 * change in version can be detected in two ways:
-		 *   1) During the pre-consume of the `read_subbuffer` loop,
-		 *   2) When populating the metadata ring buffer (i.e. here).
-		 *
-		 * This function is invoked when there is no metadata
-		 * available in the ring-buffer. If all data was consumed
-		 * up to the size of the metadata cache, there is no metadata
-		 * to insert in the ring-buffer.
-		 *
-		 * However, the metadata version could still have changed (a
-		 * regeneration without any new data will yield the same cache
-		 * size).
-		 *
-		 * The cache's version is checked for a version change and the
-		 * consumed position is reset if one occurred.
-		 *
-		 * This check is only necessary for the user space domain as
-		 * it has to manage the cache explicitly. If this reset was not
-		 * performed, no metadata would be consumed (and no reset would
-		 * occur as part of the pre-consume) until the metadata size
-		 * exceeded the cache size.
-		 */
-		if (stream->metadata_version != stream->chan->metadata_cache->version) {
-			metadata_stream_reset_cache_consumed_position(stream);
-			consumer_stream_metadata_set_version(stream,
-							     stream->chan->metadata_cache->version);
-		} else {
-			ret = 0;
-			goto end;
-		}
+		/* No data to insert in the ring-buffer. */
+		ret = 0;
+		goto end;
 	}
 
+	DBG_FMT("Committing one metadata packet to channel: session_id={}, start_offset={}, size={}",
+		stream->chan->session_id,
+		stream->ust_metadata_cache_consumed,
+		stream->chan->metadata_cache->contents.size - stream->ust_metadata_cache_consumed);
 	write_len = lttng_ust_ctl_write_one_packet_to_channel(
 		stream->chan->uchan,
 		&stream->chan->metadata_cache->contents.data[stream->ust_metadata_cache_consumed],
@@ -3840,9 +3817,6 @@ static int commit_one_metadata_packet(struct lttng_consumer_stream *stream)
 		ret = write_len;
 		goto end;
 	}
-
-	stream->ust_metadata_cache_consumed += write_len;
-	stream->chan->metadata_consumed_wait_queue.wake_all();
 
 	LTTNG_ASSERT(stream->chan->metadata_cache->contents.size >=
 		     stream->ust_metadata_cache_consumed);
@@ -3918,23 +3892,15 @@ lttng_ustconsumer_sync_metadata(struct lttng_consumer_local_data *ctx,
 		goto end;
 	}
 
-	ret = commit_one_metadata_packet(metadata_stream);
-	if (ret < 0) {
-		status = SYNC_METADATA_STATUS_ERROR;
-		goto end;
-	} else if (ret > 0) {
-		status = SYNC_METADATA_STATUS_NEW_DATA;
-	} else /* ret == 0 */ {
-		status = SYNC_METADATA_STATUS_NO_DATA;
-		goto end;
-	}
+	{
+		const lttng::pthread::lock_guard lock(metadata_channel->metadata_cache->lock);
 
-	ret = lttng_ust_ctl_snapshot(metadata_stream->ustream);
-	if (ret < 0) {
-		ERR("Failed to take a snapshot of the metadata ring-buffer positions, ret = %d",
-		    ret);
-		status = SYNC_METADATA_STATUS_ERROR;
-		goto end;
+		if (metadata_channel->metadata_cache->contents.size ==
+		    metadata_stream->ust_metadata_cache_consumed) {
+			status = SYNC_METADATA_STATUS_NO_DATA;
+		} else {
+			status = SYNC_METADATA_STATUS_NEW_DATA;
+		}
 	}
 
 end:
@@ -4043,17 +4009,15 @@ end:
 static int extract_metadata_subbuffer_info(struct lttng_consumer_stream *stream,
 					   struct stream_subbuffer *subbuf)
 {
-	int ret;
-
-	ret = extract_common_subbuffer_info(stream, subbuf);
-	if (ret) {
-		goto end;
+	const auto info_result = extract_common_subbuffer_info(stream, subbuf);
+	if (info_result) {
+		return info_result;
 	}
 
-	subbuf->info.metadata.version = stream->metadata_version;
+	lttng::pthread::lock_guard lock(stream->chan->metadata_cache->lock);
+	subbuf->info.metadata.version = stream->chan->metadata_cache->version;
 
-end:
-	return ret;
+	return 0;
 }
 
 static int extract_data_subbuffer_info(struct lttng_consumer_stream *stream,
@@ -4201,6 +4165,7 @@ get_next_subbuffer_metadata(struct lttng_consumer_stream *stream,
 	bool buffer_empty;
 	unsigned long consumed_pos, produced_pos;
 	enum get_next_subbuffer_status status;
+	uint64_t cache_consumed_size = 0;
 
 	do {
 		ret = lttng_ust_ctl_get_next_subbuf(stream->ustream);
@@ -4226,17 +4191,12 @@ get_next_subbuffer_metadata(struct lttng_consumer_stream *stream,
 				goto end;
 			} else if (ret == 0) {
 				/* Not an error, the cache is empty. */
-				cache_empty = true;
 				status = GET_NEXT_SUBBUFFER_STATUS_NO_DATA;
+				cache_consumed_size = 0;
 				goto end;
 			} else {
-				cache_empty = false;
+				cache_consumed_size = ret;
 			}
-		} else {
-			pthread_mutex_lock(&stream->chan->metadata_cache->lock);
-			cache_empty = stream->chan->metadata_cache->contents.size ==
-				stream->ust_metadata_cache_consumed;
-			pthread_mutex_unlock(&stream->chan->metadata_cache->lock);
 		}
 	} while (!got_subbuffer);
 
@@ -4246,6 +4206,14 @@ get_next_subbuffer_metadata(struct lttng_consumer_stream *stream,
 		status = GET_NEXT_SUBBUFFER_STATUS_ERROR;
 		goto end;
 	}
+
+	stream->ust_metadata_cache_last_push_size = cache_consumed_size;
+
+	pthread_mutex_lock(&stream->chan->metadata_cache->lock);
+	/* Determine if this subbuffer completes the flushing of the cache. */
+	cache_empty = stream->chan->metadata_cache->contents.size ==
+		stream->ust_metadata_cache_consumed + stream->ust_metadata_cache_last_push_size;
+	pthread_mutex_unlock(&stream->chan->metadata_cache->lock);
 
 	ret = lttng_ustconsumer_sample_snapshot_positions(stream);
 	if (ret < 0) {
@@ -4305,6 +4273,17 @@ static int signal_metadata(struct lttng_consumer_stream *stream,
 	return pthread_cond_broadcast(&stream->metadata_rdv) ? -errno : 0;
 }
 
+static int post_consume_metadata_update_consumed_position(lttng_consumer_stream& stream,
+							  const struct stream_subbuffer *subbuffer
+							  [[maybe_unused]],
+							  struct lttng_consumer_local_data *ctx
+							  [[maybe_unused]])
+{
+	stream.ust_metadata_cache_consumed += stream.ust_metadata_cache_last_push_size;
+	stream.chan->metadata_consumed_wait_queue.wake_all();
+	return 0;
+}
+
 static int lttng_ustconsumer_set_stream_ops(struct lttng_consumer_stream *stream)
 {
 	int ret = 0;
@@ -4313,14 +4292,24 @@ static int lttng_ustconsumer_set_stream_ops(struct lttng_consumer_stream *stream
 	if (stream->metadata_flag) {
 		stream->read_subbuffer_ops.get_next_subbuffer = get_next_subbuffer_metadata;
 		stream->read_subbuffer_ops.extract_subbuffer_info = extract_metadata_subbuffer_info;
-		stream->read_subbuffer_ops.reset_metadata =
-			metadata_stream_reset_cache_consumed_position;
 		if (stream->chan->is_live) {
 			stream->read_subbuffer_ops.on_sleep = signal_metadata;
 			ret = consumer_stream_enable_metadata_bucketization(stream);
 			if (ret) {
 				goto end;
 			}
+		}
+
+		stream->read_subbuffer_ops.reset_metadata =
+			metadata_stream_reset_cache_consumed_position;
+
+		const post_consume_cb metadata_update_consumed_position =
+			post_consume_metadata_update_consumed_position;
+		ret = lttng_dynamic_array_add_element(&stream->read_subbuffer_ops.post_consume_cbs,
+						      &metadata_update_consumed_position);
+		if (ret) {
+			PERROR("Failed to add `metadata update consumed position` callback to stream's post consumption callbacks");
+			goto end;
 		}
 	} else {
 		stream->read_subbuffer_ops.get_next_subbuffer = get_next_subbuffer;
@@ -4391,13 +4380,13 @@ int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream)
 	}
 
 	if (stream->chan->type == CONSUMER_CHANNEL_TYPE_METADATA) {
-		uint64_t contiguous, pushed;
+		uint64_t contiguous, consumed;
 
 		/* Ease our life a bit. */
 		pthread_mutex_lock(&stream->chan->metadata_cache->lock);
 		contiguous = stream->chan->metadata_cache->contents.size;
 		pthread_mutex_unlock(&stream->chan->metadata_cache->lock);
-		pushed = stream->ust_metadata_cache_consumed;
+		consumed = stream->ust_metadata_cache_consumed;
 
 		/*
 		 * We can simply check whether all contiguously available data
@@ -4406,16 +4395,16 @@ int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream)
 		 * get_next_subbuf() and put_next_subbuf() are issued atomically
 		 * thanks to the stream lock within
 		 * lttng_ustconsumer_read_subbuffer(). This basically means that
-		 * whetnever ust_metadata_cache_consumed is incremented, the associated
+		 * whetnever ust_metadata_pushed is incremented, the associated
 		 * metadata has been consumed from the metadata stream.
 		 */
 		DBG("UST consumer metadata pending check: contiguous %" PRIu64
 		    " vs pushed %" PRIu64,
 		    contiguous,
-		    pushed);
-		LTTNG_ASSERT(((int64_t) (contiguous - pushed)) >= 0);
-		if ((contiguous != pushed) ||
-		    (((int64_t) contiguous - pushed) > 0 || contiguous == 0)) {
+		    consumed);
+		LTTNG_ASSERT(((int64_t) (contiguous - consumed)) >= 0);
+		if ((contiguous != consumed) ||
+		    (((int64_t) contiguous - consumed) > 0 || contiguous == 0)) {
 			return 1; /* Data is pending */
 		}
 	} else {

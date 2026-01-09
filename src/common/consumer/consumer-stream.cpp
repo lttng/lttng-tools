@@ -644,6 +644,7 @@ static int metadata_stream_handle_version_change(struct lttng_consumer_stream *s
 
 	stream->out_fd_offset = 0;
 	stream->first_metadata_write_done = false;
+	stream->is_metadata_coherent = false;
 
 	if (stream->read_subbuffer_ops.reset_metadata) {
 		stream->read_subbuffer_ops.reset_metadata(stream);
@@ -830,6 +831,104 @@ end:
 	return ret;
 }
 
+static int post_consume_update_metadata_coherent_flag(lttng_consumer_stream& stream,
+						      const struct stream_subbuffer *subbuffer,
+						      struct lttng_consumer_local_data *ctx
+						      __attribute__((unused)))
+{
+	const auto original_state = stream.is_metadata_coherent;
+
+	if (subbuffer->info.metadata.coherent.is_set) {
+		stream.is_metadata_coherent = subbuffer->info.metadata.coherent.value;
+	}
+
+	if (original_state != stream.is_metadata_coherent) {
+		DBG_FMT("Metadata coherence state changed: session_id={}, stream_key={}, old_value={}, new_value={}",
+			stream.chan->session_id,
+			stream.key,
+			original_state,
+			!original_state);
+	}
+
+	return 0;
+}
+
+static int post_consume_check_metadata_rotate_ready(lttng_consumer_stream& stream,
+						    const struct stream_subbuffer *subbuffer
+						    [[maybe_unused]],
+						    struct lttng_consumer_local_data *ctx
+						    [[maybe_unused]])
+{
+	/*
+	 * Metadata stream has reached coherence while a rotation is pending.
+	 *
+	 * If the tracer does not support the metadata coherency indicator (e.g. older releases
+	 * of LTTng-modules), fallback to checking if there is any pending metadata to be written.
+	 */
+	bool is_metadata_coherent = false;
+
+	if (caa_likely(stream.tracer_supports_metadata_coherency_indicator)) {
+		is_metadata_coherent = stream.is_metadata_coherent;
+	} else {
+		/*
+		 * If the tracer does not support the metadata coherency indicator, assume
+		 * metadata is coherent if none of it is left to be written. This is racy, but
+		 * it's the best we can do with these older tracers.
+		 */
+		const int snapshot_ret = lttng_consumer_sample_snapshot_positions(&stream);
+		if (snapshot_ret < 0 && snapshot_ret != -ENODATA && snapshot_ret != -EAGAIN) {
+			ERR_FMT("Failed to sample snapshot positions to determine metadata coherence: session_id={}, stream_key={}",
+				stream.chan->session_id,
+				stream.key);
+		} else if (snapshot_ret == 0) {
+			unsigned long produced_pos, consumed_pos;
+
+			const auto get_produced_ret =
+				lttng_consumer_get_produced_snapshot(&stream, &produced_pos);
+			if (get_produced_ret < 0) {
+				ERR_FMT("Failed to sample produced position when determining if metadata is coherent: session_id={}, stream_key={}",
+					stream.chan->session_id,
+					stream.key);
+				return -1;
+			}
+
+			const auto get_consumed_ret =
+				lttng_consumer_get_consumed_snapshot(&stream, &consumed_pos);
+			if (get_consumed_ret < 0) {
+				ERR_FMT("Failed to sample consumed position when determining if metadata is coherent: session_id={}, stream_key={}",
+					stream.chan->session_id,
+					stream.key);
+				return -1;
+			}
+		} else {
+			/* No data available, assume coherent. */
+			is_metadata_coherent = true;
+		}
+	}
+
+	if (is_metadata_coherent && stream.pending_metadata_rotation.has_value()) {
+		stream.rotate_ready = true;
+	}
+
+	return 0;
+}
+
+static int post_consume_rotate_metadata_relayd_stream(lttng_consumer_stream& stream,
+						      const struct stream_subbuffer *subbuffer
+						      [[maybe_unused]],
+						      struct lttng_consumer_local_data *ctx
+						      [[maybe_unused]])
+{
+	if (stream.rotate_ready) {
+		LTTNG_ASSERT(stream.is_metadata_coherent &&
+			     stream.pending_metadata_rotation.has_value());
+		return lttng_consumer_rotate_metadata_relayd_stream(
+			stream, stream.pending_metadata_rotation.value());
+	}
+
+	return 0;
+}
+
 struct lttng_consumer_stream *consumer_stream_create(struct lttng_consumer_channel *channel,
 						     uint64_t channel_key,
 						     uint64_t stream_key,
@@ -934,6 +1033,37 @@ struct lttng_consumer_stream *consumer_stream_create(struct lttng_consumer_chann
 		stream->read_subbuffer_ops.assert_locked =
 			consumer_stream_metadata_assert_locked_all;
 		stream->read_subbuffer_ops.pre_consume_subbuffer = metadata_stream_pre_consume;
+
+		const post_consume_cb update_metadata_coherent_flag =
+			post_consume_update_metadata_coherent_flag;
+		ret = lttng_dynamic_array_add_element(&stream->read_subbuffer_ops.post_consume_cbs,
+						      &update_metadata_coherent_flag);
+		if (ret) {
+			PERROR("Failed to add `update metadata coherent flag` callback to stream's post consumption callbacks");
+			goto error;
+		}
+
+		const post_consume_cb check_metadata_rotate_ready =
+			post_consume_check_metadata_rotate_ready;
+		ret = lttng_dynamic_array_add_element(&stream->read_subbuffer_ops.post_consume_cbs,
+						      &check_metadata_rotate_ready);
+		if (ret) {
+			PERROR("Failed to add `check metadata rotate ready` callback to stream's post consumption callbacks");
+			goto error;
+		}
+
+		if (stream->has_network_destination()) {
+			const post_consume_cb rotate_metadata_relayd_stream =
+				post_consume_rotate_metadata_relayd_stream;
+
+			ret = lttng_dynamic_array_add_element(
+				&stream->read_subbuffer_ops.post_consume_cbs,
+				&rotate_metadata_relayd_stream);
+			if (ret) {
+				PERROR("Failed to add `rotate metadata relayd stream` callback to stream's post consumption callbacks");
+				goto error;
+			}
+		}
 	} else {
 		const post_consume_cb post_consume_index_op = channel->is_live ?
 			consumer_stream_sync_metadata_index :
@@ -1122,6 +1252,7 @@ void consumer_stream_free(struct lttng_consumer_stream *stream)
 	LTTNG_ASSERT(stream);
 
 	metadata_bucket_destroy(stream->metadata_bucket);
+	lttng_dynamic_array_reset(&stream->read_subbuffer_ops.post_consume_cbs);
 	call_rcu(&stream->node.head, free_stream_rcu);
 }
 
@@ -1286,7 +1417,6 @@ void consumer_stream_destroy(struct lttng_consumer_stream *stream, struct lttng_
 	/* Free stream within a RCU call. */
 	lttng_trace_chunk_put(stream->trace_chunk);
 	stream->trace_chunk = nullptr;
-	lttng_dynamic_array_reset(&stream->read_subbuffer_ops.post_consume_cbs);
 	consumer_stream_free(stream);
 }
 
