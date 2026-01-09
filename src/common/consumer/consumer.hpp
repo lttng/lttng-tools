@@ -25,6 +25,7 @@
 #include <lttng/lttng.h>
 
 #include <limits.h>
+#include <limits>
 #include <poll.h>
 #include <stdint.h>
 #include <unistd.h>
@@ -456,6 +457,11 @@ using reset_metadata_cb = void (*)(struct lttng_consumer_stream *);
  * uniquely a stream.
  */
 struct lttng_consumer_stream {
+	bool has_network_destination() const noexcept
+	{
+		return net_seq_idx != std::numeric_limits<std::uint64_t>::max();
+	}
+
 	/* HT node used by the data_ht and metadata_ht */
 	struct lttng_ht_node_u64 node;
 	/* stream indexed per channel key node */

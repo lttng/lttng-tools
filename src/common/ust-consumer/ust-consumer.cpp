@@ -903,7 +903,7 @@ static int setup_metadata(struct lttng_consumer_local_data *ctx, uint64_t key)
 	}
 
 	/* Send metadata stream to relayd if needed. */
-	if (metadata->metadata_stream->net_seq_idx != (uint64_t) -1ULL) {
+	if (metadata->metadata_stream->has_network_destination()) {
 		ret = consumer_send_relayd_stream(metadata->metadata_stream, metadata->pathname);
 		if (ret < 0) {
 			ret = LTTCOMM_CONSUMERD_ERROR_METADATA;
@@ -3123,7 +3123,7 @@ int lttng_ustconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 	 * Don't create anything if this is set for streaming or if there is
 	 * no current trace chunk on the parent channel.
 	 */
-	if (stream->net_seq_idx == (uint64_t) -1ULL && stream->chan->monitor &&
+	if (!stream->has_network_destination() && stream->chan->monitor &&
 	    stream->chan->trace_chunk) {
 		ret = consumer_stream_create_output_files(stream, true);
 		if (ret) {
