@@ -197,9 +197,9 @@ struct lttng_consumer_channel {
 	struct consumer_metadata_cache *metadata_cache = nullptr;
 
 	/*
-	 * Wait queue awaiting updates to metadata stream's flushed position.
+	 * Wait queue for threads awaiting metadata consumption progress.
 	 */
-	lttng::synchro::wait_queue metadata_pushed_wait_queue;
+	lttng::synchro::wait_queue metadata_consumed_wait_queue;
 
 	/* For UST metadata periodical flush */
 	lttng::scheduling::periodic_task::sptr metadata_switch_timer_task;
@@ -651,10 +651,12 @@ struct lttng_consumer_stream {
 	 */
 	int ust_metadata_poll_pipe[2];
 	/*
-	 * How much metadata was read from the metadata cache and sent
-	 * to the channel.
+	 * How much metadata has been consumed from the metadata cache.
+	 *
+	 * This value is updated after metadata packets are successfully
+	 * written to their output (local file or network).
 	 */
-	uint64_t ust_metadata_pushed;
+	uint64_t ust_metadata_cache_consumed;
 	/*
 	 * Copy of the last discarded event value to detect the overflow of
 	 * the counter.
