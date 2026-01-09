@@ -944,7 +944,7 @@ error:
 	 */
 	consumer_stream_destroy(metadata->metadata_stream, nullptr);
 	metadata->metadata_stream = nullptr;
-	metadata->metadata_pushed_wait_queue.wake_all();
+	metadata->metadata_consumed_wait_queue.wake_all();
 
 send_streams_error:
 error_no_stream:
@@ -1029,7 +1029,7 @@ error_stream:
 	 */
 	consumer_stream_destroy(metadata_stream, nullptr);
 	metadata_channel->metadata_stream = nullptr;
-	metadata_channel->metadata_pushed_wait_queue.wake_all();
+	metadata_channel->metadata_consumed_wait_queue.wake_all();
 
 error:
 	return ret;
@@ -1293,7 +1293,7 @@ static void metadata_stream_reset_cache_consumed_position(struct lttng_consumer_
 	ASSERT_LOCKED(stream->lock);
 
 	DBG("Reset metadata cache of session %" PRIu64, stream->chan->session_id);
-	stream->ust_metadata_pushed = 0;
+	stream->ust_metadata_cache_consumed = 0;
 }
 
 /*
@@ -2569,7 +2569,7 @@ static int commit_one_metadata_packet(struct lttng_consumer_stream *stream)
 	int ret;
 
 	pthread_mutex_lock(&stream->chan->metadata_cache->lock);
-	if (stream->chan->metadata_cache->contents.size == stream->ust_metadata_pushed) {
+	if (stream->chan->metadata_cache->contents.size == stream->ust_metadata_cache_consumed) {
 		/*
 		 * In the context of a user space metadata channel, a
 		 * change in version can be detected in two ways:
@@ -2606,8 +2606,8 @@ static int commit_one_metadata_packet(struct lttng_consumer_stream *stream)
 
 	write_len = lttng_ust_ctl_write_one_packet_to_channel(
 		stream->chan->uchan,
-		&stream->chan->metadata_cache->contents.data[stream->ust_metadata_pushed],
-		stream->chan->metadata_cache->contents.size - stream->ust_metadata_pushed);
+		&stream->chan->metadata_cache->contents.data[stream->ust_metadata_cache_consumed],
+		stream->chan->metadata_cache->contents.size - stream->ust_metadata_cache_consumed);
 	LTTNG_ASSERT(write_len != 0);
 	if (write_len < 0) {
 		ERR("Writing one metadata packet");
@@ -2615,10 +2615,11 @@ static int commit_one_metadata_packet(struct lttng_consumer_stream *stream)
 		goto end;
 	}
 
-	stream->ust_metadata_pushed += write_len;
-	stream->chan->metadata_pushed_wait_queue.wake_all();
+	stream->ust_metadata_cache_consumed += write_len;
+	stream->chan->metadata_consumed_wait_queue.wake_all();
 
-	LTTNG_ASSERT(stream->chan->metadata_cache->contents.size >= stream->ust_metadata_pushed);
+	LTTNG_ASSERT(stream->chan->metadata_cache->contents.size >=
+		     stream->ust_metadata_cache_consumed);
 	ret = write_len;
 
 	/*
@@ -3007,7 +3008,7 @@ get_next_subbuffer_metadata(struct lttng_consumer_stream *stream,
 		} else {
 			pthread_mutex_lock(&stream->chan->metadata_cache->lock);
 			cache_empty = stream->chan->metadata_cache->contents.size ==
-				stream->ust_metadata_pushed;
+				stream->ust_metadata_cache_consumed;
 			pthread_mutex_unlock(&stream->chan->metadata_cache->lock);
 		}
 	} while (!got_subbuffer);
@@ -3168,7 +3169,7 @@ int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream)
 		pthread_mutex_lock(&stream->chan->metadata_cache->lock);
 		contiguous = stream->chan->metadata_cache->contents.size;
 		pthread_mutex_unlock(&stream->chan->metadata_cache->lock);
-		pushed = stream->ust_metadata_pushed;
+		pushed = stream->ust_metadata_cache_consumed;
 
 		/*
 		 * We can simply check whether all contiguously available data
@@ -3177,7 +3178,7 @@ int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream)
 		 * get_next_subbuf() and put_next_subbuf() are issued atomically
 		 * thanks to the stream lock within
 		 * lttng_ustconsumer_read_subbuffer(). This basically means that
-		 * whetnever ust_metadata_pushed is incremented, the associated
+		 * whetnever ust_metadata_cache_consumed is incremented, the associated
 		 * metadata has been consumed from the metadata stream.
 		 */
 		DBG("UST consumer metadata pending check: contiguous %" PRIu64
