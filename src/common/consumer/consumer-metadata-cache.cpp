@@ -219,7 +219,7 @@ bool consumer_metadata_cache_is_flushed(struct lttng_consumer_channel *channel,
 	pthread_mutex_lock(&metadata_stream->lock);
 	pthread_mutex_lock(&channel->metadata_cache->lock);
 
-	if (metadata_stream->ust_metadata_pushed >= offset) {
+	if (metadata_stream->ust_metadata_cache_consumed >= offset) {
 		done_flushing = true;
 	} else if (channel->metadata_stream->endpoint_status != CONSUMER_ENDPOINT_ACTIVE) {
 		/* An inactive endpoint means we don't have to flush anymore. */
@@ -262,10 +262,10 @@ void consumer_wait_metadata_cache_flushed(struct lttng_consumer_channel *channel
 	for (;;) {
 		lttng::synchro::waiter waiter;
 
-		channel->metadata_pushed_wait_queue.add(waiter);
+		channel->metadata_consumed_wait_queue.add(waiter);
 		if (consumer_metadata_cache_is_flushed(channel, offset, invoked_by_timer)) {
 			/* Wake up all waiters, ourself included. */
-			channel->metadata_pushed_wait_queue.wake_all();
+			channel->metadata_consumed_wait_queue.wake_all();
 			/* Ensure proper teardown of waiter. */
 			waiter.wait();
 			break;

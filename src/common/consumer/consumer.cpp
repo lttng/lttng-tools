@@ -471,7 +471,7 @@ static void update_endpoint_status_by_netidx(uint64_t net_seq_idx,
 						 &lttng_consumer_stream::node>(*metadata_ht->ht)) {
 		if (stream->net_seq_idx == net_seq_idx) {
 			uatomic_set(&stream->endpoint_status, status);
-			stream->chan->metadata_pushed_wait_queue.wake_all();
+			stream->chan->metadata_consumed_wait_queue.wake_all();
 
 			DBG("Delete flag set to metadata stream %d", stream->wait_fd);
 		}
@@ -946,7 +946,7 @@ static int consumer_metadata_stream_dump(struct lttng_consumer_stream *stream)
 		 * Reset the position pushed from the metadata cache so it
 		 * will write from the beginning on the next push.
 		 */
-		stream->ust_metadata_pushed = 0;
+		stream->ust_metadata_cache_consumed = 0;
 		ret = consumer_metadata_wakeup_pipe(stream->chan);
 		break;
 	default:
@@ -2191,7 +2191,7 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream, struct l
 	 * pointer value.
 	 */
 	channel->metadata_stream = nullptr;
-	channel->metadata_pushed_wait_queue.wake_all();
+	channel->metadata_consumed_wait_queue.wake_all();
 
 	if (channel->metadata_cache) {
 		pthread_mutex_unlock(&channel->metadata_cache->lock);
