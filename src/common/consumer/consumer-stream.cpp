@@ -567,22 +567,70 @@ end:
 
 /*
  * Check if the local version of the metadata stream matches with the version
- * of the metadata stream in the kernel. If it was updated, set the reset flag
- * on the stream.
+ * of the metadata stream in the kernel.
  */
-static void metadata_stream_check_version(struct lttng_consumer_stream *stream,
-					  const struct stream_subbuffer *subbuffer)
+static int metadata_stream_handle_version_change(struct lttng_consumer_stream *stream,
+						 const struct stream_subbuffer *subbuffer)
 {
 	if (stream->metadata_version == subbuffer->info.metadata.version) {
-		return;
+		/* Versions match, no action needed. */
+		return 0;
 	}
 
-	DBG("New metadata version detected");
+	DBG_FMT("Metadata version change detected: session_id={}, old_version={}, new_version={}",
+		stream->chan->session_id,
+		stream->metadata_version,
+		subbuffer->info.metadata.version);
+
+	/*
+	 * The tracer is announcing a new metadata version. Reset the metadata
+	 * contents (truncate the metadata file or reset the network stream) and
+	 * update the local version.
+	 */
 	consumer_stream_metadata_set_version(stream, subbuffer->info.metadata.version);
+
+	DBG_FMT("Resetting metadata stream for version change handling: session_id={}, new_version={}, out_fd_offset={}",
+		stream->chan->session_id,
+		stream->metadata_version,
+		stream->out_fd_offset);
+	if (stream->has_network_destination()) {
+		const lttng::urcu::read_lock_guard read_lock;
+
+		auto *relayd = consumer_find_relayd(stream->net_seq_idx);
+		if (relayd == nullptr) {
+			ERR_FMT("Failed to find relayd to reset metadata during version change handling: stream_id={}, relayd_id={}",
+				stream->key,
+				stream->net_seq_idx);
+			return -1;
+		}
+
+		const auto reset_ret = relayd_reset_metadata(
+			&relayd->control_sock, stream->relayd_stream_id, stream->metadata_version);
+		if (reset_ret) {
+			ERR_FMT("Failed to reset metadata over the network during version change handling: stream_id={}, relayd_id={}",
+				stream->key,
+				stream->net_seq_idx);
+			return -1;
+		}
+	} else {
+		const auto truncate_ret = utils_truncate_stream_file(stream->out_fd, 0);
+		if (truncate_ret) {
+			ERR_FMT("Failed to truncate metadata file during version change handling: stream_id={}, file_descriptor={}, errno={}",
+				stream->key,
+				stream->out_fd,
+				errno);
+			return -1;
+		}
+	}
+
+	stream->out_fd_offset = 0;
+	stream->first_metadata_write_done = false;
 
 	if (stream->read_subbuffer_ops.reset_metadata) {
 		stream->read_subbuffer_ops.reset_metadata(stream);
 	}
+
+	return 0;
 }
 
 static void strip_packet_header_from_subbuffer(struct stream_subbuffer *buffer)
@@ -603,7 +651,11 @@ static void strip_packet_header_from_subbuffer(struct stream_subbuffer *buffer)
 static int metadata_stream_pre_consume(struct lttng_consumer_stream *stream,
 				       struct stream_subbuffer *subbuffer)
 {
-	(void) metadata_stream_check_version(stream, subbuffer);
+	const auto version_change_ret = metadata_stream_handle_version_change(stream, subbuffer);
+	if (version_change_ret) {
+		return version_change_ret;
+	}
+
 	(void) strip_packet_header_from_subbuffer(subbuffer);
 	return 0;
 }
@@ -1420,8 +1472,6 @@ void consumer_stream_metadata_set_version(struct lttng_consumer_stream *stream,
 {
 	LTTNG_ASSERT(new_version > stream->metadata_version);
 	stream->metadata_version = new_version;
-	stream->reset_metadata_flag = 1;
-	stream->first_metadata_write_done = false;
 
 	if (stream->metadata_bucket) {
 		metadata_bucket_reset(stream->metadata_bucket);

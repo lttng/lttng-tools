@@ -691,11 +691,6 @@ struct lttng_consumer_stream {
 
 	bool first_metadata_write_done:1;
 	/*
-	 * Inform the consumer or relay to reset the metadata
-	 * file before writing in it (regeneration).
-	 */
-	unsigned int reset_metadata_flag:1;
-	/*
 	 * Indicates whether the tracer supports announcing metadata coherency
 	 * through the metadata packet header.
 	 */
