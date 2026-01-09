@@ -61,10 +61,11 @@ const std::unordered_set<std::string> safe_tsdl_identifiers = { "stream_id",
  */
 std::string escape_tsdl_identifier(const std::string& original_identifier)
 {
-	if (original_identifier.size() == 0) {
-		LTTNG_THROW_ERROR("Invalid 0-length identifier used in trace description");
-	}
-
+	/*
+	 * While a zero-length identifier is not valid in CTF 1.8, the behaviour of
+	 * lttng-tools < 2.14 was to always prepend the underscore. This resulted in
+	 * a field name of just "_", which was accepted as valid.
+	 */
 	if (safe_tsdl_identifiers.find(original_identifier) != safe_tsdl_identifiers.end()) {
 		return original_identifier;
 	}
