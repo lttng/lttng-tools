@@ -281,7 +281,7 @@ static ssize_t consumer_stream_consume_mmap(struct lttng_consumer_local_data *ct
 	const ssize_t written_bytes = lttng_consumer_on_read_subbuffer_mmap(
 		stream, &subbuffer->buffer.buffer, padding_size);
 
-	if (stream->net_seq_idx == -1ULL) {
+	if (!stream->has_network_destination()) {
 		/*
 		 * When writing on disk, check that only the subbuffer (no
 		 * padding) was written to disk.
@@ -350,7 +350,7 @@ static int consumer_stream_send_index(lttng_consumer_stream& stream,
 	 * This is called after consuming the sub-buffer; substract the
 	 * effect this sub-buffer from the offset.
 	 */
-	if (stream.net_seq_idx == (uint64_t) -1ULL) {
+	if (!stream.has_network_destination()) {
 		packet_offset = stream.out_fd_offset - subbuffer->info.data.padded_subbuf_size;
 	}
 
@@ -1248,7 +1248,7 @@ int consumer_stream_write_index(lttng_consumer_stream& stream, const ctf_packet_
 	int ret;
 
 	const lttng::urcu::read_lock_guard read_lock;
-	if (stream.net_seq_idx != (uint64_t) -1ULL) {
+	if (stream.has_network_destination()) {
 		struct consumer_relayd_sock_pair *relayd;
 
 		relayd = consumer_find_relayd(stream.net_seq_idx);

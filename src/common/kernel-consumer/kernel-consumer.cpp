@@ -823,7 +823,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		}
 
 		/* Send stream to relayd if the stream has an ID. */
-		if (new_stream->net_seq_idx != (uint64_t) -1ULL) {
+		if (new_stream->has_network_destination()) {
 			int ret_send_relayd_stream;
 
 			ret_send_relayd_stream =
@@ -1900,7 +1900,7 @@ int lttng_kconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 	 * Don't create anything if this is set for streaming or if there is
 	 * no current trace chunk on the parent channel.
 	 */
-	if (stream->net_seq_idx == (uint64_t) -1ULL && stream->chan->monitor &&
+	if (!stream->has_network_destination() && stream->chan->monitor &&
 	    stream->chan->trace_chunk) {
 		ret = consumer_stream_create_output_files(stream, true);
 		if (ret) {
