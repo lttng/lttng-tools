@@ -95,6 +95,13 @@ TRACEPOINT_EVENT(tp, tptest,
 		ctf_enum(tp, tptest_multi_range_enum, int, enum500, 500)
 	)
 )
+
+LTTNG_UST_TRACEPOINT_EVENT(tp, tptest_empty,
+	LTTNG_UST_TP_ARGS(int, anint),
+	LTTNG_UST_TP_FIELDS(
+		lttng_ust_field_integer(int, , anint)
+	)
+)
 /* clang-format on */
 
 TRACEPOINT_EVENT(tp, end, TP_ARGS(), TP_FIELDS())

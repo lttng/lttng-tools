@@ -46,6 +46,7 @@ struct option long_options[] = {
 	{ "sync-before-exit-touch", required_argument, nullptr, 'g' },
 	{ "emit-end-event", no_argument, nullptr, 'h' },
 	{ "sync-after-each-iter", required_argument, nullptr, 'j' },
+	{ "emit-event-with-empty-field-name", no_argument, nullptr, 0 },
 	{ "text-size", required_argument, nullptr, 0 },
 	{ "fill-text", no_argument, nullptr, 0 },
 	{ nullptr, 0, nullptr, 0 }
@@ -103,6 +104,7 @@ int main(int argc, char **argv)
 	char *before_exit_file_path = nullptr;
 	/* Emit an end event */
 	bool emit_end_event = false;
+	bool emit_event_with_empty_field_name = false;
 
 	for (i = 0; i < 3; i++) {
 		net_values[i] = htonl(net_values[i]);
@@ -117,6 +119,10 @@ int main(int argc, char **argv)
 			}
 			if (strcmp(long_options[option_index].name, "fill-text") == 0) {
 				fill_text = true;
+			}
+			if (strcmp(long_options[option_index].name,
+				   "emit-event-with-empty-field-name") == 0) {
+				emit_event_with_empty_field_name = true;
 			}
 			break;
 		case 'a':
@@ -306,6 +312,10 @@ int main(int argc, char **argv)
 		if (should_quit) {
 			break;
 		}
+	}
+
+	if (emit_event_with_empty_field_name) {
+		tracepoint(tp, tptest_empty, 1);
 	}
 
 	if (emit_end_event) {

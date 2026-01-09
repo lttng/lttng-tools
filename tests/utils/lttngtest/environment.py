@@ -285,6 +285,7 @@ class _WaitTraceTestApplication:
         wait_before_last_event=False,  # type: bool
         wait_before_last_event_file_path=None,  # type: Optional[pathlib.Path]
         extra_env_vars=dict(),
+        emit_event_with_empty_field_name=False,
     ):
         self._process = None
         self._environment = environment  # type: Environment
@@ -398,6 +399,9 @@ class _WaitTraceTestApplication:
 
         if fill_text:
             test_app_args.extend(["--fill-text"])
+
+        if emit_event_with_empty_field_name:
+            test_app_args.extend(["--emit-event-with-empty-field-name"])
 
         if run_as is not None:
             # When running as root and reducing the permissions to run as another
@@ -1395,6 +1399,7 @@ class _Environment(logger._Logger):
         wait_before_last_event=False,
         wait_before_last_event_file_path=None,
         extra_env_vars=dict(),
+        emit_event_with_empty_field_name=False,
     ):
         # type: (int, int, bool, Optional[pathlib.Path], Optional[str]) -> _WaitTraceTestApplication
         """
@@ -1413,6 +1418,7 @@ class _Environment(logger._Logger):
             wait_before_last_event,
             wait_before_last_event_file_path,
             extra_env_vars,
+            emit_event_with_empty_field_name,
         )
 
     def launch_test_application(self, path, extra_env_vars=dict(), **kwargs):
