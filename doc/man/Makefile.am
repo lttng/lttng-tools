@@ -55,7 +55,12 @@ MAN3_TXT = $(call manaddsuffix,.3.txt,$(MAN3_NAMES))
 MAN7_TXT = $(call manaddsuffix,.7.txt,$(MAN7_NAMES))
 MAN8_TXT = $(call manaddsuffix,.8.txt,$(MAN8_NAMES))
 MAN_TXT = $(MAN1_TXT) $(MAN3_TXT) $(MAN7_TXT) $(MAN8_TXT)
-MAN_XML = $(patsubst $(srcdir)/%.txt,%.xml,$(MAN_TXT))
+# XML intermediates stay flat in build dir
+MAN1_XML = $(addsuffix .1.xml,$(MAN1_NAMES))
+MAN3_XML = $(addsuffix .3.xml,$(MAN3_NAMES))
+MAN7_XML = $(addsuffix .7.xml,$(MAN7_NAMES))
+MAN8_XML = $(addsuffix .8.xml,$(MAN8_NAMES))
+MAN_XML = $(MAN1_XML) $(MAN3_XML) $(MAN7_XML) $(MAN8_XML)
 
 # common AsciiDoc source files
 COMMON_TXT = \
@@ -75,15 +80,15 @@ XSL_FILE = $(srcdir)/manpage.xsl
 # common dependencies
 COMMON_DEPS = $(ASCIIDOC_CONF) $(COMMON_TXT)
 
-# man pages destinations
-MAN1 = $(addsuffix .1,$(MAN1_NAMES))
-MAN3 = $(addsuffix .3,$(MAN3_NAMES))
-MAN7 = $(addsuffix .7,$(MAN7_NAMES))
-MAN8 = $(addsuffix .8,$(MAN8_NAMES))
-MAN1_NO_ASCIIDOC = $(addsuffix .1,$(MAN1_NO_ASCIIDOC_NAMES))
-MAN3_NO_ASCIIDOC = $(addsuffix .3,$(MAN3_NO_ASCIIDOC_NAMES))
-MAN7_NO_ASCIIDOC = $(addsuffix .7,$(MAN7_NO_ASCIIDOC_NAMES))
-MAN8_NO_ASCIIDOC = $(addsuffix .8,$(MAN8_NO_ASCIIDOC_NAMES))
+# man pages destinations (in subdirectories matching install layout)
+MAN1 = $(addprefix man1/,$(addsuffix .1,$(MAN1_NAMES)))
+MAN3 = $(addprefix man3/,$(addsuffix .3,$(MAN3_NAMES)))
+MAN7 = $(addprefix man7/,$(addsuffix .7,$(MAN7_NAMES)))
+MAN8 = $(addprefix man8/,$(addsuffix .8,$(MAN8_NAMES)))
+MAN1_NO_ASCIIDOC = $(addprefix man1/,$(addsuffix .1,$(MAN1_NO_ASCIIDOC_NAMES)))
+MAN3_NO_ASCIIDOC = $(addprefix man3/,$(addsuffix .3,$(MAN3_NO_ASCIIDOC_NAMES)))
+MAN7_NO_ASCIIDOC = $(addprefix man7/,$(addsuffix .7,$(MAN7_NO_ASCIIDOC_NAMES)))
+MAN8_NO_ASCIIDOC = $(addprefix man8/,$(addsuffix .8,$(MAN8_NO_ASCIIDOC_NAMES)))
 MAN = $(MAN1) $(MAN3) $(MAN7) $(MAN8)
 
 # initially empty
@@ -105,13 +110,13 @@ MAN_H_RECIPE = \
 	$(SED) -i 's/"/\\"/g' $@ ; \
 	$(SED) -i 's/^\(.*\)$$/"\1\\n"/' $@
 
-%.1.h: %.1
+%.1.h: man1/%.1
 	$(MAN_H_RECIPE)
 
-%.3.h: %.3
+%.3.h: man3/%.3
 	$(MAN_H_RECIPE)
 
-%.8.h: %.8
+%.8.h: man8/%.8
 	$(MAN_H_RECIPE)
 
 all-local: $(MAN_H)
@@ -145,26 +150,30 @@ COMMON_DEPS += $(ASCIIDOC_ATTRS_CONF)
 %.1.xml: $(srcdir)/%.1.txt $(COMMON_DEPS)
 	$(ADOC_DOCBOOK) -o $@ $<
 
-%.1: %.1.xml $(XSL_FILE)
-	$(XTO) $< 2>/dev/null
+man1/%.1: %.1.xml $(XSL_FILE)
+	$(AM_V_at)$(MKDIR_P) man1
+	$(XTO) -o man1 $< 2>/dev/null
 
 %.3.xml: $(srcdir)/%.3.txt $(COMMON_DEPS)
 	$(ADOC_DOCBOOK) -o $@ $<
 
-%.3: %.3.xml $(XSL_FILE)
-	$(XTO) $< 2>/dev/null
+man3/%.3: %.3.xml $(XSL_FILE)
+	$(AM_V_at)$(MKDIR_P) man3
+	$(XTO) -o man3 $< 2>/dev/null
 
 %.7.xml: $(srcdir)/%.7.txt $(COMMON_DEPS)
 	$(ADOC_DOCBOOK) -o $@ $<
 
-%.7: %.7.xml $(XSL_FILE)
-	$(XTO) $< 2>/dev/null
+man7/%.7: %.7.xml $(XSL_FILE)
+	$(AM_V_at)$(MKDIR_P) man7
+	$(XTO) -o man7 $< 2>/dev/null
 
 %.8.xml: $(srcdir)/%.8.txt $(COMMON_DEPS)
 	$(ADOC_DOCBOOK) -o $@ $<
 
-%.8: %.8.xml $(XSL_FILE)
-	$(XTO) $< 2>/dev/null
+man8/%.8: %.8.xml $(XSL_FILE)
+	$(AM_V_at)$(MKDIR_P) man8
+	$(XTO) -o man8 $< 2>/dev/null
 
 # only clean the generated files if we have the tools to generate them again
 CLEANFILES += $(MAN_XML) $(MAN)
@@ -174,23 +183,41 @@ else # HAVE_ASCIIDOC_XMLTO
 ERR_MSG = "Error: Cannot build target because asciidoc or xmlto tool is missing."
 ERR_MSG += "Make sure both tools are installed and run the configure script again."
 
-%.1: $(srcdir)/%.1.txt $(COMMON_DEPS)
+man1/%.1: $(srcdir)/%.1.txt $(COMMON_DEPS)
 	@echo $(ERR_MSG)
 	@false
 
-%.3: $(srcdir)/%.3.txt $(COMMON_DEPS)
+man3/%.3: $(srcdir)/%.3.txt $(COMMON_DEPS)
 	@echo $(ERR_MSG)
 	@false
 
-%.7: $(srcdir)/%.7.txt $(COMMON_DEPS)
+man7/%.7: $(srcdir)/%.7.txt $(COMMON_DEPS)
 	@echo $(ERR_MSG)
 	@false
 
-%.8: $(srcdir)/%.8.txt $(COMMON_DEPS)
+man8/%.8: $(srcdir)/%.8.txt $(COMMON_DEPS)
 	@echo $(ERR_MSG)
 	@false
 endif # HAVE_ASCIIDOC_XMLTO
 endif # MAN_PAGES_OPT
+
+# Rules to copy pre-written (non-asciidoc) man pages to subdirectories.
+# These use static pattern rules to avoid conflicts with the asciidoc rules.
+$(MAN1_NO_ASCIIDOC): man1/%.1: $(srcdir)/%.1
+	$(AM_V_at)$(MKDIR_P) man1
+	$(AM_V_GEN)cp $< $@
+
+$(MAN3_NO_ASCIIDOC): man3/%.3: $(srcdir)/%.3
+	$(AM_V_at)$(MKDIR_P) man3
+	$(AM_V_GEN)cp $< $@
+
+$(MAN7_NO_ASCIIDOC): man7/%.7: $(srcdir)/%.7
+	$(AM_V_at)$(MKDIR_P) man7
+	$(AM_V_GEN)cp $< $@
+
+$(MAN8_NO_ASCIIDOC): man8/%.8: $(srcdir)/%.8
+	$(AM_V_at)$(MKDIR_P) man8
+	$(AM_V_GEN)cp $< $@
 
 # those are always installed since they are directly written in troff
 dist_man1_MANS = $(MAN1_NO_ASCIIDOC)
@@ -212,9 +239,25 @@ dist-hook:
 	@false
 endif # !MAN_PAGES_OPT
 
+# Source files for pre-written man pages (not generated from asciidoc)
+MAN1_NO_ASCIIDOC_SRC = $(addsuffix .1,$(MAN1_NO_ASCIIDOC_NAMES))
+MAN3_NO_ASCIIDOC_SRC = $(addsuffix .3,$(MAN3_NO_ASCIIDOC_NAMES))
+MAN7_NO_ASCIIDOC_SRC = $(addsuffix .7,$(MAN7_NO_ASCIIDOC_NAMES))
+MAN8_NO_ASCIIDOC_SRC = $(addsuffix .8,$(MAN8_NO_ASCIIDOC_NAMES))
+
 # always distribute the source files
 EXTRA_DIST = $(MAN_TXT) $(COMMON_TXT) $(XSL_FILE) \
-	$(ASCIIDOC_CONF) $(ASCIIDOC_ATTRS_CONF).in
+	$(ASCIIDOC_CONF) $(ASCIIDOC_ATTRS_CONF).in \
+	$(MAN1_NO_ASCIIDOC_SRC) $(MAN3_NO_ASCIIDOC_SRC) \
+	$(MAN7_NO_ASCIIDOC_SRC) $(MAN8_NO_ASCIIDOC_SRC)
+
+# Clean generated man pages in subdirectories
+CLEANFILES += $(MAN1_NO_ASCIIDOC) $(MAN3_NO_ASCIIDOC) $(MAN7_NO_ASCIIDOC) $(MAN8_NO_ASCIIDOC)
+
+# Clean subdirectories on distclean
+DISTCLEANFILES = man1/.dirstamp man3/.dirstamp man7/.dirstamp man8/.dirstamp
+distclean-local:
+	-rmdir man1 man3 man7 man8 2>/dev/null || true
 
 # keep generated man pages that can be considered intermediate files
-.PRECIOUS: %.1 %.3 %.7 %.8
+.PRECIOUS: man1/%.1 man3/%.3 man7/%.7 man8/%.8

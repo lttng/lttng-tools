@@ -32,4 +32,8 @@ export LTTNG_MANPATH
 LTTNG_MAN_BIN_PATH=$(type -p man)
 export LTTNG_MAN_BIN_PATH
 
+# Use local path to search manual pages.
+MANPATH="$builddir/doc/man:$MANPATH:"
+export MANPATH
+
 exec "$@"
