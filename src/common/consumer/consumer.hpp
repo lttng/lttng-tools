@@ -26,6 +26,7 @@
 
 #include <limits.h>
 #include <limits>
+#include <mutex>
 #include <poll.h>
 #include <stdint.h>
 #include <unistd.h>
@@ -223,7 +224,7 @@ struct lttng_consumer_channel {
 	struct consumer_metadata_cache *metadata_cache = nullptr;
 
 	/*
-	 * Wait queue for threads awaiting metadata consumption progress.
+	 * Wait queue awaiting updates to metadata stream's flushed position.
 	 */
 	lttng::synchro::wait_queue metadata_consumed_wait_queue;
 
@@ -457,7 +458,12 @@ using reset_metadata_cb = void (*)(struct lttng_consumer_stream *);
  * uniquely a stream.
  */
 struct lttng_consumer_stream {
-	bool has_network_destination() const noexcept
+	struct rotation_parameters {
+		nonstd::optional<uint64_t> relayd_id;
+		nonstd::optional<uint64_t> next_chunk_id;
+	};
+
+	bool has_network_destination() const
 	{
 		return net_seq_idx != std::numeric_limits<std::uint64_t>::max();
 	}
@@ -630,12 +636,19 @@ struct lttng_consumer_stream {
 	 */
 	int ust_metadata_poll_pipe[2];
 	/*
-	 * How much metadata has been consumed from the metadata cache.
+	 * How much metadata is consumed from the metadata cache.
 	 *
-	 * This value is updated after metadata packets are successfully
-	 * written to their output (local file or network).
+	 * Size is expressed in raw content bytes, it does not include packet
+	 * headers or padding.
 	 */
 	uint64_t ust_metadata_cache_consumed;
+	/*
+	 * How much metadata was last pushed to the ring buffer.
+	 *
+	 * Size is expressed in raw content bytes, it does not include packet
+	 * headers or padding.
+	 */
+	uint64_t ust_metadata_cache_last_push_size;
 	/*
 	 * Copy of the last discarded event value to detect the overflow of
 	 * the counter.
@@ -691,10 +704,13 @@ struct lttng_consumer_stream {
 
 	bool first_metadata_write_done:1;
 	/*
-	 * Indicates whether the tracer supports announcing metadata coherency
-	 * through the metadata packet header.
+	 * Indicates if the metadata stream sits at a coherence point (i.e. the last consumed packet
+	 * was flagged as coherent).
 	 */
+	bool is_metadata_coherent:1;
 	bool tracer_supports_metadata_coherency_indicator:1;
+	nonstd::optional<rotation_parameters> pending_metadata_rotation;
+
 	struct {
 		/*
 		 * Invoked in the order of declaration.
@@ -1095,6 +1111,9 @@ int consumer_create_index_file(struct lttng_consumer_stream *stream);
 int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 				  uint64_t key,
 				  uint64_t relayd_id);
+int lttng_consumer_rotate_metadata_relayd_stream(
+	struct lttng_consumer_stream& stream,
+	lttng_consumer_stream::rotation_parameters& rotation_params);
 int lttng_consumer_stream_is_rotate_ready(struct lttng_consumer_stream *stream);
 int lttng_consumer_rotate_stream(struct lttng_consumer_stream *stream);
 int lttng_consumer_rotate_ready_streams(struct lttng_consumer_channel *channel, uint64_t key);
