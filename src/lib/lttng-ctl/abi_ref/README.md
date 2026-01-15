@@ -29,9 +29,13 @@ abidw --drop-undefined-syms --drop-private-types --headers-dir include/ src/lib/
 
 2. Run abidiff against the new file
 ```
-abidiff src/lib/lttng-ctl/abi_ref/0.0.0/abi.xml out.xml
+abidiff --suppressions src/lib/lttng-ctl/abi_ref/lttng-ctl.suppr \
+  src/lib/lttng-ctl/abi_ref/0.0.0/x86_64-64bit-linux/abi.xml \
+  out.xml
 ```
 or
 ```
-abidiff src/lib/lttng-ctl/abi_ref/0.0.0/abi.xml src/lib/lttng-ctl/.libs/liblttng-ctl.so.0.0.0
+abidiff --suppressions src/lib/lttng-ctl/abi_ref/lttng-ctl.suppr \
+  src/lib/lttng-ctl/abi_ref/0.0.0/x86_64-64bit-linux/abi.xml \
+  src/lib/lttng-ctl/.libs/liblttng-ctl.so.0.0.0
 ```

@@ -47,6 +47,9 @@ def test_abi_diff(tap, test_env):
     abi_path = pathlib.Path(
         test_env._project_root
     ) / "src/lib/lttng-ctl/abi_ref/{}/{}/abi.xml".format(lttngctl_version, machine)
+    suppressions_path = pathlib.Path(
+        test_env._project_root / "src/lib/lttng-ctl/abi_ref/lttng-ctl.suppr"
+    )
 
     headers_dir = pathlib.Path(test_env._project_root) / "include"
 
@@ -84,7 +87,13 @@ def test_abi_diff(tap, test_env):
         )
         return
 
-    abidiff_command = ["abidiff", str(abi_path), str(abi_tmp.name)]
+    abidiff_command = [
+        "abidiff",
+        "--suppressions",
+        str(suppressions_path),
+        str(abi_path),
+        str(abi_tmp.name),
+    ]
     tap.diagnostic("Diff command: `{}`".format(" ".join(abidiff_command)))
     abidiff = subprocess.Popen(
         abidiff_command,
