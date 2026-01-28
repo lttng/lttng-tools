@@ -1,3 +1,64 @@
+2026-01-28 lttng-tools 2.14.1 (National Lego Day)
+	* Fix: sessiond: racy metadata update during re-generation
+	* Fix: consumerd: metadata regeneration and rotation race
+	* Refactor: consumerd: inline metadata version change handling
+	* Refactor: consumerd: track tracer metadata coherency indicator support
+	* Refactor: consumerd: rename ust_metadata_pushed to ust_metadata_cache_consumed
+	* Refactor: consumerd: add has_network_destination() helper method
+	* Fix: sessiond: strncpy truncation warnings in consumer message init
+	* Fix: ust-consumerd: format specifier warnings on 32-bit builds
+	* Fix: lttng-destroy: use implicit session when none is provided
+	* Fix: lttng-ctl: assertion fails when copying an empty (root) action path
+	* lttngctl: Update ABI reference with version from v2.14.0
+	* lttng-relayd: Fix assert with live viewer and consumerd < 2.11
+	* Fix: ust-app: app look-up vs app unregistration synchronization
+	* Fix: ust-app: app hash table iteration vs app unregistration synchronization
+	* Fix: relayd live: uninitialized viewer_attach_status warning
+	* Fix: relayd: live: format specifier warning on 32-bit platforms
+	* Fix: relayd: honour live viewer attach "seek" type
+	* Fix: test utils: clear sessiond pids array on stop_lttng_sessiond
+	* Notification test: wait for delay when awaiting existing file
+	* Fix test notification multi app racy ready check
+	* Fix: Do not allow "data consumption paused" testpoint to skip blocking pipe reads
+	* Fix: lttngctl: Incorrect sessiond path selection for non-root users
+	* Fix: relayd: Initialize stream_id when live inactivity beacon is received
+	* Fix: trace-ust: fix -Wstringop-truncation warning in channel creation
+	* Fix: init_locale_utf8_support(): consider all "UTF-8" variants
+	* Fix: relayd: signal parent when daemon is actually ready
+	* Fix: relayd-grouping/test_ust: Remove nowait parameter for destroy after rotate
+	* Fix: kernel-consumer: prepend kernel TSDL metadata stream with header
+	* Fix: container-wrapper: add missing comparison operators for _GLIBCXX_DEBUG
+	* Fix: trace-chunk: use WARN_FMT to fix 32-bit time_t format warnings
+	* common: Fix closing open file descriptors after forking
+	* liblttng-ctl: drop index allocator symbols from version script
+	* Fix: Try to only close open fds when run-as forks
+	* Fix: get_max_possible_cpu_id: misuse of strtoul endptr parameter
+	* input_stream_descriptor: allow partial reads with `read_some`
+	* common: move read/write operations to new stream_descriptor classes
+	* Fix: sessiond-comm: missing packed attribute on consumerd msg
+	* lttng: Fix help output when unknown action is given in add-trigger
+	* Fix: sessiond: erroneous enum type used in comparison
+	* Fix: lttng-enable-event: problematic union initialization
+	* Fix: sessiond: crash while running clear test
+	* lttng: Fix `--help` behaviour of `lttng list-triggers`
+	* tests: Add regression test for multi-user lttng clear
+	* tests: Handle undefined `msg.count` in `count_events_worker`
+	* tests: Support passing multiple tracepaths to `parallel_count_events`
+	* tests: Move `parallel_count_events` to to lttngtest
+	* config: Propagate load error when loading from directory
+	* Fix: `user_space_consumer_channel_keys` skips some per-uid channels
+	* fix: link error in libpause_(consumer|sessiond).so
+	* .gitreview: Set default branch to 'stable-2.14'
+	* tests: Rework notification generator in python
+	* relayd: Fix typo in debug message
+	* Fix: eventfd.cpp: Remove the scope resolution operator
+	* Fix: test_config: user home checks $HOME first
+	* Tests: gen-ust-events-constructor: set rpath to $libdir
+	* Typo fix: constructor tracing test: license header
+	* Typo fix: test_high_throughput: GPL-2.1-only -> GPL-2.0-only
+	* Typo fix: test_per_application_leaks: copyright header
+	* doc/man: filter expressions don't support perf context field types
+
 2025-06-27 lttng-tools 2.14.0 (Multiculturalism Day)
 	* tests: Fix string formatting for Python 3.4+
 	* liblttng-ctl: Put `enum communication_state` in anonymous namespaces
