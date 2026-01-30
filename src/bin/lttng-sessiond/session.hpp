@@ -651,10 +651,10 @@ public:
 	/* Session base path override. Set non-null. */
 	char *base_path = nullptr;
 
-	lttng::sessiond::multi_channel_domain user_space_domain =
-		lttng::sessiond::multi_channel_domain(lttng::domain_class::USER_SPACE);
-	lttng::sessiond::multi_channel_domain kernel_space_domain =
-		lttng::sessiond::multi_channel_domain(lttng::domain_class::KERNEL_SPACE);
+	lttng::sessiond::domain user_space_domain =
+		lttng::sessiond::domain(lttng::domain_class::USER_SPACE);
+	lttng::sessiond::domain kernel_space_domain =
+		lttng::sessiond::domain(lttng::domain_class::KERNEL_SPACE);
 };
 
 /*

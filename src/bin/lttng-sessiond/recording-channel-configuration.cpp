@@ -102,3 +102,14 @@ ls::event_rule_configuration& ls::recording_channel_configuration::get_event_rul
 
 	return *(it->second);
 }
+
+void ls::recording_channel_configuration::add_context(context_configuration::uptr context)
+{
+	_contexts.emplace_back(std::move(context));
+}
+
+const std::vector<ls::context_configuration::uptr>&
+ls::recording_channel_configuration::get_contexts() const noexcept
+{
+	return _contexts;
+}

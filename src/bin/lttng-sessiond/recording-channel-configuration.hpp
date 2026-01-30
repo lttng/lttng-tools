@@ -8,6 +8,7 @@
 #ifndef LTTNG_SESSIOND_RECORDING_CHANNEL_CONFIGURATION_HPP
 #define LTTNG_SESSIOND_RECORDING_CHANNEL_CONFIGURATION_HPP
 
+#include "context-configuration.hpp"
 #include "event-rule-configuration.hpp"
 
 #include <common/ctl/memory.hpp>
@@ -25,6 +26,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace lttng {
 namespace sessiond {
@@ -148,6 +150,9 @@ public:
 	lttng::sessiond::event_rule_configuration&
 	get_event_rule_configuration(const lttng_event_rule& matching_event_rule_to_lookup);
 
+	void add_context(context_configuration::uptr context);
+	const std::vector<context_configuration::uptr>& get_contexts() const noexcept;
+
 	const std::string name;
 	const buffer_full_policy_t buffer_full_policy;
 	const buffer_consumption_backend_t buffer_consumption_backend;
@@ -172,6 +177,15 @@ public:
 			   std::hash<std::reference_wrapper<const lttng_event_rule>>,
 			   lttng_event_rule_ref_equal>
 		event_rules;
+
+private:
+	/*
+	 * Contexts attached to this channel. Contexts add supplementary information
+	 * (e.g., PID, TID, perf counters) to each event record.
+	 *
+	 * Order is preserved as it affects the layout of context fields in the trace.
+	 */
+	std::vector<context_configuration::uptr> _contexts;
 };
 
 } /* namespace sessiond */

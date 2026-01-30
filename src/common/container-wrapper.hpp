@@ -186,6 +186,99 @@ public:
 protected:
 	ContainerType _container;
 };
+
+/*
+ * View adapter that allows a class to expose the dereferenced values of an internal
+ * associative container (e.g., std::map<K, std::unique_ptr<V>>) through a range-based
+ * interface. This enables users of the class to iterate over the contained objects
+ * directly using range-based for loops without exposing the underlying storage details.
+ *
+ * Example:
+ *   class session {
+ *       using channels_view = lttng::utils::dereferenced_mapped_values_view<
+ *           std::unordered_map<std::string, std::unique_ptr<channel>>, channel>;
+ *
+ *       channels_view channels() { return channels_view(_channels); }
+ *   private:
+ *       std::unordered_map<std::string, std::unique_ptr<channel>> _channels;
+ *   };
+ *
+ *   // User code:
+ *   for (auto& channel : session.channels()) { ... }
+ */
+template <typename ContainerType, typename ElementType>
+class dereferenced_mapped_values_view {
+public:
+	using underlying_iterator = decltype(std::declval<ContainerType&>().begin());
+
+	class iterator {
+	public:
+		using value_type = ElementType;
+		using reference = ElementType&;
+		using pointer = ElementType *;
+		using difference_type = std::ptrdiff_t;
+		using iterator_category = std::forward_iterator_tag;
+
+		explicit iterator(underlying_iterator it) noexcept : _it(std::move(it))
+		{
+		}
+
+		reference operator*() const noexcept
+		{
+			return *_it->second;
+		}
+
+		pointer operator->() const noexcept
+		{
+			return _it->second.get();
+		}
+
+		iterator& operator++() noexcept
+		{
+			++_it;
+			return *this;
+		}
+
+		iterator operator++(int) noexcept
+		{
+			auto tmp = *this;
+			++_it;
+			return tmp;
+		}
+
+		bool operator==(const iterator& other) const noexcept
+		{
+			return _it == other._it;
+		}
+
+		bool operator!=(const iterator& other) const noexcept
+		{
+			return _it != other._it;
+		}
+
+	private:
+		underlying_iterator _it;
+	};
+
+	explicit dereferenced_mapped_values_view(ContainerType& container) noexcept :
+		_container(container)
+	{
+	}
+
+	iterator begin() const noexcept
+	{
+		return iterator(_container.begin());
+	}
+
+	iterator end() const noexcept
+	{
+		return iterator(_container.end());
+	}
+
+private:
+	ContainerType& _container;
+};
+
 } /* namespace utils */
 } /* namespace lttng */
 

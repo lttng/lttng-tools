@@ -10,6 +10,7 @@
 
 #include "recording-channel-configuration.hpp"
 
+#include <common/container-wrapper.hpp>
 #include <common/domain.hpp>
 #include <common/exception.hpp>
 #include <common/format.hpp>
@@ -45,19 +46,25 @@ public:
 } /* namespace exceptions */
 
 /*
- * A channel configuration represents the configuration of a recording session's
- * channel at a given point in time. It belongs to a single recording session.
+ * A domain holds the channel configurations for a specific tracing domain
+ * (kernel, user space, agent, etc.) within a recording session.
  */
-class domain {
+class domain final {
 public:
-	explicit domain(lttng::domain_class domain_class) : domain_class_(domain_class)
+	explicit domain(lttng::domain_class domain_class, bool single_channel_mode = false) :
+		domain_class_(domain_class), _single_channel_mode(single_channel_mode)
 	{
 	}
 
-	virtual ~domain() = default;
+	~domain() = default;
+	domain(domain&& other) noexcept :
+		domain_class_(other.domain_class_),
+		_single_channel_mode(other._single_channel_mode),
+		_channels(std::move(other._channels))
+	{
+	}
 
 	domain(const domain&) = delete;
-	domain(domain&&) = delete;
 	domain& operator=(const domain&) = delete;
 	domain& operator=(domain&&) = delete;
 
@@ -65,87 +72,20 @@ public:
 	template <typename... Args>
 	recording_channel_configuration& add_channel(Args&&...args)
 	{
-		return _add_channel(lttng::make_unique<recording_channel_configuration>(
-			std::forward<Args>(args)...));
-	}
+		auto new_channel = lttng::make_unique<recording_channel_configuration>(
+			std::forward<Args>(args)...);
 
-	/* Lookup by name, get non-const reference. */
-	virtual recording_channel_configuration& get_channel(const lttng::c_string_view& name) = 0;
-
-	/* Lookup by name, get const reference. */
-	const recording_channel_configuration& get_channel(const lttng::c_string_view& name) const
-	{
-		/* NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast) */
-		return const_cast<domain *>(this)->get_channel(name);
-	}
-
-	const lttng::domain_class domain_class_;
-
-private:
-	virtual recording_channel_configuration&
-	_add_channel(recording_channel_configuration::uptr new_channel) = 0;
-};
-
-class multi_channel_domain : public domain {
-	using channels_t = std::unordered_map<std::string, recording_channel_configuration::uptr>;
-
-public:
-	explicit multi_channel_domain(domain_class domain_class) : domain(domain_class)
-	{
-	}
-
-	~multi_channel_domain() override = default;
-	multi_channel_domain(multi_channel_domain&& other) noexcept :
-		domain(other.domain_class_), channels(std::move(other.channels))
-	{
-	}
-
-	multi_channel_domain(const multi_channel_domain&) = delete;
-	multi_channel_domain& operator=(const multi_channel_domain&) = delete;
-	multi_channel_domain& operator=(multi_channel_domain&&) = delete;
-
-	/* Lookup by name, get non-const reference. */
-	recording_channel_configuration& get_channel(const lttng::c_string_view& name) override
-	{
-		const auto it = channels.find(name.data());
-		if (it == channels.end()) {
-			LTTNG_THROW_CHANNEL_NOT_FOUND_BY_NAME_ERROR(name);
+		if (_single_channel_mode && !_channels.empty()) {
+			LTTNG_THROW_ERROR(lttng::format(
+				"Single-channel domain already has a channel: existing_name=`{}`, new_name=`{}`",
+				_channels.begin()->second->name,
+				new_channel->name));
 		}
 
-		return *(it->second);
-	}
-
-	/* Iterate over channels (non-const) */
-	channels_t::iterator begin()
-	{
-		return channels.begin();
-	}
-
-	channels_t::iterator end()
-	{
-		return channels.end();
-	}
-
-	/* Iterate over channels (const) */
-	channels_t::const_iterator begin() const
-	{
-		return channels.begin();
-	}
-
-	channels_t::const_iterator end() const
-	{
-		return channels.end();
-	}
-
-private:
-	recording_channel_configuration&
-	_add_channel(recording_channel_configuration::uptr new_channel) override
-	{
 		const auto& name = new_channel->name;
-
-		auto result = channels.emplace(name, std::move(new_channel));
+		auto result = _channels.emplace(name, std::move(new_channel));
 		if (!result.second) {
-			throw std::runtime_error(fmt::format(
+			LTTNG_THROW_ERROR(lttng::format(
 				"Failed to add channel to domain, name already in use: channel_name=`{}`",
 				name));
 		}
@@ -153,7 +93,58 @@ private:
 		return *(result.first->second);
 	}
 
-	channels_t channels;
+	/* Lookup by name. */
+	recording_channel_configuration& get_channel(const lttng::c_string_view& name)
+	{
+		const auto it = _channels.find(name.data());
+		if (it == _channels.end()) {
+			LTTNG_THROW_CHANNEL_NOT_FOUND_BY_NAME_ERROR(name);
+		}
+
+		return *(it->second);
+	}
+
+	const recording_channel_configuration& get_channel(const lttng::c_string_view& name) const
+	{
+		/* NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast) */
+		return const_cast<domain *>(this)->get_channel(name);
+	}
+
+	/* Direct access for single-channel domains. */
+	recording_channel_configuration& get_channel()
+	{
+		LTTNG_ASSERT(_single_channel_mode && _channels.size() == 1);
+		return *_channels.begin()->second;
+	}
+
+	const recording_channel_configuration& get_channel() const
+	{
+		LTTNG_ASSERT(_single_channel_mode && _channels.size() == 1);
+		return *_channels.begin()->second;
+	}
+
+	using recording_channels_view = lttng::utils::dereferenced_mapped_values_view<
+		std::unordered_map<std::string, recording_channel_configuration::uptr>,
+		recording_channel_configuration>;
+	using const_recording_channels_view = lttng::utils::dereferenced_mapped_values_view<
+		const std::unordered_map<std::string, recording_channel_configuration::uptr>,
+		const recording_channel_configuration>;
+
+	recording_channels_view recording_channels() noexcept
+	{
+		return recording_channels_view(_channels);
+	}
+
+	const_recording_channels_view recording_channels() const noexcept
+	{
+		return const_recording_channels_view(_channels);
+	}
+
+	const lttng::domain_class domain_class_;
+
+private:
+	const bool _single_channel_mode;
+	std::unordered_map<std::string, recording_channel_configuration::uptr> _channels;
 };
 } /* namespace sessiond */
 } /* namespace lttng */

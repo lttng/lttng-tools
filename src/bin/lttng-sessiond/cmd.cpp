@@ -16,6 +16,7 @@
 #include "commands/reclaim-channel-memory.hpp"
 #include "consumer-output.hpp"
 #include "consumer.hpp"
+#include "context-configuration.hpp"
 #include "event-notifier-error-accounting.hpp"
 #include "event.hpp"
 #include "health-sessiond.hpp"
@@ -2401,7 +2402,7 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 		    int kwpipe)
 {
 	int ret, chan_kern_created = 0, chan_ust_created = 0;
-	const enum lttng_domain_type domain = cmd_ctx->lsm.domain.type;
+	const enum lttng_domain_type domain_type = cmd_ctx->lsm.domain.type;
 	const struct ltt_session& session = *locked_session;
 	const char *channel_name = cmd_ctx->lsm.u.context.channel_name;
 
@@ -2415,7 +2416,7 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 		goto end;
 	}
 
-	switch (domain) {
+	switch (domain_type) {
 	case LTTNG_DOMAIN_KERNEL:
 		LTTNG_ASSERT(session.kernel_session);
 
@@ -2432,6 +2433,31 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
+
+		/*
+		 * Add context to recording channel configuration(s).
+		 * This mirrors the logic in context_kernel_add: if channel_name is
+		 * non-empty, add to that channel only; otherwise add to all channels.
+		 */
+		{
+			auto& kernel_domain = locked_session->kernel_space_domain;
+
+			if (channel_name[0] != '\0') {
+				/* Add to specific channel. */
+				auto& recording_channel = kernel_domain.get_channel(channel_name);
+				recording_channel.add_context(
+					lttng::sessiond::make_context_configuration_from_event_context(
+						*event_context));
+			} else {
+				/* Add to all channels. */
+				for (auto& channel : kernel_domain.recording_channels()) {
+					channel.add_context(
+						lttng::sessiond::
+							make_context_configuration_from_event_context(
+								*event_context));
+				}
+			}
+		}
 		break;
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
@@ -2444,15 +2470,15 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 		 * a name is provided but does not match the expexted channel
 		 * name, return an error.
 		 */
-		if (domain == LTTNG_DOMAIN_JUL && *channel_name &&
+		if (domain_type == LTTNG_DOMAIN_JUL && *channel_name &&
 		    strcmp(channel_name, DEFAULT_JUL_CHANNEL_NAME) != 0) {
 			ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
 			goto error;
-		} else if (domain == LTTNG_DOMAIN_LOG4J && *channel_name &&
+		} else if (domain_type == LTTNG_DOMAIN_LOG4J && *channel_name &&
 			   strcmp(channel_name, DEFAULT_LOG4J_CHANNEL_NAME) != 0) {
 			ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
 			goto error;
-		} else if (domain == LTTNG_DOMAIN_LOG4J2 && *channel_name &&
+		} else if (domain_type == LTTNG_DOMAIN_LOG4J2 && *channel_name &&
 			   strcmp(channel_name, DEFAULT_LOG4J2_CHANNEL_NAME) != 0) {
 			ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
 			goto error;
@@ -2469,7 +2495,7 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 		chan_count = lttng_ht_get_count(usess->domain_global.channels);
 		if (chan_count == 0) {
 			/* Create default channel */
-			const auto attr = channel_new_default_attr(domain, usess->buffer_type);
+			const auto attr = channel_new_default_attr(domain_type, usess->buffer_type);
 
 			if (!attr) {
 				ret = LTTNG_ERR_FATAL;
@@ -2484,9 +2510,35 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 			chan_ust_created = 1;
 		}
 
-		ret = context_ust_add(usess, domain, event_context, channel_name);
+		ret = context_ust_add(usess, domain_type, event_context, channel_name);
 		if (ret != LTTNG_OK) {
 			goto error;
+		}
+
+		/*
+		 * Add context to recording channel configuration(s).
+		 * This mirrors the logic in context_ust_add: if channel_name is
+		 * non-empty, add to that channel only; otherwise add to all channels.
+		 */
+		{
+			auto& domain = locked_session->get_domain(
+				lttng::get_domain_class_from_lttng_domain_type(domain_type));
+
+			if (channel_name[0] != '\0') {
+				/* Add to specific channel. */
+				auto& recording_channel = domain.get_channel(channel_name);
+				recording_channel.add_context(
+					lttng::sessiond::make_context_configuration_from_event_context(
+						*event_context));
+			} else {
+				/* Add to all channels. */
+				for (auto& channel : domain.recording_channels()) {
+					channel.add_context(
+						lttng::sessiond::
+							make_context_configuration_from_event_context(
+								*event_context));
+				}
+			}
 		}
 		break;
 	}
