@@ -17,7 +17,7 @@ ifndef::env-github[]
 endif::env-github[]
 
 = {lt}
-5 May 2020
+2 February 2026
 
 [.normal]
 https://ci.lttng.org/job/lttng-tools_master_linuxbuild/[image:https://img.shields.io/jenkins/build.svg?jobUrl=https://ci.lttng.org/job/lttng-tools_master_linuxbuild/[Jenkins, title="Jenkins"]]

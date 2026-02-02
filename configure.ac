@@ -1241,6 +1241,18 @@ AS_IF([test "x$build_tests" = "xyes"],
     PKG_CHECK_MODULES([babeltrace2],[babeltrace2 >= 2.1.0],,[
     AC_MSG_ERROR([libbabeltrace2 >= 2.1.0 is required to build tests])
     ])
+
+    AS_IF([test "x$PYTHON3_BIN" = "x"], [
+      AC_MSG_ERROR([Python ≥ 3.5 is required to build tests. Use --disable-tests to disable the test suite. See also the PYTHON3 environment variable.])
+    ])
+
+    AC_MSG_CHECKING([for Python ≥ 3.5])
+    python3_version=`$PYTHON3_BIN -c "import sys; print('{}.{}.{}'.format(*sys.version_info[[:3]]), end='')" 2>/dev/null`
+    AC_MSG_RESULT([yes ($python3_version)])
+    AS_IF([$PYTHON3_BIN -c "import sys; sys.exit(0 if sys.version_info >= (3, 5) else 1)" 2>/dev/null], [
+    ], [
+      AC_MSG_ERROR([Python ≥ 3.5 is required to build tests. Use --disable-tests to disable the test suite. See also the PYTHON3 environment variable.])
+    ])
   ]
 )
 
