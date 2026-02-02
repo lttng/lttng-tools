@@ -699,7 +699,7 @@ error:
  *
  * Return 0 on success else an LTTng error code.
  */
-static int flush_channel(uint64_t chan_key)
+static int flush_channel(struct lttng_consumer_local_data& ctx, uint64_t chan_key)
 {
 	int ret = 0;
 
@@ -746,7 +746,7 @@ static int flush_channel(uint64_t chan_key)
 		}
 	}
 
-	lttng_ustconsumer_quiescent_stalled_channel(*channel);
+	lttng_ustconsumer_quiescent_stalled_channel(ctx, *channel);
 
 	/*
 	 * Send one last buffer statistics update to the session daemon. This
@@ -2902,7 +2902,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	{
 		int ret;
 
-		ret = flush_channel(msg.u.flush_channel.key);
+		ret = flush_channel(*ctx, msg.u.flush_channel.key);
 		if (ret != 0) {
 			ret_code = (lttcomm_return_code) ret;
 		}
@@ -5082,16 +5082,17 @@ int lttng_ustconsumer_fixup_stalled_channel(struct lttng_consumer_channel *chann
 	return 0;
 }
 
-void lttng_ustconsumer_quiescent_stalled_channel(struct lttng_consumer_channel& channel)
+void lttng_ustconsumer_quiescent_stalled_channel(struct lttng_consumer_local_data& ctx,
+						 struct lttng_consumer_channel& channel)
 {
-	const auto stall_watchdog = channel.stall_watchdog_timer_task;
+	const auto stall_watchdog_task = channel.stall_watchdog_timer_task;
 
-	if (!stall_watchdog) {
+	if (!stall_watchdog_task) {
 		return;
 	}
 
-	const auto watchdog =
-		reinterpret_cast<lttng::consumer::watchdog_timer_task *>(stall_watchdog.get());
+	auto watchdog =
+		reinterpret_cast<lttng::consumer::watchdog_timer_task *>(stall_watchdog_task.get());
 
 	LTTNG_ASSERT(channel.subbuffer_count);
 
@@ -5136,13 +5137,39 @@ void lttng_ustconsumer_quiescent_stalled_channel(struct lttng_consumer_channel& 
 		}
 	}
 
-	ERR_FMT("Owners found in streams while trying to reach quiescent state after exceed number of attempts: "
-		"channel_name=`{}`, channel_key={}, session_id={}, observed_owners={}, max_attempts={}",
+	const auto current_period = watchdog->period();
+	const auto default_period = std::chrono::duration_cast<lttng::scheduling::duration_ns>(
+		std::chrono::microseconds(DEFAULT_UST_UID_CHANNEL_WATCHDOG_TIMER));
+	const auto boosted_period = current_period.count() == 0 ?
+		default_period :
+		std::min(current_period, default_period);
+
+	ERR_FMT("Owners found in streams while trying to reach quiescent state after exceeded number of attempts; scheduling watchdog timer: "
+		"channel_name=`{}`, channel_key={}, session_id={}, observed_owners={}, max_attempts={}, watchdog_period={}μs",
 		channel.name,
 		channel.key,
 		channel.session_id,
 		observed_owners,
-		channel.subbuffer_count.value());
+		channel.subbuffer_count.value(),
+		std::chrono::duration_cast<std::chrono::microseconds>(boosted_period).count());
+
+	const auto need_schedule = current_period.count() == 0;
+
+	/*
+	 * Temporarily boost the watchdog frequency to recover from the stall.
+	 * The original period will be restored once recovery is successful.
+	 */
+	watchdog->boost_period(boosted_period);
+
+	/*
+	 * The channel was configured without a watchdog timer. However, it is
+	 * stalled and the flush will hang until the stall is resolved. Schedule
+	 * the watchdog task immediately to begin recovery attempts.
+	 */
+	if (need_schedule) {
+		auto& scheduler = ctx.timer_task_scheduler;
+		scheduler.schedule(stall_watchdog_task, std::chrono::steady_clock::now());
+	}
 }
 
 static bool subbuffer_too_old(lttng_consumer_stream& stream,

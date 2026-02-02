@@ -79,7 +79,8 @@ int lttng_ustconsumer_fixup_stalled_channel(struct lttng_consumer_channel *chann
 					    std::set<uint32_t>& reclaimed_owner_ids,
 					    size_t& observed_count);
 
-void lttng_ustconsumer_quiescent_stalled_channel(struct lttng_consumer_channel& channel);
+void lttng_ustconsumer_quiescent_stalled_channel(struct lttng_consumer_local_data& ctx,
+						 struct lttng_consumer_channel& channel);
 
 void lttng_ustconsumer_try_reclaim_current_subbuffer(lttng_consumer_stream& stream,
 						     const stream_subbuffer& subbuffer);
@@ -301,7 +302,9 @@ static inline int lttng_ustconsumer_fixup_stalled_channel(struct lttng_consumer_
 }
 
 static inline void
-lttng_ustconsumer_quiescent_stalled_channel(struct lttng_consumer_channel& channel
+lttng_ustconsumer_quiescent_stalled_channel(struct lttng_consumer_local_data& ctx
+					    __attribute__((unused)),
+					    struct lttng_consumer_channel& channel
 					    __attribute__((unused)))
 {
 }
