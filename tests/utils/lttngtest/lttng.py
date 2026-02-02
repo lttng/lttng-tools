@@ -852,7 +852,7 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
             env=client_env,
         )
 
-        out, err = process.communicate(timeout=self.timeout)
+        out, err = process.communicate(timeout=timeout_s or self.timeout)
         out = out.decode("utf-8")
         if not err_output:
             err = err.decode("utf-8")
