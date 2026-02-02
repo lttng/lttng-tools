@@ -119,6 +119,12 @@ void lttng::consumer::watchdog_timer_task::_run(lttng::scheduling::absolute_time
 ssize_t lttng::consumer::watchdog_timer_task::run() noexcept
 {
 	const std::lock_guard<std::mutex> lock(_mutex);
+	const auto observed_count = stall_watchdog_timer(_channel, _consumer_error_socket);
 
-	return stall_watchdog_timer(_channel, _consumer_error_socket);
+	if (_is_boosted && (observed_count == 0)) {
+		_is_boosted = false;
+		period(_original_period);
+	}
+
+	return observed_count;
 }

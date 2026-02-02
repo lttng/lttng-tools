@@ -16,6 +16,7 @@
 
 #include <vendor/optional.hpp>
 
+#include <atomic>
 #include <chrono>
 #include <functional>
 #include <memory>
@@ -152,12 +153,12 @@ public:
 	 * a regular task and enqueue it manually by providing a relative time
 	 * as the deadline.
 	 */
-	explicit periodic_task(duration_ns period) noexcept : _period_ns{ period }
+	explicit periodic_task(duration_ns period) noexcept : _period_ns{ period.count() }
 	{
 	}
 
 	periodic_task(duration_ns period, std::string name) noexcept :
-		task(std::move(name)), _period_ns{ period }
+		task(std::move(name)), _period_ns{ period.count() }
 	{
 	}
 
@@ -170,7 +171,12 @@ public:
 
 	duration_ns period() const noexcept
 	{
-		return _period_ns;
+		return std::chrono::nanoseconds(_period_ns.load());
+	}
+
+	duration_ns period(duration_ns new_period) noexcept
+	{
+		return std::chrono::nanoseconds(_period_ns.exchange(new_period.count()));
 	}
 
 protected:
@@ -190,7 +196,7 @@ private:
 		return !_canceled;
 	}
 
-	const duration_ns _period_ns;
+	std::atomic<std::int64_t> _period_ns;
 };
 
 class scheduler final {

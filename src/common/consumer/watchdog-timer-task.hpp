@@ -33,9 +33,16 @@ public:
 					  channel.key,
 					  channel.session_id)),
 		_channel(channel),
-		_consumer_error_socket(consumer_error_socket)
+		_consumer_error_socket(consumer_error_socket),
+		_original_period(period)
 	{
 		LTTNG_ASSERT(_consumer_error_socket.fd >= 0);
+	}
+
+	void boost_period(lttng::scheduling::duration_ns boosted_period) noexcept
+	{
+		period(boosted_period);
+		_is_boosted = true;
 	}
 
 	ssize_t run() noexcept;
@@ -46,6 +53,8 @@ protected:
 private:
 	lttng_consumer_channel& _channel;
 	protected_socket& _consumer_error_socket;
+	const lttng::scheduling::duration_ns _original_period;
+	std::atomic<bool> _is_boosted{ false };
 };
 } /* namespace consumer */
 } /* namespace lttng */
