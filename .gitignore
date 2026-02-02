@@ -212,3 +212,7 @@ compile_commands.json
 /version
 
 classnoinst.stamp
+
+.claude
+.codex
+.gemini
