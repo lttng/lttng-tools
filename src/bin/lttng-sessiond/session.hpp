@@ -8,6 +8,7 @@
 #ifndef _LTT_SESSION_H
 #define _LTT_SESSION_H
 
+#include "agent-domain.hpp"
 #include "consumer.hpp"
 #include "domain.hpp"
 #include "snapshot.hpp"
@@ -497,6 +498,9 @@ public:
 	lttng::sessiond::domain& get_domain(lttng::domain_class domain);
 	const lttng::sessiond::domain& get_domain(lttng::domain_class domain) const;
 
+	lttng::sessiond::agent_domain& get_agent_domain(lttng::domain_class domain);
+	const lttng::sessiond::agent_domain& get_agent_domain(lttng::domain_class domain) const;
+
 	lttng::sessiond::user_space_consumer_channel_keys
 	user_space_consumer_channel_keys(lttng::c_string_view channel_name_filter = {}) const;
 
@@ -655,6 +659,15 @@ public:
 		lttng::sessiond::domain(lttng::domain_class::USER_SPACE);
 	lttng::sessiond::domain kernel_space_domain =
 		lttng::sessiond::domain(lttng::domain_class::KERNEL_SPACE);
+
+	lttng::sessiond::agent_domain jul_domain =
+		lttng::sessiond::agent_domain(lttng::domain_class::JAVA_UTIL_LOGGING);
+	lttng::sessiond::agent_domain log4j_domain =
+		lttng::sessiond::agent_domain(lttng::domain_class::LOG4J);
+	lttng::sessiond::agent_domain log4j2_domain =
+		lttng::sessiond::agent_domain(lttng::domain_class::LOG4J2);
+	lttng::sessiond::agent_domain python_domain =
+		lttng::sessiond::agent_domain(lttng::domain_class::PYTHON_LOGGING);
 };
 
 /*

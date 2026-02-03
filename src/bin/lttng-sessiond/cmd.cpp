@@ -3023,14 +3023,29 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 		return LTTNG_ERR_UND;
 	}
 
-	auto& channel_cfg =
-		session.get_domain(lttng::get_domain_class_from_lttng_domain_type(domain->type))
-			.get_channel(user_visible_channel_name);
-	try {
-		channel_cfg.get_event_rule_configuration(*event_rule).enable();
-	} catch (const lttng::sessiond::exceptions::event_rule_configuration_not_found_error& ex) {
-		DBG("%s", ex.what());
-		channel_cfg.add_event_rule_configuration(true, std::move(event_rule));
+	const auto domain_class = lttng::get_domain_class_from_lttng_domain_type(domain->type);
+
+	if (lttng::is_agent_domain(domain_class)) {
+		auto& agent_dom = session.get_agent_domain(domain_class);
+		try {
+			agent_dom.get_event_rule_configuration(*event_rule).enable();
+		} catch (
+			const lttng::sessiond::exceptions::event_rule_configuration_not_found_error&
+				ex) {
+			DBG("%s", ex.what());
+			agent_dom.add_event_rule_configuration(true, std::move(event_rule));
+		}
+	} else {
+		auto& channel_cfg =
+			session.get_domain(domain_class).get_channel(user_visible_channel_name);
+		try {
+			channel_cfg.get_event_rule_configuration(*event_rule).enable();
+		} catch (
+			const lttng::sessiond::exceptions::event_rule_configuration_not_found_error&
+				ex) {
+			DBG("%s", ex.what());
+			channel_cfg.add_event_rule_configuration(true, std::move(event_rule));
+		}
 	}
 
 	return LTTNG_OK;

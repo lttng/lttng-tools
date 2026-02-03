@@ -484,6 +484,32 @@ const ls::domain& ltt_session::get_domain(lttng::domain_class domain) const
 	return const_cast<ltt_session *>(this)->get_domain(domain);
 }
 
+ls::agent_domain& ltt_session::get_agent_domain(lttng::domain_class domain)
+{
+	switch (domain) {
+	case lttng::domain_class::JAVA_UTIL_LOGGING:
+		return jul_domain;
+	case lttng::domain_class::LOG4J:
+		return log4j_domain;
+	case lttng::domain_class::LOG4J2:
+		return log4j2_domain;
+	case lttng::domain_class::PYTHON_LOGGING:
+		return python_domain;
+	case lttng::domain_class::USER_SPACE:
+	case lttng::domain_class::KERNEL_SPACE:
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(lttng::format(
+			"get_agent_domain() called with non-agent domain: domain={}", domain));
+	}
+
+	std::abort();
+}
+
+const ls::agent_domain& ltt_session::get_agent_domain(lttng::domain_class domain) const
+{
+	/* NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast) */
+	return const_cast<ltt_session *>(this)->get_agent_domain(domain);
+}
+
 /*
  * Release session lock
  */

@@ -51,16 +51,13 @@ public:
  */
 class domain final {
 public:
-	explicit domain(lttng::domain_class domain_class, bool single_channel_mode = false) :
-		domain_class_(domain_class), _single_channel_mode(single_channel_mode)
+	explicit domain(lttng::domain_class domain_class) : domain_class_(domain_class)
 	{
 	}
 
 	~domain() = default;
 	domain(domain&& other) noexcept :
-		domain_class_(other.domain_class_),
-		_single_channel_mode(other._single_channel_mode),
-		_channels(std::move(other._channels))
+		domain_class_(other.domain_class_), _channels(std::move(other._channels))
 	{
 	}
 
@@ -74,13 +71,6 @@ public:
 	{
 		auto new_channel = lttng::make_unique<recording_channel_configuration>(
 			std::forward<Args>(args)...);
-
-		if (_single_channel_mode && !_channels.empty()) {
-			LTTNG_THROW_ERROR(lttng::format(
-				"Single-channel domain already has a channel: existing_name=`{}`, new_name=`{}`",
-				_channels.begin()->second->name,
-				new_channel->name));
-		}
 
 		const auto& name = new_channel->name;
 		auto result = _channels.emplace(name, std::move(new_channel));
@@ -110,19 +100,6 @@ public:
 		return const_cast<domain *>(this)->get_channel(name);
 	}
 
-	/* Direct access for single-channel domains. */
-	recording_channel_configuration& get_channel()
-	{
-		LTTNG_ASSERT(_single_channel_mode && _channels.size() == 1);
-		return *_channels.begin()->second;
-	}
-
-	const recording_channel_configuration& get_channel() const
-	{
-		LTTNG_ASSERT(_single_channel_mode && _channels.size() == 1);
-		return *_channels.begin()->second;
-	}
-
 	using recording_channels_view = lttng::utils::dereferenced_mapped_values_view<
 		std::unordered_map<std::string, recording_channel_configuration::uptr>,
 		recording_channel_configuration>;
@@ -143,7 +120,6 @@ public:
 	const lttng::domain_class domain_class_;
 
 private:
-	const bool _single_channel_mode;
 	std::unordered_map<std::string, recording_channel_configuration::uptr> _channels;
 };
 } /* namespace sessiond */

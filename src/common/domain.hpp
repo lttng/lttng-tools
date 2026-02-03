@@ -24,6 +24,23 @@ enum class domain_class {
 };
 
 domain_class get_domain_class_from_lttng_domain_type(lttng_domain_type domain_type);
+
+/* Returns true for agent domains (LOG4J, LOG4J2, JAVA_UTIL_LOGGING, PYTHON_LOGGING). */
+inline bool is_agent_domain(domain_class domain) noexcept
+{
+	switch (domain) {
+	case domain_class::LOG4J:
+	case domain_class::LOG4J2:
+	case domain_class::JAVA_UTIL_LOGGING:
+	case domain_class::PYTHON_LOGGING:
+		return true;
+	case domain_class::USER_SPACE:
+	case domain_class::KERNEL_SPACE:
+		return false;
+	}
+
+	return false;
+}
 } /* namespace lttng */
 
 /*
