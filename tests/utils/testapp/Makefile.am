@@ -61,7 +61,7 @@ gen_ust_nevents_str_LDADD = $(UST_LIBS) $(DL_LIBS) \
 
 MANY_EVENTS_NUM_EVENTS_PER_SOURCE ?= 500
 # Note: $(wildcard,) is not portable and therefore the sources are listed manually
-MANY_EVENTS_GENERATED_SOURCES = \
+many_events_generated_files = \
 	gen-many-event-classes/emit-events.h \
 	gen-many-event-classes/emit-events.c \
 	gen-many-event-classes/instrumentation_0.h \
@@ -85,9 +85,9 @@ MANY_EVENTS_GENERATED_SOURCES = \
 	gen-many-event-classes/instrumentation_9.h \
 	gen-many-event-classes/instrumentation_9.c
 
-CLEANFILES += $(MANY_EVENTS_GENERATED_SOURCES)
+CLEANFILES += $(many_events_generated_files)
 # Mark generated sources as built sources so they're created before compilation
-BUILT_SOURCES += $(MANY_EVENTS_GENERATED_SOURCES)
+BUILT_SOURCES += $(many_events_generated_files)
 EXTRA_DIST += gen-many-event-classes/generate_many_event_classes.py
 
 noinst_LTLIBRARIES += \
@@ -229,7 +229,7 @@ gen_many_event_classes_gen_many_event_classes_LDADD = \
 	gen-many-event-classes/libtp8.la \
 	gen-many-event-classes/libtp9.la
 
-$(MANY_EVENTS_GENERATED_SOURCES): gen-many-event-classes/generate_many_event_classes.py
+$(many_events_generated_files): gen-many-event-classes/generate_many_event_classes.py
 	$(AM_V_GEN)$(PYTHON) $(srcdir)/gen-many-event-classes/generate_many_event_classes.py \
 		--output-dir $(builddir)/gen-many-event-classes/ \
 		--event-class-count $(MANY_EVENTS_NUM_EVENTS_PER_SOURCE) \
