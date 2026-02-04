@@ -130,6 +130,224 @@ struct destroy_completion_handler {
  */
 pthread_mutex_t relayd_net_seq_idx_lock = PTHREAD_MUTEX_INITIALIZER;
 uint64_t relayd_net_seq_idx;
+
+/*
+ * Convert lttng_tracking_policy to the new tracking_policy enum.
+ */
+ls::tracking_policy convert_tracking_policy(enum lttng_tracking_policy policy)
+{
+	switch (policy) {
+	case LTTNG_TRACKING_POLICY_INCLUDE_ALL:
+		return ls::tracking_policy::INCLUDE_ALL;
+	case LTTNG_TRACKING_POLICY_EXCLUDE_ALL:
+		return ls::tracking_policy::EXCLUDE_ALL;
+	case LTTNG_TRACKING_POLICY_INCLUDE_SET:
+		return ls::tracking_policy::INCLUDE_SET;
+	default:
+		abort();
+	}
+}
+
+/*
+ * Get the appropriate domain from the session based on lttng_domain_type.
+ */
+lttng::domain_class domain_type_to_class(enum lttng_domain_type domain_type)
+{
+	switch (domain_type) {
+	case LTTNG_DOMAIN_KERNEL:
+		return lttng::domain_class::KERNEL_SPACE;
+	case LTTNG_DOMAIN_UST:
+		return lttng::domain_class::USER_SPACE;
+	default:
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+			lttng::format("Invalid domain type for tracker operation: domain_type={}",
+				      static_cast<int>(domain_type)));
+	}
+}
+
+/*
+ * Update the new domain tracker policy based on the process attribute.
+ */
+void update_domain_tracker_policy(ls::domain& domain,
+				  enum lttng_process_attr process_attr,
+				  ls::tracking_policy policy)
+{
+	switch (process_attr) {
+	case LTTNG_PROCESS_ATTR_PROCESS_ID:
+		domain.process_id_tracker().policy(policy);
+		break;
+	case LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID:
+		domain.virtual_process_id_tracker().policy(policy);
+		break;
+	case LTTNG_PROCESS_ATTR_USER_ID:
+		domain.user_id_tracker().policy(policy);
+		break;
+	case LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID:
+		domain.virtual_user_id_tracker().policy(policy);
+		break;
+	case LTTNG_PROCESS_ATTR_GROUP_ID:
+		domain.group_id_tracker().policy(policy);
+		break;
+	case LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID:
+		domain.virtual_group_id_tracker().policy(policy);
+		break;
+	default:
+		break;
+	}
+}
+
+/*
+ * Resolve a user name to a uid_t, throwing on failure.
+ */
+uid_t resolve_user_id(const char *user_name)
+{
+	uid_t uid;
+	const auto ret_code = utils_user_id_from_name(user_name, &uid);
+	if (ret_code != LTTNG_OK) {
+		LTTNG_THROW_CTL(lttng::format("Failed to resolve user name to uid: user_name=`{}`",
+					      user_name),
+				ret_code);
+	}
+
+	return uid;
+}
+
+/*
+ * Resolve a group name to a gid_t, throwing on failure.
+ */
+gid_t resolve_group_id(const char *group_name)
+{
+	gid_t gid;
+	const auto ret_code = utils_group_id_from_name(group_name, &gid);
+	if (ret_code != LTTNG_OK) {
+		LTTNG_THROW_CTL(
+			lttng::format("Failed to resolve group name to gid: group_name=`{}`",
+				      group_name),
+			ret_code);
+	}
+
+	return gid;
+}
+
+/*
+ * Add a value to the appropriate domain tracker based on the process attribute.
+ *
+ * For UID/GID trackers, names are resolved to numeric IDs. Both the resolved ID
+ * and the original name (if provided) are stored in the tracker to preserve
+ * user-specified semantics (i.e., tracking by name or by id).
+ */
+void add_value_to_domain_tracker(ls::domain& domain,
+				 lttng_process_attr process_attr,
+				 const process_attr_value *value)
+{
+	switch (process_attr) {
+	case LTTNG_PROCESS_ATTR_PROCESS_ID:
+		domain.process_id_tracker().add(value->value.pid);
+		break;
+	case LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID:
+		domain.virtual_process_id_tracker().add(value->value.pid);
+		break;
+	case LTTNG_PROCESS_ATTR_USER_ID:
+		if (value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME) {
+			const auto uid = resolve_user_id(value->value.user_name);
+			domain.user_id_tracker().add(ls::resolved_process_attr_value<uid_t>(
+				uid, std::string(value->value.user_name)));
+		} else {
+			domain.user_id_tracker().add(
+				ls::resolved_process_attr_value<uid_t>(value->value.uid));
+		}
+		break;
+	case LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID:
+		if (value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME) {
+			const auto uid = resolve_user_id(value->value.user_name);
+			domain.virtual_user_id_tracker().add(ls::resolved_process_attr_value<uid_t>(
+				uid, std::string(value->value.user_name)));
+		} else {
+			domain.virtual_user_id_tracker().add(
+				ls::resolved_process_attr_value<uid_t>(value->value.uid));
+		}
+		break;
+	case LTTNG_PROCESS_ATTR_GROUP_ID:
+		if (value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME) {
+			const auto gid = resolve_group_id(value->value.group_name);
+			domain.group_id_tracker().add(ls::resolved_process_attr_value<gid_t>(
+				gid, std::string(value->value.group_name)));
+		} else {
+			domain.group_id_tracker().add(
+				ls::resolved_process_attr_value<gid_t>(value->value.gid));
+		}
+		break;
+	case LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID:
+		if (value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME) {
+			const auto gid = resolve_group_id(value->value.group_name);
+			domain.virtual_group_id_tracker().add(
+				ls::resolved_process_attr_value<gid_t>(
+					gid, std::string(value->value.group_name)));
+		} else {
+			domain.virtual_group_id_tracker().add(
+				ls::resolved_process_attr_value<gid_t>(value->value.gid));
+		}
+		break;
+	default:
+		break;
+	}
+}
+
+/*
+ * Remove a value from the appropriate domain tracker based on the process attribute.
+ *
+ * For UID/GID trackers, names are resolved to numeric IDs for lookup.
+ * The comparison uses only the numeric ID, so we don't need to preserve the name.
+ */
+void remove_value_from_domain_tracker(ls::domain& domain,
+				      enum lttng_process_attr process_attr,
+				      const struct process_attr_value *value)
+{
+	switch (process_attr) {
+	case LTTNG_PROCESS_ATTR_PROCESS_ID:
+		domain.process_id_tracker().remove(value->value.pid);
+		break;
+	case LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID:
+		domain.virtual_process_id_tracker().remove(value->value.pid);
+		break;
+	case LTTNG_PROCESS_ATTR_USER_ID:
+	{
+		const auto uid = value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME ?
+			resolve_user_id(value->value.user_name) :
+			value->value.uid;
+		domain.user_id_tracker().remove(ls::resolved_process_attr_value<uid_t>(uid));
+		break;
+	}
+	case LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID:
+	{
+		const auto uid = value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME ?
+			resolve_user_id(value->value.user_name) :
+			value->value.uid;
+		domain.virtual_user_id_tracker().remove(
+			ls::resolved_process_attr_value<uid_t>(uid));
+		break;
+	}
+	case LTTNG_PROCESS_ATTR_GROUP_ID:
+	{
+		const auto gid = value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME ?
+			resolve_group_id(value->value.group_name) :
+			value->value.gid;
+		domain.group_id_tracker().remove(ls::resolved_process_attr_value<gid_t>(gid));
+		break;
+	}
+	case LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID:
+	{
+		const auto gid = value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME ?
+			resolve_group_id(value->value.group_name) :
+			value->value.gid;
+		domain.virtual_group_id_tracker().remove(
+			ls::resolved_process_attr_value<gid_t>(gid));
+		break;
+	}
+	default:
+		break;
+	}
+}
 } /* namespace */
 
 static struct cmd_completion_handler *current_completion_handler;
@@ -1996,6 +2214,17 @@ cmd_process_attr_tracker_set_tracking_policy(const ltt_session::locked_ref& sess
 		ret_code = LTTNG_ERR_UNSUPPORTED_DOMAIN;
 		break;
 	}
+
+	/* Update new domain tracker if the legacy operation succeeded. */
+	if (ret_code == LTTNG_OK) {
+		try {
+			auto& session_domain = session->get_domain(domain_type_to_class(domain));
+			update_domain_tracker_policy(
+				session_domain, process_attr, convert_tracking_policy(policy));
+		} catch (const std::exception& ex) {
+			DBG("Failed to update new domain tracker policy: %s", ex.what());
+		}
+	}
 end:
 	return ret_code;
 }
@@ -2011,26 +2240,31 @@ cmd_process_attr_tracker_inclusion_set_add_value(const ltt_session::locked_ref& 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
 		if (!session->kernel_session) {
-			ret_code = LTTNG_ERR_INVALID;
-			goto end;
+			return LTTNG_ERR_INVALID;
 		}
+
 		ret_code = kernel_process_attr_tracker_inclusion_set_add_value(
 			session->kernel_session, process_attr, value);
 		break;
 	case LTTNG_DOMAIN_UST:
 		if (!session->ust_session) {
-			ret_code = LTTNG_ERR_INVALID;
-			goto end;
+			return LTTNG_ERR_INVALID;
 		}
+
 		ret_code = trace_ust_process_attr_tracker_inclusion_set_add_value(
 			session->ust_session, process_attr, value);
 		break;
 	default:
-		ret_code = LTTNG_ERR_UNSUPPORTED_DOMAIN;
-		break;
+		return LTTNG_ERR_UNSUPPORTED_DOMAIN;
 	}
-end:
-	return ret_code;
+
+	if (ret_code != LTTNG_OK) {
+		return ret_code;
+	}
+
+	auto& session_domain = session->get_domain(domain_type_to_class(domain));
+	add_value_to_domain_tracker(session_domain, process_attr, value);
+	return LTTNG_OK;
 }
 
 enum lttng_error_code
@@ -2044,26 +2278,32 @@ cmd_process_attr_tracker_inclusion_set_remove_value(const ltt_session::locked_re
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
 		if (!session->kernel_session) {
-			ret_code = LTTNG_ERR_INVALID;
-			goto end;
+			return LTTNG_ERR_INVALID;
 		}
+
 		ret_code = kernel_process_attr_tracker_inclusion_set_remove_value(
 			session->kernel_session, process_attr, value);
 		break;
 	case LTTNG_DOMAIN_UST:
 		if (!session->ust_session) {
-			ret_code = LTTNG_ERR_INVALID;
-			goto end;
+			return LTTNG_ERR_INVALID;
 		}
+
 		ret_code = trace_ust_process_attr_tracker_inclusion_set_remove_value(
 			session->ust_session, process_attr, value);
 		break;
 	default:
-		ret_code = LTTNG_ERR_UNSUPPORTED_DOMAIN;
-		break;
+		return LTTNG_ERR_UNSUPPORTED_DOMAIN;
 	}
-end:
-	return ret_code;
+
+	/* Update new domain tracker if the legacy operation succeeded. */
+	if (ret_code != LTTNG_OK) {
+		return ret_code;
+	}
+
+	auto& session_domain = session->get_domain(domain_type_to_class(domain));
+	remove_value_from_domain_tracker(session_domain, process_attr, value);
+	return LTTNG_OK;
 }
 
 enum lttng_error_code
