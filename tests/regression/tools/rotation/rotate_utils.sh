@@ -158,7 +158,7 @@ function trace_until_n_archives ()
 	while [[ archive_count -lt $target_archive_count && $trace_size -lt $trace_size_cutoff ]]
 	do
 		archive_count=$(find "$trace_path" -mindepth 2 -maxdepth 2 -type d -path "*archives*" | wc -l)
-		trace_size=$(du -b "$trace_path" | tail -n1 | cut -f1)
+		trace_size=$(du -b --exclude="${trace_path}/.tmp_new_chunk" "$trace_path" | tail -n1 | cut -f1)
 		$produce_events 2000
 	done
 
@@ -167,5 +167,5 @@ function trace_until_n_archives ()
 	fi
 
 	[[ $archive_count -eq $target_archive_count ]]
-	ok $? "Found $target_archive_count trace archives resulting from trace archive rotations"
+	ok $? "Found ${archive_count}/$target_archive_count trace archives resulting from trace archive rotations"
 }
