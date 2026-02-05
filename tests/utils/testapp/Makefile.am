@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: 2013 EfficiOS Inc.
 
+include $(top_srcdir)/aminclude_static.am
+
 AM_CPPFLAGS += -I$(top_srcdir)/tests/utils \
 	-I$(top_srcdir)/tests/utils/testapp
 BUILT_SOURCES =
@@ -198,10 +200,12 @@ gen_many_event_classes_gen_many_event_classes_CPPFLAGS = \
 	-I$(abs_builddir)/gen-many-event-classes/
 
 gen_many_event_classes_gen_many_event_classes_CFLAGS = \
+	$(AM_CFLAGS) \
 	-Wno-redundant-decls \
 	-Wno-missing-field-initializers
 
 gen_many_event_classes_gen_many_event_classes_CXXFLAGS = \
+	$(AM_CXXFLAGS) \
 	-Wno-redundant-decls \
 	-Wno-missing-field-initializers
 
@@ -211,7 +215,7 @@ nodist_gen_many_event_classes_gen_many_event_classes_SOURCES = \
 	gen-many-event-classes/emit-events.c \
 	gen-many-event-classes/emit-events.h
 
-gen_many_event_classes_gen_many_event_classes_LDFLAGS = -static
+gen_many_event_classes_gen_many_event_classes_LDFLAGS = $(AM_LDFLAGS) -static
 gen_many_event_classes_gen_many_event_classes_LDADD = \
 	$(UST_LIBS) \
 	$(DL_LIBS) \
