@@ -17,6 +17,7 @@
 #include <common/defaults.hpp>
 #include <common/domain.hpp>
 #include <common/error.hpp>
+#include <common/file-descriptor.hpp>
 #include <common/optional.hpp>
 #include <common/runas.hpp>
 #include <common/urcu.hpp>
@@ -47,6 +48,109 @@ namespace ls = lttng::sessiond;
 using rcc = lttng::sessiond::recording_channel_configuration;
 
 namespace {
+
+/*
+ * RAII wrapper for config_writer that throws exceptions on error.
+ */
+namespace session_config {
+
+class writer final {
+public:
+	explicit writer(lttng::file_descriptor fd, bool indent) :
+		_fd(std::move(fd)), _writer(config_writer_create(_fd.fd(), indent ? 1 : 0))
+	{
+		if (!_writer) {
+			LTTNG_THROW_SAVE_ERROR("Failed to create session configuration writer");
+		}
+	}
+
+	~writer() noexcept
+	{
+		if (_writer) {
+			config_writer_destroy(_writer);
+		}
+	}
+
+	writer(const writer&) = delete;
+	writer& operator=(const writer&) = delete;
+	writer(writer&&) = delete;
+	writer& operator=(writer&&) = delete;
+
+	void open_element(lttng::c_string_view element_name)
+	{
+		if (config_writer_open_element(_writer, element_name)) {
+			LTTNG_THROW_SAVE_ERROR(
+				lttng::format("Failed to open XML element: name={}", element_name));
+		}
+	}
+
+	void close_element()
+	{
+		if (config_writer_close_element(_writer)) {
+			LTTNG_THROW_SAVE_ERROR("Failed to close XML element");
+		}
+	}
+
+	void write(lttng::c_string_view element_name, lttng::c_string_view value)
+	{
+		if (config_writer_write_element_string(_writer, element_name, value)) {
+			LTTNG_THROW_SAVE_ERROR(
+				lttng::format("Failed to write string element: name={}, value=`{}`",
+					      element_name,
+					      value));
+		}
+	}
+
+	void write(lttng::c_string_view element_name, const char *value)
+	{
+		write(element_name, lttng::c_string_view{ value });
+	}
+
+	void write(lttng::c_string_view element_name, std::uint64_t value)
+	{
+		if (config_writer_write_element_unsigned_int(_writer, element_name, value)) {
+			LTTNG_THROW_SAVE_ERROR(lttng::format(
+				"Failed to write unsigned int element: name={}, value={}",
+				element_name,
+				value));
+		}
+	}
+
+	void write(lttng::c_string_view element_name, std::int64_t value)
+	{
+		if (config_writer_write_element_signed_int(_writer, element_name, value)) {
+			LTTNG_THROW_SAVE_ERROR(lttng::format(
+				"Failed to write signed int element: name={}, value={}",
+				element_name,
+				value));
+		}
+	}
+
+	void write(lttng::c_string_view element_name, bool value)
+	{
+		if (config_writer_write_element_bool(_writer, element_name, value ? 1 : 0)) {
+			LTTNG_THROW_SAVE_ERROR(
+				lttng::format("Failed to write bool element: name={}, value={}",
+					      element_name,
+					      value));
+		}
+	}
+
+	void write_attribute(lttng::c_string_view name, lttng::c_string_view value)
+	{
+		if (config_writer_write_attribute(_writer, name, value)) {
+			LTTNG_THROW_SAVE_ERROR(lttng::format(
+				"Failed to write attribute: name={}, value={}", name, value));
+		}
+	}
+
+private:
+	lttng::file_descriptor _fd;
+	config_writer *_writer;
+};
+
+} /* namespace session_config */
+
 /*
  * Helper functions for converting modern types to XML configuration strings.
  * These are used by the new domain-based save implementation.
@@ -61,7 +165,7 @@ const char *get_buffer_full_policy_string(rcc::buffer_full_policy_t policy) noex
 		return config_overwrite_mode_overwrite;
 	}
 
-	return nullptr;
+	std::abort();
 }
 
 const char *
@@ -74,7 +178,7 @@ get_buffer_consumption_backend_string(rcc::buffer_consumption_backend_t backend)
 		return config_output_type_splice;
 	}
 
-	return nullptr;
+	std::abort();
 }
 
 const char *get_buffer_allocation_policy_string(rcc::buffer_allocation_policy_t policy) noexcept
@@ -86,7 +190,7 @@ const char *get_buffer_allocation_policy_string(rcc::buffer_allocation_policy_t 
 		return config_element_channel_allocation_policy_per_channel;
 	}
 
-	return nullptr;
+	std::abort();
 }
 
 const char *
@@ -99,7 +203,7 @@ get_buffer_preallocation_policy_string(rcc::buffer_preallocation_policy_t policy
 		return config_element_channel_preallocation_policy_on_demand;
 	}
 
-	return nullptr;
+	std::abort();
 }
 
 const char *get_domain_type_config_string(lttng::domain_class domain_class) noexcept
@@ -119,7 +223,7 @@ const char *get_domain_type_config_string(lttng::domain_class domain_class) noex
 		return config_domain_type_python;
 	}
 
-	return nullptr;
+	std::abort();
 }
 
 const char *get_context_type_string_from_config(ls::context_configuration::type ctx_type) noexcept
@@ -210,7 +314,7 @@ const char *get_context_type_string_from_config(ls::context_configuration::type 
 		return nullptr;
 	}
 
-	return nullptr;
+	std::abort();
 }
 
 /*
@@ -238,169 +342,86 @@ std::int64_t get_blocking_timeout_value(const rcc::consumption_blocking_policy& 
 	return 0;
 }
 
-/* Forward declarations for save functions using the new config types. */
-int save_channel_from_config(config_writer *writer,
-			     const ls::recording_channel_configuration& channel_config,
-			     lttng::domain_class domain_class,
-			     std::uint64_t live_timer_interval);
-int save_events_from_config(config_writer *writer,
-			    const ls::recording_channel_configuration& channel_config,
-			    lttng::domain_class domain_class);
-int save_contexts_from_config(config_writer *writer,
-			      const ls::recording_channel_configuration& channel_config);
-int save_event_from_event_rule(config_writer *writer,
-			       const ls::event_rule_configuration& event_config,
-			       lttng::domain_class domain_class);
-
 /*
  * Save channel attributes from a recording_channel_configuration.
  *
  * This function writes all channel attributes to the XML config file based on
  * the modern recording_channel_configuration structure.
  */
-int save_channel_attributes_from_config(config_writer *writer,
-					const ls::recording_channel_configuration& channel_config,
-					lttng::domain_class domain_class)
+void save_channel_attributes_from_config(session_config::writer& writer,
+					 const ls::recording_channel_configuration& channel_config,
+					 lttng::domain_class domain_class)
 {
-	int ret;
-	const char *overwrite_mode_str = nullptr;
-	const char *output_type_str = nullptr;
-	const char *allocation_policy_str = nullptr;
-	const char *preallocation_policy_str = nullptr;
-
 	/* Overwrite mode */
-	overwrite_mode_str = get_buffer_full_policy_string(channel_config.buffer_full_policy);
+	const auto *overwrite_mode_str =
+		get_buffer_full_policy_string(channel_config.buffer_full_policy);
 	if (!overwrite_mode_str) {
-		ret = LTTNG_ERR_INVALID;
-		goto end;
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR("Invalid buffer full policy");
 	}
 
-	ret = config_writer_write_element_string(
-		writer, config_element_overwrite_mode, overwrite_mode_str);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_overwrite_mode, overwrite_mode_str);
 
 	/* Subbuffer size */
-	ret = config_writer_write_element_unsigned_int(
-		writer, config_element_subbuf_size, channel_config.subbuffer_size_bytes);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_subbuf_size,
+		     static_cast<std::uint64_t>(channel_config.subbuffer_size_bytes));
 
 	/* Number of subbuffers */
-	ret = config_writer_write_element_unsigned_int(
-		writer, config_element_num_subbuf, channel_config.subbuffer_count);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_num_subbuf,
+		     static_cast<std::uint64_t>(channel_config.subbuffer_count));
 
 	/* Switch timer interval */
-	ret = config_writer_write_element_unsigned_int(
-		writer,
-		config_element_switch_timer_interval,
-		channel_config.switch_timer_period_us.value_or(0));
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_switch_timer_interval,
+		     channel_config.switch_timer_period_us.value_or(0));
 
 	/* Read timer interval */
-	ret = config_writer_write_element_unsigned_int(
-		writer,
-		config_element_read_timer_interval,
-		channel_config.read_timer_period_us.value_or(0));
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_read_timer_interval,
+		     channel_config.read_timer_period_us.value_or(0));
 
 	/* Output type */
-	output_type_str =
+	const auto *output_type_str =
 		get_buffer_consumption_backend_string(channel_config.buffer_consumption_backend);
 	if (!output_type_str) {
-		ret = LTTNG_ERR_INVALID;
-		goto end;
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR("Invalid buffer consumption backend");
 	}
 
-	ret = config_writer_write_element_string(
-		writer, config_element_output_type, output_type_str);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_output_type, output_type_str);
 
 	/* Blocking timeout (UST only, but we always write it as the schema accepts it). */
-	ret = config_writer_write_element_signed_int(
-		writer,
-		config_element_blocking_timeout,
-		get_blocking_timeout_value(channel_config.consumption_blocking_policy_));
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_blocking_timeout,
+		     get_blocking_timeout_value(channel_config.consumption_blocking_policy_));
 
 	/* Allocation policy (UST only, kernel is always global/per-cpu). */
 	if (domain_class != lttng::domain_class::KERNEL_SPACE) {
-		allocation_policy_str = get_buffer_allocation_policy_string(
+		const auto *allocation_policy_str = get_buffer_allocation_policy_string(
 			channel_config.buffer_allocation_policy);
 		if (!allocation_policy_str) {
-			ret = LTTNG_ERR_INVALID;
-			goto end;
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR("Invalid buffer allocation policy");
 		}
 
-		ret = config_writer_write_element_string(
-			writer, config_element_channel_allocation_policy, allocation_policy_str);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
+		writer.write(config_element_channel_allocation_policy, allocation_policy_str);
 	}
 
 	/* Preallocation policy (UST only). */
 	if (domain_class != lttng::domain_class::KERNEL_SPACE) {
-		preallocation_policy_str = get_buffer_preallocation_policy_string(
+		const auto *preallocation_policy_str = get_buffer_preallocation_policy_string(
 			channel_config.buffer_preallocation_policy);
 		if (!preallocation_policy_str) {
-			ret = LTTNG_ERR_INVALID;
-			goto end;
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR("Invalid buffer preallocation policy");
 		}
 
-		ret = config_writer_write_element_string(
-			writer,
-			config_element_channel_preallocation_policy,
-			preallocation_policy_str);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
+		writer.write(config_element_channel_preallocation_policy, preallocation_policy_str);
 	}
 
 	/* Monitor timer interval */
 	if (channel_config.monitor_timer_period_us.has_value()) {
-		ret = config_writer_write_element_unsigned_int(
-			writer,
-			config_element_monitor_timer_interval,
-			channel_config.monitor_timer_period_us.value());
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
+		writer.write(config_element_monitor_timer_interval,
+			     channel_config.monitor_timer_period_us.value());
 	}
 
 	/* Watchdog timer interval */
 	if (channel_config.watchdog_timer_period_us.has_value()) {
-		ret = config_writer_write_element_unsigned_int(
-			writer,
-			config_element_watchdog_timer_interval,
-			channel_config.watchdog_timer_period_us.value());
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
+		writer.write(config_element_watchdog_timer_interval,
+			     channel_config.watchdog_timer_period_us.value());
 	}
 
 	/* Memory reclamation policy */
@@ -408,70 +429,29 @@ int save_channel_attributes_from_config(config_writer *writer,
 		const auto age_threshold =
 			channel_config.automatic_memory_reclamation_maximal_age.value().count();
 
-		ret = config_writer_open_element(writer, config_element_channel_reclaim_policy);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
+		writer.open_element(config_element_channel_reclaim_policy);
 
 		if (age_threshold != 0) {
-			ret = config_writer_open_element(
-				writer, config_element_channel_reclaim_policy_periodic);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
-			ret = config_writer_write_element_unsigned_int(
-				writer,
-				config_element_channel_reclaim_policy_periodic_age_threshold,
-				static_cast<std::uint64_t>(age_threshold));
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
-			ret = config_writer_close_element(writer);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
+			writer.open_element(config_element_channel_reclaim_policy_periodic);
+			writer.write(config_element_channel_reclaim_policy_periodic_age_threshold,
+				     static_cast<std::uint64_t>(age_threshold));
+			writer.close_element();
 		} else {
-			ret = config_writer_open_element(
-				writer, config_element_channel_reclaim_policy_consumed);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
-			ret = config_writer_close_element(writer);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
+			writer.open_element(config_element_channel_reclaim_policy_consumed);
+			writer.close_element();
 		}
 
-		ret = config_writer_close_element(writer);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
+		writer.close_element();
 	}
-
-	ret = LTTNG_OK;
-end:
-	return ret;
 }
 
 /*
  * Save a single context from a context_configuration.
  */
-int save_context_from_config(config_writer *writer, const ls::context_configuration& ctx_config)
+void save_context_from_config(session_config::writer& writer,
+			      const ls::context_configuration& ctx_config)
 {
-	int ret;
-
-	ret = config_writer_open_element(writer, config_element_context);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.open_element(config_element_context);
 
 	switch (ctx_config.context_type) {
 	case ls::context_configuration::type::PERF_CPU_COUNTER:
@@ -480,76 +460,23 @@ int save_context_from_config(config_writer *writer, const ls::context_configurat
 		const auto& perf_ctx =
 			static_cast<const ls::perf_counter_context_configuration&>(ctx_config);
 
-		ret = config_writer_open_element(writer, config_element_context_perf);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
-
-		ret = config_writer_write_element_unsigned_int(
-			writer,
-			config_element_type,
-			static_cast<std::uint32_t>(perf_ctx.perf_type));
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
-
-		ret = config_writer_write_element_unsigned_int(
-			writer, config_element_config, perf_ctx.perf_config);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
-
-		ret = config_writer_write_element_string(
-			writer, config_element_name, perf_ctx.name.c_str());
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
-
-		/* Close perf element */
-		ret = config_writer_close_element(writer);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
-
+		writer.open_element(config_element_context_perf);
+		writer.write(config_element_type, static_cast<std::uint64_t>(perf_ctx.perf_type));
+		writer.write(config_element_config,
+			     static_cast<std::uint64_t>(perf_ctx.perf_config));
+		writer.write(config_element_name, perf_ctx.name.c_str());
+		writer.close_element();
 		break;
 	}
 	case ls::context_configuration::type::APP_CONTEXT:
 	{
 		const auto& app_ctx = static_cast<const ls::app_context_configuration&>(ctx_config);
 
-		ret = config_writer_open_element(writer, config_element_context_app);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
-
-		ret = config_writer_write_element_string(writer,
-							 config_element_context_app_provider_name,
-							 app_ctx.provider_name.c_str());
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
-
-		ret = config_writer_write_element_string(
-			writer, config_element_context_app_ctx_name, app_ctx.context_name.c_str());
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
-
-		/* Close app element */
-		ret = config_writer_close_element(writer);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
-
+		writer.open_element(config_element_context_app);
+		writer.write(config_element_context_app_provider_name,
+			     app_ctx.provider_name.c_str());
+		writer.write(config_element_context_app_ctx_name, app_ctx.context_name.c_str());
+		writer.close_element();
 		break;
 	}
 	default:
@@ -558,69 +485,38 @@ int save_context_from_config(config_writer *writer, const ls::context_configurat
 		const auto *ctx_type_str =
 			get_context_type_string_from_config(ctx_config.context_type);
 		if (!ctx_type_str) {
-			ERR("Unsupported context type in configuration");
-			ret = LTTNG_ERR_INVALID;
-			goto end;
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+				"Unsupported context type in configuration");
 		}
 
-		ret = config_writer_write_element_string(writer, config_element_type, ctx_type_str);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
-
+		writer.write(config_element_type, ctx_type_str);
 		break;
 	}
 	}
 
 	/* Close context element */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	ret = LTTNG_OK;
-end:
-	return ret;
+	writer.close_element();
 }
 
 /*
  * Save all contexts from a recording_channel_configuration.
  */
-int save_contexts_from_config(config_writer *writer,
-			      const ls::recording_channel_configuration& channel_config)
+void save_contexts_from_config(session_config::writer& writer,
+			       const ls::recording_channel_configuration& channel_config)
 {
-	int ret;
 	const auto& contexts = channel_config.get_contexts();
 
 	if (contexts.empty()) {
-		return LTTNG_OK;
+		return;
 	}
 
-	ret = config_writer_open_element(writer, config_element_contexts);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.open_element(config_element_contexts);
 
 	for (const auto& ctx : contexts) {
-		ret = save_context_from_config(writer, *ctx);
-		if (ret != LTTNG_OK) {
-			goto end;
-		}
+		save_context_from_config(writer, *ctx);
 	}
 
-	/* Close contexts element */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	ret = LTTNG_OK;
-end:
-	return ret;
+	writer.close_element();
 }
 
 /*
@@ -642,202 +538,36 @@ const char *get_loglevel_type_string_from_rule_type(lttng_log_level_rule_type ru
 /*
  * Save a user-space tracepoint event from an event rule.
  */
-int save_user_tracepoint_event_rule(config_writer *writer,
-				    const lttng_event_rule *event_rule,
-				    bool is_enabled)
+void save_user_tracepoint_event_rule(session_config::writer& writer,
+				     const lttng_event_rule *event_rule,
+				     bool is_enabled)
 {
-	int ret;
 	const char *pattern = nullptr;
 	const char *filter_expr = nullptr;
 	const lttng_log_level_rule *log_level_rule = nullptr;
 	unsigned int exclusion_count = 0;
-	lttng_event_rule_status status;
 
-	ret = config_writer_open_element(writer, config_element_event);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.open_element(config_element_event);
 
 	/* Name/pattern */
-	status = lttng_event_rule_user_tracepoint_get_name_pattern(event_rule, &pattern);
+	auto status = lttng_event_rule_user_tracepoint_get_name_pattern(event_rule, &pattern);
 	if (status == LTTNG_EVENT_RULE_STATUS_OK && pattern && pattern[0] != '\0') {
-		ret = config_writer_write_element_string(writer, config_element_name, pattern);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
+		writer.write(config_element_name, pattern);
 	}
 
 	/* Enabled */
-	ret = config_writer_write_element_bool(writer, config_element_enabled, is_enabled);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_enabled, is_enabled);
 
 	/* Type is always TRACEPOINT for user space */
-	ret = config_writer_write_element_string(
-		writer, config_element_type, config_event_type_tracepoint);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_type, config_event_type_tracepoint);
 
 	/* Log level */
 	status = lttng_event_rule_user_tracepoint_get_log_level_rule(event_rule, &log_level_rule);
 	if (status == LTTNG_EVENT_RULE_STATUS_OK && log_level_rule) {
 		const auto rule_type = lttng_log_level_rule_get_type(log_level_rule);
-		const char *loglevel_type_str = get_loglevel_type_string_from_rule_type(rule_type);
+		const auto *loglevel_type_str = get_loglevel_type_string_from_rule_type(rule_type);
 
-		ret = config_writer_write_element_string(
-			writer, config_element_loglevel_type, loglevel_type_str);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
-
-		int level;
-		if (rule_type == LTTNG_LOG_LEVEL_RULE_TYPE_EXACTLY) {
-			lttng_log_level_rule_exactly_get_level(log_level_rule, &level);
-		} else if (rule_type == LTTNG_LOG_LEVEL_RULE_TYPE_AT_LEAST_AS_SEVERE_AS) {
-			lttng_log_level_rule_at_least_as_severe_as_get_level(log_level_rule,
-									     &level);
-		} else {
-			level = -1;
-		}
-
-		if (rule_type != LTTNG_LOG_LEVEL_RULE_TYPE_UNKNOWN) {
-			ret = config_writer_write_element_signed_int(
-				writer, config_element_loglevel, level);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
-		}
-	} else {
-		/* No log level rule means "ALL" */
-		ret = config_writer_write_element_string(
-			writer, config_element_loglevel_type, config_loglevel_type_all);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
-	}
-
-	/* Filter */
-	status = lttng_event_rule_user_tracepoint_get_filter(event_rule, &filter_expr);
-	if (status == LTTNG_EVENT_RULE_STATUS_OK && filter_expr) {
-		ret = config_writer_write_element_string(
-			writer, config_element_filter, filter_expr);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
-	}
-
-	/* Exclusions */
-	status = lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_count(
-		event_rule, &exclusion_count);
-	if (status == LTTNG_EVENT_RULE_STATUS_OK && exclusion_count > 0) {
-		ret = config_writer_open_element(writer, config_element_exclusions);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
-
-		for (unsigned int i = 0; i < exclusion_count; i++) {
-			const char *exclusion = nullptr;
-			status =
-				lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_at_index(
-					event_rule, i, &exclusion);
-			if (status != LTTNG_EVENT_RULE_STATUS_OK) {
-				continue;
-			}
-
-			ret = config_writer_write_element_string(
-				writer, config_element_exclusion, exclusion);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
-		}
-
-		ret = config_writer_close_element(writer);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
-	}
-
-	/* Close event element */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	ret = LTTNG_OK;
-end:
-	return ret;
-}
-
-/*
- * Helper function for agent logging event rules which share the same structure.
- *
- * This function handles the common logic for saving agent events (JUL, Log4j,
- * Log4j2, Python) that share identical configuration structures but have
- * their own domain-specific accessor functions.
- */
-static int save_agent_logging_event_rule(
-	config_writer *writer,
-	const lttng_event_rule *event_rule,
-	bool is_enabled,
-	lttng_event_rule_status (*get_name_pattern)(const struct lttng_event_rule *, const char **),
-	lttng_event_rule_status (*get_log_level_rule)(const struct lttng_event_rule *,
-						      const struct lttng_log_level_rule **),
-	lttng_event_rule_status (*get_filter)(const struct lttng_event_rule *, const char **))
-{
-	int ret;
-	const char *pattern = nullptr;
-	const char *filter_expr = nullptr;
-	const lttng_log_level_rule *log_level_rule = nullptr;
-	lttng_event_rule_status status;
-
-	ret = config_writer_open_element(writer, config_element_event);
-	if (ret) {
-		return LTTNG_ERR_SAVE_IO_FAIL;
-	}
-
-	status = get_name_pattern(event_rule, &pattern);
-	if (status == LTTNG_EVENT_RULE_STATUS_OK && pattern && pattern[0] != '\0') {
-		ret = config_writer_write_element_string(writer, config_element_name, pattern);
-		if (ret) {
-			return LTTNG_ERR_SAVE_IO_FAIL;
-		}
-	}
-
-	ret = config_writer_write_element_bool(writer, config_element_enabled, is_enabled);
-	if (ret) {
-		return LTTNG_ERR_SAVE_IO_FAIL;
-	}
-
-	ret = config_writer_write_element_string(
-		writer, config_element_type, config_event_type_tracepoint);
-	if (ret) {
-		return LTTNG_ERR_SAVE_IO_FAIL;
-	}
-
-	status = get_log_level_rule(event_rule, &log_level_rule);
-	if (status == LTTNG_EVENT_RULE_STATUS_OK && log_level_rule) {
-		const auto rule_type = lttng_log_level_rule_get_type(log_level_rule);
-		const char *loglevel_type_str = get_loglevel_type_string_from_rule_type(rule_type);
-
-		ret = config_writer_write_element_string(
-			writer, config_element_loglevel_type, loglevel_type_str);
-		if (ret) {
-			return LTTNG_ERR_SAVE_IO_FAIL;
-		}
+		writer.write(config_element_loglevel_type, loglevel_type_str);
 
 		int level = -1;
 		if (rule_type == LTTNG_LOG_LEVEL_RULE_TYPE_EXACTLY) {
@@ -848,409 +578,322 @@ static int save_agent_logging_event_rule(
 		}
 
 		if (rule_type != LTTNG_LOG_LEVEL_RULE_TYPE_UNKNOWN) {
-			ret = config_writer_write_element_signed_int(
-				writer, config_element_loglevel, level);
-			if (ret) {
-				return LTTNG_ERR_SAVE_IO_FAIL;
-			}
+			writer.write(config_element_loglevel, static_cast<std::int64_t>(level));
 		}
 	} else {
-		ret = config_writer_write_element_string(
-			writer, config_element_loglevel_type, config_loglevel_type_all);
-		if (ret) {
-			return LTTNG_ERR_SAVE_IO_FAIL;
+		/* No log level rule means "ALL" */
+		writer.write(config_element_loglevel_type, config_loglevel_type_all);
+	}
+
+	/* Filter */
+	status = lttng_event_rule_user_tracepoint_get_filter(event_rule, &filter_expr);
+	if (status == LTTNG_EVENT_RULE_STATUS_OK && filter_expr) {
+		writer.write(config_element_filter, filter_expr);
+	}
+
+	/* Exclusions */
+	status = lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_count(
+		event_rule, &exclusion_count);
+	if (status == LTTNG_EVENT_RULE_STATUS_OK && exclusion_count > 0) {
+		writer.open_element(config_element_exclusions);
+
+		for (unsigned int i = 0; i < exclusion_count; i++) {
+			const char *exclusion = nullptr;
+			status =
+				lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_at_index(
+					event_rule, i, &exclusion);
+			if (status != LTTNG_EVENT_RULE_STATUS_OK) {
+				continue;
+			}
+
+			writer.write(config_element_exclusion, exclusion);
 		}
+
+		writer.close_element();
+	}
+
+	/* Close event element */
+	writer.close_element();
+}
+
+/*
+ * Helper function for agent logging event rules which share the same structure.
+ *
+ * This function handles the common logic for saving agent events (JUL, Log4j,
+ * Log4j2, Python) that share identical configuration structures but have
+ * their own domain-specific accessor functions.
+ */
+void save_agent_logging_event_rule(
+	session_config::writer& writer,
+	const lttng_event_rule *event_rule,
+	bool is_enabled,
+	lttng_event_rule_status (*get_name_pattern)(const struct lttng_event_rule *, const char **),
+	lttng_event_rule_status (*get_log_level_rule)(const struct lttng_event_rule *,
+						      const struct lttng_log_level_rule **),
+	lttng_event_rule_status (*get_filter)(const struct lttng_event_rule *, const char **))
+{
+	const char *pattern = nullptr;
+	const char *filter_expr = nullptr;
+	const lttng_log_level_rule *log_level_rule = nullptr;
+
+	writer.open_element(config_element_event);
+
+	auto status = get_name_pattern(event_rule, &pattern);
+	if (status == LTTNG_EVENT_RULE_STATUS_OK && pattern && pattern[0] != '\0') {
+		writer.write(config_element_name, pattern);
+	}
+
+	writer.write(config_element_enabled, is_enabled);
+	writer.write(config_element_type, config_event_type_tracepoint);
+
+	status = get_log_level_rule(event_rule, &log_level_rule);
+	if (status == LTTNG_EVENT_RULE_STATUS_OK && log_level_rule) {
+		const auto rule_type = lttng_log_level_rule_get_type(log_level_rule);
+		const auto *loglevel_type_str = get_loglevel_type_string_from_rule_type(rule_type);
+
+		writer.write(config_element_loglevel_type, loglevel_type_str);
+
+		int level = -1;
+		if (rule_type == LTTNG_LOG_LEVEL_RULE_TYPE_EXACTLY) {
+			lttng_log_level_rule_exactly_get_level(log_level_rule, &level);
+		} else if (rule_type == LTTNG_LOG_LEVEL_RULE_TYPE_AT_LEAST_AS_SEVERE_AS) {
+			lttng_log_level_rule_at_least_as_severe_as_get_level(log_level_rule,
+									     &level);
+		}
+
+		if (rule_type != LTTNG_LOG_LEVEL_RULE_TYPE_UNKNOWN) {
+			writer.write(config_element_loglevel, static_cast<std::int64_t>(level));
+		}
+	} else {
+		writer.write(config_element_loglevel_type, config_loglevel_type_all);
 	}
 
 	status = get_filter(event_rule, &filter_expr);
 	if (status == LTTNG_EVENT_RULE_STATUS_OK && filter_expr) {
-		ret = config_writer_write_element_string(
-			writer, config_element_filter, filter_expr);
-		if (ret) {
-			return LTTNG_ERR_SAVE_IO_FAIL;
-		}
+		writer.write(config_element_filter, filter_expr);
 	}
 
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		return LTTNG_ERR_SAVE_IO_FAIL;
-	}
-
-	return LTTNG_OK;
+	writer.close_element();
 }
 
-int save_jul_logging_event_rule(config_writer *writer,
-				const lttng_event_rule *event_rule,
-				bool is_enabled)
+void save_jul_logging_event_rule(session_config::writer& writer,
+				 const lttng_event_rule *event_rule,
+				 bool is_enabled)
 {
-	return save_agent_logging_event_rule(writer,
-					     event_rule,
-					     is_enabled,
-					     lttng_event_rule_jul_logging_get_name_pattern,
-					     lttng_event_rule_jul_logging_get_log_level_rule,
-					     lttng_event_rule_jul_logging_get_filter);
+	save_agent_logging_event_rule(writer,
+				      event_rule,
+				      is_enabled,
+				      lttng_event_rule_jul_logging_get_name_pattern,
+				      lttng_event_rule_jul_logging_get_log_level_rule,
+				      lttng_event_rule_jul_logging_get_filter);
 }
 
-int save_log4j_logging_event_rule(config_writer *writer,
-				  const lttng_event_rule *event_rule,
-				  bool is_enabled)
-{
-	return save_agent_logging_event_rule(writer,
-					     event_rule,
-					     is_enabled,
-					     lttng_event_rule_log4j_logging_get_name_pattern,
-					     lttng_event_rule_log4j_logging_get_log_level_rule,
-					     lttng_event_rule_log4j_logging_get_filter);
-}
-
-int save_log4j2_logging_event_rule(config_writer *writer,
+void save_log4j_logging_event_rule(session_config::writer& writer,
 				   const lttng_event_rule *event_rule,
 				   bool is_enabled)
 {
-	return save_agent_logging_event_rule(writer,
-					     event_rule,
-					     is_enabled,
-					     lttng_event_rule_log4j2_logging_get_name_pattern,
-					     lttng_event_rule_log4j2_logging_get_log_level_rule,
-					     lttng_event_rule_log4j2_logging_get_filter);
+	save_agent_logging_event_rule(writer,
+				      event_rule,
+				      is_enabled,
+				      lttng_event_rule_log4j_logging_get_name_pattern,
+				      lttng_event_rule_log4j_logging_get_log_level_rule,
+				      lttng_event_rule_log4j_logging_get_filter);
 }
 
-int save_python_logging_event_rule(config_writer *writer,
-				   const lttng_event_rule *event_rule,
-				   bool is_enabled)
+void save_log4j2_logging_event_rule(session_config::writer& writer,
+				    const lttng_event_rule *event_rule,
+				    bool is_enabled)
 {
-	return save_agent_logging_event_rule(writer,
-					     event_rule,
-					     is_enabled,
-					     lttng_event_rule_python_logging_get_name_pattern,
-					     lttng_event_rule_python_logging_get_log_level_rule,
-					     lttng_event_rule_python_logging_get_filter);
+	save_agent_logging_event_rule(writer,
+				      event_rule,
+				      is_enabled,
+				      lttng_event_rule_log4j2_logging_get_name_pattern,
+				      lttng_event_rule_log4j2_logging_get_log_level_rule,
+				      lttng_event_rule_log4j2_logging_get_filter);
+}
+
+void save_python_logging_event_rule(session_config::writer& writer,
+				    const lttng_event_rule *event_rule,
+				    bool is_enabled)
+{
+	save_agent_logging_event_rule(writer,
+				      event_rule,
+				      is_enabled,
+				      lttng_event_rule_python_logging_get_name_pattern,
+				      lttng_event_rule_python_logging_get_log_level_rule,
+				      lttng_event_rule_python_logging_get_filter);
 }
 
 /*
  * Save a kernel tracepoint event from an event rule.
  */
-int save_kernel_tracepoint_event_rule(config_writer *writer,
-				      const lttng_event_rule *event_rule,
-				      bool is_enabled)
+void save_kernel_tracepoint_event_rule(session_config::writer& writer,
+				       const lttng_event_rule *event_rule,
+				       bool is_enabled)
 {
-	int ret;
 	const char *pattern = nullptr;
 	const char *filter_expr = nullptr;
-	lttng_event_rule_status status;
 
-	ret = config_writer_open_element(writer, config_element_event);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.open_element(config_element_event);
 
 	/* Name/pattern */
-	status = lttng_event_rule_kernel_tracepoint_get_name_pattern(event_rule, &pattern);
+	auto status = lttng_event_rule_kernel_tracepoint_get_name_pattern(event_rule, &pattern);
 	if (status == LTTNG_EVENT_RULE_STATUS_OK && pattern && pattern[0] != '\0') {
-		ret = config_writer_write_element_string(writer, config_element_name, pattern);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
+		writer.write(config_element_name, pattern);
 	}
 
 	/* Enabled */
-	ret = config_writer_write_element_bool(writer, config_element_enabled, is_enabled);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_enabled, is_enabled);
 
 	/* Type is TRACEPOINT */
-	ret = config_writer_write_element_string(
-		writer, config_element_type, config_event_type_tracepoint);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_type, config_event_type_tracepoint);
 
 	/* Filter */
 	status = lttng_event_rule_kernel_tracepoint_get_filter(event_rule, &filter_expr);
 	if (status == LTTNG_EVENT_RULE_STATUS_OK && filter_expr) {
-		ret = config_writer_write_element_string(
-			writer, config_element_filter, filter_expr);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
+		writer.write(config_element_filter, filter_expr);
 	}
 
 	/* Close event element */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	ret = LTTNG_OK;
-end:
-	return ret;
+	writer.close_element();
 }
 
 /*
  * Save a kernel syscall event from an event rule.
  */
-int save_kernel_syscall_event_rule(config_writer *writer,
-				   const lttng_event_rule *event_rule,
-				   bool is_enabled)
+void save_kernel_syscall_event_rule(session_config::writer& writer,
+				    const lttng_event_rule *event_rule,
+				    bool is_enabled)
 {
-	int ret;
 	const char *pattern = nullptr;
 	const char *filter_expr = nullptr;
-	lttng_event_rule_status status;
 
-	ret = config_writer_open_element(writer, config_element_event);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.open_element(config_element_event);
 
 	/* Name/pattern */
-	status = lttng_event_rule_kernel_syscall_get_name_pattern(event_rule, &pattern);
+	auto status = lttng_event_rule_kernel_syscall_get_name_pattern(event_rule, &pattern);
 	if (status == LTTNG_EVENT_RULE_STATUS_OK && pattern && pattern[0] != '\0') {
-		ret = config_writer_write_element_string(writer, config_element_name, pattern);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
+		writer.write(config_element_name, pattern);
 	}
 
 	/* Enabled */
-	ret = config_writer_write_element_bool(writer, config_element_enabled, is_enabled);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_enabled, is_enabled);
 
 	/* Type is SYSCALL */
-	ret = config_writer_write_element_string(
-		writer, config_element_type, config_event_type_syscall);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_type, config_event_type_syscall);
 
 	/* Filter */
 	status = lttng_event_rule_kernel_syscall_get_filter(event_rule, &filter_expr);
 	if (status == LTTNG_EVENT_RULE_STATUS_OK && filter_expr) {
-		ret = config_writer_write_element_string(
-			writer, config_element_filter, filter_expr);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
+		writer.write(config_element_filter, filter_expr);
 	}
 
 	/* Close event element */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	ret = LTTNG_OK;
-end:
-	return ret;
+	writer.close_element();
 }
 
 /*
  * Save a kernel kprobe event from an event rule.
  */
-int save_kernel_kprobe_event_rule(config_writer *writer,
-				  const lttng_event_rule *event_rule,
-				  bool is_enabled)
+void save_kernel_kprobe_event_rule(session_config::writer& writer,
+				   const lttng_event_rule *event_rule,
+				   bool is_enabled)
 {
-	int ret;
 	const char *event_name = nullptr;
 	const lttng_kernel_probe_location *location = nullptr;
-	lttng_event_rule_status status;
 
-	ret = config_writer_open_element(writer, config_element_event);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.open_element(config_element_event);
 
 	/* Event name */
-	status = lttng_event_rule_kernel_kprobe_get_event_name(event_rule, &event_name);
+	auto status = lttng_event_rule_kernel_kprobe_get_event_name(event_rule, &event_name);
 	if (status == LTTNG_EVENT_RULE_STATUS_OK && event_name && event_name[0] != '\0') {
-		ret = config_writer_write_element_string(writer, config_element_name, event_name);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
+		writer.write(config_element_name, event_name);
 	}
 
 	/* Enabled */
-	ret = config_writer_write_element_bool(writer, config_element_enabled, is_enabled);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_enabled, is_enabled);
 
 	/* Type is PROBE (kprobe) */
-	ret = config_writer_write_element_string(
-		writer, config_element_type, config_event_type_probe);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_type, config_event_type_probe);
 
 	/* Probe attributes */
 	status = lttng_event_rule_kernel_kprobe_get_location(event_rule, &location);
 	if (status == LTTNG_EVENT_RULE_STATUS_OK && location) {
-		ret = config_writer_open_element(writer, config_element_attributes);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
-
-		ret = config_writer_open_element(writer, config_element_probe_attributes);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
+		writer.open_element(config_element_attributes);
+		writer.open_element(config_element_probe_attributes);
 
 		const auto loc_type = lttng_kernel_probe_location_get_type(location);
 		if (loc_type == LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS) {
 			std::uint64_t addr = 0;
 			lttng_kernel_probe_location_address_get_address(location, &addr);
-			ret = config_writer_write_element_unsigned_int(
-				writer, config_element_address, addr);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
+			writer.write(config_element_address, addr);
 		} else if (loc_type == LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET) {
 			const char *symbol = lttng_kernel_probe_location_symbol_get_name(location);
 			std::uint64_t offset = 0;
 			lttng_kernel_probe_location_symbol_get_offset(location, &offset);
 
 			if (symbol) {
-				ret = config_writer_write_element_string(
-					writer, config_element_symbol_name, symbol);
-				if (ret) {
-					ret = LTTNG_ERR_SAVE_IO_FAIL;
-					goto end;
-				}
+				writer.write(config_element_symbol_name, symbol);
 			}
 			if (offset != 0) {
-				ret = config_writer_write_element_unsigned_int(
-					writer, config_element_offset, offset);
-				if (ret) {
-					ret = LTTNG_ERR_SAVE_IO_FAIL;
-					goto end;
-				}
+				writer.write(config_element_offset, offset);
 			}
 		}
 
 		/* Close probe_attributes */
-		ret = config_writer_close_element(writer);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
-
+		writer.close_element();
 		/* Close attributes */
-		ret = config_writer_close_element(writer);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
+		writer.close_element();
 	}
 
 	/* Close event element */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	ret = LTTNG_OK;
-end:
-	return ret;
+	writer.close_element();
 }
 
 /*
  * Save a kernel uprobe event from an event rule.
  */
-int save_kernel_uprobe_event_rule(config_writer *writer,
-				  const lttng_event_rule *event_rule,
-				  bool is_enabled)
+void save_kernel_uprobe_event_rule(session_config::writer& writer,
+				   const lttng_event_rule *event_rule,
+				   bool is_enabled)
 {
-	int ret;
 	const char *event_name = nullptr;
 	const lttng_userspace_probe_location *location = nullptr;
-	lttng_event_rule_status status;
 
-	ret = config_writer_open_element(writer, config_element_event);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.open_element(config_element_event);
 
 	/* Event name */
-	status = lttng_event_rule_kernel_uprobe_get_event_name(event_rule, &event_name);
+	auto status = lttng_event_rule_kernel_uprobe_get_event_name(event_rule, &event_name);
 	if (status == LTTNG_EVENT_RULE_STATUS_OK && event_name && event_name[0] != '\0') {
-		ret = config_writer_write_element_string(writer, config_element_name, event_name);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
+		writer.write(config_element_name, event_name);
 	}
 
 	/* Enabled */
-	ret = config_writer_write_element_bool(writer, config_element_enabled, is_enabled);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_enabled, is_enabled);
 
 	/* Type is USERSPACE_PROBE */
-	ret = config_writer_write_element_string(
-		writer, config_element_type, config_event_type_userspace_probe);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_type, config_event_type_userspace_probe);
 
 	/* Userspace probe attributes */
 	status = lttng_event_rule_kernel_uprobe_get_location(event_rule, &location);
 	if (status == LTTNG_EVENT_RULE_STATUS_OK && location) {
 		const auto loc_type = lttng_userspace_probe_location_get_type(location);
 
-		ret = config_writer_open_element(writer, config_element_attributes);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
+		writer.open_element(config_element_attributes);
 
 		if (loc_type == LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION) {
-			const char *binary_path = nullptr;
-			const char *function_name = nullptr;
 			const auto *lookup_method =
 				lttng_userspace_probe_location_get_lookup_method(location);
 			const auto lookup_type =
 				lttng_userspace_probe_location_lookup_method_get_type(
 					lookup_method);
 
-			binary_path =
+			const char *binary_path =
 				lttng_userspace_probe_location_function_get_binary_path(location);
-			function_name =
+			const char *function_name =
 				lttng_userspace_probe_location_function_get_function_name(location);
 
-			ret = config_writer_open_element(
-				writer, config_element_userspace_probe_function_attributes);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
+			writer.open_element(config_element_userspace_probe_function_attributes);
 
 			const char *lookup_method_str;
 			switch (lookup_type) {
@@ -1265,366 +908,198 @@ int save_kernel_uprobe_event_rule(config_writer *writer,
 				break;
 			}
 
-			ret = config_writer_write_element_string(
-				writer, config_element_userspace_probe_lookup, lookup_method_str);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
+			writer.write(config_element_userspace_probe_lookup, lookup_method_str);
 
 			if (binary_path) {
-				ret = config_writer_write_element_string(
-					writer,
-					config_element_userspace_probe_location_binary_path,
-					binary_path);
-				if (ret) {
-					ret = LTTNG_ERR_SAVE_IO_FAIL;
-					goto end;
-				}
+				writer.write(config_element_userspace_probe_location_binary_path,
+					     binary_path);
 			}
 
 			if (function_name) {
-				ret = config_writer_write_element_string(
-					writer,
+				writer.write(
 					config_element_userspace_probe_function_location_function_name,
 					function_name);
-				if (ret) {
-					ret = LTTNG_ERR_SAVE_IO_FAIL;
-					goto end;
-				}
 			}
 
 			/* Close function attributes */
-			ret = config_writer_close_element(writer);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
+			writer.close_element();
 		} else if (loc_type == LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT) {
-			const char *binary_path = nullptr;
-			const char *probe_name = nullptr;
-			const char *provider_name = nullptr;
-
-			binary_path =
+			const char *binary_path =
 				lttng_userspace_probe_location_tracepoint_get_binary_path(location);
-			probe_name =
+			const char *probe_name =
 				lttng_userspace_probe_location_tracepoint_get_probe_name(location);
-			provider_name = lttng_userspace_probe_location_tracepoint_get_provider_name(
-				location);
+			const char *provider_name =
+				lttng_userspace_probe_location_tracepoint_get_provider_name(
+					location);
 
-			ret = config_writer_open_element(
-				writer, config_element_userspace_probe_tracepoint_attributes);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
+			writer.open_element(config_element_userspace_probe_tracepoint_attributes);
 
-			const char *lookup_method_str =
-				config_element_userspace_probe_lookup_tracepoint_sdt;
-
-			ret = config_writer_write_element_string(
-				writer, config_element_userspace_probe_lookup, lookup_method_str);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
+			writer.write(config_element_userspace_probe_lookup,
+				     config_element_userspace_probe_lookup_tracepoint_sdt);
 
 			if (binary_path) {
-				ret = config_writer_write_element_string(
-					writer,
-					config_element_userspace_probe_location_binary_path,
-					binary_path);
-				if (ret) {
-					ret = LTTNG_ERR_SAVE_IO_FAIL;
-					goto end;
-				}
+				writer.write(config_element_userspace_probe_location_binary_path,
+					     binary_path);
 			}
 
 			if (provider_name) {
-				ret = config_writer_write_element_string(
-					writer,
+				writer.write(
 					config_element_userspace_probe_tracepoint_location_provider_name,
 					provider_name);
-				if (ret) {
-					ret = LTTNG_ERR_SAVE_IO_FAIL;
-					goto end;
-				}
 			}
 
 			if (probe_name) {
-				ret = config_writer_write_element_string(
-					writer,
+				writer.write(
 					config_element_userspace_probe_tracepoint_location_probe_name,
 					probe_name);
-				if (ret) {
-					ret = LTTNG_ERR_SAVE_IO_FAIL;
-					goto end;
-				}
 			}
 
 			/* Close tracepoint attributes */
-			ret = config_writer_close_element(writer);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
+			writer.close_element();
 		}
 
 		/* Close attributes */
-		ret = config_writer_close_element(writer);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
+		writer.close_element();
 	}
 
 	/* Close event element */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	ret = LTTNG_OK;
-end:
-	return ret;
+	writer.close_element();
 }
 
 /*
  * Save a single event from an event_rule_configuration.
  */
-int save_event_from_event_rule(config_writer *writer,
-			       const ls::event_rule_configuration& event_config,
-			       lttng::domain_class /* domain_class */)
+void save_event_from_event_rule(session_config::writer& writer,
+				const ls::event_rule_configuration& event_config)
 {
 	const auto *event_rule = event_config.event_rule.get();
 	const auto event_rule_type = lttng_event_rule_get_type(event_rule);
 
 	switch (event_rule_type) {
 	case LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT:
-		return save_user_tracepoint_event_rule(writer, event_rule, event_config.is_enabled);
+		save_user_tracepoint_event_rule(writer, event_rule, event_config.is_enabled);
+		break;
 	case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
-		return save_jul_logging_event_rule(writer, event_rule, event_config.is_enabled);
+		save_jul_logging_event_rule(writer, event_rule, event_config.is_enabled);
+		break;
 	case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
-		return save_log4j_logging_event_rule(writer, event_rule, event_config.is_enabled);
+		save_log4j_logging_event_rule(writer, event_rule, event_config.is_enabled);
+		break;
 	case LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING:
-		return save_log4j2_logging_event_rule(writer, event_rule, event_config.is_enabled);
+		save_log4j2_logging_event_rule(writer, event_rule, event_config.is_enabled);
+		break;
 	case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
-		return save_python_logging_event_rule(writer, event_rule, event_config.is_enabled);
+		save_python_logging_event_rule(writer, event_rule, event_config.is_enabled);
+		break;
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT:
-		return save_kernel_tracepoint_event_rule(
-			writer, event_rule, event_config.is_enabled);
+		save_kernel_tracepoint_event_rule(writer, event_rule, event_config.is_enabled);
+		break;
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
-		return save_kernel_syscall_event_rule(writer, event_rule, event_config.is_enabled);
+		save_kernel_syscall_event_rule(writer, event_rule, event_config.is_enabled);
+		break;
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE:
-		return save_kernel_kprobe_event_rule(writer, event_rule, event_config.is_enabled);
+		save_kernel_kprobe_event_rule(writer, event_rule, event_config.is_enabled);
+		break;
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE:
-		return save_kernel_uprobe_event_rule(writer, event_rule, event_config.is_enabled);
+		save_kernel_uprobe_event_rule(writer, event_rule, event_config.is_enabled);
+		break;
 	default:
-		ERR("Unsupported event rule type: %d", static_cast<int>(event_rule_type));
-		return LTTNG_ERR_INVALID;
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(lttng::format(
+			"Unsupported event rule type: {}", static_cast<int>(event_rule_type)));
 	}
 }
 
 /*
  * Save all events from a recording_channel_configuration.
  */
-int save_events_from_config(config_writer *writer,
-			    const ls::recording_channel_configuration& channel_config,
-			    lttng::domain_class domain_class)
+void save_events_from_config(session_config::writer& writer,
+			     const ls::recording_channel_configuration& channel_config)
 {
-	int ret;
-
-	ret = config_writer_open_element(writer, config_element_events);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.open_element(config_element_events);
 
 	for (const auto& event_pair : channel_config.event_rules) {
 		const auto& event_config = *event_pair.second;
-		ret = save_event_from_event_rule(writer, event_config, domain_class);
-		if (ret != LTTNG_OK) {
-			goto end;
-		}
+		save_event_from_event_rule(writer, event_config);
 	}
 
 	/* Close events element */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	ret = LTTNG_OK;
-end:
-	return ret;
+	writer.close_element();
 }
 
 /*
  * Save a channel from a recording_channel_configuration.
  */
-int save_channel_from_config(config_writer *writer,
-			     const ls::recording_channel_configuration& channel_config,
-			     lttng::domain_class domain_class,
-			     std::uint64_t live_timer_interval)
+void save_channel_from_config(session_config::writer& writer,
+			      const ls::recording_channel_configuration& channel_config,
+			      lttng::domain_class domain_class,
+			      std::uint64_t live_timer_interval)
 {
-	int ret;
-
-	ret = config_writer_open_element(writer, config_element_channel);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.open_element(config_element_channel);
 
 	/* Channel name */
-	ret = config_writer_write_element_string(
-		writer, config_element_name, channel_config.name.c_str());
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_name, channel_config.name.c_str());
 
 	/* Enabled */
-	ret = config_writer_write_element_bool(
-		writer, config_element_enabled, channel_config.is_enabled);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_enabled, channel_config.is_enabled);
 
 	/* Channel attributes */
-	ret = save_channel_attributes_from_config(writer, channel_config, domain_class);
-	if (ret != LTTNG_OK) {
-		goto end;
-	}
+	save_channel_attributes_from_config(writer, channel_config, domain_class);
 
 	/* Tracefile size */
-	ret = config_writer_write_element_unsigned_int(
-		writer,
+	writer.write(
 		config_element_tracefile_size,
-		channel_config.trace_file_size_limit_bytes.value_or(0));
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+		static_cast<std::uint64_t>(channel_config.trace_file_size_limit_bytes.value_or(0)));
 
 	/* Tracefile count */
-	ret = config_writer_write_element_unsigned_int(
-		writer,
-		config_element_tracefile_count,
-		channel_config.trace_file_count_limit.value_or(0));
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_tracefile_count,
+		     static_cast<std::uint64_t>(channel_config.trace_file_count_limit.value_or(0)));
 
 	/* Live timer interval */
-	ret = config_writer_write_element_unsigned_int(
-		writer, config_element_live_timer_interval, live_timer_interval);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_live_timer_interval, live_timer_interval);
 
 	/* Events */
-	ret = save_events_from_config(writer, channel_config, domain_class);
-	if (ret != LTTNG_OK) {
-		goto end;
-	}
+	save_events_from_config(writer, channel_config);
 
 	/* Contexts */
-	ret = save_contexts_from_config(writer, channel_config);
-	if (ret != LTTNG_OK) {
-		goto end;
-	}
+	save_contexts_from_config(writer, channel_config);
 
 	/* Close channel element */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	ret = LTTNG_OK;
-end:
-	return ret;
+	writer.close_element();
 }
 
 /*
  * Save a single process ID tracker (pid or vpid) from the new domain tracker types.
- *
- * Returns LTTNG_OK on success, or a LTTNG_ERR_* code on error.
  */
 template <typename TrackerType>
-int save_process_id_tracker_from_domain(config_writer *writer,
-					const TrackerType& tracker,
-					const char *element_id_tracker,
-					const char *element_target_id)
+void save_process_id_tracker_from_domain(session_config::writer& writer,
+					 const TrackerType& tracker,
+					 lttng::c_string_view element_id_tracker,
+					 lttng::c_string_view element_target_id)
 {
-	int ret;
-
 	if (tracker.policy() == ls::tracking_policy::INCLUDE_ALL) {
 		/* Tracking all is the default, nothing to save. */
-		return LTTNG_OK;
+		return;
 	}
 
-	ret = config_writer_open_element(writer, element_id_tracker);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	ret = config_writer_open_element(writer, config_element_process_attr_values);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.open_element(element_id_tracker);
+	writer.open_element(config_element_process_attr_values);
 
 	if (tracker.policy() == ls::tracking_policy::INCLUDE_SET) {
 		for (const auto& value : tracker.inclusion_set()) {
-			ret = config_writer_open_element(writer, element_target_id);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
-
-			ret = config_writer_write_element_unsigned_int(
-				writer,
-				config_element_process_attr_id,
-				static_cast<unsigned int>(value));
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
-
+			writer.open_element(element_target_id);
+			writer.write(config_element_process_attr_id,
+				     static_cast<std::uint64_t>(value));
 			/* Close target_id element. */
-			ret = config_writer_close_element(writer);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
+			writer.close_element();
 		}
 	}
 	/* For EXCLUDE_ALL, we write an empty values element. */
 
 	/* Close values element. */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.close_element();
 
 	/* Close tracker element. */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	ret = LTTNG_OK;
-end:
-	return ret;
+	writer.close_element();
 }
 
 /*
@@ -1632,83 +1107,43 @@ end:
  *
  * These trackers store resolved_process_attr_value which can have both a numeric ID
  * and an optional original name. We prefer to save the name if available.
- *
- * Returns LTTNG_OK on success, or a LTTNG_ERR_* code on error.
  */
 template <typename TrackerType>
-int save_resolved_id_tracker_from_domain(config_writer *writer,
-					 const TrackerType& tracker,
-					 const char *element_id_tracker,
-					 const char *element_target_id)
+void save_resolved_id_tracker_from_domain(session_config::writer& writer,
+					  const TrackerType& tracker,
+					  lttng::c_string_view element_id_tracker,
+					  lttng::c_string_view element_target_id)
 {
-	int ret;
-
 	if (tracker.policy() == ls::tracking_policy::INCLUDE_ALL) {
 		/* Tracking all is the default, nothing to save. */
-		return LTTNG_OK;
+		return;
 	}
 
-	ret = config_writer_open_element(writer, element_id_tracker);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	ret = config_writer_open_element(writer, config_element_process_attr_values);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.open_element(element_id_tracker);
+	writer.open_element(config_element_process_attr_values);
 
 	if (tracker.policy() == ls::tracking_policy::INCLUDE_SET) {
 		for (const auto& value : tracker.inclusion_set()) {
-			ret = config_writer_open_element(writer, element_target_id);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
+			writer.open_element(element_target_id);
 
 			if (value.has_name()) {
-				ret = config_writer_write_element_string(
-					writer, config_element_name, value.name().c_str());
+				writer.write(config_element_name, value.name().c_str());
 			} else {
-				ret = config_writer_write_element_unsigned_int(
-					writer,
-					config_element_process_attr_id,
-					static_cast<unsigned int>(value.id()));
-			}
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
+				writer.write(config_element_process_attr_id,
+					     static_cast<std::uint64_t>(value.id()));
 			}
 
 			/* Close target_id element. */
-			ret = config_writer_close_element(writer);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
+			writer.close_element();
 		}
 	}
 	/* For EXCLUDE_ALL, we write an empty values element. */
 
 	/* Close values element. */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.close_element();
 
 	/* Close tracker element. */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	ret = LTTNG_OK;
-end:
-	return ret;
+	writer.close_element();
 }
 
 /*
@@ -1718,106 +1153,64 @@ end:
  * The available trackers depend on the domain type:
  * - Kernel: pid, vpid, uid, vuid, gid, vgid
  * - User space: vpid, vuid, vgid
- *
- * Returns LTTNG_OK on success, or a LTTNG_ERR_* code on error.
  */
-int save_process_attr_trackers_from_domain(config_writer *writer, const ls::domain& domain)
+void save_process_attr_trackers_from_domain(session_config::writer& writer,
+					    const ls::domain& domain)
 {
-	int ret;
-
-	ret = config_writer_open_element(writer, config_element_process_attr_trackers);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.open_element(config_element_process_attr_trackers);
 
 	if (domain.domain_class_ == lttng::domain_class::KERNEL_SPACE) {
 		/* Kernel domain: save all 6 trackers. */
-		ret = save_process_id_tracker_from_domain(writer,
-							  domain.process_id_tracker(),
-							  config_element_process_attr_tracker_pid,
-							  config_element_process_attr_pid_value);
-		if (ret != LTTNG_OK) {
-			goto end;
-		}
+		save_process_id_tracker_from_domain(writer,
+						    domain.process_id_tracker(),
+						    config_element_process_attr_tracker_pid,
+						    config_element_process_attr_pid_value);
 
-		ret = save_process_id_tracker_from_domain(writer,
-							  domain.virtual_process_id_tracker(),
-							  config_element_process_attr_tracker_vpid,
-							  config_element_process_attr_vpid_value);
-		if (ret != LTTNG_OK) {
-			goto end;
-		}
+		save_process_id_tracker_from_domain(writer,
+						    domain.virtual_process_id_tracker(),
+						    config_element_process_attr_tracker_vpid,
+						    config_element_process_attr_vpid_value);
 
-		ret = save_resolved_id_tracker_from_domain(writer,
-							   domain.user_id_tracker(),
-							   config_element_process_attr_tracker_uid,
-							   config_element_process_attr_uid_value);
-		if (ret != LTTNG_OK) {
-			goto end;
-		}
+		save_resolved_id_tracker_from_domain(writer,
+						     domain.user_id_tracker(),
+						     config_element_process_attr_tracker_uid,
+						     config_element_process_attr_uid_value);
 
-		ret = save_resolved_id_tracker_from_domain(writer,
-							   domain.virtual_user_id_tracker(),
-							   config_element_process_attr_tracker_vuid,
-							   config_element_process_attr_vuid_value);
-		if (ret != LTTNG_OK) {
-			goto end;
-		}
+		save_resolved_id_tracker_from_domain(writer,
+						     domain.virtual_user_id_tracker(),
+						     config_element_process_attr_tracker_vuid,
+						     config_element_process_attr_vuid_value);
 
-		ret = save_resolved_id_tracker_from_domain(writer,
-							   domain.group_id_tracker(),
-							   config_element_process_attr_tracker_gid,
-							   config_element_process_attr_gid_value);
-		if (ret != LTTNG_OK) {
-			goto end;
-		}
+		save_resolved_id_tracker_from_domain(writer,
+						     domain.group_id_tracker(),
+						     config_element_process_attr_tracker_gid,
+						     config_element_process_attr_gid_value);
 
-		ret = save_resolved_id_tracker_from_domain(writer,
-							   domain.virtual_group_id_tracker(),
-							   config_element_process_attr_tracker_vgid,
-							   config_element_process_attr_vgid_value);
-		if (ret != LTTNG_OK) {
-			goto end;
-		}
+		save_resolved_id_tracker_from_domain(writer,
+						     domain.virtual_group_id_tracker(),
+						     config_element_process_attr_tracker_vgid,
+						     config_element_process_attr_vgid_value);
 	} else if (domain.domain_class_ == lttng::domain_class::USER_SPACE) {
 		/* UST domain: save 3 virtual trackers. */
-		ret = save_process_id_tracker_from_domain(writer,
-							  domain.virtual_process_id_tracker(),
-							  config_element_process_attr_tracker_vpid,
-							  config_element_process_attr_vpid_value);
-		if (ret != LTTNG_OK) {
-			goto end;
-		}
+		save_process_id_tracker_from_domain(writer,
+						    domain.virtual_process_id_tracker(),
+						    config_element_process_attr_tracker_vpid,
+						    config_element_process_attr_vpid_value);
 
-		ret = save_resolved_id_tracker_from_domain(writer,
-							   domain.virtual_user_id_tracker(),
-							   config_element_process_attr_tracker_vuid,
-							   config_element_process_attr_vuid_value);
-		if (ret != LTTNG_OK) {
-			goto end;
-		}
+		save_resolved_id_tracker_from_domain(writer,
+						     domain.virtual_user_id_tracker(),
+						     config_element_process_attr_tracker_vuid,
+						     config_element_process_attr_vuid_value);
 
-		ret = save_resolved_id_tracker_from_domain(writer,
-							   domain.virtual_group_id_tracker(),
-							   config_element_process_attr_tracker_vgid,
-							   config_element_process_attr_vgid_value);
-		if (ret != LTTNG_OK) {
-			goto end;
-		}
+		save_resolved_id_tracker_from_domain(writer,
+						     domain.virtual_group_id_tracker(),
+						     config_element_process_attr_tracker_vgid,
+						     config_element_process_attr_vgid_value);
 	}
 	/* Agent domains don't have process attribute trackers. */
 
 	/* Close process_attr_trackers element. */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	ret = LTTNG_OK;
-end:
-	return ret;
+	writer.close_element();
 }
 
 /*
@@ -1862,54 +1255,31 @@ bool is_internal_channel(const lttng::c_string_view channel_name) noexcept
 /*
  * Save a domain from an lttng::sessiond::domain using the new configuration types.
  */
-int save_domain_from_config(config_writer *writer,
-			    const ls::domain& domain,
-			    const ltt_session& session,
-			    std::uint64_t live_timer_interval)
+void save_domain_from_config(session_config::writer& writer,
+			     const ls::domain& domain,
+			     const ltt_session& session,
+			     std::uint64_t live_timer_interval)
 {
-	int ret;
-	const char *domain_type_str = nullptr;
-	const char *buffer_type_str = nullptr;
-
-	ret = config_writer_open_element(writer, config_element_domain);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.open_element(config_element_domain);
 
 	/* Domain type */
-	domain_type_str = get_domain_type_config_string(domain.domain_class_);
+	const auto *domain_type_str = get_domain_type_config_string(domain.domain_class_);
 	if (!domain_type_str) {
-		ret = LTTNG_ERR_INVALID;
-		goto end;
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR("Invalid domain class");
 	}
 
-	ret = config_writer_write_element_string(writer, config_element_type, domain_type_str);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_type, domain_type_str);
 
 	/* Buffer type */
-	buffer_type_str = get_buffer_type_string_for_domain(domain, session);
+	const auto *buffer_type_str = get_buffer_type_string_for_domain(domain, session);
 	if (!buffer_type_str) {
-		ret = LTTNG_ERR_INVALID;
-		goto end;
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR("Invalid buffer type");
 	}
 
-	ret = config_writer_write_element_string(
-		writer, config_element_buffer_type, buffer_type_str);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_buffer_type, buffer_type_str);
 
 	/* Channels */
-	ret = config_writer_open_element(writer, config_element_channels);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.open_element(config_element_channels);
 
 	for (const auto& channel_config : domain.recording_channels()) {
 		if (is_internal_channel(channel_config.name)) {
@@ -1917,35 +1287,17 @@ int save_domain_from_config(config_writer *writer,
 			continue;
 		}
 
-		ret = save_channel_from_config(
+		save_channel_from_config(
 			writer, channel_config, domain.domain_class_, live_timer_interval);
-		if (ret != LTTNG_OK) {
-			goto end;
-		}
 	}
 
 	/* Close channels element */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.close_element();
 
-	ret = save_process_attr_trackers_from_domain(writer, domain);
-	if (ret != LTTNG_OK) {
-		goto end;
-	}
+	save_process_attr_trackers_from_domain(writer, domain);
 
 	/* Close domain element */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	ret = LTTNG_OK;
-end:
-	return ret;
+	writer.close_element();
 }
 
 /*
@@ -1973,33 +1325,17 @@ const char *get_agent_domain_default_channel_name(lttng::domain_class domain_cla
  * Agent domains store event rules directly without channels, so we iterate
  * over the agent_domain's event_rules() instead of a channel's event_rules.
  */
-int save_events_from_agent_domain(config_writer *writer, const ls::agent_domain& agent_domain)
+void save_events_from_agent_domain(session_config::writer& writer,
+				   const ls::agent_domain& agent_domain)
 {
-	int ret;
-
-	ret = config_writer_open_element(writer, config_element_events);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.open_element(config_element_events);
 
 	for (const auto& event_config : agent_domain.event_rules()) {
-		ret = save_event_from_event_rule(writer, event_config, agent_domain.domain_class_);
-		if (ret != LTTNG_OK) {
-			goto end;
-		}
+		save_event_from_event_rule(writer, event_config);
 	}
 
 	/* Close events element */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	ret = LTTNG_OK;
-end:
-	return ret;
+	writer.close_element();
 }
 
 /*
@@ -2026,92 +1362,42 @@ get_agent_domain_default_channel(const ls::domain& user_space_domain,
  * - Event rules from the agent_domain
  * - Contexts from the underlying UST channel
  */
-int save_agent_channel_from_config(config_writer *writer,
-				   const ls::recording_channel_configuration& channel_config,
-				   const ls::agent_domain& agent_domain,
-				   std::uint64_t live_timer_interval)
+void save_agent_channel_from_config(session_config::writer& writer,
+				    const ls::recording_channel_configuration& channel_config,
+				    const ls::agent_domain& agent_domain,
+				    std::uint64_t live_timer_interval)
 {
-	int ret;
-
-	ret = config_writer_open_element(writer, config_element_channel);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.open_element(config_element_channel);
 
 	/* Channel name */
-	ret = config_writer_write_element_string(
-		writer, config_element_name, channel_config.name.c_str());
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_name, channel_config.name.c_str());
 
 	/* Enabled */
-	ret = config_writer_write_element_bool(
-		writer, config_element_enabled, channel_config.is_enabled);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_enabled, channel_config.is_enabled);
 
 	/* Channel attributes */
-	ret = save_channel_attributes_from_config(
-		writer, channel_config, agent_domain.domain_class_);
-	if (ret != LTTNG_OK) {
-		goto end;
-	}
+	save_channel_attributes_from_config(writer, channel_config, agent_domain.domain_class_);
 
 	/* Tracefile size */
-	ret = config_writer_write_element_unsigned_int(
-		writer,
+	writer.write(
 		config_element_tracefile_size,
-		channel_config.trace_file_size_limit_bytes.value_or(0));
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+		static_cast<std::uint64_t>(channel_config.trace_file_size_limit_bytes.value_or(0)));
 
 	/* Tracefile count */
-	ret = config_writer_write_element_unsigned_int(
-		writer,
-		config_element_tracefile_count,
-		channel_config.trace_file_count_limit.value_or(0));
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_tracefile_count,
+		     static_cast<std::uint64_t>(channel_config.trace_file_count_limit.value_or(0)));
 
 	/* Live timer interval */
-	ret = config_writer_write_element_unsigned_int(
-		writer, config_element_live_timer_interval, live_timer_interval);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_live_timer_interval, live_timer_interval);
 
 	/* Events from agent domain (not from channel config) */
-	ret = save_events_from_agent_domain(writer, agent_domain);
-	if (ret != LTTNG_OK) {
-		goto end;
-	}
+	save_events_from_agent_domain(writer, agent_domain);
 
 	/* Contexts from channel config */
-	ret = save_contexts_from_config(writer, channel_config);
-	if (ret != LTTNG_OK) {
-		goto end;
-	}
+	save_contexts_from_config(writer, channel_config);
 
 	/* Close channel element */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	ret = LTTNG_OK;
-end:
-	return ret;
+	writer.close_element();
 }
 
 /*
@@ -2121,36 +1407,24 @@ end:
  * channel. The channel attributes come from the underlying UST channel in the
  * user_space_domain, while the event rules come from the agent_domain itself.
  */
-int save_agent_domain_from_config(config_writer *writer,
-				  const ls::agent_domain& agent_domain,
-				  const ls::recording_channel_configuration *default_channel,
-				  const ltt_session& session,
-				  std::uint64_t live_timer_interval)
+void save_agent_domain_from_config(session_config::writer& writer,
+				   const ls::agent_domain& agent_domain,
+				   const ls::recording_channel_configuration *default_channel,
+				   const ltt_session& session,
+				   std::uint64_t live_timer_interval)
 {
-	int ret;
-	const char *domain_type_str = nullptr;
-	const char *buffer_type_str = nullptr;
-
-	ret = config_writer_open_element(writer, config_element_domain);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.open_element(config_element_domain);
 
 	/* Domain type */
-	domain_type_str = get_domain_type_config_string(agent_domain.domain_class_);
+	const auto *domain_type_str = get_domain_type_config_string(agent_domain.domain_class_);
 	if (!domain_type_str) {
-		ret = LTTNG_ERR_INVALID;
-		goto end;
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR("Invalid agent domain class");
 	}
 
-	ret = config_writer_write_element_string(writer, config_element_type, domain_type_str);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_type, domain_type_str);
 
 	/* Buffer type - get from ust_session */
+	const char *buffer_type_str = nullptr;
 	if (session.ust_session) {
 		switch (session.ust_session->buffer_type) {
 		case LTTNG_BUFFER_PER_PID:
@@ -2170,88 +1444,47 @@ int save_agent_domain_from_config(config_writer *writer,
 		buffer_type_str = config_buffer_type_per_uid;
 	}
 
-	ret = config_writer_write_element_string(
-		writer, config_element_buffer_type, buffer_type_str);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_buffer_type, buffer_type_str);
 
 	/* Channels */
-	ret = config_writer_open_element(writer, config_element_channels);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.open_element(config_element_channels);
 
 	/*
 	 * Save the agent channel if it exists in user_space_domain.
 	 * If it doesn't exist, we save an empty channels element.
 	 */
 	if (default_channel) {
-		ret = save_agent_channel_from_config(
+		save_agent_channel_from_config(
 			writer, *default_channel, agent_domain, live_timer_interval);
-		if (ret != LTTNG_OK) {
-			goto end;
-		}
 	}
 
 	/* Close channels element */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.close_element();
 
 	/* Close domain element */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	ret = LTTNG_OK;
-end:
-	return ret;
+	writer.close_element();
 }
 
-} /* anonymous namespace */
-
-/* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static int save_domains(struct config_writer *writer, const ltt_session::locked_ref& session)
+void save_domains(session_config::writer& writer, const ltt_session::locked_ref& session)
 {
-	int ret = LTTNG_OK;
-
-	LTTNG_ASSERT(writer);
-
 	if (!session->kernel_session && !session->ust_session) {
-		goto end;
+		return;
 	}
 
-	ret = config_writer_open_element(writer, config_element_domains);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.open_element(config_element_domains);
 
 	if (session->kernel_session) {
 		const std::uint64_t live_timer_interval = session->live_timer;
 
-		ret = save_domain_from_config(
+		save_domain_from_config(
 			writer, session->kernel_space_domain, *session, live_timer_interval);
-		if (ret != LTTNG_OK) {
-			goto end;
-		}
 	}
 
 	if (session->ust_session) {
 		const std::uint64_t live_timer_interval = session->live_timer;
 
-		ret = save_domain_from_config(
+		save_domain_from_config(
 			writer, session->user_space_domain, *session, live_timer_interval);
-		if (ret != LTTNG_OK) {
-			goto end;
-		}
 
 		/*
 		 * Look up the default channels for each agent domain in the user_space_domain.
@@ -2265,286 +1498,130 @@ static int save_domains(struct config_writer *writer, const ltt_session::locked_
 		const auto python_channel = get_agent_domain_default_channel(
 			session->user_space_domain, lttng::domain_class::PYTHON_LOGGING);
 
-		ret = save_agent_domain_from_config(
+		save_agent_domain_from_config(
 			writer, session->jul_domain, jul_channel, *session, live_timer_interval);
-		if (ret != LTTNG_OK) {
-			goto end;
-		}
 
-		ret = save_agent_domain_from_config(writer,
-						    session->log4j_domain,
-						    log4j_channel,
-						    *session,
-						    live_timer_interval);
-		if (ret != LTTNG_OK) {
-			goto end;
-		}
+		save_agent_domain_from_config(writer,
+					      session->log4j_domain,
+					      log4j_channel,
+					      *session,
+					      live_timer_interval);
 
-		ret = save_agent_domain_from_config(writer,
-						    session->log4j2_domain,
-						    log4j2_channel,
-						    *session,
-						    live_timer_interval);
-		if (ret != LTTNG_OK) {
-			goto end;
-		}
+		save_agent_domain_from_config(writer,
+					      session->log4j2_domain,
+					      log4j2_channel,
+					      *session,
+					      live_timer_interval);
 
-		ret = save_agent_domain_from_config(writer,
-						    session->python_domain,
-						    python_channel,
-						    *session,
-						    live_timer_interval);
-		if (ret != LTTNG_OK) {
-			goto end;
-		}
+		save_agent_domain_from_config(writer,
+					      session->python_domain,
+					      python_channel,
+					      *session,
+					      live_timer_interval);
 	}
 
 	/* /domains */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	ret = LTTNG_OK;
-end:
-	return ret;
+	writer.close_element();
 }
 
-/* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static int save_consumer_output(struct config_writer *writer, struct consumer_output *output)
+void save_consumer_output(session_config::writer& writer, struct consumer_output *output)
 {
-	int ret;
-
-	LTTNG_ASSERT(writer);
 	LTTNG_ASSERT(output);
 
-	ret = config_writer_open_element(writer, config_element_consumer_output);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	ret = config_writer_write_element_bool(writer, config_element_enabled, output->enabled);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	ret = config_writer_open_element(writer, config_element_destination);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.open_element(config_element_consumer_output);
+	writer.write(config_element_enabled, output->enabled);
+	writer.open_element(config_element_destination);
 
 	switch (output->type) {
 	case CONSUMER_DST_LOCAL:
-		ret = config_writer_write_element_string(
-			writer, config_element_path, output->dst.session_root_path);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
+		writer.write(config_element_path, output->dst.session_root_path);
 		break;
 	case CONSUMER_DST_NET:
 	{
-		char *uri;
-
-		uri = calloc<char>(PATH_MAX);
-		if (!uri) {
-			ret = LTTNG_ERR_NOMEM;
-			goto end;
+		if (!output->dst.net.control_isset) {
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR("Missing control URI");
+		}
+		if (!output->dst.net.data_isset) {
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR("Missing data URI");
 		}
 
-		ret = config_writer_open_element(writer, config_element_net_output);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end_net_output;
+		std::vector<char> uri(PATH_MAX);
+
+		writer.open_element(config_element_net_output);
+
+		if (uri_to_str_url(&output->dst.net.control, uri.data(), PATH_MAX) < 0) {
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR("Failed to convert control URI");
 		}
+		writer.write(config_element_control_uri, uri.data());
 
-		if (output->dst.net.control_isset && output->dst.net.data_isset) {
-			ret = uri_to_str_url(&output->dst.net.control, uri, PATH_MAX);
-			if (ret < 0) {
-				ret = LTTNG_ERR_INVALID;
-				goto end_net_output;
-			}
-
-			ret = config_writer_write_element_string(
-				writer, config_element_control_uri, uri);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end_net_output;
-			}
-
-			ret = uri_to_str_url(&output->dst.net.data, uri, PATH_MAX);
-			if (ret < 0) {
-				ret = LTTNG_ERR_INVALID;
-				goto end_net_output;
-			}
-
-			ret = config_writer_write_element_string(
-				writer, config_element_data_uri, uri);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end_net_output;
-			}
-			ret = LTTNG_OK;
-		end_net_output:
-			free(uri);
-			if (ret != LTTNG_OK) {
-				goto end;
-			}
-		} else {
-			ret = !output->dst.net.control_isset ? LTTNG_ERR_URL_CTRL_MISS :
-							       LTTNG_ERR_URL_DATA_MISS;
-			free(uri);
-			goto end;
+		if (uri_to_str_url(&output->dst.net.data, uri.data(), PATH_MAX) < 0) {
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR("Failed to convert data URI");
 		}
+		writer.write(config_element_data_uri, uri.data());
 
-		ret = config_writer_close_element(writer);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
+		/* /net_output */
+		writer.close_element();
 		break;
 	}
 	default:
-		ERR("Unsupported consumer output type.");
-		ret = LTTNG_ERR_INVALID;
-		goto end;
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR("Unsupported consumer output type");
 	}
 
 	/* /destination */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.close_element();
 
 	/* /consumer_output */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	ret = LTTNG_OK;
-end:
-	return ret;
+	writer.close_element();
 }
 
-/* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static int save_snapshot_outputs(struct config_writer *writer, struct snapshot *snapshot)
+void save_snapshot_outputs(session_config::writer& writer, struct snapshot *snapshot)
 {
-	LTTNG_ASSERT(writer);
 	LTTNG_ASSERT(snapshot);
 
-	int ret = config_writer_open_element(writer, config_element_snapshot_outputs);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.open_element(config_element_snapshot_outputs);
 
 	for (auto *output : lttng::urcu::lfht_iteration_adapter<snapshot_output,
 								decltype(snapshot_output::node),
 								&snapshot_output::node>(
 		     *snapshot->output_ht->ht)) {
-		ret = config_writer_open_element(writer, config_element_output);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end_unlock;
-		}
-
-		ret = config_writer_write_element_string(writer, config_element_name, output->name);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end_unlock;
-		}
-
-		ret = config_writer_write_element_unsigned_int(
-			writer, config_element_max_size, output->max_size);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end_unlock;
-		}
-
-		ret = save_consumer_output(writer, output->consumer);
-		if (ret != LTTNG_OK) {
-			goto end_unlock;
-		}
-
+		writer.open_element(config_element_output);
+		writer.write(config_element_name, output->name);
+		writer.write(config_element_max_size, static_cast<std::uint64_t>(output->max_size));
+		save_consumer_output(writer, output->consumer);
 		/* /output */
-		ret = config_writer_close_element(writer);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end_unlock;
-		}
+		writer.close_element();
 	}
 
 	/* /snapshot_outputs */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	ret = LTTNG_OK;
-end:
-	return ret;
-end_unlock:
-	return ret;
+	writer.close_element();
 }
 
-/* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static int save_session_output(struct config_writer *writer, const ltt_session::locked_ref& session)
+void save_session_output(session_config::writer& writer, const ltt_session::locked_ref& session)
 {
-	int ret;
-
-	LTTNG_ASSERT(writer);
-
 	if ((session->snapshot_mode && session->snapshot.nb_output == 0) ||
 	    (!session->snapshot_mode && !session->consumer)) {
 		/* Session is in no output mode */
-		ret = LTTNG_OK;
-		goto end;
+		return;
 	}
 
-	ret = config_writer_open_element(writer, config_element_output);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.open_element(config_element_output);
 
 	if (session->snapshot_mode) {
-		ret = save_snapshot_outputs(writer, &session->snapshot);
-		if (ret != LTTNG_OK) {
-			goto end;
-		}
+		save_snapshot_outputs(writer, &session->snapshot);
 	} else {
 		if (session->consumer) {
-			ret = save_consumer_output(writer, session->consumer);
-			if (ret != LTTNG_OK) {
-				goto end;
-			}
+			save_consumer_output(writer, session->consumer);
 		}
 	}
 
 	/* /output */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-	ret = LTTNG_OK;
-end:
-	return ret;
+	writer.close_element();
 }
 
-static int save_session_rotation_schedule(struct config_writer *writer,
-					  enum lttng_rotation_schedule_type type,
-					  uint64_t value)
+void save_session_rotation_schedule(session_config::writer& writer,
+				    lttng_rotation_schedule_type type,
+				    uint64_t value)
 {
-	int ret = 0;
 	const char *element_name;
 	const char *value_name;
 
@@ -2558,62 +1635,32 @@ static int save_session_rotation_schedule(struct config_writer *writer,
 		value_name = config_element_rotation_schedule_size_threshold_bytes;
 		break;
 	default:
-		ret = -1;
-		goto end;
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR("Invalid rotation schedule type");
 	}
 
-	ret = config_writer_open_element(writer, element_name);
-	if (ret) {
-		goto end;
-	}
-
-	ret = config_writer_write_element_unsigned_int(writer, value_name, value);
-	if (ret) {
-		goto end;
-	}
-
+	writer.open_element(element_name);
+	writer.write(value_name, static_cast<std::uint64_t>(value));
 	/* Close schedule descriptor element. */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		goto end;
-	}
-end:
-	return ret;
+	writer.close_element();
 }
 
-static int save_session_rotation_schedules(struct config_writer *writer,
-					   const ltt_session::locked_ref& session)
+void save_session_rotation_schedules(session_config::writer& writer,
+				     const ltt_session::locked_ref& session)
 {
-	int ret;
+	writer.open_element(config_element_rotation_schedules);
 
-	ret = config_writer_open_element(writer, config_element_rotation_schedules);
-	if (ret) {
-		goto end;
-	}
 	if (session->rotate_timer_period) {
-		ret = save_session_rotation_schedule(writer,
-						     LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC,
-						     session->rotate_timer_period);
-		if (ret) {
-			goto close_schedules;
-		}
+		save_session_rotation_schedule(writer,
+					       LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC,
+					       session->rotate_timer_period);
 	}
 	if (session->rotate_size) {
-		ret = save_session_rotation_schedule(
+		save_session_rotation_schedule(
 			writer, LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD, session->rotate_size);
-		if (ret) {
-			goto close_schedules;
-		}
 	}
 
-close_schedules:
 	/* Close rotation schedules element. */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		goto end;
-	}
-end:
-	return ret;
+	writer.close_element();
 }
 
 /*
@@ -2621,14 +1668,12 @@ end:
  *
  * Return LTTNG_OK on success else a LTTNG_ERR* code.
  */
-static int save_session(const ltt_session::locked_ref& session,
-			struct lttng_save_session_attr *attr,
-			lttng_sock_cred *creds)
+int save_session(const ltt_session::locked_ref& session,
+		 lttng_save_session_attr *attr,
+		 lttng_sock_cred *creds)
 {
-	int ret, fd = -1;
 	char config_file_path[LTTNG_PATH_MAX];
 	size_t len;
-	struct config_writer *writer = nullptr;
 	size_t session_name_len;
 	const char *provided_path;
 	int file_open_flags = O_CREAT | O_WRONLY | O_TRUNC;
@@ -2640,8 +1685,7 @@ static int save_session(const ltt_session::locked_ref& session,
 	memset(config_file_path, 0, sizeof(config_file_path));
 
 	if (!session_access_ok(session, LTTNG_SOCK_GET_UID_CRED(creds)) || session->destroyed) {
-		ret = LTTNG_ERR_EPERM;
-		goto end;
+		return LTTNG_ERR_EPERM;
 	}
 
 	provided_path = lttng_save_session_attr_get_output_url(attr);
@@ -2649,27 +1693,23 @@ static int save_session(const ltt_session::locked_ref& session,
 		DBG3("Save session in provided path %s", provided_path);
 		len = strlen(provided_path);
 		if (len >= sizeof(config_file_path)) {
-			ret = LTTNG_ERR_SET_URL;
-			goto end;
+			return LTTNG_ERR_SET_URL;
 		}
 		strncpy(config_file_path, provided_path, sizeof(config_file_path));
 	} else {
-		ssize_t ret_len;
 		char *home_dir = utils_get_user_home_dir(LTTNG_SOCK_GET_UID_CRED(creds));
 		if (!home_dir) {
-			ret = LTTNG_ERR_SET_URL;
-			goto end;
+			return LTTNG_ERR_SET_URL;
 		}
 
-		ret_len = snprintf(config_file_path,
-				   sizeof(config_file_path),
-				   DEFAULT_SESSION_HOME_CONFIGPATH,
-				   home_dir);
+		const auto ret_len = snprintf(config_file_path,
+					      sizeof(config_file_path),
+					      DEFAULT_SESSION_HOME_CONFIGPATH,
+					      home_dir);
 		free(home_dir);
 		if (ret_len < 0) {
 			PERROR("snprintf save session");
-			ret = LTTNG_ERR_SET_URL;
-			goto end;
+			return LTTNG_ERR_SET_URL;
 		}
 		len = ret_len;
 	}
@@ -2680,17 +1720,14 @@ static int save_session(const ltt_session::locked_ref& session,
 	 */
 	if ((len + session_name_len + 2 + sizeof(DEFAULT_SESSION_CONFIG_FILE_EXTENSION)) >
 	    sizeof(config_file_path)) {
-		ret = LTTNG_ERR_SET_URL;
-		goto end;
+		return LTTNG_ERR_SET_URL;
 	}
 
-	ret = run_as_mkdir_recursive(config_file_path,
-				     S_IRWXU | S_IRWXG,
-				     LTTNG_SOCK_GET_UID_CRED(creds),
-				     LTTNG_SOCK_GET_GID_CRED(creds));
-	if (ret) {
-		ret = LTTNG_ERR_SET_URL;
-		goto end;
+	if (run_as_mkdir_recursive(config_file_path,
+				   S_IRWXU | S_IRWXG,
+				   LTTNG_SOCK_GET_UID_CRED(creds),
+				   LTTNG_SOCK_GET_GID_CRED(creds))) {
+		return LTTNG_ERR_SET_URL;
 	}
 
 	/*
@@ -2708,166 +1745,85 @@ static int save_session(const ltt_session::locked_ref& session,
 		file_open_flags |= O_EXCL;
 	}
 
-	fd = run_as_open(config_file_path,
-			 file_open_flags,
-			 S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP,
-			 LTTNG_SOCK_GET_UID_CRED(creds),
-			 LTTNG_SOCK_GET_GID_CRED(creds));
-	if (fd < 0) {
+	const int raw_fd = run_as_open(config_file_path,
+				       file_open_flags,
+				       S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP,
+				       LTTNG_SOCK_GET_UID_CRED(creds),
+				       LTTNG_SOCK_GET_GID_CRED(creds));
+	if (raw_fd < 0) {
 		PERROR("Could not create configuration file");
 		switch (errno) {
 		case EEXIST:
-			ret = LTTNG_ERR_SAVE_FILE_EXIST;
-			break;
+			return LTTNG_ERR_SAVE_FILE_EXIST;
 		case EACCES:
-			ret = LTTNG_ERR_EPERM;
-			break;
+			return LTTNG_ERR_EPERM;
 		default:
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			break;
+			return LTTNG_ERR_SAVE_IO_FAIL;
 		}
-		goto end;
 	}
 
-	writer = config_writer_create(fd, 1);
-	if (!writer) {
-		ret = LTTNG_ERR_NOMEM;
-		goto end;
-	}
+	/* Use scope_exit to ensure file cleanup on error. */
+	auto unlink_file_on_error = lttng::make_scope_exit([&config_file_path, raw_fd]() noexcept {
+		if (unlink(config_file_path)) {
+			PERROR("Unlinking XML session configuration.");
+		}
+	});
 
-	ret = config_writer_open_element(writer, config_element_sessions);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	/* Create the RAII writer which takes ownership of a dup'd fd. */
+	session_config::writer writer(lttng::file_descriptor(raw_fd), true);
 
-	ret = config_writer_open_element(writer, config_element_session);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
-
-	ret = config_writer_write_element_string(writer, config_element_name, session->name);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.open_element(config_element_sessions);
+	writer.open_element(config_element_session);
+	writer.write(config_element_name, session->name);
 
 	if (session->shm_path[0] != '\0') {
-		ret = config_writer_write_element_string(
-			writer, config_element_shared_memory_path, session->shm_path);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
+		writer.write(config_element_shared_memory_path, session->shm_path);
 	}
 
-	ret = config_writer_write_element_string(writer,
-						 config_element_trace_format,
-						 session->trace_format ==
-								 LTTNG_TRACE_FORMAT_CTF_1_8 ?
-							 config_element_trace_format_ctf_1_8 :
-							 config_element_trace_format_ctf_2);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_trace_format,
+		     session->trace_format == LTTNG_TRACE_FORMAT_CTF_1_8 ?
+			     config_element_trace_format_ctf_1_8 :
+			     config_element_trace_format_ctf_2);
 
-	ret = save_domains(writer, session);
-	if (ret != LTTNG_OK) {
-		goto end;
-	}
+	save_domains(writer, session);
 
-	ret = config_writer_write_element_bool(writer, config_element_started, session->active);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.write(config_element_started, session->active);
 
 	if (session->snapshot_mode || session->live_timer || session->rotate_timer_period ||
 	    session->rotate_size) {
-		ret = config_writer_open_element(writer, config_element_attributes);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
+		writer.open_element(config_element_attributes);
 
 		if (session->snapshot_mode) {
-			ret = config_writer_write_element_bool(
-				writer, config_element_snapshot_mode, 1);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
+			writer.write(config_element_snapshot_mode, true);
 		} else if (session->live_timer) {
-			ret = config_writer_write_element_unsigned_int(
-				writer, config_element_live_timer_interval, session->live_timer);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
+			writer.write(config_element_live_timer_interval,
+				     static_cast<std::uint64_t>(session->live_timer));
 		}
 		if (session->rotate_timer_period || session->rotate_size) {
-			ret = save_session_rotation_schedules(writer, session);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
+			save_session_rotation_schedules(writer, session);
 		}
 
 		/* /attributes */
-		ret = config_writer_close_element(writer);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
+		writer.close_element();
 	}
 
-	ret = save_session_output(writer, session);
-	if (ret != LTTNG_OK) {
-		goto end;
-	}
+	save_session_output(writer, session);
 
 	/* /session */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.close_element();
 
 	/* /sessions */
-	ret = config_writer_close_element(writer);
-	if (ret) {
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
-		goto end;
-	}
+	writer.close_element();
 
-	ret = LTTNG_OK;
-end:
-	if (writer && config_writer_destroy(writer)) {
-		/* Preserve the original error code */
-		ret = ret != LTTNG_OK ? ret : LTTNG_ERR_SAVE_IO_FAIL;
-	}
-	if (ret != LTTNG_OK) {
-		/* Delete file in case of error */
-		if ((fd >= 0) && unlink(config_file_path)) {
-			PERROR("Unlinking XML session configuration.");
-		}
-	}
+	/* Success - disarm the cleanup. */
+	unlink_file_on_error.disarm();
 
-	if (fd >= 0) {
-		int closeret;
-
-		closeret = close(fd);
-		if (closeret) {
-			PERROR("Closing XML session configuration");
-		}
-	}
-
-	return ret;
+	return LTTNG_OK;
 }
 
-int cmd_save_sessions(struct lttng_save_session_attr *attr, lttng_sock_cred *creds)
+} /* anonymous namespace */
+
+int cmd_save_sessions(lttng_save_session_attr *attr, lttng_sock_cred *creds)
 {
 	const auto list_lock = lttng::sessiond::lock_session_list();
 	const auto session_name = lttng_save_session_attr_get_session_name(attr);
@@ -2891,7 +1847,7 @@ int cmd_save_sessions(struct lttng_save_session_attr *attr, lttng_sock_cred *cre
 			return LTTNG_ERR_SESS_NOT_FOUND;
 		}
 	} else {
-		struct ltt_session_list *list = session_get_list();
+		const auto *list = session_get_list();
 
 		for (auto raw_session_ptr :
 		     lttng::urcu::list_iteration_adapter<ltt_session, &ltt_session::list>(
