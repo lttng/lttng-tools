@@ -260,10 +260,16 @@ lttng_event_rule_generate_filter_bytecode(struct lttng_event_rule *rule,
 	return rule->generate_filter_bytecode(rule, creds);
 }
 
-const char *lttng_event_rule_get_filter(const struct lttng_event_rule *rule)
+const char *lttng_event_rule_get_internal_filter_expression(const struct lttng_event_rule *rule)
 {
-	LTTNG_ASSERT(rule->get_filter);
-	return rule->get_filter(rule);
+	LTTNG_ASSERT(rule->get_internal_filter);
+	return rule->get_internal_filter(rule);
+}
+
+const char *lttng_event_rule_get_filter_expression(const struct lttng_event_rule *rule)
+{
+	LTTNG_ASSERT(rule->get_filter_expression);
+	return rule->get_filter_expression(rule);
 }
 
 const struct lttng_bytecode *

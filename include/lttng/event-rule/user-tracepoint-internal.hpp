@@ -24,7 +24,7 @@ struct lttng_event_rule_user_tracepoint {
 	/* Name pattern. */
 	char *pattern;
 
-	/* Filter. */
+	/* Filter expression as specified by the user. */
 	char *filter_expression;
 
 	/* Log level. */
@@ -35,7 +35,6 @@ struct lttng_event_rule_user_tracepoint {
 
 	/* internal use only. */
 	struct {
-		char *filter;
 		struct lttng_bytecode *bytecode;
 	} internal_filter;
 };

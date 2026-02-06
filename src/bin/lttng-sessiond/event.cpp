@@ -616,7 +616,7 @@ int trigger_agent_enable(const struct lttng_trigger *trigger, struct agent *agt)
 	}
 
 	/* Get the internal filter expression and bytecode. */
-	filter_expression = lttng_event_rule_get_filter(rule);
+	filter_expression = lttng_event_rule_get_internal_filter_expression(rule);
 	if (filter_expression) {
 		filter_expression_copy = strdup(filter_expression);
 		if (!filter_expression_copy) {
@@ -648,7 +648,7 @@ int trigger_agent_enable(const struct lttng_trigger *trigger, struct agent *agt)
 end:
 	free(filter_expression_copy);
 	free(filter_bytecode_copy);
-	free(event);
+	lttng_event_destroy(event);
 	return ret;
 }
 

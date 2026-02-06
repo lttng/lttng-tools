@@ -34,7 +34,6 @@ static void lttng_event_rule_kernel_syscall_destroy(struct lttng_event_rule *rul
 
 	free(syscall->pattern);
 	free(syscall->filter_expression);
-	free(syscall->internal_filter.filter);
 	free(syscall->internal_filter.bytecode);
 	free(syscall);
 }
@@ -177,13 +176,7 @@ lttng_event_rule_kernel_syscall_generate_filter_bytecode(struct lttng_event_rule
 		goto end;
 	}
 
-	syscall->internal_filter.filter = strdup(filter);
-	if (syscall->internal_filter.filter == nullptr) {
-		ret_code = LTTNG_ERR_NOMEM;
-		goto end;
-	}
-
-	ret = run_as_generate_filter_bytecode(syscall->internal_filter.filter, creds, &bytecode);
+	ret = run_as_generate_filter_bytecode(syscall->filter_expression, creds, &bytecode);
 	if (ret) {
 		ret_code = LTTNG_ERR_FILTER_INVAL;
 	}
@@ -197,14 +190,14 @@ end:
 }
 
 static const char *
-lttng_event_rule_kernel_syscall_get_internal_filter(const struct lttng_event_rule *rule)
+lttng_event_rule_kernel_syscall_get_filter_expression(const struct lttng_event_rule *rule)
 {
 	struct lttng_event_rule_kernel_syscall *syscall;
 
 	LTTNG_ASSERT(rule);
 	syscall = lttng::utils::container_of(rule, &lttng_event_rule_kernel_syscall::parent);
 
-	return syscall->internal_filter.filter;
+	return syscall->filter_expression;
 }
 
 static const struct lttng_bytecode *
@@ -329,6 +322,29 @@ end:
 	return ret_code;
 }
 
+static struct lttng_event *
+lttng_event_rule_kernel_syscall_generate_lttng_event(const struct lttng_event_rule *rule)
+{
+	const auto *syscall =
+		lttng::utils::container_of(rule, &lttng_event_rule_kernel_syscall::parent);
+
+	auto local_event =
+		lttng::make_unique_wrapper<lttng_event, lttng_event_destroy>(lttng_event_create());
+	if (!local_event) {
+		return nullptr;
+	}
+
+	local_event->type = LTTNG_EVENT_SYSCALL;
+
+	if (lttng_strncpy(local_event->name, syscall->pattern, sizeof(local_event->name))) {
+		ERR("Truncation occurred when copying event rule pattern to `lttng_event` structure: pattern = '%s'",
+		    syscall->pattern);
+		return nullptr;
+	}
+
+	return local_event.release();
+}
+
 struct lttng_event_rule *lttng_event_rule_kernel_syscall_create(
 	enum lttng_event_rule_kernel_syscall_emission_site emission_site)
 {
@@ -360,13 +376,18 @@ struct lttng_event_rule *lttng_event_rule_kernel_syscall_create(
 	syscall_rule->parent.destroy = lttng_event_rule_kernel_syscall_destroy;
 	syscall_rule->parent.generate_filter_bytecode =
 		lttng_event_rule_kernel_syscall_generate_filter_bytecode;
-	syscall_rule->parent.get_filter = lttng_event_rule_kernel_syscall_get_internal_filter;
+	syscall_rule->parent.get_internal_filter =
+		lttng_event_rule_kernel_syscall_get_filter_expression;
+	syscall_rule->parent.get_filter_expression =
+		lttng_event_rule_kernel_syscall_get_filter_expression;
 	syscall_rule->parent.get_filter_bytecode =
 		lttng_event_rule_kernel_syscall_get_internal_filter_bytecode;
 	syscall_rule->parent.generate_exclusions =
 		lttng_event_rule_kernel_syscall_generate_exclusions;
 	syscall_rule->parent.hash = lttng_event_rule_kernel_syscall_hash;
 	syscall_rule->parent.mi_serialize = lttng_event_rule_kernel_syscall_mi_serialize;
+	syscall_rule->parent.generate_lttng_event =
+		lttng_event_rule_kernel_syscall_generate_lttng_event;
 
 	/* Default pattern is '*'. */
 	status = lttng_event_rule_kernel_syscall_set_name_pattern(rule, "*");

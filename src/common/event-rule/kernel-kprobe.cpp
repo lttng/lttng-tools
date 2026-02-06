@@ -156,8 +156,9 @@ static enum lttng_error_code lttng_event_rule_kernel_kprobe_generate_filter_byte
 	return LTTNG_OK;
 }
 
-static const char *lttng_event_rule_kernel_kprobe_get_filter(const struct lttng_event_rule *rule
-							     __attribute__((unused)))
+static const char *
+lttng_event_rule_kernel_kprobe_get_filter_expression(const struct lttng_event_rule *rule
+						     __attribute__((unused)))
 {
 	/* Not supported. */
 	return nullptr;
@@ -309,6 +310,53 @@ void set_event_rule_event_name_from_location(lttng_event_rule& rule,
 
 } /* namespace */
 
+static struct lttng_event *
+lttng_event_rule_kernel_kprobe_generate_lttng_event(const struct lttng_event_rule *rule)
+{
+	const auto *kprobe =
+		lttng::utils::container_of(rule, &lttng_event_rule_kernel_kprobe::parent);
+
+	auto local_event =
+		lttng::make_unique_wrapper<lttng_event, lttng_event_destroy>(lttng_event_create());
+	if (!local_event) {
+		return nullptr;
+	}
+
+	local_event->type = LTTNG_EVENT_PROBE;
+
+	if (lttng_strncpy(local_event->name, kprobe->name, sizeof(local_event->name))) {
+		ERR("Truncation occurred when copying event rule name to `lttng_event` structure: name = '%s'",
+		    kprobe->name);
+		return nullptr;
+	}
+
+	if (kprobe->location) {
+		const auto loc_type = lttng_kernel_probe_location_get_type(kprobe->location);
+
+		if (loc_type == LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS) {
+			uint64_t addr = 0;
+
+			lttng_kernel_probe_location_address_get_address(kprobe->location, &addr);
+			local_event->attr.probe.addr = addr;
+		} else if (loc_type == LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET) {
+			const char *symbol =
+				lttng_kernel_probe_location_symbol_get_name(kprobe->location);
+			uint64_t offset = 0;
+
+			lttng_kernel_probe_location_symbol_get_offset(kprobe->location, &offset);
+			local_event->attr.probe.offset = offset;
+
+			if (symbol) {
+				lttng_strncpy(local_event->attr.probe.symbol_name,
+					      symbol,
+					      sizeof(local_event->attr.probe.symbol_name));
+			}
+		}
+	}
+
+	return local_event.release();
+}
+
 struct lttng_event_rule *
 lttng_event_rule_kernel_kprobe_create(const struct lttng_kernel_probe_location *location)
 {
@@ -332,11 +380,13 @@ lttng_event_rule_kernel_kprobe_create(const struct lttng_kernel_probe_location *
 	krule->parent.destroy = lttng_event_rule_kernel_kprobe_destroy;
 	krule->parent.generate_filter_bytecode =
 		lttng_event_rule_kernel_kprobe_generate_filter_bytecode;
-	krule->parent.get_filter = lttng_event_rule_kernel_kprobe_get_filter;
+	krule->parent.get_internal_filter = lttng_event_rule_kernel_kprobe_get_filter_expression;
+	krule->parent.get_filter_expression = lttng_event_rule_kernel_kprobe_get_filter_expression;
 	krule->parent.get_filter_bytecode = lttng_event_rule_kernel_kprobe_get_filter_bytecode;
 	krule->parent.generate_exclusions = lttng_event_rule_kernel_kprobe_generate_exclusions;
 	krule->parent.hash = lttng_event_rule_kernel_kprobe_hash;
 	krule->parent.mi_serialize = lttng_event_rule_kernel_kprobe_mi_serialize;
+	krule->parent.generate_lttng_event = lttng_event_rule_kernel_kprobe_generate_lttng_event;
 
 	if (kernel_probe_set_location(krule, location)) {
 		lttng_event_rule_destroy(rule);

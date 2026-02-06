@@ -7,6 +7,7 @@
  */
 
 #define _LGPL_SOURCE
+#include "agent-domain.hpp"
 #include "agent-thread.hpp"
 #include "agent.hpp"
 #include "buffer-registry.hpp"
@@ -17,6 +18,7 @@
 #include "consumer-output.hpp"
 #include "consumer.hpp"
 #include "context-configuration.hpp"
+#include "domain.hpp"
 #include "event-notifier-error-accounting.hpp"
 #include "event.hpp"
 #include "health-sessiond.hpp"
@@ -68,6 +70,13 @@
 #include <lttng/event-internal.hpp>
 #include <lttng/event-rule/event-rule-internal.hpp>
 #include <lttng/event-rule/event-rule.h>
+#include <lttng/event-rule/jul-logging.h>
+#include <lttng/event-rule/kernel-syscall.h>
+#include <lttng/event-rule/kernel-tracepoint.h>
+#include <lttng/event-rule/log4j-logging.h>
+#include <lttng/event-rule/log4j2-logging.h>
+#include <lttng/event-rule/python-logging.h>
+#include <lttng/event-rule/user-tracepoint.h>
 #include <lttng/kernel.h>
 #include <lttng/location-internal.hpp>
 #include <lttng/lttng-error.h>
@@ -541,337 +550,102 @@ end:
 	return ret;
 }
 
+namespace {
 /*
- * Create a list of agent domain events.
+ * Serialize a single event_rule_configuration to a payload buffer.
  *
- * Return number of events in list on success or else a negative value.
+ * Generates a lttng_event from the event rule, sets the enabled state,
+ * filter, and exclusion flags, then serializes it.
  */
-static enum lttng_error_code list_lttng_agent_events(struct agent *agt,
-						     struct lttng_payload *reply_payload,
-						     unsigned int *nb_events)
+void serialize_event_rule_config_to_payload(const ls::event_rule_configuration& event_config,
+					    struct lttng_payload *reply_payload)
 {
-	enum lttng_error_code ret_code;
-	int ret = 0;
-	unsigned int local_nb_events = 0;
-	unsigned long agent_event_count;
-
-	assert(agt);
-	assert(reply_payload);
-
-	DBG3("Listing agent events");
-
-	agent_event_count = lttng_ht_get_count(agt->events);
-	if (agent_event_count == 0) {
-		/* Early exit. */
-		goto end;
+	const auto *rule = event_config.event_rule.get();
+	auto event = lttng::make_unique_wrapper<lttng_event, lttng_event_destroy>(
+		lttng_event_rule_generate_lttng_event(rule));
+	if (!event) {
+		LTTNG_THROW_ERROR("Failed to generate lttng_event from event rule");
 	}
 
-	if (agent_event_count > UINT_MAX) {
-		ret_code = LTTNG_ERR_OVERFLOW;
-		goto error;
+	event->enabled = event_config.is_enabled;
+
+	const auto *filter_expression = lttng_event_rule_get_filter_expression(rule);
+	event->filter = !!filter_expression;
+
+	struct lttng_event_exclusion *exclusions = nullptr;
+	const auto exclusion_status = lttng_event_rule_generate_exclusions(rule, &exclusions);
+	const auto exclusion_cleanup =
+		lttng::make_scope_exit([exclusions]() noexcept { free(exclusions); });
+
+	unsigned int exclusion_count = 0;
+	std::vector<const char *> exclusion_names;
+
+	if (exclusion_status == LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_OK && exclusions) {
+		exclusion_count = exclusions->count;
+		exclusion_names.reserve(exclusion_count);
+
+		for (unsigned int i = 0; i < exclusion_count; i++) {
+			exclusion_names.emplace_back(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusions, i));
+		}
+
+		event->exclusion = 1;
 	}
 
-	local_nb_events = (unsigned int) agent_event_count;
-
-	for (auto *event :
-	     lttng::urcu::lfht_iteration_adapter<agent_event,
-						 decltype(agent_event::node),
-						 &agent_event::node>(*agt->events->ht)) {
-		struct lttng_event *tmp_event = lttng_event_create();
-
-		if (!tmp_event) {
-			ret_code = LTTNG_ERR_NOMEM;
-			goto error;
-		}
-
-		if (lttng_strncpy(tmp_event->name, event->name, sizeof(tmp_event->name))) {
-			lttng_event_destroy(tmp_event);
-			ret_code = LTTNG_ERR_FATAL;
-			goto error;
-		}
-
-		tmp_event->name[sizeof(tmp_event->name) - 1] = '\0';
-		tmp_event->enabled = !!event->enabled_count;
-		tmp_event->loglevel = event->loglevel_value;
-		tmp_event->loglevel_type = event->loglevel_type;
-
-		ret = lttng_event_serialize(
-			tmp_event, 0, nullptr, event->filter_expression, 0, nullptr, reply_payload);
-		lttng_event_destroy(tmp_event);
-		if (ret) {
-			ret_code = LTTNG_ERR_FATAL;
-			goto error;
-		}
+	const auto ret =
+		lttng_event_serialize(event.get(),
+				      exclusion_names.size(),
+				      exclusion_names.empty() ? nullptr : exclusion_names.data(),
+				      filter_expression,
+				      0,
+				      nullptr,
+				      reply_payload);
+	if (ret) {
+		LTTNG_THROW_ERROR("Failed to serialize lttng_event to payload");
 	}
-end:
-	ret_code = LTTNG_OK;
-	*nb_events = local_nb_events;
-error:
-	return ret_code;
 }
 
 /*
- * Create a list of ust global domain events.
+ * List events from a domain's channel by iterating over the modern
+ * recording_channel_configuration's event rules.
+ *
+ * Returns the number of events serialized.
  */
-static enum lttng_error_code list_lttng_ust_global_events(char *channel_name,
-							  struct ltt_ust_domain_global *ust_global,
-							  struct lttng_payload *reply_payload,
-							  unsigned int *nb_events)
+unsigned int list_events_from_domain(const ls::domain& domain,
+				     const char *channel_name,
+				     struct lttng_payload *reply_payload)
 {
-	enum lttng_error_code ret_code;
-	int ret;
-	struct lttng_ht_iter iter;
-	struct lttng_ht_node_str *node;
-	struct ltt_ust_channel *uchan;
-	unsigned long channel_event_count;
-	unsigned int local_nb_events = 0;
+	const auto& channel_config = domain.get_channel(channel_name);
 
-	assert(reply_payload);
-	assert(nb_events);
+	unsigned int nb_events = 0;
 
-	DBG("Listing UST global events for channel %s", channel_name);
-
-	const lttng::urcu::read_lock_guard read_lock;
-
-	lttng_ht_lookup(ust_global->channels, (void *) channel_name, &iter);
-	node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
-	if (node == nullptr) {
-		ret_code = LTTNG_ERR_UST_CHAN_NOT_FOUND;
-		goto error;
+	for (const auto& event_pair : channel_config.event_rules) {
+		const auto& event_config = *event_pair.second;
+		serialize_event_rule_config_to_payload(event_config, reply_payload);
+		nb_events++;
 	}
 
-	uchan = lttng::utils::container_of(node, &ltt_ust_channel::node);
-
-	channel_event_count = lttng_ht_get_count(uchan->events);
-	if (channel_event_count == 0) {
-		/* Early exit. */
-		ret_code = LTTNG_OK;
-		goto end;
-	}
-
-	if (channel_event_count > UINT_MAX) {
-		ret_code = LTTNG_ERR_OVERFLOW;
-		goto error;
-	}
-
-	local_nb_events = (unsigned int) channel_event_count;
-
-	DBG3("Listing UST global %d events", *nb_events);
-
-	for (auto *uevent :
-	     lttng::urcu::lfht_iteration_adapter<ltt_ust_event,
-						 decltype(ltt_ust_event::node),
-						 &ltt_ust_event::node>(*uchan->events->ht)) {
-		struct lttng_event *tmp_event = nullptr;
-
-		if (uevent->internal) {
-			/* This event should remain hidden from clients */
-			local_nb_events--;
-			continue;
-		}
-
-		tmp_event = lttng_event_create();
-		if (!tmp_event) {
-			ret_code = LTTNG_ERR_NOMEM;
-			goto error;
-		}
-
-		if (lttng_strncpy(tmp_event->name, uevent->attr.name, LTTNG_SYMBOL_NAME_LEN)) {
-			ret_code = LTTNG_ERR_FATAL;
-			lttng_event_destroy(tmp_event);
-			goto error;
-		}
-
-		tmp_event->name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
-		tmp_event->enabled = uevent->enabled;
-
-		switch (uevent->attr.instrumentation) {
-		case LTTNG_UST_ABI_TRACEPOINT:
-			tmp_event->type = LTTNG_EVENT_TRACEPOINT;
-			break;
-		case LTTNG_UST_ABI_PROBE:
-			tmp_event->type = LTTNG_EVENT_PROBE;
-			break;
-		case LTTNG_UST_ABI_FUNCTION:
-			tmp_event->type = LTTNG_EVENT_FUNCTION;
-			break;
-		}
-
-		tmp_event->loglevel = uevent->attr.loglevel;
-		switch (uevent->attr.loglevel_type) {
-		case LTTNG_UST_ABI_LOGLEVEL_ALL:
-			tmp_event->loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
-			break;
-		case LTTNG_UST_ABI_LOGLEVEL_RANGE:
-			tmp_event->loglevel_type = LTTNG_EVENT_LOGLEVEL_RANGE;
-			break;
-		case LTTNG_UST_ABI_LOGLEVEL_SINGLE:
-			tmp_event->loglevel_type = LTTNG_EVENT_LOGLEVEL_SINGLE;
-			break;
-		}
-		if (uevent->filter) {
-			tmp_event->filter = 1;
-		}
-		if (uevent->exclusion) {
-			tmp_event->exclusion = 1;
-		}
-
-		std::vector<const char *> exclusion_names;
-		if (uevent->exclusion) {
-			for (int i = 0; i < uevent->exclusion->count; i++) {
-				exclusion_names.emplace_back(
-					LTTNG_EVENT_EXCLUSION_NAME_AT(uevent->exclusion, i));
-			}
-		}
-
-		/*
-		 * We do not care about the filter bytecode and the fd from the
-		 * userspace_probe_location.
-		 */
-		ret = lttng_event_serialize(tmp_event,
-					    exclusion_names.size(),
-					    exclusion_names.size() ? exclusion_names.data() :
-								     nullptr,
-					    uevent->filter_expression,
-					    0,
-					    nullptr,
-					    reply_payload);
-		lttng_event_destroy(tmp_event);
-		if (ret) {
-			ret_code = LTTNG_ERR_FATAL;
-			goto error;
-		}
-	}
-
-end:
-	/* nb_events is already set at this point. */
-	ret_code = LTTNG_OK;
-	*nb_events = local_nb_events;
-error:
-	return ret_code;
+	return nb_events;
 }
 
 /*
- * Fill lttng_event array of all kernel events in the channel.
+ * List events from an agent domain by iterating over event rule
+ * configurations stored directly in the agent_domain.
+ *
+ * Returns the number of events serialized.
  */
-static enum lttng_error_code list_lttng_kernel_events(char *channel_name,
-						      struct ltt_kernel_session *kernel_session,
-						      struct lttng_payload *reply_payload,
-						      unsigned int *nb_events)
+unsigned int list_events_from_agent_domain(const ls::agent_domain& agent_domain,
+					   struct lttng_payload *reply_payload)
 {
-	enum lttng_error_code ret_code;
-	int ret;
-	struct ltt_kernel_channel *kchan;
+	unsigned int nb_events = 0;
 
-	assert(reply_payload);
-
-	kchan = trace_kernel_get_channel_by_name(channel_name, kernel_session);
-	if (kchan == nullptr) {
-		ret_code = LTTNG_ERR_KERN_CHAN_NOT_FOUND;
-		goto end;
+	for (const auto& event_config : agent_domain.event_rules()) {
+		serialize_event_rule_config_to_payload(event_config, reply_payload);
+		nb_events++;
 	}
 
-	*nb_events = kchan->event_count;
-
-	DBG("Listing events for channel %s", kchan->channel->name);
-
-	if (*nb_events == 0) {
-		ret_code = LTTNG_OK;
-		goto end;
-	}
-
-	/* Kernel channels */
-	for (auto event :
-	     lttng::urcu::list_iteration_adapter<ltt_kernel_event, &ltt_kernel_event::list>(
-		     kchan->events_list.head)) {
-		struct lttng_event *tmp_event = lttng_event_create();
-
-		if (!tmp_event) {
-			ret_code = LTTNG_ERR_NOMEM;
-			goto end;
-		}
-
-		if (lttng_strncpy(tmp_event->name, event->event->name, LTTNG_SYMBOL_NAME_LEN)) {
-			lttng_event_destroy(tmp_event);
-			ret_code = LTTNG_ERR_FATAL;
-			goto end;
-		}
-
-		tmp_event->name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
-		tmp_event->enabled = event->enabled;
-		tmp_event->filter = (unsigned char) !!event->filter_expression;
-
-		switch (event->event->instrumentation) {
-		case LTTNG_KERNEL_ABI_TRACEPOINT:
-			tmp_event->type = LTTNG_EVENT_TRACEPOINT;
-			break;
-		case LTTNG_KERNEL_ABI_KRETPROBE:
-			tmp_event->type = LTTNG_EVENT_FUNCTION;
-			memcpy(&tmp_event->attr.probe,
-			       &event->event->u.kprobe,
-			       sizeof(struct lttng_kernel_abi_kprobe));
-			break;
-		case LTTNG_KERNEL_ABI_KPROBE:
-			tmp_event->type = LTTNG_EVENT_PROBE;
-			memcpy(&tmp_event->attr.probe,
-			       &event->event->u.kprobe,
-			       sizeof(struct lttng_kernel_abi_kprobe));
-			break;
-		case LTTNG_KERNEL_ABI_UPROBE:
-			tmp_event->type = LTTNG_EVENT_USERSPACE_PROBE;
-			break;
-		case LTTNG_KERNEL_ABI_FUNCTION:
-			tmp_event->type = LTTNG_EVENT_FUNCTION;
-			memcpy(&(tmp_event->attr.ftrace),
-			       &event->event->u.ftrace,
-			       sizeof(struct lttng_kernel_abi_function));
-			break;
-		case LTTNG_KERNEL_ABI_NOOP:
-			tmp_event->type = LTTNG_EVENT_NOOP;
-			break;
-		case LTTNG_KERNEL_ABI_SYSCALL:
-			tmp_event->type = LTTNG_EVENT_SYSCALL;
-			break;
-		case LTTNG_KERNEL_ABI_ALL:
-			/* fall-through. */
-		default:
-			abort();
-			break;
-		}
-
-		if (event->userspace_probe_location) {
-			struct lttng_userspace_probe_location *location_copy =
-				lttng_userspace_probe_location_copy(
-					event->userspace_probe_location);
-
-			if (!location_copy) {
-				lttng_event_destroy(tmp_event);
-				ret_code = LTTNG_ERR_NOMEM;
-				goto end;
-			}
-
-			ret = lttng_event_set_userspace_probe_location(tmp_event, location_copy);
-			if (ret) {
-				lttng_event_destroy(tmp_event);
-				lttng_userspace_probe_location_destroy(location_copy);
-				ret_code = LTTNG_ERR_INVALID;
-				goto end;
-			}
-		}
-
-		ret = lttng_event_serialize(
-			tmp_event, 0, nullptr, event->filter_expression, 0, nullptr, reply_payload);
-		lttng_event_destroy(tmp_event);
-		if (ret) {
-			ret_code = LTTNG_ERR_FATAL;
-			goto end;
-		}
-	}
-
-	ret_code = LTTNG_OK;
-end:
-	return ret_code;
+	return nb_events;
 }
+} /* namespace */
 
 /*
  * Add URI so the consumer output object. Set the correct path depending on the
@@ -4749,43 +4523,33 @@ enum lttng_error_code cmd_list_events(enum lttng_domain_type domain,
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
 		if (session->kernel_session != nullptr) {
-			ret_code = list_lttng_kernel_events(
-				channel_name, session->kernel_session, reply_payload, &nb_events);
+			nb_events = list_events_from_domain(
+				session->kernel_space_domain, channel_name, reply_payload);
 		}
 
 		break;
 	case LTTNG_DOMAIN_UST:
-	{
 		if (session->ust_session != nullptr) {
-			ret_code =
-				list_lttng_ust_global_events(channel_name,
-							     &session->ust_session->domain_global,
-							     reply_payload,
-							     &nb_events);
+			nb_events = list_events_from_domain(
+				session->user_space_domain, channel_name, reply_payload);
 		}
 
 		break;
-	}
-	case LTTNG_DOMAIN_LOG4J:
-	case LTTNG_DOMAIN_LOG4J2:
 	case LTTNG_DOMAIN_JUL:
+		nb_events = list_events_from_agent_domain(session->jul_domain, reply_payload);
+		break;
+	case LTTNG_DOMAIN_LOG4J:
+		nb_events = list_events_from_agent_domain(session->log4j_domain, reply_payload);
+		break;
+	case LTTNG_DOMAIN_LOG4J2:
+		nb_events = list_events_from_agent_domain(session->log4j2_domain, reply_payload);
+		break;
 	case LTTNG_DOMAIN_PYTHON:
-		if (session->ust_session) {
-			for (auto *agt : lttng::urcu::lfht_iteration_adapter<agent,
-									     decltype(agent::node),
-									     &agent::node>(
-				     *session->ust_session->agents->ht)) {
-				if (agt->domain == domain) {
-					ret_code = list_lttng_agent_events(
-						agt, reply_payload, &nb_events);
-					break;
-				}
-			}
-		}
+		nb_events = list_events_from_agent_domain(session->python_domain, reply_payload);
 		break;
 	default:
 		ret_code = LTTNG_ERR_UND;
-		break;
+		goto end;
 	}
 
 	if (nb_events > UINT32_MAX) {

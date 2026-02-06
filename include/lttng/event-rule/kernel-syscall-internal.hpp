@@ -22,7 +22,6 @@ struct lttng_event_rule_kernel_syscall {
 
 	/* Internal use only. */
 	struct {
-		char *filter;
 		struct lttng_bytecode *bytecode;
 	} internal_filter;
 };

@@ -1280,7 +1280,7 @@ struct agent_event *agent_find_event_by_trigger(const struct lttng_trigger *trig
 	LTTNG_ASSERT(er_status == LTTNG_EVENT_RULE_STATUS_OK);
 
 	/* Get the internal filter expression. */
-	filter_expression = lttng_event_rule_get_filter(rule);
+	filter_expression = lttng_event_rule_get_internal_filter_expression(rule);
 
 	/* Map log_level_rule to loglevel value. */
 	er_status = logging_get_log_level_rule(rule, &log_level_rule);

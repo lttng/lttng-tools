@@ -67,7 +67,8 @@ struct lttng_event_rule {
 	event_rule_equal_cb equal;
 	event_rule_destroy_cb destroy;
 	event_rule_generate_filter_bytecode_cb generate_filter_bytecode;
-	event_rule_get_filter_cb get_filter;
+	event_rule_get_filter_cb get_internal_filter;
+	event_rule_get_filter_cb get_filter_expression;
 	event_rule_get_filter_bytecode_cb get_filter_bytecode;
 	event_rule_generate_exclusions_cb generate_exclusions;
 	event_rule_hash_cb hash;
@@ -129,10 +130,26 @@ lttng_event_rule_generate_filter_bytecode(struct lttng_event_rule *rule,
 					  const struct lttng_credentials *creds);
 
 /*
- * If not present/implemented returns NULL.
+ * Returns the internal filter expression, or NULL if none is set.
+ *
+ * For non-agent event rules, this is identical to the user-facing filter expression.
+ * For agent event rules, the internal filter is augmented with logger name
+ * and log level conditions.
+ *
  * Caller DOES NOT own the returned object.
  */
-const char *lttng_event_rule_get_filter(const struct lttng_event_rule *rule);
+const char *lttng_event_rule_get_internal_filter_expression(const struct lttng_event_rule *rule);
+
+/*
+ * Returns the user-provided filter expression, or NULL if none is set.
+ *
+ * For non-agent event rules, this is identical to the internal filter expression.
+ * For agent event rules, the internal filter is augmented with logger name
+ * and log level conditions, while this returns the original user expression.
+ *
+ * Caller DOES NOT own the returned object.
+ */
+const char *lttng_event_rule_get_filter_expression(const struct lttng_event_rule *rule);
 
 /*
  * If not present/implemented returns NULL.

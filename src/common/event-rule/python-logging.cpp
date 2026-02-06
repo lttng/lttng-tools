@@ -342,6 +342,16 @@ lttng_event_rule_python_logging_get_internal_filter(const struct lttng_event_rul
 	return python_logging->internal_filter.filter;
 }
 
+static const char *
+lttng_event_rule_python_logging_get_filter_expression(const struct lttng_event_rule *rule)
+{
+	struct lttng_event_rule_python_logging *python_logging;
+
+	LTTNG_ASSERT(rule);
+	python_logging = lttng::utils::container_of(rule, &lttng_event_rule_python_logging::parent);
+	return python_logging->filter_expression;
+}
+
 static const struct lttng_bytecode *
 lttng_event_rule_python_logging_get_internal_filter_bytecode(const struct lttng_event_rule *rule)
 {
@@ -387,8 +397,6 @@ lttng_event_rule_python_logging_generate_lttng_event(const struct lttng_event_ru
 {
 	int ret;
 	const struct lttng_event_rule_python_logging *python_logging;
-	struct lttng_event *local_event = nullptr;
-	struct lttng_event *event = nullptr;
 	enum lttng_loglevel_type loglevel_type;
 	int loglevel_value = 0;
 	enum lttng_event_rule_status status;
@@ -396,9 +404,10 @@ lttng_event_rule_python_logging_generate_lttng_event(const struct lttng_event_ru
 
 	python_logging = lttng::utils::container_of(rule, &lttng_event_rule_python_logging::parent);
 
-	local_event = zmalloc<lttng_event>();
+	auto local_event =
+		lttng::make_unique_wrapper<lttng_event, lttng_event_destroy>(lttng_event_create());
 	if (!local_event) {
-		goto error;
+		return nullptr;
 	}
 
 	local_event->type = LTTNG_EVENT_TRACEPOINT;
@@ -406,7 +415,7 @@ lttng_event_rule_python_logging_generate_lttng_event(const struct lttng_event_ru
 	if (ret) {
 		ERR("Truncation occurred when copying event rule pattern to `lttng_event` structure: pattern = '%s'",
 		    python_logging->pattern);
-		goto error;
+		return nullptr;
 	}
 
 	/* Map the log level rule to an equivalent lttng_loglevel. */
@@ -434,20 +443,16 @@ lttng_event_rule_python_logging_generate_lttng_event(const struct lttng_event_ru
 		}
 
 		if (llr_status != LTTNG_LOG_LEVEL_RULE_STATUS_OK) {
-			goto error;
+			return nullptr;
 		}
 	} else {
-		goto error;
+		return nullptr;
 	}
 
 	local_event->loglevel_type = loglevel_type;
 	local_event->loglevel = loglevel_value;
 
-	event = local_event;
-	local_event = nullptr;
-error:
-	free(local_event);
-	return event;
+	return local_event.release();
 }
 
 static enum lttng_error_code
@@ -541,7 +546,9 @@ struct lttng_event_rule *lttng_event_rule_python_logging_create(void)
 	tp_rule->parent.destroy = lttng_event_rule_python_logging_destroy;
 	tp_rule->parent.generate_filter_bytecode =
 		lttng_event_rule_python_logging_generate_filter_bytecode;
-	tp_rule->parent.get_filter = lttng_event_rule_python_logging_get_internal_filter;
+	tp_rule->parent.get_internal_filter = lttng_event_rule_python_logging_get_internal_filter;
+	tp_rule->parent.get_filter_expression =
+		lttng_event_rule_python_logging_get_filter_expression;
 	tp_rule->parent.get_filter_bytecode =
 		lttng_event_rule_python_logging_get_internal_filter_bytecode;
 	tp_rule->parent.generate_exclusions = lttng_event_rule_python_logging_generate_exclusions;

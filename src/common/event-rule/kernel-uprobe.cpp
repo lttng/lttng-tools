@@ -143,8 +143,9 @@ static enum lttng_error_code lttng_event_rule_kernel_uprobe_generate_filter_byte
 	return LTTNG_OK;
 }
 
-static const char *lttng_event_rule_kernel_uprobe_get_filter(const struct lttng_event_rule *rule
-							     __attribute__((unused)))
+static const char *
+lttng_event_rule_kernel_uprobe_get_filter_expression(const struct lttng_event_rule *rule
+						     __attribute__((unused)))
 {
 	/* Unsupported. */
 	return nullptr;
@@ -295,6 +296,42 @@ void set_event_rule_event_name_from_location(lttng_event_rule& rule,
 
 } /* namespace */
 
+static struct lttng_event *
+lttng_event_rule_kernel_uprobe_generate_lttng_event(const struct lttng_event_rule *rule)
+{
+	const auto *uprobe =
+		lttng::utils::container_of(rule, &lttng_event_rule_kernel_uprobe::parent);
+
+	auto local_event =
+		lttng::make_unique_wrapper<lttng_event, lttng_event_destroy>(lttng_event_create());
+	if (!local_event) {
+		return nullptr;
+	}
+
+	local_event->type = LTTNG_EVENT_USERSPACE_PROBE;
+
+	if (lttng_strncpy(local_event->name, uprobe->name, sizeof(local_event->name))) {
+		ERR("Truncation occurred when copying event rule name to `lttng_event` structure: name = '%s'",
+		    uprobe->name);
+		return nullptr;
+	}
+
+	if (uprobe->location) {
+		auto *location_copy = lttng_userspace_probe_location_copy(uprobe->location);
+
+		if (!location_copy) {
+			return nullptr;
+		}
+
+		if (lttng_event_set_userspace_probe_location(local_event.get(), location_copy)) {
+			lttng_userspace_probe_location_destroy(location_copy);
+			return nullptr;
+		}
+	}
+
+	return local_event.release();
+}
+
 struct lttng_event_rule *
 lttng_event_rule_kernel_uprobe_create(const struct lttng_userspace_probe_location *location)
 {
@@ -318,11 +355,13 @@ lttng_event_rule_kernel_uprobe_create(const struct lttng_userspace_probe_locatio
 	urule->parent.destroy = lttng_event_rule_kernel_uprobe_destroy;
 	urule->parent.generate_filter_bytecode =
 		lttng_event_rule_kernel_uprobe_generate_filter_bytecode;
-	urule->parent.get_filter = lttng_event_rule_kernel_uprobe_get_filter;
+	urule->parent.get_internal_filter = lttng_event_rule_kernel_uprobe_get_filter_expression;
+	urule->parent.get_filter_expression = lttng_event_rule_kernel_uprobe_get_filter_expression;
 	urule->parent.get_filter_bytecode = lttng_event_rule_kernel_uprobe_get_filter_bytecode;
 	urule->parent.generate_exclusions = lttng_event_rule_kernel_uprobe_generate_exclusions;
 	urule->parent.hash = lttng_event_rule_kernel_uprobe_hash;
 	urule->parent.mi_serialize = lttng_event_rule_kernel_uprobe_mi_serialize;
+	urule->parent.generate_lttng_event = lttng_event_rule_kernel_uprobe_generate_lttng_event;
 
 	if (userspace_probe_set_location(urule, location)) {
 		lttng_event_rule_destroy(rule);

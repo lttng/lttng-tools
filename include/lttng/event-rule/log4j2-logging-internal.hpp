@@ -31,7 +31,10 @@ struct lttng_event_rule_log4j2_logging {
 	/* Log level. */
 	struct lttng_log_level_rule *log_level_rule;
 
-	/* internal use only. */
+	/*
+	 * Filter expression after bytecode generation (e.g., includes
+	 * logger name filtering for agent domains).
+	 */
 	struct {
 		char *filter;
 		struct lttng_bytecode *bytecode;
