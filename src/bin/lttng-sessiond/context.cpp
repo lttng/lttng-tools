@@ -151,6 +151,7 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess,
 		break;
 	}
 	case LTTNG_DOMAIN_UST:
+	case LTTNG_DOMAIN_PYTHON:
 		break;
 	default:
 		abort();
