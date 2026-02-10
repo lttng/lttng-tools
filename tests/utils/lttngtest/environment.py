@@ -11,6 +11,7 @@ from typing import Callable, Iterator, Optional, Tuple, List, Generator
 import sys
 import pathlib
 import platform
+import grp
 import pwd
 import random
 import signal
@@ -880,6 +881,7 @@ class _Environment(logger._Logger):
         self._relayd = None
         self._relayd_output_consumer = None
         self._dummy_users = {}  # type: Dictionary[int, string]
+        self._dummy_groups = {}  # type: Dictionary[int, string]
         self.teardown_timeout = os.getenv("LTTNG_TEST_TEARDOWN_TIMEOUT", "60")
         self._sessiond = None
         self._sessiond_extra_args = sessiond_extra_args if sessiond_extra_args else []
@@ -1065,6 +1067,33 @@ class _Environment(logger._Logger):
 
         entry = pwd.getpwnam(name)
         self._dummy_users[entry[2]] = name
+        return (entry[2], name)
+
+    def create_dummy_group(self):
+        # type: () -> (int, str)
+        # Create a dummy group. The gid and group name will be returned in a tuple.
+        # If the name already exists, an exception will be thrown.
+        # The groups will be removed when the environment is cleaned up.
+        name = "".join([random.choice(string.ascii_lowercase) for x in range(10)])
+
+        try:
+            entry = grp.getgrnam(name)
+            raise Exception("Group '{}' already exists".format(name))
+        except KeyError:
+            pass
+
+        # Create group
+        proc = subprocess.Popen(["groupadd", name])
+        proc.wait()
+        if proc.returncode != 0:
+            raise Exception(
+                "Failed to create group '{}', groupadd returned {}".format(
+                    name, proc.returncode
+                )
+            )
+
+        entry = grp.getgrnam(name)
+        self._dummy_groups[entry[2]] = name
         return (entry[2], name)
 
     def create_temporary_directory(self, prefix=None, dir=None):
@@ -1561,6 +1590,13 @@ class _Environment(logger._Logger):
                 pass
             try:
                 _proc = subprocess.Popen(userdel + [name], stderr=subprocess.PIPE)
+                _proc.wait()
+            except ImportError:
+                pass
+
+        for gid, name in self._dummy_groups.items():
+            try:
+                _proc = subprocess.Popen(["groupdel", name], stderr=subprocess.PIPE)
                 _proc.wait()
             except ImportError:
                 pass
