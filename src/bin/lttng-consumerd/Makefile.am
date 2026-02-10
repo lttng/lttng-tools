@@ -1,3 +1,4 @@
+# SPDX-FileCopyrightText: 2012-2025 EfficiOS Inc.
 # SPDX-License-Identifier: GPL-2.0-only
 
 include $(top_srcdir)/aminclude_static.am
@@ -16,7 +17,8 @@ lttng_consumerd_LDADD = \
 	   $(top_builddir)/src/common/libindex.la \
 	   $(top_builddir)/src/common/libhealth.la \
 	   $(top_builddir)/src/common/libtestpoint.la \
-	   $(top_builddir)/src/common/libscheduling.la
+	   $(top_builddir)/src/common/libscheduling.la \
+	   $(ATOMIC_LIBS)
 
 lttng_consumerd_LDFLAGS = -rdynamic
 

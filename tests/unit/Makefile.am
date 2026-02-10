@@ -246,7 +246,7 @@ test_action_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_CTL) $(DL_LIBS)
 
 # Scheduler
 test_scheduler_SOURCES = test_scheduler.cpp
-test_scheduler_LDADD = $(LIBTAP) $(LIBCOMMON_LGPL) $(LIBSCHEDULING)
+test_scheduler_LDADD = $(LIBTAP) $(LIBCOMMON_LGPL) $(LIBSCHEDULING) $(ATOMIC_LIBS)
 
 # Poller
 test_poller_SOURCES = test_poller.cpp
