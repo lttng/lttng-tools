@@ -10,58 +10,55 @@
 
 #include <common/common.hpp>
 #include <common/compat/errno.hpp>
+#include <common/format.hpp>
 #include <common/utils.hpp>
 
-#include <limits.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <fstream>
+#include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 
-/*
- * Returns the path with '/CONFIG_FILENAME' added to it;
- * path will be NULL if an error occurs.
- */
-char *config_get_file_path(const char *path)
+namespace {
+
+std::string get_config_file_path(const char *path)
 {
-	int ret;
-	char *file_path;
-
-	ret = asprintf(&file_path, "%s/%s", path, CONFIG_FILENAME);
-	if (ret < 0) {
-		ERR("Fail allocating config file path");
-		file_path = nullptr;
-	}
-
-	return file_path;
+	return lttng::format("{}/{}", path, CONFIG_FILENAME);
 }
 
 /*
- * Returns an open FILE pointer to the config file;
- * on error, NULL is returned.
+ * Look for a "session=<name>" entry in the config file at `path`.
+ * Returns the session name on success, or an empty string if not found.
  */
-static FILE *open_config(const char *path, const char *mode)
+std::string read_session_name_from_config(const char *path)
 {
-	FILE *fp = nullptr;
-	char *file_path;
+	const auto file_path = get_config_file_path(path);
+	std::ifstream config_file(file_path);
 
-	file_path = config_get_file_path(path);
-	if (file_path == nullptr) {
-		goto error;
+	if (!config_file.is_open()) {
+		return {};
 	}
 
-	fp = fopen(file_path, mode);
-	if (fp == nullptr) {
-		PWARN("Failed to open configuration file '%s'", file_path);
-		goto error;
+	std::string line;
+	while (std::getline(config_file, line)) {
+		const auto eq_pos = line.find('=');
+
+		if (eq_pos == std::string::npos) {
+			continue;
+		}
+
+		const auto key = line.substr(0, eq_pos);
+		const auto value = line.substr(eq_pos + 1);
+
+		if (key == "session" && !value.empty()) {
+			return value;
+		}
 	}
 
-error:
-	free(file_path);
-	return fp;
+	return {};
 }
+
+} /* namespace */
 
 /*
  * Creates the empty config file at the path.
@@ -70,79 +67,59 @@ error:
  */
 static int create_config_file(const char *path)
 {
-	int ret;
-	FILE *fp;
+	const auto file_path = get_config_file_path(path);
 
-	fp = open_config(path, "w+");
-	if (fp == nullptr) {
-		ret = -1;
-		goto error;
+	std::ofstream config_file(file_path);
+	if (!config_file.is_open()) {
+		PWARN("Failed to open configuration file '%s'", file_path.c_str());
+		return -1;
 	}
 
-	ret = fclose(fp);
-
-error:
-	return ret;
+	return 0;
 }
 
 /*
- * Append data to the config file in file_path
+ * Append data to the config file at file_path.
  * On success, returns 0;
  * on error, returns -1.
  */
-static int write_config(const char *file_path, std::size_t size, const char *data)
+static int write_config(const char *file_path, const std::string& data)
 {
-	FILE *fp;
-	std::size_t len;
-	int ret = 0;
+	const auto full_path = get_config_file_path(file_path);
 
-	fp = open_config(file_path, "a");
-	if (fp == nullptr) {
-		ret = -1;
-		goto end;
+	std::ofstream config_file(full_path, std::ios::app);
+	if (!config_file.is_open()) {
+		PWARN("Failed to open configuration file '%s'", full_path.c_str());
+		return -1;
 	}
 
-	/* Write session name into config file */
-	len = fwrite(data, size, 1, fp);
-	if (len != 1) {
-		ret = -1;
+	config_file << data;
+	if (!config_file.good()) {
+		return -1;
 	}
-	if (fclose(fp)) {
-		PERROR("close write_config");
-	}
-end:
-	return ret;
+
+	return 0;
 }
 
-/*
- * Destroys directory config and file config.
- */
 void config_destroy(const char *path)
 {
-	int ret;
-	char *config_path;
+	try {
+		const auto config_path = get_config_file_path(path);
 
-	config_path = config_get_file_path(path);
-	if (config_path == nullptr) {
-		return;
-	}
+		if (!config_exists(config_path.c_str())) {
+			return;
+		}
 
-	if (!config_exists(config_path)) {
-		goto end;
+		DBG("Removing %s\n", config_path.c_str());
+		const auto ret = remove(config_path.c_str());
+		if (ret < 0) {
+			PERROR("remove config file");
+		}
+	} catch (const std::exception& ex) {
+		ERR_FMT("Failed to destroy configuration file: {}", ex.what());
 	}
-
-	DBG("Removing %s\n", config_path);
-	ret = remove(config_path);
-	if (ret < 0) {
-		PERROR("remove config file");
-	}
-end:
-	free(config_path);
 }
 
-/*
- * Destroys the default config
- */
 void config_destroy_default()
 {
 	const char *path = utils_get_home_dir();
@@ -152,161 +129,85 @@ void config_destroy_default()
 	config_destroy(path);
 }
 
-/*
- * Returns 1 if config exists, 0 otherwise
- */
 int config_exists(const char *path)
 {
-	int ret;
 	struct stat info;
 
-	ret = stat(path, &info);
+	const auto ret = stat(path, &info);
 	if (ret < 0) {
 		return 0;
 	}
 	return S_ISREG(info.st_mode) || S_ISDIR(info.st_mode);
 }
 
-static int _config_read_session_name(const char *path, char **name)
-{
-	int ret = 0;
-	FILE *fp;
-	char var[NAME_MAX], *session_name;
-
-#if (NAME_MAX == 255)
-#define NAME_MAX_SCANF_IS_A_BROKEN_API "254"
-#endif
-
-	session_name = calloc<char>(NAME_MAX);
-	if (session_name == nullptr) {
-		ret = -ENOMEM;
-		ERR("Out of memory");
-		goto error;
-	}
-
-	fp = open_config(path, "r");
-	if (fp == nullptr) {
-		ret = -ENOENT;
-		goto error;
-	}
-
-	while (!feof(fp)) {
-		if ((ret = fscanf(fp,
-				  "%" NAME_MAX_SCANF_IS_A_BROKEN_API
-				  "[^'=']=%" NAME_MAX_SCANF_IS_A_BROKEN_API "s\n",
-				  var,
-				  session_name)) != 2) {
-			if (ret == -1) {
-				ERR("Missing session=NAME in config file.");
-				goto error_close;
-			}
-			continue;
-		}
-
-		if (strcmp(var, "session") == 0) {
-			goto found;
-		}
-	}
-
-error_close:
-	if (fclose(fp) < 0) {
-		PERROR("close config read session name");
-	}
-error:
-	free(session_name);
-	return ret;
-found:
-	*name = session_name;
-	if (fclose(fp) < 0) {
-		PERROR("close config read session name found");
-	}
-	return ret;
-}
-
-/*
- * Returns the session name from the config file.
- *
- * The caller is responsible for freeing the returned string.
- * On error, NULL is returned.
- */
 char *config_read_session_name(const char *path)
 {
-	int ret;
-	char *name = nullptr;
+	try {
+		const auto session_name = read_session_name_from_config(path);
 
-	ret = _config_read_session_name(path, &name);
-	if (ret == -ENOENT) {
-		const char *home_dir = utils_get_home_dir();
+		if (session_name.empty()) {
+			const char *home_dir = utils_get_home_dir();
 
-		ERR("Can't find valid lttng config %s/.lttngrc", home_dir);
-		MSG("Did you create a session? (lttng create <my_session>)");
+			ERR("Can't find valid lttng config %s/.lttngrc", home_dir);
+			MSG("Did you create a session? (lttng create <my_session>)");
+			return nullptr;
+		}
+
+		return strdup(session_name.c_str());
+	} catch (const std::exception& ex) {
+		ERR_FMT("Failed to read session name from configuration file: {}", ex.what());
+		return nullptr;
 	}
-
-	return name;
 }
 
-/*
- * Returns the session name from the config file. (no warnings/errors emitted)
- *
- * The caller is responsible for freeing the returned string.
- * On error, NULL is returned.
- */
 char *config_read_session_name_quiet(const char *path)
 {
-	char *name = nullptr;
+	try {
+		const auto session_name = read_session_name_from_config(path);
 
-	(void) _config_read_session_name(path, &name);
-	return name;
+		if (session_name.empty()) {
+			return nullptr;
+		}
+
+		return strdup(session_name.c_str());
+	} catch (const std::exception& ex) {
+		ERR_FMT("Failed to read session name from configuration file: {}", ex.what());
+		return nullptr;
+	}
 }
 
-/*
- * Write session name option to the config file.
- * On success, returns 0;
- * on error, returns -1.
- */
 int config_add_session_name(const char *path, const char *name)
 {
-	std::string attribute;
 	try {
-		attribute = fmt::format("session={}", name);
+		return write_config(path, lttng::format("session={}", name));
 	} catch (const std::exception& ex) {
-		ERR_FMT("Failed to format session name attribute for configuration file: {}",
-			ex.what());
+		ERR_FMT("Failed to add session name to configuration file: {}", ex.what());
+		return -1;
+	}
+}
+
+int config_init(const char *session_name)
+{
+	const char *path = utils_get_home_dir();
+	if (path == nullptr) {
 		return -1;
 	}
 
-	return write_config(path, attribute.size(), attribute.c_str());
-}
+	try {
+		auto ret = create_config_file(path);
+		if (ret < 0) {
+			return ret;
+		}
 
-/*
- * Init configuration directory and file.
- * On success, returns 0;
- * on error, returns -1.
- */
-int config_init(const char *session_name)
-{
-	int ret;
-	const char *path;
+		ret = config_add_session_name(path, session_name);
+		if (ret < 0) {
+			return ret;
+		}
 
-	path = utils_get_home_dir();
-	if (path == nullptr) {
-		ret = -1;
-		goto error;
+		DBG("Init config session in %s", path);
+		return 0;
+	} catch (const std::exception& ex) {
+		ERR_FMT("Failed to initialize configuration: {}", ex.what());
+		return -1;
 	}
-
-	/* Create default config file */
-	ret = create_config_file(path);
-	if (ret < 0) {
-		goto error;
-	}
-
-	ret = config_add_session_name(path, session_name);
-	if (ret < 0) {
-		goto error;
-	}
-
-	DBG("Init config session in %s", path);
-
-error:
-	return ret;
 }
