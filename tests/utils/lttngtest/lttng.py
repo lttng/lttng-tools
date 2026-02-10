@@ -460,9 +460,9 @@ class _ProcessAttributeTracker(lttngctl.ProcessAttributeTracker):
         self._domain = domain  # type: lttngctl.TracingDomain
         self._session = session  # type: _Session
         if attribute == _ProcessAttribute.PID or attribute == _ProcessAttribute.VPID:
-            self._allowed_value_types = [int, str]  # type: list[type]
-        else:
             self._allowed_value_types = [int]  # type: list[type]
+        else:
+            self._allowed_value_types = [int, str]  # type: list[type]
 
     def _call_client(self, cmd_name, value):
         # type: (str, Union[int, str]) -> None
