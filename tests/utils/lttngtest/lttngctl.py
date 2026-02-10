@@ -621,14 +621,26 @@ class ProcessAttributeTracker(abc.ABC):
         def __repr__(self):
             return "<%s.%s>" % (self.__class__.__name__, self.name)
 
-    def __init__(self, policy):
-        # type: (TrackingPolicy)
-        self._policy = policy
-
     @property
+    @abc.abstractmethod
     def tracking_policy(self):
         # type: () -> TrackingPolicy
-        return self._policy
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def values(self):
+        # type: () -> List[Union[int, str]]
+        """Return the inclusion set values when policy is INCLUDE_SET.
+
+        For PID/VPID trackers, values are always `int`.
+        For UID/VUID/GID/VGID trackers, values are `int` when the value was
+        specified numerically or `str` when specified by user/group name.
+        Use `isinstance()` to distinguish between the two.
+
+        Returns an empty list when the policy is INCLUDE_ALL or EXCLUDE_ALL.
+        """
+        raise NotImplementedError
 
 
 class ProcessIDProcessAttributeTracker(ProcessAttributeTracker):

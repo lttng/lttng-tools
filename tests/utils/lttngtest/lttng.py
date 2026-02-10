@@ -425,6 +425,68 @@ class _ProcessAttributeTracker(lttngctl.ProcessAttributeTracker):
             )
         )
 
+    def _get_tracker_state(self):
+        # type: () -> tuple[lttngctl.ProcessAttributeTracker.TrackingPolicy, List[Union[int, str]]]
+        """Query the session daemon for this tracker's current policy and values.
+
+        The MI XML encodes the policy implicitly:
+        - Tracker element absent: INCLUDE_ALL (default, no filtering).
+        - Tracker element present but empty: EXCLUDE_ALL.
+        - Tracker element present with values: INCLUDE_SET.
+        """
+        domain_xml = self._session._get_mi_domain(self._domain)
+        if domain_xml is None:
+            return (lttngctl.ProcessAttributeTracker.TrackingPolicy.INCLUDE_ALL, [])
+
+        trackers_element = LTTngClient._mi_find_in_element(
+            domain_xml, "process_attr_trackers"
+        )
+        if trackers_element is None:
+            return (lttngctl.ProcessAttributeTracker.TrackingPolicy.INCLUDE_ALL, [])
+
+        attr_name = _get_process_attribute_option_name(self._tracked_attribute)
+        tracker_elem = LTTngClient._mi_find_in_element(
+            trackers_element,
+            "{}_process_attr_tracker".format(attr_name),
+        )
+
+        if tracker_elem is None:
+            return (lttngctl.ProcessAttributeTracker.TrackingPolicy.INCLUDE_ALL, [])
+
+        process_attr_values = LTTngClient._mi_find_in_element(
+            tracker_elem, "process_attr_values"
+        )
+
+        values = []  # type: List[Union[int, str]]
+        if process_attr_values is not None:
+            for value_elem in process_attr_values:
+                type_elem = LTTngClient._mi_find_in_element(value_elem, "type")
+                if type_elem is None:
+                    continue
+                name_elem = LTTngClient._mi_find_in_element(type_elem, "name")
+                id_elem = LTTngClient._mi_find_in_element(type_elem, "id")
+                if name_elem is not None and name_elem.text:
+                    values.append(name_elem.text)
+                elif id_elem is not None and id_elem.text:
+                    values.append(int(id_elem.text))
+
+        if values:
+            return (lttngctl.ProcessAttributeTracker.TrackingPolicy.INCLUDE_SET, values)
+        else:
+            return (lttngctl.ProcessAttributeTracker.TrackingPolicy.EXCLUDE_ALL, [])
+
+    @property
+    def tracking_policy(self):
+        # type: () -> lttngctl.ProcessAttributeTracker.TrackingPolicy
+        policy, _ = self._get_tracker_state()
+        return policy
+
+    @property
+    def values(self):
+        # type: () -> List[Union[int, str]]
+        _, values = self._get_tracker_state()
+        return values
+
     def track(self, value):
         # type: (Union[int, str]) -> None
         self._call_client("track", value)
