@@ -332,6 +332,32 @@ LTTNG_PTHREAD_GETNAME_NP
 # add -lrt to LIBS
 AC_CHECK_LIB([rt], [clock_gettime, timer_create, timer_settime, timer_delete])
 
+# Check if libatomic is needed for 64-bit atomic operations.
+# On 32-bit architectures (e.g. PowerPC, ARM), GCC emits calls to
+# libatomic helpers (__atomic_load_8, __atomic_exchange_8) for 64-bit
+# atomics since the CPU can't perform them natively.
+AC_MSG_CHECKING([whether 64-bit atomic operations require -latomic])
+AC_LANG_PUSH([C++])
+AC_LINK_IFELSE(
+  [AC_LANG_PROGRAM(
+    [[#include <atomic>]],
+    [[std::atomic<long long> v(0); v.load(); v.exchange(1);]])],
+  [AC_MSG_RESULT([no])
+   ATOMIC_LIBS=""],
+  [save_LIBS="$LIBS"
+   LIBS="$LIBS -latomic"
+   AC_LINK_IFELSE(
+     [AC_LANG_PROGRAM(
+       [[#include <atomic>]],
+       [[std::atomic<long long> v(0); v.load(); v.exchange(1);]])],
+     [AC_MSG_RESULT([yes])
+      ATOMIC_LIBS="-latomic"],
+     [AC_MSG_RESULT([unknown])
+      ATOMIC_LIBS=""])
+   LIBS="$save_LIBS"])
+AC_LANG_POP([C++])
+AC_SUBST([ATOMIC_LIBS])
+
 # Checks for dl.
 AC_CHECK_LIB([dl], [dlopen], [
 	have_libdl=yes
