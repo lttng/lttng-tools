@@ -616,7 +616,6 @@ def test_ust_streaming_live_viewer_new_metadata_after_clear(
         lttngtest.lttngctl.TracingDomain.User,
         buffer_sharing_policy=buffer_sharing_policy,
     )
-    channel.add_context(lttngtest.VpidContextType())
     channel.add_recording_rule(lttngtest.lttngctl.UserTracepointEventRule("tp:tptest"))
     session.start()
 
@@ -624,6 +623,7 @@ def test_ust_streaming_live_viewer_new_metadata_after_clear(
     viewer = test_env.launch_live_viewer(session.name)
     viewer.wait_until_connected(10)
     app = test_env.launch_wait_trace_test_application(expected, wait_before_exit=True)
+
     app.trace()
     # With PerPID buffer sharing policy, BT keeps checking for new streams rather than hanging up
     while len(viewer.messages) < 10:
@@ -633,19 +633,19 @@ def test_ust_streaming_live_viewer_new_metadata_after_clear(
         session, clear_twice, rotate_before, rotate_after, stop_session_before_clear
     )
 
+    session.user_vpid_process_attribute_tracker.track(app.vpid)
+
     # Enable new events which will add their descriptions to the metadata
     # file. This validates that, following a clear, the relay daemon rotates
     # the metadata viewer stream to the new metadata file.
     channel.add_recording_rule(
         lttngtest.lttngctl.UserTracepointEventRule(
             "lttng_ust_statedump:start",
-            filter_expression="'$ctx.vpid == {}'".format(app.vpid),
         )
     )
     channel.add_recording_rule(
         lttngtest.lttngctl.UserTracepointEventRule(
             "lttng_ust_statedump:end",
-            filter_expression="'$ctx.vpid == {}'".format(app.vpid),
         )
     )
     session.regenerate(lttngtest.lttngctl.SessionRegenerateTarget.Statedump)
