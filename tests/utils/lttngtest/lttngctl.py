@@ -9,7 +9,7 @@ import random
 import string
 import pathlib
 import enum
-from typing import Optional, Type, Union, List
+from typing import Iterator, Optional, Type, Union, List
 
 """
 Defines an abstract interface to control LTTng tracing.
@@ -91,6 +91,17 @@ class TracingDomain(enum.Enum):
     Log4j2 = "Log4j 2.x tracing back-end."
     JUL = "Java Util Logging tracing back-end."
     Python = "Python logging module tracing back-end."
+
+    @property
+    def is_agent(self):
+        # type: () -> bool
+        """Indicates whether this domain is an agent domain (i.e. has no user-visible channels)."""
+        return self in (
+            TracingDomain.Log4j,
+            TracingDomain.Log4j2,
+            TracingDomain.JUL,
+            TracingDomain.Python,
+        )
 
     def __repr__(self):
         return "<%s.%s>" % (self.__class__.__name__, self.name)
@@ -500,6 +511,28 @@ class KernelTracepointEventRule(TracepointEventRule):
         TracepointEventRule.__init__(**locals())
 
 
+class KernelSyscallEventRule(EventRule):
+    """Kernel syscall event rule."""
+
+    def __init__(
+        self,
+        name_pattern=None,  # type: Optional[str]
+        filter_expression=None,  # type: Optional[str]
+    ):
+        self._name_pattern = name_pattern  # type: Optional[str]
+        self._filter_expression = filter_expression  # type: Optional[str]
+
+    @property
+    def name_pattern(self):
+        # type: () -> Optional[str]
+        return self._name_pattern
+
+    @property
+    def filter_expression(self):
+        # type: () -> Optional[str]
+        return self._filter_expression
+
+
 class Channel(abc.ABC):
     """
     A channel is an object which is responsible for a set of ring buffers. It is
@@ -531,6 +564,12 @@ class Channel(abc.ABC):
     @abc.abstractmethod
     def add_recording_rule(self, rule) -> None:
         # type: (Type[EventRule]) -> None
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def recording_rules(self):
+        # type: () -> Iterator[EventRule]
         raise NotImplementedError
 
 
@@ -738,6 +777,32 @@ class Session(abc.ABC):
     @abc.abstractmethod
     def record_snapshot(self, output_location=None):
         # type: (Optional[SessionOutputLocation]) -> None
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def add_recording_rule(self, domain, rule):
+        # type: (TracingDomain, EventRule) -> None
+        """
+        Add a recording rule to the session for the specified agent domain,
+        using its implicit channel.
+
+        Only agent domains (JUL, Log4j, Log4j2, Python) are allowed since they
+        have no user-visible channels. For domains with explicit channels (User,
+        Kernel), use Channel.add_recording_rule() instead.
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def recording_rules(self, domain):
+        # type: (TracingDomain) -> Iterator[EventRule]
+        """
+        List the recording rules of the specified agent domain's implicit
+        channel.
+
+        Only agent domains (JUL, Log4j, Log4j2, Python) are allowed since they
+        have no user-visible channels. For domains with explicit channels (User,
+        Kernel), use Channel.recording_rules instead.
+        """
         raise NotImplementedError
 
     @abc.abstractproperty

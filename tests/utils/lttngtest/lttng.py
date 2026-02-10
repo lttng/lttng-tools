@@ -12,7 +12,7 @@ import os
 import shlex
 import subprocess
 import tempfile
-from typing import Callable, Optional, Type, Union, Iterator
+from typing import Callable, List, Optional, Type, Union, Iterator
 import xml.etree.ElementTree
 
 """
@@ -293,6 +293,18 @@ class _Channel(lttngctl.Channel):
                     if idx != 0:
                         client_args = client_args + ","
                     client_args = client_args + pattern
+        elif isinstance(rule, lttngctl.KernelSyscallEventRule):
+            client_args = client_args + " --kernel --syscall"
+
+            if rule.name_pattern:
+                client_args = client_args + " " + rule.name_pattern
+            else:
+                client_args = client_args + " --all"
+
+            if rule.filter_expression:
+                client_args = (
+                    client_args + " --filter " + shlex.quote(rule.filter_expression)
+                )
         else:
             raise Unsupported(
                 "event rule type `{event_rule_type}` is unsupported by LTTng client".format(
@@ -315,31 +327,7 @@ class _Channel(lttngctl.Channel):
     @property
     def recording_rules(self):
         # type: () -> Iterator[lttngctl.EventRule]
-        list_session_xml, _ = self._client._run_cmd(
-            "list '{session_name}'".format(session_name=self._session.name),
-            LTTngClient.CommandOutputFormat.MI_XML,
-        )
-
-        root = xml.etree.ElementTree.fromstring(list_session_xml)
-        command_output = LTTngClient._mi_get_in_element(root, "output")
-        sessions = LTTngClient._mi_get_in_element(command_output, "sessions")
-
-        # The channel's session is supposed to be the only session returned by the command
-        if len(sessions) != 1:
-            raise InvalidMI(
-                "Only one session expected when listing with an explicit session name"
-            )
-        session = sessions[0]
-
-        # Look for the channel's domain
-        target_domain = None
-        target_domain_mi_name = _get_domain_xml_mi_name(self.domain)
-        for domain in LTTngClient._mi_get_in_element(session, "domains"):
-            if (
-                LTTngClient._mi_get_in_element(domain, "type").text
-                == target_domain_mi_name
-            ):
-                target_domain = domain
+        target_domain = self._session._get_mi_domain(self.domain)
 
         if target_domain is None:
             raise ChannelNotFound(
@@ -361,65 +349,14 @@ class _Channel(lttngctl.Channel):
                 )
             )
 
-        tracepoint_event_rule_class = None
+        tracepoint_event_rule_class = _get_tracepoint_event_rule_class_from_domain_type(
+            self.domain
+        )
 
         for event in LTTngClient._mi_get_in_element(target_channel, "events"):
-            # Note that the "enabled" property is ignored as it is not exposed by
-            # the EventRule interface.
-            pattern = LTTngClient._mi_get_in_element(event, "name").text
-            type = LTTngClient._mi_get_in_element(event, "type").text
-
-            filter_expression = None
-            filter_expression_element = LTTngClient._mi_find_in_element(
-                event, "filter_expression"
+            yield from _Session._parse_event_rule(
+                event, self.domain, tracepoint_event_rule_class
             )
-            if filter_expression_element:
-                filter_expression = filter_expression_element.text
-
-            exclusions = []
-            for exclusion in LTTngClient._mi_get_in_element(event, "exclusions"):
-                exclusions.append(exclusion.text)
-
-            exclusions = exclusions if len(exclusions) > 0 else None
-
-            if type != "TRACEPOINT":
-                raise Unsupported(
-                    "Non-tracepoint event rules are not supported by this Controller implementation"
-                )
-
-            tracepoint_event_rule_class = (
-                _get_tracepoint_event_rule_class_from_domain_type(self.domain)
-            )
-            event_rule = None
-            if self.domain != lttngctl.TracingDomain.Kernel:
-                log_level_element = LTTngClient._mi_find_in_element(event, "loglevel")
-                log_level_type_element = LTTngClient._mi_find_in_element(
-                    event, "loglevel_type"
-                )
-
-                log_level_rule = None
-                if log_level_element is not None and log_level_type_element is not None:
-                    if log_level_element.text is None:
-                        raise InvalidMI("`loglevel` element of event rule has no text")
-
-                    if log_level_type_element.text == "RANGE":
-                        log_level_rule = lttngctl.LogLevelRuleAsSevereAs(
-                            _get_log_level_from_mi_log_level_name(
-                                log_level_element.text
-                            )
-                        )
-                    elif log_level_type_element.text == "SINGLE":
-                        log_level_rule = lttngctl.LogLevelRuleExactly(
-                            _get_log_level_from_mi_log_level_name(
-                                log_level_element.text
-                            )
-                        )
-
-                yield tracepoint_event_rule_class(
-                    pattern, filter_expression, log_level_rule, exclusions
-                )
-            else:
-                yield tracepoint_event_rule_class(pattern, filter_expression)
 
 
 @enum.unique
@@ -684,6 +621,168 @@ class _Session(lttngctl.Session):
 
         args = ["regenerate", str(target), "-s", self.name]
         self._client._run_cmd(" ".join([shlex.quote(x) for x in args]))
+
+    def add_recording_rule(self, domain, rule):
+        # type: (lttngctl.TracingDomain, lttngctl.EventRule) -> None
+        if not domain.is_agent:
+            raise ValueError(
+                "Session.add_recording_rule() only supports agent domains (JUL, Log4j, Log4j2, Python) "
+                "which use an implicit channel; use Channel.add_recording_rule() for the {} domain".format(
+                    domain.name
+                )
+            )
+
+        domain_option_name = _get_domain_option_name(domain)
+
+        if isinstance(rule, lttngctl.TracepointEventRule):
+            args = "enable-event --session '{session_name}' --{domain_option}".format(
+                session_name=self.name,
+                domain_option=domain_option_name,
+            )
+
+            if rule.name_pattern:
+                args = args + " '{}'".format(rule.name_pattern)
+            else:
+                args = args + " --all"
+
+            if rule.filter_expression:
+                args = args + " --filter '{}'".format(rule.filter_expression)
+
+            if getattr(rule, "log_level_rule", None):
+                if isinstance(rule.log_level_rule, lttngctl.LogLevelRuleAsSevereAs):
+                    args = args + " --loglevel {}".format(
+                        _get_log_level_argument_name(rule.log_level_rule.level)
+                    )
+                elif isinstance(rule.log_level_rule, lttngctl.LogLevelRuleExactly):
+                    args = args + " --loglevel-only {}".format(
+                        _get_log_level_argument_name(rule.log_level_rule.level)
+                    )
+
+            if getattr(rule, "name_pattern_exclusions", None):
+                args = args + " --exclude "
+                for idx, pattern in enumerate(rule.name_pattern_exclusions):
+                    if idx != 0:
+                        args = args + ","
+                    args = args + pattern
+
+            self._client._run_cmd(args)
+        else:
+            raise Unsupported(
+                "Event rule type `{}` is not supported".format(type(rule).__name__)
+            )
+
+    def _get_mi_domain(self, domain):
+        # type: (lttngctl.TracingDomain) -> Optional[xml.etree.ElementTree.Element]
+        """
+        Fetch the MI XML for this session and return the XML element
+        corresponding to the requested domain, or None if the domain is not
+        present.
+        """
+        list_session_xml, _ = self._client._run_cmd(
+            "list '{session_name}'".format(session_name=self.name),
+            LTTngClient.CommandOutputFormat.MI_XML,
+        )
+
+        root = xml.etree.ElementTree.fromstring(list_session_xml)
+        command_output = LTTngClient._mi_get_in_element(root, "output")
+        sessions = LTTngClient._mi_get_in_element(command_output, "sessions")
+
+        if len(sessions) != 1:
+            raise InvalidMI(
+                "Only one session expected when listing with an explicit session name"
+            )
+        session = sessions[0]
+
+        target_domain_mi_name = _get_domain_xml_mi_name(domain)
+        for domain_element in LTTngClient._mi_get_in_element(session, "domains"):
+            if (
+                LTTngClient._mi_get_in_element(domain_element, "type").text
+                == target_domain_mi_name
+            ):
+                return domain_element
+
+        return None
+
+    def recording_rules(self, domain):
+        # type: (lttngctl.TracingDomain) -> Iterator[lttngctl.EventRule]
+        if not domain.is_agent:
+            raise ValueError(
+                "Session.recording_rules() only supports agent domains (JUL, Log4j, Log4j2, Python) "
+                "which use an implicit channel; use Channel.recording_rules for the {} domain".format(
+                    domain.name
+                )
+            )
+
+        target_domain = self._get_mi_domain(domain)
+        if target_domain is None:
+            return
+
+        tracepoint_event_rule_class = _get_tracepoint_event_rule_class_from_domain_type(
+            domain
+        )
+
+        events_element = LTTngClient._mi_find_in_element(target_domain, "events")
+        if events_element is not None:
+            for event in events_element:
+                yield from self._parse_event_rule(
+                    event, domain, tracepoint_event_rule_class
+                )
+
+    @staticmethod
+    def _parse_event_rule(event, domain, tracepoint_event_rule_class):
+        # type: (xml.etree.ElementTree.Element, lttngctl.TracingDomain, type) -> Iterator[lttngctl.EventRule]
+        pattern = LTTngClient._mi_get_in_element(event, "name").text
+        event_type = LTTngClient._mi_get_in_element(event, "type").text
+
+        filter_expression = None
+        filter_expression_element = LTTngClient._mi_find_in_element(
+            event, "filter_expression"
+        )
+        if filter_expression_element is not None:
+            filter_expression = filter_expression_element.text
+
+        if event_type == "SYSCALL":
+            yield lttngctl.KernelSyscallEventRule(pattern, filter_expression)
+            return
+
+        if event_type != "TRACEPOINT":
+            raise Unsupported(
+                "Event rule type `{}` is not supported by this Controller implementation".format(
+                    event_type
+                )
+            )
+
+        exclusions = []
+        for exclusion in LTTngClient._mi_get_in_element(event, "exclusions"):
+            exclusions.append(exclusion.text)
+
+        exclusions = exclusions if len(exclusions) > 0 else None
+
+        if domain != lttngctl.TracingDomain.Kernel:
+            log_level_element = LTTngClient._mi_find_in_element(event, "loglevel")
+            log_level_type_element = LTTngClient._mi_find_in_element(
+                event, "loglevel_type"
+            )
+
+            log_level_rule = None
+            if log_level_element is not None and log_level_type_element is not None:
+                if log_level_element.text is None:
+                    raise InvalidMI("`loglevel` element of event rule has no text")
+
+                if log_level_type_element.text == "RANGE":
+                    log_level_rule = lttngctl.LogLevelRuleAsSevereAs(
+                        _get_log_level_from_mi_log_level_name(log_level_element.text)
+                    )
+                elif log_level_type_element.text == "SINGLE":
+                    log_level_rule = lttngctl.LogLevelRuleExactly(
+                        _get_log_level_from_mi_log_level_name(log_level_element.text)
+                    )
+
+            yield tracepoint_event_rule_class(
+                pattern, filter_expression, log_level_rule, exclusions
+            )
+        else:
+            yield tracepoint_event_rule_class(pattern, filter_expression)
 
     @property
     def is_active(self):
