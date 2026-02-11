@@ -460,7 +460,7 @@ lsu::registry_session::locked_ref lsu::registry_session::lock() noexcept
  */
 void lsu::registry_session::add_channel(
 	uint64_t key,
-	lttng::sessiond::recording_channel_configuration::buffer_allocation_policy_t
+	lttng::sessiond::config::recording_channel_configuration::buffer_allocation_policy_t
 		buffer_allocation_policy)
 {
 	const lttng::pthread::lock_guard session_lock_guard(_lock);

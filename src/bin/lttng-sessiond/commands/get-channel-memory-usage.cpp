@@ -165,7 +165,8 @@ lsc::get_channel_memory_usage(const ltt_session::locked_ref& session,
 
 	const auto is_per_cpu_stream =
 		session->get_domain(domain).get_channel(channel_name).buffer_allocation_policy ==
-		lttng::sessiond::recording_channel_configuration::buffer_allocation_policy_t::PER_CPU;
+		lttng::sessiond::config::recording_channel_configuration::
+			buffer_allocation_policy_t::PER_CPU;
 
 	channel_description_map channel_descriptions;
 

@@ -18,6 +18,7 @@
 
 namespace lttng {
 namespace sessiond {
+namespace config {
 
 /* Tracking policy for a process attribute tracker. */
 enum class tracking_policy {
@@ -201,6 +202,7 @@ using virtual_user_id_tracker_t = process_attribute_tracker<resolved_process_att
 using group_id_tracker_t = process_attribute_tracker<resolved_process_attr_value<gid_t>>;
 using virtual_group_id_tracker_t = process_attribute_tracker<resolved_process_attr_value<gid_t>>;
 
+} /* namespace config */
 } /* namespace sessiond */
 } /* namespace lttng */
 

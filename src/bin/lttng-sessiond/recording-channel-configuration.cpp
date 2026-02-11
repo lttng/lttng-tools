@@ -14,7 +14,7 @@
 
 #include <lttng/event-rule/event-rule-internal.hpp>
 
-namespace ls = lttng::sessiond;
+namespace ls = lttng::sessiond::config;
 
 ls::exceptions::event_rule_configuration_not_found_error::event_rule_configuration_not_found_error(
 	const lttng_event_rule& event_rule_, const lttng::source_location& source_location_) :

@@ -28,10 +28,11 @@
 
 namespace lttng {
 namespace sessiond {
+namespace config {
 
-#define LTTNG_THROW_CHANNEL_NOT_FOUND_BY_NAME_ERROR(channel_name)                \
-	throw lttng::sessiond::exceptions::channel_not_found_error(channel_name, \
-								   LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_CHANNEL_NOT_FOUND_BY_NAME_ERROR(channel_name)           \
+	throw lttng::sessiond::config::exceptions::channel_not_found_error( \
+		channel_name, LTTNG_SOURCE_LOCATION())
 
 namespace exceptions {
 /*
@@ -272,6 +273,7 @@ private:
 	nonstd::optional<group_id_tracker_t> _group_id_tracker;
 	nonstd::optional<virtual_group_id_tracker_t> _virtual_group_id_tracker;
 };
+} /* namespace config */
 } /* namespace sessiond */
 } /* namespace lttng */
 

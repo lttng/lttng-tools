@@ -13,6 +13,7 @@
 
 namespace lttng {
 namespace sessiond {
+namespace config {
 
 namespace {
 context_configuration::type
@@ -173,5 +174,6 @@ make_context_configuration_from_event_context(const lttng_event_context& event_c
 	}
 }
 
+} /* namespace config */
 } /* namespace sessiond */
 } /* namespace lttng */

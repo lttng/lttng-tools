@@ -2882,7 +2882,7 @@ void *thread_manage_clients(void *data)
 		} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
 			log_nested_exceptions(ex);
 			ret = LTTNG_ERR_SESS_NOT_FOUND;
-		} catch (const lttng::sessiond::exceptions::channel_not_found_error& ex) {
+		} catch (const lttng::sessiond::config::exceptions::channel_not_found_error& ex) {
 			log_nested_exceptions(ex);
 			ret = LTTNG_ERR_CHAN_NOT_FOUND;
 		} catch (const lttng::sessiond::exceptions::save_error& ex) {

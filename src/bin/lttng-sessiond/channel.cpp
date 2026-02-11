@@ -531,12 +531,12 @@ struct lttng_channel *trace_ust_channel_to_lttng_channel(const struct ltt_ust_ch
 
 	/* Convert from internal enum to external enum */
 	switch (uchan->preallocation_policy) {
-	case lttng::sessiond::recording_channel_configuration::buffer_preallocation_policy_t::
-		PREALLOCATE:
+	case lttng::sessiond::config::recording_channel_configuration::
+		buffer_preallocation_policy_t::PREALLOCATE:
 		preallocation_policy = LTTNG_CHANNEL_PREALLOCATION_POLICY_PREALLOCATE;
 		break;
-	case lttng::sessiond::recording_channel_configuration::buffer_preallocation_policy_t::
-		ON_DEMAND:
+	case lttng::sessiond::config::recording_channel_configuration::
+		buffer_preallocation_policy_t::ON_DEMAND:
 		preallocation_policy = LTTNG_CHANNEL_PREALLOCATION_POLICY_ON_DEMAND;
 		break;
 	default:

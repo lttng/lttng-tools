@@ -979,7 +979,7 @@ void consumer_init_ask_channel_comm_msg(
 	unsigned int monitor,
 	uint32_t ust_app_uid,
 	int64_t blocking_timeout,
-	lttng::sessiond::recording_channel_configuration::buffer_preallocation_policy_t
+	lttng::sessiond::config::recording_channel_configuration::buffer_preallocation_policy_t
 		preallocation_policy,
 	const nonstd::optional<std::chrono::microseconds>& automatic_memory_reclamation_maximal_age,
 	const char *root_shm_path,
@@ -1035,8 +1035,8 @@ void consumer_init_ask_channel_comm_msg(
 	msg->u.ask_channel.ust_app_uid = ust_app_uid;
 	msg->u.ask_channel.blocking_timeout = blocking_timeout;
 	msg->u.ask_channel.preallocate_backing = preallocation_policy ==
-		lttng::sessiond::recording_channel_configuration::buffer_preallocation_policy_t::
-			PREALLOCATE;
+		lttng::sessiond::config::recording_channel_configuration::
+			buffer_preallocation_policy_t::PREALLOCATE;
 
 	if (automatic_memory_reclamation_maximal_age) {
 		LTTNG_OPTIONAL_SET(

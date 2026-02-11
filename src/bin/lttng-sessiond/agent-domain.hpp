@@ -24,6 +24,7 @@
 
 namespace lttng {
 namespace sessiond {
+namespace config {
 
 /*
  * An agent domain holds the event rule configurations for agent domains
@@ -100,6 +101,7 @@ private:
 		_event_rules;
 };
 
+} /* namespace config */
 } /* namespace sessiond */
 } /* namespace lttng */
 

@@ -20,6 +20,7 @@
 
 namespace lttng {
 namespace sessiond {
+namespace config {
 
 /*
  * Base class for context configurations attached to a recording channel.
@@ -180,6 +181,7 @@ public:
 context_configuration::uptr
 make_context_configuration_from_event_context(const lttng_event_context& event_context);
 
+} /* namespace config */
 } /* namespace sessiond */
 } /* namespace lttng */
 

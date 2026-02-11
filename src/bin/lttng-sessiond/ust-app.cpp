@@ -83,17 +83,17 @@ static pthread_mutex_t next_channel_key_lock = PTHREAD_MUTEX_INITIALIZER;
 static uint64_t _next_session_id;
 static pthread_mutex_t next_session_id_lock = PTHREAD_MUTEX_INITIALIZER;
 
-static inline lttng::sessiond::recording_channel_configuration::buffer_allocation_policy_t
+static inline lttng::sessiond::config::recording_channel_configuration::buffer_allocation_policy_t
 ust_channel_type_to_allocation_policy(enum lttng_ust_abi_chan_type type)
 {
 	switch (type) {
 	case LTTNG_UST_ABI_CHAN_PER_CPU:
-		return lttng::sessiond::recording_channel_configuration::
+		return lttng::sessiond::config::recording_channel_configuration::
 			buffer_allocation_policy_t::PER_CPU;
 	case LTTNG_UST_ABI_CHAN_METADATA:
 		/* fall-through  */
 	case LTTNG_UST_ABI_CHAN_PER_CHANNEL:
-		return lttng::sessiond::recording_channel_configuration::
+		return lttng::sessiond::config::recording_channel_configuration::
 			buffer_allocation_policy_t::PER_CHANNEL;
 	default:
 		abort();

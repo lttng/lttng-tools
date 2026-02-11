@@ -8,7 +8,7 @@
 #include "agent-domain.hpp"
 #include "recording-channel-configuration.hpp"
 
-namespace ls = lttng::sessiond;
+namespace ls = lttng::sessiond::config;
 
 ls::event_rule_configuration& ls::agent_domain::get_event_rule_configuration(
 	const lttng_event_rule& matching_event_rule_to_lookup)

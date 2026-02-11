@@ -18,6 +18,7 @@
 
 namespace lttng {
 namespace sessiond {
+namespace config {
 
 /*
  * An event rule configuration represents the configuration of a channel or map's
@@ -51,6 +52,7 @@ public:
 	const lttng::ctl::event_rule_uptr event_rule;
 };
 
+} /* namespace config */
 } /* namespace sessiond */
 } /* namespace lttng */
 

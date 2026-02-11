@@ -50,6 +50,7 @@ struct ltt_session_clear_notifier_element {
 };
 
 namespace ls = lttng::sessiond;
+namespace lsc = lttng::sessiond::config;
 
 /*
  * NOTES:
@@ -462,7 +463,7 @@ void ltt_session::unlock() const noexcept
 	ltt_session::_const_session_unlock(*this);
 }
 
-ls::domain& ltt_session::get_domain(lttng::domain_class domain)
+lsc::domain& ltt_session::get_domain(lttng::domain_class domain)
 {
 	switch (domain) {
 	case lttng::domain_class::LOG4J:
@@ -478,13 +479,13 @@ ls::domain& ltt_session::get_domain(lttng::domain_class domain)
 	std::abort();
 }
 
-const ls::domain& ltt_session::get_domain(lttng::domain_class domain) const
+const lsc::domain& ltt_session::get_domain(lttng::domain_class domain) const
 {
 	/* NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast) */
 	return const_cast<ltt_session *>(this)->get_domain(domain);
 }
 
-ls::agent_domain& ltt_session::get_agent_domain(lttng::domain_class domain)
+lsc::agent_domain& ltt_session::get_agent_domain(lttng::domain_class domain)
 {
 	switch (domain) {
 	case lttng::domain_class::JAVA_UTIL_LOGGING:
@@ -504,7 +505,7 @@ ls::agent_domain& ltt_session::get_agent_domain(lttng::domain_class domain)
 	std::abort();
 }
 
-const ls::agent_domain& ltt_session::get_agent_domain(lttng::domain_class domain) const
+const lsc::agent_domain& ltt_session::get_agent_domain(lttng::domain_class domain) const
 {
 	/* NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast) */
 	return const_cast<ltt_session *>(this)->get_agent_domain(domain);

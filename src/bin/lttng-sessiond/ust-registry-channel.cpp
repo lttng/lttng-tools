@@ -241,10 +241,10 @@ lst::type::cuptr create_event_header(const lst::abi& trace_abi,
 	return lttng::make_unique<lst::structure_type>(0, std::move(event_header_fields));
 }
 
-lst::type::cuptr
-create_packet_context(const lst::abi& trace_abi,
-		      lttng::sessiond::recording_channel_configuration::buffer_allocation_policy_t
-			      buffer_allocation_policy)
+lst::type::cuptr create_packet_context(
+	const lst::abi& trace_abi,
+	lttng::sessiond::config::recording_channel_configuration::buffer_allocation_policy_t
+		buffer_allocation_policy)
 {
 	lst::structure_type::fields packet_context_fields;
 
@@ -340,7 +340,8 @@ create_packet_context(const lst::abi& trace_abi,
 	 * channel is not of the type 'per-cpu'.
 	 */
 	if (buffer_allocation_policy ==
-	    lttng::sessiond::recording_channel_configuration::buffer_allocation_policy_t::PER_CPU) {
+	    lttng::sessiond::config::recording_channel_configuration::buffer_allocation_policy_t::
+		    PER_CPU) {
 		/* uint32_t cpu_id */
 		packet_context_fields.emplace_back(lttng::make_unique<lst::field>(
 			"cpu_id",
@@ -358,7 +359,7 @@ create_packet_context(const lst::abi& trace_abi,
 
 lsu::registry_channel::registry_channel(
 	unsigned int channel_id,
-	lttng::sessiond::recording_channel_configuration::buffer_allocation_policy_t
+	lttng::sessiond::config::recording_channel_configuration::buffer_allocation_policy_t
 		buffer_allocation_policy,
 	const lst::abi& trace_abi,
 	std::string in_default_clock_class_name,

@@ -415,10 +415,10 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	luc->preallocation_policy = [](enum lttng_channel_preallocation_policy policy) {
 		switch (policy) {
 		case LTTNG_CHANNEL_PREALLOCATION_POLICY_PREALLOCATE:
-			return lttng::sessiond::recording_channel_configuration::
+			return lttng::sessiond::config::recording_channel_configuration::
 				buffer_preallocation_policy_t::PREALLOCATE;
 		case LTTNG_CHANNEL_PREALLOCATION_POLICY_ON_DEMAND:
-			return lttng::sessiond::recording_channel_configuration::
+			return lttng::sessiond::config::recording_channel_configuration::
 				buffer_preallocation_policy_t::ON_DEMAND;
 		default:
 			std::abort();

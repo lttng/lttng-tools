@@ -45,7 +45,8 @@
 #include <urcu/uatomic.h>
 
 namespace ls = lttng::sessiond;
-using rcc = lttng::sessiond::recording_channel_configuration;
+namespace lsc = lttng::sessiond::config;
+using rcc = lttng::sessiond::config::recording_channel_configuration;
 
 namespace {
 
@@ -226,90 +227,90 @@ const char *get_domain_type_config_string(lttng::domain_class domain_class) noex
 	std::abort();
 }
 
-const char *get_context_type_string_from_config(ls::context_configuration::type ctx_type) noexcept
+const char *get_context_type_string_from_config(lsc::context_configuration::type ctx_type) noexcept
 {
 	switch (ctx_type) {
-	case ls::context_configuration::type::PID:
+	case lsc::context_configuration::type::PID:
 		return config_event_context_pid;
-	case ls::context_configuration::type::PROCNAME:
+	case lsc::context_configuration::type::PROCNAME:
 		return config_event_context_procname;
-	case ls::context_configuration::type::PRIO:
+	case lsc::context_configuration::type::PRIO:
 		return config_event_context_prio;
-	case ls::context_configuration::type::NICE:
+	case lsc::context_configuration::type::NICE:
 		return config_event_context_nice;
-	case ls::context_configuration::type::VPID:
+	case lsc::context_configuration::type::VPID:
 		return config_event_context_vpid;
-	case ls::context_configuration::type::TID:
+	case lsc::context_configuration::type::TID:
 		return config_event_context_tid;
-	case ls::context_configuration::type::VTID:
+	case lsc::context_configuration::type::VTID:
 		return config_event_context_vtid;
-	case ls::context_configuration::type::PPID:
+	case lsc::context_configuration::type::PPID:
 		return config_event_context_ppid;
-	case ls::context_configuration::type::VPPID:
+	case lsc::context_configuration::type::VPPID:
 		return config_event_context_vppid;
-	case ls::context_configuration::type::PTHREAD_ID:
+	case lsc::context_configuration::type::PTHREAD_ID:
 		return config_event_context_pthread_id;
-	case ls::context_configuration::type::HOSTNAME:
+	case lsc::context_configuration::type::HOSTNAME:
 		return config_event_context_hostname;
-	case ls::context_configuration::type::IP:
+	case lsc::context_configuration::type::IP:
 		return config_event_context_ip;
-	case ls::context_configuration::type::INTERRUPTIBLE:
+	case lsc::context_configuration::type::INTERRUPTIBLE:
 		return config_event_context_interruptible;
-	case ls::context_configuration::type::PREEMPTIBLE:
+	case lsc::context_configuration::type::PREEMPTIBLE:
 		return config_event_context_preemptible;
-	case ls::context_configuration::type::NEED_RESCHEDULE:
+	case lsc::context_configuration::type::NEED_RESCHEDULE:
 		return config_event_context_need_reschedule;
-	case ls::context_configuration::type::MIGRATABLE:
+	case lsc::context_configuration::type::MIGRATABLE:
 		return config_event_context_migratable;
-	case ls::context_configuration::type::CALLSTACK_USER:
+	case lsc::context_configuration::type::CALLSTACK_USER:
 		return config_event_context_callstack_user;
-	case ls::context_configuration::type::CALLSTACK_KERNEL:
+	case lsc::context_configuration::type::CALLSTACK_KERNEL:
 		return config_event_context_callstack_kernel;
-	case ls::context_configuration::type::CGROUP_NS:
+	case lsc::context_configuration::type::CGROUP_NS:
 		return config_event_context_cgroup_ns;
-	case ls::context_configuration::type::IPC_NS:
+	case lsc::context_configuration::type::IPC_NS:
 		return config_event_context_ipc_ns;
-	case ls::context_configuration::type::MNT_NS:
+	case lsc::context_configuration::type::MNT_NS:
 		return config_event_context_mnt_ns;
-	case ls::context_configuration::type::NET_NS:
+	case lsc::context_configuration::type::NET_NS:
 		return config_event_context_net_ns;
-	case ls::context_configuration::type::PID_NS:
+	case lsc::context_configuration::type::PID_NS:
 		return config_event_context_pid_ns;
-	case ls::context_configuration::type::TIME_NS:
+	case lsc::context_configuration::type::TIME_NS:
 		return config_event_context_time_ns;
-	case ls::context_configuration::type::USER_NS:
+	case lsc::context_configuration::type::USER_NS:
 		return config_event_context_user_ns;
-	case ls::context_configuration::type::UTS_NS:
+	case lsc::context_configuration::type::UTS_NS:
 		return config_event_context_uts_ns;
-	case ls::context_configuration::type::UID:
+	case lsc::context_configuration::type::UID:
 		return config_event_context_uid;
-	case ls::context_configuration::type::EUID:
+	case lsc::context_configuration::type::EUID:
 		return config_event_context_euid;
-	case ls::context_configuration::type::SUID:
+	case lsc::context_configuration::type::SUID:
 		return config_event_context_suid;
-	case ls::context_configuration::type::GID:
+	case lsc::context_configuration::type::GID:
 		return config_event_context_gid;
-	case ls::context_configuration::type::EGID:
+	case lsc::context_configuration::type::EGID:
 		return config_event_context_egid;
-	case ls::context_configuration::type::SGID:
+	case lsc::context_configuration::type::SGID:
 		return config_event_context_sgid;
-	case ls::context_configuration::type::VUID:
+	case lsc::context_configuration::type::VUID:
 		return config_event_context_vuid;
-	case ls::context_configuration::type::VEUID:
+	case lsc::context_configuration::type::VEUID:
 		return config_event_context_veuid;
-	case ls::context_configuration::type::VSUID:
+	case lsc::context_configuration::type::VSUID:
 		return config_event_context_vsuid;
-	case ls::context_configuration::type::VGID:
+	case lsc::context_configuration::type::VGID:
 		return config_event_context_vgid;
-	case ls::context_configuration::type::VEGID:
+	case lsc::context_configuration::type::VEGID:
 		return config_event_context_vegid;
-	case ls::context_configuration::type::VSGID:
+	case lsc::context_configuration::type::VSGID:
 		return config_event_context_vsgid;
-	case ls::context_configuration::type::CPU_ID:
+	case lsc::context_configuration::type::CPU_ID:
 		return config_event_context_cpu_id;
-	case ls::context_configuration::type::PERF_CPU_COUNTER:
-	case ls::context_configuration::type::PERF_THREAD_COUNTER:
-	case ls::context_configuration::type::APP_CONTEXT:
+	case lsc::context_configuration::type::PERF_CPU_COUNTER:
+	case lsc::context_configuration::type::PERF_THREAD_COUNTER:
+	case lsc::context_configuration::type::APP_CONTEXT:
 		/* These contexts have special handling, not a simple type string. */
 		return nullptr;
 	}
@@ -349,7 +350,7 @@ std::int64_t get_blocking_timeout_value(const rcc::consumption_blocking_policy& 
  * the modern recording_channel_configuration structure.
  */
 void save_channel_attributes_from_config(session_config::writer& writer,
-					 const ls::recording_channel_configuration& channel_config,
+					 const lsc::recording_channel_configuration& channel_config,
 					 lttng::domain_class domain_class)
 {
 	/* Overwrite mode */
@@ -449,16 +450,16 @@ void save_channel_attributes_from_config(session_config::writer& writer,
  * Save a single context from a context_configuration.
  */
 void save_context_from_config(session_config::writer& writer,
-			      const ls::context_configuration& ctx_config)
+			      const lsc::context_configuration& ctx_config)
 {
 	writer.open_element(config_element_context);
 
 	switch (ctx_config.context_type) {
-	case ls::context_configuration::type::PERF_CPU_COUNTER:
-	case ls::context_configuration::type::PERF_THREAD_COUNTER:
+	case lsc::context_configuration::type::PERF_CPU_COUNTER:
+	case lsc::context_configuration::type::PERF_THREAD_COUNTER:
 	{
 		const auto& perf_ctx =
-			static_cast<const ls::perf_counter_context_configuration&>(ctx_config);
+			static_cast<const lsc::perf_counter_context_configuration&>(ctx_config);
 
 		writer.open_element(config_element_context_perf);
 		writer.write(config_element_type, static_cast<std::uint64_t>(perf_ctx.perf_type));
@@ -468,9 +469,10 @@ void save_context_from_config(session_config::writer& writer,
 		writer.close_element();
 		break;
 	}
-	case ls::context_configuration::type::APP_CONTEXT:
+	case lsc::context_configuration::type::APP_CONTEXT:
 	{
-		const auto& app_ctx = static_cast<const ls::app_context_configuration&>(ctx_config);
+		const auto& app_ctx =
+			static_cast<const lsc::app_context_configuration&>(ctx_config);
 
 		writer.open_element(config_element_context_app);
 		writer.write(config_element_context_app_provider_name,
@@ -502,7 +504,7 @@ void save_context_from_config(session_config::writer& writer,
  * Save all contexts from a recording_channel_configuration.
  */
 void save_contexts_from_config(session_config::writer& writer,
-			       const ls::recording_channel_configuration& channel_config)
+			       const lsc::recording_channel_configuration& channel_config)
 {
 	const auto& contexts = channel_config.get_contexts();
 
@@ -970,7 +972,7 @@ void save_kernel_uprobe_event_rule(session_config::writer& writer,
  * Save a single event from an event_rule_configuration.
  */
 void save_event_from_event_rule(session_config::writer& writer,
-				const ls::event_rule_configuration& event_config)
+				const lsc::event_rule_configuration& event_config)
 {
 	const auto *event_rule = event_config.event_rule.get();
 	const auto event_rule_type = lttng_event_rule_get_type(event_rule);
@@ -1013,7 +1015,7 @@ void save_event_from_event_rule(session_config::writer& writer,
  * Save all events from a recording_channel_configuration.
  */
 void save_events_from_config(session_config::writer& writer,
-			     const ls::recording_channel_configuration& channel_config)
+			     const lsc::recording_channel_configuration& channel_config)
 {
 	writer.open_element(config_element_events);
 
@@ -1030,7 +1032,7 @@ void save_events_from_config(session_config::writer& writer,
  * Save a channel from a recording_channel_configuration.
  */
 void save_channel_from_config(session_config::writer& writer,
-			      const ls::recording_channel_configuration& channel_config,
+			      const lsc::recording_channel_configuration& channel_config,
 			      lttng::domain_class domain_class,
 			      std::uint64_t live_timer_interval)
 {
@@ -1076,7 +1078,7 @@ void save_process_id_tracker_from_domain(session_config::writer& writer,
 					 lttng::c_string_view element_id_tracker,
 					 lttng::c_string_view element_target_id)
 {
-	if (tracker.policy() == ls::tracking_policy::INCLUDE_ALL) {
+	if (tracker.policy() == lsc::tracking_policy::INCLUDE_ALL) {
 		/* Tracking all is the default, nothing to save. */
 		return;
 	}
@@ -1084,7 +1086,7 @@ void save_process_id_tracker_from_domain(session_config::writer& writer,
 	writer.open_element(element_id_tracker);
 	writer.open_element(config_element_process_attr_values);
 
-	if (tracker.policy() == ls::tracking_policy::INCLUDE_SET) {
+	if (tracker.policy() == lsc::tracking_policy::INCLUDE_SET) {
 		for (const auto& value : tracker.inclusion_set()) {
 			writer.open_element(element_target_id);
 			writer.write(config_element_process_attr_id,
@@ -1114,7 +1116,7 @@ void save_resolved_id_tracker_from_domain(session_config::writer& writer,
 					  lttng::c_string_view element_id_tracker,
 					  lttng::c_string_view element_target_id)
 {
-	if (tracker.policy() == ls::tracking_policy::INCLUDE_ALL) {
+	if (tracker.policy() == lsc::tracking_policy::INCLUDE_ALL) {
 		/* Tracking all is the default, nothing to save. */
 		return;
 	}
@@ -1122,7 +1124,7 @@ void save_resolved_id_tracker_from_domain(session_config::writer& writer,
 	writer.open_element(element_id_tracker);
 	writer.open_element(config_element_process_attr_values);
 
-	if (tracker.policy() == ls::tracking_policy::INCLUDE_SET) {
+	if (tracker.policy() == lsc::tracking_policy::INCLUDE_SET) {
 		for (const auto& value : tracker.inclusion_set()) {
 			writer.open_element(element_target_id);
 
@@ -1149,13 +1151,13 @@ void save_resolved_id_tracker_from_domain(session_config::writer& writer,
 /*
  * Save all process attribute trackers from a domain.
  *
- * This function saves trackers from the new lttng::sessiond::domain structure.
+ * This function saves trackers from the new lttng::sessiond::config::domain structure.
  * The available trackers depend on the domain type:
  * - Kernel: pid, vpid, uid, vuid, gid, vgid
  * - User space: vpid, vuid, vgid
  */
 void save_process_attr_trackers_from_domain(session_config::writer& writer,
-					    const ls::domain& domain)
+					    const lsc::domain& domain)
 {
 	writer.open_element(config_element_process_attr_trackers);
 
@@ -1219,7 +1221,7 @@ void save_process_attr_trackers_from_domain(session_config::writer& writer,
  * For kernel, it's always "GLOBAL".
  * For UST, we need to check the ownership model from the first channel in the domain.
  */
-const char *get_buffer_type_string_for_domain(const ls::domain& domain, const ltt_session& session)
+const char *get_buffer_type_string_for_domain(const lsc::domain& domain, const ltt_session& session)
 {
 	if (domain.domain_class_ == lttng::domain_class::KERNEL_SPACE) {
 		return config_buffer_type_global;
@@ -1253,10 +1255,10 @@ bool is_internal_channel(const lttng::c_string_view channel_name) noexcept
 }
 
 /*
- * Save a domain from an lttng::sessiond::domain using the new configuration types.
+ * Save a domain from an lttng::sessiond::config::domain using the new configuration types.
  */
 void save_domain_from_config(session_config::writer& writer,
-			     const ls::domain& domain,
+			     const lsc::domain& domain,
 			     const ltt_session& session,
 			     std::uint64_t live_timer_interval)
 {
@@ -1326,7 +1328,7 @@ const char *get_agent_domain_default_channel_name(lttng::domain_class domain_cla
  * over the agent_domain's event_rules() instead of a channel's event_rules.
  */
 void save_events_from_agent_domain(session_config::writer& writer,
-				   const ls::agent_domain& agent_domain)
+				   const lsc::agent_domain& agent_domain)
 {
 	writer.open_element(config_element_events);
 
@@ -1342,14 +1344,14 @@ void save_events_from_agent_domain(session_config::writer& writer,
  * Get the default channel from user_space_domain for the given agent domain.
  * Returns nullptr if the channel is not found.
  */
-const ls::recording_channel_configuration *
-get_agent_domain_default_channel(const ls::domain& user_space_domain,
+const lsc::recording_channel_configuration *
+get_agent_domain_default_channel(const lsc::domain& user_space_domain,
 				 lttng::domain_class agent_domain_class)
 {
 	const char *channel_name = get_agent_domain_default_channel_name(agent_domain_class);
 	try {
 		return &user_space_domain.get_channel(channel_name);
-	} catch (const ls::exceptions::channel_not_found_error&) {
+	} catch (const lsc::exceptions::channel_not_found_error&) {
 		return nullptr;
 	}
 }
@@ -1363,8 +1365,8 @@ get_agent_domain_default_channel(const ls::domain& user_space_domain,
  * - Contexts from the underlying UST channel
  */
 void save_agent_channel_from_config(session_config::writer& writer,
-				    const ls::recording_channel_configuration& channel_config,
-				    const ls::agent_domain& agent_domain,
+				    const lsc::recording_channel_configuration& channel_config,
+				    const lsc::agent_domain& agent_domain,
 				    std::uint64_t live_timer_interval)
 {
 	writer.open_element(config_element_channel);
@@ -1401,15 +1403,15 @@ void save_agent_channel_from_config(session_config::writer& writer,
 }
 
 /*
- * Save an agent domain from an lttng::sessiond::agent_domain.
+ * Save an agent domain from an lttng::sessiond::config::agent_domain.
  *
  * Agent domains (JUL, Log4j, Log4j2, Python) are saved as domains with a single
  * channel. The channel attributes come from the underlying UST channel in the
  * user_space_domain, while the event rules come from the agent_domain itself.
  */
 void save_agent_domain_from_config(session_config::writer& writer,
-				   const ls::agent_domain& agent_domain,
-				   const ls::recording_channel_configuration *default_channel,
+				   const lsc::agent_domain& agent_domain,
+				   const lsc::recording_channel_configuration *default_channel,
 				   const ltt_session& session,
 				   std::uint64_t live_timer_interval)
 {

@@ -224,8 +224,9 @@ public:
 				bitness(bitness_),
 				consumer_key(consumer_key_),
 				type(channel_type),
-				ownership_model(lttng::sessiond::recording_channel_configuration::
-							owership_model_t::PER_UID),
+				ownership_model(
+					lttng::sessiond::config::recording_channel_configuration::
+						owership_model_t::PER_UID),
 				owner_id{ .uid = uid }
 			{
 			}
@@ -237,8 +238,9 @@ public:
 				bitness(bitness_),
 				consumer_key(consumer_key_),
 				type(channel_type),
-				ownership_model(lttng::sessiond::recording_channel_configuration::
-							owership_model_t::PER_PID),
+				ownership_model(
+					lttng::sessiond::config::recording_channel_configuration::
+						owership_model_t::PER_PID),
 				owner_id{ .pid = pid }
 			{
 			}
@@ -255,23 +257,25 @@ public:
 
 			uid_t owner_uid() const noexcept
 			{
-				LTTNG_ASSERT(ownership_model ==
-					     lttng::sessiond::recording_channel_configuration::
-						     owership_model_t::PER_UID);
+				LTTNG_ASSERT(
+					ownership_model ==
+					lttng::sessiond::config::recording_channel_configuration::
+						owership_model_t::PER_UID);
 				return owner_id.uid;
 			}
 
 			pid_t owner_pid() const noexcept
 			{
-				LTTNG_ASSERT(ownership_model ==
-					     lttng::sessiond::recording_channel_configuration::
-						     owership_model_t::PER_PID);
+				LTTNG_ASSERT(
+					ownership_model ==
+					lttng::sessiond::config::recording_channel_configuration::
+						owership_model_t::PER_PID);
 				return owner_id.pid;
 			}
 
 		private:
-			const lttng::sessiond::recording_channel_configuration::owership_model_t
-				ownership_model;
+			const lttng::sessiond::config::recording_channel_configuration::
+				owership_model_t ownership_model;
 			const union {
 				uid_t uid; /* per-UID ownership model */
 				pid_t pid; /* per-PID ownership model */
@@ -495,11 +499,12 @@ public:
 	void add_pending_reclamation(std::string channel_name);
 	void remove_pending_reclamation(const lttng::c_string_view channel_name);
 
-	lttng::sessiond::domain& get_domain(lttng::domain_class domain);
-	const lttng::sessiond::domain& get_domain(lttng::domain_class domain) const;
+	lttng::sessiond::config::domain& get_domain(lttng::domain_class domain);
+	const lttng::sessiond::config::domain& get_domain(lttng::domain_class domain) const;
 
-	lttng::sessiond::agent_domain& get_agent_domain(lttng::domain_class domain);
-	const lttng::sessiond::agent_domain& get_agent_domain(lttng::domain_class domain) const;
+	lttng::sessiond::config::agent_domain& get_agent_domain(lttng::domain_class domain);
+	const lttng::sessiond::config::agent_domain&
+	get_agent_domain(lttng::domain_class domain) const;
 
 	lttng::sessiond::user_space_consumer_channel_keys
 	user_space_consumer_channel_keys(lttng::c_string_view channel_name_filter = {}) const;
@@ -655,19 +660,19 @@ public:
 	/* Session base path override. Set non-null. */
 	char *base_path = nullptr;
 
-	lttng::sessiond::domain user_space_domain =
-		lttng::sessiond::domain(lttng::domain_class::USER_SPACE);
-	lttng::sessiond::domain kernel_space_domain =
-		lttng::sessiond::domain(lttng::domain_class::KERNEL_SPACE);
+	lttng::sessiond::config::domain user_space_domain =
+		lttng::sessiond::config::domain(lttng::domain_class::USER_SPACE);
+	lttng::sessiond::config::domain kernel_space_domain =
+		lttng::sessiond::config::domain(lttng::domain_class::KERNEL_SPACE);
 
-	lttng::sessiond::agent_domain jul_domain =
-		lttng::sessiond::agent_domain(lttng::domain_class::JAVA_UTIL_LOGGING);
-	lttng::sessiond::agent_domain log4j_domain =
-		lttng::sessiond::agent_domain(lttng::domain_class::LOG4J);
-	lttng::sessiond::agent_domain log4j2_domain =
-		lttng::sessiond::agent_domain(lttng::domain_class::LOG4J2);
-	lttng::sessiond::agent_domain python_domain =
-		lttng::sessiond::agent_domain(lttng::domain_class::PYTHON_LOGGING);
+	lttng::sessiond::config::agent_domain jul_domain =
+		lttng::sessiond::config::agent_domain(lttng::domain_class::JAVA_UTIL_LOGGING);
+	lttng::sessiond::config::agent_domain log4j_domain =
+		lttng::sessiond::config::agent_domain(lttng::domain_class::LOG4J);
+	lttng::sessiond::config::agent_domain log4j2_domain =
+		lttng::sessiond::config::agent_domain(lttng::domain_class::LOG4J2);
+	lttng::sessiond::config::agent_domain python_domain =
+		lttng::sessiond::config::agent_domain(lttng::domain_class::PYTHON_LOGGING);
 };
 
 /*

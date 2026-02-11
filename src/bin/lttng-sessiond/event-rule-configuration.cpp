@@ -7,7 +7,7 @@
 
 #include "event-rule-configuration.hpp"
 
-namespace ls = lttng::sessiond;
+namespace ls = lttng::sessiond::config;
 
 ls::event_rule_configuration::event_rule_configuration(bool is_enabled_,
 						       lttng::ctl::event_rule_uptr&& event_rule_) :

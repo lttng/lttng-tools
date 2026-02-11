@@ -30,9 +30,10 @@
 
 namespace lttng {
 namespace sessiond {
+namespace config {
 
-#define LTTNG_THROW_EVENT_RULE_CONFIGURATION_NOT_FOUND_ERROR(event_rule)             \
-	throw lttng::sessiond::exceptions::event_rule_configuration_not_found_error( \
+#define LTTNG_THROW_EVENT_RULE_CONFIGURATION_NOT_FOUND_ERROR(event_rule)                     \
+	throw lttng::sessiond::config::exceptions::event_rule_configuration_not_found_error( \
 		event_rule, LTTNG_SOURCE_LOCATION())
 
 namespace exceptions {
@@ -145,9 +146,9 @@ public:
 		event_rules.emplace(std::cref(*config->event_rule), std::move(config));
 	}
 
-	const lttng::sessiond::event_rule_configuration&
+	const event_rule_configuration&
 	get_event_rule_configuration(const lttng_event_rule& matching_event_rule_to_lookup) const;
-	lttng::sessiond::event_rule_configuration&
+	event_rule_configuration&
 	get_event_rule_configuration(const lttng_event_rule& matching_event_rule_to_lookup);
 
 	void add_context(context_configuration::uptr context);
@@ -188,6 +189,7 @@ private:
 	std::vector<context_configuration::uptr> _contexts;
 };
 
+} /* namespace config */
 } /* namespace sessiond */
 } /* namespace lttng */
 
@@ -199,28 +201,29 @@ private:
  */
 namespace fmt {
 template <>
-struct formatter<lttng::sessiond::recording_channel_configuration::consumption_blocking_policy::mode>
+struct formatter<
+	lttng::sessiond::config::recording_channel_configuration::consumption_blocking_policy::mode>
 	: formatter<std::string> {
 	/* Format function to convert enum to string. */
 	template <typename FormatContextType>
 	typename FormatContextType::iterator
-	format(lttng::sessiond::recording_channel_configuration::consumption_blocking_policy::mode
-		       mode,
+	format(lttng::sessiond::config::recording_channel_configuration::
+		       consumption_blocking_policy::mode mode,
 	       FormatContextType& ctx) const
 	{
 		auto name = "UNKNOWN";
 
 		switch (mode) {
-		case lttng::sessiond::recording_channel_configuration::consumption_blocking_policy::
-			mode::NONE:
+		case lttng::sessiond::config::recording_channel_configuration::
+			consumption_blocking_policy::mode::NONE:
 			name = "NONE";
 			break;
-		case lttng::sessiond::recording_channel_configuration::consumption_blocking_policy::
-			mode::UNBOUNDED:
+		case lttng::sessiond::config::recording_channel_configuration::
+			consumption_blocking_policy::mode::UNBOUNDED:
 			name = "UNBOUNDED";
 			break;
-		case lttng::sessiond::recording_channel_configuration::consumption_blocking_policy::
-			mode::TIMED:
+		case lttng::sessiond::config::recording_channel_configuration::
+			consumption_blocking_policy::mode::TIMED:
 			name = "TIMED";
 			break;
 		}

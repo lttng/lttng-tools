@@ -10,7 +10,7 @@
 #include <common/exception.hpp>
 #include <common/format.hpp>
 
-lttng::sessiond::exceptions::channel_not_found_error::channel_not_found_error(
+lttng::sessiond::config::exceptions::channel_not_found_error::channel_not_found_error(
 	std::string channel_name_, const lttng::source_location& source_location_) :
 	lttng::runtime_error(
 		fmt::format("No channel with the given name in domain: channel_name=`{}`",

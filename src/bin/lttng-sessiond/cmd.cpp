@@ -102,6 +102,7 @@
 #define SESSION_DESTROY_SHM_PATH_CHECK_DELAY_US 100000
 
 namespace ls = lttng::sessiond;
+namespace lsc = lttng::sessiond::config;
 namespace lsu = lttng::sessiond::ust;
 
 static enum lttng_error_code wait_on_path(void *path);
@@ -143,15 +144,15 @@ uint64_t relayd_net_seq_idx;
 /*
  * Convert lttng_tracking_policy to the new tracking_policy enum.
  */
-ls::tracking_policy convert_tracking_policy(enum lttng_tracking_policy policy)
+lsc::tracking_policy convert_tracking_policy(enum lttng_tracking_policy policy)
 {
 	switch (policy) {
 	case LTTNG_TRACKING_POLICY_INCLUDE_ALL:
-		return ls::tracking_policy::INCLUDE_ALL;
+		return lsc::tracking_policy::INCLUDE_ALL;
 	case LTTNG_TRACKING_POLICY_EXCLUDE_ALL:
-		return ls::tracking_policy::EXCLUDE_ALL;
+		return lsc::tracking_policy::EXCLUDE_ALL;
 	case LTTNG_TRACKING_POLICY_INCLUDE_SET:
-		return ls::tracking_policy::INCLUDE_SET;
+		return lsc::tracking_policy::INCLUDE_SET;
 	default:
 		abort();
 	}
@@ -177,9 +178,9 @@ lttng::domain_class domain_type_to_class(enum lttng_domain_type domain_type)
 /*
  * Update the new domain tracker policy based on the process attribute.
  */
-void update_domain_tracker_policy(ls::domain& domain,
+void update_domain_tracker_policy(lsc::domain& domain,
 				  enum lttng_process_attr process_attr,
-				  ls::tracking_policy policy)
+				  lsc::tracking_policy policy)
 {
 	switch (process_attr) {
 	case LTTNG_PROCESS_ATTR_PROCESS_ID:
@@ -245,7 +246,7 @@ gid_t resolve_group_id(const char *group_name)
  * and the original name (if provided) are stored in the tracker to preserve
  * user-specified semantics (i.e., tracking by name or by id).
  */
-void add_value_to_domain_tracker(ls::domain& domain,
+void add_value_to_domain_tracker(lsc::domain& domain,
 				 lttng_process_attr process_attr,
 				 const process_attr_value *value)
 {
@@ -259,42 +260,43 @@ void add_value_to_domain_tracker(ls::domain& domain,
 	case LTTNG_PROCESS_ATTR_USER_ID:
 		if (value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME) {
 			const auto uid = resolve_user_id(value->value.user_name);
-			domain.user_id_tracker().add(ls::resolved_process_attr_value<uid_t>(
+			domain.user_id_tracker().add(lsc::resolved_process_attr_value<uid_t>(
 				uid, std::string(value->value.user_name)));
 		} else {
 			domain.user_id_tracker().add(
-				ls::resolved_process_attr_value<uid_t>(value->value.uid));
+				lsc::resolved_process_attr_value<uid_t>(value->value.uid));
 		}
 		break;
 	case LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID:
 		if (value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME) {
 			const auto uid = resolve_user_id(value->value.user_name);
-			domain.virtual_user_id_tracker().add(ls::resolved_process_attr_value<uid_t>(
-				uid, std::string(value->value.user_name)));
+			domain.virtual_user_id_tracker().add(
+				lsc::resolved_process_attr_value<uid_t>(
+					uid, std::string(value->value.user_name)));
 		} else {
 			domain.virtual_user_id_tracker().add(
-				ls::resolved_process_attr_value<uid_t>(value->value.uid));
+				lsc::resolved_process_attr_value<uid_t>(value->value.uid));
 		}
 		break;
 	case LTTNG_PROCESS_ATTR_GROUP_ID:
 		if (value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME) {
 			const auto gid = resolve_group_id(value->value.group_name);
-			domain.group_id_tracker().add(ls::resolved_process_attr_value<gid_t>(
+			domain.group_id_tracker().add(lsc::resolved_process_attr_value<gid_t>(
 				gid, std::string(value->value.group_name)));
 		} else {
 			domain.group_id_tracker().add(
-				ls::resolved_process_attr_value<gid_t>(value->value.gid));
+				lsc::resolved_process_attr_value<gid_t>(value->value.gid));
 		}
 		break;
 	case LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID:
 		if (value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME) {
 			const auto gid = resolve_group_id(value->value.group_name);
 			domain.virtual_group_id_tracker().add(
-				ls::resolved_process_attr_value<gid_t>(
+				lsc::resolved_process_attr_value<gid_t>(
 					gid, std::string(value->value.group_name)));
 		} else {
 			domain.virtual_group_id_tracker().add(
-				ls::resolved_process_attr_value<gid_t>(value->value.gid));
+				lsc::resolved_process_attr_value<gid_t>(value->value.gid));
 		}
 		break;
 	default:
@@ -308,7 +310,7 @@ void add_value_to_domain_tracker(ls::domain& domain,
  * For UID/GID trackers, names are resolved to numeric IDs for lookup.
  * The comparison uses only the numeric ID, so we don't need to preserve the name.
  */
-void remove_value_from_domain_tracker(ls::domain& domain,
+void remove_value_from_domain_tracker(lsc::domain& domain,
 				      enum lttng_process_attr process_attr,
 				      const struct process_attr_value *value)
 {
@@ -324,7 +326,7 @@ void remove_value_from_domain_tracker(ls::domain& domain,
 		const auto uid = value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME ?
 			resolve_user_id(value->value.user_name) :
 			value->value.uid;
-		domain.user_id_tracker().remove(ls::resolved_process_attr_value<uid_t>(uid));
+		domain.user_id_tracker().remove(lsc::resolved_process_attr_value<uid_t>(uid));
 		break;
 	}
 	case LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID:
@@ -333,7 +335,7 @@ void remove_value_from_domain_tracker(ls::domain& domain,
 			resolve_user_id(value->value.user_name) :
 			value->value.uid;
 		domain.virtual_user_id_tracker().remove(
-			ls::resolved_process_attr_value<uid_t>(uid));
+			lsc::resolved_process_attr_value<uid_t>(uid));
 		break;
 	}
 	case LTTNG_PROCESS_ATTR_GROUP_ID:
@@ -341,7 +343,7 @@ void remove_value_from_domain_tracker(ls::domain& domain,
 		const auto gid = value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME ?
 			resolve_group_id(value->value.group_name) :
 			value->value.gid;
-		domain.group_id_tracker().remove(ls::resolved_process_attr_value<gid_t>(gid));
+		domain.group_id_tracker().remove(lsc::resolved_process_attr_value<gid_t>(gid));
 		break;
 	}
 	case LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID:
@@ -350,7 +352,7 @@ void remove_value_from_domain_tracker(ls::domain& domain,
 			resolve_group_id(value->value.group_name) :
 			value->value.gid;
 		domain.virtual_group_id_tracker().remove(
-			ls::resolved_process_attr_value<gid_t>(gid));
+			lsc::resolved_process_attr_value<gid_t>(gid));
 		break;
 	}
 	default:
@@ -557,7 +559,7 @@ namespace {
  * Generates a lttng_event from the event rule, sets the enabled state,
  * filter, and exclusion flags, then serializes it.
  */
-void serialize_event_rule_config_to_payload(const ls::event_rule_configuration& event_config,
+void serialize_event_rule_config_to_payload(const lsc::event_rule_configuration& event_config,
 					    struct lttng_payload *reply_payload)
 {
 	const auto *rule = event_config.event_rule.get();
@@ -610,7 +612,7 @@ void serialize_event_rule_config_to_payload(const ls::event_rule_configuration& 
  *
  * Returns the number of events serialized.
  */
-unsigned int list_events_from_domain(const ls::domain& domain,
+unsigned int list_events_from_domain(const lsc::domain& domain,
 				     const char *channel_name,
 				     struct lttng_payload *reply_payload)
 {
@@ -633,7 +635,7 @@ unsigned int list_events_from_domain(const ls::domain& domain,
  *
  * Returns the number of events serialized.
  */
-unsigned int list_events_from_agent_domain(const ls::agent_domain& agent_domain,
+unsigned int list_events_from_agent_domain(const lsc::agent_domain& agent_domain,
 					   struct lttng_payload *reply_payload)
 {
 	unsigned int nb_events = 0;
@@ -1254,7 +1256,7 @@ int cmd_disable_channel(const ltt_session::locked_ref& session,
 			enum lttng_domain_type domain,
 			char *channel_name)
 {
-	ls::domain& target_domain =
+	lsc::domain& target_domain =
 		session->get_domain(lttng::get_domain_class_from_lttng_domain_type(domain));
 
 	/* Throws if not found. */
@@ -1651,21 +1653,21 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 
 	const auto switch_timer_period_us = [&channel_attr]() {
 		return channel_attr.attr.switch_timer_interval > 0 ?
-			decltype(ls::recording_channel_configuration::switch_timer_period_us)(
+			decltype(lsc::recording_channel_configuration::switch_timer_period_us)(
 				channel_attr.attr.switch_timer_interval) :
 			nonstd::nullopt;
 	}();
 
 	const auto read_timer_period_us = [&channel_attr]() {
 		return channel_attr.attr.read_timer_interval > 0 ?
-			decltype(ls::recording_channel_configuration::read_timer_period_us)(
+			decltype(lsc::recording_channel_configuration::read_timer_period_us)(
 				channel_attr.attr.read_timer_interval) :
 			nonstd::nullopt;
 	}();
 
 	const auto live_timer_period_us = [&channel_attr]() {
 		return channel_attr.attr.live_timer_interval > 0 ?
-			decltype(ls::recording_channel_configuration::live_timer_period_us)(
+			decltype(lsc::recording_channel_configuration::live_timer_period_us)(
 				channel_attr.attr.live_timer_interval) :
 			nonstd::nullopt;
 	}();
@@ -1681,7 +1683,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 		}
 
 		return period > 0 ?
-			decltype(ls::recording_channel_configuration::monitor_timer_period_us)(
+			decltype(lsc::recording_channel_configuration::monitor_timer_period_us)(
 				period) :
 			nonstd::nullopt;
 	}();
@@ -1698,7 +1700,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 		}
 
 		return status == LTTNG_CHANNEL_STATUS_OK ?
-			decltype(ls::recording_channel_configuration::watchdog_timer_period_us)(
+			decltype(lsc::recording_channel_configuration::watchdog_timer_period_us)(
 				period) :
 			nonstd::nullopt;
 	}();
@@ -1709,7 +1711,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 			&channel_attr, &maximal_age_us);
 
 		if (ret == LTTNG_CHANNEL_STATUS_UNSET) {
-			return decltype(ls::recording_channel_configuration::
+			return decltype(lsc::recording_channel_configuration::
 						automatic_memory_reclamation_maximal_age)();
 		} else if (ret != LTTNG_CHANNEL_STATUS_OK) {
 			LTTNG_THROW_ERROR(fmt::format(
@@ -1717,7 +1719,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 				channel_attr.name));
 		}
 
-		return decltype(ls::recording_channel_configuration::
+		return decltype(lsc::recording_channel_configuration::
 					automatic_memory_reclamation_maximal_age)(
 			std::chrono::microseconds(maximal_age_us));
 	}();
@@ -1734,12 +1736,12 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 
 		switch (timeout_us) {
 		case 0:
-			return ls::recording_channel_configuration::consumption_blocking_policy(
-				ls::recording_channel_configuration::consumption_blocking_policy::
+			return lsc::recording_channel_configuration::consumption_blocking_policy(
+				lsc::recording_channel_configuration::consumption_blocking_policy::
 					mode::NONE);
 		case -1:
-			return ls::recording_channel_configuration::consumption_blocking_policy(
-				ls::recording_channel_configuration::consumption_blocking_policy::
+			return lsc::recording_channel_configuration::consumption_blocking_policy(
+				lsc::recording_channel_configuration::consumption_blocking_policy::
 					mode::UNBOUNDED);
 		default:
 			if (timeout_us < 0) {
@@ -1749,8 +1751,8 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 					timeout_us));
 			}
 
-			return ls::recording_channel_configuration::consumption_blocking_policy(
-				ls::recording_channel_configuration::consumption_blocking_policy::
+			return lsc::recording_channel_configuration::consumption_blocking_policy(
+				lsc::recording_channel_configuration::consumption_blocking_policy::
 					mode::TIMED,
 				timeout_us);
 		}
@@ -1759,7 +1761,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 	auto allocation_policy = [&channel_attr, &domain]() {
 		switch (lttng::get_domain_class_from_lttng_domain_type(domain->type)) {
 		case lttng::domain_class::KERNEL_SPACE:
-			return ls::recording_channel_configuration::buffer_allocation_policy_t::
+			return lsc::recording_channel_configuration::buffer_allocation_policy_t::
 				PER_CPU;
 		default:
 		{
@@ -1770,10 +1772,10 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 
 			switch (policy) {
 			case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU:
-				return ls::recording_channel_configuration::
+				return lsc::recording_channel_configuration::
 					buffer_allocation_policy_t::PER_CPU;
 			case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CHANNEL:
-				return ls::recording_channel_configuration::
+				return lsc::recording_channel_configuration::
 					buffer_allocation_policy_t::PER_CHANNEL;
 			default:
 				LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
@@ -1798,16 +1800,16 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 					"Kernel tracer only supports 'PREALLOCATE' buffer preallocation policy");
 			}
 
-			return ls::recording_channel_configuration::buffer_preallocation_policy_t::
+			return lsc::recording_channel_configuration::buffer_preallocation_policy_t::
 				PREALLOCATE;
 		default:
 		{
 			switch (policy) {
 			case LTTNG_CHANNEL_PREALLOCATION_POLICY_PREALLOCATE:
-				return ls::recording_channel_configuration::
+				return lsc::recording_channel_configuration::
 					buffer_preallocation_policy_t::PREALLOCATE;
 			case LTTNG_CHANNEL_PREALLOCATION_POLICY_ON_DEMAND:
-				return ls::recording_channel_configuration::
+				return lsc::recording_channel_configuration::
 					buffer_preallocation_policy_t::ON_DEMAND;
 			default:
 				LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
@@ -1819,7 +1821,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 		}
 	}();
 
-	ls::domain& target_domain =
+	lsc::domain& target_domain =
 		session->get_domain(lttng::get_domain_class_from_lttng_domain_type(domain->type));
 
 	/* Extract all channel properties needed to initialize the channel. */
@@ -1830,15 +1832,15 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 		case -1:
 			/* Session default. */
 			return session->snapshot_mode ?
-				ls::recording_channel_configuration::buffer_full_policy_t::
+				lsc::recording_channel_configuration::buffer_full_policy_t::
 					OVERWRITE_OLDEST_PACKET :
-				ls::recording_channel_configuration::buffer_full_policy_t::
+				lsc::recording_channel_configuration::buffer_full_policy_t::
 					DISCARD_EVENT;
 		case 0:
-			return ls::recording_channel_configuration::buffer_full_policy_t::
+			return lsc::recording_channel_configuration::buffer_full_policy_t::
 				DISCARD_EVENT;
 		case 1:
-			return ls::recording_channel_configuration::buffer_full_policy_t::
+			return lsc::recording_channel_configuration::buffer_full_policy_t::
 				OVERWRITE_OLDEST_PACKET;
 		default:
 			LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
@@ -1847,12 +1849,12 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 		}
 	}(channel_attr.attr.overwrite);
 	const auto trace_file_size_limit_bytes = channel_attr.attr.tracefile_size ?
-		decltype(ls::recording_channel_configuration::trace_file_size_limit_bytes)(
+		decltype(lsc::recording_channel_configuration::trace_file_size_limit_bytes)(
 			channel_attr.attr.tracefile_size) :
 		nonstd::nullopt;
 
 	const auto trace_file_count_limit = channel_attr.attr.tracefile_count ?
-		decltype(ls::recording_channel_configuration::trace_file_count_limit)(
+		decltype(lsc::recording_channel_configuration::trace_file_count_limit)(
 			channel_attr.attr.tracefile_count) :
 		nonstd::nullopt;
 
@@ -1865,8 +1867,8 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 	}
 
 	const auto buffer_consumption_backend = channel_attr.attr.output == LTTNG_EVENT_MMAP ?
-		ls::recording_channel_configuration::buffer_consumption_backend_t::MMAP :
-		ls::recording_channel_configuration::buffer_consumption_backend_t::SPLICE;
+		lsc::recording_channel_configuration::buffer_consumption_backend_t::MMAP :
+		lsc::recording_channel_configuration::buffer_consumption_backend_t::SPLICE;
 
 	/* Validate sub-buffer size. */
 	if (!lttng::math::is_power_of_two(channel_attr.attr.subbuf_size) ||
@@ -1888,7 +1890,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 
 	try {
 		target_domain.get_channel(name).enable();
-	} catch (const lttng::sessiond::exceptions::channel_not_found_error& ex) {
+	} catch (const lttng::sessiond::config::exceptions::channel_not_found_error& ex) {
 		/* Channel doesn't exist, create it. */
 		target_domain.add_channel(is_enabled,
 					  std::move(name),
@@ -2460,13 +2462,14 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 				/* Add to specific channel. */
 				auto& recording_channel = kernel_domain.get_channel(channel_name);
 				recording_channel.add_context(
-					lttng::sessiond::make_context_configuration_from_event_context(
-						*event_context));
+					lttng::sessiond::config::
+						make_context_configuration_from_event_context(
+							*event_context));
 			} else {
 				/* Add to all channels. */
 				for (auto& channel : kernel_domain.recording_channels()) {
 					channel.add_context(
-						lttng::sessiond::
+						lttng::sessiond::config::
 							make_context_configuration_from_event_context(
 								*event_context));
 				}
@@ -2542,13 +2545,14 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 				/* Add to specific channel. */
 				auto& recording_channel = domain.get_channel(channel_name);
 				recording_channel.add_context(
-					lttng::sessiond::make_context_configuration_from_event_context(
-						*event_context));
+					lttng::sessiond::config::
+						make_context_configuration_from_event_context(
+							*event_context));
 			} else {
 				/* Add to all channels. */
 				for (auto& channel : domain.recording_channels()) {
 					channel.add_context(
-						lttng::sessiond::
+						lttng::sessiond::config::
 							make_context_configuration_from_event_context(
 								*event_context));
 				}
@@ -3043,9 +3047,8 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 		auto& agent_dom = session.get_agent_domain(domain_class);
 		try {
 			agent_dom.get_event_rule_configuration(*event_rule).enable();
-		} catch (
-			const lttng::sessiond::exceptions::event_rule_configuration_not_found_error&
-				ex) {
+		} catch (const lttng::sessiond::config::exceptions::
+				 event_rule_configuration_not_found_error& ex) {
 			DBG("%s", ex.what());
 			agent_dom.add_event_rule_configuration(true, std::move(event_rule));
 		}
@@ -3054,9 +3057,8 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 			session.get_domain(domain_class).get_channel(user_visible_channel_name);
 		try {
 			channel_cfg.get_event_rule_configuration(*event_rule).enable();
-		} catch (
-			const lttng::sessiond::exceptions::event_rule_configuration_not_found_error&
-				ex) {
+		} catch (const lttng::sessiond::config::exceptions::
+				 event_rule_configuration_not_found_error& ex) {
 			DBG("%s", ex.what());
 
 			lttng_credentials generation_creds;
