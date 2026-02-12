@@ -1,3 +1,29 @@
+2026-02-12 lttng-tools 2.15.0
+	* Fix: ust-consumerd: flush hangs on stalled channel without watchdog timer
+	* Fix: consumerd: link failure on 32-bit architectures due to missing libatomic
+	* tests/lttng.py: Honor timeout_s in _run_cmd
+	* Clean-up: tests: fix clang-tidy `const` warning
+	* Fix: tests: use portable format specifier in test_poller
+	* Fix: tests: use portable format specifier for int64_t in tap
+	* Fix: consumerd: silence -Wstringop-truncation warnings
+	* Fix: common: remove ambiguous operator[] from c_string_view
+	* tests: Exclude `.tmp_new_chunk` from rotation trace size calculation
+	* Fix: build failure of gen-many-event-classes with `--code-coverage`
+	* Tests: fix Automake warning about MANY_EVENTS_GENERATED_SOURCES
+	* Tests: regen-metadata: add regression test for regenerate and rotation race
+	* tests: Add test to ensure a new viewer doesn't see old events
+	* tests: Allow setting session live timer to a non-default value
+	* doc: generate man pages in section subdirectories
+	* Fix: sessiond: racy metadata update during re-generation
+	* Fix: consumerd: metadata regeneration and rotation race
+	* Refactor: consumerd: inline metadata version change handling
+	* Refactor: consumerd: track tracer metadata coherency indicator support
+	* Refactor: consumerd: rename ust_metadata_pushed to ust_metadata_cache_consumed
+	* Refactor: consumerd: add has_network_destination() helper method
+	* tests: Validate that trace formats handle fields with empty names
+	* sessiond: Relax CTF 1.8 TSDL identifier validation
+	* tests: Check if an exception is being handled for env preservation
+
 2025-12-19 | lttng-tools 2.15.0-rc1 (National Ugly Christmas Sweater Day)
 
 WHAT'S NEW?
