@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Philippe Proulx <pproulx@efficios.com>
+ * SPDX-FileCopyrightText: 2023 Philippe Proulx <pproulx@efficios.com>
  *
  * SPDX-License-Identifier: MIT
  */
@@ -137,18 +137,6 @@ public:
 	operator std::string() const /* NOLINT(google-explicit-constructor) */
 	{
 		return this->str();
-	}
-
-	/*
-	 * Returns the character at index `i`.
-	 *
-	 * `i` must be less than what len() returns.
-	 *
-	 * data() must not return `nullptr`.
-	 */
-	char operator[](const std::size_t i) const noexcept
-	{
-		return _str[i];
 	}
 
 	bool startsWith(const lttng::c_string_view prefix) const noexcept
