@@ -1089,18 +1089,18 @@ struct lttng_consumer_channel *consumer_allocate_channel(
 		channel->refcount = 1;
 	}
 
-	strncpy(channel->pathname, pathname, sizeof(channel->pathname));
+	strncpy(channel->pathname, pathname, sizeof(channel->pathname) - 1);
 	channel->pathname[sizeof(channel->pathname) - 1] = '\0';
 
-	strncpy(channel->name, name, sizeof(channel->name));
+	strncpy(channel->name, name, sizeof(channel->name) - 1);
 	channel->name[sizeof(channel->name) - 1] = '\0';
 
 	if (root_shm_path) {
-		strncpy(channel->root_shm_path, root_shm_path, sizeof(channel->root_shm_path));
+		strncpy(channel->root_shm_path, root_shm_path, sizeof(channel->root_shm_path) - 1);
 		channel->root_shm_path[sizeof(channel->root_shm_path) - 1] = '\0';
 	}
 	if (shm_path) {
-		strncpy(channel->shm_path, shm_path, sizeof(channel->shm_path));
+		strncpy(channel->shm_path, shm_path, sizeof(channel->shm_path) - 1);
 		channel->shm_path[sizeof(channel->shm_path) - 1] = '\0';
 	}
 
