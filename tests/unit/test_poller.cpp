@@ -5,6 +5,7 @@
  */
 
 #include <common/eventfd.hpp>
+#include <common/format.hpp>
 #include <common/make-unique.hpp>
 #include <common/poller.hpp>
 #include <common/timerfd.hpp>
@@ -150,8 +151,9 @@ void test_poll_timerfd()
 	ok(events == lttng::poller::event_type::READABLE,
 	   "Timerfd triggered with a readable event");
 	ok(elapsed_time_ms >= 500,
-	   "Timerfd triggered after at least 500ms elapsed (%ldms)",
-	   elapsed_time_ms);
+	   "%s",
+	   fmt::format("Timerfd triggered after at least 500ms elapsed ({}ms)", elapsed_time_ms)
+		   .c_str());
 
 	events = lttng::poller::event_type::NONE;
 	fired = false;
