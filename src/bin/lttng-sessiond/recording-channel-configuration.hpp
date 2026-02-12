@@ -166,6 +166,7 @@ public:
 	const nonstd::optional<timer_period_us> live_timer_period_us;
 	const nonstd::optional<timer_period_us> monitor_timer_period_us;
 	const nonstd::optional<timer_period_us> watchdog_timer_period_us;
+	/* Age at 0 means "continuously reclaimed". */
 	const nonstd::optional<std::chrono::microseconds> automatic_memory_reclamation_maximal_age;
 	const consumption_blocking_policy consumption_blocking_policy_;
 	const nonstd::optional<std::uint64_t> trace_file_size_limit_bytes;
