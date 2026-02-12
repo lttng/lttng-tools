@@ -12,6 +12,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -364,7 +365,7 @@ void _output_test_time(void)
 	if (time_tests) {
 		lttng_clock_gettime(CLOCK_MONOTONIC, &new_time);
 		time_ns = elapsed_time_ns(&last_time, &new_time);
-		printf("  ---\n    duration_ms: %ld.%ld\n  ...\n",
+		printf("  ---\n    duration_ms: %" PRId64 ".%" PRId64 "\n  ...\n",
 		       time_ns / 1000000,
 		       time_ns % 1000000);
 	}
