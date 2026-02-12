@@ -117,7 +117,7 @@ void test_remove_fd()
 
 void test_poll_timeout()
 {
-	lttng::poller poller;
+	const lttng::poller poller;
 
 	/* No FDs added, should return immediately. */
 	poller.poll(lttng::poller::timeout_type::WAIT_FOREVER);
