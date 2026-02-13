@@ -1,0 +1,100 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+ *
+ * SPDX-License-Identifier: GPL-2.0-only
+ *
+ */
+
+#ifndef LTTNG_SESSIOND_DOMAIN_ORCHESTRATOR_HPP
+#define LTTNG_SESSIOND_DOMAIN_ORCHESTRATOR_HPP
+
+#include <cstdint>
+
+namespace lttng {
+namespace sessiond {
+
+namespace config {
+class recording_channel_configuration;
+class event_rule_configuration;
+class context_configuration;
+
+enum class process_attribute_type {
+	PID,
+	VPID,
+	UID,
+	VUID,
+	GID,
+	VGID,
+};
+
+} /* namespace config */
+
+/*
+ * A domain orchestrator manages the runtime tracing resources — channels,
+ * streams, buffers, and consumer connections — for a specific instrumentation
+ * domain (kernel or user space) within a recording session.
+ *
+ * It coordinates between the tracer (kernel module or UST applications) and
+ * the consumer daemon to realize the session's domain configuration.
+ *
+ * Each recording session owns one orchestrator per active domain. The
+ * orchestrator is created when the domain is first used and destroyed with
+ * the session.
+ *
+ * All operations that target a specific channel or event rule accept a
+ * reference to the corresponding configuration object. The orchestrator
+ * uses the pointer identity of these objects as a lookup key: configuration
+ * objects are unique within a config::domain and are never moved or copied.
+ */
+class domain_orchestrator {
+protected:
+	domain_orchestrator() = default;
+
+public:
+	virtual ~domain_orchestrator() = default;
+
+	domain_orchestrator(const domain_orchestrator&) = delete;
+	domain_orchestrator(domain_orchestrator&&) = delete;
+	domain_orchestrator& operator=(const domain_orchestrator&) = delete;
+	domain_orchestrator& operator=(domain_orchestrator&&) = delete;
+
+	virtual void
+	create_channel(const config::recording_channel_configuration& channel_config) = 0;
+	virtual void
+	enable_channel(const config::recording_channel_configuration& channel_config) = 0;
+	virtual void
+	disable_channel(const config::recording_channel_configuration& channel_config) = 0;
+
+	virtual void enable_event(const config::recording_channel_configuration& channel_config,
+				  const config::event_rule_configuration& event_rule_config) = 0;
+	virtual void disable_event(const config::recording_channel_configuration& channel_config,
+				   const config::event_rule_configuration& event_rule_config) = 0;
+
+	virtual void add_context(const config::recording_channel_configuration& channel_config,
+				 const config::context_configuration& context_config) = 0;
+
+	virtual void track_process_attribute(config::process_attribute_type attribute_type,
+					     std::uint64_t value) = 0;
+	virtual void untrack_process_attribute(config::process_attribute_type attribute_type,
+					       std::uint64_t value) = 0;
+
+	virtual void start() = 0;
+	virtual void stop() = 0;
+
+	virtual void rotate() = 0;
+	virtual void clear() = 0;
+	virtual void open_packets() = 0;
+
+	virtual void record_snapshot(/* TODO */) = 0;
+
+	virtual void regenerate_metadata() = 0;
+	virtual void regenerate_statedump() = 0;
+
+	virtual void
+	reclaim_channel_memory(const config::recording_channel_configuration& target_channel) = 0;
+};
+
+} /* namespace sessiond */
+} /* namespace lttng */
+
+#endif /* LTTNG_SESSIOND_DOMAIN_ORCHESTRATOR_HPP */
