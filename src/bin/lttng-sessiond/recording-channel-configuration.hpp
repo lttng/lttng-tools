@@ -8,6 +8,7 @@
 #ifndef LTTNG_SESSIOND_RECORDING_CHANNEL_CONFIGURATION_HPP
 #define LTTNG_SESSIOND_RECORDING_CHANNEL_CONFIGURATION_HPP
 
+#include "channel-configuration.hpp"
 #include "context-configuration.hpp"
 #include "event-rule-configuration.hpp"
 
@@ -53,15 +54,9 @@ public:
  * A recording channel configuration represents the configuration of a recording session's
  * channel at a given point in time. It belongs to a single recording session.
  */
-class recording_channel_configuration final {
+class recording_channel_configuration final : public channel_configuration {
 public:
 	using uptr = std::unique_ptr<recording_channel_configuration>;
-	using timer_period_us = std::uint64_t;
-
-	enum class buffer_full_policy_t {
-		DISCARD_EVENT,
-		OVERWRITE_OLDEST_PACKET,
-	};
 
 	enum class buffer_allocation_policy_t {
 		PER_CPU,
@@ -71,11 +66,6 @@ public:
 	enum class buffer_preallocation_policy_t {
 		PREALLOCATE,
 		ON_DEMAND,
-	};
-
-	enum class buffer_consumption_backend_t {
-		MMAP,
-		SPLICE,
 	};
 
 	enum class owership_model_t {
@@ -154,15 +144,8 @@ public:
 	void add_context(context_configuration::uptr context);
 	const std::vector<context_configuration::uptr>& get_contexts() const noexcept;
 
-	const std::string name;
-	const buffer_full_policy_t buffer_full_policy;
-	const buffer_consumption_backend_t buffer_consumption_backend;
 	const buffer_allocation_policy_t buffer_allocation_policy;
 	const buffer_preallocation_policy_t buffer_preallocation_policy;
-	const std::uint64_t subbuffer_size_bytes;
-	const unsigned int subbuffer_count;
-	const nonstd::optional<timer_period_us> switch_timer_period_us;
-	const nonstd::optional<timer_period_us> read_timer_period_us;
 	const nonstd::optional<timer_period_us> live_timer_period_us;
 	const nonstd::optional<timer_period_us> monitor_timer_period_us;
 	const nonstd::optional<timer_period_us> watchdog_timer_period_us;

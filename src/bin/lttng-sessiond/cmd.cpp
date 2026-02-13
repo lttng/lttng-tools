@@ -1388,6 +1388,17 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 		return LTTNG_ERR_INVALID_CHANNEL_NAME;
 	}
 
+	/*
+	 * "metadata" is a reserved channel name used internally for the metadata
+	 * channel. Reject it to avoid collisions with the implicitly-created
+	 * metadata channel.
+	 */
+	if (lttng::c_string_view(new_channel_attr->name) == DEFAULT_METADATA_NAME) {
+		LTTNG_THROW_CTL("Refusing to create a channel named \"" DEFAULT_METADATA_NAME
+				"\": this name is reserved for the metadata channel",
+				LTTNG_ERR_INVALID_CHANNEL_NAME);
+	}
+
 	DBG("Enabling channel %s for session %s", new_channel_attr->name, session->name);
 
 	/*

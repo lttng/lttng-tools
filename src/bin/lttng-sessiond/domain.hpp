@@ -8,10 +8,12 @@
 #ifndef LTTNG_SESSIOND_DOMAIN_HPP
 #define LTTNG_SESSIOND_DOMAIN_HPP
 
+#include "channel-configuration.hpp"
 #include "process-attribute-tracker.hpp"
 #include "recording-channel-configuration.hpp"
 
 #include <common/container-wrapper.hpp>
+#include <common/defaults.hpp>
 #include <common/domain.hpp>
 #include <common/exception.hpp>
 #include <common/format.hpp>
@@ -72,6 +74,7 @@ nonstd::optional<TrackerType> make_kernel_or_user_space_tracker(lttng::domain_cl
 
 	return nonstd::nullopt;
 }
+
 } /* namespace details */
 
 /*
@@ -87,6 +90,7 @@ class domain final {
 public:
 	explicit domain(lttng::domain_class domain_class) :
 		domain_class_(domain_class),
+		_metadata_channel(make_default_metadata_channel_configuration()),
 		_process_id_tracker(
 			details::make_kernel_tracker<process_id_tracker_t>(domain_class)),
 		_virtual_process_id_tracker(
@@ -104,8 +108,10 @@ public:
 	}
 
 	~domain() = default;
+
 	domain(domain&& other) noexcept :
 		domain_class_(other.domain_class_),
+		_metadata_channel(other._metadata_channel),
 		_channels(std::move(other._channels)),
 		_process_id_tracker(std::move(other._process_id_tracker)),
 		_virtual_process_id_tracker(std::move(other._virtual_process_id_tracker)),
@@ -119,6 +125,12 @@ public:
 	domain(const domain&) = delete;
 	domain& operator=(const domain&) = delete;
 	domain& operator=(domain&&) = delete;
+
+	/* Metadata channel configuration, initialized with suitable defaults. */
+	const metadata_channel_configuration& metadata_channel() const noexcept
+	{
+		return _metadata_channel;
+	}
 
 	/* Add a channel to the domain by constructing it in place. */
 	template <typename... Args>
@@ -263,6 +275,9 @@ public:
 	const lttng::domain_class domain_class_;
 
 private:
+	static metadata_channel_configuration make_default_metadata_channel_configuration();
+
+	const metadata_channel_configuration _metadata_channel;
 	std::unordered_map<std::string, recording_channel_configuration::uptr> _channels;
 
 	/* Process attribute trackers (populated based on domain_class_). */
