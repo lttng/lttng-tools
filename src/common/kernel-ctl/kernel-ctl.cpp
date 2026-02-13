@@ -79,78 +79,43 @@ int kernctl_create_session(int fd)
 	return compat_ioctl_no_arg(fd, LTTNG_KERNEL_ABI_OLD_SESSION, LTTNG_KERNEL_ABI_SESSION);
 }
 
-/* open the metadata global channel */
-int kernctl_open_metadata(int fd, struct lttng_channel_attr *chops)
+namespace {
+void populate_old_channel_from_abi_channel(struct lttng_kernel_abi_old_channel& old_channel,
+					   const struct lttng_kernel_abi_channel& channel_config)
 {
-	struct lttng_kernel_abi_channel channel;
+	memset(&old_channel, 0, sizeof(old_channel));
+	old_channel.overwrite = channel_config.overwrite;
+	old_channel.subbuf_size = channel_config.subbuf_size;
+	old_channel.num_subbuf = channel_config.num_subbuf;
+	old_channel.switch_timer_interval = channel_config.switch_timer_interval;
+	old_channel.read_timer_interval = channel_config.read_timer_interval;
+	old_channel.output = channel_config.output;
+}
+} /* namespace */
 
+/* Open the metadata global channel. */
+int kernctl_open_metadata(int fd, const struct lttng_kernel_abi_channel& channel_config)
+{
 	if (lttng_kernel_abi_use_old_abi) {
 		struct lttng_kernel_abi_old_channel old_channel;
 
-		memset(&old_channel, 0, sizeof(old_channel));
-		old_channel.overwrite = chops->overwrite;
-		old_channel.subbuf_size = chops->subbuf_size;
-		old_channel.num_subbuf = chops->num_subbuf;
-		old_channel.switch_timer_interval = chops->switch_timer_interval;
-		old_channel.read_timer_interval = chops->read_timer_interval;
-		old_channel.output = chops->output;
-
-		memset(old_channel.padding, 0, sizeof(old_channel.padding));
-		/*
-		 * The new channel padding is smaller than the old ABI so we use the
-		 * new ABI padding size for the memcpy.
-		 */
-		memcpy(old_channel.padding, chops->padding, sizeof(chops->padding));
-
+		populate_old_channel_from_abi_channel(old_channel, channel_config);
 		return LTTNG_IOCTL_NO_CHECK(fd, LTTNG_KERNEL_ABI_OLD_METADATA, &old_channel);
 	}
 
-	memset(&channel, 0, sizeof(channel));
-	channel.overwrite = chops->overwrite;
-	channel.subbuf_size = chops->subbuf_size;
-	channel.num_subbuf = chops->num_subbuf;
-	channel.switch_timer_interval = chops->switch_timer_interval;
-	channel.read_timer_interval = chops->read_timer_interval;
-	channel.output = chops->output;
-	memcpy(channel.padding, chops->padding, sizeof(chops->padding));
-
-	return LTTNG_IOCTL_NO_CHECK(fd, LTTNG_KERNEL_ABI_METADATA, &channel);
+	return LTTNG_IOCTL_NO_CHECK(fd, LTTNG_KERNEL_ABI_METADATA, &channel_config);
 }
 
-int kernctl_create_channel(int fd, struct lttng_channel_attr *chops)
+int kernctl_create_channel(int fd, const struct lttng_kernel_abi_channel& channel_config)
 {
-	struct lttng_kernel_abi_channel channel;
-
-	memset(&channel, 0, sizeof(channel));
 	if (lttng_kernel_abi_use_old_abi) {
 		struct lttng_kernel_abi_old_channel old_channel;
 
-		old_channel.overwrite = chops->overwrite;
-		old_channel.subbuf_size = chops->subbuf_size;
-		old_channel.num_subbuf = chops->num_subbuf;
-		old_channel.switch_timer_interval = chops->switch_timer_interval;
-		old_channel.read_timer_interval = chops->read_timer_interval;
-		old_channel.output = chops->output;
-
-		memset(old_channel.padding, 0, sizeof(old_channel.padding));
-		/*
-		 * The new channel padding is smaller than the old ABI so we use the
-		 * new ABI padding size for the memcpy.
-		 */
-		memcpy(old_channel.padding, chops->padding, sizeof(chops->padding));
-
+		populate_old_channel_from_abi_channel(old_channel, channel_config);
 		return LTTNG_IOCTL_NO_CHECK(fd, LTTNG_KERNEL_ABI_OLD_CHANNEL, &old_channel);
 	}
 
-	channel.overwrite = chops->overwrite;
-	channel.subbuf_size = chops->subbuf_size;
-	channel.num_subbuf = chops->num_subbuf;
-	channel.switch_timer_interval = chops->switch_timer_interval;
-	channel.read_timer_interval = chops->read_timer_interval;
-	channel.output = chops->output;
-	memcpy(channel.padding, chops->padding, sizeof(chops->padding));
-
-	return LTTNG_IOCTL_NO_CHECK(fd, LTTNG_KERNEL_ABI_CHANNEL, &channel);
+	return LTTNG_IOCTL_NO_CHECK(fd, LTTNG_KERNEL_ABI_CHANNEL, &channel_config);
 }
 
 int kernctl_syscall_mask(int fd, char **syscall_mask, uint32_t *nr_bits)

@@ -8,6 +8,7 @@
 #ifndef _LTT_KERNEL_CTL_H
 #define _LTT_KERNEL_CTL_H
 
+#include "channel-configuration.hpp"
 #include "lttng/lttng-error.h"
 #include "lttng/tracker.h"
 #include "session.hpp"
@@ -49,7 +50,9 @@ kernel_process_attr_tracker_inclusion_set_remove_value(struct ltt_kernel_session
 const struct process_attr_tracker *
 kernel_get_process_attr_tracker(struct ltt_kernel_session *session,
 				enum lttng_process_attr process_attr);
-int kernel_open_metadata(struct ltt_kernel_session *session);
+int kernel_open_metadata(
+	struct ltt_kernel_session *session,
+	const lttng::sessiond::config::metadata_channel_configuration& metadata_config);
 int kernel_open_metadata_stream(struct ltt_kernel_session *session);
 int kernel_open_channel_stream(struct ltt_kernel_channel *channel);
 int kernel_flush_buffer(struct ltt_kernel_channel *channel);
@@ -63,9 +66,11 @@ int kernel_validate_version(struct lttng_kernel_abi_tracer_version *kernel_trace
 void kernel_destroy_session(struct ltt_kernel_session *ksess);
 void kernel_free_session(struct ltt_kernel_session *ksess);
 void kernel_destroy_channel(struct ltt_kernel_channel *kchan);
-enum lttng_error_code kernel_snapshot_record(struct ltt_kernel_session *ksess,
-					     const struct consumer_output *output,
-					     uint64_t nb_packets_per_stream);
+enum lttng_error_code kernel_snapshot_record(
+	struct ltt_kernel_session *ksess,
+	const lttng::sessiond::config::metadata_channel_configuration& metadata_config,
+	const struct consumer_output *output,
+	uint64_t nb_packets_per_stream);
 int kernel_syscall_mask(int chan_fd, char **syscall_mask, uint32_t *nr_bits);
 enum lttng_error_code kernel_rotate_session(const ltt_session::locked_ref& session);
 enum lttng_error_code kernel_clear_session(const ltt_session::locked_ref& session);

@@ -1138,13 +1138,15 @@ error:
 /*
  * Start a kernel session by opening all necessary streams.
  */
-int start_kernel_session(struct ltt_kernel_session *ksess)
+int start_kernel_session(
+	struct ltt_kernel_session *ksess,
+	const lttng::sessiond::config::metadata_channel_configuration& metadata_config)
 {
 	int ret;
 
 	/* Open kernel metadata */
 	if (ksess->metadata == nullptr && ksess->output_traces) {
-		ret = kernel_open_metadata(ksess);
+		ret = kernel_open_metadata(ksess, metadata_config);
 		if (ret < 0) {
 			ret = LTTNG_ERR_KERN_META_FAIL;
 			goto error;
@@ -3472,7 +3474,8 @@ int cmd_start_trace(const ltt_session::locked_ref& session)
 	/* Kernel tracing */
 	if (ksession != nullptr) {
 		DBG("Start kernel tracing session %s", session->name);
-		ret = (lttng_error_code) start_kernel_session(ksession);
+		ret = (lttng_error_code) start_kernel_session(
+			ksession, session->kernel_space_domain.metadata_channel());
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -5660,16 +5663,18 @@ error:
  *
  * Return LTTNG_OK on success or a LTTNG_ERR code.
  */
-static enum lttng_error_code record_kernel_snapshot(struct ltt_kernel_session *ksess,
-						    const struct consumer_output *output,
-						    uint64_t nb_packets_per_stream)
+static enum lttng_error_code record_kernel_snapshot(
+	struct ltt_kernel_session *ksess,
+	const lttng::sessiond::config::metadata_channel_configuration& metadata_config,
+	const struct consumer_output *output,
+	uint64_t nb_packets_per_stream)
 {
 	enum lttng_error_code status;
 
 	LTTNG_ASSERT(ksess);
 	LTTNG_ASSERT(output);
 
-	status = kernel_snapshot_record(ksess, output, nb_packets_per_stream);
+	status = kernel_snapshot_record(ksess, metadata_config, output, nb_packets_per_stream);
 	return status;
 }
 
@@ -5887,6 +5892,7 @@ static enum lttng_error_code snapshot_record(const ltt_session::locked_ref& sess
 
 	if (session->kernel_session) {
 		ret_code = record_kernel_snapshot(session->kernel_session,
+						  session->kernel_space_domain.metadata_channel(),
 						  snapshot_kernel_consumer_output,
 						  nb_packets_per_stream);
 		if (ret_code != LTTNG_OK) {

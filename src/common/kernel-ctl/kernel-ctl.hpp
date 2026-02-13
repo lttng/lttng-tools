@@ -18,8 +18,8 @@
 #include <stdbool.h>
 
 int kernctl_create_session(int fd);
-int kernctl_open_metadata(int fd, struct lttng_channel_attr *chops);
-int kernctl_create_channel(int fd, struct lttng_channel_attr *chops);
+int kernctl_open_metadata(int fd, const struct lttng_kernel_abi_channel& channel_config);
+int kernctl_create_channel(int fd, const struct lttng_kernel_abi_channel& channel_config);
 int kernctl_create_stream(int fd);
 int kernctl_create_event(int fd, struct lttng_kernel_abi_event *ev);
 int kernctl_add_context(int fd, struct lttng_kernel_abi_context *ctx);

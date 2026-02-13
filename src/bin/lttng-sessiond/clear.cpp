@@ -173,7 +173,8 @@ int cmd_clear_session(const ltt_session::locked_ref& session, int *sock_fd)
 		/* Kernel tracing */
 		if (ksession != nullptr) {
 			DBG("Start kernel tracing session \"%s\"", session->name);
-			ret = start_kernel_session(ksession);
+			ret = start_kernel_session(ksession,
+						   session->kernel_space_domain.metadata_channel());
 			if (ret != LTTNG_OK) {
 				goto end;
 			}

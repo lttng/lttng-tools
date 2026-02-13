@@ -50,6 +50,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+namespace ls = lttng::sessiond::config;
+
 namespace {
 /*
  * Key used to reference a channel between the sessiond and the consumer. This
@@ -58,6 +60,47 @@ namespace {
 uint64_t next_kernel_channel_key;
 
 const char *module_proc_lttng = "/proc/lttng";
+
+lttng_kernel_abi_channel make_kernel_abi_channel(const ls::channel_configuration& channel_config)
+{
+	lttng_kernel_abi_channel kernel_channel = {};
+
+	kernel_channel.overwrite = channel_config.buffer_full_policy ==
+			ls::channel_configuration::buffer_full_policy_t::OVERWRITE_OLDEST_PACKET ?
+		1 :
+		0;
+	kernel_channel.subbuf_size = channel_config.subbuffer_size_bytes;
+	kernel_channel.num_subbuf = channel_config.subbuffer_count;
+	kernel_channel.switch_timer_interval = channel_config.switch_timer_period_us.value_or(0);
+	kernel_channel.read_timer_interval = channel_config.read_timer_period_us.value_or(0);
+	kernel_channel.output = channel_config.buffer_consumption_backend ==
+			ls::channel_configuration::buffer_consumption_backend_t::MMAP ?
+		LTTNG_EVENT_MMAP :
+		LTTNG_EVENT_SPLICE;
+
+	return kernel_channel;
+}
+
+/*
+ * Convert the legacy lttng_channel_attr to a lttng_kernel_abi_channel.
+ *
+ * This is used during the transition period while the legacy ltt_kernel_channel
+ * still carries a lttng_channel with its lttng_channel_attr.
+ */
+lttng_kernel_abi_channel
+make_kernel_abi_channel_from_lttng_channel_attr(const struct lttng_channel_attr& attr)
+{
+	lttng_kernel_abi_channel kernel_channel = {};
+
+	kernel_channel.overwrite = attr.overwrite;
+	kernel_channel.subbuf_size = attr.subbuf_size;
+	kernel_channel.num_subbuf = attr.num_subbuf;
+	kernel_channel.switch_timer_interval = attr.switch_timer_interval;
+	kernel_channel.read_timer_interval = attr.read_timer_interval;
+	kernel_channel.output = attr.output;
+
+	return kernel_channel;
+}
 
 int kernel_tracer_fd = -1;
 nonstd::optional<enum lttng_kernel_tracer_status> kernel_tracer_status = nonstd::nullopt;
@@ -274,11 +317,15 @@ int kernel_create_channel(struct ltt_kernel_session *session, struct lttng_chann
 	     lkc->channel->attr.live_timer_interval,
 	     lkc->channel->attr.output);
 
-	/* Kernel tracer channel creation */
-	ret = kernctl_create_channel(session->fd, &lkc->channel->attr);
-	if (ret < 0) {
-		PERROR("ioctl kernel create channel");
-		goto error;
+	{
+		/* Kernel tracer channel creation */
+		const auto kernel_channel =
+			make_kernel_abi_channel_from_lttng_channel_attr(lkc->channel->attr);
+		ret = kernctl_create_channel(session->fd, kernel_channel);
+		if (ret < 0) {
+			PERROR("ioctl kernel create channel");
+			goto error;
+		}
 	}
 
 	/* Setup the channel fd */
@@ -1247,7 +1294,8 @@ end:
  * Create kernel metadata, open from the kernel tracer and add it to the
  * kernel session.
  */
-int kernel_open_metadata(struct ltt_kernel_session *session)
+int kernel_open_metadata(struct ltt_kernel_session *session,
+			 const ls::metadata_channel_configuration& metadata_config)
 {
 	int ret;
 	struct ltt_kernel_metadata *lkm = nullptr;
@@ -1260,10 +1308,13 @@ int kernel_open_metadata(struct ltt_kernel_session *session)
 		goto error;
 	}
 
-	/* Kernel tracer metadata creation */
-	ret = kernctl_open_metadata(session->fd, &lkm->conf->attr);
-	if (ret < 0) {
-		goto error_open;
+	{
+		/* Kernel tracer metadata creation */
+		const auto kernel_channel = make_kernel_abi_channel(metadata_config);
+		ret = kernctl_open_metadata(session->fd, kernel_channel);
+		if (ret < 0) {
+			goto error_open;
+		}
 	}
 
 	lkm->fd = ret;
@@ -1724,9 +1775,11 @@ void kernel_destroy_channel(struct ltt_kernel_channel *kchan)
  *
  * Return LTTNG_OK on success or else return a LTTNG_ERR code.
  */
-enum lttng_error_code kernel_snapshot_record(struct ltt_kernel_session *ksess,
-					     const struct consumer_output *output,
-					     uint64_t nb_packets_per_stream)
+enum lttng_error_code
+kernel_snapshot_record(struct ltt_kernel_session *ksess,
+		       const ls::metadata_channel_configuration& metadata_config,
+		       const struct consumer_output *output,
+		       uint64_t nb_packets_per_stream)
 {
 	int err, ret, saved_metadata_fd;
 	enum lttng_error_code status = LTTNG_OK;
@@ -1744,7 +1797,7 @@ enum lttng_error_code kernel_snapshot_record(struct ltt_kernel_session *ksess,
 	saved_metadata = ksess->metadata;
 	saved_metadata_fd = ksess->metadata_stream_fd;
 
-	ret = kernel_open_metadata(ksess);
+	ret = kernel_open_metadata(ksess, metadata_config);
 	if (ret < 0) {
 		status = LTTNG_ERR_KERN_META_FAIL;
 		goto error;
