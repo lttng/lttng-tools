@@ -9,6 +9,7 @@ EXTRA_DIST = test_trace_format_ust.py			\
 	test_trace_format_kernel.py			\
 	trace_format_helpers.py				\
 	kernel-local-trace-pretty.expect		\
+	kernel-local-trace-pretty.expect.32		\
 	ust-local-trace-pretty.expect
 
 all-local:
