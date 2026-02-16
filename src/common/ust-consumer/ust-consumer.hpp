@@ -301,11 +301,9 @@ static inline int lttng_ustconsumer_fixup_stalled_channel(struct lttng_consumer_
 	return -ENOSYS;
 }
 
-static inline void
-lttng_ustconsumer_quiescent_stalled_channel(struct lttng_consumer_local_data& ctx
-					    __attribute__((unused)),
-					    struct lttng_consumer_channel& channel
-					    __attribute__((unused)))
+static inline void lttng_ustconsumer_quiescent_stalled_channel(
+	struct lttng_consumer_local_data& ctx __attribute__((unused)),
+	struct lttng_consumer_channel& channel __attribute__((unused)))
 {
 }
 
