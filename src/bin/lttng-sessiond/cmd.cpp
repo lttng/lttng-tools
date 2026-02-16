@@ -3058,6 +3058,23 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 			const lttng::sessiond::exceptions::event_rule_configuration_not_found_error&
 				ex) {
 			DBG("%s", ex.what());
+
+			lttng_credentials generation_creds;
+			LTTNG_OPTIONAL_SET(&generation_creds.uid, locked_session->uid);
+			LTTNG_OPTIONAL_SET(&generation_creds.gid, locked_session->gid);
+
+			const auto generation_result = lttng_event_rule_generate_filter_bytecode(
+				event_rule.get(), &generation_creds);
+			if (generation_result != LTTNG_OK) {
+				LTTNG_THROW_CTL(
+					fmt::format(
+						"Failed to generate bytecode for event rule: session_name=`{}`, event_name=`{}`, error_code='{}'",
+						locked_session->name,
+						event->name,
+						generation_result),
+					generation_result);
+			}
+
 			channel_cfg.add_event_rule_configuration(true, std::move(event_rule));
 		}
 	}

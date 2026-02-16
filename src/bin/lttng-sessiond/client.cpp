@@ -13,6 +13,7 @@
 #include "cmd.hpp"
 #include "commands/get-channel-memory-usage.hpp"
 #include "commands/reclaim-channel-memory.hpp"
+#include "common/credentials.hpp"
 #include "domain.hpp"
 #include "health-sessiond.hpp"
 #include "kernel.hpp"
@@ -1861,7 +1862,6 @@ skip_domain:
 									   &bytecode,
 									   &exclusions,
 									   event_rule);
-
 		if (ret_code != LTTNG_OK) {
 			ret = (int) ret_code;
 			goto error;

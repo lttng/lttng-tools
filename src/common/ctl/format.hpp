@@ -8,6 +8,8 @@
 #ifndef LTTNG_COMMON_CTL_FORMAT_H
 #define LTTNG_COMMON_CTL_FORMAT_H
 
+#include "lttng/lttng-error.h"
+
 #include <common/format.hpp>
 
 #include <lttng/lttng.h>
@@ -304,6 +306,16 @@ struct formatter<lttng_reclaim_handle_status> : formatter<std::string> {
 		}
 
 		return format_to(ctx.out(), name);
+	}
+};
+
+template <>
+struct formatter<lttng_error_code> : formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator format(lttng_error_code error_code,
+						    FormatContextType& ctx) const
+	{
+		return format_to(ctx.out(), lttng_strerror(static_cast<int>(error_code)));
 	}
 };
 } /* namespace fmt */
