@@ -987,13 +987,6 @@ void trace_kernel_destroy_session(struct ltt_kernel_session *session)
 	LTTNG_ASSERT(session);
 
 	DBG("[trace] Closing session fd %d", session->fd);
-	/* Close kernel fds */
-	if (session->fd >= 0) {
-		ret = close(session->fd);
-		if (ret) {
-			PERROR("close");
-		}
-	}
 
 	if (session->metadata_stream_fd >= 0) {
 		DBG("[trace] Closing metadata stream fd %d", session->metadata_stream_fd);

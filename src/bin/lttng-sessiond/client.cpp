@@ -19,6 +19,7 @@
 #include "kernel.hpp"
 #include "lttng-sessiond.hpp"
 #include "manage-consumer.hpp"
+#include "modules-domain-orchestrator.hpp"
 #include "pending-memory-reclamation-request.hpp"
 #include "save.hpp"
 #include "testpoint.hpp"
@@ -695,11 +696,20 @@ int create_kernel_session(const ltt_session::locked_ref& session)
 	session->kernel_session->snapshot_mode = session->snapshot_mode;
 	session->kernel_session->is_live_session = session->live_timer != 0;
 
+	session->kernel_orchestrator =
+		lttng::make_unique<lttng::sessiond::modules::domain_orchestrator>(
+			lttng::file_descriptor(session->kernel_session->fd),
+			session->kernel_space_domain,
+			*session->kernel_session->consumer,
+			session->kernel_session,
+			the_kernel_poll_pipe[1]);
+
 	return LTTNG_OK;
 
 error:
 	trace_kernel_destroy_session(session->kernel_session);
 	session->kernel_session = nullptr;
+	session->kernel_orchestrator.reset();
 error_create:
 	return ret;
 }

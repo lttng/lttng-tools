@@ -72,8 +72,9 @@ enum lttng_error_code kernel_snapshot_record(
 	const struct consumer_output *output,
 	uint64_t nb_packets_per_stream);
 int kernel_syscall_mask(int chan_fd, char **syscall_mask, uint32_t *nr_bits);
-enum lttng_error_code kernel_rotate_session(const ltt_session::locked_ref& session);
-enum lttng_error_code kernel_clear_session(const ltt_session::locked_ref& session);
+enum lttng_error_code kernel_rotate_session(struct ltt_kernel_session *ksess);
+enum lttng_error_code kernel_clear_session(struct ltt_kernel_session *ksess);
+enum lttng_error_code kernel_open_packets(struct ltt_kernel_session *ksess);
 
 int init_kernel_workarounds();
 int kernel_supports_ring_buffer_snapshot_sample_positions();

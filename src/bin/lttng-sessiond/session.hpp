@@ -11,6 +11,7 @@
 #include "agent-domain.hpp"
 #include "consumer.hpp"
 #include "domain.hpp"
+#include "modules-domain-orchestrator.hpp"
 #include "snapshot.hpp"
 #include "trace-kernel.hpp"
 #include "trace-ust.hpp"
@@ -502,6 +503,18 @@ public:
 	lttng::sessiond::config::domain& get_domain(lttng::domain_class domain);
 	const lttng::sessiond::config::domain& get_domain(lttng::domain_class domain) const;
 
+	lttng::sessiond::modules::domain_orchestrator& get_kernel_orchestrator()
+	{
+		LTTNG_ASSERT(kernel_orchestrator);
+		return *kernel_orchestrator;
+	}
+
+	const lttng::sessiond::modules::domain_orchestrator& get_kernel_orchestrator() const
+	{
+		LTTNG_ASSERT(kernel_orchestrator);
+		return *kernel_orchestrator;
+	}
+
 	lttng::sessiond::config::agent_domain& get_agent_domain(lttng::domain_class domain);
 	const lttng::sessiond::config::agent_domain&
 	get_agent_domain(lttng::domain_class domain) const;
@@ -534,6 +547,7 @@ public:
 	char last_chunk_path[LTTNG_PATH_MAX] = {};
 	time_t creation_time = 0;
 	struct ltt_kernel_session *kernel_session = nullptr;
+	std::unique_ptr<lttng::sessiond::modules::domain_orchestrator> kernel_orchestrator;
 	struct ltt_ust_session *ust_session = nullptr;
 	mutable struct urcu_ref ref_count = {};
 	/*

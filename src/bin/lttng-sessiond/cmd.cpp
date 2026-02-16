@@ -578,6 +578,60 @@ lttng_process_attr_values *get_inclusion_set_from_domain(const lsc::domain& doma
 
 	return values.release();
 }
+
+/*
+ * Convert an lttng_process_attr to the new config::process_attribute_type.
+ */
+lsc::process_attribute_type to_process_attribute_type(enum lttng_process_attr process_attr)
+{
+	switch (process_attr) {
+	case LTTNG_PROCESS_ATTR_PROCESS_ID:
+		return lsc::process_attribute_type::PID;
+	case LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID:
+		return lsc::process_attribute_type::VPID;
+	case LTTNG_PROCESS_ATTR_USER_ID:
+		return lsc::process_attribute_type::UID;
+	case LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID:
+		return lsc::process_attribute_type::VUID;
+	case LTTNG_PROCESS_ATTR_GROUP_ID:
+		return lsc::process_attribute_type::GID;
+	case LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID:
+		return lsc::process_attribute_type::VGID;
+	default:
+		abort();
+	}
+}
+
+/*
+ * Resolve a process_attr_value to a numeric uint64_t suitable for the
+ * orchestrator interface. User and group names are resolved to IDs.
+ */
+std::uint64_t resolve_process_attr_value_to_integral(enum lttng_process_attr process_attr,
+						     const struct process_attr_value *value)
+{
+	switch (process_attr) {
+	case LTTNG_PROCESS_ATTR_PROCESS_ID:
+	case LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID:
+		return static_cast<std::uint64_t>(value->value.pid);
+	case LTTNG_PROCESS_ATTR_USER_ID:
+	case LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID:
+		if (value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME) {
+			return static_cast<std::uint64_t>(resolve_user_id(value->value.user_name));
+		}
+
+		return static_cast<std::uint64_t>(value->value.uid);
+	case LTTNG_PROCESS_ATTR_GROUP_ID:
+	case LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID:
+		if (value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME) {
+			return static_cast<std::uint64_t>(
+				resolve_group_id(value->value.group_name));
+		}
+
+		return static_cast<std::uint64_t>(value->value.gid);
+	default:
+		abort();
+	}
+}
 } /* namespace */
 
 static struct cmd_completion_handler *current_completion_handler;
@@ -1488,13 +1542,7 @@ int cmd_disable_channel(const ltt_session::locked_ref& session,
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
-		const auto disable_ret =
-			channel_kernel_disable(session->kernel_session, channel_name);
-		if (disable_ret != LTTNG_OK) {
-			return disable_ret;
-		}
-
-		kernel_wait_quiescent();
+		session->get_kernel_orchestrator().disable_channel(channel_config);
 		break;
 	}
 	case LTTNG_DOMAIN_UST:
@@ -1584,9 +1632,9 @@ int cmd_enable_channel(command_ctx *cmd_ctx, ltt_session::locked_ref& session, i
 static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref& session,
 							 const struct lttng_domain *domain,
 							 const struct lttng_channel& channel_attr,
-							 int wpipe)
+							 int wpipe __attribute__((unused)))
 {
-	enum lttng_error_code ret_code;
+	enum lttng_error_code ret_code = LTTNG_OK;
 	struct ltt_ust_session *usess = session->ust_session;
 	struct lttng_ht *chan_ht;
 	size_t len;
@@ -1747,140 +1795,10 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 		return LTTNG_ERR_UNKNOWN_DOMAIN;
 	}
 
-	switch (domain->type) {
-	case LTTNG_DOMAIN_KERNEL:
-	{
-		struct ltt_kernel_channel *kchan;
-
-		kchan = trace_kernel_get_channel_by_name(new_channel_attr->name,
-							 session->kernel_session);
-		if (kchan == nullptr) {
-			/*
-			 * Don't try to create a channel if the session has been started at
-			 * some point in time before. The tracer does not allow it.
-			 */
-			if (session->has_been_started) {
-				return LTTNG_ERR_TRACE_ALREADY_STARTED;
-			}
-
-			if (session->snapshot.nb_output > 0 || session->snapshot_mode) {
-				/* Enforce mmap output for snapshot sessions. */
-				new_channel_attr->attr.output = LTTNG_EVENT_MMAP;
-			}
-
-			ret_code = channel_kernel_create(
-				session->kernel_session, new_channel_attr.get(), wpipe);
-			if (new_channel_attr->name[0] != '\0') {
-				session->kernel_session->has_non_default_channel = 1;
-			}
-		} else {
-			ret_code = channel_kernel_enable(session->kernel_session, kchan);
-		}
-
-		if (ret_code != LTTNG_OK) {
-			return ret_code;
-		}
-
-		kernel_wait_quiescent();
-		break;
-	}
-	case LTTNG_DOMAIN_UST:
-	case LTTNG_DOMAIN_JUL:
-	case LTTNG_DOMAIN_LOG4J:
-	case LTTNG_DOMAIN_LOG4J2:
-	case LTTNG_DOMAIN_PYTHON:
-	{
-		struct ltt_ust_channel *uchan;
-
-		/*
-		 * FIXME
-		 *
-		 * Current agent implementation limitations force us to allow
-		 * only one channel at once in "agent" subdomains. Each
-		 * subdomain has a default channel name which must be strictly
-		 * adhered to.
-		 */
-		if (domain->type == LTTNG_DOMAIN_JUL) {
-			if (strncmp(new_channel_attr->name,
-				    DEFAULT_JUL_CHANNEL_NAME,
-				    LTTNG_SYMBOL_NAME_LEN - 1) != 0) {
-				return LTTNG_ERR_INVALID_CHANNEL_NAME;
-			}
-		} else if (domain->type == LTTNG_DOMAIN_LOG4J) {
-			if (strncmp(new_channel_attr->name,
-				    DEFAULT_LOG4J_CHANNEL_NAME,
-				    LTTNG_SYMBOL_NAME_LEN - 1) != 0) {
-				return LTTNG_ERR_INVALID_CHANNEL_NAME;
-			}
-		} else if (domain->type == LTTNG_DOMAIN_LOG4J2) {
-			if (strncmp(new_channel_attr->name,
-				    DEFAULT_LOG4J2_CHANNEL_NAME,
-				    LTTNG_SYMBOL_NAME_LEN - 1) != 0) {
-				return LTTNG_ERR_INVALID_CHANNEL_NAME;
-			}
-		} else if (domain->type == LTTNG_DOMAIN_PYTHON) {
-			if (strncmp(new_channel_attr->name,
-				    DEFAULT_PYTHON_CHANNEL_NAME,
-				    LTTNG_SYMBOL_NAME_LEN - 1) != 0) {
-				return LTTNG_ERR_INVALID_CHANNEL_NAME;
-			}
-		}
-
-		chan_ht = usess->domain_global.channels;
-
-		uchan = trace_ust_find_channel_by_name(chan_ht, new_channel_attr->name);
-		if (uchan == nullptr) {
-			/*
-			 * Don't try to create a channel if the session has been started at
-			 * some point in time before. The tracer does not allow it.
-			 */
-			if (session->has_been_started) {
-				return LTTNG_ERR_TRACE_ALREADY_STARTED;
-			}
-
-			ret_code =
-				channel_ust_create(usess, new_channel_attr.get(), domain->buf_type);
-			if (new_channel_attr->name[0] != '\0') {
-				usess->has_non_default_channel = 1;
-			}
-
-			/*
-			 * Implicitly add "cpu_id" context to UST domain channels with the
-			 * "per-cpu" allocation policy on creation.
-			 */
-			if (ret_code != LTTNG_OK) {
-				return ret_code;
-			}
-
-			enum lttng_channel_allocation_policy allocation_policy;
-			enum lttng_error_code err = lttng_channel_get_allocation_policy(
-				new_channel_attr.get(), &allocation_policy);
-
-			if ((err == LTTNG_OK) &&
-			    (allocation_policy == LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU)) {
-				struct lttng_event_context cpu_id_ctx;
-				cpu_id_ctx.ctx = LTTNG_EVENT_CONTEXT_CPU_ID;
-
-				err = static_cast<enum lttng_error_code>(context_ust_add(
-					usess, domain->type, &cpu_id_ctx, new_channel_attr->name));
-				if (err != LTTNG_OK) {
-					ret_code = err;
-				}
-			}
-		} else {
-			ret_code = channel_ust_enable(usess, uchan);
-		}
-
-		break;
-	}
-	default:
-		return LTTNG_ERR_UNKNOWN_DOMAIN;
-	}
-
-	if (ret_code == LTTNG_OK && new_channel_attr->attr.output != LTTNG_EVENT_MMAP) {
-		session->has_non_mmap_channel = true;
-	}
-
+	/*
+	 * Construct the config object before the runtime switch so that
+	 * it is available for the orchestrator call in the kernel case.
+	 */
 	const auto subbuffer_count = channel_attr.attr.num_subbuf;
 
 	const auto switch_timer_period_us = [&new_channel_attr]() {
@@ -2121,6 +2039,10 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 			channel_attr.attr.num_subbuf));
 	}
 
+	/*
+	 * Create or enable the config object. After this block, the channel
+	 * config is available via target_domain.get_channel(name).
+	 */
 	try {
 		target_domain.get_channel(name).enable();
 	} catch (const lttng::sessiond::config::exceptions::channel_not_found_error& ex) {
@@ -2142,6 +2064,130 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 					  std::move(blocking_policy),
 					  trace_file_size_limit_bytes,
 					  trace_file_count_limit);
+	}
+
+	/* Look up the channel config that was just created or enabled. */
+	const auto channel_config_name =
+		std::string(channel_attr.name[0] ? channel_attr.name : DEFAULT_CHANNEL_NAME);
+	auto& channel_config = target_domain.get_channel(channel_config_name);
+
+	switch (domain->type) {
+	case LTTNG_DOMAIN_KERNEL:
+	{
+		auto& orchestrator = session->get_kernel_orchestrator();
+
+		if (trace_kernel_get_channel_by_name(channel_config.name.c_str(),
+						     session->kernel_session) == nullptr) {
+			/*
+			 * Don't try to create a channel if the session has been started at
+			 * some point in time before. The tracer does not allow it.
+			 */
+			if (session->has_been_started) {
+				return LTTNG_ERR_TRACE_ALREADY_STARTED;
+			}
+
+			orchestrator.create_channel(channel_config);
+		} else {
+			orchestrator.enable_channel(channel_config);
+		}
+
+		break;
+	}
+	case LTTNG_DOMAIN_UST:
+	case LTTNG_DOMAIN_JUL:
+	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_LOG4J2:
+	case LTTNG_DOMAIN_PYTHON:
+	{
+		struct ltt_ust_channel *uchan;
+
+		/*
+		 * FIXME
+		 *
+		 * Current agent implementation limitations force us to allow
+		 * only one channel at once in "agent" subdomains. Each
+		 * subdomain has a default channel name which must be strictly
+		 * adhered to.
+		 */
+		if (domain->type == LTTNG_DOMAIN_JUL) {
+			if (strncmp(new_channel_attr->name,
+				    DEFAULT_JUL_CHANNEL_NAME,
+				    LTTNG_SYMBOL_NAME_LEN - 1) != 0) {
+				return LTTNG_ERR_INVALID_CHANNEL_NAME;
+			}
+		} else if (domain->type == LTTNG_DOMAIN_LOG4J) {
+			if (strncmp(new_channel_attr->name,
+				    DEFAULT_LOG4J_CHANNEL_NAME,
+				    LTTNG_SYMBOL_NAME_LEN - 1) != 0) {
+				return LTTNG_ERR_INVALID_CHANNEL_NAME;
+			}
+		} else if (domain->type == LTTNG_DOMAIN_LOG4J2) {
+			if (strncmp(new_channel_attr->name,
+				    DEFAULT_LOG4J2_CHANNEL_NAME,
+				    LTTNG_SYMBOL_NAME_LEN - 1) != 0) {
+				return LTTNG_ERR_INVALID_CHANNEL_NAME;
+			}
+		} else if (domain->type == LTTNG_DOMAIN_PYTHON) {
+			if (strncmp(new_channel_attr->name,
+				    DEFAULT_PYTHON_CHANNEL_NAME,
+				    LTTNG_SYMBOL_NAME_LEN - 1) != 0) {
+				return LTTNG_ERR_INVALID_CHANNEL_NAME;
+			}
+		}
+
+		chan_ht = usess->domain_global.channels;
+
+		uchan = trace_ust_find_channel_by_name(chan_ht, new_channel_attr->name);
+		if (uchan == nullptr) {
+			/*
+			 * Don't try to create a channel if the session has been started at
+			 * some point in time before. The tracer does not allow it.
+			 */
+			if (session->has_been_started) {
+				return LTTNG_ERR_TRACE_ALREADY_STARTED;
+			}
+
+			ret_code =
+				channel_ust_create(usess, new_channel_attr.get(), domain->buf_type);
+			if (new_channel_attr->name[0] != '\0') {
+				usess->has_non_default_channel = 1;
+			}
+
+			/*
+			 * Implicitly add "cpu_id" context to UST domain channels with the
+			 * "per-cpu" allocation policy on creation.
+			 */
+			if (ret_code != LTTNG_OK) {
+				return ret_code;
+			}
+
+			enum lttng_channel_allocation_policy allocation_policy_value;
+			enum lttng_error_code err = lttng_channel_get_allocation_policy(
+				new_channel_attr.get(), &allocation_policy_value);
+
+			if ((err == LTTNG_OK) &&
+			    (allocation_policy_value == LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU)) {
+				struct lttng_event_context cpu_id_ctx;
+				cpu_id_ctx.ctx = LTTNG_EVENT_CONTEXT_CPU_ID;
+
+				err = static_cast<enum lttng_error_code>(context_ust_add(
+					usess, domain->type, &cpu_id_ctx, new_channel_attr->name));
+				if (err != LTTNG_OK) {
+					ret_code = err;
+				}
+			}
+		} else {
+			ret_code = channel_ust_enable(usess, uchan);
+		}
+
+		break;
+	}
+	default:
+		return LTTNG_ERR_UNKNOWN_DOMAIN;
+	}
+
+	if (ret_code == LTTNG_OK && new_channel_attr->attr.output != LTTNG_EVENT_MMAP) {
+		session->has_non_mmap_channel = true;
 	}
 
 	return ret_code;
@@ -2178,13 +2224,31 @@ cmd_process_attr_tracker_set_tracking_policy(const ltt_session::locked_ref& sess
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
+	{
 		if (!session->kernel_session) {
 			ret_code = LTTNG_ERR_INVALID;
 			goto end;
 		}
-		ret_code = kernel_process_attr_tracker_set_tracking_policy(
-			session->kernel_session, process_attr, policy);
+
+		const auto config_policy = convert_tracking_policy(policy);
+		const auto attribute_type = to_process_attribute_type(process_attr);
+
+		try {
+			session->get_kernel_orchestrator().set_tracking_policy(attribute_type,
+									       config_policy);
+		} catch (const lttng::ctl::error& ex) {
+			ret_code = static_cast<lttng_error_code>(ex.code());
+			goto end;
+		} catch (const std::exception& ex) {
+			ERR("Failed to set kernel tracking policy: %s", ex.what());
+			ret_code = LTTNG_ERR_UNK;
+			goto end;
+		}
+
+		update_domain_tracker_policy(
+			session->kernel_space_domain, process_attr, config_policy);
 		break;
+	}
 	case LTTNG_DOMAIN_UST:
 		if (!session->ust_session) {
 			ret_code = LTTNG_ERR_INVALID;
@@ -2192,21 +2256,23 @@ cmd_process_attr_tracker_set_tracking_policy(const ltt_session::locked_ref& sess
 		}
 		ret_code = trace_ust_process_attr_tracker_set_tracking_policy(
 			session->ust_session, process_attr, policy);
+
+		/* Update new domain tracker if the legacy operation succeeded. */
+		if (ret_code == LTTNG_OK) {
+			try {
+				auto& session_domain =
+					session->get_domain(domain_type_to_class(domain));
+				update_domain_tracker_policy(session_domain,
+							     process_attr,
+							     convert_tracking_policy(policy));
+			} catch (const std::exception& ex) {
+				DBG("Failed to update new domain tracker policy: %s", ex.what());
+			}
+		}
 		break;
 	default:
 		ret_code = LTTNG_ERR_UNSUPPORTED_DOMAIN;
 		break;
-	}
-
-	/* Update new domain tracker if the legacy operation succeeded. */
-	if (ret_code == LTTNG_OK) {
-		try {
-			auto& session_domain = session->get_domain(domain_type_to_class(domain));
-			update_domain_tracker_policy(
-				session_domain, process_attr, convert_tracking_policy(policy));
-		} catch (const std::exception& ex) {
-			DBG("Failed to update new domain tracker policy: %s", ex.what());
-		}
 	}
 end:
 	return ret_code;
@@ -2226,8 +2292,19 @@ cmd_process_attr_tracker_inclusion_set_add_value(const ltt_session::locked_ref& 
 			return LTTNG_ERR_INVALID;
 		}
 
-		ret_code = kernel_process_attr_tracker_inclusion_set_add_value(
-			session->kernel_session, process_attr, value);
+		try {
+			const auto integral_value =
+				resolve_process_attr_value_to_integral(process_attr, value);
+			session->get_kernel_orchestrator().track_process_attribute(
+				to_process_attribute_type(process_attr), integral_value);
+		} catch (const lttng::ctl::error& ex) {
+			return static_cast<lttng_error_code>(ex.code());
+		} catch (const std::exception& ex) {
+			ERR("Failed to track kernel process attribute: %s", ex.what());
+			return LTTNG_ERR_UNK;
+		}
+
+		ret_code = LTTNG_OK;
 		break;
 	case LTTNG_DOMAIN_UST:
 		if (!session->ust_session) {
@@ -2264,8 +2341,19 @@ cmd_process_attr_tracker_inclusion_set_remove_value(const ltt_session::locked_re
 			return LTTNG_ERR_INVALID;
 		}
 
-		ret_code = kernel_process_attr_tracker_inclusion_set_remove_value(
-			session->kernel_session, process_attr, value);
+		try {
+			const auto integral_value =
+				resolve_process_attr_value_to_integral(process_attr, value);
+			session->get_kernel_orchestrator().untrack_process_attribute(
+				to_process_attribute_type(process_attr), integral_value);
+		} catch (const lttng::ctl::error& ex) {
+			return static_cast<lttng_error_code>(ex.code());
+		} catch (const std::exception& ex) {
+			ERR("Failed to untrack kernel process attribute: %s", ex.what());
+			return LTTNG_ERR_UNK;
+		}
+
+		ret_code = LTTNG_OK;
 		break;
 	case LTTNG_DOMAIN_UST:
 		if (!session->ust_session) {
@@ -2431,10 +2519,7 @@ lttng_error_code cmd_disable_event(struct command_ctx *cmd_ctx,
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
-		struct ltt_kernel_channel *kchan;
-		struct ltt_kernel_session *ksess;
-
-		ksess = session.kernel_session;
+		struct ltt_kernel_session *ksess = session.kernel_session;
 
 		/*
 		 * If a non-default channel has been created in the
@@ -2445,32 +2530,55 @@ lttng_error_code cmd_disable_event(struct command_ctx *cmd_ctx,
 			return LTTNG_ERR_NEED_CHANNEL_NAME;
 		}
 
-		kchan = trace_kernel_get_channel_by_name(channel_name, ksess);
-		if (kchan == nullptr) {
-			return LTTNG_ERR_KERN_CHAN_NOT_FOUND;
-		}
-
 		switch (event->type) {
 		case LTTNG_EVENT_ALL:
 		case LTTNG_EVENT_TRACEPOINT:
 		case LTTNG_EVENT_SYSCALL:
 		case LTTNG_EVENT_PROBE:
 		case LTTNG_EVENT_FUNCTION:
-		case LTTNG_EVENT_FUNCTION_ENTRY: /* fall-through */
-			if (pattern_disables_all) {
-				ret = event_kernel_disable_event(kchan, nullptr, event->type);
-			} else {
-				ret = event_kernel_disable_event(kchan, event_name, event->type);
-			}
-			if (ret != LTTNG_OK) {
-				return static_cast<lttng_error_code>(ret);
-			}
+		case LTTNG_EVENT_FUNCTION_ENTRY:
 			break;
 		default:
 			return LTTNG_ERR_UNK;
 		}
 
-		kernel_wait_quiescent();
+		auto& channel_config = locked_session->get_domain(lttng::domain_class::KERNEL_SPACE)
+					       .get_channel(channel_name);
+
+		auto& orchestrator = locked_session->get_kernel_orchestrator();
+
+		bool found = false;
+		bool error = false;
+
+		for (const auto& pair : channel_config.event_rules) {
+			auto& event_rule_cfg = *pair.second;
+
+			const auto this_pattern_or_name =
+				get_event_rule_pattern_or_name(*event_rule_cfg.event_rule);
+			if (!pattern_disables_all &&
+			    (!this_pattern_or_name || *this_pattern_or_name != event_name)) {
+				continue;
+			}
+
+			found = true;
+
+			try {
+				orchestrator.disable_event(channel_config, event_rule_cfg);
+			} catch (const lttng::ctl::error& ex) {
+				WARN_FMT("Failed to disable event-rule: {}", ex.what());
+				error = true;
+				continue;
+			}
+		}
+
+		if (!pattern_disables_all && !found) {
+			return LTTNG_ERR_NO_EVENT;
+		}
+
+		if (error) {
+			return LTTNG_ERR_KERN_DISABLE_FAIL;
+		}
+
 		break;
 	}
 	case LTTNG_DOMAIN_UST:
@@ -2596,48 +2704,54 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 
 	switch (domain_type) {
 	case LTTNG_DOMAIN_KERNEL:
+	{
 		LTTNG_ASSERT(session.kernel_session);
 
 		if (session.kernel_session->channel_count == 0) {
-			/* Create default channel */
-			ret = channel_kernel_create(session.kernel_session, nullptr, kwpipe);
+			/* Create default channel through the orchestrator. */
+			const auto attr =
+				channel_new_default_attr(LTTNG_DOMAIN_KERNEL, LTTNG_BUFFER_GLOBAL);
+			lttng_domain kern_domain = {};
+			kern_domain.type = LTTNG_DOMAIN_KERNEL;
+			kern_domain.buf_type = LTTNG_BUFFER_GLOBAL;
+
+			ret = cmd_enable_channel_internal(
+				locked_session, &kern_domain, *attr, kwpipe);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
 			chan_kern_created = 1;
 		}
-		/* Add kernel context to kernel tracer */
-		ret = context_kernel_add(session.kernel_session, event_context, channel_name);
-		if (ret != LTTNG_OK) {
-			goto error;
-		}
 
 		/*
-		 * Add context to recording channel configuration(s).
-		 * This mirrors the logic in context_kernel_add: if channel_name is
-		 * non-empty, add to that channel only; otherwise add to all channels.
+		 * Add context to kernel tracer and recording channel
+		 * configuration(s) through the orchestrator.
 		 */
 		{
+			auto& orchestrator = locked_session->get_kernel_orchestrator();
 			auto& kernel_domain = locked_session->kernel_space_domain;
 
 			if (channel_name[0] != '\0') {
-				/* Add to specific channel. */
 				auto& recording_channel = kernel_domain.get_channel(channel_name);
-				recording_channel.add_context(
-					lttng::sessiond::config::
-						make_context_configuration_from_event_context(
-							*event_context));
+				auto ctx_config =
+					lsc::make_context_configuration_from_event_context(
+						*event_context);
+
+				orchestrator.add_context(recording_channel, *ctx_config);
+				recording_channel.add_context(std::move(ctx_config));
 			} else {
-				/* Add to all channels. */
 				for (auto& channel : kernel_domain.recording_channels()) {
-					channel.add_context(
-						lttng::sessiond::config::
-							make_context_configuration_from_event_context(
-								*event_context));
+					auto ctx_config =
+						lsc::make_context_configuration_from_event_context(
+							*event_context);
+
+					orchestrator.add_context(channel, *ctx_config);
+					channel.add_context(std::move(ctx_config));
 				}
 			}
 		}
 		break;
+	}
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
 	case LTTNG_DOMAIN_LOG4J2:
@@ -2845,7 +2959,7 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 		return LTTNG_ERR_INVALID_PROTOCOL;
 	}
 
-	int ret = 0, channel_created = 0;
+	int ret = 0;
 	ltt_session& session = *locked_session;
 
 	LTTNG_ASSERT(event);
@@ -2878,8 +2992,6 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 	switch (domain->type) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
-		struct ltt_kernel_channel *kchan;
-
 		/*
 		 * If a non-default channel has been created in the
 		 * session, explicitely require that -c chan_name needs
@@ -2889,8 +3001,9 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 			return LTTNG_ERR_NEED_CHANNEL_NAME;
 		}
 
-		kchan = trace_kernel_get_channel_by_name(channel_name, session.kernel_session);
-		if (kchan == nullptr) {
+		/* Implicitly create the default channel if it does not exist. */
+		if (trace_kernel_get_channel_by_name(channel_name, session.kernel_session) ==
+		    nullptr) {
 			const auto attr =
 				channel_new_default_attr(LTTNG_DOMAIN_KERNEL, LTTNG_BUFFER_GLOBAL);
 
@@ -2902,102 +3015,49 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 			if (ret != LTTNG_OK) {
 				return static_cast<lttng_error_code>(ret);
 			}
-
-			channel_created = 1;
 		}
 
-		/* Get the newly created kernel channel pointer */
-		kchan = trace_kernel_get_channel_by_name(channel_name, session.kernel_session);
-		if (kchan == nullptr) {
-			/* This sould not happen... */
-			return LTTNG_ERR_FATAL;
+		auto& channel_config = session.get_domain(lttng::domain_class::KERNEL_SPACE)
+					       .get_channel(user_visible_channel_name);
+
+		/*
+		 * Create or update the event rule configuration, then
+		 * call the orchestrator to enable the event in the tracer.
+		 */
+		const auto *event_rule_key = event_rule.get();
+		lsc::event_rule_configuration *event_rule_cfg_ptr;
+		try {
+			auto& existing = channel_config.get_event_rule_configuration(*event_rule);
+			existing.enable();
+			event_rule_cfg_ptr = &existing;
+		} catch (const lttng::sessiond::config::exceptions::
+				 event_rule_configuration_not_found_error& ex) {
+			DBG("%s", ex.what());
+
+			lttng_credentials generation_creds;
+			LTTNG_OPTIONAL_SET(&generation_creds.uid, locked_session->uid);
+			LTTNG_OPTIONAL_SET(&generation_creds.gid, locked_session->gid);
+
+			const auto generation_result = lttng_event_rule_generate_filter_bytecode(
+				event_rule.get(), &generation_creds);
+			if (generation_result != LTTNG_OK) {
+				LTTNG_THROW_CTL(
+					fmt::format(
+						"Failed to generate bytecode for event rule: session_name=`{}`, event_name=`{}`, error_code='{}'",
+						locked_session->name,
+						event->name,
+						generation_result),
+					generation_result);
+			}
+
+			channel_config.add_event_rule_configuration(true, std::move(event_rule));
+			/* Look up the just-added config using the saved key. */
+			event_rule_cfg_ptr =
+				&channel_config.get_event_rule_configuration(*event_rule_key);
 		}
 
-		switch (event->type) {
-		case LTTNG_EVENT_ALL:
-		{
-			char *filter_expression_a = nullptr;
-			struct lttng_bytecode *filter_a = nullptr;
+		session.get_kernel_orchestrator().enable_event(channel_config, *event_rule_cfg_ptr);
 
-			/*
-			 * We need to duplicate filter_expression and filter,
-			 * because ownership is passed to first enable
-			 * event.
-			 */
-			if (filter_expression) {
-				filter_expression_a = strdup(filter_expression.get());
-				if (!filter_expression_a) {
-					return LTTNG_ERR_FATAL;
-				}
-			}
-
-			if (bytecode) {
-				filter_a =
-					zmalloc<lttng_bytecode>(sizeof(*filter_a) + bytecode->len);
-				if (!filter_a) {
-					free(filter_expression_a);
-					return LTTNG_ERR_FATAL;
-				}
-
-				memcpy(filter_a, bytecode.get(), sizeof(*filter_a) + bytecode->len);
-			}
-
-			event->type = LTTNG_EVENT_TRACEPOINT; /* Hack */
-			ret = event_kernel_enable_event(
-				kchan, event, filter_expression.release(), bytecode.release());
-			if (ret != LTTNG_OK) {
-				if (channel_created) {
-					/* Let's not leak a useless channel. */
-					kernel_destroy_channel(kchan);
-				}
-
-				free(filter_expression_a);
-				free(filter_a);
-				return static_cast<lttng_error_code>(ret);
-			}
-
-			event->type = LTTNG_EVENT_SYSCALL; /* Hack */
-			ret = event_kernel_enable_event(
-				kchan, event, filter_expression_a, filter_a);
-			/* We have passed ownership */
-			filter_expression_a = nullptr;
-			filter_a = nullptr;
-			if (ret != LTTNG_OK) {
-				return static_cast<lttng_error_code>(ret);
-			}
-
-			break;
-		}
-		case LTTNG_EVENT_PROBE:
-		case LTTNG_EVENT_USERSPACE_PROBE:
-		case LTTNG_EVENT_FUNCTION:
-		case LTTNG_EVENT_FUNCTION_ENTRY:
-		case LTTNG_EVENT_TRACEPOINT:
-			ret = event_kernel_enable_event(
-				kchan, event, filter_expression.release(), bytecode.release());
-			if (ret != LTTNG_OK) {
-				if (channel_created) {
-					/* Let's not leak a useless channel. */
-					kernel_destroy_channel(kchan);
-				}
-
-				return static_cast<lttng_error_code>(ret);
-			}
-
-			break;
-		case LTTNG_EVENT_SYSCALL:
-			ret = event_kernel_enable_event(
-				kchan, event, filter_expression.release(), bytecode.release());
-			if (ret != LTTNG_OK) {
-				return static_cast<lttng_error_code>(ret);
-			}
-
-			break;
-		default:
-			return LTTNG_ERR_UNK;
-		}
-
-		kernel_wait_quiescent();
 		break;
 	}
 	case LTTNG_DOMAIN_UST:
@@ -3203,43 +3263,52 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 		return LTTNG_ERR_UND;
 	}
 
-	const auto domain_class = lttng::get_domain_class_from_lttng_domain_type(domain->type);
+	/*
+	 * Update the event rule configuration for non-kernel domains.
+	 * The kernel path handles this inside its switch case above.
+	 */
+	if (domain->type != LTTNG_DOMAIN_KERNEL) {
+		const auto domain_class =
+			lttng::get_domain_class_from_lttng_domain_type(domain->type);
 
-	if (lttng::is_agent_domain(domain_class)) {
-		auto& agent_dom = session.get_agent_domain(domain_class);
-		try {
-			agent_dom.get_event_rule_configuration(*event_rule).enable();
-		} catch (const lttng::sessiond::config::exceptions::
-				 event_rule_configuration_not_found_error& ex) {
-			DBG("%s", ex.what());
-			agent_dom.add_event_rule_configuration(true, std::move(event_rule));
-		}
-	} else {
-		auto& channel_cfg =
-			session.get_domain(domain_class).get_channel(user_visible_channel_name);
-		try {
-			channel_cfg.get_event_rule_configuration(*event_rule).enable();
-		} catch (const lttng::sessiond::config::exceptions::
-				 event_rule_configuration_not_found_error& ex) {
-			DBG("%s", ex.what());
-
-			lttng_credentials generation_creds;
-			LTTNG_OPTIONAL_SET(&generation_creds.uid, locked_session->uid);
-			LTTNG_OPTIONAL_SET(&generation_creds.gid, locked_session->gid);
-
-			const auto generation_result = lttng_event_rule_generate_filter_bytecode(
-				event_rule.get(), &generation_creds);
-			if (generation_result != LTTNG_OK) {
-				LTTNG_THROW_CTL(
-					fmt::format(
-						"Failed to generate bytecode for event rule: session_name=`{}`, event_name=`{}`, error_code='{}'",
-						locked_session->name,
-						event->name,
-						generation_result),
-					generation_result);
+		if (lttng::is_agent_domain(domain_class)) {
+			auto& agent_dom = session.get_agent_domain(domain_class);
+			try {
+				agent_dom.get_event_rule_configuration(*event_rule).enable();
+			} catch (const lttng::sessiond::config::exceptions::
+					 event_rule_configuration_not_found_error& ex) {
+				DBG("%s", ex.what());
+				agent_dom.add_event_rule_configuration(true, std::move(event_rule));
 			}
+		} else {
+			auto& channel_cfg = session.get_domain(domain_class)
+						    .get_channel(user_visible_channel_name);
+			try {
+				channel_cfg.get_event_rule_configuration(*event_rule).enable();
+			} catch (const lttng::sessiond::config::exceptions::
+					 event_rule_configuration_not_found_error& ex) {
+				DBG("%s", ex.what());
 
-			channel_cfg.add_event_rule_configuration(true, std::move(event_rule));
+				lttng_credentials generation_creds;
+				LTTNG_OPTIONAL_SET(&generation_creds.uid, locked_session->uid);
+				LTTNG_OPTIONAL_SET(&generation_creds.gid, locked_session->gid);
+
+				const auto generation_result =
+					lttng_event_rule_generate_filter_bytecode(
+						event_rule.get(), &generation_creds);
+				if (generation_result != LTTNG_OK) {
+					LTTNG_THROW_CTL(
+						fmt::format(
+							"Failed to generate bytecode for event rule: session_name=`{}`, event_name=`{}`, error_code='{}'",
+							locked_session->name,
+							event->name,
+							generation_result),
+						generation_result);
+				}
+
+				channel_cfg.add_event_rule_configuration(true,
+									 std::move(event_rule));
+			}
 		}
 	}
 
@@ -3622,9 +3691,11 @@ int cmd_start_trace(const ltt_session::locked_ref& session)
 	/* Kernel tracing */
 	if (ksession != nullptr) {
 		DBG("Start kernel tracing session %s", session->name);
-		ret = (lttng_error_code) start_kernel_session(
-			ksession, session->kernel_space_domain.metadata_channel());
-		if (ret != LTTNG_OK) {
+		try {
+			session->get_kernel_orchestrator().start();
+		} catch (const std::exception& ex) {
+			ERR("Failed to start kernel session: %s", ex.what());
+			ret = LTTNG_ERR_KERN_START_FAIL;
 			goto error;
 		}
 	}
@@ -3702,9 +3773,14 @@ int cmd_stop_trace(const ltt_session::locked_ref& session)
 		goto error;
 	}
 
-	ret = stop_kernel_session(ksession);
-	if (ret != LTTNG_OK) {
-		goto error;
+	if (ksession) {
+		try {
+			session->get_kernel_orchestrator().stop();
+		} catch (const std::exception& ex) {
+			ERR("Failed to stop kernel session: %s", ex.what());
+			ret = LTTNG_ERR_KERN_STOP_FAIL;
+			goto error;
+		}
 	}
 
 	if (usess && usess->active) {
@@ -5160,9 +5236,11 @@ int cmd_regenerate_metadata(const ltt_session::locked_ref& session)
 	}
 
 	if (session->kernel_session) {
-		ret = kernctl_session_regenerate_metadata(session->kernel_session->fd);
-		if (ret < 0) {
-			ERR("Failed to regenerate the kernel metadata");
+		try {
+			session->get_kernel_orchestrator().regenerate_metadata();
+		} catch (const std::exception& ex) {
+			ERR("Failed to regenerate the kernel metadata: %s", ex.what());
+			ret = LTTNG_ERR_UNK;
 			goto end;
 		}
 	}
@@ -5198,18 +5276,11 @@ int cmd_regenerate_statedump(const ltt_session::locked_ref& session)
 	}
 
 	if (session->kernel_session) {
-		ret = kernctl_session_regenerate_statedump(session->kernel_session->fd);
-		/*
-		 * Currently, the statedump in kernel can only fail if out
-		 * of memory.
-		 */
-		if (ret < 0) {
-			if (ret == -ENOMEM) {
-				ret = LTTNG_ERR_REGEN_STATEDUMP_NOMEM;
-			} else {
-				ret = LTTNG_ERR_REGEN_STATEDUMP_FAIL;
-			}
-			ERR("Failed to regenerate the kernel statedump");
+		try {
+			session->get_kernel_orchestrator().regenerate_statedump();
+		} catch (const std::exception& ex) {
+			ERR("Failed to regenerate the kernel statedump: %s", ex.what());
+			ret = LTTNG_ERR_REGEN_STATEDUMP_FAIL;
 			goto end;
 		}
 	}
@@ -5807,26 +5878,6 @@ error:
 }
 
 /*
- * Record a kernel snapshot.
- *
- * Return LTTNG_OK on success or a LTTNG_ERR code.
- */
-static enum lttng_error_code record_kernel_snapshot(
-	struct ltt_kernel_session *ksess,
-	const lttng::sessiond::config::metadata_channel_configuration& metadata_config,
-	const struct consumer_output *output,
-	uint64_t nb_packets_per_stream)
-{
-	enum lttng_error_code status;
-
-	LTTNG_ASSERT(ksess);
-	LTTNG_ASSERT(output);
-
-	status = kernel_snapshot_record(ksess, metadata_config, output, nb_packets_per_stream);
-	return status;
-}
-
-/*
  * Record a UST snapshot.
  *
  * Returns LTTNG_OK on success or a LTTNG_ERR error code.
@@ -6039,11 +6090,16 @@ static enum lttng_error_code snapshot_record(const ltt_session::locked_ref& sess
 	}
 
 	if (session->kernel_session) {
-		ret_code = record_kernel_snapshot(session->kernel_session,
-						  session->kernel_space_domain.metadata_channel(),
-						  snapshot_kernel_consumer_output,
-						  nb_packets_per_stream);
-		if (ret_code != LTTNG_OK) {
+		try {
+			session->get_kernel_orchestrator().record_snapshot(
+				*snapshot_kernel_consumer_output, nb_packets_per_stream);
+		} catch (const lttng::ctl::error& ex) {
+			ERR_FMT("Failed to record kernel snapshot: {}", ex.what());
+			ret_code = ex.code();
+			goto error_close_trace_chunk;
+		} catch (const std::exception& ex) {
+			ERR_FMT("Failed to record kernel snapshot: {}", ex.what());
+			ret_code = LTTNG_ERR_SNAPSHOT_FAIL;
 			goto error_close_trace_chunk;
 		}
 	}
@@ -6090,9 +6146,6 @@ error:
 
 /*
  * Command LTTNG_SNAPSHOT_RECORD from lib lttng ctl.
- *
- * The wait parameter is ignored so this call always wait for the snapshot to
- * complete before returning.
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR code.
  */
@@ -6341,10 +6394,12 @@ int cmd_rotate_session(const ltt_session::locked_ref& session,
 	}
 
 	if (session->kernel_session) {
-		cmd_ret = kernel_rotate_session(session);
-		if (cmd_ret != LTTNG_OK) {
+		try {
+			session->get_kernel_orchestrator().rotate();
+		} catch (const std::exception& ex) {
+			ERR("Failed to rotate kernel session: %s", ex.what());
 			failed_to_rotate = true;
-			rotation_fail_code = cmd_ret;
+			rotation_fail_code = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
 		}
 	}
 	if (session->ust_session) {

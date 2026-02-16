@@ -893,57 +893,6 @@ end:
 	return ret;
 }
 
-/*
- * This function skips the metadata channel as the begin/end timestamps of a
- * metadata packet are useless.
- *
- * Moreover, opening a packet after a "clear" will cause problems for live
- * sessions as it will introduce padding that was not part of the first trace
- * chunk. The relay daemon expects the content of the metadata stream of
- * successive metadata trace chunks to be strict supersets of one another.
- *
- * For example, flushing a packet at the beginning of the metadata stream of
- * a trace chunk resulting from a "clear" session command will cause the
- * size of the metadata stream of the new trace chunk to not match the size of
- * the metadata stream of the original chunk. This will confuse the relay
- * daemon as the same "offset" in a metadata stream will no longer point
- * to the same content.
- */
-static enum lttng_error_code session_kernel_open_packets(const ltt_session::locked_ref& session)
-{
-	enum lttng_error_code ret = LTTNG_OK;
-	struct lttng_ht_iter iter;
-	struct cds_lfht_node *node;
-
-	const lttng::urcu::read_lock_guard read_lock;
-
-	cds_lfht_first(session->kernel_session->consumer->socks->ht, &iter.iter);
-	node = cds_lfht_iter_get_node(&iter.iter);
-	auto *socket = lttng_ht_node_container_of(node, &consumer_socket::node);
-
-	for (auto chan :
-	     lttng::urcu::list_iteration_adapter<ltt_kernel_channel, &ltt_kernel_channel::list>(
-		     session->kernel_session->channel_list.head)) {
-		int open_ret;
-
-		DBG("Open packet of kernel channel: channel key = %" PRIu64
-		    ", session name = %s, session_id = %" PRIu64,
-		    chan->key,
-		    session->name,
-		    session->id);
-
-		open_ret = consumer_open_channel_packets(socket, chan->key);
-		if (open_ret < 0) {
-			/* General error (no known error expected). */
-			ret = LTTNG_ERR_UNK;
-			goto end;
-		}
-	}
-
-end:
-	return ret;
-}
-
 enum lttng_error_code session_open_packets(const ltt_session::locked_ref& session)
 {
 	enum lttng_error_code ret = LTTNG_OK;
@@ -960,8 +909,11 @@ enum lttng_error_code session_open_packets(const ltt_session::locked_ref& sessio
 	}
 
 	if (session->kernel_session) {
-		ret = session_kernel_open_packets(session);
-		if (ret != LTTNG_OK) {
+		try {
+			session->get_kernel_orchestrator().open_packets();
+		} catch (const std::exception& ex) {
+			ERR("Failed to open packets of kernel session: %s", ex.what());
+			ret = LTTNG_ERR_UNK;
 			goto end;
 		}
 	}
@@ -1031,6 +983,15 @@ static void session_release(struct urcu_ref *ref)
 
 	/* Clean kernel session teardown, keeping data for destroy notifier. */
 	kernel_destroy_session(ksess);
+
+	/*
+	 * Destroy the kernel domain orchestrator now so that the kernel
+	 * tracer session file descriptor it owns is closed before the
+	 * destroy notification is sent to the client. Otherwise, the
+	 * client may attempt to unload kernel modules while the session
+	 * fd is still open.
+	 */
+	session->kernel_orchestrator.reset();
 
 	/* UST session teardown, keeping data for destroy notifier. */
 	if (usess) {

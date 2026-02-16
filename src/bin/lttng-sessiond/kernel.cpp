@@ -1958,16 +1958,15 @@ int kernel_supports_event_notifiers()
  *
  * Return LTTNG_OK on success or else an LTTng error code.
  */
-enum lttng_error_code kernel_rotate_session(const ltt_session::locked_ref& session)
+enum lttng_error_code kernel_rotate_session(struct ltt_kernel_session *ksess)
 {
 	int ret;
 	enum lttng_error_code status = LTTNG_OK;
-	struct ltt_kernel_session *ksess = session->kernel_session;
 
 	LTTNG_ASSERT(ksess);
 	LTTNG_ASSERT(ksess->consumer);
 
-	DBG("Rotate kernel session %s started (session %" PRIu64 ")", session->name, session->id);
+	DBG("Rotate kernel session started");
 
 	/*
 	 * Note that this loop will end after one iteration given that there is
@@ -1981,9 +1980,7 @@ enum lttng_error_code kernel_rotate_session(const ltt_session::locked_ref& sessi
 
 		/* For each channel, ask the consumer to rotate it. */
 		cds_list_for_each_entry (chan, &ksess->channel_list.head, list) {
-			DBG("Rotate kernel channel %" PRIu64 ", session %s",
-			    chan->key,
-			    session->name);
+			DBG("Rotate kernel channel %" PRIu64, chan->key);
 			ret = consumer_rotate_channel(socket,
 						      chan->key,
 						      ksess->consumer,
@@ -2305,19 +2302,18 @@ bool kernel_tracer_is_initialized()
  *
  * Return LTTNG_OK on success or else an LTTng error code.
  */
-enum lttng_error_code kernel_clear_session(const ltt_session::locked_ref& session)
+enum lttng_error_code kernel_clear_session(struct ltt_kernel_session *ksess)
 {
 	int ret;
 	enum lttng_error_code status = LTTNG_OK;
-	struct ltt_kernel_session *ksess = session->kernel_session;
 
 	LTTNG_ASSERT(ksess);
 	LTTNG_ASSERT(ksess->consumer);
 
-	DBG("Clear kernel session %s (session %" PRIu64 ")", session->name, session->id);
+	DBG("Clear kernel session started");
 
 	if (ksess->active) {
-		ERR("Expecting inactive session %s (%" PRIu64 ")", session->name, session->id);
+		ERR("Expecting inactive kernel session for clear operation");
 		status = LTTNG_ERR_FATAL;
 		goto end;
 	}
@@ -2334,9 +2330,7 @@ enum lttng_error_code kernel_clear_session(const ltt_session::locked_ref& sessio
 
 		/* For each channel, ask the consumer to clear it. */
 		cds_list_for_each_entry (chan, &ksess->channel_list.head, list) {
-			DBG("Clear kernel channel %" PRIu64 ", session %s",
-			    chan->key,
-			    session->name);
+			DBG("Clear kernel channel %" PRIu64, chan->key);
 			ret = consumer_clear_channel(socket, chan->key);
 			if (ret < 0) {
 				goto error;
@@ -2375,6 +2369,60 @@ error:
 	}
 end:
 	return status;
+}
+
+/*
+ * Open a packet in every channel stream of a kernel session.
+ *
+ * This function skips the metadata channel as the begin/end timestamps of a
+ * metadata packet are useless.
+ *
+ * Moreover, opening a packet after a "clear" will cause problems for live
+ * sessions as it will introduce padding that was not part of the first trace
+ * chunk. The relay daemon expects the content of the metadata stream of
+ * successive metadata trace chunks to be strict supersets of one another.
+ *
+ * For example, flushing a packet at the beginning of the metadata stream of
+ * a trace chunk resulting from a "clear" session command will cause the
+ * size of the metadata stream of the new trace chunk to not match the size of
+ * the metadata stream of the original chunk. This will confuse the relay
+ * daemon as the same "offset" in a metadata stream will no longer point
+ * to the same content.
+ *
+ * Return LTTNG_OK on success or else an LTTng error code.
+ */
+enum lttng_error_code kernel_open_packets(struct ltt_kernel_session *ksess)
+{
+	enum lttng_error_code ret = LTTNG_OK;
+	struct lttng_ht_iter iter;
+	struct cds_lfht_node *node;
+
+	LTTNG_ASSERT(ksess);
+	LTTNG_ASSERT(ksess->consumer);
+
+	const lttng::urcu::read_lock_guard read_lock;
+
+	cds_lfht_first(ksess->consumer->socks->ht, &iter.iter);
+	node = cds_lfht_iter_get_node(&iter.iter);
+	auto *socket = lttng_ht_node_container_of(node, &consumer_socket::node);
+
+	for (auto chan :
+	     lttng::urcu::list_iteration_adapter<ltt_kernel_channel, &ltt_kernel_channel::list>(
+		     ksess->channel_list.head)) {
+		int open_ret;
+
+		DBG("Open packet of kernel channel: channel key = %" PRIu64, chan->key);
+
+		open_ret = consumer_open_channel_packets(socket, chan->key);
+		if (open_ret < 0) {
+			/* General error (no known error expected). */
+			ret = LTTNG_ERR_UNK;
+			goto end;
+		}
+	}
+
+end:
+	return ret;
 }
 
 enum lttng_error_code

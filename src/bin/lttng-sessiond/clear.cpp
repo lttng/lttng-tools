@@ -8,7 +8,6 @@
 #define _LGPL_SOURCE
 #include "clear.hpp"
 #include "cmd.hpp"
-#include "kernel.hpp"
 #include "session.hpp"
 #include "ust-app.hpp"
 
@@ -130,8 +129,11 @@ int cmd_clear_session(const ltt_session::locked_ref& session, int *sock_fd)
 	 * Clear active kernel and UST session buffers.
 	 */
 	if (session->kernel_session) {
-		ret = kernel_clear_session(session);
-		if (ret != LTTNG_OK) {
+		try {
+			session->get_kernel_orchestrator().clear();
+		} catch (const std::exception& ex) {
+			ERR("Failed to clear kernel session: %s", ex.what());
+			ret = LTTNG_ERR_CLEAR_FAIL_CONSUMER;
 			goto end;
 		}
 	}

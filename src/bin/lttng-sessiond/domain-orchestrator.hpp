@@ -10,6 +10,8 @@
 
 #include <cstdint>
 
+struct consumer_output;
+
 namespace lttng {
 namespace sessiond {
 
@@ -26,6 +28,8 @@ enum class process_attribute_type {
 	GID,
 	VGID,
 };
+
+enum class tracking_policy;
 
 } /* namespace config */
 
@@ -73,6 +77,8 @@ public:
 	virtual void add_context(const config::recording_channel_configuration& channel_config,
 				 const config::context_configuration& context_config) = 0;
 
+	virtual void set_tracking_policy(config::process_attribute_type attribute_type,
+					 config::tracking_policy policy) = 0;
 	virtual void track_process_attribute(config::process_attribute_type attribute_type,
 					     std::uint64_t value) = 0;
 	virtual void untrack_process_attribute(config::process_attribute_type attribute_type,
@@ -85,7 +91,8 @@ public:
 	virtual void clear() = 0;
 	virtual void open_packets() = 0;
 
-	virtual void record_snapshot(/* TODO */) = 0;
+	virtual void record_snapshot(const struct consumer_output& snapshot_consumer,
+				     std::uint64_t nb_packets_per_stream) = 0;
 
 	virtual void regenerate_metadata() = 0;
 	virtual void regenerate_statedump() = 0;

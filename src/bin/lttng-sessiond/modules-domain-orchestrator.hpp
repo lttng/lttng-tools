@@ -25,6 +25,8 @@
 #include <vector>
 
 struct consumer_output;
+struct ltt_kernel_event;
+struct ltt_kernel_session;
 
 namespace lttng {
 namespace sessiond {
@@ -265,10 +267,14 @@ class domain_orchestrator final : public sessiond::domain_orchestrator {
 public:
 	explicit domain_orchestrator(lttng::file_descriptor tracer_session_fd,
 				     config::domain& domain_configuration,
-				     struct consumer_output& consumer) :
+				     struct consumer_output& consumer,
+				     struct ltt_kernel_session *legacy_kernel_session,
+				     int kernel_pipe) :
 		_tracer_session_fd(std::move(tracer_session_fd)),
 		_domain_configuration(domain_configuration),
-		_consumer(consumer)
+		_consumer(consumer),
+		_legacy_kernel_session(legacy_kernel_session),
+		_kernel_pipe(kernel_pipe)
 	{
 	}
 
@@ -279,26 +285,25 @@ public:
 	domain_orchestrator& operator=(const domain_orchestrator&) = delete;
 	domain_orchestrator& operator=(domain_orchestrator&&) = delete;
 
-	void create_channel(
-		const config::recording_channel_configuration& channel_config) override;
-	void enable_channel(
-		const config::recording_channel_configuration& channel_config) override;
-	void disable_channel(
-		const config::recording_channel_configuration& channel_config) override;
+	void create_channel(const config::recording_channel_configuration& channel_config) override;
+	void enable_channel(const config::recording_channel_configuration& channel_config) override;
+	void
+	disable_channel(const config::recording_channel_configuration& channel_config) override;
 
-	void enable_event(
-		const config::recording_channel_configuration& channel_config,
-		const config::event_rule_configuration& event_rule_config) override;
-	void disable_event(
-		const config::recording_channel_configuration& channel_config,
-		const config::event_rule_configuration& event_rule_config) override;
+	void enable_event(const config::recording_channel_configuration& channel_config,
+			  const config::event_rule_configuration& event_rule_config) override;
+	void disable_event(const config::recording_channel_configuration& channel_config,
+			   const config::event_rule_configuration& event_rule_config) override;
 
-	void add_context(
-		const config::recording_channel_configuration& channel_config,
-		const config::context_configuration& context_config) override;
+	void add_context(const config::recording_channel_configuration& channel_config,
+			 const config::context_configuration& context_config) override;
 
-	void track_process_attribute(/* TODO */) override;
-	void untrack_process_attribute(/* TODO */) override;
+	void set_tracking_policy(config::process_attribute_type attribute_type,
+				 config::tracking_policy policy) override;
+	void track_process_attribute(config::process_attribute_type attribute_type,
+				     std::uint64_t value) override;
+	void untrack_process_attribute(config::process_attribute_type attribute_type,
+				       std::uint64_t value) override;
 
 	void start() override;
 	void stop() override;
@@ -306,15 +311,15 @@ public:
 	void rotate() override;
 	void clear() override;
 	void open_packets() override;
-	void flush_channel(
-		const config::recording_channel_configuration& channel_config) override;
 
-	void record_snapshot(/* TODO */) override;
+	void record_snapshot(const struct consumer_output& snapshot_consumer,
+			     std::uint64_t nb_packets_per_stream) override;
 
 	void regenerate_metadata() override;
 	void regenerate_statedump() override;
 
-	void reclaim_channel_memory(
+	/* Unsupported by the LTTng-modules tracer. */
+	[[noreturn]] void reclaim_channel_memory(
 		const config::recording_channel_configuration& target_channel) override;
 
 private:
@@ -338,10 +343,25 @@ private:
 	lttng::file_descriptor _tracer_session_fd;
 	config::domain& _domain_configuration;
 	struct consumer_output& _consumer;
-	std::unordered_map<const config::recording_channel_configuration *,
-			   std::unique_ptr<channel>>
+	std::unordered_map<const config::recording_channel_configuration *, std::unique_ptr<channel>>
 		_channels;
 	nonstd::optional<metadata_channel> _metadata;
+
+	/*
+	 * These fields will be removed once the orchestrator fully owns the
+	 * kernel domain runtime state.
+	 */
+	struct ltt_kernel_session *_legacy_kernel_session;
+	int _kernel_pipe;
+
+	/*
+	 * Maps each event rule configuration to its corresponding legacy
+	 * ltt_kernel_event. Populated by enable_event() so that
+	 * disable_event() can target the exact kernel event without
+	 * sweeping the entire legacy event list.
+	 */
+	std::unordered_map<const config::event_rule_configuration *, struct ltt_kernel_event *>
+		_event_rule_to_legacy_events;
 };
 
 } /* namespace modules */
