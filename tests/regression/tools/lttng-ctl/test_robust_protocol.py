@@ -65,7 +65,7 @@ def validate_trace(trace_location):
     muxer = utils.filter_component_classes["muxer"]
     assert muxer
 
-    graph = bt2.Graph()
+    graph = bt2.Graph(mip_version=1)
 
     src = graph.add_component(fs, "source", params={"inputs": inputs})
     mux = graph.add_component(muxer, "filter")
