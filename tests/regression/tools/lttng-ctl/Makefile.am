@@ -18,6 +18,8 @@ liblttng_ust_ctl_fuzz_la_CPPFLAGS = \
 	$(UST_CTL_CPPFLAGS) \
 	$(AM_CPPFLAGS)
 
+liblttng_ust_ctl_fuzz_la_LIBADD = $(UST_CTL_LIBS) $(URCU_LIBS)
+
 # The fuzzing library needs to be LD_PRELOADed by the daemons. Force it to be shared.
 liblttng_ust_ctl_fuzz_la_LDFLAGS = $(FORCE_SHARED_LIB_OPTIONS)
 endif # HAVE_LIBLTTNG_UST_CTL

@@ -8,9 +8,12 @@
 #endif
 
 #include <lttng/ust-ctl.h>
+#include <lttng/lttng-export.h>
 
 #include <assert.h>
 #include <dlfcn.h>
+
+LTTNG_EXPORT DEFINE_LTTNG_UST_SIGBUS_STATE();
 
 /*
  * Bear with me here!
