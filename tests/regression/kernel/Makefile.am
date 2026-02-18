@@ -1,3 +1,4 @@
+# SPDX-FileCopyrightText: 2013-2025 EfficiOS Inc.
 # SPDX-License-Identifier: GPL-2.0-only
 
 
@@ -8,6 +9,7 @@ EXTRA_DIST = test_all_events \
 						 test_channel \
 						 test_clock_override \
 						 test_event_basic \
+						 test_event_disable.py \
 						 test_high_throughput.py \
 						 test_kernel_function \
 						 test_lttng_logger \

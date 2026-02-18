@@ -172,6 +172,7 @@ SERIAL_TESTS += \
 	kernel/test_channel \
 	kernel/test_clock_override \
 	kernel/test_event_basic \
+	kernel/test_event_disable.py \
 	kernel/test_high_throughput.py \
 	kernel/test_kernel_function \
 	kernel/test_lttng_logger \

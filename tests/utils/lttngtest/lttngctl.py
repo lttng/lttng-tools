@@ -297,6 +297,7 @@ class TracepointEventRule(EventRule):
     ):
         self._name_pattern = name_pattern  # type: Optional[str]
         self._filter_expression = filter_expression  # type: Optional[str]
+        self._enabled = None  # type: Optional[bool]
 
     def _equals(self, other):
         # type (TracepointEventRule) -> bool
@@ -325,6 +326,11 @@ class TracepointEventRule(EventRule):
     def filter_expression(self):
         # type: () -> Optional[str]
         return self._filter_expression
+
+    @property
+    def enabled(self):
+        # type: () -> Optional[bool]
+        return self._enabled
 
 
 class UserTracepointEventRule(TracepointEventRule):
@@ -521,6 +527,7 @@ class KernelSyscallEventRule(EventRule):
     ):
         self._name_pattern = name_pattern  # type: Optional[str]
         self._filter_expression = filter_expression  # type: Optional[str]
+        self._enabled = None  # type: Optional[bool]
 
     @property
     def name_pattern(self):
@@ -531,6 +538,11 @@ class KernelSyscallEventRule(EventRule):
     def filter_expression(self):
         # type: () -> Optional[str]
         return self._filter_expression
+
+    @property
+    def enabled(self):
+        # type: () -> Optional[bool]
+        return self._enabled
 
 
 class Channel(abc.ABC):
@@ -564,6 +576,18 @@ class Channel(abc.ABC):
     @abc.abstractmethod
     def add_recording_rule(self, rule) -> None:
         # type: (Type[EventRule]) -> None
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def disable_recording_rules(self, name_pattern):
+        # type: (str) -> None
+        """Disable all recording rules matching the given name pattern."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def disable_all_recording_rules(self):
+        # type: () -> None
+        """Disable all recording rules in this channel."""
         raise NotImplementedError
 
     @property

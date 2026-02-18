@@ -314,6 +314,31 @@ class _Channel(lttngctl.Channel):
 
         self._client._run_cmd(client_args)
 
+    def disable_recording_rules(self, name_pattern):
+        # type: (str) -> None
+        domain_option_name = _get_domain_option_name(self.domain)
+        self._client._run_cmd(
+            "disable-event --session {session_name} --channel {channel_name}"
+            " --{domain_option_name} {name_pattern}".format(
+                session_name=self._session.name,
+                channel_name=self.name,
+                domain_option_name=domain_option_name,
+                name_pattern=name_pattern,
+            )
+        )
+
+    def disable_all_recording_rules(self):
+        # type: () -> None
+        domain_option_name = _get_domain_option_name(self.domain)
+        self._client._run_cmd(
+            "disable-event --session {session_name} --channel {channel_name}"
+            " --{domain_option_name} --all-events".format(
+                session_name=self._session.name,
+                channel_name=self.name,
+                domain_option_name=domain_option_name,
+            )
+        )
+
     @property
     def name(self):
         # type: () -> str
@@ -803,8 +828,15 @@ class _Session(lttngctl.Session):
         if filter_expression_element is not None:
             filter_expression = filter_expression_element.text
 
+        enabled = None
+        enabled_element = LTTngClient._mi_find_in_element(event, "enabled")
+        if enabled_element is not None and enabled_element.text in ("true", "false"):
+            enabled = enabled_element.text == "true"
+
         if event_type == "SYSCALL":
-            yield lttngctl.KernelSyscallEventRule(pattern, filter_expression)
+            rule = lttngctl.KernelSyscallEventRule(pattern, filter_expression)
+            rule._enabled = enabled
+            yield rule
             return
 
         if event_type != "TRACEPOINT":
@@ -840,11 +872,15 @@ class _Session(lttngctl.Session):
                         _get_log_level_from_mi_log_level_name(log_level_element.text)
                     )
 
-            yield tracepoint_event_rule_class(
+            rule = tracepoint_event_rule_class(
                 pattern, filter_expression, log_level_rule, exclusions
             )
+            rule._enabled = enabled
+            yield rule
         else:
-            yield tracepoint_event_rule_class(pattern, filter_expression)
+            rule = tracepoint_event_rule_class(pattern, filter_expression)
+            rule._enabled = enabled
+            yield rule
 
     @property
     def is_active(self):
