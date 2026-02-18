@@ -1651,10 +1651,10 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 
 	const auto subbuffer_count = channel_attr.attr.num_subbuf;
 
-	const auto switch_timer_period_us = [&channel_attr]() {
-		return channel_attr.attr.switch_timer_interval > 0 ?
+	const auto switch_timer_period_us = [&new_channel_attr]() {
+		return new_channel_attr->attr.switch_timer_interval > 0 ?
 			decltype(lsc::recording_channel_configuration::switch_timer_period_us)(
-				channel_attr.attr.switch_timer_interval) :
+				new_channel_attr->attr.switch_timer_interval) :
 			nonstd::nullopt;
 	}();
 
@@ -1665,21 +1665,22 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 			nonstd::nullopt;
 	}();
 
-	const auto live_timer_period_us = [&channel_attr]() {
-		return channel_attr.attr.live_timer_interval > 0 ?
+	const auto live_timer_period_us = [&new_channel_attr]() {
+		return new_channel_attr->attr.live_timer_interval > 0 ?
 			decltype(lsc::recording_channel_configuration::live_timer_period_us)(
-				channel_attr.attr.live_timer_interval) :
+				new_channel_attr->attr.live_timer_interval) :
 			nonstd::nullopt;
 	}();
 
-	const auto monitor_timer_period_us = [&channel_attr]() {
+	const auto monitor_timer_period_us = [&new_channel_attr]() {
 		std::uint64_t period;
-		const int ret = lttng_channel_get_monitor_timer_interval(&channel_attr, &period);
+		const int ret =
+			lttng_channel_get_monitor_timer_interval(new_channel_attr.get(), &period);
 
 		if (ret) {
 			LTTNG_THROW_ERROR(fmt::format(
 				"Failed to retrieve monitor timer period from channel: channel_name=`{}`",
-				channel_attr.name));
+				new_channel_attr->name));
 		}
 
 		return period > 0 ?
