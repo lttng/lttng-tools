@@ -25,6 +25,7 @@
 
 #include <lttng/event-rule/event-rule.h>
 #include <lttng/event-rule/jul-logging.h>
+#include <lttng/event-rule/kernel-kprobe-internal.hpp>
 #include <lttng/event-rule/kernel-kprobe.h>
 #include <lttng/event-rule/kernel-syscall.h>
 #include <lttng/event-rule/kernel-tracepoint.h>
@@ -815,8 +816,15 @@ void save_kernel_kprobe_event_rule(session_config::writer& writer,
 	/* Enabled */
 	writer.write(config_element_enabled, is_enabled);
 
-	/* Type is PROBE (kprobe) */
-	writer.write(config_element_type, config_event_type_probe);
+	/* Type depends on the instrumentation site. */
+	const auto instrumentation_site =
+		lttng_event_rule_kernel_kprobe_get_instrumentation_site(event_rule);
+	writer.write(
+		config_element_type,
+		instrumentation_site ==
+				LTTNG_EVENT_RULE_KERNEL_KPROBE_INSTRUMENTATION_SITE_ENTRY_EXIT ?
+			config_event_type_function :
+			config_event_type_probe);
 
 	/* Probe attributes */
 	status = lttng_event_rule_kernel_kprobe_get_location(event_rule, &location);

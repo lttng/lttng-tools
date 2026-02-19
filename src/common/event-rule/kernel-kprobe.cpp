@@ -93,6 +93,7 @@ static int lttng_event_rule_kernel_kprobe_serialize(const struct lttng_event_rul
 
 	name_len = strlen(kprobe->name) + 1;
 	kprobe_comm.name_len = name_len;
+	kprobe_comm.instrumentation_site = kprobe->instrumentation_site;
 
 	ret = lttng_dynamic_buffer_append(&payload->buffer, &kprobe_comm, sizeof(kprobe_comm));
 	if (ret) {
@@ -133,6 +134,10 @@ static bool lttng_event_rule_kernel_kprobe_is_equal(const struct lttng_event_rul
 
 	/* Quick checks */
 	if (!!a->name != !!b->name) {
+		goto end;
+	}
+
+	if (a->instrumentation_site != b->instrumentation_site) {
 		goto end;
 	}
 
@@ -191,6 +196,7 @@ static unsigned long lttng_event_rule_kernel_kprobe_hash(const struct lttng_even
 	hash = hash_key_ulong((void *) LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE, lttng_ht_seed);
 	hash ^= hash_key_str(krule->name, lttng_ht_seed);
 	hash ^= lttng_kernel_probe_location_hash(krule->location);
+	hash ^= hash_key_ulong((void *) (unsigned long) krule->instrumentation_site, lttng_ht_seed);
 
 	return hash;
 }
@@ -322,7 +328,10 @@ lttng_event_rule_kernel_kprobe_generate_lttng_event(const struct lttng_event_rul
 		return nullptr;
 	}
 
-	local_event->type = LTTNG_EVENT_PROBE;
+	local_event->type = kprobe->instrumentation_site ==
+			LTTNG_EVENT_RULE_KERNEL_KPROBE_INSTRUMENTATION_SITE_ENTRY_EXIT ?
+		LTTNG_EVENT_FUNCTION :
+		LTTNG_EVENT_PROBE;
 
 	if (lttng_strncpy(local_event->name, kprobe->name, sizeof(local_event->name))) {
 		ERR("Truncation occurred when copying event rule name to `lttng_event` structure: name = '%s'",
@@ -494,6 +503,21 @@ ssize_t lttng_event_rule_kernel_kprobe_create_from_payload(struct lttng_payload_
 		goto end;
 	}
 
+	if (kprobe_comm->instrumentation_site !=
+		    LTTNG_EVENT_RULE_KERNEL_KPROBE_INSTRUMENTATION_SITE_LOCATION &&
+	    kprobe_comm->instrumentation_site !=
+		    LTTNG_EVENT_RULE_KERNEL_KPROBE_INSTRUMENTATION_SITE_ENTRY_EXIT) {
+		ERR("Invalid instrumentation site value in kprobe event rule payload: value = %u",
+		    kprobe_comm->instrumentation_site);
+		ret = -1;
+		goto end;
+	}
+
+	lttng_event_rule_kernel_kprobe_set_instrumentation_site(
+		rule,
+		static_cast<enum lttng_event_rule_kernel_kprobe_instrumentation_site>(
+			kprobe_comm->instrumentation_site));
+
 	*_event_rule = rule;
 	rule = nullptr;
 	ret = offset;
@@ -575,4 +599,26 @@ lttng_event_rule_kernel_kprobe_get_event_name(const struct lttng_event_rule *rul
 	*name = kprobe->name;
 end:
 	return status;
+}
+
+void lttng_event_rule_kernel_kprobe_set_instrumentation_site(
+	struct lttng_event_rule *rule,
+	enum lttng_event_rule_kernel_kprobe_instrumentation_site site)
+{
+	LTTNG_ASSERT(rule);
+	LTTNG_ASSERT(IS_KPROBE_EVENT_RULE(rule));
+
+	auto *kprobe = lttng::utils::container_of(rule, &lttng_event_rule_kernel_kprobe::parent);
+	kprobe->instrumentation_site = site;
+}
+
+enum lttng_event_rule_kernel_kprobe_instrumentation_site
+lttng_event_rule_kernel_kprobe_get_instrumentation_site(const struct lttng_event_rule *rule)
+{
+	LTTNG_ASSERT(rule);
+	LTTNG_ASSERT(IS_KPROBE_EVENT_RULE(rule));
+
+	const auto *kprobe =
+		lttng::utils::container_of(rule, &lttng_event_rule_kernel_kprobe::parent);
+	return kprobe->instrumentation_site;
 }

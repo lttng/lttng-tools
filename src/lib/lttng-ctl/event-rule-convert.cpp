@@ -10,6 +10,8 @@
 #include <common/ctl/format.hpp>
 #include <common/exception.hpp>
 
+#include <lttng/event-rule/kernel-kprobe-internal.hpp>
+
 using log_level_rule_uptr = std::unique_ptr<
 	lttng_log_level_rule,
 	lttng::memory::create_deleter_class<lttng_log_level_rule, lttng_log_level_rule_destroy>>;
@@ -180,6 +182,12 @@ create_kernel_event_rule_from_lttng_event(const lttng_event& event,
 				"Failed to set name on kernel tracepoint event rule: name=`{}`",
 				event.name));
 		}
+
+		lttng_event_rule_kernel_kprobe_set_instrumentation_site(
+			rule.get(),
+			event.type == LTTNG_EVENT_FUNCTION ?
+				LTTNG_EVENT_RULE_KERNEL_KPROBE_INSTRUMENTATION_SITE_ENTRY_EXIT :
+				LTTNG_EVENT_RULE_KERNEL_KPROBE_INSTRUMENTATION_SITE_LOCATION);
 
 		break;
 	}
