@@ -545,6 +545,92 @@ class KernelSyscallEventRule(EventRule):
         return self._enabled
 
 
+class KernelKprobeEventRule(EventRule):
+    """Kernel kprobe event rule (probe at a location, entry only)."""
+
+    def __init__(
+        self,
+        event_name,  # type: str
+        symbol_name,  # type: str
+    ):
+        self._event_name = event_name  # type: str
+        self._symbol_name = symbol_name  # type: str
+        self._enabled = None  # type: Optional[bool]
+
+    def __eq__(self, other):
+        # type: (object) -> bool
+        if type(self) != type(other):
+            return False
+
+        return (
+            self._event_name == other._event_name
+            and self._symbol_name == other._symbol_name
+        )
+
+    def __repr__(self):
+        return "KernelKprobeEventRule(event_name='{}', symbol_name='{}')".format(
+            self._event_name, self._symbol_name
+        )
+
+    @property
+    def event_name(self):
+        # type: () -> str
+        return self._event_name
+
+    @property
+    def symbol_name(self):
+        # type: () -> str
+        return self._symbol_name
+
+    @property
+    def enabled(self):
+        # type: () -> Optional[bool]
+        return self._enabled
+
+
+class KernelFunctionEventRule(EventRule):
+    """Kernel function event rule (entry+exit instrumentation)."""
+
+    def __init__(
+        self,
+        event_name,  # type: str
+        symbol_name,  # type: str
+    ):
+        self._event_name = event_name  # type: str
+        self._symbol_name = symbol_name  # type: str
+        self._enabled = None  # type: Optional[bool]
+
+    def __eq__(self, other):
+        # type: (object) -> bool
+        if type(self) != type(other):
+            return False
+
+        return (
+            self._event_name == other._event_name
+            and self._symbol_name == other._symbol_name
+        )
+
+    def __repr__(self):
+        return "KernelFunctionEventRule(event_name='{}', symbol_name='{}')".format(
+            self._event_name, self._symbol_name
+        )
+
+    @property
+    def event_name(self):
+        # type: () -> str
+        return self._event_name
+
+    @property
+    def symbol_name(self):
+        # type: () -> str
+        return self._symbol_name
+
+    @property
+    def enabled(self):
+        # type: () -> Optional[bool]
+        return self._enabled
+
+
 class Channel(abc.ABC):
     """
     A channel is an object which is responsible for a set of ring buffers. It is

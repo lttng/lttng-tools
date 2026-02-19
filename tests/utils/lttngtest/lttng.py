@@ -305,6 +305,20 @@ class _Channel(lttngctl.Channel):
                 client_args = (
                     client_args + " --filter " + shlex.quote(rule.filter_expression)
                 )
+        elif isinstance(rule, lttngctl.KernelKprobeEventRule):
+            client_args = (
+                client_args
+                + " --kernel --probe {symbol_name} {event_name}".format(
+                    symbol_name=rule.symbol_name, event_name=rule.event_name
+                )
+            )
+        elif isinstance(rule, lttngctl.KernelFunctionEventRule):
+            client_args = (
+                client_args
+                + " --kernel --function {symbol_name} {event_name}".format(
+                    symbol_name=rule.symbol_name, event_name=rule.event_name
+                )
+            )
         else:
             raise Unsupported(
                 "event rule type `{event_rule_type}` is unsupported by LTTng client".format(
@@ -835,6 +849,22 @@ class _Session(lttngctl.Session):
 
         if event_type == "SYSCALL":
             rule = lttngctl.KernelSyscallEventRule(pattern, filter_expression)
+            rule._enabled = enabled
+            yield rule
+            return
+
+        if event_type == "PROBE":
+            rule = lttngctl.KernelKprobeEventRule(
+                event_name=pattern, symbol_name=pattern
+            )
+            rule._enabled = enabled
+            yield rule
+            return
+
+        if event_type == "FUNCTION":
+            rule = lttngctl.KernelFunctionEventRule(
+                event_name=pattern, symbol_name=pattern
+            )
             rule._enabled = enabled
             yield rule
             return

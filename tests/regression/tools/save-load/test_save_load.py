@@ -464,6 +464,88 @@ def test_kernel_syscalls_save_load(tap, test_env, client, **kwargs):
     return True
 
 
+def test_kernel_kprobe_function_save_load(tap, test_env, client, **kwargs):
+    """
+    Test that kernel kprobe (--probe) and function (--function) events are
+    correctly saved and loaded, preserving the distinction between the two
+    instrumentation types.
+    Requires root privileges and the lttng-test kernel module.
+    """
+    target_symbol = "lttng_test_filter_event_write"
+
+    with lttngtest.kernel_module("lttng-test"):
+        output_dir = test_env.create_temporary_directory("trace")
+
+        session = client.create_session(
+            output=lttngtest.LocalSessionOutputLocation(output_dir)
+        )
+        session_name = session.name
+
+        channel_name = "kchan0"
+        channel = session.add_channel(
+            lttngtest.TracingDomain.Kernel, channel_name=channel_name
+        )
+
+        probe_rule = lttngtest.lttngctl.KernelKprobeEventRule(
+            event_name="my_probe_event", symbol_name=target_symbol
+        )
+        function_rule = lttngtest.lttngctl.KernelFunctionEventRule(
+            event_name="my_function_event", symbol_name=target_symbol
+        )
+        channel.add_recording_rule(probe_rule)
+        channel.add_recording_rule(function_rule)
+
+        client.save_sessions(session_name=session_name)
+        session.destroy()
+        client.load_sessions(session_name=session_name)
+
+        loaded_session = _find_session_by_name(client, session_name)
+        if loaded_session is None:
+            tap.diagnostic("Session '{}' not found after load".format(session_name))
+            return False
+
+        loaded_channel = lttngtest.lttng._Channel(
+            client, channel_name, lttngtest.TracingDomain.Kernel, loaded_session
+        )
+        loaded_rules = list(loaded_channel.recording_rules)
+
+        # Verify the probe event was restored as a KernelKprobeEventRule.
+        probe_rules = [
+            r
+            for r in loaded_rules
+            if isinstance(r, lttngtest.lttngctl.KernelKprobeEventRule)
+        ]
+        probe_found = any(r.event_name == "my_probe_event" for r in probe_rules)
+        if not probe_found:
+            tap.diagnostic(
+                "Probe event 'my_probe_event' not found after load. Loaded rules: {}".format(
+                    loaded_rules
+                )
+            )
+            return False
+
+        # Verify the function event was restored as a KernelFunctionEventRule.
+        function_rules = [
+            r
+            for r in loaded_rules
+            if isinstance(r, lttngtest.lttngctl.KernelFunctionEventRule)
+        ]
+        function_found = any(
+            r.event_name == "my_function_event" for r in function_rules
+        )
+        if not function_found:
+            tap.diagnostic(
+                "Function event 'my_function_event' not found after load. Loaded rules: {}".format(
+                    loaded_rules
+                )
+            )
+            return False
+
+        client.destroy_session_by_name(session_name)
+
+    return True
+
+
 def test_ust_vpid_tracker_save_load(tap, test_env, client, **kwargs):
     """
     Test that UST VPID process attribute trackers are correctly saved and loaded.
@@ -857,6 +939,11 @@ if __name__ == "__main__":
             {},
         ),
         ("Kernel syscalls save/load", test_kernel_syscalls_save_load, {}),
+        (
+            "Kernel kprobe/function save/load",
+            test_kernel_kprobe_function_save_load,
+            {},
+        ),
     ]
 
     # Tests requiring root privileges and destructive test mode (creates
