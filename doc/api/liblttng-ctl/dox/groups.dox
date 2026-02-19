@@ -4281,6 +4281,13 @@ The available event field value types are:
     <td>#LTTNG_EVENT_FIELD_VALUE_TYPE_STRING
     <td>lttng_event_field_value_string_get_value()
   <tr>
+    <td>BLOB (binary large object)
+    <td>#LTTNG_EVENT_FIELD_VALUE_TYPE_BLOB
+    <td>
+      lttng_event_field_value_blob_get_media_type(),
+      lttng_event_field_value_blob_get_length(), and
+      lttng_event_field_value_blob_get_data()
+  <tr>
     <td>Array
     <td>#LTTNG_EVENT_FIELD_VALUE_TYPE_ARRAY
     <td>

@@ -199,6 +199,50 @@ static int print_capture(const struct lttng_condition *condition,
 		printf("[String] %s", string_val);
 		break;
 	}
+	case LTTNG_EVENT_FIELD_VALUE_TYPE_BLOB:
+	{
+		const char *media_type;
+		const uint8_t *data;
+		size_t length;
+
+		event_field_status =
+			lttng_event_field_value_blob_get_media_type(capture, &media_type);
+		if (event_field_status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
+			ret = 1;
+			goto end;
+		}
+
+		event_field_status = lttng_event_field_value_blob_get_length(capture, &length);
+		if (event_field_status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
+			ret = 1;
+			goto end;
+		}
+
+		event_field_status = lttng_event_field_value_blob_get_data(capture, &data);
+		if (event_field_status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
+			ret = 1;
+			goto end;
+		}
+
+		printf("[BLOB] (%s; %zu bytes)", media_type, length);
+
+		if (length > 0) {
+			printf(":");
+
+			/* Print first few bytes as hex */
+			const size_t preview_bytes = length < 16 ? length : 16;
+
+			for (size_t i = 0; i < preview_bytes; i++) {
+				printf(" %02x", data[i]);
+			}
+
+			if (length > preview_bytes) {
+				printf("...");
+			}
+		}
+
+		break;
+	}
 	case LTTNG_EVENT_FIELD_VALUE_TYPE_ARRAY:
 		printf("[Array] [\n");
 		print_array(condition, capture, indent_level);

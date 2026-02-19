@@ -77,7 +77,7 @@ struct lttng_event_field_value_string {
 	char *val;
 };
 
-/* `LTTNG_EVENT_FIELD_VALUE_TYPE_STRING` */
+/* `LTTNG_EVENT_FIELD_VALUE_TYPE_ARRAY` */
 struct lttng_event_field_value_array {
 	struct lttng_event_field_value parent;
 
@@ -88,6 +88,20 @@ struct lttng_event_field_value_array {
 	 * (`LTTNG_EVENT_FIELD_VALUE_STATUS_UNAVAILABLE` status).
 	 */
 	struct lttng_dynamic_pointer_array elems;
+};
+
+/* `LTTNG_EVENT_FIELD_VALUE_TYPE_BLOB` */
+struct lttng_event_field_value_blob {
+	struct lttng_event_field_value parent;
+
+	/* IANA media type (owned by this) */
+	char *media_type;
+
+	/* Binary data (owned by this) */
+	uint8_t *data;
+
+	/* Length in bytes */
+	size_t length;
 };
 
 /*
@@ -150,6 +164,9 @@ struct lttng_event_field_value *lttng_event_field_value_string_create_with_size(
 										size_t size);
 
 struct lttng_event_field_value *lttng_event_field_value_array_create();
+
+struct lttng_event_field_value *
+lttng_event_field_value_blob_create(const uint8_t *data, size_t length, const char *media_type);
 
 int lttng_event_field_value_enum_append_label(struct lttng_event_field_value *field_val,
 					      const char *label);

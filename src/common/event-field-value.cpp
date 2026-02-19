@@ -226,6 +226,47 @@ end:
 	return &field_val->parent;
 }
 
+struct lttng_event_field_value *
+lttng_event_field_value_blob_create(const uint8_t *data, size_t length, const char *media_type)
+{
+	LTTNG_ASSERT(media_type);
+
+	struct lttng_event_field_value_blob *field_val = lttng::utils::container_of(
+		create_empty_field_val(LTTNG_EVENT_FIELD_VALUE_TYPE_BLOB, sizeof(*field_val)),
+		&lttng_event_field_value_blob::parent);
+
+	if (!field_val) {
+		return nullptr;
+	}
+
+	/* Duplicate the media type string. */
+	field_val->media_type = strdup(media_type);
+	if (!field_val->media_type) {
+		goto error;
+	}
+
+	/* Copy the binary data. */
+	if (length > 0) {
+		LTTNG_ASSERT(data);
+		field_val->data = static_cast<uint8_t *>(std::malloc(length));
+		if (!field_val->data) {
+			goto error;
+		}
+
+		std::copy(data, data + length, field_val->data);
+		field_val->length = length;
+	} else {
+		field_val->data = nullptr;
+		field_val->length = 0;
+	}
+
+	return &field_val->parent;
+
+error:
+	lttng_event_field_value_destroy(&field_val->parent);
+	return nullptr;
+}
+
 void lttng_event_field_value_destroy(struct lttng_event_field_value *field_val)
 {
 	if (!field_val) {
@@ -256,6 +297,15 @@ void lttng_event_field_value_destroy(struct lttng_event_field_value *field_val)
 			field_val, &lttng_event_field_value_array::parent);
 
 		lttng_dynamic_pointer_array_reset(&array_field_expr->elems);
+		break;
+	}
+	case LTTNG_EVENT_FIELD_VALUE_TYPE_BLOB:
+	{
+		struct lttng_event_field_value_blob *blob_field_val = lttng::utils::container_of(
+			field_val, &lttng_event_field_value_blob::parent);
+
+		free(blob_field_val->media_type);
+		free(blob_field_val->data);
 		break;
 	}
 	default:
@@ -556,4 +606,42 @@ enum lttng_event_field_value_status lttng_event_field_value_array_get_element_at
 
 end:
 	return status;
+}
+
+enum lttng_event_field_value_status
+lttng_event_field_value_blob_get_media_type(const struct lttng_event_field_value *field_val,
+					    const char **media_type)
+{
+	if (!field_val || field_val->type != LTTNG_EVENT_FIELD_VALUE_TYPE_BLOB || !media_type) {
+		return LTTNG_EVENT_FIELD_VALUE_STATUS_INVALID;
+	}
+
+	*media_type = lttng::utils::container_of(field_val, &lttng_event_field_value_blob::parent)
+			      ->media_type;
+	return LTTNG_EVENT_FIELD_VALUE_STATUS_OK;
+}
+
+enum lttng_event_field_value_status
+lttng_event_field_value_blob_get_length(const struct lttng_event_field_value *field_val,
+					size_t *length)
+{
+	if (!field_val || field_val->type != LTTNG_EVENT_FIELD_VALUE_TYPE_BLOB || !length) {
+		return LTTNG_EVENT_FIELD_VALUE_STATUS_INVALID;
+	}
+
+	*length =
+		lttng::utils::container_of(field_val, &lttng_event_field_value_blob::parent)->length;
+	return LTTNG_EVENT_FIELD_VALUE_STATUS_OK;
+}
+
+enum lttng_event_field_value_status
+lttng_event_field_value_blob_get_data(const struct lttng_event_field_value *field_val,
+				      const uint8_t **data)
+{
+	if (!field_val || field_val->type != LTTNG_EVENT_FIELD_VALUE_TYPE_BLOB || !data) {
+		return LTTNG_EVENT_FIELD_VALUE_STATUS_INVALID;
+	}
+
+	*data = lttng::utils::container_of(field_val, &lttng_event_field_value_blob::parent)->data;
+	return LTTNG_EVENT_FIELD_VALUE_STATUS_OK;
 }

@@ -13,6 +13,7 @@
 
 #include <lttng/tracepoint.h>
 
+#include <stddef.h>
 #include <stdint.h>
 
 /* clang-format off */
@@ -100,6 +101,16 @@ LTTNG_UST_TRACEPOINT_EVENT(tp, tptest_empty,
 	LTTNG_UST_TP_ARGS(int, anint),
 	LTTNG_UST_TP_FIELDS(
 		lttng_ust_field_integer(int, , anint)
+	)
+)
+
+LTTNG_UST_TRACEPOINT_EVENT(tp, tptest_blob,
+	LTTNG_UST_TP_ARGS(
+		const uint8_t *, blob_bytes,
+		size_t, blob_len
+	),
+	LTTNG_UST_TP_FIELDS(
+		lttng_ust_field_variable_length_blob(varblobfield_mediatype, blob_bytes, size_t, blob_len, "audio/vnd.rn-realaudio")
 	)
 )
 

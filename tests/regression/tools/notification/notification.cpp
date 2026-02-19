@@ -12,10 +12,11 @@
 #include <common/compat/errno.hpp>
 #include <common/ctl/format.hpp>
 #include <common/ctl/memory.hpp>
-#include <common/format.hpp>
 #include <common/macros.hpp>
 
 #include <lttng/lttng.h>
+
+#include <vendor/optional.hpp>
 
 #include <fcntl.h>
 #include <inttypes.h>
@@ -26,6 +27,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <tap/tap.h>
@@ -82,6 +84,8 @@ const char *field_value_type_to_str(enum lttng_event_field_value_type type)
 		return "REAL";
 	case LTTNG_EVENT_FIELD_VALUE_TYPE_STRING:
 		return "STRING";
+	case LTTNG_EVENT_FIELD_VALUE_TYPE_BLOB:
+		return "BLOB";
 	case LTTNG_EVENT_FIELD_VALUE_TYPE_ARRAY:
 		return "ARRAY";
 	default:
@@ -110,6 +114,43 @@ int validate_type(const struct lttng_event_field_value *event_field,
 
 end:
 	return ret;
+}
+
+/*
+ * Compare two byte vectors and return an error message if they differ.
+ *
+ * Returns nonstd::nullopt if the vectors are equal, otherwise returns
+ * an error string describing the mismatch.
+ */
+nonstd::optional<std::string> compare_byte_vectors(const uint8_t *expected,
+						   size_t expected_length,
+						   const uint8_t *got,
+						   size_t got_length)
+{
+	if (expected_length != got_length) {
+		char buf[4096];
+		snprintf(buf,
+			 sizeof(buf),
+			 "length mismatch: expected=%zu bytes, got=%zu bytes",
+			 expected_length,
+			 got_length);
+		return std::string(buf);
+	}
+
+	for (size_t i = 0; i < expected_length; i++) {
+		if (expected[i] != got[i]) {
+			char buf[4096];
+			snprintf(buf,
+				 sizeof(buf),
+				 "mismatch at index=%zu: expected=0x%02x, got=0x%02x",
+				 i,
+				 expected[i],
+				 got[i]);
+			return std::string(buf);
+		}
+	}
+
+	return nonstd::nullopt;
 }
 
 /*
@@ -357,6 +398,61 @@ int validate_string(const struct lttng_event_field_value *event_field, const cha
 end:
 
 	return ret;
+}
+
+int validate_blob_field(const struct lttng_event_field_value *event_field, unsigned int iteration)
+{
+	const char *media_type;
+	const uint8_t *data;
+	size_t length;
+	enum lttng_event_field_value_status status;
+	const uint8_t expected_data[] = { 0xde, 0xad, 0xbe, 0xef, 0xc0, 0xff,
+					  0xee, 0xc0, 0xde, 0xf0, 0x0d };
+	const char *expected_media_type = "audio/vnd.rn-realaudio";
+	const size_t expected_length = sizeof(expected_data);
+
+	/* Unused. */
+	(void) iteration;
+
+	const int ret = validate_type(event_field, LTTNG_EVENT_FIELD_VALUE_TYPE_BLOB);
+	if (ret) {
+		return ret;
+	}
+
+	status = lttng_event_field_value_blob_get_media_type(event_field, &media_type);
+	if (status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
+		fail("lttng_event_field_value_blob_get_media_type returned an error: status = %d",
+		     (int) status);
+		return 1;
+	}
+
+	ok(!strcmp(media_type, expected_media_type),
+	   "BLOB media type is '%s' (expected '%s')",
+	   media_type,
+	   expected_media_type);
+
+	status = lttng_event_field_value_blob_get_length(event_field, &length);
+	if (status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
+		fail("lttng_event_field_value_blob_get_length returned an error: status = %d",
+		     (int) status);
+		return 1;
+	}
+
+	status = lttng_event_field_value_blob_get_data(event_field, &data);
+	if (status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
+		fail("lttng_event_field_value_blob_get_data returned an error: status = %d",
+		     (int) status);
+		return 1;
+	}
+
+	const auto error_msg = compare_byte_vectors(expected_data, expected_length, data, length);
+
+	ok(!error_msg,
+	   "BLOB data matches expected%s%s",
+	   error_msg ? ": " : "",
+	   error_msg ? error_msg->c_str() : "");
+
+	return 0;
 }
 
 /*
@@ -607,6 +703,15 @@ const capture_base_field_tuple test_capture_base_fields[] = {
 	  true,
 	  validate_context_procname_ust,
 	  validate_context_procname_kernel },
+};
+
+/*
+ * Capture fields for the tp:tptest_blob tracepoint.
+ * This is separate from test_capture_base_fields because blob fields
+ * are in a different tracepoint to avoid breaking other tests.
+ */
+const capture_base_field_tuple test_capture_blob_fields[] = {
+	{ "varblobfield_mediatype", FIELD_TYPE_PAYLOAD, true, false, validate_blob_field, nullptr },
 };
 
 const char *get_notification_trigger_name(struct lttng_notification *notification)
@@ -2450,6 +2555,205 @@ end:
 	return ret;
 }
 
+int generate_blob_capture_descr(struct lttng_condition *condition)
+{
+	int ret, i;
+	struct lttng_event_expr *expr = nullptr;
+	const unsigned int blob_field_count =
+		sizeof(test_capture_blob_fields) / sizeof(*test_capture_blob_fields);
+	enum lttng_condition_status cond_status;
+
+	for (i = 0; i < blob_field_count; i++) {
+		diag("Adding blob capture descriptor '%s'", test_capture_blob_fields[i].field_name);
+
+		switch (test_capture_blob_fields[i].field_type) {
+		case FIELD_TYPE_PAYLOAD:
+			expr = lttng_event_expr_event_payload_field_create(
+				test_capture_blob_fields[i].field_name);
+			break;
+		default:
+			fail("Unexpected field type for blob capture");
+			ret = 1;
+			goto end;
+		}
+
+		if (expr == nullptr) {
+			fail("Failed to create blob capture expression");
+			ret = -1;
+			goto end;
+		}
+
+		cond_status = lttng_condition_event_rule_matches_append_capture_descriptor(
+			condition, expr);
+		if (cond_status != LTTNG_CONDITION_STATUS_OK) {
+			fail("Failed to append blob capture descriptor");
+			ret = -1;
+			lttng_event_expr_destroy(expr);
+			goto end;
+		}
+	}
+
+	ret = 0;
+
+end:
+	return ret;
+}
+
+int validator_notification_trigger_blob_capture(struct lttng_notification *notification,
+						const int iteration)
+{
+	int ret;
+	unsigned int capture_count, i;
+	enum lttng_evaluation_event_rule_matches_status event_rule_matches_evaluation_status;
+	enum lttng_event_field_value_status event_field_value_status;
+	const struct lttng_evaluation *evaluation;
+	const struct lttng_event_field_value *captured_fields;
+	bool at_least_one_error = false;
+	const unsigned int blob_field_count =
+		sizeof(test_capture_blob_fields) / sizeof(*test_capture_blob_fields);
+
+	evaluation = lttng_notification_get_evaluation(notification);
+	if (evaluation == nullptr) {
+		fail("Failed to get evaluation from notification during blob capture test");
+		ret = 1;
+		goto end;
+	}
+
+	event_rule_matches_evaluation_status =
+		lttng_evaluation_event_rule_matches_get_captured_values(evaluation,
+									&captured_fields);
+	if (event_rule_matches_evaluation_status != LTTNG_EVALUATION_EVENT_RULE_MATCHES_STATUS_OK) {
+		diag("Failed to get event rule evaluation captured values: status = %d",
+		     (int) event_rule_matches_evaluation_status);
+		ret = 1;
+		goto end;
+	}
+
+	event_field_value_status =
+		lttng_event_field_value_array_get_length(captured_fields, &capture_count);
+	if (event_field_value_status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
+		fail("Failed to get count of captured value field array for blob");
+		ret = 1;
+		goto end;
+	}
+
+	ok(capture_count == blob_field_count,
+	   "Blob capture count matches expected: got %u, expected %u",
+	   capture_count,
+	   blob_field_count);
+
+	for (i = 0; i < capture_count && i < blob_field_count; i++) {
+		const struct lttng_event_field_value *captured_field = nullptr;
+		validate_cb validate;
+		bool expected;
+
+		diag("Validating blob capture of field '%s'",
+		     test_capture_blob_fields[i].field_name);
+		event_field_value_status = lttng_event_field_value_array_get_element_at_index(
+			captured_fields, i, &captured_field);
+
+		expected = test_capture_blob_fields[i].expected_ust;
+		validate = test_capture_blob_fields[i].validate_ust;
+
+		if (!expected) {
+			ok(event_field_value_status == LTTNG_EVENT_FIELD_VALUE_STATUS_UNAVAILABLE,
+			   "No blob payload captured");
+			continue;
+		}
+
+		if (event_field_value_status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
+			if (event_field_value_status ==
+			    LTTNG_EVENT_FIELD_VALUE_STATUS_UNAVAILABLE) {
+				fail("Expected a blob capture but it is unavailable");
+			} else {
+				fail("lttng_event_field_value_array_get_element_at_index returned an error: status = %d",
+				     (int) event_field_value_status);
+			}
+
+			ret = 1;
+			goto end;
+		}
+
+		diag("Captured blob field of type %s",
+		     field_value_type_to_str(lttng_event_field_value_get_type(captured_field)));
+
+		LTTNG_ASSERT(validate);
+		ret = validate(captured_field, iteration);
+		if (ret) {
+			at_least_one_error = true;
+		}
+	}
+
+	ret = at_least_one_error;
+
+end:
+	return ret;
+}
+
+void test_tracepoint_blob_event_rule_notification_capture()
+{
+	enum lttng_notification_channel_status nc_status;
+	int i, ret;
+	struct lttng_condition *condition = nullptr;
+	struct lttng_notification_channel *notification_channel = nullptr;
+	struct lttng_trigger *trigger = nullptr;
+	const char *trigger_name = "blob_trigger";
+	const char *pattern = "tp:tptest_blob";
+
+	create_tracepoint_event_rule_trigger(pattern,
+					     trigger_name,
+					     nullptr,
+					     0,
+					     nullptr,
+					     LTTNG_DOMAIN_UST,
+					     generate_blob_capture_descr,
+					     &condition,
+					     &trigger);
+
+	notification_channel =
+		lttng_notification_channel_create(lttng_session_daemon_notification_endpoint);
+	ok(notification_channel, "Blob notification channel object creation");
+
+	nc_status = lttng_notification_channel_subscribe(notification_channel, condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
+	   "Subscribe to blob tracepoint event rule condition");
+
+	resume_application();
+
+	/* Get 3 notifications. */
+	for (i = 0; i < 3; i++) {
+		struct lttng_notification *notification =
+			get_next_notification(notification_channel);
+		ok(notification, "Received blob notification");
+
+		/* Error. */
+		if (notification == nullptr) {
+			goto end;
+		}
+
+		ret = validator_notification_trigger_name(notification, trigger_name);
+		if (ret) {
+			lttng_notification_destroy(notification);
+			goto end;
+		}
+
+		ret = validator_notification_trigger_blob_capture(notification, i);
+		if (ret) {
+			lttng_notification_destroy(notification);
+			goto end;
+		}
+
+		lttng_notification_destroy(notification);
+	}
+
+end:
+	suspend_application();
+	lttng_notification_channel_destroy(notification_channel);
+	lttng_unregister_trigger(trigger);
+	lttng_trigger_destroy(trigger);
+	lttng_condition_destroy(condition);
+}
+
 void test_tracepoint_event_rule_notification_capture(enum lttng_domain_type domain_type)
 {
 	enum lttng_notification_channel_status nc_status;
@@ -2685,7 +2989,8 @@ int main(int argc, const char *argv[])
 	{
 		switch (domain_type) {
 		case LTTNG_DOMAIN_UST:
-			plan_tests(221);
+			/* 221 base + 26 for blob capture test. */
+			plan_tests(247);
 			break;
 		case LTTNG_DOMAIN_KERNEL:
 			plan_tests(215);
@@ -2697,6 +3002,11 @@ int main(int argc, const char *argv[])
 		diag("Test tracepoint event rule notification captures for domain %s",
 		     domain_type_string);
 		test_tracepoint_event_rule_notification_capture(domain_type);
+
+		if (domain_type == LTTNG_DOMAIN_UST) {
+			diag("Test blob tracepoint event rule notification captures");
+			test_tracepoint_blob_event_rule_notification_capture();
+		}
 
 		break;
 	}

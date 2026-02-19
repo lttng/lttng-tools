@@ -24,6 +24,7 @@
 #include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <vector>
 
 #define IS_EVENT_RULE_MATCHES_CONDITION(condition) \
 	(lttng_condition_get_type(condition) == LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES)
@@ -1037,6 +1038,196 @@ static void lttng_evaluation_event_rule_matches_destroy(struct lttng_evaluation 
 	free(hit);
 }
 
+static int event_field_value_enum_from_obj(const msgpack_object *obj,
+					   struct lttng_event_field_value **field_val)
+{
+	int ret = 0;
+	const msgpack_object *inner_obj;
+	size_t label_i;
+
+	LTTNG_ASSERT(obj);
+	LTTNG_ASSERT(obj->type == MSGPACK_OBJECT_MAP);
+	LTTNG_ASSERT(field_val);
+
+	inner_obj = get_msgpack_map_obj(obj, "value");
+	if (!inner_obj) {
+		ERR("Missing `value` entry in enumeration map object");
+		goto error;
+	}
+
+	if (inner_obj->type == MSGPACK_OBJECT_POSITIVE_INTEGER) {
+		*field_val = lttng_event_field_value_enum_uint_create(inner_obj->via.u64);
+	} else if (inner_obj->type == MSGPACK_OBJECT_NEGATIVE_INTEGER) {
+		*field_val = lttng_event_field_value_enum_int_create(inner_obj->via.i64);
+	} else {
+		ERR_FMT("Enumeration map object's `value` entry is not an integer: type=`{}`",
+			msgpack_object_type_str(inner_obj->type));
+		goto error;
+	}
+
+	if (!*field_val) {
+		goto error;
+	}
+
+	inner_obj = get_msgpack_map_obj(obj, "labels");
+	if (!inner_obj) {
+		/* No labels */
+		goto end;
+	}
+
+	if (inner_obj->type != MSGPACK_OBJECT_ARRAY) {
+		ERR_FMT("Enumeration map object's `labels` entry is not an array: type=`{}`",
+			msgpack_object_type_str(inner_obj->type));
+		goto error;
+	}
+
+	for (label_i = 0; label_i < inner_obj->via.array.size; label_i++) {
+		const msgpack_object *elem_obj = &inner_obj->via.array.ptr[label_i];
+
+		if (elem_obj->type != MSGPACK_OBJECT_STR) {
+			ERR_FMT("Enumeration map object's `labels` entry's type is not a string: type=`{}`",
+				msgpack_object_type_str(elem_obj->type));
+			goto error;
+		}
+
+		ret = lttng_event_field_value_enum_append_label_with_size(
+			*field_val, elem_obj->via.str.ptr, elem_obj->via.str.size);
+		if (ret) {
+			goto error;
+		}
+	}
+
+	goto end;
+
+error:
+	lttng_event_field_value_destroy(*field_val);
+	*field_val = nullptr;
+	ret = -1;
+
+end:
+	return ret;
+}
+
+static int event_field_value_blob_from_obj(const msgpack_object *obj,
+					   struct lttng_event_field_value **pfield_val)
+{
+	const msgpack_object *media_type_obj;
+	const msgpack_object *total_length_obj;
+	const msgpack_object *chunks_obj;
+	uint64_t total_length_blob;
+	size_t expected_total_length;
+	std::string media_type;
+	std::vector<uint8_t> bytes;
+
+	LTTNG_ASSERT(obj);
+	LTTNG_ASSERT(obj->type == MSGPACK_OBJECT_MAP);
+	LTTNG_ASSERT(pfield_val);
+
+	media_type_obj = get_msgpack_map_obj(obj, "media-type");
+	if (!media_type_obj) {
+		ERR("Missing `media-type` entry in BLOB map object");
+		return -1;
+	}
+
+	if (media_type_obj->type != MSGPACK_OBJECT_STR) {
+		ERR_FMT("BLOB map object's `media-type` entry is not a string: type=`{}`",
+			msgpack_object_type_str(media_type_obj->type));
+		return -1;
+	}
+
+	total_length_obj = get_msgpack_map_obj(obj, "total-length");
+	if (!total_length_obj) {
+		ERR("Missing `total-length` entry in BLOB map object");
+		return -1;
+	}
+
+	if (total_length_obj->type != MSGPACK_OBJECT_POSITIVE_INTEGER) {
+		ERR_FMT("BLOB map object's `total-length` entry is not a positive integer: type=`{}`",
+			msgpack_object_type_str(total_length_obj->type));
+		return -1;
+	}
+
+	total_length_blob = total_length_obj->via.u64;
+	if (total_length_blob > std::numeric_limits<size_t>::max()) {
+		ERR_FMT("BLOB map object's `total-length` exceeds local size_t range: total-length=`{}`",
+			total_length_blob);
+		return -1;
+	}
+
+	expected_total_length = static_cast<size_t>(total_length_blob);
+
+	chunks_obj = get_msgpack_map_obj(obj, "chunks");
+	if (!chunks_obj) {
+		ERR("Missing `chunks` entry in BLOB map object");
+		return -1;
+	}
+
+	if (chunks_obj->type != MSGPACK_OBJECT_ARRAY) {
+		ERR_FMT("BLOB map object's `chunks` entry is not an array: type=`{}`",
+			msgpack_object_type_str(chunks_obj->type));
+		return -1;
+	}
+
+	/* Create the BLOB field value with a null-terminated media type */
+	media_type = std::string(media_type_obj->via.str.ptr, media_type_obj->via.str.size);
+
+	try {
+		bytes.reserve(expected_total_length);
+	} catch (const std::exception& ex) {
+		ERR_FMT("Failed to reserve memory for BLOB data: total-length=`{}`, reason=`{}`",
+			expected_total_length,
+			ex.what());
+		return -1;
+	}
+
+	for (size_t chunk_idx = 0; chunk_idx < chunks_obj->via.array.size; ++chunk_idx) {
+		const msgpack_object *bin_obj = &chunks_obj->via.array.ptr[chunk_idx];
+
+		if (bin_obj->type != MSGPACK_OBJECT_BIN) {
+			ERR_FMT("Chunk element in array of BLOB map object's "
+				"`chunks` entry is not a binary object: type=`{}`",
+				msgpack_object_type_str(bin_obj->type));
+			return -1;
+		}
+
+		const auto bin_size = bin_obj->via.bin.size;
+
+		if (bytes.size() > expected_total_length ||
+		    bin_size > expected_total_length - bytes.size()) {
+			ERR_FMT("BLOB map object's total chunk data size exceeds expected total length: "
+				"expected-total-length={}, current-total-length={}",
+				expected_total_length,
+				bytes.size() + bin_size);
+			return -1;
+		}
+
+		const auto bin_bytes = reinterpret_cast<const uint8_t *>(bin_obj->via.bin.ptr);
+
+		bytes.insert(bytes.end(), bin_bytes, bin_bytes + bin_size);
+	}
+
+	if (bytes.size() != expected_total_length) {
+		ERR_FMT("BLOB map object's total chunk data size doesn't match expected total length: "
+			"expected-total-length={}, current-total-length={}",
+			expected_total_length,
+			bytes.size());
+		return -1;
+	}
+
+	LTTNG_ASSERT(bytes.size() == expected_total_length);
+
+	auto field_val =
+		lttng_event_field_value_blob_create(bytes.data(), bytes.size(), media_type.c_str());
+
+	if (!field_val) {
+		return -1;
+	}
+
+	*pfield_val = field_val;
+
+	return 0;
+}
+
 static int event_field_value_from_obj(const msgpack_object *obj,
 				      struct lttng_event_field_value **field_val)
 {
@@ -1100,8 +1291,9 @@ static int event_field_value_from_obj(const msgpack_object *obj,
 	case MSGPACK_OBJECT_MAP:
 	{
 		/*
-		 * As of this version, the only valid map object is
-		 * for an enumeration value, for example:
+		 * Map objects can represent either enumeration values or BLOBs.
+		 *
+		 * Enumeration value example:
 		 *
 		 *     type: enum
 		 *     value: 177
@@ -1109,74 +1301,39 @@ static int event_field_value_from_obj(const msgpack_object *obj,
 		 *     - Labatt 50
 		 *     - Molson Dry
 		 *     - Carling Black Label
+		 *
+		 * BLOB example:
+		 *
+		 *     type: blob
+		 *     media-type: application/x-executable
+		 *     total-length: 43744
+		 *     chunks: [ [ 0x7F, 'E', 'L', 'F', ... ], ... ]
 		 */
-		const msgpack_object *inner_obj;
-		size_t label_i;
+		const msgpack_object *type_obj;
 
-		inner_obj = get_msgpack_map_obj(obj, "type");
-		if (!inner_obj) {
+		type_obj = get_msgpack_map_obj(obj, "type");
+		if (!type_obj) {
 			ERR("Missing `type` entry in map object");
 			goto error;
 		}
 
-		if (inner_obj->type != MSGPACK_OBJECT_STR) {
-			ERR("Map object's `type` entry is not a string: type = %s",
-			    msgpack_object_type_str(inner_obj->type));
+		if (type_obj->type != MSGPACK_OBJECT_STR) {
+			ERR_FMT("Map object's `type` entry is not a string: type=`{}`",
+				msgpack_object_type_str(type_obj->type));
 			goto error;
 		}
 
-		if (!msgpack_str_is_equal(inner_obj, "enum")) {
-			ERR("Map object's `type` entry: expecting `enum`");
-			goto error;
-		}
-
-		inner_obj = get_msgpack_map_obj(obj, "value");
-		if (!inner_obj) {
-			ERR("Missing `value` entry in map object");
-			goto error;
-		}
-
-		if (inner_obj->type == MSGPACK_OBJECT_POSITIVE_INTEGER) {
-			*field_val = lttng_event_field_value_enum_uint_create(inner_obj->via.u64);
-		} else if (inner_obj->type == MSGPACK_OBJECT_NEGATIVE_INTEGER) {
-			*field_val = lttng_event_field_value_enum_int_create(inner_obj->via.i64);
+		if (msgpack_str_is_equal(type_obj, "blob")) {
+			ret = event_field_value_blob_from_obj(obj, field_val);
+		} else if (msgpack_str_is_equal(type_obj, "enum")) {
+			ret = event_field_value_enum_from_obj(obj, field_val);
 		} else {
-			ERR("Map object's `value` entry is not an integer: type = %s",
-			    msgpack_object_type_str(inner_obj->type));
+			ERR("Map object's `type` entry has unexpected value: expecting `enum` or `blob`");
 			goto error;
 		}
 
-		if (!*field_val) {
+		if (ret) {
 			goto error;
-		}
-
-		inner_obj = get_msgpack_map_obj(obj, "labels");
-		if (!inner_obj) {
-			/* No labels */
-			goto end;
-		}
-
-		if (inner_obj->type != MSGPACK_OBJECT_ARRAY) {
-			ERR("Map object's `labels` entry is not an array: type = %s",
-			    msgpack_object_type_str(inner_obj->type));
-			goto error;
-		}
-
-		for (label_i = 0; label_i < inner_obj->via.array.size; label_i++) {
-			int iret;
-			const msgpack_object *elem_obj = &inner_obj->via.array.ptr[label_i];
-
-			if (elem_obj->type != MSGPACK_OBJECT_STR) {
-				ERR("Map object's `labels` entry's type is not a string: type = %s",
-				    msgpack_object_type_str(elem_obj->type));
-				goto error;
-			}
-
-			iret = lttng_event_field_value_enum_append_label_with_size(
-				*field_val, elem_obj->via.str.ptr, elem_obj->via.str.size);
-			if (iret) {
-				goto error;
-			}
 		}
 
 		break;

@@ -182,7 +182,7 @@ if __name__ == "__main__":
     parser.add_argument("--run-once", action="store_true", default=False)
     parser.add_argument("--state-file", type=pathlib.Path, default=None)
     parser.add_argument("generator_type", choices=generators.keys())
-    parser.add_argument("rest", nargs="*")
+    parser.add_argument("rest", nargs=argparse.REMAINDER)
 
     args = parser.parse_args()
     if os.environ.get("SYSCALL_TESTAPP_NAME", None):

@@ -24,7 +24,7 @@ function test_basic_error_path
 	USERSPACE_TESTAPP_BIN="${GEN_UST_EVENTS_TESTAPP_BIN}" "${EVENT_GENERATOR_SCRIPT}" \
 			     --ready-file "${READY_FILE}" --state-file "${TESTAPP_STATE_PATH}" \
 			     --iterations 3 --wait 10 --run-once \
-			     userspace_testapp &
+			     userspace_testapp --emit-blob-events &
 	APP_PID=$!
 	while [ ! -f "${READY_FILE}" ]; do
 		sleep 0.1

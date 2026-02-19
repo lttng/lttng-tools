@@ -62,6 +62,9 @@ enum lttng_event_field_value_type {
 	/// Array.
 	LTTNG_EVENT_FIELD_VALUE_TYPE_ARRAY = 6,
 
+	/// BLOB (binary large object).
+	LTTNG_EVENT_FIELD_VALUE_TYPE_BLOB = 7,
+
 	/// Unsatisfied precondition.
 	LTTNG_EVENT_FIELD_VALUE_TYPE_INVALID = -1,
 
@@ -296,6 +299,105 @@ lttng_event_field_value_array_get_element_at_index(
 	const struct lttng_event_field_value *field_val,
 	unsigned int index,
 	const struct lttng_event_field_value **elem_field_val);
+
+/*!
+@brief
+    Sets \lt_p{*media_type} to the IANA media type of the
+    BLOB event field value \lt_p{field_val}.
+
+@param[in] field_val
+    BLOB event field value of which to get the IANA media type.
+@param[out] media_type
+    @parblock
+    <strong>On success</strong>, this function sets \lt_p{*media_type}
+    to the IANA media type of \lt_p{field_val}.
+
+    \lt_p{field_val} owns \lt_p{*media_type}.
+
+    \lt_p{*media_type} remains valid until the next function call
+    with \lt_p{field_val}.
+    @endparblock
+
+@retval #LTTNG_EVENT_FIELD_VALUE_STATUS_OK
+    Success.
+@retval #LTTNG_EVENT_FIELD_VALUE_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{field_val}
+    @lt_pre_has_type{field_val,LTTNG_EVENT_FIELD_VALUE_TYPE_BLOB}
+    @lt_pre_not_null{media_type}
+*/
+LTTNG_EXPORT extern enum lttng_event_field_value_status
+lttng_event_field_value_blob_get_media_type(const struct lttng_event_field_value *field_val,
+					    const char **media_type);
+
+/*!
+@brief
+    Sets \lt_p{*length} to the length (byte count) of the
+    BLOB event field value \lt_p{field_val}.
+
+@param[in] field_val
+    BLOB event field value of which to get the length.
+@param[out] length
+    <strong>On success</strong>, this function sets \lt_p{*length}
+    to the length of \lt_p{field_val}.
+
+@retval #LTTNG_EVENT_FIELD_VALUE_STATUS_OK
+    Success.
+@retval #LTTNG_EVENT_FIELD_VALUE_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{field_val}
+    @lt_pre_has_type{field_val,LTTNG_EVENT_FIELD_VALUE_TYPE_BLOB}
+    @lt_pre_not_null{length}
+
+@sa lttng_event_field_value_blob_get_data() --
+    Get the data pointer of a BLOB event field value.
+*/
+LTTNG_EXPORT extern enum lttng_event_field_value_status
+lttng_event_field_value_blob_get_length(const struct lttng_event_field_value *field_val,
+					size_t *length);
+
+/*!
+@brief
+    Sets \lt_p{*data} to the data pointer of the
+    BLOB event field value \lt_p{field_val}.
+
+@param[in] field_val
+    BLOB event field value of which to get the data pointer.
+@param[out] data
+    @parblock
+    <strong>On success</strong>, this function sets \lt_p{*data}
+    to the data pointer of \lt_p{field_val}.
+
+    The length of \lt_p{*data} is what
+    lttng_event_field_value_blob_get_length() returns with
+    \lt_p{field_val}.
+
+    \lt_p{field_val} owns \lt_p{*data}.
+
+    \lt_p{*data} remains valid until the next function call
+    with \lt_p{field_val}.
+    @endparblock
+
+@retval #LTTNG_EVENT_FIELD_VALUE_STATUS_OK
+    Success.
+@retval #LTTNG_EVENT_FIELD_VALUE_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{field_val}
+    @lt_pre_has_type{field_val,LTTNG_EVENT_FIELD_VALUE_TYPE_BLOB}
+    @lt_pre_not_null{data}
+
+@sa lttng_event_field_value_blob_get_length() --
+    Get the length of a BLOB event field value.
+*/
+LTTNG_EXPORT extern enum lttng_event_field_value_status
+lttng_event_field_value_blob_get_data(const struct lttng_event_field_value *field_val,
+				      const uint8_t **data);
 
 /// @}
 

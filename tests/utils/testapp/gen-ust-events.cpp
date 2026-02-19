@@ -94,6 +94,8 @@ int main(int argc, char **argv)
 	char *after_first_event_file_path = nullptr;
 	char *before_last_event_file_path = nullptr;
 	char *after_each_iter_file_path = nullptr;
+	uint8_t audio_blob_bytes[] = { 0xde, 0xad, 0xbe, 0xef, 0xc0, 0xff,
+				       0xee, 0xc0, 0xde, 0xf0, 0x0d };
 
 	/*
 	 * Touch a file to indicate that all events except one were
@@ -271,6 +273,8 @@ int main(int argc, char **argv)
 			   flt);
 
 		if (emit_blob_events) {
+			tracepoint(tp, tptest_blob, audio_blob_bytes, sizeof(audio_blob_bytes));
+
 			tracepoint(tp, tptest_blob_fixed_length_nomediatype, byte_values);
 			tracepoint(tp,
 				   tptest_blob_variable_length_nomediatype,
