@@ -1,5 +1,5 @@
 /*
- * SPDX-License-Identifier: LGPL-2.0-only
+ * SPDX-License-Identifier: LGPL-2.1-only
  *
  * SPDX-FileCopyrightText: 2025 Jérémie Galarneau <jeremie.galarneau@efficios.com>
  */

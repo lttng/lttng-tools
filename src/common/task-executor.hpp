@@ -1,7 +1,7 @@
 /*
  * SPDX-FileCopyrightText: 2025 Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
- * SPDX-License-Identifier: LGPL-2.0-only
+ * SPDX-License-Identifier: LGPL-2.1-only
  */
 
 #ifndef LTTNG_SCHEDULING_TASK_EXECUTOR_HPP
