@@ -60,11 +60,10 @@ int cmd_enable_channel(struct command_ctx *cmd_ctx,
 		       int wpipe);
 
 /* Process attribute tracker commands */
-enum lttng_error_code
+enum lttng_tracking_policy
 cmd_process_attr_tracker_get_tracking_policy(const ltt_session::locked_ref& session,
 					     enum lttng_domain_type domain,
-					     enum lttng_process_attr process_attr,
-					     enum lttng_tracking_policy *policy);
+					     enum lttng_process_attr process_attr);
 enum lttng_error_code
 cmd_process_attr_tracker_set_tracking_policy(const ltt_session::locked_ref& session,
 					     enum lttng_domain_type domain,
@@ -80,11 +79,10 @@ cmd_process_attr_tracker_inclusion_set_remove_value(const ltt_session::locked_re
 						    enum lttng_domain_type domain,
 						    enum lttng_process_attr process_attr,
 						    const struct process_attr_value *value);
-enum lttng_error_code
+lttng_process_attr_values *
 cmd_process_attr_tracker_get_inclusion_set(const ltt_session::locked_ref& session,
 					   enum lttng_domain_type domain,
-					   enum lttng_process_attr process_attr,
-					   struct lttng_process_attr_values **values);
+					   enum lttng_process_attr process_attr);
 
 /* Event commands */
 lttng_error_code cmd_disable_event(struct command_ctx *cmd_ctx,

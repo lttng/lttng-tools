@@ -1786,11 +1786,8 @@ skip_domain:
 			(enum lttng_process_attr) cmd_ctx->lsm.u
 				.process_attr_tracker_get_tracking_policy.process_attr;
 
-		ret = cmd_process_attr_tracker_get_tracking_policy(
-			*target_session, domain_type, process_attr, &tracking_policy);
-		if (ret != LTTNG_OK) {
-			goto error;
-		}
+		tracking_policy = cmd_process_attr_tracker_get_tracking_policy(
+			*target_session, domain_type, process_attr);
 
 		uint32_t tracking_policy_u32 = tracking_policy;
 		setup_lttng_msg_no_cmd_header(cmd_ctx, &tracking_policy_u32, sizeof(uint32_t));
@@ -1809,11 +1806,8 @@ skip_domain:
 			(enum lttng_process_attr) cmd_ctx->lsm.u
 				.process_attr_tracker_set_tracking_policy.process_attr;
 
-		ret = cmd_process_attr_tracker_set_tracking_policy(
+		cmd_process_attr_tracker_set_tracking_policy(
 			*target_session, domain_type, process_attr, tracking_policy);
-		if (ret != LTTNG_OK) {
-			goto error;
-		}
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_PROCESS_ATTR_TRACKER_GET_INCLUSION_SET:
@@ -1826,11 +1820,8 @@ skip_domain:
 			(enum lttng_process_attr)
 				cmd_ctx->lsm.u.process_attr_tracker_get_inclusion_set.process_attr;
 
-		ret = cmd_process_attr_tracker_get_inclusion_set(
-			*target_session, domain_type, process_attr, &values);
-		if (ret != LTTNG_OK) {
-			goto error;
-		}
+		values = cmd_process_attr_tracker_get_inclusion_set(
+			*target_session, domain_type, process_attr);
 
 		lttng_dynamic_buffer_init(&reply);
 		ret = lttng_process_attr_values_serialize(values, &reply);

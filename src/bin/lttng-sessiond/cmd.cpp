@@ -359,6 +359,225 @@ void remove_value_from_domain_tracker(lsc::domain& domain,
 		break;
 	}
 }
+
+/*
+ * Get the tracking policy for a process attribute from the session's domain
+ * configuration.
+ */
+lsc::tracking_policy get_domain_tracker_policy(const lsc::domain& domain,
+					       enum lttng_process_attr process_attr)
+{
+	switch (process_attr) {
+	case LTTNG_PROCESS_ATTR_PROCESS_ID:
+		return domain.process_id_tracker().policy();
+	case LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID:
+		return domain.virtual_process_id_tracker().policy();
+	case LTTNG_PROCESS_ATTR_USER_ID:
+		return domain.user_id_tracker().policy();
+	case LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID:
+		return domain.virtual_user_id_tracker().policy();
+	case LTTNG_PROCESS_ATTR_GROUP_ID:
+		return domain.group_id_tracker().policy();
+	case LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID:
+		return domain.virtual_group_id_tracker().policy();
+	default:
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+			lttng::format("Invalid process attribute: process_attr={}",
+				      static_cast<int>(process_attr)));
+	}
+}
+
+/*
+ * Convert from config tracking_policy to the public lttng_tracking_policy enum.
+ */
+lttng_tracking_policy to_lttng_tracking_policy(lsc::tracking_policy policy)
+{
+	switch (policy) {
+	case lsc::tracking_policy::INCLUDE_ALL:
+		return LTTNG_TRACKING_POLICY_INCLUDE_ALL;
+	case lsc::tracking_policy::EXCLUDE_ALL:
+		return LTTNG_TRACKING_POLICY_EXCLUDE_ALL;
+	case lsc::tracking_policy::INCLUDE_SET:
+		return LTTNG_TRACKING_POLICY_INCLUDE_SET;
+	default:
+		abort();
+	}
+}
+
+/*
+ * Allocate a process_attr_value, initialize it using the provided callback,
+ * and append it to the values array. Ownership of the value is transferred
+ * to the array on success.
+ */
+template <typename InitFuncType>
+void append_process_attr_value(lttng_process_attr_values& values, InitFuncType init_value)
+{
+	auto value = lttng::make_unique_wrapper<process_attr_value, process_attr_value_destroy>(
+		zmalloc<process_attr_value>());
+	if (!value) {
+		LTTNG_THROW_ALLOCATION_FAILURE_ERROR("Failed to allocate process attribute value");
+	}
+
+	init_value(*value);
+
+	if (lttng_dynamic_pointer_array_add_pointer(&values.array, value.get())) {
+		LTTNG_THROW_ALLOCATION_FAILURE_ERROR(
+			"Failed to add process attribute value to array");
+	}
+
+	/* Ownership transferred to the array. */
+	/* NOLINTNEXTLINE(bugprone-unused-return-value) */
+	value.release();
+}
+
+/*
+ * Append a resolved user or group ID value to a lttng_process_attr_values array.
+ *
+ * When the value was originally specified as a name (user name or group name),
+ * the name is preserved in the output so that listing commands display the
+ * original string rather than the resolved numeric ID.
+ */
+template <typename IntegralType>
+void append_resolved_id_value(lttng_process_attr_values& values,
+			      const lsc::resolved_process_attr_value<IntegralType>& resolved_value,
+			      enum lttng_process_attr_value_type name_type,
+			      enum lttng_process_attr_value_type id_type)
+{
+	append_process_attr_value(values, [&](process_attr_value& attr_value) {
+		if (resolved_value.has_name()) {
+			attr_value.type = name_type;
+
+			auto *name_copy = strdup(resolved_value.name().c_str());
+			if (!name_copy) {
+				LTTNG_THROW_ALLOCATION_FAILURE_ERROR(
+					"Failed to duplicate process attribute name string");
+			}
+
+			/*
+			 * Both user_name and group_name occupy the same
+			 * position in the union; assign through user_name.
+			 */
+			attr_value.value.user_name = name_copy;
+		} else {
+			attr_value.type = id_type;
+
+			/*
+			 * uid and gid occupy the same position in the
+			 * union; assign through uid.
+			 */
+			attr_value.value.uid = resolved_value.id();
+		}
+	});
+}
+
+/*
+ * Populate a lttng_process_attr_values from a process ID tracker's inclusion set.
+ * Returns false if the tracker's policy is not INCLUDE_SET.
+ */
+template <typename TrackerType>
+bool populate_pid_inclusion_set(lttng_process_attr_values& values, const TrackerType& tracker)
+{
+	if (tracker.policy() != lsc::tracking_policy::INCLUDE_SET) {
+		return false;
+	}
+
+	for (const auto& pid : tracker.inclusion_set()) {
+		append_process_attr_value(values, [pid](process_attr_value& attr_value) {
+			attr_value.type = LTTNG_PROCESS_ATTR_VALUE_TYPE_PID;
+			attr_value.value.pid = pid;
+		});
+	}
+
+	return true;
+}
+
+/*
+ * Populate a lttng_process_attr_values from a UID/GID tracker's inclusion set.
+ * Returns false if the tracker's policy is not INCLUDE_SET.
+ */
+template <typename TrackerType>
+bool populate_resolved_id_inclusion_set(lttng_process_attr_values& values,
+					const TrackerType& tracker,
+					lttng_process_attr_value_type name_type,
+					lttng_process_attr_value_type id_type)
+{
+	if (tracker.policy() != lsc::tracking_policy::INCLUDE_SET) {
+		return false;
+	}
+
+	for (const auto& resolved_value : tracker.inclusion_set()) {
+		append_resolved_id_value(values, resolved_value, name_type, id_type);
+	}
+
+	return true;
+}
+
+/*
+ * Build a lttng_process_attr_values from the inclusion set of a domain's
+ * process attribute tracker.
+ *
+ * Returns nullptr when the tracker's policy is not INCLUDE_SET.
+ */
+lttng_process_attr_values *get_inclusion_set_from_domain(const lsc::domain& domain,
+							 lttng_process_attr process_attr)
+{
+	auto values = lttng::make_unique_wrapper<lttng_process_attr_values,
+						 lttng_process_attr_values_destroy>(
+		lttng_process_attr_values_create());
+	if (!values) {
+		LTTNG_THROW_ALLOCATION_FAILURE_ERROR("Failed to allocate process attribute values");
+	}
+
+	bool is_include_set;
+
+	switch (process_attr) {
+	case LTTNG_PROCESS_ATTR_PROCESS_ID:
+		is_include_set = populate_pid_inclusion_set(*values, domain.process_id_tracker());
+		break;
+	case LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID:
+		is_include_set =
+			populate_pid_inclusion_set(*values, domain.virtual_process_id_tracker());
+		break;
+	case LTTNG_PROCESS_ATTR_USER_ID:
+		is_include_set =
+			populate_resolved_id_inclusion_set(*values,
+							   domain.user_id_tracker(),
+							   LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME,
+							   LTTNG_PROCESS_ATTR_VALUE_TYPE_UID);
+		break;
+	case LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID:
+		is_include_set =
+			populate_resolved_id_inclusion_set(*values,
+							   domain.virtual_user_id_tracker(),
+							   LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME,
+							   LTTNG_PROCESS_ATTR_VALUE_TYPE_UID);
+		break;
+	case LTTNG_PROCESS_ATTR_GROUP_ID:
+		is_include_set =
+			populate_resolved_id_inclusion_set(*values,
+							   domain.group_id_tracker(),
+							   LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME,
+							   LTTNG_PROCESS_ATTR_VALUE_TYPE_GID);
+		break;
+	case LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID:
+		is_include_set =
+			populate_resolved_id_inclusion_set(*values,
+							   domain.virtual_group_id_tracker(),
+							   LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME,
+							   LTTNG_PROCESS_ATTR_VALUE_TYPE_GID);
+		break;
+	default:
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+			lttng::format("Invalid process attribute: process_attr={}",
+				      static_cast<int>(process_attr)));
+	}
+
+	if (!is_include_set) {
+		return nullptr;
+	}
+
+	return values.release();
+}
 } /* namespace */
 
 static struct cmd_completion_handler *current_completion_handler;
@@ -1928,41 +2147,15 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 	return ret_code;
 }
 
-enum lttng_error_code
+lttng_tracking_policy
 cmd_process_attr_tracker_get_tracking_policy(const ltt_session::locked_ref& session,
 					     enum lttng_domain_type domain,
-					     enum lttng_process_attr process_attr,
-					     enum lttng_tracking_policy *policy)
+					     enum lttng_process_attr process_attr)
 {
-	enum lttng_error_code ret_code = LTTNG_OK;
-	const struct process_attr_tracker *tracker;
+	const auto& session_domain = session->get_domain(domain_type_to_class(domain));
+	const auto config_policy = get_domain_tracker_policy(session_domain, process_attr);
 
-	switch (domain) {
-	case LTTNG_DOMAIN_KERNEL:
-		if (!session->kernel_session) {
-			ret_code = LTTNG_ERR_INVALID;
-			goto end;
-		}
-		tracker = kernel_get_process_attr_tracker(session->kernel_session, process_attr);
-		break;
-	case LTTNG_DOMAIN_UST:
-		if (!session->ust_session) {
-			ret_code = LTTNG_ERR_INVALID;
-			goto end;
-		}
-		tracker = trace_ust_get_process_attr_tracker(session->ust_session, process_attr);
-		break;
-	default:
-		ret_code = LTTNG_ERR_UNSUPPORTED_DOMAIN;
-		goto end;
-	}
-	if (tracker) {
-		*policy = process_attr_tracker_get_tracking_policy(tracker);
-	} else {
-		ret_code = LTTNG_ERR_INVALID;
-	}
-end:
-	return ret_code;
+	return to_lttng_tracking_policy(config_policy);
 }
 
 enum lttng_error_code
@@ -2096,59 +2289,14 @@ cmd_process_attr_tracker_inclusion_set_remove_value(const ltt_session::locked_re
 	return LTTNG_OK;
 }
 
-enum lttng_error_code
+lttng_process_attr_values *
 cmd_process_attr_tracker_get_inclusion_set(const ltt_session::locked_ref& session,
 					   enum lttng_domain_type domain,
-					   enum lttng_process_attr process_attr,
-					   struct lttng_process_attr_values **values)
+					   enum lttng_process_attr process_attr)
 {
-	enum lttng_error_code ret_code = LTTNG_OK;
-	const struct process_attr_tracker *tracker;
-	enum process_attr_tracker_status status;
+	const auto& session_domain = session->get_domain(domain_type_to_class(domain));
 
-	switch (domain) {
-	case LTTNG_DOMAIN_KERNEL:
-		if (!session->kernel_session) {
-			ret_code = LTTNG_ERR_INVALID;
-			goto end;
-		}
-		tracker = kernel_get_process_attr_tracker(session->kernel_session, process_attr);
-		break;
-	case LTTNG_DOMAIN_UST:
-		if (!session->ust_session) {
-			ret_code = LTTNG_ERR_INVALID;
-			goto end;
-		}
-		tracker = trace_ust_get_process_attr_tracker(session->ust_session, process_attr);
-		break;
-	default:
-		ret_code = LTTNG_ERR_UNSUPPORTED_DOMAIN;
-		goto end;
-	}
-
-	if (!tracker) {
-		ret_code = LTTNG_ERR_INVALID;
-		goto end;
-	}
-
-	status = process_attr_tracker_get_inclusion_set(tracker, values);
-	switch (status) {
-	case PROCESS_ATTR_TRACKER_STATUS_OK:
-		ret_code = LTTNG_OK;
-		break;
-	case PROCESS_ATTR_TRACKER_STATUS_INVALID_TRACKING_POLICY:
-		ret_code = LTTNG_ERR_PROCESS_ATTR_TRACKER_INVALID_TRACKING_POLICY;
-		break;
-	case PROCESS_ATTR_TRACKER_STATUS_ERROR:
-		ret_code = LTTNG_ERR_NOMEM;
-		break;
-	default:
-		ret_code = LTTNG_ERR_UNK;
-		break;
-	}
-
-end:
-	return ret_code;
+	return get_inclusion_set_from_domain(session_domain, process_attr);
 }
 
 namespace {
