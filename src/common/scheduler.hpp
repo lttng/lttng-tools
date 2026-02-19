@@ -1,5 +1,5 @@
 /*
- * SPDX-License-Identifier: LGPL-2.0-only
+ * SPDX-License-Identifier: LGPL-2.1-only
  *
  * Uses heap management code adapted from Babeltrace 2's prio-heap.c.
  *
