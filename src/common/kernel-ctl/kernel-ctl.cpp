@@ -196,38 +196,13 @@ int kernctl_list_tracker_pids(int fd)
 	return LTTNG_IOCTL_NO_CHECK(fd, LTTNG_KERNEL_ABI_SESSION_LIST_TRACKER_PIDS);
 }
 
-static enum lttng_kernel_abi_tracker_type
-get_kernel_tracker_type(enum lttng_process_attr process_attr)
-{
-	switch (process_attr) {
-	case LTTNG_PROCESS_ATTR_PROCESS_ID:
-		return LTTNG_KERNEL_ABI_TRACKER_PID;
-	case LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID:
-		return LTTNG_KERNEL_ABI_TRACKER_VPID;
-	case LTTNG_PROCESS_ATTR_USER_ID:
-		return LTTNG_KERNEL_ABI_TRACKER_UID;
-	case LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID:
-		return LTTNG_KERNEL_ABI_TRACKER_VUID;
-	case LTTNG_PROCESS_ATTR_GROUP_ID:
-		return LTTNG_KERNEL_ABI_TRACKER_GID;
-	case LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID:
-		return LTTNG_KERNEL_ABI_TRACKER_VGID;
-	default:
-		return LTTNG_KERNEL_ABI_TRACKER_UNKNOWN;
-	}
-}
-
-int kernctl_track_id(int fd, enum lttng_process_attr process_attr, int id)
+int kernctl_track_id(int fd, lttng_kernel_abi_tracker_type tracker_type, int id)
 {
 	struct lttng_kernel_abi_tracker_args args;
 	int ret;
 
 	args.id = id;
-	args.type = get_kernel_tracker_type(process_attr);
-	if (args.type == LTTNG_KERNEL_ABI_TRACKER_UNKNOWN) {
-		errno = EINVAL;
-		return -1;
-	}
+	args.type = tracker_type;
 
 	ret = LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_SESSION_TRACK_ID, &args);
 	if (ret == -ENOSYS) {
@@ -237,17 +212,13 @@ int kernctl_track_id(int fd, enum lttng_process_attr process_attr, int id)
 	return ret;
 }
 
-int kernctl_untrack_id(int fd, enum lttng_process_attr process_attr, int id)
+int kernctl_untrack_id(int fd, lttng_kernel_abi_tracker_type tracker_type, int id)
 {
 	struct lttng_kernel_abi_tracker_args args;
 	int ret;
 
 	args.id = id;
-	args.type = get_kernel_tracker_type(process_attr);
-	if (args.type == LTTNG_KERNEL_ABI_TRACKER_UNKNOWN) {
-		errno = EINVAL;
-		return -1;
-	}
+	args.type = tracker_type;
 
 	ret = LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_SESSION_UNTRACK_ID, &args);
 	if (ret == -ENOSYS) {
@@ -257,17 +228,13 @@ int kernctl_untrack_id(int fd, enum lttng_process_attr process_attr, int id)
 	return ret;
 }
 
-int kernctl_list_tracker_ids(int fd, enum lttng_process_attr process_attr)
+int kernctl_list_tracker_ids(int fd, lttng_kernel_abi_tracker_type tracker_type)
 {
 	struct lttng_kernel_abi_tracker_args args;
 	int ret;
 
 	args.id = -1;
-	args.type = get_kernel_tracker_type(process_attr);
-	if (args.type == LTTNG_KERNEL_ABI_TRACKER_UNKNOWN) {
-		errno = EINVAL;
-		return -1;
-	}
+	args.type = tracker_type;
 
 	ret = LTTNG_IOCTL_NO_CHECK(fd, LTTNG_KERNEL_ABI_SESSION_LIST_TRACKER_IDS, &args);
 	if (ret == -ENOSYS) {

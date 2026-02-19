@@ -8,6 +8,8 @@
 #ifndef LTTNG_SESSIOND_DOMAIN_ORCHESTRATOR_HPP
 #define LTTNG_SESSIOND_DOMAIN_ORCHESTRATOR_HPP
 
+#include <common/format.hpp>
+
 #include <cstdint>
 
 struct consumer_output;
@@ -103,5 +105,47 @@ public:
 
 } /* namespace sessiond */
 } /* namespace lttng */
+
+/*
+ * Specialize fmt::formatter for process_attribute_type.
+ *
+ * Due to a bug in g++ < 7.1, this specialization must be enclosed in the fmt namespace,
+ * see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480.
+ */
+namespace fmt {
+template <>
+struct formatter<lttng::sessiond::config::process_attribute_type> : formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator
+	format(lttng::sessiond::config::process_attribute_type attribute_type,
+	       FormatContextType& ctx) const
+	{
+		auto name = "UNKNOWN";
+
+		switch (attribute_type) {
+		case lttng::sessiond::config::process_attribute_type::PID:
+			name = "PID";
+			break;
+		case lttng::sessiond::config::process_attribute_type::VPID:
+			name = "VPID";
+			break;
+		case lttng::sessiond::config::process_attribute_type::UID:
+			name = "UID";
+			break;
+		case lttng::sessiond::config::process_attribute_type::VUID:
+			name = "VUID";
+			break;
+		case lttng::sessiond::config::process_attribute_type::GID:
+			name = "GID";
+			break;
+		case lttng::sessiond::config::process_attribute_type::VGID:
+			name = "VGID";
+			break;
+		}
+
+		return format_to(ctx.out(), name);
+	}
+};
+} /* namespace fmt */
 
 #endif /* LTTNG_SESSIOND_DOMAIN_ORCHESTRATOR_HPP */

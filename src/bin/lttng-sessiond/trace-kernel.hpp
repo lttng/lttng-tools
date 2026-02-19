@@ -132,13 +132,6 @@ struct ltt_kernel_session {
 	struct lttng_trace_chunk *current_trace_chunk;
 	/* Trace format of the session. */
 	enum lttng_trace_format trace_format;
-	/* Tracker lists */
-	struct process_attr_tracker *tracker_pid;
-	struct process_attr_tracker *tracker_vpid;
-	struct process_attr_tracker *tracker_uid;
-	struct process_attr_tracker *tracker_vuid;
-	struct process_attr_tracker *tracker_gid;
-	struct process_attr_tracker *tracker_vgid;
 };
 
 /*

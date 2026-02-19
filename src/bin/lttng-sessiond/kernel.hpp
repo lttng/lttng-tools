@@ -35,21 +35,6 @@ int kernel_disable_channel(struct ltt_kernel_channel *chan);
 int kernel_disable_event(struct ltt_kernel_event *event);
 int kernel_enable_event(struct ltt_kernel_event *event);
 int kernel_enable_channel(struct ltt_kernel_channel *chan);
-enum lttng_error_code
-kernel_process_attr_tracker_set_tracking_policy(struct ltt_kernel_session *session,
-						enum lttng_process_attr process_attr,
-						enum lttng_tracking_policy policy);
-enum lttng_error_code
-kernel_process_attr_tracker_inclusion_set_add_value(struct ltt_kernel_session *session,
-						    enum lttng_process_attr process_attr,
-						    const struct process_attr_value *value);
-enum lttng_error_code
-kernel_process_attr_tracker_inclusion_set_remove_value(struct ltt_kernel_session *session,
-						       enum lttng_process_attr process_attr,
-						       const struct process_attr_value *value);
-const struct process_attr_tracker *
-kernel_get_process_attr_tracker(struct ltt_kernel_session *session,
-				enum lttng_process_attr process_attr);
 int kernel_open_metadata(
 	struct ltt_kernel_session *session,
 	const lttng::sessiond::config::metadata_channel_configuration& metadata_config);

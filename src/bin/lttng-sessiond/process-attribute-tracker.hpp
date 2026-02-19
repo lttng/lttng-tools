@@ -91,6 +91,41 @@ private:
 	nonstd::optional<std::string> _original_name;
 };
 
+namespace exceptions {
+/*
+ * @class process_attribute_already_tracked
+ * @brief Thrown when attempting to add a process attribute value that is already
+ * in the tracker's inclusion set.
+ */
+class process_attribute_already_tracked : public lttng::runtime_error {
+public:
+	explicit process_attribute_already_tracked(const lttng::source_location& source_location_) :
+		lttng::runtime_error("Process attribute value is already tracked", source_location_)
+	{
+	}
+};
+
+/*
+ * @class process_attribute_not_tracked
+ * @brief Thrown when attempting to remove a process attribute value that is not
+ * in the tracker's inclusion set.
+ */
+class process_attribute_not_tracked : public lttng::runtime_error {
+public:
+	explicit process_attribute_not_tracked(const lttng::source_location& source_location_) :
+		lttng::runtime_error("Process attribute value is not tracked", source_location_)
+	{
+	}
+};
+} /* namespace exceptions */
+
+#define LTTNG_THROW_PROCESS_ATTRIBUTE_ALREADY_TRACKED()                               \
+	throw lttng::sessiond::config::exceptions::process_attribute_already_tracked( \
+		LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_PROCESS_ATTRIBUTE_NOT_TRACKED()                               \
+	throw lttng::sessiond::config::exceptions::process_attribute_not_tracked( \
+		LTTNG_SOURCE_LOCATION())
+
 /*
  * Type-safe process attribute tracker.
  *
@@ -133,23 +168,30 @@ public:
 	/*
 	 * Add a value to the inclusion set.
 	 * Only valid when policy is INCLUDE_SET.
-	 * Returns true if the value was added, false if it already existed.
+	 * Throws process_attribute_already_tracked if the value already exists.
 	 */
-	bool add(ValueType value)
+	void add(ValueType value)
 	{
 		LTTNG_ASSERT(_policy == tracking_policy::INCLUDE_SET);
-		return _inclusion_set.insert(std::move(value)).second;
+
+		const auto result = _inclusion_set.insert(std::move(value));
+		if (!result.second) {
+			LTTNG_THROW_PROCESS_ATTRIBUTE_ALREADY_TRACKED();
+		}
 	}
 
 	/*
 	 * Remove a value from the inclusion set.
 	 * Only valid when policy is INCLUDE_SET.
-	 * Returns true if the value was removed, false if it wasn't present.
+	 * Throws process_attribute_not_tracked if the value is not present.
 	 */
-	bool remove(const ValueType& value)
+	void remove(const ValueType& value)
 	{
 		LTTNG_ASSERT(_policy == tracking_policy::INCLUDE_SET);
-		return _inclusion_set.erase(value) > 0;
+
+		if (_inclusion_set.erase(value) == 0) {
+			LTTNG_THROW_PROCESS_ATTRIBUTE_NOT_TRACKED();
+		}
 	}
 
 	/*

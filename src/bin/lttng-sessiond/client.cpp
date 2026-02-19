@@ -2886,6 +2886,15 @@ void *thread_manage_clients(void *data)
 		} catch (const lttng::sessiond::config::exceptions::channel_not_found_error& ex) {
 			log_nested_exceptions(ex);
 			ret = LTTNG_ERR_CHAN_NOT_FOUND;
+		} catch (
+			const lttng::sessiond::config::exceptions::process_attribute_already_tracked&
+				ex) {
+			log_nested_exceptions(ex);
+			ret = LTTNG_ERR_PROCESS_ATTR_EXISTS;
+		} catch (const lttng::sessiond::config::exceptions::process_attribute_not_tracked&
+				 ex) {
+			log_nested_exceptions(ex);
+			ret = LTTNG_ERR_PROCESS_ATTR_MISSING;
 		} catch (const lttng::sessiond::exceptions::save_error& ex) {
 			log_nested_exceptions(ex);
 			ret = LTTNG_ERR_SAVE_IO_FAIL;

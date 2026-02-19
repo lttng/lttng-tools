@@ -2232,44 +2232,44 @@ cmd_process_attr_tracker_set_tracking_policy(const ltt_session::locked_ref& sess
 
 		const auto config_policy = convert_tracking_policy(policy);
 		const auto attribute_type = to_process_attribute_type(process_attr);
+		const auto current_policy =
+			get_domain_tracker_policy(session->kernel_space_domain, process_attr);
 
-		try {
-			session->get_kernel_orchestrator().set_tracking_policy(attribute_type,
-									       config_policy);
-		} catch (const lttng::ctl::error& ex) {
-			ret_code = static_cast<lttng_error_code>(ex.code());
-			goto end;
-		} catch (const std::exception& ex) {
-			ERR("Failed to set kernel tracking policy: %s", ex.what());
-			ret_code = LTTNG_ERR_UNK;
-			goto end;
+		if (current_policy == config_policy) {
+			break;
 		}
+
+		session->get_kernel_orchestrator().set_tracking_policy(attribute_type,
+								       config_policy);
 
 		update_domain_tracker_policy(
 			session->kernel_space_domain, process_attr, config_policy);
 		break;
 	}
 	case LTTNG_DOMAIN_UST:
+	{
 		if (!session->ust_session) {
 			ret_code = LTTNG_ERR_INVALID;
 			goto end;
 		}
+
+		const auto config_policy = convert_tracking_policy(policy);
+		const auto current_policy =
+			get_domain_tracker_policy(session->user_space_domain, process_attr);
+
+		if (current_policy == config_policy) {
+			break;
+		}
+
 		ret_code = trace_ust_process_attr_tracker_set_tracking_policy(
 			session->ust_session, process_attr, policy);
-
-		/* Update new domain tracker if the legacy operation succeeded. */
 		if (ret_code == LTTNG_OK) {
-			try {
-				auto& session_domain =
-					session->get_domain(domain_type_to_class(domain));
-				update_domain_tracker_policy(session_domain,
-							     process_attr,
-							     convert_tracking_policy(policy));
-			} catch (const std::exception& ex) {
-				DBG("Failed to update new domain tracker policy: %s", ex.what());
-			}
+			update_domain_tracker_policy(
+				session->user_space_domain, process_attr, config_policy);
 		}
+
 		break;
+	}
 	default:
 		ret_code = LTTNG_ERR_UNSUPPORTED_DOMAIN;
 		break;
@@ -2288,43 +2288,54 @@ cmd_process_attr_tracker_inclusion_set_add_value(const ltt_session::locked_ref& 
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
+	{
 		if (!session->kernel_session) {
 			return LTTNG_ERR_INVALID;
 		}
+
+		/*
+		 * Update the domain configuration first: it validates that the
+		 * value is not already tracked, throwing
+		 * process_attribute_already_tracked if it is.
+		 */
+		auto& session_domain = session->get_domain(domain_type_to_class(domain));
+		add_value_to_domain_tracker(session_domain, process_attr, value);
 
 		try {
 			const auto integral_value =
 				resolve_process_attr_value_to_integral(process_attr, value);
 			session->get_kernel_orchestrator().track_process_attribute(
 				to_process_attribute_type(process_attr), integral_value);
-		} catch (const lttng::ctl::error& ex) {
-			return static_cast<lttng_error_code>(ex.code());
-		} catch (const std::exception& ex) {
-			ERR("Failed to track kernel process attribute: %s", ex.what());
-			return LTTNG_ERR_UNK;
+		} catch (...) {
+			/* Roll back the domain configuration change. */
+			remove_value_from_domain_tracker(session_domain, process_attr, value);
+			throw;
 		}
 
-		ret_code = LTTNG_OK;
 		break;
+	}
 	case LTTNG_DOMAIN_UST:
+	{
 		if (!session->ust_session) {
 			return LTTNG_ERR_INVALID;
 		}
 
+		auto& session_domain = session->get_domain(domain_type_to_class(domain));
+		add_value_to_domain_tracker(session_domain, process_attr, value);
+
 		ret_code = trace_ust_process_attr_tracker_inclusion_set_add_value(
 			session->ust_session, process_attr, value);
+		if (ret_code != LTTNG_OK) {
+			remove_value_from_domain_tracker(session_domain, process_attr, value);
+		}
+
 		break;
+	}
 	default:
 		return LTTNG_ERR_UNSUPPORTED_DOMAIN;
 	}
 
-	if (ret_code != LTTNG_OK) {
-		return ret_code;
-	}
-
-	auto& session_domain = session->get_domain(domain_type_to_class(domain));
-	add_value_to_domain_tracker(session_domain, process_attr, value);
-	return LTTNG_OK;
+	return ret_code;
 }
 
 enum lttng_error_code
@@ -2337,44 +2348,53 @@ cmd_process_attr_tracker_inclusion_set_remove_value(const ltt_session::locked_re
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
+	{
 		if (!session->kernel_session) {
 			return LTTNG_ERR_INVALID;
 		}
+
+		/*
+		 * Update the domain configuration first: it validates that the
+		 * value is currently tracked, throwing
+		 * process_attribute_not_tracked if it isn't.
+		 */
+		auto& session_domain = session->get_domain(domain_type_to_class(domain));
+		remove_value_from_domain_tracker(session_domain, process_attr, value);
 
 		try {
 			const auto integral_value =
 				resolve_process_attr_value_to_integral(process_attr, value);
 			session->get_kernel_orchestrator().untrack_process_attribute(
 				to_process_attribute_type(process_attr), integral_value);
-		} catch (const lttng::ctl::error& ex) {
-			return static_cast<lttng_error_code>(ex.code());
-		} catch (const std::exception& ex) {
-			ERR("Failed to untrack kernel process attribute: %s", ex.what());
-			return LTTNG_ERR_UNK;
+		} catch (...) {
+			/* Roll back the domain configuration change. */
+			add_value_to_domain_tracker(session_domain, process_attr, value);
+			throw;
 		}
 
-		ret_code = LTTNG_OK;
 		break;
+	}
 	case LTTNG_DOMAIN_UST:
+	{
 		if (!session->ust_session) {
 			return LTTNG_ERR_INVALID;
 		}
 
+		auto& session_domain = session->get_domain(domain_type_to_class(domain));
+		remove_value_from_domain_tracker(session_domain, process_attr, value);
+
 		ret_code = trace_ust_process_attr_tracker_inclusion_set_remove_value(
 			session->ust_session, process_attr, value);
+		if (ret_code != LTTNG_OK) {
+			add_value_to_domain_tracker(session_domain, process_attr, value);
+		}
+
 		break;
+	}
 	default:
 		return LTTNG_ERR_UNSUPPORTED_DOMAIN;
 	}
-
-	/* Update new domain tracker if the legacy operation succeeded. */
-	if (ret_code != LTTNG_OK) {
-		return ret_code;
-	}
-
-	auto& session_domain = session->get_domain(domain_type_to_class(domain));
-	remove_value_from_domain_tracker(session_domain, process_attr, value);
-	return LTTNG_OK;
+	return ret_code;
 }
 
 lttng_process_attr_values *

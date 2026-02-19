@@ -397,6 +397,26 @@ lttng_event_context make_lttng_event_context_from_context_configuration(
 	return event_ctx;
 }
 
+lttng_kernel_abi_tracker_type to_modules_tracker_type(lsc::process_attribute_type attribute_type)
+{
+	switch (attribute_type) {
+	case lsc::process_attribute_type::PID:
+		return LTTNG_KERNEL_ABI_TRACKER_PID;
+	case lsc::process_attribute_type::VPID:
+		return LTTNG_KERNEL_ABI_TRACKER_VPID;
+	case lsc::process_attribute_type::UID:
+		return LTTNG_KERNEL_ABI_TRACKER_UID;
+	case lsc::process_attribute_type::VUID:
+		return LTTNG_KERNEL_ABI_TRACKER_VUID;
+	case lsc::process_attribute_type::GID:
+		return LTTNG_KERNEL_ABI_TRACKER_GID;
+	case lsc::process_attribute_type::VGID:
+		return LTTNG_KERNEL_ABI_TRACKER_VGID;
+	default:
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR("Unknown process attribute type");
+	}
+}
+
 void enable_single_kernel_event(struct ltt_kernel_channel& kchan,
 				struct lttng_event *event,
 				char *filter_expression,
@@ -472,126 +492,145 @@ void ls::modules::domain_orchestrator::add_context(
 	}
 }
 
-namespace {
-/*
- * Convert a config::process_attribute_type to the legacy lttng_process_attr
- * enum used by the kernel tracker functions.
- */
-lttng_process_attr to_lttng_process_attr(lsc::process_attribute_type attribute_type)
-{
-	switch (attribute_type) {
-	case lsc::process_attribute_type::PID:
-		return LTTNG_PROCESS_ATTR_PROCESS_ID;
-	case lsc::process_attribute_type::VPID:
-		return LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID;
-	case lsc::process_attribute_type::UID:
-		return LTTNG_PROCESS_ATTR_USER_ID;
-	case lsc::process_attribute_type::VUID:
-		return LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID;
-	case lsc::process_attribute_type::GID:
-		return LTTNG_PROCESS_ATTR_GROUP_ID;
-	case lsc::process_attribute_type::VGID:
-		return LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID;
-	default:
-		abort();
-	}
-}
-
-/*
- * Convert a config::tracking_policy to the legacy lttng_tracking_policy enum
- * used by the kernel tracker functions.
- */
-lttng_tracking_policy to_lttng_tracking_policy(lsc::tracking_policy policy)
-{
-	switch (policy) {
-	case lsc::tracking_policy::INCLUDE_ALL:
-		return LTTNG_TRACKING_POLICY_INCLUDE_ALL;
-	case lsc::tracking_policy::EXCLUDE_ALL:
-		return LTTNG_TRACKING_POLICY_EXCLUDE_ALL;
-	case lsc::tracking_policy::INCLUDE_SET:
-		return LTTNG_TRACKING_POLICY_INCLUDE_SET;
-	default:
-		abort();
-	}
-}
-
-/*
- * Build a process_attr_value from a numeric value and process attribute type.
- *
- * By the time the orchestrator is called, user/group names have already been
- * resolved to numeric IDs by the cmd.cpp helpers, so we only need the
- * numeric variant here.
- */
-process_attr_value make_process_attr_value(lttng_process_attr process_attr, std::uint64_t value)
-{
-	struct process_attr_value attr_value = {};
-
-	switch (process_attr) {
-	case LTTNG_PROCESS_ATTR_PROCESS_ID:
-	case LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID:
-		attr_value.type = LTTNG_PROCESS_ATTR_VALUE_TYPE_PID;
-		attr_value.value.pid = static_cast<pid_t>(value);
-		break;
-	case LTTNG_PROCESS_ATTR_USER_ID:
-	case LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID:
-		attr_value.type = LTTNG_PROCESS_ATTR_VALUE_TYPE_UID;
-		attr_value.value.uid = static_cast<uid_t>(value);
-		break;
-	case LTTNG_PROCESS_ATTR_GROUP_ID:
-	case LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID:
-		attr_value.type = LTTNG_PROCESS_ATTR_VALUE_TYPE_GID;
-		attr_value.value.gid = static_cast<gid_t>(value);
-		break;
-	default:
-		abort();
-	}
-
-	return attr_value;
-}
-} /* namespace */
-
 void ls::modules::domain_orchestrator::set_tracking_policy(
 	config::process_attribute_type attribute_type, config::tracking_policy policy)
 {
-	LTTNG_ASSERT(_legacy_kernel_session);
+	const auto modules_tracker_type = to_modules_tracker_type(attribute_type);
+	int modules_ret = 0;
 
-	const auto process_attr = to_lttng_process_attr(attribute_type);
-	const auto legacy_policy = to_lttng_tracking_policy(policy);
+	switch (policy) {
+	case lsc::tracking_policy::INCLUDE_ALL:
+		if (attribute_type == lsc::process_attribute_type::PID) {
+			modules_ret = kernctl_track_pid(_tracer_session_fd.fd(), -1);
+		} else {
+			modules_ret =
+				kernctl_track_id(_tracer_session_fd.fd(), modules_tracker_type, -1);
+		}
 
-	const auto ret_code = kernel_process_attr_tracker_set_tracking_policy(
-		_legacy_kernel_session, process_attr, legacy_policy);
-	if (ret_code != LTTNG_OK) {
-		LTTNG_THROW_CTL("Failed to set kernel tracking policy", ret_code);
+		break;
+	case lsc::tracking_policy::EXCLUDE_ALL:
+	case lsc::tracking_policy::INCLUDE_SET:
+		/* fall-through. */
+		if (attribute_type == lsc::process_attribute_type::PID) {
+			/*
+			 * Maintain a special case for the process ID process
+			 * attribute tracker as it was the only supported
+			 * attribute prior to 2.12.
+			 */
+			modules_ret = kernctl_untrack_pid(_tracer_session_fd.fd(), -1);
+		} else {
+			modules_ret = kernctl_untrack_id(
+				_tracer_session_fd.fd(), modules_tracker_type, -1);
+		}
+
+		break;
+	default:
+		std::abort();
+	}
+
+	switch (-modules_ret) {
+	case 0:
+		return;
+	case EINVAL:
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+			"Failed to set tracking policy: LTTng-modules reports an invalid argument");
+	case ENOMEM:
+		LTTNG_THROW_ALLOCATION_FAILURE_ERROR(
+			"Failed to set tracking policy: LTTng-modules is out of memory");
+	case EEXIST:
+		LTTNG_THROW_CTL(
+			"Failed to set tracking policy: LTTng-modules reports the specified tracking policy is already set",
+			LTTNG_ERR_PROCESS_ATTR_EXISTS);
+	default:
+		LTTNG_THROW_ERROR(fmt::format(
+			"Failed to set tracking policy: unexpected error from LTTng-modules ({})",
+			modules_ret));
 	}
 }
 
 void ls::modules::domain_orchestrator::track_process_attribute(
 	config::process_attribute_type attribute_type, std::uint64_t value)
 {
-	LTTNG_ASSERT(_legacy_kernel_session);
+	const auto modules_tracker_type = to_modules_tracker_type(attribute_type);
+	int modules_ret = 0;
 
-	const auto process_attr = to_lttng_process_attr(attribute_type);
-	auto attr_value = make_process_attr_value(process_attr, value);
+	if (attribute_type == lsc::process_attribute_type::PID) {
+		modules_ret = kernctl_track_pid(_tracer_session_fd.fd(), value);
+	} else {
+		modules_ret =
+			kernctl_track_id(_tracer_session_fd.fd(), modules_tracker_type, value);
+	}
 
-	const auto ret_code = kernel_process_attr_tracker_inclusion_set_add_value(
-		_legacy_kernel_session, process_attr, &attr_value);
-	if (ret_code != LTTNG_OK) {
-		LTTNG_THROW_CTL("Failed to track kernel process attribute", ret_code);
+	switch (-modules_ret) {
+	case 0:
+		kernel_wait_quiescent();
+		return;
+	case EINVAL:
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			"Failed to track process attribute: type={}, value={}: LTTng-modules reports an invalid argument",
+			attribute_type,
+			value));
+	case ENOMEM:
+		LTTNG_THROW_ALLOCATION_FAILURE_ERROR(fmt::format(
+			"Failed to track process attribute: type={}, value={}: LTTng-modules is out of memory",
+			attribute_type,
+			value));
+	case EEXIST:
+		LTTNG_THROW_CTL(
+			fmt::format(
+				"Failed to track process attribute: type={}, value={}: LTTng-modules reports the specified value is already tracked",
+				attribute_type,
+				value),
+			LTTNG_ERR_PROCESS_ATTR_EXISTS);
+	default:
+		LTTNG_THROW_ERROR(fmt::format(
+			"Failed to track process attribute: type={}, value={}: unexpected error from LTTng-modules ({})",
+			attribute_type,
+			value,
+			modules_ret));
 	}
 }
 
 void ls::modules::domain_orchestrator::untrack_process_attribute(
 	config::process_attribute_type attribute_type, std::uint64_t value)
 {
-	LTTNG_ASSERT(_legacy_kernel_session);
+	const auto modules_tracker_type = to_modules_tracker_type(attribute_type);
+	int modules_ret = 0;
 
-	const auto process_attr = to_lttng_process_attr(attribute_type);
-	auto attr_value = make_process_attr_value(process_attr, value);
+	if (attribute_type == lsc::process_attribute_type::PID) {
+		modules_ret = kernctl_untrack_pid(_tracer_session_fd.fd(), value);
+	} else {
+		modules_ret =
+			kernctl_untrack_id(_tracer_session_fd.fd(), modules_tracker_type, value);
+	}
 
-	const auto ret_code = kernel_process_attr_tracker_inclusion_set_remove_value(
-		_legacy_kernel_session, process_attr, &attr_value);
-	if (ret_code != LTTNG_OK) {
-		LTTNG_THROW_CTL("Failed to untrack kernel process attribute", ret_code);
+	switch (-modules_ret) {
+	case 0:
+		kernel_wait_quiescent();
+		return;
+	case EINVAL:
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			"Failed to untrack process attribute: type={}, value={}: LTTng-modules reports an invalid argument",
+			attribute_type,
+			value));
+	case ENOMEM:
+		LTTNG_THROW_ALLOCATION_FAILURE_ERROR(fmt::format(
+			"Failed to untrack process attribute: type={}, value={}: LTTng-modules is out of memory",
+			attribute_type,
+			value));
+	case ENOENT:
+		LTTNG_THROW_CTL(
+			fmt::format(
+				"Failed to untrack process attribute: type={}, value={}: LTTng-modules reports the specified tracked value does not exist",
+				attribute_type,
+				value),
+			LTTNG_ERR_PROCESS_ATTR_MISSING);
+	default:
+		LTTNG_THROW_ERROR(fmt::format(
+			"Failed to untrack process attribute: type={}, value={}: unexpected error from LTTng-modules ({})",
+			attribute_type,
+			value,
+			modules_ret));
 	}
 }
 
