@@ -45,10 +45,8 @@ int kernel_create_event(struct lttng_event *ev,
 			struct ltt_kernel_channel *channel,
 			char *filter_expression,
 			struct lttng_bytecode *filter);
-int kernel_disable_channel(struct ltt_kernel_channel *chan);
 int kernel_disable_event(struct ltt_kernel_event *event);
 int kernel_enable_event(struct ltt_kernel_event *event);
-int kernel_enable_channel(struct ltt_kernel_channel *chan);
 int kernel_open_metadata(
 	struct ltt_kernel_session *session,
 	const lttng::sessiond::config::metadata_channel_configuration& metadata_config);

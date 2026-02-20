@@ -715,60 +715,6 @@ error:
 }
 
 /*
- * Disable a kernel channel.
- */
-int kernel_disable_channel(struct ltt_kernel_channel *chan)
-{
-	int ret;
-
-	LTTNG_ASSERT(chan);
-
-	ret = kernctl_disable(chan->fd);
-	if (ret < 0) {
-		PERROR("disable chan ioctl");
-		goto error;
-	}
-
-	chan->enabled = false;
-	DBG("Kernel channel %s disabled (fd: %d, key: %" PRIu64 ")",
-	    chan->channel->name,
-	    chan->fd,
-	    chan->key);
-
-	return 0;
-
-error:
-	return ret;
-}
-
-/*
- * Enable a kernel channel.
- */
-int kernel_enable_channel(struct ltt_kernel_channel *chan)
-{
-	int ret;
-
-	LTTNG_ASSERT(chan);
-
-	ret = kernctl_enable(chan->fd);
-	if (ret < 0 && ret != -EEXIST) {
-		PERROR("Enable kernel chan");
-		goto error;
-	}
-
-	chan->enabled = true;
-	DBG("Kernel channel %s enabled (fd: %d, key: %" PRIu64 ")",
-	    chan->channel->name,
-	    chan->fd,
-	    chan->key);
-
-	return 0;
-
-error:
-	return ret;
-}
-
-/*
  * Enable a kernel event.
  */
 int kernel_enable_event(struct ltt_kernel_event *event)

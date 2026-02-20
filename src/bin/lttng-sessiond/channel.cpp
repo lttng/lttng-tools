@@ -118,65 +118,6 @@ lttng::ctl::lttng_channel_uptr channel_new_default_attr(lttng_domain_type dom,
 	return chan;
 }
 
-/*
- * Disable kernel channel of the kernel session.
- */
-int channel_kernel_disable(struct ltt_kernel_session *ksession, char *channel_name)
-{
-	int ret;
-	struct ltt_kernel_channel *kchan;
-
-	LTTNG_ASSERT(ksession);
-	LTTNG_ASSERT(channel_name);
-
-	kchan = trace_kernel_get_channel_by_name(channel_name, ksession);
-	if (kchan == nullptr) {
-		ret = LTTNG_ERR_KERN_CHAN_NOT_FOUND;
-		goto error;
-	}
-
-	/* Only if channel is enabled disable it. */
-	if (kchan->enabled) {
-		ret = kernel_disable_channel(kchan);
-		if (ret < 0 && ret != -EEXIST) {
-			ret = LTTNG_ERR_KERN_CHAN_DISABLE_FAIL;
-			goto error;
-		}
-	}
-
-	ret = LTTNG_OK;
-
-error:
-	return ret;
-}
-
-/*
- * Enable kernel channel of the kernel session.
- */
-enum lttng_error_code channel_kernel_enable(struct ltt_kernel_session *ksession,
-					    struct ltt_kernel_channel *kchan)
-{
-	enum lttng_error_code ret_code;
-
-	LTTNG_ASSERT(ksession);
-	LTTNG_ASSERT(kchan);
-
-	if (!kchan->enabled) {
-		if (kernel_enable_channel(kchan) < 0) {
-			ret_code = LTTNG_ERR_KERN_CHAN_ENABLE_FAIL;
-			goto error;
-		}
-	} else {
-		ret_code = LTTNG_ERR_KERN_CHAN_EXIST;
-		goto error;
-	}
-
-	ret_code = LTTNG_OK;
-
-error:
-	return ret_code;
-}
-
 static int channel_validate(struct lttng_channel *attr)
 {
 	/*

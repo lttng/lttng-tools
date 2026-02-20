@@ -5,7 +5,6 @@
  *
  */
 
-#include "channel.hpp"
 #include "cmd.hpp"
 #include "consumer.hpp"
 #include "context.hpp"
@@ -203,11 +202,21 @@ void ls::modules::domain_orchestrator::enable_channel(
 	LTTNG_ASSERT(_legacy_kernel_session);
 
 	auto& kchan = find_legacy_channel(*_legacy_kernel_session, channel_config);
-	const auto ret_code = channel_kernel_enable(_legacy_kernel_session, &kchan);
 
-	if (ret_code != LTTNG_OK) {
-		LTTNG_THROW_CTL("Failed to enable kernel channel", ret_code);
+	if (kchan.enabled) {
+		LTTNG_THROW_CTL("Kernel channel is already enabled", LTTNG_ERR_KERN_CHAN_EXIST);
 	}
+
+	const auto ret = kernctl_enable(kchan.fd);
+	if (ret < 0) {
+		LTTNG_THROW_POSIX("Failed to enable kernel channel", -ret);
+	}
+
+	kchan.enabled = true;
+	DBG("Kernel channel %s enabled (fd: %d, key: %" PRIu64 ")",
+	    channel_config.name.c_str(),
+	    kchan.fd,
+	    kchan.key);
 
 	kernel_wait_quiescent();
 }
@@ -217,13 +226,22 @@ void ls::modules::domain_orchestrator::disable_channel(
 {
 	LTTNG_ASSERT(_legacy_kernel_session);
 
-	const auto ret = channel_kernel_disable(_legacy_kernel_session,
-						const_cast<char *>(channel_config.name.c_str()));
+	auto& kchan = find_legacy_channel(*_legacy_kernel_session, channel_config);
 
-	if (ret != LTTNG_OK) {
-		LTTNG_THROW_CTL("Failed to disable kernel channel",
-				static_cast<lttng_error_code>(ret));
+	if (!kchan.enabled) {
+		return;
 	}
+
+	const auto ret = kernctl_disable(kchan.fd);
+	if (ret < 0 && ret != -EEXIST) {
+		LTTNG_THROW_POSIX("Failed to disable kernel channel", -ret);
+	}
+
+	kchan.enabled = false;
+	DBG("Kernel channel %s disabled (fd: %d, key: %" PRIu64 ")",
+	    channel_config.name.c_str(),
+	    kchan.fd,
+	    kchan.key);
 
 	kernel_wait_quiescent();
 }
