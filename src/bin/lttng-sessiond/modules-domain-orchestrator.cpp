@@ -16,6 +16,7 @@
 #include "modules-domain-orchestrator.hpp"
 #include "process-attribute-tracker.hpp"
 #include "trace-kernel.hpp"
+#include "utils.hpp"
 
 #include <common/ctl/memory.hpp>
 #include <common/error.hpp>
@@ -32,18 +33,25 @@
 #include <lttng/event-rule/event-rule-internal.hpp>
 #include <lttng/lttng-error.h>
 
+#include <fcntl.h>
 #include <inttypes.h>
 
 namespace ls = lttng::sessiond;
 namespace lsc = lttng::sessiond::config;
 
 /*
- * The modules domain orchestrator is temporarily a thin delegation layer. Each method delegates to
- * the existing kernel_*, channel_kernel_*, event_kernel_*, and context_kernel_* functions which
- * operate on the legacy ltt_kernel_session / ltt_kernel_channel / ltt_kernel_event objects.
+ * Domain orchestrator for the lttng-modules kernel tracer.
  *
- * The _channels and _metadata maps declared in the header are unused for the moment.
- * The existing legacy objects remain the authoritative runtime state.
+ * Channel creation is performed directly by the orchestrator: it builds the
+ * kernel ABI struct from the configuration, issues the ioctl, and creates a
+ * legacy ltt_kernel_channel struct for downstream code that still reads from
+ * the legacy hierarchy (channel listing, consumer communication, kernel thread
+ * stream opening, notification thread).
+ *
+ * Other operations (enable/disable channel, events, context, start/stop, etc.)
+ * still delegate to the existing kernel_*, channel_kernel_*, event_kernel_*,
+ * and context_kernel_* functions during the transition. These will be
+ * internalized progressively.
  */
 
 namespace {
@@ -66,7 +74,11 @@ ltt_kernel_channel& find_legacy_channel(ltt_kernel_session& ksess,
 /*
  * Build a legacy lttng_channel from a recording_channel_configuration.
  *
- * This conversion is a temporary bridge used during the refactor.
+ * This conversion is a transitional bridge: the legacy ltt_kernel_channel
+ * struct still carries a lttng_channel pointer that downstream code reads
+ * from (channel listing, consumer channel send, etc.). Once those readers
+ * are migrated to read from the configuration objects directly, this
+ * conversion will be eliminated.
  */
 lttng::ctl::lttng_channel_uptr
 make_lttng_channel_from_config(const lsc::recording_channel_configuration& channel_config)
@@ -120,22 +132,67 @@ void ls::modules::domain_orchestrator::create_channel(
 {
 	LTTNG_ASSERT(_legacy_kernel_session);
 
-	auto attr = make_lttng_channel_from_config(channel_config);
+	auto kernel_abi_channel = make_kernel_abi_channel(channel_config);
 
 	/* Enforce mmap output for snapshot sessions. */
 	if (_legacy_kernel_session->snapshot_mode) {
-		attr->attr.output = LTTNG_EVENT_MMAP;
+		kernel_abi_channel.output = LTTNG_EVENT_MMAP;
 	}
 
-	const auto ret_code =
-		channel_kernel_create(_legacy_kernel_session, attr.get(), _kernel_pipe);
-	if (ret_code != LTTNG_OK) {
-		LTTNG_THROW_CTL("Failed to create kernel channel", ret_code);
+	/* Create the channel in the kernel tracer via ioctl. */
+	const auto raw_channel_fd =
+		kernctl_create_channel(_tracer_session_fd.fd(), kernel_abi_channel);
+	if (raw_channel_fd < 0) {
+		LTTNG_THROW_POSIX("Failed to create kernel channel", -raw_channel_fd);
 	}
+
+	lttng::file_descriptor channel_fd(raw_channel_fd);
+
+	/* Prevent the fd from leaking across exec. */
+	if (fcntl(channel_fd.fd(), F_SETFD, FD_CLOEXEC) < 0) {
+		LTTNG_THROW_POSIX("Failed to set FD_CLOEXEC on kernel channel fd", errno);
+	}
+
+	/*
+	 * Create a legacy ltt_kernel_channel for downstream code that still
+	 * reads from the legacy hierarchy: channel listing, consumer channel
+	 * send, kernel thread stream opening, and notification thread.
+	 *
+	 * The legacy struct owns the channel fd during the transition period.
+	 * This dual-write will be removed once all downstream readers are
+	 * migrated to the orchestrator's modern channel objects.
+	 */
+	auto legacy_channel_attr = make_lttng_channel_from_config(channel_config);
+	if (_legacy_kernel_session->snapshot_mode) {
+		legacy_channel_attr->attr.output = LTTNG_EVENT_MMAP;
+	}
+
+	auto *lkc = trace_kernel_create_channel(legacy_channel_attr.get());
+	if (!lkc) {
+		LTTNG_THROW_ALLOCATION_FAILURE_ERROR(
+			"Failed to allocate legacy ltt_kernel_channel");
+	}
+
+	/* Transfer fd ownership to the legacy struct. */
+	lkc->fd = channel_fd.release();
+	lkc->key = allocate_next_kernel_channel_key();
+	lkc->session = _legacy_kernel_session;
+	cds_list_add(&lkc->list, &_legacy_kernel_session->channel_list.head);
+	_legacy_kernel_session->channel_count++;
 
 	if (channel_config.name != DEFAULT_CHANNEL_NAME) {
 		_legacy_kernel_session->has_non_default_channel = 1;
 	}
+
+	/* Notify the kernel thread that a new channel exists. */
+	if (notify_thread_pipe(_kernel_pipe) < 0) {
+		LTTNG_THROW_ERROR("Failed to notify kernel thread of new channel");
+	}
+
+	DBG("Kernel channel %s created (fd: %d, key: %" PRIu64 ")",
+	    channel_config.name.c_str(),
+	    lkc->fd,
+	    lkc->key);
 
 	kernel_wait_quiescent();
 }
@@ -711,9 +768,7 @@ void ls::modules::domain_orchestrator::record_snapshot(
 
 void ls::modules::domain_orchestrator::regenerate_metadata()
 {
-	LTTNG_ASSERT(_legacy_kernel_session);
-
-	const auto ret = kernctl_session_regenerate_metadata(_legacy_kernel_session->fd);
+	const auto ret = kernctl_session_regenerate_metadata(_tracer_session_fd.fd());
 	if (ret < 0) {
 		LTTNG_THROW_POSIX("Failed to regenerate kernel metadata", -ret);
 	}
@@ -721,9 +776,7 @@ void ls::modules::domain_orchestrator::regenerate_metadata()
 
 void ls::modules::domain_orchestrator::regenerate_statedump()
 {
-	LTTNG_ASSERT(_legacy_kernel_session);
-
-	const auto ret = kernctl_session_regenerate_statedump(_legacy_kernel_session->fd);
+	const auto ret = kernctl_session_regenerate_statedump(_tracer_session_fd.fd());
 	if (ret < 0) {
 		if (ret == -ENOMEM) {
 			LTTNG_THROW_POSIX("Failed to regenerate kernel statedump: out of memory",

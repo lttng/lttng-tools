@@ -18,9 +18,6 @@
 int channel_kernel_disable(struct ltt_kernel_session *ksession, char *channel_name);
 enum lttng_error_code channel_kernel_enable(struct ltt_kernel_session *ksession,
 					    struct ltt_kernel_channel *kchan);
-enum lttng_error_code channel_kernel_create(struct ltt_kernel_session *ksession,
-					    struct lttng_channel *chan,
-					    int kernel_pipe);
 
 lttng::ctl::lttng_channel_uptr channel_new_default_attr(lttng_domain_type domain,
 							enum lttng_buffer_type type);

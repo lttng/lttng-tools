@@ -24,9 +24,23 @@
  */
 #define KERNEL_EVENT_INIT_LIST_SIZE 64
 
+/*
+ * Convert a channel_configuration to the lttng_kernel_abi_channel struct
+ * expected by the kernel tracer ioctls.
+ */
+lttng_kernel_abi_channel
+make_kernel_abi_channel(const lttng::sessiond::config::channel_configuration& channel_config);
+
+/*
+ * Allocate a unique consumer key for a kernel channel or metadata channel.
+ *
+ * The key uniquely identifies a channel to the consumer daemon and is
+ * monotonically increasing. Must be called with the session list lock held.
+ */
+uint64_t allocate_next_kernel_channel_key();
+
 int kernel_add_channel_context(struct ltt_kernel_channel *chan, struct ltt_kernel_context *ctx);
 int kernel_create_session(const ltt_session::locked_ref& session);
-int kernel_create_channel(struct ltt_kernel_session *session, struct lttng_channel *chan);
 int kernel_create_event(struct lttng_event *ev,
 			struct ltt_kernel_channel *channel,
 			char *filter_expression,

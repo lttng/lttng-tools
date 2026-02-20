@@ -139,6 +139,8 @@ public:
 		auto new_channel = lttng::make_unique<recording_channel_configuration>(
 			std::forward<Args>(args)...);
 
+		_validate_channel(*new_channel);
+
 		const auto& name = new_channel->name;
 		auto result = _channels.emplace(name, std::move(new_channel));
 		if (!result.second) {
@@ -275,6 +277,36 @@ public:
 	const lttng::domain_class domain_class_;
 
 private:
+	/*
+	 * Validate that a channel configuration is compatible with this domain.
+	 *
+	 * Kernel domain constraints:
+	 * - No blocking timeout: the kernel tracer does not support consumption
+	 *   blocking.
+	 * - Per-CPU allocation only: the kernel tracer uses one ring buffer per
+	 *   CPU; per-channel allocation is not supported.
+	 */
+	void _validate_channel(const recording_channel_configuration& channel) const
+	{
+		if (domain_class_ != lttng::domain_class::KERNEL_SPACE) {
+			return;
+		}
+
+		if (channel.consumption_blocking_policy_.mode_ !=
+		    recording_channel_configuration::consumption_blocking_policy::mode::NONE) {
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR(lttng::format(
+				"Blocking timeout is not supported by the kernel tracer: channel_name=`{}`",
+				channel.name));
+		}
+
+		if (channel.buffer_allocation_policy !=
+		    recording_channel_configuration::buffer_allocation_policy_t::PER_CPU) {
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR(lttng::format(
+				"Only per-CPU buffer allocation is supported by the kernel tracer: channel_name=`{}`",
+				channel.name));
+		}
+	}
+
 	static metadata_channel_configuration make_default_metadata_channel_configuration();
 
 	const metadata_channel_configuration _metadata_channel;

@@ -49,15 +49,13 @@
 
 namespace ls = lttng::sessiond::config;
 
-namespace {
 /*
- * Key used to reference a channel between the sessiond and the consumer. This
- * is only read and updated with the session_list lock held.
+ * Convert a channel_configuration to the lttng_kernel_abi_channel struct
+ * expected by the kernel tracer ioctls.
+ *
+ * This is used by the modules domain orchestrator for channel creation and
+ * internally for metadata and snapshot operations.
  */
-uint64_t next_kernel_channel_key;
-
-const char *module_proc_lttng = "/proc/lttng";
-
 lttng_kernel_abi_channel make_kernel_abi_channel(const ls::channel_configuration& channel_config)
 {
 	lttng_kernel_abi_channel kernel_channel = {};
@@ -78,26 +76,14 @@ lttng_kernel_abi_channel make_kernel_abi_channel(const ls::channel_configuration
 	return kernel_channel;
 }
 
+namespace {
 /*
- * Convert the legacy lttng_channel_attr to a lttng_kernel_abi_channel.
- *
- * This is used during the transition period while the legacy ltt_kernel_channel
- * still carries a lttng_channel with its lttng_channel_attr.
+ * Key used to reference a channel between the sessiond and the consumer. This
+ * is only read and updated with the session_list lock held.
  */
-lttng_kernel_abi_channel
-make_kernel_abi_channel_from_lttng_channel_attr(const struct lttng_channel_attr& attr)
-{
-	lttng_kernel_abi_channel kernel_channel = {};
+uint64_t next_kernel_channel_key;
 
-	kernel_channel.overwrite = attr.overwrite;
-	kernel_channel.subbuf_size = attr.subbuf_size;
-	kernel_channel.num_subbuf = attr.num_subbuf;
-	kernel_channel.switch_timer_interval = attr.switch_timer_interval;
-	kernel_channel.read_timer_interval = attr.read_timer_interval;
-	kernel_channel.output = attr.output;
-
-	return kernel_channel;
-}
+const char *module_proc_lttng = "/proc/lttng";
 
 int kernel_tracer_fd = -1;
 nonstd::optional<enum lttng_kernel_tracer_status> kernel_tracer_status = nonstd::nullopt;
@@ -156,6 +142,11 @@ inline uint64_t sanitize_uprobe_offset(uint64_t raw_offset)
 }
 #endif
 } /* namespace */
+
+uint64_t allocate_next_kernel_channel_key()
+{
+	return ++next_kernel_channel_key;
+}
 
 /*
  * Add context on a kernel channel.
@@ -284,74 +275,6 @@ error:
 		trace_kernel_free_session(lks);
 	}
 	return ret;
-}
-
-/*
- * Create a kernel channel, register it to the kernel tracer and add it to the
- * kernel session.
- */
-int kernel_create_channel(struct ltt_kernel_session *session, struct lttng_channel *chan)
-{
-	int ret;
-	struct ltt_kernel_channel *lkc;
-
-	LTTNG_ASSERT(session);
-	LTTNG_ASSERT(chan);
-
-	/* Allocate kernel channel */
-	lkc = trace_kernel_create_channel(chan);
-	if (lkc == nullptr) {
-		goto error;
-	}
-
-	DBG3("Kernel create channel %s with attr: %d, %" PRIu64 ", %" PRIu64 ", %u, %u, %d, %d",
-	     chan->name,
-	     lkc->channel->attr.overwrite,
-	     lkc->channel->attr.subbuf_size,
-	     lkc->channel->attr.num_subbuf,
-	     lkc->channel->attr.switch_timer_interval,
-	     lkc->channel->attr.read_timer_interval,
-	     lkc->channel->attr.live_timer_interval,
-	     lkc->channel->attr.output);
-
-	{
-		/* Kernel tracer channel creation */
-		const auto kernel_channel =
-			make_kernel_abi_channel_from_lttng_channel_attr(lkc->channel->attr);
-		ret = kernctl_create_channel(session->fd, kernel_channel);
-		if (ret < 0) {
-			PERROR("ioctl kernel create channel");
-			goto error;
-		}
-	}
-
-	/* Setup the channel fd */
-	lkc->fd = ret;
-	/* Prevent fd duplication after execlp() */
-	ret = fcntl(lkc->fd, F_SETFD, FD_CLOEXEC);
-	if (ret < 0) {
-		PERROR("fcntl session fd");
-	}
-
-	/* Add channel to session */
-	cds_list_add(&lkc->list, &session->channel_list.head);
-	session->channel_count++;
-	lkc->session = session;
-	lkc->key = ++next_kernel_channel_key;
-
-	DBG("Kernel channel %s created (fd: %d, key: %" PRIu64 ")",
-	    lkc->channel->name,
-	    lkc->fd,
-	    lkc->key);
-
-	return 0;
-
-error:
-	if (lkc) {
-		free(lkc->channel);
-		free(lkc);
-	}
-	return -1;
 }
 
 /*
