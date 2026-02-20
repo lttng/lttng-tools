@@ -202,10 +202,7 @@ void ls::modules::domain_orchestrator::enable_channel(
 	LTTNG_ASSERT(_legacy_kernel_session);
 
 	auto& kchan = find_legacy_channel(*_legacy_kernel_session, channel_config);
-
-	if (kchan.enabled) {
-		LTTNG_THROW_CTL("Kernel channel is already enabled", LTTNG_ERR_KERN_CHAN_EXIST);
-	}
+	LTTNG_ASSERT(!kchan.enabled);
 
 	const auto ret = kernctl_enable(kchan.fd);
 	if (ret < 0) {
@@ -227,10 +224,7 @@ void ls::modules::domain_orchestrator::disable_channel(
 	LTTNG_ASSERT(_legacy_kernel_session);
 
 	auto& kchan = find_legacy_channel(*_legacy_kernel_session, channel_config);
-
-	if (!kchan.enabled) {
-		return;
-	}
+	LTTNG_ASSERT(kchan.enabled);
 
 	const auto ret = kernctl_disable(kchan.fd);
 	if (ret < 0 && ret != -EEXIST) {

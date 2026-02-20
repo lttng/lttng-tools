@@ -1541,6 +1541,10 @@ int cmd_disable_channel(const ltt_session::locked_ref& session,
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
+		if (!channel_config.is_enabled) {
+			return LTTNG_OK;
+		}
+
 		session->get_kernel_orchestrator().disable_channel(channel_config);
 		break;
 	}
@@ -2042,8 +2046,11 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 	 * Create or enable the config object. After this block, the channel
 	 * config is available via target_domain.get_channel(name).
 	 */
+	bool channel_was_already_enabled = false;
 	try {
-		target_domain.get_channel(name).enable();
+		auto& existing_channel = target_domain.get_channel(name);
+		channel_was_already_enabled = existing_channel.is_enabled;
+		existing_channel.enable();
 	} catch (const lttng::sessiond::config::exceptions::channel_not_found_error& ex) {
 		/* Channel doesn't exist, create it. */
 		target_domain.add_channel(is_enabled,
@@ -2087,6 +2094,11 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 
 			orchestrator.create_channel(channel_config);
 		} else {
+			if (channel_was_already_enabled) {
+				LTTNG_THROW_CTL("Kernel channel is already enabled",
+						LTTNG_ERR_KERN_CHAN_EXIST);
+			}
+
 			orchestrator.enable_channel(channel_config);
 		}
 
@@ -2577,6 +2589,10 @@ lttng_error_code cmd_disable_event(struct command_ctx *cmd_ctx,
 
 			found = true;
 
+			if (!event_rule_cfg.is_enabled) {
+				continue;
+			}
+
 			try {
 				orchestrator.disable_event(channel_config, event_rule_cfg);
 			} catch (const lttng::ctl::error& ex) {
@@ -3043,6 +3059,11 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 		lsc::event_rule_configuration *event_rule_cfg_ptr;
 		try {
 			auto& existing = channel_config.get_event_rule_configuration(*event_rule);
+			if (existing.is_enabled) {
+				LTTNG_THROW_CTL("Kernel event rule is already enabled",
+						LTTNG_ERR_KERN_EVENT_EXIST);
+			}
+
 			existing.enable();
 			event_rule_cfg_ptr = &existing;
 		} catch (const lttng::sessiond::config::exceptions::
