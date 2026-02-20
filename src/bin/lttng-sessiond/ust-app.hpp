@@ -9,6 +9,7 @@
 #ifndef _LTT_UST_APP_H
 #define _LTT_UST_APP_H
 
+#include "domain.hpp"
 #include "lttng-ust-ctl.hpp"
 #include "trace-class.hpp"
 #include "trace-ust.hpp"
@@ -25,6 +26,7 @@
 
 #include <list>
 #include <stdint.h>
+#include <urcu/list.h>
 #include <vector>
 
 #define UST_APP_EVENT_LIST_SIZE 32
@@ -480,7 +482,8 @@ int ust_app_register(struct ust_register_msg *msg, int sock);
 int ust_app_register_done(struct ust_app *app);
 int ust_app_version(struct ust_app *app);
 void ust_app_unregister_by_socket(int sock);
-int ust_app_start_trace_all(struct ltt_ust_session *usess);
+int ust_app_start_trace_all(struct ltt_ust_session *usess,
+			    const lttng::sessiond::config::domain& domain);
 int ust_app_stop_trace_all(struct ltt_ust_session *usess);
 int ust_app_destroy_trace_all(struct ltt_ust_session *usess);
 int ust_app_list_events(struct lttng_event **events);
@@ -499,8 +502,11 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 				struct ltt_ust_channel *uchan,
 				struct ltt_ust_context *uctx);
-void ust_app_global_update(struct ltt_ust_session *usess, struct ust_app *app);
-void ust_app_global_update_all(struct ltt_ust_session *usess);
+void ust_app_global_update(struct ltt_ust_session *usess,
+			   struct ust_app *app,
+			   const lttng::sessiond::config::domain& domain);
+void ust_app_global_update_all(struct ltt_ust_session *usess,
+			       const lttng::sessiond::config::domain& domain);
 void ust_app_global_update_event_notifier_rules(struct ust_app *app);
 void ust_app_global_update_all_event_notifier_rules();
 
@@ -575,7 +581,9 @@ static inline int ust_app_start_trace(struct ltt_ust_session *usess __attribute_
 	return 0;
 }
 
-static inline int ust_app_start_trace_all(struct ltt_ust_session *usess __attribute__((unused)))
+static inline int ust_app_start_trace_all(struct ltt_ust_session *usess __attribute__((unused)),
+					  const lttng::sessiond::config::domain& domain
+					  __attribute__((unused)))
 {
 	return 0;
 }
@@ -636,7 +644,15 @@ static inline int ust_app_ht_alloc(void)
 }
 
 static inline void ust_app_global_update(struct ltt_ust_session *usess __attribute__((unused)),
-					 struct ust_app *app __attribute__((unused)))
+					 struct ust_app *app __attribute__((unused)),
+					 const lttng::sessiond::config::domain& domain
+					 __attribute__((unused)))
+{
+}
+
+static inline void ust_app_global_update_all(struct ltt_ust_session *usess __attribute__((unused)),
+					     const lttng::sessiond::config::domain& domain
+					     __attribute__((unused)))
 {
 }
 
@@ -762,12 +778,12 @@ static inline bool ust_app_supports_counters(const struct ust_app *app __attribu
 	return false;
 }
 
-static inline bool ust_app_get(ust_app& app __attribute__((unused)))
+inline bool ust_app_get(ust_app& app __attribute__((unused)))
 {
 	return false;
 }
 
-static inline void ust_app_put(ust_app *app __attribute__((unused)))
+inline void ust_app_put(ust_app *app __attribute__((unused)))
 {
 }
 

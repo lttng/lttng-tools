@@ -17,7 +17,6 @@
 #include <common/fs-utils.hpp>
 #include <common/hashtable/hashtable.hpp>
 #include <common/optional.hpp>
-#include <common/tracker.hpp>
 
 #include <lttng/lttng.h>
 
@@ -92,14 +91,6 @@ struct ltt_ust_domain_global {
 	struct cds_list_head registry_buffer_uid_list;
 };
 
-struct ust_id_tracker_node {
-	struct lttng_ht_node_ulong node;
-};
-
-struct ust_id_tracker {
-	struct lttng_ht *ht;
-};
-
 /* UST session */
 struct ltt_ust_session {
 	uint64_t id; /* Unique identifier of session */
@@ -144,16 +135,6 @@ struct ltt_ust_session {
 
 	/* Current trace chunk of the ltt_session. */
 	struct lttng_trace_chunk *current_trace_chunk;
-
-	/* Trackers used for actual lookup on app registration. */
-	struct ust_id_tracker vpid_tracker;
-	struct ust_id_tracker vuid_tracker;
-	struct ust_id_tracker vgid_tracker;
-
-	/* Tracker list of keys requested by users. */
-	struct process_attr_tracker *tracker_vpid;
-	struct process_attr_tracker *tracker_vuid;
-	struct process_attr_tracker *tracker_vgid;
 
 	bool supports_madv_remove() const noexcept
 	{
@@ -239,24 +220,6 @@ void trace_ust_destroy_event(struct ltt_ust_event *event);
 void trace_ust_destroy_context(struct ltt_ust_context *ctx);
 void trace_ust_free_session(struct ltt_ust_session *session);
 
-int trace_ust_id_tracker_lookup(enum lttng_process_attr process_attr,
-				struct ltt_ust_session *session,
-				int id);
-enum lttng_error_code
-trace_ust_process_attr_tracker_set_tracking_policy(struct ltt_ust_session *session,
-						   enum lttng_process_attr process_attr,
-						   enum lttng_tracking_policy policy);
-enum lttng_error_code
-trace_ust_process_attr_tracker_inclusion_set_add_value(struct ltt_ust_session *session,
-						       enum lttng_process_attr process_attr,
-						       const struct process_attr_value *value);
-enum lttng_error_code
-trace_ust_process_attr_tracker_inclusion_set_remove_value(struct ltt_ust_session *session,
-							  enum lttng_process_attr process_attr,
-							  const struct process_attr_value *value);
-const struct process_attr_tracker *
-trace_ust_get_process_attr_tracker(struct ltt_ust_session *session,
-				   enum lttng_process_attr process_attr);
 bool trace_ust_runtime_ctl_version_matches_build_version();
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
@@ -366,46 +329,6 @@ static inline struct agent *trace_ust_find_agent(struct ltt_ust_session *session
 						 __attribute__((unused)),
 						 enum lttng_domain_type domain_type
 						 __attribute__((unused)))
-{
-	return NULL;
-}
-
-static inline int trace_ust_id_tracker_lookup(enum lttng_process_attr process_attr
-					      __attribute__((unused)),
-					      struct ltt_ust_session *session
-					      __attribute__((unused)),
-					      int id __attribute__((unused)))
-{
-	return 0;
-}
-
-static inline enum lttng_error_code trace_ust_process_attr_tracker_set_tracking_policy(
-	struct ltt_ust_session *session __attribute__((unused)),
-	enum lttng_process_attr process_attr __attribute__((unused)),
-	enum lttng_tracking_policy policy __attribute__((unused)))
-{
-	return LTTNG_OK;
-}
-
-static inline enum lttng_error_code trace_ust_process_attr_tracker_inclusion_set_add_value(
-	struct ltt_ust_session *session __attribute__((unused)),
-	enum lttng_process_attr process_attr __attribute__((unused)),
-	const struct process_attr_value *value __attribute__((unused)))
-{
-	return LTTNG_OK;
-}
-
-static inline enum lttng_error_code trace_ust_process_attr_tracker_inclusion_set_remove_value(
-	struct ltt_ust_session *session __attribute__((unused)),
-	enum lttng_process_attr process_attr __attribute__((unused)),
-	const struct process_attr_value *value __attribute__((unused)))
-{
-	return LTTNG_OK;
-}
-
-static inline const struct process_attr_tracker *
-trace_ust_get_process_attr_tracker(struct ltt_ust_session *session __attribute__((unused)),
-				   enum lttng_process_attr process_attr __attribute__((unused)))
 {
 	return NULL;
 }

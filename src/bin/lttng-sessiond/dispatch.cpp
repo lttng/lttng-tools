@@ -73,7 +73,7 @@ static void update_ust_app(int app_sock)
 			goto unlock_session;
 		}
 
-		ust_app_global_update(sess->ust_session, app->get());
+		ust_app_global_update(sess->ust_session, app->get(), sess->user_space_domain);
 	unlock_session:
 		session_unlock(sess);
 		session_put(sess);

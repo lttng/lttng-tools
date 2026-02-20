@@ -6145,7 +6145,8 @@ end:
 /*
  * Start tracing for the UST session.
  */
-int ust_app_start_trace_all(struct ltt_ust_session *usess)
+int ust_app_start_trace_all(struct ltt_ust_session *usess,
+			    const lttng::sessiond::config::domain& domain)
 {
 	DBG("Starting all UST traces");
 
@@ -6175,7 +6176,7 @@ int ust_app_start_trace_all(struct ltt_ust_session *usess)
 		/* Prevent app teardown during use. */
 		const ust_app_reference app_ref(app);
 
-		ust_app_global_update(usess, app);
+		ust_app_global_update(usess, app, domain);
 	}
 
 	return 0;
@@ -6568,8 +6569,12 @@ static void ust_app_global_destroy(struct ltt_ust_session *usess, struct ust_app
  * Called with session lock held.
  * Called with RCU read-side lock held.
  */
-void ust_app_global_update(struct ltt_ust_session *usess, struct ust_app *app)
+void ust_app_global_update(struct ltt_ust_session *usess,
+			   struct ust_app *app,
+			   const lttng::sessiond::config::domain& domain)
 {
+	namespace lsc = lttng::sessiond::config;
+
 	LTTNG_ASSERT(usess);
 	LTTNG_ASSERT(usess->active);
 	ASSERT_RCU_READ_LOCKED();
@@ -6579,9 +6584,11 @@ void ust_app_global_update(struct ltt_ust_session *usess, struct ust_app *app)
 	if (!app->compatible) {
 		return;
 	}
-	if (trace_ust_id_tracker_lookup(LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID, usess, app->pid) &&
-	    trace_ust_id_tracker_lookup(LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID, usess, app->uid) &&
-	    trace_ust_id_tracker_lookup(LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID, usess, app->gid)) {
+	if (domain.virtual_process_id_tracker().is_tracked(app->pid) &&
+	    domain.virtual_user_id_tracker().is_tracked(
+		    lsc::resolved_process_attr_value<uid_t>(app->uid)) &&
+	    domain.virtual_group_id_tracker().is_tracked(
+		    lsc::resolved_process_attr_value<gid_t>(app->gid))) {
 		/*
 		 * Synchronize the application's internal tracing configuration
 		 * and start tracing.
@@ -6624,7 +6631,8 @@ void ust_app_global_update_event_notifier_rules(struct ust_app *app)
 /*
  * Called with session lock held.
  */
-void ust_app_global_update_all(struct ltt_ust_session *usess)
+void ust_app_global_update_all(struct ltt_ust_session *usess,
+			       const lttng::sessiond::config::domain& domain)
 {
 	/* Iterate on all apps. */
 	for (auto *app :
@@ -6638,7 +6646,7 @@ void ust_app_global_update_all(struct ltt_ust_session *usess)
 		/* Prevent app teardown during use. */
 		const ust_app_reference app_ref(app);
 
-		ust_app_global_update(usess, app);
+		ust_app_global_update(usess, app, domain);
 	}
 }
 

@@ -33,7 +33,6 @@
 #include "rotation-thread.hpp"
 #include "session.hpp"
 #include "timer.hpp"
-#include "tracker.hpp"
 #include "utils.hpp"
 
 #include <common/buffer-view.hpp>
@@ -2261,11 +2260,11 @@ cmd_process_attr_tracker_set_tracking_policy(const ltt_session::locked_ref& sess
 			break;
 		}
 
-		ret_code = trace_ust_process_attr_tracker_set_tracking_policy(
-			session->ust_session, process_attr, policy);
-		if (ret_code == LTTNG_OK) {
-			update_domain_tracker_policy(
-				session->user_space_domain, process_attr, config_policy);
+		update_domain_tracker_policy(
+			session->user_space_domain, process_attr, config_policy);
+
+		if (session->ust_session->active) {
+			ust_app_global_update_all(session->ust_session, session->user_space_domain);
 		}
 
 		break;
@@ -2323,10 +2322,8 @@ cmd_process_attr_tracker_inclusion_set_add_value(const ltt_session::locked_ref& 
 		auto& session_domain = session->get_domain(domain_type_to_class(domain));
 		add_value_to_domain_tracker(session_domain, process_attr, value);
 
-		ret_code = trace_ust_process_attr_tracker_inclusion_set_add_value(
-			session->ust_session, process_attr, value);
-		if (ret_code != LTTNG_OK) {
-			remove_value_from_domain_tracker(session_domain, process_attr, value);
+		if (session->ust_session->active) {
+			ust_app_global_update_all(session->ust_session, session->user_space_domain);
 		}
 
 		break;
@@ -2383,10 +2380,8 @@ cmd_process_attr_tracker_inclusion_set_remove_value(const ltt_session::locked_re
 		auto& session_domain = session->get_domain(domain_type_to_class(domain));
 		remove_value_from_domain_tracker(session_domain, process_attr, value);
 
-		ret_code = trace_ust_process_attr_tracker_inclusion_set_remove_value(
-			session->ust_session, process_attr, value);
-		if (ret_code != LTTNG_OK) {
-			add_value_to_domain_tracker(session_domain, process_attr, value);
+		if (session->ust_session->active) {
+			ust_app_global_update_all(session->ust_session, session->user_space_domain);
 		}
 
 		break;
@@ -3722,7 +3717,7 @@ int cmd_start_trace(const ltt_session::locked_ref& session)
 
 	/* Flag session that trace should start automatically */
 	if (usess) {
-		const int int_ret = ust_app_start_trace_all(usess);
+		const int int_ret = ust_app_start_trace_all(usess, session->user_space_domain);
 
 		if (int_ret < 0) {
 			ret = LTTNG_ERR_UST_START_FAIL;
