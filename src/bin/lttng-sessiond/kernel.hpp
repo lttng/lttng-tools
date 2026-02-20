@@ -39,7 +39,6 @@ make_kernel_abi_channel(const lttng::sessiond::config::channel_configuration& ch
  */
 uint64_t allocate_next_kernel_channel_key();
 
-int kernel_add_channel_context(struct ltt_kernel_channel *chan, struct ltt_kernel_context *ctx);
 int kernel_create_session(const ltt_session::locked_ref& session);
 int kernel_create_event(struct lttng_event *ev,
 			struct ltt_kernel_channel *channel,

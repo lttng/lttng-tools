@@ -34,13 +34,6 @@ struct ltt_kernel_channel_list {
 	struct cds_list_head head;
 };
 
-struct ltt_kernel_context {
-	struct lttng_kernel_abi_context ctx;
-	struct cds_list_head list;
-	/* Indicates whether or not the context is in a list. */
-	bool in_list;
-};
-
 /* Kernel event */
 struct ltt_kernel_event {
 	int fd;
@@ -76,7 +69,6 @@ struct ltt_kernel_channel {
 	unsigned int stream_count;
 	unsigned int event_count;
 	bool published_to_notification_thread;
-	struct cds_list_head ctx_list;
 	struct lttng_channel *channel;
 	struct ltt_kernel_event_list events_list;
 	struct ltt_kernel_stream_list stream_list;
@@ -158,14 +150,12 @@ enum lttng_error_code trace_kernel_create_event(struct lttng_event *ev,
 						struct ltt_kernel_event **kernel_event);
 struct ltt_kernel_metadata *trace_kernel_create_metadata();
 struct ltt_kernel_stream *trace_kernel_create_stream(const char *name, unsigned int count);
-struct ltt_kernel_context *trace_kernel_create_context(struct lttng_kernel_abi_context *ctx);
 /* Trigger is only non-const to acquire a reference. */
 enum lttng_error_code trace_kernel_create_event_notifier_rule(
 	struct lttng_trigger *trigger,
 	uint64_t token,
 	uint64_t error_counter_index,
 	struct ltt_kernel_event_notifier_rule **event_notifier_rule);
-struct ltt_kernel_context *trace_kernel_copy_context(struct ltt_kernel_context *ctx);
 enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 	const struct lttng_event_rule *rule,
 	struct lttng_kernel_abi_event_notifier *kernel_event_notifier);
@@ -179,7 +169,6 @@ void trace_kernel_destroy_metadata(struct ltt_kernel_metadata *metadata);
 void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel);
 void trace_kernel_destroy_event(struct ltt_kernel_event *event);
 void trace_kernel_destroy_stream(struct ltt_kernel_stream *stream);
-void trace_kernel_destroy_context(struct ltt_kernel_context *ctx);
 void trace_kernel_destroy_event_notifier_rule(struct ltt_kernel_event_notifier_rule *rule);
 void trace_kernel_free_session(struct ltt_kernel_session *session);
 

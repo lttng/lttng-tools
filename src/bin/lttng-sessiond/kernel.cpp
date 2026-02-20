@@ -149,49 +149,6 @@ uint64_t allocate_next_kernel_channel_key()
 }
 
 /*
- * Add context on a kernel channel.
- *
- * Assumes the ownership of ctx.
- */
-int kernel_add_channel_context(struct ltt_kernel_channel *chan, struct ltt_kernel_context *ctx)
-{
-	int ret;
-
-	LTTNG_ASSERT(chan);
-	LTTNG_ASSERT(ctx);
-
-	DBG("Adding context to channel %s", chan->channel->name);
-	ret = kernctl_add_context(chan->fd, &ctx->ctx);
-	if (ret < 0) {
-		switch (-ret) {
-		case ENOSYS:
-			/* Exists but not available for this kernel */
-			ret = LTTNG_ERR_KERN_CONTEXT_UNAVAILABLE;
-			goto error;
-		case EEXIST:
-			/* If EEXIST, we just ignore the error */
-			ret = 0;
-			goto end;
-		default:
-			PERROR("add context ioctl");
-			ret = LTTNG_ERR_KERN_CONTEXT_FAIL;
-			goto error;
-		}
-	}
-	ret = 0;
-
-end:
-	cds_list_add_tail(&ctx->list, &chan->ctx_list);
-	ctx->in_list = true;
-	ctx = nullptr;
-error:
-	if (ctx) {
-		trace_kernel_destroy_context(ctx);
-	}
-	return ret;
-}
-
-/*
  * Create a new kernel session, register it to the kernel tracer and add it to
  * the session daemon session.
  */

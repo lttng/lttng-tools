@@ -7,7 +7,6 @@
 
 #include "cmd.hpp"
 #include "consumer.hpp"
-#include "context.hpp"
 #include "event.hpp"
 #include "kernel-consumer.hpp"
 #include "kernel.hpp"
@@ -281,189 +280,151 @@ duplicated_filter duplicate_filter_from_rule(const struct lttng_event_rule *rule
 }
 
 /*
- * Build a legacy lttng_event_context from a context_configuration.
- *
- * This is the reverse of make_context_configuration_from_event_context() and
- * is a temporary bridge used during the refactor so that the orchestrator's
- * add_context() can delegate to context_kernel_add().
- *
- * It will be eliminated when context_kernel_add() is changed to accept a
- * context_configuration directly.
+ * Convert a context_configuration to the lttng_kernel_abi_context struct
+ * expected by the kernel tracer's add-context ioctl.
  */
-lttng_event_context make_lttng_event_context_from_context_configuration(
-	const lsc::context_configuration& context_config)
+lttng_kernel_abi_context make_kernel_abi_context(const lsc::context_configuration& context_config)
 {
-	struct lttng_event_context event_ctx = {};
+	struct lttng_kernel_abi_context abi_ctx = {};
 
 	switch (context_config.context_type) {
 	case lsc::context_configuration::type::PID:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_PID;
-		break;
-	case lsc::context_configuration::type::VPID:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_VPID;
-		break;
-	case lsc::context_configuration::type::TID:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_TID;
-		break;
-	case lsc::context_configuration::type::VTID:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_VTID;
-		break;
-	case lsc::context_configuration::type::PPID:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_PPID;
-		break;
-	case lsc::context_configuration::type::VPPID:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_VPPID;
-		break;
-	case lsc::context_configuration::type::PTHREAD_ID:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_PTHREAD_ID;
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_PID;
 		break;
 	case lsc::context_configuration::type::PROCNAME:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_PROCNAME;
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_PROCNAME;
 		break;
 	case lsc::context_configuration::type::PRIO:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_PRIO;
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_PRIO;
 		break;
 	case lsc::context_configuration::type::NICE:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_NICE;
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_NICE;
 		break;
-	case lsc::context_configuration::type::INTERRUPTIBLE:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_INTERRUPTIBLE;
+	case lsc::context_configuration::type::VPID:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_VPID;
 		break;
-	case lsc::context_configuration::type::PREEMPTIBLE:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_PREEMPTIBLE;
+	case lsc::context_configuration::type::TID:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_TID;
 		break;
-	case lsc::context_configuration::type::NEED_RESCHEDULE:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_NEED_RESCHEDULE;
+	case lsc::context_configuration::type::VTID:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_VTID;
 		break;
-	case lsc::context_configuration::type::MIGRATABLE:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_MIGRATABLE;
+	case lsc::context_configuration::type::PPID:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_PPID;
+		break;
+	case lsc::context_configuration::type::VPPID:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_VPPID;
 		break;
 	case lsc::context_configuration::type::HOSTNAME:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_HOSTNAME;
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_HOSTNAME;
 		break;
-	case lsc::context_configuration::type::CPU_ID:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_CPU_ID;
+	case lsc::context_configuration::type::INTERRUPTIBLE:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_INTERRUPTIBLE;
 		break;
-	case lsc::context_configuration::type::CGROUP_NS:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_CGROUP_NS;
+	case lsc::context_configuration::type::PREEMPTIBLE:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_PREEMPTIBLE;
 		break;
-	case lsc::context_configuration::type::IPC_NS:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_IPC_NS;
+	case lsc::context_configuration::type::NEED_RESCHEDULE:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_NEED_RESCHEDULE;
 		break;
-	case lsc::context_configuration::type::MNT_NS:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_MNT_NS;
-		break;
-	case lsc::context_configuration::type::NET_NS:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_NET_NS;
-		break;
-	case lsc::context_configuration::type::PID_NS:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_PID_NS;
-		break;
-	case lsc::context_configuration::type::USER_NS:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_USER_NS;
-		break;
-	case lsc::context_configuration::type::UTS_NS:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_UTS_NS;
-		break;
-	case lsc::context_configuration::type::TIME_NS:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_TIME_NS;
-		break;
-	case lsc::context_configuration::type::UID:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_UID;
-		break;
-	case lsc::context_configuration::type::EUID:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_EUID;
-		break;
-	case lsc::context_configuration::type::SUID:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_SUID;
-		break;
-	case lsc::context_configuration::type::GID:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_GID;
-		break;
-	case lsc::context_configuration::type::EGID:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_EGID;
-		break;
-	case lsc::context_configuration::type::SGID:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_SGID;
-		break;
-	case lsc::context_configuration::type::VUID:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_VUID;
-		break;
-	case lsc::context_configuration::type::VEUID:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_VEUID;
-		break;
-	case lsc::context_configuration::type::VSUID:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_VSUID;
-		break;
-	case lsc::context_configuration::type::VGID:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_VGID;
-		break;
-	case lsc::context_configuration::type::VEGID:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_VEGID;
-		break;
-	case lsc::context_configuration::type::VSGID:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_VSGID;
+	case lsc::context_configuration::type::MIGRATABLE:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_MIGRATABLE;
 		break;
 	case lsc::context_configuration::type::CALLSTACK_KERNEL:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_CALLSTACK_KERNEL;
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_CALLSTACK_KERNEL;
 		break;
 	case lsc::context_configuration::type::CALLSTACK_USER:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_CALLSTACK_USER;
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_CALLSTACK_USER;
 		break;
-	case lsc::context_configuration::type::IP:
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_IP;
+	case lsc::context_configuration::type::CGROUP_NS:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_CGROUP_NS;
+		break;
+	case lsc::context_configuration::type::IPC_NS:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_IPC_NS;
+		break;
+	case lsc::context_configuration::type::MNT_NS:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_MNT_NS;
+		break;
+	case lsc::context_configuration::type::NET_NS:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_NET_NS;
+		break;
+	case lsc::context_configuration::type::PID_NS:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_PID_NS;
+		break;
+	case lsc::context_configuration::type::TIME_NS:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_TIME_NS;
+		break;
+	case lsc::context_configuration::type::USER_NS:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_USER_NS;
+		break;
+	case lsc::context_configuration::type::UTS_NS:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_UTS_NS;
+		break;
+	case lsc::context_configuration::type::UID:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_UID;
+		break;
+	case lsc::context_configuration::type::EUID:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_EUID;
+		break;
+	case lsc::context_configuration::type::SUID:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_SUID;
+		break;
+	case lsc::context_configuration::type::GID:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_GID;
+		break;
+	case lsc::context_configuration::type::EGID:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_EGID;
+		break;
+	case lsc::context_configuration::type::SGID:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_SGID;
+		break;
+	case lsc::context_configuration::type::VUID:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_VUID;
+		break;
+	case lsc::context_configuration::type::VEUID:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_VEUID;
+		break;
+	case lsc::context_configuration::type::VSUID:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_VSUID;
+		break;
+	case lsc::context_configuration::type::VGID:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_VGID;
+		break;
+	case lsc::context_configuration::type::VEGID:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_VEGID;
+		break;
+	case lsc::context_configuration::type::VSGID:
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_VSGID;
 		break;
 	case lsc::context_configuration::type::PERF_CPU_COUNTER:
 	{
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_PERF_CPU_COUNTER;
+		abi_ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_PERF_CPU_COUNTER;
 		const auto& perf_config =
 			static_cast<const lsc::perf_counter_context_configuration&>(context_config);
 
-		event_ctx.u.perf_counter.type = static_cast<uint32_t>(perf_config.perf_type);
-		event_ctx.u.perf_counter.config = perf_config.perf_config;
-		if (lttng_strncpy(event_ctx.u.perf_counter.name,
+		abi_ctx.u.perf_counter.type = static_cast<uint32_t>(perf_config.perf_type);
+		abi_ctx.u.perf_counter.config = perf_config.perf_config;
+		if (lttng_strncpy(abi_ctx.u.perf_counter.name,
 				  perf_config.name.c_str(),
-				  sizeof(event_ctx.u.perf_counter.name))) {
+				  sizeof(abi_ctx.u.perf_counter.name))) {
 			LTTNG_THROW_INVALID_ARGUMENT_ERROR("Perf counter name too long");
 		}
 		break;
 	}
+	case lsc::context_configuration::type::PTHREAD_ID:
+	case lsc::context_configuration::type::CPU_ID:
+	case lsc::context_configuration::type::IP:
 	case lsc::context_configuration::type::PERF_THREAD_COUNTER:
-	{
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER;
-		const auto& perf_config =
-			static_cast<const lsc::perf_counter_context_configuration&>(context_config);
-
-		event_ctx.u.perf_counter.type = static_cast<uint32_t>(perf_config.perf_type);
-		event_ctx.u.perf_counter.config = perf_config.perf_config;
-		if (lttng_strncpy(event_ctx.u.perf_counter.name,
-				  perf_config.name.c_str(),
-				  sizeof(event_ctx.u.perf_counter.name))) {
-			LTTNG_THROW_INVALID_ARGUMENT_ERROR("Perf counter name too long");
-		}
-		break;
-	}
 	case lsc::context_configuration::type::APP_CONTEXT:
-	{
-		/*
-		 * APP_CONTEXT is not relevant for the kernel domain, but convert it
-		 * faithfully for completeness. Note: the caller must ensure the
-		 * lifetime of the returned struct does not outlive the strings.
-		 */
-		event_ctx.ctx = LTTNG_EVENT_CONTEXT_APP_CONTEXT;
-		const auto& app_config =
-			static_cast<const lsc::app_context_configuration&>(context_config);
-
-		event_ctx.u.app_ctx.provider_name =
-			const_cast<char *>(app_config.provider_name.c_str());
-		event_ctx.u.app_ctx.ctx_name = const_cast<char *>(app_config.context_name.c_str());
-		break;
-	}
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+			fmt::format("Context type not supported by the kernel tracer: context={}",
+				    context_config));
 	default:
-		LTTNG_THROW_INVALID_ARGUMENT_ERROR("Unknown context configuration type");
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			"Unknown context configuration type: context={}", context_config));
 	}
 
-	return event_ctx;
+	return abi_ctx;
 }
 
 lttng_kernel_abi_tracker_type to_modules_tracker_type(lsc::process_attribute_type attribute_type)
@@ -552,12 +513,29 @@ void ls::modules::domain_orchestrator::add_context(
 {
 	LTTNG_ASSERT(_legacy_kernel_session);
 
-	const auto event_ctx = make_lttng_event_context_from_context_configuration(context_config);
+	auto& kchan = find_legacy_channel(*_legacy_kernel_session, channel_config);
+	auto abi_ctx = make_kernel_abi_context(context_config);
 
-	const auto ret =
-		context_kernel_add(_legacy_kernel_session, &event_ctx, channel_config.name.c_str());
-	if (ret != LTTNG_OK) {
-		LTTNG_THROW_CTL("Failed to add kernel context", static_cast<lttng_error_code>(ret));
+	const auto ret = kernctl_add_context(kchan.fd, &abi_ctx);
+	if (ret < 0) {
+		if (ret == -ENOSYS) {
+			LTTNG_THROW_CTL(
+				fmt::format(
+					"Failed to add context to kernel channel: context={}, channel=`{}`",
+					context_config,
+					channel_config.name),
+				LTTNG_ERR_KERN_CONTEXT_UNAVAILABLE);
+		} else if (ret == -EEXIST) {
+			/* Context already exists on this channel; silently ignore. */
+			return;
+		}
+
+		LTTNG_THROW_POSIX(
+			fmt::format(
+				"Failed to add context to kernel channel: context={}, channel=`{}`",
+				context_config,
+				channel_config.name),
+			-ret);
 	}
 }
 

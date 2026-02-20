@@ -224,7 +224,6 @@ struct ltt_kernel_channel *trace_kernel_create_channel(struct lttng_channel *cha
 	/* Init linked list */
 	CDS_INIT_LIST_HEAD(&lkc->events_list.head);
 	CDS_INIT_LIST_HEAD(&lkc->stream_list.head);
-	CDS_INIT_LIST_HEAD(&lkc->ctx_list);
 
 	return lkc;
 
@@ -235,52 +234,6 @@ error:
 	free(extended);
 	free(lkc);
 	return nullptr;
-}
-
-/*
- * Allocate and init a kernel context object.
- *
- * Return the allocated object or NULL on error.
- */
-struct ltt_kernel_context *trace_kernel_create_context(struct lttng_kernel_abi_context *ctx)
-{
-	struct ltt_kernel_context *kctx;
-
-	kctx = zmalloc<ltt_kernel_context>();
-	if (!kctx) {
-		PERROR("zmalloc kernel context");
-		goto error;
-	}
-
-	if (ctx) {
-		memcpy(&kctx->ctx, ctx, sizeof(kctx->ctx));
-	}
-error:
-	return kctx;
-}
-
-/*
- * Allocate and init a kernel context object from an existing kernel context
- * object.
- *
- * Return the allocated object or NULL on error.
- */
-struct ltt_kernel_context *trace_kernel_copy_context(struct ltt_kernel_context *kctx)
-{
-	struct ltt_kernel_context *kctx_copy;
-
-	LTTNG_ASSERT(kctx);
-	kctx_copy = zmalloc<ltt_kernel_context>();
-	if (!kctx_copy) {
-		PERROR("zmalloc ltt_kernel_context");
-		goto error;
-	}
-
-	memcpy(kctx_copy, kctx, sizeof(*kctx_copy));
-	memset(&kctx_copy->list, 0, sizeof(kctx_copy->list));
-
-error:
-	return kctx_copy;
 }
 
 /*
@@ -854,26 +807,12 @@ void trace_kernel_destroy_event_notifier_rule(struct ltt_kernel_event_notifier_r
 	call_rcu(&event->rcu_node, free_token_event_rule_rcu);
 }
 /*
- * Cleanup kernel context structure.
- */
-void trace_kernel_destroy_context(struct ltt_kernel_context *ctx)
-{
-	LTTNG_ASSERT(ctx);
-
-	if (ctx->in_list) {
-		cds_list_del(&ctx->list);
-	}
-	free(ctx);
-}
-
-/*
  * Cleanup kernel channel structure.
  */
 void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel)
 {
 	struct ltt_kernel_stream *stream, *stmp;
 	struct ltt_kernel_event *event, *etmp;
-	struct ltt_kernel_context *ctx, *ctmp;
 	int ret;
 	enum lttng_error_code status;
 
@@ -896,11 +835,6 @@ void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel)
 	/* For each event in the channel list */
 	cds_list_for_each_entry_safe (event, etmp, &channel->events_list.head, list) {
 		trace_kernel_destroy_event(event);
-	}
-
-	/* For each context in the channel list */
-	cds_list_for_each_entry_safe (ctx, ctmp, &channel->ctx_list, list) {
-		trace_kernel_destroy_context(ctx);
 	}
 
 	/* Remove from channel list */
