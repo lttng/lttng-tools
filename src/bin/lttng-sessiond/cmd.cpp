@@ -2045,10 +2045,17 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 	/*
 	 * Create or enable the config object. After this block, the channel
 	 * config is available via target_domain.get_channel(name).
+	 *
+	 * `channel_is_new` tracks whether a new config was created (implying
+	 * the channel must be created in the tracer) or an existing disabled
+	 * channel was re-enabled.
 	 */
+	const auto channel_config_name =
+		std::string(channel_attr.name[0] ? channel_attr.name : DEFAULT_CHANNEL_NAME);
+	bool channel_is_new = false;
 	bool channel_was_already_enabled = false;
 	try {
-		auto& existing_channel = target_domain.get_channel(name);
+		auto& existing_channel = target_domain.get_channel(channel_config_name);
 		channel_was_already_enabled = existing_channel.is_enabled;
 		existing_channel.enable();
 	} catch (const lttng::sessiond::config::exceptions::channel_not_found_error& ex) {
@@ -2070,11 +2077,9 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 					  std::move(blocking_policy),
 					  trace_file_size_limit_bytes,
 					  trace_file_count_limit);
+		channel_is_new = true;
 	}
 
-	/* Look up the channel config that was just created or enabled. */
-	const auto channel_config_name =
-		std::string(channel_attr.name[0] ? channel_attr.name : DEFAULT_CHANNEL_NAME);
 	auto& channel_config = target_domain.get_channel(channel_config_name);
 
 	switch (domain->type) {
@@ -2082,17 +2087,32 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 	{
 		auto& orchestrator = session->get_kernel_orchestrator();
 
-		if (trace_kernel_get_channel_by_name(channel_config.name.c_str(),
-						     session->kernel_session) == nullptr) {
+		if (channel_is_new) {
 			/*
 			 * Don't try to create a channel if the session has been started at
 			 * some point in time before. The tracer does not allow it.
 			 */
 			if (session->has_been_started) {
+				target_domain.remove_channel(channel_config_name);
 				return LTTNG_ERR_TRACE_ALREADY_STARTED;
 			}
 
+			/*
+			 * Roll back the config if the orchestrator fails to
+			 * create the channel in the tracer.
+			 */
+			auto config_rollback = lttng::make_scope_exit([&target_domain,
+								       &channel_config_name]() noexcept {
+				try {
+					target_domain.remove_channel(channel_config_name);
+				} catch (...) {
+					ERR("Failed to roll back channel configuration: channel_name=`%s`",
+					    channel_config_name.c_str());
+				}
+			});
+
 			orchestrator.create_channel(channel_config);
+			config_rollback.disarm();
 		} else {
 			if (channel_was_already_enabled) {
 				LTTNG_THROW_CTL("Kernel channel is already enabled",
@@ -2546,14 +2566,14 @@ lttng_error_code cmd_disable_event(struct command_ctx *cmd_ctx,
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
-		struct ltt_kernel_session *ksess = session.kernel_session;
+		auto& kernel_domain = locked_session->get_domain(lttng::domain_class::KERNEL_SPACE);
 
 		/*
 		 * If a non-default channel has been created in the
-		 * session, explicitely require that -c chan_name needs
+		 * session, explicitly require that -c chan_name needs
 		 * to be provided.
 		 */
-		if (ksess->has_non_default_channel && channel_name[0] == '\0') {
+		if (kernel_domain.has_non_default_channel() && channel_name[0] == '\0') {
 			return LTTNG_ERR_NEED_CHANNEL_NAME;
 		}
 
@@ -2569,8 +2589,7 @@ lttng_error_code cmd_disable_event(struct command_ctx *cmd_ctx,
 			return LTTNG_ERR_UNK;
 		}
 
-		auto& channel_config = locked_session->get_domain(lttng::domain_class::KERNEL_SPACE)
-					       .get_channel(channel_name);
+		auto& channel_config = kernel_domain.get_channel(channel_name);
 
 		auto& orchestrator = locked_session->get_kernel_orchestrator();
 
@@ -2738,7 +2757,7 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 	{
 		LTTNG_ASSERT(session.kernel_session);
 
-		if (session.kernel_session->channel_count == 0) {
+		if (session.kernel_space_domain.recording_channel_count() == 0) {
 			/* Create default channel through the orchestrator. */
 			const auto attr =
 				channel_new_default_attr(LTTNG_DOMAIN_KERNEL, LTTNG_BUFFER_GLOBAL);
@@ -3023,33 +3042,44 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 	switch (domain->type) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
+		auto& kernel_domain = session.get_domain(lttng::domain_class::KERNEL_SPACE);
+
 		/*
 		 * If a non-default channel has been created in the
-		 * session, explicitely require that -c chan_name needs
+		 * session, explicitly require that -c chan_name needs
 		 * to be provided.
 		 */
-		if (session.kernel_session->has_non_default_channel && channel_name[0] == '\0') {
+		if (kernel_domain.has_non_default_channel() && channel_name[0] == '\0') {
 			return LTTNG_ERR_NEED_CHANNEL_NAME;
 		}
 
 		/* Implicitly create the default channel if it does not exist. */
-		if (trace_kernel_get_channel_by_name(channel_name, session.kernel_session) ==
-		    nullptr) {
-			const auto attr =
-				channel_new_default_attr(LTTNG_DOMAIN_KERNEL, LTTNG_BUFFER_GLOBAL);
-
-			if (lttng_strncpy(attr->name, channel_name, sizeof(attr->name))) {
-				return LTTNG_ERR_INVALID;
+		{
+			bool channel_exists = true;
+			try {
+				kernel_domain.get_channel(user_visible_channel_name);
+			} catch (
+				const lttng::sessiond::config::exceptions::channel_not_found_error&) {
+				channel_exists = false;
 			}
 
-			ret = cmd_enable_channel_internal(locked_session, domain, *attr, wpipe);
-			if (ret != LTTNG_OK) {
-				return static_cast<lttng_error_code>(ret);
+			if (!channel_exists) {
+				const auto attr = channel_new_default_attr(LTTNG_DOMAIN_KERNEL,
+									   LTTNG_BUFFER_GLOBAL);
+
+				if (lttng_strncpy(attr->name, channel_name, sizeof(attr->name))) {
+					return LTTNG_ERR_INVALID;
+				}
+
+				ret = cmd_enable_channel_internal(
+					locked_session, domain, *attr, wpipe);
+				if (ret != LTTNG_OK) {
+					return static_cast<lttng_error_code>(ret);
+				}
 			}
 		}
 
-		auto& channel_config = session.get_domain(lttng::domain_class::KERNEL_SPACE)
-					       .get_channel(user_visible_channel_name);
+		auto& channel_config = kernel_domain.get_channel(user_visible_channel_name);
 
 		/*
 		 * Create or update the event rule configuration, then
@@ -3674,7 +3704,7 @@ int cmd_start_trace(const ltt_session::locked_ref& session)
 		nb_chan += lttng_ht_get_count(usess->domain_global.channels);
 	}
 	if (ksession) {
-		nb_chan += ksession->channel_count;
+		nb_chan += session->kernel_space_domain.recording_channel_count();
 	}
 	if (!nb_chan) {
 		ret = LTTNG_ERR_NO_CHANNEL;

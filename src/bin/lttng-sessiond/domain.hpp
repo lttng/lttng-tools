@@ -186,6 +186,35 @@ public:
 		return const_recording_channels_view(_channels);
 	}
 
+	std::size_t recording_channel_count() const noexcept
+	{
+		return _channels.size();
+	}
+
+	bool has_non_default_channel() const noexcept
+	{
+		const auto default_channel_count = _channels.count(DEFAULT_CHANNEL_NAME) ? 1 : 0;
+		return _channels.size() > static_cast<std::size_t>(default_channel_count);
+	}
+
+	/*
+	 * Remove a channel from the domain by name.
+	 *
+	 * This operation is only provided to roll back configuration changes
+	 * on failure (e.g., when the orchestrator fails to create the channel
+	 * in the tracer after the config was already added). Orchestrators are
+	 * not expected to support the removal of a channel.
+	 */
+	void remove_channel(const std::string& name)
+	{
+		const auto it = _channels.find(name);
+		if (it == _channels.end()) {
+			LTTNG_THROW_CHANNEL_NOT_FOUND_BY_NAME_ERROR(name);
+		}
+
+		_channels.erase(it);
+	}
+
 	/*
 	 * Process attribute tracker accessors.
 	 *
