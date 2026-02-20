@@ -8,6 +8,8 @@
 #ifndef LTTNG_SESSIOND_CHANNEL_CONFIGURATION_HPP
 #define LTTNG_SESSIOND_CHANNEL_CONFIGURATION_HPP
 
+#include <common/format.hpp>
+
 #include <vendor/optional.hpp>
 
 #include <cstdint>
@@ -108,5 +110,63 @@ public:
 } /* namespace config */
 } /* namespace sessiond */
 } /* namespace lttng */
+
+/*
+ * Specialize fmt::formatter for buffer_full_policy_t.
+ *
+ * Due to a bug in g++ < 7.1, this specialization must be enclosed in the fmt namespace,
+ * see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480.
+ */
+namespace fmt {
+template <>
+struct formatter<lttng::sessiond::config::channel_configuration::buffer_full_policy_t>
+	: formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator
+	format(lttng::sessiond::config::channel_configuration::buffer_full_policy_t policy,
+	       FormatContextType& ctx) const
+	{
+		auto name = "UNKNOWN";
+
+		switch (policy) {
+		case lttng::sessiond::config::channel_configuration::buffer_full_policy_t::
+			DISCARD_EVENT:
+			name = "DISCARD_EVENT";
+			break;
+		case lttng::sessiond::config::channel_configuration::buffer_full_policy_t::
+			OVERWRITE_OLDEST_PACKET:
+			name = "OVERWRITE_OLDEST_PACKET";
+			break;
+		}
+
+		return format_to(ctx.out(), name);
+	}
+};
+
+template <>
+struct formatter<lttng::sessiond::config::channel_configuration::buffer_consumption_backend_t>
+	: formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator
+	format(lttng::sessiond::config::channel_configuration::buffer_consumption_backend_t backend,
+	       FormatContextType& ctx) const
+	{
+		auto name = "UNKNOWN";
+
+		switch (backend) {
+		case lttng::sessiond::config::channel_configuration::buffer_consumption_backend_t::
+			MMAP:
+			name = "MMAP";
+			break;
+		case lttng::sessiond::config::channel_configuration::buffer_consumption_backend_t::
+			SPLICE:
+			name = "SPLICE";
+			break;
+		}
+
+		return format_to(ctx.out(), name);
+	}
+};
+} /* namespace fmt */
 
 #endif /* LTTNG_SESSIOND_CHANNEL_CONFIGURATION_HPP */

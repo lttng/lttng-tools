@@ -304,32 +304,32 @@ int kernctl_create_stream(int fd)
 	return compat_ioctl_no_arg(fd, LTTNG_KERNEL_ABI_OLD_STREAM, LTTNG_KERNEL_ABI_STREAM);
 }
 
-int kernctl_create_event(int fd, struct lttng_kernel_abi_event *ev)
+int kernctl_create_event(int fd, const struct lttng_kernel_abi_event& ev)
 {
 	if (lttng_kernel_abi_use_old_abi) {
 		struct lttng_kernel_abi_old_event old_event;
 
 		memset(&old_event, 0, sizeof(old_event));
-		memcpy(old_event.name, ev->name, sizeof(old_event.name));
-		old_event.instrumentation = ev->instrumentation;
-		switch (ev->instrumentation) {
+		memcpy(old_event.name, ev.name, sizeof(old_event.name));
+		old_event.instrumentation = ev.instrumentation;
+		switch (ev.instrumentation) {
 		case LTTNG_KERNEL_ABI_KPROBE:
-			old_event.u.kprobe.addr = ev->u.kprobe.addr;
-			old_event.u.kprobe.offset = ev->u.kprobe.offset;
+			old_event.u.kprobe.addr = ev.u.kprobe.addr;
+			old_event.u.kprobe.offset = ev.u.kprobe.offset;
 			memcpy(old_event.u.kprobe.symbol_name,
-			       ev->u.kprobe.symbol_name,
+			       ev.u.kprobe.symbol_name,
 			       sizeof(old_event.u.kprobe.symbol_name));
 			break;
 		case LTTNG_KERNEL_ABI_KRETPROBE:
-			old_event.u.kretprobe.addr = ev->u.kretprobe.addr;
-			old_event.u.kretprobe.offset = ev->u.kretprobe.offset;
+			old_event.u.kretprobe.addr = ev.u.kretprobe.addr;
+			old_event.u.kretprobe.offset = ev.u.kretprobe.offset;
 			memcpy(old_event.u.kretprobe.symbol_name,
-			       ev->u.kretprobe.symbol_name,
+			       ev.u.kretprobe.symbol_name,
 			       sizeof(old_event.u.kretprobe.symbol_name));
 			break;
 		case LTTNG_KERNEL_ABI_FUNCTION:
 			memcpy(old_event.u.ftrace.symbol_name,
-			       ev->u.ftrace.symbol_name,
+			       ev.u.ftrace.symbol_name,
 			       sizeof(old_event.u.ftrace.symbol_name));
 			break;
 		default:
@@ -338,27 +338,27 @@ int kernctl_create_event(int fd, struct lttng_kernel_abi_event *ev)
 
 		return LTTNG_IOCTL_NO_CHECK(fd, LTTNG_KERNEL_ABI_OLD_EVENT, &old_event);
 	}
-	return LTTNG_IOCTL_NO_CHECK(fd, LTTNG_KERNEL_ABI_EVENT, ev);
+	return LTTNG_IOCTL_NO_CHECK(fd, LTTNG_KERNEL_ABI_EVENT, &ev);
 }
 
-int kernctl_add_context(int fd, struct lttng_kernel_abi_context *ctx)
+int kernctl_add_context(int fd, const struct lttng_kernel_abi_context& ctx)
 {
 	if (lttng_kernel_abi_use_old_abi) {
 		struct lttng_kernel_abi_old_context old_ctx;
 
 		memset(&old_ctx, 0, sizeof(old_ctx));
-		old_ctx.ctx = ctx->ctx;
+		old_ctx.ctx = ctx.ctx;
 		/* only type that uses the union */
-		if (ctx->ctx == LTTNG_KERNEL_ABI_CONTEXT_PERF_CPU_COUNTER) {
-			old_ctx.u.perf_counter.type = ctx->u.perf_counter.type;
-			old_ctx.u.perf_counter.config = ctx->u.perf_counter.config;
+		if (ctx.ctx == LTTNG_KERNEL_ABI_CONTEXT_PERF_CPU_COUNTER) {
+			old_ctx.u.perf_counter.type = ctx.u.perf_counter.type;
+			old_ctx.u.perf_counter.config = ctx.u.perf_counter.config;
 			memcpy(old_ctx.u.perf_counter.name,
-			       ctx->u.perf_counter.name,
+			       ctx.u.perf_counter.name,
 			       sizeof(old_ctx.u.perf_counter.name));
 		}
 		return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_OLD_CONTEXT, &old_ctx);
 	}
-	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_CONTEXT, ctx);
+	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_CONTEXT, &ctx);
 }
 
 /* Enable event, channel and session LTTNG_IOCTL_CHECK */

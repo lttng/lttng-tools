@@ -8,12 +8,12 @@
 #ifndef LTTNG_SESSIOND_MODULES_DOMAIN_ORCHESTRATOR_HPP
 #define LTTNG_SESSIOND_MODULES_DOMAIN_ORCHESTRATOR_HPP
 
-#include "channel-stream-group.hpp"
 #include "context-configuration.hpp"
 #include "domain-orchestrator.hpp"
 #include "domain.hpp"
 #include "event-rule-configuration.hpp"
 #include "recording-channel-configuration.hpp"
+#include "stream-group.hpp"
 
 #include <common/file-descriptor.hpp>
 #include <common/make-unique.hpp>
@@ -25,7 +25,6 @@
 #include <vector>
 
 struct consumer_output;
-struct ltt_kernel_event;
 struct ltt_kernel_session;
 
 namespace lttng {
@@ -33,6 +32,88 @@ namespace sessiond {
 namespace modules {
 
 namespace config = lttng::sessiond::config;
+
+namespace exceptions {
+
+/*
+ * @class kernel_event_already_exists
+ * @brief Thrown when the kernel tracer reports that an event already exists (EEXIST).
+ */
+class kernel_event_already_exists : public lttng::runtime_error {
+public:
+	explicit kernel_event_already_exists(const lttng::source_location& source_location_) :
+		lttng::runtime_error("Kernel event already exists", source_location_)
+	{
+	}
+};
+
+/*
+ * @class kernel_event_type_unsupported
+ * @brief Thrown when the kernel tracer does not implement the requested event type (ENOSYS).
+ */
+class kernel_event_type_unsupported : public lttng::runtime_error {
+public:
+	explicit kernel_event_type_unsupported(const lttng::source_location& source_location_) :
+		lttng::runtime_error("Event type not implemented by kernel tracer",
+				     source_location_)
+	{
+	}
+};
+
+/*
+ * @class kernel_event_enable_failure
+ * @brief Thrown when a kernel event could not be enabled (e.g. event not found,
+ * callsite addition failed).
+ */
+class kernel_event_enable_failure : public lttng::runtime_error {
+public:
+	explicit kernel_event_enable_failure(const std::string& msg,
+					     const lttng::source_location& source_location_) :
+		lttng::runtime_error(msg, source_location_)
+	{
+	}
+};
+
+/*
+ * @class kernel_filter_out_of_memory
+ * @brief Thrown when the kernel tracer cannot allocate memory for a filter (ENOMEM).
+ */
+class kernel_filter_out_of_memory : public lttng::runtime_error {
+public:
+	explicit kernel_filter_out_of_memory(const lttng::source_location& source_location_) :
+		lttng::runtime_error("Kernel filter out of memory", source_location_)
+	{
+	}
+};
+
+/*
+ * @class kernel_filter_invalid
+ * @brief Thrown when the kernel tracer rejects a filter bytecode as invalid.
+ */
+class kernel_filter_invalid : public lttng::runtime_error {
+public:
+	explicit kernel_filter_invalid(const lttng::source_location& source_location_) :
+		lttng::runtime_error("Invalid kernel filter", source_location_)
+	{
+	}
+};
+
+} /* namespace exceptions */
+
+#define LTTNG_THROW_KERNEL_EVENT_ALREADY_EXISTS()                                \
+	throw lttng::sessiond::modules::exceptions::kernel_event_already_exists( \
+		LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_KERNEL_EVENT_TYPE_UNSUPPORTED()                                \
+	throw lttng::sessiond::modules::exceptions::kernel_event_type_unsupported( \
+		LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_KERNEL_EVENT_ENABLE_FAILURE(msg)                             \
+	throw lttng::sessiond::modules::exceptions::kernel_event_enable_failure( \
+		msg, LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_KERNEL_FILTER_OUT_OF_MEMORY()                                \
+	throw lttng::sessiond::modules::exceptions::kernel_filter_out_of_memory( \
+		LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_KERNEL_FILTER_INVALID() \
+	throw lttng::sessiond::modules::exceptions::kernel_filter_invalid(LTTNG_SOURCE_LOCATION())
 
 /*
  * Runtime handle for a kernel event rule that has been created against the
@@ -74,26 +155,31 @@ private:
 };
 
 /*
- * Runtime representation of a kernel channel managed by the lttng-modules
+ * Runtime representation of a kernel channel managed by the LTTng-modules
  * tracer.
+ *
+ * Extends the base stream_group (which manages the consumer key and stream
+ * instances) with kernel-domain-specific state: the tracer channel fd,
+ * the channel configuration reference, consumer/notification lifecycle
+ * flags, and event rules.
  */
-class channel final {
+class stream_group final : public lttng::sessiond::stream_group<lttng::file_descriptor> {
 public:
-	explicit channel(lttng::file_descriptor tracer_channel_fd,
-			 uint64_t consumer_key,
-			 const config::recording_channel_configuration& configuration) :
+	explicit stream_group(lttng::file_descriptor tracer_channel_fd,
+			      uint64_t consumer_key,
+			      const config::recording_channel_configuration& configuration) :
+		lttng::sessiond::stream_group<lttng::file_descriptor>(consumer_key),
 		_tracer_channel_fd(std::move(tracer_channel_fd)),
-		_configuration(configuration),
-		_streams(consumer_key)
+		_configuration(configuration)
 	{
 	}
 
-	~channel() = default;
+	~stream_group() override = default;
 
-	channel(channel&&) = delete;
-	channel(const channel&) = delete;
-	channel& operator=(channel&&) = delete;
-	channel& operator=(const channel&) = delete;
+	stream_group(stream_group&&) = delete;
+	stream_group(const stream_group&) = delete;
+	stream_group& operator=(stream_group&&) = delete;
+	stream_group& operator=(const stream_group&) = delete;
 
 	lttng::file_descriptor& tracer_handle() noexcept
 	{
@@ -110,9 +196,9 @@ public:
 		return _configuration;
 	}
 
-	uint64_t consumer_key() const noexcept
+	uint64_t stream_group_key() const noexcept
 	{
-		return _streams.consumer_key();
+		return consumer_key();
 	}
 
 	bool is_sent_to_consumer() const noexcept
@@ -133,16 +219,6 @@ public:
 	void mark_published_to_notification_thread() noexcept
 	{
 		_published_to_notification_thread = true;
-	}
-
-	channel_stream_group<lttng::file_descriptor>& streams() noexcept
-	{
-		return _streams;
-	}
-
-	const channel_stream_group<lttng::file_descriptor>& streams() const noexcept
-	{
-		return _streams;
 	}
 
 	void add_event_rule(const config::event_rule_configuration& event_rule_config,
@@ -182,7 +258,6 @@ public:
 private:
 	lttng::file_descriptor _tracer_channel_fd;
 	const config::recording_channel_configuration& _configuration;
-	channel_stream_group<lttng::file_descriptor> _streams;
 	bool _sent_to_consumer = false;
 	bool _published_to_notification_thread = false;
 	std::vector<event_rule> _event_rules;
@@ -330,7 +405,7 @@ private:
 	 * configuration objects are unique within a config::domain and are
 	 * not moved or copied, so pointer equality is a reliable key.
 	 */
-	channel& _get_channel(const config::recording_channel_configuration& channel_config)
+	stream_group& _get_channel(const config::recording_channel_configuration& channel_config)
 	{
 		const auto it = _channels.find(&channel_config);
 		if (it == _channels.end()) {
@@ -343,7 +418,8 @@ private:
 	lttng::file_descriptor _tracer_session_fd;
 	config::domain& _domain_configuration;
 	struct consumer_output& _consumer;
-	std::unordered_map<const config::recording_channel_configuration *, std::unique_ptr<channel>>
+	std::unordered_map<const config::recording_channel_configuration *,
+			   std::unique_ptr<stream_group>>
 		_channels;
 	nonstd::optional<metadata_channel> _metadata;
 
@@ -353,15 +429,6 @@ private:
 	 */
 	struct ltt_kernel_session *_legacy_kernel_session;
 	int _kernel_pipe;
-
-	/*
-	 * Maps each event rule configuration to its corresponding legacy
-	 * ltt_kernel_event. Populated by enable_event() so that
-	 * disable_event() can target the exact kernel event without
-	 * sweeping the entire legacy event list.
-	 */
-	std::unordered_map<const config::event_rule_configuration *, struct ltt_kernel_event *>
-		_event_rule_to_legacy_events;
 };
 
 } /* namespace modules */

@@ -10,11 +10,9 @@
 #include "agent.hpp"
 #include "channel.hpp"
 #include "event.hpp"
-#include "kernel.hpp"
 #include "lttng-sessiond.hpp"
 #include "lttng-ust-ctl.hpp"
 #include "lttng-ust-error.hpp"
-#include "trace-kernel.hpp"
 #include "trace-ust.hpp"
 #include "ust-app.hpp"
 #include "utils.hpp"
@@ -60,92 +58,6 @@ static void add_unique_ust_event(struct lttng_ht *ht, struct ltt_ust_event *even
 				       &key,
 				       &event->node.node);
 	LTTNG_ASSERT(node_ptr == &event->node.node);
-}
-
-/*
- * Disable kernel tracepoint events for a channel from the kernel session of
- * a specified event_name and event type.
- * On type LTTNG_EVENT_ALL all events with event_name are disabled.
- * If event_name is NULL all events of the specified type are disabled.
- */
-int event_kernel_disable_event(struct ltt_kernel_channel *kchan,
-			       const char *event_name,
-			       enum lttng_event_type type)
-{
-	int ret, error = 0, found = 0;
-	struct ltt_kernel_event *kevent;
-
-	LTTNG_ASSERT(kchan);
-
-	/* For each event in the kernel session */
-	cds_list_for_each_entry (kevent, &kchan->events_list.head, list) {
-		if (type != LTTNG_EVENT_ALL && kevent->type != type)
-			continue;
-		if (event_name != nullptr && strcmp(event_name, kevent->event->name) != 0) {
-			continue;
-		}
-		found++;
-		ret = kernel_disable_event(kevent);
-		if (ret < 0) {
-			error = 1;
-			continue;
-		}
-	}
-	DBG("Disable kernel event: found %d events with name: %s and type: %d",
-	    found,
-	    event_name ? event_name : "NULL",
-	    type);
-
-	if (event_name != nullptr && !found) {
-		ret = LTTNG_ERR_NO_EVENT;
-	} else {
-		ret = error ? LTTNG_ERR_KERN_DISABLE_FAIL : LTTNG_OK;
-	}
-
-	return ret;
-}
-
-/*
- * Enable kernel tracepoint event for a channel from the kernel session.
- * We own filter_expression and filter.
- */
-int event_kernel_enable_event(struct ltt_kernel_channel *kchan,
-			      struct lttng_event *event,
-			      char *filter_expression,
-			      struct lttng_bytecode *filter)
-{
-	int ret;
-	struct ltt_kernel_event *kevent;
-
-	LTTNG_ASSERT(kchan);
-	LTTNG_ASSERT(event);
-
-	kevent = trace_kernel_find_event(event->name, kchan, event->type, filter);
-	if (kevent == nullptr) {
-		ret = kernel_create_event(event, kchan, filter_expression, filter);
-		/* We have passed ownership */
-		filter_expression = nullptr;
-		filter = nullptr;
-		if (ret) {
-			goto end;
-		}
-	} else if (!kevent->enabled) {
-		ret = kernel_enable_event(kevent);
-		if (ret < 0) {
-			ret = LTTNG_ERR_KERN_ENABLE_FAIL;
-			goto end;
-		}
-	} else {
-		/* At this point, the event is considered enabled */
-		ret = LTTNG_ERR_KERN_EVENT_EXIST;
-		goto end;
-	}
-
-	ret = LTTNG_OK;
-end:
-	free(filter_expression);
-	free(filter);
-	return ret;
 }
 
 /*

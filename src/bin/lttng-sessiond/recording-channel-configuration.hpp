@@ -216,6 +216,101 @@ struct formatter<
 		return format_to(ctx.out(), name);
 	}
 };
+
+template <>
+struct formatter<lttng::sessiond::config::recording_channel_configuration::buffer_allocation_policy_t>
+	: formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator
+	format(lttng::sessiond::config::recording_channel_configuration::buffer_allocation_policy_t
+		       policy,
+	       FormatContextType& ctx) const
+	{
+		auto name = "UNKNOWN";
+
+		switch (policy) {
+		case lttng::sessiond::config::recording_channel_configuration::
+			buffer_allocation_policy_t::PER_CPU:
+			name = "PER_CPU";
+			break;
+		case lttng::sessiond::config::recording_channel_configuration::
+			buffer_allocation_policy_t::PER_CHANNEL:
+			name = "PER_CHANNEL";
+			break;
+		}
+
+		return format_to(ctx.out(), name);
+	}
+};
+
+template <>
+struct formatter<
+	lttng::sessiond::config::recording_channel_configuration::buffer_preallocation_policy_t>
+	: formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator
+	format(lttng::sessiond::config::recording_channel_configuration::buffer_preallocation_policy_t
+		       policy,
+	       FormatContextType& ctx) const
+	{
+		auto name = "UNKNOWN";
+
+		switch (policy) {
+		case lttng::sessiond::config::recording_channel_configuration::
+			buffer_preallocation_policy_t::PREALLOCATE:
+			name = "PREALLOCATE";
+			break;
+		case lttng::sessiond::config::recording_channel_configuration::
+			buffer_preallocation_policy_t::ON_DEMAND:
+			name = "ON_DEMAND";
+			break;
+		}
+
+		return format_to(ctx.out(), name);
+	}
+};
+
+/*
+ * Specialize fmt::formatter for recording_channel_configuration.
+ *
+ * Due to a bug in g++ < 7.1, this specialization must be enclosed in the fmt namespace,
+ * see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480.
+ */
+template <>
+struct formatter<lttng::sessiond::config::recording_channel_configuration>
+	: formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator
+	format(const lttng::sessiond::config::recording_channel_configuration& channel,
+	       FormatContextType& ctx) const
+	{
+		return format_to(
+			ctx.out(),
+			"`{}` (enabled: {}, buffer_full_policy: {}, buffer_consumption_backend: {}, "
+			"buffer_allocation_policy: {}, buffer_preallocation_policy: {}, "
+			"subbuffer_size_bytes: {}, subbuffer_count: {}, "
+			"switch_timer_period_us: {}, read_timer_period_us: {}, "
+			"live_timer_period_us: {}, monitor_timer_period_us: {}, "
+			"trace_file_size_limit_bytes: {}, trace_file_count_limit: {}, "
+			"consumption_blocking_policy: {}, event_rules: {})",
+			channel.name,
+			channel.is_enabled,
+			channel.buffer_full_policy,
+			channel.buffer_consumption_backend,
+			channel.buffer_allocation_policy,
+			channel.buffer_preallocation_policy,
+			channel.subbuffer_size_bytes,
+			channel.subbuffer_count,
+			channel.switch_timer_period_us,
+			channel.read_timer_period_us,
+			channel.live_timer_period_us,
+			channel.monitor_timer_period_us,
+			channel.trace_file_size_limit_bytes,
+			channel.trace_file_count_limit,
+			channel.consumption_blocking_policy_.mode_,
+			channel.event_rules.size());
+	}
+};
 } /* namespace fmt */
 
 #endif /* LTTNG_SESSIOND_RECORDING_CHANNEL_CONFIGURATION_HPP */

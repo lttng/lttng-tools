@@ -23,7 +23,6 @@ TESTS = \
 	test_event_rule \
 	test_fd_tracker \
 	test_rate_policy \
-	test_kernel_data \
 	test_kernel_probe \
 	test_kprobe_event_rule_event_name \
 	test_uprobe_event_rule_event_name \
@@ -66,7 +65,6 @@ noinst_PROGRAMS = \
 	test_event_rule \
 	test_fd_tracker \
 	test_rate_policy \
-	test_kernel_data \
 	test_kernel_probe \
 	test_kprobe_event_rule_event_name \
 	test_uprobe_event_rule_event_name \
@@ -141,9 +139,6 @@ if HAVE_LIBLTTNG_UST_CTL
 test_ust_data_SOURCES = test_ust_data.cpp
 test_ust_data_LDADD = $(LIBTAP) $(LIBLTTNG_SESSIOND_COMMON) $(DL_LIBS)
 endif
-
-test_kernel_data_SOURCES = test_kernel_data.cpp
-test_kernel_data_LDADD = $(LIBTAP) $(LIBLTTNG_SESSIOND_COMMON) $(DL_LIBS)
 
 # utils suffix for unit test
 

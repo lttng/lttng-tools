@@ -143,7 +143,7 @@ inline uint64_t sanitize_uprobe_offset(uint64_t raw_offset)
 #endif
 } /* namespace */
 
-uint64_t allocate_next_kernel_channel_key()
+uint64_t allocate_next_kernel_stream_group_key()
 {
 	return ++next_kernel_channel_key;
 }
@@ -494,41 +494,12 @@ end:
 }
 
 /*
- * Extract the offsets of the instrumentation point for the different lookup
- * methods.
- */
-static int userspace_probe_event_add_callsites(struct lttng_event *ev,
-					       struct ltt_kernel_session *session,
-					       int fd)
-{
-	int ret;
-	const struct lttng_userspace_probe_location *location = nullptr;
-
-	LTTNG_ASSERT(ev);
-	LTTNG_ASSERT(ev->type == LTTNG_EVENT_USERSPACE_PROBE);
-
-	location = lttng_event_get_userspace_probe_location(ev);
-	if (!location) {
-		ret = -1;
-		goto end;
-	}
-
-	ret = userspace_probe_add_callsite(location, session->uid, session->gid, fd);
-	if (ret) {
-		WARN("Failed to add callsite to userspace probe event '%s'", ev->name);
-	}
-
-end:
-	return ret;
-}
-
-/*
  * Extract the offsets of the instrumentation point for the different look-up
  * methods.
  */
-static int userspace_probe_event_rule_add_callsites(const struct lttng_event_rule *rule,
-						    const struct lttng_credentials *creds,
-						    int fd)
+int userspace_probe_event_rule_add_callsites(const struct lttng_event_rule *rule,
+					     const struct lttng_credentials *creds,
+					     int fd)
 {
 	int ret;
 	enum lttng_event_rule_status status;
@@ -554,177 +525,6 @@ static int userspace_probe_event_rule_add_callsites(const struct lttng_event_rul
 	}
 
 end:
-	return ret;
-}
-
-/*
- * Create a kernel event, enable it to the kernel tracer and add it to the
- * channel event list of the kernel session.
- * We own filter_expression and filter.
- */
-int kernel_create_event(struct lttng_event *ev,
-			struct ltt_kernel_channel *channel,
-			char *filter_expression,
-			struct lttng_bytecode *filter)
-{
-	int err, fd;
-	enum lttng_error_code ret;
-	struct ltt_kernel_event *event;
-
-	LTTNG_ASSERT(ev);
-	LTTNG_ASSERT(channel);
-
-	/* We pass ownership of filter_expression and filter */
-	ret = trace_kernel_create_event(ev, filter_expression, filter, &event);
-	if (ret != LTTNG_OK) {
-		goto error;
-	}
-
-	fd = kernctl_create_event(channel->fd, event->event);
-	if (fd < 0) {
-		switch (-fd) {
-		case EEXIST:
-			ret = LTTNG_ERR_KERN_EVENT_EXIST;
-			break;
-		case ENOSYS:
-			WARN("Event type not implemented");
-			ret = LTTNG_ERR_KERN_EVENT_ENOSYS;
-			break;
-		case ENOENT:
-			WARN("Event %s not found!", ev->name);
-			ret = LTTNG_ERR_KERN_ENABLE_FAIL;
-			break;
-		default:
-			ret = LTTNG_ERR_KERN_ENABLE_FAIL;
-			PERROR("create event ioctl");
-		}
-		goto free_event;
-	}
-
-	event->type = ev->type;
-	event->fd = fd;
-	/* Prevent fd duplication after execlp() */
-	err = fcntl(event->fd, F_SETFD, FD_CLOEXEC);
-	if (err < 0) {
-		PERROR("fcntl session fd");
-	}
-
-	if (filter) {
-		err = kernctl_filter(event->fd, filter);
-		if (err < 0) {
-			switch (-err) {
-			case ENOMEM:
-				ret = LTTNG_ERR_FILTER_NOMEM;
-				break;
-			default:
-				ret = LTTNG_ERR_FILTER_INVAL;
-				break;
-			}
-			goto filter_error;
-		}
-	}
-
-	if (ev->type == LTTNG_EVENT_USERSPACE_PROBE) {
-		ret = (lttng_error_code) userspace_probe_event_add_callsites(
-			ev, channel->session, event->fd);
-		if (ret) {
-			goto add_callsite_error;
-		}
-	}
-
-	err = kernctl_enable(event->fd);
-	if (err < 0) {
-		switch (-err) {
-		case EEXIST:
-			ret = LTTNG_ERR_KERN_EVENT_EXIST;
-			break;
-		default:
-			PERROR("enable kernel event");
-			ret = LTTNG_ERR_KERN_ENABLE_FAIL;
-			break;
-		}
-		goto enable_error;
-	}
-
-	/* Add event to event list */
-	cds_list_add(&event->list, &channel->events_list.head);
-	channel->event_count++;
-
-	DBG("Event %s created (fd: %d)", ev->name, event->fd);
-
-	return 0;
-
-add_callsite_error:
-enable_error:
-filter_error:
-{
-	int closeret;
-
-	closeret = close(event->fd);
-	if (closeret) {
-		PERROR("close event fd");
-	}
-}
-free_event:
-	free(event);
-error:
-	return ret;
-}
-
-/*
- * Enable a kernel event.
- */
-int kernel_enable_event(struct ltt_kernel_event *event)
-{
-	int ret;
-
-	LTTNG_ASSERT(event);
-
-	ret = kernctl_enable(event->fd);
-	if (ret < 0) {
-		switch (-ret) {
-		case EEXIST:
-			ret = LTTNG_ERR_KERN_EVENT_EXIST;
-			break;
-		default:
-			PERROR("enable kernel event");
-			break;
-		}
-		goto error;
-	}
-
-	event->enabled = true;
-	DBG("Kernel event %s enabled (fd: %d)", event->event->name, event->fd);
-
-	return 0;
-
-error:
-	return ret;
-}
-
-/*
- * Disable a kernel event.
- */
-int kernel_disable_event(struct ltt_kernel_event *event)
-{
-	int ret;
-
-	LTTNG_ASSERT(event);
-
-	ret = kernctl_disable(event->fd);
-	if (ret < 0) {
-		PERROR("Failed to disable kernel event: name = '%s', fd = %d",
-		       event->event->name,
-		       event->fd);
-		goto error;
-	}
-
-	event->enabled = false;
-	DBG("Kernel event %s disabled (fd: %d)", event->event->name, event->fd);
-
-	return 0;
-
-error:
 	return ret;
 }
 

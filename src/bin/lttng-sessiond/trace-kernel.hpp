@@ -35,18 +35,6 @@ struct ltt_kernel_channel_list {
 };
 
 /* Kernel event */
-struct ltt_kernel_event {
-	int fd;
-	bool enabled;
-	enum lttng_event_type type;
-	struct lttng_kernel_abi_event *event;
-	struct cds_list_head list;
-	char *filter_expression;
-	struct lttng_bytecode *filter;
-	struct lttng_userspace_probe_location *userspace_probe_location;
-};
-
-/* Kernel event */
 struct ltt_kernel_event_notifier_rule {
 	int fd;
 	uint64_t error_counter_index;
@@ -70,7 +58,6 @@ struct ltt_kernel_channel {
 	unsigned int event_count;
 	bool published_to_notification_thread;
 	struct lttng_channel *channel;
-	struct ltt_kernel_event_list events_list;
 	struct ltt_kernel_stream_list stream_list;
 	struct cds_list_head list;
 	/* Session pointer which has a reference to this object. */
@@ -129,13 +116,6 @@ struct ltt_kernel_session {
 /*
  * Lookup functions. NULL is returned if not found.
  */
-struct ltt_kernel_event *trace_kernel_get_event_by_name(char *name,
-							struct ltt_kernel_channel *channel,
-							enum lttng_event_type type);
-struct ltt_kernel_event *trace_kernel_find_event(char *name,
-						 struct ltt_kernel_channel *channel,
-						 enum lttng_event_type type,
-						 struct lttng_bytecode *filter);
 struct ltt_kernel_channel *trace_kernel_get_channel_by_name(const char *name,
 							    struct ltt_kernel_session *session);
 
@@ -144,10 +124,6 @@ struct ltt_kernel_channel *trace_kernel_get_channel_by_name(const char *name,
  */
 struct ltt_kernel_session *trace_kernel_create_session();
 struct ltt_kernel_channel *trace_kernel_create_channel(struct lttng_channel *chan);
-enum lttng_error_code trace_kernel_create_event(struct lttng_event *ev,
-						char *filter_expression,
-						struct lttng_bytecode *filter,
-						struct ltt_kernel_event **kernel_event);
 struct ltt_kernel_metadata *trace_kernel_create_metadata();
 struct ltt_kernel_stream *trace_kernel_create_stream(const char *name, unsigned int count);
 /* Trigger is only non-const to acquire a reference. */
@@ -167,7 +143,6 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 void trace_kernel_destroy_session(struct ltt_kernel_session *session);
 void trace_kernel_destroy_metadata(struct ltt_kernel_metadata *metadata);
 void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel);
-void trace_kernel_destroy_event(struct ltt_kernel_event *event);
 void trace_kernel_destroy_stream(struct ltt_kernel_stream *stream);
 void trace_kernel_destroy_event_notifier_rule(struct ltt_kernel_event_notifier_rule *rule);
 void trace_kernel_free_session(struct ltt_kernel_session *session);

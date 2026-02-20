@@ -68,82 +68,6 @@ struct ltt_kernel_channel *trace_kernel_get_channel_by_name(const char *name,
 }
 
 /*
- * Find the event for the given channel.
- */
-struct ltt_kernel_event *trace_kernel_find_event(char *name,
-						 struct ltt_kernel_channel *channel,
-						 enum lttng_event_type type,
-						 struct lttng_bytecode *filter)
-{
-	struct ltt_kernel_event *ev;
-	bool found = false;
-
-	LTTNG_ASSERT(name);
-	LTTNG_ASSERT(channel);
-
-	cds_list_for_each_entry (ev, &channel->events_list.head, list) {
-		if (type != LTTNG_EVENT_ALL && ev->type != type) {
-			continue;
-		}
-		if (strcmp(name, ev->event->name) != 0) {
-			continue;
-		}
-		if ((ev->filter && !filter) || (!ev->filter && filter)) {
-			continue;
-		}
-		if (ev->filter && filter) {
-			if (ev->filter->len != filter->len ||
-			    memcmp(ev->filter->data, filter->data, filter->len) != 0) {
-				continue;
-			}
-		}
-
-		found = true;
-		break;
-	}
-
-	if (found) {
-		DBG("Found event %s for channel %s", name, channel->channel->name);
-		return ev;
-	} else {
-		return nullptr;
-	}
-}
-
-/*
- * Find the event name for the given channel.
- */
-struct ltt_kernel_event *trace_kernel_get_event_by_name(char *name,
-							struct ltt_kernel_channel *channel,
-							enum lttng_event_type type)
-{
-	struct ltt_kernel_event *ev;
-	bool found = false;
-
-	LTTNG_ASSERT(name);
-	LTTNG_ASSERT(channel);
-
-	cds_list_for_each_entry (ev, &channel->events_list.head, list) {
-		if (type != LTTNG_EVENT_ALL && ev->type != type) {
-			continue;
-		}
-		if (strcmp(name, ev->event->name) != 0) {
-			continue;
-		}
-
-		found = true;
-		break;
-	}
-
-	if (found) {
-		DBG("Found event %s for channel %s", name, channel->channel->name);
-		return ev;
-	} else {
-		return nullptr;
-	}
-}
-
-/*
  * Allocate and initialize a kernel session data structure.
  *
  * Return pointer to structure or NULL.
@@ -222,7 +146,6 @@ struct ltt_kernel_channel *trace_kernel_create_channel(struct lttng_channel *cha
 	lkc->enabled = true;
 	lkc->published_to_notification_thread = false;
 	/* Init linked list */
-	CDS_INIT_LIST_HEAD(&lkc->events_list.head);
 	CDS_INIT_LIST_HEAD(&lkc->stream_list.head);
 
 	return lkc;
@@ -234,161 +157,6 @@ error:
 	free(extended);
 	free(lkc);
 	return nullptr;
-}
-
-/*
- * Allocate and initialize a kernel event. Set name and event type.
- * We own filter_expression, and filter.
- *
- * Return pointer to structure or NULL.
- */
-enum lttng_error_code trace_kernel_create_event(struct lttng_event *ev,
-						char *filter_expression,
-						struct lttng_bytecode *filter,
-						struct ltt_kernel_event **kernel_event)
-{
-	enum lttng_error_code ret;
-	struct lttng_kernel_abi_event *attr;
-	struct ltt_kernel_event *local_kernel_event;
-	struct lttng_userspace_probe_location *userspace_probe_location = nullptr;
-
-	LTTNG_ASSERT(ev);
-
-	local_kernel_event = zmalloc<ltt_kernel_event>();
-	attr = zmalloc<lttng_kernel_abi_event>();
-	if (local_kernel_event == nullptr || attr == nullptr) {
-		PERROR("kernel event zmalloc");
-		ret = LTTNG_ERR_NOMEM;
-		goto error;
-	}
-
-	switch (ev->type) {
-	case LTTNG_EVENT_PROBE:
-		attr->instrumentation = LTTNG_KERNEL_ABI_KPROBE;
-		attr->u.kprobe.addr = ev->attr.probe.addr;
-		attr->u.kprobe.offset = ev->attr.probe.offset;
-		strncpy(attr->u.kprobe.symbol_name,
-			ev->attr.probe.symbol_name,
-			LTTNG_KERNEL_ABI_SYM_NAME_LEN);
-		attr->u.kprobe.symbol_name[LTTNG_KERNEL_ABI_SYM_NAME_LEN - 1] = '\0';
-		break;
-	case LTTNG_EVENT_USERSPACE_PROBE:
-	{
-		const struct lttng_userspace_probe_location *location = nullptr;
-		const struct lttng_userspace_probe_location_lookup_method *lookup = nullptr;
-
-		location = lttng_event_get_userspace_probe_location(ev);
-		if (!location) {
-			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
-			goto error;
-		}
-
-		/*
-		 * From this point on, the specific term 'uprobe' is used
-		 * instead of the generic 'userspace probe' because it's the
-		 * technology used at the moment for this instrumentation.
-		 * LTTng currently implements userspace probes using uprobes.
-		 * In the interactions with the kernel tracer, we use the
-		 * uprobe term.
-		 */
-		attr->instrumentation = LTTNG_KERNEL_ABI_UPROBE;
-
-		lookup = lttng_userspace_probe_location_get_lookup_method(location);
-		if (!lookup) {
-			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
-			goto error;
-		}
-
-		/*
-		 * From the kernel tracer's perspective, all userspace probe
-		 * event types are all the same: a file and an offset.
-		 */
-		switch (lttng_userspace_probe_location_lookup_method_get_type(lookup)) {
-		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
-			/* Get the file descriptor on the target binary. */
-			attr->u.uprobe.fd =
-				lttng_userspace_probe_location_function_get_binary_fd(location);
-
-			/*
-			 * Save a reference to the probe location used during
-			 * the listing of events.
-			 */
-			userspace_probe_location = lttng_userspace_probe_location_copy(location);
-			break;
-		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
-			/* Get the file descriptor on the target binary. */
-			attr->u.uprobe.fd =
-				lttng_userspace_probe_location_tracepoint_get_binary_fd(location);
-
-			/*
-			 * Save a reference to the probe location used during the listing of
-			 * events.
-			 */
-			userspace_probe_location = lttng_userspace_probe_location_copy(location);
-			break;
-		default:
-			DBG("Unsupported lookup method type");
-			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
-			goto error;
-		}
-		break;
-	}
-	case LTTNG_EVENT_FUNCTION:
-		attr->instrumentation = LTTNG_KERNEL_ABI_KRETPROBE;
-		attr->u.kretprobe.addr = ev->attr.probe.addr;
-		attr->u.kretprobe.offset = ev->attr.probe.offset;
-		strncpy(attr->u.kretprobe.symbol_name,
-			ev->attr.probe.symbol_name,
-			LTTNG_KERNEL_ABI_SYM_NAME_LEN);
-		attr->u.kretprobe.symbol_name[LTTNG_KERNEL_ABI_SYM_NAME_LEN - 1] = '\0';
-		break;
-	case LTTNG_EVENT_FUNCTION_ENTRY:
-		attr->instrumentation = LTTNG_KERNEL_ABI_FUNCTION;
-		strncpy(attr->u.ftrace.symbol_name,
-			ev->attr.ftrace.symbol_name,
-			LTTNG_KERNEL_ABI_SYM_NAME_LEN);
-		attr->u.ftrace.symbol_name[LTTNG_KERNEL_ABI_SYM_NAME_LEN - 1] = '\0';
-		break;
-	case LTTNG_EVENT_TRACEPOINT:
-		attr->instrumentation = LTTNG_KERNEL_ABI_TRACEPOINT;
-		break;
-	case LTTNG_EVENT_SYSCALL:
-		attr->instrumentation = LTTNG_KERNEL_ABI_SYSCALL;
-		attr->u.syscall.abi = LTTNG_KERNEL_ABI_SYSCALL_ABI_ALL;
-		attr->u.syscall.entryexit = LTTNG_KERNEL_ABI_SYSCALL_ENTRYEXIT;
-		attr->u.syscall.match = LTTNG_KERNEL_ABI_SYSCALL_MATCH_NAME;
-		break;
-	case LTTNG_EVENT_ALL:
-		attr->instrumentation = LTTNG_KERNEL_ABI_ALL;
-		break;
-	default:
-		ERR("Unknown kernel instrumentation type (%d)", ev->type);
-		ret = LTTNG_ERR_INVALID;
-		goto error;
-	}
-
-	/* Copy event name */
-	strncpy(attr->name, ev->name, LTTNG_KERNEL_ABI_SYM_NAME_LEN);
-	attr->name[LTTNG_KERNEL_ABI_SYM_NAME_LEN - 1] = '\0';
-
-	/* Setting up a kernel event */
-	local_kernel_event->fd = -1;
-	local_kernel_event->event = attr;
-	local_kernel_event->enabled = true;
-	local_kernel_event->filter_expression = filter_expression;
-	local_kernel_event->filter = filter;
-	local_kernel_event->userspace_probe_location = userspace_probe_location;
-
-	*kernel_event = local_kernel_event;
-
-	return LTTNG_OK;
-
-error:
-	free(filter_expression);
-	free(filter);
-	free(local_kernel_event);
-	free(attr);
-	return ret;
 }
 
 /*
@@ -749,36 +517,6 @@ void trace_kernel_destroy_stream(struct ltt_kernel_stream *stream)
 /*
  * Cleanup kernel event structure.
  */
-void trace_kernel_destroy_event(struct ltt_kernel_event *event)
-{
-	LTTNG_ASSERT(event);
-
-	if (event->fd >= 0) {
-		int ret;
-
-		DBG("[trace] Closing event fd %d", event->fd);
-		/* Close kernel fd */
-		ret = close(event->fd);
-		if (ret) {
-			PERROR("close");
-		}
-	} else {
-		DBG("[trace] Tearing down event (no associated file descriptor)");
-	}
-
-	/* Remove from event list */
-	cds_list_del(&event->list);
-
-	free(event->filter_expression);
-	free(event->filter);
-
-	free(event->event);
-	free(event);
-}
-
-/*
- * Cleanup kernel event structure.
- */
 static void free_token_event_rule_rcu(struct rcu_head *rcu_node)
 {
 	struct ltt_kernel_event_notifier_rule *rule =
@@ -812,7 +550,6 @@ void trace_kernel_destroy_event_notifier_rule(struct ltt_kernel_event_notifier_r
 void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel)
 {
 	struct ltt_kernel_stream *stream, *stmp;
-	struct ltt_kernel_event *event, *etmp;
 	int ret;
 	enum lttng_error_code status;
 
@@ -830,11 +567,6 @@ void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel)
 	/* For each stream in the channel list */
 	cds_list_for_each_entry_safe (stream, stmp, &channel->stream_list.head, list) {
 		trace_kernel_destroy_stream(stream);
-	}
-
-	/* For each event in the channel list */
-	cds_list_for_each_entry_safe (event, etmp, &channel->events_list.head, list) {
-		trace_kernel_destroy_event(event);
 	}
 
 	/* Remove from channel list */

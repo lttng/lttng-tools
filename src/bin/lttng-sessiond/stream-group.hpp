@@ -5,8 +5,8 @@
  *
  */
 
-#ifndef LTTNG_SESSIOND_CHANNEL_STREAM_GROUP_HPP
-#define LTTNG_SESSIOND_CHANNEL_STREAM_GROUP_HPP
+#ifndef LTTNG_SESSIOND_STREAM_GROUP_HPP
+#define LTTNG_SESSIOND_STREAM_GROUP_HPP
 
 #include <common/exception.hpp>
 #include <common/make-unique.hpp>
@@ -19,17 +19,16 @@ namespace lttng {
 namespace sessiond {
 
 /*
- * A channel_stream_group represents the streams (ring buffer instances) backing
- * a single channel within a recording session (or, in the future, an
+ * A stream_group represents the streams (ring buffer instances) backing a
+ * single channel within a recording session (or, in the future, an
  * aggregation map).
  *
  * In per-CPU allocation mode, the group contains one stream per CPU. In
  * per-channel allocation mode, it contains a single stream. This distinction
  * is transparent to users of the group — they simply iterate over its streams.
  *
- * The group also tracks consumer-daemon lifecycle state: the consumer-side key
- * used to reference this channel and whether the channel has been registered
- * with the consumer daemon.
+ * The group tracks the consumer-side key used to reference this channel with
+ * the consumer daemon.
  *
  * The StreamHandleType template parameter carries the domain-specific resource
  * handle for each stream (ring buffer instance):
@@ -45,32 +44,21 @@ namespace sessiond {
  * orchestrator directly. The stream group is concerned with the consumer-facing
  * view: the streams that the consumer daemon reads from.
  *
- * Typical usage within an orchestrator:
- *
- *   // Kernel orchestrator creates a stream group after opening the channel.
- *   auto streams = lttng::make_unique<channel_stream_group<kernel_stream_fd>>(
- *       consumer_key);
- *
- *   // Add one stream per CPU (or one stream for per-channel allocation).
- *   for (auto cpu = 0u; cpu < nr_cpus; ++cpu) {
- *       auto stream_fd = kernel_open_stream(channel_fd, cpu);
- *       streams->add_stream(cpu, kernel_stream_fd(stream_fd));
- *   }
- *
- *   // Later, when starting the session, send to the consumer daemon.
- *   if (!streams->is_sent_to_consumer()) {
- *       consumer_send_channel(consumer, *streams);
- *       streams->mark_sent_to_consumer();
- *   }
+ * Domain-specific stream groups inherit from this base and may extend the
+ * nested stream type with additional housekeeping fields.
  */
 template <typename StreamHandleType>
-class channel_stream_group final {
+class stream_group {
 public:
 	/*
 	 * A single stream (ring buffer instance) within the group.
 	 *
 	 * Each stream is identified by a CPU index. In per-channel allocation
 	 * mode, the single stream uses cpu index 0.
+	 *
+	 * Derived stream_group classes may extend this type to carry
+	 * domain-specific per-stream state and insert instances through
+	 * the protected _add_stream() method.
 	 */
 	struct stream {
 		stream(unsigned int cpu_index, StreamHandleType handle_) :
@@ -78,35 +66,41 @@ public:
 		{
 		}
 
+		virtual ~stream() = default;
+
+		stream(stream&&) = default;
+		stream& operator=(stream&&) = default;
+		stream(const stream&) = delete;
+		stream& operator=(const stream&) = delete;
+
 		const unsigned int cpu;
 		StreamHandleType handle;
 	};
 
-	using uptr = std::unique_ptr<channel_stream_group>;
+	using uptr = std::unique_ptr<stream_group>;
 
-	explicit channel_stream_group(uint64_t consumer_key) :
-		_consumer_stream_group_key(consumer_key)
+	explicit stream_group(uint64_t consumer_key) : _consumer_stream_group_key(consumer_key)
 	{
 	}
 
-	~channel_stream_group() = default;
-	channel_stream_group(const channel_stream_group&) = delete;
-	channel_stream_group(channel_stream_group&&) = delete;
-	channel_stream_group& operator=(const channel_stream_group&) = delete;
-	channel_stream_group& operator=(channel_stream_group&&) = delete;
+	virtual ~stream_group() = default;
+	stream_group(const stream_group&) = delete;
+	stream_group(stream_group&&) = delete;
+	stream_group& operator=(const stream_group&) = delete;
+	stream_group& operator=(stream_group&&) = delete;
 
 	/* Stream management. */
 	void add_stream(unsigned int cpu, StreamHandleType handle)
 	{
-		_streams.emplace_back(cpu, std::move(handle));
+		_streams.emplace_back(lttng::make_unique<stream>(cpu, std::move(handle)));
 	}
 
-	const std::vector<stream>& streams() const noexcept
+	const std::vector<std::unique_ptr<stream>>& streams() const noexcept
 	{
 		return _streams;
 	}
 
-	std::vector<stream>& streams() noexcept
+	std::vector<std::unique_ptr<stream>>& streams() noexcept
 	{
 		return _streams;
 	}
@@ -122,12 +116,24 @@ public:
 		return _consumer_stream_group_key;
 	}
 
+protected:
+	/*
+	 * Insert a domain-specific stream sub-type. Derived stream_group
+	 * classes use this to add extended stream objects that carry
+	 * additional per-stream housekeeping fields.
+	 */
+	void _add_stream(std::unique_ptr<stream> s)
+	{
+		_streams.emplace_back(std::move(s));
+	}
+
+	std::vector<std::unique_ptr<stream>> _streams;
+
 private:
 	const uint64_t _consumer_stream_group_key;
-	std::vector<stream> _streams;
 };
 
 } /* namespace sessiond */
 } /* namespace lttng */
 
-#endif /* LTTNG_SESSIOND_CHANNEL_STREAM_GROUP_HPP */
+#endif /* LTTNG_SESSIOND_STREAM_GROUP_HPP */

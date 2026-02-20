@@ -78,7 +78,7 @@ liblttng_sessiond_common_la_SOURCES = utils.cpp utils.hpp \
                        agent-domain.hpp agent-domain.cpp \
                        process-attribute-tracker.hpp \
                        domain-orchestrator.hpp \
-                       channel-stream-group.hpp \
+                       stream-group.hpp \
                        modules-domain-orchestrator.hpp modules-domain-orchestrator.cpp \
                        commands/get-channel-memory-usage.cpp commands/get-channel-memory-usage.hpp \
                        commands/reclaim-channel-memory.cpp commands/reclaim-channel-memory.hpp \

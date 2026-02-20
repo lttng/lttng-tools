@@ -2871,6 +2871,25 @@ void *thread_manage_clients(void *data)
 		} catch (const std::bad_alloc& ex) {
 			log_nested_exceptions(ex);
 			ret = LTTNG_ERR_NOMEM;
+		} catch (const lttng::sessiond::modules::exceptions::kernel_event_already_exists&
+				 ex) {
+			log_nested_exceptions(ex);
+			ret = LTTNG_ERR_KERN_EVENT_EXIST;
+		} catch (const lttng::sessiond::modules::exceptions::kernel_event_type_unsupported&
+				 ex) {
+			log_nested_exceptions(ex);
+			ret = LTTNG_ERR_KERN_EVENT_ENOSYS;
+		} catch (const lttng::sessiond::modules::exceptions::kernel_event_enable_failure&
+				 ex) {
+			log_nested_exceptions(ex);
+			ret = LTTNG_ERR_KERN_ENABLE_FAIL;
+		} catch (const lttng::sessiond::modules::exceptions::kernel_filter_out_of_memory&
+				 ex) {
+			log_nested_exceptions(ex);
+			ret = LTTNG_ERR_FILTER_NOMEM;
+		} catch (const lttng::sessiond::modules::exceptions::kernel_filter_invalid& ex) {
+			log_nested_exceptions(ex);
+			ret = LTTNG_ERR_FILTER_INVAL;
 		} catch (const lttng::ctl::error& ex) {
 			log_nested_exceptions(ex);
 			ret = ex.code();

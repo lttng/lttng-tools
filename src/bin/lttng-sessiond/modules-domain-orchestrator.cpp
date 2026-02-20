@@ -7,10 +7,8 @@
 
 #include "cmd.hpp"
 #include "consumer.hpp"
-#include "event.hpp"
 #include "kernel-consumer.hpp"
 #include "kernel.hpp"
-#include "lttng-sessiond.hpp"
 #include "modules-domain-orchestrator.hpp"
 #include "process-attribute-tracker.hpp"
 #include "trace-kernel.hpp"
@@ -27,9 +25,17 @@
 
 #include <lttng/channel-internal.hpp>
 #include <lttng/channel.h>
-#include <lttng/event-internal.hpp>
 #include <lttng/event-rule/event-rule-internal.hpp>
+#include <lttng/event-rule/kernel-kprobe-internal.hpp>
+#include <lttng/event-rule/kernel-kprobe.h>
+#include <lttng/event-rule/kernel-syscall-internal.hpp>
+#include <lttng/event-rule/kernel-syscall.h>
+#include <lttng/event-rule/kernel-tracepoint-internal.hpp>
+#include <lttng/event-rule/kernel-tracepoint.h>
+#include <lttng/event-rule/kernel-uprobe-internal.hpp>
+#include <lttng/event-rule/kernel-uprobe.h>
 #include <lttng/lttng-error.h>
+#include <lttng/userspace-probe-internal.hpp>
 
 #include <fcntl.h>
 #include <inttypes.h>
@@ -40,16 +46,17 @@ namespace lsc = lttng::sessiond::config;
 /*
  * Domain orchestrator for the lttng-modules kernel tracer.
  *
- * Channel creation is performed directly by the orchestrator: it builds the
- * kernel ABI struct from the configuration, issues the ioctl, and creates a
- * legacy ltt_kernel_channel struct for downstream code that still reads from
- * the legacy hierarchy (channel listing, consumer communication, kernel thread
- * stream opening, notification thread).
+ * Channel and event operations are performed directly by the orchestrator:
+ * it builds the kernel ABI structs from the configuration objects, issues
+ * the ioctls, and manages event file descriptors through modern
+ * modules::event_rule objects.
  *
- * Other operations (enable/disable channel, events, context, start/stop, etc.)
- * still delegate to the existing kernel_*, channel_kernel_*, event_kernel_*,
- * and context_kernel_* functions during the transition. These will be
- * internalized progressively.
+ * Channel creation still maintains a legacy ltt_kernel_channel struct for
+ * downstream code that has not been migrated yet (consumer communication,
+ * kernel thread stream opening, notification thread).
+ *
+ * Session-level operations (start/stop, rotate, clear, snapshot) still
+ * delegate to the existing kernel_* functions during the transition.
  */
 
 namespace {
@@ -123,12 +130,187 @@ make_lttng_channel_from_config(const lsc::recording_channel_configuration& chann
 
 	return attr;
 }
+
+/*
+ * Build a lttng_kernel_abi_event struct directly from an event rule.
+ *
+ * This follows the same mapping as trace_kernel_init_event_notifier_from_event_rule()
+ * but targets recording events (which use lttng_kernel_abi_event) rather than
+ * event notifiers (which use lttng_kernel_abi_event_notifier).
+ */
+lttng_kernel_abi_event make_kernel_abi_event_from_event_rule(const struct lttng_event_rule *rule)
+{
+	lttng_kernel_abi_event abi_event = {};
+	const char *name;
+
+	switch (lttng_event_rule_get_type(rule)) {
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE:
+	{
+		uint64_t address = 0, offset = 0;
+		const char *symbol_name = nullptr;
+		const struct lttng_kernel_probe_location *location = nullptr;
+
+		const auto status = lttng_event_rule_kernel_kprobe_get_location(rule, &location);
+		if (status != LTTNG_EVENT_RULE_STATUS_OK) {
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR("Failed to get kprobe location");
+		}
+
+		switch (lttng_kernel_probe_location_get_type(location)) {
+		case LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS:
+		{
+			const auto k_status =
+				lttng_kernel_probe_location_address_get_address(location, &address);
+			LTTNG_ASSERT(k_status == LTTNG_KERNEL_PROBE_LOCATION_STATUS_OK);
+			break;
+		}
+		case LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET:
+		{
+			const auto k_status =
+				lttng_kernel_probe_location_symbol_get_offset(location, &offset);
+			LTTNG_ASSERT(k_status == LTTNG_KERNEL_PROBE_LOCATION_STATUS_OK);
+			symbol_name = lttng_kernel_probe_location_symbol_get_name(location);
+			break;
+		}
+		default:
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR("Unknown kernel probe location type");
+		}
+
+		const auto *kprobe =
+			lttng::utils::container_of(rule, &lttng_event_rule_kernel_kprobe::parent);
+		switch (kprobe->instrumentation_site) {
+		case LTTNG_EVENT_RULE_KERNEL_KPROBE_INSTRUMENTATION_SITE_ENTRY_EXIT:
+			abi_event.instrumentation = LTTNG_KERNEL_ABI_KRETPROBE;
+
+			abi_event.u.kretprobe.addr = address;
+			abi_event.u.kretprobe.offset = offset;
+			if (symbol_name) {
+				if (lttng_strncpy(abi_event.u.kretprobe.symbol_name,
+						  symbol_name,
+						  sizeof(abi_event.u.kretprobe.symbol_name))) {
+					LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+						"kretprobe symbol name exceeds maximal length");
+				}
+			}
+
+			break;
+		case LTTNG_EVENT_RULE_KERNEL_KPROBE_INSTRUMENTATION_SITE_LOCATION:
+			abi_event.instrumentation = LTTNG_KERNEL_ABI_KPROBE;
+
+			abi_event.u.kprobe.addr = address;
+			abi_event.u.kprobe.offset = offset;
+			if (symbol_name) {
+				if (lttng_strncpy(abi_event.u.kprobe.symbol_name,
+						  symbol_name,
+						  sizeof(abi_event.u.kprobe.symbol_name))) {
+					LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+						"kprobe symbol name exceeds maximal length");
+				}
+			}
+
+			break;
+		default:
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+				"Unknown kprobe instrumentation site type");
+		}
+
+		const auto event_name_status =
+			lttng_event_rule_kernel_kprobe_get_event_name(rule, &name);
+		LTTNG_ASSERT(event_name_status == LTTNG_EVENT_RULE_STATUS_OK);
+		break;
+	}
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE:
+	{
+		const struct lttng_userspace_probe_location *location = nullptr;
+		const struct lttng_userspace_probe_location_lookup_method *lookup = nullptr;
+
+		const auto status = lttng_event_rule_kernel_uprobe_get_location(rule, &location);
+		if (status != LTTNG_EVENT_RULE_STATUS_OK) {
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR("Failed to get uprobe location");
+		}
+
+		abi_event.instrumentation = LTTNG_KERNEL_ABI_UPROBE;
+
+		lookup = lttng_userspace_probe_location_get_lookup_method(location);
+		if (!lookup) {
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR("Missing uprobe lookup method");
+		}
+
+		switch (lttng_userspace_probe_location_lookup_method_get_type(lookup)) {
+		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
+			abi_event.u.uprobe.fd =
+				lttng_userspace_probe_location_function_get_binary_fd(location);
+			break;
+		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
+			abi_event.u.uprobe.fd =
+				lttng_userspace_probe_location_tracepoint_get_binary_fd(location);
+			break;
+		default:
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR("Unsupported uprobe lookup method");
+		}
+
+		const auto event_name_status =
+			lttng_event_rule_kernel_uprobe_get_event_name(rule, &name);
+		LTTNG_ASSERT(event_name_status == LTTNG_EVENT_RULE_STATUS_OK);
+		break;
+	}
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT:
+	{
+		const auto status =
+			lttng_event_rule_kernel_tracepoint_get_name_pattern(rule, &name);
+		LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
+		abi_event.instrumentation = LTTNG_KERNEL_ABI_TRACEPOINT;
+		break;
+	}
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
+	{
+		const auto status = lttng_event_rule_kernel_syscall_get_name_pattern(rule, &name);
+		LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
+
+		const auto emission_site = lttng_event_rule_kernel_syscall_get_emission_site(rule);
+		LTTNG_ASSERT(emission_site !=
+			     LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_UNKNOWN);
+
+		enum lttng_kernel_abi_syscall_entryexit entryexit;
+		switch (emission_site) {
+		case LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_ENTRY:
+			entryexit = LTTNG_KERNEL_ABI_SYSCALL_ENTRY;
+			break;
+		case LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_EXIT:
+			entryexit = LTTNG_KERNEL_ABI_SYSCALL_EXIT;
+			break;
+		case LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_ENTRY_EXIT:
+			entryexit = LTTNG_KERNEL_ABI_SYSCALL_ENTRYEXIT;
+			break;
+		default:
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR("Unknown syscall emission site");
+		}
+
+		abi_event.instrumentation = LTTNG_KERNEL_ABI_SYSCALL;
+		abi_event.u.syscall.abi = LTTNG_KERNEL_ABI_SYSCALL_ABI_ALL;
+		abi_event.u.syscall.entryexit = entryexit;
+		abi_event.u.syscall.match = LTTNG_KERNEL_ABI_SYSCALL_MATCH_NAME;
+		break;
+	}
+	default:
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+			fmt::format("Unsupported event rule type for kernel tracer: type={}",
+				    static_cast<int>(lttng_event_rule_get_type(rule))));
+	}
+
+	if (lttng_strncpy(abi_event.name, name, sizeof(abi_event.name))) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR("Event rule name too long");
+	}
+
+	return abi_event;
+}
 } /* namespace */
 
 void ls::modules::domain_orchestrator::create_channel(
 	const lsc::recording_channel_configuration& channel_config)
 {
 	LTTNG_ASSERT(_legacy_kernel_session);
+
+	DBG_FMT("Creating kernel channel from configuration: config={}", channel_config);
 
 	auto kernel_abi_channel = make_kernel_abi_channel(channel_config);
 
@@ -137,17 +319,19 @@ void ls::modules::domain_orchestrator::create_channel(
 		LTTNG_ASSERT(kernel_abi_channel.output == LTTNG_EVENT_MMAP);
 	}
 
-	/* Create the channel in the kernel tracer via ioctl. */
-	const auto raw_channel_fd =
-		kernctl_create_channel(_tracer_session_fd.fd(), kernel_abi_channel);
-	if (raw_channel_fd < 0) {
-		LTTNG_THROW_POSIX("Failed to create kernel channel", -raw_channel_fd);
-	}
+	/* Create the stream group in the kernel tracer via ioctl. */
+	auto modules_stream_group_fd = [&]() {
+		const auto raw_channel_fd =
+			kernctl_create_channel(_tracer_session_fd.fd(), kernel_abi_channel);
+		if (raw_channel_fd < 0) {
+			LTTNG_THROW_POSIX("Failed to create kernel channel", -raw_channel_fd);
+		}
 
-	lttng::file_descriptor channel_fd(raw_channel_fd);
+		return lttng::file_descriptor(raw_channel_fd);
+	}();
 
 	/* Prevent the fd from leaking across exec. */
-	if (fcntl(channel_fd.fd(), F_SETFD, FD_CLOEXEC) < 0) {
+	if (fcntl(modules_stream_group_fd.fd(), F_SETFD, FD_CLOEXEC) < 0) {
 		LTTNG_THROW_POSIX("Failed to set FD_CLOEXEC on kernel channel fd", errno);
 	}
 
@@ -162,32 +346,47 @@ void ls::modules::domain_orchestrator::create_channel(
 	 */
 	auto legacy_channel_attr = make_lttng_channel_from_config(channel_config);
 
-	auto *lkc = trace_kernel_create_channel(legacy_channel_attr.get());
+	auto lkc = lttng::make_unique_wrapper<ltt_kernel_channel, trace_kernel_destroy_channel>(
+		trace_kernel_create_channel(legacy_channel_attr.get()));
 	if (!lkc) {
 		LTTNG_THROW_ALLOCATION_FAILURE_ERROR(
 			"Failed to allocate legacy ltt_kernel_channel");
 	}
 
-	/* Transfer fd ownership to the legacy struct. */
-	lkc->fd = channel_fd.release();
-	lkc->key = allocate_next_kernel_channel_key();
+	const auto stream_group_key = allocate_next_kernel_stream_group_key();
+
+	/*
+	 * Duplicate the channel fd for the legacy struct. The modern
+	 * channel object owns the original fd; the legacy struct gets
+	 * a duplicate that it will close independently on teardown.
+	 */
+	const auto legacy_fd = dup(modules_stream_group_fd.fd());
+	if (legacy_fd < 0) {
+		LTTNG_THROW_POSIX("Failed to duplicate kernel channel fd for legacy struct", errno);
+	}
+
+	lkc->fd = legacy_fd;
+	lkc->key = stream_group_key;
 	lkc->session = _legacy_kernel_session;
 	cds_list_add(&lkc->list, &_legacy_kernel_session->channel_list.head);
+	/* ownership transferred to legacy struct. NOLINTNEXTLINE(bugprone-unused-return-value) */
+	lkc.release();
 	_legacy_kernel_session->channel_count++;
 
 	if (channel_config.name != DEFAULT_CHANNEL_NAME) {
 		_legacy_kernel_session->has_non_default_channel = 1;
 	}
 
+	/* Register the modern channel object, keyed by config identity. */
+	_channels.emplace(
+		&channel_config,
+		lttng::make_unique<modules::stream_group>(
+			std::move(modules_stream_group_fd), stream_group_key, channel_config));
+
 	/* Notify the kernel thread that a new channel exists. */
 	if (notify_thread_pipe(_kernel_pipe) < 0) {
 		LTTNG_THROW_ERROR("Failed to notify kernel thread of new channel");
 	}
-
-	DBG("Kernel channel %s created (fd: %d, key: %" PRIu64 ")",
-	    channel_config.name.c_str(),
-	    lkc->fd,
-	    lkc->key);
 
 	kernel_wait_quiescent();
 }
@@ -195,21 +394,17 @@ void ls::modules::domain_orchestrator::create_channel(
 void ls::modules::domain_orchestrator::enable_channel(
 	const lsc::recording_channel_configuration& channel_config)
 {
-	LTTNG_ASSERT(_legacy_kernel_session);
+	auto& runtime_channel = _get_channel(channel_config);
 
-	auto& kchan = find_legacy_channel(*_legacy_kernel_session, channel_config);
-	LTTNG_ASSERT(!kchan.enabled);
-
-	const auto ret = kernctl_enable(kchan.fd);
+	DBG_FMT("Enabling kernel channel: name=`{}`", channel_config.name);
+	const auto ret = kernctl_enable(runtime_channel.tracer_handle().fd());
 	if (ret < 0) {
 		LTTNG_THROW_POSIX("Failed to enable kernel channel", -ret);
 	}
 
+	/* Keep the legacy struct in sync for downstream code. */
+	auto& kchan = find_legacy_channel(*_legacy_kernel_session, channel_config);
 	kchan.enabled = true;
-	DBG("Kernel channel %s enabled (fd: %d, key: %" PRIu64 ")",
-	    channel_config.name.c_str(),
-	    kchan.fd,
-	    kchan.key);
 
 	kernel_wait_quiescent();
 }
@@ -217,64 +412,22 @@ void ls::modules::domain_orchestrator::enable_channel(
 void ls::modules::domain_orchestrator::disable_channel(
 	const lsc::recording_channel_configuration& channel_config)
 {
-	LTTNG_ASSERT(_legacy_kernel_session);
+	auto& runtime_channel = _get_channel(channel_config);
 
-	auto& kchan = find_legacy_channel(*_legacy_kernel_session, channel_config);
-	LTTNG_ASSERT(kchan.enabled);
-
-	const auto ret = kernctl_disable(kchan.fd);
+	DBG_FMT("Disabling kernel channel: name=`{}`", channel_config.name);
+	const auto ret = kernctl_disable(runtime_channel.tracer_handle().fd());
 	if (ret < 0 && ret != -EEXIST) {
 		LTTNG_THROW_POSIX("Failed to disable kernel channel", -ret);
 	}
 
+	/* Keep the legacy struct in sync for downstream code. */
+	auto& kchan = find_legacy_channel(*_legacy_kernel_session, channel_config);
 	kchan.enabled = false;
-	DBG("Kernel channel %s disabled (fd: %d, key: %" PRIu64 ")",
-	    channel_config.name.c_str(),
-	    kchan.fd,
-	    kchan.key);
 
 	kernel_wait_quiescent();
 }
 
 namespace {
-/*
- * Duplicate filter expression and bytecode from an event rule.
- *
- * event_kernel_enable_event() takes ownership of both, so we must
- * duplicate them from the rule which retains its own copies.
- */
-struct duplicated_filter {
-	char *expression;
-	struct lttng_bytecode *bytecode;
-};
-
-duplicated_filter duplicate_filter_from_rule(const struct lttng_event_rule *rule)
-{
-	duplicated_filter result = { nullptr, nullptr };
-
-	const auto *filter_expression = lttng_event_rule_get_filter_expression(rule);
-	if (filter_expression) {
-		result.expression = strdup(filter_expression);
-		if (!result.expression) {
-			LTTNG_THROW_POSIX("Failed to duplicate filter expression", errno);
-		}
-	}
-
-	const auto *bytecode = lttng_event_rule_get_filter_bytecode(rule);
-	if (bytecode) {
-		const auto bytecode_size = sizeof(*bytecode) + bytecode->len;
-
-		result.bytecode = zmalloc<lttng_bytecode>(bytecode_size);
-		if (!result.bytecode) {
-			free(result.expression);
-			LTTNG_THROW_POSIX("Failed to duplicate filter bytecode", errno);
-		}
-
-		memcpy(result.bytecode, bytecode, bytecode_size);
-	}
-
-	return result;
-}
 
 /*
  * Convert a context_configuration to the lttng_kernel_abi_context struct
@@ -444,61 +597,113 @@ lttng_kernel_abi_tracker_type to_modules_tracker_type(lsc::process_attribute_typ
 	}
 }
 
-void enable_single_kernel_event(struct ltt_kernel_channel& kchan,
-				struct lttng_event *event,
-				char *filter_expression,
-				struct lttng_bytecode *bytecode)
-{
-	const auto ret = event_kernel_enable_event(&kchan, event, filter_expression, bytecode);
-	if (ret != LTTNG_OK) {
-		LTTNG_THROW_CTL("Failed to enable kernel event",
-				static_cast<lttng_error_code>(ret));
-	}
-}
 } /* namespace */
 
 void ls::modules::domain_orchestrator::enable_event(
 	const lsc::recording_channel_configuration& channel_config,
 	const lsc::event_rule_configuration& event_rule_config)
 {
-	LTTNG_ASSERT(_legacy_kernel_session);
+	auto& runtime_channel = _get_channel(channel_config);
 
-	auto& kchan = find_legacy_channel(*_legacy_kernel_session, channel_config);
+	/* Check if this event rule already has a runtime handle (re-enable case). */
+	auto *existing_event = runtime_channel.find_event_rule(event_rule_config);
+	if (existing_event) {
+		const auto ret = kernctl_enable(existing_event->tracer_handle().fd());
+		if (ret < 0) {
+			LTTNG_THROW_POSIX("Failed to re-enable kernel event", -ret);
+		}
 
+		kernel_wait_quiescent();
+		return;
+	}
+
+	/* New event: build the kernel ABI struct and create via ioctl. */
 	const auto *rule = event_rule_config.event_rule.get();
-	auto event = lttng::make_unique_wrapper<lttng_event, lttng_event_destroy>(
-		lttng_event_rule_generate_lttng_event(rule));
-	if (!event) {
-		LTTNG_THROW_ERROR("Failed to generate lttng_event from event rule");
+	auto abi_event = make_kernel_abi_event_from_event_rule(rule);
+
+	const auto raw_event_fd =
+		kernctl_create_event(runtime_channel.tracer_handle().fd(), abi_event);
+	if (raw_event_fd < 0) {
+		switch (-raw_event_fd) {
+		case EEXIST:
+			LTTNG_THROW_KERNEL_EVENT_ALREADY_EXISTS();
+		case ENOSYS:
+			LTTNG_THROW_KERNEL_EVENT_TYPE_UNSUPPORTED();
+		case ENOENT:
+			LTTNG_THROW_KERNEL_EVENT_ENABLE_FAILURE(
+				fmt::format("Kernel event not found: `{}`", abi_event.name));
+		default:
+			LTTNG_THROW_POSIX("Failed to create kernel event", -raw_event_fd);
+		}
 	}
 
-	auto filter = duplicate_filter_from_rule(rule);
+	lttng::file_descriptor event_fd(raw_event_fd);
 
-	enable_single_kernel_event(kchan, event.get(), filter.expression, filter.bytecode);
-
-	auto *kevent = trace_kernel_get_event_by_name(event->name, &kchan, event->type);
-	if (kevent) {
-		_event_rule_to_legacy_events.emplace(&event_rule_config, kevent);
+	if (fcntl(event_fd.fd(), F_SETFD, FD_CLOEXEC) < 0) {
+		LTTNG_THROW_POSIX("Failed to set FD_CLOEXEC on kernel event fd", errno);
 	}
+
+	/* Apply filter bytecode if present. */
+	const auto *filter_bytecode = lttng_event_rule_get_filter_bytecode(rule);
+	if (filter_bytecode) {
+		const auto filter_ret = kernctl_filter(event_fd.fd(), filter_bytecode);
+		if (filter_ret < 0) {
+			switch (-filter_ret) {
+			case ENOMEM:
+				LTTNG_THROW_KERNEL_FILTER_OUT_OF_MEMORY();
+			default:
+				LTTNG_THROW_KERNEL_FILTER_INVALID();
+			}
+		}
+	}
+
+	/* Add callsites for userspace probe events. */
+	if (lttng_event_rule_get_type(rule) == LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE) {
+		LTTNG_ASSERT(_legacy_kernel_session);
+		lttng_credentials creds = {};
+		LTTNG_OPTIONAL_SET(&creds.uid, _legacy_kernel_session->uid);
+		LTTNG_OPTIONAL_SET(&creds.gid, _legacy_kernel_session->gid);
+
+		const auto callsite_ret =
+			userspace_probe_event_rule_add_callsites(rule, &creds, event_fd.fd());
+		if (callsite_ret) {
+			LTTNG_THROW_KERNEL_EVENT_ENABLE_FAILURE(
+				"Failed to add callsites to userspace probe event");
+		}
+	}
+
+	/* Enable the event in the kernel tracer. */
+	{
+		const auto enable_ret = kernctl_enable(event_fd.fd());
+		if (enable_ret < 0) {
+			LTTNG_THROW_POSIX("Failed to enable kernel event", -enable_ret);
+		}
+	}
+
+	DBG("Kernel event `%s` created (fd: %d) on channel `%s`",
+	    abi_event.name,
+	    event_fd.fd(),
+	    channel_config.name.c_str());
+
+	runtime_channel.add_event_rule(event_rule_config, std::move(event_fd));
 
 	kernel_wait_quiescent();
 }
 
 void ls::modules::domain_orchestrator::disable_event(
-	const lsc::recording_channel_configuration& channel_config __attribute__((unused)),
+	const lsc::recording_channel_configuration& channel_config,
 	const lsc::event_rule_configuration& event_rule_config)
 {
-	LTTNG_ASSERT(_legacy_kernel_session);
-
-	const auto it = _event_rule_to_legacy_events.find(&event_rule_config);
-	if (it == _event_rule_to_legacy_events.end()) {
-		LTTNG_THROW_CTL("Failed to disable kernel event: no legacy event found for rule",
+	auto& runtime_channel = _get_channel(channel_config);
+	auto *runtime_event = runtime_channel.find_event_rule(event_rule_config);
+	if (!runtime_event) {
+		LTTNG_THROW_CTL("Failed to disable kernel event: no runtime event found for rule",
 				LTTNG_ERR_KERN_DISABLE_FAIL);
 	}
 
-	const auto ret = kernel_disable_event(it->second);
-	if (ret < 0) {
-		LTTNG_THROW_CTL("Failed to disable kernel event", LTTNG_ERR_KERN_DISABLE_FAIL);
+	const auto ret = kernctl_disable(runtime_event->tracer_handle().fd());
+	if (ret < 0 && ret != -EEXIST) {
+		LTTNG_THROW_POSIX("Failed to disable kernel event", -ret);
 	}
 
 	kernel_wait_quiescent();
@@ -510,10 +715,10 @@ void ls::modules::domain_orchestrator::add_context(
 {
 	LTTNG_ASSERT(_legacy_kernel_session);
 
-	auto& kchan = find_legacy_channel(*_legacy_kernel_session, channel_config);
+	auto& runtime_channel = _get_channel(channel_config);
 	auto abi_ctx = make_kernel_abi_context(context_config);
 
-	const auto ret = kernctl_add_context(kchan.fd, &abi_ctx);
+	const auto ret = kernctl_add_context(runtime_channel.tracer_handle().fd(), abi_ctx);
 	if (ret < 0) {
 		if (ret == -ENOSYS) {
 			LTTNG_THROW_CTL(

@@ -37,15 +37,9 @@ make_kernel_abi_channel(const lttng::sessiond::config::channel_configuration& ch
  * The key uniquely identifies a channel to the consumer daemon and is
  * monotonically increasing. Must be called with the session list lock held.
  */
-uint64_t allocate_next_kernel_channel_key();
+uint64_t allocate_next_kernel_stream_group_key();
 
 int kernel_create_session(const ltt_session::locked_ref& session);
-int kernel_create_event(struct lttng_event *ev,
-			struct ltt_kernel_channel *channel,
-			char *filter_expression,
-			struct lttng_bytecode *filter);
-int kernel_disable_event(struct ltt_kernel_event *event);
-int kernel_enable_event(struct ltt_kernel_event *event);
 int kernel_open_metadata(
 	struct ltt_kernel_session *session,
 	const lttng::sessiond::config::metadata_channel_configuration& metadata_config);
@@ -71,6 +65,18 @@ int kernel_syscall_mask(int chan_fd, char **syscall_mask, uint32_t *nr_bits);
 enum lttng_error_code kernel_rotate_session(struct ltt_kernel_session *ksess);
 enum lttng_error_code kernel_clear_session(struct ltt_kernel_session *ksess);
 enum lttng_error_code kernel_open_packets(struct ltt_kernel_session *ksess);
+
+/*
+ * Add callsites for a userspace probe event rule.
+ *
+ * Extracts the probe location from the event rule, resolves symbol offsets,
+ * and registers them with the kernel tracer via the event file descriptor.
+ *
+ * Returns 0 on success, or an LTTNG_ERR_* code on failure.
+ */
+int userspace_probe_event_rule_add_callsites(const struct lttng_event_rule *rule,
+					     const struct lttng_credentials *creds,
+					     int fd);
 
 int init_kernel_workarounds();
 int kernel_supports_ring_buffer_snapshot_sample_positions();
