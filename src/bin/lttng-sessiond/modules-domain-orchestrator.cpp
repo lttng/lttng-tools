@@ -134,7 +134,7 @@ void ls::modules::domain_orchestrator::create_channel(
 
 	/* Enforce mmap output for snapshot sessions. */
 	if (_legacy_kernel_session->snapshot_mode) {
-		kernel_abi_channel.output = LTTNG_EVENT_MMAP;
+		LTTNG_ASSERT(kernel_abi_channel.output == LTTNG_EVENT_MMAP);
 	}
 
 	/* Create the channel in the kernel tracer via ioctl. */
@@ -161,9 +161,6 @@ void ls::modules::domain_orchestrator::create_channel(
 	 * migrated to the orchestrator's modern channel objects.
 	 */
 	auto legacy_channel_attr = make_lttng_channel_from_config(channel_config);
-	if (_legacy_kernel_session->snapshot_mode) {
-		legacy_channel_attr->attr.output = LTTNG_EVENT_MMAP;
-	}
 
 	auto *lkc = trace_kernel_create_channel(legacy_channel_attr.get());
 	if (!lkc) {

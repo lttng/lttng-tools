@@ -2012,15 +2012,27 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 			channel_attr.attr.tracefile_count) :
 		nonstd::nullopt;
 
+	/* Snapshot and no-output sessions require mmap. */
+	if (session->snapshot_mode || !session->output_traces) {
+		if (new_channel_attr->attr.output != LTTNG_EVENT_MMAP) {
+			WARN_FMT(
+				"Forcing MMAP buffer consumption backend for session since it is a snapshot or no-output session, session_name=`{}`, channel_name=`{}`",
+				session->name,
+				name.c_str());
+		}
+
+		new_channel_attr->attr.output = LTTNG_EVENT_MMAP;
+	}
+
 	/* Validate consumption backend (mmap or splice). */
 	if (target_domain.domain_class_ != lttng::domain_class::KERNEL_SPACE &&
-	    channel_attr.attr.output != LTTNG_EVENT_MMAP) {
+	    new_channel_attr->attr.output != LTTNG_EVENT_MMAP) {
 		LTTNG_THROW_UNSUPPORTED_ERROR(fmt::format(
 			"Buffer consumption back-end is unsupported by this domain: domain={}, backend=SPLICE",
 			target_domain.domain_class_));
 	}
 
-	const auto buffer_consumption_backend = channel_attr.attr.output == LTTNG_EVENT_MMAP ?
+	const auto buffer_consumption_backend = new_channel_attr->attr.output == LTTNG_EVENT_MMAP ?
 		lsc::recording_channel_configuration::buffer_consumption_backend_t::MMAP :
 		lsc::recording_channel_configuration::buffer_consumption_backend_t::SPLICE;
 
