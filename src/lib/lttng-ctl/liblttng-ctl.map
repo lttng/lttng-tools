@@ -1,3 +1,8 @@
+/* SPDX-FileCopyrightText: 2024 Kienan Stewart <kstewart@efficios.com>
+ *
+ * SPDX-License-Identifier: GPL-2.0-only
+ */
+
 {
   local:
     _Z*;

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 EfficiOS Inc.
+#
+# SPDX-License-Identifier: GPL-2.0-only
+#
 # clang-tidy uses the closest .clang-tidy in a parent directory
 # to override settings.
 #

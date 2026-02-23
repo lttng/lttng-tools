@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 EfficiOS Inc.
+#
+# SPDX-License-Identifier: GPL-2.0-only
+
 HeaderFilterRegex: '.*((include/.*-internal)|(src/common.*)|(src/bin.*)|(src/lib.*)|(tests.*))\.(h|hpp)$'
 Checks:          '-*,
                   bugprone-argument-comment,

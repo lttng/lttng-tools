@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 EfficiOS Inc.
+#
+# SPDX-License-Identifier: GPL-2.0-only
+
 env:
   # You can also install binary packages instead to speed-up building
   - URCU_REPO=https://git.lttng.org/userspace-rcu.git LTTNG_UST_REPO=https://git.lttng.org/lttng-ust.git BABELTRACE_REPO=https://git.efficios.com/babeltrace.git
