@@ -8,9 +8,11 @@
 #ifndef LTTNG_SESSIOND_DOMAIN_ORCHESTRATOR_HPP
 #define LTTNG_SESSIOND_DOMAIN_ORCHESTRATOR_HPP
 
+#include <common/exception.hpp>
 #include <common/format.hpp>
 
 #include <cstdint>
+#include <string>
 
 struct consumer_output;
 
@@ -103,8 +105,73 @@ public:
 	reclaim_channel_memory(const config::recording_channel_configuration& target_channel) = 0;
 };
 
+namespace exceptions {
+
+/*
+ * @class rotation_failure
+ * @brief Thrown when a consumer channel rotation request fails.
+ */
+class rotation_failure : public lttng::runtime_error {
+public:
+	explicit rotation_failure(const std::string& msg,
+				  const lttng::source_location& source_location_) :
+		lttng::runtime_error(msg, source_location_)
+	{
+	}
+};
+
+/*
+ * @class clear_relay_disallowed
+ * @brief Thrown when the relay daemon disallows a clear operation on a channel.
+ */
+class clear_relay_disallowed : public lttng::runtime_error {
+public:
+	explicit clear_relay_disallowed(const std::string& msg,
+					const lttng::source_location& source_location_) :
+		lttng::runtime_error(msg, source_location_)
+	{
+	}
+};
+
+/*
+ * @class clear_failure
+ * @brief Thrown when a consumer channel clear request fails.
+ */
+class clear_failure : public lttng::runtime_error {
+public:
+	explicit clear_failure(const std::string& msg,
+			       const lttng::source_location& source_location_) :
+		lttng::runtime_error(msg, source_location_)
+	{
+	}
+};
+
+/*
+ * @class open_packets_failure
+ * @brief Thrown when a consumer open-packets request fails on a channel.
+ */
+class open_packets_failure : public lttng::runtime_error {
+public:
+	explicit open_packets_failure(const std::string& msg,
+				      const lttng::source_location& source_location_) :
+		lttng::runtime_error(msg, source_location_)
+	{
+	}
+};
+
+} /* namespace exceptions */
+
 } /* namespace sessiond */
 } /* namespace lttng */
+
+#define LTTNG_THROW_ROTATION_FAILURE(msg) \
+	throw lttng::sessiond::exceptions::rotation_failure(msg, LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_CLEAR_RELAY_DISALLOWED(msg) \
+	throw lttng::sessiond::exceptions::clear_relay_disallowed(msg, LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_CLEAR_FAILURE(msg) \
+	throw lttng::sessiond::exceptions::clear_failure(msg, LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_OPEN_PACKETS_FAILURE(msg) \
+	throw lttng::sessiond::exceptions::open_packets_failure(msg, LTTNG_SOURCE_LOCATION())
 
 /*
  * Specialize fmt::formatter for process_attribute_type.

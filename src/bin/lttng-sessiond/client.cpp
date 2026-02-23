@@ -2890,6 +2890,18 @@ void *thread_manage_clients(void *data)
 		} catch (const lttng::sessiond::modules::exceptions::kernel_filter_invalid& ex) {
 			log_nested_exceptions(ex);
 			ret = LTTNG_ERR_FILTER_INVAL;
+		} catch (const lttng::sessiond::exceptions::rotation_failure& ex) {
+			log_nested_exceptions(ex);
+			ret = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
+		} catch (const lttng::sessiond::exceptions::clear_relay_disallowed& ex) {
+			log_nested_exceptions(ex);
+			ret = LTTNG_ERR_CLEAR_RELAY_DISALLOWED;
+		} catch (const lttng::sessiond::exceptions::clear_failure& ex) {
+			log_nested_exceptions(ex);
+			ret = LTTNG_ERR_CLEAR_FAIL_CONSUMER;
+		} catch (const lttng::sessiond::exceptions::open_packets_failure& ex) {
+			log_nested_exceptions(ex);
+			ret = LTTNG_ERR_UNK;
 		} catch (const lttng::ctl::error& ex) {
 			log_nested_exceptions(ex);
 			ret = ex.code();

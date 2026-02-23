@@ -415,6 +415,8 @@ private:
 		return *it->second;
 	}
 
+	consumer_socket& _get_consumer_socket();
+
 	lttng::file_descriptor _tracer_session_fd;
 	config::domain& _domain_configuration;
 	struct consumer_output& _consumer;

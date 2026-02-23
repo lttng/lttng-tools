@@ -55,8 +55,10 @@ namespace lsc = lttng::sessiond::config;
  * downstream code that has not been migrated yet (consumer communication,
  * kernel thread stream opening, notification thread).
  *
- * Session-level operations (start/stop, rotate, clear, snapshot) still
- * delegate to the existing kernel_* functions during the transition.
+ * Session-level operations (start/stop, snapshot) still delegate to the
+ * existing kernel_* functions during the transition. Consumer-only
+ * operations (rotate, clear, open_packets) are performed directly by
+ * iterating the orchestrator's channel map.
  */
 
 namespace {
@@ -908,39 +910,116 @@ void ls::modules::domain_orchestrator::stop()
 	}
 }
 
+consumer_socket& ls::modules::domain_orchestrator::_get_consumer_socket()
+{
+	lttng_ht_iter iter = {};
+	lttng_ht_get_first(_consumer.socks, &iter);
+	auto *node = cds_lfht_iter_get_node(&iter.iter);
+
+	LTTNG_ASSERT(node);
+
+	return *lttng::urcu::details::get_element_from_node<consumer_socket,
+							    decltype(consumer_socket::node),
+							    &consumer_socket::node>(*node);
+}
+
 void ls::modules::domain_orchestrator::rotate()
 {
 	LTTNG_ASSERT(_legacy_kernel_session);
 
-	const auto ret = kernel_rotate_session(_legacy_kernel_session);
+	DBG("Rotate kernel session started");
 
-	if (ret != LTTNG_OK) {
-		LTTNG_THROW_CTL("Failed to rotate kernel session",
-				static_cast<lttng_error_code>(ret));
+	const lttng::urcu::read_lock_guard read_lock;
+	auto& kconsumer_socket = _get_consumer_socket();
+
+	/* For each channel, ask the consumer to rotate it. */
+	for (const auto& channel_entry : _channels) {
+		const auto stream_group_key = channel_entry.second->consumer_key();
+
+		DBG_FMT("Rotate kernel channel: key={}", stream_group_key);
+		const auto ret = consumer_rotate_channel(
+			&kconsumer_socket, stream_group_key, &_consumer, false);
+		if (ret < 0) {
+			LTTNG_THROW_ROTATION_FAILURE("Failed to rotate kernel channel");
+		}
+	}
+
+	/* Rotate the metadata channel. */
+	LTTNG_ASSERT(_legacy_kernel_session->metadata);
+	const auto ret = consumer_rotate_channel(
+		&kconsumer_socket, _legacy_kernel_session->metadata->key, &_consumer, true);
+	if (ret < 0) {
+		LTTNG_THROW_ROTATION_FAILURE("Failed to rotate kernel metadata channel");
 	}
 }
 
 void ls::modules::domain_orchestrator::clear()
 {
 	LTTNG_ASSERT(_legacy_kernel_session);
+	LTTNG_ASSERT(!_legacy_kernel_session->active);
 
-	const auto ret = kernel_clear_session(_legacy_kernel_session);
+	DBG("Clear kernel session started");
 
-	if (ret != LTTNG_OK) {
-		LTTNG_THROW_CTL("Failed to clear kernel session",
-				static_cast<lttng_error_code>(ret));
+	const lttng::urcu::read_lock_guard read_lock;
+	auto& kconsumer_socket = _get_consumer_socket();
+
+	/* For each channel, ask the consumer to clear it. */
+	for (const auto& channel_entry : _channels) {
+		const auto stream_group_key = channel_entry.second->consumer_key();
+
+		DBG_FMT("Clear kernel channel: key={}", stream_group_key);
+		const auto ret = consumer_clear_channel(&kconsumer_socket, stream_group_key);
+		if (ret < 0) {
+			switch (-ret) {
+			case LTTCOMM_CONSUMERD_RELAYD_CLEAR_DISALLOWED:
+				LTTNG_THROW_CLEAR_RELAY_DISALLOWED(
+					"Failed to clear kernel channel: relay daemon disallowed clear");
+			default:
+				LTTNG_THROW_CLEAR_FAILURE("Failed to clear kernel channel");
+			}
+		}
+	}
+
+	if (!_legacy_kernel_session->metadata) {
+		/*
+		 * Nothing to do for the metadata since this is a snapshot session;
+		 * the metadata is generated on the fly.
+		 */
+		return;
+	}
+
+	/*
+	 * Clear the metadata channel.
+	 *
+	 * Metadata channel is not cleared per se but we still need to perform a rotation operation
+	 * on it behind the scene.
+	 */
+	const auto ret =
+		consumer_clear_channel(&kconsumer_socket, _legacy_kernel_session->metadata->key);
+	if (ret < 0) {
+		switch (-ret) {
+		case LTTCOMM_CONSUMERD_RELAYD_CLEAR_DISALLOWED:
+			LTTNG_THROW_CLEAR_RELAY_DISALLOWED(
+				"Failed to clear kernel metadata channel: relay daemon disallowed clear");
+		default:
+			LTTNG_THROW_CLEAR_FAILURE("Failed to clear kernel metadata channel");
+		}
 	}
 }
 
 void ls::modules::domain_orchestrator::open_packets()
 {
-	LTTNG_ASSERT(_legacy_kernel_session);
+	const lttng::urcu::read_lock_guard read_lock;
+	auto& kconsumer_socket = _get_consumer_socket();
 
-	const auto ret = kernel_open_packets(_legacy_kernel_session);
+	for (const auto& channel_entry : _channels) {
+		const auto channel_key = channel_entry.second->consumer_key();
 
-	if (ret != LTTNG_OK) {
-		LTTNG_THROW_CTL("Failed to open packets of kernel session",
-				static_cast<lttng_error_code>(ret));
+		DBG_FMT("Open packet of kernel channel: key={}", channel_key);
+		const auto open_ret = consumer_open_channel_packets(&kconsumer_socket, channel_key);
+		if (open_ret < 0) {
+			LTTNG_THROW_OPEN_PACKETS_FAILURE("Failed to open kernel channel packets");
+		}
 	}
 }
 
