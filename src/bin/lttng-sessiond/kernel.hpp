@@ -56,11 +56,7 @@ int kernel_validate_version(struct lttng_kernel_abi_tracer_version *kernel_trace
 void kernel_destroy_session(struct ltt_kernel_session *ksess);
 void kernel_free_session(struct ltt_kernel_session *ksess);
 void kernel_destroy_channel(struct ltt_kernel_channel *kchan);
-enum lttng_error_code kernel_snapshot_record(
-	struct ltt_kernel_session *ksess,
-	const lttng::sessiond::config::metadata_channel_configuration& metadata_config,
-	const struct consumer_output *output,
-	uint64_t nb_packets_per_stream);
+
 int kernel_syscall_mask(int chan_fd, char **syscall_mask, uint32_t *nr_bits);
 enum lttng_error_code kernel_rotate_session(struct ltt_kernel_session *ksess);
 enum lttng_error_code kernel_clear_session(struct ltt_kernel_session *ksess);

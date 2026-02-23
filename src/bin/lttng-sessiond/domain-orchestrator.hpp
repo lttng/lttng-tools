@@ -121,6 +121,19 @@ public:
 };
 
 /*
+ * @class snapshot_failure
+ * @brief Thrown when a consumer channel snapshot request fails.
+ */
+class snapshot_failure : public lttng::runtime_error {
+public:
+	explicit snapshot_failure(const std::string& msg,
+				  const lttng::source_location& source_location_) :
+		lttng::runtime_error(msg, source_location_)
+	{
+	}
+};
+
+/*
  * @class clear_relay_disallowed
  * @brief Thrown when the relay daemon disallows a clear operation on a channel.
  */
@@ -166,6 +179,8 @@ public:
 
 #define LTTNG_THROW_ROTATION_FAILURE(msg) \
 	throw lttng::sessiond::exceptions::rotation_failure(msg, LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_SNAPSHOT_FAILURE(msg) \
+	throw lttng::sessiond::exceptions::snapshot_failure(msg, LTTNG_SOURCE_LOCATION())
 #define LTTNG_THROW_CLEAR_RELAY_DISALLOWED(msg) \
 	throw lttng::sessiond::exceptions::clear_relay_disallowed(msg, LTTNG_SOURCE_LOCATION())
 #define LTTNG_THROW_CLEAR_FAILURE(msg) \

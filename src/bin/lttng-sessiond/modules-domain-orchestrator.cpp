@@ -355,18 +355,7 @@ void ls::modules::domain_orchestrator::create_channel(
 	}
 
 	const auto stream_group_key = allocate_next_kernel_stream_group_key();
-
-	/*
-	 * Duplicate the channel fd for the legacy struct. The modern
-	 * channel object owns the original fd; the legacy struct gets
-	 * a duplicate that it will close independently on teardown.
-	 */
-	const auto legacy_fd = dup(modules_stream_group_fd.fd());
-	if (legacy_fd < 0) {
-		LTTNG_THROW_POSIX("Failed to duplicate kernel channel fd for legacy struct", errno);
-	}
-
-	lkc->fd = legacy_fd;
+	lkc->fd = modules_stream_group_fd.fd();
 	lkc->key = stream_group_key;
 	lkc->session = _legacy_kernel_session;
 	cds_list_add(&lkc->list, &_legacy_kernel_session->channel_list.head);
@@ -931,13 +920,6 @@ unsigned int ls::modules::domain_orchestrator::_open_channel_streams(stream_grou
 				"Failed to allocate legacy ltt_kernel_stream");
 		}
 
-		lks->fd = dup(stream_fd.fd());
-		if (lks->fd < 0) {
-			LTTNG_THROW_POSIX(
-				"Failed to duplicate kernel stream file descriptor for legacy struct",
-				errno);
-		}
-
 		lks->tracefile_size =
 			channel.configuration().trace_file_size_limit_bytes.value_or(0);
 		lks->tracefile_count = channel.configuration().trace_file_count_limit.value_or(0);
@@ -1186,13 +1168,86 @@ void ls::modules::domain_orchestrator::record_snapshot(
 	const struct consumer_output& snapshot_consumer, std::uint64_t nb_packets_per_stream)
 {
 	LTTNG_ASSERT(_legacy_kernel_session);
+	LTTNG_ASSERT(_legacy_kernel_session->consumer);
 
-	const auto ret_code = kernel_snapshot_record(_legacy_kernel_session,
-						     _domain_configuration.metadata_channel(),
-						     &snapshot_consumer,
-						     nb_packets_per_stream);
-	if (ret_code != LTTNG_OK) {
-		LTTNG_THROW_CTL("Failed to record kernel snapshot", ret_code);
+	DBG("Kernel snapshot record started");
+
+	auto ret = kernel_open_metadata(_legacy_kernel_session,
+					_domain_configuration.metadata_channel());
+	if (ret < 0) {
+		LTTNG_THROW_KERNEL_METADATA_CREATION_ERROR(
+			"Failed to create kernel metadata for snapshot");
+	}
+
+	const auto destroy_metadata_on_exit = lttng::make_scope_exit([&]() noexcept {
+		trace_kernel_destroy_metadata(_legacy_kernel_session->metadata);
+		_legacy_kernel_session->metadata = nullptr;
+	});
+
+	ret = kernel_open_metadata_stream(_legacy_kernel_session);
+	if (ret < 0) {
+		LTTNG_THROW_KERNEL_STREAM_CREATION_ERROR(
+			"Failed to open kernel metadata stream for snapshot");
+	}
+
+	const auto close_metadata_stream_on_exit = lttng::make_scope_exit([&]() noexcept {
+		const auto close_ret = close(_legacy_kernel_session->metadata_stream_fd);
+		if (close_ret < 0) {
+			WARN_FMT("Failed to close snapshot kernel metadata stream fd: fd={}",
+				 _legacy_kernel_session->metadata_stream_fd);
+		}
+
+		_legacy_kernel_session->metadata_stream_fd = -1;
+	});
+
+	std::size_t consumer_path_offset;
+	auto trace_path =
+		lttng::make_unique_wrapper<char, lttng::memory::free>(setup_channel_trace_path(
+			_legacy_kernel_session->consumer, "", &consumer_path_offset));
+	if (!trace_path) {
+		LTTNG_THROW_ALLOCATION_FAILURE_ERROR("Failed to allocate trace path");
+	}
+
+	auto kconsumer_socket = _get_consumer_socket();
+	{
+		const lttng::pthread::lock_guard socket_lock(*kconsumer_socket.lock);
+		/* This stream must not be monitored by the consumer. */
+		ret = kernel_consumer_add_metadata(&kconsumer_socket, _legacy_kernel_session, 0);
+	}
+
+	if (ret < 0) {
+		LTTNG_THROW_KERNEL_METADATA_CREATION_ERROR(
+			"Failed to send kernel metadata stream to consumer for snapshot");
+	}
+
+	const auto destroy_consumer_metadata_on_exit = lttng::make_scope_exit([&]() noexcept {
+		(void) kernel_consumer_destroy_metadata(&_get_consumer_socket(),
+							_legacy_kernel_session->metadata);
+	});
+
+	/* For each channel, ask the consumer to snapshot it. */
+	for (const auto& channel_entry : _channels) {
+		const auto status =
+			consumer_snapshot_channel(&kconsumer_socket,
+						  channel_entry.second->consumer_key(),
+						  &snapshot_consumer,
+						  0,
+						  &trace_path.get()[consumer_path_offset],
+						  nb_packets_per_stream);
+		if (status != LTTNG_OK) {
+			LTTNG_THROW_SNAPSHOT_FAILURE("Failed to record kernel channel snapshot");
+		}
+	}
+
+	/* Snapshot metadata. */
+	const auto status = consumer_snapshot_channel(&kconsumer_socket,
+						      _legacy_kernel_session->metadata->key,
+						      &snapshot_consumer,
+						      1,
+						      &trace_path.get()[consumer_path_offset],
+						      0);
+	if (status != LTTNG_OK) {
+		LTTNG_THROW_SNAPSHOT_FAILURE("Failed to record kernel metadata snapshot");
 	}
 }
 

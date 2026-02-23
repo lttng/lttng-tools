@@ -550,19 +550,11 @@ void trace_kernel_destroy_event_notifier_rule(struct ltt_kernel_event_notifier_r
 void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel)
 {
 	struct ltt_kernel_stream *stream, *stmp;
-	int ret;
 	enum lttng_error_code status;
 
 	LTTNG_ASSERT(channel);
 
 	DBG("[trace] Closing channel fd %d", channel->fd);
-	/* Close kernel fd */
-	if (channel->fd >= 0) {
-		ret = close(channel->fd);
-		if (ret) {
-			PERROR("close");
-		}
-	}
 
 	/* For each stream in the channel list */
 	cds_list_for_each_entry_safe (stream, stmp, &channel->stream_list.head, list) {
