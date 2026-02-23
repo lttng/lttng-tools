@@ -98,6 +98,72 @@ public:
 	}
 };
 
+/*
+ * @class kernel_consumer_send_failure
+ * @brief Thrown when the session daemon fails to send kernel session objects (channels and stream)
+ * to the consumer daemon.
+ */
+class kernel_consumer_send_failure : public lttng::runtime_error {
+public:
+	explicit kernel_consumer_send_failure(const std::string& msg,
+					      const lttng::source_location& source_location_) :
+		lttng::runtime_error(msg, source_location_)
+	{
+	}
+};
+
+/*
+ * @class kernel_start_failure
+ * @brief Thrown when the kernel tracer fails to start tracing.
+ */
+class kernel_start_failure : public lttng::runtime_error {
+public:
+	explicit kernel_start_failure(const std::string& msg,
+				      const lttng::source_location& source_location_) :
+		lttng::runtime_error(msg, source_location_)
+	{
+	}
+};
+
+/*
+ * @class kernel_stop_failure
+ * @brief Thrown when the kernel tracer fails to stop tracing.
+ */
+class kernel_stop_failure : public lttng::runtime_error {
+public:
+	explicit kernel_stop_failure(const std::string& msg,
+				     const lttng::source_location& source_location_) :
+		lttng::runtime_error(msg, source_location_)
+	{
+	}
+};
+
+/*
+ * @class kernel_metadata_creation_error
+ * @brief Thrown when the kernel tracer fails to create a metadata stream.
+ */
+class kernel_metadata_creation_error : public lttng::runtime_error {
+public:
+	explicit kernel_metadata_creation_error(const std::string& msg,
+						const lttng::source_location& source_location_) :
+		lttng::runtime_error(msg, source_location_)
+	{
+	}
+};
+
+/*
+ * @class kernel_stream_creation_error
+ * @brief Thrown when the kernel tracer fails to create a stream.
+ */
+class kernel_stream_creation_error : public lttng::runtime_error {
+public:
+	explicit kernel_stream_creation_error(const std::string& msg,
+					      const lttng::source_location& source_location_) :
+		lttng::runtime_error(msg, source_location_)
+	{
+	}
+};
+
 } /* namespace exceptions */
 
 #define LTTNG_THROW_KERNEL_EVENT_ALREADY_EXISTS()                                \
@@ -114,6 +180,21 @@ public:
 		LTTNG_SOURCE_LOCATION())
 #define LTTNG_THROW_KERNEL_FILTER_INVALID() \
 	throw lttng::sessiond::modules::exceptions::kernel_filter_invalid(LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_KERNEL_CONSUMER_SEND_FAILURE(msg)                             \
+	throw lttng::sessiond::modules::exceptions::kernel_consumer_send_failure( \
+		msg, LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_KERNEL_START_FAILURE(msg)                                 \
+	throw lttng::sessiond::modules::exceptions::kernel_start_failure(msg, \
+									 LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_KERNEL_STOP_FAILURE(msg)                                 \
+	throw lttng::sessiond::modules::exceptions::kernel_stop_failure(msg, \
+									LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_KERNEL_METADATA_CREATION_ERROR(msg)                             \
+	throw lttng::sessiond::modules::exceptions::kernel_metadata_creation_error( \
+		msg, LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_KERNEL_STREAM_CREATION_ERROR(msg)                             \
+	throw lttng::sessiond::modules::exceptions::kernel_stream_creation_error( \
+		msg, LTTNG_SOURCE_LOCATION())
 
 /*
  * Runtime handle for a kernel event rule that has been created against the
@@ -417,6 +498,19 @@ private:
 
 	consumer_socket& _get_consumer_socket();
 
+	/*
+	 * Open the ring buffer streams for a channel via kernctl_create_stream()
+	 * and register them in the stream_group.
+	 *
+	 * Returns the number of streams created.
+	 */
+	unsigned int _open_channel_streams(stream_group& channel);
+
+	/*
+	 * Flush all ring buffer streams of a channel.
+	 */
+	void _flush_channel_streams(const stream_group& channel) const;
+
 	lttng::file_descriptor _tracer_session_fd;
 	config::domain& _domain_configuration;
 	struct consumer_output& _consumer;
@@ -424,6 +518,7 @@ private:
 			   std::unique_ptr<stream_group>>
 		_channels;
 	nonstd::optional<metadata_channel> _metadata;
+	bool _active = false;
 
 	/*
 	 * These fields will be removed once the orchestrator fully owns the

@@ -195,9 +195,5 @@ void cmd_reclaim_channel_memory(ltt_session::locked_ref& session,
 				int *sock);
 
 const struct cmd_completion_handler *cmd_pop_completion_handler();
-int start_kernel_session(
-	struct ltt_kernel_session *ksess,
-	const lttng::sessiond::config::metadata_channel_configuration& metadata_config);
-int stop_kernel_session(struct ltt_kernel_session *ksess);
 
 #endif /* CMD_H */

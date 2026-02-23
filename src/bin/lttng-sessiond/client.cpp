@@ -2890,6 +2890,24 @@ void *thread_manage_clients(void *data)
 		} catch (const lttng::sessiond::modules::exceptions::kernel_filter_invalid& ex) {
 			log_nested_exceptions(ex);
 			ret = LTTNG_ERR_FILTER_INVAL;
+		} catch (const lttng::sessiond::modules::exceptions::kernel_metadata_creation_error&
+				 ex) {
+			log_nested_exceptions(ex);
+			ret = LTTNG_ERR_KERN_META_FAIL;
+		} catch (const lttng::sessiond::modules::exceptions::kernel_stream_creation_error&
+				 ex) {
+			log_nested_exceptions(ex);
+			ret = LTTNG_ERR_KERN_STREAM_FAIL;
+		} catch (const lttng::sessiond::modules::exceptions::kernel_consumer_send_failure&
+				 ex) {
+			log_nested_exceptions(ex);
+			ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
+		} catch (const lttng::sessiond::modules::exceptions::kernel_start_failure& ex) {
+			log_nested_exceptions(ex);
+			ret = LTTNG_ERR_KERN_START_FAIL;
+		} catch (const lttng::sessiond::modules::exceptions::kernel_stop_failure& ex) {
+			log_nested_exceptions(ex);
+			ret = LTTNG_ERR_KERN_STOP_FAIL;
 		} catch (const lttng::sessiond::exceptions::rotation_failure& ex) {
 			log_nested_exceptions(ex);
 			ret = LTTNG_ERR_ROTATION_FAIL_CONSUMER;

@@ -112,9 +112,14 @@ int cmd_clear_session(const ltt_session::locked_ref& session, int *sock_fd)
 
 	session_was_active = session->active;
 	if (session_was_active) {
-		ret = stop_kernel_session(ksession);
-		if (ret != LTTNG_OK) {
-			goto end;
+		if (ksession != nullptr) {
+			try {
+				session->get_kernel_orchestrator().stop();
+			} catch (const std::exception& ex) {
+				ERR("Failed to stop kernel session during clear: %s", ex.what());
+				ret = LTTNG_ERR_KERN_STOP_FAIL;
+				goto end;
+			}
 		}
 		if (usess && usess->active) {
 			ret = ust_app_stop_trace_all(usess);
@@ -175,9 +180,11 @@ int cmd_clear_session(const ltt_session::locked_ref& session, int *sock_fd)
 		/* Kernel tracing */
 		if (ksession != nullptr) {
 			DBG("Start kernel tracing session \"%s\"", session->name);
-			ret = start_kernel_session(ksession,
-						   session->kernel_space_domain.metadata_channel());
-			if (ret != LTTNG_OK) {
+			try {
+				session->get_kernel_orchestrator().start();
+			} catch (const std::exception& ex) {
+				ERR("Failed to restart kernel session during clear: %s", ex.what());
+				ret = LTTNG_ERR_KERN_START_FAIL;
 				goto end;
 			}
 		}

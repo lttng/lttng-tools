@@ -5,7 +5,6 @@
  *
  */
 
-#include "cmd.hpp"
 #include "consumer.hpp"
 #include "kernel-consumer.hpp"
 #include "kernel.hpp"
@@ -885,29 +884,189 @@ void ls::modules::domain_orchestrator::untrack_process_attribute(
 	}
 }
 
+unsigned int ls::modules::domain_orchestrator::_open_channel_streams(stream_group& channel)
+{
+	unsigned int stream_count = 0;
+
+	while (true) {
+		const auto raw_stream_fd = kernctl_create_stream(channel.tracer_handle().fd());
+		if (raw_stream_fd < 0) {
+			/*
+			 * ENOENT means all streams have been created for this
+			 * channel (one per CPU, or one in per-channel mode).
+			 */
+			if (raw_stream_fd == -ENOENT) {
+				break;
+			}
+
+			LTTNG_THROW_POSIX("Failed to create kernel stream", -raw_stream_fd);
+		}
+
+		lttng::file_descriptor stream_fd(raw_stream_fd);
+
+		if (fcntl(stream_fd.fd(), F_SETFD, FD_CLOEXEC) < 0) {
+			LTTNG_THROW_POSIX(
+				"Failed to set FD_CLOEXEC on kernel stream file descriptor", errno);
+		}
+
+		const auto cpu = stream_count;
+		DBG_FMT("Kernel stream created: channel=`{}`, fd={}, cpu={}",
+			channel.configuration().name,
+			stream_fd.fd(),
+			cpu);
+
+		/*
+		 * Also add the stream to the legacy struct for downstream code that
+		 * still iterates ltt_kernel_channel::stream_list (manage-kernel
+		 * thread, consumer send code).
+		 */
+		auto& legacy_channel =
+			find_legacy_channel(*_legacy_kernel_session, channel.configuration());
+		auto lks =
+			lttng::make_unique_wrapper<ltt_kernel_stream, trace_kernel_destroy_stream>(
+				trace_kernel_create_stream(channel.configuration().name.c_str(),
+							   legacy_channel.stream_count));
+		if (!lks) {
+			LTTNG_THROW_ALLOCATION_FAILURE_ERROR(
+				"Failed to allocate legacy ltt_kernel_stream");
+		}
+
+		lks->fd = dup(stream_fd.fd());
+		if (lks->fd < 0) {
+			LTTNG_THROW_POSIX(
+				"Failed to duplicate kernel stream file descriptor for legacy struct",
+				errno);
+		}
+
+		lks->tracefile_size =
+			channel.configuration().trace_file_size_limit_bytes.value_or(0);
+		lks->tracefile_count = channel.configuration().trace_file_count_limit.value_or(0);
+		/* Ownership transferred to the legacy channel list. */
+		cds_list_add(&lks->list, &legacy_channel.stream_list.head);
+		/* NOLINTNEXTLINE */
+		lks.release();
+		legacy_channel.stream_count++;
+
+		channel.add_stream(cpu, std::move(stream_fd));
+		stream_count++;
+	}
+
+	return stream_count;
+}
+
+void ls::modules::domain_orchestrator::_flush_channel_streams(const stream_group& channel) const
+{
+	DBG_FMT("Flushing kernel channel streams: channel=`{}`", channel.configuration().name);
+
+	for (const auto& stream : channel.streams()) {
+		DBG_FMT("Flushing kernel stream: fd={}", stream->handle.fd());
+
+		const auto ret = kernctl_buffer_flush(stream->handle.fd());
+		if (ret < 0) {
+			WARN_FMT("Failed to flush kernel stream buffer: fd={}, ret={}",
+				 stream->handle.fd(),
+				 ret);
+		}
+	}
+}
+
 void ls::modules::domain_orchestrator::start()
 {
 	LTTNG_ASSERT(_legacy_kernel_session);
-
-	const auto ret = start_kernel_session(_legacy_kernel_session,
-					      _domain_configuration.metadata_channel());
-
-	if (ret != LTTNG_OK) {
-		LTTNG_THROW_CTL("Failed to start kernel session",
-				static_cast<lttng_error_code>(ret));
+	if (_active) {
+		return;
 	}
+
+	DBG("Starting kernel tracing");
+
+	/* Open kernel metadata if needed. */
+	if (_legacy_kernel_session->metadata == nullptr && _legacy_kernel_session->output_traces) {
+		const auto ret = kernel_open_metadata(_legacy_kernel_session,
+						      _domain_configuration.metadata_channel());
+		if (ret < 0) {
+			LTTNG_THROW_KERNEL_METADATA_CREATION_ERROR(
+				"Failed to create kernel metadata stream");
+		}
+	}
+
+	/* Open kernel metadata stream if needed. */
+	if (_legacy_kernel_session->metadata && _legacy_kernel_session->metadata_stream_fd < 0) {
+		const auto ret = kernel_open_metadata_stream(_legacy_kernel_session);
+		if (ret < 0) {
+			LTTNG_THROW_KERNEL_STREAM_CREATION_ERROR(
+				"Failed to create kernel metadata stream");
+		}
+	}
+
+	/* Open streams for each channel that hasn't had streams created yet. */
+	for (auto& channel_entry : _channels) {
+		auto& channel = *channel_entry.second;
+
+		if (channel.stream_count() == 0) {
+			const auto new_streams = _open_channel_streams(channel);
+			_legacy_kernel_session->stream_count_global += new_streams;
+		}
+	}
+
+	/* Send session data (metadata, channels, streams) to the consumer daemon. */
+	if (_legacy_kernel_session->consumer_fds_sent == 0 &&
+	    _legacy_kernel_session->consumer != nullptr) {
+		auto kconsumer_socket = _get_consumer_socket();
+		/* NOLINTNEXTLINE */
+		const lttng::pthread::lock_guard socket_lock(*kconsumer_socket.lock);
+		const auto ret =
+			kernel_consumer_send_session(&kconsumer_socket, _legacy_kernel_session);
+		if (ret < 0) {
+			LTTNG_THROW_KERNEL_CONSUMER_SEND_FAILURE(
+				"Failed to send kernel session objects to consumer");
+		}
+	}
+
+	/* Start kernel tracing. */
+	const auto start_ret = kernel_start_session(_legacy_kernel_session);
+	if (start_ret < 0) {
+		LTTNG_THROW_KERNEL_START_FAILURE("Failed to start kernel tracing");
+	}
+
+	kernel_wait_quiescent();
+
+	_legacy_kernel_session->active = true;
+	_active = true;
 }
 
 void ls::modules::domain_orchestrator::stop()
 {
 	LTTNG_ASSERT(_legacy_kernel_session);
 
-	const auto ret = stop_kernel_session(_legacy_kernel_session);
-
-	if (ret != LTTNG_OK) {
-		LTTNG_THROW_CTL("Failed to stop kernel session",
-				static_cast<lttng_error_code>(ret));
+	if (!_active) {
+		return;
 	}
+
+	DBG("Stopping kernel tracing");
+
+	const auto stop_ret = kernel_stop_session(_legacy_kernel_session);
+	if (stop_ret < 0) {
+		LTTNG_THROW_KERNEL_STOP_FAILURE("Failed to stop kernel tracing");
+	}
+
+	kernel_wait_quiescent();
+
+	/* Flush metadata buffer after stopping (if exists). */
+	if (_legacy_kernel_session->metadata_stream_fd >= 0) {
+		const auto ret =
+			kernel_metadata_flush_buffer(_legacy_kernel_session->metadata_stream_fd);
+		if (ret < 0) {
+			WARN("Kernel metadata flush failed");
+		}
+	}
+
+	/* Flush all channel buffers after stopping. */
+	for (const auto& channel_entry : _channels) {
+		_flush_channel_streams(*channel_entry.second);
+	}
+
+	_legacy_kernel_session->active = false;
+	_active = false;
 }
 
 consumer_socket& ls::modules::domain_orchestrator::_get_consumer_socket()
