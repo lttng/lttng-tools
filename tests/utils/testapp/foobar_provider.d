@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2020 EfficiOS Inc.
+#
 # SPDX-License-Identifier: GPL-2.0-only
 provider foobar {
     probe tp1();
