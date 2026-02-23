@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-or-later WITH LicenseRef-Autoconf-exception-macro
+#
 # ===========================================================================
 #    https://www.gnu.org/software/autoconf-archive/ax_check_classpath.html
 # ===========================================================================

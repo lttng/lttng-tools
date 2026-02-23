@@ -1,6 +1,8 @@
+# SPDX-License-Identifier: FSFAP
+#
 # SYNOPSIS
 #
-#   LTTNG_CHECK_SDT_WORKS([ACTION-SUCCESS], [ACTION-FAILURE])
+#   AE_CHECK_SDT_WORKS([ACTION-SUCCESS], [ACTION-FAILURE])
 #
 # DESCRIPTION
 #
@@ -19,9 +21,9 @@
 #   and this notice are preserved.  This file is offered as-is, without any
 #   warranty.
 
-#serial 1
+#serial 2
 
-AC_DEFUN([LTTNG_CHECK_SDT_WORKS], [
+AC_DEFUN([AE_CHECK_SDT_WORKS], [
   AC_CACHE_CHECK([whether SDT probes compile], [lttng_cv_sdt_works], [
     AC_COMPILE_IFELSE([
       AC_LANG_SOURCE([[

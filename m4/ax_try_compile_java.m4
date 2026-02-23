@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: FSFAP
+#
 # ===========================================================================
 #   https://www.gnu.org/software/autoconf-archive/ax_try_compile_java.html
 # ===========================================================================

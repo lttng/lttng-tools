@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: FSFAP
+#
 # ===========================================================================
 #   https://www.gnu.org/software/autoconf-archive/ax_ac_append_to_file.html
 # ===========================================================================

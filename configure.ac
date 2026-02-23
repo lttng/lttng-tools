@@ -325,8 +325,8 @@ AC_CHECK_FUNCS([ \
 ])
 
 # Check for pthread_setname_np and pthread_getname_np
-LTTNG_PTHREAD_SETNAME_NP
-LTTNG_PTHREAD_GETNAME_NP
+AE_PTHREAD_SETNAME_NP
+AE_PTHREAD_GETNAME_NP
 
 # Check if clock_gettime, timer_create, timer_settime, and timer_delete are available in lib rt, and if so,
 # add -lrt to LIBS
@@ -1008,7 +1008,7 @@ AC_ARG_ENABLE([test-sdt-uprobe],
 )
 
 AS_IF([test "$test_sdt_uprobe" != "no"], [
-  LTTNG_CHECK_SDT_WORKS
+  AE_CHECK_SDT_WORKS
   AC_PATH_PROG([DTRACE], [dtrace])
 ])
 
@@ -1421,12 +1421,12 @@ AC_OUTPUT
 # Mini-report on what will be built.
 #
 
-PPRINT_INIT
-PPRINT_SET_INDENT(1)
-PPRINT_SET_TS(38)
+AE_PPRINT_INIT
+AE_PPRINT_SET_INDENT(1)
+AE_PPRINT_SET_TS(38)
 
 AS_ECHO
-AS_ECHO("${PPRINT_COLOR_BLDBLU}LTTng-tools $PACKAGE_VERSION \"$version_name\"$PPRINT_COLOR_RST")
+AS_ECHO("${AE_PPRINT_COLOR_BLDBLU}LTTng-tools $PACKAGE_VERSION \"$version_name\"$AE_PPRINT_COLOR_RST")
 AS_ECHO
 
 # Use printf '%b' rather than echo or AS_ECHO to interpret escape sequences
@@ -1438,7 +1438,7 @@ AS_IF([test -n "$report_fold"], [
 ])
 
 AS_ECHO
-PPRINT_SUBTITLE([Features])
+AE_PPRINT_SUBTITLE([Features])
 
 # Target architecture we're building for.
 target_arch=$host_cpu
@@ -1451,132 +1451,132 @@ for f in $CFLAGS; do
         fi
 done
 ]
-PPRINT_PROP_STRING([Target architecture], $target_arch)
+AE_PPRINT_PROP_STRING([Target architecture], $target_arch)
 
 # kmod enabled/disabled
 test "x$with_kmod" != "xno" && value=1 || value=0
-PPRINT_PROP_BOOL([libkmod support], $value)
+AE_PPRINT_PROP_BOOL([libkmod support], $value)
 
 # LTTng-UST enabled/disabled
 test "x$with_lttng_ust" = "xyes" && value=1 || value=0
-PPRINT_PROP_BOOL([LTTng-UST support], $value)
+AE_PPRINT_PROP_BOOL([LTTng-UST support], $value)
 
 AS_ECHO
-PPRINT_SUBTITLE([Libraries])
+AE_PPRINT_SUBTITLE([Libraries])
 
 # liblttng-ctl enabled/disabled
 test x$build_lib_lttng_ctl != xno && value=1 || value=0
-PPRINT_PROP_BOOL([liblttng-ctl], $value)
+AE_PPRINT_PROP_BOOL([liblttng-ctl], $value)
 
 AS_ECHO
-PPRINT_SUBTITLE([Binaries])
+AE_PPRINT_SUBTITLE([Binaries])
 
 # List binaries to be built
 test x$enable_bin_lttng != xno && value=1 || value=0
-PPRINT_PROP_BOOL([lttng], $value)
+AE_PPRINT_PROP_BOOL([lttng], $value)
 
 test x$enable_bin_lttng_consumerd != xno && value=1 || value=0
-PPRINT_PROP_BOOL([lttng-consumerd], $value)
+AE_PPRINT_PROP_BOOL([lttng-consumerd], $value)
 
 test x$enable_bin_lttng_crash != xno && value=1 || value=0
-PPRINT_PROP_BOOL([lttng-crash], $value)
+AE_PPRINT_PROP_BOOL([lttng-crash], $value)
 
 test x$enable_bin_lttng_relayd != xno && value=1 || value=0
-PPRINT_PROP_BOOL([lttng-relayd], $value)
+AE_PPRINT_PROP_BOOL([lttng-relayd], $value)
 
 test x$enable_bin_lttng_sessiond != xno && value=1 || value=0
-PPRINT_PROP_BOOL([lttng-sessiond], $value)
+AE_PPRINT_PROP_BOOL([lttng-sessiond], $value)
 
 # Extras
 test x$enable_extras != xno && value=1 || value=0
 AS_ECHO
-PPRINT_SET_INDENT(0)
-PPRINT_PROP_BOOL([Extras], $value, $PPRINT_COLOR_SUBTITLE)
-PPRINT_SET_INDENT(1)
+AE_PPRINT_SET_INDENT(0)
+AE_PPRINT_PROP_BOOL([Extras], $value, $AE_PPRINT_COLOR_SUBTITLE)
+AE_PPRINT_SET_INDENT(1)
 
 AS_ECHO
-PPRINT_SUBTITLE([Tests])
+AE_PPRINT_SUBTITLE([Tests])
 
 # Print clear message that tests won't be built
 AS_IF([test "x$build_tests" = "xno"],[
-	PPRINT_WARN([Tests won't be built since some binaries were disabled])
+	AE_PPRINT_WARN([Tests won't be built since some binaries were disabled])
 ])
 
 # Tests disable overall
 test "x$enable_tests" = "xyes" && value=1 || value=0
-PPRINT_PROP_BOOL([Tests], $value)
+AE_PPRINT_PROP_BOOL([Tests], $value)
 
 # LTTng UST Java agent JUL tests enabled/disabled
 test "x$test_java_agent_jul" = "xyes" && value=1 || value=0
-PPRINT_PROP_BOOL([LTTng-UST Java agent JUL tests], $value)
+AE_PPRINT_PROP_BOOL([LTTng-UST Java agent JUL tests], $value)
 
 # LTTng UST Java agent Log4j 1.x tests enabled/disabled
 test "x$test_java_agent_log4j" = "xyes" && value=1 || value=0
-PPRINT_PROP_BOOL([LTTng-UST Java agent Log4j 1.x tests], $value)
+AE_PPRINT_PROP_BOOL([LTTng-UST Java agent Log4j 1.x tests], $value)
 
 # LTTng UST Java agent Log4j 2.x tests enabled/disabled
 test "x$test_java_agent_log4j2" = "xyes" && value=1 || value=0
-PPRINT_PROP_BOOL([LTTng-UST Java agent Log4j 2.x tests], $value)
+AE_PPRINT_PROP_BOOL([LTTng-UST Java agent Log4j 2.x tests], $value)
 
 test ! -z "$PYTHON2_AGENT" && value=1 || value=0
-PPRINT_PROP_BOOL([LTTng-UST Python2 agent tests], $value)
+AE_PPRINT_PROP_BOOL([LTTng-UST Python2 agent tests], $value)
 
 test ! -z "$PYTHON3_AGENT" && value=1 || value=0
-PPRINT_PROP_BOOL([LTTng-UST Python3 agent tests], $value)
+AE_PPRINT_PROP_BOOL([LTTng-UST Python3 agent tests], $value)
 
 # userspace-probe SDT instrumentation tests enabled/disabled
 test "x$test_sdt_uprobe" = "xyes" && value=1 || value=0
-PPRINT_PROP_BOOL([LTTng-modules SDT uprobe tests], $value)
+AE_PPRINT_PROP_BOOL([LTTng-modules SDT uprobe tests], $value)
 
 test "x$enable_code_coverage" = xyes && value=1 || value=0
-PPRINT_PROP_BOOL([Code coverage reporting], $value)
+AE_PPRINT_PROP_BOOL([Code coverage reporting], $value)
 
 #Python binding enabled/disabled
 test "x$enable_python_binding" = xyes && value=1 || value=0
 AS_ECHO
-PPRINT_SET_INDENT(0)
-PPRINT_PROP_BOOL([Python binding], $value, $PPRINT_COLOR_SUBTITLE)
+AE_PPRINT_SET_INDENT(0)
+AE_PPRINT_PROP_BOOL([Python binding], $value, $AE_PPRINT_COLOR_SUBTITLE)
 
 # man pages build enabled/disabled
 m4_pushdef([build_man_pages_msg], [Build and install man pages])
 
 AS_IF([test "x$man_pages_opt" != "xno"], [
 	AS_IF([test "x$in_git_repo" = "xyes"], [
-		PPRINT_PROP_BOOL([build_man_pages_msg], 1, $PPRINT_COLOR_SUBTITLE)
+		AE_PPRINT_PROP_BOOL([build_man_pages_msg], 1, $AE_PPRINT_COLOR_SUBTITLE)
 	], [
 		AS_IF([test "x$have_asciidoc_xmlto" = "xyes"], [
-			PPRINT_PROP_BOOL([build_man_pages_msg], 1, $PPRINT_COLOR_SUBTITLE)
+			AE_PPRINT_PROP_BOOL([build_man_pages_msg], 1, $AE_PPRINT_COLOR_SUBTITLE)
 		], [
-			PPRINT_PROP_STRING([build_man_pages_msg],
-				[${PPRINT_COLOR_BLDGRN}yes (already built)],
-				$PPRINT_COLOR_SUBTITLE)
+			AE_PPRINT_PROP_STRING([build_man_pages_msg],
+				[${AE_PPRINT_COLOR_BLDGRN}yes (already built)],
+				$AE_PPRINT_COLOR_SUBTITLE)
 		])
 	])
 ], [
-	PPRINT_PROP_BOOL([build_man_pages_msg], 0, $PPRINT_COLOR_SUBTITLE)
+	AE_PPRINT_PROP_BOOL([build_man_pages_msg], 0, $AE_PPRINT_COLOR_SUBTITLE)
 ])
 
 m4_popdef([build_man_pages_msg])
 
 test "x$embedded_help" = xyes && value=1 || value=0
-PPRINT_PROP_BOOL([Embed --help messages], $value, $PPRINT_COLOR_SUBTITLE)
+AE_PPRINT_PROP_BOOL([Embed --help messages], $value, $AE_PPRINT_COLOR_SUBTITLE)
 
 test "x$api_doc" = xyes && value=1 || value=0
-PPRINT_PROP_BOOL([liblttng-ctl HTML API documentation], $value, $PPRINT_COLOR_SUBTITLE)
+AE_PPRINT_PROP_BOOL([liblttng-ctl HTML API documentation], $value, $AE_PPRINT_COLOR_SUBTITLE)
 
-PPRINT_SET_INDENT(1)
+AE_PPRINT_SET_INDENT(1)
 
 report_bindir="`eval eval echo $bindir`"
 report_libdir="`eval eval echo $libdir`"
 
 # Print the bindir and libdir this `make install' will install into.
 AS_ECHO
-PPRINT_SUBTITLE([Install directories])
-PPRINT_PROP_STRING([Binaries], [$report_bindir])
-PPRINT_PROP_STRING([Libraries], [$report_libdir])
+AE_PPRINT_SUBTITLE([Install directories])
+AE_PPRINT_PROP_STRING([Binaries], [$report_bindir])
+AE_PPRINT_PROP_STRING([Libraries], [$report_libdir])
 
 AS_ECHO
-PPRINT_SUBTITLE([Search directories])
+AE_PPRINT_SUBTITLE([Search directories])
 
 # If we build the sessiond, print the paths it will use
 AS_IF([test "$SESSIOND_BIN" = ""],[
@@ -1584,40 +1584,40 @@ AS_IF([test "$SESSIOND_BIN" = ""],[
 ],[
 	path="$SESSIOND_BIN"
 ])
-PPRINT_PROP_STRING([lttng-sessiond executable], [$path])
+AE_PPRINT_PROP_STRING([lttng-sessiond executable], [$path])
 
 AS_IF([test "$CONSUMERD32_BIN" = ""],[
 	path="`eval eval echo $lttnglibexecdir`/lttng-consumerd"
 ],[
 	path="$CONSUMERD32_BIN"
 ])
-PPRINT_PROP_STRING([32-bit lttng-consumerd executable], [$path])
+AE_PPRINT_PROP_STRING([32-bit lttng-consumerd executable], [$path])
 
 AS_IF([test "$CONSUMERD32_LIBDIR" = ""],[
 	path="`eval eval echo $libdir`"
 ],[
 	path="$CONSUMERD32_LIBDIR"
 ])
-PPRINT_PROP_STRING([32-bit consumer libraries], [$path])
+AE_PPRINT_PROP_STRING([32-bit consumer libraries], [$path])
 
 AS_IF([test "$CONSUMERD64_BIN" = ""],[
 	path="`eval eval echo $lttnglibexecdir`/lttng-consumerd"
 ],[
 	path="$CONSUMERD64_BIN"
 ])
-PPRINT_PROP_STRING([64-bit lttng-consumerd executable], [$path])
+AE_PPRINT_PROP_STRING([64-bit lttng-consumerd executable], [$path])
 
 AS_IF([test "$CONSUMERD64_LIBDIR" = ""],[
 	path="`eval eval echo $libdir`"
 ],[
 	path="$CONSUMERD64_LIBDIR"
 ])
-PPRINT_PROP_STRING([64-bit consumer libraries], [$path])
-PPRINT_SET_INDENT(0)
+AE_PPRINT_PROP_STRING([64-bit consumer libraries], [$path])
+AE_PPRINT_SET_INDENT(0)
 
 AS_IF([test "x$warn_prebuilt_man_pages" = "xyes" ], [
 	AS_ECHO
-	PPRINT_WARN([You need asciidoc and xmlto to build the LTTng-tools man pages.
+	AE_PPRINT_WARN([You need asciidoc and xmlto to build the LTTng-tools man pages.
 
 Note that the man pages are already built in this distribution tarball,
 therefore asciidoc and xmlto are only needed if you intend to modify
