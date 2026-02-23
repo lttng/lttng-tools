@@ -5,7 +5,7 @@ LTTng Tools is provided under:
 Being under the terms of the GNU General Public License version 2 only,
 according with:
 
-	LICENSES/GPL-2.0
+	LICENSES/GPL-2.0-only.txt
 
 The library part is provided under:
 
@@ -14,7 +14,7 @@ The library part is provided under:
 Being under the terms of the GNU Lesser General Public License version 2.1
 only, according with:
 
-	LICENSES/LGPL-2.1
+	LICENSES/LGPL-2.1-only.txt
 
 This applies to:
 
