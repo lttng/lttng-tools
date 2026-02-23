@@ -1,0 +1,7 @@
+version = 1
+
+[[annotations]]
+path = "ctypeslib2/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2006-2010 Thomas Heller"
+SPDX-License-Identifier = "MIT"

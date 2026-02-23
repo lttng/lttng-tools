@@ -1,0 +1,19 @@
+version = 1
+
+[[annotations]]
+path = ["fmt/**.h", "fmt/**.cc"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2012 - present, Victor Zverovich"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = ["msgpack/**.h", "msgpack/**.c"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2008-2010 FURUHASHI Sadayuki"
+SPDX-License-Identifier = "BSL-1.0"
+
+[[annotations]]
+path = "optional.hpp"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2014-2021 Martin Moene"
+SPDX-License-Identifier = "BSL-1.0"

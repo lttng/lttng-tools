@@ -4,7 +4,11 @@
 
 SUBDIRS = msgpack fmt
 
-EXTRA_DIST = optional.hpp fmt nlohmann mint.hpp
+EXTRA_DIST = \
+	mint.hpp \
+	nlohmann/json.hpp \
+	optional.hpp \
+	REUSE.toml
 
 noinst_LTLIBRARIES =
 

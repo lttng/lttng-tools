@@ -6,6 +6,7 @@ noinst_LTLIBRARIES = libfmt.la
 
 libfmt_la_SOURCES = \
 	args.h \
+	base.h \
 	chrono.h \
 	color.h \
 	compile.h \
@@ -22,3 +23,5 @@ libfmt_la_SOURCES = \
 	xchar.h
 
 libfmt_la_CXXFLAGS = $(AM_CXXFLAGS)
+
+EXTRA_DIST = fmt.cc
