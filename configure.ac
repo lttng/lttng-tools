@@ -145,9 +145,9 @@ AC_LANG_POP([C++])
 
 
 # When given, add -Werror to WARN_CFLAGS and WARN_CXXFLAGS.
-AC_ARG_ENABLE([Werror],[
-  AS_HELP_STRING([--enable-Werror], [Treat compiler warnings as errors.])
-])
+AC_ARG_ENABLE([Werror],
+	AS_HELP_STRING([--enable-Werror], [Treat compiler warnings as errors.])
+)
 
 AS_IF([test "x$enable_Werror" = "xyes"], [
   WARN_CFLAGS="${WARN_CFLAGS} -Werror"
