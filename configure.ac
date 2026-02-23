@@ -791,9 +791,12 @@ if test "x$test_java_agent_jul" = "xyes" || test "x$test_java_agent_log4j" = "xy
 fi
 
 # API documentation using Doxygen
-AC_ARG_ENABLE([api-doc], [
-	AS_HELP_STRING([--enable-api-doc], [build HTML API documentation])
-], [api_doc=$enableval], [api_doc=no])
+AC_ARG_ENABLE(
+	[api-doc],
+	AS_HELP_STRING([--enable-api-doc], [build HTML API documentation]),
+	[api_doc=$enableval],
+	[api_doc=no]
+)
 
 AS_IF([test "x$api_doc" = xyes], [
 	DX_DOXYGEN_FEATURE(ON)
