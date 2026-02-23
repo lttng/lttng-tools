@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 EfficiOS Inc.
+#
 # SPDX-License-Identifier: GPL-2.0-only
 
 noinst_SCRIPTS = README launch_ust_app test_multi_sessions_per_uid_10app \

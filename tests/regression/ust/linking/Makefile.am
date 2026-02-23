@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 EfficiOS Inc.
+#
 # SPDX-License-Identifier: GPL-2.0-only
 
 # -Wsystem-headers is needed to print warnings in the tracepoint

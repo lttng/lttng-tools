@@ -1,5 +1,6 @@
-# SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: 2013 EfficiOS Inc.
+#
+# SPDX-License-Identifier: GPL-2.0-only
 
 include $(top_srcdir)/aminclude_static.am
 

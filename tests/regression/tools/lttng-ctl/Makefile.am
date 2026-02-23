@@ -1,5 +1,6 @@
-# SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: 2025 Kienan Stewart <kstewart@efficios.com>
+#
+# SPDX-License-Identifier: GPL-2.0-only
 
 if NO_SHARED
 else

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 EfficiOS Inc.
+#
 # SPDX-License-Identifier: GPL-2.0-only
 
 API_DOC_INSTALL_DIR = "$(DESTDIR)$(docdir)/api/liblttng-ctl"

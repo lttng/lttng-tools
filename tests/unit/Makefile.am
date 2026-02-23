@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2013-2025 EfficiOS Inc.
+#
 # SPDX-License-Identifier: GPL-2.0-only
 
 SUBDIRS = ini_config

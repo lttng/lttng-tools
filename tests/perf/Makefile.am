@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 EfficiOS Inc.
+#
 # SPDX-License-Identifier: GPL-2.0-only
 
 LOG_DRIVER_FLAGS = --merge --post-script $(top_srcdir)/tests/utils/warn_processes.sh
