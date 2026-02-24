@@ -701,8 +701,7 @@ int create_kernel_session(const ltt_session::locked_ref& session)
 			lttng::file_descriptor(session->kernel_session->fd),
 			session->kernel_space_domain,
 			*session->kernel_session->consumer,
-			session->kernel_session,
-			the_kernel_poll_pipe[1]);
+			session->kernel_session);
 
 	return LTTNG_OK;
 

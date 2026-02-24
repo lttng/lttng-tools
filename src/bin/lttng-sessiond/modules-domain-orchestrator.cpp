@@ -6,11 +6,15 @@
  */
 
 #include "consumer.hpp"
+#include "health-sessiond.hpp"
 #include "kernel-consumer.hpp"
 #include "kernel.hpp"
 #include "lttng-channel-from-config.hpp"
+#include "lttng-sessiond.hpp"
 #include "modules-domain-orchestrator.hpp"
+#include "notification-thread-commands.hpp"
 #include "process-attribute-tracker.hpp"
+#include "session.hpp"
 #include "trace-kernel.hpp"
 #include "utils.hpp"
 
@@ -252,6 +256,36 @@ lttng_kernel_abi_event make_kernel_abi_event_from_event_rule(const struct lttng_
 }
 } /* namespace */
 
+ls::modules::domain_orchestrator::~domain_orchestrator()
+{
+	/*
+	 * Unregister all channels that were published to the notification
+	 * thread. This mirrors the add performed by _send_channel_to_consumer()
+	 * and ensures the notification thread doesn't hold stale references to
+	 * destroyed channels.
+	 */
+	for (const auto& channel_entry : _channels) {
+		const auto& channel = *channel_entry.second;
+
+		if (!channel.is_published_to_notification_thread()) {
+			continue;
+		}
+
+		if (!the_notification_thread_handle) {
+			continue;
+		}
+
+		const auto status =
+			notification_thread_command_remove_channel(the_notification_thread_handle,
+								   channel.consumer_key(),
+								   LTTNG_DOMAIN_KERNEL);
+		if (status != LTTNG_OK) {
+			ERR_FMT("Failed to remove kernel channel from notification thread: key={}",
+				channel.consumer_key());
+		}
+	}
+}
+
 void ls::modules::domain_orchestrator::create_channel(
 	const lsc::recording_channel_configuration& channel_config)
 {
@@ -318,11 +352,6 @@ void ls::modules::domain_orchestrator::create_channel(
 		&channel_config,
 		lttng::make_unique<modules::stream_group>(
 			std::move(modules_stream_group_fd), stream_group_key, channel_config));
-
-	/* Notify the kernel thread that a new channel exists. */
-	if (notify_thread_pipe(_kernel_pipe) < 0) {
-		LTTNG_THROW_ERROR("Failed to notify kernel thread of new channel");
-	}
 
 	kernel_wait_quiescent();
 }
@@ -898,6 +927,247 @@ void ls::modules::domain_orchestrator::_flush_channel_streams(const stream_group
 	}
 }
 
+void ls::modules::domain_orchestrator::_send_metadata_to_consumer(consumer_socket& socket,
+								  bool monitor)
+{
+	LTTNG_ASSERT(_legacy_kernel_session);
+	LTTNG_ASSERT(_legacy_kernel_session->metadata);
+	LTTNG_ASSERT(_legacy_kernel_session->metadata_stream_fd >= 0);
+
+	const auto& metadata_config = _domain_configuration.metadata_channel();
+
+	DBG("Sending metadata to kernel consumer: metadata_stream_fd=%d",
+	    _legacy_kernel_session->metadata_stream_fd);
+
+	const auto output = metadata_config.buffer_consumption_backend ==
+			lsc::channel_configuration::buffer_consumption_backend_t::MMAP ?
+		LTTNG_EVENT_MMAP :
+		LTTNG_EVENT_SPLICE;
+
+	struct lttcomm_consumer_msg lkm = {};
+
+	consumer_init_add_channel_comm_msg(&lkm,
+					   _legacy_kernel_session->metadata->key,
+					   _legacy_kernel_session->id,
+					   "",
+					   _consumer.net_seq_index,
+					   metadata_config.name.c_str(),
+					   1,
+					   output,
+					   CONSUMER_CHANNEL_TYPE_METADATA,
+					   0,
+					   0,
+					   monitor,
+					   0,
+					   _legacy_kernel_session->is_live_session,
+					   0,
+					   _legacy_kernel_session->current_trace_chunk,
+					   _legacy_kernel_session->trace_format);
+
+	health_code_update();
+
+	auto ret = consumer_send_channel(&socket, &lkm);
+	if (ret < 0) {
+		LTTNG_THROW_KERNEL_CONSUMER_SEND_FAILURE(
+			"Failed to send kernel metadata channel to consumer");
+	}
+
+	health_code_update();
+
+	/* Send the metadata stream. */
+	consumer_init_add_stream_comm_msg(&lkm,
+					  _legacy_kernel_session->metadata->key,
+					  _legacy_kernel_session->metadata_stream_fd,
+					  0 /* CPU: 0 for metadata. */);
+
+	ret = consumer_send_stream(
+		&socket, &_consumer, &lkm, &_legacy_kernel_session->metadata_stream_fd, 1);
+	if (ret < 0) {
+		LTTNG_THROW_KERNEL_CONSUMER_SEND_FAILURE(
+			"Failed to send kernel metadata stream to consumer");
+	}
+
+	health_code_update();
+}
+
+void ls::modules::domain_orchestrator::_send_channel_to_consumer(consumer_socket& socket,
+								 stream_group& channel,
+								 bool monitor)
+{
+	LTTNG_ASSERT(_legacy_kernel_session);
+	LTTNG_ASSERT(!channel.is_sent_to_consumer());
+
+	const auto& channel_config = channel.configuration();
+
+	DBG_FMT("Sending kernel channel to consumer: channel=`{}`", channel_config.name);
+
+	const auto output = channel_config.buffer_consumption_backend ==
+			lsc::channel_configuration::buffer_consumption_backend_t::MMAP ?
+		LTTNG_EVENT_MMAP :
+		LTTNG_EVENT_SPLICE;
+
+	const auto is_local_trace = _consumer.net_seq_index == (uint64_t) -1ULL;
+
+	std::size_t consumer_path_offset;
+	auto pathname = lttng::make_unique_wrapper<char, lttng::memory::free>(
+		setup_channel_trace_path(&_consumer, "", &consumer_path_offset));
+	if (!pathname) {
+		LTTNG_THROW_ALLOCATION_FAILURE_ERROR("Failed to allocate channel trace path");
+	}
+
+	if (is_local_trace && _legacy_kernel_session->current_trace_chunk) {
+		std::string pathname_index = fmt::format("{}" DEFAULT_INDEX_DIR, pathname.get());
+
+		/*
+		 * Create the index subdirectory which will take care
+		 * of implicitly creating the channel's path.
+		 */
+		const auto chunk_status = lttng_trace_chunk_create_subdirectory(
+			_legacy_kernel_session->current_trace_chunk, pathname_index.c_str());
+		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+			LTTNG_THROW_ERROR(lttng::format(
+				"Failed to create index subdirectory for channel `{}`",
+				channel_config.name));
+		}
+	}
+
+	lttcomm_consumer_msg lkm = {};
+	consumer_init_add_channel_comm_msg(&lkm,
+					   channel.consumer_key(),
+					   _legacy_kernel_session->id,
+					   &pathname.get()[consumer_path_offset],
+					   _consumer.net_seq_index,
+					   channel_config.name.c_str(),
+					   channel.stream_count(),
+					   output,
+					   CONSUMER_CHANNEL_TYPE_DATA_PER_CPU,
+					   channel_config.trace_file_size_limit_bytes.value_or(0),
+					   channel_config.trace_file_count_limit.value_or(0),
+					   monitor,
+					   channel_config.live_timer_period_us.value_or(0),
+					   _legacy_kernel_session->is_live_session,
+					   channel_config.monitor_timer_period_us.value_or(0),
+					   _legacy_kernel_session->current_trace_chunk,
+					   _legacy_kernel_session->trace_format);
+
+	health_code_update();
+
+	auto ret = consumer_send_channel(&socket, &lkm);
+	if (ret < 0) {
+		LTTNG_THROW_KERNEL_CONSUMER_SEND_FAILURE(lttng::format(
+			"Failed to send kernel channel `{}` to consumer", channel_config.name));
+	}
+
+	channel.mark_sent_to_consumer();
+	health_code_update();
+
+	/* Notify the notification thread of the new channel. */
+	try {
+		const auto session = ltt_session::find_session(_legacy_kernel_session->id);
+
+		ASSERT_SESSION_LIST_LOCKED();
+
+		const auto status = notification_thread_command_add_channel(
+			the_notification_thread_handle,
+			session->id,
+			const_cast<char *>(channel_config.name.c_str()),
+			channel.consumer_key(),
+			LTTNG_DOMAIN_KERNEL,
+			channel_config.subbuffer_size_bytes * channel_config.subbuffer_count);
+		if (status != LTTNG_OK) {
+			LTTNG_THROW_ERROR(lttng::format(
+				"Failed to register channel `{}` with notification thread",
+				channel_config.name));
+		}
+	} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
+		ERR_FMT("Fatal error during the creation of a kernel channel: {}, location='{}'",
+			ex.what(),
+			ex.source_location);
+		abort();
+	}
+
+	channel.mark_published_to_notification_thread();
+
+	/* Send all streams that have not been sent yet. */
+	for (const auto& stream : channel.streams()) {
+		auto& kstream = static_cast<stream_group::kernel_stream&>(*stream);
+
+		LTTNG_ASSERT(!kstream.sent_to_consumer);
+
+		DBG_FMT("Sending kernel stream to consumer: channel=`{}`, fd={}, cpu={}",
+			channel_config.name,
+			kstream.handle.fd(),
+			kstream.cpu);
+
+		std::memset(&lkm, 0, sizeof(lkm));
+		consumer_init_add_stream_comm_msg(
+			&lkm, channel.consumer_key(), kstream.handle.fd(), kstream.cpu);
+
+		auto stream_fd = kstream.handle.fd();
+		const auto send_ret =
+			consumer_send_stream(&socket, &_consumer, &lkm, &stream_fd, 1);
+		if (send_ret < 0) {
+			LTTNG_THROW_KERNEL_CONSUMER_SEND_FAILURE(lttng::format(
+				"Failed to send kernel stream to consumer: channel=`{}`, cpu={}",
+				channel_config.name,
+				kstream.cpu));
+		}
+
+		kstream.sent_to_consumer = true;
+
+		health_code_update();
+	}
+}
+
+void ls::modules::domain_orchestrator::_send_channels_to_consumer(consumer_socket& socket)
+{
+	LTTNG_ASSERT(_legacy_kernel_session);
+
+	if (!_consumer.enabled) {
+		return;
+	}
+
+	/* Don't monitor the streams on the consumer if in flight recorder. */
+	const unsigned int monitor = _legacy_kernel_session->output_traces ? 1 : 0;
+
+	DBG("Sending session stream to kernel consumer");
+
+	if (_legacy_kernel_session->metadata_stream_fd >= 0 && _legacy_kernel_session->metadata) {
+		_send_metadata_to_consumer(socket, monitor);
+	}
+
+	/* Send channels and their streams. */
+	for (auto& channel_entry : _channels) {
+		auto& channel = *channel_entry.second;
+
+		_send_channel_to_consumer(socket, channel, monitor);
+
+		if (monitor) {
+			/*
+			 * Inform the relay that all the streams for the
+			 * channel were sent.
+			 */
+			struct lttcomm_consumer_msg lkm = {};
+			consumer_init_streams_sent_comm_msg(&lkm,
+							    LTTNG_CONSUMER_STREAMS_SENT,
+							    channel.consumer_key(),
+							    _consumer.net_seq_index);
+
+			health_code_update();
+
+			const auto ret = consumer_send_msg(&socket, &lkm);
+			if (ret < 0) {
+				LTTNG_THROW_KERNEL_CONSUMER_SEND_FAILURE(lttng::format(
+					"Failed to send streams_sent for channel `{}`",
+					channel.configuration().name));
+			}
+		}
+	}
+
+	DBG("Kernel consumer FDs of metadata and channel streams sent");
+	_legacy_kernel_session->consumer_fds_sent = 1;
+}
+
 void ls::modules::domain_orchestrator::start()
 {
 	LTTNG_ASSERT(_legacy_kernel_session);
@@ -939,15 +1209,11 @@ void ls::modules::domain_orchestrator::start()
 	/* Send session data (metadata, channels, streams) to the consumer daemon. */
 	if (_legacy_kernel_session->consumer_fds_sent == 0 &&
 	    _legacy_kernel_session->consumer != nullptr) {
-		auto kconsumer_socket = _get_consumer_socket();
+		auto& kconsumer_socket = _get_consumer_socket();
 		/* NOLINTNEXTLINE */
 		const lttng::pthread::lock_guard socket_lock(*kconsumer_socket.lock);
-		const auto ret =
-			kernel_consumer_send_session(&kconsumer_socket, _legacy_kernel_session);
-		if (ret < 0) {
-			LTTNG_THROW_KERNEL_CONSUMER_SEND_FAILURE(
-				"Failed to send kernel session objects to consumer");
-		}
+
+		_send_channels_to_consumer(kconsumer_socket);
 	}
 
 	/* Start kernel tracing. */
@@ -1154,7 +1420,7 @@ void ls::modules::domain_orchestrator::record_snapshot(
 		LTTNG_THROW_ALLOCATION_FAILURE_ERROR("Failed to allocate trace path");
 	}
 
-	auto kconsumer_socket = _get_consumer_socket();
+	auto& kconsumer_socket = _get_consumer_socket();
 	{
 		const lttng::pthread::lock_guard socket_lock(*kconsumer_socket.lock);
 		/* This stream must not be monitored by the consumer. */

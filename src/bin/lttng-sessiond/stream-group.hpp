@@ -90,7 +90,7 @@ public:
 	stream_group& operator=(stream_group&&) = delete;
 
 	/* Stream management. */
-	void add_stream(unsigned int cpu, StreamHandleType handle)
+	virtual void add_stream(unsigned int cpu, StreamHandleType handle)
 	{
 		_streams.emplace_back(lttng::make_unique<stream>(cpu, std::move(handle)));
 	}

@@ -25,6 +25,7 @@
 #include <vector>
 
 struct consumer_output;
+struct consumer_socket;
 struct ltt_kernel_session;
 
 namespace lttng {
@@ -246,6 +247,32 @@ private:
  */
 class stream_group final : public lttng::sessiond::stream_group<lttng::file_descriptor> {
 public:
+	/*
+	 * Kernel-specific stream that extends the base stream with a
+	 * sent_to_consumer flag. This flag tracks whether each individual
+	 * stream (ring buffer instance) has been sent to the consumer daemon.
+	 *
+	 * Only the kernel domain needs per-stream sent_to_consumer tracking
+	 * because the kernel orchestrator sends streams to the consumer
+	 * individually as they are opened.
+	 */
+	struct kernel_stream final
+		: public lttng::sessiond::stream_group<lttng::file_descriptor>::stream {
+		kernel_stream(unsigned int cpu_index, lttng::file_descriptor handle_) :
+			stream(cpu_index, std::move(handle_))
+		{
+		}
+
+		~kernel_stream() override = default;
+
+		kernel_stream(kernel_stream&&) = default;
+		kernel_stream& operator=(kernel_stream&&) = delete;
+		kernel_stream(const kernel_stream&) = delete;
+		kernel_stream& operator=(const kernel_stream&) = delete;
+
+		bool sent_to_consumer = false;
+	};
+
 	explicit stream_group(lttng::file_descriptor tracer_channel_fd,
 			      uint64_t consumer_key,
 			      const config::recording_channel_configuration& configuration) :
@@ -261,6 +288,12 @@ public:
 	stream_group(const stream_group&) = delete;
 	stream_group& operator=(stream_group&&) = delete;
 	stream_group& operator=(const stream_group&) = delete;
+
+	/* Override to insert kernel_stream instances. */
+	void add_stream(unsigned int cpu, lttng::file_descriptor handle) override
+	{
+		_add_stream(lttng::make_unique<kernel_stream>(cpu, std::move(handle)));
+	}
 
 	lttng::file_descriptor& tracer_handle() noexcept
 	{
@@ -424,17 +457,15 @@ public:
 	explicit domain_orchestrator(lttng::file_descriptor tracer_session_fd,
 				     config::domain& domain_configuration,
 				     struct consumer_output& consumer,
-				     struct ltt_kernel_session *legacy_kernel_session,
-				     int kernel_pipe) :
+				     struct ltt_kernel_session *legacy_kernel_session) :
 		_tracer_session_fd(std::move(tracer_session_fd)),
 		_domain_configuration(domain_configuration),
 		_consumer(consumer),
-		_legacy_kernel_session(legacy_kernel_session),
-		_kernel_pipe(kernel_pipe)
+		_legacy_kernel_session(legacy_kernel_session)
 	{
 	}
 
-	~domain_orchestrator() override = default;
+	~domain_orchestrator() override;
 
 	domain_orchestrator(const domain_orchestrator&) = delete;
 	domain_orchestrator(domain_orchestrator&&) = delete;
@@ -524,6 +555,30 @@ private:
 	 */
 	void _flush_channel_streams(const stream_group& channel) const;
 
+	/*
+	 * Send all session data (metadata, channels, streams) to the consumer
+	 * daemon.
+	 *
+	 * The consumer socket lock must be held by the caller.
+	 */
+	void _send_channels_to_consumer(consumer_socket& socket);
+
+	/*
+	 * Send a single channel and its streams to the consumer daemon.
+	 * Registers the channel with the notification thread.
+	 *
+	 * The consumer socket lock must be held by the caller.
+	 */
+	void
+	_send_channel_to_consumer(consumer_socket& socket, stream_group& channel, bool monitor);
+
+	/*
+	 * Send the metadata channel and its stream to the consumer daemon.
+	 *
+	 * The consumer socket lock must be held by the caller.
+	 */
+	void _send_metadata_to_consumer(consumer_socket& socket, bool monitor);
+
 	lttng::file_descriptor _tracer_session_fd;
 	config::domain& _domain_configuration;
 	struct consumer_output& _consumer;
@@ -538,7 +593,6 @@ private:
 	 * kernel domain runtime state.
 	 */
 	struct ltt_kernel_session *_legacy_kernel_session;
-	int _kernel_pipe;
 };
 
 } /* namespace modules */
