@@ -8,6 +8,7 @@
 #include "consumer.hpp"
 #include "kernel-consumer.hpp"
 #include "kernel.hpp"
+#include "lttng-channel-from-config.hpp"
 #include "modules-domain-orchestrator.hpp"
 #include "process-attribute-tracker.hpp"
 #include "trace-kernel.hpp"
@@ -75,61 +76,6 @@ ltt_kernel_channel& find_legacy_channel(ltt_kernel_session& ksess,
 	}
 
 	return *kchan;
-}
-
-/*
- * Build a legacy lttng_channel from a recording_channel_configuration.
- *
- * This conversion is a transitional bridge: the legacy ltt_kernel_channel
- * struct still carries a lttng_channel pointer that downstream code reads
- * from (channel listing, consumer channel send, etc.). Once those readers
- * are migrated to read from the configuration objects directly, this
- * conversion will be eliminated.
- */
-lttng::ctl::lttng_channel_uptr
-make_lttng_channel_from_config(const lsc::recording_channel_configuration& channel_config)
-{
-	auto attr = lttng::make_unique_wrapper<lttng_channel, lttng_channel_destroy>(
-		lttng_channel_create_internal());
-	if (!attr) {
-		LTTNG_THROW_POSIX("Failed to allocate lttng_channel", ENOMEM);
-	}
-
-	if (lttng_strncpy(attr->name, channel_config.name.c_str(), sizeof(attr->name))) {
-		LTTNG_THROW_INVALID_ARGUMENT_ERROR("Channel name too long");
-	}
-
-	attr->attr.overwrite = channel_config.buffer_full_policy ==
-			lsc::channel_configuration::buffer_full_policy_t::OVERWRITE_OLDEST_PACKET ?
-		1 :
-		0;
-	attr->attr.subbuf_size = channel_config.subbuffer_size_bytes;
-	attr->attr.num_subbuf = channel_config.subbuffer_count;
-	attr->attr.switch_timer_interval = channel_config.switch_timer_period_us.value_or(0);
-	attr->attr.read_timer_interval = channel_config.read_timer_period_us.value_or(0);
-	attr->attr.output = channel_config.buffer_consumption_backend ==
-			lsc::channel_configuration::buffer_consumption_backend_t::MMAP ?
-		LTTNG_EVENT_MMAP :
-		LTTNG_EVENT_SPLICE;
-
-	if (channel_config.live_timer_period_us) {
-		attr->attr.live_timer_interval = *channel_config.live_timer_period_us;
-	}
-
-	if (channel_config.monitor_timer_period_us) {
-		lttng_channel_set_monitor_timer_interval(attr.get(),
-							 *channel_config.monitor_timer_period_us);
-	}
-
-	if (channel_config.trace_file_size_limit_bytes) {
-		attr->attr.tracefile_size = *channel_config.trace_file_size_limit_bytes;
-	}
-
-	if (channel_config.trace_file_count_limit) {
-		attr->attr.tracefile_count = *channel_config.trace_file_count_limit;
-	}
-
-	return attr;
 }
 
 /*
@@ -345,7 +291,7 @@ void ls::modules::domain_orchestrator::create_channel(
 	 * This dual-write will be removed once all downstream readers are
 	 * migrated to the orchestrator's modern channel objects.
 	 */
-	auto legacy_channel_attr = make_lttng_channel_from_config(channel_config);
+	auto legacy_channel_attr = ls::make_lttng_channel(channel_config);
 
 	auto lkc = lttng::make_unique_wrapper<ltt_kernel_channel, trace_kernel_destroy_channel>(
 		trace_kernel_create_channel(legacy_channel_attr.get()));
