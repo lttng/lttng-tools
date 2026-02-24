@@ -24,6 +24,7 @@
 #include "health-sessiond.hpp"
 #include "kernel-consumer.hpp"
 #include "kernel.hpp"
+#include "lttng-channel-from-config.hpp"
 #include "lttng-sessiond.hpp"
 #include "lttng-syscall.hpp"
 #include "notification-thread-commands.hpp"
@@ -728,40 +729,6 @@ build_network_session_path(char *dst, size_t size, const ltt_session::locked_ref
 	}
 
 error:
-	return ret;
-}
-
-/*
- * Get run-time attributes if the session has been started (discarded events,
- * lost packets).
- */
-static int get_kernel_runtime_stats(const ltt_session::locked_ref& session,
-				    struct ltt_kernel_channel *kchan,
-				    uint64_t *discarded_events,
-				    uint64_t *lost_packets)
-{
-	int ret;
-
-	if (!session->has_been_started) {
-		ret = 0;
-		*discarded_events = 0;
-		*lost_packets = 0;
-		goto end;
-	}
-
-	ret = consumer_get_discarded_events(
-		session->id, kchan->key, session->kernel_session->consumer, discarded_events);
-	if (ret < 0) {
-		goto end;
-	}
-
-	ret = consumer_get_lost_packets(
-		session->id, kchan->key, session->kernel_session->consumer, lost_packets);
-	if (ret < 0) {
-		goto end;
-	}
-
-end:
 	return ret;
 }
 
@@ -4582,36 +4549,37 @@ enum lttng_error_code cmd_list_channels(enum lttng_domain_type domain,
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
-		/* Kernel channels */
 		if (session->kernel_session != nullptr) {
-			for (auto kchan :
-			     lttng::urcu::list_iteration_adapter<ltt_kernel_channel,
-								 &ltt_kernel_channel::list>(
-				     session->kernel_session->channel_list.head)) {
-				uint64_t discarded_events, lost_packets;
-				struct lttng_channel_extended *extended;
+			const auto& orchestrator = session->get_kernel_orchestrator();
 
-				extended = (struct lttng_channel_extended *)
-						   kchan->channel->attr.extended.ptr;
+			for (const auto& channel_config :
+			     session->kernel_space_domain.recording_channels()) {
+				auto channel = ls::make_lttng_channel(channel_config);
+				auto *extended = reinterpret_cast<lttng_channel_extended *>(
+					channel->attr.extended.ptr);
 
-				ret = get_kernel_runtime_stats(
-					session, kchan, &discarded_events, &lost_packets);
-				if (ret < 0) {
-					ret_code = LTTNG_ERR_UNK;
-					goto end;
+				if (session->has_been_started) {
+					try {
+						const auto stats =
+							orchestrator
+								.get_recording_channel_runtime_stats(
+									channel_config);
+
+						extended->discarded_events = stats.discarded_events;
+						extended->lost_packets = stats.lost_packets;
+					} catch (const std::exception& ex) {
+						ERR("Failed to get runtime stats for channel '%s': %s",
+						    channel_config.name.c_str(),
+						    ex.what());
+						ret_code = LTTNG_ERR_UNK;
+						goto end;
+					}
 				}
 
-				/*
-				 * Update the discarded_events and lost_packets
-				 * count for the channel
-				 */
-				extended->discarded_events = discarded_events;
-				extended->lost_packets = lost_packets;
-
-				ret = lttng_channel_serialize(kchan->channel, &payload->buffer);
+				ret = lttng_channel_serialize(channel.get(), &payload->buffer);
 				if (ret) {
 					ERR("Failed to serialize lttng_channel: channel name = '%s'",
-					    kchan->channel->name);
+					    channel->name);
 					ret_code = LTTNG_ERR_UNK;
 					goto end;
 				}
@@ -5834,19 +5802,20 @@ static uint64_t get_session_size_one_more_packet_per_stream(const ltt_session::l
 	uint64_t tot_size = 0;
 
 	if (session->kernel_session) {
-		struct ltt_kernel_session *ksess = session->kernel_session;
+		const auto& orchestrator = session->get_kernel_orchestrator();
 
-		for (auto chan : lttng::urcu::list_iteration_adapter<ltt_kernel_channel,
-								     &ltt_kernel_channel::list>(
-			     ksess->channel_list.head)) {
-			if (cur_nr_packets >= chan->channel->attr.num_subbuf) {
+		for (const auto& channel_config :
+		     session->kernel_space_domain.recording_channels()) {
+			if (cur_nr_packets >= channel_config.subbuffer_count) {
 				/*
 				 * Don't take channel into account if we
 				 * already grab all its packets.
 				 */
 				continue;
 			}
-			tot_size += chan->channel->attr.subbuf_size * chan->stream_count;
+
+			tot_size += channel_config.subbuffer_size_bytes *
+				orchestrator.get_stream_count_for_channel(channel_config);
 		}
 	}
 
