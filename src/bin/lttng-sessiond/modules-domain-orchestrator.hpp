@@ -478,6 +478,19 @@ public:
 	[[noreturn]] void reclaim_channel_memory(
 		const config::recording_channel_configuration& target_channel) override;
 
+	recording_channel_runtime_stats get_recording_channel_runtime_stats(
+		const config::recording_channel_configuration& channel_config) const override;
+
+	/*
+	 * Return the number of streams opened for a channel.
+	 *
+	 * The stream count reflects the number of per-CPU ring buffers that
+	 * have been opened by start(). Returns 0 if the session has not
+	 * been started yet.
+	 */
+	unsigned int get_stream_count_for_channel(
+		const config::recording_channel_configuration& channel_config) const;
+
 private:
 	/*
 	 * Look up a runtime channel by its configuration object.

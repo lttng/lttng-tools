@@ -1224,3 +1224,43 @@ void ls::modules::domain_orchestrator::reclaim_channel_memory(
 	LTTNG_THROW_UNSUPPORTED_ERROR(
 		"Channel memory reclamation is not supported by the lttng-modules tracer");
 }
+
+ls::recording_channel_runtime_stats
+ls::modules::domain_orchestrator::get_recording_channel_runtime_stats(
+	const lsc::recording_channel_configuration& channel_config) const
+{
+	const auto it = _channels.find(&channel_config);
+	LTTNG_ASSERT(it != _channels.end());
+
+	const auto channel_key = it->second->consumer_key();
+	const auto session_id = _legacy_kernel_session->id;
+	recording_channel_runtime_stats stats = {};
+	int ret;
+
+	ret = consumer_get_discarded_events(
+		session_id, channel_key, _legacy_kernel_session->consumer, &stats.discarded_events);
+	if (ret < 0) {
+		LTTNG_THROW_ERROR(lttng::format(
+			"Failed to get discarded events count from consumer for channel '{}'",
+			channel_config.name));
+	}
+
+	ret = consumer_get_lost_packets(
+		session_id, channel_key, _legacy_kernel_session->consumer, &stats.lost_packets);
+	if (ret < 0) {
+		LTTNG_THROW_ERROR(lttng::format(
+			"Failed to get lost packets count from consumer for channel '{}'",
+			channel_config.name));
+	}
+
+	return stats;
+}
+
+unsigned int ls::modules::domain_orchestrator::get_stream_count_for_channel(
+	const lsc::recording_channel_configuration& channel_config) const
+{
+	const auto it = _channels.find(&channel_config);
+	LTTNG_ASSERT(it != _channels.end());
+
+	return it->second->stream_count();
+}

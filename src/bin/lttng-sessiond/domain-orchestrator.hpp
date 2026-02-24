@@ -38,6 +38,16 @@ enum class tracking_policy;
 } /* namespace config */
 
 /*
+ * Runtime statistics for a recording channel, as reported by the consumer
+ * daemon. Both fields are cumulative counts since the start of the session
+ * and aggregated across all streams of the channel.
+ */
+struct recording_channel_runtime_stats {
+	std::uint64_t discarded_events;
+	std::uint64_t lost_packets;
+};
+
+/*
  * A domain orchestrator manages the runtime tracing resources — channels,
  * streams, buffers, and consumer connections — for a specific instrumentation
  * domain (kernel or user space) within a recording session.
@@ -103,6 +113,13 @@ public:
 
 	virtual void
 	reclaim_channel_memory(const config::recording_channel_configuration& target_channel) = 0;
+
+	/*
+	 * Query the consumer daemon for the runtime statistics of a
+	 * recording channel (discarded events and lost packets).
+	 */
+	virtual recording_channel_runtime_stats get_recording_channel_runtime_stats(
+		const config::recording_channel_configuration& channel_config) const = 0;
 };
 
 namespace exceptions {
