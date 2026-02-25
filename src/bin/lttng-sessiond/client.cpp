@@ -701,6 +701,8 @@ int create_kernel_session(const ltt_session::locked_ref& session)
 			lttng::file_descriptor(session->kernel_session->fd),
 			session->kernel_space_domain,
 			*session->kernel_session->consumer,
+			session->id,
+			*the_hotplug_handler_queue,
 			session->kernel_session);
 
 	return LTTNG_OK;
@@ -1653,8 +1655,7 @@ skip_domain:
 			goto error;
 		}
 
-		ret = cmd_add_context(
-			cmd_ctx, *target_session, event_context, the_kernel_poll_pipe[1]);
+		ret = cmd_add_context(cmd_ctx, *target_session, event_context);
 		lttng_event_context_destroy(event_context);
 		break;
 	}
@@ -1679,7 +1680,7 @@ skip_domain:
 	}
 	case LTTCOMM_SESSIOND_COMMAND_ENABLE_CHANNEL:
 	{
-		ret = cmd_enable_channel(cmd_ctx, *target_session, *sock, the_kernel_poll_pipe[1]);
+		ret = cmd_enable_channel(cmd_ctx, *target_session, *sock);
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_PROCESS_ATTR_TRACKER_ADD_INCLUDE_VALUE:
@@ -1878,7 +1879,6 @@ skip_domain:
 					 filter_expression,
 					 exclusions,
 					 bytecode,
-					 the_kernel_poll_pipe[1],
 					 std::move(event_rule)) :
 			cmd_disable_event(cmd_ctx,
 					  *target_session,

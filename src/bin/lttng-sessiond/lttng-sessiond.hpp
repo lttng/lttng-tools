@@ -21,6 +21,7 @@
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/uuid.hpp>
 
+#include <memory>
 #include <urcu.h>
 #include <urcu/wfcqueue.h>
 
@@ -118,7 +119,19 @@ struct ust_reg_wait_node {
 	struct cds_list_head head;
 };
 
-extern int the_kernel_poll_pipe[2];
+/* Hotplug handler command queue for kernel hotplug monitoring. */
+namespace lttng {
+namespace sessiond {
+namespace hotplug_handler {
+struct command;
+} /* namespace hotplug_handler */
+} /* namespace sessiond */
+template <typename>
+class command_queue;
+} /* namespace lttng */
+
+extern std::unique_ptr<lttng::command_queue<lttng::sessiond::hotplug_handler::command>>
+	the_hotplug_handler_queue;
 
 /*
  * Populated when the daemon starts with the current page size of the system.

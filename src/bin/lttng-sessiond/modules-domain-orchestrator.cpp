@@ -259,6 +259,23 @@ lttng_kernel_abi_event make_kernel_abi_event_from_event_rule(const struct lttng_
 ls::modules::domain_orchestrator::~domain_orchestrator()
 {
 	/*
+	 * Unregister all channels from the hotplug handler thread so their
+	 * fds are removed from the poller before being closed.
+	 */
+	for (auto& channel_entry : _channels) {
+		auto& channel = *channel_entry.second;
+
+		if (!channel.is_sent_to_consumer()) {
+			/* Channel was never registered for hotplug monitoring. */
+			continue;
+		}
+
+		hotplug_handler::command cmd(
+			hotplug_handler::command_type::REMOVE_CHANNEL, channel, _session_id);
+		_hotplug_queue.send_and_wait(std::move(cmd));
+	}
+
+	/*
 	 * Unregister all channels that were published to the notification
 	 * thread. This mirrors the add performed by _send_channel_to_consumer()
 	 * and ensures the notification thread doesn't hold stale references to
@@ -850,7 +867,7 @@ void ls::modules::domain_orchestrator::untrack_process_attribute(
 
 unsigned int ls::modules::domain_orchestrator::_open_channel_streams(stream_group& channel)
 {
-	unsigned int stream_count = 0;
+	unsigned int streams_opened = 0;
 
 	while (true) {
 		const auto raw_stream_fd = kernctl_create_stream(channel.tracer_handle().fd());
@@ -873,7 +890,7 @@ unsigned int ls::modules::domain_orchestrator::_open_channel_streams(stream_grou
 				"Failed to set FD_CLOEXEC on kernel stream file descriptor", errno);
 		}
 
-		const auto cpu = stream_count;
+		const auto cpu = channel.stream_count();
 		DBG_FMT("Kernel stream created: channel=`{}`, fd={}, cpu={}",
 			channel.configuration().name,
 			stream_fd.fd(),
@@ -881,7 +898,7 @@ unsigned int ls::modules::domain_orchestrator::_open_channel_streams(stream_grou
 
 		/*
 		 * Also add the stream to the legacy struct for downstream code that
-		 * still iterates ltt_kernel_channel::stream_list (manage-kernel
+		 * still iterates ltt_kernel_channel::stream_list (hotplug handler
 		 * thread, consumer send code).
 		 */
 		auto& legacy_channel =
@@ -905,10 +922,10 @@ unsigned int ls::modules::domain_orchestrator::_open_channel_streams(stream_grou
 		legacy_channel.stream_count++;
 
 		channel.add_stream(cpu, std::move(stream_fd));
-		stream_count++;
+		streams_opened++;
 	}
 
-	return stream_count;
+	return streams_opened;
 }
 
 void ls::modules::domain_orchestrator::_flush_channel_streams(const stream_group& channel) const
@@ -1216,6 +1233,24 @@ void ls::modules::domain_orchestrator::start()
 		_send_channels_to_consumer(kconsumer_socket);
 	}
 
+	_legacy_kernel_session->active = true;
+	_active = true;
+
+	/* Register the channels for hotplug monitoring. */
+	for (auto& channel_entry : _channels) {
+		auto& channel = *channel_entry.second;
+
+		if (channel.is_monitored_for_hotplug()) {
+			continue;
+		}
+
+		hotplug_handler::command cmd(
+			hotplug_handler::command_type::ADD_CHANNEL, channel, _session_id);
+		_hotplug_queue.send_and_wait(std::move(cmd));
+
+		channel.mark_monitored_for_hotplug();
+	}
+
 	/* Start kernel tracing. */
 	const auto start_ret = kernel_start_session(_legacy_kernel_session);
 	if (start_ret < 0) {
@@ -1223,9 +1258,6 @@ void ls::modules::domain_orchestrator::start()
 	}
 
 	kernel_wait_quiescent();
-
-	_legacy_kernel_session->active = true;
-	_active = true;
 }
 
 void ls::modules::domain_orchestrator::stop()
@@ -1529,4 +1561,61 @@ unsigned int ls::modules::domain_orchestrator::get_stream_count_for_channel(
 	LTTNG_ASSERT(it != _channels.end());
 
 	return it->second->stream_count();
+}
+
+void ls::modules::domain_orchestrator::handle_channel_hotplug(stream_group& channel)
+{
+	LTTNG_ASSERT(_legacy_kernel_session);
+
+	const auto new_stream_count = _open_channel_streams(channel);
+	if (new_stream_count == 0) {
+		WARN_FMT(
+			"Kernel channel hotplug event, but no new streams opened for channel: channel_name=`{}`",
+			channel.configuration().name);
+		return;
+	}
+
+	DBG_FMT("Kernel channel hotplug opened new streams: channel_name=`{}`, additional_streams_count={}, total_stream_count={}",
+		channel.configuration().name,
+		new_stream_count,
+		channel.stream_count());
+
+	_legacy_kernel_session->stream_count_global += new_stream_count;
+
+	LTTNG_ASSERT(channel.is_sent_to_consumer());
+
+	/* Send only the newly-opened (unsent) streams to the consumer daemon. */
+	auto& kconsumer_socket = _get_consumer_socket();
+	const lttng::pthread::lock_guard socket_lock(*kconsumer_socket.lock);
+	const auto& channel_config = channel.configuration();
+
+	for (const auto& stream : channel.streams()) {
+		auto& kstream = static_cast<stream_group::kernel_stream&>(*stream);
+
+		if (kstream.sent_to_consumer) {
+			continue;
+		}
+
+		DBG_FMT("Sending hotplug kernel stream to consumer: channel=`{}`, fd={}, cpu={}",
+			channel_config.name,
+			kstream.handle.fd(),
+			kstream.cpu);
+
+		lttcomm_consumer_msg lkm = {};
+		consumer_init_add_stream_comm_msg(
+			&lkm, channel.consumer_key(), kstream.handle.fd(), kstream.cpu);
+
+		auto stream_fd = kstream.handle.fd();
+		const auto monitor = _legacy_kernel_session->output_traces ? 1 : 0;
+		const auto send_ret = consumer_send_stream(
+			&kconsumer_socket, &_consumer, &lkm, &stream_fd, monitor);
+		if (send_ret < 0) {
+			LTTNG_THROW_KERNEL_CONSUMER_SEND_FAILURE(lttng::format(
+				"Failed to send hotplug kernel stream to consumer: channel=`{}`, cpu={}",
+				channel_config.name,
+				kstream.cpu));
+		}
+
+		kstream.sent_to_consumer = true;
+	}
 }

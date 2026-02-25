@@ -21,12 +21,12 @@
 #include "event.hpp"
 #include "fd-limit.hpp"
 #include "health-sessiond.hpp"
+#include "hotplug-handler.hpp"
 #include "kernel-consumer.hpp"
 #include "kernel.hpp"
 #include "lttng-sessiond.hpp"
 #include "lttng-ust-ctl.hpp"
 #include "manage-apps.hpp"
-#include "manage-kernel.hpp"
 #include "modprobe.hpp"
 #include "notification-thread-commands.hpp"
 #include "notification-thread.hpp"
@@ -57,6 +57,7 @@
 #include <common/lockfile.hpp>
 #include <common/logging-utils.hpp>
 #include <common/make-unique-wrapper.hpp>
+#include <common/make-unique.hpp>
 #include <common/path.hpp>
 #include <common/relayd/relayd.hpp>
 #include <common/systemd-utils.hpp>
@@ -308,7 +309,6 @@ static void sessiond_cleanup()
 	/* Close all other pipes. */
 	utils_close_pipe(apps_cmd_pipe);
 	utils_close_pipe(apps_cmd_notify_pipe);
-	utils_close_pipe(the_kernel_poll_pipe);
 
 	ret = remove(the_config.pid_file_path.value);
 	if (ret < 0) {
@@ -1836,14 +1836,6 @@ static int _main(int argc, char **argv)
 		the_ppid = getppid();
 	}
 
-	/* Setup the kernel pipe for waking up the kernel thread */
-	if (is_root && !the_config.no_kernel) {
-		if (utils_create_pipe_cloexec(the_kernel_poll_pipe)) {
-			retval = -1;
-			goto stop_threads;
-		}
-	}
-
 	/* Setup the thread apps communication pipe. */
 	if (utils_create_pipe_cloexec(apps_cmd_pipe)) {
 		retval = -1;
@@ -1977,8 +1969,17 @@ static int _main(int argc, char **argv)
 
 	/* Don't start this thread if kernel tracing is not requested nor root */
 	if (is_root && !the_config.no_kernel) {
-		/* Create kernel thread to manage kernel event */
-		if (!launch_kernel_management_thread(the_kernel_poll_pipe[0])) {
+		/*
+		 * Allocate the hotplug handler command queue here rather than in
+		 * globals to avoid it being present in the runas worker (which
+		 * is forked earlier in main()).
+		 */
+		the_hotplug_handler_queue = lttng::make_unique<
+			lttng::command_queue<lttng::sessiond::hotplug_handler::command>>();
+
+		/* Create hotplug handler thread for kernel CPU hotplug monitoring. */
+		if (!lttng::sessiond::hotplug_handler::launch_hotplug_handler_thread(
+			    *the_hotplug_handler_queue)) {
 			retval = -1;
 			goto stop_threads;
 		}

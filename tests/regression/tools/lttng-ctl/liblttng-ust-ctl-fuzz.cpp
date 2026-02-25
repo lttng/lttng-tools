@@ -7,8 +7,8 @@
 #define _GNU_SOURCE
 #endif
 
-#include <lttng/ust-ctl.h>
 #include <lttng/lttng-export.h>
+#include <lttng/ust-ctl.h>
 
 #include <assert.h>
 #include <dlfcn.h>

@@ -12,6 +12,7 @@
 #include "domain-orchestrator.hpp"
 #include "domain.hpp"
 #include "event-rule-configuration.hpp"
+#include "hotplug-handler.hpp"
 #include "recording-channel-configuration.hpp"
 #include "stream-group.hpp"
 
@@ -27,6 +28,7 @@
 struct consumer_output;
 struct consumer_socket;
 struct ltt_kernel_session;
+struct ltt_session;
 
 namespace lttng {
 namespace sessiond {
@@ -335,6 +337,16 @@ public:
 		_published_to_notification_thread = true;
 	}
 
+	bool is_monitored_for_hotplug() const noexcept
+	{
+		return _monitored_for_hotplug;
+	}
+
+	void mark_monitored_for_hotplug() noexcept
+	{
+		_monitored_for_hotplug = true;
+	}
+
 	void add_event_rule(const config::event_rule_configuration& event_rule_config,
 			    lttng::file_descriptor tracer_event_fd)
 	{
@@ -374,6 +386,7 @@ private:
 	const config::recording_channel_configuration& _configuration;
 	bool _sent_to_consumer = false;
 	bool _published_to_notification_thread = false;
+	bool _monitored_for_hotplug = false;
 	std::vector<event_rule> _event_rules;
 };
 
@@ -454,13 +467,19 @@ private:
  */
 class domain_orchestrator final : public sessiond::domain_orchestrator {
 public:
+	using hotplug_command = lttng::sessiond::hotplug_handler::command;
+
 	explicit domain_orchestrator(lttng::file_descriptor tracer_session_fd,
 				     config::domain& domain_configuration,
 				     struct consumer_output& consumer,
+				     hotplug_handler::session_id_t session_id,
+				     lttng::command_queue<hotplug_command>& hotplug_queue,
 				     struct ltt_kernel_session *legacy_kernel_session) :
 		_tracer_session_fd(std::move(tracer_session_fd)),
 		_domain_configuration(domain_configuration),
 		_consumer(consumer),
+		_session_id(session_id),
+		_hotplug_queue(hotplug_queue),
 		_legacy_kernel_session(legacy_kernel_session)
 	{
 	}
@@ -522,6 +541,15 @@ public:
 	unsigned int get_stream_count_for_channel(
 		const config::recording_channel_configuration& channel_config) const;
 
+	/*
+	 * Handle a CPU hotplug event on the given channel.
+	 *
+	 * Opens newly-available streams via kernctl_create_stream() and,
+	 * if tracing is active and consumer fds have already been sent,
+	 * sends the new streams to the consumer daemon.
+	 */
+	void handle_channel_hotplug(stream_group& channel);
+
 private:
 	/*
 	 * Look up a runtime channel by its configuration object.
@@ -582,6 +610,8 @@ private:
 	lttng::file_descriptor _tracer_session_fd;
 	config::domain& _domain_configuration;
 	struct consumer_output& _consumer;
+	hotplug_handler::session_id_t _session_id;
+	lttng::command_queue<hotplug_command>& _hotplug_queue;
 	std::unordered_map<const config::recording_channel_configuration *,
 			   std::unique_ptr<stream_group>>
 		_channels;

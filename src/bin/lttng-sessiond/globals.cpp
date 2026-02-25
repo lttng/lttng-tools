@@ -7,9 +7,12 @@
  *
  */
 
+#include "hotplug-handler.hpp"
 #include "lttng-sessiond.hpp"
 
 #include <common/uuid.hpp>
+
+#include <memory>
 
 lttng_uuid the_sessiond_uuid;
 
@@ -29,7 +32,8 @@ struct lttng_ht *the_trigger_agents_ht_by_domain = nullptr;
 struct lttng_kernel_abi_tracer_version the_kernel_tracer_version;
 struct lttng_kernel_abi_tracer_abi_version the_kernel_tracer_abi_version;
 
-int the_kernel_poll_pipe[2] = { -1, -1 };
+std::unique_ptr<lttng::command_queue<lttng::sessiond::hotplug_handler::command>>
+	the_hotplug_handler_queue;
 
 pid_t the_ppid;
 pid_t the_child_ppid;

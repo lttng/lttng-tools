@@ -54,10 +54,7 @@ int cmd_destroy_session(const ltt_session::locked_ref& session, int *sock_fd);
 int cmd_disable_channel(const ltt_session::locked_ref& session,
 			enum lttng_domain_type domain,
 			char *channel_name);
-int cmd_enable_channel(struct command_ctx *cmd_ctx,
-		       ltt_session::locked_ref& session,
-		       int sock,
-		       int wpipe);
+int cmd_enable_channel(struct command_ctx *cmd_ctx, ltt_session::locked_ref& session, int sock);
 
 /* Process attribute tracker commands */
 enum lttng_tracking_policy
@@ -94,8 +91,7 @@ lttng_error_code cmd_disable_event(struct command_ctx *cmd_ctx,
 				   lttng::ctl::event_rule_uptr event_rule);
 int cmd_add_context(struct command_ctx *cmd_ctx,
 		    ltt_session::locked_ref& locked_session,
-		    const struct lttng_event_context *event_context,
-		    int kwpipe);
+		    const struct lttng_event_context *event_context);
 int cmd_set_filter(struct ltt_session *session,
 		   enum lttng_domain_type domain,
 		   char *channel_name,
@@ -107,7 +103,6 @@ int cmd_enable_event(struct command_ctx *cmd_ctx,
 		     char *filter_expression,
 		     struct lttng_event_exclusion *exclusion,
 		     struct lttng_bytecode *bytecode,
-		     int wpipe,
 		     lttng::ctl::event_rule_uptr event_rule);
 
 /* Trace session action commands */

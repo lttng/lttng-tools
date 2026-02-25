@@ -71,8 +71,8 @@ void lttng::file_descriptor::_cleanup() noexcept
 
 	const auto ret = ::close(_raw_fd);
 
-	_raw_fd = -1;
 	if (ret) {
 		PERROR("Failed to close file descriptor: fd=%i", _raw_fd);
 	}
+	_raw_fd = -1;
 }

@@ -164,6 +164,7 @@ libpath_la_SOURCES = \
 # meant to be used by GPL executables.
 noinst_LTLIBRARIES += libcommon-gpl.la
 libcommon_gpl_la_SOURCES = \
+	command-queue.hpp \
 	common.hpp \
 	context.cpp context.hpp \
 	daemonize.cpp daemonize.hpp \

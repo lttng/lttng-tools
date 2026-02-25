@@ -54,7 +54,7 @@ liblttng_sessiond_common_la_SOURCES = utils.cpp utils.hpp \
                        dispatch.cpp dispatch.hpp \
                        register.cpp register.hpp \
                        manage-apps.cpp manage-apps.hpp \
-                       manage-kernel.cpp manage-kernel.hpp \
+                       hotplug-handler.cpp hotplug-handler.hpp \
                        manage-consumer.cpp manage-consumer.hpp \
                        clear.cpp clear.hpp \
                        tracker.cpp tracker.hpp \

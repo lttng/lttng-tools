@@ -643,12 +643,10 @@ static int cmd_enable_event_internal(ltt_session::locked_ref& session,
 				     char *filter_expression,
 				     struct lttng_bytecode *filter,
 				     struct lttng_event_exclusion *exclusion,
-				     int wpipe,
 				     lttng::ctl::event_rule_uptr event_rule);
 static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref& session,
 							 const struct lttng_domain *domain,
-							 const struct lttng_channel& channel_attr,
-							 int wpipe);
+							 const struct lttng_channel& channel_attr);
 
 /*
  * Create a session path used by list_lttng_sessions for the case that the
@@ -1398,10 +1396,8 @@ int cmd_disable_channel(const ltt_session::locked_ref& session,
 
 /*
  * Command LTTNG_ENABLE_CHANNEL processed by the client thread.
- *
- * The wpipe arguments is used as a notifier for the kernel thread.
  */
-int cmd_enable_channel(command_ctx *cmd_ctx, ltt_session::locked_ref& session, int sock, int wpipe)
+int cmd_enable_channel(command_ctx *cmd_ctx, ltt_session::locked_ref& session, int sock)
 {
 	const struct lttng_domain command_domain = cmd_ctx->lsm.domain;
 
@@ -1446,7 +1442,7 @@ int cmd_enable_channel(command_ctx *cmd_ctx, ltt_session::locked_ref& session, i
 		return raw_channel;
 	}());
 
-	const auto cmd_ret = cmd_enable_channel_internal(session, &command_domain, *channel, wpipe);
+	const auto cmd_ret = cmd_enable_channel_internal(session, &command_domain, *channel);
 	if (cmd_ret != LTTNG_OK) {
 		return cmd_ret;
 	}
@@ -1456,8 +1452,7 @@ int cmd_enable_channel(command_ctx *cmd_ctx, ltt_session::locked_ref& session, i
 
 static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref& session,
 							 const struct lttng_domain *domain,
-							 const struct lttng_channel& channel_attr,
-							 int wpipe __attribute__((unused)))
+							 const struct lttng_channel& channel_attr)
 {
 	enum lttng_error_code ret_code = LTTNG_OK;
 	struct ltt_ust_session *usess = session->ust_session;
@@ -2568,8 +2563,7 @@ lttng_error_code cmd_disable_event(struct command_ctx *cmd_ctx,
  */
 int cmd_add_context(struct command_ctx *cmd_ctx,
 		    ltt_session::locked_ref& locked_session,
-		    const struct lttng_event_context *event_context,
-		    int kwpipe)
+		    const struct lttng_event_context *event_context)
 {
 	int ret, chan_kern_created = 0, chan_ust_created = 0;
 	const enum lttng_domain_type domain_type = cmd_ctx->lsm.domain.type;
@@ -2599,8 +2593,7 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 			kern_domain.type = LTTNG_DOMAIN_KERNEL;
 			kern_domain.buf_type = LTTNG_BUFFER_GLOBAL;
 
-			ret = cmd_enable_channel_internal(
-				locked_session, &kern_domain, *attr, kwpipe);
+			ret = cmd_enable_channel_internal(locked_session, &kern_domain, *attr);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
@@ -2828,7 +2821,6 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 					  char *raw_filter_expression,
 					  struct lttng_bytecode *raw_bytecode,
 					  struct lttng_event_exclusion *raw_exclusion,
-					  int wpipe,
 					  bool internal_event,
 					  lttng::ctl::event_rule_uptr event_rule)
 {
@@ -2905,8 +2897,7 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 					return LTTNG_ERR_INVALID;
 				}
 
-				ret = cmd_enable_channel_internal(
-					locked_session, domain, *attr, wpipe);
+				ret = cmd_enable_channel_internal(locked_session, domain, *attr);
 				if (ret != LTTNG_OK) {
 					return static_cast<lttng_error_code>(ret);
 				}
@@ -2987,7 +2978,7 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 				return LTTNG_ERR_INVALID;
 			}
 
-			ret = cmd_enable_channel_internal(locked_session, domain, *attr, wpipe);
+			ret = cmd_enable_channel_internal(locked_session, domain, *attr);
 			if (ret != LTTNG_OK) {
 				return static_cast<lttng_error_code>(ret);
 			}
@@ -3136,7 +3127,6 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 							filter_expression_copy.release(),
 							bytecode_copy.release(),
 							nullptr,
-							wpipe,
 							std::move(internal_event_rule));
 		}
 
@@ -3225,7 +3215,6 @@ int cmd_enable_event(struct command_ctx *cmd_ctx,
 		     char *filter_expression,
 		     struct lttng_event_exclusion *exclusion,
 		     struct lttng_bytecode *bytecode,
-		     int wpipe,
 		     lttng::ctl::event_rule_uptr event_rule)
 {
 	int ret;
@@ -3249,7 +3238,6 @@ int cmd_enable_event(struct command_ctx *cmd_ctx,
 				filter_expression,
 				bytecode,
 				exclusion,
-				wpipe,
 				false,
 				std::move(event_rule));
 	filter_expression = nullptr;
@@ -3270,7 +3258,6 @@ static int cmd_enable_event_internal(ltt_session::locked_ref& locked_session,
 				     char *filter_expression,
 				     struct lttng_bytecode *filter,
 				     struct lttng_event_exclusion *exclusion,
-				     int wpipe,
 				     lttng::ctl::event_rule_uptr event_rule)
 {
 	return _cmd_enable_event(locked_session,
@@ -3280,7 +3267,6 @@ static int cmd_enable_event_internal(ltt_session::locked_ref& locked_session,
 				 filter_expression,
 				 filter,
 				 exclusion,
-				 wpipe,
 				 true,
 				 std::move(event_rule));
 }
