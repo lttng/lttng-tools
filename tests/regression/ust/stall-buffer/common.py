@@ -14,6 +14,16 @@ import bt2
 gdb_helper_script_path = pathlib.Path(__file__).absolute().parents[0] / "gdb_helper.py"
 
 
+def write_gdb_script(path, commands, log=False):
+    with open(path, "w") as f:
+        for cmd in commands:
+            if log:
+                f.write("shell date\n")
+            f.write("{}\n".format(cmd))
+            if log:
+                f.write("shell date\n")
+
+
 class StallScenario:
     """
     A stall scenario is a list of testpoints and some optional expectations
@@ -194,11 +204,7 @@ class StallScenario:
             )
 
             # Write GDB script to file
-            with open(gdb_script_path, "w") as f:
-                for cmd in gdb_commands:
-                    f.write("shell date\n")
-                    f.write(cmd + "\n")
-                    f.write("shell date\n")
+            write_gdb_script(gdb_script_path, gdb_commands, log=True)
 
             # Execute GDB with the script
             gdb_args = [

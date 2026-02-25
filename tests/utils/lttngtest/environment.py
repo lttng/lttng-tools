@@ -288,6 +288,7 @@ class _WaitTraceTestApplication:
         extra_env_vars=dict(),
         emit_event_with_empty_field_name=False,
         emit_blob_events=False,
+        register_timeout_s=-1,
     ):
         self._process = None
         self._environment = environment  # type: Environment
@@ -352,7 +353,8 @@ class _WaitTraceTestApplication:
 
         # Make sure the app is blocked until it is properly registered to
         # the session daemon.
-        test_app_env["LTTNG_UST_REGISTER_TIMEOUT"] = "-1"
+        test_app_env["LTTNG_UST_REGISTER_TIMEOUT"] = str(register_timeout_s)
+
         test_app_env.update(extra_env_vars)
 
         # File that the application will create to indicate it has completed its initialization.
@@ -1573,6 +1575,7 @@ class _Environment(logger._Logger):
         extra_env_vars=dict(),
         emit_event_with_empty_field_name=False,
         emit_blob_events=False,
+        **kwargs
     ):
         # type: (int, int, bool, Optional[pathlib.Path], Optional[str]) -> _WaitTraceTestApplication
         """
@@ -1593,6 +1596,7 @@ class _Environment(logger._Logger):
             extra_env_vars,
             emit_event_with_empty_field_name,
             emit_blob_events,
+            **kwargs,
         )
 
     def launch_multi_event_wait_trace_test_application(

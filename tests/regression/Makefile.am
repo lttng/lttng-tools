@@ -152,7 +152,8 @@ TESTS += tools/client/test_reclaim_memory.py \
 # sub-process invocations, typically on systems with heavy workload.
 SERIAL_TESTS += ust/stall-buffer/test_stall_buffer_complex.py \
 		ust/stall-buffer/test_stall_buffer_simple.py \
-		ust/stall-buffer/test_stall_buffer_timer.py
+		ust/stall-buffer/test_stall_buffer_timer.py \
+		ust/stall-buffer/test_stall_buffer_slow.py
 
 
 if TEST_JAVA_JUL_AGENT

@@ -36,6 +36,7 @@
 #include <common/make-unique.hpp>
 #include <common/pthread-lock.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/testpoint/testpoint.hpp>
 #include <common/urcu.hpp>
 
 #include <lttng/condition/condition.h>
@@ -2937,6 +2938,8 @@ lsu::ctl_field_quirks lsu::app::ctl_field_quirks() const
 namespace {
 void ust_app_release(urcu_ref *ref)
 {
+	TESTPOINT("ust_app_release");
+
 	namespace lam = lttng::sessiond::app_management;
 
 	auto& app = *lttng::utils::container_of(ref, &lsu::app::ref);

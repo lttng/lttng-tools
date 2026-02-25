@@ -7,6 +7,7 @@ noinst_SCRIPTS =					\
 	gdb_helper.py					\
 	test_stall_buffer_complex.py			\
 	test_stall_buffer_simple.py			\
+	test_stall_buffer_slow.py			\
 	test_stall_buffer_timer.py
 
 EXTRA_DIST =						\
@@ -14,6 +15,7 @@ EXTRA_DIST =						\
 	gdb_helper.py					\
 	test_stall_buffer_complex.py			\
 	test_stall_buffer_simple.py			\
+	test_stall_buffer_slow.py			\
 	test_stall_buffer_timer.py
 
 all-local:
