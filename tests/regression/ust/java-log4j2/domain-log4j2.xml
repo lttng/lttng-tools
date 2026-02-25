@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+SPDX-FileCopyrightText: 2022 Michael Jeanson <mjeanson@efficios.com>
+
+SPDX-License-Identifier: CC0-1.0
+-->
+
 <Configuration status="warn">
   <Appenders>
     <Console name="Console" target="SYSTEM_OUT">

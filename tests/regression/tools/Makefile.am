@@ -273,7 +273,8 @@ EXTRA_DIST += $(noinst_SCRIPTS) \
 	save-load/tracker_legacy_selective.lttng \
 	trace-format/kernel-local-trace-pretty.expect \
 	trace-format/kernel-local-trace-pretty.expect.32 \
-	trace-format/ust-local-trace-pretty.expect
+	trace-format/ust-local-trace-pretty.expect \
+	REUSE.toml
 
 # Copy test scripts to the builddir for OOT builds
 all-local:

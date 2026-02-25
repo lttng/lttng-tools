@@ -35,7 +35,8 @@ EXTRA_DIST = \
 	abi_ref/0.0.0/x86_64-64bit-linux/abi.xml \
 	abi_ref/README.md \
 	liblttng-ctl.map \
-	liblttng-ctl.sym
+	liblttng-ctl.sym \
+	REUSE.toml
 
 liblttng_ctl_la_LIBADD = \
 		$(top_builddir)/src/common/libsessiond-comm.la \

@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+SPDX-FileCopyrightText: 2016 Jonathan Rajotte <jonathan.rajotte-julien@efficios.com>
+
+SPDX-License-Identifier: CC0-1.0
+-->
+
 <sessions>
 	<session>
 		<name>load-42-snapshot</name>

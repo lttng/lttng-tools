@@ -1,0 +1,7 @@
+version = 1
+
+[[annotations]]
+path = ["trace-format/kernel-local-trace-pretty.expect", "trace-format/kernel-local-trace-pretty.expect.32", "trace-format/ust-local-trace-pretty.expect"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 EfficiOS Inc."
+SPDX-License-Identifier = "CC0-1.0"

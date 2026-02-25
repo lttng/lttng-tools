@@ -1,0 +1,7 @@
+version = 1
+
+[[annotations]]
+path = ["abi_ref/0.0.0/x86_64-64bit-linux/abi.xml"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 EfficiOS Inc."
+SPDX-License-Identifier = "CC0-1.0"
