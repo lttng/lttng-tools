@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2020 Philippe Proulx <pproulx@efficios.com>
+//
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
 // Render with Asciidoctor
 
 :nbh: &#8209;

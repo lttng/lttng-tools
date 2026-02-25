@@ -50,13 +50,7 @@ noinst_PROGRAMS = demo_builtin demo_static
 COPYSCRIPTS = test_linking.py demo_preload
 noinst_SCRIPTS = $(COPYSCRIPTS)
 
-if NO_SHARED
-
-EXTRA_DIST = tp.c ust_tests_demo.h tp2.c ust_tests_demo2.h \
-	tp3.c ust_tests_demo3.h demo.c ust_tests_demo.h \
-	$(COPYSCRIPTS)
-
-else
+if !NO_SHARED
 # Force the shared flag on the noinst libraries since they are
 # only built static by default
 FORCE_SHARED_LIB_OPTIONS = -module -shared -avoid-version \
@@ -84,10 +78,9 @@ noinst_PROGRAMS += demo
 demo_SOURCES = demo.c ust_tests_demo.h
 demo_CFLAGS = -DTEST_DYNAMIC_LINKAGE $(AM_CFLAGS)
 demo_LDADD = $(DL_LIBS)
-
-EXTRA_DIST = $(COPYSCRIPTS)
-
 endif
+
+EXTRA_DIST = $(COPYSCRIPTS) README.md
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \

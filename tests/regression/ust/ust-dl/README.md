@@ -1,5 +1,10 @@
-UST dynamic linker tracing test
--------------------------------
+<!--
+SPDX-FileCopyrightText: 2015 Antoine Busque <abusque@efficios.com>
+
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
+# UST dynamic linker tracing test
 
 This test verifies that the `liblttng-ust-dl.so` helper works as
 intended. Indeed, once preloaded, this helper should produce events
@@ -8,18 +13,16 @@ debug information for the given shared object, such as build id or
 debug link if it exists, as well as dlclose.
 
 
-DESCRIPTION
------------
+## DESCRIPTION
 
 The test application is run with the environment variable
-LD_PRELOAD="liblttng-ust-dl.so" to preload the helper. It then dlopens
+`LD_PRELOAD="liblttng-ust-dl.so"` to preload the helper. It then dlopens
 a shared library (`libfoo.so`), calls a function from it, and dlclose
 it. This should produce `dlopen` and `dlclose` events, as well as
 `build_id` and `debug_link`, because the shared library has been built
 to contain all this extra debug information.
 
-DEPENDENCIES
-------------
+## DEPENDENCIES
 
 To run this test, you will need:
 

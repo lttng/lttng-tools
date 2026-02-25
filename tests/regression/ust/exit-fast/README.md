@@ -1,11 +1,15 @@
-exit-fast tracing test
--------------------
+<!--
+SPDX-FileCopyrightText: 2013 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
+# exit-fast tracing test
 
 This test verifies that tracing works correctly when the traced process exits
 right after an event is logged.
 
-DESCRIPTION
------------
+## DESCRIPTION
 
 This test launches a process that logs an event and returns directly after.
 It then launches it again in a mode that will trigger a SIGKILL right after
@@ -13,8 +17,7 @@ the tracepoint is executed. The resulting trace is then checked for errors.
 
 The events must be present in the trace and contain the appropriate test string.
 
-DEPENDENCIES
-------------
+## DEPENDENCIES
 
 To run this test, you will need:
 

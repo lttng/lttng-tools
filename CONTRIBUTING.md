@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2016 Philippe Proulx <pproulx@efficios.com>
+
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
 # LTTng-tools contributor's guide
 
 Being an open source project, the LTTng-tools project welcomes

@@ -9,14 +9,17 @@
 # scenarios such as `--enable-embedded-help`, a forced build order is required
 # at the parent level.
 SUBDIRS = man
-EXTRA_DIST = quickstart.txt streaming-howto.txt python-howto.txt \
-	snapshot-howto.txt kernel-CodingStyle.txt \
-	live-reading-howto.txt live-reading-protocol.txt \
-	relayd-architecture.txt
+EXTRA_DIST = kernel-CodingStyle.txt
 
-dist_doc_DATA = quickstart.txt streaming-howto.txt python-howto.txt \
-	snapshot-howto.txt live-reading-howto.txt \
-	live-reading-protocol.txt valgrind-howto.txt
+dist_doc_DATA =
+	live-reading-howto.md \
+	live-reading-protocol.md \
+	python-howto.md \
+	quickstart.md \
+	relayd-architecture.md \
+	snapshot-howto.md \
+	streaming-howto.md \
+	valgrind-howto.md
 
 if API_DOC
 SUBDIRS += api

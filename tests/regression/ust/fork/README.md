@@ -1,13 +1,17 @@
-Fork tracing test
--------------------
+<!--
+SPDX-FileCopyrightText: 2013 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
+# Fork tracing test
 
 This test checks if tracing works correctly in a child process created by a
 fork() call, as well as after an exec() call.
 
-DESCRIPTION
------------
+## DESCRIPTION
 
-The test_fork script launches a binary that forks and calls exec() with
+The `test_fork` script launches a binary that forks and calls exec() with
 the command provided as the argument. Tracepoints are placed before and
 after these calls to verify tracing remains operational at all times.
 
@@ -16,8 +20,7 @@ The binary loaded as the new process image also logs an event.
 The resulting trace is parsed to make sure the every event was logged
 successfully with the correct PIDs.
 
-DEPENDENCIES
-------------
+## DEPENDENCIES
 
 To run this test, you will need:
 

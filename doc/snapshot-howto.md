@@ -1,4 +1,10 @@
-LTTng Flight Recorder Snapshot HOWTO
+<!--
+SPDX-FileCopyrightText: 2013 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
+# LTTng Flight Recorder Snapshot HOWTO
 
 Mathieu Desnoyers
 July 21st, 2013
@@ -15,10 +21,13 @@ Basic usage:
 
 Session daemon started as root for kernel tracing:
 
-# lttng-sessiond -d
+```
+lttng-sessiond -d
+```
 
 From a user part of the tracing group (for kernel tracing):
 
+```
 $ lttng create --snapshot
 $ lttng enable-event -k -a      # enable kernel tracing
 $ lttng enable-event -u -a      # enable user-space tracing
@@ -34,6 +43,7 @@ $ lttng snapshot record
 
 $ lttng stop
 $ lttng destroy
+```
 
 Each "lttng snapshot" command records a snapshot of the current buffer
 state. "lttng enable --snapshot" automatically setups the buffers in
@@ -44,6 +54,7 @@ either while tracing is started or stopped.
 As an example, this generates the following hierarchy under the
 directory reported by the "create" command above:
 
+```
 .
 ├── snapshot-1-20130721-141838-0
 │   ├── kernel
@@ -77,11 +88,14 @@ directory reported by the "create" command above:
                     ├── channel0_2
                     ├── channel0_3
                     └── metadata
+```
 
 
 Then, running babeltrace on, e.g.
 
+```
 babeltrace snapshot-1-20130721-141838-0
+```
 
 shows the content of the first snapshot.
 

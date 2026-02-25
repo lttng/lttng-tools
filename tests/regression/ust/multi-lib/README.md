@@ -1,21 +1,26 @@
+<!--
+SPDX-FileCopyrightText: 2018 Francis Deslauriers <francis.deslauriers@efficios.com>
+
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
 Those test cases are designed to test the support for loading and unloading
 probe providers and callsites at run time during tracing. One test case also
 tests the event payload comparaison functions.
 
-Testing build artefacts:
-------------------------
+## Testing build artefacts:
 
-./exec-with-callsites
+- `./exec-with-callsites`
 	Test binary built with tracepoint callsites
 
-./exec-without-callsites
+- `./exec-without-callsites`
 	Test binary built without tracepoint callsites
 
-/.libs/libprobe_*.so:
+- `./.libs/libprobe_*.so`
 	Libraries containing slight variations of probe providers for the same
-	tracepoint name. Note that the file /.libs/libprobes_a_prime.so has the same
-	content as .libs/libprobes_a.so likewise for libprobes_c_prime.so
+	tracepoint name. Note that the file `./.libs/libprobes_a_prime.so` has the same
+	content as `./.libs/libprobes_a.so` likewise for `libprobes_c_prime.so`
 
-/.libs/libcallsites_*.so
+- `./.libs/libcallsites_*.so`
   Libraries containing tracepoint callsites. The user must dlopen the library
   and use dlsym to get an handle on the function that calls the tracepoint.

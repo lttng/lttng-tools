@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2022 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
 # Coding style guide
 
 It is said that there is no accounting for taste. However, when it comes to code, we are of the opinion that a _consistent_ style makes it easier to collaborate in a shared code base.

@@ -9,10 +9,6 @@ if NO_SHARED
 CLEANFILES = libbar.so libbar.so.debug libfoo.so libfoo.so.debug \
 	libzzz.so libzzz.so.debug prog libtp.so
 
-EXTRA_DIST = test_ust-dl.py libbar.c libbar.h libbar-tp.h \
-	libbar-tp.c libfoo.c libfoo.h libfoo-tp.h libfoo-tp.c \
-	libzzz.c libzzz.h libzzz-tp.h libzzz-tp.c prog.c libtp.c
-
 else
 
 objcopy_verbose = $(objcopy_verbose_@AM_V@)
@@ -73,9 +69,12 @@ libzzz.so: libzzz.so.debug
 
 libtp.so: libtp.la
 	@cp -f .libs/libtp.so libtp.so
+endif
 
 noinst_SCRIPTS = test_ust-dl.py
-EXTRA_DIST = test_ust-dl.py
+EXTRA_DIST = \
+	README.md \
+	test_ust-dl.py
 
 all-local: libfoo.so libbar.so libzzz.so libtp.so
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
@@ -90,5 +89,3 @@ clean-local:
 			rm -f $(builddir)/$$script; \
 		done; \
 	fi
-
-endif

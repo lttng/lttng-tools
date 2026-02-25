@@ -1,19 +1,22 @@
-libc-wrapper malloc/free tracing test
--------------------------------------
+<!--
+SPDX-FileCopyrightText: 2013 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
+# libc-wrapper malloc/free tracing test
 
 This test checks if tracing works correctly when applications are linked against
 the UST libc wrapper which provides tracepoints in the malloc and free libc
 functions.
 
-DESCRIPTION
------------
+## DESCRIPTION
 
 The test application performs a series of calls to malloc()/free() and the
 resulting trace is checked for the presence of ust-libc:malloc and ust-libc:free
 events.
 
-DEPENDENCIES
-------------
+## DEPENDENCIES
 
 To run this test, you will need:
 

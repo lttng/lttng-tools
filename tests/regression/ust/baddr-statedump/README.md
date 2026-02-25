@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2015 Antoine Busque <abusque@efficios.com>
+
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
 UST base address statedump test
 -------------------------------
 

@@ -1,4 +1,11 @@
-LTTng Relay Daemon Architecture
+<!--
+SPDX-FileCopyrightText: 2015 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
+# LTTng Relay Daemon Architecture
+
 Mathieu Desnoyers, August 2015
 
 This document describes the object model and architecture of the relay
@@ -7,6 +14,7 @@ ownership and reference counting".
 
 We have the following object composition hierarchy:
 
+```
 relay connection (main.cpp, for sessiond/consumer)
   |
   \-> 0 or 1 per-consumer relay session
@@ -29,6 +37,7 @@ live connection (live.cpp, for client)
              |       per-consumer relay session as created by the relay connection)
              |
              \-> ..... (ctf-trace, stream, index, viewer stream)
+```
 
 There are global tables declared in lttng-relayd.h for per-consumer relay sessions
 (sessions_ht, indexed by session id), streams (relay_streams_ht, indexed

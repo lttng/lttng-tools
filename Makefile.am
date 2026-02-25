@@ -32,6 +32,7 @@ EXTRA_DIST = CLAUDE.md \
 	     LICENSES/Autoconf-exception-2.0.txt \
 	     LICENSES/BSD-2-Clause.txt \
 	     LICENSES/BSD-3-Clause.txt \
+	     LICENSES/CC-BY-SA-4.0.txt \
 	     LICENSES/BSL-1.0.txt \
 	     LICENSES/FSFAP.txt \
 	     LICENSES/GPL-2.0-only.txt \

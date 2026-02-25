@@ -1,27 +1,36 @@
-LTTng core dump snapshot handler
+<!--
+SPDX-FileCopyrightText: 2013 Christian Babeux <christian.babeux@efficios.com>
+
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
+# LTTng core dump snapshot handler
 Christian Babeux, June 2013
 
 This is a custom core dump program that will be called when a core dump
-occurs. The program will save the core data in CORE_PATH and also, if a
+occurs. The program will save the core data in **CORE_PATH** and also, if a
 root session daemon is running, will record a snapshot of tracing data
 using the lttng command line utility.
 
 The core dump snapshot handler can be installed by using the provided
 install.sh script or by adding the appropriate program pipe line to
-/proc/sys/kernel/core_pattern. Refer to core(5) for more information
+`/proc/sys/kernel/core_pattern`. Refer to core(5) for more information
 about the Linux kernel core dump handling and custom handler mechanism.
 
-Installation:
+## Installation
 
+```
 # ./install.sh
 Backup current core_pattern in core_pattern.bkp.
 Successfully installed core_pattern.
+```
 
-How to use:
+## How to use
 
 You can use the provided test.sh script to test that the core dump snapshot
 handler is working properly:
 
+```
 # ./test.sh
 Setup coredump-handler...
 Session coredump-handler created.
@@ -51,8 +60,9 @@ Snapshot will be available in /tmp/lttng/snapshot.
             ├── channel0_2
             ├── channel0_3
             └── metadata
+```
 
-Chaining with other core dump handler:
+## Chaining with other core dump handler:
 
 Some Linux distributions already use their own core dump handler
 (such as systemd 'systemd-coredump' utility). It is possible to chain these
@@ -63,11 +73,14 @@ handler must be called from within the core dump snapshot handler script.
 
 Example (chaining with systemd systemd-coredump):
 
+```
 # cat /proc/sys/kernel/core_pattern
 |/path/to/lttng/handler.sh %p %u %g %s %t %h %e %E %c
+```
 
 In LTTng handler.sh script:
 
+```
 [...]
 # Save core dump from stdin.
 #$MKDIR_BIN -p "${CORE_PATH}"
@@ -76,3 +89,4 @@ In LTTng handler.sh script:
 # Optional, chain core dump handler with original systemd script.
 $CAT_BIN - | /usr/lib/systemd/systemd-coredump $p $u $g $s $t $e
 [...]
+```

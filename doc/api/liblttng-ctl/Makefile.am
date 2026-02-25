@@ -81,5 +81,20 @@ MOSTLYCLEANFILES = $(DX_CLEANFILES)
 EXTRA_DIST = \
 	Doxyfile.in \
 	style.css \
-	dox \
-	images
+	dox/filter-expr.dox \
+	dox/groups.dox \
+	images/concepts.png \
+	images/event-rule.png \
+	images/live.png \
+	images/many-sessions.png \
+	images/per-channel-buffering.png \
+	images/per-channel-buffering-root.png \
+	images/per-process-buffering.png \
+	images/per-process-buffering-root.png \
+	images/per-user-buffering.png \
+	images/per-user-buffering-root.png \
+	images/plumbing.png \
+	images/reclaim.png \
+	images/rotation.png \
+	images/snapshot.png \
+	REUSE.toml

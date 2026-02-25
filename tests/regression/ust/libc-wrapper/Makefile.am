@@ -7,7 +7,9 @@ prog_SOURCES = prog.c
 prog_LDADD = $(UST_LIBS) -llttng-ust-libc-wrapper
 
 noinst_SCRIPTS = test_libc-wrapper.py
-EXTRA_DIST = test_libc-wrapper.py
+EXTRA_DIST = \
+	README.md \
+	test_libc-wrapper.py
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \

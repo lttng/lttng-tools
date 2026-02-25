@@ -1,4 +1,10 @@
-LTTng Live trace reading how-to
+<!--
+SPDX-FileCopyrightText: 2013 Julien Desfossez <jdesfossez@efficios.com>
+
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
+# LTTng Live trace reading how-to
 
 Julien Desfossez
 September 27th, 2013
@@ -15,12 +21,16 @@ So, the first thing to do is to start a lttng-relayd process. It can be
 anywhere on the network (including localhost) as long as the sessiond/consumerd
 and the viewer can communicate with it over TCP/IP.
 
+```
 $ lttng-relayd -d
+```
 
 Then, we can create a session configured for streaming with the new --live
 parameter.
 
+```
 $ lttng create --live 1000000 -U net://localhost
+```
 
 The --live parameter activates a session-wide timer (usec) that is responsible
 for checking at a user-defined rate if new data is available. If there is new

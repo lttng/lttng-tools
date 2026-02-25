@@ -1,13 +1,18 @@
-NOTES:
---------------
+<!--
+SPDX-FileCopyrightText: 2011-2013 David Goulet <dgoulet@efficios.com>
+SPDX-FileCopyrightText: 2011 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
+# NOTES:
 
 2011-12-12: For user-space tracing, only the global UST domain ("-u" alone) is
 supported meaning that if you enable a tracepoint for user-space it will be
 enabled for all applications for the current recording session you are working
 on.
 
-QUICKSTART
---------------
+# QUICKSTART
 
 This is a quick start guide for the complete LTTng tool chain. This is divided
 in three sections respectively kernel tracing, user-space tracing and reading a
@@ -45,8 +50,7 @@ And for the LTTng UST 2.0 tracer:
 
 The next sections explains how to do tracing :)
 
-Kernel Tracing
---------------
+## Kernel Tracing
 
 You can start the session daemon by invoking the command "lttng-sessiond", or
 let the lttng command line tool do it for you. The session daemon loads the
@@ -55,103 +59,134 @@ they are not found, the kernel tracing feature will be unavailable.
 
 List available kernel events:
 
-# lttng list -k
+```
+lttng list -k
+```
 
 1) Create a recording session. The .lttng directory will be created with .lttngrc
 file in $HOME containing the session name (here 'mysession') you are working
 on.
 
-# lttng create mysession
+```
+lttng create mysession
+```
 
 If you have multiple sessions, you can change the current session by using
 
-# lttng set-session myothersession
+```
+lttng set-session myothersession
+```
 
-2) Enable all tracepoints and all system call events.
+2. Enable all tracepoints and all system call events.
 
-# lttng enable-event -a -k
+```
+lttng enable-event -a -k
+```
 
-3) Enable tracepoint event(s). Here for example, we want only
+3. Enable tracepoint event(s). Here for example, we want only
 'sched_switch' and 'sched_wakeup' events for the kernel (-k/--kernel).
 
-# lttng enable-event sched_switch,sched_wakeup -k
+```
+lttng enable-event sched_switch,sched_wakeup -k
+```
 
 or enable ALL tracepoint events:
 
-# lttng enable-event -a -k --tracepoint
+```
+lttng enable-event -a -k --tracepoint
+```
 
-4) Enable all system call event(s).
+4. Enable all system call event(s).
 
-# lttng enable-event -a -k --syscall
+```
+lttng enable-event -a -k --syscall
+```
 
-5) Enable kprobes and/or the function tracer with lttng
+5. Enable kprobes and/or the function tracer with lttng
 
 This is a new feature made possible by the new LTTng 2.0 kernel tracer. You can
 enable a dynamic probe and data will be output in the trace along side with
 your tracing data.
 
-# lttng enable-event aname -k --probe symbol+0x0
+```
+lttng enable-event aname -k --probe symbol+0x0
+```
 
 or
 
-# lttng enable-event aname -k --probe 0xffff7260695
+```
+lttng enable-event aname -k --probe 0xffff7260695
+```
 
 Either an <address> or a <symbol+offset> can be used for probes.
 
 You can also enable function tracer, which uses the Ftrace API (by Steven
 Rostedt). Again, data will be output in the trace.
 
-# lttng enable-event aname -k --function <symbol_name>
+```
+lttng enable-event aname -k --function <symbol_name>
+```
 
-6) Enable context information for an event:
+6. Enable context information for an event:
 
 This is also a new feature which allows you to add context information to an
 event. For example, you can add the PID along with the event information:
 
-# lttng add-context -k -e sched_switch -t pid
+```
+lttng add-context -k -e sched_switch -t pid
+```
 
 At this point, you will have to look at 'lttng add-context --help' for all
 possible context type.
 
 You can on the same line activate multiple context:
 
-# lttng add-context -k -e sched_switch -t pid -t nice -t tid
+```
+lttng add-context -k -e sched_switch -t pid -t nice -t tid
+```
 
-7) Enable perf counter for an event:
+7. Enable perf counter for an event:
 
 Again, a new powerful feature is the possibility to add perf counter data
 (using the perf API by Ingo Molnar and Thomas Gleixner) to the trace on a per
 event basis. Let say we want to get the CPU cycles at each event:
 
-# lttng add-context -k -e sched_switch -t perf:cpu-cycles
+```
+lttng add-context -k -e sched_switch -t perf:cpu-cycles
+```
 
 You'll have to use the add-context help for all possible perf counter values.
 
-8) Start tracing:
+8. Start tracing:
 
-# lttng start
+```
+lttng start
+```
 
 Tracing is in progress at this point and traces will be written in
 $HOME/lttng-traces/mysession-<date>-<time>
 
 NOTE: It will start tracing for *all* domain(s).
 
-9) Stop tracing:
+9. Stop tracing:
 
-# lttng stop
+```
+lttng stop
+```
 
 NOTE: At this point, you can restart the trace (lttng start), enable/disable
 events or just go take a break and come back 3 days later to start it again :).
 You can also read the trace since the buffers are flushed on stop command.
 
-10) Destroy your session after you are done with tracing
+10. Destroy your session after you are done with tracing
 
-# lttng destroy
+```
+lttng destroy
+```
 
 See Reading a trace section below to read you trace(s).
 
-User-space Tracing
---------------
+## User-space Tracing
 
 Like kernel tracing, you can start the session daemon by invoking the command
 "lttng-sessiond", or let the lttng command line tool do it for you.
@@ -170,70 +205,91 @@ tracing :).
 
 List available registered applications:
 
-$ lttng list -u
+```
+lttng list -u
+```
 
-1) Create a recording session. The .lttng directory will be created with a
+1. Create a recording session. The .lttng directory will be created with a
 .lttngrc file in $HOME containing the session name (here 'mysession') you are
 working on.
 
-$ lttng create mysession
+```
+lttng create mysession
+```
 
 If you have multiple sessions, you can change the current session by using:
 
-$ lttng set-session myothersession
+```
+lttng set-session myothersession
+```
 
-2) Enable all tracepoints for the global UST domain ("-u" alone).
+2. Enable all tracepoints for the global UST domain ("-u" alone).
 
-$ lttng enable-event -a -u
+```
+lttng enable-event -a -u
+```
 
 or enable a single tracepoint event.
 
-$ lttng enable-event ust_tests_hello:tptest -u
+```
+lttng enable-event ust_tests_hello:tptest -u
+```
 
-3) This is also a new feature which allows you to add context information to an
+3. This is also a new feature which allows you to add context information to an
 event. For example, you can add the PID along with the event information:
 
-$ lttng add-context -t pid -e ust_tests_hello:tptest -u
+```
+lttng add-context -t pid -e ust_tests_hello:tptest -u
+```
 
 At this point, you will have to look at 'lttng add-context --help' for all
 possible context type.
 
 You can on the same line activate multiple context:
 
-$ lttng add-context -u -e ust_tests_hello:tptest -t pid -t nice -t tid
+```
+lttng add-context -u -e ust_tests_hello:tptest -t pid -t nice -t tid
+```
 
-4) Start tracing:
+4. Start tracing:
 
-$ lttng start
+```
+lttng start
+```
 
 Tracing is in progress at this point and traces will be written in the session
 directory.
 
 NOTE: It will start tracing for *all* domain(s).
 
-5) Stop tracing:
+5. Stop tracing:
 
-$ lttng stop
+```
+lttng stop
+```
 
 NOTE: At this point, you can restart the trace (lttng start), enable/disable
 events or just go take a break and come back 3 days later to start it again :).
 You can also read the trace since the buffers are flushed on stop command.
 
-6) Destroy your session after you are done with tracing
+6. Destroy your session after you are done with tracing
 
-$ lttng destroy
+```
+lttng destroy
+```
 
 See "Reading a trace" section below to read you trace(s).
 
 
-Reading a trace
---------------
+## Reading a trace
 
 The tool "Babeltrace" can be used to dump your binary trace into a
 human-readable text format. Please see http://www.efficios.com/babeltrace and
 git tree http://git.efficios.com/?p=babeltrace.git
 
-# babeltrace $HOME/lttng-traces/mysession-<date>-<time> | less
+```
+babeltrace $HOME/lttng-traces/mysession-<date>-<time> | less
+```
 
 Voilà!
 

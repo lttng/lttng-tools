@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2025 Philippe Proulx <pproulx@efficios.com>
+
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
 # LTTng-tools project context
 
 ## Project overview

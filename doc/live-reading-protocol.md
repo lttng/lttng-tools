@@ -1,4 +1,10 @@
-LTTng Live trace reading protocol
+<!--
+SPDX-FileCopyrightText: 2013 Julien Desfossez <jdesfossez@efficios.com>
+
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
+# LTTng Live trace reading protocol
 
 Julien Desfossez
 February 6th, 2014

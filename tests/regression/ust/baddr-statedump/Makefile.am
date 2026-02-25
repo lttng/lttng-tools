@@ -17,7 +17,9 @@ prog_SOURCES = prog.c tp.c tp.h
 prog_LDADD = $(UST_LIBS) $(DL_LIBS)
 
 noinst_SCRIPTS = test_baddr-statedump.py
-EXTRA_DIST = test_baddr-statedump.py
+EXTRA_DIST = \
+	README.md \
+	test_baddr-statedump.py
 
 # Extract debug symbols
 prog.debug: prog

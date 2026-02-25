@@ -1,26 +1,29 @@
-UST linking test
-----------------
+<!--
+SPDX-FileCopyrightText: 2013 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
+# UST linking test
 
 Tests userspace tracing with directly, statically and dynamically linked
 providers.
 
-DESCRIPTION
------------
+## DESCRIPTION
 
-This test checks that tracepoints can be enabled by using LD_PRELOAD inside a
+This test checks that tracepoints can be enabled by using **LD_PRELOAD** inside a
 launcher script. The test application is also compiled with tracepoint
 providers linked directly and statically. The same test suite is executed
 for every version of the binary.
 
 The resulting trace is verified to make sure it is valid and contains the
 expected valuess. This test also verifies that the execution of the demo test
-without LD_PRELOAD has not produced any logged events.
+without **LD_PRELOAD** has not produced any logged events.
 
 Also serves as an example of building and tracing an application with all types
 of provider linking.
 
-DEPENDENCIES
-------------
+## DEPENDENCIES
 
 To run this test, you will need:
 

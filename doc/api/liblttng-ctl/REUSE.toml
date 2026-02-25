@@ -1,0 +1,7 @@
+version = 1
+
+[[annotations]]
+path = "images/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2021 Philippe Proulx <pproulx@efficios.com>"
+SPDX-License-Identifier = "CC-BY-SA-4.0"

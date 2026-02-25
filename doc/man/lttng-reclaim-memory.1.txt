@@ -1,3 +1,8 @@
+// SPDX-FileCopyrightText: 2025 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+// SPDX-FileCopyrightText: 2025 Philippe Proulx <pproulx@efficios.com>
+//
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
 lttng-reclaim-memory(1)
 =======================
 :revdate: 24 September 2025

@@ -16,7 +16,9 @@ fork2_SOURCES = fork2.c
 fork2_LDADD = $(UST_LIBS) -llttng-ust-fork $(DL_LIBS)
 
 noinst_SCRIPTS = test_fork.py
-EXTRA_DIST = test_fork.py
+EXTRA_DIST = \
+	README.md \
+	test_fork.py
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \

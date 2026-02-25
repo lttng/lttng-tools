@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025 Philippe Proulx <pproulx@efficios.com>
+//
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
 \lt_var{EXPR} can contain references to the payload fields
 of&nbsp;\lt_var{E} and to the current
 \link #lttng_event_context_type context\endlink fields.

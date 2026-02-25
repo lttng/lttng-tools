@@ -7,7 +7,7 @@ AM_CFLAGS += \
 	-Wno-redundant-decls
 
 noinst_SCRIPTS = test_multi_lib
-EXTRA_DIST = test_multi_lib
+EXTRA_DIST = README.md test_multi_lib
 noinst_PROGRAMS = exec-with-callsites exec-without-callsites
 
 exec_with_callsites_SOURCES = multi-lib-test.c callsites.c

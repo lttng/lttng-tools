@@ -1,13 +1,21 @@
+<!--
+SPDX-FileCopyrightText: 2018 Jonathan Rajotte <jonathan.rajotte-julien@efficios.com>
+
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
+# Extra version
+
 On version.i generation, check the content of the following files :
 
-  * "extra_version_name"
+  * `extra_version_name`
 
-    The first line is used to populate the EXTRA_VERSION_NAME pre-processor
+    The first line is used to populate the **EXTRA_VERSION_NAME** pre-processor
     define statement.
 
-  * "extra_version_description"
+  * `extra_version_description`
 
-    The content is used to populate the EXTRA_VERSION_DESCRIPTION pre-processor
+    The content is used to populate the **EXTRA_VERSION_DESCRIPTION** pre-processor
     define statement.
 
     It should contain the description of local modifications done to the tree.

@@ -1,11 +1,15 @@
-Daemon tracing test
--------------------
+<!--
+SPDX-FileCopyrightText: 2013 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
+# Daemon tracing test
 
 This test checks if tracing works correctly in a child process created by a
 call to daemon().
 
-DESCRIPTION
------------
+## DESCRIPTION
 
 A session daemon is launched if none are found to be running. The test_daemon
 script then creates a session, enables all events from the userspace domain,
@@ -14,11 +18,10 @@ starts the session and launches the daemon binary.
 The daemon binary, in turn, triggers tracepoints both from the original and
 resulting daemon process.
 
-The test_daemon script then parses the resulting trace and ensures that the
+The `test_daemon` script then parses the resulting trace and ensures that the
 events were correctly recorded and were logged with the right PIDs.
 
-DEPENDENCIES
-------------
+## DEPENDENCIES
 
 To run this test, you will need:
 

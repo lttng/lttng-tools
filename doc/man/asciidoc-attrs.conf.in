@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2015 Philippe Proulx <pproulx@efficios.com>
+#
+# SPDX-License-Identifier: CC-BY-SA-4.0
+
 [attributes]
 # default values
 default_agent_tcp_port_range_begin="@DEFAULT_AGENT_TCP_PORT_RANGE_BEGIN@"

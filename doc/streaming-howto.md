@@ -1,5 +1,10 @@
-STREAMING
-----------------
+<!--
+SPDX-FileCopyrightText: 2012 David Goulet <dgoulet@efficios.com>
+
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
+## STREAMING
 
 [Last updated: 2012-07-17 by David Goulet]
 
@@ -43,30 +48,37 @@ For now, only TCP is supported on IPv4/IPv6.
 Once done, the following examples shows you how to start streaming from the
 target machine to the remote host where we just started a lttng relay.
 
-Example 1:
-----------------
+## Example 1
 
 Simple and quick network streaming.
 
-1) Create a recording session that will be streamed over the network for the
+1. Create a recording session that will be streamed over the network for the
 specified domain. This session will contain, in our example, syscall events.
 
-  # lttng create syscall-session
+```
+lttng create syscall-session
+```
 
-2) Enable the consumer to send data over the network for the kernel domain.
+2. Enable the consumer to send data over the network for the kernel domain.
 
-  # lttng enable-consumer --kernel net://<remote_addr>
+```
+lttng enable-consumer --kernel net://<remote_addr>
+```
 
   You can also skip this step and directly use the lttng create command like so:
 
-  # lttng create -U net://<remote_addr> syscall-session
+```
+lttng create -U net://<remote_addr> syscall-session
+```
 
-3) Set and start the tracing. Nothing new here.
+3. Set and start the tracing. Nothing new here.
 
+```
   # lttng enable-event -a --syscall -k
   # lttng start
   (wait and get coffee)
   # lttng stop
+```
 
 By default on the relay side, the trace will be written to the lttng-traces/
 directory of the relayd user in:
@@ -78,42 +90,51 @@ path.
 
 Just run babeltrace or lttng view -t PATH with the previous path.
 
-Example 2:
-----------------
+## Example 2
 
 This example uses all possible options to fine grained control the streaming.
 
-1) Again, create a recording session that will be streamed over the network for
+1. Again, create a recording session that will be streamed over the network for
 the specified domain.
 
-  # lttng create syscall-session
+```
+lttng create syscall-session
+```
 
-2) Set relayd URIs for the recording session and kernel domain.
+2. Set relayd URIs for the recording session and kernel domain.
 
 ONLY set the remote relayd URIs (both control and data at the same destination
 and using default ports) on the consumer but does not enable the consumer to use
 network streaming yet.
 
-  # lttng enable-consumer -k -U net://<remote_addr>
+```
+lttng enable-consumer -k -U net://<remote_addr>
+```
 
 You can also set both control and data URIs using -C and -D respectively for
 that like so:
 
-  # lttng enable-consumer -k -C tcp://<remote_addr> -D tcp://<remote_addr>
+```
+lttng enable-consumer -k -C tcp://<remote_addr> -D tcp://<remote_addr>
+```
 
-3) Enable the consumer previously setup with the relayd URIs.
+3. Enable the consumer previously setup with the relayd URIs.
 
 This enables the previous network destination. From this point on, the consumer
 is ready to stream once tracing is started.
 
-  # lttng enable-consumer -k --enable
+```
+lttng enable-consumer -k --enable
+```
 
-4) Set and start the tracing. Nothing new here.
+4. Set and start the tracing. Nothing new here.
 
+```
   # lttng enable-event -a --syscall -k
   # lttng start
   (wait and get coffee)
   # lttng stop
+```
 
 Again, run babeltrace as mentioned in the previous example on the relayd side.
 

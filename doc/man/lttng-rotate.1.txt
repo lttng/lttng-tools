@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2018-2025 Philippe Proulx <pproulx@efficios.com>
+//
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
 lttng-rotate(1)
 ===============
 :revdate: 14 June 2021

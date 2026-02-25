@@ -1,3 +1,8 @@
+// SPDX-FileCopyrightText: 2014 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+// SPDX-FileCopyrightText: 2024-2025 Kienan Stewart <kstewart@efficios.com>
+//
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
 // Render with Asciidoctor
 :check: ✔
 :ex: ✗

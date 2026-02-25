@@ -31,8 +31,11 @@ liblttng_ctl_la_LDFLAGS = \
 
 EXTRA_liblttng_ctl_la_DEPENDENCIES = liblttng-ctl.sym
 
-EXTRA_DIST = liblttng-ctl.map \
-		liblttng-ctl.sym
+EXTRA_DIST = \
+	abi_ref/0.0.0/x86_64-64bit-linux/abi.xml \
+	abi_ref/README.md \
+	liblttng-ctl.map \
+	liblttng-ctl.sym
 
 liblttng_ctl_la_LIBADD = \
 		$(top_builddir)/src/common/libsessiond-comm.la \

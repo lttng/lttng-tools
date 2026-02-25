@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2020 Jonathan Rajotte <jonathan.rajotte-julien@efficios.com>
+
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
 # Trigger notification example
 
 ## Description

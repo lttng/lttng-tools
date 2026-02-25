@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2023 Kienan Stewart <kstewart@efficios.com>
+
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
 The `filter.lttngtest.event_name` plugin only has a single input and output port.
 This means that it cannot be connected directly to a `source.ctf.fs` plugin, as
 those have multiple output ports for the different event streams.

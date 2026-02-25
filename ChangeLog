@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 EfficiOS, Inc
+#
+# SPDX-License-Identifier: CC-BY-SA-4.0
+
 2021-04-23 lttng-tools 2.13.0-rc1 (National Take a Chance (on me ?) Day)
 	* Set the 2.13 release codename and description
 	* Tests: fix: test_notification_notifier_discarded_count missing renames
