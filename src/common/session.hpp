@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: 2025 Kienan Stewart <kstewart@efficios.com>
- * SPDX-License-Idenitfier: GPL-2.0-only
+ * SPDX-License-Identifier: GPL-2.0-only
  */
 
 #ifndef LTTNG_COMMON_SESSION_HPP
