@@ -327,6 +327,16 @@ namespace details {
 		}                                                                                 \
 	} while (0);
 
+#define MSG_FMT(format_str, args...)                                                              \
+	do {                                                                                      \
+		try {                                                                             \
+			MSG("%s", lttng::format(format_str, ##args).c_str());                     \
+		} catch (const std::exception& _formatting_exception) {                           \
+			lttng::logging::details::die_formatting_exception(format_str,             \
+									  _formatting_exception); \
+		}                                                                                 \
+	} while (0);
+
 #define INFO_FMT(format_str, args...)                                                             \
 	do {                                                                                      \
 		try {                                                                             \
