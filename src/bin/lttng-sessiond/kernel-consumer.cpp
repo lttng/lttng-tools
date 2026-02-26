@@ -290,32 +290,3 @@ int kernel_consumer_send_channel_streams(struct consumer_socket *sock,
 error:
 	return ret;
 }
-
-int kernel_consumer_destroy_channel(struct consumer_socket *socket,
-				    struct ltt_kernel_channel *channel)
-{
-	int ret;
-	struct lttcomm_consumer_msg msg;
-
-	LTTNG_ASSERT(channel);
-	LTTNG_ASSERT(socket);
-
-	DBG("Sending kernel consumer destroy channel key %" PRIu64, channel->key);
-
-	memset(&msg, 0, sizeof(msg));
-	msg.cmd_type = LTTNG_CONSUMER_DESTROY_CHANNEL;
-	msg.u.destroy_channel.key = channel->key;
-
-	pthread_mutex_lock(socket->lock);
-	health_code_update();
-
-	ret = consumer_send_msg(socket, &msg);
-	if (ret < 0) {
-		goto error;
-	}
-
-error:
-	health_code_update();
-	pthread_mutex_unlock(socket->lock);
-	return ret;
-}

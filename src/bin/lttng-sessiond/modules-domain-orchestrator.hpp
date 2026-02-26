@@ -617,10 +617,10 @@ private:
 	void _open_metadata_stream();
 
 	/*
-	 * Notify the consumer daemon to destroy its metadata channel resources
-	 * identified by the given consumer key.
+	 * Notify the consumer daemon to destroy the stream group (channel or
+	 * metadata) identified by the given consumer key.
 	 */
-	void _destroy_consumer_metadata(consumer_socket& socket, uint64_t consumer_key);
+	void _destroy_consumer_stream_group(consumer_socket& socket, uint64_t consumer_key);
 
 	lttng::file_descriptor _tracer_session_fd;
 	config::domain& _domain_configuration;

@@ -275,6 +275,38 @@ ls::modules::domain_orchestrator::~domain_orchestrator()
 	}
 
 	/*
+	 * Destroy stream groups on the consumer daemon.
+	 *
+	 * When the streams are in no-monitor mode (flight recorder), the
+	 * consumer daemon doesn't track their lifecycle, so it must be
+	 * explicitly told to destroy them or they will leak. In monitor
+	 * mode, the consumer handles cleanup on its own.
+	 */
+	if (!_legacy_kernel_session->output_traces) {
+		try {
+			auto& socket = _get_consumer_socket();
+			const lttng::pthread::lock_guard socket_lock(*socket.lock);
+
+			for (const auto& channel_entry : _channels) {
+				const auto& channel = *channel_entry.second;
+
+				if (!channel.is_sent_to_consumer()) {
+					continue;
+				}
+
+				_destroy_consumer_stream_group(socket, channel.consumer_key());
+			}
+
+			if (_metadata && _metadata->is_sent_to_consumer()) {
+				_destroy_consumer_stream_group(socket, _metadata->consumer_key());
+			}
+		} catch (const std::exception& ex) {
+			ERR_FMT("Failed to destroy consumer stream groups during orchestrator teardown: {}",
+				ex.what());
+		}
+	}
+
+	/*
 	 * Unregister all channels that were published to the notification
 	 * thread. This mirrors the add performed by _send_channel_to_consumer()
 	 * and ensures the notification thread doesn't hold stale references to
@@ -994,10 +1026,10 @@ void ls::modules::domain_orchestrator::_open_metadata_stream()
 	_metadata->add_stream(0 /* cpu: always 0 for metadata */, std::move(stream_fd));
 }
 
-void ls::modules::domain_orchestrator::_destroy_consumer_metadata(consumer_socket& socket,
-								  uint64_t consumer_key)
+void ls::modules::domain_orchestrator::_destroy_consumer_stream_group(consumer_socket& socket,
+								      uint64_t consumer_key)
 {
-	DBG_FMT("Sending kernel consumer destroy metadata channel: key={}", consumer_key);
+	DBG_FMT("Sending kernel consumer destroy stream group: key={}", consumer_key);
 
 	struct lttcomm_consumer_msg msg = {};
 	msg.cmd_type = LTTNG_CONSUMER_DESTROY_CHANNEL;
@@ -1005,7 +1037,7 @@ void ls::modules::domain_orchestrator::_destroy_consumer_metadata(consumer_socke
 
 	const auto ret = consumer_send_msg(&socket, &msg);
 	if (ret < 0) {
-		WARN_FMT("Failed to send metadata channel destroy to consumer: key={}, ret={}",
+		WARN_FMT("Failed to send stream group destroy to consumer: key={}, ret={}",
 			 consumer_key,
 			 ret);
 	}
@@ -1495,7 +1527,7 @@ void ls::modules::domain_orchestrator::record_snapshot(
 
 	const auto destroy_consumer_metadata_on_exit = lttng::make_scope_exit([&]() noexcept {
 		const lttng::pthread::lock_guard socket_lock(*kconsumer_socket.lock);
-		_destroy_consumer_metadata(_get_consumer_socket(), snapshot_metadata_key);
+		_destroy_consumer_stream_group(_get_consumer_socket(), snapshot_metadata_key);
 	});
 
 	/* For each channel, ask the consumer to snapshot it. */

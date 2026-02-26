@@ -10,7 +10,6 @@
 #include "consumer.hpp"
 #include "event-notifier-error-accounting.hpp"
 #include "kern-modules.hpp"
-#include "kernel-consumer.hpp"
 #include "kernel.hpp"
 #include "lttng-sessiond.hpp"
 #include "lttng-syscall.hpp"
@@ -873,28 +872,10 @@ void kernel_destroy_session(struct ltt_kernel_session *ksess)
 	trace_chunk = ksess->current_trace_chunk;
 
 	/*
-	 * Destroy channels on the consumer if at least one FD has been sent and we
-	 * are in no output mode because the streams are in *no* monitor mode so we
-	 * have to send a command to clean them up or else they leaked.
+	 * Consumer stream group destruction (notifying the consumer to release
+	 * its channel resources) is handled by the domain orchestrator's
+	 * destructor, which runs after this function.
 	 */
-	if (!ksess->output_traces && ksess->consumer_fds_sent) {
-		for (auto *socket :
-		     lttng::urcu::lfht_iteration_adapter<consumer_socket,
-							 decltype(consumer_socket::node),
-							 &consumer_socket::node>(
-			     *ksess->consumer->socks->ht)) {
-			struct ltt_kernel_channel *chan;
-
-			/* For each channel, ask the consumer to destroy it. */
-			cds_list_for_each_entry (chan, &ksess->channel_list.head, list) {
-				const auto ret = kernel_consumer_destroy_channel(socket, chan);
-				if (ret < 0) {
-					/* Consumer is probably dead. Use next socket. */
-					continue;
-				}
-			}
-		}
-	}
 
 	/* Close any relayd session */
 	consumer_output_send_destroy_relayd(ksess->consumer);

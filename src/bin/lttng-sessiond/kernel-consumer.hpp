@@ -15,6 +15,3 @@ int kernel_consumer_send_channel_streams(struct consumer_socket *sock,
 					 struct ltt_kernel_channel *channel,
 					 struct ltt_kernel_session *session,
 					 unsigned int monitor);
-
-int kernel_consumer_destroy_channel(struct consumer_socket *socket,
-				    struct ltt_kernel_channel *channel);
