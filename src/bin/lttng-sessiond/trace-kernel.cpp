@@ -85,10 +85,8 @@ struct ltt_kernel_session *trace_kernel_create_session()
 
 	/* Init data structure */
 	lks->fd = -1;
-	lks->metadata_stream_fd = -1;
 	lks->channel_count = 0;
 	lks->stream_count_global = 0;
-	lks->metadata = nullptr;
 	CDS_INIT_LIST_HEAD(&lks->channel_list.head);
 
 	return lks;
@@ -392,66 +390,6 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 error:
 	return ret_code;
 }
-/*
- * Allocate and initialize a kernel metadata.
- *
- * Return pointer to structure or NULL.
- */
-struct ltt_kernel_metadata *trace_kernel_create_metadata()
-{
-	int ret;
-	struct ltt_kernel_metadata *lkm;
-	struct lttng_channel *chan;
-
-	lkm = zmalloc<ltt_kernel_metadata>();
-	chan = zmalloc<lttng_channel>();
-	if (lkm == nullptr || chan == nullptr) {
-		PERROR("kernel metadata zmalloc");
-		goto error;
-	}
-
-	ret = lttng_strncpy(chan->name, DEFAULT_METADATA_NAME, sizeof(chan->name));
-	if (ret) {
-		ERR("Failed to initialize metadata channel name to `%s`", DEFAULT_METADATA_NAME);
-		goto error;
-	}
-
-	/* Set default attributes */
-	chan->attr.overwrite = DEFAULT_METADATA_OVERWRITE;
-	chan->attr.subbuf_size = default_get_metadata_subbuf_size();
-	chan->attr.num_subbuf = DEFAULT_METADATA_SUBBUF_NUM;
-	chan->attr.switch_timer_interval = DEFAULT_METADATA_SWITCH_TIMER;
-	chan->attr.read_timer_interval = DEFAULT_METADATA_READ_TIMER;
-	;
-
-	/*
-	 * The metadata channel of kernel sessions must use the "mmap"
-	 * back-end since the consumer daemon accumulates complete
-	 * metadata units before sending them to the relay daemon in
-	 * live mode. The consumer daemon also needs to extract the contents
-	 * of the metadata cache when computing a rotation position.
-	 *
-	 * In both cases, it is not possible to rely on the splice
-	 * back-end as the consumer daemon may need to accumulate more
-	 * content than can be backed by the ring buffer's underlying
-	 * pages.
-	 */
-	chan->attr.output = LTTNG_EVENT_MMAP;
-	chan->attr.tracefile_size = 0;
-	chan->attr.tracefile_count = 0;
-	chan->attr.live_timer_interval = 0;
-
-	/* Init metadata */
-	lkm->fd = -1;
-	lkm->conf = chan;
-
-	return lkm;
-
-error:
-	free(lkm);
-	free(chan);
-	return nullptr;
-}
 
 /*
  * Allocate and initialize a kernel stream. The stream is set to ACTIVE_FD by
@@ -575,50 +513,15 @@ void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel)
 }
 
 /*
- * Cleanup kernel metadata structure.
- */
-void trace_kernel_destroy_metadata(struct ltt_kernel_metadata *metadata)
-{
-	LTTNG_ASSERT(metadata);
-
-	DBG("[trace] Closing metadata fd %d", metadata->fd);
-	/* Close kernel fd */
-	if (metadata->fd >= 0) {
-		int ret;
-
-		ret = close(metadata->fd);
-		if (ret) {
-			PERROR("close");
-		}
-	}
-
-	free(metadata->conf);
-	free(metadata);
-}
-
-/*
  * Cleanup kernel session structure
  */
 void trace_kernel_destroy_session(struct ltt_kernel_session *session)
 {
 	struct ltt_kernel_channel *channel, *ctmp;
-	int ret;
 
 	LTTNG_ASSERT(session);
 
 	DBG("[trace] Closing session fd %d", session->fd);
-
-	if (session->metadata_stream_fd >= 0) {
-		DBG("[trace] Closing metadata stream fd %d", session->metadata_stream_fd);
-		ret = close(session->metadata_stream_fd);
-		if (ret) {
-			PERROR("close");
-		}
-	}
-
-	if (session->metadata != nullptr) {
-		trace_kernel_destroy_metadata(session->metadata);
-	}
 
 	cds_list_for_each_entry_safe (channel, ctmp, &session->channel_list.head, list) {
 		trace_kernel_destroy_channel(channel);

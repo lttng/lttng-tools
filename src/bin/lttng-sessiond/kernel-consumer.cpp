@@ -199,79 +199,6 @@ error:
 }
 
 /*
- * Sending metadata to the consumer with command ADD_CHANNEL and ADD_STREAM.
- *
- * The consumer socket lock must be held by the caller.
- */
-int kernel_consumer_add_metadata(struct consumer_socket *sock,
-				 struct ltt_kernel_session *ksession,
-				 unsigned int monitor)
-{
-	int ret;
-	struct lttcomm_consumer_msg lkm;
-	struct consumer_output *consumer;
-
-	const lttng::urcu::read_lock_guard read_lock;
-
-	/* Safety net */
-	LTTNG_ASSERT(ksession);
-	LTTNG_ASSERT(ksession->consumer);
-	LTTNG_ASSERT(sock);
-
-	DBG("Sending metadata %d to kernel consumer", ksession->metadata_stream_fd);
-
-	/* Get consumer output pointer */
-	consumer = ksession->consumer;
-
-	/* Prep channel message structure */
-	consumer_init_add_channel_comm_msg(&lkm,
-					   ksession->metadata->key,
-					   ksession->id,
-					   "",
-					   consumer->net_seq_index,
-					   ksession->metadata->conf->name,
-					   1,
-					   ksession->metadata->conf->attr.output,
-					   CONSUMER_CHANNEL_TYPE_METADATA,
-					   ksession->metadata->conf->attr.tracefile_size,
-					   ksession->metadata->conf->attr.tracefile_count,
-					   monitor,
-					   ksession->metadata->conf->attr.live_timer_interval,
-					   ksession->is_live_session,
-					   0,
-					   ksession->current_trace_chunk,
-					   ksession->trace_format);
-
-	health_code_update();
-
-	ret = consumer_send_channel(sock, &lkm);
-	if (ret < 0) {
-		goto error;
-	}
-
-	health_code_update();
-
-	/* Prep stream message structure */
-	consumer_init_add_stream_comm_msg(&lkm,
-					  ksession->metadata->key,
-					  ksession->metadata_stream_fd,
-					  0 /* CPU: 0 for metadata. */);
-
-	health_code_update();
-
-	/* Send stream and file descriptor */
-	ret = consumer_send_stream(sock, consumer, &lkm, &ksession->metadata_stream_fd, 1);
-	if (ret < 0) {
-		goto error;
-	}
-
-	health_code_update();
-
-error:
-	return ret;
-}
-
-/*
  * Sending a single stream to the consumer with command ADD_STREAM.
  */
 static int kernel_consumer_add_stream(struct consumer_socket *sock,
@@ -281,7 +208,6 @@ static int kernel_consumer_add_stream(struct consumer_socket *sock,
 {
 	int ret;
 	struct lttcomm_consumer_msg lkm;
-	struct consumer_output *consumer;
 
 	LTTNG_ASSERT(channel);
 	LTTNG_ASSERT(stream);
@@ -293,16 +219,13 @@ static int kernel_consumer_add_stream(struct consumer_socket *sock,
 	    stream->fd,
 	    channel->channel->name);
 
-	/* Get consumer output pointer */
-	consumer = session->consumer;
-
 	/* Prep stream consumer message */
 	consumer_init_add_stream_comm_msg(&lkm, channel->key, stream->fd, stream->cpu);
 
 	health_code_update();
 
 	/* Send stream and file descriptor */
-	ret = consumer_send_stream(sock, consumer, &lkm, &stream->fd, 1);
+	ret = consumer_send_stream(sock, &lkm, &stream->fd, 1);
 	if (ret < 0) {
 		goto error;
 	}
@@ -382,35 +305,6 @@ int kernel_consumer_destroy_channel(struct consumer_socket *socket,
 	memset(&msg, 0, sizeof(msg));
 	msg.cmd_type = LTTNG_CONSUMER_DESTROY_CHANNEL;
 	msg.u.destroy_channel.key = channel->key;
-
-	pthread_mutex_lock(socket->lock);
-	health_code_update();
-
-	ret = consumer_send_msg(socket, &msg);
-	if (ret < 0) {
-		goto error;
-	}
-
-error:
-	health_code_update();
-	pthread_mutex_unlock(socket->lock);
-	return ret;
-}
-
-int kernel_consumer_destroy_metadata(struct consumer_socket *socket,
-				     struct ltt_kernel_metadata *metadata)
-{
-	int ret;
-	struct lttcomm_consumer_msg msg;
-
-	LTTNG_ASSERT(metadata);
-	LTTNG_ASSERT(socket);
-
-	DBG("Sending kernel consumer destroy channel key %" PRIu64, metadata->key);
-
-	memset(&msg, 0, sizeof(msg));
-	msg.cmd_type = LTTNG_CONSUMER_DESTROY_CHANNEL;
-	msg.u.destroy_channel.key = metadata->key;
 
 	pthread_mutex_lock(socket->lock);
 	health_code_update();

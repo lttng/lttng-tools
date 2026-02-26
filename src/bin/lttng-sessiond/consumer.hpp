@@ -213,7 +213,6 @@ void consumer_output_put(struct consumer_output *obj);
 int consumer_send_fds(struct consumer_socket *sock, const int *fds, size_t nb_fd);
 int consumer_send_msg(struct consumer_socket *sock, const struct lttcomm_consumer_msg *msg);
 int consumer_send_stream(struct consumer_socket *sock,
-			 struct consumer_output *dst,
 			 struct lttcomm_consumer_msg *msg,
 			 const int *fds,
 			 size_t nb_fd);

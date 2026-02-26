@@ -7,7 +7,6 @@
 
 #include "consumer.hpp"
 #include "health-sessiond.hpp"
-#include "kernel-consumer.hpp"
 #include "kernel.hpp"
 #include "lttng-channel-from-config.hpp"
 #include "lttng-sessiond.hpp"
@@ -944,17 +943,85 @@ void ls::modules::domain_orchestrator::_flush_channel_streams(const stream_group
 	}
 }
 
-void ls::modules::domain_orchestrator::_send_metadata_to_consumer(consumer_socket& socket,
-								  bool monitor)
+void ls::modules::domain_orchestrator::_open_metadata()
 {
-	LTTNG_ASSERT(_legacy_kernel_session);
-	LTTNG_ASSERT(_legacy_kernel_session->metadata);
-	LTTNG_ASSERT(_legacy_kernel_session->metadata_stream_fd >= 0);
+	LTTNG_ASSERT(!_metadata);
 
 	const auto& metadata_config = _domain_configuration.metadata_channel();
 
-	DBG("Sending metadata to kernel consumer: metadata_stream_fd=%d",
-	    _legacy_kernel_session->metadata_stream_fd);
+	DBG("Opening kernel metadata channel");
+
+	const auto kernel_channel = make_kernel_abi_channel(metadata_config);
+	const auto raw_metadata_fd = kernctl_open_metadata(_tracer_session_fd.fd(), kernel_channel);
+	if (raw_metadata_fd < 0) {
+		LTTNG_THROW_POSIX("Failed to open kernel metadata channel", -raw_metadata_fd);
+	}
+
+	lttng::file_descriptor metadata_fd(raw_metadata_fd);
+
+	if (fcntl(metadata_fd.fd(), F_SETFD, FD_CLOEXEC) < 0) {
+		LTTNG_THROW_POSIX("Failed to set FD_CLOEXEC on kernel metadata channel fd", errno);
+	}
+
+	const auto consumer_key = allocate_next_kernel_stream_group_key();
+
+	DBG_FMT("Kernel metadata channel opened: fd={}, consumer_key={}",
+		metadata_fd.fd(),
+		consumer_key);
+
+	_metadata = lttng::make_unique<modules::metadata_stream_group>(
+		std::move(metadata_fd), consumer_key, metadata_config);
+}
+
+void ls::modules::domain_orchestrator::_open_metadata_stream()
+{
+	LTTNG_ASSERT(_metadata);
+	LTTNG_ASSERT(_metadata->stream_count() == 0);
+
+	const auto raw_stream_fd = kernctl_create_stream(_metadata->tracer_handle().fd());
+	if (raw_stream_fd < 0) {
+		LTTNG_THROW_POSIX("Failed to create kernel metadata stream", -raw_stream_fd);
+	}
+
+	lttng::file_descriptor stream_fd(raw_stream_fd);
+
+	if (fcntl(stream_fd.fd(), F_SETFD, FD_CLOEXEC) < 0) {
+		LTTNG_THROW_POSIX("Failed to set FD_CLOEXEC on kernel metadata stream fd", errno);
+	}
+
+	DBG_FMT("Kernel metadata stream created: fd={}", stream_fd.fd());
+
+	_metadata->add_stream(0 /* cpu: always 0 for metadata */, std::move(stream_fd));
+}
+
+void ls::modules::domain_orchestrator::_destroy_consumer_metadata(consumer_socket& socket,
+								  uint64_t consumer_key)
+{
+	DBG_FMT("Sending kernel consumer destroy metadata channel: key={}", consumer_key);
+
+	struct lttcomm_consumer_msg msg = {};
+	msg.cmd_type = LTTNG_CONSUMER_DESTROY_CHANNEL;
+	msg.u.destroy_channel.key = consumer_key;
+
+	const auto ret = consumer_send_msg(&socket, &msg);
+	if (ret < 0) {
+		WARN_FMT("Failed to send metadata channel destroy to consumer: key={}, ret={}",
+			 consumer_key,
+			 ret);
+	}
+}
+
+void ls::modules::domain_orchestrator::_send_metadata_to_consumer(
+	consumer_socket& socket, const consumer_output& consumer_output, bool monitor)
+{
+	LTTNG_ASSERT(_metadata);
+	LTTNG_ASSERT(_metadata->stream_count() > 0);
+
+	const auto& metadata_config = _metadata->configuration();
+
+	auto metadata_stream_fd = _metadata->streams().front()->handle.fd();
+
+	DBG_FMT("Sending metadata to kernel consumer: metadata_stream_fd={}", metadata_stream_fd);
 
 	const auto output = metadata_config.buffer_consumption_backend ==
 			lsc::channel_configuration::buffer_consumption_backend_t::MMAP ?
@@ -964,10 +1031,10 @@ void ls::modules::domain_orchestrator::_send_metadata_to_consumer(consumer_socke
 	struct lttcomm_consumer_msg lkm = {};
 
 	consumer_init_add_channel_comm_msg(&lkm,
-					   _legacy_kernel_session->metadata->key,
+					   _metadata->consumer_key(),
 					   _legacy_kernel_session->id,
 					   "",
-					   _consumer.net_seq_index,
+					   consumer_output.net_seq_index,
 					   metadata_config.name.c_str(),
 					   1,
 					   output,
@@ -992,18 +1059,16 @@ void ls::modules::domain_orchestrator::_send_metadata_to_consumer(consumer_socke
 	health_code_update();
 
 	/* Send the metadata stream. */
-	consumer_init_add_stream_comm_msg(&lkm,
-					  _legacy_kernel_session->metadata->key,
-					  _legacy_kernel_session->metadata_stream_fd,
-					  0 /* CPU: 0 for metadata. */);
+	consumer_init_add_stream_comm_msg(
+		&lkm, _metadata->consumer_key(), metadata_stream_fd, 0 /* CPU: 0 for metadata. */);
 
-	ret = consumer_send_stream(
-		&socket, &_consumer, &lkm, &_legacy_kernel_session->metadata_stream_fd, 1);
+	ret = consumer_send_stream(&socket, &lkm, &metadata_stream_fd, 1);
 	if (ret < 0) {
 		LTTNG_THROW_KERNEL_CONSUMER_SEND_FAILURE(
 			"Failed to send kernel metadata stream to consumer");
 	}
 
+	_metadata->mark_sent_to_consumer();
 	health_code_update();
 }
 
@@ -1121,8 +1186,7 @@ void ls::modules::domain_orchestrator::_send_channel_to_consumer(consumer_socket
 			&lkm, channel.consumer_key(), kstream.handle.fd(), kstream.cpu);
 
 		auto stream_fd = kstream.handle.fd();
-		const auto send_ret =
-			consumer_send_stream(&socket, &_consumer, &lkm, &stream_fd, 1);
+		const auto send_ret = consumer_send_stream(&socket, &lkm, &stream_fd, 1);
 		if (send_ret < 0) {
 			LTTNG_THROW_KERNEL_CONSUMER_SEND_FAILURE(lttng::format(
 				"Failed to send kernel stream to consumer: channel=`{}`, cpu={}",
@@ -1149,8 +1213,8 @@ void ls::modules::domain_orchestrator::_send_channels_to_consumer(consumer_socke
 
 	DBG("Sending session stream to kernel consumer");
 
-	if (_legacy_kernel_session->metadata_stream_fd >= 0 && _legacy_kernel_session->metadata) {
-		_send_metadata_to_consumer(socket, monitor);
+	if (_metadata && _metadata->stream_count() > 0) {
+		_send_metadata_to_consumer(socket, _consumer, monitor);
 	}
 
 	/* Send channels and their streams. */
@@ -1195,22 +1259,13 @@ void ls::modules::domain_orchestrator::start()
 	DBG("Starting kernel tracing");
 
 	/* Open kernel metadata if needed. */
-	if (_legacy_kernel_session->metadata == nullptr && _legacy_kernel_session->output_traces) {
-		const auto ret = kernel_open_metadata(_legacy_kernel_session,
-						      _domain_configuration.metadata_channel());
-		if (ret < 0) {
-			LTTNG_THROW_KERNEL_METADATA_CREATION_ERROR(
-				"Failed to create kernel metadata stream");
-		}
+	if (!_metadata && _legacy_kernel_session->output_traces) {
+		_open_metadata();
 	}
 
 	/* Open kernel metadata stream if needed. */
-	if (_legacy_kernel_session->metadata && _legacy_kernel_session->metadata_stream_fd < 0) {
-		const auto ret = kernel_open_metadata_stream(_legacy_kernel_session);
-		if (ret < 0) {
-			LTTNG_THROW_KERNEL_STREAM_CREATION_ERROR(
-				"Failed to create kernel metadata stream");
-		}
+	if (_metadata && _metadata->stream_count() == 0) {
+		_open_metadata_stream();
 	}
 
 	/* Open streams for each channel that hasn't had streams created yet. */
@@ -1278,11 +1333,10 @@ void ls::modules::domain_orchestrator::stop()
 	kernel_wait_quiescent();
 
 	/* Flush metadata buffer after stopping (if exists). */
-	if (_legacy_kernel_session->metadata_stream_fd >= 0) {
-		const auto ret =
-			kernel_metadata_flush_buffer(_legacy_kernel_session->metadata_stream_fd);
+	if (_metadata) {
+		const auto ret = kernctl_buffer_flush((_metadata->streams().front())->handle.fd());
 		if (ret < 0) {
-			WARN("Kernel metadata flush failed");
+			WARN("Failed to flush metadata stream");
 		}
 	}
 
@@ -1330,9 +1384,9 @@ void ls::modules::domain_orchestrator::rotate()
 	}
 
 	/* Rotate the metadata channel. */
-	LTTNG_ASSERT(_legacy_kernel_session->metadata);
+	LTTNG_ASSERT(_metadata);
 	const auto ret = consumer_rotate_channel(
-		&kconsumer_socket, _legacy_kernel_session->metadata->key, &_consumer, true);
+		&kconsumer_socket, _metadata->consumer_key(), &_consumer, true);
 	if (ret < 0) {
 		LTTNG_THROW_ROTATION_FAILURE("Failed to rotate kernel metadata channel");
 	}
@@ -1365,7 +1419,7 @@ void ls::modules::domain_orchestrator::clear()
 		}
 	}
 
-	if (!_legacy_kernel_session->metadata) {
+	if (!_metadata) {
 		/*
 		 * Nothing to do for the metadata since this is a snapshot session;
 		 * the metadata is generated on the fly.
@@ -1379,8 +1433,7 @@ void ls::modules::domain_orchestrator::clear()
 	 * Metadata channel is not cleared per se but we still need to perform a rotation operation
 	 * on it behind the scene.
 	 */
-	const auto ret =
-		consumer_clear_channel(&kconsumer_socket, _legacy_kernel_session->metadata->key);
+	const auto ret = consumer_clear_channel(&kconsumer_socket, _metadata->consumer_key());
 	if (ret < 0) {
 		switch (-ret) {
 		case LTTCOMM_CONSUMERD_RELAYD_CLEAR_DISALLOWED:
@@ -1416,33 +1469,11 @@ void ls::modules::domain_orchestrator::record_snapshot(
 
 	DBG("Kernel snapshot record started");
 
-	auto ret = kernel_open_metadata(_legacy_kernel_session,
-					_domain_configuration.metadata_channel());
-	if (ret < 0) {
-		LTTNG_THROW_KERNEL_METADATA_CREATION_ERROR(
-			"Failed to create kernel metadata for snapshot");
-	}
+	_open_metadata();
+	_open_metadata_stream();
 
-	const auto destroy_metadata_on_exit = lttng::make_scope_exit([&]() noexcept {
-		trace_kernel_destroy_metadata(_legacy_kernel_session->metadata);
-		_legacy_kernel_session->metadata = nullptr;
-	});
-
-	ret = kernel_open_metadata_stream(_legacy_kernel_session);
-	if (ret < 0) {
-		LTTNG_THROW_KERNEL_STREAM_CREATION_ERROR(
-			"Failed to open kernel metadata stream for snapshot");
-	}
-
-	const auto close_metadata_stream_on_exit = lttng::make_scope_exit([&]() noexcept {
-		const auto close_ret = close(_legacy_kernel_session->metadata_stream_fd);
-		if (close_ret < 0) {
-			WARN_FMT("Failed to close snapshot kernel metadata stream fd: fd={}",
-				 _legacy_kernel_session->metadata_stream_fd);
-		}
-
-		_legacy_kernel_session->metadata_stream_fd = -1;
-	});
+	auto destroy_metadata_on_exit =
+		lttng::make_scope_exit([&]() noexcept { _metadata.reset(); });
 
 	std::size_t consumer_path_offset;
 	auto trace_path =
@@ -1453,20 +1484,18 @@ void ls::modules::domain_orchestrator::record_snapshot(
 	}
 
 	auto& kconsumer_socket = _get_consumer_socket();
+	const auto snapshot_metadata_key = _metadata->consumer_key();
+
 	{
 		const lttng::pthread::lock_guard socket_lock(*kconsumer_socket.lock);
-		/* This stream must not be monitored by the consumer. */
-		ret = kernel_consumer_add_metadata(&kconsumer_socket, _legacy_kernel_session, 0);
-	}
 
-	if (ret < 0) {
-		LTTNG_THROW_KERNEL_METADATA_CREATION_ERROR(
-			"Failed to send kernel metadata stream to consumer for snapshot");
+		/* This stream must not be monitored by the consumer. */
+		_send_metadata_to_consumer(kconsumer_socket, snapshot_consumer, false);
 	}
 
 	const auto destroy_consumer_metadata_on_exit = lttng::make_scope_exit([&]() noexcept {
-		(void) kernel_consumer_destroy_metadata(&_get_consumer_socket(),
-							_legacy_kernel_session->metadata);
+		const lttng::pthread::lock_guard socket_lock(*kconsumer_socket.lock);
+		_destroy_consumer_metadata(_get_consumer_socket(), snapshot_metadata_key);
 	});
 
 	/* For each channel, ask the consumer to snapshot it. */
@@ -1485,7 +1514,7 @@ void ls::modules::domain_orchestrator::record_snapshot(
 
 	/* Snapshot metadata. */
 	const auto status = consumer_snapshot_channel(&kconsumer_socket,
-						      _legacy_kernel_session->metadata->key,
+						      snapshot_metadata_key,
 						      &snapshot_consumer,
 						      1,
 						      &trace_path.get()[consumer_path_offset],
@@ -1607,8 +1636,8 @@ void ls::modules::domain_orchestrator::handle_channel_hotplug(stream_group& chan
 
 		auto stream_fd = kstream.handle.fd();
 		const auto monitor = _legacy_kernel_session->output_traces ? 1 : 0;
-		const auto send_ret = consumer_send_stream(
-			&kconsumer_socket, &_consumer, &lkm, &stream_fd, monitor);
+		const auto send_ret =
+			consumer_send_stream(&kconsumer_socket, &lkm, &stream_fd, monitor);
 		if (send_ret < 0) {
 			LTTNG_THROW_KERNEL_CONSUMER_SEND_FAILURE(lttng::format(
 				"Failed to send hotplug kernel stream to consumer: channel=`{}`, cpu={}",

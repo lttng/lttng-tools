@@ -40,13 +40,8 @@ make_kernel_abi_channel(const lttng::sessiond::config::channel_configuration& ch
 uint64_t allocate_next_kernel_stream_group_key();
 
 int kernel_create_session(const ltt_session::locked_ref& session);
-int kernel_open_metadata(
-	struct ltt_kernel_session *session,
-	const lttng::sessiond::config::metadata_channel_configuration& metadata_config);
-int kernel_open_metadata_stream(struct ltt_kernel_session *session);
 int kernel_open_channel_stream(struct ltt_kernel_channel *channel);
 int kernel_flush_buffer(struct ltt_kernel_channel *channel);
-int kernel_metadata_flush_buffer(int fd);
 int kernel_start_session(struct ltt_kernel_session *session);
 int kernel_stop_session(struct ltt_kernel_session *session);
 ssize_t kernel_list_events(struct lttng_event **event_list);
@@ -58,8 +53,6 @@ void kernel_free_session(struct ltt_kernel_session *ksess);
 void kernel_destroy_channel(struct ltt_kernel_channel *kchan);
 
 int kernel_syscall_mask(int chan_fd, char **syscall_mask, uint32_t *nr_bits);
-enum lttng_error_code kernel_rotate_session(struct ltt_kernel_session *ksess);
-enum lttng_error_code kernel_clear_session(struct ltt_kernel_session *ksess);
 enum lttng_error_code kernel_open_packets(struct ltt_kernel_session *ksess);
 
 /*

@@ -22,6 +22,7 @@
 #include <vendor/optional.hpp>
 
 #include <cstdint>
+#include <memory>
 #include <unordered_map>
 #include <vector>
 
@@ -394,24 +395,28 @@ private:
  * Runtime representation of the metadata channel for a kernel tracing session
  * managed by the lttng-modules tracer.
  *
- * The metadata stream is opened separately from the metadata channel itself
- * (kernctl_open_metadata vs. kernctl_create_stream on the metadata fd), hence
- * the optional stream fd.
+ * Extends stream_group to reuse consumer key tracking and stream management.
+ * Metadata always has exactly one stream (cpu 0) which is opened separately
+ * from the metadata channel itself (kernctl_open_metadata vs.
+ * kernctl_create_stream on the metadata fd).
  */
-class metadata_channel final {
+class metadata_stream_group final : public lttng::sessiond::stream_group<lttng::file_descriptor> {
 public:
-	explicit metadata_channel(lttng::file_descriptor tracer_metadata_fd,
-				  uint64_t consumer_key) :
-		_tracer_metadata_fd(std::move(tracer_metadata_fd)), _consumer_key(consumer_key)
+	explicit metadata_stream_group(lttng::file_descriptor tracer_metadata_fd,
+				       uint64_t consumer_key,
+				       const config::metadata_channel_configuration& configuration) :
+		lttng::sessiond::stream_group<lttng::file_descriptor>(consumer_key),
+		_tracer_metadata_fd(std::move(tracer_metadata_fd)),
+		_configuration(configuration)
 	{
 	}
 
-	~metadata_channel() = default;
+	~metadata_stream_group() override = default;
 
-	metadata_channel(metadata_channel&&) = default;
-	metadata_channel(const metadata_channel&) = delete;
-	metadata_channel& operator=(metadata_channel&&) = delete;
-	metadata_channel& operator=(const metadata_channel&) = delete;
+	metadata_stream_group(metadata_stream_group&&) = delete;
+	metadata_stream_group(const metadata_stream_group&) = delete;
+	metadata_stream_group& operator=(metadata_stream_group&&) = delete;
+	metadata_stream_group& operator=(const metadata_stream_group&) = delete;
 
 	lttng::file_descriptor& tracer_handle() noexcept
 	{
@@ -423,35 +428,25 @@ public:
 		return _tracer_metadata_fd;
 	}
 
-	uint64_t consumer_key() const noexcept
+	const config::metadata_channel_configuration& configuration() const noexcept
 	{
-		return _consumer_key;
+		return _configuration;
 	}
 
-	void stream_fd(lttng::file_descriptor fd)
+	bool is_sent_to_consumer() const noexcept
 	{
-		_stream_fd = std::move(fd);
+		return _sent_to_consumer;
 	}
 
-	lttng::file_descriptor& stream_fd()
+	void mark_sent_to_consumer() noexcept
 	{
-		return *_stream_fd;
-	}
-
-	const lttng::file_descriptor& stream_fd() const
-	{
-		return *_stream_fd;
-	}
-
-	bool has_stream() const noexcept
-	{
-		return static_cast<bool>(_stream_fd);
+		_sent_to_consumer = true;
 	}
 
 private:
 	lttng::file_descriptor _tracer_metadata_fd;
-	const uint64_t _consumer_key;
-	nonstd::optional<lttng::file_descriptor> _stream_fd;
+	const config::metadata_channel_configuration& _configuration;
+	bool _sent_to_consumer = false;
 };
 
 /*
@@ -605,7 +600,27 @@ private:
 	 *
 	 * The consumer socket lock must be held by the caller.
 	 */
-	void _send_metadata_to_consumer(consumer_socket& socket, bool monitor);
+	void _send_metadata_to_consumer(consumer_socket& socket,
+					const consumer_output& snapshot_consumer,
+					bool monitor);
+
+	/*
+	 * Open the metadata channel from the kernel tracer and create the
+	 * metadata_stream_group. Populates _metadata.
+	 */
+	void _open_metadata();
+
+	/*
+	 * Open the metadata stream on the metadata channel and register it
+	 * in the metadata_stream_group.
+	 */
+	void _open_metadata_stream();
+
+	/*
+	 * Notify the consumer daemon to destroy its metadata channel resources
+	 * identified by the given consumer key.
+	 */
+	void _destroy_consumer_metadata(consumer_socket& socket, uint64_t consumer_key);
 
 	lttng::file_descriptor _tracer_session_fd;
 	config::domain& _domain_configuration;
@@ -615,7 +630,7 @@ private:
 	std::unordered_map<const config::recording_channel_configuration *,
 			   std::unique_ptr<stream_group>>
 		_channels;
-	nonstd::optional<metadata_channel> _metadata;
+	std::unique_ptr<metadata_stream_group> _metadata;
 	bool _active = false;
 
 	/*

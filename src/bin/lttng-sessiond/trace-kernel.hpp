@@ -65,13 +65,6 @@ struct ltt_kernel_channel {
 	bool sent_to_consumer;
 };
 
-/* Metadata */
-struct ltt_kernel_metadata {
-	int fd;
-	uint64_t key; /* Key to reference this channel with the consumer. */
-	struct lttng_channel *conf;
-};
-
 /* Channel stream */
 struct ltt_kernel_stream {
 	int fd;
@@ -88,11 +81,9 @@ struct ltt_kernel_stream {
 /* Kernel session */
 struct ltt_kernel_session {
 	int fd;
-	int metadata_stream_fd;
 	int consumer_fds_sent;
 	unsigned int channel_count;
 	unsigned int stream_count_global;
-	struct ltt_kernel_metadata *metadata;
 	struct ltt_kernel_channel_list channel_list;
 	/* UID/GID of the user owning the session */
 	uid_t uid;
@@ -124,7 +115,6 @@ struct ltt_kernel_channel *trace_kernel_get_channel_by_name(const char *name,
  */
 struct ltt_kernel_session *trace_kernel_create_session();
 struct ltt_kernel_channel *trace_kernel_create_channel(struct lttng_channel *chan);
-struct ltt_kernel_metadata *trace_kernel_create_metadata();
 struct ltt_kernel_stream *trace_kernel_create_stream(const char *name, unsigned int count);
 /* Trigger is only non-const to acquire a reference. */
 enum lttng_error_code trace_kernel_create_event_notifier_rule(
@@ -141,7 +131,6 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
  * it's applies.
  */
 void trace_kernel_destroy_session(struct ltt_kernel_session *session);
-void trace_kernel_destroy_metadata(struct ltt_kernel_metadata *metadata);
 void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel);
 void trace_kernel_destroy_stream(struct ltt_kernel_stream *stream);
 void trace_kernel_destroy_event_notifier_rule(struct ltt_kernel_event_notifier_rule *rule);

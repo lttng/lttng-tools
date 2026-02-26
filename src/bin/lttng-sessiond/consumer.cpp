@@ -1166,7 +1166,6 @@ void consumer_init_streams_sent_comm_msg(struct lttcomm_consumer_msg *msg,
  * Send stream communication structure to the consumer.
  */
 int consumer_send_stream(struct consumer_socket *sock,
-			 struct consumer_output *dst,
 			 struct lttcomm_consumer_msg *msg,
 			 const int *fds,
 			 size_t nb_fd)
@@ -1174,7 +1173,6 @@ int consumer_send_stream(struct consumer_socket *sock,
 	int ret;
 
 	LTTNG_ASSERT(msg);
-	LTTNG_ASSERT(dst);
 	LTTNG_ASSERT(sock);
 	LTTNG_ASSERT(fds);
 

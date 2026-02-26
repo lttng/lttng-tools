@@ -556,53 +556,6 @@ error:
 }
 
 /*
- * Create kernel metadata, open from the kernel tracer and add it to the
- * kernel session.
- */
-int kernel_open_metadata(struct ltt_kernel_session *session,
-			 const ls::metadata_channel_configuration& metadata_config)
-{
-	int ret;
-	struct ltt_kernel_metadata *lkm = nullptr;
-
-	LTTNG_ASSERT(session);
-
-	/* Allocate kernel metadata */
-	lkm = trace_kernel_create_metadata();
-	if (lkm == nullptr) {
-		goto error;
-	}
-
-	{
-		/* Kernel tracer metadata creation */
-		const auto kernel_channel = make_kernel_abi_channel(metadata_config);
-		ret = kernctl_open_metadata(session->fd, kernel_channel);
-		if (ret < 0) {
-			goto error_open;
-		}
-	}
-
-	lkm->fd = ret;
-	lkm->key = ++next_kernel_channel_key;
-	/* Prevent fd duplication after execlp() */
-	ret = fcntl(lkm->fd, F_SETFD, FD_CLOEXEC);
-	if (ret < 0) {
-		PERROR("fcntl session fd");
-	}
-
-	session->metadata = lkm;
-
-	DBG("Kernel metadata opened (fd: %d)", lkm->fd);
-
-	return 0;
-
-error_open:
-	trace_kernel_destroy_metadata(lkm);
-error:
-	return -1;
-}
-
-/*
  * Start tracing session.
  */
 int kernel_start_session(struct ltt_kernel_session *session)
@@ -640,23 +593,6 @@ void kernel_wait_quiescent()
 		PERROR("wait quiescent ioctl");
 		ERR("Kernel quiescent wait failed");
 	}
-}
-
-/*
- *  Force flush buffer of metadata.
- */
-int kernel_metadata_flush_buffer(int fd)
-{
-	int ret;
-
-	DBG("Kernel flushing metadata buffer on fd %d", fd);
-
-	ret = kernctl_buffer_flush(fd);
-	if (ret < 0) {
-		ERR("Fail to flush metadata buffers %d (ret: %d)", fd, ret);
-	}
-
-	return 0;
 }
 
 /*
@@ -750,35 +686,6 @@ int kernel_open_channel_stream(struct ltt_kernel_channel *channel)
 	}
 
 	return channel->stream_count;
-
-error:
-	return -1;
-}
-
-/*
- * Open the metadata stream and set it to the kernel session.
- */
-int kernel_open_metadata_stream(struct ltt_kernel_session *session)
-{
-	int ret;
-
-	LTTNG_ASSERT(session);
-
-	ret = kernctl_create_stream(session->metadata->fd);
-	if (ret < 0) {
-		PERROR("kernel create metadata stream");
-		goto error;
-	}
-
-	DBG("Kernel metadata stream created (fd: %d)", ret);
-	session->metadata_stream_fd = ret;
-	/* Prevent fd duplication after execlp() */
-	ret = fcntl(session->metadata_stream_fd, F_SETFD, FD_CLOEXEC);
-	if (ret < 0) {
-		PERROR("fcntl session fd");
-	}
-
-	return 0;
 
 error:
 	return -1;
@@ -1109,61 +1016,6 @@ int kernel_supports_event_notifiers()
 	return kernel_tracer_abi_greater_or_equal(2, 6);
 }
 
-/*
- * Rotate a kernel session.
- *
- * Return LTTNG_OK on success or else an LTTng error code.
- */
-enum lttng_error_code kernel_rotate_session(struct ltt_kernel_session *ksess)
-{
-	int ret;
-	enum lttng_error_code status = LTTNG_OK;
-
-	LTTNG_ASSERT(ksess);
-	LTTNG_ASSERT(ksess->consumer);
-
-	DBG("Rotate kernel session started");
-
-	/*
-	 * Note that this loop will end after one iteration given that there is
-	 * only one kernel consumer.
-	 */
-	for (auto *socket : lttng::urcu::lfht_iteration_adapter<consumer_socket,
-								decltype(consumer_socket::node),
-								&consumer_socket::node>(
-		     *ksess->consumer->socks->ht)) {
-		struct ltt_kernel_channel *chan;
-
-		/* For each channel, ask the consumer to rotate it. */
-		cds_list_for_each_entry (chan, &ksess->channel_list.head, list) {
-			DBG("Rotate kernel channel %" PRIu64, chan->key);
-			ret = consumer_rotate_channel(socket,
-						      chan->key,
-						      ksess->consumer,
-						      /* is_metadata_channel */ false);
-			if (ret < 0) {
-				status = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
-				goto error;
-			}
-		}
-
-		/*
-		 * Rotate the metadata channel.
-		 */
-		ret = consumer_rotate_channel(socket,
-					      ksess->metadata->key,
-					      ksess->consumer,
-					      /* is_metadata_channel */ true);
-		if (ret < 0) {
-			status = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
-			goto error;
-		}
-	}
-
-error:
-	return status;
-}
-
 enum lttng_error_code kernel_create_channel_subdirectories(const struct ltt_kernel_session *ksess)
 {
 	enum lttng_error_code ret = LTTNG_OK;
@@ -1451,80 +1303,6 @@ void cleanup_kernel_tracer()
 bool kernel_tracer_is_initialized()
 {
 	return kernel_tracer_fd >= 0;
-}
-
-/*
- *  Clear a kernel session.
- *
- * Return LTTNG_OK on success or else an LTTng error code.
- */
-enum lttng_error_code kernel_clear_session(struct ltt_kernel_session *ksess)
-{
-	int ret;
-	enum lttng_error_code status = LTTNG_OK;
-
-	LTTNG_ASSERT(ksess);
-	LTTNG_ASSERT(ksess->consumer);
-
-	DBG("Clear kernel session started");
-
-	if (ksess->active) {
-		ERR("Expecting inactive kernel session for clear operation");
-		status = LTTNG_ERR_FATAL;
-		goto end;
-	}
-
-	/*
-	 * Note that this loop will end after one iteration given that there is
-	 * only one kernel consumer.
-	 */
-	for (auto *socket : lttng::urcu::lfht_iteration_adapter<consumer_socket,
-								decltype(consumer_socket::node),
-								&consumer_socket::node>(
-		     *ksess->consumer->socks->ht)) {
-		struct ltt_kernel_channel *chan;
-
-		/* For each channel, ask the consumer to clear it. */
-		cds_list_for_each_entry (chan, &ksess->channel_list.head, list) {
-			DBG("Clear kernel channel %" PRIu64, chan->key);
-			ret = consumer_clear_channel(socket, chan->key);
-			if (ret < 0) {
-				goto error;
-			}
-		}
-
-		if (!ksess->metadata) {
-			/*
-			 * Nothing to do for the metadata.
-			 * This is a snapshot session.
-			 * The metadata is genererated on the fly.
-			 */
-			continue;
-		}
-
-		/*
-		 * Clear the metadata channel.
-		 * Metadata channel is not cleared per se but we still need to
-		 * perform a rotation operation on it behind the scene.
-		 */
-		ret = consumer_clear_channel(socket, ksess->metadata->key);
-		if (ret < 0) {
-			goto error;
-		}
-	}
-
-	goto end;
-error:
-	switch (-ret) {
-	case LTTCOMM_CONSUMERD_RELAYD_CLEAR_DISALLOWED:
-		status = LTTNG_ERR_CLEAR_RELAY_DISALLOWED;
-		break;
-	default:
-		status = LTTNG_ERR_CLEAR_FAIL_CONSUMER;
-		break;
-	}
-end:
-	return status;
 }
 
 /*
