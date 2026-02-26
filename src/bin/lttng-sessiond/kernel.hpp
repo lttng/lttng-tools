@@ -40,20 +40,14 @@ make_kernel_abi_channel(const lttng::sessiond::config::channel_configuration& ch
 uint64_t allocate_next_kernel_stream_group_key();
 
 int kernel_create_session(const ltt_session::locked_ref& session);
-int kernel_open_channel_stream(struct ltt_kernel_channel *channel);
-int kernel_flush_buffer(struct ltt_kernel_channel *channel);
-int kernel_start_session(struct ltt_kernel_session *session);
-int kernel_stop_session(struct ltt_kernel_session *session);
 ssize_t kernel_list_events(struct lttng_event **event_list);
 void kernel_wait_quiescent();
 int kernel_validate_version(struct lttng_kernel_abi_tracer_version *kernel_tracer_version,
 			    struct lttng_kernel_abi_tracer_abi_version *kernel_tracer_abi_version);
 void kernel_destroy_session(struct ltt_kernel_session *ksess);
 void kernel_free_session(struct ltt_kernel_session *ksess);
-void kernel_destroy_channel(struct ltt_kernel_channel *kchan);
 
 int kernel_syscall_mask(int chan_fd, char **syscall_mask, uint32_t *nr_bits);
-enum lttng_error_code kernel_open_packets(struct ltt_kernel_session *ksess);
 
 /*
  * Add callsites for a userspace probe event rule.
@@ -77,7 +71,7 @@ int init_kernel_tracer();
 void cleanup_kernel_tracer();
 bool kernel_tracer_is_initialized();
 
-enum lttng_error_code kernel_create_channel_subdirectories(const struct ltt_kernel_session *ksess);
+enum lttng_error_code kernel_create_channel_subdirectories(lttng_trace_chunk *trace_chunk);
 
 enum lttng_error_code
 kernel_create_event_notifier_group_notification_fd(int *event_notifier_group_notification_fd);

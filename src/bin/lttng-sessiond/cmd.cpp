@@ -22,7 +22,6 @@
 #include "event-notifier-error-accounting.hpp"
 #include "event.hpp"
 #include "health-sessiond.hpp"
-#include "kernel-consumer.hpp"
 #include "kernel.hpp"
 #include "lttng-channel-from-config.hpp"
 #include "lttng-sessiond.hpp"
@@ -2565,7 +2564,7 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 		    ltt_session::locked_ref& locked_session,
 		    const struct lttng_event_context *event_context)
 {
-	int ret, chan_kern_created = 0, chan_ust_created = 0;
+	int ret, chan_ust_created = 0;
 	const enum lttng_domain_type domain_type = cmd_ctx->lsm.domain.type;
 	const struct ltt_session& session = *locked_session;
 	const char *channel_name = cmd_ctx->lsm.u.context.channel_name;
@@ -2597,7 +2596,6 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
-			chan_kern_created = 1;
 		}
 
 		/*
@@ -2722,13 +2720,6 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 	goto end;
 
 error:
-	if (chan_kern_created) {
-		struct ltt_kernel_channel *kchan = trace_kernel_get_channel_by_name(
-			DEFAULT_CHANNEL_NAME, session.kernel_session);
-		/* Created previously, this should NOT fail. */
-		LTTNG_ASSERT(kchan);
-		kernel_destroy_channel(kchan);
-	}
 
 	if (chan_ust_created) {
 		struct ltt_ust_channel *uchan = trace_ust_find_channel_by_name(

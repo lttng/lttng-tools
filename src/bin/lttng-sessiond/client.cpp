@@ -690,16 +690,13 @@ int create_kernel_session(const ltt_session::locked_ref& session)
 		goto error;
 	}
 
-	session->kernel_session->uid = session->uid;
-	session->kernel_session->gid = session->gid;
 	session->kernel_session->output_traces = session->output_traces;
 	session->kernel_session->snapshot_mode = session->snapshot_mode;
-	session->kernel_session->is_live_session = session->live_timer != 0;
 
 	session->kernel_orchestrator =
 		lttng::make_unique<lttng::sessiond::modules::domain_orchestrator>(
 			lttng::file_descriptor(session->kernel_session->fd),
-			session->kernel_space_domain,
+			*session,
 			*session->kernel_session->consumer,
 			session->id,
 			*the_hotplug_handler_queue,

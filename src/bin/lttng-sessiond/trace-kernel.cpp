@@ -38,36 +38,6 @@
 #include <unistd.h>
 
 /*
- * Find the channel name for the given kernel session.
- */
-struct ltt_kernel_channel *trace_kernel_get_channel_by_name(const char *name,
-							    struct ltt_kernel_session *session)
-{
-	struct ltt_kernel_channel *chan;
-
-	LTTNG_ASSERT(session);
-	LTTNG_ASSERT(name);
-
-	/*
-	 * If we receive an empty string for channel name, it means the
-	 * default channel name is requested.
-	 */
-	if (name[0] == '\0')
-		name = DEFAULT_CHANNEL_NAME;
-
-	DBG("Trying to find channel %s", name);
-
-	cds_list_for_each_entry (chan, &session->channel_list.head, list) {
-		if (strcmp(name, chan->channel->name) == 0) {
-			DBG("Found channel by name %s", name);
-			return chan;
-		}
-	}
-
-	return nullptr;
-}
-
-/*
  * Allocate and initialize a kernel session data structure.
  *
  * Return pointer to structure or NULL.
@@ -86,74 +56,10 @@ struct ltt_kernel_session *trace_kernel_create_session()
 	/* Init data structure */
 	lks->fd = -1;
 	lks->channel_count = 0;
-	lks->stream_count_global = 0;
-	CDS_INIT_LIST_HEAD(&lks->channel_list.head);
 
 	return lks;
 
 alloc_error:
-	return nullptr;
-}
-
-/*
- * Allocate and initialize a kernel channel data structure.
- *
- * Return pointer to structure or NULL.
- */
-struct ltt_kernel_channel *trace_kernel_create_channel(struct lttng_channel *chan)
-{
-	struct ltt_kernel_channel *lkc;
-	struct lttng_channel_extended *extended = nullptr;
-
-	LTTNG_ASSERT(chan);
-
-	lkc = zmalloc<ltt_kernel_channel>();
-	if (lkc == nullptr) {
-		PERROR("ltt_kernel_channel zmalloc");
-		goto error;
-	}
-
-	lkc->channel = zmalloc<lttng_channel>();
-	if (lkc->channel == nullptr) {
-		PERROR("lttng_channel zmalloc");
-		goto error;
-	}
-
-	extended = zmalloc<lttng_channel_extended>();
-	if (!extended) {
-		PERROR("lttng_channel_channel zmalloc");
-		goto error;
-	}
-	memcpy(lkc->channel, chan, sizeof(struct lttng_channel));
-	memcpy(extended, chan->attr.extended.ptr, sizeof(struct lttng_channel_extended));
-	lkc->channel->attr.extended.ptr = extended;
-	extended = nullptr;
-
-	/*
-	 * If we receive an empty string for channel name, it means the
-	 * default channel name is requested.
-	 */
-	if (chan->name[0] == '\0') {
-		strncpy(lkc->channel->name, DEFAULT_CHANNEL_NAME, sizeof(lkc->channel->name));
-	}
-	lkc->channel->name[LTTNG_KERNEL_ABI_SYM_NAME_LEN - 1] = '\0';
-
-	lkc->fd = -1;
-	lkc->stream_count = 0;
-	lkc->event_count = 0;
-	lkc->enabled = true;
-	lkc->published_to_notification_thread = false;
-	/* Init linked list */
-	CDS_INIT_LIST_HEAD(&lkc->stream_list.head);
-
-	return lkc;
-
-error:
-	if (lkc) {
-		free(lkc->channel);
-	}
-	free(extended);
-	free(lkc);
 	return nullptr;
 }
 
@@ -392,67 +298,6 @@ error:
 }
 
 /*
- * Allocate and initialize a kernel stream. The stream is set to ACTIVE_FD by
- * default.
- *
- * Return pointer to structure or NULL.
- */
-struct ltt_kernel_stream *trace_kernel_create_stream(const char *name, unsigned int count)
-{
-	int ret;
-	struct ltt_kernel_stream *lks;
-
-	LTTNG_ASSERT(name);
-
-	lks = zmalloc<ltt_kernel_stream>();
-	if (lks == nullptr) {
-		PERROR("kernel stream zmalloc");
-		goto error;
-	}
-
-	/* Set name */
-	ret = snprintf(lks->name, sizeof(lks->name), "%s_%u", name, count);
-	if (ret < 0) {
-		PERROR("snprintf stream name");
-		goto error;
-	}
-	lks->name[sizeof(lks->name) - 1] = '\0';
-
-	/* Init stream */
-	lks->fd = -1;
-	lks->state = 0;
-	lks->cpu = count;
-
-	return lks;
-
-error:
-	return nullptr;
-}
-
-/*
- * Cleanup kernel stream structure.
- */
-void trace_kernel_destroy_stream(struct ltt_kernel_stream *stream)
-{
-	LTTNG_ASSERT(stream);
-
-	DBG("[trace] Closing stream fd %d", stream->fd);
-	/* Close kernel fd */
-	if (stream->fd >= 0) {
-		int ret;
-
-		ret = close(stream->fd);
-		if (ret) {
-			PERROR("close");
-		}
-	}
-	/* Remove from stream list */
-	cds_list_del(&stream->list);
-
-	free(stream);
-}
-
-/*
  * Cleanup kernel event structure.
  */
 static void free_token_event_rule_rcu(struct rcu_head *rcu_node)
@@ -482,50 +327,12 @@ void trace_kernel_destroy_event_notifier_rule(struct ltt_kernel_event_notifier_r
 	lttng_trigger_put(event->trigger);
 	call_rcu(&event->rcu_node, free_token_event_rule_rcu);
 }
-/*
- * Cleanup kernel channel structure.
- */
-void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel)
-{
-	struct ltt_kernel_stream *stream, *stmp;
-	enum lttng_error_code status;
-
-	LTTNG_ASSERT(channel);
-
-	DBG("[trace] Closing channel fd %d", channel->fd);
-
-	/* For each stream in the channel list */
-	cds_list_for_each_entry_safe (stream, stmp, &channel->stream_list.head, list) {
-		trace_kernel_destroy_stream(stream);
-	}
-
-	/* Remove from channel list */
-	cds_list_del(&channel->list);
-
-	if (the_notification_thread_handle && channel->published_to_notification_thread) {
-		status = notification_thread_command_remove_channel(
-			the_notification_thread_handle, channel->key, LTTNG_DOMAIN_KERNEL);
-		LTTNG_ASSERT(status == LTTNG_OK);
-	}
-	free(channel->channel->attr.extended.ptr);
-	free(channel->channel);
-	free(channel);
-}
 
 /*
  * Cleanup kernel session structure
  */
-void trace_kernel_destroy_session(struct ltt_kernel_session *session)
+void trace_kernel_destroy_session(struct ltt_kernel_session *session [[maybe_unused]])
 {
-	struct ltt_kernel_channel *channel, *ctmp;
-
-	LTTNG_ASSERT(session);
-
-	DBG("[trace] Closing session fd %d", session->fd);
-
-	cds_list_for_each_entry_safe (channel, ctmp, &session->channel_list.head, list) {
-		trace_kernel_destroy_channel(channel);
-	}
 }
 
 /* Free elements needed by destroy notifiers. */

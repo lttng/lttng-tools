@@ -19,21 +19,6 @@
 
 #include <urcu/list.h>
 
-/* Kernel event list */
-struct ltt_kernel_event_list {
-	struct cds_list_head head;
-};
-
-/* Channel stream list */
-struct ltt_kernel_stream_list {
-	struct cds_list_head head;
-};
-
-/* Channel list */
-struct ltt_kernel_channel_list {
-	struct cds_list_head head;
-};
-
 /* Kernel event */
 struct ltt_kernel_event_notifier_rule {
 	int fd;
@@ -49,45 +34,11 @@ struct ltt_kernel_event_notifier_rule {
 	struct rcu_head rcu_node;
 };
 
-/* Kernel channel */
-struct ltt_kernel_channel {
-	int fd;
-	uint64_t key; /* Key to reference this channel with the consumer. */
-	bool enabled;
-	unsigned int stream_count;
-	unsigned int event_count;
-	bool published_to_notification_thread;
-	struct lttng_channel *channel;
-	struct ltt_kernel_stream_list stream_list;
-	struct cds_list_head list;
-	/* Session pointer which has a reference to this object. */
-	struct ltt_kernel_session *session;
-	bool sent_to_consumer;
-};
-
-/* Channel stream */
-struct ltt_kernel_stream {
-	int fd;
-	int state;
-	int cpu;
-	bool sent_to_consumer;
-	/* Format is %s_%d respectively channel name and CPU number. */
-	char name[DEFAULT_STREAM_NAME_LEN];
-	uint64_t tracefile_size;
-	uint64_t tracefile_count;
-	struct cds_list_head list;
-};
-
 /* Kernel session */
 struct ltt_kernel_session {
 	int fd;
 	int consumer_fds_sent;
 	unsigned int channel_count;
-	unsigned int stream_count_global;
-	struct ltt_kernel_channel_list channel_list;
-	/* UID/GID of the user owning the session */
-	uid_t uid;
-	gid_t gid;
 	struct consumer_output *consumer;
 	/* Tracing session id */
 	uint64_t id;
@@ -97,25 +48,12 @@ struct ltt_kernel_session {
 	unsigned int output_traces;
 	unsigned int snapshot_mode;
 	unsigned int has_non_default_channel;
-	bool is_live_session;
-	/* Current trace chunk of the ltt_session. */
-	struct lttng_trace_chunk *current_trace_chunk;
-	/* Trace format of the session. */
-	enum lttng_trace_format trace_format;
 };
-
-/*
- * Lookup functions. NULL is returned if not found.
- */
-struct ltt_kernel_channel *trace_kernel_get_channel_by_name(const char *name,
-							    struct ltt_kernel_session *session);
 
 /*
  * Create functions malloc() the data structure.
  */
 struct ltt_kernel_session *trace_kernel_create_session();
-struct ltt_kernel_channel *trace_kernel_create_channel(struct lttng_channel *chan);
-struct ltt_kernel_stream *trace_kernel_create_stream(const char *name, unsigned int count);
 /* Trigger is only non-const to acquire a reference. */
 enum lttng_error_code trace_kernel_create_event_notifier_rule(
 	struct lttng_trigger *trigger,
@@ -131,8 +69,6 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
  * it's applies.
  */
 void trace_kernel_destroy_session(struct ltt_kernel_session *session);
-void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel);
-void trace_kernel_destroy_stream(struct ltt_kernel_stream *stream);
 void trace_kernel_destroy_event_notifier_rule(struct ltt_kernel_event_notifier_rule *rule);
 void trace_kernel_free_session(struct ltt_kernel_session *session);
 

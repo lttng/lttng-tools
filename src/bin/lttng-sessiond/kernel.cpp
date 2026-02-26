@@ -179,7 +179,6 @@ int kernel_create_session(const ltt_session::locked_ref& session)
 
 	lks->id = session->id;
 	lks->consumer_fds_sent = 0;
-	lks->trace_format = session->trace_format;
 	session->kernel_session = lks;
 
 	DBG("Kernel session created (fd: %d)", lks->fd);
@@ -555,29 +554,6 @@ error:
 }
 
 /*
- * Start tracing session.
- */
-int kernel_start_session(struct ltt_kernel_session *session)
-{
-	int ret;
-
-	LTTNG_ASSERT(session);
-
-	ret = kernctl_start_session(session->fd);
-	if (ret < 0) {
-		PERROR("ioctl start session");
-		goto error;
-	}
-
-	DBG("Kernel session started");
-
-	return 0;
-
-error:
-	return ret;
-}
-
-/*
  * Make a kernel wait to make sure in-flight probe have completed.
  */
 void kernel_wait_quiescent()
@@ -592,102 +568,6 @@ void kernel_wait_quiescent()
 		PERROR("wait quiescent ioctl");
 		ERR("Kernel quiescent wait failed");
 	}
-}
-
-/*
- * Force flush buffer for channel.
- */
-int kernel_flush_buffer(struct ltt_kernel_channel *channel)
-{
-	int ret;
-	struct ltt_kernel_stream *stream;
-
-	LTTNG_ASSERT(channel);
-
-	DBG("Flush buffer for channel %s", channel->channel->name);
-
-	cds_list_for_each_entry (stream, &channel->stream_list.head, list) {
-		DBG("Flushing channel stream %d", stream->fd);
-		ret = kernctl_buffer_flush(stream->fd);
-		if (ret < 0) {
-			PERROR("ioctl");
-			ERR("Fail to flush buffer for stream %d (ret: %d)", stream->fd, ret);
-		}
-	}
-
-	return 0;
-}
-
-/*
- * Stop tracing session.
- */
-int kernel_stop_session(struct ltt_kernel_session *session)
-{
-	int ret;
-
-	LTTNG_ASSERT(session);
-
-	ret = kernctl_stop_session(session->fd);
-	if (ret < 0) {
-		goto error;
-	}
-
-	DBG("Kernel session stopped");
-
-	return 0;
-
-error:
-	return ret;
-}
-
-/*
- * Open stream of channel, register it to the kernel tracer and add it
- * to the stream list of the channel.
- *
- * Note: given that the streams may appear in random order wrt CPU
- * number (e.g. cpu hotplug), the index value of the stream number in
- * the stream name is not necessarily linked to the CPU number.
- *
- * Return the number of created stream. Else, a negative value.
- */
-int kernel_open_channel_stream(struct ltt_kernel_channel *channel)
-{
-	int ret;
-	struct ltt_kernel_stream *lks;
-
-	LTTNG_ASSERT(channel);
-
-	while ((ret = kernctl_create_stream(channel->fd)) >= 0) {
-		lks = trace_kernel_create_stream(channel->channel->name, channel->stream_count);
-		if (lks == nullptr) {
-			ret = close(ret);
-			if (ret) {
-				PERROR("close");
-			}
-			goto error;
-		}
-
-		lks->fd = ret;
-		/* Prevent fd duplication after execlp() */
-		ret = fcntl(lks->fd, F_SETFD, FD_CLOEXEC);
-		if (ret < 0) {
-			PERROR("fcntl session fd");
-		}
-
-		lks->tracefile_size = channel->channel->attr.tracefile_size;
-		lks->tracefile_count = channel->channel->attr.tracefile_count;
-
-		/* Add stream to channel stream list */
-		cds_list_add(&lks->list, &channel->stream_list.head);
-		channel->stream_count++;
-
-		DBG("Kernel stream %s created (fd: %d, state: %d)", lks->name, lks->fd, lks->state);
-	}
-
-	return channel->stream_count;
-
-error:
-	return -1;
 }
 
 /*
@@ -861,15 +741,12 @@ end_boot_id:
  */
 void kernel_destroy_session(struct ltt_kernel_session *ksess)
 {
-	struct lttng_trace_chunk *trace_chunk;
-
 	if (ksess == nullptr) {
 		DBG3("No kernel session when tearing down session");
 		return;
 	}
 
 	DBG("Tearing down kernel session");
-	trace_chunk = ksess->current_trace_chunk;
 
 	/*
 	 * Consumer stream group destruction (notifying the consumer to release
@@ -881,7 +758,6 @@ void kernel_destroy_session(struct ltt_kernel_session *ksess)
 	consumer_output_send_destroy_relayd(ksess->consumer);
 
 	trace_kernel_destroy_session(ksess);
-	lttng_trace_chunk_put(trace_chunk);
 }
 
 /* Teardown of data required by destroy notifiers. */
@@ -891,36 +767,6 @@ void kernel_free_session(struct ltt_kernel_session *ksess)
 		return;
 	}
 	trace_kernel_free_session(ksess);
-}
-
-/*
- * Destroy a kernel channel object. It does not do anything on the tracer side.
- */
-void kernel_destroy_channel(struct ltt_kernel_channel *kchan)
-{
-	struct ltt_kernel_session *ksess = nullptr;
-
-	LTTNG_ASSERT(kchan);
-	LTTNG_ASSERT(kchan->channel);
-
-	DBG3("Kernel destroy channel %s", kchan->channel->name);
-
-	/* Update channel count of associated session. */
-	if (kchan->session) {
-		/* Keep pointer reference so we can update it after the destroy. */
-		ksess = kchan->session;
-	}
-
-	trace_kernel_destroy_channel(kchan);
-
-	/*
-	 * At this point the kernel channel is not visible anymore. This is safe
-	 * since in order to work on a visible kernel session, the tracing session
-	 * lock (ltt_session.lock) MUST be acquired.
-	 */
-	if (ksess) {
-		ksess->channel_count--;
-	}
 }
 
 /*
@@ -997,20 +843,20 @@ int kernel_supports_event_notifiers()
 	return kernel_tracer_abi_greater_or_equal(2, 6);
 }
 
-enum lttng_error_code kernel_create_channel_subdirectories(const struct ltt_kernel_session *ksess)
+enum lttng_error_code kernel_create_channel_subdirectories(struct lttng_trace_chunk *trace_chunk)
 {
 	enum lttng_error_code ret = LTTNG_OK;
 	enum lttng_trace_chunk_status chunk_status;
 
 	const lttng::urcu::read_lock_guard read_lock;
-	LTTNG_ASSERT(ksess->current_trace_chunk);
+	LTTNG_ASSERT(trace_chunk);
 
 	/*
 	 * Create the index subdirectory which will take care
 	 * of implicitly creating the channel's path.
 	 */
 	chunk_status = lttng_trace_chunk_create_subdirectory(
-		ksess->current_trace_chunk, DEFAULT_KERNEL_TRACE_DIR "/" DEFAULT_INDEX_DIR);
+		trace_chunk, DEFAULT_KERNEL_TRACE_DIR "/" DEFAULT_INDEX_DIR);
 	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		ret = LTTNG_ERR_CREATE_DIR_FAIL;
 		goto error;
@@ -1284,60 +1130,6 @@ void cleanup_kernel_tracer()
 bool kernel_tracer_is_initialized()
 {
 	return kernel_tracer_fd >= 0;
-}
-
-/*
- * Open a packet in every channel stream of a kernel session.
- *
- * This function skips the metadata channel as the begin/end timestamps of a
- * metadata packet are useless.
- *
- * Moreover, opening a packet after a "clear" will cause problems for live
- * sessions as it will introduce padding that was not part of the first trace
- * chunk. The relay daemon expects the content of the metadata stream of
- * successive metadata trace chunks to be strict supersets of one another.
- *
- * For example, flushing a packet at the beginning of the metadata stream of
- * a trace chunk resulting from a "clear" session command will cause the
- * size of the metadata stream of the new trace chunk to not match the size of
- * the metadata stream of the original chunk. This will confuse the relay
- * daemon as the same "offset" in a metadata stream will no longer point
- * to the same content.
- *
- * Return LTTNG_OK on success or else an LTTng error code.
- */
-enum lttng_error_code kernel_open_packets(struct ltt_kernel_session *ksess)
-{
-	enum lttng_error_code ret = LTTNG_OK;
-	struct lttng_ht_iter iter;
-	struct cds_lfht_node *node;
-
-	LTTNG_ASSERT(ksess);
-	LTTNG_ASSERT(ksess->consumer);
-
-	const lttng::urcu::read_lock_guard read_lock;
-
-	cds_lfht_first(ksess->consumer->socks->ht, &iter.iter);
-	node = cds_lfht_iter_get_node(&iter.iter);
-	auto *socket = lttng_ht_node_container_of(node, &consumer_socket::node);
-
-	for (auto chan :
-	     lttng::urcu::list_iteration_adapter<ltt_kernel_channel, &ltt_kernel_channel::list>(
-		     ksess->channel_list.head)) {
-		int open_ret;
-
-		DBG("Open packet of kernel channel: channel key = %" PRIu64, chan->key);
-
-		open_ret = consumer_open_channel_packets(socket, chan->key);
-		if (open_ret < 0) {
-			/* General error (no known error expected). */
-			ret = LTTNG_ERR_UNK;
-			goto end;
-		}
-	}
-
-end:
-	return ret;
 }
 
 enum lttng_error_code

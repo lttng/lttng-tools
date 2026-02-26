@@ -546,10 +546,6 @@ static int _session_set_trace_chunk_no_lock_check(const ltt_session::locked_ref&
 		lttng_trace_chunk_put(session->ust_session->current_trace_chunk);
 		session->ust_session->current_trace_chunk = nullptr;
 	}
-	if (session->kernel_session) {
-		lttng_trace_chunk_put(session->kernel_session->current_trace_chunk);
-		session->kernel_session->current_trace_chunk = nullptr;
-	}
 	if (!new_trace_chunk) {
 		ret = 0;
 		goto end;
@@ -559,7 +555,6 @@ static int _session_set_trace_chunk_no_lock_check(const ltt_session::locked_ref&
 
 	refs_to_acquire = 1;
 	refs_to_acquire += !!session->ust_session;
-	refs_to_acquire += !!session->kernel_session;
 
 	for (refs_acquired = 0; refs_acquired < refs_to_acquire; refs_acquired++) {
 		if (!lttng_trace_chunk_get(new_trace_chunk)) {
@@ -608,12 +603,10 @@ static int _session_set_trace_chunk_no_lock_check(const ltt_session::locked_ref&
 		const bool is_local_trace = session->kernel_session->consumer->type ==
 			CONSUMER_DST_LOCAL;
 
-		session->kernel_session->current_trace_chunk = new_trace_chunk;
 		if (is_local_trace) {
 			enum lttng_error_code ret_error_code;
 
-			ret_error_code =
-				kernel_create_channel_subdirectories(session->kernel_session);
+			ret_error_code = kernel_create_channel_subdirectories(new_trace_chunk);
 			if (ret_error_code != LTTNG_OK) {
 				goto error;
 			}
@@ -654,9 +647,6 @@ end_no_move:
 error:
 	if (session->ust_session) {
 		session->ust_session->current_trace_chunk = nullptr;
-	}
-	if (session->kernel_session) {
-		session->kernel_session->current_trace_chunk = nullptr;
 	}
 	/*
 	 * Release references taken in the case where all references could not

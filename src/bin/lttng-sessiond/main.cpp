@@ -22,7 +22,6 @@
 #include "fd-limit.hpp"
 #include "health-sessiond.hpp"
 #include "hotplug-handler.hpp"
-#include "kernel-consumer.hpp"
 #include "kernel.hpp"
 #include "lttng-sessiond.hpp"
 #include "lttng-ust-ctl.hpp"

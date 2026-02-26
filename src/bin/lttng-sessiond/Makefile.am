@@ -28,7 +28,6 @@ liblttng_sessiond_common_la_SOURCES = utils.cpp utils.hpp \
                        session.cpp session.hpp \
                        modprobe.cpp modprobe.hpp kern-modules.hpp \
                        fd-limit.cpp fd-limit.hpp \
-                       kernel-consumer.cpp kernel-consumer.hpp \
                        consumer.hpp \
                        health-sessiond.hpp \
                        cmd.cpp cmd.hpp \

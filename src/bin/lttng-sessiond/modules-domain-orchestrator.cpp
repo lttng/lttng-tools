@@ -66,22 +66,6 @@ namespace lsc = lttng::sessiond::config;
 
 namespace {
 /*
- * Find the legacy kernel channel matching a config object by name.
- * Throws channel_not_found_error if no match exists.
- */
-ltt_kernel_channel& find_legacy_channel(ltt_kernel_session& ksess,
-					const lsc::recording_channel_configuration& channel_config)
-{
-	auto *kchan = trace_kernel_get_channel_by_name(channel_config.name.c_str(), &ksess);
-
-	if (!kchan) {
-		LTTNG_THROW_CHANNEL_NOT_FOUND_BY_NAME_ERROR(channel_config.name);
-	}
-
-	return *kchan;
-}
-
-/*
  * Build a lttng_kernel_abi_event struct directly from an event rule.
  *
  * This follows the same mapping as trace_kernel_init_event_notifier_from_event_rule()
@@ -282,7 +266,7 @@ ls::modules::domain_orchestrator::~domain_orchestrator()
 	 * explicitly told to destroy them or they will leak. In monitor
 	 * mode, the consumer handles cleanup on its own.
 	 */
-	if (!_legacy_kernel_session->output_traces) {
+	if (!_session.output_traces) {
 		try {
 			auto& socket = _get_consumer_socket();
 			const lttng::pthread::lock_guard socket_lock(*socket.lock);
@@ -337,14 +321,12 @@ ls::modules::domain_orchestrator::~domain_orchestrator()
 void ls::modules::domain_orchestrator::create_channel(
 	const lsc::recording_channel_configuration& channel_config)
 {
-	LTTNG_ASSERT(_legacy_kernel_session);
-
 	DBG_FMT("Creating kernel channel from configuration: config={}", channel_config);
 
 	auto kernel_abi_channel = make_kernel_abi_channel(channel_config);
 
 	/* Enforce mmap output for snapshot sessions. */
-	if (_legacy_kernel_session->snapshot_mode) {
+	if (_session.snapshot_mode) {
 		LTTNG_ASSERT(kernel_abi_channel.output == LTTNG_EVENT_MMAP);
 	}
 
@@ -364,31 +346,8 @@ void ls::modules::domain_orchestrator::create_channel(
 		LTTNG_THROW_POSIX("Failed to set FD_CLOEXEC on kernel channel fd", errno);
 	}
 
-	/*
-	 * Create a legacy ltt_kernel_channel for downstream code that still
-	 * reads from the legacy hierarchy: channel listing, consumer channel
-	 * send, kernel thread stream opening, and notification thread.
-	 *
-	 * The legacy struct owns the channel fd during the transition period.
-	 * This dual-write will be removed once all downstream readers are
-	 * migrated to the orchestrator's modern channel objects.
-	 */
-	auto legacy_channel_attr = ls::make_lttng_channel(channel_config);
-
-	auto lkc = lttng::make_unique_wrapper<ltt_kernel_channel, trace_kernel_destroy_channel>(
-		trace_kernel_create_channel(legacy_channel_attr.get()));
-	if (!lkc) {
-		LTTNG_THROW_ALLOCATION_FAILURE_ERROR(
-			"Failed to allocate legacy ltt_kernel_channel");
-	}
-
 	const auto stream_group_key = allocate_next_kernel_stream_group_key();
-	lkc->fd = modules_stream_group_fd.fd();
-	lkc->key = stream_group_key;
-	lkc->session = _legacy_kernel_session;
-	cds_list_add(&lkc->list, &_legacy_kernel_session->channel_list.head);
-	/* ownership transferred to legacy struct. NOLINTNEXTLINE(bugprone-unused-return-value) */
-	lkc.release();
+
 	_legacy_kernel_session->channel_count++;
 
 	if (channel_config.name != DEFAULT_CHANNEL_NAME) {
@@ -415,10 +374,6 @@ void ls::modules::domain_orchestrator::enable_channel(
 		LTTNG_THROW_POSIX("Failed to enable kernel channel", -ret);
 	}
 
-	/* Keep the legacy struct in sync for downstream code. */
-	auto& kchan = find_legacy_channel(*_legacy_kernel_session, channel_config);
-	kchan.enabled = true;
-
 	kernel_wait_quiescent();
 }
 
@@ -432,10 +387,6 @@ void ls::modules::domain_orchestrator::disable_channel(
 	if (ret < 0 && ret != -EEXIST) {
 		LTTNG_THROW_POSIX("Failed to disable kernel channel", -ret);
 	}
-
-	/* Keep the legacy struct in sync for downstream code. */
-	auto& kchan = find_legacy_channel(*_legacy_kernel_session, channel_config);
-	kchan.enabled = false;
 
 	kernel_wait_quiescent();
 }
@@ -672,10 +623,9 @@ void ls::modules::domain_orchestrator::enable_event(
 
 	/* Add callsites for userspace probe events. */
 	if (lttng_event_rule_get_type(rule) == LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE) {
-		LTTNG_ASSERT(_legacy_kernel_session);
 		lttng_credentials creds = {};
-		LTTNG_OPTIONAL_SET(&creds.uid, _legacy_kernel_session->uid);
-		LTTNG_OPTIONAL_SET(&creds.gid, _legacy_kernel_session->gid);
+		LTTNG_OPTIONAL_SET(&creds.uid, _session.uid);
+		LTTNG_OPTIONAL_SET(&creds.gid, _session.gid);
 
 		const auto callsite_ret =
 			userspace_probe_event_rule_add_callsites(rule, &creds, event_fd.fd());
@@ -726,8 +676,6 @@ void ls::modules::domain_orchestrator::add_context(
 	const lsc::recording_channel_configuration& channel_config,
 	const lsc::context_configuration& context_config)
 {
-	LTTNG_ASSERT(_legacy_kernel_session);
-
 	auto& runtime_channel = _get_channel(channel_config);
 	auto abi_ctx = make_kernel_abi_context(context_config);
 
@@ -927,31 +875,6 @@ unsigned int ls::modules::domain_orchestrator::_open_channel_streams(stream_grou
 			stream_fd.fd(),
 			cpu);
 
-		/*
-		 * Also add the stream to the legacy struct for downstream code that
-		 * still iterates ltt_kernel_channel::stream_list (hotplug handler
-		 * thread, consumer send code).
-		 */
-		auto& legacy_channel =
-			find_legacy_channel(*_legacy_kernel_session, channel.configuration());
-		auto lks =
-			lttng::make_unique_wrapper<ltt_kernel_stream, trace_kernel_destroy_stream>(
-				trace_kernel_create_stream(channel.configuration().name.c_str(),
-							   legacy_channel.stream_count));
-		if (!lks) {
-			LTTNG_THROW_ALLOCATION_FAILURE_ERROR(
-				"Failed to allocate legacy ltt_kernel_stream");
-		}
-
-		lks->tracefile_size =
-			channel.configuration().trace_file_size_limit_bytes.value_or(0);
-		lks->tracefile_count = channel.configuration().trace_file_count_limit.value_or(0);
-		/* Ownership transferred to the legacy channel list. */
-		cds_list_add(&lks->list, &legacy_channel.stream_list.head);
-		/* NOLINTNEXTLINE */
-		lks.release();
-		legacy_channel.stream_count++;
-
 		channel.add_stream(cpu, std::move(stream_fd));
 		streams_opened++;
 	}
@@ -979,7 +902,7 @@ void ls::modules::domain_orchestrator::_open_metadata()
 {
 	LTTNG_ASSERT(!_metadata);
 
-	const auto& metadata_config = _domain_configuration.metadata_channel();
+	const auto& metadata_config = _session.kernel_space_domain.metadata_channel();
 
 	DBG("Opening kernel metadata channel");
 
@@ -1064,7 +987,7 @@ void ls::modules::domain_orchestrator::_send_metadata_to_consumer(
 
 	consumer_init_add_channel_comm_msg(&lkm,
 					   _metadata->consumer_key(),
-					   _legacy_kernel_session->id,
+					   _session.id,
 					   "",
 					   consumer_output.net_seq_index,
 					   metadata_config.name.c_str(),
@@ -1075,10 +998,10 @@ void ls::modules::domain_orchestrator::_send_metadata_to_consumer(
 					   0,
 					   monitor,
 					   0,
-					   _legacy_kernel_session->is_live_session,
+					   _session.live_timer != 0,
 					   0,
-					   _legacy_kernel_session->current_trace_chunk,
-					   _legacy_kernel_session->trace_format);
+					   _session.current_trace_chunk,
+					   _session.trace_format);
 
 	health_code_update();
 
@@ -1108,7 +1031,6 @@ void ls::modules::domain_orchestrator::_send_channel_to_consumer(consumer_socket
 								 stream_group& channel,
 								 bool monitor)
 {
-	LTTNG_ASSERT(_legacy_kernel_session);
 	LTTNG_ASSERT(!channel.is_sent_to_consumer());
 
 	const auto& channel_config = channel.configuration();
@@ -1129,7 +1051,7 @@ void ls::modules::domain_orchestrator::_send_channel_to_consumer(consumer_socket
 		LTTNG_THROW_ALLOCATION_FAILURE_ERROR("Failed to allocate channel trace path");
 	}
 
-	if (is_local_trace && _legacy_kernel_session->current_trace_chunk) {
+	if (is_local_trace && _session.current_trace_chunk) {
 		std::string pathname_index = fmt::format("{}" DEFAULT_INDEX_DIR, pathname.get());
 
 		/*
@@ -1137,7 +1059,7 @@ void ls::modules::domain_orchestrator::_send_channel_to_consumer(consumer_socket
 		 * of implicitly creating the channel's path.
 		 */
 		const auto chunk_status = lttng_trace_chunk_create_subdirectory(
-			_legacy_kernel_session->current_trace_chunk, pathname_index.c_str());
+			_session.current_trace_chunk, pathname_index.c_str());
 		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			LTTNG_THROW_ERROR(lttng::format(
 				"Failed to create index subdirectory for channel `{}`",
@@ -1148,7 +1070,7 @@ void ls::modules::domain_orchestrator::_send_channel_to_consumer(consumer_socket
 	lttcomm_consumer_msg lkm = {};
 	consumer_init_add_channel_comm_msg(&lkm,
 					   channel.consumer_key(),
-					   _legacy_kernel_session->id,
+					   _session.id,
 					   &pathname.get()[consumer_path_offset],
 					   _consumer.net_seq_index,
 					   channel_config.name.c_str(),
@@ -1159,10 +1081,10 @@ void ls::modules::domain_orchestrator::_send_channel_to_consumer(consumer_socket
 					   channel_config.trace_file_count_limit.value_or(0),
 					   monitor,
 					   channel_config.live_timer_period_us.value_or(0),
-					   _legacy_kernel_session->is_live_session,
+					   channel_config.live_timer_period_us.has_value(),
 					   channel_config.monitor_timer_period_us.value_or(0),
-					   _legacy_kernel_session->current_trace_chunk,
-					   _legacy_kernel_session->trace_format);
+					   _session.current_trace_chunk,
+					   _session.trace_format);
 
 	health_code_update();
 
@@ -1177,13 +1099,9 @@ void ls::modules::domain_orchestrator::_send_channel_to_consumer(consumer_socket
 
 	/* Notify the notification thread of the new channel. */
 	try {
-		const auto session = ltt_session::find_session(_legacy_kernel_session->id);
-
-		ASSERT_SESSION_LIST_LOCKED();
-
 		const auto status = notification_thread_command_add_channel(
 			the_notification_thread_handle,
-			session->id,
+			_session.id,
 			const_cast<char *>(channel_config.name.c_str()),
 			channel.consumer_key(),
 			LTTNG_DOMAIN_KERNEL,
@@ -1234,14 +1152,12 @@ void ls::modules::domain_orchestrator::_send_channel_to_consumer(consumer_socket
 
 void ls::modules::domain_orchestrator::_send_channels_to_consumer(consumer_socket& socket)
 {
-	LTTNG_ASSERT(_legacy_kernel_session);
-
 	if (!_consumer.enabled) {
 		return;
 	}
 
 	/* Don't monitor the streams on the consumer if in flight recorder. */
-	const unsigned int monitor = _legacy_kernel_session->output_traces ? 1 : 0;
+	const auto monitor = _session.output_traces;
 
 	DBG("Sending session stream to kernel consumer");
 
@@ -1283,7 +1199,6 @@ void ls::modules::domain_orchestrator::_send_channels_to_consumer(consumer_socke
 
 void ls::modules::domain_orchestrator::start()
 {
-	LTTNG_ASSERT(_legacy_kernel_session);
 	if (_active) {
 		return;
 	}
@@ -1305,8 +1220,7 @@ void ls::modules::domain_orchestrator::start()
 		auto& channel = *channel_entry.second;
 
 		if (channel.stream_count() == 0) {
-			const auto new_streams = _open_channel_streams(channel);
-			_legacy_kernel_session->stream_count_global += new_streams;
+			_open_channel_streams(channel);
 		}
 	}
 
@@ -1339,7 +1253,7 @@ void ls::modules::domain_orchestrator::start()
 	}
 
 	/* Start kernel tracing. */
-	const auto start_ret = kernel_start_session(_legacy_kernel_session);
+	const auto start_ret = kernctl_start_session(_tracer_session_fd.fd());
 	if (start_ret < 0) {
 		LTTNG_THROW_KERNEL_START_FAILURE("Failed to start kernel tracing");
 	}
@@ -1349,15 +1263,13 @@ void ls::modules::domain_orchestrator::start()
 
 void ls::modules::domain_orchestrator::stop()
 {
-	LTTNG_ASSERT(_legacy_kernel_session);
-
 	if (!_active) {
 		return;
 	}
 
 	DBG("Stopping kernel tracing");
 
-	const auto stop_ret = kernel_stop_session(_legacy_kernel_session);
+	const auto stop_ret = kernctl_stop_session(_tracer_session_fd.fd());
 	if (stop_ret < 0) {
 		LTTNG_THROW_KERNEL_STOP_FAILURE("Failed to stop kernel tracing");
 	}
@@ -1396,8 +1308,6 @@ consumer_socket& ls::modules::domain_orchestrator::_get_consumer_socket()
 
 void ls::modules::domain_orchestrator::rotate()
 {
-	LTTNG_ASSERT(_legacy_kernel_session);
-
 	DBG("Rotate kernel session started");
 
 	const lttng::urcu::read_lock_guard read_lock;
@@ -1426,8 +1336,7 @@ void ls::modules::domain_orchestrator::rotate()
 
 void ls::modules::domain_orchestrator::clear()
 {
-	LTTNG_ASSERT(_legacy_kernel_session);
-	LTTNG_ASSERT(!_legacy_kernel_session->active);
+	LTTNG_ASSERT(!_active);
 
 	DBG("Clear kernel session started");
 
@@ -1496,7 +1405,6 @@ void ls::modules::domain_orchestrator::open_packets()
 void ls::modules::domain_orchestrator::record_snapshot(
 	const struct consumer_output& snapshot_consumer, std::uint64_t nb_packets_per_stream)
 {
-	LTTNG_ASSERT(_legacy_kernel_session);
 	LTTNG_ASSERT(_legacy_kernel_session->consumer);
 
 	DBG("Kernel snapshot record started");
@@ -1592,7 +1500,7 @@ ls::modules::domain_orchestrator::get_recording_channel_runtime_stats(
 	LTTNG_ASSERT(it != _channels.end());
 
 	const auto channel_key = it->second->consumer_key();
-	const auto session_id = _legacy_kernel_session->id;
+	const auto session_id = _session.id;
 	recording_channel_runtime_stats stats = {};
 	int ret;
 
@@ -1626,8 +1534,6 @@ unsigned int ls::modules::domain_orchestrator::get_stream_count_for_channel(
 
 void ls::modules::domain_orchestrator::handle_channel_hotplug(stream_group& channel)
 {
-	LTTNG_ASSERT(_legacy_kernel_session);
-
 	const auto new_stream_count = _open_channel_streams(channel);
 	if (new_stream_count == 0) {
 		WARN_FMT(
@@ -1640,8 +1546,6 @@ void ls::modules::domain_orchestrator::handle_channel_hotplug(stream_group& chan
 		channel.configuration().name,
 		new_stream_count,
 		channel.stream_count());
-
-	_legacy_kernel_session->stream_count_global += new_stream_count;
 
 	LTTNG_ASSERT(channel.is_sent_to_consumer());
 

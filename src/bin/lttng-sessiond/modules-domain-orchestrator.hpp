@@ -457,21 +457,26 @@ private:
  * recording session.
  *
  * The orchestrator reads configuration exclusively from the config::domain
- * passed at construction time. It does not copy configuration fields; the
+ * owned by the ltt_session. It does not copy configuration fields; the
  * config objects are the single source of truth.
+ *
+ * The ltt_session referenced by the orchestrator always outlives it: the
+ * orchestrator is owned (via unique_ptr) by the ltt_session itself, so
+ * the session is guaranteed to be valid for the entire lifetime of the
+ * orchestrator.
  */
 class domain_orchestrator final : public sessiond::domain_orchestrator {
 public:
 	using hotplug_command = lttng::sessiond::hotplug_handler::command;
 
 	explicit domain_orchestrator(lttng::file_descriptor tracer_session_fd,
-				     config::domain& domain_configuration,
+				     const struct ltt_session& session,
 				     struct consumer_output& consumer,
 				     hotplug_handler::session_id_t session_id,
 				     lttng::command_queue<hotplug_command>& hotplug_queue,
 				     struct ltt_kernel_session *legacy_kernel_session) :
 		_tracer_session_fd(std::move(tracer_session_fd)),
-		_domain_configuration(domain_configuration),
+		_session(session),
 		_consumer(consumer),
 		_session_id(session_id),
 		_hotplug_queue(hotplug_queue),
@@ -623,7 +628,7 @@ private:
 	void _destroy_consumer_stream_group(consumer_socket& socket, uint64_t consumer_key);
 
 	lttng::file_descriptor _tracer_session_fd;
-	config::domain& _domain_configuration;
+	const struct ltt_session& _session;
 	struct consumer_output& _consumer;
 	hotplug_handler::session_id_t _session_id;
 	lttng::command_queue<hotplug_command>& _hotplug_queue;
