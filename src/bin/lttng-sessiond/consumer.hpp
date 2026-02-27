@@ -59,10 +59,10 @@ struct consumer_socket {
 	pthread_mutex_t *lock;
 
 	/*
-	 * Indicates if the socket was registered by a third part
-	 * (REGISTER_CONSUMER) or is the spawn consumer of the session daemon.
-	 * During the destroy phase of a consumer output, we close the socket if
-	 * this flag is set to 1 since we don't need the fd anymore.
+	 * Indicates if the socket was registered by a third party or is the
+	 * spawned consumer of the session daemon. During the destroy phase of
+	 * a consumer output, we close the socket if this flag is set to 1
+	 * since we don't need the fd anymore.
 	 */
 	unsigned int registered;
 

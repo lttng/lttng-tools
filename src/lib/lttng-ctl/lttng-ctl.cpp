@@ -721,39 +721,14 @@ void lttng_destroy_handle(struct lttng_handle *handle)
 }
 
 /*
- * Register an outside consumer.
+ * Register an outside consumer (deprecated).
  *
  * Returns size of returned session payload data or a negative error code.
  */
-int lttng_register_consumer(struct lttng_handle *handle, const char *socket_path)
+int lttng_register_consumer(struct lttng_handle *handle [[maybe_unused]],
+			    const char *socket_path [[maybe_unused]])
 {
-	int ret;
-	struct lttcomm_session_msg lsm;
-
-	if (handle == nullptr || socket_path == nullptr) {
-		ret = -LTTNG_ERR_INVALID;
-		goto end;
-	}
-
-	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_REGISTER_CONSUMER;
-	ret = lttng_strncpy(lsm.session.name, handle->session_name, sizeof(lsm.session.name));
-	if (ret) {
-		ret = -LTTNG_ERR_INVALID;
-		goto end;
-	}
-
-	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
-
-	ret = lttng_strncpy(lsm.u.reg.path, socket_path, sizeof(lsm.u.reg.path));
-	if (ret) {
-		ret = -LTTNG_ERR_INVALID;
-		goto end;
-	}
-
-	ret = lttng_ctl_ask_sessiond(&lsm, nullptr);
-end:
-	return ret;
+	return -LTTNG_ERR_NOT_SUPPORTED;
 }
 
 /*

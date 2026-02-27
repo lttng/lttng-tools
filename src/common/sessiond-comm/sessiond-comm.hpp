@@ -69,7 +69,6 @@ enum lttcomm_sessiond_command {
 	LTTCOMM_SESSIOND_COMMAND_LIST_EVENTS,
 	LTTCOMM_SESSIOND_COMMAND_LIST_SESSIONS,
 	LTTCOMM_SESSIOND_COMMAND_LIST_TRACEPOINTS,
-	LTTCOMM_SESSIOND_COMMAND_REGISTER_CONSUMER,
 	LTTCOMM_SESSIOND_COMMAND_START_TRACE,
 	LTTCOMM_SESSIOND_COMMAND_STOP_TRACE,
 	LTTCOMM_SESSIOND_COMMAND_LIST_TRACEPOINT_FIELDS,
@@ -138,8 +137,6 @@ static inline const char *lttcomm_sessiond_command_str(enum lttcomm_sessiond_com
 		return "LIST_SESSIONS";
 	case LTTCOMM_SESSIOND_COMMAND_LIST_TRACEPOINTS:
 		return "LIST_TRACEPOINTS";
-	case LTTCOMM_SESSIOND_COMMAND_REGISTER_CONSUMER:
-		return "REGISTER_CONSUMER";
 	case LTTCOMM_SESSIOND_COMMAND_START_TRACE:
 		return "START_TRACE";
 	case LTTCOMM_SESSIOND_COMMAND_STOP_TRACE:
@@ -759,10 +756,6 @@ struct lttcomm_session_msg {
 			char channel_name[LTTNG_SYMBOL_NAME_LEN];
 			uint32_t length;
 		} LTTNG_PACKED context;
-		/* Use by register_consumer */
-		struct {
-			char path[PATH_MAX];
-		} LTTNG_PACKED reg;
 		/* List */
 		struct {
 			char channel_name[LTTNG_SYMBOL_NAME_LEN];

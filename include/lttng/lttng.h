@@ -163,14 +163,10 @@ the current Unix tracing group (initially \c tracing) of the library.
 LTTNG_EXPORT extern int lttng_set_tracing_group(const char *group);
 
 /*
- * This call registers an "outside consumer" for a session and an lttng domain.
- * No consumer will be spawned and all fds/commands will go through the socket
- * path given (socket_path).
+ * Deprecated: this function always returns -LTTNG_ERR_NOT_SUPPORTED.
  *
- * NOTE that this is not recommended unless you absolutely know what you are
- * doing.
- *
- * Return 0 on success else a negative LTTng error code.
+ * This call previously registered an "outside consumer" for a session and an
+ * lttng domain. It is no longer supported.
  */
 LTTNG_EXPORT extern int lttng_register_consumer(struct lttng_handle *handle,
 						const char *socket_path);

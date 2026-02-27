@@ -1273,17 +1273,6 @@ int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_error)
 		}
 	}
 
-	/* Deny register consumer if we already have a spawned consumer. */
-	if (cmd_ctx->lsm.cmd_type == LTTCOMM_SESSIOND_COMMAND_REGISTER_CONSUMER) {
-		const lttng::pthread::lock_guard kconsumer_lock(the_kconsumer_data.pid_mutex);
-
-		if (the_kconsumer_data.pid > 0) {
-			LTTNG_THROW_CTL(
-				"Can't register a consumer since a kernel-domain consumer was already launched",
-				LTTNG_ERR_KERN_CONSUMER_FAIL);
-		}
-	}
-
 	/*
 	 * Check for command that don't needs to allocate a returned payload. We do
 	 * this here so we don't have to make the call for no payload at each
@@ -1459,8 +1448,7 @@ int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_error)
 
 			/* Start the kernel consumer daemon */
 			pthread_mutex_lock(&the_kconsumer_data.pid_mutex);
-			if (the_kconsumer_data.pid == 0 &&
-			    cmd_ctx->lsm.cmd_type != LTTCOMM_SESSIOND_COMMAND_REGISTER_CONSUMER) {
+			if (the_kconsumer_data.pid == 0) {
 				pthread_mutex_unlock(&the_kconsumer_data.pid_mutex);
 				ret = start_consumerd(&the_kconsumer_data);
 				if (ret < 0) {
@@ -1520,8 +1508,7 @@ int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_error)
 			/* 64-bit */
 			pthread_mutex_lock(&the_ustconsumer64_data.pid_mutex);
 			if (the_config.consumerd64_bin_path.value &&
-			    the_ustconsumer64_data.pid == 0 &&
-			    cmd_ctx->lsm.cmd_type != LTTCOMM_SESSIOND_COMMAND_REGISTER_CONSUMER) {
+			    the_ustconsumer64_data.pid == 0) {
 				pthread_mutex_unlock(&the_ustconsumer64_data.pid_mutex);
 				ret = start_consumerd(&the_ustconsumer64_data);
 				if (ret < 0) {
@@ -1550,8 +1537,7 @@ int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_error)
 			/* 32-bit */
 			pthread_mutex_lock(&the_ustconsumer32_data.pid_mutex);
 			if (the_config.consumerd32_bin_path.value &&
-			    the_ustconsumer32_data.pid == 0 &&
-			    cmd_ctx->lsm.cmd_type != LTTCOMM_SESSIOND_COMMAND_REGISTER_CONSUMER) {
+			    the_ustconsumer32_data.pid == 0) {
 				pthread_mutex_unlock(&the_ustconsumer32_data.pid_mutex);
 				ret = start_consumerd(&the_ustconsumer32_data);
 				if (ret < 0) {
@@ -2129,23 +2115,6 @@ skip_domain:
 		free(sessions_payload);
 
 		ret = LTTNG_OK;
-		break;
-	}
-	case LTTCOMM_SESSIOND_COMMAND_REGISTER_CONSUMER:
-	{
-		struct consumer_data *cdata;
-
-		switch (cmd_ctx->lsm.domain.type) {
-		case LTTNG_DOMAIN_KERNEL:
-			cdata = &the_kconsumer_data;
-			break;
-		default:
-			ret = LTTNG_ERR_UND;
-			goto error;
-		}
-
-		ret = cmd_register_consumer(
-			*target_session, cmd_ctx->lsm.domain.type, cmd_ctx->lsm.u.reg.path, cdata);
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_KERNEL_TRACER_STATUS:

@@ -110,10 +110,6 @@ int cmd_start_trace(const ltt_session::locked_ref& session);
 int cmd_stop_trace(const ltt_session::locked_ref& session);
 
 /* Consumer commands */
-int cmd_register_consumer(const ltt_session::locked_ref& session,
-			  enum lttng_domain_type domain,
-			  const char *sock_path,
-			  struct consumer_data *cdata);
 int cmd_set_consumer_uri(const ltt_session::locked_ref& session,
 			 size_t nb_uri,
 			 struct lttng_uri *uris);
