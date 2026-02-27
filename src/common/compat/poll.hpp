@@ -90,7 +90,6 @@ __lttng_epoll_get_prev_fd(struct lttng_poll_event *events, int index, uint32_t n
 #define LTTNG_POLL_GETFD(e, i)		    LTTNG_REF(e)->events[i].data.fd
 #define LTTNG_POLL_GETEV(e, i)		    LTTNG_REF(e)->events[i].events
 #define LTTNG_POLL_GETNB(e)		    LTTNG_REF(e)->nb_fd
-#define LTTNG_POLL_GETSZ(e)		    LTTNG_REF(e)->events_size
 #define LTTNG_POLL_GET_PREV_FD(e, i, nb_fd) __lttng_epoll_get_prev_fd(LTTNG_REF(e), i, nb_fd)
 
 /* Create the epoll set. */
@@ -271,7 +270,6 @@ __lttng_poll_get_prev_fd(struct lttng_poll_event *events, int index, uint32_t nb
 #define LTTNG_POLL_GETFD(e, i)			       LTTNG_REF(e)->wait.events[i].fd
 #define LTTNG_POLL_GETEV(e, i)			       LTTNG_REF(e)->wait.events[i].revents
 #define LTTNG_POLL_GETNB(e)			       LTTNG_REF(e)->current.nb_fd
-#define LTTNG_POLL_GETSZ(e)			       LTTNG_REF(e)->wait.events_size
 #define LTTNG_POLL_GET_PREV_FD(e, i, nb_fd)	       __lttng_poll_get_prev_fd(LTTNG_REF(e), i, nb_fd)
 
 /*

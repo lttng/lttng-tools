@@ -45,9 +45,9 @@ int lttng_opt_mi;
 #define MAGIC_VALUE ((char) 0x5A)
 
 #ifdef HAVE_EPOLL
-#define NUM_TESTS 48
-#else
 #define NUM_TESTS 47
+#else
+#define NUM_TESTS 46
 #endif
 
 #ifdef HAVE_EPOLL
@@ -320,12 +320,6 @@ static void test_func_def()
 #define PASS_GETEV 0
 #endif
 
-#ifdef LTTNG_POLL_GETSZ
-#define PASS_GETSZ 1
-#else
-#define PASS_GETSZ 0
-#endif
-
 #ifdef LTTNG_POLL_GET_PREV_FD
 #define PASS_GET_PREV_FD 1
 #else
@@ -336,7 +330,6 @@ static void test_func_def()
 	ok(lttng_poll_init == lttng_poll_init, "lttng_poll_init is defined");
 	ok(PASS_GETFD, "GETFD is defined");
 	ok(PASS_GETEV, "GETEV is defined");
-	ok(PASS_GETSZ, "GETSZ is defined");
 	ok(PASS_GET_PREV_FD, "GET_PREV_FD is defined");
 }
 
