@@ -419,6 +419,7 @@ error:
 static int _main(int argc, char *argv[])
 {
 	progname = argv[0] ? argv[0] : "lttng";
+	lttng_opt_is_tui = true;
 	return parse_args(argc, argv);
 }
 

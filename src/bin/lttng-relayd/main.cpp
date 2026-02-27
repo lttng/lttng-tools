@@ -107,6 +107,7 @@ enum relay_group_output_by opt_group_output_by = RELAYD_GROUP_OUTPUT_BY_UNKNOWN;
 int lttng_opt_quiet; /* not static in error.h */
 int lttng_opt_verbose; /* not static in error.h */
 int lttng_opt_mi; /* not static in error.h */
+bool lttng_opt_is_tui = false; /* not static in error.hpp */
 
 /*
  * We need to wait for listener and live listener threads, as well as

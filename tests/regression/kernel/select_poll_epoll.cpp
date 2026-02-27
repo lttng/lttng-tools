@@ -53,6 +53,7 @@ static volatile int stop_thread;
 static int wait_fd;
 
 /* Used by logging utils. */
+bool lttng_opt_is_tui = true;
 int lttng_opt_quiet, lttng_opt_verbose, lttng_opt_mi;
 
 static void run_working_cases(FILE *validation_output_file);

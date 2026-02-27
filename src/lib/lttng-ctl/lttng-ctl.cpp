@@ -83,6 +83,7 @@ static int connected;
  * error message. They are global to the library so application linking with it
  * are able to compile correctly and also control verbosity of the library.
  */
+LTTNG_EXPORT bool lttng_opt_is_tui;
 LTTNG_EXPORT int lttng_opt_quiet;
 LTTNG_EXPORT int lttng_opt_verbose;
 LTTNG_EXPORT int lttng_opt_mi;

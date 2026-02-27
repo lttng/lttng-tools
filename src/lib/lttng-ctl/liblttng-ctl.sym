@@ -393,6 +393,7 @@ lttng_notification_destroy
 lttng_notification_get_condition
 lttng_notification_get_evaluation
 lttng_notification_get_trigger
+lttng_opt_is_tui
 lttng_opt_mi
 lttng_opt_quiet
 lttng_opt_verbose

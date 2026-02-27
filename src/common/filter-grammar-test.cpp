@@ -24,6 +24,7 @@
 int lttng_opt_quiet = 1;
 int lttng_opt_verbose;
 int lttng_opt_mi;
+bool lttng_opt_is_tui = true;
 
 int main(int argc, char **argv)
 {

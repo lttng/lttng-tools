@@ -52,6 +52,7 @@ static int sigintcount = 0;
 int lttng_opt_quiet; /* not static in error.h */
 int lttng_opt_verbose; /* not static in error.h */
 int lttng_opt_mi; /* not static in error.h */
+bool lttng_opt_is_tui; /* not static in error.hpp */
 
 static int opt_daemon;
 static const char *progname;

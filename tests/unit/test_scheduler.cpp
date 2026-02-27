@@ -16,6 +16,7 @@
 #include <vector>
 
 /* For error.hpp */
+bool lttng_opt_is_tui = true;
 int lttng_opt_quiet;
 int lttng_opt_verbose;
 int lttng_opt_mi;

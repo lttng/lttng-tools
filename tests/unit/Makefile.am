@@ -229,7 +229,7 @@ test_uprobe_event_rule_event_name_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_
 
 # Event expression to bytecode test
 test_event_expr_to_bytecode_SOURCES = test_event_expr_to_bytecode.cpp
-test_event_expr_to_bytecode_LDADD = $(LIBTAP) $(LIBLTTNG_CTL) $(LIBCOMMON_GPL)
+test_event_expr_to_bytecode_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_CTL)
 
 # Log level rule api
 test_log_level_rule_SOURCES = test_log_level_rule.cpp

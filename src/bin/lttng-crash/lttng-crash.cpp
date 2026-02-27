@@ -230,6 +230,7 @@ static char *opt_output_path = nullptr;
 static char *the_input_path;
 
 int lttng_opt_quiet, lttng_opt_verbose, lttng_opt_mi;
+bool lttng_opt_is_tui = true;
 
 enum {
 	OPT_DUMP_OPTIONS,

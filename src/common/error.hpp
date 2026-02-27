@@ -54,6 +54,7 @@ extern thread_local const char *logger_thread_name;
 extern int lttng_opt_quiet;
 extern int lttng_opt_verbose;
 extern int lttng_opt_mi;
+extern bool lttng_opt_is_tui;
 
 /* Error type. */
 enum lttng_error_level {
@@ -212,8 +213,19 @@ static inline void __lttng_print_check_abort(enum lttng_error_level type)
 
 #define MSG(fmt, args...)  __lttng_print(PRINT_MSG, fmt "\n", ##args)
 #define _MSG(fmt, args...) __lttng_print(PRINT_MSG, fmt, ##args)
-#define ERR(fmt, args...)  __lttng_print(PRINT_ERR, "Error: " fmt "\n", ##args)
-#define WARN(fmt, args...) __lttng_print(PRINT_WARN, "Warning: " fmt "\n", ##args)
+
+#define ERR(fmt, args...)                                             \
+	if (lttng_opt_is_tui) {                                       \
+		__lttng_print(PRINT_ERR, "Error: " fmt "\n", ##args); \
+	} else {                                                      \
+		_ERRMSG("ERR", PRINT_ERR, fmt, ##args);               \
+	}
+#define WARN(fmt, args...)                                               \
+	if (lttng_opt_is_tui) {                                          \
+		__lttng_print(PRINT_WARN, "Warning: " fmt "\n", ##args); \
+	} else {                                                         \
+		_ERRMSG("WARN", PRINT_WARN, fmt, ##args);                \
+	}
 
 #define BUG(fmt, args...) _ERRMSG("BUG", PRINT_BUG, fmt, ##args)
 

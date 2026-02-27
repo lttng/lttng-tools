@@ -32,6 +32,7 @@
 	} while (0)
 
 /* For error.h */
+bool lttng_opt_is_tui = true;
 int lttng_opt_quiet = 1;
 int lttng_opt_verbose;
 int lttng_opt_mi;
