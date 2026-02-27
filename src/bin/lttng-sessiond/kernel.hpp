@@ -31,6 +31,27 @@
 lttng_kernel_abi_channel
 make_kernel_abi_channel(const lttng::sessiond::config::channel_configuration& channel_config);
 
+struct lttng_event_rule;
+
+namespace lttng {
+namespace sessiond {
+namespace modules {
+
+/*
+ * Build a lttng_kernel_abi_event from an event rule.
+ *
+ * Maps the high-level event rule to the low-level kernel ABI struct used for
+ * both recording events and event notifiers. Supports tracepoint, syscall,
+ * kprobe, kretprobe, and uprobe event rule types.
+ *
+ * Throws on invalid or unsupported event rules.
+ */
+lttng_kernel_abi_event make_kernel_abi_event_from_event_rule(const lttng_event_rule *rule);
+
+} /* namespace modules */
+} /* namespace sessiond */
+} /* namespace lttng */
+
 /*
  * Allocate a unique consumer key for a kernel channel or metadata channel.
  *

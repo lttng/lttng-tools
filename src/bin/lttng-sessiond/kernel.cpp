@@ -19,6 +19,8 @@
 #include "utils.hpp"
 
 #include <common/common.hpp>
+#include <common/exception.hpp>
+#include <common/format.hpp>
 #include <common/hashtable/utils.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>
 #include <common/kernel-ctl/kernel-ioctl.hpp>
@@ -32,8 +34,16 @@
 #include <lttng/condition/event-rule-matches.h>
 #include <lttng/event-rule/event-rule-internal.hpp>
 #include <lttng/event-rule/event-rule.h>
+#include <lttng/event-rule/kernel-kprobe-internal.hpp>
+#include <lttng/event-rule/kernel-kprobe.h>
+#include <lttng/event-rule/kernel-syscall-internal.hpp>
+#include <lttng/event-rule/kernel-syscall.h>
+#include <lttng/event-rule/kernel-tracepoint-internal.hpp>
+#include <lttng/event-rule/kernel-tracepoint.h>
 #include <lttng/event-rule/kernel-uprobe-internal.hpp>
+#include <lttng/event-rule/kernel-uprobe.h>
 #include <lttng/event.h>
+#include <lttng/kernel-probe.h>
 #include <lttng/lttng-error.h>
 #include <lttng/userspace-probe-internal.hpp>
 #include <lttng/userspace-probe.h>
@@ -73,6 +83,181 @@ lttng_kernel_abi_channel make_kernel_abi_channel(const ls::channel_configuration
 		LTTNG_EVENT_SPLICE;
 
 	return kernel_channel;
+}
+
+namespace lsm = lttng::sessiond::modules;
+
+/*
+ * Build a lttng_kernel_abi_event from an event rule.
+ *
+ * Maps the high-level event rule to the low-level kernel ABI struct used for
+ * both recording events and event notifiers. Supports tracepoint, syscall,
+ * kprobe, kretprobe, and uprobe event rule types.
+ */
+lttng_kernel_abi_event lsm::make_kernel_abi_event_from_event_rule(const lttng_event_rule *rule)
+{
+	lttng_kernel_abi_event abi_event = {};
+	const char *name;
+
+	switch (lttng_event_rule_get_type(rule)) {
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE:
+	{
+		uint64_t address = 0, offset = 0;
+		const char *symbol_name = nullptr;
+		const struct lttng_kernel_probe_location *location = nullptr;
+
+		const auto status = lttng_event_rule_kernel_kprobe_get_location(rule, &location);
+		if (status != LTTNG_EVENT_RULE_STATUS_OK) {
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR("Failed to get kprobe location");
+		}
+
+		switch (lttng_kernel_probe_location_get_type(location)) {
+		case LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS:
+		{
+			const auto k_status =
+				lttng_kernel_probe_location_address_get_address(location, &address);
+			LTTNG_ASSERT(k_status == LTTNG_KERNEL_PROBE_LOCATION_STATUS_OK);
+			break;
+		}
+		case LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET:
+		{
+			const auto k_status =
+				lttng_kernel_probe_location_symbol_get_offset(location, &offset);
+			LTTNG_ASSERT(k_status == LTTNG_KERNEL_PROBE_LOCATION_STATUS_OK);
+			symbol_name = lttng_kernel_probe_location_symbol_get_name(location);
+			break;
+		}
+		default:
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR("Unknown kernel probe location type");
+		}
+
+		const auto *kprobe =
+			lttng::utils::container_of(rule, &lttng_event_rule_kernel_kprobe::parent);
+		switch (kprobe->instrumentation_site) {
+		case LTTNG_EVENT_RULE_KERNEL_KPROBE_INSTRUMENTATION_SITE_ENTRY_EXIT:
+			abi_event.instrumentation = LTTNG_KERNEL_ABI_KRETPROBE;
+
+			abi_event.u.kretprobe.addr = address;
+			abi_event.u.kretprobe.offset = offset;
+			if (symbol_name) {
+				if (lttng_strncpy(abi_event.u.kretprobe.symbol_name,
+						  symbol_name,
+						  sizeof(abi_event.u.kretprobe.symbol_name))) {
+					LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+						"kretprobe symbol name exceeds maximal length");
+				}
+			}
+
+			break;
+		case LTTNG_EVENT_RULE_KERNEL_KPROBE_INSTRUMENTATION_SITE_LOCATION:
+			abi_event.instrumentation = LTTNG_KERNEL_ABI_KPROBE;
+
+			abi_event.u.kprobe.addr = address;
+			abi_event.u.kprobe.offset = offset;
+			if (symbol_name) {
+				if (lttng_strncpy(abi_event.u.kprobe.symbol_name,
+						  symbol_name,
+						  sizeof(abi_event.u.kprobe.symbol_name))) {
+					LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+						"kprobe symbol name exceeds maximal length");
+				}
+			}
+
+			break;
+		default:
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+				"Unknown kprobe instrumentation site type");
+		}
+
+		const auto event_name_status =
+			lttng_event_rule_kernel_kprobe_get_event_name(rule, &name);
+		LTTNG_ASSERT(event_name_status == LTTNG_EVENT_RULE_STATUS_OK);
+		break;
+	}
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE:
+	{
+		const struct lttng_userspace_probe_location *location = nullptr;
+		const struct lttng_userspace_probe_location_lookup_method *lookup = nullptr;
+
+		const auto status = lttng_event_rule_kernel_uprobe_get_location(rule, &location);
+		if (status != LTTNG_EVENT_RULE_STATUS_OK) {
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR("Failed to get uprobe location");
+		}
+
+		abi_event.instrumentation = LTTNG_KERNEL_ABI_UPROBE;
+
+		lookup = lttng_userspace_probe_location_get_lookup_method(location);
+		if (!lookup) {
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR("Missing uprobe lookup method");
+		}
+
+		switch (lttng_userspace_probe_location_lookup_method_get_type(lookup)) {
+		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
+			abi_event.u.uprobe.fd =
+				lttng_userspace_probe_location_function_get_binary_fd(location);
+			break;
+		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
+			abi_event.u.uprobe.fd =
+				lttng_userspace_probe_location_tracepoint_get_binary_fd(location);
+			break;
+		default:
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR("Unsupported uprobe lookup method");
+		}
+
+		const auto event_name_status =
+			lttng_event_rule_kernel_uprobe_get_event_name(rule, &name);
+		LTTNG_ASSERT(event_name_status == LTTNG_EVENT_RULE_STATUS_OK);
+		break;
+	}
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT:
+	{
+		const auto status =
+			lttng_event_rule_kernel_tracepoint_get_name_pattern(rule, &name);
+		LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
+		abi_event.instrumentation = LTTNG_KERNEL_ABI_TRACEPOINT;
+		break;
+	}
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
+	{
+		const auto status = lttng_event_rule_kernel_syscall_get_name_pattern(rule, &name);
+		LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
+
+		const auto emission_site = lttng_event_rule_kernel_syscall_get_emission_site(rule);
+		LTTNG_ASSERT(emission_site !=
+			     LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_UNKNOWN);
+
+		enum lttng_kernel_abi_syscall_entryexit entryexit;
+		switch (emission_site) {
+		case LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_ENTRY:
+			entryexit = LTTNG_KERNEL_ABI_SYSCALL_ENTRY;
+			break;
+		case LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_EXIT:
+			entryexit = LTTNG_KERNEL_ABI_SYSCALL_EXIT;
+			break;
+		case LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_ENTRY_EXIT:
+			entryexit = LTTNG_KERNEL_ABI_SYSCALL_ENTRYEXIT;
+			break;
+		default:
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR("Unknown syscall emission site");
+		}
+
+		abi_event.instrumentation = LTTNG_KERNEL_ABI_SYSCALL;
+		abi_event.u.syscall.abi = LTTNG_KERNEL_ABI_SYSCALL_ABI_ALL;
+		abi_event.u.syscall.entryexit = entryexit;
+		abi_event.u.syscall.match = LTTNG_KERNEL_ABI_SYSCALL_MATCH_NAME;
+		break;
+	}
+	default:
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+			lttng::format("Unsupported event rule type for kernel tracer: type={}",
+				      static_cast<int>(lttng_event_rule_get_type(rule))));
+	}
+
+	if (lttng_strncpy(abi_event.name, name, sizeof(abi_event.name))) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR("Event rule name too long");
+	}
+
+	return abi_event;
 }
 
 namespace {
@@ -1252,9 +1437,13 @@ static enum lttng_error_code kernel_create_event_notifier_rule(
 		goto error;
 	}
 
-	error_code_ret = trace_kernel_init_event_notifier_from_event_rule(event_rule,
-									  &kernel_event_notifier);
-	if (error_code_ret != LTTNG_OK) {
+	try {
+		kernel_event_notifier.event =
+			lsm::make_kernel_abi_event_from_event_rule(event_rule);
+	} catch (const std::exception& ex) {
+		ERR_FMT("Failed to initialize kernel event notifier from event rule: {}",
+			ex.what());
+		error_code_ret = LTTNG_ERR_INVALID;
 		goto free_event;
 	}
 

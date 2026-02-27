@@ -60,9 +60,6 @@ enum lttng_error_code trace_kernel_create_event_notifier_rule(
 	uint64_t token,
 	uint64_t error_counter_index,
 	struct ltt_kernel_event_notifier_rule **event_notifier_rule);
-enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
-	const struct lttng_event_rule *rule,
-	struct lttng_kernel_abi_event_notifier *kernel_event_notifier);
 
 /*
  * Destroy functions free() the data structure and remove from linked list if
