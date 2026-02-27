@@ -60,14 +60,11 @@ lttng_kernel_abi_event make_kernel_abi_event_from_event_rule(const lttng_event_r
  */
 uint64_t allocate_next_kernel_stream_group_key();
 
-int kernel_create_session(const ltt_session::locked_ref& session);
+int kernel_tracer_fd_value();
 ssize_t kernel_list_events(struct lttng_event **event_list);
 void kernel_wait_quiescent();
 int kernel_validate_version(struct lttng_kernel_abi_tracer_version *kernel_tracer_version,
 			    struct lttng_kernel_abi_tracer_abi_version *kernel_tracer_abi_version);
-void kernel_destroy_session(struct ltt_kernel_session *ksess);
-void kernel_free_session(struct ltt_kernel_session *ksess);
-
 int kernel_syscall_mask(int chan_fd, char **syscall_mask, uint32_t *nr_bits);
 
 /*

@@ -665,9 +665,10 @@ build_network_session_path(char *dst, size_t size, const ltt_session::locked_ref
 
 	kdata_port = udata_port = DEFAULT_NETWORK_DATA_PORT;
 
-	if (session->kernel_session && session->kernel_session->consumer) {
-		kuri = &session->kernel_session->consumer->dst.net.control;
-		kdata_port = session->kernel_session->consumer->dst.net.data.port;
+	if (session->kernel_orchestrator) {
+		kuri = &session->get_kernel_orchestrator().get_consumer_output().dst.net.control;
+		kdata_port =
+			session->get_kernel_orchestrator().get_consumer_output().dst.net.data.port;
 	}
 
 	if (session->ust_session && session->ust_session->consumer) {
@@ -1236,11 +1237,9 @@ int cmd_setup_relayd(const ltt_session::locked_ref& session)
 {
 	int ret = LTTNG_OK;
 	struct ltt_ust_session *usess;
-	struct ltt_kernel_session *ksess;
 	LTTNG_OPTIONAL(uint64_t) current_chunk_id = {};
 
 	usess = session->ust_session;
-	ksess = session->kernel_session;
 
 	DBG("Setting relayd for session %s", session->name);
 
@@ -1291,39 +1290,44 @@ int cmd_setup_relayd(const ltt_session::locked_ref& session)
 		session->consumer->relay_allows_clear = usess->consumer->relay_allows_clear;
 	}
 
-	if (ksess && ksess->consumer && ksess->consumer->type == CONSUMER_DST_NET &&
-	    ksess->consumer->enabled) {
-		const lttng::urcu::read_lock_guard read_lock;
+	if (session->kernel_orchestrator) {
+		auto& kconsumer_output = session->get_kernel_orchestrator().get_consumer_output();
 
-		for (auto *socket :
-		     lttng::urcu::lfht_iteration_adapter<consumer_socket,
-							 decltype(consumer_socket::node),
-							 &consumer_socket::node>(
-			     *ksess->consumer->socks->ht)) {
-			pthread_mutex_lock(socket->lock);
-			ret = send_consumer_relayd_sockets(
-				session->id,
-				ksess->consumer,
-				socket,
-				session->name,
-				session->hostname,
-				session->base_path,
-				session->live_timer,
-				current_chunk_id.is_set ? &current_chunk_id.value : nullptr,
-				session->creation_time,
-				session->name_contains_creation_time,
-				session->trace_format);
-			pthread_mutex_unlock(socket->lock);
-			if (ret != LTTNG_OK) {
-				goto error;
+		if (kconsumer_output.type == CONSUMER_DST_NET && kconsumer_output.enabled) {
+			const lttng::urcu::read_lock_guard read_lock;
+
+			for (auto *socket :
+			     lttng::urcu::lfht_iteration_adapter<consumer_socket,
+								 decltype(consumer_socket::node),
+								 &consumer_socket::node>(
+				     *kconsumer_output.socks->ht)) {
+				pthread_mutex_lock(socket->lock);
+				ret = send_consumer_relayd_sockets(
+					session->id,
+					&kconsumer_output,
+					socket,
+					session->name,
+					session->hostname,
+					session->base_path,
+					session->live_timer,
+					current_chunk_id.is_set ? &current_chunk_id.value : nullptr,
+					session->creation_time,
+					session->name_contains_creation_time,
+					session->trace_format);
+				pthread_mutex_unlock(socket->lock);
+				if (ret != LTTNG_OK) {
+					goto error;
+				}
+				/* Session is now ready for network streaming. */
+				session->net_handle = 1;
 			}
-			/* Session is now ready for network streaming. */
-			session->net_handle = 1;
-		}
 
-		session->consumer->relay_major_version = ksess->consumer->relay_major_version;
-		session->consumer->relay_minor_version = ksess->consumer->relay_minor_version;
-		session->consumer->relay_allows_clear = ksess->consumer->relay_allows_clear;
+			session->consumer->relay_major_version =
+				kconsumer_output.relay_major_version;
+			session->consumer->relay_minor_version =
+				kconsumer_output.relay_minor_version;
+			session->consumer->relay_allows_clear = kconsumer_output.relay_allows_clear;
+		}
 	}
 
 	/* Validate that CTF 2 is not used with relay daemon < 2.15. */
@@ -2084,7 +2088,7 @@ cmd_process_attr_tracker_set_tracking_policy(const ltt_session::locked_ref& sess
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
-		if (!session->kernel_session) {
+		if (!session->kernel_orchestrator) {
 			ret_code = LTTNG_ERR_INVALID;
 			goto end;
 		}
@@ -2148,7 +2152,7 @@ cmd_process_attr_tracker_inclusion_set_add_value(const ltt_session::locked_ref& 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
-		if (!session->kernel_session) {
+		if (!session->kernel_orchestrator) {
 			return LTTNG_ERR_INVALID;
 		}
 
@@ -2206,7 +2210,7 @@ cmd_process_attr_tracker_inclusion_set_remove_value(const ltt_session::locked_re
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
-		if (!session->kernel_session) {
+		if (!session->kernel_orchestrator) {
 			return LTTNG_ERR_INVALID;
 		}
 
@@ -2582,7 +2586,7 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 	switch (domain_type) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
-		LTTNG_ASSERT(session.kernel_session);
+		LTTNG_ASSERT(session.kernel_orchestrator);
 
 		if (session.kernel_space_domain.recording_channel_count() == 0) {
 			/* Create default channel through the orchestrator. */
@@ -3475,13 +3479,10 @@ int cmd_start_trace(const ltt_session::locked_ref& session)
 {
 	enum lttng_error_code ret;
 	unsigned long nb_chan = 0;
-	struct ltt_kernel_session *ksession;
 	struct ltt_ust_session *usess;
 	const bool session_rotated_after_last_stop = session->rotated_after_last_stop;
 	const bool session_cleared_after_last_stop = session->cleared_after_last_stop;
 
-	/* Ease our life a bit ;) */
-	ksession = session->kernel_session;
 	usess = session->ust_session;
 
 	/* Is the session already started? */
@@ -3514,7 +3515,7 @@ int cmd_start_trace(const ltt_session::locked_ref& session)
 	if (usess && usess->domain_global.channels) {
 		nb_chan += lttng_ht_get_count(usess->domain_global.channels);
 	}
-	if (ksession) {
+	if (session->kernel_orchestrator) {
 		nb_chan += session->kernel_space_domain.recording_channel_count();
 	}
 	if (!nb_chan) {
@@ -3566,7 +3567,7 @@ int cmd_start_trace(const ltt_session::locked_ref& session)
 	}
 
 	/* Kernel tracing */
-	if (ksession != nullptr) {
+	if (session->kernel_orchestrator) {
 		DBG("Start kernel tracing session %s", session->name);
 		try {
 			session->get_kernel_orchestrator().start();
@@ -3636,12 +3637,9 @@ end:
 int cmd_stop_trace(const ltt_session::locked_ref& session)
 {
 	int ret;
-	struct ltt_kernel_session *ksession;
 	struct ltt_ust_session *usess;
 
 	DBG("Begin stop session \"%s\" (id %" PRIu64 ")", session->name, session->id);
-	/* Short cut */
-	ksession = session->kernel_session;
 	usess = session->ust_session;
 
 	/* Session is not active. Skip everything and inform the client. */
@@ -3650,7 +3648,7 @@ int cmd_stop_trace(const ltt_session::locked_ref& session)
 		goto error;
 	}
 
-	if (ksession) {
+	if (session->kernel_orchestrator) {
 		try {
 			session->get_kernel_orchestrator().stop();
 		} catch (const std::exception& ex) {
@@ -3725,7 +3723,6 @@ int cmd_set_consumer_uri(const ltt_session::locked_ref& session,
 			 struct lttng_uri *uris)
 {
 	int ret, i;
-	struct ltt_kernel_session *ksess = session->kernel_session;
 	struct ltt_ust_session *usess = session->ust_session;
 
 	LTTNG_ASSERT(uris);
@@ -3769,12 +3766,13 @@ int cmd_set_consumer_uri(const ltt_session::locked_ref& session,
 	}
 
 	/* Set kernel session URIs */
-	if (session->kernel_session) {
+	if (session->kernel_orchestrator) {
 		for (i = 0; i < nb_uri; i++) {
-			ret = add_uri_to_consumer(session,
-						  session->kernel_session->consumer,
-						  &uris[i],
-						  LTTNG_DOMAIN_KERNEL);
+			ret = add_uri_to_consumer(
+				session,
+				&session->get_kernel_orchestrator().get_consumer_output(),
+				&uris[i],
+				LTTNG_DOMAIN_KERNEL);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
@@ -3786,9 +3784,6 @@ int cmd_set_consumer_uri(const ltt_session::locked_ref& session,
 	 * session can be created without URL (thus flagged in no output mode).
 	 */
 	session->output_traces = true;
-	if (ksess) {
-		ksess->output_traces = 1;
-	}
 
 	if (usess) {
 		usess->output_traces = 1;
@@ -4351,7 +4346,7 @@ ssize_t cmd_list_domains(const ltt_session::locked_ref& session, struct lttng_do
 	int ret, index = 0;
 	ssize_t nb_dom = 0;
 
-	if (session->kernel_session != nullptr) {
+	if (session->kernel_orchestrator != nullptr) {
 		DBG3("Listing domains found kernel domain");
 		nb_dom++;
 	}
@@ -4379,7 +4374,7 @@ ssize_t cmd_list_domains(const ltt_session::locked_ref& session, struct lttng_do
 		goto error;
 	}
 
-	if (session->kernel_session != nullptr) {
+	if (session->kernel_orchestrator != nullptr) {
 		(*domains)[index].type = LTTNG_DOMAIN_KERNEL;
 
 		/* Kernel session buffer type is always GLOBAL */
@@ -4447,7 +4442,7 @@ enum lttng_error_code cmd_list_channels(enum lttng_domain_type domain,
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
-		if (session->kernel_session != nullptr) {
+		if (session->kernel_orchestrator != nullptr) {
 			const auto& orchestrator = session->get_kernel_orchestrator();
 
 			for (const auto& channel_config :
@@ -4579,7 +4574,7 @@ enum lttng_error_code cmd_list_events(enum lttng_domain_type domain,
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
-		if (session->kernel_session != nullptr) {
+		if (session->kernel_orchestrator != nullptr) {
 			nb_events = list_events_from_domain(
 				session->kernel_space_domain, channel_name, reply_payload);
 		}
@@ -4660,11 +4655,12 @@ void cmd_list_lttng_sessions(struct lttng_session *sessions,
 			continue;
 		}
 
-		struct ltt_kernel_session *ksess = session->kernel_session;
 		struct ltt_ust_session *usess = session->ust_session;
 
 		if (session->consumer->type == CONSUMER_DST_NET ||
-		    (ksess && ksess->consumer->type == CONSUMER_DST_NET) ||
+		    (session->kernel_orchestrator &&
+		     session->get_kernel_orchestrator().get_consumer_output().type ==
+			     CONSUMER_DST_NET) ||
 		    (usess && usess->consumer->type == CONSUMER_DST_NET)) {
 			ret = build_network_session_path(
 				sessions[i].path, sizeof(sessions[i].path), session);
@@ -4712,7 +4708,6 @@ enum lttng_error_code cmd_kernel_tracer_status(enum lttng_kernel_tracer_status *
 int cmd_data_pending(const ltt_session::locked_ref& session)
 {
 	int ret;
-	struct ltt_kernel_session *ksess = session->kernel_session;
 	struct ltt_ust_session *usess = session->ust_session;
 
 	DBG("Data pending for session %s", session->name);
@@ -4745,8 +4740,9 @@ int cmd_data_pending(const ltt_session::locked_ref& session)
 		goto error;
 	}
 
-	if (ksess && ksess->consumer) {
-		ret = consumer_is_data_pending(ksess->id, ksess->consumer);
+	if (session->kernel_orchestrator) {
+		ret = consumer_is_data_pending(
+			session->id, &session->get_kernel_orchestrator().get_consumer_output());
 		if (ret == 1) {
 			/* Data is still being extracted for the kernel. */
 			goto error;
@@ -5034,7 +5030,7 @@ int cmd_regenerate_metadata(const ltt_session::locked_ref& session)
 		goto end;
 	}
 
-	if (session->kernel_session) {
+	if (session->kernel_orchestrator) {
 		try {
 			session->get_kernel_orchestrator().regenerate_metadata();
 		} catch (const std::exception& ex) {
@@ -5074,7 +5070,7 @@ int cmd_regenerate_statedump(const ltt_session::locked_ref& session)
 		goto end;
 	}
 
-	if (session->kernel_session) {
+	if (session->kernel_orchestrator) {
 		try {
 			session->get_kernel_orchestrator().regenerate_statedump();
 		} catch (const std::exception& ex) {
@@ -5699,7 +5695,7 @@ static uint64_t get_session_size_one_more_packet_per_stream(const ltt_session::l
 {
 	uint64_t tot_size = 0;
 
-	if (session->kernel_session) {
+	if (session->kernel_orchestrator) {
 		const auto& orchestrator = session->get_kernel_orchestrator();
 
 		for (const auto& channel_config :
@@ -5788,9 +5784,11 @@ static enum lttng_error_code snapshot_record(const ltt_session::locked_ref& sess
 	enum lttng_error_code ret_code = LTTNG_OK;
 	struct lttng_trace_chunk *snapshot_trace_chunk;
 	struct consumer_output *original_ust_consumer_output = nullptr;
-	struct consumer_output *original_kernel_consumer_output = nullptr;
 	struct consumer_output *snapshot_ust_consumer_output = nullptr;
-	struct consumer_output *snapshot_kernel_consumer_output = nullptr;
+	lttng::sessiond::modules::domain_orchestrator::consumer_output_uptr
+		snapshot_kernel_consumer_output;
+	lttng::sessiond::modules::domain_orchestrator::consumer_output_uptr
+		original_kernel_consumer_output;
 
 	ret = snprintf(snapshot_chunk_name,
 		       sizeof(snapshot_chunk_name),
@@ -5807,34 +5805,34 @@ static enum lttng_error_code snapshot_record(const ltt_session::locked_ref& sess
 	    snapshot_output->name,
 	    session->name,
 	    snapshot_chunk_name);
-	if (!session->kernel_session && !session->ust_session) {
+	if (!session->kernel_orchestrator && !session->ust_session) {
 		ERR("Failed to record snapshot as no channels exist");
 		ret_code = LTTNG_ERR_NO_CHANNEL;
 		goto error;
 	}
 
-	if (session->kernel_session) {
-		original_kernel_consumer_output = session->kernel_session->consumer;
-		snapshot_kernel_consumer_output = consumer_copy_output(snapshot_output->consumer);
+	if (session->kernel_orchestrator) {
+		auto& orchestrator = session->get_kernel_orchestrator();
+		snapshot_kernel_consumer_output.reset(
+			consumer_copy_output(snapshot_output->consumer));
 		strcpy(snapshot_kernel_consumer_output->chunk_path, snapshot_chunk_name);
 
 		/* Copy the original domain subdir. */
 		strcpy(snapshot_kernel_consumer_output->domain_subdir,
-		       original_kernel_consumer_output->domain_subdir);
+		       orchestrator.get_consumer_output().domain_subdir);
 
-		ret = consumer_copy_sockets(snapshot_kernel_consumer_output,
-					    original_kernel_consumer_output);
+		ret = consumer_copy_sockets(snapshot_kernel_consumer_output.get(),
+					    &orchestrator.get_consumer_output());
 		if (ret < 0) {
 			ERR("Failed to copy consumer sockets from snapshot output configuration");
 			ret_code = LTTNG_ERR_NOMEM;
 			goto error;
 		}
-		ret_code = set_relayd_for_snapshot(snapshot_kernel_consumer_output, session);
+		ret_code = set_relayd_for_snapshot(snapshot_kernel_consumer_output.get(), session);
 		if (ret_code != LTTNG_OK) {
 			ERR("Failed to setup relay daemon for kernel tracer snapshot");
 			goto error;
 		}
-		session->kernel_session->consumer = snapshot_kernel_consumer_output;
 	}
 	if (session->ust_session) {
 		original_ust_consumer_output = session->ust_session->consumer;
@@ -5862,7 +5860,8 @@ static enum lttng_error_code snapshot_record(const ltt_session::locked_ref& sess
 
 	snapshot_trace_chunk = session_create_new_trace_chunk(
 		session,
-		snapshot_kernel_consumer_output ?: snapshot_ust_consumer_output,
+		snapshot_kernel_consumer_output ? snapshot_kernel_consumer_output.get() :
+						  snapshot_ust_consumer_output,
 		consumer_output_get_base_path(snapshot_output->consumer),
 		snapshot_chunk_name);
 	if (!snapshot_trace_chunk) {
@@ -5872,6 +5871,22 @@ static enum lttng_error_code snapshot_record(const ltt_session::locked_ref& sess
 		goto error;
 	}
 	LTTNG_ASSERT(!session->current_trace_chunk);
+
+	/*
+	 * Temporarily install the snapshot consumer output in the kernel
+	 * orchestrator so that session_set_trace_chunk and
+	 * session_close_trace_chunk propagate the trace chunk to the
+	 * consumer daemon with the correct relayd configuration.
+	 *
+	 * The original consumer is restored at the error label, after
+	 * the trace chunk has been closed.
+	 */
+	if (snapshot_kernel_consumer_output) {
+		original_kernel_consumer_output =
+			session->get_kernel_orchestrator().exchange_consumer_output(
+				std::move(snapshot_kernel_consumer_output));
+	}
+
 	ret = session_set_trace_chunk(session, snapshot_trace_chunk, nullptr);
 	lttng_trace_chunk_put(snapshot_trace_chunk);
 	snapshot_trace_chunk = nullptr;
@@ -5879,7 +5894,7 @@ static enum lttng_error_code snapshot_record(const ltt_session::locked_ref& sess
 		ERR("Failed to set temporary trace chunk to record a snapshot of session \"%s\"",
 		    session->name);
 		ret_code = LTTNG_ERR_CREATE_TRACE_CHUNK_FAIL_CONSUMER;
-		goto error;
+		goto error_close_trace_chunk;
 	}
 
 	nb_packets_per_stream =
@@ -5889,14 +5904,12 @@ static enum lttng_error_code snapshot_record(const ltt_session::locked_ref& sess
 		goto error_close_trace_chunk;
 	}
 
-	if (session->kernel_session) {
+	if (session->kernel_orchestrator) {
 		try {
-			session->get_kernel_orchestrator().record_snapshot(
-				*snapshot_kernel_consumer_output, nb_packets_per_stream);
-		} catch (const lttng::ctl::error& ex) {
-			ERR_FMT("Failed to record kernel snapshot: {}", ex.what());
-			ret_code = ex.code();
-			goto error_close_trace_chunk;
+			auto& orchestrator = session->get_kernel_orchestrator();
+
+			orchestrator.record_snapshot(orchestrator.get_consumer_output(),
+						     nb_packets_per_stream);
 		} catch (const std::exception& ex) {
 			ERR_FMT("Failed to record kernel snapshot: {}", ex.what());
 			ret_code = LTTNG_ERR_SNAPSHOT_FAIL;
@@ -5933,14 +5946,15 @@ error_close_trace_chunk:
 	lttng_trace_chunk_put(snapshot_trace_chunk);
 	snapshot_trace_chunk = nullptr;
 error:
+	if (original_kernel_consumer_output) {
+		session->get_kernel_orchestrator().exchange_consumer_output(
+			std::move(original_kernel_consumer_output));
+	}
 	if (original_ust_consumer_output) {
 		session->ust_session->consumer = original_ust_consumer_output;
 	}
-	if (original_kernel_consumer_output) {
-		session->kernel_session->consumer = original_kernel_consumer_output;
-	}
+
 	consumer_output_put(snapshot_ust_consumer_output);
-	consumer_output_put(snapshot_kernel_consumer_output);
 	return ret_code;
 }
 
@@ -6137,7 +6151,7 @@ int cmd_rotate_session(const ltt_session::locked_ref& session,
 	}
 
 	/* Unsupported feature in lttng-modules before 2.8 (lack of sequence number). */
-	if (session->kernel_session && !kernel_supports_ring_buffer_packet_sequence_number()) {
+	if (session->kernel_orchestrator && !kernel_supports_ring_buffer_packet_sequence_number()) {
 		cmd_ret = LTTNG_ERR_ROTATION_NOT_AVAILABLE_KERNEL;
 		goto end;
 	}
@@ -6193,7 +6207,7 @@ int cmd_rotate_session(const ltt_session::locked_ref& session,
 		goto error;
 	}
 
-	if (session->kernel_session) {
+	if (session->kernel_orchestrator) {
 		try {
 			session->get_kernel_orchestrator().rotate();
 		} catch (const std::exception& ex) {

@@ -542,22 +542,6 @@ int copy_session_consumer(int domain, const ltt_session::locked_ref& session)
 	LTTNG_ASSERT(session->consumer);
 
 	switch (domain) {
-	case LTTNG_DOMAIN_KERNEL:
-		DBG3("Copying tracing session consumer output in kernel session");
-		/*
-		 * XXX: We should audit the session creation and what this function
-		 * does "extra" in order to avoid a destroy since this function is used
-		 * in the domain session creation (kernel and ust) only. Same for UST
-		 * domain.
-		 */
-		if (session->kernel_session->consumer) {
-			consumer_output_put(session->kernel_session->consumer);
-		}
-		session->kernel_session->consumer = consumer_copy_output(session->consumer);
-		/* Ease our life a bit for the next part */
-		consumer = session->kernel_session->consumer;
-		dir_name = DEFAULT_KERNEL_TRACE_DIR;
-		break;
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
 	case LTTNG_DOMAIN_LOG4J2:
@@ -664,52 +648,40 @@ error:
  */
 int create_kernel_session(const ltt_session::locked_ref& session)
 {
-	int ret;
-
 	DBG("Creating kernel session");
 
-	ret = kernel_create_session(session);
-	if (ret < 0) {
-		/* Handle specific errno values */
-		if (ret == -ENOSYS && session->trace_format == LTTNG_TRACE_FORMAT_CTF_2) {
-			/* Kernel doesn't support CTF 2 format */
-			ret = LTTNG_ERR_UNSUPPORTED_TRACE_FORMAT;
-		} else {
-			/* Generic kernel session failure */
-			ret = LTTNG_ERR_KERN_SESS_FAIL;
+	try {
+		/*
+		 * Copy the session-level consumer output for the kernel domain
+		 * and set the appropriate domain subdirectory.
+		 */
+		lttng::sessiond::modules::domain_orchestrator::consumer_output_uptr kconsumer_output(
+			consumer_copy_output(session->consumer));
+		if (!kconsumer_output) {
+			return LTTNG_ERR_NOMEM;
 		}
-		goto error_create;
+
+		const auto strncpy_ret = lttng_strncpy(kconsumer_output->domain_subdir,
+						       DEFAULT_KERNEL_TRACE_DIR,
+						       sizeof(kconsumer_output->domain_subdir));
+		if (strncpy_ret) {
+			return LTTNG_ERR_UNK;
+		}
+
+		session->kernel_orchestrator =
+			lttng::make_unique<lttng::sessiond::modules::domain_orchestrator>(
+				*session,
+				std::move(kconsumer_output),
+				session->id,
+				*the_hotplug_handler_queue);
+	} catch (const lttng::ctl::error& ex) {
+		return ex.code();
+	} catch (const std::exception& ex) {
+		ERR_FMT("Failed to create kernel session: {}", ex.what());
+		return LTTNG_ERR_KERN_SESS_FAIL;
 	}
-
-	/* Code flow safety */
-	LTTNG_ASSERT(session->kernel_session);
-
-	/* Copy session output to the newly created Kernel session */
-	ret = copy_session_consumer(LTTNG_DOMAIN_KERNEL, session);
-	if (ret != LTTNG_OK) {
-		goto error;
-	}
-
-	session->kernel_session->output_traces = session->output_traces;
-	session->kernel_session->snapshot_mode = session->snapshot_mode;
-
-	session->kernel_orchestrator =
-		lttng::make_unique<lttng::sessiond::modules::domain_orchestrator>(
-			lttng::file_descriptor(session->kernel_session->fd),
-			*session,
-			*session->kernel_session->consumer,
-			session->id,
-			*the_hotplug_handler_queue,
-			session->kernel_session);
 
 	return LTTNG_OK;
-
-error:
-	trace_kernel_destroy_session(session->kernel_session);
-	session->kernel_session = nullptr;
-	session->kernel_orchestrator.reset();
-error_create:
-	return ret;
 }
 
 /*
@@ -1383,7 +1355,7 @@ int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_error)
 	case LTTCOMM_SESSIOND_COMMAND_DISABLE_EVENT:
 		switch (cmd_ctx->lsm.domain.type) {
 		case LTTNG_DOMAIN_KERNEL:
-			if (!(*target_session)->kernel_session) {
+			if (!(*target_session)->kernel_orchestrator) {
 				return LTTNG_ERR_NO_CHANNEL;
 			}
 			break;
@@ -1436,7 +1408,7 @@ int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_error)
 
 		/* Need a session for kernel command */
 		if (need_tracing_session) {
-			if ((*target_session)->kernel_session == nullptr) {
+			if (!(*target_session)->kernel_orchestrator) {
 				ret = create_kernel_session(*target_session);
 				if (ret != LTTNG_OK) {
 					if (ret != LTTNG_ERR_UNSUPPORTED_TRACE_FORMAT) {
@@ -1464,8 +1436,9 @@ int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_error)
 			 * The consumer was just spawned so we need to add the socket to
 			 * the consumer output of the session if exist.
 			 */
-			ret = consumer_create_socket(&the_kconsumer_data,
-						     (*target_session)->kernel_session->consumer);
+			ret = consumer_create_socket(
+				&the_kconsumer_data,
+				&(*target_session)->get_kernel_orchestrator().get_consumer_output());
 			if (ret < 0) {
 				goto error;
 			}
@@ -1994,7 +1967,8 @@ skip_domain:
 		 * enabled time or size-based rotations, we have to make sure
 		 * the kernel tracer supports it.
 		 */
-		if (!(*target_session)->has_been_started && (*target_session)->kernel_session &&
+		if (!(*target_session)->has_been_started &&
+		    (*target_session)->kernel_orchestrator &&
 		    ((*target_session)->rotate_timer_period || (*target_session)->rotate_size) &&
 		    !check_rotate_compatible()) {
 			DBG("Kernel tracer version is not compatible with the rotation feature");
@@ -2329,7 +2303,7 @@ skip_domain:
 		DBG("Client rotate session \"%s\"", (*target_session)->name);
 
 		memset(&rotate_return, 0, sizeof(rotate_return));
-		if ((*target_session)->kernel_session && !check_rotate_compatible()) {
+		if ((*target_session)->kernel_orchestrator && !check_rotate_compatible()) {
 			DBG("Kernel tracer version is not compatible with the rotation feature");
 			ret = LTTNG_ERR_ROTATION_WRONG_VERSION;
 			goto error;
@@ -2411,7 +2385,7 @@ skip_domain:
 		enum lttng_rotation_schedule_type schedule_type;
 		uint64_t value;
 
-		if ((*target_session)->kernel_session && !check_rotate_compatible()) {
+		if ((*target_session)->kernel_orchestrator && !check_rotate_compatible()) {
 			DBG("Kernel tracer version does not support session rotations");
 			ret = LTTNG_ERR_ROTATION_WRONG_VERSION;
 			goto error;

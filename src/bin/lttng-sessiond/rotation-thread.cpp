@@ -158,19 +158,20 @@ void check_session_rotation_pending_on_consumers(const ltt_session::locked_ref& 
 	}
 
 skip_ust:
-	if (!session->kernel_session) {
+	if (!session->kernel_orchestrator) {
 		goto skip_kernel;
 	}
 
 	for (auto *socket : lttng::urcu::lfht_iteration_adapter<consumer_socket,
 								decltype(consumer_socket::node),
 								&consumer_socket::node>(
-		     *session->kernel_session->consumer->socks->ht)) {
+		     *session->get_kernel_orchestrator().get_consumer_output().socks->ht)) {
 		const lttng::pthread::lock_guard socket_lock(*socket->lock);
 
-		relayd_id = session->kernel_session->consumer->type == CONSUMER_DST_LOCAL ?
+		relayd_id = session->get_kernel_orchestrator().get_consumer_output().type ==
+				CONSUMER_DST_LOCAL ?
 			-1ULL :
-			session->kernel_session->consumer->net_seq_index;
+			session->get_kernel_orchestrator().get_consumer_output().net_seq_index;
 
 		ret = consumer_trace_chunk_exists(socket,
 						  relayd_id,

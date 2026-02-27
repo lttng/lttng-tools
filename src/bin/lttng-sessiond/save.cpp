@@ -1477,13 +1477,13 @@ void save_agent_domain_from_config(session_config::writer& writer,
 
 void save_domains(session_config::writer& writer, const ltt_session::locked_ref& session)
 {
-	if (!session->kernel_session && !session->ust_session) {
+	if (!session->kernel_orchestrator && !session->ust_session) {
 		return;
 	}
 
 	writer.open_element(config_element_domains);
 
-	if (session->kernel_session) {
+	if (session->kernel_orchestrator) {
 		const std::uint64_t live_timer_interval = session->live_timer;
 
 		save_domain_from_config(

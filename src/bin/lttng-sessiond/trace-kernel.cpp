@@ -27,32 +27,6 @@
 #include <unistd.h>
 
 /*
- * Allocate and initialize a kernel session data structure.
- *
- * Return pointer to structure or NULL.
- */
-struct ltt_kernel_session *trace_kernel_create_session()
-{
-	struct ltt_kernel_session *lks = nullptr;
-
-	/* Allocate a new ltt kernel session */
-	lks = zmalloc<ltt_kernel_session>();
-	if (lks == nullptr) {
-		PERROR("create kernel session zmalloc");
-		goto alloc_error;
-	}
-
-	/* Init data structure */
-	lks->fd = -1;
-	lks->channel_count = 0;
-
-	return lks;
-
-alloc_error:
-	return nullptr;
-}
-
-/*
  * Allocate and initialize a kernel token event rule.
  *
  * Return pointer to structure or NULL.
@@ -141,19 +115,4 @@ void trace_kernel_destroy_event_notifier_rule(struct ltt_kernel_event_notifier_r
 
 	lttng_trigger_put(event->trigger);
 	call_rcu(&event->rcu_node, free_token_event_rule_rcu);
-}
-
-/*
- * Cleanup kernel session structure
- */
-void trace_kernel_destroy_session(struct ltt_kernel_session *session [[maybe_unused]])
-{
-}
-
-/* Free elements needed by destroy notifiers. */
-void trace_kernel_free_session(struct ltt_kernel_session *session)
-{
-	/* Wipe consumer output object */
-	consumer_output_put(session->consumer);
-	free(session);
 }

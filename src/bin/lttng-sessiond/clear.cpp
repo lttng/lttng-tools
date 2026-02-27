@@ -56,10 +56,8 @@ int cmd_clear_session(const ltt_session::locked_ref& session, int *sock_fd)
 	int ret = LTTNG_OK;
 	struct cmd_clear_session_reply_context *reply_context = nullptr;
 	bool session_was_active = false;
-	struct ltt_kernel_session *ksession;
 	struct ltt_ust_session *usess;
 
-	ksession = session->kernel_session;
 	usess = session->ust_session;
 
 	if (sock_fd) {
@@ -112,7 +110,7 @@ int cmd_clear_session(const ltt_session::locked_ref& session, int *sock_fd)
 
 	session_was_active = session->active;
 	if (session_was_active) {
-		if (ksession != nullptr) {
+		if (session->kernel_orchestrator) {
 			try {
 				session->get_kernel_orchestrator().stop();
 			} catch (const std::exception& ex) {
@@ -133,7 +131,7 @@ int cmd_clear_session(const ltt_session::locked_ref& session, int *sock_fd)
 	/*
 	 * Clear active kernel and UST session buffers.
 	 */
-	if (session->kernel_session) {
+	if (session->kernel_orchestrator) {
 		try {
 			session->get_kernel_orchestrator().clear();
 		} catch (const std::exception& ex) {
@@ -178,7 +176,7 @@ int cmd_clear_session(const ltt_session::locked_ref& session, int *sock_fd)
 	}
 	if (session_was_active) {
 		/* Kernel tracing */
-		if (ksession != nullptr) {
+		if (session->kernel_orchestrator) {
 			DBG("Start kernel tracing session \"%s\"", session->name);
 			try {
 				session->get_kernel_orchestrator().start();

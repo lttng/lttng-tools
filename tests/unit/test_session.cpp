@@ -219,7 +219,7 @@ static void test_validate_session()
 		const auto session = ltt_session::find_session(SESSION1);
 		pass("Validating session: session found");
 
-		ok(session->kernel_session == nullptr && strlen(session->name),
+		ok(!session->kernel_orchestrator && strlen(session->name),
 		   "Validating session: basic sanity check");
 
 		session->lock();

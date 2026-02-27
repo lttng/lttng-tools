@@ -10,6 +10,7 @@
 #include "hotplug-handler.hpp"
 #include "lttng-sessiond.hpp"
 
+#include <common/lttng-kernel.hpp>
 #include <common/uuid.hpp>
 
 #include <memory>

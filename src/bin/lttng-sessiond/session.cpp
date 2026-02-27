@@ -193,13 +193,7 @@ int session_trylock_list() noexcept
  */
 enum consumer_dst_type session_get_consumer_destination_type(const ltt_session::locked_ref& session)
 {
-	/*
-	 * The output information is duplicated in both of those session types.
-	 * Hence, it doesn't matter from which it is retrieved. However, it is
-	 * possible for only one of them to be set.
-	 */
-	return session->kernel_session ? session->kernel_session->consumer->type :
-					 session->ust_session->consumer->type;
+	return session->consumer->type;
 }
 
 /*
@@ -209,10 +203,7 @@ enum consumer_dst_type session_get_consumer_destination_type(const ltt_session::
 const char *session_get_net_consumer_hostname(const ltt_session::locked_ref& session)
 {
 	const char *hostname = nullptr;
-	const struct consumer_output *output;
-
-	output = session->kernel_session ? session->kernel_session->consumer :
-					   session->ust_session->consumer;
+	const struct consumer_output *output = session->consumer;
 
 	/*
 	 * hostname is assumed to be the same for both control and data
@@ -228,6 +219,7 @@ const char *session_get_net_consumer_hostname(const ltt_session::locked_ref& ses
 	default:
 		abort();
 	}
+
 	return hostname;
 }
 
@@ -239,10 +231,8 @@ void session_get_net_consumer_ports(const ltt_session::locked_ref& session,
 				    uint16_t *control_port,
 				    uint16_t *data_port)
 {
-	const struct consumer_output *output;
+	const struct consumer_output *output = session->consumer;
 
-	output = session->kernel_session ? session->kernel_session->consumer :
-					   session->ust_session->consumer;
 	*control_port = output->dst.net.control.port;
 	*data_port = output->dst.net.data.port;
 }
@@ -598,10 +588,10 @@ static int _session_set_trace_chunk_no_lock_check(const ltt_session::locked_ref&
 		}
 	}
 
-	if (session->kernel_session) {
-		const uint64_t relayd_id = session->kernel_session->consumer->net_seq_index;
-		const bool is_local_trace = session->kernel_session->consumer->type ==
-			CONSUMER_DST_LOCAL;
+	if (session->kernel_orchestrator) {
+		const auto& kconsumer = session->get_kernel_orchestrator().get_consumer_output();
+		const uint64_t relayd_id = kconsumer.net_seq_index;
+		const bool is_local_trace = kconsumer.type == CONSUMER_DST_LOCAL;
 
 		if (is_local_trace) {
 			enum lttng_error_code ret_error_code;
@@ -616,7 +606,7 @@ static int _session_set_trace_chunk_no_lock_check(const ltt_session::locked_ref&
 		     lttng::urcu::lfht_iteration_adapter<consumer_socket,
 							 decltype(consumer_socket::node),
 							 &consumer_socket::node>(
-			     *session->kernel_session->consumer->socks->ht)) {
+			     *kconsumer.socks->ht)) {
 			pthread_mutex_lock(socket->lock);
 			ret = consumer_create_trace_chunk(socket,
 							  relayd_id,
@@ -684,9 +674,10 @@ session_create_new_trace_chunk(const ltt_session::locked_ref& session,
 	if (consumer_output_override) {
 		output = consumer_output_override;
 	} else {
-		LTTNG_ASSERT(session->ust_session || session->kernel_session);
-		output = session->ust_session ? session->ust_session->consumer :
-						session->kernel_session->consumer;
+		LTTNG_ASSERT(session->ust_session || session->kernel_orchestrator);
+		output = session->ust_session ?
+			session->ust_session->consumer :
+			&session->get_kernel_orchestrator().get_consumer_output();
 	}
 
 	is_local_trace = output->type == CONSUMER_DST_LOCAL;
@@ -857,14 +848,15 @@ int session_close_trace_chunk(const ltt_session::locked_ref& session,
 			}
 		}
 	}
-	if (session->kernel_session) {
-		const uint64_t relayd_id = session->kernel_session->consumer->net_seq_index;
+	if (session->kernel_orchestrator) {
+		const auto& kconsumer = session->get_kernel_orchestrator().get_consumer_output();
+		const uint64_t relayd_id = kconsumer.net_seq_index;
 
 		for (auto *socket :
 		     lttng::urcu::lfht_iteration_adapter<consumer_socket,
 							 decltype(consumer_socket::node),
 							 &consumer_socket::node>(
-			     *session->kernel_session->consumer->socks->ht)) {
+			     *kconsumer.socks->ht)) {
 			pthread_mutex_lock(socket->lock);
 			ret = consumer_close_trace_chunk(socket,
 							 relayd_id,
@@ -898,7 +890,7 @@ enum lttng_error_code session_open_packets(const ltt_session::locked_ref& sessio
 		}
 	}
 
-	if (session->kernel_session) {
+	if (session->kernel_orchestrator) {
 		try {
 			session->get_kernel_orchestrator().open_packets();
 		} catch (const std::exception& ex) {
@@ -962,25 +954,22 @@ static void session_release(struct urcu_ref *ref)
 {
 	int ret;
 	struct ltt_ust_session *usess;
-	struct ltt_kernel_session *ksess;
 	struct ltt_session *session = lttng::utils::container_of(ref, &ltt_session::ref_count);
 	const bool session_published = session->published;
 
 	LTTNG_ASSERT(!session->chunk_being_archived);
 
 	usess = session->ust_session;
-	ksess = session->kernel_session;
-
-	/* Clean kernel session teardown, keeping data for destroy notifier. */
-	kernel_destroy_session(ksess);
 
 	/*
-	 * Destroy the kernel domain orchestrator now so that the kernel
-	 * tracer session file descriptor it owns is closed before the
-	 * destroy notification is sent to the client. Otherwise, the
-	 * client may attempt to unload kernel modules while the session
-	 * fd is still open.
+	 * Destroy the kernel domain: send relayd destruction, then
+	 * destroy the orchestrator (which closes the tracer session fd
+	 * and consumer stream groups).
 	 */
+	if (session->kernel_orchestrator) {
+		consumer_output_send_destroy_relayd(
+			&session->get_kernel_orchestrator().get_consumer_output());
+	}
 	session->kernel_orchestrator.reset();
 
 	/* UST session teardown, keeping data for destroy notifier. */
@@ -1028,8 +1017,6 @@ static void session_release(struct urcu_ref *ref)
 	pthread_mutex_destroy(&session->_lock);
 
 	consumer_output_put(session->consumer);
-	kernel_free_session(ksess);
-	session->kernel_session = nullptr;
 	if (usess) {
 		trace_ust_free_session(usess);
 		session->ust_session = nullptr;

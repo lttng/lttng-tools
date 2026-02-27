@@ -13,7 +13,6 @@
 #include "domain.hpp"
 #include "modules-domain-orchestrator.hpp"
 #include "snapshot.hpp"
-#include "trace-kernel.hpp"
 #include "trace-ust.hpp"
 #include "ust-app.hpp"
 
@@ -546,7 +545,6 @@ public:
 	/* Path of the last closed chunk. */
 	char last_chunk_path[LTTNG_PATH_MAX] = {};
 	time_t creation_time = 0;
-	struct ltt_kernel_session *kernel_session = nullptr;
 	std::unique_ptr<lttng::sessiond::modules::domain_orchestrator> kernel_orchestrator;
 	struct ltt_ust_session *ust_session = nullptr;
 	mutable struct urcu_ref ref_count = {};

@@ -8,6 +8,7 @@
 #ifndef LTTNG_SESSIOND_MODULES_DOMAIN_ORCHESTRATOR_HPP
 #define LTTNG_SESSIOND_MODULES_DOMAIN_ORCHESTRATOR_HPP
 
+#include "consumer.hpp"
 #include "context-configuration.hpp"
 #include "domain-orchestrator.hpp"
 #include "domain.hpp"
@@ -28,7 +29,6 @@
 
 struct consumer_output;
 struct consumer_socket;
-struct ltt_kernel_session;
 struct ltt_session;
 
 namespace lttng {
@@ -469,20 +469,20 @@ class domain_orchestrator final : public sessiond::domain_orchestrator {
 public:
 	using hotplug_command = lttng::sessiond::hotplug_handler::command;
 
-	explicit domain_orchestrator(lttng::file_descriptor tracer_session_fd,
-				     const struct ltt_session& session,
-				     struct consumer_output& consumer,
+	struct consumer_output_deleter {
+		void operator()(struct consumer_output *output) const noexcept
+		{
+			consumer_output_put(output);
+		}
+	};
+
+	using consumer_output_uptr =
+		std::unique_ptr<struct consumer_output, consumer_output_deleter>;
+
+	explicit domain_orchestrator(const struct ltt_session& session,
+				     consumer_output_uptr consumer_output,
 				     hotplug_handler::session_id_t session_id,
-				     lttng::command_queue<hotplug_command>& hotplug_queue,
-				     struct ltt_kernel_session *legacy_kernel_session) :
-		_tracer_session_fd(std::move(tracer_session_fd)),
-		_session(session),
-		_consumer(consumer),
-		_session_id(session_id),
-		_hotplug_queue(hotplug_queue),
-		_legacy_kernel_session(legacy_kernel_session)
-	{
-	}
+				     lttng::command_queue<hotplug_command>& hotplug_queue);
 
 	~domain_orchestrator() override;
 
@@ -490,6 +490,30 @@ public:
 	domain_orchestrator(domain_orchestrator&&) = delete;
 	domain_orchestrator& operator=(const domain_orchestrator&) = delete;
 	domain_orchestrator& operator=(domain_orchestrator&&) = delete;
+
+	struct consumer_output& get_consumer_output() noexcept
+	{
+		return *_consumer_output;
+	}
+
+	const struct consumer_output& consumer() const noexcept
+	{
+		return *_consumer_output;
+	}
+
+	/*
+	 * Replace the consumer output with `new_output` and return the
+	 * previously-held consumer output.
+	 *
+	 * Used by snapshot_record to temporarily install the snapshot
+	 * consumer so that session_set_trace_chunk propagates the trace
+	 * chunk with the correct relayd configuration.
+	 */
+	consumer_output_uptr exchange_consumer_output(consumer_output_uptr new_output) noexcept
+	{
+		std::swap(_consumer_output, new_output);
+		return new_output;
+	}
 
 	void create_channel(const config::recording_channel_configuration& channel_config) override;
 	void enable_channel(const config::recording_channel_configuration& channel_config) override;
@@ -629,7 +653,7 @@ private:
 
 	lttng::file_descriptor _tracer_session_fd;
 	const struct ltt_session& _session;
-	struct consumer_output& _consumer;
+	consumer_output_uptr _consumer_output;
 	hotplug_handler::session_id_t _session_id;
 	lttng::command_queue<hotplug_command>& _hotplug_queue;
 	std::unordered_map<const config::recording_channel_configuration *,
@@ -637,12 +661,6 @@ private:
 		_channels;
 	std::unique_ptr<metadata_stream_group> _metadata;
 	bool _active = false;
-
-	/*
-	 * These fields will be removed once the orchestrator fully owns the
-	 * kernel domain runtime state.
-	 */
-	struct ltt_kernel_session *_legacy_kernel_session;
 };
 
 } /* namespace modules */

@@ -332,89 +332,10 @@ uint64_t allocate_next_kernel_stream_group_key()
 	return ++next_kernel_channel_key;
 }
 
-/*
- * Create a new kernel session, register it to the kernel tracer and add it to
- * the session daemon session.
- */
-int kernel_create_session(const ltt_session::locked_ref& session)
+int kernel_tracer_fd_value()
 {
-	int ret;
-	struct ltt_kernel_session *lks;
-
-	/* Allocate data structure */
-	lks = trace_kernel_create_session();
-	if (lks == nullptr) {
-		ret = -1;
-		goto error;
-	}
-
-	/* Kernel tracer session creation */
-	ret = kernctl_create_session(kernel_tracer_fd);
-	if (ret < 0) {
-		PERROR("ioctl kernel create session");
-		goto error;
-	}
-
-	lks->fd = ret;
-	/* Prevent fd duplication after execlp() */
-	ret = fcntl(lks->fd, F_SETFD, FD_CLOEXEC);
-	if (ret < 0) {
-		PERROR("fcntl session fd");
-	}
-
-	lks->id = session->id;
-	lks->consumer_fds_sent = 0;
-	session->kernel_session = lks;
-
-	DBG("Kernel session created (fd: %d)", lks->fd);
-
-	/*
-	 * This is necessary since the creation time is present in the session
-	 * name when it is generated.
-	 */
-	if (session->has_auto_generated_name) {
-		ret = kernctl_session_set_name(lks->fd, DEFAULT_SESSION_NAME);
-	} else {
-		ret = kernctl_session_set_name(lks->fd, session->name);
-	}
-	if (ret) {
-		WARN("Could not set kernel session name for session %" PRIu64 " name: %s",
-		     session->id,
-		     session->name);
-	}
-
-	ret = kernctl_session_set_creation_time(lks->fd, session->creation_time);
-	if (ret) {
-		WARN("Could not set kernel session creation time for session %" PRIu64 " name: %s",
-		     session->id,
-		     session->name);
-	}
-
-	ret = kernctl_session_set_output_format(lks->fd,
-						session->trace_format == LTTNG_TRACE_FORMAT_CTF_2 ?
-							LTTNG_KERNEL_ABI_OUTPUT_FORMAT_CTF_2 :
-							LTTNG_KERNEL_ABI_OUTPUT_FORMAT_CTF_1_8);
-	if (ret) {
-		if (ret == -ENOSYS && session->trace_format == LTTNG_TRACE_FORMAT_CTF_2) {
-			ERR("Kernel tracer does not support CTF 2 trace format for session %" PRIu64
-			    " name: %s",
-			    session->id,
-			    session->name);
-			goto error;
-		}
-		WARN_FMT("Could not set kernel output format for session {} name: {}",
-			 session->id,
-			 session->name);
-	}
-
-	return 0;
-
-error:
-	if (lks) {
-		trace_kernel_destroy_session(lks);
-		trace_kernel_free_session(lks);
-	}
-	return ret;
+	LTTNG_ASSERT(kernel_tracer_fd >= 0);
+	return kernel_tracer_fd;
 }
 
 /*
@@ -919,39 +840,6 @@ int init_kernel_workarounds()
 	}
 end_boot_id:
 	return 0;
-}
-
-/*
- * Teardown of a kernel session, keeping data required by destroy notifiers.
- */
-void kernel_destroy_session(struct ltt_kernel_session *ksess)
-{
-	if (ksess == nullptr) {
-		DBG3("No kernel session when tearing down session");
-		return;
-	}
-
-	DBG("Tearing down kernel session");
-
-	/*
-	 * Consumer stream group destruction (notifying the consumer to release
-	 * its channel resources) is handled by the domain orchestrator's
-	 * destructor, which runs after this function.
-	 */
-
-	/* Close any relayd session */
-	consumer_output_send_destroy_relayd(ksess->consumer);
-
-	trace_kernel_destroy_session(ksess);
-}
-
-/* Teardown of data required by destroy notifiers. */
-void kernel_free_session(struct ltt_kernel_session *ksess)
-{
-	if (ksess == nullptr) {
-		return;
-	}
-	trace_kernel_free_session(ksess);
 }
 
 /*

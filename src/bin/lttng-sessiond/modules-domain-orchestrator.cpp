@@ -14,10 +14,10 @@
 #include "notification-thread-commands.hpp"
 #include "process-attribute-tracker.hpp"
 #include "session.hpp"
-#include "trace-kernel.hpp"
 #include "utils.hpp"
 
 #include <common/ctl/memory.hpp>
+#include <common/defaults.hpp>
 #include <common/error.hpp>
 #include <common/exception.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>
@@ -38,23 +38,91 @@
 namespace ls = lttng::sessiond;
 namespace lsc = lttng::sessiond::config;
 
+namespace {
+
 /*
- * Domain orchestrator for the lttng-modules kernel tracer.
+ * Create a new kernel tracer session and configure it.
  *
- * Channel and event operations are performed directly by the orchestrator:
- * it builds the kernel ABI structs from the configuration objects, issues
- * the ioctls, and manages event file descriptors through modern
- * modules::event_rule objects.
- *
- * Channel creation still maintains a legacy ltt_kernel_channel struct for
- * downstream code that has not been migrated yet (consumer communication,
- * kernel thread stream opening, notification thread).
- *
- * Session-level operations (start/stop, snapshot) still delegate to the
- * existing kernel_* functions during the transition. Consumer-only
- * operations (rotate, clear, open_packets) are performed directly by
- * iterating the orchestrator's channel map.
+ * Returns a file_descriptor wrapping the kernel tracer session fd.
+ * Throws on failure; the errno-based error code is embedded in the exception.
  */
+lttng::file_descriptor create_tracer_session(const struct ltt_session& session)
+{
+	/* Kernel tracer session creation */
+	auto ret = kernctl_create_session(kernel_tracer_fd_value());
+	if (ret < 0) {
+		PERROR("ioctl kernel create session");
+		LTTNG_THROW_POSIX("Failed to create kernel tracer session", -ret);
+	}
+
+	lttng::file_descriptor session_fd(ret);
+	const auto raw_fd = session_fd.fd();
+
+	/* Prevent fd duplication after execlp() */
+	ret = fcntl(raw_fd, F_SETFD, FD_CLOEXEC);
+	if (ret < 0) {
+		PERROR("fcntl session fd");
+	}
+
+	DBG("Kernel session created (fd: %d)", raw_fd);
+
+	/*
+	 * This is necessary since the creation time is present in the session
+	 * name when it is generated.
+	 */
+	if (session.has_auto_generated_name) {
+		ret = kernctl_session_set_name(raw_fd, DEFAULT_SESSION_NAME);
+	} else {
+		ret = kernctl_session_set_name(raw_fd, session.name);
+	}
+	if (ret) {
+		WARN("Could not set kernel session name for session %" PRIu64 " name: %s",
+		     session.id,
+		     session.name);
+	}
+
+	ret = kernctl_session_set_creation_time(raw_fd, session.creation_time);
+	if (ret) {
+		WARN("Could not set kernel session creation time for session %" PRIu64 " name: %s",
+		     session.id,
+		     session.name);
+	}
+
+	ret = kernctl_session_set_output_format(raw_fd,
+						session.trace_format == LTTNG_TRACE_FORMAT_CTF_2 ?
+							LTTNG_KERNEL_ABI_OUTPUT_FORMAT_CTF_2 :
+							LTTNG_KERNEL_ABI_OUTPUT_FORMAT_CTF_1_8);
+	if (ret) {
+		if (ret == -ENOSYS && session.trace_format == LTTNG_TRACE_FORMAT_CTF_2) {
+			ERR("Kernel tracer does not support CTF 2 trace format for session %" PRIu64
+			    " name: %s",
+			    session.id,
+			    session.name);
+			LTTNG_THROW_CTL("Kernel tracer does not support CTF 2 trace format",
+					LTTNG_ERR_UNSUPPORTED_TRACE_FORMAT);
+		}
+		WARN_FMT("Could not set kernel output format for session {} name: {}",
+			 session.id,
+			 session.name);
+	}
+
+	return session_fd;
+}
+
+} /* anonymous namespace */
+
+ls::modules::domain_orchestrator::domain_orchestrator(
+	const struct ltt_session& session,
+	consumer_output_uptr consumer,
+	hotplug_handler::session_id_t session_id,
+	lttng::command_queue<hotplug_command>& hotplug_queue) :
+	_tracer_session_fd(create_tracer_session(session)),
+	_session(session),
+	_consumer_output(std::move(consumer)),
+	_session_id(session_id),
+	_hotplug_queue(hotplug_queue)
+{
+}
 
 ls::modules::domain_orchestrator::~domain_orchestrator()
 {
@@ -85,6 +153,7 @@ ls::modules::domain_orchestrator::~domain_orchestrator()
 	 */
 	if (!_session.output_traces) {
 		try {
+			const lttng::urcu::read_lock_guard read_lock;
 			auto& socket = _get_consumer_socket();
 			const lttng::pthread::lock_guard socket_lock(*socket.lock);
 
@@ -164,12 +233,6 @@ void ls::modules::domain_orchestrator::create_channel(
 	}
 
 	const auto stream_group_key = allocate_next_kernel_stream_group_key();
-
-	_legacy_kernel_session->channel_count++;
-
-	if (channel_config.name != DEFAULT_CHANNEL_NAME) {
-		_legacy_kernel_session->has_non_default_channel = 1;
-	}
 
 	/* Register the modern channel object, keyed by config identity. */
 	_channels.emplace(
@@ -828,6 +891,8 @@ void ls::modules::domain_orchestrator::_send_metadata_to_consumer(
 			"Failed to send kernel metadata channel to consumer");
 	}
 
+	_metadata->mark_sent_to_consumer();
+
 	health_code_update();
 
 	/* Send the metadata stream. */
@@ -840,7 +905,6 @@ void ls::modules::domain_orchestrator::_send_metadata_to_consumer(
 			"Failed to send kernel metadata stream to consumer");
 	}
 
-	_metadata->mark_sent_to_consumer();
 	health_code_update();
 }
 
@@ -859,11 +923,11 @@ void ls::modules::domain_orchestrator::_send_channel_to_consumer(consumer_socket
 		LTTNG_EVENT_MMAP :
 		LTTNG_EVENT_SPLICE;
 
-	const auto is_local_trace = _consumer.net_seq_index == (uint64_t) -1ULL;
+	const auto is_local_trace = _consumer_output->net_seq_index == (uint64_t) -1ULL;
 
 	std::size_t consumer_path_offset;
 	auto pathname = lttng::make_unique_wrapper<char, lttng::memory::free>(
-		setup_channel_trace_path(&_consumer, "", &consumer_path_offset));
+		setup_channel_trace_path(_consumer_output.get(), "", &consumer_path_offset));
 	if (!pathname) {
 		LTTNG_THROW_ALLOCATION_FAILURE_ERROR("Failed to allocate channel trace path");
 	}
@@ -889,7 +953,7 @@ void ls::modules::domain_orchestrator::_send_channel_to_consumer(consumer_socket
 					   channel.consumer_key(),
 					   _session.id,
 					   &pathname.get()[consumer_path_offset],
-					   _consumer.net_seq_index,
+					   _consumer_output->net_seq_index,
 					   channel_config.name.c_str(),
 					   channel.stream_count(),
 					   output,
@@ -969,7 +1033,7 @@ void ls::modules::domain_orchestrator::_send_channel_to_consumer(consumer_socket
 
 void ls::modules::domain_orchestrator::_send_channels_to_consumer(consumer_socket& socket)
 {
-	if (!_consumer.enabled) {
+	if (!_consumer_output->enabled) {
 		return;
 	}
 
@@ -978,13 +1042,17 @@ void ls::modules::domain_orchestrator::_send_channels_to_consumer(consumer_socke
 
 	DBG("Sending session stream to kernel consumer");
 
-	if (_metadata && _metadata->stream_count() > 0) {
-		_send_metadata_to_consumer(socket, _consumer, monitor);
+	if (_metadata && _metadata->stream_count() > 0 && !_metadata->is_sent_to_consumer()) {
+		_send_metadata_to_consumer(socket, *_consumer_output, monitor);
 	}
 
 	/* Send channels and their streams. */
 	for (auto& channel_entry : _channels) {
 		auto& channel = *channel_entry.second;
+
+		if (channel.is_sent_to_consumer()) {
+			continue;
+		}
 
 		_send_channel_to_consumer(socket, channel, monitor);
 
@@ -997,7 +1065,7 @@ void ls::modules::domain_orchestrator::_send_channels_to_consumer(consumer_socke
 			consumer_init_streams_sent_comm_msg(&lkm,
 							    LTTNG_CONSUMER_STREAMS_SENT,
 							    channel.consumer_key(),
-							    _consumer.net_seq_index);
+							    _consumer_output->net_seq_index);
 
 			health_code_update();
 
@@ -1011,7 +1079,6 @@ void ls::modules::domain_orchestrator::_send_channels_to_consumer(consumer_socke
 	}
 
 	DBG("Kernel consumer FDs of metadata and channel streams sent");
-	_legacy_kernel_session->consumer_fds_sent = 1;
 }
 
 void ls::modules::domain_orchestrator::start()
@@ -1023,7 +1090,7 @@ void ls::modules::domain_orchestrator::start()
 	DBG("Starting kernel tracing");
 
 	/* Open kernel metadata if needed. */
-	if (!_metadata && _legacy_kernel_session->output_traces) {
+	if (!_metadata && _session.output_traces) {
 		_open_metadata();
 	}
 
@@ -1042,8 +1109,8 @@ void ls::modules::domain_orchestrator::start()
 	}
 
 	/* Send session data (metadata, channels, streams) to the consumer daemon. */
-	if (_legacy_kernel_session->consumer_fds_sent == 0 &&
-	    _legacy_kernel_session->consumer != nullptr) {
+	{
+		const lttng::urcu::read_lock_guard read_lock;
 		auto& kconsumer_socket = _get_consumer_socket();
 		/* NOLINTNEXTLINE */
 		const lttng::pthread::lock_guard socket_lock(*kconsumer_socket.lock);
@@ -1051,7 +1118,6 @@ void ls::modules::domain_orchestrator::start()
 		_send_channels_to_consumer(kconsumer_socket);
 	}
 
-	_legacy_kernel_session->active = true;
 	_active = true;
 
 	/* Register the channels for hotplug monitoring. */
@@ -1106,14 +1172,13 @@ void ls::modules::domain_orchestrator::stop()
 		_flush_channel_streams(*channel_entry.second);
 	}
 
-	_legacy_kernel_session->active = false;
 	_active = false;
 }
 
 consumer_socket& ls::modules::domain_orchestrator::_get_consumer_socket()
 {
 	lttng_ht_iter iter = {};
-	lttng_ht_get_first(_consumer.socks, &iter);
+	lttng_ht_get_first(_consumer_output->socks, &iter);
 	auto *node = cds_lfht_iter_get_node(&iter.iter);
 
 	LTTNG_ASSERT(node);
@@ -1136,7 +1201,7 @@ void ls::modules::domain_orchestrator::rotate()
 
 		DBG_FMT("Rotate kernel channel: key={}", stream_group_key);
 		const auto ret = consumer_rotate_channel(
-			&kconsumer_socket, stream_group_key, &_consumer, false);
+			&kconsumer_socket, stream_group_key, _consumer_output.get(), false);
 		if (ret < 0) {
 			LTTNG_THROW_ROTATION_FAILURE("Failed to rotate kernel channel");
 		}
@@ -1145,7 +1210,7 @@ void ls::modules::domain_orchestrator::rotate()
 	/* Rotate the metadata channel. */
 	LTTNG_ASSERT(_metadata);
 	const auto ret = consumer_rotate_channel(
-		&kconsumer_socket, _metadata->consumer_key(), &_consumer, true);
+		&kconsumer_socket, _metadata->consumer_key(), _consumer_output.get(), true);
 	if (ret < 0) {
 		LTTNG_THROW_ROTATION_FAILURE("Failed to rotate kernel metadata channel");
 	}
@@ -1222,8 +1287,6 @@ void ls::modules::domain_orchestrator::open_packets()
 void ls::modules::domain_orchestrator::record_snapshot(
 	const struct consumer_output& snapshot_consumer, std::uint64_t nb_packets_per_stream)
 {
-	LTTNG_ASSERT(_legacy_kernel_session->consumer);
-
 	DBG("Kernel snapshot record started");
 
 	_open_metadata();
@@ -1233,13 +1296,16 @@ void ls::modules::domain_orchestrator::record_snapshot(
 		lttng::make_scope_exit([&]() noexcept { _metadata.reset(); });
 
 	std::size_t consumer_path_offset;
-	auto trace_path =
-		lttng::make_unique_wrapper<char, lttng::memory::free>(setup_channel_trace_path(
-			_legacy_kernel_session->consumer, "", &consumer_path_offset));
+	/* const_cast: setup_channel_trace_path only reads from the consumer. */
+	auto trace_path = lttng::make_unique_wrapper<char, lttng::memory::free>(
+		setup_channel_trace_path(const_cast<struct consumer_output *>(&snapshot_consumer),
+					 "",
+					 &consumer_path_offset));
 	if (!trace_path) {
 		LTTNG_THROW_ALLOCATION_FAILURE_ERROR("Failed to allocate trace path");
 	}
 
+	const lttng::urcu::read_lock_guard read_lock;
 	auto& kconsumer_socket = _get_consumer_socket();
 	const auto snapshot_metadata_key = _metadata->consumer_key();
 
@@ -1322,7 +1388,7 @@ ls::modules::domain_orchestrator::get_recording_channel_runtime_stats(
 	int ret;
 
 	ret = consumer_get_discarded_events(
-		session_id, channel_key, _legacy_kernel_session->consumer, &stats.discarded_events);
+		session_id, channel_key, _consumer_output.get(), &stats.discarded_events);
 	if (ret < 0) {
 		LTTNG_THROW_ERROR(lttng::format(
 			"Failed to get discarded events count from consumer for channel '{}'",
@@ -1330,7 +1396,7 @@ ls::modules::domain_orchestrator::get_recording_channel_runtime_stats(
 	}
 
 	ret = consumer_get_lost_packets(
-		session_id, channel_key, _legacy_kernel_session->consumer, &stats.lost_packets);
+		session_id, channel_key, _consumer_output.get(), &stats.lost_packets);
 	if (ret < 0) {
 		LTTNG_THROW_ERROR(lttng::format(
 			"Failed to get lost packets count from consumer for channel '{}'",
@@ -1367,6 +1433,7 @@ void ls::modules::domain_orchestrator::handle_channel_hotplug(stream_group& chan
 	LTTNG_ASSERT(channel.is_sent_to_consumer());
 
 	/* Send only the newly-opened (unsent) streams to the consumer daemon. */
+	const lttng::urcu::read_lock_guard read_lock;
 	auto& kconsumer_socket = _get_consumer_socket();
 	const lttng::pthread::lock_guard socket_lock(*kconsumer_socket.lock);
 	const auto& channel_config = channel.configuration();
@@ -1388,7 +1455,7 @@ void ls::modules::domain_orchestrator::handle_channel_hotplug(stream_group& chan
 			&lkm, channel.consumer_key(), kstream.handle.fd(), kstream.cpu);
 
 		auto stream_fd = kstream.handle.fd();
-		const auto monitor = _legacy_kernel_session->output_traces ? 1 : 0;
+		const auto monitor = _session.output_traces ? 1 : 0;
 		const auto send_ret =
 			consumer_send_stream(&kconsumer_socket, &lkm, &stream_fd, monitor);
 		if (send_ret < 0) {
