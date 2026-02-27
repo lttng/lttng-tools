@@ -187,7 +187,7 @@ def run_test(testpoints, event_record_loss_mode=lttngtest.EventRecordLossMode.Di
                     result.log("sessiond timeout")
                     result.fail()
                 else:
-                    validate_trace(str(session.output.path))
+                    lttngtest.validate_trace(str(session.output.path))
                     result.success()
 
         except Exception as exn:

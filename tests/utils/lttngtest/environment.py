@@ -1726,6 +1726,53 @@ def parallel_count_events(trace_path, test_env):
     return received, discarded
 
 
+def validate_trace(trace_location):
+    """Validate that the trace at location `trace_location` is a valid trace.
+
+    This is done by running the following bt2 graph on the trace:
+
+    trace_location -> [source:ctf:fs] -> [filter:utils:muxer] ->
+    [sink:utils:dummy]
+
+    """
+
+    inputs = []
+    for dirpath, dirs, files in os.walk(trace_location):
+        if "metadata" in files:
+            inputs.append(dirpath)
+
+    ctf = bt2.find_plugin("ctf")
+    assert ctf
+
+    fs = ctf.source_component_classes["fs"]
+    assert fs
+
+    utils = bt2.find_plugin("utils")
+    assert utils
+
+    dummy = utils.sink_component_classes["dummy"]
+    assert dummy
+
+    muxer = utils.filter_component_classes["muxer"]
+    assert muxer
+
+    graph = bt2.Graph(mip_version=1)
+
+    src = graph.add_component(fs, "source", params={"inputs": inputs})
+    mux = graph.add_component(muxer, "filter")
+    sink = graph.add_component(dummy, "sink")
+
+    for src_name in tuple(src.output_ports):
+        available_input_ports = [
+            x for x in mux.input_ports.values() if not x.is_connected
+        ]
+        graph.connect_ports(src.output_ports[src_name], available_input_ports[0])
+
+    graph.connect_ports(mux.output_ports["out"], sink.input_ports["in"])
+
+    graph.run()
+
+
 @contextlib.contextmanager
 def kernel_module(module_name):
     """
