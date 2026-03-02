@@ -219,6 +219,7 @@ enum {
 #endif /* __USE_GNU */
 	LPOLLERR = POLLERR,
 	LPOLLHUP = POLLHUP | POLLNVAL,
+	LPOLLNVAL = POLLHUP | POLLNVAL,
 	/* Close on exec feature does not exist for poll(2) */
 	LTTNG_CLOEXEC = 0xdead,
 };
