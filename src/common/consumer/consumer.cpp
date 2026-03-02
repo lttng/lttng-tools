@@ -1179,23 +1179,25 @@ int consumer_add_channel(struct lttng_consumer_channel *channel,
  *
  * Returns the number of fds in the structures.
  */
-static int update_poll_array(struct lttng_consumer_local_data *ctx,
-			     struct pollfd **pollfd,
-			     struct lttng_consumer_stream **local_stream,
-			     struct lttng_ht *ht,
-			     int *nb_inactive_fd,
-			     const std::unordered_set<int>& cool_down)
+static int update_poll_events(struct lttng_consumer_local_data *ctx,
+			      struct lttng_poll_event *poll_events,
+			      std::vector<struct lttng_consumer_stream *>& streams_to_monitor,
+			      struct lttng_ht *ht,
+			      int *nb_inactive_fd,
+			      const std::unordered_set<int>& cool_down,
+			      int *wakeup_fd,
+			      int *data_fd)
 {
-	int i = 0;
-
 	LTTNG_ASSERT(ctx);
 	LTTNG_ASSERT(ht);
-	LTTNG_ASSERT(pollfd);
-	LTTNG_ASSERT(local_stream);
+	LTTNG_ASSERT(poll_events);
+	LTTNG_ASSERT(wakeup_fd);
+	LTTNG_ASSERT(data_fd);
 
-	DBG("Updating poll fd array");
+	DBG("Updating poll events");
 	*nb_inactive_fd = 0;
-
+	*wakeup_fd = -1;
+	*data_fd = -1;
 	for (auto *stream :
 	     lttng::urcu::lfht_iteration_adapter<lttng_consumer_stream,
 						 decltype(lttng_consumer_stream::node),
@@ -1223,22 +1225,31 @@ static int update_poll_array(struct lttng_consumer_local_data *ctx,
 			continue;
 		}
 
-		(*pollfd)[i].fd = stream->wait_fd;
-		(*pollfd)[i].events = POLLIN | POLLPRI;
-		local_stream[i] = stream;
-		i++;
+		if (lttng_poll_add(poll_events, stream->wait_fd, LPOLLIN | LPOLLPRI) != 0) {
+			ERR_FMT("Failed to add poll event, fd={}", stream->wait_fd);
+			return -1;
+		}
+
+		streams_to_monitor.push_back(stream);
 	}
 
-	/*
-	 * Insert the consumer_data_pipe at the end of the array and don't
-	 * increment i so nb_fd is the number of real FD.
-	 */
-	(*pollfd)[i].fd = lttng_pipe_get_readfd(ctx->consumer_data_pipe);
-	(*pollfd)[i].events = POLLIN | POLLPRI;
+	const int _data_fd = lttng_pipe_get_readfd(ctx->consumer_data_pipe);
+	if (lttng_poll_add(poll_events, _data_fd, LPOLLIN | LPOLLPRI) != 0) {
+		ERR_FMT("Failed to add poll event for consumer_data_pipe fd={}",
+			lttng_pipe_get_readfd(ctx->consumer_data_pipe));
+		return -1;
+	}
 
-	(*pollfd)[i + 1].fd = lttng_pipe_get_readfd(ctx->consumer_wakeup_pipe);
-	(*pollfd)[i + 1].events = POLLIN | POLLPRI;
-	return i;
+	*data_fd = _data_fd;
+	const int _wakeup_fd = lttng_pipe_get_readfd(ctx->consumer_wakeup_pipe);
+	if (lttng_poll_add(poll_events, _wakeup_fd, LPOLLIN | LPOLLPRI) != 0) {
+		ERR_FMT("Failed to add poll event for consumer_wakeup_pipe fd={}",
+			lttng_pipe_get_readfd(ctx->consumer_wakeup_pipe));
+		return -1;
+	}
+
+	*wakeup_fd = _wakeup_fd;
+	return 0;
 }
 
 /*
@@ -2507,12 +2518,10 @@ error_testpoint:
  */
 void *consumer_thread_data_poll(void *data)
 {
-	int num_rdy, high_prio, ret, i, err = -1;
-	struct pollfd *pollfd = nullptr;
+	int num_rdy, high_prio, ret, err = -1, data_fd = -1, wakeup_fd = -1;
 	/* local view of the streams */
-	struct lttng_consumer_stream **local_stream = nullptr, *new_stream = nullptr;
-	/* local view of consumer_data.fds_count */
-	int nb_fd = 0;
+	struct lttng_consumer_stream *new_stream = nullptr;
+	std::vector<struct lttng_consumer_stream *> local_streams;
 	/* 2 for the consumer_data_pipe and wake up pipe */
 	const int nb_pipes_fd = 2;
 	/* Number of FDs with CONSUMER_ENDPOINT_INACTIVE but still open. */
@@ -2521,6 +2530,10 @@ void *consumer_thread_data_poll(void *data)
 	ssize_t len;
 	std::unordered_set<int> cool_down;
 	bool cool_down_was_empty = true;
+	struct lttng_poll_event poll_events;
+	lttng_poll_init(&poll_events);
+	auto teardown_poll = lttng::make_scope_exit(
+		[&poll_events]() mutable noexcept { lttng_poll_clean(&poll_events); });
 
 	rcu_register_thread();
 
@@ -2531,12 +2544,6 @@ void *consumer_thread_data_poll(void *data)
 	}
 
 	health_code_update();
-
-	local_stream = zmalloc<lttng_consumer_stream *>();
-	if (local_stream == nullptr) {
-		PERROR("local_stream malloc");
-		goto end;
-	}
 
 	while (true) {
 		health_code_update();
@@ -2549,51 +2556,55 @@ void *consumer_thread_data_poll(void *data)
 		 */
 		pthread_mutex_lock(&the_consumer_data.lock);
 		if (the_consumer_data.need_update || !cool_down_was_empty || !cool_down.empty()) {
-			free(pollfd);
-			pollfd = nullptr;
-
-			free(local_stream);
-			local_stream = nullptr;
-
-			/* Allocate for all fds */
-			pollfd =
-				calloc<struct pollfd>(the_consumer_data.stream_count + nb_pipes_fd);
-			if (pollfd == nullptr) {
-				PERROR("pollfd malloc");
+			lttng_poll_clean(&poll_events);
+			lttng_poll_init(&poll_events);
+			if (lttng_poll_create(&poll_events,
+					      the_consumer_data.stream_count + nb_pipes_fd,
+					      LTTNG_CLOEXEC) != 0) {
+				ERR("Failed to create poll");
 				pthread_mutex_unlock(&the_consumer_data.lock);
 				goto end;
 			}
 
-			local_stream = calloc<lttng_consumer_stream *>(
-				the_consumer_data.stream_count + nb_pipes_fd);
-			if (local_stream == nullptr) {
-				PERROR("local_stream malloc");
+			local_streams.clear();
+			try {
+				local_streams.reserve(the_consumer_data.stream_count + nb_pipes_fd);
+			} catch (const std::exception& ex) {
+				ERR_FMT("Exception while reserving local streams memory: {}",
+					ex.what());
 				pthread_mutex_unlock(&the_consumer_data.lock);
 				goto end;
 			}
-			ret = update_poll_array(
-				ctx, &pollfd, local_stream, data_ht, &nb_inactive_fd, cool_down);
+
+			ret = update_poll_events(ctx,
+						 &poll_events,
+						 local_streams,
+						 data_ht,
+						 &nb_inactive_fd,
+						 cool_down,
+						 &wakeup_fd,
+						 &data_fd);
 			if (ret < 0) {
-				ERR("Error in allocating pollfd or local_outfds");
+				ERR("Error adding poll events");
 				lttng_consumer_send_error(ctx->consumer_error_socket,
 							  LTTCOMM_CONSUMERD_POLL_ERROR);
 				pthread_mutex_unlock(&the_consumer_data.lock);
 				goto end;
 			}
 
-			nb_fd = ret;
 			the_consumer_data.need_update = 0;
 		}
 		pthread_mutex_unlock(&the_consumer_data.lock);
 
 		/* No FDs and consumer_quit, consumer_cleanup the thread */
-		if (nb_fd == 0 && nb_inactive_fd == 0 && CMM_LOAD_SHARED(consumer_quit) == 1) {
+		if (local_streams.size() == 0 && nb_inactive_fd == 0 &&
+		    CMM_LOAD_SHARED(consumer_quit) == 1) {
 			err = 0; /* All is OK */
 			goto end;
 		}
 		/* poll on the array of fds */
 	restart:
-		DBG("polling on %d fd", nb_fd + nb_pipes_fd);
+		DBG_FMT("Polling on {} fds", LTTNG_POLL_GETNB(&poll_events));
 		if (testpoint(consumerd_thread_data_poll)) {
 			goto end;
 		}
@@ -2614,7 +2625,7 @@ void *consumer_thread_data_poll(void *data)
 		}
 
 		health_poll_entry();
-		num_rdy = poll(pollfd, nb_fd + nb_pipes_fd, timeout);
+		num_rdy = lttng_poll_wait(&poll_events, timeout);
 		health_poll_exit();
 
 		/*
@@ -2622,7 +2633,7 @@ void *consumer_thread_data_poll(void *data)
 		 */
 		cool_down.clear();
 
-		DBG("poll num_rdy : %d", num_rdy);
+		DBG_FMT("Poll num_rdy={}", num_rdy);
 		if (num_rdy == -1) {
 			/*
 			 * Restart interrupted system call.
@@ -2639,12 +2650,25 @@ void *consumer_thread_data_poll(void *data)
 			continue;
 		}
 
+		/* Determine event indices for data & wakeup FDs */
+		int data_index = -1;
+		int wakeup_index = -1;
+		for (int idx = 0; idx < num_rdy; idx++) {
+			const auto loop_fd = LTTNG_POLL_GETFD(&poll_events, idx);
+			if (loop_fd == wakeup_fd) {
+				wakeup_index = idx;
+			} else if (loop_fd == data_fd) {
+				data_index = idx;
+			}
+		}
+
 		/*
 		 * If the consumer_data_pipe triggered poll go directly to the
 		 * beginning of the loop to update the array. We want to prioritize
 		 * array update over low-priority reads.
 		 */
-		if (pollfd[nb_fd].revents & (POLLIN | POLLPRI)) {
+		if (data_index >= 0 &&
+		    LTTNG_POLL_GETEV(&poll_events, data_index) & (LPOLLIN | LPOLLPRI)) {
 			ssize_t pipe_readlen;
 
 			DBG("consumer_data_pipe wake up");
@@ -2684,7 +2708,8 @@ void *consumer_thread_data_poll(void *data)
 		}
 
 		/* Handle wakeup pipe. */
-		if (pollfd[nb_fd + 1].revents & (POLLIN | POLLPRI)) {
+		if (wakeup_index >= 0 &&
+		    LTTNG_POLL_GETEV(&poll_events, wakeup_index) & (LPOLLIN | LPOLLPRI)) {
 			char dummy;
 			ssize_t pipe_readlen;
 
@@ -2698,29 +2723,45 @@ void *consumer_thread_data_poll(void *data)
 		}
 
 		/* Take care of high priority channels first. */
-		for (i = 0; i < nb_fd; i++) {
+		for (int i = 0; i < num_rdy; i++) {
 			health_code_update();
 
-			if (local_stream[i] == nullptr) {
+			const auto fd = LTTNG_POLL_GETFD(&poll_events, i);
+			if (fd == data_fd || fd == wakeup_fd) {
 				continue;
 			}
-			if (pollfd[i].revents & POLLPRI) {
-				DBG("Urgent read on fd %d", pollfd[i].fd);
+
+			int idx = 0;
+			struct lttng_consumer_stream *stream = nullptr;
+			for (auto _stream : local_streams) {
+				if (_stream != nullptr && _stream->wait_fd == fd) {
+					stream = _stream;
+					break;
+				}
+				idx++;
+			}
+
+			if (!stream) {
+				DBG_FMT("Could not find local stream matching fd={}", fd);
+				continue;
+			}
+
+			if (LTTNG_POLL_GETEV(&poll_events, i) & LPOLLPRI) {
+				DBG_FMT("Urgent read on fd={}", fd);
 				high_prio = 1;
-				len = ctx->on_buffer_ready(local_stream[i], ctx, false);
+				len = ctx->on_buffer_ready(stream, ctx, false);
 
 				if (len == 0 || len == -ENODATA || len == -EAGAIN) {
-					cool_down.insert(pollfd[i].fd);
+					cool_down.insert(fd);
 				}
 
 				/* it's ok to have an unavailable sub-buffer */
 				if (len < 0 && len != -EAGAIN && len != -ENODATA) {
 					/* Clean the stream and free it. */
-					consumer_del_stream(local_stream[i], data_ht);
-					local_stream[i] = nullptr;
+					consumer_del_stream(stream, data_ht);
+					local_streams[idx] = nullptr;
 				} else if (len > 0) {
-					local_stream[i]->has_data_left_to_be_read_before_teardown =
-						1;
+					stream->has_data_left_to_be_read_before_teardown = 1;
 				}
 			}
 		}
@@ -2733,51 +2774,98 @@ void *consumer_thread_data_poll(void *data)
 			continue;
 		}
 
-		/* Take care of low priority channels. */
-		for (i = 0; i < nb_fd; i++) {
+		/*
+		 * Take care of low priority channels.
+		 *
+		 * It is important to iterate over all local stream, since there flags
+		 * such as `hang_flush_done` and `has_data` that must be handled even
+		 * if there is not poll activity on the stream's `wait_fd`.
+		 *
+		 * Failure to handle those flags while there is no poll activity can lead
+		 * to lock-ups when the consumerd is woken up (via the `wakeup_fd`), and there
+		 * is data to be consumed for a stream.
+		 */
+		for (size_t i = 0; i < local_streams.size(); i++) {
 			health_code_update();
 
-			if (local_stream[i] == nullptr) {
+			if (local_streams[i] == nullptr) {
 				continue;
 			}
-			if ((pollfd[i].revents & POLLIN) || local_stream[i]->hangup_flush_done ||
-			    local_stream[i]->has_data) {
-				DBG("Normal read on fd %d", pollfd[i].fd);
-				len = ctx->on_buffer_ready(local_stream[i], ctx, false);
+
+			const auto fd = local_streams[i]->wait_fd;
+			if (fd == data_fd || fd == wakeup_fd) {
+				continue;
+			}
+
+			nonstd::optional<int> revent;
+			for (int idx = 0; idx < num_rdy; idx++) {
+				if (LTTNG_POLL_GETFD(&poll_events, idx) == fd) {
+					revent = (int) LTTNG_POLL_GETEV(&poll_events, idx);
+					break;
+				}
+			}
+
+			if ((revent && (revent.value() & LPOLLIN)) ||
+			    local_streams[i]->hangup_flush_done || local_streams[i]->has_data) {
+				DBG_FMT("Normal read on fd={}, revents={}, has_data={}, hangup_flush_done={}",
+					fd,
+					revent.value_or(0),
+					(int) local_streams[i]->has_data,
+					local_streams[i]->hangup_flush_done);
+				len = ctx->on_buffer_ready(local_streams[i], ctx, false);
 
 				if (len == 0 || len == -ENODATA || len == -EAGAIN) {
-					cool_down.insert(pollfd[i].fd);
+					cool_down.insert(fd);
 				}
 
 				/* it's ok to have an unavailable sub-buffer */
 				if (len < 0 && len != -EAGAIN && len != -ENODATA) {
 					/* Clean the stream and free it. */
-					consumer_del_stream(local_stream[i], data_ht);
-					local_stream[i] = nullptr;
+					consumer_del_stream(local_streams[i], data_ht);
+					local_streams[i] = nullptr;
 				} else if (len > 0) {
-					local_stream[i]->has_data_left_to_be_read_before_teardown =
+					local_streams[i]->has_data_left_to_be_read_before_teardown =
 						1;
 				}
 			}
 		}
 
-		/* Handle hangup and errors */
-		for (i = 0; i < nb_fd; i++) {
+		/*
+		 * Handle hangup and errors.
+		 *
+		 * Iterate over all local streams, and not just those with activity,
+		 * in order to reset `has_data_left_to_be_read_before_teardown`.
+		 */
+		for (size_t i = 0; i < local_streams.size(); i++) {
 			health_code_update();
 
-			if (local_stream[i] == nullptr) {
+			if (local_streams[i] == nullptr) {
 				continue;
 			}
-			if (!local_stream[i]->hangup_flush_done &&
-			    (pollfd[i].revents & (POLLHUP | POLLERR | POLLNVAL)) &&
+
+			const auto fd = local_streams[i]->wait_fd;
+			if (fd == data_fd || fd == wakeup_fd) {
+				continue;
+			}
+
+			nonstd::optional<int> revent;
+			for (int idx = 0; idx < num_rdy; idx++) {
+				if (LTTNG_POLL_GETFD(&poll_events, idx) == fd) {
+					revent = (int) LTTNG_POLL_GETEV(&poll_events, idx);
+					break;
+				}
+			}
+
+			if (!local_streams[i]->hangup_flush_done &&
+			    (revent && (revent.value() & (LPOLLHUP | LPOLLERR))) &&
 			    (the_consumer_data.type == LTTNG_CONSUMER32_UST ||
 			     the_consumer_data.type == LTTNG_CONSUMER64_UST)) {
-				DBG("fd %d is hup|err|nval. Attempting flush and read.",
-				    pollfd[i].fd);
-				lttng_ustconsumer_on_stream_hangup(local_stream[i]);
+				DBG_FMT("fd={} is hup|err. Attempting flush and read.", fd);
+				lttng_ustconsumer_on_stream_hangup(local_streams[i]);
 				/* Attempt read again, for the data we just flushed. */
-				local_stream[i]->has_data_left_to_be_read_before_teardown = 1;
+				local_streams[i]->has_data_left_to_be_read_before_teardown = 1;
 			}
+
 			/*
 			 * When a stream's pipe dies (hup/err/nval), an "inactive producer" flush is
 			 * performed. This type of flush ensures that a new packet is produced no
@@ -2791,27 +2879,22 @@ void *consumer_thread_data_poll(void *data)
 			 * read no data in this pass, we can remove the
 			 * stream from its hash table.
 			 */
-			if ((pollfd[i].revents & POLLHUP)) {
-				DBG("Polling fd %d tells it has hung up.", pollfd[i].fd);
-				if (!local_stream[i]->has_data_left_to_be_read_before_teardown) {
-					consumer_del_stream(local_stream[i], data_ht);
-					local_stream[i] = nullptr;
+			if (revent && (revent.value() & LPOLLHUP)) {
+				DBG_FMT("Polling fd={} tells it has hung up.", fd);
+				if (!local_streams[i]->has_data_left_to_be_read_before_teardown) {
+					consumer_del_stream(local_streams[i], data_ht);
+					local_streams[i] = nullptr;
 				}
-			} else if (pollfd[i].revents & POLLERR) {
-				ERR("Error returned in polling fd %d.", pollfd[i].fd);
-				if (!local_stream[i]->has_data_left_to_be_read_before_teardown) {
-					consumer_del_stream(local_stream[i], data_ht);
-					local_stream[i] = nullptr;
-				}
-			} else if (pollfd[i].revents & POLLNVAL) {
-				ERR("Polling fd %d tells fd is not open.", pollfd[i].fd);
-				if (!local_stream[i]->has_data_left_to_be_read_before_teardown) {
-					consumer_del_stream(local_stream[i], data_ht);
-					local_stream[i] = nullptr;
+			} else if (revent && (revent.value() & LPOLLERR)) {
+				ERR_FMT("Error returned in polling fd={}", fd);
+				if (!local_streams[i]->has_data_left_to_be_read_before_teardown) {
+					consumer_del_stream(local_streams[i], data_ht);
+					local_streams[i] = nullptr;
 				}
 			}
-			if (local_stream[i] != nullptr) {
-				local_stream[i]->has_data_left_to_be_read_before_teardown = 0;
+
+			if (local_streams[i] != nullptr) {
+				local_streams[i]->has_data_left_to_be_read_before_teardown = 0;
 			}
 		}
 	}
@@ -2819,8 +2902,6 @@ void *consumer_thread_data_poll(void *data)
 	err = 0;
 end:
 	DBG("polling thread exiting");
-	free(pollfd);
-	free(local_stream);
 
 	/*
 	 * Close the write side of the pipe so epoll_wait() in
