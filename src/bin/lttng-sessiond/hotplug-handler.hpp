@@ -21,8 +21,8 @@ class stream_group;
 namespace hotplug_handler {
 
 enum class command_type : std::uint8_t {
-	ADD_CHANNEL,
-	REMOVE_CHANNEL,
+	ADD_STREAM_GROUP,
+	REMOVE_STREAM_GROUP,
 	QUIT,
 };
 
@@ -37,7 +37,7 @@ struct command : public lttng::command_base {
 	command(command_type type_,
 		modules::stream_group& channel_,
 		session_id_t session_id_) noexcept :
-		type(type_), channel(&channel_), session_id(session_id_)
+		type(type_), stream_group(&channel_), session_id(session_id_)
 	{
 	}
 
@@ -49,7 +49,7 @@ struct command : public lttng::command_base {
 	command& operator=(const command&) = delete;
 
 	command_type type;
-	modules::stream_group *channel = nullptr;
+	modules::stream_group *stream_group = nullptr;
 	session_id_t session_id = 0;
 };
 

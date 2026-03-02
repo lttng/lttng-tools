@@ -104,8 +104,8 @@ public:
 
 /*
  * @class kernel_consumer_send_failure
- * @brief Thrown when the session daemon fails to send kernel session objects (channels and stream)
- * to the consumer daemon.
+ * @brief Thrown when the session daemon fails to send kernel session objects (stream groups and
+ * streams) to the consumer daemon.
  */
 class kernel_consumer_send_failure : public lttng::runtime_error {
 public:
@@ -240,7 +240,7 @@ private:
 };
 
 /*
- * Runtime representation of a kernel channel managed by the LTTng-modules
+ * Runtime representation of a kernel stream group managed by the LTTng-modules
  * tracer.
  *
  * Extends the base stream_group (which manages the consumer key and stream
@@ -280,7 +280,7 @@ public:
 			      uint64_t consumer_key,
 			      const config::recording_channel_configuration& configuration) :
 		lttng::sessiond::stream_group<lttng::file_descriptor>(consumer_key),
-		_tracer_channel_fd(std::move(tracer_channel_fd)),
+		_tracer_stream_group_fd(std::move(tracer_channel_fd)),
 		_configuration(configuration)
 	{
 	}
@@ -300,12 +300,12 @@ public:
 
 	lttng::file_descriptor& tracer_handle() noexcept
 	{
-		return _tracer_channel_fd;
+		return _tracer_stream_group_fd;
 	}
 
 	const lttng::file_descriptor& tracer_handle() const noexcept
 	{
-		return _tracer_channel_fd;
+		return _tracer_stream_group_fd;
 	}
 
 	const config::recording_channel_configuration& configuration() const noexcept
@@ -383,7 +383,7 @@ public:
 	}
 
 private:
-	lttng::file_descriptor _tracer_channel_fd;
+	lttng::file_descriptor _tracer_stream_group_fd;
 	const config::recording_channel_configuration& _configuration;
 	bool _sent_to_consumer = false;
 	bool _published_to_notification_thread = false;
@@ -392,12 +392,12 @@ private:
 };
 
 /*
- * Runtime representation of the metadata channel for a kernel tracing session
+ * Runtime representation of the metadata stream group for a kernel tracing session
  * managed by the lttng-modules tracer.
  *
  * Extends stream_group to reuse consumer key tracking and stream management.
  * Metadata always has exactly one stream (cpu 0) which is opened separately
- * from the metadata channel itself (kernctl_open_metadata vs.
+ * from the metadata stream group itself (kernctl_open_metadata vs.
  * kernctl_create_stream on the metadata fd).
  */
 class metadata_stream_group final : public lttng::sessiond::stream_group<lttng::file_descriptor> {
@@ -406,7 +406,7 @@ public:
 				       uint64_t consumer_key,
 				       const config::metadata_channel_configuration& configuration) :
 		lttng::sessiond::stream_group<lttng::file_descriptor>(consumer_key),
-		_tracer_metadata_fd(std::move(tracer_metadata_fd)),
+		_tracer_metadata_stream_group_fd(std::move(tracer_metadata_fd)),
 		_configuration(configuration)
 	{
 	}
@@ -420,12 +420,12 @@ public:
 
 	lttng::file_descriptor& tracer_handle() noexcept
 	{
-		return _tracer_metadata_fd;
+		return _tracer_metadata_stream_group_fd;
 	}
 
 	const lttng::file_descriptor& tracer_handle() const noexcept
 	{
-		return _tracer_metadata_fd;
+		return _tracer_metadata_stream_group_fd;
 	}
 
 	const config::metadata_channel_configuration& configuration() const noexcept
@@ -444,7 +444,7 @@ public:
 	}
 
 private:
-	lttng::file_descriptor _tracer_metadata_fd;
+	lttng::file_descriptor _tracer_metadata_stream_group_fd;
 	const config::metadata_channel_configuration& _configuration;
 	bool _sent_to_consumer = false;
 };
@@ -452,8 +452,8 @@ private:
 /*
  * Concrete domain orchestrator for the lttng-modules kernel tracer.
  *
- * Manages the runtime tracing resources — session fd, channels, streams,
- * metadata, and consumer connections — for the kernel domain within a
+ * Manages the runtime tracing resources (session fd, stream groups, streams,
+ * metadata, and consumer connections) for the kernel domain within a
  * recording session.
  *
  * The orchestrator reads configuration exclusively from the config::domain
@@ -572,7 +572,7 @@ public:
 	 * if tracing is active and consumer fds have already been sent,
 	 * sends the new streams to the consumer daemon.
 	 */
-	void handle_channel_hotplug(stream_group& channel);
+	void handle_stream_group_hotplug(stream_group& channel);
 
 private:
 	/*
@@ -584,8 +584,8 @@ private:
 	 */
 	stream_group& _get_channel(const config::recording_channel_configuration& channel_config)
 	{
-		const auto it = _channels.find(&channel_config);
-		if (it == _channels.end()) {
+		const auto it = _stream_groups.find(&channel_config);
+		if (it == _stream_groups.end()) {
 			LTTNG_THROW_CHANNEL_NOT_FOUND_BY_NAME_ERROR(channel_config.name);
 		}
 
@@ -600,32 +600,32 @@ private:
 	 *
 	 * Returns the number of streams created.
 	 */
-	unsigned int _open_channel_streams(stream_group& channel);
+	unsigned int _open_streams(stream_group& channel);
 
 	/*
 	 * Flush all ring buffer streams of a channel.
 	 */
-	void _flush_channel_streams(const stream_group& channel) const;
+	void _flush_stream_group_streams(const stream_group& channel) const;
 
 	/*
-	 * Send all session data (metadata, channels, streams) to the consumer
-	 * daemon.
+	 * Send all session data (metadata, stream groups, streams) to the consumer daemon.
 	 *
 	 * The consumer socket lock must be held by the caller.
 	 */
-	void _send_channels_to_consumer(consumer_socket& socket);
+	void _send_stream_groups_to_consumer(consumer_socket& socket);
 
 	/*
-	 * Send a single channel and its streams to the consumer daemon.
-	 * Registers the channel with the notification thread.
+	 * Send a single stream group and its streams to the consumer daemon.
+	 * Registers the stream group with the notification thread.
 	 *
 	 * The consumer socket lock must be held by the caller.
 	 */
-	void
-	_send_channel_to_consumer(consumer_socket& socket, stream_group& channel, bool monitor);
+	void _send_stream_group_to_consumer(consumer_socket& socket,
+					    stream_group& channel,
+					    bool monitor);
 
 	/*
-	 * Send the metadata channel and its stream to the consumer daemon.
+	 * Send the metadata stream group and its stream to the consumer daemon.
 	 *
 	 * The consumer socket lock must be held by the caller.
 	 */
@@ -658,8 +658,8 @@ private:
 	lttng::command_queue<hotplug_command>& _hotplug_queue;
 	std::unordered_map<const config::recording_channel_configuration *,
 			   std::unique_ptr<stream_group>>
-		_channels;
-	std::unique_ptr<metadata_stream_group> _metadata;
+		_stream_groups;
+	std::unique_ptr<metadata_stream_group> _metadata_stream_group;
 	bool _active = false;
 };
 

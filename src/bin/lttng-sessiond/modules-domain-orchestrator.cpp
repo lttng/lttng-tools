@@ -127,19 +127,19 @@ ls::modules::domain_orchestrator::domain_orchestrator(
 ls::modules::domain_orchestrator::~domain_orchestrator()
 {
 	/*
-	 * Unregister all channels from the hotplug handler thread so their
+	 * Unregister all stream groups from the hotplug handler thread so their
 	 * fds are removed from the poller before being closed.
 	 */
-	for (auto& channel_entry : _channels) {
-		auto& channel = *channel_entry.second;
+	for (auto& entry : _stream_groups) {
+		auto& group = *entry.second;
 
-		if (!channel.is_sent_to_consumer()) {
-			/* Channel was never registered for hotplug monitoring. */
+		if (!group.is_sent_to_consumer()) {
+			/* Stream group was never registered for hotplug monitoring. */
 			continue;
 		}
 
 		hotplug_handler::command cmd(
-			hotplug_handler::command_type::REMOVE_CHANNEL, channel, _session_id);
+			hotplug_handler::command_type::REMOVE_STREAM_GROUP, group, _session_id);
 		_hotplug_queue.send_and_wait(std::move(cmd));
 	}
 
@@ -157,18 +157,20 @@ ls::modules::domain_orchestrator::~domain_orchestrator()
 			auto& socket = _get_consumer_socket();
 			const lttng::pthread::lock_guard socket_lock(*socket.lock);
 
-			for (const auto& channel_entry : _channels) {
-				const auto& channel = *channel_entry.second;
+			for (const auto& entry : _stream_groups) {
+				const auto& group = *entry.second;
 
-				if (!channel.is_sent_to_consumer()) {
+				if (!group.is_sent_to_consumer()) {
 					continue;
 				}
 
-				_destroy_consumer_stream_group(socket, channel.consumer_key());
+				_destroy_consumer_stream_group(socket, group.consumer_key());
 			}
 
-			if (_metadata && _metadata->is_sent_to_consumer()) {
-				_destroy_consumer_stream_group(socket, _metadata->consumer_key());
+			if (_metadata_stream_group &&
+			    _metadata_stream_group->is_sent_to_consumer()) {
+				_destroy_consumer_stream_group(
+					socket, _metadata_stream_group->consumer_key());
 			}
 		} catch (const std::exception& ex) {
 			ERR_FMT("Failed to destroy consumer stream groups during orchestrator teardown: {}",
@@ -178,14 +180,14 @@ ls::modules::domain_orchestrator::~domain_orchestrator()
 
 	/*
 	 * Unregister all channels that were published to the notification
-	 * thread. This mirrors the add performed by _send_channel_to_consumer()
+	 * thread. This mirrors the add performed by _send_stream_group_to_consumer()
 	 * and ensures the notification thread doesn't hold stale references to
 	 * destroyed channels.
 	 */
-	for (const auto& channel_entry : _channels) {
-		const auto& channel = *channel_entry.second;
+	for (const auto& entry : _stream_groups) {
+		const auto& group = *entry.second;
 
-		if (!channel.is_published_to_notification_thread()) {
+		if (!group.is_published_to_notification_thread()) {
 			continue;
 		}
 
@@ -193,13 +195,11 @@ ls::modules::domain_orchestrator::~domain_orchestrator()
 			continue;
 		}
 
-		const auto status =
-			notification_thread_command_remove_channel(the_notification_thread_handle,
-								   channel.consumer_key(),
-								   LTTNG_DOMAIN_KERNEL);
+		const auto status = notification_thread_command_remove_channel(
+			the_notification_thread_handle, group.consumer_key(), LTTNG_DOMAIN_KERNEL);
 		if (status != LTTNG_OK) {
 			ERR_FMT("Failed to remove kernel channel from notification thread: key={}",
-				channel.consumer_key());
+				group.consumer_key());
 		}
 	}
 }
@@ -235,7 +235,7 @@ void ls::modules::domain_orchestrator::create_channel(
 	const auto stream_group_key = allocate_next_kernel_stream_group_key();
 
 	/* Register the modern channel object, keyed by config identity. */
-	_channels.emplace(
+	_stream_groups.emplace(
 		&channel_config,
 		lttng::make_unique<modules::stream_group>(
 			std::move(modules_stream_group_fd), stream_group_key, channel_config));
@@ -724,16 +724,16 @@ void ls::modules::domain_orchestrator::untrack_process_attribute(
 	}
 }
 
-unsigned int ls::modules::domain_orchestrator::_open_channel_streams(stream_group& channel)
+unsigned int ls::modules::domain_orchestrator::_open_streams(stream_group& stream_group)
 {
 	unsigned int streams_opened = 0;
 
 	while (true) {
-		const auto raw_stream_fd = kernctl_create_stream(channel.tracer_handle().fd());
+		const auto raw_stream_fd = kernctl_create_stream(stream_group.tracer_handle().fd());
 		if (raw_stream_fd < 0) {
 			/*
 			 * ENOENT means all streams have been created for this
-			 * channel (one per CPU, or one in per-channel mode).
+			 * stream group (one per CPU, or one in per-channel mode).
 			 */
 			if (raw_stream_fd == -ENOENT) {
 				break;
@@ -749,24 +749,26 @@ unsigned int ls::modules::domain_orchestrator::_open_channel_streams(stream_grou
 				"Failed to set FD_CLOEXEC on kernel stream file descriptor", errno);
 		}
 
-		const auto cpu = channel.stream_count();
+		const auto cpu = stream_group.stream_count();
 		DBG_FMT("Kernel stream created: channel=`{}`, fd={}, cpu={}",
-			channel.configuration().name,
+			stream_group.configuration().name,
 			stream_fd.fd(),
 			cpu);
 
-		channel.add_stream(cpu, std::move(stream_fd));
+		stream_group.add_stream(cpu, std::move(stream_fd));
 		streams_opened++;
 	}
 
 	return streams_opened;
 }
 
-void ls::modules::domain_orchestrator::_flush_channel_streams(const stream_group& channel) const
+void ls::modules::domain_orchestrator::_flush_stream_group_streams(
+	const stream_group& stream_group) const
 {
-	DBG_FMT("Flushing kernel channel streams: channel=`{}`", channel.configuration().name);
+	DBG_FMT("Flushing kernel stream group streams: stream_group=`{}`",
+		stream_group.configuration().name);
 
-	for (const auto& stream : channel.streams()) {
+	for (const auto& stream : stream_group.streams()) {
 		DBG_FMT("Flushing kernel stream: fd={}", stream->handle.fd());
 
 		const auto ret = kernctl_buffer_flush(stream->handle.fd());
@@ -780,40 +782,44 @@ void ls::modules::domain_orchestrator::_flush_channel_streams(const stream_group
 
 void ls::modules::domain_orchestrator::_open_metadata()
 {
-	LTTNG_ASSERT(!_metadata);
+	LTTNG_ASSERT(!_metadata_stream_group);
 
 	const auto& metadata_config = _session.kernel_space_domain.metadata_channel();
 
-	DBG("Opening kernel metadata channel");
+	DBG("Opening kernel metadata stream group");
 
-	const auto kernel_channel = make_kernel_abi_channel(metadata_config);
-	const auto raw_metadata_fd = kernctl_open_metadata(_tracer_session_fd.fd(), kernel_channel);
-	if (raw_metadata_fd < 0) {
-		LTTNG_THROW_POSIX("Failed to open kernel metadata channel", -raw_metadata_fd);
+	const auto kernel_stream_group = make_kernel_abi_channel(metadata_config);
+	const auto raw_metadata_stream_group_fd =
+		kernctl_open_metadata(_tracer_session_fd.fd(), kernel_stream_group);
+	if (raw_metadata_stream_group_fd < 0) {
+		LTTNG_THROW_POSIX("Failed to open kernel metadata stream group",
+				  -raw_metadata_stream_group_fd);
 	}
 
-	lttng::file_descriptor metadata_fd(raw_metadata_fd);
+	lttng::file_descriptor metadata_stream_group_fd(raw_metadata_stream_group_fd);
 
-	if (fcntl(metadata_fd.fd(), F_SETFD, FD_CLOEXEC) < 0) {
-		LTTNG_THROW_POSIX("Failed to set FD_CLOEXEC on kernel metadata channel fd", errno);
+	if (fcntl(metadata_stream_group_fd.fd(), F_SETFD, FD_CLOEXEC) < 0) {
+		LTTNG_THROW_POSIX("Failed to set FD_CLOEXEC on kernel metadata stream group fd",
+				  errno);
 	}
 
 	const auto consumer_key = allocate_next_kernel_stream_group_key();
 
-	DBG_FMT("Kernel metadata channel opened: fd={}, consumer_key={}",
-		metadata_fd.fd(),
+	DBG_FMT("Kernel metadata stream group opened: fd={}, consumer_key={}",
+		metadata_stream_group_fd.fd(),
 		consumer_key);
 
-	_metadata = lttng::make_unique<modules::metadata_stream_group>(
-		std::move(metadata_fd), consumer_key, metadata_config);
+	_metadata_stream_group = lttng::make_unique<modules::metadata_stream_group>(
+		std::move(metadata_stream_group_fd), consumer_key, metadata_config);
 }
 
 void ls::modules::domain_orchestrator::_open_metadata_stream()
 {
-	LTTNG_ASSERT(_metadata);
-	LTTNG_ASSERT(_metadata->stream_count() == 0);
+	LTTNG_ASSERT(_metadata_stream_group);
+	LTTNG_ASSERT(_metadata_stream_group->stream_count() == 0);
 
-	const auto raw_stream_fd = kernctl_create_stream(_metadata->tracer_handle().fd());
+	const auto raw_stream_fd =
+		kernctl_create_stream(_metadata_stream_group->tracer_handle().fd());
 	if (raw_stream_fd < 0) {
 		LTTNG_THROW_POSIX("Failed to create kernel metadata stream", -raw_stream_fd);
 	}
@@ -826,22 +832,23 @@ void ls::modules::domain_orchestrator::_open_metadata_stream()
 
 	DBG_FMT("Kernel metadata stream created: fd={}", stream_fd.fd());
 
-	_metadata->add_stream(0 /* cpu: always 0 for metadata */, std::move(stream_fd));
+	_metadata_stream_group->add_stream(0 /* cpu: always 0 for metadata */,
+					   std::move(stream_fd));
 }
 
 void ls::modules::domain_orchestrator::_destroy_consumer_stream_group(consumer_socket& socket,
-								      uint64_t consumer_key)
+								      uint64_t stream_group_key)
 {
-	DBG_FMT("Sending kernel consumer destroy stream group: key={}", consumer_key);
+	DBG_FMT("Sending kernel consumer destroy stream group: key={}", stream_group_key);
 
 	struct lttcomm_consumer_msg msg = {};
 	msg.cmd_type = LTTNG_CONSUMER_DESTROY_CHANNEL;
-	msg.u.destroy_channel.key = consumer_key;
+	msg.u.destroy_channel.key = stream_group_key;
 
 	const auto ret = consumer_send_msg(&socket, &msg);
 	if (ret < 0) {
 		WARN_FMT("Failed to send stream group destroy to consumer: key={}, ret={}",
-			 consumer_key,
+			 stream_group_key,
 			 ret);
 	}
 }
@@ -849,12 +856,12 @@ void ls::modules::domain_orchestrator::_destroy_consumer_stream_group(consumer_s
 void ls::modules::domain_orchestrator::_send_metadata_to_consumer(
 	consumer_socket& socket, const consumer_output& consumer_output, bool monitor)
 {
-	LTTNG_ASSERT(_metadata);
-	LTTNG_ASSERT(_metadata->stream_count() > 0);
+	LTTNG_ASSERT(_metadata_stream_group);
+	LTTNG_ASSERT(_metadata_stream_group->stream_count() > 0);
 
-	const auto& metadata_config = _metadata->configuration();
+	const auto& metadata_config = _metadata_stream_group->configuration();
 
-	auto metadata_stream_fd = _metadata->streams().front()->handle.fd();
+	auto metadata_stream_fd = _metadata_stream_group->streams().front()->handle.fd();
 
 	DBG_FMT("Sending metadata to kernel consumer: metadata_stream_fd={}", metadata_stream_fd);
 
@@ -866,7 +873,7 @@ void ls::modules::domain_orchestrator::_send_metadata_to_consumer(
 	struct lttcomm_consumer_msg lkm = {};
 
 	consumer_init_add_channel_comm_msg(&lkm,
-					   _metadata->consumer_key(),
+					   _metadata_stream_group->consumer_key(),
 					   _session.id,
 					   "",
 					   consumer_output.net_seq_index,
@@ -888,16 +895,18 @@ void ls::modules::domain_orchestrator::_send_metadata_to_consumer(
 	auto ret = consumer_send_channel(&socket, &lkm);
 	if (ret < 0) {
 		LTTNG_THROW_KERNEL_CONSUMER_SEND_FAILURE(
-			"Failed to send kernel metadata channel to consumer");
+			"Failed to send kernel metadata stream group to consumer");
 	}
 
-	_metadata->mark_sent_to_consumer();
+	_metadata_stream_group->mark_sent_to_consumer();
 
 	health_code_update();
 
 	/* Send the metadata stream. */
-	consumer_init_add_stream_comm_msg(
-		&lkm, _metadata->consumer_key(), metadata_stream_fd, 0 /* CPU: 0 for metadata. */);
+	consumer_init_add_stream_comm_msg(&lkm,
+					  _metadata_stream_group->consumer_key(),
+					  metadata_stream_fd,
+					  0 /* CPU: 0 for metadata. */);
 
 	ret = consumer_send_stream(&socket, &lkm, &metadata_stream_fd, 1);
 	if (ret < 0) {
@@ -908,15 +917,15 @@ void ls::modules::domain_orchestrator::_send_metadata_to_consumer(
 	health_code_update();
 }
 
-void ls::modules::domain_orchestrator::_send_channel_to_consumer(consumer_socket& socket,
-								 stream_group& channel,
-								 bool monitor)
+void ls::modules::domain_orchestrator::_send_stream_group_to_consumer(consumer_socket& socket,
+								      stream_group& group,
+								      bool monitor)
 {
-	LTTNG_ASSERT(!channel.is_sent_to_consumer());
+	LTTNG_ASSERT(!group.is_sent_to_consumer());
 
-	const auto& channel_config = channel.configuration();
+	const auto& channel_config = group.configuration();
 
-	DBG_FMT("Sending kernel channel to consumer: channel=`{}`", channel_config.name);
+	DBG_FMT("Sending kernel stream group to consumer: channel_name=`{}`", channel_config.name);
 
 	const auto output = channel_config.buffer_consumption_backend ==
 			lsc::channel_configuration::buffer_consumption_backend_t::MMAP ?
@@ -943,19 +952,19 @@ void ls::modules::domain_orchestrator::_send_channel_to_consumer(consumer_socket
 			_session.current_trace_chunk, pathname_index.c_str());
 		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			LTTNG_THROW_ERROR(lttng::format(
-				"Failed to create index subdirectory for channel `{}`",
+				"Failed to create index subdirectory for channel: channel_name=`{}`",
 				channel_config.name));
 		}
 	}
 
 	lttcomm_consumer_msg lkm = {};
 	consumer_init_add_channel_comm_msg(&lkm,
-					   channel.consumer_key(),
+					   group.consumer_key(),
 					   _session.id,
 					   &pathname.get()[consumer_path_offset],
 					   _consumer_output->net_seq_index,
 					   channel_config.name.c_str(),
-					   channel.stream_count(),
+					   group.stream_count(),
 					   output,
 					   CONSUMER_CHANNEL_TYPE_DATA_PER_CPU,
 					   channel_config.trace_file_size_limit_bytes.value_or(0),
@@ -972,10 +981,11 @@ void ls::modules::domain_orchestrator::_send_channel_to_consumer(consumer_socket
 	auto ret = consumer_send_channel(&socket, &lkm);
 	if (ret < 0) {
 		LTTNG_THROW_KERNEL_CONSUMER_SEND_FAILURE(lttng::format(
-			"Failed to send kernel channel `{}` to consumer", channel_config.name));
+			"Failed to send kernel stream group to consumer: channel_name=`{}`",
+			channel_config.name));
 	}
 
-	channel.mark_sent_to_consumer();
+	group.mark_sent_to_consumer();
 	health_code_update();
 
 	/* Notify the notification thread of the new channel. */
@@ -984,37 +994,37 @@ void ls::modules::domain_orchestrator::_send_channel_to_consumer(consumer_socket
 			the_notification_thread_handle,
 			_session.id,
 			const_cast<char *>(channel_config.name.c_str()),
-			channel.consumer_key(),
+			group.consumer_key(),
 			LTTNG_DOMAIN_KERNEL,
 			channel_config.subbuffer_size_bytes * channel_config.subbuffer_count);
 		if (status != LTTNG_OK) {
 			LTTNG_THROW_ERROR(lttng::format(
-				"Failed to register channel `{}` with notification thread",
+				"Failed to register stream group with notification thread: channel_name=`{}`",
 				channel_config.name));
 		}
 	} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
-		ERR_FMT("Fatal error during the creation of a kernel channel: {}, location='{}'",
+		ERR_FMT("Fatal error during the creation of a kernel stream group: {}, location='{}'",
 			ex.what(),
 			ex.source_location);
 		abort();
 	}
 
-	channel.mark_published_to_notification_thread();
+	group.mark_published_to_notification_thread();
 
 	/* Send all streams that have not been sent yet. */
-	for (const auto& stream : channel.streams()) {
+	for (const auto& stream : group.streams()) {
 		auto& kstream = static_cast<stream_group::kernel_stream&>(*stream);
 
 		LTTNG_ASSERT(!kstream.sent_to_consumer);
 
-		DBG_FMT("Sending kernel stream to consumer: channel=`{}`, fd={}, cpu={}",
+		DBG_FMT("Sending kernel stream to consumer: channel_name=`{}`, fd={}, cpu={}",
 			channel_config.name,
 			kstream.handle.fd(),
 			kstream.cpu);
 
 		std::memset(&lkm, 0, sizeof(lkm));
 		consumer_init_add_stream_comm_msg(
-			&lkm, channel.consumer_key(), kstream.handle.fd(), kstream.cpu);
+			&lkm, group.consumer_key(), kstream.handle.fd(), kstream.cpu);
 
 		auto stream_fd = kstream.handle.fd();
 		const auto send_ret = consumer_send_stream(&socket, &lkm, &stream_fd, 1);
@@ -1031,7 +1041,7 @@ void ls::modules::domain_orchestrator::_send_channel_to_consumer(consumer_socket
 	}
 }
 
-void ls::modules::domain_orchestrator::_send_channels_to_consumer(consumer_socket& socket)
+void ls::modules::domain_orchestrator::_send_stream_groups_to_consumer(consumer_socket& socket)
 {
 	if (!_consumer_output->enabled) {
 		return;
@@ -1042,29 +1052,30 @@ void ls::modules::domain_orchestrator::_send_channels_to_consumer(consumer_socke
 
 	DBG("Sending session stream to kernel consumer");
 
-	if (_metadata && _metadata->stream_count() > 0 && !_metadata->is_sent_to_consumer()) {
+	if (_metadata_stream_group && _metadata_stream_group->stream_count() > 0 &&
+	    !_metadata_stream_group->is_sent_to_consumer()) {
 		_send_metadata_to_consumer(socket, *_consumer_output, monitor);
 	}
 
 	/* Send channels and their streams. */
-	for (auto& channel_entry : _channels) {
-		auto& channel = *channel_entry.second;
+	for (auto& entry : _stream_groups) {
+		auto& group = *entry.second;
 
-		if (channel.is_sent_to_consumer()) {
+		if (group.is_sent_to_consumer()) {
 			continue;
 		}
 
-		_send_channel_to_consumer(socket, channel, monitor);
+		_send_stream_group_to_consumer(socket, group, monitor);
 
 		if (monitor) {
 			/*
 			 * Inform the relay that all the streams for the
-			 * channel were sent.
+			 * stream group were sent.
 			 */
 			struct lttcomm_consumer_msg lkm = {};
 			consumer_init_streams_sent_comm_msg(&lkm,
 							    LTTNG_CONSUMER_STREAMS_SENT,
-							    channel.consumer_key(),
+							    group.consumer_key(),
 							    _consumer_output->net_seq_index);
 
 			health_code_update();
@@ -1072,13 +1083,13 @@ void ls::modules::domain_orchestrator::_send_channels_to_consumer(consumer_socke
 			const auto ret = consumer_send_msg(&socket, &lkm);
 			if (ret < 0) {
 				LTTNG_THROW_KERNEL_CONSUMER_SEND_FAILURE(lttng::format(
-					"Failed to send streams_sent for channel `{}`",
-					channel.configuration().name));
+					"Failed to send streams_sent for stream group: channel_name=`{}`",
+					group.configuration().name));
 			}
 		}
 	}
 
-	DBG("Kernel consumer FDs of metadata and channel streams sent");
+	DBG("Kernel consumer FDs of metadata and stream group streams sent");
 }
 
 void ls::modules::domain_orchestrator::start()
@@ -1090,49 +1101,49 @@ void ls::modules::domain_orchestrator::start()
 	DBG("Starting kernel tracing");
 
 	/* Open kernel metadata if needed. */
-	if (!_metadata && _session.output_traces) {
+	if (!_metadata_stream_group && _session.output_traces) {
 		_open_metadata();
 	}
 
 	/* Open kernel metadata stream if needed. */
-	if (_metadata && _metadata->stream_count() == 0) {
+	if (_metadata_stream_group && _metadata_stream_group->stream_count() == 0) {
 		_open_metadata_stream();
 	}
 
-	/* Open streams for each channel that hasn't had streams created yet. */
-	for (auto& channel_entry : _channels) {
-		auto& channel = *channel_entry.second;
+	/* Open streams for each stream group that hasn't had streams created yet. */
+	for (auto& entry : _stream_groups) {
+		auto& group = *entry.second;
 
-		if (channel.stream_count() == 0) {
-			_open_channel_streams(channel);
+		if (group.stream_count() == 0) {
+			_open_streams(group);
 		}
 	}
 
-	/* Send session data (metadata, channels, streams) to the consumer daemon. */
+	/* Send session data (metadata, stream groups, streams) to the consumer daemon. */
 	{
 		const lttng::urcu::read_lock_guard read_lock;
 		auto& kconsumer_socket = _get_consumer_socket();
 		/* NOLINTNEXTLINE */
 		const lttng::pthread::lock_guard socket_lock(*kconsumer_socket.lock);
 
-		_send_channels_to_consumer(kconsumer_socket);
+		_send_stream_groups_to_consumer(kconsumer_socket);
 	}
 
 	_active = true;
 
 	/* Register the channels for hotplug monitoring. */
-	for (auto& channel_entry : _channels) {
-		auto& channel = *channel_entry.second;
+	for (auto& entry : _stream_groups) {
+		auto& group = *entry.second;
 
-		if (channel.is_monitored_for_hotplug()) {
+		if (group.is_monitored_for_hotplug()) {
 			continue;
 		}
 
 		hotplug_handler::command cmd(
-			hotplug_handler::command_type::ADD_CHANNEL, channel, _session_id);
+			hotplug_handler::command_type::ADD_STREAM_GROUP, group, _session_id);
 		_hotplug_queue.send_and_wait(std::move(cmd));
 
-		channel.mark_monitored_for_hotplug();
+		group.mark_monitored_for_hotplug();
 	}
 
 	/* Start kernel tracing. */
@@ -1160,16 +1171,17 @@ void ls::modules::domain_orchestrator::stop()
 	kernel_wait_quiescent();
 
 	/* Flush metadata buffer after stopping (if exists). */
-	if (_metadata) {
-		const auto ret = kernctl_buffer_flush((_metadata->streams().front())->handle.fd());
+	if (_metadata_stream_group) {
+		const auto ret = kernctl_buffer_flush(
+			(_metadata_stream_group->streams().front())->handle.fd());
 		if (ret < 0) {
 			WARN("Failed to flush metadata stream");
 		}
 	}
 
 	/* Flush all channel buffers after stopping. */
-	for (const auto& channel_entry : _channels) {
-		_flush_channel_streams(*channel_entry.second);
+	for (const auto& entry : _stream_groups) {
+		_flush_stream_group_streams(*entry.second);
 	}
 
 	_active = false;
@@ -1195,24 +1207,26 @@ void ls::modules::domain_orchestrator::rotate()
 	const lttng::urcu::read_lock_guard read_lock;
 	auto& kconsumer_socket = _get_consumer_socket();
 
-	/* For each channel, ask the consumer to rotate it. */
-	for (const auto& channel_entry : _channels) {
-		const auto stream_group_key = channel_entry.second->consumer_key();
+	/* For each stream group, ask the consumer to rotate it. */
+	for (const auto& entry : _stream_groups) {
+		const auto stream_group_key = entry.second->consumer_key();
 
-		DBG_FMT("Rotate kernel channel: key={}", stream_group_key);
+		DBG_FMT("Rotate kernel stream group: key={}", stream_group_key);
 		const auto ret = consumer_rotate_channel(
 			&kconsumer_socket, stream_group_key, _consumer_output.get(), false);
 		if (ret < 0) {
-			LTTNG_THROW_ROTATION_FAILURE("Failed to rotate kernel channel");
+			LTTNG_THROW_ROTATION_FAILURE("Failed to rotate kernel stream group");
 		}
 	}
 
-	/* Rotate the metadata channel. */
-	LTTNG_ASSERT(_metadata);
-	const auto ret = consumer_rotate_channel(
-		&kconsumer_socket, _metadata->consumer_key(), _consumer_output.get(), true);
+	/* Rotate the metadata stream group. */
+	LTTNG_ASSERT(_metadata_stream_group);
+	const auto ret = consumer_rotate_channel(&kconsumer_socket,
+						 _metadata_stream_group->consumer_key(),
+						 _consumer_output.get(),
+						 true);
 	if (ret < 0) {
-		LTTNG_THROW_ROTATION_FAILURE("Failed to rotate kernel metadata channel");
+		LTTNG_THROW_ROTATION_FAILURE("Failed to rotate kernel metadata stream group");
 	}
 }
 
@@ -1225,24 +1239,24 @@ void ls::modules::domain_orchestrator::clear()
 	const lttng::urcu::read_lock_guard read_lock;
 	auto& kconsumer_socket = _get_consumer_socket();
 
-	/* For each channel, ask the consumer to clear it. */
-	for (const auto& channel_entry : _channels) {
-		const auto stream_group_key = channel_entry.second->consumer_key();
+	/* For each stream group, ask the consumer to clear it. */
+	for (const auto& entry : _stream_groups) {
+		const auto stream_group_key = entry.second->consumer_key();
 
-		DBG_FMT("Clear kernel channel: key={}", stream_group_key);
+		DBG_FMT("Clear kernel stream group: key={}", stream_group_key);
 		const auto ret = consumer_clear_channel(&kconsumer_socket, stream_group_key);
 		if (ret < 0) {
 			switch (-ret) {
 			case LTTCOMM_CONSUMERD_RELAYD_CLEAR_DISALLOWED:
 				LTTNG_THROW_CLEAR_RELAY_DISALLOWED(
-					"Failed to clear kernel channel: relay daemon disallowed clear");
+					"Failed to clear kernel stream group: relay daemon disallowed clear");
 			default:
-				LTTNG_THROW_CLEAR_FAILURE("Failed to clear kernel channel");
+				LTTNG_THROW_CLEAR_FAILURE("Failed to clear kernel stream group");
 			}
 		}
 	}
 
-	if (!_metadata) {
+	if (!_metadata_stream_group) {
 		/*
 		 * Nothing to do for the metadata since this is a snapshot session;
 		 * the metadata is generated on the fly.
@@ -1251,19 +1265,20 @@ void ls::modules::domain_orchestrator::clear()
 	}
 
 	/*
-	 * Clear the metadata channel.
+	 * Clear the metadata stream group.
 	 *
-	 * Metadata channel is not cleared per se but we still need to perform a rotation operation
-	 * on it behind the scene.
+	 * Metadata stream group is not cleared per se but we still need to perform a rotation
+	 * operation on it behind the scene.
 	 */
-	const auto ret = consumer_clear_channel(&kconsumer_socket, _metadata->consumer_key());
+	const auto ret =
+		consumer_clear_channel(&kconsumer_socket, _metadata_stream_group->consumer_key());
 	if (ret < 0) {
 		switch (-ret) {
 		case LTTCOMM_CONSUMERD_RELAYD_CLEAR_DISALLOWED:
 			LTTNG_THROW_CLEAR_RELAY_DISALLOWED(
-				"Failed to clear kernel metadata channel: relay daemon disallowed clear");
+				"Failed to clear kernel metadata stream group: relay daemon disallowed clear");
 		default:
-			LTTNG_THROW_CLEAR_FAILURE("Failed to clear kernel metadata channel");
+			LTTNG_THROW_CLEAR_FAILURE("Failed to clear kernel metadata stream group");
 		}
 	}
 }
@@ -1273,13 +1288,15 @@ void ls::modules::domain_orchestrator::open_packets()
 	const lttng::urcu::read_lock_guard read_lock;
 	auto& kconsumer_socket = _get_consumer_socket();
 
-	for (const auto& channel_entry : _channels) {
-		const auto channel_key = channel_entry.second->consumer_key();
+	for (const auto& entry : _stream_groups) {
+		const auto stream_group_key = entry.second->consumer_key();
 
-		DBG_FMT("Open packet of kernel channel: key={}", channel_key);
-		const auto open_ret = consumer_open_channel_packets(&kconsumer_socket, channel_key);
+		DBG_FMT("Open packet of kernel stream group: key={}", stream_group_key);
+		const auto open_ret =
+			consumer_open_channel_packets(&kconsumer_socket, stream_group_key);
 		if (open_ret < 0) {
-			LTTNG_THROW_OPEN_PACKETS_FAILURE("Failed to open kernel channel packets");
+			LTTNG_THROW_OPEN_PACKETS_FAILURE(
+				"Failed to open kernel stream group packets");
 		}
 	}
 }
@@ -1293,7 +1310,7 @@ void ls::modules::domain_orchestrator::record_snapshot(
 	_open_metadata_stream();
 
 	auto destroy_metadata_on_exit =
-		lttng::make_scope_exit([&]() noexcept { _metadata.reset(); });
+		lttng::make_scope_exit([&]() noexcept { _metadata_stream_group.reset(); });
 
 	std::size_t consumer_path_offset;
 	/* const_cast: setup_channel_trace_path only reads from the consumer. */
@@ -1307,7 +1324,7 @@ void ls::modules::domain_orchestrator::record_snapshot(
 
 	const lttng::urcu::read_lock_guard read_lock;
 	auto& kconsumer_socket = _get_consumer_socket();
-	const auto snapshot_metadata_key = _metadata->consumer_key();
+	const auto snapshot_metadata_key = _metadata_stream_group->consumer_key();
 
 	{
 		const lttng::pthread::lock_guard socket_lock(*kconsumer_socket.lock);
@@ -1321,17 +1338,18 @@ void ls::modules::domain_orchestrator::record_snapshot(
 		_destroy_consumer_stream_group(_get_consumer_socket(), snapshot_metadata_key);
 	});
 
-	/* For each channel, ask the consumer to snapshot it. */
-	for (const auto& channel_entry : _channels) {
+	/* For each stream group, ask the consumer to snapshot it. */
+	for (const auto& entry : _stream_groups) {
 		const auto status =
 			consumer_snapshot_channel(&kconsumer_socket,
-						  channel_entry.second->consumer_key(),
+						  entry.second->consumer_key(),
 						  &snapshot_consumer,
 						  0,
 						  &trace_path.get()[consumer_path_offset],
 						  nb_packets_per_stream);
 		if (status != LTTNG_OK) {
-			LTTNG_THROW_SNAPSHOT_FAILURE("Failed to record kernel channel snapshot");
+			LTTNG_THROW_SNAPSHOT_FAILURE(
+				"Failed to record kernel stream group snapshot");
 		}
 	}
 
@@ -1379,27 +1397,27 @@ ls::recording_channel_runtime_stats
 ls::modules::domain_orchestrator::get_recording_channel_runtime_stats(
 	const lsc::recording_channel_configuration& channel_config) const
 {
-	const auto it = _channels.find(&channel_config);
-	LTTNG_ASSERT(it != _channels.end());
+	const auto it = _stream_groups.find(&channel_config);
+	LTTNG_ASSERT(it != _stream_groups.end());
 
-	const auto channel_key = it->second->consumer_key();
+	const auto stream_group_key = it->second->consumer_key();
 	const auto session_id = _session.id;
 	recording_channel_runtime_stats stats = {};
 	int ret;
 
 	ret = consumer_get_discarded_events(
-		session_id, channel_key, _consumer_output.get(), &stats.discarded_events);
+		session_id, stream_group_key, _consumer_output.get(), &stats.discarded_events);
 	if (ret < 0) {
 		LTTNG_THROW_ERROR(lttng::format(
-			"Failed to get discarded events count from consumer for channel '{}'",
+			"Failed to get discarded events count from consumer of channel: channel_name=`{}`",
 			channel_config.name));
 	}
 
 	ret = consumer_get_lost_packets(
-		session_id, channel_key, _consumer_output.get(), &stats.lost_packets);
+		session_id, stream_group_key, _consumer_output.get(), &stats.lost_packets);
 	if (ret < 0) {
 		LTTNG_THROW_ERROR(lttng::format(
-			"Failed to get lost packets count from consumer for channel '{}'",
+			"Failed to get lost packets count from consumer of channel: channel_name=`{}`",
 			channel_config.name));
 	}
 
@@ -1409,50 +1427,50 @@ ls::modules::domain_orchestrator::get_recording_channel_runtime_stats(
 unsigned int ls::modules::domain_orchestrator::get_stream_count_for_channel(
 	const lsc::recording_channel_configuration& channel_config) const
 {
-	const auto it = _channels.find(&channel_config);
-	LTTNG_ASSERT(it != _channels.end());
+	const auto it = _stream_groups.find(&channel_config);
+	LTTNG_ASSERT(it != _stream_groups.end());
 
 	return it->second->stream_count();
 }
 
-void ls::modules::domain_orchestrator::handle_channel_hotplug(stream_group& channel)
+void ls::modules::domain_orchestrator::handle_stream_group_hotplug(stream_group& stream_group)
 {
-	const auto new_stream_count = _open_channel_streams(channel);
+	const auto new_stream_count = _open_streams(stream_group);
 	if (new_stream_count == 0) {
 		WARN_FMT(
-			"Kernel channel hotplug event, but no new streams opened for channel: channel_name=`{}`",
-			channel.configuration().name);
+			"Kernel stream group hotplug event, but no new streams opened for stream group: channel_name=`{}`",
+			stream_group.configuration().name);
 		return;
 	}
 
-	DBG_FMT("Kernel channel hotplug opened new streams: channel_name=`{}`, additional_streams_count={}, total_stream_count={}",
-		channel.configuration().name,
+	DBG_FMT("Kernel stream group hotplug opened new streams: channel_name=`{}`, additional_streams_count={}, total_stream_count={}",
+		stream_group.configuration().name,
 		new_stream_count,
-		channel.stream_count());
+		stream_group.stream_count());
 
-	LTTNG_ASSERT(channel.is_sent_to_consumer());
+	LTTNG_ASSERT(stream_group.is_sent_to_consumer());
 
 	/* Send only the newly-opened (unsent) streams to the consumer daemon. */
 	const lttng::urcu::read_lock_guard read_lock;
 	auto& kconsumer_socket = _get_consumer_socket();
 	const lttng::pthread::lock_guard socket_lock(*kconsumer_socket.lock);
-	const auto& channel_config = channel.configuration();
+	const auto& channel_config = stream_group.configuration();
 
-	for (const auto& stream : channel.streams()) {
+	for (const auto& stream : stream_group.streams()) {
 		auto& kstream = static_cast<stream_group::kernel_stream&>(*stream);
 
 		if (kstream.sent_to_consumer) {
 			continue;
 		}
 
-		DBG_FMT("Sending hotplug kernel stream to consumer: channel=`{}`, fd={}, cpu={}",
+		DBG_FMT("Sending hotplug kernel stream to consumer: channel_name=`{}`, fd={}, cpu={}",
 			channel_config.name,
 			kstream.handle.fd(),
 			kstream.cpu);
 
 		lttcomm_consumer_msg lkm = {};
 		consumer_init_add_stream_comm_msg(
-			&lkm, channel.consumer_key(), kstream.handle.fd(), kstream.cpu);
+			&lkm, stream_group.consumer_key(), kstream.handle.fd(), kstream.cpu);
 
 		auto stream_fd = kstream.handle.fd();
 		const auto monitor = _session.output_traces ? 1 : 0;

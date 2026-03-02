@@ -23,8 +23,8 @@ namespace lhh = ls::hotplug_handler;
 
 namespace {
 
-struct tracked_channel {
-	ls::modules::stream_group *channel;
+struct tracked_stream_group {
+	ls::modules::stream_group *stream_group;
 	ltt_session::id_t session_id;
 };
 
@@ -34,60 +34,63 @@ struct thread_context {
 
 void process_commands(lttng::command_queue<lhh::command>& queue,
 		      lttng::poller& poller,
-		      std::unordered_map<int, tracked_channel>& tracked_channels,
+		      std::unordered_map<int, tracked_stream_group>& tracked_stream_groups,
 		      bool& quit_requested)
 {
 	while (auto cmd = queue.pop()) {
 		switch (cmd->type) {
-		case lhh::command_type::ADD_CHANNEL:
+		case lhh::command_type::ADD_STREAM_GROUP:
 		{
-			LTTNG_ASSERT(cmd->channel);
-			const auto channel_fd = cmd->channel->tracer_handle().fd();
+			LTTNG_ASSERT(cmd->stream_group);
+			const auto stream_group_fd = cmd->stream_group->tracer_handle().fd();
 
-			DBG_FMT("Hotplug handler: tracking channel for hotplug: fd={}, session_id={}",
-				channel_fd,
+			DBG_FMT("Hotplug handler: tracking stream group for hotplug: fd={}, session_id={}",
+				stream_group_fd,
 				cmd->session_id);
 
-			tracked_channels[channel_fd] = { cmd->channel, cmd->session_id };
+			tracked_stream_groups[stream_group_fd] = { cmd->stream_group,
+								   cmd->session_id };
 
 			poller.add(
-				cmd->channel->tracer_handle(),
+				cmd->stream_group->tracer_handle(),
 				lttng::poller::event_type::READABLE,
-				[channel_fd, &tracked_channels](lttng::poller::event_type events) {
+				[stream_group_fd,
+				 &tracked_stream_groups](lttng::poller::event_type events) {
 					if ((events & lttng::poller::event_type::READABLE) !=
 					    lttng::poller::event_type::READABLE) {
 						/*
-						 * Error or hangup on the channel fd.
+						 * Error or hangup on the stream group fd.
 						 * The orchestrator's destructor will send a
-						 * REMOVE_CHANNEL command to clean this up.
+						 * REMOVE_STREAM_GROUP command to clean this up.
 						 */
 						WARN_FMT(
-							"Hotplug handler: unexpected event on channel fd: fd={}, events='{}'",
-							channel_fd,
+							"Hotplug handler: unexpected event on stream group fd: fd={}, events='{}'",
+							stream_group_fd,
 							events);
 						return;
 					}
 
-					const auto it = tracked_channels.find(channel_fd);
-					LTTNG_ASSERT(it != tracked_channels.end());
+					const auto it = tracked_stream_groups.find(stream_group_fd);
+					LTTNG_ASSERT(it != tracked_stream_groups.end());
 
-					const auto& channel = it->second;
+					const auto& tracked_stream_group = it->second;
 
-					DBG_FMT("Hotplug handler: hotplug event on channel: fd={}, session_id={}",
-						channel_fd,
-						channel.session_id);
+					DBG_FMT("Hotplug handler: hotplug event on stream group: fd={}, session_id={}",
+						stream_group_fd,
+						tracked_stream_group.session_id);
 
 					try {
 						auto list_lock = ls::lock_session_list();
 						auto session = ltt_session::find_locked_session(
-							channel.session_id);
+							tracked_stream_group.session_id);
 
 						session->get_kernel_orchestrator()
-							.handle_channel_hotplug(*channel.channel);
+							.handle_stream_group_hotplug(
+								*tracked_stream_group.stream_group);
 					} catch (const lttng::sessiond::exceptions::
 							 session_not_found_error&) {
 						ERR_FMT("Hotplug handler: session not found during hotplug: session_id={}",
-							channel.session_id);
+							tracked_stream_group.session_id);
 						std::abort();
 					}
 				});
@@ -95,18 +98,18 @@ void process_commands(lttng::command_queue<lhh::command>& queue,
 			cmd->_complete();
 			break;
 		}
-		case lhh::command_type::REMOVE_CHANNEL:
+		case lhh::command_type::REMOVE_STREAM_GROUP:
 		{
-			LTTNG_ASSERT(cmd->channel);
-			const auto channel_fd = cmd->channel->tracer_handle().fd();
+			LTTNG_ASSERT(cmd->stream_group);
+			const auto stream_group_fd = cmd->stream_group->tracer_handle().fd();
 
-			DBG_FMT("Hotplug handler: untracking channel: fd={}", channel_fd);
+			DBG_FMT("Hotplug handler: untracking stream group: fd={}", stream_group_fd);
 
-			const auto it = tracked_channels.find(channel_fd);
-			LTTNG_ASSERT(it != tracked_channels.end());
+			const auto it = tracked_stream_groups.find(stream_group_fd);
+			LTTNG_ASSERT(it != tracked_stream_groups.end());
 
-			poller.remove(cmd->channel->tracer_handle());
-			tracked_channels.erase(it);
+			poller.remove(cmd->stream_group->tracer_handle());
+			tracked_stream_groups.erase(it);
 
 			cmd->_complete();
 			break;
@@ -131,15 +134,15 @@ void *thread_hotplug_handler(void *data)
 	health_code_update();
 
 	lttng::poller poller;
-	std::unordered_map<int, tracked_channel> tracked_channels;
+	std::unordered_map<int, tracked_stream_group> tracked_stream_groups;
 	bool quit_requested = false;
 
-	poller.add(
-		queue.wake_fd(),
-		lttng::poller::event_type::READABLE,
-		[&queue, &poller, &tracked_channels, &quit_requested](lttng::poller::event_type) {
-			process_commands(queue, poller, tracked_channels, quit_requested);
-		});
+	poller.add(queue.wake_fd(),
+		   lttng::poller::event_type::READABLE,
+		   [&queue, &poller, &tracked_stream_groups, &quit_requested](
+			   lttng::poller::event_type) {
+			   process_commands(queue, poller, tracked_stream_groups, quit_requested);
+		   });
 
 	while (!quit_requested) {
 		health_code_update();

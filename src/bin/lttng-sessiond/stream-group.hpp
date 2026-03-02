@@ -25,9 +25,9 @@ namespace sessiond {
  *
  * In per-CPU allocation mode, the group contains one stream per CPU. In
  * per-channel allocation mode, it contains a single stream. This distinction
- * is transparent to users of the group — they simply iterate over its streams.
+ * is transparent to users of the group as they simply iterate over its streams.
  *
- * The group tracks the consumer-side key used to reference this channel with
+ * The group tracks the consumer-side key used to reference this stream group with
  * the consumer daemon.
  *
  * The StreamHandleType template parameter carries the domain-specific resource
@@ -37,10 +37,10 @@ namespace sessiond {
  *     from the kernel tracer via ioctl.
  *
  *   - UST domain: a wrapper around the lttng_ust_abi_object_data pointer
- *     obtained from the consumer daemon after channel creation.
+ *     obtained from the consumer daemon after stream group creation.
  *
- * The tracer-side channel handle (kernel channel fd, UST channel object
- * handle) is NOT part of the stream group — it is owned by the domain
+ * The tracer-side stream group handle (kernel stream group fd, UST stream group
+ * object handle) is NOT part of the stream group — it is owned by the domain
  * orchestrator directly. The stream group is concerned with the consumer-facing
  * view: the streams that the consumer daemon reads from.
  *

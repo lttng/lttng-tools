@@ -48,8 +48,8 @@ struct recording_channel_runtime_stats {
 };
 
 /*
- * A domain orchestrator manages the runtime tracing resources — channels,
- * streams, buffers, and consumer connections — for a specific instrumentation
+ * A domain orchestrator manages the runtime tracing resources (stream groups,
+ * streams, buffers, and consumer connections) for a specific instrumentation
  * domain (kernel or user space) within a recording session.
  *
  * It coordinates between the tracer (kernel module or UST applications) and

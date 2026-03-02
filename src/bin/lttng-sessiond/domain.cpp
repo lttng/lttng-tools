@@ -13,7 +13,7 @@
 
 namespace ls = lttng::sessiond::config;
 
-ls::metadata_channel_configuration ls::domain::make_default_metadata_channel_configuration()
+ls::metadata_channel_configuration ls::domain::_make_default_metadata_channel_configuration()
 {
 	return ls::metadata_channel_configuration(
 		DEFAULT_METADATA_NAME,

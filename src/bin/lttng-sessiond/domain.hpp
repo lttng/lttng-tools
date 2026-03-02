@@ -90,7 +90,7 @@ class domain final {
 public:
 	explicit domain(lttng::domain_class domain_class) :
 		domain_class_(domain_class),
-		_metadata_channel(make_default_metadata_channel_configuration()),
+		_metadata_channel(_make_default_metadata_channel_configuration()),
 		_process_id_tracker(
 			details::make_kernel_tracker<process_id_tracker_t>(domain_class)),
 		_virtual_process_id_tracker(
@@ -336,7 +336,7 @@ private:
 		}
 	}
 
-	static metadata_channel_configuration make_default_metadata_channel_configuration();
+	static metadata_channel_configuration _make_default_metadata_channel_configuration();
 
 	const metadata_channel_configuration _metadata_channel;
 	std::unordered_map<std::string, recording_channel_configuration::uptr> _channels;
