@@ -284,7 +284,7 @@ with [Shellcheck](https://www.shellcheck.net/).
 
 The coding style used for this project follows the the Linux kernel guide lines, except that brackets `{`, `}` should typically be used even for single-line if/else statements. Please refer to:
 
-- doc/kernel-CodingStyle.txt (copied from the Linux 3.4.4 tree).
+- Linux kernel Documentation/process/coding-style.rst for the details.
 
 - Linux kernel scripts/checkpatch.pl for a script which verify the patch
   coding style.

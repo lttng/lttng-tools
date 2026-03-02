@@ -9,7 +9,6 @@
 # scenarios such as `--enable-embedded-help`, a forced build order is required
 # at the parent level.
 SUBDIRS = man
-EXTRA_DIST = kernel-CodingStyle.txt
 
 dist_doc_DATA =
 	live-reading-howto.md \
