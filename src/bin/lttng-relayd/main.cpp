@@ -3423,7 +3423,9 @@ static int relay_trace_chunk_exists(const struct lttcomm_relayd_hdr *recv_hdr
 
 	ret = sessiond_trace_chunk_registry_chunk_exists(sessiond_trace_chunk_registry,
 							 conn->session->sessiond_uuid,
-							 conn->session->id,
+							 conn->session->id_sessiond.is_set ?
+								 conn->session->id_sessiond.value :
+								 conn->session->id,
 							 chunk_id,
 							 &chunk_exists);
 	/*
