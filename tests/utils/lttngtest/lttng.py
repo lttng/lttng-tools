@@ -622,6 +622,31 @@ class _Session(lttngctl.Session):
         self._client._run_cmd(" ".join([shlex.quote(x) for x in args]))
         return _Channel(self._client, channel_name, domain, self)
 
+    def channel(self, domain, channel_name):
+        # type: (lttngctl.TracingDomain, str) -> lttngctl.Channel
+        target_domain = self._get_mi_domain(domain)
+        if target_domain is None:
+            raise ChannelNotFound(
+                "Failed to find channel `{}`: domain `{}` not found in session `{}`".format(
+                    channel_name, domain.name, self.name
+                )
+            )
+
+        for channel_element in LTTngClient._mi_get_in_element(
+            target_domain, "channels"
+        ):
+            if (
+                LTTngClient._mi_get_in_element(channel_element, "name").text
+                == channel_name
+            ):
+                return _Channel(self._client, channel_name, domain, self)
+
+        raise ChannelNotFound(
+            "Failed to find channel `{}` in domain `{}` of session `{}`".format(
+                channel_name, domain.name, self.name
+            )
+        )
+
     def add_context(self, context_type):
         # type: (lttngctl.ContextType) -> None
         pass

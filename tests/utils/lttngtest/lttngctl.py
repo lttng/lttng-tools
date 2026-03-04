@@ -862,6 +862,12 @@ class Session(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
+    def channel(self, domain, channel_name):
+        # type: (TracingDomain, str) -> Channel
+        """Get a channel by domain and name."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def start(self):
         # type: () -> None
         raise NotImplementedError

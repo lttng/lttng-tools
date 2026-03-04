@@ -71,9 +71,7 @@ def test_ust_events_save_load(tap, test_env, client, **kwargs):
         tap.diagnostic("Session '{}' not found after load".format(session_name))
         return False
 
-    loaded_channel = lttngtest.lttng._Channel(
-        client, channel_name, lttngtest.TracingDomain.User, loaded_session
-    )
+    loaded_channel = loaded_session.channel(lttngtest.TracingDomain.User, channel_name)
     loaded_rules = list(loaded_channel.recording_rules)
 
     if _find_recording_rule(loaded_rules, rule1) is None:
@@ -128,9 +126,7 @@ def test_ust_filter_expression_save_load(tap, test_env, client, **kwargs):
         tap.diagnostic("Session '{}' not found after load".format(session_name))
         return False
 
-    loaded_channel = lttngtest.lttng._Channel(
-        client, channel_name, lttngtest.TracingDomain.User, loaded_session
-    )
+    loaded_channel = loaded_session.channel(lttngtest.TracingDomain.User, channel_name)
     loaded_rules = list(loaded_channel.recording_rules)
 
     restored_rule = _find_recording_rule(loaded_rules, rule)
@@ -187,9 +183,7 @@ def test_ust_wildcard_exclusions_save_load(tap, test_env, client, **kwargs):
         tap.diagnostic("Session '{}' not found after load".format(session_name))
         return False
 
-    loaded_channel = lttngtest.lttng._Channel(
-        client, channel_name, lttngtest.TracingDomain.User, loaded_session
-    )
+    loaded_channel = loaded_session.channel(lttngtest.TracingDomain.User, channel_name)
     loaded_rules = list(loaded_channel.recording_rules)
 
     restored_rule = _find_recording_rule(loaded_rules, rule)
@@ -311,8 +305,8 @@ def test_kernel_tracepoints_save_load(tap, test_env, client, **kwargs):
         tap.diagnostic("Session '{}' not found after load".format(session_name))
         return False
 
-    loaded_channel = lttngtest.lttng._Channel(
-        client, channel_name, lttngtest.TracingDomain.Kernel, loaded_session
+    loaded_channel = loaded_session.channel(
+        lttngtest.TracingDomain.Kernel, channel_name
     )
     loaded_rules = list(loaded_channel.recording_rules)
 
@@ -369,8 +363,8 @@ def test_kernel_tracepoints_filter_save_load(tap, test_env, client, **kwargs):
         tap.diagnostic("Session '{}' not found after load".format(session_name))
         return False
 
-    loaded_channel = lttngtest.lttng._Channel(
-        client, channel_name, lttngtest.TracingDomain.Kernel, loaded_session
+    loaded_channel = loaded_session.channel(
+        lttngtest.TracingDomain.Kernel, channel_name
     )
     loaded_rules = list(loaded_channel.recording_rules)
 
@@ -424,8 +418,8 @@ def test_kernel_syscalls_save_load(tap, test_env, client, **kwargs):
         tap.diagnostic("Session '{}' not found after load".format(session_name))
         return False
 
-    loaded_channel = lttngtest.lttng._Channel(
-        client, channel_name, lttngtest.TracingDomain.Kernel, loaded_session
+    loaded_channel = loaded_session.channel(
+        lttngtest.TracingDomain.Kernel, channel_name
     )
     loaded_rules = list(loaded_channel.recording_rules)
 
@@ -504,8 +498,8 @@ def test_kernel_kprobe_function_save_load(tap, test_env, client, **kwargs):
             tap.diagnostic("Session '{}' not found after load".format(session_name))
             return False
 
-        loaded_channel = lttngtest.lttng._Channel(
-            client, channel_name, lttngtest.TracingDomain.Kernel, loaded_session
+        loaded_channel = loaded_session.channel(
+            lttngtest.TracingDomain.Kernel, channel_name
         )
         loaded_rules = list(loaded_channel.recording_rules)
 
@@ -741,9 +735,7 @@ def test_ust_log_level_save_load(tap, test_env, client, **kwargs):
         tap.diagnostic("Session '{}' not found after load".format(session_name))
         return False
 
-    loaded_channel = lttngtest.lttng._Channel(
-        client, channel_name, lttngtest.TracingDomain.User, loaded_session
-    )
+    loaded_channel = loaded_session.channel(lttngtest.TracingDomain.User, channel_name)
     loaded_rules = list(loaded_channel.recording_rules)
 
     if _find_recording_rule(loaded_rules, range_rule) is None:
