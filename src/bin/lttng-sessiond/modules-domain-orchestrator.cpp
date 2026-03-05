@@ -1377,11 +1377,6 @@ void ls::modules::domain_orchestrator::regenerate_statedump()
 {
 	const auto ret = kernctl_session_regenerate_statedump(_tracer_session_fd.fd());
 	if (ret < 0) {
-		if (ret == -ENOMEM) {
-			LTTNG_THROW_POSIX("Failed to regenerate kernel statedump: out of memory",
-					  ENOMEM);
-		}
-
 		LTTNG_THROW_POSIX("Failed to regenerate kernel statedump", -ret);
 	}
 }
