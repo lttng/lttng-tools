@@ -4720,18 +4720,16 @@ dispatch_one_event_notifier_notification(struct notification_thread_state *state
 			ret = client_notification_overflow(client);
 			if (ret) {
 				/* Fatal error. */
+				pthread_mutex_unlock(&client->lock);
 				goto next_client;
 			}
 
 			transmission_status = client_flush_outgoing_queue(client);
+			pthread_mutex_unlock(&client->lock);
 			ret = client_handle_transmission_status(client, transmission_status, state);
+		next_client:
 			if (ret) {
 				/* Fatal error. */
-				goto next_client;
-			}
-		next_client:
-			pthread_mutex_unlock(&client->lock);
-			if (ret) {
 				break;
 			}
 		}
