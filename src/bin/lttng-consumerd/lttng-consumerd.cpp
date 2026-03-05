@@ -16,7 +16,9 @@
 #include <common/consumer/consumer-timer.hpp>
 #include <common/consumer/consumer.hpp>
 #include <common/defaults.hpp>
+#include <common/make-unique.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/tracepoints.hpp>
 #include <common/utils.hpp>
 
 #include <cstdarg>
@@ -41,6 +43,13 @@
 #include <unistd.h>
 #include <urcu/compiler.h>
 #include <urcu/list.h>
+
+#ifdef INSTRUMENT_LTTNG_CONSUMERD
+#define LTTNG_UST_TRACEPOINT_DEFINE
+#define LTTNG_UST_TRACEPOINT_PROBE_DYNAMIC_LINKAGE
+#include <lib/tpp/common.hpp>
+#include <lib/tpp/consumerd.hpp>
+#endif
 
 /* threads (channel handling, poll, metadata, sessiond) */
 
@@ -324,6 +333,22 @@ static void set_ulimit()
 }
 
 namespace {
+auto tpp_common = static_cast<std::unique_ptr<
+	void,
+	lttng::memory::create_deleter_class<void, lttng::tracepoints::details::tracepoints_unload>::
+		deleter>>(nullptr);
+auto tpp_consumerd = static_cast<std::unique_ptr<
+	void,
+	lttng::memory::create_deleter_class<void, lttng::tracepoints::details::tracepoints_unload>::
+		deleter>>(nullptr);
+
+void load_tracepoints() __attribute__((unused));
+void load_tracepoints()
+{
+	::tpp_common = std::move(tracepoints_load("libtpp-common.so"));
+	::tpp_consumerd = std::move(tracepoints_load("libtpp-consumerd.so"));
+}
+
 __attribute__((format(printf, 1, 2))) std::string format_printf_string(const char *fmt, ...)
 {
 	va_list args;
@@ -410,6 +435,7 @@ int main(int argc, char **argv)
 			PERROR_FMT("Failed to delete PID file: path=`{}`", pid_file_path);
 		}
 	});
+	const char *trace_consumerd = lttng_secure_getenv(DEFAULT_TRACE_LTTNG_CONSUMERD_ENV);
 
 	rcu_register_thread();
 
@@ -453,6 +479,12 @@ int main(int argc, char **argv)
 			(void) close(i);
 		}
 	}
+
+#ifdef INSTRUMENT_LTTNG_CONSUMERD
+	if (trace_consumerd != nullptr && strlen(trace_consumerd) > 0) {
+		::load_tracepoints();
+	}
+#endif
 
 	/*
 	 * Starting from here, we can create threads. This needs to be after

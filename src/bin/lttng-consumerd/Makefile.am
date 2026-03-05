@@ -19,10 +19,16 @@ lttng_consumerd_LDADD = \
 	   $(top_builddir)/src/common/libhealth.la \
 	   $(top_builddir)/src/common/libtestpoint.la \
 	   $(top_builddir)/src/common/libscheduling.la \
+	   $(top_builddir)/src/common/libtracepoints.la \
 	   $(ATOMIC_LIBS)
 
 lttng_consumerd_LDFLAGS = -rdynamic
 
 if HAVE_LIBLTTNG_UST_CTL
 lttng_consumerd_LDADD += $(UST_CTL_LIBS)
+endif
+
+if INSTRUMENT_LTTNG_CONSUMERD
+lttng_consumerd_LDFLAGS += $(DL_LIBS)
+lttng_consumerd_CXXFLAGS = $(AM_CXXFLAGS) $(UST_CFLAGS)
 endif

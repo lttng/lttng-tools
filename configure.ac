@@ -667,6 +667,10 @@ AC_ARG_ENABLE([instrumentation_lttng_client],
     [AS_HELP_STRING([--disable-instrumentation-lttng-client], [Do not instrument LTTng client])],
     [instrumentation_lttng_client=$enableval], [instrumentation_lttng_client=yes])
 
+AC_ARG_ENABLE([instrumentation_lttng_consumerd],
+    [AS_HELP_STRING([--disable-instrumentation-lttng-consumerd], [Do not instrument LTTng consumer-daemons])],
+    [instrumentation_lttng_consumerd=$enableval], [instrumentation_lttng_consumerd=yes])
+
 AC_ARG_ENABLE([instrumentation_lttng_sessiond],
     [AS_HELP_STRING([--disable-instrumentation-lttng-sessiond], [Do not instrument LTTng session-daemon])],
     [instrumentation_lttng_sessiond=$enableval], [instrumentation_lttng_sessiond=yes])
@@ -676,6 +680,11 @@ AH_TEMPLATE([INSTRUMENT_LTTNG_CLIENT], [Define to instrument the LTTng client])
 AS_IF([test "x$with_lttng_ust" = "xyes" && test "x$instrumentation_lttng_client" = "xyes"],[
 	    AC_DEFINE([INSTRUMENT_LTTNG_CLIENT], [1])], [instrumentation_lttng_client="no"])
 AM_CONDITIONAL([INSTRUMENT_LTTNG_CLIENT], [test "x$instrumentation_lttng_client" = "xyes"])
+
+AH_TEMPLATE([INSTRUMENT_LTTNG_CONSUMERD], [Define to instrument the LTTng consumer daemons])
+AS_IF([test "x$with_lttng_ust" = "xyes" && test "x$instrumentation_lttng_consumerd" = "xyes"],[
+	    AC_DEFINE([INSTRUMENT_LTTNG_CONSUMERD], [1])], [instrumentation_lttng_consumerd="no"])
+AM_CONDITIONAL([INSTRUMENT_LTTNG_CONSUMERD], [test "x$instrumentation_lttng_consumerd" = "xyes"])
 
 AH_TEMPLATE([INSTRUMENT_LTTNG_SESSIOND], [Define to instrument the LTTng session daemon])
 AS_IF([test "x$with_lttng_ust" = "xyes" && test "x$instrumentation_lttng_sessiond" = "xyes"],[
@@ -854,6 +863,7 @@ AX_ADD_AM_MACRO_STATIC([
 
 AS_IF([test "x$enable_code_coverage" = xyes], [
 	AS_IF([test "x$instrumentation_lttng_client" != "xyes" || \
+		test "x$instrumentation_lttng_consumerd" != "xyes" || \
 		test "x$instrumentation_lttng_sessiond" != "xyes"], [
 		AC_MSG_ERROR([Cannot specify '--disable-instrumentation-N' with '--enable-code-coverage'])
 	])
