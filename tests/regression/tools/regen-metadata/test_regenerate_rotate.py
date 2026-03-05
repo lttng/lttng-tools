@@ -15,6 +15,7 @@ has been fully extracted.
 
 import os
 import pathlib
+import platform
 import shutil
 import sys
 import subprocess
@@ -258,6 +259,13 @@ def setup(tap):
 
         device_size = p.stdout.read().decode("utf-8").splitlines()[0]
         dm_device_name = "delayed"
+        delay_table = "{device} 0 0 {device} 0 10 {device} 0 0".format(
+            device=loopback_device
+        )
+        major, minor, _ = platform.uname().release.split(".", 3)
+        if (int(major) == 4 and int(minor) < 19) or int(major) <= 3:
+            delay_table = "{device} 0 0 {device} 0 10".format(device=loopback_device)
+
         p = subprocess.Popen(
             [
                 "dmsetup",
@@ -265,9 +273,7 @@ def setup(tap):
                 dm_device_name,
                 "--table",
                 # 0ms read delay, 10ms write delay, 0ms flush delay
-                "0 {} delay {} 0 0 {} 0 10 {} 0 0".format(
-                    device_size, loopback_device, loopback_device, loopback_device
-                ),
+                "0 {} delay {}".format(device_size, delay_table),
             ]
         )
         p.wait()
