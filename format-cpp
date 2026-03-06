@@ -1,8 +1,8 @@
 #!/bin/bash
 #
-# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: 2020-2022 Philippe Proulx <pproulx@efficios.com>
 #
-# Copyright (C) 2020-2022 Philippe Proulx <pproulx@efficios.com>
+# SPDX-License-Identifier: GPL-2.0-only
 
 expected_formatter_major_version=16
 
@@ -40,10 +40,15 @@ format_cpp() {
 	# Since clang-format 14 does not support ignore files, their
 	# support is crudely emulated here.
 	#
+	# Strip comments and blank lines from the ignore file before
+	# passing it to `grep -f`: an empty pattern (from a blank line)
+	# matches every input line, which would cause all files to be
+	# excluded.
+	#
 	# shellcheck disable=SC2086
 	find "$root_dir" -path './src/vendor' -prune \
 		-o -type f \( -name '*\.h' -o -name '*\.hpp' -o -name '*\.c' -o -name '*\.cpp' \) \
-		-not -path '*/\.*' -print0 | grep -zv -f "$SCRIPT_DIR"/.clang-format-ignore | \
+		-not -path '*/\.*' -print0 | grep -zv -f <(grep -v -E '^\s*(#|$)' "$SCRIPT_DIR"/.clang-format-ignore) | \
 		xargs -P"$(nproc)" -n1 -0 $formatter -i --style=file --fallback-style=none
 }
 
