@@ -1406,6 +1406,10 @@ unsigned int utils_get_max_cpu_id_from_mask(const lttng::c_string_view& cpu_mask
 		}
 	}
 
+	if (i < 0) {
+		i = 0;
+	}
+
 	DBG_FMT("Parsing CPU mask: mask_contents=`{}`", lttng::c_string_view(cpu_mask.data()));
 	const char *cpu_id_parse_start = &cpu_mask.data()[i];
 	const unsigned long cpu_id = strtoul(cpu_id_parse_start, &end_ptr, 10);
