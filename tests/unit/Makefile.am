@@ -39,6 +39,7 @@ TESTS = \
 	test_uri \
 	test_utils_compat_poll \
 	test_utils_compat_pthread \
+	test_utils_cpu_mask \
 	test_utils_expand_path \
 	test_utils_parse_size_suffix \
 	test_utils_parse_time_suffix \
@@ -81,6 +82,7 @@ noinst_PROGRAMS = \
 	test_uri \
 	test_utils_compat_poll \
 	test_utils_compat_pthread \
+	test_utils_cpu_mask \
 	test_utils_expand_path \
 	test_utils_parse_size_suffix \
 	test_utils_parse_time_suffix \
@@ -160,6 +162,11 @@ test_utils_compat_poll_LDADD  = $(LIBTAP) $(DL_LIBS) \
 test_utils_compat_pthread_SOURCES = test_utils_compat_pthread.cpp
 test_utils_compat_pthread_LDADD  = $(LIBTAP) \
 		      $(top_builddir)/src/common/libcompat.la $(LIBCOMMON_GPL)
+
+# cpu_mask
+test_utils_cpu_mask_SOURCES = test_utils_cpu_mask.cpp
+test_utils_cpu_mask_LDADD = $(LIBTAP) \
+	$(top_builddir)/src/common/libcompat.la $(LIBCOMMON_GPL)
 
 # expand_path unit test
 test_utils_expand_path_SOURCES = test_utils_expand_path.cpp
