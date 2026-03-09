@@ -67,6 +67,7 @@ int utils_change_working_directory(const char *path);
 enum lttng_error_code utils_user_id_from_name(const char *user_name, uid_t *user_id);
 enum lttng_error_code utils_group_id_from_name(const char *group_name, gid_t *group_id);
 unsigned int utils_get_cpu_count() LTTNG_MAY_THROW;
+unsigned int utils_get_max_cpu_id_from_mask(const lttng::c_string_view& cpu_mask) LTTNG_MAY_THROW;
 enum lttng_error_code utils_check_enough_available_memory(uint64_t num_bytes,
 							  uint64_t *bytes_available);
 
