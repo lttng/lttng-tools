@@ -1413,7 +1413,7 @@ unsigned int utils_get_max_cpu_id_from_mask(const lttng::c_string_view& cpu_mask
 	DBG_FMT("Parsing CPU mask: mask_contents=`{}`", lttng::c_string_view(cpu_mask.data()));
 	const char *cpu_id_parse_start = &cpu_mask.data()[i];
 	const unsigned long cpu_id = strtoul(cpu_id_parse_start, &end_ptr, 10);
-	if (cpu_id == 0 && end_ptr == cpu_id_parse_start) {
+	if (end_ptr != nullptr && *end_ptr != '\n' && *end_ptr != '\0') {
 		/* No digits found. */
 		LTTNG_THROW_ERROR(lttng::format("Failed to parse CPU mask: mask_contents=`{}`",
 						lttng::c_string_view(cpu_mask.data())));
