@@ -1392,6 +1392,37 @@ end:
 	return ret;
 }
 
+unsigned int utils_get_max_cpu_id_from_mask(const lttng::c_string_view& cpu_mask) LTTNG_MAY_THROW
+{
+	/* Start from the end to read the last CPU index. */
+	int i = cpu_mask.len();
+	char *end_ptr = nullptr;
+
+	while (i-- > 0) {
+		/* Break when we hit the first separator. */
+		if ((cpu_mask[i] == ',') || (cpu_mask[i] == '-')) {
+			i++;
+			break;
+		}
+	}
+
+	DBG_FMT("Parsing CPU mask: mask_contents=`{}`", lttng::c_string_view(cpu_mask.data()));
+	const char *cpu_id_parse_start = &cpu_mask.data()[i];
+	const unsigned long cpu_id = strtoul(cpu_id_parse_start, &end_ptr, 10);
+	if (cpu_id == 0 && end_ptr == cpu_id_parse_start) {
+		/* No digits found. */
+		LTTNG_THROW_ERROR(lttng::format("Failed to parse CPU mask: mask_contents=`{}`",
+						lttng::c_string_view(cpu_mask.data())));
+	}
+
+	if ((i != cpu_mask.len()) && (cpu_id < UINT_MAX)) {
+		return static_cast<unsigned int>(cpu_id);
+	}
+
+	LTTNG_THROW_ERROR("Unable to determine maximum CPU id from mask");
+	return 0;
+}
+
 /*
  * Get the highest CPU id from a CPU mask.
  *
@@ -1431,42 +1462,14 @@ unsigned int get_max_possible_cpu_id() LTTNG_MAY_THROW
 			cpu_mask_buffer_length));
 	}
 
-	auto possible_cpu_mask_len = bytes_read;
-	if (possible_cpu_mask_len < 1) {
+	if (bytes_read < 1) {
 		LTTNG_THROW_ERROR(lttng::format("0 bytes read from possible cpu file path=`{}`",
 						DEFAULT_LINUX_POSSIBLE_CPU_PATH));
 	}
 
-	/* Start from the end to read the last CPU index. */
-	int i = possible_cpu_mask_len;
-	while (i-- > 0) {
-		/* Break when we hit the first separator. */
-		if ((possible_cpu_mask[i] == ',') || (possible_cpu_mask[i] == '-')) {
-			i++;
-			break;
-		}
-	}
-
-	DBG_FMT("Read possible CPU mask: mask_contents=`{}`",
-		lttng::c_string_view(possible_cpu_mask.data()));
-
-	const char *cpu_id_parse_start = &possible_cpu_mask.data()[i];
-	char *end_ptr;
-	unsigned long cpu_id = strtoul(cpu_id_parse_start, &end_ptr, 10);
-	if (cpu_id == 0 && end_ptr == cpu_id_parse_start) {
-		/* No digits found. */
-		LTTNG_THROW_ERROR(
-			lttng::format("Failed to parse possible CPU mask: mask_contents=`{}`",
-				      lttng::c_string_view(possible_cpu_mask.data())));
-	}
-
-	if ((i != possible_cpu_mask_len) && (cpu_id < UINT_MAX)) {
-		max_possible_cpu_id = static_cast<unsigned int>(cpu_id);
-		return max_possible_cpu_id;
-	}
-
-	LTTNG_THROW_ERROR("Unable to determine maximum possible CPU id");
-	return 0;
+	max_possible_cpu_id =
+		utils_get_max_cpu_id_from_mask(lttng::c_string_view(possible_cpu_mask.data()));
+	return max_possible_cpu_id;
 }
 } /* namespace */
 
