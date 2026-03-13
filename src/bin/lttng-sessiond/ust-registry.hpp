@@ -16,8 +16,8 @@
 #include "trace-class.hpp"
 #include "ust-clock-class.hpp"
 #include "ust-field-quirks.hpp"
-#include "ust-registry-channel.hpp"
 #include "ust-registry-event.hpp"
+#include "ust-stream-class.hpp"
 
 #include <common/format.hpp>
 #include <common/hashtable/hashtable.hpp>
@@ -201,8 +201,8 @@ ust_trace_class_per_pid_create(struct ust_app *app,
 			       uint64_t tracing_id);
 void ust_trace_class_destroy(lttng::sessiond::ust::trace_class *session);
 
-void ust_registry_channel_destroy_event(lttng::sessiond::ust::registry_channel *chan,
-					lttng::sessiond::ust::registry_event *event);
+void ust_stream_class_destroy_event(lttng::sessiond::ust::stream_class *chan,
+				    lttng::sessiond::ust::registry_event *event);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -253,7 +253,7 @@ static inline void ust_trace_class_destroy(lttng::sessiond::ust::trace_class *se
 {
 }
 
-static inline void ust_registry_destroy_event(lttng::sessiond::ust::registry_channel *chan
+static inline void ust_registry_destroy_event(lttng::sessiond::ust::stream_class *chan
 					      __attribute__((unused)),
 					      lttng::sessiond::ust::registry_event *event
 					      __attribute__((unused)))
@@ -269,7 +269,7 @@ static inline int ust_metadata_session_statedump(lttng::sessiond::ust::trace_cla
 
 static inline int ust_metadata_channel_statedump(lttng::sessiond::ust::trace_class *session
 						 __attribute__((unused)),
-						 lttng::sessiond::ust::registry_channel *chan
+						 lttng::sessiond::ust::stream_class *chan
 						 __attribute__((unused)))
 {
 	return 0;
@@ -277,7 +277,7 @@ static inline int ust_metadata_channel_statedump(lttng::sessiond::ust::trace_cla
 
 static inline int
 ust_metadata_event_statedump(lttng::sessiond::ust::trace_class *session __attribute__((unused)),
-			     lttng::sessiond::ust::registry_channel *chan __attribute__((unused)),
+			     lttng::sessiond::ust::stream_class *chan __attribute__((unused)),
 			     lttng::sessiond::ust::registry_event *event __attribute__((unused)))
 {
 	return 0;

@@ -7,8 +7,8 @@
 
 #include "recording-channel-configuration.hpp"
 #include "ust-app.hpp"
-#include "ust-registry-channel.hpp"
 #include "ust-registry-event.hpp"
+#include "ust-stream-class.hpp"
 
 #include <common/error.hpp>
 #include <common/exception.hpp>
@@ -357,14 +357,14 @@ lst::type::cuptr create_packet_context(
 }
 }; /* namespace */
 
-lsu::registry_channel::registry_channel(
+lsu::stream_class::stream_class(
 	unsigned int channel_id,
 	lttng::sessiond::config::recording_channel_configuration::buffer_allocation_policy_t
 		buffer_allocation_policy,
 	const lst::abi& trace_abi,
 	std::string in_default_clock_class_name,
-	lsu::registry_channel::registered_listener_fn channel_registered_listener,
-	lsu::registry_channel::event_added_listener_fn event_added_listener) :
+	lsu::stream_class::registered_listener_fn channel_registered_listener,
+	lsu::stream_class::event_added_listener_fn event_added_listener) :
 	lst::stream_class(channel_id,
 			  lst::stream_class::header_type::LARGE,
 			  std::move(in_default_clock_class_name)),
@@ -395,16 +395,16 @@ lsu::registry_channel::registry_channel(
 	_event_header = create_event_header(trace_abi, header_type_);
 }
 
-void lsu::registry_channel::add_event(int session_objd,
-				      int channel_objd,
-				      std::string name,
-				      std::string signature,
-				      std::vector<lst::field::cuptr> event_fields,
-				      int loglevel_value,
-				      nonstd::optional<std::string> model_emf_uri,
-				      lttng_buffer_type buffer_type,
-				      const ust_app& app,
-				      lsu::event_id& out_event_id)
+void lsu::stream_class::add_event(int session_objd,
+				  int channel_objd,
+				  std::string name,
+				  std::string signature,
+				  std::vector<lst::field::cuptr> event_fields,
+				  int loglevel_value,
+				  nonstd::optional<std::string> model_emf_uri,
+				  lttng_buffer_type buffer_type,
+				  const ust_app& app,
+				  lsu::event_id& out_event_id)
 {
 	lsu::event_id event_id;
 	struct cds_lfht_node *nptr;
@@ -490,30 +490,30 @@ void lsu::registry_channel::add_event(int session_objd,
 	out_event_id = event_id;
 }
 
-lsu::registry_channel::~registry_channel()
+lsu::stream_class::~stream_class()
 {
 	lttng_ht_destroy(_events);
 }
 
-const lttng::sessiond::trace::type *lsu::registry_channel::event_context() const
+const lttng::sessiond::trace::type *lsu::stream_class::event_context() const
 {
 	LTTNG_ASSERT(_is_registered);
 	return lst::stream_class::event_context();
 }
 
-void lsu::registry_channel::event_context(lttng::sessiond::trace::type::cuptr context)
+void lsu::stream_class::event_context(lttng::sessiond::trace::type::cuptr context)
 {
 	/* Must only be set once, on the first channel registration provided by an application. */
 	LTTNG_ASSERT(!_event_context);
 	_event_context = std::move(context);
 }
 
-bool lsu::registry_channel::is_registered() const
+bool lsu::stream_class::is_registered() const
 {
 	return _is_registered;
 }
 
-void lsu::registry_channel::set_as_registered()
+void lsu::stream_class::set_as_registered()
 {
 	if (!_is_registered) {
 		_is_registered = true;
@@ -521,7 +521,7 @@ void lsu::registry_channel::set_as_registered()
 	}
 }
 
-void lsu::registry_channel::_accept_on_event_classes(
+void lsu::stream_class::_accept_on_event_classes(
 	lttng::sessiond::trace::trace_class_visitor& visitor) const
 {
 	const lttng::urcu::lfht_iteration_adapter<lsu::registry_event,

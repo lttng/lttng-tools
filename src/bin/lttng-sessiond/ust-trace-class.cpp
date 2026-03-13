@@ -96,8 +96,7 @@ void destroy_channel_rcu(struct rcu_head *head)
 {
 	DIAGNOSTIC_PUSH
 	DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
-	lsu::registry_channel *chan =
-		lttng::utils::container_of(head, &lsu::registry_channel::_rcu_head);
+	lsu::stream_class *chan = lttng::utils::container_of(head, &lsu::stream_class::_rcu_head);
 	DIAGNOSTIC_POP
 
 	delete chan;
@@ -110,7 +109,7 @@ void destroy_channel_rcu(struct rcu_head *head)
  *
  * Called from ~trace_class(), must not throw.
  */
-void destroy_channel(lsu::registry_channel *chan, bool notify) noexcept
+void destroy_channel(lsu::stream_class *chan, bool notify) noexcept
 {
 	LTTNG_ASSERT(chan);
 
@@ -130,7 +129,7 @@ void destroy_channel(lsu::registry_channel *chan, bool notify) noexcept
 				     decltype(lsu::registry_event::_node),
 				     &lsu::registry_event::_node>(*chan->_events->ht)) {
 				/* Delete the node from the ht and free it. */
-				ust_registry_channel_destroy_event(chan, event);
+				ust_stream_class_destroy_event(chan, event);
 			}
 		} catch (const lttng::out_of_range& ex) {
 			ERR_FMT("Corrupted channel events hash table encountered while destroying channel: {}",
@@ -396,10 +395,11 @@ lsu::trace_class::~trace_class()
 	if (_channels) {
 		try {
 			/* Destroy all event associated with this registry. */
-			for (auto *chan : lttng::urcu::lfht_iteration_adapter<
-				     lsu::registry_channel,
-				     decltype(lsu::registry_channel::_node),
-				     &lsu::registry_channel::_node>(*_channels->ht)) {
+			for (auto *chan :
+			     lttng::urcu::lfht_iteration_adapter<lsu::stream_class,
+								 decltype(lsu::stream_class::_node),
+								 &lsu::stream_class::_node>(
+				     *_channels->ht)) {
 				/* Delete the node from the ht and free it. */
 				ret = cds_lfht_del(_channels.get()->ht, &chan->_node.node);
 				LTTNG_ASSERT(!ret);
@@ -476,13 +476,13 @@ void lsu::trace_class::add_channel(
 			"Failed to allocate unique id for channel under session while adding channel"));
 	}
 
-	auto chan = new lsu::registry_channel(
+	auto chan = new lsu::stream_class(
 		_get_next_channel_id(),
 		buffer_allocation_policy,
 		abi,
 		_clock->name,
 		/* Registered channel listener. */
-		[this](const lsu::registry_channel& registered_channel) {
+		[this](const lsu::stream_class& registered_channel) {
 			/*
 			 * Channel registration completed, serialize it's layout's
 			 * description.
@@ -490,8 +490,7 @@ void lsu::trace_class::add_channel(
 			registered_channel.accept(*_metadata_generating_visitor);
 		},
 		/* Added event listener. */
-		[this](const lsu::registry_channel& channel,
-		       const lsu::registry_event& added_event) {
+		[this](const lsu::stream_class& channel, const lsu::registry_event& added_event) {
 			/*
 			 * The channel and its event classes will be dumped at once when
 			 * it is registered. This check prevents event classes from being
@@ -507,7 +506,7 @@ void lsu::trace_class::add_channel(
 	lttng_ht_add_unique_u64(_channels.get(), &chan->_node);
 }
 
-lttng::sessiond::ust::registry_channel& lsu::trace_class::channel(uint64_t channel_key) const
+lttng::sessiond::ust::stream_class& lsu::trace_class::channel(uint64_t channel_key) const
 {
 	const lttng::urcu::read_lock_guard read_lock_guard;
 	struct lttng_ht_node_u64 *node;
@@ -524,7 +523,7 @@ lttng::sessiond::ust::registry_channel& lsu::trace_class::channel(uint64_t chann
 
 	DIAGNOSTIC_PUSH
 	DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
-	auto chan = lttng::utils::container_of(node, &lsu::registry_channel::_node);
+	auto chan = lttng::utils::container_of(node, &lsu::stream_class::_node);
 	DIAGNOSTIC_POP
 	return *chan;
 }
@@ -583,17 +582,17 @@ void lsu::trace_class::_accept_on_stream_classes(lst::trace_class_visitor& visit
 {
 	ASSERT_LOCKED(_lock);
 
-	const lttng::urcu::lfht_iteration_adapter<lsu::registry_channel,
-						  decltype(lsu::registry_channel::_node),
-						  &lsu::registry_channel::_node>
+	const lttng::urcu::lfht_iteration_adapter<lsu::stream_class,
+						  decltype(lsu::stream_class::_node),
+						  &lsu::stream_class::_node>
 		channels_ht_view(*_channels->ht);
-	std::vector<const lttng::sessiond::ust::registry_channel *> sorted_stream_classes(
+	std::vector<const lttng::sessiond::ust::stream_class *> sorted_stream_classes(
 		channels_ht_view.begin(), channels_ht_view.end());
 
 	std::sort(sorted_stream_classes.begin(),
 		  sorted_stream_classes.end(),
-		  [](const lttng::sessiond::ust::registry_channel *a,
-		     const lttng::sessiond::ust::registry_channel *b) { return a->id < b->id; });
+		  [](const lttng::sessiond::ust::stream_class *a,
+		     const lttng::sessiond::ust::stream_class *b) { return a->id < b->id; });
 
 	for (const auto *stream_class : sorted_stream_classes) {
 		stream_class->accept(visitor);

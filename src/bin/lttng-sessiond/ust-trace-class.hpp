@@ -12,8 +12,8 @@
 #include "session.hpp"
 #include "trace-class.hpp"
 #include "ust-clock-class.hpp"
-#include "ust-registry-channel.hpp"
 #include "ust-registry.hpp"
+#include "ust-stream-class.hpp"
 
 #include <common/make-unique-wrapper.hpp>
 
@@ -51,7 +51,7 @@ public:
 			buffer_allocation_policy);
 
 	/* A channel is protected by its parent registry session's lock. */
-	lttng::sessiond::ust::registry_channel& channel(uint64_t channel_key) const;
+	lttng::sessiond::ust::stream_class& channel(uint64_t channel_key) const;
 
 	void remove_channel(uint64_t channel_key, bool notify);
 

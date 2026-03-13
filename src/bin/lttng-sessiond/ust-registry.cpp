@@ -47,8 +47,8 @@ static void ust_registry_event_destroy_rcu(struct rcu_head *head)
  * For a given event in a registry, delete the entry and destroy the event.
  * This MUST be called within a RCU read side lock section.
  */
-void ust_registry_channel_destroy_event(lsu::registry_channel *chan,
-					lttng::sessiond::ust::registry_event *event)
+void ust_stream_class_destroy_event(lsu::stream_class *chan,
+				    lttng::sessiond::ust::registry_event *event)
 {
 	int ret;
 	struct lttng_ht_iter iter;

@@ -94,7 +94,7 @@ liblttng_sessiond_common_la_SOURCES += trace-ust.cpp ust-registry.cpp ust-app.cp
 			ust-sigbus.cpp \
 			ust-trace-class.cpp ust-trace-class.hpp \
 			ust-registry-event.cpp ust-registry-event.hpp \
-			ust-registry-channel.cpp ust-registry-channel.hpp \
+			ust-stream-class.cpp ust-stream-class.hpp \
 			ust-trace-class-uid.cpp ust-trace-class-uid.hpp \
 			ust-trace-class-pid.cpp ust-trace-class-pid.hpp \
 			tsdl-trace-class-visitor.cpp tsdl-trace-class-visitor.hpp \

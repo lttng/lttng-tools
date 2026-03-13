@@ -5,8 +5,8 @@
  *
  */
 
-#ifndef LTTNG_UST_REGISTRY_CHANNEL_H
-#define LTTNG_UST_REGISTRY_CHANNEL_H
+#ifndef LTTNG_UST_STREAM_CLASS_H
+#define LTTNG_UST_STREAM_CLASS_H
 
 #include "stream-class.hpp"
 #include "trace-class.hpp"
@@ -28,13 +28,13 @@ class registry_event;
 
 using event_id = uint32_t;
 
-class registry_channel : public lttng::sessiond::trace::stream_class {
+class stream_class : public lttng::sessiond::trace::stream_class {
 public:
-	using registered_listener_fn = std::function<void(const registry_channel&)>;
+	using registered_listener_fn = std::function<void(const stream_class&)>;
 	using event_added_listener_fn =
-		std::function<void(const registry_channel&, const registry_event&)>;
+		std::function<void(const stream_class&, const registry_event&)>;
 
-	registry_channel(
+	stream_class(
 		uint32_t channel_id,
 		lttng::sessiond::config::recording_channel_configuration::buffer_allocation_policy_t
 			buffer_allocation_policy,
@@ -52,11 +52,11 @@ public:
 		       lttng_buffer_type buffer_type,
 		       const ust_app& app,
 		       event_id& out_event_id);
-	~registry_channel() override;
-	registry_channel(const registry_channel&) = delete;
-	registry_channel(registry_channel&&) = delete;
-	registry_channel& operator=(registry_channel&&) = delete;
-	registry_channel& operator=(const registry_channel&) = delete;
+	~stream_class() override;
+	stream_class(const stream_class&) = delete;
+	stream_class(stream_class&&) = delete;
+	stream_class& operator=(stream_class&&) = delete;
+	stream_class& operator=(const stream_class&) = delete;
 
 	const lttng::sessiond::trace::type *event_context() const final;
 	void event_context(lttng::sessiond::trace::type::cuptr context);
@@ -93,4 +93,4 @@ private:
 } /* namespace sessiond */
 } /* namespace lttng */
 
-#endif /* LTTNG_UST_REGISTRY_CHANNEL_H */
+#endif /* LTTNG_UST_STREAM_CLASS_H */
