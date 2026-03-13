@@ -914,29 +914,19 @@ void trace_ust_delete_channel(struct lttng_ht *ht, struct ltt_ust_channel *chann
 
 int trace_ust_regenerate_metadata(struct ltt_ust_session *usess)
 {
-	int ret = 0;
-	struct buffer_reg_session *session_reg = nullptr;
-
 	const lttng::urcu::read_lock_guard read_lock;
 	for (auto uid_reg :
 	     lttng::urcu::list_iteration_adapter<buffer_reg_uid, &buffer_reg_uid::lnode>(
 		     usess->buffer_reg_uid_list)) {
 		lsu::trace_class *registry;
 
-		session_reg = uid_reg->registry;
+		auto *session_reg = uid_reg->registry;
 		registry = session_reg->reg.ust;
 
-		try {
-			registry->regenerate_metadata();
-		} catch (const std::exception& ex) {
-			ERR("Failed to regenerate user space session metadata: %s", ex.what());
-			ret = -1;
-			goto end;
-		}
+		registry->regenerate_metadata();
 	}
 
-end:
-	return ret;
+	return 0;
 }
 
 /*

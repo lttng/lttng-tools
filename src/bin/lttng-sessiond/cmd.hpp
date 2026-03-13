@@ -146,8 +146,8 @@ int cmd_snapshot_record(const ltt_session::locked_ref& session,
 			const struct lttng_snapshot_output *output);
 
 int cmd_set_session_shm_path(const ltt_session::locked_ref& session, const char *shm_path);
-int cmd_regenerate_metadata(const ltt_session::locked_ref& session);
-int cmd_regenerate_statedump(const ltt_session::locked_ref& session);
+void cmd_regenerate_metadata(const ltt_session::locked_ref& session);
+void cmd_regenerate_statedump(const ltt_session::locked_ref& session);
 
 lttng::ctl::trigger
 cmd_register_trigger(const struct lttng_credentials *cmd_creds,

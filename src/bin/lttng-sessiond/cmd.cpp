@@ -4982,43 +4982,34 @@ end:
 /*
  * Check if we can regenerate the metadata for this session.
  * Only kernel, UST per-uid and non-live sessions are supported.
- *
- * Return 0 if the metadata can be generated, a LTTNG_ERR code otherwise.
  */
-static int check_regenerate_metadata_support(const ltt_session::locked_ref& session)
+static void check_regenerate_metadata_support(const ltt_session::locked_ref& session)
 {
-	int ret;
-
 	if (session->live_timer != 0) {
-		ret = LTTNG_ERR_LIVE_SESSION;
-		goto end;
+		LTTNG_THROW_CTL("Metadata regeneration is not supported for live sessions",
+				LTTNG_ERR_LIVE_SESSION);
 	}
 	if (!session->active) {
-		ret = LTTNG_ERR_SESSION_NOT_STARTED;
-		goto end;
+		LTTNG_THROW_CTL("Metadata regeneration requires an active session",
+				LTTNG_ERR_SESSION_NOT_STARTED);
 	}
 	if (session->ust_session) {
 		switch (session->ust_session->buffer_type) {
 		case LTTNG_BUFFER_PER_UID:
 			break;
 		case LTTNG_BUFFER_PER_PID:
-			ret = LTTNG_ERR_PER_PID_SESSION;
-			goto end;
+			LTTNG_THROW_CTL(
+				"Metadata regeneration is not supported for per-PID buffering sessions",
+				LTTNG_ERR_PER_PID_SESSION);
 		default:
 			abort();
-			ret = LTTNG_ERR_UNK;
-			goto end;
 		}
 	}
 	if (session->consumer->type == CONSUMER_DST_NET &&
 	    session->consumer->relay_minor_version < 8) {
-		ret = LTTNG_ERR_RELAYD_VERSION_FAIL;
-		goto end;
+		LTTNG_THROW_CTL("Metadata regeneration is not supported by the relay daemon",
+				LTTNG_ERR_RELAYD_VERSION_FAIL);
 	}
-	ret = 0;
-
-end:
-	return ret;
 }
 
 /*
@@ -5026,85 +5017,44 @@ end:
  *
  * Ask the consumer to truncate the existing metadata file(s) and
  * then regenerate the metadata. Live and per-pid sessions are not
- * supported and return an error.
- *
- * Return LTTNG_OK on success or else a LTTNG_ERR code.
+ * supported and throw an error.
  */
-int cmd_regenerate_metadata(const ltt_session::locked_ref& session)
+void cmd_regenerate_metadata(const ltt_session::locked_ref& session)
 {
-	int ret;
-
-	ret = check_regenerate_metadata_support(session);
-	if (ret) {
-		goto end;
-	}
+	check_regenerate_metadata_support(session);
 
 	if (session->kernel_orchestrator) {
-		try {
-			session->get_kernel_orchestrator().regenerate_metadata();
-		} catch (const std::exception& ex) {
-			ERR("Failed to regenerate the kernel metadata: %s", ex.what());
-			ret = LTTNG_ERR_UNK;
-			goto end;
-		}
+		session->get_kernel_orchestrator().regenerate_metadata();
 	}
 
 	if (session->ust_orchestrator) {
-		try {
-			session->get_ust_orchestrator().regenerate_metadata();
-		} catch (const std::exception& ex) {
-			ERR("Failed to regenerate the UST metadata: %s", ex.what());
-			ret = LTTNG_ERR_UNK;
-			goto end;
-		}
+		session->get_ust_orchestrator().regenerate_metadata();
 	}
-	DBG("Cmd metadata regenerate for session %s", session->name);
-	ret = LTTNG_OK;
 
-end:
-	return ret;
+	DBG("Cmd metadata regenerate for session %s", session->name);
 }
 
 /*
  * Command LTTNG_REGENERATE_STATEDUMP from the lttng-ctl library.
  *
  * Ask the tracer to regenerate a new statedump.
- *
- * Return LTTNG_OK on success or else a LTTNG_ERR code.
  */
-int cmd_regenerate_statedump(const ltt_session::locked_ref& session)
+void cmd_regenerate_statedump(const ltt_session::locked_ref& session)
 {
-	int ret;
-
 	if (!session->active) {
-		ret = LTTNG_ERR_SESSION_NOT_STARTED;
-		goto end;
+		LTTNG_THROW_CTL("Statedump regeneration requires an active session",
+				LTTNG_ERR_SESSION_NOT_STARTED);
 	}
 
 	if (session->kernel_orchestrator) {
-		try {
-			session->get_kernel_orchestrator().regenerate_statedump();
-		} catch (const std::exception& ex) {
-			ERR("Failed to regenerate the kernel statedump: %s", ex.what());
-			ret = LTTNG_ERR_REGEN_STATEDUMP_FAIL;
-			goto end;
-		}
+		session->get_kernel_orchestrator().regenerate_statedump();
 	}
 
 	if (session->ust_orchestrator) {
-		try {
-			session->get_ust_orchestrator().regenerate_statedump();
-		} catch (const std::exception& ex) {
-			ERR("Failed to regenerate the UST statedump: %s", ex.what());
-			ret = LTTNG_ERR_REGEN_STATEDUMP_FAIL;
-			goto end;
-		}
+		session->get_ust_orchestrator().regenerate_statedump();
 	}
-	DBG("Cmd regenerate statedump for session %s", session->name);
-	ret = LTTNG_OK;
 
-end:
-	return ret;
+	DBG("Cmd regenerate statedump for session %s", session->name);
 }
 
 static enum lttng_error_code

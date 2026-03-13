@@ -194,18 +194,14 @@ DIAGNOSTIC_POP /* DIAGNOSTIC_IGNORE_MISSING_NORETURN */
 
 void ls::ust::domain_orchestrator::regenerate_metadata()
 {
-	const auto ret = trace_ust_regenerate_metadata(&_ust_session);
-	if (ret < 0) {
-		LTTNG_THROW_CTL("Failed to regenerate UST metadata", LTTNG_ERR_UNK);
-	}
+	trace_ust_regenerate_metadata(&_ust_session);
 }
 
 void ls::ust::domain_orchestrator::regenerate_statedump()
 {
 	const auto ret = ust_app_regenerate_statedump_all(&_ust_session);
 	if (ret < 0) {
-		LTTNG_THROW_CTL("Failed to regenerate UST statedump",
-				LTTNG_ERR_REGEN_STATEDUMP_FAIL);
+		LTTNG_THROW_REGENERATE_STATEDUMP_FAILURE("Failed to regenerate UST statedump");
 	}
 }
 

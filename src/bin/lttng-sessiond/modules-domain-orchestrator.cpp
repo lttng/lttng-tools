@@ -1369,7 +1369,9 @@ void ls::modules::domain_orchestrator::regenerate_metadata()
 {
 	const auto ret = kernctl_session_regenerate_metadata(_tracer_session_fd.fd());
 	if (ret < 0) {
-		LTTNG_THROW_POSIX("Failed to regenerate kernel metadata", -ret);
+		LTTNG_THROW_REGENERATE_METADATA_FAILURE(
+			fmt::format("Failed to regenerate kernel metadata: {}",
+				    std::system_category().message(-ret)));
 	}
 }
 
@@ -1377,7 +1379,9 @@ void ls::modules::domain_orchestrator::regenerate_statedump()
 {
 	const auto ret = kernctl_session_regenerate_statedump(_tracer_session_fd.fd());
 	if (ret < 0) {
-		LTTNG_THROW_POSIX("Failed to regenerate kernel statedump", -ret);
+		LTTNG_THROW_REGENERATE_STATEDUMP_FAILURE(
+			fmt::format("Failed to regenerate kernel statedump: {}",
+				    std::system_category().message(-ret)));
 	}
 }
 

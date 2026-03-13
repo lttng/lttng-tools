@@ -2208,12 +2208,14 @@ skip_domain:
 	}
 	case LTTCOMM_SESSIOND_COMMAND_REGENERATE_METADATA:
 	{
-		ret = cmd_regenerate_metadata(*target_session);
+		cmd_regenerate_metadata(*target_session);
+		ret = LTTNG_OK;
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_REGENERATE_STATEDUMP:
 	{
-		ret = cmd_regenerate_statedump(*target_session);
+		cmd_regenerate_statedump(*target_session);
+		ret = LTTNG_OK;
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_REGISTER_TRIGGER:
@@ -2831,6 +2833,12 @@ void *thread_manage_clients(void *data)
 		} catch (const lttng::sessiond::exceptions::open_packets_failure& ex) {
 			log_nested_exceptions(ex);
 			ret = LTTNG_ERR_UNK;
+		} catch (const lttng::sessiond::exceptions::regenerate_metadata_failure& ex) {
+			log_nested_exceptions(ex);
+			ret = LTTNG_ERR_UNK;
+		} catch (const lttng::sessiond::exceptions::regenerate_statedump_failure& ex) {
+			log_nested_exceptions(ex);
+			ret = LTTNG_ERR_REGEN_STATEDUMP_FAIL;
 		} catch (const lttng::ctl::error& ex) {
 			log_nested_exceptions(ex);
 			ret = ex.code();

@@ -189,6 +189,32 @@ public:
 	}
 };
 
+/*
+ * @class regenerate_metadata_failure
+ * @brief Thrown when a metadata regeneration request fails.
+ */
+class regenerate_metadata_failure : public lttng::runtime_error {
+public:
+	explicit regenerate_metadata_failure(const std::string& msg,
+					     const lttng::source_location& source_location_) :
+		lttng::runtime_error(msg, source_location_)
+	{
+	}
+};
+
+/*
+ * @class regenerate_statedump_failure
+ * @brief Thrown when a statedump regeneration request fails.
+ */
+class regenerate_statedump_failure : public lttng::runtime_error {
+public:
+	explicit regenerate_statedump_failure(const std::string& msg,
+					      const lttng::source_location& source_location_) :
+		lttng::runtime_error(msg, source_location_)
+	{
+	}
+};
+
 } /* namespace exceptions */
 
 } /* namespace sessiond */
@@ -204,6 +230,11 @@ public:
 	throw lttng::sessiond::exceptions::clear_failure(msg, LTTNG_SOURCE_LOCATION())
 #define LTTNG_THROW_OPEN_PACKETS_FAILURE(msg) \
 	throw lttng::sessiond::exceptions::open_packets_failure(msg, LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_REGENERATE_METADATA_FAILURE(msg) \
+	throw lttng::sessiond::exceptions::regenerate_metadata_failure(msg, LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_REGENERATE_STATEDUMP_FAILURE(msg)                        \
+	throw lttng::sessiond::exceptions::regenerate_statedump_failure(msg, \
+									LTTNG_SOURCE_LOCATION())
 
 /*
  * Specialize fmt::formatter for process_attribute_type.
