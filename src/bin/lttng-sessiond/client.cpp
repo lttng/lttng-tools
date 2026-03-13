@@ -542,6 +542,24 @@ int create_ust_session(const ltt_session::locked_ref& session, const struct lttn
 		goto error;
 	}
 
+	namespace lsc = lttng::sessiond::config;
+	lsc::recording_channel_configuration::owership_model_t default_buffer_ownership;
+
+	switch (domain->buf_type) {
+	case LTTNG_BUFFER_PER_PID:
+		default_buffer_ownership =
+			lsc::recording_channel_configuration::owership_model_t::PER_PID;
+		break;
+	case LTTNG_BUFFER_PER_UID:
+		default_buffer_ownership =
+			lsc::recording_channel_configuration::owership_model_t::PER_UID;
+		break;
+	default:
+		LTTNG_THROW_CTL(fmt::format("Invalid buffer type for UST domain: buf_type={}",
+					    static_cast<int>(domain->buf_type)),
+				LTTNG_ERR_INVALID);
+	}
+
 	DBG("Creating UST session");
 
 	lus = trace_ust_create_session(session->id);
@@ -579,10 +597,8 @@ int create_ust_session(const ltt_session::locked_ref& session, const struct lttn
 		goto error;
 	}
 
-#ifdef HAVE_LIBLTTNG_UST_CTL
-	session->ust_orchestrator =
-		lttng::make_unique<lttng::sessiond::ust::domain_orchestrator>(*lus, *session);
-#endif
+	session->ust_orchestrator = lttng::make_unique<lttng::sessiond::ust::domain_orchestrator>(
+		*lus, *session, default_buffer_ownership);
 
 	return LTTNG_OK;
 

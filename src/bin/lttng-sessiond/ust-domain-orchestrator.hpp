@@ -9,6 +9,7 @@
 #define LTTNG_SESSIOND_UST_DOMAIN_ORCHESTRATOR_HPP
 
 #include "domain-orchestrator.hpp"
+#include "recording-channel-configuration.hpp"
 
 #include <cstdint>
 
@@ -19,7 +20,6 @@ namespace lttng {
 namespace sessiond {
 
 namespace config {
-class recording_channel_configuration;
 class event_rule_configuration;
 class context_configuration;
 } /* namespace config */
@@ -38,7 +38,10 @@ namespace ust {
  */
 class domain_orchestrator final : public sessiond::domain_orchestrator {
 public:
-	explicit domain_orchestrator(ltt_ust_session& ust_session, const ltt_session& session);
+	explicit domain_orchestrator(
+		ltt_ust_session& ust_session,
+		const ltt_session& session,
+		config::recording_channel_configuration::owership_model_t default_buffer_ownership);
 
 	~domain_orchestrator() override;
 
@@ -89,6 +92,7 @@ public:
 private:
 	ltt_ust_session& _ust_session;
 	const ltt_session& _session;
+	const config::recording_channel_configuration::owership_model_t _default_buffer_ownership;
 };
 
 } /* namespace ust */

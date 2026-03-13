@@ -1373,19 +1373,11 @@ int cmd_disable_channel(const ltt_session::locked_ref& session,
 	}
 	case LTTNG_DOMAIN_UST:
 	{
-		const auto usess = session->ust_session;
-		const auto chan_ht = usess->domain_global.channels;
-		const auto uchan = trace_ust_find_channel_by_name(chan_ht, channel_name);
-
-		if (uchan == nullptr) {
-			return LTTNG_ERR_UST_CHAN_NOT_FOUND;
+		if (!channel_config.is_enabled) {
+			return LTTNG_OK;
 		}
 
-		const auto disable_ret = channel_ust_disable(usess, uchan);
-		if (disable_ret != LTTNG_OK) {
-			return disable_ret;
-		}
-
+		session->get_ust_orchestrator().disable_channel(channel_config);
 		break;
 	}
 	default:
@@ -1459,7 +1451,6 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 {
 	enum lttng_error_code ret_code = LTTNG_OK;
 	struct ltt_ust_session *usess = session->ust_session;
-	struct lttng_ht *chan_ht;
 	size_t len;
 
 	LTTNG_ASSERT(domain);
@@ -1962,8 +1953,6 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 	case LTTNG_DOMAIN_LOG4J2:
 	case LTTNG_DOMAIN_PYTHON:
 	{
-		struct ltt_ust_channel *uchan;
-
 		/*
 		 * FIXME
 		 *
@@ -1998,20 +1987,35 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 			}
 		}
 
-		chan_ht = usess->domain_global.channels;
+		auto& orchestrator = session->get_ust_orchestrator();
 
-		uchan = trace_ust_find_channel_by_name(chan_ht, new_channel_attr->name);
-		if (uchan == nullptr) {
+		if (channel_is_new) {
 			/*
 			 * Don't try to create a channel if the session has been started at
 			 * some point in time before. The tracer does not allow it.
 			 */
 			if (session->has_been_started) {
+				target_domain.remove_channel(channel_config_name);
 				return LTTNG_ERR_TRACE_ALREADY_STARTED;
 			}
 
-			ret_code =
-				channel_ust_create(usess, new_channel_attr.get(), domain->buf_type);
+			/*
+			 * Roll back the config if the orchestrator fails to
+			 * create the channel in the tracer.
+			 */
+			auto config_rollback = lttng::make_scope_exit([&target_domain,
+								       &channel_config_name]() noexcept {
+				try {
+					target_domain.remove_channel(channel_config_name);
+				} catch (...) {
+					ERR("Failed to roll back channel configuration: channel_name=`%s`",
+					    channel_config_name.c_str());
+				}
+			});
+
+			orchestrator.create_channel(channel_config);
+			config_rollback.disarm();
+
 			if (new_channel_attr->name[0] != '\0') {
 				usess->has_non_default_channel = 1;
 			}
@@ -2020,12 +2024,8 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 			 * Implicitly add "cpu_id" context to UST domain channels with the
 			 * "per-cpu" allocation policy on creation.
 			 */
-			if (ret_code != LTTNG_OK) {
-				return ret_code;
-			}
-
 			enum lttng_channel_allocation_policy allocation_policy_value;
-			enum lttng_error_code err = lttng_channel_get_allocation_policy(
+			const auto err = lttng_channel_get_allocation_policy(
 				new_channel_attr.get(), &allocation_policy_value);
 
 			if ((err == LTTNG_OK) &&
@@ -2033,14 +2033,22 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 				struct lttng_event_context cpu_id_ctx;
 				cpu_id_ctx.ctx = LTTNG_EVENT_CONTEXT_CPU_ID;
 
-				err = static_cast<enum lttng_error_code>(context_ust_add(
-					usess, domain->type, &cpu_id_ctx, new_channel_attr->name));
-				if (err != LTTNG_OK) {
-					ret_code = err;
+				const auto ctx_ret = static_cast<enum lttng_error_code>(
+					context_ust_add(usess,
+							domain->type,
+							&cpu_id_ctx,
+							new_channel_attr->name));
+				if (ctx_ret != LTTNG_OK) {
+					ret_code = ctx_ret;
 				}
 			}
 		} else {
-			ret_code = channel_ust_enable(usess, uchan);
+			if (channel_was_already_enabled) {
+				LTTNG_THROW_CTL("UST channel is already enabled",
+						LTTNG_ERR_UST_CHAN_EXIST);
+			}
+
+			orchestrator.enable_channel(channel_config);
 		}
 
 		break;
