@@ -595,7 +595,7 @@ static void buffer_reg_session_destroy(struct buffer_reg_session *regp,
 
 	switch (domain) {
 	case LTTNG_DOMAIN_UST:
-		ust_registry_session_destroy(regp->reg.ust);
+		ust_trace_class_destroy(regp->reg.ust);
 		break;
 	default:
 		abort();

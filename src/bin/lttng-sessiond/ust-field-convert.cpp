@@ -8,8 +8,8 @@
 #include "field.hpp"
 #include "ust-app.hpp"
 #include "ust-field-quirks.hpp"
-#include "ust-registry-session.hpp"
 #include "ust-registry.hpp"
+#include "ust-trace-class.hpp"
 
 #include <common/exception.hpp>
 #include <common/make-unique.hpp>
@@ -1032,7 +1032,7 @@ lookup_field_in_vector(std::vector<lst::field::cuptr>& fields, const lst::field_
  * Always returns a new field, throws on error.
  */
 std::vector<lst::field::cuptr>
-create_fields_from_ust_ctl_fields(const lsu::registry_session& session,
+create_fields_from_ust_ctl_fields(const lsu::trace_class& session,
 				  const lttng_ust_ctl_field *current,
 				  const lttng_ust_ctl_field *end,
 				  lst::field_location::root lookup_root,
@@ -1088,7 +1088,7 @@ create_fields_from_ust_ctl_fields(const lsu::registry_session& session,
 } /* namespace */
 
 std::vector<lst::field::cuptr>
-lsu::create_trace_fields_from_ust_ctl_fields(const lsu::registry_session& session,
+lsu::create_trace_fields_from_ust_ctl_fields(const lsu::trace_class& session,
 					     const lttng_ust_ctl_field *fields,
 					     std::size_t field_count,
 					     lst::field_location::root lookup_root,

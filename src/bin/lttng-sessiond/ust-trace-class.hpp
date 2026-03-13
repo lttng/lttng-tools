@@ -5,8 +5,8 @@
  *
  */
 
-#ifndef LTTNG_UST_REGISTRY_SESSION_H
-#define LTTNG_UST_REGISTRY_SESSION_H
+#ifndef LTTNG_UST_TRACE_CLASS_H
+#define LTTNG_UST_TRACE_CLASS_H
 
 #include "clock-class.hpp"
 #include "session.hpp"
@@ -29,19 +29,18 @@ namespace sessiond {
 namespace ust {
 
 class registry_enum;
-class registry_session;
+class trace_class;
 
 namespace details {
-void locked_registry_session_release(registry_session *session);
+void locked_trace_class_release(trace_class *session);
 } /* namespace details */
 
-class registry_session : public lttng::sessiond::trace::trace_class {
+class trace_class : public lttng::sessiond::trace::trace_class {
 public:
-	using locked_ref =
-		std::unique_ptr<registry_session,
-				lttng::memory::create_deleter_class<
-					registry_session,
-					details::locked_registry_session_release>::deleter>;
+	using locked_ref = std::unique_ptr<
+		trace_class,
+		lttng::memory::create_deleter_class<trace_class,
+						    details::locked_trace_class_release>::deleter>;
 
 	virtual lttng_buffer_type buffering_scheme() const noexcept = 0;
 	locked_ref lock() noexcept;
@@ -66,11 +65,11 @@ public:
 
 	void regenerate_metadata();
 
-	~registry_session() override;
-	registry_session(const registry_session&) = delete;
-	registry_session(registry_session&&) = delete;
-	registry_session& operator=(registry_session&&) = delete;
-	registry_session& operator=(const registry_session&) = delete;
+	~trace_class() override;
+	trace_class(const trace_class&) = delete;
+	trace_class(trace_class&&) = delete;
+	trace_class& operator=(trace_class&&) = delete;
+	trace_class& operator=(const trace_class&) = delete;
 
 	const lttng::sessiond::trace::type *packet_header() const noexcept override;
 
@@ -106,15 +105,15 @@ public:
 
 protected:
 	/* Prevent instanciation of this base class. */
-	registry_session(enum lttng_trace_format trace_format,
-			 const struct lttng::sessiond::trace::abi& abi,
-			 unsigned int app_tracer_version_major,
-			 unsigned int app_tracer_version_minor,
-			 const char *root_shm_path,
-			 const char *shm_path,
-			 uid_t euid,
-			 gid_t egid,
-			 uint64_t tracing_id);
+	trace_class(enum lttng_trace_format trace_format,
+		    const struct lttng::sessiond::trace::abi& abi,
+		    unsigned int app_tracer_version_major,
+		    unsigned int app_tracer_version_minor,
+		    const char *root_shm_path,
+		    const char *shm_path,
+		    uid_t euid,
+		    gid_t egid,
+		    uint64_t tracing_id);
 	void accept(trace::trace_class_environment_visitor& environment_visitor) const override;
 	void _generate_metadata();
 
@@ -211,11 +210,11 @@ private:
 } /* namespace lttng */
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
-ssize_t ust_app_push_metadata(const lttng::sessiond::ust::registry_session::locked_ref& registry,
+ssize_t ust_app_push_metadata(const lttng::sessiond::ust::trace_class::locked_ref& registry,
 			      struct consumer_socket *socket,
 			      int send_zero_data);
 #else /* HAVE_LIBLTTNG_UST_CTL */
-static inline ssize_t ust_app_push_metadata(lttng::sessiond::ust::registry_session *registry
+static inline ssize_t ust_app_push_metadata(lttng::sessiond::ust::trace_class *registry
 					    __attribute__((unused)),
 					    struct consumer_socket *socket __attribute__((unused)),
 					    int send_zero_data __attribute__((unused)))
@@ -224,4 +223,4 @@ static inline ssize_t ust_app_push_metadata(lttng::sessiond::ust::registry_sessi
 }
 #endif /* HAVE_LIBLTTNG_UST_CTL */
 
-#endif /* LTTNG_UST_REGISTRY_SESSION_H */
+#endif /* LTTNG_UST_TRACE_CLASS_H */

@@ -10,8 +10,8 @@
 
 #include "consumer.hpp"
 #include "lttng-ust-ctl.hpp"
-#include "ust-registry-session.hpp"
 #include "ust-registry.hpp"
+#include "ust-trace-class.hpp"
 
 #include <common/hashtable/hashtable.hpp>
 
@@ -54,7 +54,7 @@ struct buffer_reg_channel {
 struct buffer_reg_session {
 	/* Registry per domain. */
 	union {
-		lttng::sessiond::ust::registry_session *ust;
+		lttng::sessiond::ust::trace_class *ust;
 	} reg;
 
 	/* Contains buffer registry channel indexed by tracing channel key. */

@@ -10,9 +10,9 @@
 #include "lttng-sessiond.hpp"
 #include "notification-thread-commands.hpp"
 #include "ust-app.hpp"
-#include "ust-registry-session-pid.hpp"
-#include "ust-registry-session-uid.hpp"
 #include "ust-registry.hpp"
+#include "ust-trace-class-pid.hpp"
+#include "ust-trace-class-uid.hpp"
 #include "utils.hpp"
 
 #include <common/common.hpp>
@@ -67,56 +67,56 @@ void ust_registry_channel_destroy_event(lsu::registry_channel *chan,
 	return;
 }
 
-lsu::registry_session *ust_registry_session_per_uid_create(enum lttng_trace_format trace_format,
-							   const lttng::sessiond::trace::abi& abi,
-							   uint32_t major,
-							   uint32_t minor,
-							   const char *root_shm_path,
-							   const char *shm_path,
-							   uid_t euid,
-							   gid_t egid,
-							   uint64_t tracing_id,
-							   uid_t tracing_uid)
+lsu::trace_class *ust_trace_class_per_uid_create(enum lttng_trace_format trace_format,
+						 const lttng::sessiond::trace::abi& abi,
+						 uint32_t major,
+						 uint32_t minor,
+						 const char *root_shm_path,
+						 const char *shm_path,
+						 uid_t euid,
+						 gid_t egid,
+						 uint64_t tracing_id,
+						 uid_t tracing_uid)
 {
 	try {
-		return new lsu::registry_session_per_uid(trace_format,
-							 abi,
-							 major,
-							 minor,
-							 root_shm_path,
-							 shm_path,
-							 euid,
-							 egid,
-							 tracing_id,
-							 tracing_uid);
+		return new lsu::trace_class_per_uid(trace_format,
+						    abi,
+						    major,
+						    minor,
+						    root_shm_path,
+						    shm_path,
+						    euid,
+						    egid,
+						    tracing_id,
+						    tracing_uid);
 	} catch (const std::exception& ex) {
 		ERR("Failed to create per-uid registry session: %s", ex.what());
 		return nullptr;
 	}
 }
 
-lsu::registry_session *ust_registry_session_per_pid_create(struct ust_app *app,
-							   enum lttng_trace_format trace_format,
-							   const lttng::sessiond::trace::abi& abi,
-							   uint32_t major,
-							   uint32_t minor,
-							   const char *root_shm_path,
-							   const char *shm_path,
-							   uid_t euid,
-							   gid_t egid,
-							   uint64_t tracing_id)
+lsu::trace_class *ust_trace_class_per_pid_create(struct ust_app *app,
+						 enum lttng_trace_format trace_format,
+						 const lttng::sessiond::trace::abi& abi,
+						 uint32_t major,
+						 uint32_t minor,
+						 const char *root_shm_path,
+						 const char *shm_path,
+						 uid_t euid,
+						 gid_t egid,
+						 uint64_t tracing_id)
 {
 	try {
-		return new lsu::registry_session_per_pid(*app,
-							 trace_format,
-							 abi,
-							 major,
-							 minor,
-							 root_shm_path,
-							 shm_path,
-							 euid,
-							 egid,
-							 tracing_id);
+		return new lsu::trace_class_per_pid(*app,
+						    trace_format,
+						    abi,
+						    major,
+						    minor,
+						    root_shm_path,
+						    shm_path,
+						    euid,
+						    egid,
+						    tracing_id);
 	} catch (const std::exception& ex) {
 		ERR("Failed to create per-pid registry session: %s", ex.what());
 		return nullptr;
@@ -127,7 +127,7 @@ lsu::registry_session *ust_registry_session_per_pid_create(struct ust_app *app,
  * Destroy session registry. This does NOT free the given pointer since it
  * might get passed as a reference. The registry lock should NOT be acquired.
  */
-void ust_registry_session_destroy(lsu::registry_session *reg)
+void ust_trace_class_destroy(lsu::trace_class *reg)
 {
 	delete reg;
 }

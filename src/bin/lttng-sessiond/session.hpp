@@ -301,7 +301,7 @@ public:
 		 * Get the session registry of the channel currently
 		 * pointed by the iterator. Never returns nullptr.
 		 */
-		lttng::sessiond::ust::registry_session *get_registry_session();
+		lttng::sessiond::ust::trace_class *get_trace_class();
 
 	private:
 		struct _iterator_position {
@@ -309,8 +309,7 @@ public:
 				lttng_ht_iter app_iterator = {};
 				nonstd::optional<ust_app_session::locked_weak_ref>
 					current_app_session;
-				lttng::sessiond::ust::registry_session *current_registry_session =
-					nullptr;
+				lttng::sessiond::ust::trace_class *current_trace_class = nullptr;
 				ust_app_reference current_app;
 			} _per_pid;
 			struct {
@@ -328,12 +327,12 @@ public:
 		void _skip_to_next_app_per_pid(bool try_current) noexcept;
 		void _advance_one_per_pid();
 		key _get_current_value_per_pid() const noexcept;
-		lttng::sessiond::ust::registry_session *_get_registry_session_per_pid();
+		lttng::sessiond::ust::trace_class *_get_trace_class_per_pid();
 
 		void _init_per_uid() noexcept;
 		void _advance_one_per_uid();
 		key _get_current_value_per_uid() const noexcept;
-		lttng::sessiond::ust::registry_session *_get_registry_session_per_uid();
+		lttng::sessiond::ust::trace_class *_get_trace_class_per_uid();
 
 		const _iterator_creation_context& _creation_context;
 		_iterator_position _position;

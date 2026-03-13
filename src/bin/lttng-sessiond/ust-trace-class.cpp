@@ -14,8 +14,8 @@
 #include "tsdl-trace-class-visitor.hpp"
 #include "ust-app.hpp"
 #include "ust-field-quirks.hpp"
-#include "ust-registry-session.hpp"
 #include "ust-registry.hpp"
+#include "ust-trace-class.hpp"
 #include "utils.hpp"
 
 #include <common/compat/directory-handle.hpp>
@@ -108,7 +108,7 @@ void destroy_channel_rcu(struct rcu_head *head)
  * free the registry pointer since it might not have been allocated before so
  * it's the caller responsability.
  *
- * Called from ~registry_session(), must not throw.
+ * Called from ~trace_class(), must not throw.
  */
 void destroy_channel(lsu::registry_channel *chan, bool notify) noexcept
 {
@@ -228,20 +228,20 @@ unsigned long ht_hash_enum(void *_key, unsigned long seed)
 }
 } /* namespace */
 
-void lsu::details::locked_registry_session_release(lsu::registry_session *session)
+void lsu::details::locked_trace_class_release(lsu::trace_class *session)
 {
 	pthread_mutex_unlock(&session->_lock);
 }
 
-lsu::registry_session::registry_session(enum lttng_trace_format trace_format,
-					const struct lst::abi& in_abi,
-					uint32_t major,
-					uint32_t minor,
-					const char *root_shm_path,
-					const char *shm_path,
-					uid_t euid,
-					gid_t egid,
-					uint64_t tracing_id) :
+lsu::trace_class::trace_class(enum lttng_trace_format trace_format,
+			      const struct lst::abi& in_abi,
+			      uint32_t major,
+			      uint32_t minor,
+			      const char *root_shm_path,
+			      const char *shm_path,
+			      uid_t euid,
+			      gid_t egid,
+			      uint64_t tracing_id) :
 	lst::trace_class(in_abi, generate_uuid_or_throw()),
 	_root_shm_path{ root_shm_path ? root_shm_path : "" },
 	_shm_path{ shm_path ? shm_path : "" },
@@ -305,7 +305,7 @@ lsu::registry_session::registry_session(enum lttng_trace_format trace_format,
 	}
 }
 
-lst::type::cuptr lsu::registry_session::_create_packet_header() const
+lst::type::cuptr lsu::trace_class::_create_packet_header() const
 {
 	lst::structure_type::fields packet_header_fields;
 
@@ -358,7 +358,7 @@ lst::type::cuptr lsu::registry_session::_create_packet_header() const
 	return lttng::make_unique<lst::structure_type>(0, std::move(packet_header_fields));
 }
 
-const lst::type *lsu::registry_session::packet_header() const noexcept
+const lst::type *lsu::trace_class::packet_header() const noexcept
 {
 	return _packet_header.get();
 }
@@ -367,9 +367,9 @@ const lst::type *lsu::registry_session::packet_header() const noexcept
  * For a given enumeration in a registry, delete the entry and destroy
  * the enumeration.
  *
- * Note that this is used by ~registry_session() and must not throw.
+ * Note that this is used by ~trace_class() and must not throw.
  */
-void lsu::registry_session::_destroy_enum(lsu::registry_enum *reg_enum) noexcept
+void lsu::trace_class::_destroy_enum(lsu::registry_enum *reg_enum) noexcept
 {
 	int ret;
 	const lttng::urcu::read_lock_guard read_lock_guard;
@@ -385,7 +385,7 @@ void lsu::registry_session::_destroy_enum(lsu::registry_enum *reg_enum) noexcept
 	call_rcu(&reg_enum->rcu_head, destroy_enum_rcu);
 }
 
-lsu::registry_session::~registry_session()
+lsu::trace_class::~trace_class()
 {
 	int ret;
 
@@ -450,7 +450,7 @@ lsu::registry_session::~registry_session()
 	}
 }
 
-lsu::registry_session::locked_ref lsu::registry_session::lock() noexcept
+lsu::trace_class::locked_ref lsu::trace_class::lock() noexcept
 {
 	pthread_mutex_lock(&_lock);
 	return locked_ref(this);
@@ -459,7 +459,7 @@ lsu::registry_session::locked_ref lsu::registry_session::lock() noexcept
 /*
  * Initialize registry with default values.
  */
-void lsu::registry_session::add_channel(
+void lsu::trace_class::add_channel(
 	uint64_t key,
 	lttng::sessiond::config::recording_channel_configuration::buffer_allocation_policy_t
 		buffer_allocation_policy)
@@ -507,7 +507,7 @@ void lsu::registry_session::add_channel(
 	lttng_ht_add_unique_u64(_channels.get(), &chan->_node);
 }
 
-lttng::sessiond::ust::registry_channel& lsu::registry_session::channel(uint64_t channel_key) const
+lttng::sessiond::ust::registry_channel& lsu::trace_class::channel(uint64_t channel_key) const
 {
 	const lttng::urcu::read_lock_guard read_lock_guard;
 	struct lttng_ht_node_u64 *node;
@@ -529,7 +529,7 @@ lttng::sessiond::ust::registry_channel& lsu::registry_session::channel(uint64_t 
 	return *chan;
 }
 
-void lsu::registry_session::remove_channel(uint64_t channel_key, bool notify)
+void lsu::trace_class::remove_channel(uint64_t channel_key, bool notify)
 {
 	struct lttng_ht_iter iter;
 	int ret;
@@ -544,8 +544,7 @@ void lsu::registry_session::remove_channel(uint64_t channel_key, bool notify)
 	destroy_channel(&channel_to_remove, notify);
 }
 
-void lsu::registry_session::accept(
-	lttng::sessiond::trace::trace_class_environment_visitor& visitor) const
+void lsu::trace_class::accept(lttng::sessiond::trace::trace_class_environment_visitor& visitor) const
 {
 	ASSERT_LOCKED(_lock);
 
@@ -574,13 +573,13 @@ void lsu::registry_session::accept(
 	}
 }
 
-void lsu::registry_session::_accept_on_clock_classes(lst::trace_class_visitor& visitor) const
+void lsu::trace_class::_accept_on_clock_classes(lst::trace_class_visitor& visitor) const
 {
 	ASSERT_LOCKED(_lock);
 	_clock->accept(visitor);
 }
 
-void lsu::registry_session::_accept_on_stream_classes(lst::trace_class_visitor& visitor) const
+void lsu::trace_class::_accept_on_stream_classes(lst::trace_class_visitor& visitor) const
 {
 	ASSERT_LOCKED(_lock);
 
@@ -610,7 +609,7 @@ void lsu::registry_session::_accept_on_stream_classes(lst::trace_class_visitor& 
  * Return a unique channel ID. If max is reached, the used_channel_id counter
  * is returned.
  */
-uint32_t lsu::registry_session::_get_next_channel_id()
+uint32_t lsu::trace_class::_get_next_channel_id()
 {
 	if (is_max_channel_id(_used_channel_id)) {
 		return _used_channel_id;
@@ -620,7 +619,7 @@ uint32_t lsu::registry_session::_get_next_channel_id()
 	return _next_channel_id++;
 }
 
-void lsu::registry_session::_increase_metadata_size(size_t reservation_length)
+void lsu::trace_class::_increase_metadata_size(size_t reservation_length)
 {
 	const auto new_len = _metadata_len + reservation_length;
 	auto new_alloc_len = new_len;
@@ -657,7 +656,7 @@ void lsu::registry_session::_increase_metadata_size(size_t reservation_length)
 	_metadata_len += reservation_length;
 }
 
-void lsu::registry_session::_append_metadata_fragment(const std::string& fragment)
+void lsu::trace_class::_append_metadata_fragment(const std::string& fragment)
 {
 	const auto offset = _metadata_len;
 
@@ -674,7 +673,7 @@ void lsu::registry_session::_append_metadata_fragment(const std::string& fragmen
 	}
 }
 
-void lsu::registry_session::_reset_metadata()
+void lsu::trace_class::_reset_metadata()
 {
 	_metadata_len_sent = 0;
 	memset(_metadata, 0, _metadata_alloc_len);
@@ -686,12 +685,12 @@ void lsu::registry_session::_reset_metadata()
 	}
 }
 
-void lsu::registry_session::_generate_metadata()
+void lsu::trace_class::_generate_metadata()
 {
-	trace_class::accept(*_metadata_generating_visitor);
+	lst::trace_class::accept(*_metadata_generating_visitor);
 }
 
-void lsu::registry_session::regenerate_metadata()
+void lsu::trace_class::regenerate_metadata()
 {
 	const lttng::pthread::lock_guard registry_lock(_lock);
 
@@ -712,7 +711,7 @@ void lsu::registry_session::regenerate_metadata()
  * disposes of the object.
  */
 lsu::registry_enum::const_rcu_protected_reference
-lsu::registry_session::enumeration(const char *enum_name, uint64_t enum_id) const
+lsu::trace_class::enumeration(const char *enum_name, uint64_t enum_id) const
 {
 	lsu::registry_enum *reg_enum = nullptr;
 	struct lttng_ht_node_str *node;
@@ -752,8 +751,7 @@ lsu::registry_session::enumeration(const char *enum_name, uint64_t enum_id) cons
  * Lookup enumeration by name and comparing enumeration entries.
  * Needs to be called from RCU read-side critical section.
  */
-lsu::registry_enum *
-lsu::registry_session::_lookup_enum(const lsu::registry_enum *reg_enum_lookup) const
+lsu::registry_enum *lsu::trace_class::_lookup_enum(const lsu::registry_enum *reg_enum_lookup) const
 {
 	lsu::registry_enum *reg_enum = nullptr;
 	struct lttng_ht_node_str *node;
@@ -788,11 +786,11 @@ end:
  *
  * We receive ownership of entries.
  */
-void lsu::registry_session::create_or_find_enum(int session_objd,
-						const char *enum_name,
-						struct lttng_ust_ctl_enum_entry *raw_entries,
-						size_t nr_entries,
-						uint64_t *enum_id)
+void lsu::trace_class::create_or_find_enum(int session_objd,
+					   const char *enum_name,
+					   struct lttng_ust_ctl_enum_entry *raw_entries,
+					   size_t nr_entries,
+					   uint64_t *enum_id)
 {
 	struct cds_lfht_node *nodep;
 	lsu::registry_enum *reg_enum = nullptr, *old_reg_enum;

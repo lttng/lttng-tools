@@ -107,9 +107,9 @@ ust_channel_type_to_allocation_policy(enum lttng_ust_abi_chan_type type)
  * A registry per UID object MUST exists before calling this function or else
  * it LTTNG_ASSERT() if not found. RCU read side lock must be acquired.
  */
-lsu::registry_session *ust_app_get_session_registry(const ust_app_session::identifier& ua_sess_id)
+lsu::trace_class *ust_app_get_session_registry(const ust_app_session::identifier& ua_sess_id)
 {
-	lsu::registry_session *registry = nullptr;
+	lsu::trace_class *registry = nullptr;
 
 	switch (ua_sess_id.allocation_policy) {
 	case ust_app_session::identifier::buffer_allocation_policy::PER_PID:
@@ -144,7 +144,7 @@ error:
 }
 
 namespace {
-lsu::registry_session::locked_ref
+lsu::trace_class::locked_ref
 get_locked_session_registry(const ust_app_session::identifier& identifier)
 {
 	auto session = ust_app_get_session_registry(identifier);
@@ -152,7 +152,7 @@ get_locked_session_registry(const ust_app_session::identifier& identifier)
 		pthread_mutex_lock(&session->_lock);
 	}
 
-	return lsu::registry_session::locked_ref{ session };
+	return lsu::trace_class::locked_ref{ session };
 }
 } /* namespace */
 
@@ -760,7 +760,7 @@ static void save_per_pid_lost_discarded_counters(struct ust_app_channel *ua_chan
 static void delete_ust_app_channel(int sock,
 				   struct ust_app_channel *ua_chan,
 				   struct ust_app *app,
-				   const lsu::registry_session::locked_ref& locked_registry)
+				   const lsu::trace_class::locked_ref& locked_registry)
 {
 	int ret;
 
@@ -892,7 +892,7 @@ int ust_app_release_object(struct ust_app *app, struct lttng_ust_abi_object_data
  * but it can be caused by recoverable errors (e.g. the application has
  * terminated concurrently).
  */
-ssize_t ust_app_push_metadata(const lsu::registry_session::locked_ref& locked_registry,
+ssize_t ust_app_push_metadata(const lsu::trace_class::locked_ref& locked_registry,
 			      struct consumer_socket *socket,
 			      int send_zero_data)
 {
@@ -1033,7 +1033,7 @@ error_push:
  * but it can be caused by recoverable errors (e.g. the application has
  * terminated concurrently).
  */
-static int push_metadata(const lsu::registry_session::locked_ref& locked_registry,
+static int push_metadata(const lsu::trace_class::locked_ref& locked_registry,
 			 struct consumer_output *consumer)
 {
 	int ret_val;
@@ -2802,7 +2802,7 @@ static int setup_buffer_reg_pid(struct ust_app_session *ua_sess,
 	/* Initialize registry. */
 	{
 		const auto session = ltt_session::find_session(ua_sess->tracing_id);
-		reg_pid->registry->reg.ust = ust_registry_session_per_pid_create(
+		reg_pid->registry->reg.ust = ust_trace_class_per_pid_create(
 			app,
 			session->trace_format,
 			app->abi,
@@ -2880,17 +2880,16 @@ static int setup_buffer_reg_uid(struct ltt_ust_session *usess,
 	/* Initialize registry. */
 	{
 		const auto session = ltt_session::find_session(ua_sess->tracing_id);
-		reg_uid->registry->reg.ust =
-			ust_registry_session_per_uid_create(session->trace_format,
-							    app->abi,
-							    app->version.major,
-							    app->version.minor,
-							    reg_uid->root_shm_path,
-							    reg_uid->shm_path,
-							    usess->uid,
-							    usess->gid,
-							    ua_sess->tracing_id,
-							    app->uid);
+		reg_uid->registry->reg.ust = ust_trace_class_per_uid_create(session->trace_format,
+									    app->abi,
+									    app->version.major,
+									    app->version.minor,
+									    reg_uid->root_shm_path,
+									    reg_uid->shm_path,
+									    usess->uid,
+									    usess->gid,
+									    ua_sess->tracing_id,
+									    app->uid);
 	}
 	if (!reg_uid->registry->reg.ust) {
 		/*
@@ -3261,7 +3260,7 @@ static int do_consumer_create_channel(struct ltt_ust_session *usess,
 				      struct ust_app_session *ua_sess,
 				      struct ust_app_channel *ua_chan,
 				      int bitness,
-				      lsu::registry_session *registry,
+				      lsu::trace_class *registry,
 				      enum lttng_trace_format trace_format)
 {
 	int ret;
@@ -3795,7 +3794,7 @@ static int create_channel_per_pid(struct ust_app *app,
 				  struct ust_app_channel *ua_chan)
 {
 	int ret;
-	lsu::registry_session *registry;
+	lsu::trace_class *registry;
 	enum lttng_error_code cmd_ret;
 	uint64_t chan_reg_key;
 
@@ -5876,7 +5875,7 @@ static int ust_app_flush_session(struct ltt_ust_session *usess)
 		     lttng::urcu::list_iteration_adapter<buffer_reg_uid, &buffer_reg_uid::lnode>(
 			     usess->buffer_reg_uid_list)) {
 			const lttng::urcu::read_lock_guard read_lock;
-			lsu::registry_session *ust_session_reg;
+			lsu::trace_class *ust_session_reg;
 			struct consumer_socket *socket;
 
 			/* Get consumer socket to use to push the metadata. */
@@ -6892,10 +6891,9 @@ static int handle_app_register_channel_notification(int sock,
 	 * in the context of the handling of a notification from the application.
 	 */
 	auto locked_ua_sess = ust_app_session::make_locked_weak_ref(*ua_sess);
-	auto locked_registry_session =
-		get_locked_session_registry(locked_ua_sess->get_identifier());
+	auto locked_trace_class = get_locked_session_registry(locked_ua_sess->get_identifier());
 	locked_ua_sess.release();
-	if (!locked_registry_session) {
+	if (!locked_trace_class) {
 		DBG("Application session is being torn down. Abort event notify");
 		return 0;
 	};
@@ -6907,7 +6905,7 @@ static int handle_app_register_channel_notification(int sock,
 		chan_reg_key = ua_chan->key;
 	}
 
-	auto& ust_reg_chan = locked_registry_session->channel(chan_reg_key);
+	auto& ust_reg_chan = locked_trace_class->channel(chan_reg_key);
 
 	/* Channel id is set during the object creation. */
 	chan_id = ust_reg_chan.id;
@@ -6927,7 +6925,7 @@ static int handle_app_register_channel_notification(int sock,
 	 */
 	try {
 		auto app_context_fields = lsu::create_trace_fields_from_ust_ctl_fields(
-			*locked_registry_session,
+			*locked_trace_class,
 			ust_ctl_context_fields.get(),
 			context_field_count,
 			lst::field_location::root::EVENT_RECORD_COMMON_CONTEXT,
@@ -7604,7 +7602,7 @@ enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *uses
 							 &ust_app::pid_n>(*ust_app_ht->ht)) {
 			struct consumer_socket *socket;
 			struct ust_app_session *ua_sess;
-			lsu::registry_session *registry;
+			lsu::trace_class *registry;
 			char pathname[PATH_MAX];
 			size_t consumer_path_offset = 0;
 
@@ -8028,7 +8026,7 @@ enum lttng_error_code ust_app_rotate_session(const ltt_session::locked_ref& sess
 							 &ust_app::pid_n>(*ust_app_ht->ht)) {
 			struct consumer_socket *socket;
 			struct ust_app_session *ua_sess;
-			lsu::registry_session *registry;
+			lsu::trace_class *registry;
 
 			if (!ust_app_get(*app)) {
 				/* Application unregistered concurrently, skip it. */
@@ -8240,7 +8238,7 @@ enum lttng_error_code ust_app_clear_session(const ltt_session::locked_ref& sessi
 
 		if (key.type ==
 		    lttng::sessiond::user_space_consumer_channel_keys::channel_type::METADATA) {
-			(void) push_metadata(it.get_registry_session()->lock(), usess.consumer);
+			(void) push_metadata(it.get_trace_class()->lock(), usess.consumer);
 		}
 
 		const auto clean_ret = consumer_clear_channel(consumer_socket, key.consumer_key);

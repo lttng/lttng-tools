@@ -5,11 +5,11 @@
  *
  */
 
-#ifndef LTTNG_UST_REGISTRY_SESSION_PID_H
-#define LTTNG_UST_REGISTRY_SESSION_PID_H
+#ifndef LTTNG_UST_TRACE_CLASS_PID_H
+#define LTTNG_UST_TRACE_CLASS_PID_H
 
 #include "trace-class.hpp"
-#include "ust-registry-session.hpp"
+#include "ust-trace-class.hpp"
 
 #include <lttng/lttng.h>
 
@@ -22,18 +22,18 @@ namespace lttng {
 namespace sessiond {
 namespace ust {
 
-class registry_session_per_pid : public registry_session {
+class trace_class_per_pid : public trace_class {
 public:
-	registry_session_per_pid(const struct ust_app& app,
-				 enum lttng_trace_format trace_format,
-				 const struct lttng::sessiond::trace::abi& trace_abi,
-				 uint32_t major,
-				 uint32_t minor,
-				 const char *root_shm_path,
-				 const char *shm_path,
-				 uid_t euid,
-				 gid_t egid,
-				 uint64_t tracing_id);
+	trace_class_per_pid(const struct ust_app& app,
+			    enum lttng_trace_format trace_format,
+			    const struct lttng::sessiond::trace::abi& trace_abi,
+			    uint32_t major,
+			    uint32_t minor,
+			    const char *root_shm_path,
+			    const char *shm_path,
+			    uid_t euid,
+			    gid_t egid,
+			    uint64_t tracing_id);
 
 	lttng_buffer_type buffering_scheme() const noexcept final;
 	void accept(lttng::sessiond::trace::trace_class_environment_visitor& environment_visitor)
@@ -50,4 +50,4 @@ private:
 } /* namespace sessiond */
 } /* namespace lttng */
 
-#endif /* LTTNG_UST_REGISTRY_SESSION_PID_H */
+#endif /* LTTNG_UST_TRACE_CLASS_PID_H */

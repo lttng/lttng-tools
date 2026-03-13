@@ -1646,7 +1646,7 @@ void ls::user_space_consumer_channel_keys::iterator::_skip_to_next_app_per_pid(
 			continue;
 		}
 
-		position.current_registry_session = registry;
+		position.current_trace_class = registry;
 		if (!_creation_context._channel_filter) {
 			/* No filter; point to the app's first channel. */
 			lttng_ht_get_first((*position.current_app_session)->channels,
@@ -1827,7 +1827,7 @@ ls::user_space_consumer_channel_keys::iterator::_get_current_value_per_pid() con
 			 ls::user_space_consumer_channel_keys::channel_type::DATA,
 			 app.pid };
 	} else {
-		LTTNG_ASSERT(position.current_registry_session);
+		LTTNG_ASSERT(position.current_trace_class);
 		LTTNG_ASSERT(!_creation_context._channel_filter ||
 			     _creation_context._channel_filter->is_metadata());
 
@@ -1836,7 +1836,7 @@ ls::user_space_consumer_channel_keys::iterator::_get_current_value_per_pid() con
 		 * deliver the metadata channel's key.
 		 */
 		return { static_cast<consumer_bitness>(app.abi.bits_per_long),
-			 position.current_registry_session->_metadata_key,
+			 position.current_trace_class->_metadata_key,
 			 ls::user_space_consumer_channel_keys::channel_type::METADATA,
 			 app.pid };
 	}
@@ -1891,7 +1891,7 @@ ls::user_space_consumer_channel_keys::iterator::operator*() const
 	std::abort();
 }
 
-ls::ust::registry_session *ls::user_space_consumer_channel_keys::iterator::get_registry_session()
+ls::ust::trace_class *ls::user_space_consumer_channel_keys::iterator::get_trace_class()
 {
 	if (_is_end) {
 		LTTNG_THROW_OUT_OF_RANGE(
@@ -1900,22 +1900,20 @@ ls::ust::registry_session *ls::user_space_consumer_channel_keys::iterator::get_r
 
 	switch (_creation_context._mode) {
 	case _iteration_mode::PER_PID:
-		return _get_registry_session_per_pid();
+		return _get_trace_class_per_pid();
 	case _iteration_mode::PER_UID:
-		return _get_registry_session_per_uid();
+		return _get_trace_class_per_uid();
 	}
 
 	std::abort();
 }
 
-ls::ust::registry_session *
-ls::user_space_consumer_channel_keys::iterator::_get_registry_session_per_pid()
+ls::ust::trace_class *ls::user_space_consumer_channel_keys::iterator::_get_trace_class_per_pid()
 {
-	return _position._per_pid.current_registry_session;
+	return _position._per_pid.current_trace_class;
 }
 
-ls::ust::registry_session *
-ls::user_space_consumer_channel_keys::iterator::_get_registry_session_per_uid()
+ls::ust::trace_class *ls::user_space_consumer_channel_keys::iterator::_get_trace_class_per_uid()
 {
 	return _position._per_uid.current_registry->registry->reg.ust;
 }

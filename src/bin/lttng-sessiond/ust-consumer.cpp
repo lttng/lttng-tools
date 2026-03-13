@@ -36,7 +36,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 				struct ust_app_channel *ua_chan,
 				struct consumer_output *consumer,
 				struct consumer_socket *socket,
-				lsu::registry_session *registry,
+				lsu::trace_class *registry,
 				struct lttng_trace_chunk *trace_chunk,
 				enum lttng_trace_format trace_format)
 {
@@ -212,7 +212,7 @@ int ust_consumer_ask_channel(struct ust_app_session *ua_sess,
 			     struct ust_app_channel *ua_chan,
 			     struct consumer_output *consumer,
 			     struct consumer_socket *socket,
-			     lsu::registry_session *registry,
+			     lsu::trace_class *registry,
 			     struct lttng_trace_chunk *trace_chunk,
 			     enum lttng_trace_format trace_format)
 {
@@ -481,7 +481,7 @@ int ust_consumer_metadata_request(struct consumer_socket *socket)
 	ssize_t ret_push;
 	struct lttcomm_metadata_request_msg request;
 	struct buffer_reg_uid *reg_uid;
-	lsu::registry_session *ust_reg;
+	lsu::trace_class *ust_reg;
 	struct lttcomm_consumer_msg msg;
 
 	LTTNG_ASSERT(socket);

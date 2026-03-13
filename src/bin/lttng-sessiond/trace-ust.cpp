@@ -921,7 +921,7 @@ int trace_ust_regenerate_metadata(struct ltt_ust_session *usess)
 	for (auto uid_reg :
 	     lttng::urcu::list_iteration_adapter<buffer_reg_uid, &buffer_reg_uid::lnode>(
 		     usess->buffer_reg_uid_list)) {
-		lsu::registry_session *registry;
+		lsu::trace_class *registry;
 
 		session_reg = uid_reg->registry;
 		registry = session_reg->reg.ust;

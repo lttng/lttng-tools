@@ -40,7 +40,7 @@ struct lttng_ust_filter_bytecode;
 namespace lttng {
 namespace sessiond {
 namespace ust {
-class registry_session;
+class trace_class;
 } /* namespace ust */
 } /* namespace sessiond */
 } /* namespace lttng */
@@ -276,7 +276,7 @@ public:
 		 * guaranteed).
 		 *
 		 * The locking issue that motivates this method is that the application
-		 * notitication handling thread needs to access the registry_session in response to
+		 * notitication handling thread needs to access the trace_class in response to
 		 * a message from the application. The ust_app_session's ID is needed to look-up the
 		 * registry session.
 		 *
@@ -558,7 +558,7 @@ static inline int ust_app_supported()
 
 ust_app_session *ust_app_lookup_app_session(const struct ltt_ust_session *usess,
 					    const struct ust_app *app);
-lttng::sessiond::ust::registry_session *
+lttng::sessiond::ust::trace_class *
 ust_app_get_session_registry(const ust_app_session::identifier& identifier);
 
 lttng_ht *ust_app_get_all();
@@ -852,7 +852,7 @@ static inline ust_app_session *ust_app_lookup_app_session(const ltt_ust_session 
 	return nullptr;
 }
 
-static inline lttng::sessiond::ust::registry_session *
+static inline lttng::sessiond::ust::trace_class *
 ust_app_get_session_registry(const ust_app_session::identifier&)
 {
 	return nullptr;
