@@ -15,8 +15,8 @@
 #include "stream-class.hpp"
 #include "trace-class.hpp"
 #include "ust-clock-class.hpp"
+#include "ust-event-class.hpp"
 #include "ust-field-quirks.hpp"
-#include "ust-registry-event.hpp"
 #include "ust-stream-class.hpp"
 
 #include <common/format.hpp>
@@ -202,7 +202,7 @@ ust_trace_class_per_pid_create(struct ust_app *app,
 void ust_trace_class_destroy(lttng::sessiond::ust::trace_class *session);
 
 void ust_stream_class_destroy_event(lttng::sessiond::ust::stream_class *chan,
-				    lttng::sessiond::ust::registry_event *event);
+				    lttng::sessiond::ust::event_class *event);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -253,10 +253,10 @@ static inline void ust_trace_class_destroy(lttng::sessiond::ust::trace_class *se
 {
 }
 
-static inline void ust_registry_destroy_event(lttng::sessiond::ust::stream_class *chan
-					      __attribute__((unused)),
-					      lttng::sessiond::ust::registry_event *event
-					      __attribute__((unused)))
+static inline void ust_destroy_event_class(lttng::sessiond::ust::stream_class *chan
+					   __attribute__((unused)),
+					   lttng::sessiond::ust::event_class *event
+					   __attribute__((unused)))
 {
 }
 
@@ -278,7 +278,7 @@ static inline int ust_metadata_channel_statedump(lttng::sessiond::ust::trace_cla
 static inline int
 ust_metadata_event_statedump(lttng::sessiond::ust::trace_class *session __attribute__((unused)),
 			     lttng::sessiond::ust::stream_class *chan __attribute__((unused)),
-			     lttng::sessiond::ust::registry_event *event __attribute__((unused)))
+			     lttng::sessiond::ust::event_class *event __attribute__((unused)))
 {
 	return 0;
 }

@@ -124,10 +124,11 @@ void destroy_channel(lsu::stream_class *chan, bool notify) noexcept
 	if (chan->_events) {
 		/* Destroy all event associated with this registry. */
 		try {
-			for (auto *event : lttng::urcu::lfht_iteration_adapter<
-				     lsu::registry_event,
-				     decltype(lsu::registry_event::_node),
-				     &lsu::registry_event::_node>(*chan->_events->ht)) {
+			for (auto *event :
+			     lttng::urcu::lfht_iteration_adapter<lsu::event_class,
+								 decltype(lsu::event_class::_node),
+								 &lsu::event_class::_node>(
+				     *chan->_events->ht)) {
 				/* Delete the node from the ht and free it. */
 				ust_stream_class_destroy_event(chan, event);
 			}
@@ -490,7 +491,7 @@ void lsu::trace_class::add_channel(
 			registered_channel.accept(*_metadata_generating_visitor);
 		},
 		/* Added event listener. */
-		[this](const lsu::stream_class& channel, const lsu::registry_event& added_event) {
+		[this](const lsu::stream_class& channel, const lsu::event_class& added_event) {
 			/*
 			 * The channel and its event classes will be dumped at once when
 			 * it is registered. This check prevents event classes from being

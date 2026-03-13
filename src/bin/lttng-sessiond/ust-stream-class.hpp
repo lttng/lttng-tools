@@ -24,7 +24,7 @@ namespace lttng {
 namespace sessiond {
 namespace ust {
 
-class registry_event;
+class event_class;
 
 using event_id = uint32_t;
 
@@ -32,7 +32,7 @@ class stream_class : public lttng::sessiond::trace::stream_class {
 public:
 	using registered_listener_fn = std::function<void(const stream_class&)>;
 	using event_added_listener_fn =
-		std::function<void(const stream_class&, const registry_event&)>;
+		std::function<void(const stream_class&, const event_class&)>;
 
 	stream_class(
 		uint32_t channel_id,

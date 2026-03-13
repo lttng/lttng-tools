@@ -32,15 +32,15 @@ namespace lsu = lttng::sessiond::ust;
 /*
  * Destroy event function call of the call RCU.
  */
-static void ust_registry_event_destroy_rcu(struct rcu_head *head)
+static void ust_event_class_destroy_rcu(struct rcu_head *head)
 {
 	DIAGNOSTIC_PUSH
 	DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
-	lttng::sessiond::ust::registry_event *event =
-		lttng::utils::container_of(head, &lttng::sessiond::ust::registry_event::_head);
+	lttng::sessiond::ust::event_class *event =
+		lttng::utils::container_of(head, &lttng::sessiond::ust::event_class::_head);
 	DIAGNOSTIC_POP
 
-	lttng::sessiond::ust::registry_event_destroy(event);
+	lttng::sessiond::ust::event_class_destroy(event);
 }
 
 /*
@@ -48,7 +48,7 @@ static void ust_registry_event_destroy_rcu(struct rcu_head *head)
  * This MUST be called within a RCU read side lock section.
  */
 void ust_stream_class_destroy_event(lsu::stream_class *chan,
-				    lttng::sessiond::ust::registry_event *event)
+				    lttng::sessiond::ust::event_class *event)
 {
 	int ret;
 	struct lttng_ht_iter iter;
@@ -62,7 +62,7 @@ void ust_stream_class_destroy_event(lsu::stream_class *chan,
 	ret = lttng_ht_del(chan->_events, &iter);
 	LTTNG_ASSERT(!ret);
 
-	call_rcu(&event->_head, ust_registry_event_destroy_rcu);
+	call_rcu(&event->_head, ust_event_class_destroy_rcu);
 
 	return;
 }

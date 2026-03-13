@@ -5,7 +5,7 @@
  *
  */
 
-#include "ust-registry-event.hpp"
+#include "ust-event-class.hpp"
 
 #include <common/make-unique.hpp>
 
@@ -14,15 +14,15 @@
 namespace lst = lttng::sessiond::trace;
 namespace lsu = lttng::sessiond::ust;
 
-lsu::registry_event::registry_event(unsigned int in_id,
-				    unsigned int in_stream_class_id,
-				    int in_session_objd,
-				    int in_channel_objd,
-				    std::string in_name,
-				    std::string in_signature,
-				    std::vector<lttng::sessiond::trace::field::cuptr> in_fields,
-				    int in_loglevel_value,
-				    nonstd::optional<std::string> in_model_emf_uri) :
+lsu::event_class::event_class(unsigned int in_id,
+			      unsigned int in_stream_class_id,
+			      int in_session_objd,
+			      int in_channel_objd,
+			      std::string in_name,
+			      std::string in_signature,
+			      std::vector<lttng::sessiond::trace::field::cuptr> in_fields,
+			      int in_loglevel_value,
+			      nonstd::optional<std::string> in_model_emf_uri) :
 	lst::event_class(in_id,
 			 in_stream_class_id,
 			 in_loglevel_value,
@@ -43,7 +43,7 @@ lsu::registry_event::registry_event(unsigned int in_id,
  * safe to pass a NULL pointer. This should be called inside a call RCU if the
  * event is previously deleted from a rcu hash table.
  */
-void lsu::registry_event_destroy(lsu::registry_event *event)
+void lsu::event_class_destroy(lsu::event_class *event)
 {
 	delete event;
 }

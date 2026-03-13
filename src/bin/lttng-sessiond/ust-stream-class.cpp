@@ -7,7 +7,7 @@
 
 #include "recording-channel-configuration.hpp"
 #include "ust-app.hpp"
-#include "ust-registry-event.hpp"
+#include "ust-event-class.hpp"
 #include "ust-stream-class.hpp"
 
 #include <common/error.hpp>
@@ -31,8 +31,7 @@ bool is_max_event_id(lttng::sessiond::ust::event_id id)
 unsigned long ht_hash_event(const void *_key, unsigned long seed)
 {
 	uint64_t hashed_key;
-	const lttng::sessiond::ust::registry_event *key =
-		(lttng::sessiond::ust::registry_event *) _key;
+	const lttng::sessiond::ust::event_class *key = (lttng::sessiond::ust::event_class *) _key;
 
 	LTTNG_ASSERT(key);
 
@@ -46,14 +45,14 @@ unsigned long ht_hash_event(const void *_key, unsigned long seed)
  */
 int ht_match_event(struct cds_lfht_node *node, const void *_key)
 {
-	const lttng::sessiond::ust::registry_event *key;
-	lttng::sessiond::ust::registry_event *event;
+	const lttng::sessiond::ust::event_class *key;
+	lttng::sessiond::ust::event_class *event;
 
 	LTTNG_ASSERT(node);
 	LTTNG_ASSERT(_key);
 
-	event = lttng::utils::container_of(node, &lttng::sessiond::ust::registry_event::_node);
-	key = (lttng::sessiond::ust::registry_event *) _key;
+	event = lttng::utils::container_of(node, &lttng::sessiond::ust::event_class::_node);
+	key = (lttng::sessiond::ust::event_class *) _key;
 
 	/* It has to be a perfect match. First, compare the event names. */
 	if (event->name != key->name) {
@@ -434,16 +433,16 @@ void lsu::stream_class::add_event(int session_objd,
 			"Failed to allocate new event id (id would overflow): app = {}", app));
 	}
 
-	auto event = lttng::make_unique_wrapper<lsu::registry_event, registry_event_destroy>(
-		new lsu::registry_event(_next_event_id,
-					id,
-					session_objd,
-					channel_objd,
-					std::move(name),
-					std::move(signature),
-					std::move(event_fields),
-					loglevel_value,
-					std::move(model_emf_uri)));
+	auto event = lttng::make_unique_wrapper<lsu::event_class, event_class_destroy>(
+		new lsu::event_class(_next_event_id,
+				     id,
+				     session_objd,
+				     channel_objd,
+				     std::move(name),
+				     std::move(signature),
+				     std::move(event_fields),
+				     loglevel_value,
+				     std::move(model_emf_uri)));
 
 	DBG3("%s", lttng::format("UST registry creating event: event = {}", *event).c_str());
 
@@ -463,7 +462,7 @@ void lsu::stream_class::add_event(int session_objd,
 			 * returned node.
 			 */
 			const auto existing_event = lttng::utils::container_of(
-				nptr, &lttng::sessiond::ust::registry_event::_node);
+				nptr, &lttng::sessiond::ust::event_class::_node);
 			event_id = existing_event->id;
 		} else {
 			LTTNG_THROW_INVALID_ARGUMENT_ERROR(lttng::format(
@@ -524,19 +523,19 @@ void lsu::stream_class::set_as_registered()
 void lsu::stream_class::_accept_on_event_classes(
 	lttng::sessiond::trace::trace_class_visitor& visitor) const
 {
-	const lttng::urcu::lfht_iteration_adapter<lsu::registry_event,
-						  decltype(lsu::registry_event::_node),
-						  &lsu::registry_event::_node>
+	const lttng::urcu::lfht_iteration_adapter<lsu::event_class,
+						  decltype(lsu::event_class::_node),
+						  &lsu::event_class::_node>
 		events_view(*_events->ht);
 
 	/* Copy the event ptrs from the _events ht to this vector which we'll sort. */
-	std::vector<const lttng::sessiond::ust::registry_event *> sorted_event_classes(
+	std::vector<const lttng::sessiond::ust::event_class *> sorted_event_classes(
 		events_view.begin(), events_view.end());
 
 	std::sort(sorted_event_classes.begin(),
 		  sorted_event_classes.end(),
-		  [](const lttng::sessiond::ust::registry_event *a,
-		     const lttng::sessiond::ust::registry_event *b) { return a->id < b->id; });
+		  [](const lttng::sessiond::ust::event_class *a,
+		     const lttng::sessiond::ust::event_class *b) { return a->id < b->id; });
 
 	for (const auto event : sorted_event_classes) {
 		event->accept(visitor);

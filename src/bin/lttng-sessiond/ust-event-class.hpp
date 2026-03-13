@@ -5,8 +5,8 @@
  *
  */
 
-#ifndef LTTNG_UST_REGISTRY_EVENT_H
-#define LTTNG_UST_REGISTRY_EVENT_H
+#ifndef LTTNG_UST_EVENT_CLASS_H
+#define LTTNG_UST_EVENT_CLASS_H
 
 #include "event-class.hpp"
 #include "field.hpp"
@@ -26,22 +26,22 @@ namespace ust {
  * Event registered from a UST tracer sent to the session daemon. This is
  * indexed and matched by <event_name/signature>.
  */
-class registry_event : public lttng::sessiond::trace::event_class {
+class event_class : public lttng::sessiond::trace::event_class {
 public:
-	registry_event(unsigned int id,
-		       unsigned int stream_class_id,
-		       int session_objd,
-		       int channel_objd,
-		       std::string name,
-		       std::string signature,
-		       std::vector<lttng::sessiond::trace::field::cuptr> fields,
-		       int loglevel_value,
-		       nonstd::optional<std::string> model_emf_uri);
-	~registry_event() override = default;
-	registry_event(const registry_event&) = delete;
-	registry_event(registry_event&&) = delete;
-	registry_event& operator=(registry_event&&) = delete;
-	registry_event& operator=(const registry_event&) = delete;
+	event_class(unsigned int id,
+		    unsigned int stream_class_id,
+		    int session_objd,
+		    int channel_objd,
+		    std::string name,
+		    std::string signature,
+		    std::vector<lttng::sessiond::trace::field::cuptr> fields,
+		    int loglevel_value,
+		    nonstd::optional<std::string> model_emf_uri);
+	~event_class() override = default;
+	event_class(const event_class&) = delete;
+	event_class(event_class&&) = delete;
+	event_class& operator=(event_class&&) = delete;
+	event_class& operator=(const event_class&) = delete;
 
 	/* Both objd are set by the tracer. */
 	const int session_objd;
@@ -62,7 +62,7 @@ public:
 	struct rcu_head _head;
 };
 
-void registry_event_destroy(registry_event *event);
+void event_class_destroy(event_class *event);
 
 } /* namespace ust */
 } /* namespace sessiond */
@@ -74,10 +74,10 @@ void registry_event_destroy(registry_event *event);
  */
 namespace fmt {
 template <>
-struct formatter<lttng::sessiond::ust::registry_event> : formatter<std::string> {
+struct formatter<lttng::sessiond::ust::event_class> : formatter<std::string> {
 	template <typename FormatContextType>
-	typename FormatContextType::iterator
-	format(const lttng::sessiond::ust::registry_event& event, FormatContextType& ctx) const
+	typename FormatContextType::iterator format(const lttng::sessiond::ust::event_class& event,
+						    FormatContextType& ctx) const
 	{
 		return format_to(
 			ctx.out(),
@@ -91,4 +91,4 @@ struct formatter<lttng::sessiond::ust::registry_event> : formatter<std::string> 
 };
 } /* namespace fmt */
 
-#endif /* LTTNG_UST_REGISTRY_EVENT_H */
+#endif /* LTTNG_UST_EVENT_CLASS_H */
