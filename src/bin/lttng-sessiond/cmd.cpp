@@ -3587,10 +3587,11 @@ int cmd_start_trace(const ltt_session::locked_ref& session)
 	}
 
 	/* Flag session that trace should start automatically */
-	if (usess) {
-		const int int_ret = ust_app_start_trace_all(usess, session->user_space_domain);
-
-		if (int_ret < 0) {
+	if (session->ust_orchestrator) {
+		try {
+			session->get_ust_orchestrator().start();
+		} catch (const std::exception& ex) {
+			ERR("Failed to start UST session: %s", ex.what());
 			ret = LTTNG_ERR_UST_START_FAIL;
 			goto error;
 		}
@@ -3645,10 +3646,8 @@ end:
 int cmd_stop_trace(const ltt_session::locked_ref& session)
 {
 	int ret;
-	struct ltt_ust_session *usess;
 
 	DBG("Begin stop session \"%s\" (id %" PRIu64 ")", session->name, session->id);
-	usess = session->ust_session;
 
 	/* Session is not active. Skip everything and inform the client. */
 	if (!session->active) {
@@ -3666,9 +3665,11 @@ int cmd_stop_trace(const ltt_session::locked_ref& session)
 		}
 	}
 
-	if (usess && usess->active) {
-		ret = ust_app_stop_trace_all(usess);
-		if (ret < 0) {
+	if (session->ust_orchestrator) {
+		try {
+			session->get_ust_orchestrator().stop();
+		} catch (const std::exception& ex) {
+			ERR("Failed to stop UST session: %s", ex.what());
 			ret = LTTNG_ERR_UST_STOP_FAIL;
 			goto error;
 		}
@@ -5048,10 +5049,12 @@ int cmd_regenerate_metadata(const ltt_session::locked_ref& session)
 		}
 	}
 
-	if (session->ust_session) {
-		ret = trace_ust_regenerate_metadata(session->ust_session);
-		if (ret < 0) {
-			ERR("Failed to regenerate the UST metadata");
+	if (session->ust_orchestrator) {
+		try {
+			session->get_ust_orchestrator().regenerate_metadata();
+		} catch (const std::exception& ex) {
+			ERR("Failed to regenerate the UST metadata: %s", ex.what());
+			ret = LTTNG_ERR_UNK;
 			goto end;
 		}
 	}
@@ -5088,14 +5091,12 @@ int cmd_regenerate_statedump(const ltt_session::locked_ref& session)
 		}
 	}
 
-	if (session->ust_session) {
-		ret = ust_app_regenerate_statedump_all(session->ust_session);
-		/*
-		 * Currently, the statedump in UST always returns 0.
-		 */
-		if (ret < 0) {
+	if (session->ust_orchestrator) {
+		try {
+			session->get_ust_orchestrator().regenerate_statedump();
+		} catch (const std::exception& ex) {
+			ERR("Failed to regenerate the UST statedump: %s", ex.what());
 			ret = LTTNG_ERR_REGEN_STATEDUMP_FAIL;
-			ERR("Failed to regenerate the UST statedump");
 			goto end;
 		}
 	}
@@ -5680,24 +5681,6 @@ error:
 	return status;
 }
 
-/*
- * Record a UST snapshot.
- *
- * Returns LTTNG_OK on success or a LTTNG_ERR error code.
- */
-static enum lttng_error_code record_ust_snapshot(struct ltt_ust_session *usess,
-						 const struct consumer_output *output,
-						 uint64_t nb_packets_per_stream)
-{
-	enum lttng_error_code status;
-
-	LTTNG_ASSERT(usess);
-	LTTNG_ASSERT(output);
-
-	status = ust_app_snapshot_record(usess, output, nb_packets_per_stream);
-	return status;
-}
-
 static uint64_t get_session_size_one_more_packet_per_stream(const ltt_session::locked_ref& session,
 							    uint64_t cur_nr_packets)
 {
@@ -5925,10 +5908,13 @@ static enum lttng_error_code snapshot_record(const ltt_session::locked_ref& sess
 		}
 	}
 
-	if (session->ust_session) {
-		ret_code = record_ust_snapshot(
-			session->ust_session, snapshot_ust_consumer_output, nb_packets_per_stream);
-		if (ret_code != LTTNG_OK) {
+	if (session->ust_orchestrator) {
+		try {
+			session->get_ust_orchestrator().record_snapshot(
+				*snapshot_ust_consumer_output, nb_packets_per_stream);
+		} catch (const std::exception& ex) {
+			ERR_FMT("Failed to record UST snapshot: {}", ex.what());
+			ret_code = LTTNG_ERR_SNAPSHOT_FAIL;
 			goto error_close_trace_chunk;
 		}
 	}

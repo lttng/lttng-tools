@@ -8,7 +8,9 @@
 #include "channel.hpp"
 #include "lttng-channel-from-config.hpp"
 #include "recording-channel-configuration.hpp"
+#include "session.hpp"
 #include "trace-ust.hpp"
+#include "ust-app.hpp"
 #include "ust-domain-orchestrator.hpp"
 
 #include <common/error.hpp>
@@ -126,15 +128,39 @@ void ls::ust::domain_orchestrator::untrack_process_attribute(config::process_att
 		"Untracking process attribute is not supported in the UST domain orchestrator");
 }
 
-void ls::ust::domain_orchestrator::start()
+DIAGNOSTIC_POP /* DIAGNOSTIC_IGNORE_MISSING_NORETURN */
+
+	void
+	ls::ust::domain_orchestrator::start()
 {
-	LTTNG_THROW_UNSUPPORTED_ERROR("Starting the UST domain orchestrator is not supported");
+	if (_active) {
+		return;
+	}
+
+	const auto ret = ust_app_start_trace_all(&_ust_session, _session.user_space_domain);
+	if (ret < 0) {
+		LTTNG_THROW_CTL("Failed to start UST tracing", LTTNG_ERR_UST_START_FAIL);
+	}
+
+	_active = true;
 }
 
 void ls::ust::domain_orchestrator::stop()
 {
-	LTTNG_THROW_UNSUPPORTED_ERROR("Stopping the UST domain orchestrator is not supported");
+	if (!_active) {
+		return;
+	}
+
+	const auto ret = ust_app_stop_trace_all(&_ust_session);
+	if (ret < 0) {
+		LTTNG_THROW_CTL("Failed to stop UST tracing", LTTNG_ERR_UST_STOP_FAIL);
+	}
+
+	_active = false;
 }
+
+DIAGNOSTIC_PUSH
+DIAGNOSTIC_IGNORE_MISSING_NORETURN
 
 void ls::ust::domain_orchestrator::rotate()
 {
@@ -152,23 +178,39 @@ void ls::ust::domain_orchestrator::open_packets()
 		"Opening packets is not supported in the UST domain orchestrator");
 }
 
-void ls::ust::domain_orchestrator::record_snapshot(const struct consumer_output&, std::uint64_t)
+DIAGNOSTIC_POP /* DIAGNOSTIC_IGNORE_MISSING_NORETURN */
+
+	void
+	ls::ust::domain_orchestrator::record_snapshot(
+		const struct consumer_output& snapshot_consumer,
+		std::uint64_t nb_packets_per_stream)
 {
-	LTTNG_THROW_UNSUPPORTED_ERROR(
-		"Recording a snapshot is not supported in the UST domain orchestrator");
+	const auto ret =
+		ust_app_snapshot_record(&_ust_session, &snapshot_consumer, nb_packets_per_stream);
+	if (ret != LTTNG_OK) {
+		LTTNG_THROW_SNAPSHOT_FAILURE("Failed to record UST snapshot");
+	}
 }
 
 void ls::ust::domain_orchestrator::regenerate_metadata()
 {
-	LTTNG_THROW_UNSUPPORTED_ERROR(
-		"Regenerating metadata is not supported in the UST domain orchestrator");
+	const auto ret = trace_ust_regenerate_metadata(&_ust_session);
+	if (ret < 0) {
+		LTTNG_THROW_CTL("Failed to regenerate UST metadata", LTTNG_ERR_UNK);
+	}
 }
 
 void ls::ust::domain_orchestrator::regenerate_statedump()
 {
-	LTTNG_THROW_UNSUPPORTED_ERROR(
-		"Regenerating statedump is not supported in the UST domain orchestrator");
+	const auto ret = ust_app_regenerate_statedump_all(&_ust_session);
+	if (ret < 0) {
+		LTTNG_THROW_CTL("Failed to regenerate UST statedump",
+				LTTNG_ERR_REGEN_STATEDUMP_FAIL);
+	}
 }
+
+DIAGNOSTIC_PUSH
+DIAGNOSTIC_IGNORE_MISSING_NORETURN
 
 void ls::ust::domain_orchestrator::reclaim_channel_memory(
 	const config::recording_channel_configuration&)

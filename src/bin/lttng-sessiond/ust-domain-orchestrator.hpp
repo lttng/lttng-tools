@@ -93,6 +93,7 @@ private:
 	ltt_ust_session& _ust_session;
 	const ltt_session& _session;
 	const config::recording_channel_configuration::owership_model_t _default_buffer_ownership;
+	bool _active = false;
 };
 
 } /* namespace ust */
