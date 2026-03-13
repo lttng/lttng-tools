@@ -6210,7 +6210,7 @@ int cmd_rotate_session(const ltt_session::locked_ref& session,
 			rotation_fail_code = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
 		}
 	}
-	if (session->ust_session) {
+	if (session->ust_orchestrator) {
 		cmd_ret = ust_app_rotate_session(session);
 		if (cmd_ret != LTTNG_OK) {
 			failed_to_rotate = true;

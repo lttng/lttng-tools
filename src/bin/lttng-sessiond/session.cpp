@@ -883,7 +883,7 @@ enum lttng_error_code session_open_packets(const ltt_session::locked_ref& sessio
 	    session->name,
 	    session->id);
 
-	if (session->ust_session) {
+	if (session->ust_orchestrator) {
 		ret = ust_app_open_packets(session);
 		if (ret != LTTNG_OK) {
 			goto end;

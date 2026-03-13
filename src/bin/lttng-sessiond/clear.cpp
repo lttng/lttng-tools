@@ -56,9 +56,6 @@ int cmd_clear_session(const ltt_session::locked_ref& session, int *sock_fd)
 	int ret = LTTNG_OK;
 	struct cmd_clear_session_reply_context *reply_context = nullptr;
 	bool session_was_active = false;
-	struct ltt_ust_session *usess;
-
-	usess = session->ust_session;
 
 	if (sock_fd) {
 		reply_context = zmalloc<cmd_clear_session_reply_context>();
@@ -119,9 +116,11 @@ int cmd_clear_session(const ltt_session::locked_ref& session, int *sock_fd)
 				goto end;
 			}
 		}
-		if (usess && usess->active) {
-			ret = ust_app_stop_trace_all(usess);
-			if (ret < 0) {
+		if (session->ust_orchestrator) {
+			try {
+				session->get_ust_orchestrator().stop();
+			} catch (const std::exception& ex) {
+				ERR("Failed to stop UST session during clear: %s", ex.what());
 				ret = LTTNG_ERR_UST_STOP_FAIL;
 				goto end;
 			}
@@ -140,7 +139,7 @@ int cmd_clear_session(const ltt_session::locked_ref& session, int *sock_fd)
 			goto end;
 		}
 	}
-	if (session->ust_session) {
+	if (session->ust_orchestrator) {
 		ret = ust_app_clear_session(session);
 		if (ret != LTTNG_OK) {
 			goto end;
@@ -188,11 +187,11 @@ int cmd_clear_session(const ltt_session::locked_ref& session, int *sock_fd)
 		}
 
 		/* Flag session that trace should start automatically */
-		if (usess) {
-			const int int_ret =
-				ust_app_start_trace_all(usess, session->user_space_domain);
-
-			if (int_ret < 0) {
+		if (session->ust_orchestrator) {
+			try {
+				session->get_ust_orchestrator().start();
+			} catch (const std::exception& ex) {
+				ERR("Failed to restart UST session during clear: %s", ex.what());
 				ret = LTTNG_ERR_UST_START_FAIL;
 				goto end;
 			}
