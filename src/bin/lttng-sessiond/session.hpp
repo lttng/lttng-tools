@@ -513,6 +513,18 @@ public:
 		return *kernel_orchestrator;
 	}
 
+	lttng::sessiond::domain_orchestrator& get_ust_orchestrator()
+	{
+		LTTNG_ASSERT(ust_orchestrator);
+		return *ust_orchestrator;
+	}
+
+	const lttng::sessiond::domain_orchestrator& get_ust_orchestrator() const
+	{
+		LTTNG_ASSERT(ust_orchestrator);
+		return *ust_orchestrator;
+	}
+
 	lttng::sessiond::config::agent_domain& get_agent_domain(lttng::domain_class domain);
 	const lttng::sessiond::config::agent_domain&
 	get_agent_domain(lttng::domain_class domain) const;
@@ -545,6 +557,7 @@ public:
 	char last_chunk_path[LTTNG_PATH_MAX] = {};
 	time_t creation_time = 0;
 	std::unique_ptr<lttng::sessiond::modules::domain_orchestrator> kernel_orchestrator;
+	std::unique_ptr<lttng::sessiond::domain_orchestrator> ust_orchestrator;
 	struct ltt_ust_session *ust_session = nullptr;
 	mutable struct urcu_ref ref_count = {};
 	/*

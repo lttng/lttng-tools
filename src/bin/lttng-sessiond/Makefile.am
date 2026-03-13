@@ -88,6 +88,7 @@ liblttng_sessiond_common_la_SOURCES = utils.cpp utils.hpp \
 if HAVE_LIBLTTNG_UST_CTL
 liblttng_sessiond_common_la_SOURCES += trace-ust.cpp ust-registry.cpp ust-app.cpp \
 			ust-consumer.cpp ust-consumer.hpp notify-apps.cpp \
+			ust-domain-orchestrator.hpp ust-domain-orchestrator.cpp \
 			ust-clock-class.hpp ust-clock-class.cpp \
 			agent-thread.cpp agent-thread.hpp \
 			ust-field-convert.cpp ust-field-quirks.hpp \

@@ -23,6 +23,7 @@
 #include "pending-memory-reclamation-request.hpp"
 #include "save.hpp"
 #include "testpoint.hpp"
+#include "ust-domain-orchestrator.hpp"
 #include "utils.hpp"
 
 #include <common/buffer-view.hpp>
@@ -470,6 +471,7 @@ error:
 	return ret;
 }
 
+#ifdef HAVE_LIBLTTNG_UST_CTL
 /*
  * Copy consumer output from the tracing session to the domain session. The
  * function also applies the right modification on a per domain basis for the
@@ -577,6 +579,11 @@ int create_ust_session(const ltt_session::locked_ref& session, const struct lttn
 		goto error;
 	}
 
+#ifdef HAVE_LIBLTTNG_UST_CTL
+	session->ust_orchestrator =
+		lttng::make_unique<lttng::sessiond::ust::domain_orchestrator>(*lus, *session);
+#endif
+
 	return LTTNG_OK;
 
 error:
@@ -584,6 +591,13 @@ error:
 	session->ust_session = nullptr;
 	return ret;
 }
+#else /* !HAVE_LIBLTTNG_UST_CTL */
+int create_ust_session(const ltt_session::locked_ref& session [[maybe_unused]],
+		       const struct lttng_domain *domain [[maybe_unused]])
+{
+	LTTNG_THROW_UNSUPPORTED_ERROR("lttng-sessiond was built without UST domain support");
+}
+#endif
 
 /*
  * Create a kernel tracer session then create the default channel.
