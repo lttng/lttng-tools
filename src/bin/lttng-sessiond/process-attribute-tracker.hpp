@@ -9,6 +9,7 @@
 #define LTTNG_SESSIOND_PROCESS_ATTRIBUTE_TRACKER_HPP
 
 #include <common/exception.hpp>
+#include <common/format.hpp>
 
 #include <vendor/optional.hpp>
 
@@ -247,5 +248,31 @@ using virtual_group_id_tracker_t = process_attribute_tracker<resolved_process_at
 } /* namespace config */
 } /* namespace sessiond */
 } /* namespace lttng */
+
+namespace fmt {
+template <>
+struct formatter<lttng::sessiond::config::tracking_policy> : formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator format(lttng::sessiond::config::tracking_policy policy,
+						    FormatContextType& ctx) const
+	{
+		auto name = "UNKNOWN";
+
+		switch (policy) {
+		case lttng::sessiond::config::tracking_policy::INCLUDE_ALL:
+			name = "INCLUDE_ALL";
+			break;
+		case lttng::sessiond::config::tracking_policy::EXCLUDE_ALL:
+			name = "EXCLUDE_ALL";
+			break;
+		case lttng::sessiond::config::tracking_policy::INCLUDE_SET:
+			name = "INCLUDE_SET";
+			break;
+		}
+
+		return format_to(ctx.out(), name);
+	}
+};
+} /* namespace fmt */
 
 #endif /* LTTNG_SESSIOND_PROCESS_ATTRIBUTE_TRACKER_HPP */

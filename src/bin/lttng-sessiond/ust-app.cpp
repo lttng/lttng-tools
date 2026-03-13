@@ -7947,11 +7947,11 @@ int ust_app_regenerate_statedump_all(struct ltt_ust_session *usess)
  *
  * Return LTTNG_OK on success or else an LTTng error code.
  */
-enum lttng_error_code ust_app_rotate_session(const ltt_session::locked_ref& session)
+enum lttng_error_code ust_app_rotate_session(const ltt_session& session)
 {
 	int ret;
 	enum lttng_error_code cmd_ret = LTTNG_OK;
-	struct ltt_ust_session *usess = session->ust_session;
+	struct ltt_ust_session *usess = session.ust_session;
 
 	LTTNG_ASSERT(usess);
 
@@ -8215,16 +8215,16 @@ error:
  *
  * Return LTTNG_OK on success or else an LTTng error code.
  */
-enum lttng_error_code ust_app_clear_session(const ltt_session::locked_ref& session)
+enum lttng_error_code ust_app_clear_session(const ltt_session& session)
 {
-	const ltt_ust_session& usess = *session->ust_session;
+	const ltt_ust_session& usess = *session.ust_session;
 
 	if (usess.active) {
-		ERR("Expecting inactive session %s (%" PRIu64 ")", session->name, session->id);
+		ERR("Expecting inactive session %s (%" PRIu64 ")", session.name, session.id);
 		return LTTNG_ERR_FATAL;
 	}
 
-	const auto channel_keys = session->user_space_consumer_channel_keys();
+	const auto channel_keys = session.user_space_consumer_channel_keys();
 	for (auto it = channel_keys.begin(); it != channel_keys.end(); ++it) {
 		const auto key = *it;
 
@@ -8275,11 +8275,11 @@ enum lttng_error_code ust_app_clear_session(const ltt_session::locked_ref& sessi
  * daemon as the same "offset" in a metadata stream will no longer point
  * to the same content.
  */
-enum lttng_error_code ust_app_open_packets(const ltt_session::locked_ref& session)
+enum lttng_error_code ust_app_open_packets(const ltt_session& session)
 {
-	const ltt_ust_session& usess = *session->ust_session;
+	const ltt_ust_session& usess = *session.ust_session;
 
-	for (const auto key : session->user_space_consumer_channel_keys()) {
+	for (const auto key : session.user_space_consumer_channel_keys()) {
 		if (key.type !=
 		    lttng::sessiond::user_space_consumer_channel_keys::channel_type::DATA) {
 			continue;

@@ -107,31 +107,37 @@ void ls::ust::domain_orchestrator::add_context(const config::recording_channel_c
 		"Adding context is not supported in the UST domain orchestrator");
 }
 
+DIAGNOSTIC_POP; /* DIAGNOSTIC_IGNORE_MISSING_NORETURN */
+
 void ls::ust::domain_orchestrator::set_tracking_policy(config::process_attribute_type,
 						       config::tracking_policy)
 {
-	LTTNG_THROW_UNSUPPORTED_ERROR(
-		"Setting tracking policy is not supported in the UST domain orchestrator");
+	/*
+	 * The config has already been updated by the command layer. Push the
+	 * updated configuration to all running applications if tracing is active.
+	 */
+	if (_active) {
+		ust_app_global_update_all(&_ust_session, _session.user_space_domain);
+	}
 }
 
 void ls::ust::domain_orchestrator::track_process_attribute(config::process_attribute_type,
 							   std::uint64_t)
 {
-	LTTNG_THROW_UNSUPPORTED_ERROR(
-		"Tracking process attribute is not supported in the UST domain orchestrator");
+	if (_active) {
+		ust_app_global_update_all(&_ust_session, _session.user_space_domain);
+	}
 }
 
 void ls::ust::domain_orchestrator::untrack_process_attribute(config::process_attribute_type,
 							     std::uint64_t)
 {
-	LTTNG_THROW_UNSUPPORTED_ERROR(
-		"Untracking process attribute is not supported in the UST domain orchestrator");
+	if (_active) {
+		ust_app_global_update_all(&_ust_session, _session.user_space_domain);
+	}
 }
 
-DIAGNOSTIC_POP /* DIAGNOSTIC_IGNORE_MISSING_NORETURN */
-
-	void
-	ls::ust::domain_orchestrator::start()
+void ls::ust::domain_orchestrator::start()
 {
 	if (_active) {
 		return;
@@ -159,31 +165,32 @@ void ls::ust::domain_orchestrator::stop()
 	_active = false;
 }
 
-DIAGNOSTIC_PUSH
-DIAGNOSTIC_IGNORE_MISSING_NORETURN
-
 void ls::ust::domain_orchestrator::rotate()
 {
-	LTTNG_THROW_UNSUPPORTED_ERROR("Rotating the UST domain orchestrator is not supported");
+	const auto ret = ust_app_rotate_session(_session);
+	if (ret != LTTNG_OK) {
+		LTTNG_THROW_CTL("Failed to rotate UST session", ret);
+	}
 }
 
 void ls::ust::domain_orchestrator::clear()
 {
-	LTTNG_THROW_UNSUPPORTED_ERROR("Clearing the UST domain orchestrator is not supported");
+	const auto ret = ust_app_clear_session(_session);
+	if (ret != LTTNG_OK) {
+		LTTNG_THROW_CTL("Failed to clear UST session", ret);
+	}
 }
 
 void ls::ust::domain_orchestrator::open_packets()
 {
-	LTTNG_THROW_UNSUPPORTED_ERROR(
-		"Opening packets is not supported in the UST domain orchestrator");
+	const auto ret = ust_app_open_packets(_session);
+	if (ret != LTTNG_OK) {
+		LTTNG_THROW_CTL("Failed to open UST packets", ret);
+	}
 }
 
-DIAGNOSTIC_POP /* DIAGNOSTIC_IGNORE_MISSING_NORETURN */
-
-	void
-	ls::ust::domain_orchestrator::record_snapshot(
-		const struct consumer_output& snapshot_consumer,
-		std::uint64_t nb_packets_per_stream)
+void ls::ust::domain_orchestrator::record_snapshot(const struct consumer_output& snapshot_consumer,
+						   std::uint64_t nb_packets_per_stream)
 {
 	const auto ret =
 		ust_app_snapshot_record(&_ust_session, &snapshot_consumer, nb_packets_per_stream);
@@ -223,4 +230,4 @@ ls::ust::domain_orchestrator::get_recording_channel_runtime_stats(
 		"Getting recording channel runtime stats is not supported in the UST domain orchestrator");
 }
 
-DIAGNOSTIC_POP /* DIAGNOSTIC_IGNORE_MISSING_NORETURN */
+DIAGNOSTIC_POP; /* DIAGNOSTIC_IGNORE_MISSING_NORETURN */

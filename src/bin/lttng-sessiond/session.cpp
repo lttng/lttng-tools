@@ -884,8 +884,11 @@ enum lttng_error_code session_open_packets(const ltt_session::locked_ref& sessio
 	    session->id);
 
 	if (session->ust_orchestrator) {
-		ret = ust_app_open_packets(session);
-		if (ret != LTTNG_OK) {
+		try {
+			session->get_ust_orchestrator().open_packets();
+		} catch (const std::exception& ex) {
+			ERR("Failed to open packets of UST session: %s", ex.what());
+			ret = LTTNG_ERR_UNK;
 			goto end;
 		}
 	}

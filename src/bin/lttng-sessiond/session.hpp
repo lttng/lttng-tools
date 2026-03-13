@@ -926,25 +926,25 @@ const char *session_get_base_path(const ltt_session::locked_ref& session);
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
-enum lttng_error_code ust_app_rotate_session(const ltt_session::locked_ref& session);
-enum lttng_error_code ust_app_clear_session(const ltt_session::locked_ref& session);
-enum lttng_error_code ust_app_open_packets(const ltt_session::locked_ref& session);
+enum lttng_error_code ust_app_rotate_session(const ltt_session& session);
+enum lttng_error_code ust_app_clear_session(const ltt_session& session);
+enum lttng_error_code ust_app_open_packets(const ltt_session& session);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
-static inline enum lttng_error_code ust_app_rotate_session(const ltt_session::locked_ref& session
+static inline enum lttng_error_code ust_app_rotate_session(const ltt_session& session
 							   __attribute__((unused)))
 {
 	return LTTNG_ERR_UNK;
 }
 
-static inline enum lttng_error_code ust_app_clear_session(const ltt_session::locked_ref& session
+static inline enum lttng_error_code ust_app_clear_session(const ltt_session& session
 							  __attribute__((unused)))
 {
 	return LTTNG_ERR_UNK;
 }
 
-static inline enum lttng_error_code ust_app_open_packets(const ltt_session::locked_ref& session
+static inline enum lttng_error_code ust_app_open_packets(const ltt_session& session
 							 __attribute__((unused)))
 {
 	return LTTNG_ERR_UNK;

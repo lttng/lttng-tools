@@ -140,8 +140,11 @@ int cmd_clear_session(const ltt_session::locked_ref& session, int *sock_fd)
 		}
 	}
 	if (session->ust_orchestrator) {
-		ret = ust_app_clear_session(session);
-		if (ret != LTTNG_OK) {
+		try {
+			session->get_ust_orchestrator().clear();
+		} catch (const std::exception& ex) {
+			ERR("Failed to clear UST session: %s", ex.what());
+			ret = LTTNG_ERR_CLEAR_FAIL_CONSUMER;
 			goto end;
 		}
 	}

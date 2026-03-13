@@ -2077,76 +2077,73 @@ cmd_process_attr_tracker_get_tracking_policy(const ltt_session::locked_ref& sess
 
 enum lttng_error_code
 cmd_process_attr_tracker_set_tracking_policy(const ltt_session::locked_ref& session,
-					     enum lttng_domain_type domain,
-					     enum lttng_process_attr process_attr,
-					     enum lttng_tracking_policy policy)
+					     lttng_domain_type domain_type,
+					     lttng_process_attr process_attr,
+					     lttng_tracking_policy policy)
 {
-	enum lttng_error_code ret_code = LTTNG_OK;
-
 	switch (policy) {
 	case LTTNG_TRACKING_POLICY_INCLUDE_SET:
 	case LTTNG_TRACKING_POLICY_EXCLUDE_ALL:
 	case LTTNG_TRACKING_POLICY_INCLUDE_ALL:
 		break;
 	default:
-		ret_code = LTTNG_ERR_INVALID;
-		goto end;
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			"Invalid tracking policy value: value={}", static_cast<int>(policy)));
 	}
 
-	switch (domain) {
+	auto& target_domain = session->get_domain(domain_type_to_class(domain_type));
+	const auto new_policy = convert_tracking_policy(policy);
+	const auto attribute_type = to_process_attribute_type(process_attr);
+	const auto previous_policy = get_domain_tracker_policy(target_domain, process_attr);
+
+	if (previous_policy == new_policy) {
+		return LTTNG_OK;
+	}
+
+	update_domain_tracker_policy(target_domain, process_attr, new_policy);
+
+	auto rollback_policy_change = lttng::make_scope_exit([&target_domain,
+							      process_attr,
+							      previous_policy,
+							      new_policy]() noexcept {
+		try {
+			update_domain_tracker_policy(target_domain, process_attr, previous_policy);
+		} catch (...) {
+			ERR_FMT("Failed to roll back process attribute tracking policy change: previous_policy={}, new_policy={}",
+				previous_policy,
+				new_policy);
+		}
+	});
+
+	switch (domain_type) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
 		if (!session->kernel_orchestrator) {
-			ret_code = LTTNG_ERR_INVALID;
-			goto end;
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR("Kernel orchestrator is not available");
 		}
 
-		const auto config_policy = convert_tracking_policy(policy);
-		const auto attribute_type = to_process_attribute_type(process_attr);
-		const auto current_policy =
-			get_domain_tracker_policy(session->kernel_space_domain, process_attr);
-
-		if (current_policy == config_policy) {
-			break;
-		}
-
-		session->get_kernel_orchestrator().set_tracking_policy(attribute_type,
-								       config_policy);
-
-		update_domain_tracker_policy(
-			session->kernel_space_domain, process_attr, config_policy);
+		session->get_kernel_orchestrator().set_tracking_policy(attribute_type, new_policy);
 		break;
 	}
 	case LTTNG_DOMAIN_UST:
 	{
-		if (!session->ust_session) {
-			ret_code = LTTNG_ERR_INVALID;
-			goto end;
+		if (!session->ust_orchestrator) {
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR("UST orchestrator is not available");
 		}
 
-		const auto config_policy = convert_tracking_policy(policy);
-		const auto current_policy =
-			get_domain_tracker_policy(session->user_space_domain, process_attr);
-
-		if (current_policy == config_policy) {
-			break;
-		}
-
-		update_domain_tracker_policy(
-			session->user_space_domain, process_attr, config_policy);
-
-		if (session->ust_session->active) {
-			ust_app_global_update_all(session->ust_session, session->user_space_domain);
-		}
-
+		session->get_ust_orchestrator().set_tracking_policy(attribute_type, new_policy);
 		break;
 	}
 	default:
-		ret_code = LTTNG_ERR_UNSUPPORTED_DOMAIN;
-		break;
+		LTTNG_THROW_CTL(
+			fmt::format(
+				"Unsupported domain type for process attribute tracking: domain_type={}",
+				domain_type),
+			LTTNG_ERR_UNSUPPORTED_DOMAIN);
 	}
-end:
-	return ret_code;
+
+	rollback_policy_change.disarm();
+	return LTTNG_OK;
 }
 
 enum lttng_error_code
@@ -2187,15 +2184,22 @@ cmd_process_attr_tracker_inclusion_set_add_value(const ltt_session::locked_ref& 
 	}
 	case LTTNG_DOMAIN_UST:
 	{
-		if (!session->ust_session) {
+		if (!session->ust_orchestrator) {
 			return LTTNG_ERR_INVALID;
 		}
 
 		auto& session_domain = session->get_domain(domain_type_to_class(domain));
 		add_value_to_domain_tracker(session_domain, process_attr, value);
 
-		if (session->ust_session->active) {
-			ust_app_global_update_all(session->ust_session, session->user_space_domain);
+		try {
+			const auto integral_value =
+				resolve_process_attr_value_to_integral(process_attr, value);
+			session->get_ust_orchestrator().track_process_attribute(
+				to_process_attribute_type(process_attr), integral_value);
+		} catch (...) {
+			/* Roll back the domain configuration change. */
+			remove_value_from_domain_tracker(session_domain, process_attr, value);
+			throw;
 		}
 
 		break;
@@ -2245,15 +2249,22 @@ cmd_process_attr_tracker_inclusion_set_remove_value(const ltt_session::locked_re
 	}
 	case LTTNG_DOMAIN_UST:
 	{
-		if (!session->ust_session) {
+		if (!session->ust_orchestrator) {
 			return LTTNG_ERR_INVALID;
 		}
 
 		auto& session_domain = session->get_domain(domain_type_to_class(domain));
 		remove_value_from_domain_tracker(session_domain, process_attr, value);
 
-		if (session->ust_session->active) {
-			ust_app_global_update_all(session->ust_session, session->user_space_domain);
+		try {
+			const auto integral_value =
+				resolve_process_attr_value_to_integral(process_attr, value);
+			session->get_ust_orchestrator().untrack_process_attribute(
+				to_process_attribute_type(process_attr), integral_value);
+		} catch (...) {
+			/* Roll back the domain configuration change. */
+			add_value_to_domain_tracker(session_domain, process_attr, value);
+			throw;
 		}
 
 		break;
@@ -5746,7 +5757,7 @@ static enum lttng_error_code snapshot_record(const ltt_session::locked_ref& sess
 	    snapshot_output->name,
 	    session->name,
 	    snapshot_chunk_name);
-	if (!session->kernel_orchestrator && !session->ust_session) {
+	if (!session->kernel_orchestrator && !session->ust_orchestrator) {
 		ERR("Failed to record snapshot as no channels exist");
 		ret_code = LTTNG_ERR_NO_CHANNEL;
 		goto error;
@@ -6161,10 +6172,16 @@ int cmd_rotate_session(const ltt_session::locked_ref& session,
 		}
 	}
 	if (session->ust_orchestrator) {
-		cmd_ret = ust_app_rotate_session(session);
-		if (cmd_ret != LTTNG_OK) {
+		try {
+			session->get_ust_orchestrator().rotate();
+		} catch (const lttng::ctl::error& ex) {
+			ERR_FMT("Failed to rotate UST session: {}", ex.what());
 			failed_to_rotate = true;
-			rotation_fail_code = cmd_ret;
+			rotation_fail_code = ex.code();
+		} catch (const std::exception& ex) {
+			ERR_FMT("Failed to rotate UST session: {}", ex.what());
+			failed_to_rotate = true;
+			rotation_fail_code = LTTNG_ERR_UNK;
 		}
 	}
 
