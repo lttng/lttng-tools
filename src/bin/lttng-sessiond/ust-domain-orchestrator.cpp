@@ -6,6 +6,8 @@
  */
 
 #include "channel.hpp"
+#include "event-rule-configuration.hpp"
+#include "event.hpp"
 #include "lttng-channel-from-config.hpp"
 #include "recording-channel-configuration.hpp"
 #include "session.hpp"
@@ -16,6 +18,9 @@
 #include <common/error.hpp>
 #include <common/exception.hpp>
 #include <common/macros.hpp>
+
+#include <lttng/event-rule/event-rule.h>
+#include <lttng/event-rule/user-tracepoint.h>
 
 namespace ls = lttng::sessiond;
 namespace lsc = lttng::sessiond::config;
@@ -78,6 +83,32 @@ void ls::ust::domain_orchestrator::disable_channel(
 	}
 }
 
+void ls::ust::domain_orchestrator::disable_event(
+	const config::recording_channel_configuration& channel_config,
+	const config::event_rule_configuration& event_rule_config)
+{
+	auto *const uchan = trace_ust_find_channel_by_name(_ust_session.domain_global.channels,
+							   channel_config.name.c_str());
+	if (!uchan) {
+		LTTNG_THROW_CTL("UST channel not found", LTTNG_ERR_UST_CHAN_NOT_FOUND);
+	}
+
+	const auto *rule = event_rule_config.event_rule.get();
+	LTTNG_ASSERT(lttng_event_rule_get_type(rule) == LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT);
+
+	const char *pattern_or_name;
+	const auto status =
+		lttng_event_rule_user_tracepoint_get_name_pattern(rule, &pattern_or_name);
+	if (status != LTTNG_EVENT_RULE_STATUS_OK) {
+		LTTNG_THROW_CTL("Failed to get event rule name pattern", LTTNG_ERR_INVALID);
+	}
+
+	const auto ret = event_ust_disable_tracepoint(&_ust_session, uchan, pattern_or_name);
+	if (ret != LTTNG_OK) {
+		LTTNG_THROW_CTL("Failed to disable UST event", static_cast<lttng_error_code>(ret));
+	}
+}
+
 /*
  * Suppress noreturn warnings for the stub methods below. These are skeleton
  * implementations that will be filled in as the UST domain orchestrator is
@@ -91,13 +122,6 @@ void ls::ust::domain_orchestrator::enable_event(const config::recording_channel_
 {
 	LTTNG_THROW_UNSUPPORTED_ERROR(
 		"Enabling an event is not supported in the UST domain orchestrator");
-}
-
-void ls::ust::domain_orchestrator::disable_event(const config::recording_channel_configuration&,
-						 const config::event_rule_configuration&)
-{
-	LTTNG_THROW_UNSUPPORTED_ERROR(
-		"Disabling an event is not supported in the UST domain orchestrator");
 }
 
 void ls::ust::domain_orchestrator::add_context(const config::recording_channel_configuration&,

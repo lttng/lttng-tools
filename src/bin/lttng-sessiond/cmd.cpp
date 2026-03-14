@@ -2484,43 +2484,65 @@ lttng_error_code cmd_disable_event(struct command_ctx *cmd_ctx,
 	}
 	case LTTNG_DOMAIN_UST:
 	{
-		struct ltt_ust_channel *uchan;
-		struct ltt_ust_session *usess;
-
-		usess = session.ust_session;
-
 		if (validate_ust_event_name(event_name)) {
 			return LTTNG_ERR_INVALID_EVENT_NAME;
 		}
+
+		switch (event->type) {
+		case LTTNG_EVENT_ALL:
+			break;
+		default:
+			return LTTNG_ERR_UNK;
+		}
+
+		auto& ust_domain = locked_session->get_domain(lttng::domain_class::USER_SPACE);
 
 		/*
 		 * If a non-default channel has been created in the
 		 * session, explicitly require that -c chan_name needs
 		 * to be provided.
 		 */
-		if (usess->has_non_default_channel && channel_name[0] == '\0') {
+		if (ust_domain.has_non_default_channel() && channel_name[0] == '\0') {
 			return LTTNG_ERR_NEED_CHANNEL_NAME;
 		}
 
-		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels, channel_name);
-		if (uchan == nullptr) {
-			return LTTNG_ERR_UST_CHAN_NOT_FOUND;
+		auto& channel_config = ust_domain.get_channel(channel_name);
+		auto& orchestrator = locked_session->get_ust_orchestrator();
+
+		bool found = false;
+		bool error = false;
+
+		for (const auto& pair : channel_config.event_rules) {
+			auto& event_rule_cfg = *pair.second;
+
+			const auto this_pattern_or_name =
+				get_event_rule_pattern_or_name(*event_rule_cfg.event_rule);
+			if (!pattern_disables_all &&
+			    (!this_pattern_or_name || *this_pattern_or_name != event_name)) {
+				continue;
+			}
+
+			found = true;
+
+			if (!event_rule_cfg.is_enabled) {
+				continue;
+			}
+
+			try {
+				orchestrator.disable_event(channel_config, event_rule_cfg);
+			} catch (const lttng::ctl::error& ex) {
+				WARN_FMT("Failed to disable UST event-rule: {}", ex.what());
+				error = true;
+				continue;
+			}
 		}
 
-		switch (event->type) {
-		case LTTNG_EVENT_ALL:
-			if (pattern_disables_all) {
-				ret = event_ust_disable_all_tracepoints(usess, uchan);
-			} else {
-				ret = event_ust_disable_tracepoint(usess, uchan, event_name);
-			}
+		if (!pattern_disables_all && !found) {
+			return LTTNG_ERR_UST_EVENT_NOT_FOUND;
+		}
 
-			if (ret != LTTNG_OK) {
-				return static_cast<lttng_error_code>(ret);
-			}
-			break;
-		default:
-			return LTTNG_ERR_UNK;
+		if (error) {
+			return LTTNG_ERR_UST_DISABLE_FAIL;
 		}
 
 		DBG3("Disable UST event %s in channel %s completed", event_name, channel_name);
