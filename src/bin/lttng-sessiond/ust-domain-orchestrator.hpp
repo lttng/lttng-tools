@@ -15,6 +15,7 @@
 
 struct ltt_session;
 struct ltt_ust_session;
+struct lttng_ust_context_attr;
 
 namespace lttng {
 namespace sessiond {
@@ -88,6 +89,18 @@ public:
 
 	recording_channel_runtime_stats get_recording_channel_runtime_stats(
 		const config::recording_channel_configuration& channel_config) const override;
+
+	/*
+	 * Convert a context_configuration to the lttng_ust_context_attr ABI
+	 * structure used to communicate with the UST tracer.
+	 *
+	 * This is a public static method so that it can be used by code outside
+	 * the orchestrator (e.g. ust-app.cpp) during the transition period.
+	 * It will become a private helper once per-app context creation is
+	 * internalized.
+	 */
+	static lttng_ust_context_attr
+	make_ust_context_attr(const config::context_configuration& context_config);
 
 private:
 	ltt_ust_session& _ust_session;

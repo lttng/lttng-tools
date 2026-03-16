@@ -36,17 +36,30 @@ namespace config {
 #define LTTNG_THROW_EVENT_RULE_CONFIGURATION_NOT_FOUND_ERROR(event_rule)                     \
 	throw lttng::sessiond::config::exceptions::event_rule_configuration_not_found_error( \
 		event_rule, LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_CONTEXT_CONFIGURATION_ALREADY_PRESENT_ERROR(context_configuration)          \
+	throw lttng::sessiond::config::exceptions::context_configuration_already_present_error( \
+		context_configuration, LTTNG_SOURCE_LOCATION())
 
 namespace exceptions {
 /*
  * @class event_rule_configuration_not_found_error
- * @brief Represents a event-rule-configuration-not-found error and provides the
- * name of the channel looked-up for use by error-reporting code.
+ * @brief Represents a event-rule-configuration-not-found error.
  */
 class event_rule_configuration_not_found_error : public lttng::runtime_error {
 public:
 	explicit event_rule_configuration_not_found_error(
 		const lttng_event_rule& event_rule, const lttng::source_location& source_location);
+};
+
+/*
+ * @class context_configuration_already_present_error
+ * @brief Represents a duplicate-context error.
+ */
+class context_configuration_already_present_error : public lttng::runtime_error {
+public:
+	explicit context_configuration_already_present_error(
+		const context_configuration& context_configuration,
+		const lttng::source_location& source_location);
 };
 } /* namespace exceptions */
 
@@ -141,7 +154,7 @@ public:
 	event_rule_configuration&
 	get_event_rule_configuration(const lttng_event_rule& matching_event_rule_to_lookup);
 
-	void add_context(context_configuration::uptr context);
+	const context_configuration& add_context(context_configuration::uptr context);
 	const std::vector<context_configuration::uptr>& get_contexts() const noexcept;
 
 	const buffer_allocation_policy_t buffer_allocation_policy;

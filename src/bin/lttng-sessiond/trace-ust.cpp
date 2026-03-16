@@ -10,6 +10,7 @@
 #include "agent.hpp"
 #include "buffer-registry.hpp"
 #include "trace-ust.hpp"
+#include "ust-domain-orchestrator.hpp"
 #include "utils.hpp"
 
 #include <common/common.hpp>
@@ -583,191 +584,24 @@ error:
 	return ret;
 }
 
-static int trace_ust_context_type_event_to_ust(enum lttng_event_context_type type)
+ltt_ust_context::ltt_ust_context(const lttng::sessiond::config::context_configuration& config) :
+	context_config(config)
 {
-	int utype;
+	CDS_INIT_LIST_HEAD(&list);
 
-	switch (type) {
-	case LTTNG_EVENT_CONTEXT_VTID:
-		utype = LTTNG_UST_ABI_CONTEXT_VTID;
-		break;
-	case LTTNG_EVENT_CONTEXT_VPID:
-		utype = LTTNG_UST_ABI_CONTEXT_VPID;
-		break;
-	case LTTNG_EVENT_CONTEXT_PTHREAD_ID:
-		utype = LTTNG_UST_ABI_CONTEXT_PTHREAD_ID;
-		break;
-	case LTTNG_EVENT_CONTEXT_PROCNAME:
-		utype = LTTNG_UST_ABI_CONTEXT_PROCNAME;
-		break;
-	case LTTNG_EVENT_CONTEXT_IP:
-		utype = LTTNG_UST_ABI_CONTEXT_IP;
-		break;
-	case LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER:
-		if (!lttng_ust_ctl_has_perf_counters()) {
-			utype = -1;
-			WARN("Perf counters not implemented in UST");
-		} else {
-			utype = LTTNG_UST_ABI_CONTEXT_PERF_THREAD_COUNTER;
-		}
-		break;
-	case LTTNG_EVENT_CONTEXT_APP_CONTEXT:
-		utype = LTTNG_UST_ABI_CONTEXT_APP_CONTEXT;
-		break;
-	case LTTNG_EVENT_CONTEXT_CGROUP_NS:
-		utype = LTTNG_UST_ABI_CONTEXT_CGROUP_NS;
-		break;
-	case LTTNG_EVENT_CONTEXT_IPC_NS:
-		utype = LTTNG_UST_ABI_CONTEXT_IPC_NS;
-		break;
-	case LTTNG_EVENT_CONTEXT_MNT_NS:
-		utype = LTTNG_UST_ABI_CONTEXT_MNT_NS;
-		break;
-	case LTTNG_EVENT_CONTEXT_NET_NS:
-		utype = LTTNG_UST_ABI_CONTEXT_NET_NS;
-		break;
-	case LTTNG_EVENT_CONTEXT_PID_NS:
-		utype = LTTNG_UST_ABI_CONTEXT_PID_NS;
-		break;
-	case LTTNG_EVENT_CONTEXT_TIME_NS:
-		utype = LTTNG_UST_ABI_CONTEXT_TIME_NS;
-		break;
-	case LTTNG_EVENT_CONTEXT_USER_NS:
-		utype = LTTNG_UST_ABI_CONTEXT_USER_NS;
-		break;
-	case LTTNG_EVENT_CONTEXT_UTS_NS:
-		utype = LTTNG_UST_ABI_CONTEXT_UTS_NS;
-		break;
-	case LTTNG_EVENT_CONTEXT_VUID:
-		utype = LTTNG_UST_ABI_CONTEXT_VUID;
-		break;
-	case LTTNG_EVENT_CONTEXT_VEUID:
-		utype = LTTNG_UST_ABI_CONTEXT_VEUID;
-		break;
-	case LTTNG_EVENT_CONTEXT_VSUID:
-		utype = LTTNG_UST_ABI_CONTEXT_VSUID;
-		break;
-	case LTTNG_EVENT_CONTEXT_VGID:
-		utype = LTTNG_UST_ABI_CONTEXT_VGID;
-		break;
-	case LTTNG_EVENT_CONTEXT_VEGID:
-		utype = LTTNG_UST_ABI_CONTEXT_VEGID;
-		break;
-	case LTTNG_EVENT_CONTEXT_VSGID:
-		utype = LTTNG_UST_ABI_CONTEXT_VSGID;
-		break;
-	case LTTNG_EVENT_CONTEXT_CPU_ID:
-		utype = LTTNG_UST_ABI_CONTEXT_CPU_ID;
-		break;
-	default:
-		utype = -1;
-		break;
-	}
-	return utype;
+	const auto ust_ctx_attr = lsu::domain_orchestrator::make_ust_context_attr(config);
+	lttng_ht_node_init_ulong(&node, (unsigned long) ust_ctx_attr.ctx);
 }
 
 /*
- * Return 1 if contexts match, 0 otherwise.
- */
-int trace_ust_match_context(const struct ltt_ust_context *uctx,
-			    const struct lttng_event_context *ctx)
-{
-	int utype;
-
-	utype = trace_ust_context_type_event_to_ust(ctx->ctx);
-	if (utype < 0) {
-		return 0;
-	}
-	if (uctx->ctx.ctx != utype) {
-		return 0;
-	}
-	switch (utype) {
-	case LTTNG_UST_ABI_CONTEXT_PERF_THREAD_COUNTER:
-		if (uctx->ctx.u.perf_counter.type != ctx->u.perf_counter.type) {
-			return 0;
-		}
-		if (uctx->ctx.u.perf_counter.config != ctx->u.perf_counter.config) {
-			return 0;
-		}
-		if (strncmp(uctx->ctx.u.perf_counter.name,
-			    ctx->u.perf_counter.name,
-			    LTTNG_UST_ABI_SYM_NAME_LEN) != 0) {
-			return 0;
-		}
-		break;
-	case LTTNG_UST_ABI_CONTEXT_APP_CONTEXT:
-		LTTNG_ASSERT(uctx->ctx.u.app_ctx.provider_name);
-		LTTNG_ASSERT(uctx->ctx.u.app_ctx.ctx_name);
-		if (strcmp(uctx->ctx.u.app_ctx.provider_name, ctx->u.app_ctx.provider_name) != 0 ||
-		    strcmp(uctx->ctx.u.app_ctx.ctx_name, ctx->u.app_ctx.ctx_name) != 0) {
-			return 0;
-		}
-	default:
-		break;
-	}
-	return 1;
-}
-
-/*
- * Allocate and initialize an UST context.
+ * Allocate and initialize a UST context from a context_configuration.
  *
- * Return pointer to structure or NULL.
+ * The context_configuration must outlive the returned structure.
  */
-struct ltt_ust_context *trace_ust_create_context(const struct lttng_event_context *ctx)
+struct ltt_ust_context *
+trace_ust_create_context(const lttng::sessiond::config::context_configuration& context_config)
 {
-	struct ltt_ust_context *uctx = nullptr;
-	int utype;
-
-	LTTNG_ASSERT(ctx);
-
-	utype = trace_ust_context_type_event_to_ust(ctx->ctx);
-	if (utype < 0) {
-		ERR("Invalid UST context");
-		goto end;
-	}
-
-	uctx = zmalloc<ltt_ust_context>();
-	if (!uctx) {
-		PERROR("zmalloc ltt_ust_context");
-		goto end;
-	}
-
-	uctx->ctx.ctx = (enum lttng_ust_abi_context_type) utype;
-	switch (utype) {
-	case LTTNG_UST_ABI_CONTEXT_PERF_THREAD_COUNTER:
-		uctx->ctx.u.perf_counter.type = ctx->u.perf_counter.type;
-		uctx->ctx.u.perf_counter.config = ctx->u.perf_counter.config;
-		strncpy(uctx->ctx.u.perf_counter.name,
-			ctx->u.perf_counter.name,
-			LTTNG_UST_ABI_SYM_NAME_LEN);
-		uctx->ctx.u.perf_counter.name[LTTNG_UST_ABI_SYM_NAME_LEN - 1] = '\0';
-		break;
-	case LTTNG_UST_ABI_CONTEXT_APP_CONTEXT:
-	{
-		char *provider_name = nullptr, *ctx_name = nullptr;
-
-		provider_name = strdup(ctx->u.app_ctx.provider_name);
-		if (!provider_name) {
-			goto error;
-		}
-		uctx->ctx.u.app_ctx.provider_name = provider_name;
-
-		ctx_name = strdup(ctx->u.app_ctx.ctx_name);
-		if (!ctx_name) {
-			goto error;
-		}
-		uctx->ctx.u.app_ctx.ctx_name = ctx_name;
-		break;
-	}
-	default:
-		break;
-	}
-	lttng_ht_node_init_ulong(&uctx->node, (unsigned long) uctx->ctx.ctx);
-end:
-	return uctx;
-error:
-	trace_ust_destroy_context(uctx);
-	return nullptr;
+	return new ltt_ust_context(context_config);
 }
 
 /*
@@ -821,15 +655,11 @@ void trace_ust_destroy_event(struct ltt_ust_event *event)
 /*
  * Cleanup ust context structure.
  */
-void trace_ust_destroy_context(struct ltt_ust_context *ctx)
+void trace_ust_destroy_context(ltt_ust_context *ctx)
 {
 	LTTNG_ASSERT(ctx);
 
-	if (ctx->ctx.ctx == LTTNG_UST_ABI_CONTEXT_APP_CONTEXT) {
-		free(ctx->ctx.u.app_ctx.provider_name);
-		free(ctx->ctx.u.app_ctx.ctx_name);
-	}
-	free(ctx);
+	delete ctx;
 }
 
 /*

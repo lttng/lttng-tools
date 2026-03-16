@@ -1574,17 +1574,34 @@ skip_domain:
 	switch (cmd_ctx->lsm.cmd_type) {
 	case LTTCOMM_SESSIOND_COMMAND_ADD_CONTEXT:
 	{
-		struct lttng_event_context *event_context = nullptr;
+		struct lttng_event_context *raw_event_context = nullptr;
 		const enum lttng_error_code ret_code =
-			receive_lttng_event_context(cmd_ctx, *sock, sock_error, &event_context);
+			receive_lttng_event_context(cmd_ctx, *sock, sock_error, &raw_event_context);
 
 		if (ret_code != LTTNG_OK) {
 			ret = (int) ret_code;
 			goto error;
 		}
 
-		ret = cmd_add_context(cmd_ctx, *target_session, event_context);
-		lttng_event_context_destroy(event_context);
+		auto event_context =
+			lttng::make_unique_wrapper<lttng_event_context, lttng_event_context_destroy>(
+				raw_event_context);
+
+		try {
+			ret = cmd_add_context(cmd_ctx, *target_session, event_context.get());
+		} catch (const lttng::sessiond::config::exceptions::
+				 context_configuration_already_present_error& ex) {
+			/*
+			 * There are separate error codes for kernel and UST contexts and this is
+			 * the highest-level at which we can differentiate between the two,
+			 * so we need to translate the exception to the appropriate error code here.
+			 */
+			LTTNG_THROW_CTL(ex.what(),
+					cmd_ctx->lsm.domain.type == LTTNG_DOMAIN_KERNEL ?
+						LTTNG_ERR_KERN_CONTEXT_FAIL :
+						LTTNG_ERR_UST_CONTEXT_EXIST);
+		}
+
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_DISABLE_CHANNEL:

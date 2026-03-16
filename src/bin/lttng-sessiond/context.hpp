@@ -8,13 +8,17 @@
 #ifndef _LTT_CONTEXT_H
 #define _LTT_CONTEXT_H
 
+#include "context-configuration.hpp"
 #include "trace-ust.hpp"
 
-#include <lttng/lttng.h>
-
+/*
+ * Add a UST context from a context_configuration to a specific channel
+ * or to all channels if channel_name is empty.
+ *
+ * The context_configuration must outlive the created ltt_ust_context objects.
+ */
 int context_ust_add(struct ltt_ust_session *usess,
-		    enum lttng_domain_type domain,
-		    const struct lttng_event_context *ctx,
+		    const lttng::sessiond::config::context_configuration& context_config,
 		    const char *channel_name);
 
 #endif /* _LTT_CONTEXT_H */

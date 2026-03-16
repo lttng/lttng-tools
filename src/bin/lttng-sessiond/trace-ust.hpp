@@ -35,8 +35,16 @@ struct ltt_ust_ht_key {
 
 /* Context hash table nodes */
 struct ltt_ust_context {
-	struct lttng_ust_context_attr ctx;
-	struct lttng_ht_node_ulong node;
+	explicit ltt_ust_context(const lttng::sessiond::config::context_configuration& config);
+
+	ltt_ust_context(const ltt_ust_context&) = delete;
+	ltt_ust_context(ltt_ust_context&&) = delete;
+	ltt_ust_context& operator=(const ltt_ust_context&) = delete;
+	ltt_ust_context& operator=(ltt_ust_context&&) = delete;
+	~ltt_ust_context() = default;
+
+	const lttng::sessiond::config::context_configuration& context_config;
+	struct lttng_ht_node_ulong node = {};
 	struct cds_list_head list;
 };
 
@@ -203,9 +211,8 @@ enum lttng_error_code trace_ust_create_event(struct lttng_event *ev,
 					     struct lttng_event_exclusion *exclusion,
 					     bool internal_event,
 					     struct ltt_ust_event **ust_event);
-struct ltt_ust_context *trace_ust_create_context(const struct lttng_event_context *ctx);
-int trace_ust_match_context(const struct ltt_ust_context *uctx,
-			    const struct lttng_event_context *ctx);
+struct ltt_ust_context *
+trace_ust_create_context(const lttng::sessiond::config::context_configuration& context_config);
 void trace_ust_delete_channel(struct lttng_ht *ht, struct ltt_ust_channel *channel);
 
 int trace_ust_regenerate_metadata(struct ltt_ust_session *usess);
@@ -217,7 +224,7 @@ int trace_ust_regenerate_metadata(struct ltt_ust_session *usess);
 void trace_ust_destroy_session(struct ltt_ust_session *session);
 void trace_ust_destroy_channel(struct ltt_ust_channel *channel);
 void trace_ust_destroy_event(struct ltt_ust_event *event);
-void trace_ust_destroy_context(struct ltt_ust_context *ctx);
+void trace_ust_destroy_context(ltt_ust_context *ctx);
 void trace_ust_free_session(struct ltt_ust_session *session);
 
 bool trace_ust_runtime_ctl_version_matches_build_version();
@@ -288,18 +295,11 @@ static inline void trace_ust_free_session(struct ltt_ust_session *session __attr
 {
 }
 
-static inline struct ltt_ust_context *trace_ust_create_context(const struct lttng_event_context *ctx
-							       __attribute__((unused)))
+static inline struct ltt_ust_context *
+trace_ust_create_context(const lttng::sessiond::config::context_configuration& context_config
+			 __attribute__((unused)))
 {
 	return NULL;
-}
-
-static inline int trace_ust_match_context(const struct ltt_ust_context *uctx
-					  __attribute__((unused)),
-					  const struct lttng_event_context *ctx
-					  __attribute__((unused)))
-{
-	return 0;
 }
 
 static inline struct ltt_ust_event *

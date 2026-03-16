@@ -7,121 +7,93 @@
  */
 
 #define _LGPL_SOURCE
-#include "agent.hpp"
 #include "context.hpp"
 #include "trace-ust.hpp"
 #include "ust-app.hpp"
+#include "ust-domain-orchestrator.hpp"
 
 #include <common/error.hpp>
-#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/format.hpp>
 #include <common/urcu.hpp>
 
-#include <stdio.h>
-#include <unistd.h>
+#include <cstring>
 #include <urcu/list.h>
 
-/*
- * Add UST context to channel.
- */
-static int add_uctx_to_channel(struct ltt_ust_session *usess,
-			       enum lttng_domain_type domain,
-			       struct ltt_ust_channel *uchan,
-			       const struct lttng_event_context *ctx)
-{
-	int ret;
-	struct ltt_ust_context *new_uctx = nullptr;
+namespace lsc = lttng::sessiond::config;
 
+namespace {
+
+/*
+ * Add a UST context to a channel.
+ *
+ * The context_configuration must outlive the created ltt_ust_context.
+ */
+int add_uctx_to_channel(struct ltt_ust_session *usess,
+			struct ltt_ust_channel *uchan,
+			const lsc::context_configuration& context_config)
+{
 	LTTNG_ASSERT(usess);
 	LTTNG_ASSERT(uchan);
-	LTTNG_ASSERT(ctx);
 
-	/* Check if context is duplicate */
-	for (auto uctx_it :
+	/* Check for duplicate contexts on this channel. */
+	for (auto *uctx_it :
 	     lttng::urcu::list_iteration_adapter<ltt_ust_context, &ltt_ust_context::list>(
 		     uchan->ctx_list)) {
-		if (trace_ust_match_context(uctx_it, ctx)) {
-			ret = LTTNG_ERR_UST_CONTEXT_EXIST;
-			goto duplicate;
+		if (uctx_it->context_config == context_config) {
+			return LTTNG_ERR_UST_CONTEXT_EXIST;
 		}
 	}
 
-	switch (domain) {
-	case LTTNG_DOMAIN_JUL:
-	case LTTNG_DOMAIN_LOG4J:
-	case LTTNG_DOMAIN_LOG4J2:
-	{
-		struct agent *agt;
-
-		if (ctx->ctx != LTTNG_EVENT_CONTEXT_APP_CONTEXT) {
-			/* Other contexts are not needed by the agent. */
-			break;
-		}
-		agt = trace_ust_find_agent(usess, domain);
-
-		if (!agt) {
-			agt = agent_create(domain);
-			if (!agt) {
-				ret = -LTTNG_ERR_NOMEM;
-				goto error;
-			}
-
-			/* Ownership of agt is transferred. */
-			agent_add(agt, usess->agents);
-		}
-		ret = agent_add_context(ctx, agt);
-		if (ret != LTTNG_OK) {
-			goto error;
-		}
-
-		ret = agent_enable_context(ctx, domain);
-		if (ret != LTTNG_OK) {
-			goto error;
-		}
-		break;
-	}
-	case LTTNG_DOMAIN_UST:
-	case LTTNG_DOMAIN_PYTHON:
-		break;
-	default:
-		abort();
+	/* Create ltt UST context from the context_configuration. */
+	std::unique_ptr<ltt_ust_context> new_uctx;
+	new_uctx.reset((trace_ust_create_context(context_config)));
+	if (!new_uctx) {
+		return LTTNG_ERR_UST_CONTEXT_INVAL;
 	}
 
-	/* Create ltt UST context */
-	new_uctx = trace_ust_create_context(ctx);
-	if (new_uctx == nullptr) {
-		ret = LTTNG_ERR_UST_CONTEXT_INVAL;
-		goto error;
-	}
+	auto *const new_uctx_ptr = new_uctx.get();
 
-	/* Add ltt UST context node to ltt UST channel */
-	lttng_ht_add_ulong(uchan->ctx, &new_uctx->node);
-	cds_list_add_tail(&new_uctx->list, &uchan->ctx_list);
+	/* Add ltt UST context node to ltt UST channel. */
+	lttng_ht_add_ulong(uchan->ctx, &new_uctx_ptr->node);
+	cds_list_add_tail(&new_uctx_ptr->list, &uchan->ctx_list);
 
+	LTTNG_ASSERT(!usess->active);
 	if (!usess->active) {
-		goto end;
+		new_uctx.release();
+		return 0;
 	}
 
-	ret = ust_app_add_ctx_channel_glb(usess, uchan, new_uctx);
+	const auto ret = ust_app_add_ctx_channel_glb(usess, uchan, new_uctx_ptr);
 	if (ret < 0) {
-		goto error;
+		/* Roll back insertion to leave channel structures consistent. */
+		cds_list_del(&new_uctx_ptr->list);
+
+		lttng_ht_iter iter = {};
+		iter.iter.node = &new_uctx_ptr->node.node;
+		const auto ht_del_ret = lttng_ht_del(uchan->ctx, &iter);
+		LTTNG_ASSERT(!ht_del_ret);
+
+		return ret;
 	}
-end:
-	DBG("Context UST %d added to channel %s", new_uctx->ctx.ctx, uchan->name);
+
+	new_uctx.release();
+
+	DBG("Context UST `%s` added to channel %s",
+	    lttng::format("{}", context_config).c_str(),
+	    uchan->name);
 
 	return 0;
-
-error:
-	free(new_uctx);
-duplicate:
-	return ret;
 }
 
+} /* anonymous namespace */
+
 /*
- * Add UST context to tracer.
+ * Add a UST context from a context_configuration to a specific channe.
+ *
+ * The context_configuration must outlive the created ltt_ust_context objects.
  */
 int context_ust_add(struct ltt_ust_session *usess,
-		    enum lttng_domain_type domain,
-		    const struct lttng_event_context *ctx,
+		    const lsc::context_configuration& context_config,
 		    const char *channel_name)
 {
 	int ret = LTTNG_OK;
@@ -129,39 +101,19 @@ int context_ust_add(struct ltt_ust_session *usess,
 	ltt_ust_channel *uchan = nullptr;
 
 	LTTNG_ASSERT(usess);
-	LTTNG_ASSERT(ctx);
 	LTTNG_ASSERT(channel_name);
-
-	const lttng::urcu::read_lock_guard read_lock;
+	LTTNG_ASSERT(strlen(channel_name) != 0);
 
 	chan_ht = usess->domain_global.channels;
 
-	/* Get UST channel if defined */
-	if (channel_name[0] != '\0') {
-		uchan = trace_ust_find_channel_by_name(chan_ht, channel_name);
-		if (uchan == nullptr) {
-			ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
-			goto error;
-		}
+	const lttng::urcu::read_lock_guard read_lock;
+	uchan = trace_ust_find_channel_by_name(chan_ht, channel_name);
+	if (uchan == nullptr) {
+		ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
+		goto error;
 	}
 
-	if (uchan) {
-		/* Add ctx to channel */
-		ret = add_uctx_to_channel(usess, domain, uchan, ctx);
-	} else {
-		/* Add ctx all events, all channels */
-		for (auto *iterated_uchan :
-		     lttng::urcu::lfht_iteration_adapter<ltt_ust_channel,
-							 decltype(ltt_ust_channel::node),
-							 &ltt_ust_channel::node>(*chan_ht->ht)) {
-			ret = add_uctx_to_channel(usess, domain, iterated_uchan, ctx);
-			if (ret) {
-				ERR("Failed to add context to channel %s", iterated_uchan->name);
-				continue;
-			}
-		}
-	}
-
+	ret = add_uctx_to_channel(usess, uchan, context_config);
 	switch (ret) {
 	case LTTNG_ERR_UST_CONTEXT_EXIST:
 		break;
@@ -181,6 +133,7 @@ int context_ust_add(struct ltt_ust_session *usess,
 		} else {
 			ret = LTTNG_OK;
 		}
+
 		break;
 	}
 

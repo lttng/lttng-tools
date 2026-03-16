@@ -44,6 +44,7 @@
 #include <common/exception.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>
 #include <common/make-unique-wrapper.hpp>
+#include <common/make-unique.hpp>
 #include <common/math.hpp>
 #include <common/payload-view.hpp>
 #include <common/payload.hpp>
@@ -2029,17 +2030,15 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 
 			if ((err == LTTNG_OK) &&
 			    (allocation_policy_value == LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU)) {
-				struct lttng_event_context cpu_id_ctx;
-				cpu_id_ctx.ctx = LTTNG_EVENT_CONTEXT_CPU_ID;
+				auto cpu_id_config =
+					lttng::make_unique<lsc::simple_context_configuration>(
+						lsc::context_configuration::type::CPU_ID);
+				channel_config.add_context(std::move(cpu_id_config));
 
-				const auto ctx_ret = static_cast<enum lttng_error_code>(
-					context_ust_add(usess,
-							domain->type,
-							&cpu_id_ctx,
-							new_channel_attr->name));
-				if (ctx_ret != LTTNG_OK) {
-					ret_code = ctx_ret;
-				}
+				/*
+				 * Doesn't need to be added to the tracer explicitly since it is
+				 * implicitly enabled by the "per-cpu" allocation policy.
+				 */
 			}
 		} else {
 			if (channel_was_already_enabled) {
@@ -2060,7 +2059,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 		session->has_non_mmap_channel = true;
 	}
 
-	return ret_code;
+	return LTTNG_OK;
 }
 
 lttng_tracking_policy
@@ -2674,12 +2673,13 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
 	case LTTNG_DOMAIN_LOG4J2:
+	case LTTNG_DOMAIN_PYTHON:
 	{
 		/*
 		 * Validate channel name.
 		 * If no channel name is given and the domain is JUL or LOG4J,
 		 * set it to the appropriate domain-specific channel name. If
-		 * a name is provided but does not match the expexted channel
+		 * a name is provided but does not match the expected channel
 		 * name, return an error.
 		 */
 		if (domain_type == LTTNG_DOMAIN_JUL && *channel_name &&
@@ -2694,62 +2694,90 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 			   strcmp(channel_name, DEFAULT_LOG4J2_CHANNEL_NAME) != 0) {
 			ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
 			goto error;
+		} else if (domain_type == LTTNG_DOMAIN_PYTHON && *channel_name &&
+			   strcmp(channel_name, DEFAULT_PYTHON_CHANNEL_NAME) != 0) {
+			ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
+			goto error;
 		}
 	}
-	/* fall through */
+	/* Fall through. */
 	case LTTNG_DOMAIN_UST:
 	{
-		struct ltt_ust_session *usess = session.ust_session;
-		unsigned int chan_count;
+		LTTNG_ASSERT(session.ust_orchestrator);
 
-		LTTNG_ASSERT(usess);
+		if (session.user_space_domain.recording_channel_count() == 0) {
+			/* Create default channel through the orchestrator. */
+			const auto attr = channel_new_default_attr(
+				LTTNG_DOMAIN_UST, session.ust_session->buffer_type);
+			lttng_domain ust_domain = {};
+			ust_domain.type = LTTNG_DOMAIN_UST;
+			ust_domain.buf_type =
+				static_cast<lttng_buffer_type>(session.ust_session->buffer_type);
 
-		chan_count = lttng_ht_get_count(usess->domain_global.channels);
-		if (chan_count == 0) {
-			/* Create default channel */
-			const auto attr = channel_new_default_attr(domain_type, usess->buffer_type);
-
-			if (!attr) {
-				ret = LTTNG_ERR_FATAL;
+			ret = cmd_enable_channel_internal(locked_session, &ust_domain, *attr);
+			if (ret != LTTNG_OK) {
 				goto error;
 			}
+		}
 
-			ret = channel_ust_create(usess, attr.get(), usess->buffer_type);
+		/*
+		 * App contexts need to be enabled against the agents explicitly. It is also only
+		 * supported by Java loggers.
+		 *
+		 * FIXME: this isn't rolled back on error as the agent interface doesn't allow
+		 * contexts to be removed once added.
+		 */
+		if (event_context->ctx == LTTNG_EVENT_CONTEXT_APP_CONTEXT) {
+			if (domain_type == LTTNG_DOMAIN_PYTHON) {
+				LTTNG_THROW_UNSUPPORTED_ERROR(
+					"Application contexts are not supported by the Python domain");
+			}
+
+			auto *agt = trace_ust_find_agent(session.ust_session, domain_type);
+
+			if (!agt) {
+				agt = agent_create(domain_type);
+				if (!agt) {
+					ret = LTTNG_ERR_NOMEM;
+					goto error;
+				}
+
+				agent_add(agt, session.ust_session->agents);
+			}
+
+			ret = agent_add_context(event_context, agt);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
 
-			chan_ust_created = 1;
-		}
-
-		ret = context_ust_add(usess, domain_type, event_context, channel_name);
-		if (ret != LTTNG_OK) {
-			goto error;
+			ret = agent_enable_context(event_context, domain_type);
+			if (ret != LTTNG_OK) {
+				goto error;
+			}
 		}
 
 		/*
-		 * Add context to recording channel configuration(s).
-		 * This mirrors the logic in context_ust_add: if channel_name is
-		 * non-empty, add to that channel only; otherwise add to all channels.
+		 * Add context to UST tracer and recording channel
+		 * configuration(s) through the orchestrator.
 		 */
 		{
-			auto& domain = locked_session->get_domain(
-				lttng::get_domain_class_from_lttng_domain_type(domain_type));
+			auto& orchestrator = locked_session->get_ust_orchestrator();
+			auto& ust_domain = locked_session->user_space_domain;
 
 			if (channel_name[0] != '\0') {
-				/* Add to specific channel. */
-				auto& recording_channel = domain.get_channel(channel_name);
-				recording_channel.add_context(
-					lttng::sessiond::config::
-						make_context_configuration_from_event_context(
-							*event_context));
+				auto& recording_channel = ust_domain.get_channel(channel_name);
+				const auto& stored_config = recording_channel.add_context(
+					lsc::make_context_configuration_from_event_context(
+						*event_context));
+
+				orchestrator.add_context(recording_channel, stored_config);
 			} else {
-				/* Add to all channels. */
-				for (auto& channel : domain.recording_channels()) {
-					channel.add_context(
-						lttng::sessiond::config::
-							make_context_configuration_from_event_context(
-								*event_context));
+				for (auto& channel : ust_domain.recording_channels()) {
+					const auto& stored_config = channel.add_context(
+						lsc::make_context_configuration_from_event_context(
+							*event_context));
+
+					orchestrator.add_context(channel, stored_config);
 				}
 			}
 		}

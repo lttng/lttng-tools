@@ -11,10 +11,12 @@
 #include <lttng/lttng.h>
 #include <lttng/ust-sigbus.h>
 
+#include <bin/lttng-sessiond/context-configuration.hpp>
 #include <bin/lttng-sessiond/lttng-ust-abi.hpp>
 #include <bin/lttng-sessiond/notification-thread.hpp>
 #include <bin/lttng-sessiond/trace-ust.hpp>
 #include <bin/lttng-sessiond/ust-app.hpp>
+#include <bin/lttng-sessiond/ust-domain-orchestrator.hpp>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -244,20 +246,22 @@ end:
 
 static void test_create_ust_context()
 {
-	struct lttng_event_context ectx;
-	struct ltt_ust_context *uctx;
+	namespace lsc = lttng::sessiond::config;
 
-	ectx.ctx = LTTNG_EVENT_CONTEXT_VTID;
+	const lsc::simple_context_configuration ctx_config(lsc::context_configuration::type::VTID);
 
-	uctx = trace_ust_create_context(&ectx);
+	std::unique_ptr<ltt_ust_context> uctx;
+	uctx.reset(trace_ust_create_context(ctx_config));
 	ok(uctx != nullptr, "Create UST context");
 
 	if (uctx) {
-		ok((int) uctx->ctx.ctx == LTTNG_UST_ABI_CONTEXT_VTID, "Validate UST context");
+		const auto ust_attr =
+			lttng::sessiond::ust::domain_orchestrator::make_ust_context_attr(
+				uctx->context_config);
+		ok((int) ust_attr.ctx == LTTNG_UST_ABI_CONTEXT_VTID, "Validate UST context");
 	} else {
 		skip(1, "Skipping UST context validation as creation failed");
 	}
-	free(uctx);
 }
 
 int main()

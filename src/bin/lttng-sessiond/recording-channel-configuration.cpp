@@ -25,6 +25,18 @@ ls::exceptions::event_rule_configuration_not_found_error::event_rule_configurati
 {
 }
 
+ls::exceptions::context_configuration_already_present_error::
+	context_configuration_already_present_error(
+		const context_configuration& context_configuration_,
+		const lttng::source_location& source_location_) :
+	lttng::runtime_error(
+		fmt::format(
+			"Context configuration already present in channel configuration: context_configuration=`{}`",
+			context_configuration_),
+		source_location_)
+{
+}
+
 ls::recording_channel_configuration::recording_channel_configuration(
 	bool is_enabled_,
 	std::string name_,
@@ -103,9 +115,17 @@ ls::event_rule_configuration& ls::recording_channel_configuration::get_event_rul
 	return *(it->second);
 }
 
-void ls::recording_channel_configuration::add_context(context_configuration::uptr context)
+const ls::context_configuration&
+ls::recording_channel_configuration::add_context(context_configuration::uptr context)
 {
+	for (const auto& existing_context : _contexts) {
+		if (*existing_context == *context) {
+			LTTNG_THROW_CONTEXT_CONFIGURATION_ALREADY_PRESENT_ERROR(*context);
+		}
+	}
+
 	_contexts.emplace_back(std::move(context));
+	return *_contexts.back();
 }
 
 const std::vector<ls::context_configuration::uptr>&

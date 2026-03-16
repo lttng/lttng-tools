@@ -117,9 +117,25 @@ context_configuration::context_configuration(type context_type_) : context_type(
 {
 }
 
+bool context_configuration::operator==(const context_configuration& other) const noexcept
+{
+	return context_type == other.context_type && is_equal(other);
+}
+
+bool context_configuration::operator!=(const context_configuration& other) const noexcept
+{
+	return !(*this == other);
+}
+
 simple_context_configuration::simple_context_configuration(type context_type_) :
 	context_configuration(context_type_)
 {
+}
+
+bool simple_context_configuration::is_equal(const context_configuration& other) const noexcept
+{
+	(void) other;
+	return true;
 }
 
 perf_counter_context_configuration::perf_counter_context_configuration(
@@ -134,12 +150,50 @@ perf_counter_context_configuration::perf_counter_context_configuration(
 {
 }
 
+bool perf_counter_context_configuration::operator==(
+	const perf_counter_context_configuration& other) const noexcept
+{
+	return perf_type == other.perf_type && perf_config == other.perf_config &&
+		name == other.name;
+}
+
+bool perf_counter_context_configuration::operator!=(
+	const perf_counter_context_configuration& other) const noexcept
+{
+	return !(*this == other);
+}
+
+bool perf_counter_context_configuration::is_equal(const context_configuration& other) const noexcept
+{
+	const auto& perf_counter_other =
+		static_cast<const perf_counter_context_configuration&>(other);
+
+	return *this == perf_counter_other;
+}
+
 app_context_configuration::app_context_configuration(std::string provider_name_,
 						     std::string context_name_) :
 	context_configuration(type::APP_CONTEXT),
 	provider_name(std::move(provider_name_)),
 	context_name(std::move(context_name_))
 {
+}
+
+bool app_context_configuration::operator==(const app_context_configuration& other) const noexcept
+{
+	return provider_name == other.provider_name && context_name == other.context_name;
+}
+
+bool app_context_configuration::operator!=(const app_context_configuration& other) const noexcept
+{
+	return !(*this == other);
+}
+
+bool app_context_configuration::is_equal(const context_configuration& other) const noexcept
+{
+	const auto& app_other = static_cast<const app_context_configuration&>(other);
+
+	return *this == app_other;
 }
 
 context_configuration::uptr

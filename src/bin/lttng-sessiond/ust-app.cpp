@@ -21,6 +21,7 @@
 #include "session.hpp"
 #include "ust-app.hpp"
 #include "ust-consumer.hpp"
+#include "ust-domain-orchestrator.hpp"
 #include "ust-field-quirks.hpp"
 #include "utils.hpp"
 
@@ -5341,13 +5342,14 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 static bool is_context_redundant(const struct ltt_ust_channel *uchan,
 				 const struct ltt_ust_context *uctx)
 {
+	namespace lsc = lttng::sessiond::config;
+
 	const auto chan_type = static_cast<enum lttng_ust_abi_chan_type>(uchan->attr.type);
-	const auto context_type = uctx->ctx.ctx;
 
 	switch (chan_type) {
 	case LTTNG_UST_ABI_CHAN_PER_CPU:
-		switch (context_type) {
-		case LTTNG_UST_ABI_CONTEXT_CPU_ID:
+		switch (uctx->context_config.context_type) {
+		case lsc::context_configuration::type::CPU_ID:
 			return true;
 		default:
 			break;
@@ -5403,7 +5405,11 @@ static int ust_app_channel_create(struct ltt_ust_session *usess,
 			if (is_context_redundant(uchan, uctx)) {
 				continue;
 			}
-			ret = create_ust_app_channel_context(ua_chan, &uctx->ctx, app);
+
+			auto ust_ctx_attr =
+				lttng::sessiond::ust::domain_orchestrator::make_ust_context_attr(
+					uctx->context_config);
+			ret = create_ust_app_channel_context(ua_chan, &ust_ctx_attr, app);
 			if (ret) {
 				goto error;
 			}
@@ -6723,7 +6729,12 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 			continue;
 		}
 		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
-		ret = create_ust_app_channel_context(ua_chan, &uctx->ctx, app);
+		{
+			auto ust_ctx_attr =
+				lttng::sessiond::ust::domain_orchestrator::make_ust_context_attr(
+					uctx->context_config);
+			ret = create_ust_app_channel_context(ua_chan, &ust_ctx_attr, app);
+		}
 		if (ret < 0) {
 			continue;
 		}

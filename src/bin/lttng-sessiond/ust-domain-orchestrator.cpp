@@ -6,6 +6,8 @@
  */
 
 #include "channel.hpp"
+#include "context-configuration.hpp"
+#include "context.hpp"
 #include "event-rule-configuration.hpp"
 #include "event.hpp"
 #include "lttng-channel-from-config.hpp"
@@ -17,13 +19,121 @@
 
 #include <common/error.hpp>
 #include <common/exception.hpp>
+#include <common/format.hpp>
 #include <common/macros.hpp>
 
 #include <lttng/event-rule/event-rule.h>
 #include <lttng/event-rule/user-tracepoint.h>
 
+#include <cstring>
+
 namespace ls = lttng::sessiond;
 namespace lsc = lttng::sessiond::config;
+
+lttng_ust_context_attr ls::ust::domain_orchestrator::make_ust_context_attr(
+	const lsc::context_configuration& context_config)
+{
+	struct lttng_ust_context_attr ust_ctx = {};
+
+	switch (context_config.context_type) {
+	case lsc::context_configuration::type::VTID:
+		ust_ctx.ctx = LTTNG_UST_ABI_CONTEXT_VTID;
+		break;
+	case lsc::context_configuration::type::VPID:
+		ust_ctx.ctx = LTTNG_UST_ABI_CONTEXT_VPID;
+		break;
+	case lsc::context_configuration::type::PTHREAD_ID:
+		ust_ctx.ctx = LTTNG_UST_ABI_CONTEXT_PTHREAD_ID;
+		break;
+	case lsc::context_configuration::type::PROCNAME:
+		ust_ctx.ctx = LTTNG_UST_ABI_CONTEXT_PROCNAME;
+		break;
+	case lsc::context_configuration::type::IP:
+		ust_ctx.ctx = LTTNG_UST_ABI_CONTEXT_IP;
+		break;
+	case lsc::context_configuration::type::PERF_THREAD_COUNTER:
+	{
+		const auto& perf_config =
+			static_cast<const lsc::perf_counter_context_configuration&>(context_config);
+
+		ust_ctx.ctx = LTTNG_UST_ABI_CONTEXT_PERF_THREAD_COUNTER;
+		ust_ctx.u.perf_counter.type = static_cast<uint32_t>(perf_config.perf_type);
+		ust_ctx.u.perf_counter.config = perf_config.perf_config;
+		strncpy(ust_ctx.u.perf_counter.name,
+			perf_config.name.c_str(),
+			LTTNG_UST_ABI_SYM_NAME_LEN);
+		ust_ctx.u.perf_counter.name[LTTNG_UST_ABI_SYM_NAME_LEN - 1] = '\0';
+		break;
+	}
+	case lsc::context_configuration::type::APP_CONTEXT:
+	{
+		const auto& app_config =
+			static_cast<const lsc::app_context_configuration&>(context_config);
+
+		ust_ctx.ctx = LTTNG_UST_ABI_CONTEXT_APP_CONTEXT;
+		/*
+		 * The provider_name and ctx_name pointers in the ABI struct
+		 * are non-owning. The caller must ensure the
+		 * context_configuration outlives the returned struct.
+		 */
+		ust_ctx.u.app_ctx.provider_name =
+			const_cast<char *>(app_config.provider_name.c_str());
+		ust_ctx.u.app_ctx.ctx_name = const_cast<char *>(app_config.context_name.c_str());
+		break;
+	}
+	case lsc::context_configuration::type::CPU_ID:
+		ust_ctx.ctx = LTTNG_UST_ABI_CONTEXT_CPU_ID;
+		break;
+	case lsc::context_configuration::type::CGROUP_NS:
+		ust_ctx.ctx = LTTNG_UST_ABI_CONTEXT_CGROUP_NS;
+		break;
+	case lsc::context_configuration::type::IPC_NS:
+		ust_ctx.ctx = LTTNG_UST_ABI_CONTEXT_IPC_NS;
+		break;
+	case lsc::context_configuration::type::MNT_NS:
+		ust_ctx.ctx = LTTNG_UST_ABI_CONTEXT_MNT_NS;
+		break;
+	case lsc::context_configuration::type::NET_NS:
+		ust_ctx.ctx = LTTNG_UST_ABI_CONTEXT_NET_NS;
+		break;
+	case lsc::context_configuration::type::PID_NS:
+		ust_ctx.ctx = LTTNG_UST_ABI_CONTEXT_PID_NS;
+		break;
+	case lsc::context_configuration::type::TIME_NS:
+		ust_ctx.ctx = LTTNG_UST_ABI_CONTEXT_TIME_NS;
+		break;
+	case lsc::context_configuration::type::USER_NS:
+		ust_ctx.ctx = LTTNG_UST_ABI_CONTEXT_USER_NS;
+		break;
+	case lsc::context_configuration::type::UTS_NS:
+		ust_ctx.ctx = LTTNG_UST_ABI_CONTEXT_UTS_NS;
+		break;
+	case lsc::context_configuration::type::VUID:
+		ust_ctx.ctx = LTTNG_UST_ABI_CONTEXT_VUID;
+		break;
+	case lsc::context_configuration::type::VEUID:
+		ust_ctx.ctx = LTTNG_UST_ABI_CONTEXT_VEUID;
+		break;
+	case lsc::context_configuration::type::VSUID:
+		ust_ctx.ctx = LTTNG_UST_ABI_CONTEXT_VSUID;
+		break;
+	case lsc::context_configuration::type::VGID:
+		ust_ctx.ctx = LTTNG_UST_ABI_CONTEXT_VGID;
+		break;
+	case lsc::context_configuration::type::VEGID:
+		ust_ctx.ctx = LTTNG_UST_ABI_CONTEXT_VEGID;
+		break;
+	case lsc::context_configuration::type::VSGID:
+		ust_ctx.ctx = LTTNG_UST_ABI_CONTEXT_VSGID;
+		break;
+	default:
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+			lttng::format("Context type is not supported by the UST domain: type={}",
+				      context_config.context_type));
+	}
+
+	return ust_ctx;
+}
 
 ls::ust::domain_orchestrator::domain_orchestrator(
 	ltt_ust_session& ust_session,
@@ -109,6 +219,22 @@ void ls::ust::domain_orchestrator::disable_event(
 	}
 }
 
+void ls::ust::domain_orchestrator::add_context(
+	const config::recording_channel_configuration& channel_config,
+	const config::context_configuration& context_config)
+{
+	LTTNG_ASSERT(!_active);
+
+	const auto ret =
+		context_ust_add(&_ust_session, context_config, channel_config.name.c_str());
+	if (ret != LTTNG_OK) {
+		LTTNG_THROW_CTL(lttng::format("Failed to add UST context: context={}, channel=`{}`",
+					      context_config,
+					      channel_config.name),
+				static_cast<lttng_error_code>(ret));
+	}
+}
+
 /*
  * Suppress noreturn warnings for the stub methods below. These are skeleton
  * implementations that will be filled in as the UST domain orchestrator is
@@ -122,13 +248,6 @@ void ls::ust::domain_orchestrator::enable_event(const config::recording_channel_
 {
 	LTTNG_THROW_UNSUPPORTED_ERROR(
 		"Enabling an event is not supported in the UST domain orchestrator");
-}
-
-void ls::ust::domain_orchestrator::add_context(const config::recording_channel_configuration&,
-					       const config::context_configuration&)
-{
-	LTTNG_THROW_UNSUPPORTED_ERROR(
-		"Adding context is not supported in the UST domain orchestrator");
 }
 
 DIAGNOSTIC_POP; /* DIAGNOSTIC_IGNORE_MISSING_NORETURN */

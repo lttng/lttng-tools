@@ -99,10 +99,14 @@ public:
 	context_configuration& operator=(const context_configuration&) = delete;
 	context_configuration& operator=(context_configuration&&) = delete;
 
+	bool operator==(const context_configuration& other) const noexcept;
+	bool operator!=(const context_configuration& other) const noexcept;
+
 	const type context_type;
 
 protected:
 	explicit context_configuration(type context_type_);
+	virtual bool is_equal(const context_configuration& other) const noexcept = 0;
 };
 
 /*
@@ -114,6 +118,9 @@ protected:
 class simple_context_configuration final : public context_configuration {
 public:
 	explicit simple_context_configuration(type context_type_);
+
+private:
+	bool is_equal(const context_configuration& other) const noexcept override;
 };
 
 /*
@@ -140,6 +147,9 @@ public:
 					   std::uint64_t perf_config_,
 					   std::string name_);
 
+	bool operator==(const perf_counter_context_configuration& other) const noexcept;
+	bool operator!=(const perf_counter_context_configuration& other) const noexcept;
+
 	/*
 	 * Type of perf counter (hardware, software, cache, or PMU).
 	 */
@@ -152,6 +162,9 @@ public:
 	 * Name of the context field as it will appear in the trace.
 	 */
 	const std::string name;
+
+private:
+	bool is_equal(const context_configuration& other) const noexcept override;
 };
 
 /*
@@ -164,6 +177,9 @@ class app_context_configuration final : public context_configuration {
 public:
 	app_context_configuration(std::string provider_name_, std::string context_name_);
 
+	bool operator==(const app_context_configuration& other) const noexcept;
+	bool operator!=(const app_context_configuration& other) const noexcept;
+
 	/*
 	 * Name of the context provider (application or library providing the context).
 	 */
@@ -172,6 +188,9 @@ public:
 	 * Name of the context within the provider's namespace.
 	 */
 	const std::string context_name;
+
+private:
+	bool is_equal(const context_configuration& other) const noexcept override;
 };
 
 /*
