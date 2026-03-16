@@ -34,11 +34,11 @@ log_level_rule_uptr create_log_level_rule_from_lttng_event(const lttng_event& ev
 	case LTTNG_EVENT_LOGLEVEL_ALL:
 		return nullptr;
 	case LTTNG_EVENT_LOGLEVEL_RANGE:
-		rule.reset(lttng_log_level_rule_exactly_create(event.loglevel));
+		rule.reset(lttng_log_level_rule_at_least_as_severe_as_create(event.loglevel));
 		log_level_rule_type = LTTNG_LOG_LEVEL_RULE_TYPE_AT_LEAST_AS_SEVERE_AS;
 		break;
 	case LTTNG_EVENT_LOGLEVEL_SINGLE:
-		rule.reset(lttng_log_level_rule_at_least_as_severe_as_create(event.loglevel));
+		rule.reset(lttng_log_level_rule_exactly_create(event.loglevel));
 		log_level_rule_type = LTTNG_LOG_LEVEL_RULE_TYPE_EXACTLY;
 		break;
 	default:

@@ -3023,7 +3023,7 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 
 		/*
 		 * If a non-default channel has been created in the
-		 * session, explicitely require that -c chan_name needs
+		 * session, explicitly require that -c chan_name needs
 		 * to be provided.
 		 */
 		if (usess->has_non_default_channel && channel_name[0] == '\0') {
@@ -3073,68 +3073,59 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 			}
 		}
 
+		auto& channel_config = session.get_domain(lttng::domain_class::USER_SPACE)
+					       .get_channel(user_visible_channel_name);
+
 		/*
 		 * Write the event rule configuration before performing the
 		 * runtime operation (config-first). This matches the kernel
 		 * pattern and ensures the config is the source of truth.
 		 */
-		{
-			auto& channel_cfg = session.get_domain(lttng::domain_class::USER_SPACE)
-						    .get_channel(user_visible_channel_name);
-
-			try {
-				auto& existing =
-					channel_cfg.get_event_rule_configuration(*event_rule);
-				/*
-				 * Internal events may already be enabled since multiple "agent"
-				 * events are funelled through the same lttng-ust instrumentation
-				 * point using the same event-rule.
-				 */
-				if (existing.is_enabled && !internal_event) {
-					LTTNG_THROW_CTL("UST event rule is already enabled",
-							LTTNG_ERR_UST_EVENT_ENABLED);
-				}
-
-				existing.enable();
-			} catch (const lttng::sessiond::config::exceptions::
-					 event_rule_configuration_not_found_error& ex) {
-				DBG_FMT("Failed to find event rule configuration: event_rule={}: {}",
-					*event_rule,
-					ex.what());
-
-				lttng_credentials generation_creds;
-				LTTNG_OPTIONAL_SET(&generation_creds.uid, locked_session->uid);
-				LTTNG_OPTIONAL_SET(&generation_creds.gid, locked_session->gid);
-
-				const auto generation_result =
-					lttng_event_rule_generate_filter_bytecode(
-						event_rule.get(), &generation_creds);
-				if (generation_result != LTTNG_OK) {
-					LTTNG_THROW_CTL(
-						fmt::format(
-							"Failed to generate bytecode for event rule: session_name=`{}`, event_name=`{}`, error_code='{}'",
-							locked_session->name,
-							event->name,
-							generation_result),
-						generation_result);
-				}
-
-				channel_cfg.add_event_rule_configuration(true,
-									 std::move(event_rule));
+		const auto *event_rule_key = event_rule.get();
+		lsc::event_rule_configuration *event_rule_cfg_ptr;
+		try {
+			auto& existing = channel_config.get_event_rule_configuration(*event_rule);
+			/*
+			 * Internal events may already be enabled since multiple "agent"
+			 * events are funnelled through the same lttng-ust instrumentation
+			 * point using the same event-rule.
+			 */
+			if (existing.is_enabled && !internal_event) {
+				LTTNG_THROW_CTL("UST event rule is already enabled",
+						LTTNG_ERR_UST_EVENT_ENABLED);
 			}
+
+			existing.enable();
+			event_rule_cfg_ptr = &existing;
+		} catch (const lttng::sessiond::config::exceptions::
+				 event_rule_configuration_not_found_error& ex) {
+			DBG_FMT("Failed to find event rule configuration: event_rule={}: {}",
+				*event_rule,
+				ex.what());
+
+			lttng_credentials generation_creds;
+			LTTNG_OPTIONAL_SET(&generation_creds.uid, locked_session->uid);
+			LTTNG_OPTIONAL_SET(&generation_creds.gid, locked_session->gid);
+
+			const auto generation_result = lttng_event_rule_generate_filter_bytecode(
+				event_rule.get(), &generation_creds);
+			if (generation_result != LTTNG_OK) {
+				LTTNG_THROW_CTL(
+					fmt::format(
+						"Failed to generate bytecode for event rule: session_name=`{}`, event_name=`{}`, error_code='{}'",
+						locked_session->name,
+						event->name,
+						generation_result),
+					generation_result);
+			}
+
+			channel_config.add_event_rule_configuration(true, std::move(event_rule));
+			/* Look up the just-added config using the saved key. */
+			event_rule_cfg_ptr =
+				&channel_config.get_event_rule_configuration(*event_rule_key);
 		}
 
-		/* At this point, the session and channel exist on the tracer */
-		ret = event_ust_enable_tracepoint(usess,
-						  uchan,
-						  event,
-						  filter_expression.release(),
-						  bytecode.release(),
-						  exclusion.release(),
-						  internal_event);
-		if (ret != LTTNG_OK) {
-			return static_cast<lttng_error_code>(ret);
-		}
+		session.get_ust_orchestrator().enable_event(channel_config, *event_rule_cfg_ptr);
 
 		break;
 	}

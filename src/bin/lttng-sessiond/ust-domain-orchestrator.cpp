@@ -22,6 +22,7 @@
 #include <common/format.hpp>
 #include <common/macros.hpp>
 
+#include <lttng/event-rule/event-rule-internal.hpp>
 #include <lttng/event-rule/event-rule.h>
 #include <lttng/event-rule/user-tracepoint.h>
 
@@ -235,22 +236,81 @@ void ls::ust::domain_orchestrator::add_context(
 	}
 }
 
-/*
- * Suppress noreturn warnings for the stub methods below. These are skeleton
- * implementations that will be filled in as the UST domain orchestrator is
- * fleshed out.
- */
-DIAGNOSTIC_PUSH
-DIAGNOSTIC_IGNORE_MISSING_NORETURN
-
-void ls::ust::domain_orchestrator::enable_event(const config::recording_channel_configuration&,
-						const config::event_rule_configuration&)
+void ls::ust::domain_orchestrator::enable_event(
+	const config::recording_channel_configuration& channel_config,
+	const config::event_rule_configuration& event_rule_config)
 {
-	LTTNG_THROW_UNSUPPORTED_ERROR(
-		"Enabling an event is not supported in the UST domain orchestrator");
-}
+	auto *const uchan = trace_ust_find_channel_by_name(_ust_session.domain_global.channels,
+							   channel_config.name.c_str());
+	if (!uchan) {
+		LTTNG_THROW_CTL("UST channel not found", LTTNG_ERR_UST_CHAN_NOT_FOUND);
+	}
 
-DIAGNOSTIC_POP; /* DIAGNOSTIC_IGNORE_MISSING_NORETURN */
+	const auto *rule = event_rule_config.event_rule.get();
+	LTTNG_ASSERT(lttng_event_rule_get_type(rule) == LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT);
+
+	/*
+	 * Generate a legacy lttng_event struct from the event rule. This bridges
+	 * the event rule API with the legacy event_ust_enable_tracepoint()
+	 * function which still expects an lttng_event.
+	 */
+	const auto event = lttng::make_unique_wrapper<lttng_event, lttng::memory::free>(
+		lttng_event_rule_generate_lttng_event(rule));
+	if (!event) {
+		LTTNG_THROW_CTL("Failed to generate lttng_event from event rule", LTTNG_ERR_NOMEM);
+	}
+
+	/*
+	 * Duplicate the filter expression and bytecode from the event rule
+	 * since event_ust_enable_tracepoint() takes ownership.
+	 */
+	auto filter_expression = lttng::make_unique_wrapper<char, lttng::memory::free>();
+	auto bytecode = lttng::make_unique_wrapper<lttng_bytecode, lttng::memory::free>();
+
+	const auto *rule_filter_expression = lttng_event_rule_get_filter_expression(rule);
+	const auto *rule_bytecode = lttng_event_rule_get_filter_bytecode(rule);
+
+	if (rule_filter_expression && rule_bytecode) {
+		filter_expression.reset(strdup(rule_filter_expression));
+		if (!filter_expression) {
+			LTTNG_THROW_CTL("Failed to duplicate filter expression", LTTNG_ERR_NOMEM);
+		}
+
+		const auto bytecode_size = sizeof(struct lttng_bytecode) + rule_bytecode->len;
+		bytecode.reset(zmalloc<lttng_bytecode>(bytecode_size));
+		if (!bytecode) {
+			LTTNG_THROW_CTL("Failed to duplicate filter bytecode", LTTNG_ERR_NOMEM);
+		}
+		memcpy(bytecode.get(), rule_bytecode, bytecode_size);
+	}
+
+	/* Generate exclusions from the event rule (caller-owned result). */
+	struct lttng_event_exclusion *raw_exclusion = nullptr;
+	const auto exclusion_status = lttng_event_rule_generate_exclusions(rule, &raw_exclusion);
+	auto exclusion = lttng::make_unique_wrapper<lttng_event_exclusion, lttng::memory::free>(
+		raw_exclusion);
+	if (exclusion_status == LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_ERROR) {
+		LTTNG_THROW_CTL("Failed to generate exclusions from event rule", LTTNG_ERR_NOMEM);
+	}
+
+	/*
+	 * Agent channels have a domain other than LTTNG_DOMAIN_UST. Events on
+	 * those channels are internal (created on behalf of agent domain event
+	 * rules).
+	 */
+	const bool internal_event = uchan->domain != LTTNG_DOMAIN_UST;
+
+	const auto ret = event_ust_enable_tracepoint(&_ust_session,
+						     uchan,
+						     event.get(),
+						     filter_expression.release(),
+						     bytecode.release(),
+						     exclusion.release(),
+						     internal_event);
+	if (ret != LTTNG_OK) {
+		LTTNG_THROW_CTL("Failed to enable UST event", static_cast<lttng_error_code>(ret));
+	}
+}
 
 void ls::ust::domain_orchestrator::set_tracking_policy(config::process_attribute_type,
 						       config::tracking_policy)
