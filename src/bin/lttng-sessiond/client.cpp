@@ -1336,7 +1336,7 @@ int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_error)
 		case LTTNG_DOMAIN_LOG4J2:
 		case LTTNG_DOMAIN_PYTHON:
 		case LTTNG_DOMAIN_UST:
-			if (!(*target_session)->ust_session) {
+			if (!(*target_session)->ust_orchestrator) {
 				return LTTNG_ERR_NO_CHANNEL;
 				goto error;
 			}
@@ -1441,7 +1441,7 @@ int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_error)
 
 		if (need_tracing_session) {
 			/* Create UST session if none exist. */
-			if ((*target_session)->ust_session == nullptr) {
+			if ((*target_session)->ust_orchestrator == nullptr) {
 				const lttng_domain domain = cmd_ctx->lsm.domain;
 				ret = create_ust_session(*target_session, &domain);
 				if (ret != LTTNG_OK) {

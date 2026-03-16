@@ -704,7 +704,7 @@ static void save_per_pid_lost_discarded_counters(struct ust_app_channel *ua_chan
 	try {
 		const auto session = ltt_session::find_session(ua_chan->session->tracing_id);
 
-		if (!session->ust_session) {
+		if (!session->ust_orchestrator) {
 			/*
 			 * Not finding the session is not an error because there are
 			 * multiple ways the channels can be torn down.

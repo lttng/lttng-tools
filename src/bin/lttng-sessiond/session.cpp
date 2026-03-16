@@ -532,7 +532,7 @@ static int _session_set_trace_chunk_no_lock_check(const ltt_session::locked_ref&
 	 */
 	current_trace_chunk = session->current_trace_chunk;
 	session->current_trace_chunk = nullptr;
-	if (session->ust_session) {
+	if (session->ust_orchestrator) {
 		lttng_trace_chunk_put(session->ust_session->current_trace_chunk);
 		session->ust_session->current_trace_chunk = nullptr;
 	}
@@ -544,7 +544,7 @@ static int _session_set_trace_chunk_no_lock_check(const ltt_session::locked_ref&
 	LTTNG_ASSERT(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
 
 	refs_to_acquire = 1;
-	refs_to_acquire += !!session->ust_session;
+	refs_to_acquire += !!session->ust_orchestrator;
 
 	for (refs_acquired = 0; refs_acquired < refs_to_acquire; refs_acquired++) {
 		if (!lttng_trace_chunk_get(new_trace_chunk)) {
@@ -554,7 +554,7 @@ static int _session_set_trace_chunk_no_lock_check(const ltt_session::locked_ref&
 		}
 	}
 
-	if (session->ust_session) {
+	if (session->ust_orchestrator) {
 		const uint64_t relayd_id = session->ust_session->consumer->net_seq_index;
 		const bool is_local_trace = session->ust_session->consumer->type ==
 			CONSUMER_DST_LOCAL;
@@ -635,7 +635,7 @@ end_no_move:
 	lttng_trace_chunk_put(current_trace_chunk);
 	return ret;
 error:
-	if (session->ust_session) {
+	if (session->ust_orchestrator) {
 		session->ust_session->current_trace_chunk = nullptr;
 	}
 	/*
@@ -674,8 +674,8 @@ session_create_new_trace_chunk(const ltt_session::locked_ref& session,
 	if (consumer_output_override) {
 		output = consumer_output_override;
 	} else {
-		LTTNG_ASSERT(session->ust_session || session->kernel_orchestrator);
-		output = session->ust_session ?
+		LTTNG_ASSERT(session->ust_orchestrator || session->kernel_orchestrator);
+		output = session->ust_orchestrator ?
 			session->ust_session->consumer :
 			&session->get_kernel_orchestrator().get_consumer_output();
 	}
@@ -827,7 +827,7 @@ int session_close_trace_chunk(const ltt_session::locked_ref& session,
 		goto end;
 	}
 
-	if (session->ust_session) {
+	if (session->ust_orchestrator) {
 		const uint64_t relayd_id = session->ust_session->consumer->net_seq_index;
 
 		for (auto *socket :
@@ -976,7 +976,7 @@ static void session_release(struct urcu_ref *ref)
 	session->kernel_orchestrator.reset();
 
 	/* UST session teardown, keeping data for destroy notifier. */
-	if (usess) {
+	if (session->ust_orchestrator) {
 		/* Close any relayd session */
 		consumer_output_send_destroy_relayd(usess->consumer);
 
@@ -1020,7 +1020,7 @@ static void session_release(struct urcu_ref *ref)
 	pthread_mutex_destroy(&session->_lock);
 
 	consumer_output_put(session->consumer);
-	if (usess) {
+	if (session->ust_orchestrator) {
 		trace_ust_free_session(usess);
 		session->ust_session = nullptr;
 	}

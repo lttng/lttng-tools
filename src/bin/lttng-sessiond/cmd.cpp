@@ -671,7 +671,7 @@ build_network_session_path(char *dst, size_t size, const ltt_session::locked_ref
 			session->get_kernel_orchestrator().get_consumer_output().dst.net.data.port;
 	}
 
-	if (session->ust_session && session->ust_session->consumer) {
+	if (session->ust_orchestrator && session->ust_session->consumer) {
 		uuri = &session->ust_session->consumer->dst.net.control;
 		udata_port = session->ust_session->consumer->dst.net.data.port;
 	}
@@ -1508,9 +1508,8 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 			return LTTNG_ERR_UNSUPPORTED_DOMAIN;
 		}
 
-		const auto ust_session = session->ust_session;
-
-		if (ust_session) {
+		if (session->ust_orchestrator) {
+			const auto ust_session = session->ust_session;
 			if (!ust_session->supports_madv_remove()) {
 				WARN_FMT(
 					"Auto-reclaim of memory requires that MADV_REMOVE is supported by the file-system "
@@ -3818,7 +3817,7 @@ int cmd_set_consumer_uri(const ltt_session::locked_ref& session,
 	}
 
 	/* Set UST session URIs */
-	if (session->ust_session) {
+	if (session->ust_orchestrator) {
 		for (i = 0; i < nb_uri; i++) {
 			ret = add_uri_to_consumer(session,
 						  session->ust_session->consumer,
@@ -4416,7 +4415,7 @@ ssize_t cmd_list_domains(const ltt_session::locked_ref& session, struct lttng_do
 		nb_dom++;
 	}
 
-	if (session->ust_session != nullptr) {
+	if (session->ust_orchestrator != nullptr) {
 		DBG3("Listing domains found UST global domain");
 		nb_dom++;
 
@@ -4448,7 +4447,7 @@ ssize_t cmd_list_domains(const ltt_session::locked_ref& session, struct lttng_do
 		index++;
 	}
 
-	if (session->ust_session != nullptr) {
+	if (session->ust_orchestrator != nullptr) {
 		(*domains)[index].type = LTTNG_DOMAIN_UST;
 		(*domains)[index].buf_type = session->ust_session->buffer_type;
 		index++;
@@ -4646,7 +4645,7 @@ enum lttng_error_code cmd_list_events(enum lttng_domain_type domain,
 
 		break;
 	case LTTNG_DOMAIN_UST:
-		if (session->ust_session != nullptr) {
+		if (session->ust_orchestrator != nullptr) {
 			nb_events = list_events_from_domain(
 				session->user_space_domain, channel_name, reply_payload);
 		}
@@ -5049,7 +5048,7 @@ static void check_regenerate_metadata_support(const ltt_session::locked_ref& ses
 		LTTNG_THROW_CTL("Metadata regeneration requires an active session",
 				LTTNG_ERR_SESSION_NOT_STARTED);
 	}
-	if (session->ust_session) {
+	if (session->ust_orchestrator) {
 		switch (session->ust_session->buffer_type) {
 		case LTTNG_BUFFER_PER_UID:
 			break;
@@ -5710,7 +5709,7 @@ static uint64_t get_session_size_one_more_packet_per_stream(const ltt_session::l
 		}
 	}
 
-	if (session->ust_session) {
+	if (session->ust_orchestrator) {
 		const struct ltt_ust_session *usess = session->ust_session;
 
 		tot_size += ust_app_get_size_one_more_packet_per_stream(usess, cur_nr_packets);
@@ -5831,7 +5830,7 @@ static enum lttng_error_code snapshot_record(const ltt_session::locked_ref& sess
 			goto error;
 		}
 	}
-	if (session->ust_session) {
+	if (session->ust_orchestrator) {
 		original_ust_consumer_output = session->ust_session->consumer;
 		snapshot_ust_consumer_output = consumer_copy_output(snapshot_output->consumer);
 		strcpy(snapshot_ust_consumer_output->chunk_path, snapshot_chunk_name);

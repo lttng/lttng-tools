@@ -128,7 +128,7 @@ void check_session_rotation_pending_on_consumers(const ltt_session::locked_ref& 
 	 * Check for a local pending rotation on all consumers (32-bit
 	 * user space, 64-bit user space, and kernel).
 	 */
-	if (!session->ust_session) {
+	if (!session->ust_orchestrator) {
 		goto skip_ust;
 	}
 

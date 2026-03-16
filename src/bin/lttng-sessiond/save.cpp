@@ -1239,7 +1239,7 @@ const char *get_buffer_type_string_for_domain(const lsc::domain& domain, const l
 	 * For UST domains, we need to derive the buffer type from the session's ust_session.
 	 * The buffer type is consistent across all channels in the domain.
 	 */
-	if (session.ust_session) {
+	if (session.ust_orchestrator) {
 		switch (session.ust_session->buffer_type) {
 		case LTTNG_BUFFER_PER_PID:
 			return config_buffer_type_per_pid;
@@ -1435,7 +1435,7 @@ void save_agent_domain_from_config(session_config::writer& writer,
 
 	/* Buffer type - get from ust_session */
 	const char *buffer_type_str = nullptr;
-	if (session.ust_session) {
+	if (session.ust_orchestrator) {
 		switch (session.ust_session->buffer_type) {
 		case LTTNG_BUFFER_PER_PID:
 			buffer_type_str = config_buffer_type_per_pid;
@@ -1477,7 +1477,7 @@ void save_agent_domain_from_config(session_config::writer& writer,
 
 void save_domains(session_config::writer& writer, const ltt_session::locked_ref& session)
 {
-	if (!session->kernel_orchestrator && !session->ust_session) {
+	if (!session->kernel_orchestrator && !session->ust_orchestrator) {
 		return;
 	}
 
@@ -1490,7 +1490,7 @@ void save_domains(session_config::writer& writer, const ltt_session::locked_ref&
 			writer, session->kernel_space_domain, *session, live_timer_interval);
 	}
 
-	if (session->ust_session) {
+	if (session->ust_orchestrator) {
 		const std::uint64_t live_timer_interval = session->live_timer;
 
 		save_domain_from_config(

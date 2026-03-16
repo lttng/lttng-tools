@@ -71,7 +71,7 @@ static void update_agent_app(const struct agent_app *app)
 		}
 
 		session_lock(session);
-		if (session->ust_session) {
+		if (session->ust_orchestrator) {
 			const struct agent *agt;
 
 			const lttng::urcu::read_lock_guard read_lock;
