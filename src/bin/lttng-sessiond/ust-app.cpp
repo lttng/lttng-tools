@@ -523,7 +523,7 @@ static void delete_ust_app_ctx(int sock, struct ust_app_ctx *ua_ctx, struct ust_
 		free(ua_ctx->ctx.u.app_ctx.ctx_name);
 	}
 
-	free(ua_ctx);
+	delete ua_ctx;
 }
 
 /*
@@ -562,7 +562,7 @@ static void delete_ust_app_event(int sock, struct ust_app_event *ua_event, struc
 		}
 		free(ua_event->obj);
 	}
-	free(ua_event);
+	delete ua_event;
 }
 
 /*
@@ -1473,8 +1473,9 @@ static struct ust_app_event *alloc_ust_app_event(char *name, struct lttng_ust_ab
 	struct ust_app_event *ua_event;
 
 	/* Init most of the default value by allocating and zeroing */
-	ua_event = zmalloc<ust_app_event>();
-	if (ua_event == nullptr) {
+	try {
+		ua_event = new ust_app_event;
+	} catch (const std::bad_alloc&) {
 		PERROR("Failed to allocate ust_app_event structure");
 		goto error;
 	}
@@ -1566,8 +1567,9 @@ static struct ust_app_ctx *alloc_ust_app_ctx(struct lttng_ust_context_attr *uctx
 {
 	struct ust_app_ctx *ua_ctx;
 
-	ua_ctx = zmalloc<ust_app_ctx>();
-	if (ua_ctx == nullptr) {
+	try {
+		ua_ctx = new ust_app_ctx;
+	} catch (const std::bad_alloc&) {
 		goto error;
 	}
 
@@ -1592,7 +1594,7 @@ static struct ust_app_ctx *alloc_ust_app_ctx(struct lttng_ust_context_attr *uctx
 	DBG3("UST app context %d allocated", ua_ctx->ctx.ctx);
 	return ua_ctx;
 error:
-	free(ua_ctx);
+	delete ua_ctx;
 	return nullptr;
 }
 

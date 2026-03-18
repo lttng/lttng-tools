@@ -39,6 +39,11 @@ struct lttng_ust_filter_bytecode;
 
 namespace lttng {
 namespace sessiond {
+namespace config {
+class recording_channel_configuration;
+class event_rule_configuration;
+class context_configuration;
+} /* namespace config */
 namespace ust {
 class trace_class;
 } /* namespace ust */
@@ -115,21 +120,23 @@ struct ust_app_stream_list {
 };
 
 struct ust_app_ctx {
-	int handle;
-	struct lttng_ust_context_attr ctx;
-	struct lttng_ust_abi_object_data *obj;
-	struct lttng_ht_node_ulong node;
+	int handle = 0;
+	struct lttng_ust_context_attr ctx = {};
+	struct lttng_ust_abi_object_data *obj = nullptr;
+	struct lttng_ht_node_ulong node = {};
+	const lttng::sessiond::config::context_configuration *context_config = nullptr;
 };
 
 struct ust_app_event {
-	bool enabled;
-	int handle;
-	struct lttng_ust_abi_object_data *obj;
-	struct lttng_ust_abi_event attr;
-	char name[LTTNG_UST_ABI_SYM_NAME_LEN];
-	struct lttng_ht_node_str node;
-	struct lttng_bytecode *filter;
-	struct lttng_event_exclusion *exclusion;
+	bool enabled = false;
+	int handle = 0;
+	struct lttng_ust_abi_object_data *obj = nullptr;
+	struct lttng_ust_abi_event attr = {};
+	char name[LTTNG_UST_ABI_SYM_NAME_LEN] = {};
+	struct lttng_ht_node_str node = {};
+	struct lttng_bytecode *filter = nullptr;
+	struct lttng_event_exclusion *exclusion = nullptr;
+	const lttng::sessiond::config::event_rule_configuration *event_rule_config = nullptr;
 };
 
 struct ust_app_event_notifier_rule {
@@ -202,6 +209,7 @@ struct ust_app_channel {
 	struct lttng_ht_node_ulong ust_objd_node = {};
 	/* For delayed reclaim */
 	struct rcu_head rcu_head = {};
+	const lttng::sessiond::config::recording_channel_configuration *channel_config = nullptr;
 };
 
 struct ust_app_session {
