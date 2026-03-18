@@ -6531,17 +6531,27 @@ end:
  */
 static void ust_app_synchronize_all_channels(struct ltt_ust_session *usess,
 					     const ust_app_session::locked_weak_ref& ua_sess,
-					     struct ust_app *app)
+					     struct ust_app *app,
+					     const lttng::sessiond::config::domain& config_domain)
 {
 	LTTNG_ASSERT(usess);
 	LTTNG_ASSERT(app);
 	ASSERT_RCU_READ_LOCKED();
 
-	for (auto *uchan : lttng::urcu::lfht_iteration_adapter<ltt_ust_channel,
-							       decltype(ltt_ust_channel::node),
-							       &ltt_ust_channel::node>(
-		     *usess->domain_global.channels->ht)) {
+	for (const auto& chan_config : config_domain.recording_channels()) {
 		struct ust_app_channel *ua_chan;
+
+		/*
+		 * Look up the legacy ltt_ust_channel by name. This is a
+		 * transition shim: find_or_create_ust_app_channel still needs
+		 * the legacy structure. It will be eliminated once all
+		 * per-app creation code reads from the config directly.
+		 */
+		auto *uchan = trace_ust_find_channel_by_name(usess->domain_global.channels,
+							     chan_config.name.c_str());
+		if (!uchan) {
+			continue;
+		}
 
 		/*
 		 * Search for a matching ust_app_channel. If none is found,
@@ -6550,7 +6560,8 @@ static void ust_app_synchronize_all_channels(struct ltt_ust_session *usess,
 		 * allocated (if necessary) and sent to the application, and
 		 * all enabled contexts will be added to the channel.
 		 */
-		int ret = find_or_create_ust_app_channel(usess, ua_sess, app, uchan, &ua_chan);
+		int ret = find_or_create_ust_app_channel(
+			usess, ua_sess, app, uchan, &ua_chan, &chan_config);
 		if (ret) {
 			/* Tracer is probably gone or ENOMEM. */
 			goto end;
@@ -6572,9 +6583,10 @@ static void ust_app_synchronize_all_channels(struct ltt_ust_session *usess,
 			}
 		}
 
-		if (ua_chan->enabled != uchan->enabled) {
-			ret = uchan->enabled ? enable_ust_app_channel(ua_sess, uchan, app) :
-					       disable_ust_app_channel(ua_sess, ua_chan, app);
+		if (ua_chan->enabled != chan_config.is_enabled) {
+			ret = chan_config.is_enabled ?
+				enable_ust_app_channel(ua_sess, uchan, app) :
+				disable_ust_app_channel(ua_sess, ua_chan, app);
 			if (ret) {
 				goto end;
 			}
@@ -6588,7 +6600,9 @@ end:
  * The caller must ensure that the application is compatible and is tracked
  * by the process attribute trackers.
  */
-static void ust_app_synchronize(struct ltt_ust_session *usess, struct ust_app *app)
+static void ust_app_synchronize(struct ltt_ust_session *usess,
+				struct ust_app *app,
+				const lttng::sessiond::config::domain& config_domain)
 {
 	int ret = 0;
 	struct ust_app_session *ua_sess = nullptr;
@@ -6615,7 +6629,7 @@ static void ust_app_synchronize(struct ltt_ust_session *usess, struct ust_app *a
 	{
 		const lttng::urcu::read_lock_guard read_lock;
 
-		ust_app_synchronize_all_channels(usess, locked_ua_sess, app);
+		ust_app_synchronize_all_channels(usess, locked_ua_sess, app, config_domain);
 
 		/*
 		 * Create the metadata for the application. This returns gracefully if a
@@ -6676,7 +6690,7 @@ void ust_app_global_update(struct ltt_ust_session *usess,
 		 * Synchronize the application's internal tracing configuration
 		 * and start tracing.
 		 */
-		ust_app_synchronize(usess, app);
+		ust_app_synchronize(usess, app, domain);
 		ust_app_start_trace(usess, app);
 	} else {
 		ust_app_global_destroy(usess, app);

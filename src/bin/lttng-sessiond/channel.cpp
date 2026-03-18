@@ -40,6 +40,8 @@ lttng::ctl::lttng_channel_uptr channel_new_default_attr(lttng_domain_type dom,
 	struct lttng_channel_extended *extended_attr =
 		static_cast<lttng_channel_extended *>(chan->attr.extended.ptr);
 
+	chan->enabled = 1;
+
 	/* Same for all domains. */
 	chan->attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
 	chan->attr.tracefile_size = DEFAULT_CHANNEL_TRACEFILE_SIZE;
