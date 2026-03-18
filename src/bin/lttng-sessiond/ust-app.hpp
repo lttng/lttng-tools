@@ -180,6 +180,18 @@ struct ust_app_stream {
 };
 
 struct ust_app_channel {
+	explicit ust_app_channel(
+		const lttng::sessiond::config::channel_configuration& channel_config_) :
+		channel_config(channel_config_)
+	{
+	}
+
+	~ust_app_channel() = default;
+	ust_app_channel(const ust_app_channel&) = delete;
+	ust_app_channel(ust_app_channel&&) = delete;
+	ust_app_channel& operator=(const ust_app_channel&) = delete;
+	ust_app_channel& operator=(ust_app_channel&&) = delete;
+
 	bool enabled = false;
 	int handle = 0;
 	/*
@@ -221,7 +233,14 @@ struct ust_app_channel {
 	struct lttng_ht_node_ulong ust_objd_node = {};
 	/* For delayed reclaim */
 	struct rcu_head rcu_head = {};
-	const lttng::sessiond::config::recording_channel_configuration *channel_config = nullptr;
+	/*
+	 * Reference to the channel configuration from which this per-app
+	 * channel was derived. Points to a recording_channel_configuration
+	 * for data channels or a metadata_channel_configuration for the
+	 * metadata channel. Use static_cast to the appropriate derived
+	 * type as needed.
+	 */
+	const lttng::sessiond::config::channel_configuration& channel_config;
 };
 
 struct ust_app_session {
