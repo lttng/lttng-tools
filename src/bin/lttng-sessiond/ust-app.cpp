@@ -6375,9 +6375,12 @@ static int ust_app_channel_synchronize_event(
 			goto end;
 		}
 	} else {
-		if (ua_event->enabled != uevent->enabled) {
-			ret = uevent->enabled ? enable_ust_app_event(ua_event, app) :
-						disable_ust_app_event(ua_event, app);
+		const auto event_should_be_enabled = event_config ? event_config->is_enabled :
+								    uevent->enabled;
+
+		if (ua_event->enabled != event_should_be_enabled) {
+			ret = event_should_be_enabled ? enable_ust_app_event(ua_event, app) :
+							disable_ust_app_event(ua_event, app);
 		}
 	}
 
@@ -6577,7 +6580,8 @@ static void ust_app_synchronize_all_channels(struct ltt_ust_session *usess,
 							 decltype(ltt_ust_event::node),
 							 &ltt_ust_event::node>(
 			     *uchan->events->ht)) {
-			ret = ust_app_channel_synchronize_event(ua_chan, uevent, app);
+			ret = ust_app_channel_synchronize_event(
+				ua_chan, uevent, app, uevent->event_rule_config);
 			if (ret) {
 				goto end;
 			}

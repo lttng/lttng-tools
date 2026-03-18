@@ -70,13 +70,15 @@ static void add_unique_ust_event(struct lttng_ht *ht, struct ltt_ust_event *even
  * Enable UST tracepoint event for a channel from a UST session.
  * We own filter_expression, filter, and exclusion.
  */
-int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
-				struct ltt_ust_channel *uchan,
-				struct lttng_event *event,
-				char *filter_expression,
-				struct lttng_bytecode *filter,
-				struct lttng_event_exclusion *exclusion,
-				bool internal_event)
+int event_ust_enable_tracepoint(
+	struct ltt_ust_session *usess,
+	struct ltt_ust_channel *uchan,
+	struct lttng_event *event,
+	char *filter_expression,
+	struct lttng_bytecode *filter,
+	struct lttng_event_exclusion *exclusion,
+	bool internal_event,
+	const lttng::sessiond::config::event_rule_configuration *event_rule_config)
 {
 	int ret = LTTNG_OK, to_create = 0;
 	struct ltt_ust_event *uevent;
@@ -106,6 +108,11 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 
 		/* Valid to set it after the goto error since uevent is still NULL */
 		to_create = 1;
+	}
+
+	/* Associate the config pointer (may be nullptr for legacy callers). */
+	if (event_rule_config) {
+		uevent->event_rule_config = event_rule_config;
 	}
 
 	if (uevent->enabled) {

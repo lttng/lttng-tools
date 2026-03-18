@@ -8,17 +8,21 @@
 #ifndef _LTT_EVENT_H
 #define _LTT_EVENT_H
 
+#include "event-rule-configuration.hpp"
+
 #include <lttng/lttng.h>
 
 struct agent;
 
-int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
-				struct ltt_ust_channel *uchan,
-				struct lttng_event *event,
-				char *filter_expression,
-				struct lttng_bytecode *filter,
-				struct lttng_event_exclusion *exclusion,
-				bool internal_event);
+int event_ust_enable_tracepoint(
+	struct ltt_ust_session *usess,
+	struct ltt_ust_channel *uchan,
+	struct lttng_event *event,
+	char *filter_expression,
+	struct lttng_bytecode *filter,
+	struct lttng_event_exclusion *exclusion,
+	bool internal_event,
+	const lttng::sessiond::config::event_rule_configuration *event_rule_config = nullptr);
 int event_ust_disable_tracepoint(struct ltt_ust_session *usess,
 				 struct ltt_ust_channel *uchan,
 				 const char *event_name);

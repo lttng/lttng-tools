@@ -63,6 +63,14 @@ struct ltt_ust_event {
 	 * clients as they should never be modified by the external world.
 	 */
 	bool internal = false;
+	/*
+	 * Non-owning pointer to the event rule configuration from which
+	 * this event was created. Set during creation, nullptr for legacy
+	 * callers that do not have a config reference. This is a
+	 * transition aid that will be removed when ltt_ust_event is
+	 * eliminated.
+	 */
+	const lttng::sessiond::config::event_rule_configuration *event_rule_config = nullptr;
 };
 
 /* UST channel */
