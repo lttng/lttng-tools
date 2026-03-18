@@ -2602,44 +2602,96 @@ static void shadow_copy_event(struct ust_app_event *ua_event, struct ltt_ust_eve
  */
 static void shadow_copy_channel(struct ust_app_channel *ua_chan, struct ltt_ust_channel *uchan)
 {
+	namespace lsc = lttng::sessiond::config;
+	const auto *config = ua_chan->channel_config;
+
 	DBG2("UST app shadow copy of channel %s started", ua_chan->name);
 
 	strncpy(ua_chan->name, uchan->name, sizeof(ua_chan->name));
 	ua_chan->name[sizeof(ua_chan->name) - 1] = '\0';
 
-	ua_chan->tracefile_size = uchan->tracefile_size;
-	ua_chan->tracefile_count = uchan->tracefile_count;
+	if (config) {
+		ua_chan->tracefile_size = config->trace_file_size_limit_bytes.value_or(0);
+		ua_chan->tracefile_count = config->trace_file_count_limit.value_or(0);
 
-	/* Copy event attributes since the layout is different. */
-	ua_chan->attr.subbuf_size = uchan->attr.subbuf_size;
-	ua_chan->attr.num_subbuf = uchan->attr.num_subbuf;
-	ua_chan->attr.overwrite = uchan->attr.overwrite;
-	ua_chan->attr.switch_timer_interval = uchan->attr.switch_timer_interval;
-	ua_chan->attr.read_timer_interval = uchan->attr.read_timer_interval;
-	ua_chan->monitor_timer_interval = uchan->monitor_timer_interval;
+		ua_chan->attr.subbuf_size = config->subbuffer_size_bytes;
+		ua_chan->attr.num_subbuf = config->subbuffer_count;
+		ua_chan->attr.overwrite = config->buffer_full_policy ==
+				lsc::channel_configuration::buffer_full_policy_t::
+					OVERWRITE_OLDEST_PACKET ?
+			1 :
+			0;
+		ua_chan->attr.switch_timer_interval = config->switch_timer_period_us.value_or(0);
+		ua_chan->attr.read_timer_interval = config->read_timer_period_us.value_or(0);
+		ua_chan->monitor_timer_interval = config->monitor_timer_period_us.value_or(0);
 
-	if (uchan->watchdog_timer_interval.is_set) {
-		const auto watchdog_timer_value =
-			LTTNG_OPTIONAL_GET(uchan->watchdog_timer_interval);
+		if (config->watchdog_timer_period_us) {
+			LTTNG_OPTIONAL_SET(&ua_chan->watchdog_timer_interval,
+					   *config->watchdog_timer_period_us);
+		} else {
+			LTTNG_OPTIONAL_UNSET(&ua_chan->watchdog_timer_interval);
+		}
 
-		LTTNG_OPTIONAL_SET(&ua_chan->watchdog_timer_interval, watchdog_timer_value);
+		ua_chan->preallocation_policy = config->buffer_preallocation_policy;
+
+		ua_chan->automatic_memory_reclamation_maximal_age =
+			config->automatic_memory_reclamation_maximal_age;
+
+		ua_chan->attr.output = config->buffer_consumption_backend ==
+				lsc::channel_configuration::buffer_consumption_backend_t::MMAP ?
+			LTTNG_UST_ABI_MMAP :
+			static_cast<lttng_ust_abi_output>(-1);
+
+		switch (config->consumption_blocking_policy_.mode_) {
+		case lsc::recording_channel_configuration::consumption_blocking_policy::mode::NONE:
+			ua_chan->attr.blocking_timeout = 0;
+			break;
+		case lsc::recording_channel_configuration::consumption_blocking_policy::mode::
+			UNBOUNDED:
+			ua_chan->attr.blocking_timeout = -1;
+			break;
+		case lsc::recording_channel_configuration::consumption_blocking_policy::mode::TIMED:
+			ua_chan->attr.blocking_timeout =
+				*config->consumption_blocking_policy_.timeout_us;
+			break;
+		}
+
+		ua_chan->enabled = config->is_enabled;
 	} else {
-		LTTNG_OPTIONAL_UNSET(&ua_chan->watchdog_timer_interval);
+		ua_chan->tracefile_size = uchan->tracefile_size;
+		ua_chan->tracefile_count = uchan->tracefile_count;
+
+		ua_chan->attr.subbuf_size = uchan->attr.subbuf_size;
+		ua_chan->attr.num_subbuf = uchan->attr.num_subbuf;
+		ua_chan->attr.overwrite = uchan->attr.overwrite;
+		ua_chan->attr.switch_timer_interval = uchan->attr.switch_timer_interval;
+		ua_chan->attr.read_timer_interval = uchan->attr.read_timer_interval;
+		ua_chan->monitor_timer_interval = uchan->monitor_timer_interval;
+
+		if (uchan->watchdog_timer_interval.is_set) {
+			const auto watchdog_timer_value =
+				LTTNG_OPTIONAL_GET(uchan->watchdog_timer_interval);
+
+			LTTNG_OPTIONAL_SET(&ua_chan->watchdog_timer_interval, watchdog_timer_value);
+		} else {
+			LTTNG_OPTIONAL_UNSET(&ua_chan->watchdog_timer_interval);
+		}
+
+		ua_chan->preallocation_policy = uchan->preallocation_policy;
+		ua_chan->automatic_memory_reclamation_maximal_age =
+			uchan->automatic_memory_reclamation_maximal_age;
+		ua_chan->attr.output = (lttng_ust_abi_output) uchan->attr.output;
+		ua_chan->attr.blocking_timeout = uchan->attr.blocking_timeout;
+
+		ua_chan->enabled = uchan->enabled;
 	}
 
-	ua_chan->preallocation_policy = uchan->preallocation_policy;
-	ua_chan->automatic_memory_reclamation_maximal_age =
-		uchan->automatic_memory_reclamation_maximal_age;
-	ua_chan->attr.output = (lttng_ust_abi_output) uchan->attr.output;
-	ua_chan->attr.blocking_timeout = uchan->attr.blocking_timeout;
+	/*
+	 * The channel type on the per-app channel is set by the caller
+	 * (ust_app_channel_allocate), not from the session-level channel.
+	 */
 	ua_chan->attr.type = static_cast<enum lttng_ust_abi_chan_type>(uchan->attr.type);
 
-	/*
-	 * Note that the attribute channel type is not set since the channel on the
-	 * tracing registry side does not have this information.
-	 */
-
-	ua_chan->enabled = uchan->enabled;
 	ua_chan->tracing_channel_id = uchan->id;
 
 	DBG3("UST app shadow copy of channel %s done", ua_chan->name);
