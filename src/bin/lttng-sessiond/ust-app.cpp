@@ -5432,6 +5432,26 @@ static bool is_context_redundant(const struct ltt_ust_channel *uchan,
 	return false;
 }
 
+/*
+ * Config-based overload: determines whether a context is redundant
+ * based on the channel configuration's buffer allocation policy.
+ */
+static bool
+is_context_redundant(const lttng::sessiond::config::recording_channel_configuration& chan_config,
+		     const lttng::sessiond::config::context_configuration& ctx_config)
+{
+	namespace lsc = lttng::sessiond::config;
+
+	if (chan_config.buffer_allocation_policy ==
+	    lsc::recording_channel_configuration::buffer_allocation_policy_t::PER_CPU) {
+		if (ctx_config.context_type == lsc::context_configuration::type::CPU_ID) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 /* The ua_sess lock must be held by the caller.  */
 static int ust_app_channel_create(
 	struct ltt_ust_session *usess,
@@ -5472,20 +5492,38 @@ static int ust_app_channel_create(
 		lttng_ht_add_unique_str(ua_sess->channels, &ua_chan->node);
 
 		/* Add contexts. */
-		for (auto *uctx :
-		     lttng::urcu::list_iteration_adapter<ltt_ust_context, &ltt_ust_context::list>(
-			     uchan->ctx_list)) {
-			if (is_context_redundant(uchan, uctx)) {
-				continue;
-			}
+		if (channel_config) {
+			for (const auto& ctx_uptr : channel_config->get_contexts()) {
+				const auto& ctx_config = *ctx_uptr;
 
-			auto ust_ctx_attr =
-				lttng::sessiond::ust::domain_orchestrator::make_ust_context_attr(
-					uctx->context_config);
-			ret = create_ust_app_channel_context(
-				ua_chan, &ust_ctx_attr, app, &(uctx->context_config));
-			if (ret) {
-				goto error;
+				if (is_context_redundant(*channel_config, ctx_config)) {
+					continue;
+				}
+
+				auto ust_ctx_attr = lttng::sessiond::ust::domain_orchestrator::
+					make_ust_context_attr(ctx_config);
+				ret = create_ust_app_channel_context(
+					ua_chan, &ust_ctx_attr, app, &ctx_config);
+				if (ret) {
+					goto error;
+				}
+			}
+		} else {
+			for (auto *uctx :
+			     lttng::urcu::list_iteration_adapter<ltt_ust_context,
+								 &ltt_ust_context::list>(
+				     uchan->ctx_list)) {
+				if (is_context_redundant(uchan, uctx)) {
+					continue;
+				}
+
+				auto ust_ctx_attr = lttng::sessiond::ust::domain_orchestrator::
+					make_ust_context_attr(uctx->context_config);
+				ret = create_ust_app_channel_context(
+					ua_chan, &ust_ctx_attr, app, &(uctx->context_config));
+				if (ret) {
+					goto error;
+				}
 			}
 		}
 	}
