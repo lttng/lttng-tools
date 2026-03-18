@@ -1390,10 +1390,11 @@ error_free:
 /*
  * Alloc new UST app channel.
  */
-static struct ust_app_channel *
-alloc_ust_app_channel(const char *name,
-		      const ust_app_session::locked_weak_ref& ua_sess,
-		      struct lttng_ust_abi_channel_attr *attr)
+static struct ust_app_channel *alloc_ust_app_channel(
+	const char *name,
+	const ust_app_session::locked_weak_ref& ua_sess,
+	struct lttng_ust_abi_channel_attr *attr,
+	const lttng::sessiond::config::recording_channel_configuration *config = nullptr)
 {
 	struct ust_app_channel *ua_chan;
 
@@ -1415,6 +1416,7 @@ alloc_ust_app_channel(const char *name,
 	ua_chan->key = get_next_channel_key();
 	ua_chan->ctx = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 	ua_chan->events = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
+	ua_chan->channel_config = config;
 	lttng_ht_node_init_str(&ua_chan->node, ua_chan->name);
 
 	CDS_INIT_LIST_HEAD(&ua_chan->streams.head);
@@ -3954,11 +3956,13 @@ error:
  *
  * Return 0 on success or else a negative value.
  */
-static int ust_app_channel_allocate(const ust_app_session::locked_weak_ref& ua_sess,
-				    struct ltt_ust_channel *uchan,
-				    enum lttng_ust_abi_chan_type type,
-				    struct ltt_ust_session *usess __attribute__((unused)),
-				    struct ust_app_channel **ua_chanp)
+static int ust_app_channel_allocate(
+	const ust_app_session::locked_weak_ref& ua_sess,
+	struct ltt_ust_channel *uchan,
+	enum lttng_ust_abi_chan_type type,
+	struct ltt_ust_session *usess __attribute__((unused)),
+	struct ust_app_channel **ua_chanp,
+	const lttng::sessiond::config::recording_channel_configuration *channel_config = nullptr)
 {
 	int ret = 0;
 	struct lttng_ht_iter iter;
@@ -3975,7 +3979,7 @@ static int ust_app_channel_allocate(const ust_app_session::locked_weak_ref& ua_s
 		goto end;
 	}
 
-	ua_chan = alloc_ust_app_channel(uchan->name, ua_sess, &uchan->attr);
+	ua_chan = alloc_ust_app_channel(uchan->name, ua_sess, &uchan->attr, channel_config);
 	if (ua_chan == nullptr) {
 		/* Only malloc can fail here */
 		ret = -ENOMEM;
@@ -5365,11 +5369,13 @@ static bool is_context_redundant(const struct ltt_ust_channel *uchan,
 }
 
 /* The ua_sess lock must be held by the caller.  */
-static int ust_app_channel_create(struct ltt_ust_session *usess,
-				  const ust_app_session::locked_weak_ref& ua_sess,
-				  struct ltt_ust_channel *uchan,
-				  struct ust_app *app,
-				  struct ust_app_channel **_ua_chan)
+static int ust_app_channel_create(
+	struct ltt_ust_session *usess,
+	const ust_app_session::locked_weak_ref& ua_sess,
+	struct ltt_ust_channel *uchan,
+	struct ust_app *app,
+	struct ust_app_channel **_ua_chan,
+	const lttng::sessiond::config::recording_channel_configuration *channel_config = nullptr)
 {
 	int ret = 0;
 	struct ust_app_channel *ua_chan = nullptr;
@@ -5387,7 +5393,8 @@ static int ust_app_channel_create(struct ltt_ust_session *usess,
 			uchan,
 			static_cast<enum lttng_ust_abi_chan_type>(uchan->attr.type),
 			usess,
-			&ua_chan);
+			&ua_chan,
+			channel_config);
 		if (ret < 0) {
 			goto error;
 		}
@@ -6255,11 +6262,13 @@ int ust_app_destroy_trace_all(struct ltt_ust_session *usess)
 }
 
 /* The ua_sess lock must be held by the caller. */
-static int find_or_create_ust_app_channel(struct ltt_ust_session *usess,
-					  const ust_app_session::locked_weak_ref& ua_sess,
-					  struct ust_app *app,
-					  struct ltt_ust_channel *uchan,
-					  struct ust_app_channel **ua_chan)
+static int find_or_create_ust_app_channel(
+	struct ltt_ust_session *usess,
+	const ust_app_session::locked_weak_ref& ua_sess,
+	struct ust_app *app,
+	struct ltt_ust_channel *uchan,
+	struct ust_app_channel **ua_chan,
+	const lttng::sessiond::config::recording_channel_configuration *channel_config = nullptr)
 {
 	int ret = 0;
 	struct lttng_ht_iter iter;
@@ -6272,7 +6281,7 @@ static int find_or_create_ust_app_channel(struct ltt_ust_session *usess,
 		goto end;
 	}
 
-	ret = ust_app_channel_create(usess, ua_sess, uchan, app, ua_chan);
+	ret = ust_app_channel_create(usess, ua_sess, uchan, app, ua_chan, channel_config);
 	if (ret) {
 		goto end;
 	}
