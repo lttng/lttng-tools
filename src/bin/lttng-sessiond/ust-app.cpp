@@ -1390,23 +1390,15 @@ error_free:
 /*
  * Alloc new UST app channel.
  */
-static struct ust_app_channel *alloc_ust_app_channel(
-	const char *name,
-	const ust_app_session::locked_weak_ref& ua_sess,
-	struct lttng_ust_abi_channel_attr *attr,
-	const lttng::sessiond::config::recording_channel_configuration *config = nullptr)
+/*
+ * Common initialization for ust_app_channel. Used by both the recording
+ * channel and metadata channel allocation paths.
+ */
+static void init_ust_app_channel(struct ust_app_channel *ua_chan,
+				 const char *name,
+				 const ust_app_session::locked_weak_ref& ua_sess,
+				 struct lttng_ust_abi_channel_attr *attr)
 {
-	struct ust_app_channel *ua_chan;
-
-	/* Init most of the default value by allocating and zeroing */
-	try {
-		ua_chan = new ust_app_channel;
-	} catch (const std::bad_alloc&) {
-		PERROR("ust_app_channel allocation");
-		goto error;
-	}
-
-	/* Setup channel name */
 	strncpy(ua_chan->name, name, sizeof(ua_chan->name));
 	ua_chan->name[sizeof(ua_chan->name) - 1] = '\0';
 
@@ -1416,7 +1408,6 @@ static struct ust_app_channel *alloc_ust_app_channel(
 	ua_chan->key = get_next_channel_key();
 	ua_chan->ctx = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 	ua_chan->events = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
-	ua_chan->channel_config = config;
 	lttng_ht_node_init_str(&ua_chan->node, ua_chan->name);
 
 	CDS_INIT_LIST_HEAD(&ua_chan->streams.head);
@@ -1438,11 +1429,48 @@ static struct ust_app_channel *alloc_ust_app_channel(
 	}
 
 	DBG3("UST app channel %s allocated", ua_chan->name);
+}
 
+/*
+ * Allocate a recording channel with an associated config reference.
+ */
+static struct ust_app_channel *
+alloc_ust_app_channel(const char *name,
+		      const ust_app_session::locked_weak_ref& ua_sess,
+		      struct lttng_ust_abi_channel_attr *attr,
+		      const lttng::sessiond::config::recording_channel_configuration& config)
+{
+	struct ust_app_channel *ua_chan;
+
+	try {
+		ua_chan = new ust_app_channel;
+	} catch (const std::bad_alloc&) {
+		PERROR("ust_app_channel allocation");
+		return nullptr;
+	}
+
+	ua_chan->channel_config = &config;
+	init_ust_app_channel(ua_chan, name, ua_sess, attr);
 	return ua_chan;
+}
 
-error:
-	return nullptr;
+/*
+ * Allocate a metadata channel (no recording_channel_configuration).
+ */
+static struct ust_app_channel *
+alloc_ust_app_metadata_channel(const char *name, const ust_app_session::locked_weak_ref& ua_sess)
+{
+	struct ust_app_channel *ua_chan;
+
+	try {
+		ua_chan = new ust_app_channel;
+	} catch (const std::bad_alloc&) {
+		PERROR("ust_app_channel allocation");
+		return nullptr;
+	}
+
+	init_ust_app_channel(ua_chan, name, ua_sess, nullptr);
+	return ua_chan;
 }
 
 /*
@@ -1700,52 +1728,6 @@ static nonstd::optional<ust_app_reference> find_app_by_notify_sock(int sock)
 
 	auto app = lttng::utils::container_of(node, &ust_app::notify_sock_n);
 	return ust_app_get(*app) ? nonstd::make_optional<ust_app_reference>(app) : nonstd::nullopt;
-}
-
-/*
- * Lookup for an ust app event based on event name, filter bytecode and the
- * event loglevel.
- *
- * Return an ust_app_event object or NULL on error.
- */
-static struct ust_app_event *find_ust_app_event(struct lttng_ht *ht,
-						const char *name,
-						const struct lttng_bytecode *filter,
-						lttng_ust_abi_loglevel_type loglevel_type,
-						int loglevel_value,
-						const struct lttng_event_exclusion *exclusion)
-{
-	struct lttng_ht_iter iter;
-	struct lttng_ht_node_str *node;
-	struct ust_app_event *event = nullptr;
-	struct ust_app_ht_key key;
-
-	LTTNG_ASSERT(name);
-	LTTNG_ASSERT(ht);
-
-	/* Setup key for event lookup. */
-	key.name = name;
-	key.filter = filter;
-	key.loglevel_type = loglevel_type;
-	key.loglevel_value = loglevel_value;
-	/* lttng_event_exclusion and lttng_ust_event_exclusion structures are similar */
-	key.exclusion = exclusion;
-
-	/* Lookup using the event name as hash and a custom match fct. */
-	cds_lfht_lookup(ht->ht,
-			ht->hash_fct((void *) name, lttng_ht_seed),
-			ht_match_ust_app_event,
-			&key,
-			&iter.iter);
-	node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
-	if (node == nullptr) {
-		goto end;
-	}
-
-	event = lttng::utils::container_of(node, &ust_app_event::node);
-
-end:
-	return event;
 }
 
 /*
@@ -4045,7 +4027,7 @@ static int ust_app_channel_allocate(
 	enum lttng_ust_abi_chan_type type,
 	struct ltt_ust_session *usess __attribute__((unused)),
 	struct ust_app_channel **ua_chanp,
-	const lttng::sessiond::config::recording_channel_configuration *channel_config = nullptr)
+	const lttng::sessiond::config::recording_channel_configuration& channel_config)
 {
 	int ret = 0;
 	struct lttng_ht_iter iter;
@@ -4234,7 +4216,7 @@ static int create_ust_app_metadata(const ust_app_session::locked_weak_ref& ua_se
 	}
 
 	/* Allocate UST metadata */
-	metadata = alloc_ust_app_channel(DEFAULT_METADATA_NAME, ua_sess, nullptr);
+	metadata = alloc_ust_app_metadata_channel(DEFAULT_METADATA_NAME, ua_sess);
 	if (!metadata) {
 		/* malloc() failed */
 		ret = -ENOMEM;
@@ -5472,7 +5454,7 @@ static int ust_app_channel_create(
 	struct ltt_ust_channel *uchan,
 	struct ust_app *app,
 	struct ust_app_channel **_ua_chan,
-	const lttng::sessiond::config::recording_channel_configuration *channel_config = nullptr)
+	const lttng::sessiond::config::recording_channel_configuration& channel_config)
 {
 	int ret = 0;
 	struct ust_app_channel *ua_chan = nullptr;
@@ -5505,38 +5487,20 @@ static int ust_app_channel_create(
 		lttng_ht_add_unique_str(ua_sess->channels, &ua_chan->node);
 
 		/* Add contexts. */
-		if (channel_config) {
-			for (const auto& ctx_uptr : channel_config->get_contexts()) {
-				const auto& ctx_config = *ctx_uptr;
+		for (const auto& ctx_uptr : channel_config.get_contexts()) {
+			const auto& ctx_config = *ctx_uptr;
 
-				if (is_context_redundant(*channel_config, ctx_config)) {
-					continue;
-				}
-
-				auto ust_ctx_attr = lttng::sessiond::ust::domain_orchestrator::
-					make_ust_context_attr(ctx_config);
-				ret = create_ust_app_channel_context(
-					ua_chan, &ust_ctx_attr, app, &ctx_config);
-				if (ret) {
-					goto error;
-				}
+			if (is_context_redundant(channel_config, ctx_config)) {
+				continue;
 			}
-		} else {
-			for (auto *uctx :
-			     lttng::urcu::list_iteration_adapter<ltt_ust_context,
-								 &ltt_ust_context::list>(
-				     uchan->ctx_list)) {
-				if (is_context_redundant(uchan, uctx)) {
-					continue;
-				}
 
-				auto ust_ctx_attr = lttng::sessiond::ust::domain_orchestrator::
-					make_ust_context_attr(uctx->context_config);
-				ret = create_ust_app_channel_context(
-					ua_chan, &ust_ctx_attr, app, &(uctx->context_config));
-				if (ret) {
-					goto error;
-				}
+			auto ust_ctx_attr =
+				lttng::sessiond::ust::domain_orchestrator::make_ust_context_attr(
+					ctx_config);
+			ret = create_ust_app_channel_context(
+				ua_chan, &ust_ctx_attr, app, &ctx_config);
+			if (ret) {
+				goto error;
 			}
 		}
 	}
@@ -6376,7 +6340,7 @@ static int find_or_create_ust_app_channel(
 	struct ust_app *app,
 	struct ltt_ust_channel *uchan,
 	struct ust_app_channel **ua_chan,
-	const lttng::sessiond::config::recording_channel_configuration *channel_config = nullptr)
+	const lttng::sessiond::config::recording_channel_configuration& channel_config)
 {
 	int ret = 0;
 	struct lttng_ht_iter iter;
@@ -6598,7 +6562,7 @@ static void ust_app_synchronize_all_channels(struct ltt_ust_session *usess,
 		 * all enabled contexts will be added to the channel.
 		 */
 		int ret = find_or_create_ust_app_channel(
-			usess, ua_sess, app, uchan, &ua_chan, &chan_config);
+			usess, ua_sess, app, uchan, &ua_chan, chan_config);
 		if (ret) {
 			/* Tracer is probably gone or ENOMEM. */
 			goto end;
