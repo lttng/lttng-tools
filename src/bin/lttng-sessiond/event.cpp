@@ -78,7 +78,7 @@ int event_ust_enable_tracepoint(
 	struct lttng_bytecode *filter,
 	struct lttng_event_exclusion *exclusion,
 	bool internal_event,
-	const lttng::sessiond::config::event_rule_configuration *event_rule_config)
+	const lttng::sessiond::config::event_rule_configuration& event_rule_config)
 {
 	int ret = LTTNG_OK, to_create = 0;
 	struct ltt_ust_event *uevent;
@@ -110,10 +110,8 @@ int event_ust_enable_tracepoint(
 		to_create = 1;
 	}
 
-	/* Associate the config pointer (may be nullptr for legacy callers). */
-	if (event_rule_config) {
-		uevent->event_rule_config = event_rule_config;
-	}
+	/* Associate the config pointer. */
+	uevent->event_rule_config = &event_rule_config;
 
 	if (uevent->enabled) {
 		/* It's already enabled so everything is OK */
@@ -137,7 +135,7 @@ int event_ust_enable_tracepoint(
 		ret = ust_app_create_event_glb(usess, uchan, uevent, event_rule_config);
 	} else {
 		/* Enable event on all UST registered apps for session */
-		ret = ust_app_enable_event_glb(usess, uchan, uevent);
+		ret = ust_app_enable_event_glb(usess, uchan, event_rule_config);
 	}
 
 	if (ret < 0) {
@@ -214,7 +212,8 @@ int event_ust_disable_tracepoint(struct ltt_ust_session *usess,
 		if (!usess->active) {
 			goto next;
 		}
-		ret = ust_app_disable_event_glb(usess, uchan, uevent);
+		LTTNG_ASSERT(uevent->event_rule_config);
+		ret = ust_app_disable_event_glb(usess, uchan, *uevent->event_rule_config);
 		if (ret < 0 && ret != -LTTNG_UST_ERR_EXIST) {
 			ret = LTTNG_ERR_UST_DISABLE_FAIL;
 			goto error;
@@ -714,7 +713,8 @@ static int event_agent_disable_one(struct ltt_ust_session *usess,
 	LTTNG_ASSERT(uevent);
 
 	if (usess->active) {
-		ret = ust_app_disable_event_glb(usess, uchan, uevent);
+		LTTNG_ASSERT(uevent->event_rule_config);
+		ret = ust_app_disable_event_glb(usess, uchan, *uevent->event_rule_config);
 		if (ret < 0 && ret != -LTTNG_UST_ERR_EXIST) {
 			ret = LTTNG_ERR_UST_DISABLE_FAIL;
 			goto error;

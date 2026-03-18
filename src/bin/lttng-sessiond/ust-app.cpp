@@ -1473,20 +1473,18 @@ error:
 static struct ust_app_event *
 alloc_ust_app_event(char *name,
 		    struct lttng_ust_abi_event *attr,
-		    const lttng::sessiond::config::event_rule_configuration *event_config = nullptr)
+		    const lttng::sessiond::config::event_rule_configuration& event_config)
 {
 	struct ust_app_event *ua_event;
 
-	/* Init most of the default value by allocating and zeroing */
 	try {
-		ua_event = new ust_app_event;
+		ua_event = new ust_app_event(event_config);
 	} catch (const std::bad_alloc&) {
 		PERROR("Failed to allocate ust_app_event structure");
 		goto error;
 	}
 
 	ua_event->enabled = true;
-	ua_event->event_rule_config = event_config;
 	strncpy(ua_event->name, name, sizeof(ua_event->name));
 	ua_event->name[sizeof(ua_event->name) - 1] = '\0';
 	lttng_ht_node_init_str(&ua_event->node, ua_event->name);
@@ -1748,6 +1746,29 @@ static struct ust_app_event *find_ust_app_event(struct lttng_ht *ht,
 
 end:
 	return event;
+}
+
+/*
+ * Find a per-app event by matching its config pointer.
+ *
+ * Returns the matching ust_app_event or nullptr if not found.
+ * Must be called with the RCU read lock held.
+ */
+static struct ust_app_event *
+find_ust_app_event_by_config(struct lttng_ht *ht,
+			     const lttng::sessiond::config::event_rule_configuration& event_config)
+{
+	LTTNG_ASSERT(ht);
+
+	for (auto *ua_event : lttng::urcu::lfht_iteration_adapter<ust_app_event,
+								  decltype(ust_app_event::node),
+								  &ust_app_event::node>(*ht->ht)) {
+		if (&ua_event->event_rule_config == &event_config) {
+			return ua_event;
+		}
+	}
+
+	return nullptr;
 }
 
 /*
@@ -4070,11 +4091,11 @@ error:
  * Must be called with the RCU read side lock held.
  * Called with ust app session mutex held.
  */
-static int create_ust_app_event(
-	struct ust_app_channel *ua_chan,
-	struct ltt_ust_event *uevent,
-	struct ust_app *app,
-	const lttng::sessiond::config::event_rule_configuration *event_config = nullptr)
+static int
+create_ust_app_event(struct ust_app_channel *ua_chan,
+		     struct ltt_ust_event *uevent,
+		     struct ust_app *app,
+		     const lttng::sessiond::config::event_rule_configuration& event_config)
 {
 	int ret = 0;
 	struct ust_app_event *ua_event;
@@ -5319,7 +5340,7 @@ int ust_app_enable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_cha
  */
 int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 			      struct ltt_ust_channel *uchan,
-			      struct ltt_ust_event *uevent)
+			      const lttng::sessiond::config::event_rule_configuration& event_config)
 {
 	int ret = 0;
 	struct lttng_ht_iter uiter;
@@ -5329,9 +5350,8 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 	struct ust_app_event *ua_event;
 
 	LTTNG_ASSERT(usess->active);
-	DBG("UST app disabling event %s for all apps in channel "
+	DBG("UST app disabling event for all apps in channel "
 	    "%s for session id %" PRIu64,
-	    uevent->attr.name,
 	    uchan->name,
 	    usess->id);
 
@@ -5370,17 +5390,10 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 		}
 		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
 
-		ua_event = find_ust_app_event(
-			ua_chan->events,
-			uevent->attr.name,
-			uevent->filter,
-			(enum lttng_ust_abi_loglevel_type) uevent->attr.loglevel_type,
-			uevent->attr.loglevel,
-			uevent->exclusion);
+		ua_event = find_ust_app_event_by_config(ua_chan->events, event_config);
 		if (ua_event == nullptr) {
-			DBG2("Event %s not found in channel %s for app pid %d."
+			DBG2("Event not found in channel %s for app pid %d."
 			     "Skipping",
-			     uevent->attr.name,
 			     uchan->name,
 			     app->pid);
 			continue;
@@ -5554,7 +5567,7 @@ error:
  */
 int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 			     struct ltt_ust_channel *uchan,
-			     struct ltt_ust_event *uevent)
+			     const lttng::sessiond::config::event_rule_configuration& event_config)
 {
 	int ret = 0;
 	struct lttng_ht_iter uiter;
@@ -5564,9 +5577,7 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 	struct ust_app_event *ua_event;
 
 	LTTNG_ASSERT(usess->active);
-	DBG("UST app enabling event %s for all apps for session id %" PRIu64,
-	    uevent->attr.name,
-	    usess->id);
+	DBG("UST app enabling event for all apps for session id %" PRIu64, usess->id);
 
 	/*
 	 * NOTE: At this point, this function is called only if the session and
@@ -5619,18 +5630,10 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 
 		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
 
-		/* Get event node */
-		ua_event = find_ust_app_event(
-			ua_chan->events,
-			uevent->attr.name,
-			uevent->filter,
-			(enum lttng_ust_abi_loglevel_type) uevent->attr.loglevel_type,
-			uevent->attr.loglevel,
-			uevent->exclusion);
+		ua_event = find_ust_app_event_by_config(ua_chan->events, event_config);
 		if (ua_event == nullptr) {
-			DBG3("UST app enable event %s not found for app PID %d."
+			DBG3("UST app enable event not found for app PID %d."
 			     "Skipping app",
-			     uevent->attr.name,
 			     app->pid);
 			continue;
 		}
@@ -5652,7 +5655,7 @@ int ust_app_create_event_glb(
 	struct ltt_ust_session *usess,
 	struct ltt_ust_channel *uchan,
 	struct ltt_ust_event *uevent,
-	const lttng::sessiond::config::event_rule_configuration *event_rule_config)
+	const lttng::sessiond::config::event_rule_configuration& event_rule_config)
 {
 	int ret = 0;
 	struct lttng_ht_iter uiter;
@@ -6398,28 +6401,19 @@ static int ust_app_channel_synchronize_event(
 	struct ust_app_channel *ua_chan,
 	struct ltt_ust_event *uevent,
 	struct ust_app *app,
-	const lttng::sessiond::config::event_rule_configuration *event_config = nullptr)
+	const lttng::sessiond::config::event_rule_configuration& event_config)
 {
 	int ret = 0;
-	struct ust_app_event *ua_event = nullptr;
 
-	ua_event = find_ust_app_event(ua_chan->events,
-				      uevent->attr.name,
-				      uevent->filter,
-				      (enum lttng_ust_abi_loglevel_type) uevent->attr.loglevel_type,
-				      uevent->attr.loglevel,
-				      uevent->exclusion);
+	auto *ua_event = find_ust_app_event_by_config(ua_chan->events, event_config);
 	if (!ua_event) {
 		ret = create_ust_app_event(ua_chan, uevent, app, event_config);
 		if (ret < 0) {
 			goto end;
 		}
 	} else {
-		const auto event_should_be_enabled = event_config ? event_config->is_enabled :
-								    uevent->enabled;
-
-		if (ua_event->enabled != event_should_be_enabled) {
-			ret = event_should_be_enabled ? enable_ust_app_event(ua_event, app) :
+		if (ua_event->enabled != event_config.is_enabled) {
+			ret = event_config.is_enabled ? enable_ust_app_event(ua_event, app) :
 							disable_ust_app_event(ua_event, app);
 		}
 	}
@@ -6620,8 +6614,9 @@ static void ust_app_synchronize_all_channels(struct ltt_ust_session *usess,
 							 decltype(ltt_ust_event::node),
 							 &ltt_ust_event::node>(
 			     *uchan->events->ht)) {
+			LTTNG_ASSERT(uevent->event_rule_config);
 			ret = ust_app_channel_synchronize_event(
-				ua_chan, uevent, app, uevent->event_rule_config);
+				ua_chan, uevent, app, *uevent->event_rule_config);
 			if (ret) {
 				goto end;
 			}

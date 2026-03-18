@@ -307,7 +307,7 @@ void ls::ust::domain_orchestrator::enable_event(
 						     bytecode.release(),
 						     exclusion.release(),
 						     internal_event,
-						     &event_rule_config);
+						     event_rule_config);
 	if (ret != LTTNG_OK) {
 		LTTNG_THROW_CTL("Failed to enable UST event", static_cast<lttng_error_code>(ret));
 	}
