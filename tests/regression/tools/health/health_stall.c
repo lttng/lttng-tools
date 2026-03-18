@@ -79,18 +79,6 @@ int __testpoint_sessiond_thread_manage_apps(void)
 	return 0;
 }
 
-LTTNG_EXPORT int __testpoint_sessiond_thread_manage_kernel(void);
-int __testpoint_sessiond_thread_manage_kernel(void)
-{
-	const char *var = "LTTNG_SESSIOND_THREAD_MANAGE_KERNEL_STALL";
-
-	if (check_env_var(var)) {
-		do_stall();
-	}
-
-	return 0;
-}
-
 LTTNG_EXPORT int __testpoint_sessiond_thread_manage_consumer(void);
 int __testpoint_sessiond_thread_manage_consumer(void)
 {

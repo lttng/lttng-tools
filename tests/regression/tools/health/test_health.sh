@@ -8,7 +8,7 @@ UST_EVENT_NAME="tp:tptest"
 KERNEL_EVENT_NAME="sched_switch"
 CHANNEL_NAME="testchan"
 HEALTH_CHECK_BIN="health_check"
-NUM_TESTS=82
+NUM_TESTS=79
 SLEEP_TIME=30
 
 source $TESTDIR/utils/utils.sh
@@ -160,7 +160,6 @@ THREAD=(
 	"LTTNG_SESSIOND_THREAD_REG_APPS"
 	"LTTNG_SESSIOND_THREAD_APP_MANAGE_NOTIFY"
 	"LTTNG_SESSIOND_THREAD_APP_REG_DISPATCH"
-	"LTTNG_SESSIOND_THREAD_MANAGE_KERNEL"
 
 	"LTTNG_CONSUMERD_THREAD_CHANNEL"
 	"LTTNG_CONSUMERD_THREAD_METADATA"
@@ -179,7 +178,6 @@ ERROR_STRING=(
 	"Thread \"Session daemon application registration\" is not responding in component \"sessiond\"."
 	"Thread \"Session daemon application notification manager\" is not responding in component \"sessiond\"."
 	"Thread \"Session daemon application registration dispatcher\" is not responding in component \"sessiond\"."
-	"Thread \"Session daemon kernel\" is not responding in component \"sessiond\"."
 
 	"Thread \"Consumer daemon channel\" is not responding"
 	"Thread \"Consumer daemon metadata\" is not responding"
@@ -214,7 +212,6 @@ NEEDS_ROOT=(
 	0
 	0
 	0
-	1
 
 	0
 	0
@@ -233,7 +230,6 @@ TEST_CONSUMERD=(
 	0
 	0
 	0
-	0
 
 	1
 	1
@@ -247,7 +243,6 @@ TEST_CONSUMERD=(
 )
 
 TEST_RELAYD=(
-	0
 	0
 	0
 	0
