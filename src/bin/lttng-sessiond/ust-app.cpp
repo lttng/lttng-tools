@@ -1497,12 +1497,74 @@ error:
 }
 
 /*
- * Alloc new UST app event.
+ * Build a lttng_ust_abi_event from an event rule. Only user tracepoint
+ * rules are supported.
+ */
+static struct lttng_ust_abi_event
+make_ust_abi_event_from_event_rule(const struct lttng_event_rule *rule)
+{
+	struct lttng_ust_abi_event ust_event = {};
+	const char *pattern;
+	int loglevel = -1;
+	enum lttng_ust_abi_loglevel_type ust_loglevel_type = LTTNG_UST_ABI_LOGLEVEL_ALL;
+
+	if (lttng_event_rule_targets_agent_domain(rule)) {
+		pattern = event_get_default_agent_ust_name(lttng_event_rule_get_domain_type(rule));
+		loglevel = 0;
+		ust_loglevel_type = LTTNG_UST_ABI_LOGLEVEL_ALL;
+	} else {
+		const struct lttng_log_level_rule *log_level_rule;
+
+		LTTNG_ASSERT(lttng_event_rule_get_type(rule) ==
+			     LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT);
+
+		const auto status =
+			lttng_event_rule_user_tracepoint_get_name_pattern(rule, &pattern);
+		if (status != LTTNG_EVENT_RULE_STATUS_OK) {
+			abort();
+		}
+
+		const auto llr_status =
+			lttng_event_rule_user_tracepoint_get_log_level_rule(rule, &log_level_rule);
+		if (llr_status == LTTNG_EVENT_RULE_STATUS_UNSET) {
+			ust_loglevel_type = LTTNG_UST_ABI_LOGLEVEL_ALL;
+		} else if (llr_status == LTTNG_EVENT_RULE_STATUS_OK) {
+			enum lttng_log_level_rule_status level_status;
+
+			switch (lttng_log_level_rule_get_type(log_level_rule)) {
+			case LTTNG_LOG_LEVEL_RULE_TYPE_EXACTLY:
+				ust_loglevel_type = LTTNG_UST_ABI_LOGLEVEL_SINGLE;
+				level_status = lttng_log_level_rule_exactly_get_level(
+					log_level_rule, &loglevel);
+				break;
+			case LTTNG_LOG_LEVEL_RULE_TYPE_AT_LEAST_AS_SEVERE_AS:
+				ust_loglevel_type = LTTNG_UST_ABI_LOGLEVEL_RANGE;
+				level_status = lttng_log_level_rule_at_least_as_severe_as_get_level(
+					log_level_rule, &loglevel);
+				break;
+			default:
+				abort();
+			}
+
+			LTTNG_ASSERT(level_status == LTTNG_LOG_LEVEL_RULE_STATUS_OK);
+		} else {
+			abort();
+		}
+	}
+
+	ust_event.instrumentation = LTTNG_UST_ABI_TRACEPOINT;
+	lttng_strncpy(ust_event.name, pattern, sizeof(ust_event.name));
+	ust_event.loglevel_type = ust_loglevel_type;
+	ust_event.loglevel = loglevel;
+
+	return ust_event;
+}
+
+/*
+ * Alloc new UST app event from its event rule configuration.
  */
 static struct ust_app_event *
-alloc_ust_app_event(char *name,
-		    struct lttng_ust_abi_event *attr,
-		    const lttng::sessiond::config::event_rule_configuration& event_config)
+alloc_ust_app_event(const lttng::sessiond::config::event_rule_configuration& event_config)
 {
 	struct ust_app_event *ua_event;
 
@@ -1514,14 +1576,10 @@ alloc_ust_app_event(char *name,
 	}
 
 	ua_event->enabled = true;
-	strncpy(ua_event->name, name, sizeof(ua_event->name));
+	ua_event->attr = make_ust_abi_event_from_event_rule(event_config.event_rule.get());
+	strncpy(ua_event->name, ua_event->attr.name, sizeof(ua_event->name));
 	ua_event->name[sizeof(ua_event->name) - 1] = '\0';
 	lttng_ht_node_init_str(&ua_event->node, ua_event->name);
-
-	/* Copy attributes */
-	if (attr) {
-		memcpy(&ua_event->attr, attr, sizeof(ua_event->attr));
-	}
 
 	DBG3("UST app event %s allocated", ua_event->name);
 
@@ -4044,7 +4102,6 @@ error:
  */
 static int
 create_ust_app_event(struct ust_app_channel *ua_chan,
-		     struct ltt_ust_event *uevent,
 		     struct ust_app *app,
 		     const lttng::sessiond::config::event_rule_configuration& event_config)
 {
@@ -4053,7 +4110,7 @@ create_ust_app_event(struct ust_app_channel *ua_chan,
 
 	ASSERT_RCU_READ_LOCKED();
 
-	ua_event = alloc_ust_app_event(uevent->attr.name, &uevent->attr, event_config);
+	ua_event = alloc_ust_app_event(event_config);
 	if (ua_event == nullptr) {
 		/* Only failure mode of alloc_ust_app_event(). */
 		ret = -ENOMEM;
@@ -4064,16 +4121,10 @@ create_ust_app_event(struct ust_app_channel *ua_chan,
 	/* Create it on the tracer side */
 	ret = create_ust_event(app, ua_chan, ua_event);
 	if (ret < 0) {
-		/*
-		 * Not found previously means that it does not exist on the
-		 * tracer. If the application reports that the event existed,
-		 * it means there is a bug in the sessiond or lttng-ust
-		 * (or corruption, etc.)
-		 */
 		if (ret == -LTTNG_UST_ERR_EXIST) {
 			ERR("Tracer for application reported that an event being created already existed: "
 			    "event_name = \"%s\", pid = %d, ppid = %d, uid = %d, gid = %d",
-			    uevent->attr.name,
+			    ua_event->attr.name,
 			    app->pid,
 			    app->ppid,
 			    app->uid,
@@ -5590,7 +5641,6 @@ error:
 int ust_app_create_event_glb(
 	struct ltt_ust_session *usess,
 	struct ltt_ust_channel *uchan,
-	struct ltt_ust_event *uevent,
 	const lttng::sessiond::config::event_rule_configuration& event_rule_config)
 {
 	int ret = 0;
@@ -5600,9 +5650,7 @@ int ust_app_create_event_glb(
 	struct ust_app_channel *ua_chan;
 
 	LTTNG_ASSERT(usess->active);
-	DBG("UST app creating event %s for all apps for session id %" PRIu64,
-	    uevent->attr.name,
-	    usess->id);
+	DBG("UST app creating event for all apps for session id %" PRIu64, usess->id);
 
 	/* Iterate on all apps. */
 	for (auto *app :
@@ -5644,16 +5692,14 @@ int ust_app_create_event_glb(
 
 		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
 
-		ret = create_ust_app_event(ua_chan, uevent, app, event_rule_config);
+		ret = create_ust_app_event(ua_chan, app, event_rule_config);
 		if (ret < 0) {
 			if (ret != -LTTNG_UST_ERR_EXIST) {
 				/* Possible value at this point: -ENOMEM. If so, we stop! */
 				break;
 			}
 
-			DBG2("UST app event %s already exist on app PID %d",
-			     uevent->attr.name,
-			     app->pid);
+			DBG2("UST app event already exists on app PID %d", app->pid);
 			continue;
 		}
 	}
@@ -6335,7 +6381,6 @@ end:
 
 static int ust_app_channel_synchronize_event(
 	struct ust_app_channel *ua_chan,
-	struct ltt_ust_event *uevent,
 	struct ust_app *app,
 	const lttng::sessiond::config::event_rule_configuration& event_config)
 {
@@ -6343,7 +6388,7 @@ static int ust_app_channel_synchronize_event(
 
 	auto *ua_event = find_ust_app_event_by_config(ua_chan->events, event_config);
 	if (!ua_event) {
-		ret = create_ust_app_event(ua_chan, uevent, app, event_config);
+		ret = create_ust_app_event(ua_chan, app, event_config);
 		if (ret < 0) {
 			goto end;
 		}
@@ -6552,7 +6597,7 @@ static void ust_app_synchronize_all_channels(struct ltt_ust_session *usess,
 			     *uchan->events->ht)) {
 			LTTNG_ASSERT(uevent->event_rule_config);
 			ret = ust_app_channel_synchronize_event(
-				ua_chan, uevent, app, *uevent->event_rule_config);
+				ua_chan, app, *uevent->event_rule_config);
 			if (ret) {
 				goto end;
 			}

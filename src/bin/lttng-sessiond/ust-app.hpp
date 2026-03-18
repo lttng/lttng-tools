@@ -541,7 +541,6 @@ int ust_app_list_event_fields(struct lttng_event_field **fields);
 int ust_app_create_event_glb(
 	struct ltt_ust_session *usess,
 	struct ltt_ust_channel *uchan,
-	struct ltt_ust_event *uevent,
 	const lttng::sessiond::config::event_rule_configuration& event_rule_config);
 int ust_app_disable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_channel *uchan);
 int ust_app_enable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_channel *uchan);
@@ -737,7 +736,6 @@ static inline int ust_app_enable_channel_glb(struct ltt_ust_session *usess __att
 static inline int
 ust_app_create_event_glb(struct ltt_ust_session *usess __attribute__((unused)),
 			 struct ltt_ust_channel *uchan __attribute__((unused)),
-			 struct ltt_ust_event *uevent __attribute__((unused)),
 			 const lttng::sessiond::config::event_rule_configuration& event_rule_config
 			 __attribute__((unused)))
 {
