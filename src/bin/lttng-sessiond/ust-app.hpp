@@ -120,11 +120,22 @@ struct ust_app_stream_list {
 };
 
 struct ust_app_ctx {
+	explicit ust_app_ctx(const lttng::sessiond::config::context_configuration& context_config_) :
+		context_config(context_config_)
+	{
+	}
+
+	~ust_app_ctx() = default;
+	ust_app_ctx(const ust_app_ctx&) = delete;
+	ust_app_ctx(ust_app_ctx&&) = delete;
+	ust_app_ctx& operator=(const ust_app_ctx&) = delete;
+	ust_app_ctx& operator=(ust_app_ctx&&) = delete;
+
 	int handle = 0;
 	struct lttng_ust_context_attr ctx = {};
 	struct lttng_ust_abi_object_data *obj = nullptr;
 	struct lttng_ht_node_ulong node = {};
-	const lttng::sessiond::config::context_configuration *context_config = nullptr;
+	const lttng::sessiond::config::context_configuration& context_config;
 };
 
 struct ust_app_event {

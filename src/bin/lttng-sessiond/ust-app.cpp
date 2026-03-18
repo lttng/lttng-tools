@@ -1598,17 +1598,15 @@ error:
  */
 static struct ust_app_ctx *
 alloc_ust_app_ctx(struct lttng_ust_context_attr *uctx,
-		  const lttng::sessiond::config::context_configuration *ctx_config = nullptr)
+		  const lttng::sessiond::config::context_configuration& ctx_config)
 {
 	struct ust_app_ctx *ua_ctx;
 
 	try {
-		ua_ctx = new ust_app_ctx;
+		ua_ctx = new ust_app_ctx(ctx_config);
 	} catch (const std::bad_alloc&) {
 		goto error;
 	}
-
-	ua_ctx->context_config = ctx_config;
 
 	if (uctx) {
 		memcpy(&ua_ctx->ctx, uctx, sizeof(ua_ctx->ctx));
@@ -3158,11 +3156,11 @@ end:
  *
  * Called with UST app session lock held and a RCU read side lock.
  */
-static int create_ust_app_channel_context(
-	struct ust_app_channel *ua_chan,
-	struct lttng_ust_context_attr *uctx,
-	struct ust_app *app,
-	const lttng::sessiond::config::context_configuration *ctx_config = nullptr)
+static int
+create_ust_app_channel_context(struct ust_app_channel *ua_chan,
+			       struct lttng_ust_context_attr *uctx,
+			       struct ust_app *app,
+			       const lttng::sessiond::config::context_configuration& ctx_config)
 {
 	int ret = 0;
 	struct ust_app_ctx *ua_ctx;
@@ -5471,7 +5469,7 @@ static int ust_app_channel_create(
 				lttng::sessiond::ust::domain_orchestrator::make_ust_context_attr(
 					ctx_config);
 			ret = create_ust_app_channel_context(
-				ua_chan, &ust_ctx_attr, app, &ctx_config);
+				ua_chan, &ust_ctx_attr, app, ctx_config);
 			if (ret) {
 				goto error;
 			}
@@ -6802,7 +6800,7 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 				lttng::sessiond::ust::domain_orchestrator::make_ust_context_attr(
 					uctx->context_config);
 			ret = create_ust_app_channel_context(
-				ua_chan, &ust_ctx_attr, app, &(uctx->context_config));
+				ua_chan, &ust_ctx_attr, app, uctx->context_config);
 		}
 		if (ret < 0) {
 			continue;
