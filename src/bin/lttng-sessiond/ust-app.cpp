@@ -5648,9 +5648,11 @@ error:
  * For a specific existing UST session and UST channel, creates the event for
  * all registered apps.
  */
-int ust_app_create_event_glb(struct ltt_ust_session *usess,
-			     struct ltt_ust_channel *uchan,
-			     struct ltt_ust_event *uevent)
+int ust_app_create_event_glb(
+	struct ltt_ust_session *usess,
+	struct ltt_ust_channel *uchan,
+	struct ltt_ust_event *uevent,
+	const lttng::sessiond::config::event_rule_configuration *event_rule_config)
 {
 	int ret = 0;
 	struct lttng_ht_iter uiter;
@@ -5703,7 +5705,7 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 
 		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
 
-		ret = create_ust_app_event(ua_chan, uevent, app);
+		ret = create_ust_app_event(ua_chan, uevent, app, event_rule_config);
 		if (ret < 0) {
 			if (ret != -LTTNG_UST_ERR_EXIST) {
 				/* Possible value at this point: -ENOMEM. If so, we stop! */

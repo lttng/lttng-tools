@@ -496,9 +496,11 @@ int ust_app_stop_trace_all(struct ltt_ust_session *usess);
 int ust_app_destroy_trace_all(struct ltt_ust_session *usess);
 int ust_app_list_events(struct lttng_event **events);
 int ust_app_list_event_fields(struct lttng_event_field **fields);
-int ust_app_create_event_glb(struct ltt_ust_session *usess,
-			     struct ltt_ust_channel *uchan,
-			     struct ltt_ust_event *uevent);
+int ust_app_create_event_glb(
+	struct ltt_ust_session *usess,
+	struct ltt_ust_channel *uchan,
+	struct ltt_ust_event *uevent,
+	const lttng::sessiond::config::event_rule_configuration *event_rule_config = nullptr);
 int ust_app_disable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_channel *uchan);
 int ust_app_enable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_channel *uchan);
 int ust_app_enable_event_glb(struct ltt_ust_session *usess,
@@ -690,9 +692,12 @@ static inline int ust_app_enable_channel_glb(struct ltt_ust_session *usess __att
 	return 0;
 }
 
-static inline int ust_app_create_event_glb(struct ltt_ust_session *usess __attribute__((unused)),
-					   struct ltt_ust_channel *uchan __attribute__((unused)),
-					   struct ltt_ust_event *uevent __attribute__((unused)))
+static inline int
+ust_app_create_event_glb(struct ltt_ust_session *usess __attribute__((unused)),
+			 struct ltt_ust_channel *uchan __attribute__((unused)),
+			 struct ltt_ust_event *uevent __attribute__((unused)),
+			 const lttng::sessiond::config::event_rule_configuration *event_rule_config
+			 __attribute__((unused)) = nullptr)
 {
 	return 0;
 }

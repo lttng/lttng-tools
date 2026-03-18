@@ -134,7 +134,7 @@ int event_ust_enable_tracepoint(
 
 	if (to_create) {
 		/* Create event on all UST registered apps for session */
-		ret = ust_app_create_event_glb(usess, uchan, uevent);
+		ret = ust_app_create_event_glb(usess, uchan, uevent, event_rule_config);
 	} else {
 		/* Enable event on all UST registered apps for session */
 		ret = ust_app_enable_event_glb(usess, uchan, uevent);
