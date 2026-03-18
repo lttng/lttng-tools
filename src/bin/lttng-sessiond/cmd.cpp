@@ -2569,9 +2569,9 @@ lttng_error_code cmd_disable_event(struct command_ctx *cmd_ctx,
 		}
 
 		if (pattern_disables_all) {
-			ret = event_agent_disable_all(usess, agt);
+			ret = event_agent_disable_all(*locked_session, usess, agt);
 		} else {
-			ret = event_agent_disable(usess, agt, event_name);
+			ret = event_agent_disable(*locked_session, usess, agt, event_name);
 		}
 
 		if (ret != LTTNG_OK) {

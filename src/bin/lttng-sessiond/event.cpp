@@ -13,6 +13,7 @@
 #include "lttng-sessiond.hpp"
 #include "lttng-ust-ctl.hpp"
 #include "lttng-ust-error.hpp"
+#include "session.hpp"
 #include "trace-ust.hpp"
 #include "ust-app.hpp"
 #include "utils.hpp"
@@ -643,7 +644,8 @@ error:
  * Must be called with the RCU read lock held.
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-static int event_agent_disable_one(struct ltt_ust_session *usess,
+static int event_agent_disable_one(ltt_session& session,
+				   struct ltt_ust_session *usess,
 				   struct agent *agt,
 				   struct agent_event *aevent)
 {
@@ -727,6 +729,16 @@ static int event_agent_disable_one(struct ltt_ust_session *usess,
 	 */
 	uevent->enabled = false;
 
+	/*
+	 * Disable the event rule in the UST domain's channel configuration so
+	 * that the per-app event synchronization path, which reads the enabled
+	 * state from the configuration, sees the event as disabled.
+	 */
+	session.get_domain(lttng::domain_class::USER_SPACE)
+		.get_channel(ust_channel_name)
+		.get_event_rule_configuration(*uevent->event_rule_config->event_rule)
+		.disable();
+
 	ret = agent_disable_event(aevent, agt->domain);
 	if (ret != LTTNG_OK) {
 		goto error;
@@ -779,7 +791,10 @@ end:
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt, const char *event_name)
+int event_agent_disable(ltt_session& session,
+			struct ltt_ust_session *usess,
+			struct agent *agt,
+			const char *event_name)
 {
 	int ret = LTTNG_OK;
 	struct agent_event *aevent;
@@ -804,7 +819,7 @@ int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt, const 
 
 	do {
 		aevent = lttng::utils::container_of(node, &agent_event::node);
-		ret = event_agent_disable_one(usess, agt, aevent);
+		ret = event_agent_disable_one(session, usess, agt, aevent);
 
 		if (ret != LTTNG_OK) {
 			goto end;
@@ -822,7 +837,7 @@ end:
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-int event_agent_disable_all(struct ltt_ust_session *usess, struct agent *agt)
+int event_agent_disable_all(ltt_session& session, struct ltt_ust_session *usess, struct agent *agt)
 {
 	int ret;
 
@@ -833,7 +848,7 @@ int event_agent_disable_all(struct ltt_ust_session *usess, struct agent *agt)
 	 * Disable event on agent application. Continue to disable all other events
 	 * if the * event is not found.
 	 */
-	ret = event_agent_disable(usess, agt, "*");
+	ret = event_agent_disable(session, usess, agt, "*");
 	if (ret != LTTNG_OK && ret != LTTNG_ERR_UST_EVENT_NOT_FOUND) {
 		goto error;
 	}
@@ -847,7 +862,7 @@ int event_agent_disable_all(struct ltt_ust_session *usess, struct agent *agt)
 			continue;
 		}
 
-		ret = event_agent_disable(usess, agt, aevent->name);
+		ret = event_agent_disable(session, usess, agt, aevent->name);
 		if (ret != LTTNG_OK) {
 			goto error_unlock;
 		}

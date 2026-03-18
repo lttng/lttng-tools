@@ -2568,34 +2568,35 @@ error:
 /*
  * Copy data between an UST app event and a LTT event.
  */
-static void shadow_copy_event(struct ust_app_event *ua_event, struct ltt_ust_event *uevent)
+/*
+ * Populate the per-app event's mutable fields from its associated
+ * event rule configuration. The `attr` and `name` fields are already
+ * set by `alloc_ust_app_event`, so this function only needs to copy
+ * the enabled state, filter bytecode, and exclusions.
+ */
+static void shadow_copy_event(struct ust_app_event *ua_event)
 {
-	size_t exclusion_alloc_size;
+	const auto& config = ua_event->event_rule_config;
+	const auto *rule = config.event_rule.get();
 
-	strncpy(ua_event->name, uevent->attr.name, sizeof(ua_event->name));
-	ua_event->name[sizeof(ua_event->name) - 1] = '\0';
+	ua_event->enabled = config.is_enabled;
 
-	ua_event->enabled = uevent->enabled;
-
-	/* Copy event attributes */
-	memcpy(&ua_event->attr, &uevent->attr, sizeof(ua_event->attr));
-
-	/* Copy filter bytecode */
-	if (uevent->filter) {
-		ua_event->filter = lttng_bytecode_copy(uevent->filter);
-		/* Filter might be NULL here in case of ENONEM. */
+	/* Copy filter bytecode from the event rule. */
+	const auto *rule_bytecode = lttng_event_rule_get_filter_bytecode(rule);
+	if (rule_bytecode) {
+		ua_event->filter = lttng_bytecode_copy(rule_bytecode);
+		/* Filter might be NULL here in case of ENOMEM. */
 	}
 
-	/* Copy exclusion data */
-	if (uevent->exclusion) {
-		exclusion_alloc_size = sizeof(struct lttng_event_exclusion) +
-			LTTNG_UST_ABI_SYM_NAME_LEN * uevent->exclusion->count;
-		ua_event->exclusion = zmalloc<lttng_event_exclusion>(exclusion_alloc_size);
-		if (ua_event->exclusion == nullptr) {
-			PERROR("malloc");
-		} else {
-			memcpy(ua_event->exclusion, uevent->exclusion, exclusion_alloc_size);
-		}
+	/* Copy exclusion data from the event rule. */
+	struct lttng_event_exclusion *raw_exclusion = nullptr;
+	const auto exclusion_status = lttng_event_rule_generate_exclusions(rule, &raw_exclusion);
+	if (exclusion_status == LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_OK) {
+		ua_event->exclusion = raw_exclusion;
+	} else if (exclusion_status == LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_NONE) {
+		ua_event->exclusion = nullptr;
+	} else {
+		PERROR("Failed to generate exclusions from event rule");
 	}
 }
 
@@ -4058,7 +4059,7 @@ create_ust_app_event(struct ust_app_channel *ua_chan,
 		ret = -ENOMEM;
 		goto end;
 	}
-	shadow_copy_event(ua_event, uevent);
+	shadow_copy_event(ua_event);
 
 	/* Create it on the tracer side */
 	ret = create_ust_event(app, ua_chan, ua_event);

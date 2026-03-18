@@ -13,6 +13,7 @@
 #include <lttng/lttng.h>
 
 struct agent;
+struct ltt_session;
 
 int event_ust_enable_tracepoint(
 	struct ltt_ust_session *usess,
@@ -40,8 +41,11 @@ int event_agent_enable_all(struct ltt_ust_session *usess,
 			   struct lttng_bytecode *filter,
 			   char *filter_expression);
 
-int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt, const char *event_name);
-int event_agent_disable_all(struct ltt_ust_session *usess, struct agent *agt);
+int event_agent_disable(ltt_session& session,
+			struct ltt_ust_session *usess,
+			struct agent *agt,
+			const char *event_name);
+int event_agent_disable_all(ltt_session& session, struct ltt_ust_session *usess, struct agent *agt);
 
 int trigger_agent_enable(const struct lttng_trigger *trigger, struct agent *agt);
 int trigger_agent_disable(const struct lttng_trigger *trigger, struct agent *agt);
