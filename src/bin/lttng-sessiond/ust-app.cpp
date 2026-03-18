@@ -1470,7 +1470,10 @@ error:
 /*
  * Alloc new UST app event.
  */
-static struct ust_app_event *alloc_ust_app_event(char *name, struct lttng_ust_abi_event *attr)
+static struct ust_app_event *
+alloc_ust_app_event(char *name,
+		    struct lttng_ust_abi_event *attr,
+		    const lttng::sessiond::config::event_rule_configuration *event_config = nullptr)
 {
 	struct ust_app_event *ua_event;
 
@@ -1483,6 +1486,7 @@ static struct ust_app_event *alloc_ust_app_event(char *name, struct lttng_ust_ab
 	}
 
 	ua_event->enabled = true;
+	ua_event->event_rule_config = event_config;
 	strncpy(ua_event->name, name, sizeof(ua_event->name));
 	ua_event->name[sizeof(ua_event->name) - 1] = '\0';
 	lttng_ht_node_init_str(&ua_event->node, ua_event->name);
@@ -1565,7 +1569,9 @@ error:
 /*
  * Alloc new UST app context.
  */
-static struct ust_app_ctx *alloc_ust_app_ctx(struct lttng_ust_context_attr *uctx)
+static struct ust_app_ctx *
+alloc_ust_app_ctx(struct lttng_ust_context_attr *uctx,
+		  const lttng::sessiond::config::context_configuration *ctx_config = nullptr)
 {
 	struct ust_app_ctx *ua_ctx;
 
@@ -1574,6 +1580,8 @@ static struct ust_app_ctx *alloc_ust_app_ctx(struct lttng_ust_context_attr *uctx
 	} catch (const std::bad_alloc&) {
 		goto error;
 	}
+
+	ua_ctx->context_config = ctx_config;
 
 	if (uctx) {
 		memcpy(&ua_ctx->ctx, uctx, sizeof(ua_ctx->ctx));
@@ -3125,9 +3133,11 @@ end:
  *
  * Called with UST app session lock held and a RCU read side lock.
  */
-static int create_ust_app_channel_context(struct ust_app_channel *ua_chan,
-					  struct lttng_ust_context_attr *uctx,
-					  struct ust_app *app)
+static int create_ust_app_channel_context(
+	struct ust_app_channel *ua_chan,
+	struct lttng_ust_context_attr *uctx,
+	struct ust_app *app,
+	const lttng::sessiond::config::context_configuration *ctx_config = nullptr)
 {
 	int ret = 0;
 	struct ust_app_ctx *ua_ctx;
@@ -3142,7 +3152,7 @@ static int create_ust_app_channel_context(struct ust_app_channel *ua_chan,
 		goto error;
 	}
 
-	ua_ctx = alloc_ust_app_ctx(uctx);
+	ua_ctx = alloc_ust_app_ctx(uctx, ctx_config);
 	if (ua_ctx == nullptr) {
 		/* malloc failed */
 		ret = -ENOMEM;
@@ -4008,16 +4018,18 @@ error:
  * Must be called with the RCU read side lock held.
  * Called with ust app session mutex held.
  */
-static int create_ust_app_event(struct ust_app_channel *ua_chan,
-				struct ltt_ust_event *uevent,
-				struct ust_app *app)
+static int create_ust_app_event(
+	struct ust_app_channel *ua_chan,
+	struct ltt_ust_event *uevent,
+	struct ust_app *app,
+	const lttng::sessiond::config::event_rule_configuration *event_config = nullptr)
 {
 	int ret = 0;
 	struct ust_app_event *ua_event;
 
 	ASSERT_RCU_READ_LOCKED();
 
-	ua_event = alloc_ust_app_event(uevent->attr.name, &uevent->attr);
+	ua_event = alloc_ust_app_event(uevent->attr.name, &uevent->attr, event_config);
 	if (ua_event == nullptr) {
 		/* Only failure mode of alloc_ust_app_event(). */
 		ret = -ENOMEM;
@@ -5418,7 +5430,8 @@ static int ust_app_channel_create(
 			auto ust_ctx_attr =
 				lttng::sessiond::ust::domain_orchestrator::make_ust_context_attr(
 					uctx->context_config);
-			ret = create_ust_app_channel_context(ua_chan, &ust_ctx_attr, app);
+			ret = create_ust_app_channel_context(
+				ua_chan, &ust_ctx_attr, app, &(uctx->context_config));
 			if (ret) {
 				goto error;
 			}
@@ -6289,9 +6302,11 @@ end:
 	return ret;
 }
 
-static int ust_app_channel_synchronize_event(struct ust_app_channel *ua_chan,
-					     struct ltt_ust_event *uevent,
-					     struct ust_app *app)
+static int ust_app_channel_synchronize_event(
+	struct ust_app_channel *ua_chan,
+	struct ltt_ust_event *uevent,
+	struct ust_app *app,
+	const lttng::sessiond::config::event_rule_configuration *event_config = nullptr)
 {
 	int ret = 0;
 	struct ust_app_event *ua_event = nullptr;
@@ -6303,7 +6318,7 @@ static int ust_app_channel_synchronize_event(struct ust_app_channel *ua_chan,
 				      uevent->attr.loglevel,
 				      uevent->exclusion);
 	if (!ua_event) {
-		ret = create_ust_app_event(ua_chan, uevent, app);
+		ret = create_ust_app_event(ua_chan, uevent, app, event_config);
 		if (ret < 0) {
 			goto end;
 		}
@@ -6744,7 +6759,8 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 			auto ust_ctx_attr =
 				lttng::sessiond::ust::domain_orchestrator::make_ust_context_attr(
 					uctx->context_config);
-			ret = create_ust_app_channel_context(ua_chan, &ust_ctx_attr, app);
+			ret = create_ust_app_channel_context(
+				ua_chan, &ust_ctx_attr, app, &(uctx->context_config));
 		}
 		if (ret < 0) {
 			continue;
