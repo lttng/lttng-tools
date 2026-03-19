@@ -6523,14 +6523,9 @@ static void ust_app_synchronize_all_channels(struct ltt_ust_session *usess,
 			continue;
 		}
 
-		for (auto *uevent :
-		     lttng::urcu::lfht_iteration_adapter<ltt_ust_event,
-							 decltype(ltt_ust_event::node),
-							 &ltt_ust_event::node>(
-			     *uchan->events->ht)) {
-			LTTNG_ASSERT(uevent->event_rule_config);
+		for (const auto& event_rule_entry : chan_config.event_rules) {
 			ret = ust_app_channel_synchronize_event(
-				ua_chan, app, *uevent->event_rule_config);
+				ua_chan, app, *event_rule_entry.second);
 			if (ret) {
 				goto end;
 			}
