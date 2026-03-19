@@ -13,39 +13,24 @@
 #include <lttng/lttng.h>
 
 struct agent;
-struct ltt_session;
 
-int event_ust_enable_tracepoint(
+int event_agent_enable(
 	struct ltt_ust_session *usess,
-	struct ltt_ust_channel *uchan,
+	struct agent *agt,
 	struct lttng_event *event,
-	char *filter_expression,
 	struct lttng_bytecode *filter,
-	struct lttng_event_exclusion *exclusion,
-	bool internal_event,
-	const lttng::sessiond::config::event_rule_configuration& event_rule_config);
-int event_ust_disable_tracepoint(struct ltt_ust_session *usess,
-				 struct ltt_ust_channel *uchan,
-				 const char *event_name);
+	char *filter_expression,
+	const lttng::sessiond::config::event_rule_configuration *ust_event_rule_config);
+int event_agent_enable_all(
+	struct ltt_ust_session *usess,
+	struct agent *agt,
+	struct lttng_event *event,
+	struct lttng_bytecode *filter,
+	char *filter_expression,
+	const lttng::sessiond::config::event_rule_configuration *ust_event_rule_config);
 
-int event_ust_disable_all_tracepoints(struct ltt_ust_session *usess, struct ltt_ust_channel *uchan);
-
-int event_agent_enable(struct ltt_ust_session *usess,
-		       struct agent *agt,
-		       struct lttng_event *event,
-		       struct lttng_bytecode *filter,
-		       char *filter_expression);
-int event_agent_enable_all(struct ltt_ust_session *usess,
-			   struct agent *agt,
-			   struct lttng_event *event,
-			   struct lttng_bytecode *filter,
-			   char *filter_expression);
-
-int event_agent_disable(ltt_session& session,
-			struct ltt_ust_session *usess,
-			struct agent *agt,
-			const char *event_name);
-int event_agent_disable_all(ltt_session& session, struct ltt_ust_session *usess, struct agent *agt);
+int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt, const char *event_name);
+int event_agent_disable_all(struct ltt_ust_session *usess, struct agent *agt);
 
 int trigger_agent_enable(const struct lttng_trigger *trigger, struct agent *agt);
 int trigger_agent_disable(const struct lttng_trigger *trigger, struct agent *agt);

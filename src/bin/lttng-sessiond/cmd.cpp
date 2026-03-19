@@ -2569,9 +2569,9 @@ lttng_error_code cmd_disable_event(struct command_ctx *cmd_ctx,
 		}
 
 		if (pattern_disables_all) {
-			ret = event_agent_disable_all(*locked_session, usess, agt);
+			ret = event_agent_disable_all(usess, agt);
 		} else {
-			ret = event_agent_disable(*locked_session, usess, agt, event_name);
+			ret = event_agent_disable(usess, agt, event_name);
 		}
 
 		if (ret != LTTNG_OK) {
@@ -3239,13 +3239,36 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 			return static_cast<lttng_error_code>(ret);
 		}
 
+		/*
+		 * Look up the UST-internal event rule configuration that was
+		 * just created (or found) by cmd_enable_event_internal so it
+		 * can be associated with the agent event.
+		 *
+		 * A fresh event rule is created for the lookup since the
+		 * original was moved into cmd_enable_event_internal.
+		 */
+		const auto lookup_rule =
+			create_agent_internal_event_rule(domain->type, filter_expression.get());
+		const auto *ust_event_rule_cfg =
+			&session.get_domain(lttng::domain_class::USER_SPACE)
+				 .get_channel(default_chan_name)
+				 .get_event_rule_configuration(*lookup_rule);
+
 		/* The wild card * means that everything should be enabled. */
 		if (strncmp(event->name, "*", 1) == 0 && strlen(event->name) == 1) {
-			ret = event_agent_enable_all(
-				usess, agt, event, bytecode.release(), filter_expression.release());
+			ret = event_agent_enable_all(usess,
+						     agt,
+						     event,
+						     bytecode.release(),
+						     filter_expression.release(),
+						     ust_event_rule_cfg);
 		} else {
-			ret = event_agent_enable(
-				usess, agt, event, bytecode.release(), filter_expression.release());
+			ret = event_agent_enable(usess,
+						 agt,
+						 event,
+						 bytecode.release(),
+						 filter_expression.release(),
+						 ust_event_rule_cfg);
 		}
 
 		if (ret != LTTNG_OK) {

@@ -16,6 +16,14 @@
 #include <inttypes.h>
 #include <urcu/urcu.h>
 
+namespace lttng {
+namespace sessiond {
+namespace config {
+class event_rule_configuration;
+} /* namespace config */
+} /* namespace sessiond */
+} /* namespace lttng */
+
 /* Agent protocol version that is verified during the agent registration. */
 #define AGENT_MAJOR_VERSION 2
 #define AGENT_MINOR_VERSION 0
@@ -103,6 +111,13 @@ struct agent_event {
 	struct lttng_bytecode *filter;
 	char *filter_expression;
 	struct lttng_event_exclusion *exclusion;
+
+	/*
+	 * Non-owning pointer to the UST-internal event rule configuration
+	 * that backs this agent event. Set during enable, nullptr for
+	 * trigger-based agent events.
+	 */
+	const lttng::sessiond::config::event_rule_configuration *ust_event_rule_config;
 };
 
 #define AGENT_EVENT_IS_ENABLED(agent_event) (!!(agent_event)->enabled_count)
@@ -163,7 +178,7 @@ void agent_event_next_duplicate(const char *name, struct agent *agt, struct lttn
 void agent_delete_event(struct agent_event *event, struct agent *agt);
 void agent_destroy_event(struct agent_event *event);
 
-/* Agent context API.*/
+/* Agent context API. */
 int agent_enable_context(const struct lttng_event_context *ctx, enum lttng_domain_type domain);
 int agent_add_context(const struct lttng_event_context *ctx, struct agent *agt);
 

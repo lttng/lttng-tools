@@ -12,6 +12,7 @@
 #include "recording-channel-configuration.hpp"
 
 #include <cstdint>
+#include <unordered_set>
 
 struct ltt_session;
 struct ltt_ust_session;
@@ -107,6 +108,15 @@ private:
 	const ltt_session& _session;
 	const config::recording_channel_configuration::owership_model_t _default_buffer_ownership;
 	bool _active = false;
+
+	/*
+	 * Tracks which event rule configurations have had their per-app
+	 * events created (via ust_app_create_event_glb). Used to
+	 * distinguish the initial creation from a re-enable. This will
+	 * be superseded by more structured per-app state when channel
+	 * and event management are fully internalized.
+	 */
+	std::unordered_set<const config::event_rule_configuration *> _created_event_rules;
 };
 
 } /* namespace ust */
