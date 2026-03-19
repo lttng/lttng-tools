@@ -10,6 +10,7 @@
 #include "context.hpp"
 #include "event-rule-configuration.hpp"
 #include "lttng-channel-from-config.hpp"
+#include "lttng-ust-error.hpp"
 #include "recording-channel-configuration.hpp"
 #include "session.hpp"
 #include "trace-ust.hpp"
@@ -165,31 +166,40 @@ void ls::ust::domain_orchestrator::create_channel(
 void ls::ust::domain_orchestrator::enable_channel(
 	const config::recording_channel_configuration& channel_config)
 {
-	auto *const uchan = trace_ust_find_channel_by_name(_ust_session.domain_global.channels,
-							   channel_config.name.c_str());
-	if (!uchan) {
-		LTTNG_THROW_CTL("UST channel not found", LTTNG_ERR_UST_CHAN_NOT_FOUND);
+	if (!_active) {
+		/*
+		 * The channel will be enabled on all applications when the
+		 * session is started as part of the synchronization.
+		 */
+		return;
 	}
 
-	const auto ret = channel_ust_enable(&_ust_session, uchan);
-	if (ret != LTTNG_OK) {
-		LTTNG_THROW_CTL("Failed to enable UST channel", ret);
-	}
+	/*
+	 * Enable channel for UST global domain on all applications. Ignore return
+	 * value here since whatever error we got, it means that the channel was
+	 * not enabled on one or many registered applications and we can not report
+	 * this to the user yet. However, at this stage, the channel was
+	 * successfully enabled on the session daemon side so the enable-channel
+	 * command is a success.
+	 */
+	(void) ust_app_enable_channel_glb(&_ust_session, channel_config.name);
 }
 
 void ls::ust::domain_orchestrator::disable_channel(
 	const config::recording_channel_configuration& channel_config)
 {
-	auto *const uchan = trace_ust_find_channel_by_name(_ust_session.domain_global.channels,
-							   channel_config.name.c_str());
-	if (!uchan) {
-		LTTNG_THROW_CTL("UST channel not found", LTTNG_ERR_UST_CHAN_NOT_FOUND);
+	if (!_active) {
+		/*
+		 * If the session is inactive, the tracers are not notified
+		 * right away. The disabled state will be picked up on the
+		 * next synchronization.
+		 */
+		return;
 	}
 
-	const auto ret = channel_ust_disable(&_ust_session, uchan);
-	if (ret != LTTNG_OK) {
-		LTTNG_THROW_CTL("Failed to disable UST channel",
-				static_cast<lttng_error_code>(ret));
+	const auto ret = ust_app_disable_channel_glb(&_ust_session, channel_config.name);
+	if (ret < 0 && ret != -LTTNG_UST_ERR_EXIST) {
+		LTTNG_THROW_CTL("Failed to disable UST channel", LTTNG_ERR_UST_CHAN_DISABLE_FAIL);
 	}
 }
 
