@@ -296,12 +296,12 @@ enum lttng_error_code channel_ust_create(struct ltt_ust_session *usess,
 		goto error;
 	}
 
-	uchan->id = trace_ust_get_next_event_container_id(usess);
+	uchan->stream_class_id = trace_ust_get_next_event_container_id(usess);
 
 	DBG2("Channel %s is being created for UST with buffer %d and id %" PRIu64,
 	     uchan->name,
 	     type,
-	     uchan->id);
+	     uchan->stream_class_id);
 
 	/* Flag session buffer type. */
 	if (!usess->buffer_type_changed) {

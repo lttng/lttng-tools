@@ -75,7 +75,7 @@ struct ltt_ust_event {
 
 /* UST channel */
 struct ltt_ust_channel {
-	uint64_t id = 0; /* unique id per session. */
+	uint64_t stream_class_id = 0;
 	bool enabled = false;
 	/*
 	 * A UST channel can be part of a userspace sub-domain such as JUL,

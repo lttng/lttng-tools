@@ -385,7 +385,7 @@ private:
 			LTTNG_THROW_CHANNEL_NOT_FOUND_BY_NAME_ERROR(channel_name);
 		}
 
-		return _channel_filter_spec(channel_name, ust_channel->id);
+		return _channel_filter_spec(channel_name, ust_channel->stream_class_id);
 	}
 
 	class _scoped_rcu_read_lock {

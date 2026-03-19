@@ -2604,7 +2604,7 @@ static void shadow_copy_event(struct ust_app_event *ua_event)
  * Initialize per-app channel attributes from its recording_channel_configuration.
  *
  * This replaces the former shadow_copy_channel which copied from ltt_ust_channel.
- * The tracing_channel_id and channel type are set by the caller.
+ * The stream_class_id and channel type are set by the caller.
  */
 static void init_ust_app_channel_from_config(struct ust_app_channel *ua_chan)
 {
@@ -3525,7 +3525,7 @@ static int create_buffer_reg_channel(struct buffer_reg_session *reg_sess,
 	DBG2("UST app creating buffer registry channel for %s", ua_chan->name);
 
 	/* Create buffer registry channel. */
-	ret = buffer_reg_channel_create(ua_chan->tracing_channel_id, &buf_reg_chan);
+	ret = buffer_reg_channel_create(ua_chan->stream_class_id, &buf_reg_chan);
 	if (ret < 0) {
 		goto error_create;
 	}
@@ -3537,7 +3537,7 @@ static int create_buffer_reg_channel(struct buffer_reg_session *reg_sess,
 	/* Create and add a channel registry to session. */
 	try {
 		reg_sess->reg.ust->add_channel(
-			ua_chan->tracing_channel_id,
+			ua_chan->stream_class_id,
 			ust_channel_type_to_allocation_policy(ua_chan->attr.type));
 	} catch (const std::exception& ex) {
 		ERR("Failed to add a channel registry to userspace registry session: %s",
@@ -3727,7 +3727,7 @@ static int create_channel_per_uid(struct ust_app *app,
 	 */
 	LTTNG_ASSERT(reg_uid);
 
-	buf_reg_chan = buffer_reg_channel_find(ua_chan->tracing_channel_id, reg_uid);
+	buf_reg_chan = buffer_reg_channel_find(ua_chan->stream_class_id, reg_uid);
 	if (buf_reg_chan) {
 		goto send_channel;
 	}
@@ -3758,7 +3758,7 @@ static int create_channel_per_uid(struct ust_app *app,
 		 */
 		auto locked_registry = reg_uid->registry->reg.ust->lock();
 		try {
-			locked_registry->remove_channel(ua_chan->tracing_channel_id, false);
+			locked_registry->remove_channel(ua_chan->stream_class_id, false);
 		} catch (const std::exception& ex) {
 			DBG("Could not find channel for removal: %s", ex.what());
 		}
@@ -3778,7 +3778,7 @@ static int create_channel_per_uid(struct ust_app *app,
 
 	{
 		auto locked_registry = reg_uid->registry->reg.ust->lock();
-		auto& ust_reg_chan = locked_registry->channel(ua_chan->tracing_channel_id);
+		auto& ust_reg_chan = locked_registry->channel(ua_chan->stream_class_id);
 
 		ust_reg_chan._consumer_key = ua_chan->key;
 	}
@@ -4012,7 +4012,7 @@ static int ust_app_channel_allocate(
 		goto error;
 	}
 	init_ust_app_channel_from_config(ua_chan);
-	ua_chan->tracing_channel_id = uchan->id;
+	ua_chan->stream_class_id = uchan->stream_class_id;
 	ua_chan->attr.type = type;
 
 end:
@@ -6952,7 +6952,7 @@ static int handle_app_register_channel_notification(int sock,
 
 	/* Depending on the buffer type, a different channel key is used. */
 	if (ua_sess->buffer_type == LTTNG_BUFFER_PER_UID) {
-		chan_reg_key = ua_chan->tracing_channel_id;
+		chan_reg_key = ua_chan->stream_class_id;
 	} else {
 		chan_reg_key = ua_chan->key;
 	}
@@ -7109,7 +7109,7 @@ static int add_event_ust_registry(int sock,
 	ua_sess = ua_chan->session;
 
 	if (ua_sess->buffer_type == LTTNG_BUFFER_PER_UID) {
-		chan_reg_key = ua_chan->tracing_channel_id;
+		chan_reg_key = ua_chan->stream_class_id;
 	} else {
 		chan_reg_key = ua_chan->key;
 	}

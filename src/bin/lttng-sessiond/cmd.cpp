@@ -763,7 +763,7 @@ static int get_ust_runtime_stats(const ltt_session::locked_ref& session,
 		ret = ust_app_uid_get_channel_runtime_stats(usess->id,
 							    &usess->buffer_reg_uid_list,
 							    usess->consumer,
-							    uchan->id,
+							    uchan->stream_class_id,
 							    uchan->attr.overwrite,
 							    discarded_events,
 							    lost_packets);

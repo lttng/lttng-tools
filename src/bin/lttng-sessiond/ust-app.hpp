@@ -203,7 +203,7 @@ struct ust_app_channel {
 	 */
 	uint64_t key = 0;
 	/* Id of the tracing channel set on creation. */
-	uint64_t tracing_channel_id = 0;
+	uint64_t stream_class_id = 0;
 	/* Number of stream that this channel is expected to receive. */
 	unsigned int expected_stream_count = 0;
 	char name[LTTNG_UST_ABI_SYM_NAME_LEN] = {};
