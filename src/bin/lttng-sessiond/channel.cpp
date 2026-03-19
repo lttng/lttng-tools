@@ -12,8 +12,6 @@
 #include "kernel.hpp"
 #include "lttng-sessiond.hpp"
 #include "lttng-ust-ctl.hpp"
-#include "lttng-ust-error.hpp"
-#include "ust-app.hpp"
 #include "utils.hpp"
 
 #include <common/common.hpp>
@@ -131,52 +129,6 @@ static int channel_validate(struct lttng_channel *attr)
 		return -1;
 	}
 	return 0;
-}
-
-/*
- * Enable UST channel for session and domain.
- */
-enum lttng_error_code channel_ust_enable(struct ltt_ust_session *usess,
-					 struct ltt_ust_channel *uchan)
-{
-	enum lttng_error_code ret_code = LTTNG_OK;
-
-	LTTNG_ASSERT(usess);
-	LTTNG_ASSERT(uchan);
-
-	/* If already enabled, everything is OK */
-	if (uchan->enabled) {
-		DBG3("Channel %s already enabled. Skipping", uchan->name);
-		ret_code = LTTNG_ERR_UST_CHAN_EXIST;
-		goto end;
-	} else {
-		uchan->enabled = true;
-		DBG2("Channel %s enabled successfully", uchan->name);
-	}
-
-	if (!usess->active) {
-		/*
-		 * The channel will be activated against the apps
-		 * when the session is started as part of the
-		 * application channel "synchronize" operation.
-		 */
-		goto end;
-	}
-
-	DBG2("Channel %s being enabled in UST domain", uchan->name);
-
-	/*
-	 * Enable channel for UST global domain on all applications. Ignore return
-	 * value here since whatever error we got, it means that the channel was
-	 * not created on one or many registered applications and we can not report
-	 * this to the user yet. However, at this stage, the channel was
-	 * successfully created on the session daemon side so the enable-channel
-	 * command is a success.
-	 */
-	(void) ust_app_enable_channel_glb(usess, uchan->name);
-
-end:
-	return ret_code;
 }
 
 /*
@@ -352,49 +304,6 @@ error_free_chan:
 	trace_ust_destroy_channel(uchan);
 error:
 	return ret_code;
-}
-
-/*
- * Disable UST channel for session and domain.
- */
-int channel_ust_disable(struct ltt_ust_session *usess, struct ltt_ust_channel *uchan)
-{
-	int ret = LTTNG_OK;
-
-	LTTNG_ASSERT(usess);
-	LTTNG_ASSERT(uchan);
-
-	/* Already disabled */
-	if (!uchan->enabled) {
-		DBG2("Channel UST %s already disabled", uchan->name);
-		goto end;
-	}
-
-	uchan->enabled = false;
-
-	/*
-	 * If session is inactive we don't notify the tracer right away. We
-	 * wait for the next synchronization.
-	 */
-	if (!usess->active) {
-		goto end;
-	}
-
-	DBG2("Channel %s being disabled in UST global domain", uchan->name);
-	/* Disable channel for global domain */
-	ret = ust_app_disable_channel_glb(usess, uchan->name);
-	if (ret < 0 && ret != -LTTNG_UST_ERR_EXIST) {
-		ret = LTTNG_ERR_UST_CHAN_DISABLE_FAIL;
-		goto error;
-	}
-
-	DBG2("Channel %s disabled successfully", uchan->name);
-
-	return LTTNG_OK;
-
-end:
-error:
-	return ret;
 }
 
 struct lttng_channel *trace_ust_channel_to_lttng_channel(const struct ltt_ust_channel *uchan)

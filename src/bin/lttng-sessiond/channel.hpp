@@ -21,9 +21,6 @@ lttng::ctl::lttng_channel_uptr channel_new_default_attr(lttng_domain_type domain
 enum lttng_error_code channel_ust_create(struct ltt_ust_session *usess,
 					 struct lttng_channel *attr,
 					 enum lttng_buffer_type type);
-enum lttng_error_code channel_ust_enable(struct ltt_ust_session *usess,
-					 struct ltt_ust_channel *uchan);
-int channel_ust_disable(struct ltt_ust_session *usess, struct ltt_ust_channel *uchan);
 
 struct lttng_channel *trace_ust_channel_to_lttng_channel(const struct ltt_ust_channel *uchan);
 
