@@ -63,7 +63,7 @@ int add_uctx_to_channel(struct ltt_ust_session *usess,
 		return 0;
 	}
 
-	const auto ret = ust_app_add_ctx_channel_glb(usess, uchan, new_uctx_ptr);
+	const auto ret = ust_app_add_ctx_channel_glb(usess, uchan->name, context_config);
 	if (ret < 0) {
 		/* Roll back insertion to leave channel structures consistent. */
 		cds_list_del(&new_uctx_ptr->list);

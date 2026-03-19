@@ -542,8 +542,8 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 			      lttng::c_string_view channel_name,
 			      const lttng::sessiond::config::event_rule_configuration& event_config);
 int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
-				struct ltt_ust_channel *uchan,
-				struct ltt_ust_context *uctx);
+				lttng::c_string_view channel_name,
+				const lttng::sessiond::config::context_configuration& ctx_config);
 void ust_app_global_update(struct ltt_ust_session *usess,
 			   struct ust_app *app,
 			   const lttng::sessiond::config::domain& domain);
@@ -753,9 +753,11 @@ ust_app_enable_event_glb(struct ltt_ust_session *usess __attribute__((unused)),
 	return 0;
 }
 
-static inline int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess __attribute__((unused)),
-					      struct ltt_ust_channel *uchan __attribute__((unused)),
-					      struct ltt_ust_context *uctx __attribute__((unused)))
+static inline int
+ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess __attribute__((unused)),
+			    lttng::c_string_view channel_name __attribute__((unused)),
+			    const lttng::sessiond::config::context_configuration& ctx_config
+			    __attribute__((unused)))
 {
 	return 0;
 }

@@ -5360,29 +5360,6 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
  *   LTTNG_UST_ABI_CONTEXT_CPU_ID:
  *     The CPU ID is implicitly provided in the packer header.
  */
-static bool is_context_redundant(const struct ltt_ust_channel *uchan,
-				 const struct ltt_ust_context *uctx)
-{
-	namespace lsc = lttng::sessiond::config;
-
-	const auto chan_type = static_cast<enum lttng_ust_abi_chan_type>(uchan->attr.type);
-
-	switch (chan_type) {
-	case LTTNG_UST_ABI_CHAN_PER_CPU:
-		switch (uctx->context_config.context_type) {
-		case lsc::context_configuration::type::CPU_ID:
-			return true;
-		default:
-			break;
-		}
-		break;
-	default:
-		break;
-	}
-
-	return false;
-}
-
 /*
  * Config-based overload: determines whether a context is redundant
  * based on the channel configuration's buffer allocation policy.
@@ -6717,8 +6694,8 @@ void ust_app_global_update_all_event_notifier_rules()
  * Add context to a specific channel for global UST domain.
  */
 int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
-				struct ltt_ust_channel *uchan,
-				struct ltt_ust_context *uctx)
+				lttng::c_string_view channel_name,
+				const lttng::sessiond::config::context_configuration& ctx_config)
 {
 	int ret = 0;
 	struct lttng_ht_node_str *ua_chan_node;
@@ -6727,10 +6704,6 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 	struct ust_app_session *ua_sess;
 
 	LTTNG_ASSERT(usess->active);
-
-	if (is_context_redundant(uchan, uctx)) {
-		return 0;
-	}
 
 	/* Iterate on all apps. */
 	for (auto *app :
@@ -6763,7 +6736,7 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 		}
 
 		/* Lookup channel in the ust app session */
-		lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
+		lttng_ht_lookup(ua_sess->channels, (void *) channel_name.data(), &uiter);
 		ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
 		if (ua_chan_node == nullptr) {
 			continue;
@@ -6772,9 +6745,9 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 		{
 			auto ust_ctx_attr =
 				lttng::sessiond::ust::domain_orchestrator::make_ust_context_attr(
-					uctx->context_config);
+					ctx_config);
 			ret = create_ust_app_channel_context(
-				ua_chan, &ust_ctx_attr, app, uctx->context_config);
+				ua_chan, &ust_ctx_attr, app, ctx_config);
 		}
 		if (ret < 0) {
 			continue;
