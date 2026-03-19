@@ -2600,16 +2600,19 @@ static void shadow_copy_event(struct ust_app_event *ua_event)
 /*
  * Copy data between an UST app channel and a LTT channel.
  */
-static void shadow_copy_channel(struct ust_app_channel *ua_chan, struct ltt_ust_channel *uchan)
+/*
+ * Initialize per-app channel attributes from its recording_channel_configuration.
+ *
+ * This replaces the former shadow_copy_channel which copied from ltt_ust_channel.
+ * The tracing_channel_id and channel type are set by the caller.
+ */
+static void init_ust_app_channel_from_config(struct ust_app_channel *ua_chan)
 {
 	namespace lsc = lttng::sessiond::config;
 	const auto& config =
 		static_cast<const lsc::recording_channel_configuration&>(ua_chan->channel_config);
 
-	DBG2("UST app shadow copy of channel %s started", ua_chan->name);
-
-	strncpy(ua_chan->name, uchan->name, sizeof(ua_chan->name));
-	ua_chan->name[sizeof(ua_chan->name) - 1] = '\0';
+	DBG2("UST app initializing channel %s from config", ua_chan->name);
 
 	ua_chan->tracefile_size = config.trace_file_size_limit_bytes.value_or(0);
 	ua_chan->tracefile_count = config.trace_file_count_limit.value_or(0);
@@ -2655,15 +2658,7 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan, struct ltt_ust_
 
 	ua_chan->enabled = config.is_enabled;
 
-	/*
-	 * The channel type on the per-app channel is set by the caller
-	 * (ust_app_channel_allocate), not from the session-level channel.
-	 */
-	ua_chan->attr.type = static_cast<enum lttng_ust_abi_chan_type>(uchan->attr.type);
-
-	ua_chan->tracing_channel_id = uchan->id;
-
-	DBG3("UST app shadow copy of channel %s done", ua_chan->name);
+	DBG3("UST app channel %s initialized from config", ua_chan->name);
 }
 
 /*
@@ -4016,9 +4011,8 @@ static int ust_app_channel_allocate(
 		ret = -ENOMEM;
 		goto error;
 	}
-	shadow_copy_channel(ua_chan, uchan);
-
-	/* Set channel type. */
+	init_ust_app_channel_from_config(ua_chan);
+	ua_chan->tracing_channel_id = uchan->id;
 	ua_chan->attr.type = type;
 
 end:
