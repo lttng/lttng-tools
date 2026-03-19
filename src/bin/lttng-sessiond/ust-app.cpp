@@ -6533,7 +6533,7 @@ static void ust_app_synchronize_all_channels(struct ltt_ust_session *usess,
 
 		if (ua_chan->enabled != chan_config.is_enabled) {
 			ret = chan_config.is_enabled ?
-				enable_ust_app_channel(ua_sess, uchan, app) :
+				enable_ust_channel(app, ua_sess, ua_chan) :
 				disable_ust_app_channel(ua_sess, ua_chan, app);
 			if (ret) {
 				goto end;
