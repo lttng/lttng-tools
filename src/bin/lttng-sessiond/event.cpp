@@ -133,10 +133,10 @@ int event_ust_enable_tracepoint(
 
 	if (to_create) {
 		/* Create event on all UST registered apps for session */
-		ret = ust_app_create_event_glb(usess, uchan, event_rule_config);
+		ret = ust_app_create_event_glb(usess, uchan->name, event_rule_config);
 	} else {
 		/* Enable event on all UST registered apps for session */
-		ret = ust_app_enable_event_glb(usess, uchan, event_rule_config);
+		ret = ust_app_enable_event_glb(usess, uchan->name, event_rule_config);
 	}
 
 	if (ret < 0) {
@@ -214,7 +214,7 @@ int event_ust_disable_tracepoint(struct ltt_ust_session *usess,
 			goto next;
 		}
 		LTTNG_ASSERT(uevent->event_rule_config);
-		ret = ust_app_disable_event_glb(usess, uchan, *uevent->event_rule_config);
+		ret = ust_app_disable_event_glb(usess, uchan->name, *uevent->event_rule_config);
 		if (ret < 0 && ret != -LTTNG_UST_ERR_EXIST) {
 			ret = LTTNG_ERR_UST_DISABLE_FAIL;
 			goto error;
@@ -716,7 +716,7 @@ static int event_agent_disable_one(ltt_session& session,
 
 	if (usess->active) {
 		LTTNG_ASSERT(uevent->event_rule_config);
-		ret = ust_app_disable_event_glb(usess, uchan, *uevent->event_rule_config);
+		ret = ust_app_disable_event_glb(usess, uchan->name, *uevent->event_rule_config);
 		if (ret < 0 && ret != -LTTNG_UST_ERR_EXIST) {
 			ret = LTTNG_ERR_UST_DISABLE_FAIL;
 			goto error;

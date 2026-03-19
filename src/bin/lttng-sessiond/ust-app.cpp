@@ -5277,7 +5277,7 @@ int ust_app_enable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_cha
  * Disable an event in a channel and for a specific session.
  */
 int ust_app_disable_event_glb(struct ltt_ust_session *usess,
-			      struct ltt_ust_channel *uchan,
+			      lttng::c_string_view channel_name,
 			      const lttng::sessiond::config::event_rule_configuration& event_config)
 {
 	int ret = 0;
@@ -5290,7 +5290,7 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 	LTTNG_ASSERT(usess->active);
 	DBG("UST app disabling event for all apps in channel "
 	    "%s for session id %" PRIu64,
-	    uchan->name,
+	    channel_name.data(),
 	    usess->id);
 
 	/* Iterate on all apps. */
@@ -5316,12 +5316,12 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 		}
 
 		/* Lookup channel in the ust app session */
-		lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
+		lttng_ht_lookup(ua_sess->channels, (void *) channel_name.data(), &uiter);
 		ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
 		if (ua_chan_node == nullptr) {
 			DBG2("Channel %s not found in session id %" PRIu64 " for app pid %d."
 			     "Skipping",
-			     uchan->name,
+			     channel_name.data(),
 			     usess->id,
 			     app->pid);
 			continue;
@@ -5332,7 +5332,7 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 		if (ua_event == nullptr) {
 			DBG2("Event not found in channel %s for app pid %d."
 			     "Skipping",
-			     uchan->name,
+			     channel_name.data(),
 			     app->pid);
 			continue;
 		}
@@ -5486,7 +5486,7 @@ error:
  * Enable event for a specific session and channel on the tracer.
  */
 int ust_app_enable_event_glb(struct ltt_ust_session *usess,
-			     struct ltt_ust_channel *uchan,
+			     lttng::c_string_view channel_name,
 			     const lttng::sessiond::config::event_rule_configuration& event_config)
 {
 	int ret = 0;
@@ -5537,7 +5537,7 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 		}
 
 		/* Lookup channel in the ust app session */
-		lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
+		lttng_ht_lookup(ua_sess->channels, (void *) channel_name.data(), &uiter);
 		ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
 		/*
 		 * It is possible that the channel cannot be found is
@@ -5573,7 +5573,7 @@ error:
  */
 int ust_app_create_event_glb(
 	struct ltt_ust_session *usess,
-	struct ltt_ust_channel *uchan,
+	lttng::c_string_view channel_name,
 	const lttng::sessiond::config::event_rule_configuration& event_rule_config)
 {
 	int ret = 0;
@@ -5618,7 +5618,7 @@ int ust_app_create_event_glb(
 		}
 
 		/* Lookup channel in the ust app session */
-		lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
+		lttng_ht_lookup(ua_sess->channels, (void *) channel_name.data(), &uiter);
 		ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
 		/* If the channel is not found, there is a code flow error */
 		LTTNG_ASSERT(ua_chan_node);
