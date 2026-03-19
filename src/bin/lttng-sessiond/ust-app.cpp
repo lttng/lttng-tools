@@ -373,63 +373,20 @@ static void copy_channel_attr_to_ustctl(struct lttng_ust_ctl_consumer_channel_at
  * It matches an ust app event based on three attributes which are the event
  * name, the filter bytecode and the loglevel.
  */
+/*
+ * Match function for ust_app_event in the per-channel event hash table.
+ * Events are uniquely identified by their event_rule_configuration pointer.
+ */
 static int ht_match_ust_app_event(struct cds_lfht_node *node, const void *_key)
 {
 	LTTNG_ASSERT(node);
 	LTTNG_ASSERT(_key);
 
-	auto *event = lttng_ht_node_container_of(node, &ust_app_event::node);
-	const auto *key = (ust_app_ht_key *) _key;
+	const auto *event = lttng_ht_node_container_of(node, &ust_app_event::node);
+	const auto *key =
+		static_cast<const lttng::sessiond::config::event_rule_configuration *>(_key);
 
-	/* Match the 4 elements of the key: name, filter, loglevel, exclusions */
-
-	/* Event name */
-	if (strncmp(event->attr.name, key->name, sizeof(event->attr.name)) != 0) {
-		goto no_match;
-	}
-
-	/* Event loglevel. */
-	if (!loglevels_match(event->attr.loglevel_type,
-			     event->attr.loglevel,
-			     key->loglevel_type,
-			     key->loglevel_value,
-			     LTTNG_UST_ABI_LOGLEVEL_ALL)) {
-		goto no_match;
-	}
-
-	/* One of the filters is NULL, fail. */
-	if ((key->filter && !event->filter) || (!key->filter && event->filter)) {
-		goto no_match;
-	}
-
-	if (key->filter && event->filter) {
-		/* Both filters exists, check length followed by the bytecode. */
-		if (event->filter->len != key->filter->len ||
-		    memcmp(event->filter->data, key->filter->data, event->filter->len) != 0) {
-			goto no_match;
-		}
-	}
-
-	/* One of the exclusions is NULL, fail. */
-	if ((key->exclusion && !event->exclusion) || (!key->exclusion && event->exclusion)) {
-		goto no_match;
-	}
-
-	if (key->exclusion && event->exclusion) {
-		/* Both exclusions exists, check count followed by the names. */
-		if (event->exclusion->count != key->exclusion->count ||
-		    memcmp(event->exclusion->names,
-			   key->exclusion->names,
-			   event->exclusion->count * LTTNG_UST_ABI_SYM_NAME_LEN) != 0) {
-			goto no_match;
-		}
-	}
-
-	/* Match. */
-	return 1;
-
-no_match:
-	return 0;
+	return &event->event_rule_config == key ? 1 : 0;
 }
 
 /*
@@ -438,26 +395,18 @@ no_match:
  */
 static void add_unique_ust_app_event(struct ust_app_channel *ua_chan, struct ust_app_event *event)
 {
-	struct cds_lfht_node *node_ptr;
-	struct ust_app_ht_key key;
-	struct lttng_ht *ht;
-
 	LTTNG_ASSERT(ua_chan);
 	LTTNG_ASSERT(ua_chan->events);
 	LTTNG_ASSERT(event);
 
-	ht = ua_chan->events;
-	key.name = event->attr.name;
-	key.filter = event->filter;
-	key.loglevel_type = (lttng_ust_abi_loglevel_type) event->attr.loglevel_type;
-	key.loglevel_value = event->attr.loglevel;
-	key.exclusion = event->exclusion;
+	auto *ht = ua_chan->events;
+	const auto *key = &event->event_rule_config;
 
-	node_ptr = cds_lfht_add_unique(ht->ht,
-				       ht->hash_fct(event->node.key, lttng_ht_seed),
-				       ht_match_ust_app_event,
-				       &key,
-				       &event->node.node);
+	auto *node_ptr = cds_lfht_add_unique(ht->ht,
+					     ht->hash_fct(event->node.key, lttng_ht_seed),
+					     ht_match_ust_app_event,
+					     key,
+					     &event->node.node);
 	LTTNG_ASSERT(node_ptr == &event->node.node);
 }
 
@@ -537,9 +486,6 @@ static void delete_ust_app_event(int sock, struct ust_app_event *ua_event, struc
 	LTTNG_ASSERT(ua_event);
 	ASSERT_RCU_READ_LOCKED();
 
-	free(ua_event->filter);
-	if (ua_event->exclusion != nullptr)
-		free(ua_event->exclusion);
 	if (ua_event->obj != nullptr) {
 		pthread_mutex_lock(&app->sock_lock);
 		ret = lttng_ust_ctl_release_object(sock, ua_event->obj);
@@ -2356,18 +2302,32 @@ static int create_ust_event(struct ust_app *app,
 	health_code_update();
 
 	/* Set filter if one is present. */
-	if (ua_event->filter) {
-		ret = set_ust_object_filter(app, ua_event->filter, ua_event->obj);
-		if (ret < 0) {
-			goto error;
+	{
+		const auto *filter_bytecode = lttng_event_rule_get_filter_bytecode(
+			ua_event->event_rule_config.event_rule.get());
+		if (filter_bytecode) {
+			ret = set_ust_object_filter(app, filter_bytecode, ua_event->obj);
+			if (ret < 0) {
+				goto error;
+			}
 		}
 	}
 
 	/* Set exclusions for the event */
-	if (ua_event->exclusion) {
-		ret = set_ust_object_exclusions(app, ua_event->exclusion, ua_event->obj);
-		if (ret < 0) {
-			goto error;
+	{
+		struct lttng_event_exclusion *exclusion = nullptr;
+		const auto exclusion_status = lttng_event_rule_generate_exclusions(
+			ua_event->event_rule_config.event_rule.get(), &exclusion);
+		if (exclusion_status == LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_OK &&
+		    exclusion) {
+			ret = set_ust_object_exclusions(app, exclusion, ua_event->obj);
+			free(exclusion);
+			if (ret < 0) {
+				goto error;
+			}
+		} else if (exclusion_status != LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_NONE &&
+			   exclusion_status != LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_OK) {
+			ERR("Failed to generate exclusions from event rule");
 		}
 	}
 
@@ -2634,28 +2594,7 @@ error:
  */
 static void shadow_copy_event(struct ust_app_event *ua_event)
 {
-	const auto& config = ua_event->event_rule_config;
-	const auto *rule = config.event_rule.get();
-
-	ua_event->enabled = config.is_enabled;
-
-	/* Copy filter bytecode from the event rule. */
-	const auto *rule_bytecode = lttng_event_rule_get_filter_bytecode(rule);
-	if (rule_bytecode) {
-		ua_event->filter = lttng_bytecode_copy(rule_bytecode);
-		/* Filter might be NULL here in case of ENOMEM. */
-	}
-
-	/* Copy exclusion data from the event rule. */
-	struct lttng_event_exclusion *raw_exclusion = nullptr;
-	const auto exclusion_status = lttng_event_rule_generate_exclusions(rule, &raw_exclusion);
-	if (exclusion_status == LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_OK) {
-		ua_event->exclusion = raw_exclusion;
-	} else if (exclusion_status == LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_NONE) {
-		ua_event->exclusion = nullptr;
-	} else {
-		PERROR("Failed to generate exclusions from event rule");
-	}
+	ua_event->enabled = ua_event->event_rule_config.is_enabled;
 }
 
 /*

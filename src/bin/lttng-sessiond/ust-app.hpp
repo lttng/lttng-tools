@@ -62,14 +62,6 @@ struct ust_app_notify_sock_obj {
 	struct rcu_head head;
 };
 
-struct ust_app_ht_key {
-	const char *name;
-	const struct lttng_bytecode *filter;
-	enum lttng_ust_abi_loglevel_type loglevel_type;
-	int loglevel_value;
-	const struct lttng_event_exclusion *exclusion;
-};
-
 /*
  * Application registration data structure.
  */
@@ -157,8 +149,6 @@ struct ust_app_event {
 	struct lttng_ust_abi_event attr = {};
 	char name[LTTNG_UST_ABI_SYM_NAME_LEN] = {};
 	struct lttng_ht_node_str node = {};
-	struct lttng_bytecode *filter = nullptr;
-	struct lttng_event_exclusion *exclusion = nullptr;
 	const lttng::sessiond::config::event_rule_configuration& event_rule_config;
 };
 
