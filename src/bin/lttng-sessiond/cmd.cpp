@@ -4590,45 +4590,53 @@ enum lttng_error_code cmd_list_channels(enum lttng_domain_type domain,
 	}
 	case LTTNG_DOMAIN_UST:
 	{
-		for (auto *uchan :
-		     lttng::urcu::lfht_iteration_adapter<ltt_ust_channel,
-							 decltype(ltt_ust_channel::node),
-							 &ltt_ust_channel::node>(
-			     *session->ust_session->domain_global.channels->ht)) {
-			uint64_t discarded_events = 0, lost_packets = 0;
-			struct lttng_channel *channel = nullptr;
-			struct lttng_channel_extended *extended;
+		if (session->ust_orchestrator != nullptr) {
+			for (const auto& channel_config :
+			     session->user_space_domain.recording_channels()) {
+				auto channel = ls::make_lttng_channel(channel_config);
+				auto *extended = reinterpret_cast<lttng_channel_extended *>(
+					channel->attr.extended.ptr);
 
-			channel = trace_ust_channel_to_lttng_channel(uchan);
-			if (!channel) {
-				ret_code = LTTNG_ERR_NOMEM;
-				goto end;
+				if (session->has_been_started) {
+					/*
+					 * Runtime stats (discarded events, lost packets) still
+					 * require the legacy ltt_ust_channel because the
+					 * stream_class_id and per-PID closed-app counters live
+					 * there. This lookup is a transition shim until the
+					 * orchestrator internalizes these.
+					 */
+					const lttng::urcu::read_lock_guard read_lock;
+
+					auto *const uchan = trace_ust_find_channel_by_name(
+						session->ust_session->domain_global.channels,
+						channel_config.name.c_str());
+					if (uchan) {
+						uint64_t discarded_events = 0, lost_packets = 0;
+
+						ret = get_ust_runtime_stats(session,
+									    uchan,
+									    &discarded_events,
+									    &lost_packets);
+						if (ret < 0) {
+							ret_code = LTTNG_ERR_UNK;
+							goto end;
+						}
+
+						extended->discarded_events = discarded_events;
+						extended->lost_packets = lost_packets;
+					}
+				}
+
+				ret = lttng_channel_serialize(channel.get(), &payload->buffer);
+				if (ret) {
+					ERR("Failed to serialize lttng_channel: channel name = '%s'",
+					    channel->name);
+					ret_code = LTTNG_ERR_UNK;
+					goto end;
+				}
+
+				i++;
 			}
-
-			extended = (struct lttng_channel_extended *) channel->attr.extended.ptr;
-
-			ret = get_ust_runtime_stats(
-				session, uchan, &discarded_events, &lost_packets);
-			if (ret < 0) {
-				lttng_channel_destroy(channel);
-				ret_code = LTTNG_ERR_UNK;
-				goto end;
-			}
-
-			extended->discarded_events = discarded_events;
-			extended->lost_packets = lost_packets;
-
-			ret = lttng_channel_serialize(channel, &payload->buffer);
-			if (ret) {
-				ERR("Failed to serialize lttng_channel: channel name = '%s'",
-				    channel->name);
-				lttng_channel_destroy(channel);
-				ret_code = LTTNG_ERR_UNK;
-				goto end;
-			}
-
-			lttng_channel_destroy(channel);
-			i++;
 		}
 
 		break;
