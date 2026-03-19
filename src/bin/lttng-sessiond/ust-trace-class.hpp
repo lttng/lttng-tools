@@ -45,7 +45,7 @@ public:
 	virtual lttng_buffer_type buffering_scheme() const noexcept = 0;
 	locked_ref lock() noexcept;
 
-	void add_channel(
+	lttng::sessiond::ust::stream_class& add_channel(
 		uint64_t channel_key,
 		lttng::sessiond::config::recording_channel_configuration::buffer_allocation_policy_t
 			buffer_allocation_policy);

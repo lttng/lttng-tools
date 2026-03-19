@@ -460,7 +460,7 @@ lsu::trace_class::locked_ref lsu::trace_class::lock() noexcept
 /*
  * Initialize registry with default values.
  */
-void lsu::trace_class::add_channel(
+lsu::stream_class& lsu::trace_class::add_channel(
 	uint64_t key,
 	lttng::sessiond::config::recording_channel_configuration::buffer_allocation_policy_t
 		buffer_allocation_policy)
@@ -505,6 +505,8 @@ void lsu::trace_class::add_channel(
 	const lttng::urcu::read_lock_guard rcu_read_lock_guard;
 	lttng_ht_node_init_u64(&chan->_node, key);
 	lttng_ht_add_unique_u64(_channels.get(), &chan->_node);
+
+	return *chan;
 }
 
 lttng::sessiond::ust::stream_class& lsu::trace_class::channel(uint64_t channel_key) const
