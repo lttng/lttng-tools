@@ -8,6 +8,6 @@
 class test_class {
 public:
 	test_class();
-	void test_method();
+	__attribute__((no_profile_instrument_function)) void test_method();
 	volatile int test_member;
 };

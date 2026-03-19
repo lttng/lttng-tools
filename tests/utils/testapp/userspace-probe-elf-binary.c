@@ -8,8 +8,8 @@
 #include "libdynsym.h"
 volatile int not_a_function = 0;
 
-void __attribute__((noinline)) test_function(void);
-void __attribute__((noinline)) test_function(void)
+void __attribute__((noinline, no_profile_instrument_function)) test_function(void);
+void __attribute__((noinline, no_profile_instrument_function)) test_function(void)
 {
 	not_a_function += 1;
 }

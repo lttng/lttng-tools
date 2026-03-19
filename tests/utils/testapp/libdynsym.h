@@ -7,4 +7,4 @@
 
 #include <lttng/lttng-export.h>
 
-LTTNG_EXPORT int dynamic_symbol(int a);
+LTTNG_EXPORT __attribute__((no_profile_instrument_function)) int dynamic_symbol(int a);
