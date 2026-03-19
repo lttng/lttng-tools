@@ -173,7 +173,7 @@ enum lttng_error_code channel_ust_enable(struct ltt_ust_session *usess,
 	 * successfully created on the session daemon side so the enable-channel
 	 * command is a success.
 	 */
-	(void) ust_app_enable_channel_glb(usess, uchan);
+	(void) ust_app_enable_channel_glb(usess, uchan->name);
 
 end:
 	return ret_code;
@@ -382,7 +382,7 @@ int channel_ust_disable(struct ltt_ust_session *usess, struct ltt_ust_channel *u
 
 	DBG2("Channel %s being disabled in UST global domain", uchan->name);
 	/* Disable channel for global domain */
-	ret = ust_app_disable_channel_glb(usess, uchan);
+	ret = ust_app_disable_channel_glb(usess, uchan->name);
 	if (ret < 0 && ret != -LTTNG_UST_ERR_EXIST) {
 		ret = LTTNG_ERR_UST_CHAN_DISABLE_FAIL;
 		goto error;

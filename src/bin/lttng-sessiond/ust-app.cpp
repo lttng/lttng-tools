@@ -3250,7 +3250,7 @@ error:
  * MUST be called with a RCU read side lock acquired.
  */
 static int enable_ust_app_channel(const ust_app_session::locked_weak_ref& ua_sess,
-				  struct ltt_ust_channel *uchan,
+				  lttng::c_string_view channel_name,
 				  struct ust_app *app)
 {
 	int ret = 0;
@@ -3260,11 +3260,11 @@ static int enable_ust_app_channel(const ust_app_session::locked_weak_ref& ua_ses
 
 	ASSERT_RCU_READ_LOCKED();
 
-	lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &iter);
+	lttng_ht_lookup(ua_sess->channels, (void *) channel_name.data(), &iter);
 	ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
 	if (ua_chan_node == nullptr) {
 		DBG2("Unable to find channel %s in ust session id %" PRIu64,
-		     uchan->name,
+		     channel_name.data(),
 		     ua_sess->tracing_id);
 		goto error;
 	}
@@ -5164,7 +5164,7 @@ int ust_app_ht_alloc()
 /*
  * For a specific UST session, disable the channel for all registered apps.
  */
-int ust_app_disable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_channel *uchan)
+int ust_app_disable_channel_glb(struct ltt_ust_session *usess, lttng::c_string_view channel_name)
 {
 	int ret = 0;
 	struct lttng_ht_node_str *ua_chan_node;
@@ -5173,7 +5173,7 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_ch
 
 	LTTNG_ASSERT(usess->active);
 	DBG2("UST app disabling channel %s from global domain for session id %" PRIu64,
-	     uchan->name,
+	     channel_name.data(),
 	     usess->id);
 
 	/* Iterate on all apps. */
@@ -5204,7 +5204,7 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_ch
 		}
 
 		/* Get channel */
-		lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
+		lttng_ht_lookup(ua_sess->channels, (void *) channel_name.data(), &uiter);
 		ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
 		/* If the session if found for the app, the channel must be there */
 		LTTNG_ASSERT(ua_chan_node);
@@ -5227,14 +5227,14 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_ch
 /*
  * For a specific UST session, enable the channel for all registered apps.
  */
-int ust_app_enable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_channel *uchan)
+int ust_app_enable_channel_glb(struct ltt_ust_session *usess, lttng::c_string_view channel_name)
 {
 	int ret = 0;
 	struct ust_app_session *ua_sess;
 
 	LTTNG_ASSERT(usess->active);
 	DBG2("UST app enabling channel %s to global domain for session id %" PRIu64,
-	     uchan->name,
+	     channel_name.data(),
 	     usess->id);
 
 	/* For every registered applications */
@@ -5263,7 +5263,7 @@ int ust_app_enable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_cha
 		}
 
 		/* Enable channel onto application */
-		ret = enable_ust_app_channel(ua_sess->lock(), uchan, app);
+		ret = enable_ust_app_channel(ua_sess->lock(), channel_name, app);
 		if (ret < 0) {
 			/* XXX: We might want to report this error at some point... */
 			continue;

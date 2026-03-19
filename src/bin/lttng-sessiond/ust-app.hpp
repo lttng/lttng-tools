@@ -533,8 +533,8 @@ int ust_app_create_event_glb(
 	struct ltt_ust_session *usess,
 	lttng::c_string_view channel_name,
 	const lttng::sessiond::config::event_rule_configuration& event_rule_config);
-int ust_app_disable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_channel *uchan);
-int ust_app_enable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_channel *uchan);
+int ust_app_disable_channel_glb(struct ltt_ust_session *usess, lttng::c_string_view channel_name);
+int ust_app_enable_channel_glb(struct ltt_ust_session *usess, lttng::c_string_view channel_name);
 int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 			     lttng::c_string_view channel_name,
 			     const lttng::sessiond::config::event_rule_configuration& event_config);
@@ -713,13 +713,15 @@ static inline int ust_app_setup_event_notifier_group(struct ust_app *app __attri
 }
 
 static inline int ust_app_disable_channel_glb(struct ltt_ust_session *usess __attribute__((unused)),
-					      struct ltt_ust_channel *uchan __attribute__((unused)))
+					      lttng::c_string_view channel_name
+					      __attribute__((unused)))
 {
 	return 0;
 }
 
 static inline int ust_app_enable_channel_glb(struct ltt_ust_session *usess __attribute__((unused)),
-					     struct ltt_ust_channel *uchan __attribute__((unused)))
+					     lttng::c_string_view channel_name
+					     __attribute__((unused)))
 {
 	return 0;
 }
