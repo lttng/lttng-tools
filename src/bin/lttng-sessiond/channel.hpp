@@ -22,6 +22,4 @@ enum lttng_error_code channel_ust_create(struct ltt_ust_session *usess,
 					 struct lttng_channel *attr,
 					 enum lttng_buffer_type type);
 
-struct lttng_channel *trace_ust_channel_to_lttng_channel(const struct ltt_ust_channel *uchan);
-
 #endif /* _LTT_CHANNEL_H */
