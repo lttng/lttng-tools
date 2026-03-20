@@ -28,130 +28,6 @@
 namespace lsu = lttng::sessiond::ust;
 
 /*
- * Match function for the events hash table lookup.
- *
- * Matches by name only. Used by the disable command.
- */
-int trace_ust_ht_match_event_by_name(struct cds_lfht_node *node, const void *_key)
-{
-	LTTNG_ASSERT(node);
-	LTTNG_ASSERT(_key);
-
-	auto *event = lttng_ht_node_container_of(node, &ltt_ust_event::node);
-	const auto *name = (const char *) _key;
-
-	/* Event name */
-	if (strncmp(event->attr.name, name, sizeof(event->attr.name)) != 0) {
-		goto no_match;
-	}
-
-	/* Match */
-	return 1;
-
-no_match:
-	return 0;
-}
-
-/*
- * Match function for the hash table lookup.
- *
- * It matches an ust event based on three attributes which are the event name,
- * the filter bytecode and the loglevel.
- */
-int trace_ust_ht_match_event(struct cds_lfht_node *node, const void *_key)
-{
-	int ev_loglevel_value;
-	bool ll_match;
-
-	LTTNG_ASSERT(node);
-	LTTNG_ASSERT(_key);
-
-	auto *event = lttng_ht_node_container_of(node, &ltt_ust_event::node);
-	const auto *key = (ltt_ust_ht_key *) _key;
-	ev_loglevel_value = event->attr.loglevel;
-
-	/* Match the 4 elements of the key: name, filter, loglevel, exclusions. */
-
-	/* Event name */
-	if (strncmp(event->attr.name, key->name, sizeof(event->attr.name)) != 0) {
-		goto no_match;
-	}
-
-	/* Event loglevel value and type. */
-	ll_match = loglevels_match(event->attr.loglevel_type,
-				   ev_loglevel_value,
-				   key->loglevel_type,
-				   key->loglevel_value,
-				   LTTNG_UST_ABI_LOGLEVEL_ALL);
-
-	if (!ll_match) {
-		goto no_match;
-	}
-
-	/* Only one of the filters is NULL, fail. */
-	if ((key->filter && !event->filter) || (!key->filter && event->filter)) {
-		goto no_match;
-	}
-
-	if (key->filter && event->filter) {
-		/* Both filters exists, check length followed by the bytecode. */
-		if (event->filter->len != key->filter->len ||
-		    memcmp(event->filter->data, key->filter->data, event->filter->len) != 0) {
-			goto no_match;
-		}
-	}
-
-	/* If only one of the exclusions is NULL, fail. */
-	if ((key->exclusion && !event->exclusion) || (!key->exclusion && event->exclusion)) {
-		goto no_match;
-	}
-
-	if (key->exclusion && event->exclusion) {
-		size_t i;
-
-		/* Check exclusion counts first. */
-		if (event->exclusion->count != key->exclusion->count) {
-			goto no_match;
-		}
-
-		/* Compare names individually. */
-		for (i = 0; i < event->exclusion->count; ++i) {
-			size_t j;
-			bool found = false;
-			const char *name_ev = LTTNG_EVENT_EXCLUSION_NAME_AT(event->exclusion, i);
-
-			/*
-			 * Compare this exclusion name to all the key's
-			 * exclusion names.
-			 */
-			for (j = 0; j < key->exclusion->count; ++j) {
-				const char *name_key =
-					LTTNG_EVENT_EXCLUSION_NAME_AT(key->exclusion, j);
-
-				if (!strncmp(name_ev, name_key, LTTNG_SYMBOL_NAME_LEN)) {
-					/* Names match! */
-					found = true;
-					break;
-				}
-			}
-
-			/*
-			 * If the current exclusion name was not found amongst
-			 * the key's exclusion names, then there's no match.
-			 */
-			if (!found) {
-				goto no_match;
-			}
-		}
-	}
-	/* Match. */
-	return 1;
-
-no_match:
-	return 0;
-}
-
-/*
  * Find the channel in the hashtable and return channel pointer. RCU read side
  * lock MUST be acquired before calling this.
  */
@@ -180,50 +56,6 @@ struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht, cons
 
 error:
 	DBG2("Trace UST channel %s not found by name", name);
-	return nullptr;
-}
-
-/*
- * Find the event in the hashtable and return event pointer. RCU read side lock
- * MUST be acquired before calling this.
- */
-struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
-					   char *name,
-					   struct lttng_bytecode *filter,
-					   enum lttng_ust_abi_loglevel_type loglevel_type,
-					   int loglevel_value,
-					   struct lttng_event_exclusion *exclusion)
-{
-	struct lttng_ht_node_str *node;
-	struct lttng_ht_iter iter;
-	struct ltt_ust_ht_key key;
-
-	LTTNG_ASSERT(name);
-	LTTNG_ASSERT(ht);
-	ASSERT_RCU_READ_LOCKED();
-
-	key.name = name;
-	key.filter = filter;
-	key.loglevel_type = loglevel_type;
-	key.loglevel_value = loglevel_value;
-	key.exclusion = exclusion;
-
-	cds_lfht_lookup(ht->ht,
-			ht->hash_fct((void *) name, lttng_ht_seed),
-			trace_ust_ht_match_event,
-			&key,
-			&iter.iter);
-	node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
-	if (node == nullptr) {
-		goto error;
-	}
-
-	DBG2("Trace UST event %s found", key.name);
-
-	return lttng::utils::container_of(node, &ltt_ust_event::node);
-
-error:
-	DBG2("Trace UST event %s NOT found", key.name);
 	return nullptr;
 }
 
@@ -434,7 +266,6 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	CDS_INIT_LIST_HEAD(&luc->ctx_list);
 
 	/* Alloc hash tables */
-	luc->events = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
 	luc->ctx = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 
 	/* On-disk circular buffer parameters */
@@ -448,140 +279,6 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 error:
 	delete luc;
 	return nullptr;
-}
-
-/*
- * Validates an exclusion list.
- *
- * Returns 0 if valid, negative value if invalid.
- */
-static int validate_exclusion(struct lttng_event_exclusion *exclusion)
-{
-	size_t i;
-	int ret = 0;
-
-	LTTNG_ASSERT(exclusion);
-
-	for (i = 0; i < exclusion->count; ++i) {
-		size_t j;
-		const char *name_a = LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, i);
-
-		for (j = 0; j < i; ++j) {
-			const char *name_b = LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, j);
-
-			if (!strncmp(name_a, name_b, LTTNG_SYMBOL_NAME_LEN)) {
-				/* Match! */
-				ret = -1;
-				goto end;
-			}
-		}
-	}
-
-end:
-	return ret;
-}
-
-/*
- * Allocate and initialize a ust event. Set name and event type.
- * We own filter_expression, filter, and exclusion.
- *
- * Return an lttng_error_code
- */
-enum lttng_error_code trace_ust_create_event(struct lttng_event *ev,
-					     char *filter_expression,
-					     struct lttng_bytecode *filter,
-					     struct lttng_event_exclusion *exclusion,
-					     bool internal_event,
-					     struct ltt_ust_event **ust_event)
-{
-	enum lttng_error_code ret = LTTNG_OK;
-	std::unique_ptr<ltt_ust_event> local_ust_event;
-
-	LTTNG_ASSERT(ev);
-
-	if (exclusion && validate_exclusion(exclusion)) {
-		ret = LTTNG_ERR_INVALID;
-		goto error;
-	}
-
-	try {
-		local_ust_event = lttng::make_unique<ltt_ust_event>();
-	} catch (const std::bad_alloc& ex) {
-		ERR_FMT("Failed to allocate ltt_ust_event");
-		ret = LTTNG_ERR_NOMEM;
-		goto error;
-	}
-
-	local_ust_event->internal = internal_event;
-
-	switch (ev->type) {
-	case LTTNG_EVENT_PROBE:
-		local_ust_event->attr.instrumentation = LTTNG_UST_ABI_PROBE;
-		break;
-	case LTTNG_EVENT_FUNCTION:
-		local_ust_event->attr.instrumentation = LTTNG_UST_ABI_FUNCTION;
-		break;
-	case LTTNG_EVENT_FUNCTION_ENTRY:
-		local_ust_event->attr.instrumentation = LTTNG_UST_ABI_FUNCTION;
-		break;
-	case LTTNG_EVENT_TRACEPOINT:
-		local_ust_event->attr.instrumentation = LTTNG_UST_ABI_TRACEPOINT;
-		break;
-	default:
-		ERR("Unknown ust instrumentation type (%d)", ev->type);
-		ret = LTTNG_ERR_INVALID;
-		goto error;
-	}
-
-	/* Copy event name */
-	if (lttng_strncpy(local_ust_event->attr.name, ev->name, LTTNG_UST_ABI_SYM_NAME_LEN)) {
-		ret = LTTNG_ERR_INVALID;
-		goto error;
-	}
-
-	local_ust_event->attr.name[LTTNG_UST_ABI_SYM_NAME_LEN - 1] = '\0';
-
-	switch (ev->loglevel_type) {
-	case LTTNG_EVENT_LOGLEVEL_ALL:
-		local_ust_event->attr.loglevel_type = LTTNG_UST_ABI_LOGLEVEL_ALL;
-		local_ust_event->attr.loglevel = -1; /* Force to -1 */
-		break;
-	case LTTNG_EVENT_LOGLEVEL_RANGE:
-		local_ust_event->attr.loglevel_type = LTTNG_UST_ABI_LOGLEVEL_RANGE;
-		local_ust_event->attr.loglevel = ev->loglevel;
-		break;
-	case LTTNG_EVENT_LOGLEVEL_SINGLE:
-		local_ust_event->attr.loglevel_type = LTTNG_UST_ABI_LOGLEVEL_SINGLE;
-		local_ust_event->attr.loglevel = ev->loglevel;
-		break;
-	default:
-		ERR("Unknown ust loglevel type (%d)", ev->loglevel_type);
-		ret = LTTNG_ERR_INVALID;
-		goto error;
-	}
-
-	/* Same layout. */
-	local_ust_event->filter_expression = filter_expression;
-	local_ust_event->filter = filter;
-	local_ust_event->exclusion = exclusion;
-
-	/* Init node */
-	lttng_ht_node_init_str(&local_ust_event->node, local_ust_event->attr.name);
-
-	DBG2("Trace UST event %s, loglevel (%d,%d) created",
-	     local_ust_event->attr.name,
-	     local_ust_event->attr.loglevel_type,
-	     local_ust_event->attr.loglevel);
-
-	*ust_event = local_ust_event.release();
-
-	return ret;
-
-error:
-	free(filter_expression);
-	free(filter);
-	free(exclusion);
-	return ret;
 }
 
 ltt_ust_context::ltt_ust_context(const lttng::sessiond::config::context_configuration& config) :
@@ -639,20 +336,6 @@ static void destroy_contexts(struct lttng_ht *ht)
 }
 
 /*
- * Cleanup ust event structure.
- */
-void trace_ust_destroy_event(struct ltt_ust_event *event)
-{
-	LTTNG_ASSERT(event);
-
-	DBG2("Trace destroy UST event %s", event->attr.name);
-	free(event->filter_expression);
-	free(event->filter);
-	free(event->exclusion);
-	delete event;
-}
-
-/*
  * Cleanup ust context structure.
  */
 void trace_ust_destroy_context(ltt_ust_context *ctx)
@@ -660,35 +343,6 @@ void trace_ust_destroy_context(ltt_ust_context *ctx)
 	LTTNG_ASSERT(ctx);
 
 	delete ctx;
-}
-
-/*
- * URCU intermediate call to complete destroy event.
- */
-static void destroy_event_rcu(struct rcu_head *head)
-{
-	struct lttng_ht_node_str *node = lttng::utils::container_of(head, &lttng_ht_node_str::head);
-	struct ltt_ust_event *event = lttng::utils::container_of(node, &ltt_ust_event::node);
-
-	trace_ust_destroy_event(event);
-}
-
-/*
- * Cleanup UST events hashtable.
- */
-static void destroy_events(struct lttng_ht *events)
-{
-	LTTNG_ASSERT(events);
-
-	for (auto *event : lttng::urcu::lfht_iteration_adapter<ltt_ust_event,
-							       decltype(ltt_ust_event::node),
-							       &ltt_ust_event::node>(*events->ht)) {
-		const auto ret = cds_lfht_del(events->ht, &event->node.node);
-		LTTNG_ASSERT(!ret);
-		call_rcu(&event->node.head, destroy_event_rcu);
-	}
-
-	lttng_ht_destroy(events);
 }
 
 /*
@@ -718,8 +372,6 @@ static void destroy_channel_rcu(struct rcu_head *head)
 
 void trace_ust_destroy_channel(struct ltt_ust_channel *channel)
 {
-	/* Destroying all events of the channel */
-	destroy_events(channel->events);
 	/* Destroying all context of the channel */
 	destroy_contexts(channel->ctx);
 

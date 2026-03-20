@@ -25,14 +25,6 @@
 
 struct agent;
 
-struct ltt_ust_ht_key {
-	const char *name;
-	const struct lttng_bytecode *filter;
-	enum lttng_ust_abi_loglevel_type loglevel_type;
-	int loglevel_value;
-	const struct lttng_event_exclusion *exclusion;
-};
-
 /* Context hash table nodes */
 struct ltt_ust_context {
 	explicit ltt_ust_context(const lttng::sessiond::config::context_configuration& config);
@@ -46,31 +38,6 @@ struct ltt_ust_context {
 	const lttng::sessiond::config::context_configuration& context_config;
 	struct lttng_ht_node_ulong node = {};
 	struct cds_list_head list;
-};
-
-/* UST event */
-struct ltt_ust_event {
-	bool enabled = false;
-	struct lttng_ust_abi_event attr = {};
-	struct lttng_ht_node_str node = {};
-	char *filter_expression = nullptr;
-	struct lttng_bytecode *filter = nullptr;
-	struct lttng_event_exclusion *exclusion = nullptr;
-	/*
-	 * An internal event is an event which was created by the session daemon
-	 * through which, for example, events emitted in Agent domains are
-	 * "funelled". This is used to hide internal events from external
-	 * clients as they should never be modified by the external world.
-	 */
-	bool internal = false;
-	/*
-	 * Non-owning pointer to the event rule configuration from which
-	 * this event was created. Set during creation, nullptr for legacy
-	 * callers that do not have a config reference. This is a
-	 * transition aid that will be removed when ltt_ust_event is
-	 * eliminated.
-	 */
-	const lttng::sessiond::config::event_rule_configuration *event_rule_config = nullptr;
 };
 
 /* UST channel */
@@ -92,7 +59,6 @@ struct ltt_ust_channel {
 	struct lttng_ust_abi_channel_attr attr = {};
 	struct lttng_ht *ctx = nullptr; /* Context hash table */
 	struct cds_list_head ctx_list = {};
-	struct lttng_ht *events = nullptr; /* Events hash table */
 	struct lttng_ht_node_str node = {};
 	uint64_t tracefile_size = 0;
 	uint64_t tracefile_count = 0;
@@ -174,18 +140,9 @@ static inline uint64_t trace_ust_get_trace_class_stream_class_handle(struct ltt_
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
-int trace_ust_ht_match_event(struct cds_lfht_node *node, const void *_key);
-int trace_ust_ht_match_event_by_name(struct cds_lfht_node *node, const void *_key);
-
 /*
  * Lookup functions. NULL is returned if not found.
  */
-struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
-					   char *name,
-					   struct lttng_bytecode *filter,
-					   enum lttng_ust_abi_loglevel_type loglevel_type,
-					   int loglevel_value,
-					   struct lttng_event_exclusion *exclusion);
 struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht, const char *name);
 struct agent *trace_ust_find_agent(struct ltt_ust_session *session,
 				   enum lttng_domain_type domain_type);
@@ -197,12 +154,6 @@ struct ltt_ust_session *trace_ust_create_session(uint64_t session_id);
 struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr,
 						 enum lttng_domain_type domain);
 
-enum lttng_error_code trace_ust_create_event(struct lttng_event *ev,
-					     char *filter_expression,
-					     struct lttng_bytecode *filter,
-					     struct lttng_event_exclusion *exclusion,
-					     bool internal_event,
-					     struct ltt_ust_event **ust_event);
 struct ltt_ust_context *
 trace_ust_create_context(const lttng::sessiond::config::context_configuration& context_config);
 void trace_ust_delete_channel(struct lttng_ht *ht, struct ltt_ust_channel *channel);
@@ -215,26 +166,12 @@ int trace_ust_regenerate_metadata(struct ltt_ust_session *usess);
  */
 void trace_ust_destroy_session(struct ltt_ust_session *session);
 void trace_ust_destroy_channel(struct ltt_ust_channel *channel);
-void trace_ust_destroy_event(struct ltt_ust_event *event);
 void trace_ust_destroy_context(ltt_ust_context *ctx);
 void trace_ust_free_session(struct ltt_ust_session *session);
 
 bool trace_ust_runtime_ctl_version_matches_build_version();
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
-
-static inline int trace_ust_ht_match_event(struct cds_lfht_node *node __attribute__((unused)),
-					   const void *_key __attribute__((unused)))
-{
-	return 0;
-}
-
-static inline int trace_ust_ht_match_event_by_name(struct cds_lfht_node *node
-						   __attribute__((unused)),
-						   const void *_key __attribute__((unused)))
-{
-	return 0;
-}
 
 static inline struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht
 								     __attribute__((unused)),
@@ -258,17 +195,6 @@ static inline struct ltt_ust_channel *trace_ust_create_channel(struct lttng_chan
 	return NULL;
 }
 
-static inline enum lttng_error_code
-trace_ust_create_event(struct lttng_event *ev __attribute__((unused)),
-		       const char *filter_expression __attribute__((unused)),
-		       struct lttng_bytecode *filter __attribute__((unused)),
-		       struct lttng_event_exclusion *exclusion __attribute__((unused)),
-		       bool internal_event __attribute__((unused)),
-		       struct ltt_ust_event **ust_event __attribute__((unused)))
-{
-	return LTTNG_ERR_NO_UST;
-}
-
 static inline void trace_ust_destroy_session(struct ltt_ust_session *session
 					     __attribute__((unused)))
 {
@@ -279,10 +205,6 @@ static inline void trace_ust_destroy_channel(struct ltt_ust_channel *channel
 {
 }
 
-static inline void trace_ust_destroy_event(struct ltt_ust_event *event __attribute__((unused)))
-{
-}
-
 static inline void trace_ust_free_session(struct ltt_ust_session *session __attribute__((unused)))
 {
 }
@@ -290,17 +212,6 @@ static inline void trace_ust_free_session(struct ltt_ust_session *session __attr
 static inline struct ltt_ust_context *
 trace_ust_create_context(const lttng::sessiond::config::context_configuration& context_config
 			 __attribute__((unused)))
-{
-	return NULL;
-}
-
-static inline struct ltt_ust_event *
-trace_ust_find_event(struct lttng_ht *ht __attribute__((unused)),
-		     char *name __attribute__((unused)),
-		     struct lttng_bytecode *filter __attribute__((unused)),
-		     enum lttng_ust_abi_loglevel_type loglevel_type __attribute__((unused)),
-		     int loglevel_value __attribute__((unused)),
-		     struct lttng_event_exclusion *exclusion __attribute__((unused)))
 {
 	return NULL;
 }

@@ -767,14 +767,6 @@ ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess __attribute__((unused)
 	return 0;
 }
 
-static inline int ust_app_enable_event_pid(struct ltt_ust_session *usess __attribute__((unused)),
-					   struct ltt_ust_channel *uchan __attribute__((unused)),
-					   struct ltt_ust_event *uevent __attribute__((unused)),
-					   pid_t pid __attribute__((unused)))
-{
-	return 0;
-}
-
 static inline int ust_app_recv_registration(int sock __attribute__((unused)),
 					    struct ust_register_msg *msg __attribute__((unused)))
 {
