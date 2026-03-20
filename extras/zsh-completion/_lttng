@@ -1,6 +1,6 @@
 #compdef lttng
 #
-# SPDX-FileCopyrightText: 2015-2025 Philippe Proulx <eeppeliteloop@gmail.com>
+# SPDX-FileCopyrightText: 2015-2026 Philippe Proulx <eeppeliteloop@gmail.com>
 # SPDX-License-Identifier: MIT
 #
 # This is a Zsh completion function for the lttng(1) command (see
@@ -22,16 +22,17 @@
 # `actions` tag (with the `lttng-snapshot` command):
 #     Snapshot action names.
 #
-# `channel` argument and `channels` tag:
-#     Channel names.
+# `event-record-channel` argument and `event-record-channels` tag:
+#     Event record channel names.
 #
 #     The `verbose` style controls whether or not this function adds
-#     completions as a list (with channel information for each item) or
-#     simple channel names.
+#     completions as a list (with event record channel information for
+#     each item) or simple event record channel names.
 #
 #     If the verbose style is enabled, then the information part of each
 #     item starts with either `  [enabled` or `  [disabled` (note the
-#     two leading spaces), depending on the status of the channel.
+#     two leading spaces), depending on the status of the event
+#     record channel.
 #
 # `commands` tag:
 #     lttng(1) subcommand names.
@@ -226,9 +227,9 @@ __lttng_complete_cmd_name() {
     'add-context:add context fields to be recorded'
     'create:create a recording session'
     'destroy:destroy a recording session'
-    'disable-channel:disable channels'
+    'disable-channel:disable event record channels'
     'disable-event:disable recording event rules'
-    'enable-channel:create or enable a channel'
+    'enable-channel:create or enable an event record channel'
     'enable-event:create or enable recording event rules'
     'help:show the help of a command'
     'list:list recording sessions and instrumentation points'
@@ -298,7 +299,7 @@ __lttng_complete_cmd_name() {
   # LTTng-tools 2.15+
   if ((minor_version >= 15)); then
     cmd_names+=(
-      'reclaim-memory:reclaim channel memory immediately'
+      'reclaim-memory:reclaim event record channel memory immediately'
     )
   fi
 
@@ -777,9 +778,9 @@ __lttng_session_xml() {
 
 # Usage:
 #
-#     __lttng_complete_channel_name REQSTATUS SRC
+#     __lttng_complete_event_record_channel_name REQSTATUS SRC
 #
-# Adds completions for a channel name.
+# Adds completions for an event record channel name.
 #
 # This function relies on the tracing domain options of `opt_args`,
 # `opt_args[-s]`, `opt_args[--session]`, and the first non-option
@@ -788,13 +789,13 @@ __lttng_session_xml() {
 # REQSTATUS is one of:
 #
 # `all`:
-#     Add completions for enabled and disabled channels.
+#     Add completions for enabled and disabled event record channels.
 #
 # `enabled`:
-#     Only add completions for enabled channels.
+#     Only add completions for enabled event record channels.
 #
 # `disabled`:
-#     Only add completions for disabled channels.
+#     Only add completions for disabled event record channels.
 #
 # SRC is one of:
 #
@@ -807,7 +808,7 @@ __lttng_session_xml() {
 #
 # Anything else:
 #     Use the current recording session name.
-__lttng_complete_channel_name() {
+__lttng_complete_event_record_channel_name() {
   local -r req_status=$1 session_name_src=$2
 
   shift 2
@@ -828,7 +829,7 @@ __lttng_complete_channel_name() {
   if [[ -z $session_name ]]; then
     # Fall back to current recording session
     if ! __lttng_cur_session_name; then
-      _guard '^-*' 'channel name'
+      _guard '^-*' 'event record channel name'
       return
     fi
 
@@ -836,7 +837,7 @@ __lttng_complete_channel_name() {
   fi
 
   # Get XML document (detailed recording session)
-  if ! __lttng_session_xml 'channel name' $session_name; then
+  if ! __lttng_session_xml 'event record channel name' $session_name; then
     return 0
   fi
 
@@ -848,11 +849,11 @@ __lttng_complete_channel_name() {
   domain_count=$(__lttng_xmllint_xpath $session_xml 'count(//*[local-name()="domain"])')
 
   if (($? != 0 || domain_count == 0)); then
-    _guard '^-*' 'channel name'
+    _guard '^-*' 'event record channel name'
     return
   fi
 
-  # Append the name and info of one channel at a time
+  # Append the name and info of one event record channel at a time
   local domain_xml domain prop
   local channel_xml channel_name channel_status channel_erl_mode
   local -a channel_names channel_infos
@@ -889,26 +890,26 @@ __lttng_complete_channel_name() {
       domain='user space'
     fi
 
-    # Count channels within tracing domain
+    # Count event record channels within tracing domain
     channel_count=$(__lttng_xmllint_xpath $domain_xml 'count(//*[local-name()="channel"])')
 
     if (($? != 0 || channel_count == 0)); then
       continue
     fi
 
-    # For each channel
+    # For each event record channel
     for channel_index in {1..$channel_count}; do
-      # Get channel XML node
+      # Get event record channel XML node
       if ! channel_xml=$(__lttng_xmllint_xpath $domain_xml "//*[local-name()='channel'][$channel_index]"); then
         continue
       fi
 
-      # Get channel name
+      # Get event record channel name
       if ! channel_name=$(__lttng_name_prop_from_xml $channel_xml channel); then
         continue
       fi
 
-      # Get channel status
+      # Get event record channel status
       if ! channel_status=$(__lttng_enabled_prop_from_xml $channel_xml channel); then
         continue
       fi
@@ -917,11 +918,11 @@ __lttng_complete_channel_name() {
       channel_status=$REPLY
 
       if [[ $req_status != all && $req_status != $channel_status ]]; then
-        # Skip channel with unexpected status
+        # Skip event record channel with unexpected status
         continue
       fi
 
-      # Get channel event record loss mode
+      # Get event record channel event record loss mode
       if ! channel_erl_mode=$(__lttng_xmllint_xpath $channel_xml '//*[local-name()="attributes"]/*[local-name()="overwrite_mode"]/text()'); then
         continue
       fi
@@ -937,13 +938,13 @@ __lttng_complete_channel_name() {
     done
   done
 
-  # No channels: show message
+  # No event record channels: show message
   if (($#channel_names == 0)); then
-    _guard '^-*' 'channel name'
+    _guard '^-*' 'event record channel name'
     return
   fi
 
-  # Compute maximum channel info length
+  # Compute maximum event record channel info length
   local channel_info
   local -i max_info_len=0 len
 
@@ -955,7 +956,7 @@ __lttng_complete_channel_name() {
     fi
   done
 
-  # Compute maximum channel name length
+  # Compute maximum event record channel name length
   local -i max_name_len=0
 
   for channel_name in $channel_names; do
@@ -987,13 +988,13 @@ __lttng_complete_channel_name() {
   if __lttng_style_is_verbose channel channels; then
     # Verbose mode (list with infos).
     #
-    # Using `-2` as Linux kernel and user space channels may have the
-    # same name, but we want to show the different infos.
-    _wanted -C channel channels expl 'channel name' \
+    # Using `-2` as Linux kernel and user space event record channels
+    # may have the same name, but we want to show the different infos.
+    _wanted -C channel channels expl 'event record channel name' \
       compadd "$@" -2 -d disps -l -a channel_names
   else
-    # Just the channel names, no duplicates
-    _wanted -C channel channels expl 'channel name' \
+    # Just the event record channel names, no duplicates
+    _wanted -C channel channels expl 'event record channel name' \
       compadd "$@" -a channel_names
   fi
 }
@@ -1076,7 +1077,7 @@ __lttng_complete_add_context_cmd() {
     $help_opt_specs
     '(- : *)--list[list the available context field types]'
     '(--list -s --session)'{-s+,--session=}'[select a specific recording session]: : __lttng_complete_session_name inactive all'
-    '(--list -c --channel)'{-c+,--channel=}'[select a specific channel]: : __lttng_complete_channel_name enabled opt'
+    '(--list -c --channel)'{-c+,--channel=}'[select a specific event record channel]: : __lttng_complete_event_record_channel_name enabled opt'
     '(--list)*'{-t+,--type=}'[add a context field to be recorded]: : __lttng_complete_context_type'
     + '(domain)'
     '(--list)'{-k,--kernel}'[select the Linux kernel tracing domain]'
@@ -1901,7 +1902,7 @@ __lttng_complete_trigger_cond_event_rule_matches() {
 # `event-rule-matches`).
 #
 # WITHCHANDOMAIN:
-#     `1` to handle channel and tracing domain options.
+#     `1` to handle event record channel and tracing domain options.
 #
 # WITHRATIO:
 #     `1` to handle a `--threshold-ratio` option.
@@ -1918,7 +1919,7 @@ __lttng_complete_trigger_cond_simple() {
   __lttng_add_opts --session -s 'set the target recording session name'
 
   if ((with_channel_domain_opts)); then
-    __lttng_add_opts --channel -c 'set the target channel name'
+    __lttng_add_opts --channel -c 'set the target event record channel name'
     __lttng_add_opts --domain -d 'set the target tracing domain'
   fi
 
@@ -2025,13 +2026,13 @@ __lttng_complete_trigger_cond_simple() {
     return
   elif [[ $in_opt_val == channel ]] || compset -P '--channel='; then
     if ((with_channel_domain_opts)); then
-      # __lttng_complete_channel_name() relies on `line[1]` for the
-      # recording session name and on `opt_args` for the
-      # tracing domain.
+      # __lttng_complete_event_record_channel_name() relies on `line[1]`
+      # for the recording session name and on `opt_args` for the tracing
+      # domain.
       line=($session_name)
       opt_args=()
       __lttng_set_opt_args_from_new_domain_type $domain_type
-      __lttng_complete_channel_name all arg
+      __lttng_complete_event_record_channel_name all arg
       return
     fi
   elif [[ $in_opt_val == domain ]] || compset -P '--domain='; then
@@ -2107,8 +2108,8 @@ __lttng_complete_trigger_cond_type() {
 
   if ((minor_version >= 15)); then
     types+=(
-      'channel-buffer-usage-ge:channel buffer size becomes ≥ some threshold'
-      'channel-buffer-usage-le:channel buffer size becomes ≤ some threshold'
+      'channel-buffer-usage-ge:event record channel buffer size becomes ≥ some threshold'
+      'channel-buffer-usage-le:event record channel buffer size becomes ≤ some threshold'
       'session-consumed-size-ge:recording session consumed size becomes ≥ some threshold'
       'session-rotation-finishes:recording session rotation operation finishes'
       'session-rotation-starts:recording session rotation operation starts'
@@ -2284,12 +2285,13 @@ __lttng_complete_destroy_cmd() {
   _arguments -s -W : $specs
 }
 
-# Adds completions for the arguments of the `disable-channel` command.
+# Adds completions for the arguments of the `disable-channel` (disable
+# event record channels) command.
 __lttng_complete_disable_channel_cmd() {
   specs=(
     $help_opt_specs
     '(-s --session)'{-s+,--session=}'[select a specific recording session]: : __lttng_complete_session_name all all'
-    ': : _sequence __lttng_complete_channel_name enabled opt'
+    ': : _sequence __lttng_complete_event_record_channel_name enabled opt'
     + '(domain)'
     {-k,--kernel}'[select the Linux kernel tracing domain]'
     {-u,--userspace}'[select the user space tracing domain]'
@@ -2355,7 +2357,8 @@ __lttng_complete_old_enabled_er_name_cond() {
     session_name=$REPLY
   fi
 
-  # Find the channel name to use (`channel0` is the default name)
+  # Find the event record channel name to use (`channel0` is the
+  # default name).
   local channel_name=channel0
 
   if (($+opt_args[-c])); then
@@ -2371,7 +2374,7 @@ __lttng_complete_old_enabled_er_name_cond() {
     domain_xpath="*[local-name() = 'domain'][*[local-name() = 'type'] = '$REPLY']//"
   fi
 
-  # Create channel XPath part
+  # Create event record channel XPath part
   local -r channel_xpath="*[local-name() = 'channel'][*[local-name() = 'name'] = '$channel_name']//"
 
   # Create instrumentation point type XPath part
@@ -2418,7 +2421,7 @@ __lttng_complete_disable_event_cmd() {
   specs=(
     $help_opt_specs
     '(-s --session)'{-s+,--session=}'[select a specific recording session]: : __lttng_complete_session_name all all'
-    '(-c --channel)'{-c+,--channel=}'[select a specific channel]: : __lttng_complete_channel_name all opt'
+    '(-c --channel)'{-c+,--channel=}'[select a specific event record channel]: : __lttng_complete_event_record_channel_name all opt'
     + '(names)'
     {-a,--all-events}'[disable all recording event rules]'
     ': :_sequence __lttng_complete_old_enabled_er_name_cond'
@@ -2481,8 +2484,9 @@ __lttng_complete_disable_rotation_cmd() {
   _arguments -s -W : $specs
 }
 
-# Adds completions for a channel output type (`mmap` and, possibly,
-# `splice`) (for the `--output` option of the `enable-channel` command).
+# Adds completions for an event record channel output type (`mmap` and,
+# possibly, `splice`) (for the `--output` option of the `enable-channel`
+# command).
 #
 # This function replaces the argument field of the current context with
 # `output-opt`.
@@ -2491,7 +2495,7 @@ __lttng_complete_disable_rotation_cmd() {
 # `opt_args` to restrict the offered completions. Without the user
 # space tracing domain option, this function adds the `splice`
 # completion too.
-__lttng_complete_channel_output_type() {
+__lttng_complete_event_record_channel_output_type() {
   local output_types=(mmap)
 
   if ! __lttng_user_domain_opt_is_set; then
@@ -2509,11 +2513,11 @@ __lttng_complete_channel_output_type() {
 # This function either, depending on the keys of `opt_args`:
 #
 # At least one creation option:
-#     Shows a message to enter the new channel name.
+#     Shows a message to enter the new event record channel name.
 #
 # Otherwise:
-#     Adds completions for a comma-separated list of known channel names
-#     using __lttng_complete_channel_name().
+#     Adds completions for a comma-separated list of known event record
+#     channel names using __lttng_complete_event_record_channel_name().
 __lttng_complete_enable_channel_cmd_names() {
   local key
   local -r enable_opts=(
@@ -2530,12 +2534,12 @@ __lttng_complete_enable_channel_cmd_names() {
     fi
 
     # Creation option exists: single name
-    _guard '^-*' 'new channel name'
+    _guard '^-*' 'new event record channel name'
     return
   done
 
-  # Comma-separated list of existing channel names
-  _sequence __lttng_complete_channel_name disabled opt
+  # Comma-separated list of existing event record channel names
+  _sequence __lttng_complete_event_record_channel_name disabled opt
 }
 
 # Adds completions for a buffer ownership.
@@ -2568,7 +2572,7 @@ __lttng_complete_buffer_alloc() {
   )
 
   if __lttng_user_domain_opt_is_set || ! __lttng_kernel_domain_opt_is_set; then
-    choices+=('per-channel:allocate sub-buffers for each channel')
+    choices+=('per-channel:allocate sub-buffers for each event record channel')
   fi
 
   # Add completions
@@ -2604,7 +2608,7 @@ __lttng_complete_enable_channel_cmd() {
     '--num-subbuf=[set the number of sub-buffers per ring buffer]:sub-buffer count:'
     '--tracefile-size=[set the maximum size of each trace file]:trace file size (bytes; `k`/`M`/`G` suffixes supported):'
     '--tracefile-count=[set the maximum number of trace files]:maximum trace file count:'
-    '--output=[set the output type]: : __lttng_complete_channel_output_type'
+    '--output=[set the output type]: : __lttng_complete_event_record_channel_output_type'
     '(-s --session)'{-s+,--session=}'[select a specific recording session]: : __lttng_complete_session_name all all'
     ': : __lttng_complete_enable_channel_cmd_names'
   )
@@ -2734,8 +2738,8 @@ __lttng_complete_enable_event_cmd() {
   #
   # At this point, the user might want the list of existing, disabled
   # kernel system call recording event rule names (current recording
-  # session, default channel name), or the full list of available system
-  # call instrumentation point names.
+  # session, default event record channel name), or the full list of
+  # available system call instrumentation point names.
   #
   # This function makes the arbitrary choice to provide the available
   # instrumentation point names (__lttng_complete_ip_name()) because,
@@ -2746,7 +2750,7 @@ __lttng_complete_enable_event_cmd() {
     '(--probe --userspace-probe --function -f --filter)'{-f+,--filter=}'[only match events which satisfy an expression]:filter expression:'
     "($exclude_opt_excl)"{-x+,--exclude=}'[exclude event name patterns]:comma-separated list of patterns:'
     '(-s --session)'{-s+,--session=}'[select a specific recording session]: : __lttng_complete_session_name all all'
-    '(-c --channel)'{-c+,--channel=}'[select a specific channel]: : __lttng_complete_channel_name all opt'
+    '(-c --channel)'{-c+,--channel=}'[select a specific event record channel]: : __lttng_complete_event_record_channel_name all opt'
     + '(log-level)'
     "($kernel_opts_excl)--loglevel=[only match events with specific log levels]: : __lttng_complete_log_level_name"
     "($kernel_opts_excl)--loglevel-only=[only match events with an exact log level]: : __lttng_complete_log_level_name"
@@ -2803,7 +2807,7 @@ __lttng_complete_list_cmd() {
     $help_opt_specs
     '(-d --domain -f --fields -c --channel --mem-usage 1)'{-f,--fields}'[show user space tracepoint fields]'
     "($domain_opt_excl)"{-d,--domain}'[show tracing domains]'
-    '(-d --domain -f --fields --syscall -c --channel)'{-c+,--channel=}'[list the objects of specific channel(s)]: : __lttng_complete_channel_name all arg'
+    '(-d --domain -f --fields --syscall -c --channel)'{-c+,--channel=}'[list the objects of specific event record channel(s)]: : __lttng_complete_event_record_channel_name all arg'
     '(-d --domain -f --fields --syscall):recording session name: __lttng_complete_session_name all all'
     '(-d --domain -k --kernel)'{-k,--kernel}'[list Linux kernel tracing domain objects]'
     '(-d --domain -u --userspace)'{-u,--userspace}'[list user space tracing domain objects]'
@@ -2836,7 +2840,7 @@ __lttng_complete_list_cmd() {
   # The modern output options require LTTng-tools ≥ 2.15.
   if ((minor_version >= 15)); then
     specs+=(
-      '(-f --fields --syscall)--mem-usage=[set channel memory usage display mode]:memory usage mode:(compact full)'
+      '(-f --fields --syscall)--mem-usage=[set event record channel memory usage display mode]:memory usage mode:(compact full)'
       '--style=[set command output style]:output style:(compact)'
       '--no-truncate[do not truncate long output lines]'
     )
@@ -2906,8 +2910,8 @@ __lttng_complete_reclaim_memory_cmd() {
     '--older-than=[only reclaim sub-buffers older than a threshold]:age (µs; `ms`/`s`/`m`/`h` suffixes supported):'
     '(-u --userspace)'{-u,--userspace}'[select user space tracing domain]'
     + '(channels)'
-    {-a,--all}'[reclaim memory for all user space channels]'
-    '*: : __lttng_complete_channel_name all opt'
+    {-a,--all}'[reclaim memory for all user space event record channels]'
+    '*: : __lttng_complete_event_record_channel_name all opt'
   )
 
   # Add completions
@@ -3067,8 +3071,8 @@ __lttng_complete_status_cmd() {
   # The forwarded `list` options require LTTng-tools ≥ 2.15
   if ((minor_version >= 15)); then
     specs+=(
-      '(-c --channel)'{-c+,--channel=}'[select specific channel(s)]: : __lttng_complete_channel_name all cur'
-      '--mem-usage=[set channel memory usage display mode]:memory usage mode:(compact full)'
+      '(-c --channel)'{-c+,--channel=}'[select specific event record channel(s)]: : __lttng_complete_event_record_channel_name all cur'
+      '--mem-usage=[set event record channel memory usage display mode]:memory usage mode:(compact full)'
       '--style=[set command output style]:output style:(compact)'
       '--no-truncate[do not truncate long output lines]'
       '(-k --kernel)'{-k,--kernel}'[select Linux kernel tracing domain]'
