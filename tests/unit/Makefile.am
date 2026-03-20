@@ -90,9 +90,6 @@ noinst_PROGRAMS = \
 	test_uuid
 
 if HAVE_LIBLTTNG_UST_CTL
-noinst_PROGRAMS += \
-	test_ust_data
-
 CLEANFILES=
 if HAVE_CLANG2PY
 
@@ -121,7 +118,6 @@ EXTRA_DIST += \
 	liblttngctl/test_session_trace_format.py \
 	liblttngctl/test_stream_info.py \
 	liblttngctl/test_watchdog_timer.py
-TESTS += test_ust_data
 endif
 
 # URI unit tests
@@ -136,12 +132,6 @@ test_session_LDADD = $(LIBTAP) $(LIBLTTNG_SESSIOND_COMMON) $(DL_LIBS)
 if HAVE_LIBLTTNG_UST_CTL
 test_session_SOURCES += ust-sigbus.cpp
 test_session_LDADD += $(UST_CTL_LIBS)
-endif
-
-# UST data structures unit test
-if HAVE_LIBLTTNG_UST_CTL
-test_ust_data_SOURCES = test_ust_data.cpp
-test_ust_data_LDADD = $(LIBTAP) $(LIBLTTNG_SESSIOND_COMMON) $(DL_LIBS)
 endif
 
 # utils suffix for unit test

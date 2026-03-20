@@ -91,7 +91,6 @@ compile_commands.json
 /tests/unit/test_kernel_data
 /tests/unit/test_session
 /tests/unit/test_uri
-/tests/unit/test_ust_data
 /tests/unit/test_utils_compat_poll
 /tests/unit/test_utils_compat_pthread
 /tests/unit/test_utils_cpu_mask
