@@ -86,7 +86,7 @@ function test_ust_implicit_no_blocking_with_channel_blocking()
 	start_lttng_sessiond
 	# session in no-output mode
 	create_lttng_session_no_output $SESSION_NAME
-	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME "--blocking-timeout=inf"
+	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME "--blocking-timeout=inf" "--watchdog-timer=0"
 	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME" $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
 
@@ -114,7 +114,7 @@ function test_ust_timeout_no_blocking()
 	# session in no-output mode
 	create_lttng_session_no_output $SESSION_NAME
 	# blocking timeout 1ms
-	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME "--blocking-timeout=1000"
+	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME "--blocking-timeout=1000" "--watchdog-timer=0"
 	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME" $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
 
@@ -142,7 +142,7 @@ function test_ust_snapshot_no_blocking()
 	start_lttng_sessiond
 	create_lttng_session_ok $SESSION_NAME "$trace_path" --snapshot
 	# blocking timeout 1ms
-	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME "--blocking-timeout=1000"
+	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME "--blocking-timeout=1000" "--watchdog-timer=0"
 	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME" $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
 
@@ -173,7 +173,7 @@ function test_ust_blocking_no_discard()
 	start_lttng_sessiond
 	create_lttng_session_ok $SESSION_NAME "$trace_path"
 	# infinite blocking timeout
-	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME "--blocking-timeout=inf"
+	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME "--blocking-timeout=inf" "--watchdog-timer=0"
 	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME" $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
 
