@@ -763,7 +763,7 @@ static int get_ust_runtime_stats(const ltt_session::locked_ref& session,
 		ret = ust_app_uid_get_channel_runtime_stats(usess->id,
 							    &usess->buffer_reg_uid_list,
 							    usess->consumer,
-							    uchan->stream_class_id,
+							    uchan->trace_class_stream_class_handle,
 							    uchan->attr.overwrite,
 							    discarded_events,
 							    lost_packets);
@@ -4601,9 +4601,9 @@ enum lttng_error_code cmd_list_channels(enum lttng_domain_type domain,
 					/*
 					 * Runtime stats (discarded events, lost packets) still
 					 * require the legacy ltt_ust_channel because the
-					 * stream_class_id and per-PID closed-app counters live
-					 * there. This lookup is a transition shim until the
-					 * orchestrator internalizes these.
+					 * trace_class_stream_class_handle and per-PID closed-app
+					 * counters live there. This lookup is a transition shim
+					 * until the orchestrator internalizes these.
 					 */
 					const lttng::urcu::read_lock_guard read_lock;
 

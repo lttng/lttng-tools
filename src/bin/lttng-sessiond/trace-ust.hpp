@@ -75,7 +75,13 @@ struct ltt_ust_event {
 
 /* UST channel */
 struct ltt_ust_channel {
-	uint64_t stream_class_id = 0;
+	/*
+	 * Opaque handle used to look up the stream_class within a
+	 * trace_class (via trace_class::channel()). This is NOT the CTF
+	 * stream class ID; it is a hash table key with no semantic
+	 * meaning outside of trace_class internals.
+	 */
+	uint64_t trace_class_stream_class_handle = 0;
 	bool enabled = false;
 	/*
 	 * A UST channel can be part of a userspace sub-domain such as JUL,

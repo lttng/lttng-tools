@@ -86,7 +86,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 
 	/* Depending on the buffer type, a different channel key is used. */
 	if (ua_sess->buffer_type == LTTNG_BUFFER_PER_UID) {
-		chan_reg_key = ua_chan->stream_class_id;
+		chan_reg_key = ua_chan->trace_class_stream_class_handle;
 	} else {
 		chan_reg_key = ua_chan->key;
 	}
@@ -435,7 +435,7 @@ int ust_consumer_send_channel_to_ust(struct ust_app *app,
 	     app->sock,
 	     app->pid,
 	     channel->name,
-	     channel->stream_class_id);
+	     channel->trace_class_stream_class_handle);
 
 	/*
 	 * This effectively transmits the owner-id to the application by storing

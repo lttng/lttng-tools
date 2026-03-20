@@ -203,8 +203,12 @@ struct ust_app_channel {
 	 * does not know about this channel (i.e. an error occurred).
 	 */
 	uint64_t key = 0;
-	/* Id of the tracing channel set on creation. */
-	uint64_t stream_class_id = 0;
+	/*
+	 * Opaque handle for trace_class::channel() lookups. Copied from
+	 * ltt_ust_channel::trace_class_stream_class_handle during per-app
+	 * channel creation.
+	 */
+	uint64_t trace_class_stream_class_handle = 0;
 	/* Number of stream that this channel is expected to receive. */
 	unsigned int expected_stream_count = 0;
 	char name[LTTNG_UST_ABI_SYM_NAME_LEN] = {};
