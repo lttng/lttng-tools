@@ -187,35 +187,6 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	luc->attr.switch_timer_interval = chan->attr.switch_timer_interval;
 	luc->attr.read_timer_interval = chan->attr.read_timer_interval;
 	luc->attr.output = (enum lttng_ust_abi_output) chan->attr.output;
-	luc->monitor_timer_interval = extended->monitor_timer_interval;
-	luc->attr.blocking_timeout = extended->blocking_timeout;
-
-	if (extended->watchdog_timer_interval.is_set) {
-		switch (domain) {
-		case LTTNG_DOMAIN_UST: /* Fallthrough */
-		case LTTNG_DOMAIN_JUL: /* Fallthrough */
-		case LTTNG_DOMAIN_LOG4J: /* Fallthrough */
-		case LTTNG_DOMAIN_PYTHON: /* Fallthrough */
-		case LTTNG_DOMAIN_LOG4J2:
-		{
-			const auto watchdog_timer_value =
-				LTTNG_OPTIONAL_GET(extended->watchdog_timer_interval);
-
-			LTTNG_OPTIONAL_SET(&luc->watchdog_timer_interval, watchdog_timer_value);
-			break;
-		}
-		default:
-			ERR_FMT("Watchdog timer only valid for UST, JUL, LOG4J, PYTHON and LOG4J2 domains: domain={}",
-				static_cast<int>(domain));
-			goto error;
-		}
-	}
-	luc->attr.blocking_timeout = extended->blocking_timeout;
-
-	if (extended->automatic_memory_reclamation_maximal_age_us.is_set) {
-		luc->automatic_memory_reclamation_maximal_age = std::chrono::microseconds(
-			LTTNG_OPTIONAL_GET(extended->automatic_memory_reclamation_maximal_age_us));
-	}
 
 	switch (allocation_policy) {
 	case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU:
@@ -228,19 +199,6 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 		PERROR("Unknown channel stream allocation");
 		goto error;
 	}
-
-	luc->preallocation_policy = [](enum lttng_channel_preallocation_policy policy) {
-		switch (policy) {
-		case LTTNG_CHANNEL_PREALLOCATION_POLICY_PREALLOCATE:
-			return lttng::sessiond::config::recording_channel_configuration::
-				buffer_preallocation_policy_t::PREALLOCATE;
-		case LTTNG_CHANNEL_PREALLOCATION_POLICY_ON_DEMAND:
-			return lttng::sessiond::config::recording_channel_configuration::
-				buffer_preallocation_policy_t::ON_DEMAND;
-		default:
-			std::abort();
-		}
-	}(static_cast<enum lttng_channel_preallocation_policy>(extended->preallocation_policy));
 
 	/* Translate to UST output enum */
 	switch (luc->attr.output) {
@@ -263,10 +221,6 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 
 	/* Init node */
 	lttng_ht_node_init_str(&luc->node, luc->name);
-
-	/* On-disk circular buffer parameters */
-	luc->tracefile_size = chan->attr.tracefile_size;
-	luc->tracefile_count = chan->attr.tracefile_count;
 
 	DBG2("Trace UST channel %s created", luc->name);
 

@@ -34,7 +34,6 @@ struct ltt_ust_channel {
 	 * meaning outside of trace_class internals.
 	 */
 	uint64_t trace_class_stream_class_handle = 0;
-	bool enabled = false;
 	/*
 	 * A UST channel can be part of a userspace sub-domain such as JUL,
 	 * Log4j, Log4j2, Python.
@@ -43,17 +42,8 @@ struct ltt_ust_channel {
 	char name[LTTNG_UST_ABI_SYM_NAME_LEN] = {};
 	struct lttng_ust_abi_channel_attr attr = {};
 	struct lttng_ht_node_str node = {};
-	uint64_t tracefile_size = 0;
-	uint64_t tracefile_count = 0;
 	uint64_t per_pid_closed_app_discarded = 0;
 	uint64_t per_pid_closed_app_lost = 0;
-	uint64_t monitor_timer_interval = 0;
-	LTTNG_OPTIONAL(uint64_t) watchdog_timer_interval = {};
-
-	lttng::sessiond::config::recording_channel_configuration::buffer_preallocation_policy_t
-		preallocation_policy = lttng::sessiond::config::recording_channel_configuration::
-			buffer_preallocation_policy_t::PREALLOCATE;
-	nonstd::optional<std::chrono::microseconds> automatic_memory_reclamation_maximal_age;
 };
 
 /* UST domain global (LTTNG_DOMAIN_UST) */

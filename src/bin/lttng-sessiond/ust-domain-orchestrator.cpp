@@ -199,8 +199,6 @@ void ls::ust::domain_orchestrator::create_channel(
 		LTTNG_THROW_ALLOCATION_FAILURE_ERROR("Failed to create UST channel structure");
 	}
 
-	uchan->enabled = true;
-
 	uchan->trace_class_stream_class_handle =
 		trace_ust_get_trace_class_stream_class_handle(&_ust_session);
 
