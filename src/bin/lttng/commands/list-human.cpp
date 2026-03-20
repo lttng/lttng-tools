@@ -1604,15 +1604,20 @@ std::string draw_memory_usage_line(const std::string& prefix,
 }
 
 /*
- * Creates a memory usage node from the channel `channel`.
+ * Creates a memory usage node from the event record channel `channel`.
  *
  * Returns `nullptr` if memory usage information is not available (Linux
- * kernel channel or UST channel without any created ring buffer).
+ * kernel event record channel or UST event record channel without any
+ * created ring buffer).
  */
-std::unique_ptr<node> memory_usage_node_from_channel(const lttng::cli::channel& channel,
-						     const list_cmd_mem_usage_mode mode)
+std::unique_ptr<node>
+memory_usage_node_from_event_record_channel(const lttng::cli::event_record_channel& channel,
+					    const list_cmd_mem_usage_mode mode)
 {
-	/* Only UST/Java/Python channels have memory usage information */
+	/*
+	 * Only UST/Java/Python event record channels have
+	 * memory usage information.
+	 */
 	if (channel.domain_type() == LTTNG_DOMAIN_KERNEL) {
 		return nullptr;
 	}
@@ -1705,12 +1710,13 @@ std::string plural(const char *const noun, const std::size_t count)
 }
 
 /*
- * Creates a node from the channel `channel` within the recording
- * session `session`.
+ * Creates a node from the event record channel `channel` within the
+ * recording session `session`.
  */
-std::unique_ptr<node> node_from_channel(const lttng::cli::session& session,
-					const lttng::cli::channel& channel,
-					const list_cmd_mem_usage_mode mem_usage)
+std::unique_ptr<node>
+node_from_event_record_channel(const lttng::cli::session& session,
+			       const lttng::cli::event_record_channel& channel,
+			       const list_cmd_mem_usage_mode mem_usage)
 {
 	node_list children;
 
@@ -1876,7 +1882,7 @@ std::unique_ptr<node> node_from_channel(const lttng::cli::session& session,
 			 * It does not have the same meaning as the "regular"
 			 * discarded packet count that would result from the
 			 * consumer not keeping up with event record production in
-			 * an overwrite-mode channel.
+			 * an overwrite-mode event record channel.
 			 *
 			 * A more interesting statistic would be the number of
 			 * packets discarded between the first and last extracted
@@ -1887,7 +1893,8 @@ std::unique_ptr<node> node_from_channel(const lttng::cli::session& session,
 				"Discarded packets", channel.discarded_packet_count()));
 		}
 
-		auto memory_usage_node = memory_usage_node_from_channel(channel, mem_usage);
+		auto memory_usage_node =
+			memory_usage_node_from_event_record_channel(channel, mem_usage);
 
 		if (!memory_usage_node) {
 			/* Use a property to align the value */
@@ -1944,7 +1951,7 @@ std::unique_ptr<node> node_from_domain(const lttng::cli::session& session,
 				       const lttng::cli::domain& domain,
 				       const list_cmd_config& config)
 {
-	const auto channels = domain.channels();
+	const auto channels = domain.event_record_channels();
 
 	std::vector<std::string> tags;
 	nonstd::optional<lttng::cli::event_rule_set<lttng::cli::java_python_logger_event_rule>>
@@ -1961,7 +1968,7 @@ std::unique_ptr<node> node_from_domain(const lttng::cli::session& session,
 						     event_rule_count,
 						     plural("event rule", event_rule_count)));
 	} else {
-		/* Kernel/UST domains: show channel count */
+		/* Kernel/UST domains: show event record channel count */
 		tags.emplace_back(
 			lttng::mint_format("[y][!]{}[/] {}[/]",
 					   channels.size(),
@@ -1998,7 +2005,7 @@ std::unique_ptr<node> node_from_domain(const lttng::cli::session& session,
 					children.emplace_back(std::move(filter_node));
 				}
 
-				/* Channel nodes if requested */
+				/* Event record channel nodes if requested */
 				if (!config.domain) {
 					for (const auto& channel : channels) {
 						if (config.channel_name &&
@@ -2006,12 +2013,15 @@ std::unique_ptr<node> node_from_domain(const lttng::cli::session& session,
 							continue;
 						}
 
-						children.emplace_back(node_from_channel(
+						children.emplace_back(node_from_event_record_channel(
 							session, channel, config.mem_usage));
 					}
 				}
 
-				/* Event rules for Java/Python domains (no direct channels) */
+				/*
+				 * Event rules for Java/Python domains (no direct
+				 * event record channels).
+				 */
 				if (is_agent_domain(domain.type())) {
 					LTTNG_ASSERT(java_python_event_rules);
 

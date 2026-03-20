@@ -247,7 +247,7 @@ void print_instrumentation_point(const lttng::cli::instrumentation_point& instr_
 }
 
 /*
- * Pretty print single event rule (from a channel).
+ * Pretty print single event rule (from an event record channel).
  */
 void print_events(const lttng::cli::event_rule& event_rule, const lttng_domain_type domain_type)
 {
@@ -585,9 +585,9 @@ void list_session_agent_events(const lttng::cli::domain& domain)
 }
 
 /*
- * List events of channel of session and domain.
+ * List events of event record channel of session and domain.
  */
-void list_events(const lttng::cli::channel& channel)
+void list_events(const lttng::cli::event_record_channel& channel)
 {
 	const auto event_rules = channel.event_rules();
 
@@ -635,9 +635,9 @@ const char *allocation_policy_to_pretty_string(const lttng_channel_allocation_po
 }
 
 /*
- * Pretty print channel
+ * Pretty print event record channel
  */
-void print_channel(const lttng::cli::channel& channel, const bool snapshot_mode)
+void print_channel(const lttng::cli::event_record_channel& channel, const bool snapshot_mode)
 {
 	lttng::print("- {}:{}\n\n", channel.name(), enabled_string(channel.is_enabled()));
 	lttng::print("{}Attributes:\n", indent4);
@@ -711,7 +711,7 @@ void print_channel(const lttng::cli::channel& channel, const bool snapshot_mode)
 		 * course of recording the snapshot. It does not have the
 		 * same meaning as the "regular" lost packet count that
 		 * would result from the consumer not keeping up with
-		 * event production in an overwrite-mode channel.
+		 * event production in an overwrite-mode event record channel.
 		 *
 		 * A more interesting statistic would be the number of
 		 * packets lost between the first and last extracted
@@ -731,9 +731,9 @@ void print_channel(const lttng::cli::channel& channel, const bool snapshot_mode)
 }
 
 /*
- * List channel(s) of session and domain.
+ * List event record channel(s) of session and domain.
  *
- * If channel_name is NULL, all channels are listed.
+ * If channel_name is NULL, all event record channels are listed.
  */
 void list_channels(const lttng::cli::domain& domain,
 		   const char *const channel_name,
@@ -741,7 +741,7 @@ void list_channels(const lttng::cli::domain& domain,
 {
 	DBG("Listing channel(s) (%s)", channel_name ?: "<all>");
 
-	const auto channels = domain.channels();
+	const auto channels = domain.event_record_channels();
 
 	/* Pretty print */
 	if (!channels.is_empty()) {
@@ -761,7 +761,7 @@ void list_channels(const lttng::cli::domain& domain,
 
 		print_channel(channel, snapshot_mode);
 
-		/* Listing events per channel */
+		/* Listing events per event record channel */
 		list_events(channel);
 
 		if (chan_found) {
@@ -1155,7 +1155,7 @@ void list_human_legacy(const list_cmd_config& config)
 			/* Trackers */
 			list_trackers(*domain);
 
-			/* Channels */
+			/* Event record channels */
 			list_channels(*domain,
 				      config.channel_name ? config.channel_name->c_str() : nullptr,
 				      found_session->is_snapshot_mode());

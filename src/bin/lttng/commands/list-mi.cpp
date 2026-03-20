@@ -281,9 +281,9 @@ void list_events(const EventRuleSetType& event_rules, const lttng_domain_type do
 	}
 }
 
-void write_channel_memory_usage(const lttng::cli::channel& channel)
+void write_event_record_channel_memory_usage(const lttng::cli::event_record_channel& channel)
 {
-	/* Memory usage information isn't available for a kernel channel */
+	/* Memory usage information isn't available for a kernel event record channel */
 	if (channel.domain_type() == LTTNG_DOMAIN_KERNEL) {
 		return;
 	}
@@ -297,11 +297,12 @@ void write_channel_memory_usage(const lttng::cli::channel& channel)
 	}
 }
 
-void list_channels(const lttng::cli::channel_set<lttng::cli::channel>& channels)
+void list_event_record_channels(
+	const lttng::cli::event_record_channel_set<lttng::cli::event_record_channel>& channels)
 {
 	/* Open channels element */
 	if (mi_lttng_channels_open(the_writer)) {
-		LTTNG_THROW_ERROR("Failed to open XML channels element");
+		LTTNG_THROW_ERROR("Failed to open XML event record channels element");
 	}
 
 	for (const auto& channel : channels) {
@@ -316,20 +317,20 @@ void list_channels(const lttng::cli::channel_set<lttng::cli::channel>& channels)
 			chan_found = true;
 		}
 
-		/* Write channel element  and leave it open */
+		/* Write event record channel element  and leave it open */
 		if (mi_lttng_channel(the_writer, &channel.lib(), true)) {
-			LTTNG_THROW_ERROR("Failed to write XML channel element");
+			LTTNG_THROW_ERROR("Failed to write XML event record channel element");
 		}
 
-		/* Listing events per channel */
+		/* Listing events per event record channel */
 		list_events(channel.event_rules(), channel.domain_type());
 
 		/* Add memory usage, if available */
-		write_channel_memory_usage(channel);
+		write_event_record_channel_memory_usage(channel);
 
 		/* Close channel element */
 		if (mi_lttng_writer_close_element(the_writer)) {
-			LTTNG_THROW_ERROR("Failed to close XML channel element");
+			LTTNG_THROW_ERROR("Failed to close XML event record channel element");
 		}
 
 		if (chan_found) {
@@ -339,7 +340,7 @@ void list_channels(const lttng::cli::channel_set<lttng::cli::channel>& channels)
 
 	/* Close channels element */
 	if (mi_lttng_writer_close_element(the_writer)) {
-		LTTNG_THROW_ERROR("Failed to close XML channels element");
+		LTTNG_THROW_ERROR("Failed to close XML event record channels element");
 	}
 }
 
@@ -619,8 +620,8 @@ void list_all_session_domains(const lttng::cli::session& session)
 			write_domain_trackers(domain);
 		}
 
-		/* List channels */
-		list_channels(domain.channels());
+		/* List event record channels */
+		list_event_record_channels(domain.event_record_channels());
 
 		/* Close domain element */
 		if (mi_lttng_writer_close_element(the_writer)) {
@@ -699,8 +700,8 @@ void handle_with_session_name()
 		/* Trackers */
 		write_domain_trackers(*found_domain);
 
-		/* Channels */
-		list_channels(found_domain->channels());
+		/* Event record channels */
+		list_event_record_channels(found_domain->event_record_channels());
 
 		/* Close domain element */
 		if (mi_lttng_writer_close_element(the_writer)) {

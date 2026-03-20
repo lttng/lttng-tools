@@ -1575,22 +1575,23 @@ private:
 	std::set<data_stream_info_set> _infos;
 };
 
-class kernel_channel;
-class ust_channel;
-class ust_or_java_python_channel;
-class java_python_channel;
+class kernel_event_record_channel;
+class ust_event_record_channel;
+class ust_or_java_python_event_record_channel;
+class java_python_event_record_channel;
 
 /*
- * Holds information about a channel.
+ * Holds information about an event record channel.
  *
  * Get a specific wrapper with as_kernel(), as_ust(), or
  * as_java_python(), depending on domain_type().
  *
  * Doesn't own the wrapped library pointer.
  */
-class channel {
+class event_record_channel {
 public:
-	explicit channel(const lttng_handle& lib_handle, const lttng_channel& lib_channel) :
+	explicit event_record_channel(const lttng_handle& lib_handle,
+				      const lttng_channel& lib_channel) :
 		_lib_handle(lib_handle), _lib_channel(&lib_channel)
 	{
 	}
@@ -1678,7 +1679,7 @@ public:
 
 	/*
 	 * Returns a snapshot of the discarded event record counter
-	 * of this channel.
+	 * of this event record channel.
 	 */
 	std::uint64_t discarded_event_record_count() const
 	{
@@ -1693,7 +1694,7 @@ public:
 
 	/*
 	 * Returns a snapshot of the discarded packet counter of
-	 * this channel.
+	 * this event record channel.
 	 */
 	std::uint64_t discarded_packet_count() const
 	{
@@ -1708,24 +1709,24 @@ public:
 
 	/*
 	 * Returns a snapshot of the available recording event rules of
-	 * this channel.
+	 * this event record channel.
 	 */
 	event_rule_set<event_rule> event_rules() const
 	{
 		return _event_rules<event_rule>();
 	}
 
-	kernel_channel as_kernel() const noexcept;
-	ust_channel as_ust() const noexcept;
-	ust_or_java_python_channel as_ust_or_java_python() const noexcept;
-	java_python_channel as_java_python() const noexcept;
+	kernel_event_record_channel as_kernel() const noexcept;
+	ust_event_record_channel as_ust() const noexcept;
+	ust_or_java_python_event_record_channel as_ust_or_java_python() const noexcept;
+	java_python_event_record_channel as_java_python() const noexcept;
 
 	const lttng_channel& lib() const noexcept
 	{
 		return *_lib_channel;
 	}
 
-	bool operator<(const channel& other) const noexcept
+	bool operator<(const event_record_channel& other) const noexcept
 	{
 		return internal::compare_c_string_views(name(), other.name()) < 0;
 	}
@@ -1751,14 +1752,15 @@ private:
 };
 
 /*
- * Holds information about a Linux kernel channel.
+ * Holds information about a Linux kernel event record channel.
  *
  * Doesn't own the wrapped library pointer.
  */
-class kernel_channel final : public channel {
+class kernel_event_record_channel final : public event_record_channel {
 public:
-	explicit kernel_channel(const lttng_handle& lib_handle, const lttng_channel& lib_channel) :
-		channel(lib_handle, lib_channel)
+	explicit kernel_event_record_channel(const lttng_handle& lib_handle,
+					     const lttng_channel& lib_channel) :
+		event_record_channel(lib_handle, lib_channel)
 	{
 		LTTNG_ASSERT(domain_type() == LTTNG_DOMAIN_KERNEL);
 	}
@@ -1770,15 +1772,15 @@ public:
 };
 
 /*
- * Common base class for UST and Java/Python channels.
+ * Common base class for UST and Java/Python event record channels.
  *
  * Doesn't own the wrapped library pointer.
  */
-class ust_or_java_python_channel : public channel {
+class ust_or_java_python_event_record_channel : public event_record_channel {
 public:
-	explicit ust_or_java_python_channel(const lttng_handle& lib_handle,
-					    const lttng_channel& lib_channel) :
-		channel(lib_handle, lib_channel)
+	explicit ust_or_java_python_event_record_channel(const lttng_handle& lib_handle,
+							 const lttng_channel& lib_channel) :
+		event_record_channel(lib_handle, lib_channel)
 	{
 		LTTNG_ASSERT(domain_type() == LTTNG_DOMAIN_UST ||
 			     domain_type() == LTTNG_DOMAIN_JUL ||
@@ -1854,7 +1856,7 @@ public:
 
 	/*
 	 * Returns a snapshot of the available data stream infos of
-	 * this channel.
+	 * this event record channel.
 	 */
 	data_stream_info_sets data_stream_infos() const
 	{
@@ -1874,21 +1876,22 @@ public:
 };
 
 /*
- * Holds information about a UST channel.
+ * Holds information about a UST event record channel.
  *
  * Doesn't own the wrapped library pointer.
  */
-class ust_channel final : public ust_or_java_python_channel {
+class ust_event_record_channel final : public ust_or_java_python_event_record_channel {
 public:
-	explicit ust_channel(const lttng_handle& lib_handle, const lttng_channel& lib_channel) :
-		ust_or_java_python_channel(lib_handle, lib_channel)
+	explicit ust_event_record_channel(const lttng_handle& lib_handle,
+					  const lttng_channel& lib_channel) :
+		ust_or_java_python_event_record_channel(lib_handle, lib_channel)
 	{
 		LTTNG_ASSERT(domain_type() == LTTNG_DOMAIN_UST);
 	}
 
 	/*
 	 * Returns a snapshot of the available recording event rules of
-	 * this channel.
+	 * this event record channel.
 	 */
 	event_rule_set<ust_tracepoint_event_rule> event_rules() const
 	{
@@ -1897,15 +1900,15 @@ public:
 };
 
 /*
- * Holds information about a Java/Python channel.
+ * Holds information about a Java/Python event record channel.
  *
  * Doesn't own the wrapped library pointer.
  */
-class java_python_channel final : public ust_or_java_python_channel {
+class java_python_event_record_channel final : public ust_or_java_python_event_record_channel {
 public:
-	explicit java_python_channel(const lttng_handle& lib_handle,
-				     const lttng_channel& lib_channel) :
-		ust_or_java_python_channel(lib_handle, lib_channel)
+	explicit java_python_event_record_channel(const lttng_handle& lib_handle,
+						  const lttng_channel& lib_channel) :
+		ust_or_java_python_event_record_channel(lib_handle, lib_channel)
 	{
 		LTTNG_ASSERT(domain_type() == LTTNG_DOMAIN_JUL ||
 			     domain_type() == LTTNG_DOMAIN_LOG4J ||
@@ -1915,7 +1918,7 @@ public:
 
 	/*
 	 * Returns a snapshot of the available recording event rules of
-	 * this channel.
+	 * this event record channel.
 	 */
 	event_rule_set<java_python_logger_event_rule> event_rules() const
 	{
@@ -1923,38 +1926,39 @@ public:
 	}
 };
 
-inline kernel_channel channel::as_kernel() const noexcept
+inline kernel_event_record_channel event_record_channel::as_kernel() const noexcept
 {
-	return kernel_channel(_lib_handle, *_lib_channel);
+	return kernel_event_record_channel(_lib_handle, *_lib_channel);
 }
 
-inline ust_channel channel::as_ust() const noexcept
+inline ust_event_record_channel event_record_channel::as_ust() const noexcept
 {
-	return ust_channel(_lib_handle, *_lib_channel);
+	return ust_event_record_channel(_lib_handle, *_lib_channel);
 }
 
-inline ust_or_java_python_channel channel::as_ust_or_java_python() const noexcept
+inline ust_or_java_python_event_record_channel
+event_record_channel::as_ust_or_java_python() const noexcept
 {
-	return ust_or_java_python_channel(_lib_handle, *_lib_channel);
+	return ust_or_java_python_event_record_channel(_lib_handle, *_lib_channel);
 }
 
-inline java_python_channel channel::as_java_python() const noexcept
+inline java_python_event_record_channel event_record_channel::as_java_python() const noexcept
 {
-	return java_python_channel(_lib_handle, *_lib_channel);
+	return java_python_event_record_channel(_lib_handle, *_lib_channel);
 }
 
 /*
- * Holds information about channels for a specific recording session
+ * Holds information about event record channels for a specific recording session
  * and domain.
  *
- * Owns the wrapped library channel array pointer.
+ * Owns the wrapped library event record channel array pointer.
  */
 template <typename ChannelType>
-class channel_set final {
+class event_record_channel_set final {
 public:
-	explicit channel_set(const lttng_handle& lib_handle,
-			     lttng_channel *const lib_channels,
-			     const unsigned int count) :
+	explicit event_record_channel_set(const lttng_handle& lib_handle,
+					  lttng_channel *const lib_channels,
+					  const unsigned int count) :
 		_lib_channels(lib_channels)
 	{
 		LTTNG_ASSERT(count == 0 || lib_channels);
@@ -1964,17 +1968,17 @@ public:
 		}
 	}
 
-	channel_set(const channel_set&) = delete;
+	event_record_channel_set(const event_record_channel_set&) = delete;
 
-	channel_set(channel_set&& other) noexcept :
+	event_record_channel_set(event_record_channel_set&& other) noexcept :
 		_lib_channels(other._lib_channels), _set(std::move(other._set))
 	{
 		other._lib_channels = nullptr;
 	}
 
-	channel_set& operator=(const channel_set&) = delete;
+	event_record_channel_set& operator=(const event_record_channel_set&) = delete;
 
-	channel_set& operator=(channel_set&& other) noexcept
+	event_record_channel_set& operator=(event_record_channel_set&& other) noexcept
 	{
 		if (this != &other) {
 			std::free(_lib_channels);
@@ -1986,7 +1990,7 @@ public:
 		return *this;
 	}
 
-	~channel_set()
+	~event_record_channel_set()
 	{
 		std::free(_lib_channels);
 	}
@@ -2423,9 +2427,9 @@ public:
 		return _lib_handle->domain.buf_type;
 	}
 
-	channel_set<channel> channels() const
+	event_record_channel_set<event_record_channel> event_record_channels() const
 	{
-		return _channels<channel>();
+		return _event_record_channels<event_record_channel>();
 	}
 
 	kernel_domain as_kernel() const noexcept;
@@ -2473,7 +2477,7 @@ protected:
 	}
 
 	template <typename ChannelType>
-	channel_set<ChannelType> _channels() const
+	event_record_channel_set<ChannelType> _event_record_channels() const
 	{
 		lttng_channel *lib_channels = nullptr;
 		const auto count = lttng_list_channels(&lib_handle(), &lib_channels);
@@ -2483,7 +2487,7 @@ protected:
 		}
 
 		LTTNG_ASSERT(count == 0 || lib_channels);
-		return channel_set<ChannelType>(
+		return event_record_channel_set<ChannelType>(
 			lib_handle(), lib_channels, static_cast<unsigned int>(count));
 	}
 
@@ -2511,9 +2515,9 @@ public:
 		return kernel_syscall_set();
 	}
 
-	channel_set<kernel_channel> channels() const
+	event_record_channel_set<kernel_event_record_channel> event_record_channels() const
 	{
-		return _channels<kernel_channel>();
+		return _event_record_channels<kernel_event_record_channel>();
 	}
 
 	process_attr_tracker process_id_tracker() const
@@ -2557,9 +2561,9 @@ public:
 		LTTNG_ASSERT(type() == LTTNG_DOMAIN_UST);
 	}
 
-	channel_set<ust_channel> channels() const
+	event_record_channel_set<ust_event_record_channel> event_record_channels() const
 	{
-		return _channels<ust_channel>();
+		return _event_record_channels<ust_event_record_channel>();
 	}
 
 	static ust_tracepoint_set tracepoints()
@@ -2602,7 +2606,7 @@ public:
 
 	/*
 	 * Returns a snapshot of the available recording event rules for
-	 * this domain directly (not through a channel).
+	 * this domain directly (not through an event record channel).
 	 */
 	event_rule_set<java_python_logger_event_rule> event_rules() const
 	{
