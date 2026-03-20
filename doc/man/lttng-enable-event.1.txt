@@ -4,7 +4,7 @@
 
 lttng-enable-event(1)
 =====================
-:revdate: 1 April 2025
+:revdate: 20 March 2026
 
 
 NAME
@@ -73,19 +73,19 @@ Without the option:--session option::
     more about the current recording session).
 
 With the option:--channel='CHANNEL' option::
-    The channel named 'CHANNEL'.
+    The event record channel named 'CHANNEL'.
 
 Without the option:--channel option::
-    The channel named `channel0`.
+    The event record channel named `channel0`.
 +
-If there's already a channel for the selected recording session and
+If there's already an event record channel for the selected recording session and
 domain which isn't named `channel0`, the `enable-event` command fails.
 Otherwise, it automatically creates it.
 
 See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
-List the recording event rules of a specific recording session
-and/or channel with the man:lttng-list(1) and man:lttng-status(1)
+List the recording event rules of a specific recording session and/or
+event record channel with the man:lttng-list(1) and man:lttng-status(1)
 commands.
 
 Disable an enabled recording event rule with the
@@ -137,11 +137,12 @@ A recording event rule is enabled on creation.
 +
 Enable a disabled recording event rule with the `enable-event` command.
 
-* The channel to which{nbsp}__ER__ is attached is enabled.
+* The event record channel to which{nbsp}__ER__ is attached is enabled.
 +
-A channel is enabled on creation.
+An event record channel is enabled on creation.
 +
-Enable a disabled channel with the man:lttng-enable-channel(1) command.
+Enable a disabled event record channel with the
+man:lttng-enable-channel(1) command.
 
 * The recording session of{nbsp}__ER__ is active (started).
 +
@@ -680,8 +681,8 @@ option:-u, option:--userspace::
 Recording target
 ~~~~~~~~~~~~~~~~
 option:-c 'CHANNEL', option:--channel='CHANNEL'::
-    Create or enable recording event rules attached to the channel named
-    'CHANNEL' instead of `channel0`.
+    Create or enable recording event rules attached to the event record
+    channel named 'CHANNEL' instead of `channel0`.
 
 option:-s 'SESSION', option:--session='SESSION'::
     Create or enable recording event rules in the recording session
@@ -889,7 +890,7 @@ include::common-lttng-cmd-after-options.txt[]
 [[examples]]
 EXAMPLES
 --------
-.Create a recording event rule which matches all Linux system call events (current recording session, default channel).
+.Create a recording event rule which matches all Linux system call events (current recording session, default event record channel).
 ====
 See the option:--all and option:--syscall options.
 
@@ -899,7 +900,7 @@ $ lttng enable-event --kernel --all --syscall
 ----
 ====
 
-.Create a recording event rule which matches user space tracepoint events named specifically (current recording session, default channel).
+.Create a recording event rule which matches user space tracepoint events named specifically (current recording session, default event record channel).
 ====
 The recording event rule below matches all user space tracepoint events
 of which the name starts with `my_provider:msg`.
@@ -910,7 +911,7 @@ $ lttng enable-event --userspace 'my_provider:msg*'
 ----
 ====
 
-.Create three recording event rules which match Python logging events named specifically (current recording session, default channel).
+.Create three recording event rules which match Python logging events named specifically (current recording session, default event record channel).
 ====
 [role="term"]
 ----
@@ -918,7 +919,7 @@ $ lttng enable-event --python server3,ui.window,user-mgmt
 ----
 ====
 
-.Create a recording event rule which matches Apache log4j{nbsp}1.x logging events with a specific log level range (current recording session, specific channel).
+.Create a recording event rule which matches Apache log4j{nbsp}1.x logging events with a specific log level range (current recording session, specific event record channel).
 ====
 See the option:--channel, option:--all, and option:--loglevel options.
 
@@ -929,7 +930,7 @@ $ lttng enable-event --log4j --channel=my-loggers \
 ----
 ====
 
-.Create a recording event rule which matches Apache Log4j{nbsp}2 logging events with the specific `WARN` log level (current recording session, specific channel).
+.Create a recording event rule which matches Apache Log4j{nbsp}2 logging events with the specific `WARN` log level (current recording session, specific event record channel).
 ====
 See the option:--channel, option:--all, and option:--loglevel options.
 
@@ -940,7 +941,7 @@ $ lttng enable-event --log4j2 --channel=my-loggers \
 ----
 ====
 
-.Create a recording event rule which matches specific Linux kprobe events (current recording session, default channel).
+.Create a recording event rule which matches specific Linux kprobe events (current recording session, default event record channel).
 ====
 The recording event rule below matches the entry of `usb_disconnect()`
 Linux kernel function calls. The records of such events are named `usbd`
@@ -954,7 +955,7 @@ $ lttng enable-event --kernel --probe=usb_disconnect usbd
 ----
 ====
 
-.Create a recording event rule which matches Linux kernel tracepoint events which satisfy an event payload and context filter (specific recording session, default channel).
+.Create a recording event rule which matches Linux kernel tracepoint events which satisfy an event payload and context filter (specific recording session, default event record channel).
 ====
 See the option:--session and option:--filter options.
 
@@ -965,7 +966,7 @@ $ lttng enable-event --kernel --session=my-session 'sched_*' \
 ----
 ====
 
-.Enable two Linux kernel tracepoint recording event rules (current recording session, specific channel).
+.Enable two Linux kernel tracepoint recording event rules (current recording session, specific event record channel).
 ====
 See the option:--channel option.
 

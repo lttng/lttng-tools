@@ -4,7 +4,7 @@
 
 lttng-create(1)
 ===============
-:revdate: 7 October 2025
+:revdate: 20 March 2026
 
 
 NAME
@@ -58,12 +58,12 @@ session name having the ++auto-++__YYYYmmdd__++-++__HHMMSS__ form, where
 :not: contain the character `/`.
 
 Specify the path of the directory containing the shared memory files
-holding the channel ring buffers with the option:--shm-path option.
-Specifying a location on an NVRAM file system makes it possible to
-recover the latest recorded trace data when the system reboots after a
-crash with the man:lttng-crash(1) utility. Note that, as of
+holding the event record channel ring buffers with the option:--shm-path
+option. Specifying a location on an NVRAM file system makes it possible
+to recover the latest recorded trace data when the system reboots after
+a crash with the man:lttng-crash(1) utility. Note that, as of
 LTTng{nbsp}{lttng_version}, this feature is only available for user
-space channels.
+space event record channels.
 
 By default, the `create` command automatically spawns:
 
@@ -330,9 +330,9 @@ directory, of which the name contains the recording session name and the
 date/time.
 --
 
-* Forcing all the channels to be created for the recording session to be
-  configured with the nloption:--override and nloption:--output=++mmap++
-  options (see man:lttng-enable-channel(1)).
+* Forcing all the event record channels to be created for the recording
+  session to be configured with the nloption:--override and
+  nloption:--output=++mmap++ options (see man:lttng-enable-channel(1)).
 
 
 Output
@@ -352,11 +352,12 @@ option:-o 'DIR', option:--output='DIR'::
 
 option:--shm-path='DIR'::
     Set the path of the directory containing the shared memory files
-    holding the channel ring buffers to 'DIR' on the local file sytem.
+    holding the event record channel ring buffers to 'DIR' on the local
+    file sytem.
 +
 NOTE: As of LTTng{nbsp}{lttng_version}, LTTng only considers this option
-for user space (including Java and Python) channels, but this may change
-in the future.
+for user space (including Java and Python) event record channels, but
+this may change in the future.
 
 option:-F 'FORMAT', option:--trace-format='FORMAT'::
     Set the output format of the created recording session to 'FORMAT'.

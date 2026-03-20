@@ -5,7 +5,7 @@
 
 lttng-regenerate(1)
 ===================
-:revdate: 14 June 2021
+:revdate: 20 March 2026
 
 
 NAME
@@ -71,11 +71,11 @@ session satisfies all of the following conditions:
 * Is not in live mode (nloption:--live option of
   man:lttng-create(1)).
 
-* If it has user space channels, they're configured to use a
-  per-user buffer ownership model (nloption:--buffer-ownership=`user`
+* If it has user space event record channels, they're configured to use
+  a per-user buffer ownership model (nloption:--buffer-ownership=`user`
   option of man:lttng-enable-channel(1)).
 +
-See man:lttng-concepts(7) to learn more about channels.
+See man:lttng-concepts(7) to learn more about event record channels.
 ====
 
 
@@ -86,9 +86,9 @@ and create corresponding event records.
 
 This is particularly useful if the selected recording session is in
 snapshot mode (nloption:--snapshot option of the man:lttng-create(1)
-command) or if LTTng rotates trace files for one of its channels (see
-man:lttng-concepts(7)): in both cases, the state dump information may be
-lost.
+command) or if LTTng rotates trace files for one of its event record
+channels (see man:lttng-concepts(7)): in both cases, the state dump
+information may be lost.
 
 
 include::common-lttng-cmd-options-head.txt[]

@@ -4,7 +4,7 @@
 
 lttng-status(1)
 ===============
-:revdate: 27 October 2025
+:revdate: 20 March 2026
 
 
 NAME
@@ -46,15 +46,15 @@ include::common-lttng-cmd-options-head.txt[]
 
 
 option:-c 'CHANNEL', option:--channel='CHANNEL'::
-    Only list the properties and recording event rules of the channel(s)
-    named 'CHANNEL'.
+    Only list the properties and recording event rules of the event
+    record channel(s) named 'CHANNEL'.
 
 option:-j, option:--jul::
     Only list the `java.util.logging` recording event rules.
 
 option:-k, option:--kernel::
-    Only list the Linux kernel channels and their recording event
-    rules.
+    Only list the Linux kernel event record channels and their recording
+    event rules.
 
 option:-l, option:--log4j::
     Only list the Apache log4j{nbsp}1.x recording event rules.
@@ -63,17 +63,17 @@ option:--log4j2::
     Only list the Apache Log4j{nbsp}2 recording event rules.
 
 option:--mem-usage='MODE'::
-    Set the channel memory usage display mode to 'MODE'.
+    Set the event record channel memory usage display mode to 'MODE'.
 +
 'MODE' is one of:
 +
 --
 `total` (default)::
-    Show the total memory usage of the channel.
+    Show the total memory usage of the event record channel.
 
 `compact`::
-    Show the memory usage for each Unix user or process,
-    depending on the buffer ownership model of the channel (see the
+    Show the memory usage for each Unix user or process, depending on
+    the buffer ownership model of the event record channel (see the
     nloption:--buffer-ownership option of man:lttng-enable-channel(1)).
 
 `full`::
@@ -103,8 +103,8 @@ option:--style='STYLE'::
 --
 
 option:-u, option:--userspace::
-    Only list the user space channels and their recording event
-    rules.
+    Only list the user space event record channels and their recording
+    event rules.
 
 
 include::common-lttng-cmd-help-options.txt[]

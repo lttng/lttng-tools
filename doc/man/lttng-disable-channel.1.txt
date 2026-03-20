@@ -4,12 +4,12 @@
 
 lttng-disable-channel(1)
 ========================
-:revdate: 14 June 2021
+:revdate: 20 March 2026
 
 
 NAME
 ----
-lttng-disable-channel - Disable LTTng channels
+lttng-disable-channel - Disable LTTng event record channels
 
 
 SYNOPSIS
@@ -21,8 +21,8 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
-The `lttng disable-channel` command disables one or more channels
-previously enabled with the man:lttng-enable-channel(1) command
+The `lttng disable-channel` command disables one or more event record
+channels previously enabled with the man:lttng-enable-channel(1) command
 which belong to:
 
 With the option:--session='SESSION' option::
@@ -32,13 +32,13 @@ Without the option:--session option::
     The current recording session (see man:lttng-concepts(7) to learn
     more about the current recording session).
 
-See man:lttng-concepts(7) to learn more about channels.
+See man:lttng-concepts(7) to learn more about event record channels.
 
-The `disable-channel` command disables one channel per 'CHANNEL'
-argument.
+The `disable-channel` command disables one event record channel per
+'CHANNEL' argument.
 
 As of LTTng{nbsp}{lttng_version}, you may :not: enable a disabled
-channel once its recording session has been started (see
+event record channel once its recording session has been started (see
 man:lttng-start(1)) at least once.
 
 See the ``<<examples,EXAMPLES>>'' section below for usage examples.
@@ -52,17 +52,17 @@ Tracing domain
 One of:
 
 option:-k, option:--kernel::
-    Disable one or more Linux kernel channels.
+    Disable one or more Linux kernel event record channels.
 
 option:-u, option:--userspace::
-    Disable one or more user space channels.
+    Disable one or more user space event record channels.
 
 
 Recording target
 ~~~~~~~~~~~~~~~~
 option:-s 'SESSION', option:--session='SESSION'::
-    Disable one or more channels of the recording session named
-    'SESSION' instead of the current recording session.
+    Disable one or more event record channels of the recording session
+    named 'SESSION' instead of the current recording session.
 
 
 include::common-lttng-cmd-help-options.txt[]
@@ -74,7 +74,7 @@ include::common-lttng-cmd-after-options.txt[]
 [[examples]]
 EXAMPLES
 --------
-.Disable one Linux kernel channel of the current recording session.
+.Disable one Linux kernel event record channel of the current recording session.
 ====
 [role="term"]
 ----
@@ -82,7 +82,7 @@ $ lttng disable-channel --kernel my-channel
 ----
 ====
 
-.Disable two user space channels of a specific recording session.
+.Disable two user space event record channels of a specific recording session.
 ====
 See the option:--session option.
 

@@ -4,7 +4,7 @@
 
 lttng-save(1)
 =============
-:revdate: 14 June 2021
+:revdate: 20 March 2026
 
 
 NAME
@@ -41,8 +41,8 @@ Use the `save` command in conjunction with the man:lttng-load(1) command
 to save and restore the complete configurations of recording sessions.
 
 The `save` command does :not: save tracing data, only the recording
-session parameters, including the channel and recording event rule
-configurations.
+session parameters, including the event record channel and recording
+event rule configurations.
 
 The default output directory path is `$LTTNG_HOME/.lttng/sessions`
 (`$LTTNG_HOME` defaults to `$HOME`). Override the default output

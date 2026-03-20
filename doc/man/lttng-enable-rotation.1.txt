@@ -4,7 +4,7 @@
 
 lttng-enable-rotation(1)
 ========================
-:revdate: 14 June 2021
+:revdate: 20 March 2026
 
 
 NAME
@@ -44,9 +44,10 @@ time the total size of the flushed part of the current trace chunk is at
 least 'SIZE'.
 
 For both the option:--timer and option:--size options, LTTng checks the
-schedule condition periodically using the monitor timers of the channels
-of the selected recording session (see the nloption:--monitor-timer
-option of the man:lttng-enable-channel(1) command). This means that:
+schedule condition periodically using the monitor timers of the event
+record channels of the selected recording session (see the
+nloption:--monitor-timer option of the man:lttng-enable-channel(1)
+command). This means that:
 
 * With the option:--timer='PERIODUS' option, LTTng can perform an
   automatic rotation when the elapsed time since the last automatic
@@ -77,8 +78,8 @@ conditions are true:
 * The selected recording session was created in normal mode or in
   network streaming mode (see man:lttng-create(1)).
 
-* No channel was created with a configured trace file count or size
-  limit (see the nloption:--tracefile-size and
+* No event record channel was created with a configured trace file count
+  or size limit (see the nloption:--tracefile-size and
   nloption:--tracefile-count options of the man:lttng-enable-channel(1)
   command).
 

@@ -4,11 +4,11 @@
 
 lttng-concepts(7)
 =================
-:revdate: 4 December 2025
+:revdate: 20 March 2026
 :sect-event-rule: INSTRUMENTATION POINT, EVENT RULE, AND EVENT
 :sect-session: RECORDING SESSION
 :sect-domain: TRACING DOMAIN
-:sect-channel: CHANNEL AND RING BUFFER
+:sect-channel: EVENT RECORD CHANNEL AND RING BUFFER
 :sect-recording-event-rule: RECORDING EVENT RULE AND EVENT RECORD
 
 
@@ -31,7 +31,7 @@ The concepts of LTTng{nbsp}{lttng_version} are:
 * Trigger
 * Recording session
 * Tracing domain
-* Channel and ring buffer
+* Event record channel and ring buffer
 * Recording event rule and event record
 
 
@@ -82,8 +82,8 @@ properties are:
   ``<<recording-event-rule,{sect-recording-event-rule}>>'' section
   below):
 ** The status of the rule itself.
-** The status of the channel (see the ``<<channel,{sect-channel}>>''
-   section below).
+** The status of the event record channel (see the
+   ``<<channel,{sect-channel}>>'' section below).
 ** The activity of the recording session (started or stopped; see
    the ``<<session,{sect-session}>>'' section below).
 ** Whether or not the process for which LTTng would create the event is
@@ -109,8 +109,8 @@ Create or enable a recording event rule with the
 man:lttng-enable-event(1) command.
 +
 List the recording event rules of a specific recording session
-and/or channel with the man:lttng-list(1) and man:lttng-status(1)
-commands.
+and/or event record channel with the man:lttng-list(1) and
+man:lttng-status(1) commands.
 
 ``Event rule matches'' <<trigger,trigger>> condition (since LTTng{nbsp}2.13)::
     When the event rule of the trigger condition matches an event, LTTng
@@ -231,11 +231,12 @@ Conditions::
   session (see the ``<<session,{sect-session}>>'' section below)
   becomes greater than some value.
 
-* The buffer usage of a given channel (see the
+* The buffer usage of a given event record channel (see the
   ``<<channel,{sect-channel}>>'' section below) becomes greater than
   some value.
 
-* The buffer usage of a given channel becomes less than some value.
+* The buffer usage of a given event record channel becomes less than
+  some value.
 
 * There's an ongoing recording session rotation (see the
   ``<<rotation,Recording session rotation>>'' section below).
@@ -305,8 +306,9 @@ condition (see the
 See the ``<<session-modes,Recording session modes>>'' section below to
 learn more.
 
-* Has its own channels (see the ``<<channel,{sect-channel}>>'' section
-  below) to which are attached their own recording event rules.
+* Has its own event record channels (see the
+  ``<<channel,{sect-channel}>>'' section below) to which are attached
+  their own recording event rules.
 
 * Has its own process attribute inclusion sets (see man:lttng-track(1)).
 
@@ -400,8 +402,9 @@ Snapshot mode::
     listening relay daemon (man:lttng-relayd(8)) when LTTng takes a
     snapshot.
 +
-LTTng forces all the channels (see the ``<<channel,{sect-channel}>>''
-section below) to be created to be configured to be snapshot-ready.
+LTTng forces all the event record channels (see the
+``<<channel,{sect-channel}>>'' section below) to be created to be
+configured to be snapshot-ready.
 +
 LTTng takes a snapshot of such a recording session when any of the
 following is true:
@@ -456,8 +459,8 @@ The _current trace chunk_ of a given recording session includes:
 *** An executed `rotate-session` trigger action (see the
     ``<<trigger,TRIGGER>>'' section above).
 
-* The content of all the non-flushed sub-buffers of the channels of the
-  recording session.
+* The content of all the non-flushed sub-buffers of the event record
+  channels of the recording session.
 
 
 [[trace-chunk-naming]]
@@ -562,24 +565,27 @@ tracepoints as instrumentation points (see the
 specify a tracing domain when you create an event rule because both
 tracing domains could have tracepoints sharing the same name.
 
-You can create channels (see the ``<<channel,{sect-channel}>>'' section
-below) in the Linux kernel and user space tracing domains. The other
-tracing domains have a single, default channel.
+You can create event record channels (see the
+``<<channel,{sect-channel}>>'' section below) in the Linux kernel and
+user space tracing domains. The other tracing domains have a single,
+default event record channel.
 
 
 [[channel]]
 {sect-channel}
 --------------
-A _channel_ is an object which is responsible for a set of ring buffers.
+An _event record channel_ is an object which is responsible for a set of
+ring buffers containing event records.
 
 Each ring buffer is divided into multiple _sub-buffers_. When a
 recording event rule (see the
 ``<<recording-event-rule,{sect-recording-event-rule}>>'' section below)
 matches an event, LTTng can record it to one or more sub-buffers of one
-or more channels.
+or more event record channels.
 
-When you create a channel with the man:lttng-enable-channel(1) command,
-you set its final attributes, that is:
+When you create an event record channel with the
+man:lttng-enable-channel(1) command, you set its final attributes,
+that is:
 
 * Its buffering scheme.
 +
@@ -606,8 +612,8 @@ below.
 See the ``<<channel-sub-buf-size-count,Sub-buffer size and count>>''
 section below.
 
-* The size of each trace file LTTng writes for this channel and the
-  maximum count of trace files.
+* The size of each trace file LTTng writes for this event record channel
+  and the maximum count of trace files.
 +
 See the ``<<channel-max-trace-file-size-count,Maximum trace file size
 and count>>'' section below.
@@ -616,63 +622,65 @@ and count>>'' section below.
 +
 See the ``<<channel-timers,Timers>>'' section below.
 
-* For a Linux kernel channel: its output type (man:mmap(2) or
-  man:splice(2)).
+* For a Linux kernel event record channel: its output type (man:mmap(2)
+  or man:splice(2)).
 +
 See the nloption:--output option of the man:lttng-enable-channel(1)
 command.
 
-* For a user space channel: the value of its blocking timeout.
+* For a user space event record channel: the value of its
+  blocking timeout.
 +
 See the nloption:--blocking-timeout option of the
 man:lttng-enable-channel(1) command.
 
 Note that the man:lttng-enable-event(1) command can automatically create
-a default channel with sane defaults when no channel exists for the
-provided tracing domain.
+a default event record channel with sane defaults when no event record
+channel exists for the provided tracing domain.
 
-A channel is always associated to a tracing domain (see the
+An event record channel is always associated to a tracing domain (see the
 ``<<domain,{sect-domain}>>'' section below). The `java.util.logging`
 (JUL), Apache log4j{nbsp}1.x, Apache Log4j{nbsp}2, and Python
-tracing domains each have a default channel which you can't configure.
+tracing domains each have a default event record channel which you can't
+configure.
 
-A channel owns recording event rules.
+An event record channel owns recording event rules.
 
-List the channels of a given recording session with the
+List the event record channels of a given recording session with the
 man:lttng-list(1) and man:lttng-status(1) commands.
 
-Disable an enabled channel with the man:lttng-disable-channel(1)
-command.
+Disable an enabled event record channel with the
+man:lttng-disable-channel(1) command.
 
 
 [[channel-buf-scheme]]
 Buffering scheme
 ~~~~~~~~~~~~~~~~
-The buffering scheme of a channel is:
+The buffering scheme of an event record channel is:
 
 * The **buffer ownership model**: specifies whether the system, each
   Unix user, or each process owns its own ring buffers.
 
 * The **buffer allocation policy**: specifies whether LTTng tracers
-  allocate ring buffers per channel or per CPU.
+  allocate ring buffers per event record channel or per CPU.
 
 The following list shows how LTTng allocates ring buffers based on the
 values of the nloption:--buffer-ownership and
 nloption:--buffer-allocation options of the man:lttng-enable-channel(1)
 command. For all examples, assume that Unix user `alice` created
-the channel `alice-chan` and Unix user `bob` created the channel
-`bob-chan`:
+the event record channel `alice-chan` and Unix user `bob` created the
+event record channel `bob-chan`:
 
 nloption:--buffer-ownership=**user** and nloption:--buffer-allocation=**per-cpu**::
 +
 [verse]
-Channel 'alice-channel'
+Event record channel 'alice-channel'
   For the data produced by any process of user 'alice'
     Ring buffer for CPU 0
     Ring buffer for CPU 1
     Ring buffer for CPU 2
     Ring buffer for CPU 3
-Channel 'bob-channel'
+Event record channel 'bob-channel'
   For the data produced by any process of user 'bob'
     Ring buffer for CPU 0
     Ring buffer for CPU 1
@@ -682,7 +690,7 @@ Channel 'bob-channel'
 nloption:--buffer-ownership=**process** and nloption:--buffer-allocation=**per-cpu**::
 +
 [verse]
-Channel `alice-channel`
+Event record channel `alice-channel`
   For the data produced by process 'my-db' of user 'alice'
     Ring buffer for CPU 0
     Ring buffer for CPU 1
@@ -693,7 +701,7 @@ Channel `alice-channel`
     Ring buffer for CPU 1
     Ring buffer for CPU 2
     Ring buffer for CPU 3
-Channel 'bob-channel'
+Event record channel 'bob-channel'
   For the data produced by process 'my-server' of user 'bob'
     Ring buffer for CPU 0
     Ring buffer for CPU 1
@@ -703,13 +711,13 @@ Channel 'bob-channel'
 nloption:--buffer-ownership=**system** and nloption:--buffer-allocation=**per-cpu**::
 +
 [verse]
-Channel 'alice-channel'
+Event record channel 'alice-channel'
   For the data of the Linux kernel
     Ring buffer for CPU 0
     Ring buffer for CPU 1
     Ring buffer for CPU 2
     Ring buffer for CPU 3
-Channel 'bob-channel'
+Event record channel 'bob-channel'
   For the data of the Linux kernel
     Ring buffer for CPU 0
     Ring buffer for CPU 1
@@ -719,22 +727,22 @@ Channel 'bob-channel'
 nloption:--buffer-ownership=**user** and nloption:--buffer-allocation=**per-channel**::
 +
 [verse]
-Channel 'alice-channel'
+Event record channel 'alice-channel'
   For the data produced by any process of user 'alice'
     Single ring buffer for all CPUs
-Channel 'bob-channel'
+Event record channel 'bob-channel'
   For the data produced by any process of user 'bob'
     Single ring buffer for all CPUs
 
 nloption:--buffer-ownership=**user** and nloption:--buffer-allocation=**per-channel**::
 +
 [verse]
-Channel 'alice-channel'
+Event record channel 'alice-channel'
   For the data produced by process 'my-db' of user 'alice'
     Single ring buffer for all CPUs
   For the data produced by process 'my-app' of user 'alice'
     Single ring buffer for all CPUs
-Channel 'bob-channel'
+Event record channel 'bob-channel'
   For the data produced by process 'my-server' of user 'bob'
     Single ring buffer for all CPUs
 
@@ -750,15 +758,15 @@ one process cannot read or corrupt the trace data of another.
 [[channel-buf-prealloc]]
 Buffer preallocation policy
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-The buffer preallocation policy of a user space channel specifies
-_when_ LTTng allocates the backing memory for the ring buffers
-of the channel.
+The buffer preallocation policy of a user space event record channel
+specifies _when_ LTTng allocates the backing memory for the ring buffers
+of the event record channel.
 
 The available buffer preallocation policies are:
 
 Preallocate::
     LTTng allocates the full backing memory for all ring buffers when
-    you create the channel.
+    you create the event record channel.
 +
 This policy provides consistent performance but uses more memory
 upfront. Use this policy to optimize instrumented application
@@ -772,25 +780,25 @@ This policy uses less initial memory but may introduce slight
 performance overhead when allocating new memory during tracing.
 
 As of LTTng{nbsp}{lttng_version}, the implicit buffer
-preallocation policy of a Linux kernel channel is always to preallocate
-backing memory.
+preallocation policy of a Linux kernel event record channel is always to
+preallocate backing memory.
 
-Set the buffer preallocation policy of a user space channel with the
-nloption:--buffer-preallocation option of the
+Set the buffer preallocation policy of a user space event record channel
+with the nloption:--buffer-preallocation option of the
 man:lttng-enable-channel(1) command.
 
 
 [[channel-reclaim]]
 Memory reclaim
 ~~~~~~~~~~~~~~
-A channel memory reclaim operation makes it
+An event record channel memory reclaim operation makes it
 possible to free memory which the eligible sub-buffers of a
-user space channel use.
+user space event record channel use.
 
-The channel memory reclaim operation behaviour depends on the
-configured event record loss mode (see the
+The event record channel memory reclaim operation behaviour depends on
+the configured event record loss mode (see the
 ``<<channel-er-loss-mode,Event record loss mode>>'' section
-below) of the channel:
+below) of the event record channel:
 
 Discard mode::
     Only reclaim sub-buffers that have been both delivered (completed
@@ -801,14 +809,14 @@ Overwrite mode::
     Reclaim any delivered sub-buffer, since old data will be
     overwritten anyway: no need to wait for consumption.
 
-There are two ways to reclaim channel memory:
+There are two ways to reclaim event record channel memory:
 
 Immediate reclaim::
     Use the man:lttng-reclaim-memory(1) command.
 
 Automatic reclaim::
     LTTng may automatically reclaim the memory of a
-    user space channel.
+    user space event record channel.
 +
 This is more or less equivalent to automatically running the
 man:lttng-reclaim-memory(1) command. LTTng automatically evaluates
@@ -832,19 +840,19 @@ If __T__{nbsp}>{nbsp}last stream activity age::
 If __T__{nbsp}<{nbsp}last stream activity age::
     All the sub-buffers are eligible.
 +
-The LTTng tracers flush for the targeted channel so that any open
-sub-buffer gets closed to become eligible.
+The LTTng tracers flush for the targeted event record channel so that
+any open sub-buffer gets closed to become eligible.
 
 
 [[channel-er-loss-mode]]
 Event record loss mode
 ~~~~~~~~~~~~~~~~~~~~~~
 When LTTng emits an event, LTTng can record it to a specific, available
-sub-buffer within the ring buffers of specific channels. When there's no
-space left in a sub-buffer, the tracer marks it as consumable and
-another, available sub-buffer starts receiving the following event
-records. An LTTng consumer daemon eventually consumes the marked
-sub-buffer, which returns to the available state.
+sub-buffer within the ring buffers of specific event record channels.
+When there's no space left in a sub-buffer, the tracer marks it as
+consumable and another, available sub-buffer starts receiving the
+following event records. An LTTng consumer daemon eventually consumes
+the marked sub-buffer, which returns to the available state.
 
 In an ideal world, sub-buffers are consumed faster than they are filled.
 In the real world, however, all sub-buffers can be full at some point,
@@ -865,9 +873,9 @@ man:lttng-enable-channel(1) command to learn how to use the blocking
 mode.
 
 When it comes to losing event records because there's no available
-sub-buffer, or because the blocking timeout of the channel is
-reached, the _event record loss mode_ of the channel determines what to
-do. The available event record loss modes are:
+sub-buffer, or because the blocking timeout of the event record channel
+is reached, the _event record loss mode_ of the event record channel
+determines what to do. The available event record loss modes are:
 
 Discard mode::
     Drop the newest event records until a sub-buffer becomes available.
@@ -909,33 +917,35 @@ as soon as a there's no space left for a new event record, whereas in
 discard mode, the tracer only discards the event record that doesn't
 fit.
 
-Set the event record loss mode of a channel with the nloption:--discard
-and nloption:--overwrite options of the man:lttng-enable-channel(1)
-command.
+Set the event record loss mode of an event record channel with the
+nloption:--discard and nloption:--overwrite options of the
+man:lttng-enable-channel(1) command.
 
 There are a few ways to decrease your probability of losing event
 records. The ``<<channel-sub-buf-size-count,Sub-buffer size and
 count>>'' section below shows how to fine-tune the sub-buffer size and
-count of a channel to virtually stop losing event records, though at the
-cost of greater memory usage.
+count of an event record channel to virtually stop losing event records,
+though at the cost of greater memory usage.
 
 
 [[channel-sub-buf-size-count]]
 Sub-buffer size and count
 ~~~~~~~~~~~~~~~~~~~~~~~~~
-A channel has one or more ring buffer for each CPU of the target system.
+An event record channel has one or more ring buffer for each CPU of the
+target system.
 
 See the ``<<channel-buf-scheme,Buffering scheme>>'' section above to
-learn how many ring buffers of a given channel are dedicated to each CPU
-or to the whole channel depending on its buffering scheme.
+learn how many ring buffers of a given event record channel are
+dedicated to each CPU or to the whole event record channel depending on
+its buffering scheme.
 
-Set the size of each sub-buffer the ring buffers of a channel contain
-with the nloption:--subbuf-size option of the
+Set the size of each sub-buffer the ring buffers of an event record
+channel contain with the nloption:--subbuf-size option of the
 man:lttng-enable-channel(1) command.
 
-Set the number of sub-buffers each ring buffer of a channel contains
-with the nloption:--num-subbuf option of the man:lttng-enable-channel(1)
-command.
+Set the number of sub-buffers each ring buffer of an event record
+channel contains with the nloption:--num-subbuf option of the
+man:lttng-enable-channel(1) command.
 
 Note that LTTng switching the current sub-buffer of a ring buffer
 (marking a full one as consumable and switching to an available one for
@@ -950,9 +960,10 @@ High event throughput::
 Having larger sub-buffers also ensures a lower sub-buffer switching
 frequency (see the ``<<channel-timers,Timers>>'' section below).
 +
-The sub-buffer count is only meaningful if you create the channel in
-overwrite mode (see the ``<<channel-er-loss-mode,Event record loss
-mode>>'' section above): in this case, if LTTng overwrites a sub-buffer,
+The sub-buffer count is only meaningful if you create the event record
+channel in overwrite mode
+(see the ``<<channel-er-loss-mode,Event record loss mode>>'' section
+above): in this case, if LTTng overwrites a sub-buffer,
 then the other sub-buffers are left unaltered.
 
 Low event throughput::
@@ -1004,19 +1015,21 @@ Maximum trace file size and count
 By default, trace files can grow as large as needed.
 
 Set the maximum size of each trace file that LTTng writes of a given
-channel with the nloption:--tracefile-size option of the man:lttng-enable-channel(1)
-command.
+event record channel with the nloption:--tracefile-size option of the
+man:lttng-enable-channel(1) command.
 
 When the size of a trace file reaches the fixed maximum size of the
-channel, LTTng creates another file to contain the next event records.
-LTTng appends a file count to each trace file name in this case.
+event record channel, LTTng creates another file to contain the next
+event records. LTTng appends a file count to each trace file name in
+this case.
 
-If you set the trace file size attribute when you create a channel, the
-maximum number of trace files that LTTng creates is _unlimited_ by
-default. To limit them, use the nloption:--tracefile-count option of
-man:lttng-enable-channel(1). When the number of trace files reaches the
-fixed maximum count of the channel, LTTng overwrites the oldest trace
-file. This mechanism is called _trace file rotation_.
+If you set the trace file size attribute when you create an event record
+channel, the maximum number of trace files that LTTng creates is
+_unlimited_ by default. To limit them, use the
+nloption:--tracefile-count option of man:lttng-enable-channel(1). When
+the number of trace files reaches the fixed maximum count of the event
+record channel, LTTng overwrites the oldest trace file. This mechanism
+is called _trace file rotation_.
 
 [IMPORTANT]
 ====
@@ -1036,13 +1049,13 @@ above), which is available since LTTng{nbsp}2.11.
 [[channel-timers]]
 Timers
 ~~~~~~
-Each channel can have up to three optional timers:
+Each event record channel can have up to three optional timers:
 
 Switch timer::
     When this timer expires, a sub-buffer switch happens: for each ring
-    buffer of the channel, LTTng marks the current sub-buffer as
-    consumable and switches to an available one to record the next
-    events.
+    buffer of the event record channel, LTTng marks the current
+    sub-buffer as consumable and switches to an available one to record
+    the next events.
 +
 A switch timer is useful to ensure that LTTng consumes and commits trace
 data to trace files or to a distant relay daemon (man:lttng-relayd(8))
@@ -1053,9 +1066,9 @@ Such a timer is also convenient when you use large sub-buffers (see the
 above) to cope with a sporadic high event throughput, even if the
 throughput is otherwise low.
 +
-Set the period of the switch timer of a channel, or disable the timer
-altogether, with the nloption:--switch-timer option of the
-man:lttng-enable-channel(1) command.
+Set the period of the switch timer of an event record channel, or
+disable the timer altogether, with the nloption:--switch-timer option of
+the man:lttng-enable-channel(1) command.
 
 Read timer::
     When this timer expires, LTTng checks for full, consumable
@@ -1067,22 +1080,25 @@ signal a full sub-buffer so that a consumer daemon can consume it.
 When such messages must be avoided, for example in real-time
 applications, use this timer instead.
 +
-Set the period of the read timer of a channel, or disable the timer
-altogether, with the nloption:--read-timer option of the
+Set the period of the read timer of an event record channel, or disable
+the timer altogether, with the nloption:--read-timer option of the
 man:lttng-enable-channel(1) command.
 
 Monitor timer::
-    When this timer expires, the consumer daemon samples some channel
-    statistics to evaluate the following trigger conditions:
+    When this timer expires, the consumer daemon samples some event
+    record channel statistics to evaluate the following trigger
+    conditions:
 +
 --
 . The consumed buffer size of a given recording session becomes greater
   than some value.
-. The buffer usage of a given channel becomes greater than some value.
-. The buffer usage of a given channel becomes less than some value.
+. The buffer usage of a given event record channel becomes greater
+  than some value.
+. The buffer usage of a given event record channel becomes less
+  than some value.
 --
 +
-If you disable the monitor timer of a channel{nbsp}__C__:
+If you disable the monitor timer of an event record channel{nbsp}__C__:
 +
 --
 * The consumed buffer size value of the recording session of{nbsp}__C__
@@ -1096,29 +1112,29 @@ If you disable the monitor timer of a channel{nbsp}__C__:
 See the ``<<trigger,TRIGGER>>'' section above to learn more about
 triggers.
 +
-Set the period of the monitor timer of a channel, or disable the timer
-altogether, with the nloption:--monitor-timer option of the
-man:lttng-enable-channel(1) command.
+Set the period of the monitor timer of an event record channel, or
+disable the timer altogether, with the nloption:--monitor-timer option
+of the man:lttng-enable-channel(1) command.
 
 Watchdog timer::
     When this timer expires, LTTng performs health checks that detect
     recoverable issues and trigger corrective actions to keep trace
-    recording running smoothly for the channel.
+    recording running smoothly for the event record channel.
 +
 As of LTTng{nbsp}{lttng_version}, the only health check
-is a sub-buffer stall detection: with a user space channel having a
-per-user ownership model (see the
+is a sub-buffer stall detection: with a user space event record channel
+having a per-user ownership model (see the
 <<channel-buf-scheme,Buffering scheme>> section above),
 an instrumented application writing to a sub-buffer may crash and
 make said sub-buffer ``stalled'', that is, never released and
-unusable. This can reduce the effective capacity of the channel or
+unusable. This can reduce the effective capacity of the event record channel or
 even halt the consumption altogether. When the watchdog timer of
-a channel expires and LTTng detects this condition, it marks
+an event record channel expires and LTTng detects this condition, it marks
 the stalled sub-buffer consumable/readable again.
 +
-Set the period of the watchdog timer of a channel, or disable the timer
-altogether, with the nloption:--watchdog-timer option of the
-man:lttng-enable-channel(1) command.
+Set the period of the watchdog timer of an event record channel, or
+disable the timer altogether, with the nloption:--watchdog-timer option
+of the man:lttng-enable-channel(1) command.
 
 
 [[recording-event-rule]]
@@ -1137,9 +1153,10 @@ has the following implicit conditions:
 +
 A recording event rule is enabled on creation.
 
-* The channel to which the recording event rule is attached is enabled.
+* The event record channel to which the recording event rule is attached
+  is enabled.
 +
-A channel is enabled on creation.
+An event record channel is enabled on creation.
 +
 See the ``<<channel,{sect-channel}>>'' section above.
 
@@ -1159,17 +1176,18 @@ Use the man:lttng-track(1) and man:lttng-untrack(1) commands to select
 which processes are allowed to record events based on specific process
 attributes.
 
-You always attach a recording event rule to a channel, which belongs to
-a recording session, when you create it.
+You always attach a recording event rule to an event record channel,
+which belongs to a recording session, when you create it.
 
 When a recording event rule{nbsp}__ER__ matches an event{nbsp}__E__,
 LTTng attempts to serialize and record{nbsp}__E__ to one of the
-available sub-buffers of the channel to which{nbsp}__E__ is attached.
+available sub-buffers of the
+event record channel to which{nbsp}__E__ is attached.
 
 When multiple matching recording event rules are attached to the same
-channel, LTTng attempts to serialize and record the matched event
-_once_. In the following example, the second recording event rule is
-redundant when both are enabled:
+event record channel, LTTng attempts to serialize and record the matched
+event _once_. In the following example, the second recording event rule
+is redundant when both are enabled:
 
 [role="term"]
 ----
@@ -1177,8 +1195,8 @@ $ lttng enable-event --userspace hello:world
 $ lttng enable-event --userspace hello:world --loglevel=INFO
 ----
 
-List the recording event rules of a specific recording session
-and/or channel with the man:lttng-list(1) and man:lttng-status(1)
+List the recording event rules of a specific recording session and/or
+event record channel with the man:lttng-list(1) and man:lttng-status(1)
 commands.
 
 Disable a recording event rule with the man:lttng-disable-event(1)

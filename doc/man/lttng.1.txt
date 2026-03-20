@@ -211,8 +211,8 @@ Recording session
 |===
 
 
-Channel
-~~~~~~~
+Event record channel
+~~~~~~~~~~~~~~~~~~~~
 [options="header"]
 |===
 |Command |Description

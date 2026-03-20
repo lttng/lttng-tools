@@ -4,7 +4,7 @@
 
 lttng-list(1)
 =============
-:revdate: 2 December 2025
+:revdate: 20 March 2026
 
 
 NAME
@@ -24,7 +24,8 @@ List the tracing domains of a recording session:
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* option:--domain 'SESSION'
 
-List the channels and recording event rules of a recording session:
+List the event record channels and recording event rules of a recording
+session:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* [option:--channel='CHANNEL'] 'SESSION'
@@ -65,21 +66,21 @@ With the 'SESSION' argument::
 +
 --
 With the option:--channel='CHANNEL' option::
-    The recording event rules of the channel(s) 'CHANNEL' of the
-    recording session named 'SESSION'.
+    The recording event rules of the event record channel(s) 'CHANNEL'
+    of the recording session named 'SESSION'.
 
 Without the option:--channel option::
-    The channels of the recording session named 'SESSION' and
-    their recording event rules.
+    The event record channels of the recording session named 'SESSION'
+    and their recording event rules.
 --
 +
-By default, the command shows the total memory usage of each channel.
-Control the memory usage display mode with the option:--mem-usage
-option.
+By default, the command shows the total memory usage of each event
+record channel. Control the memory usage display mode with the
+option:--mem-usage option.
 +
 Use the dedicated tracing domain options (option:--kernel,
 option:--userspace, option:--jul, option:--log4j, option:--log4j2, and
-option:--python) to only show specific channels.
+option:--python) to only show specific event record channels.
 
 Without the 'SESSION' argument and with at least one dedicated tracing domain option::
 +
@@ -101,8 +102,8 @@ With the option:--jul, option:--log4j, option:--log4j2, and/or option:--python o
 --
 
 See man:lttng-concepts(7) to learn more about recording sessions,
-tracing domains, channels, recording event rules, and instrumentation
-points.
+tracing domains, event record channels, recording event rules, and
+instrumentation points.
 
 By default, the command adds empty lines between blocks of related
 information. Remove those empty lines with the
@@ -114,8 +115,8 @@ Override the terminal coloring behaviour with the
 
 See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
-List the channels and recording event rules of the current recording
-session (see man:lttng-concepts(7) to learn more) with the
+List the event record channels and recording event rules of the current
+recording session (see man:lttng-concepts(7) to learn more) with the
 man:lttng-status(1) command.
 
 
@@ -140,8 +141,8 @@ Color semantics:
 
 |Cyan
 |
-Important object nodes: recording sessions, tracing domains, channels,
-and event rules.
+Important object nodes: recording sessions, tracing domains, event
+record channels, and event rules.
 
 Those nodes act as section headers.
 
@@ -162,7 +163,7 @@ Symbolic conventions:
 |Active/inactive recording session.
 
 |`✔` and `✗`
-|Enabled/disabled channel or event rule.
+|Enabled/disabled event record channel or event rule.
 
 |`🞂`
 |Attribute or attribute group.
@@ -188,8 +189,8 @@ option:-k, option:--kernel::
     Without the 'SESSION' argument:::
         List the LTTng kernel instrumentation points.
     With the 'SESSION' argument:::
-        Only list the Linux kernel channels and their recording event
-        rules.
+        Only list the Linux kernel event record channels and their
+        recording event rules.
 
 option:-l, option:--log4j::
     Without the 'SESSION' argument:::
@@ -215,15 +216,15 @@ option:-u, option:--userspace::
     Without the 'SESSION' argument:::
         List the LTTng user space tracepoints.
     With the 'SESSION' argument:::
-        Only list the user space channels and their recording event
-        rules.
+        Only list the user space event record channels and their
+        recording event rules.
 
 
 Filtering
 ~~~~~~~~~
 option:-c 'CHANNEL', option:--channel='CHANNEL'::
-    Only list the properties and recording event rules of the channel(s)
-    named 'CHANNEL'.
+    Only list the properties and recording event rules of the event
+    record channel(s) named 'CHANNEL'.
 +
 Only available with the 'SESSION' argument.
 
@@ -242,17 +243,17 @@ option:--syscall::
 Display
 ~~~~~~~
 option:--mem-usage='MODE'::
-    Set the channel memory usage display mode to 'MODE'.
+    Set the event record channel memory usage display mode to 'MODE'.
 +
 'MODE' is one of:
 +
 --
 `total` (default)::
-    Show the total memory usage of the channel.
+    Show the total memory usage of the event record channel.
 
 `compact`::
-    Show the memory usage for each Unix user or process,
-    depending on the buffer ownership model of the channel (see the
+    Show the memory usage for each Unix user or process, depending on
+    the buffer ownership model of the event record channel (see the
     nloption:--buffer-ownership option of man:lttng-enable-channel(1)).
 
 `full`::
@@ -324,7 +325,7 @@ $ lttng list --userspace --fields
 ----
 ====
 
-.List the tracing domains of a specific recording session having at least one channel.
+.List the tracing domains of a specific recording session having at least one event record channel.
 ====
 See the option:--domain option.
 
@@ -334,7 +335,7 @@ $ lttng list --domain my-session
 ----
 ====
 
-.Show the details of a specific channel, including its current data stream infos, in a specific recording session.
+.Show the details of a specific event record channel, including its current data stream infos, in a specific recording session.
 ====
 See the option:--channel option.
 

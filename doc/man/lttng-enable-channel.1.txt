@@ -4,17 +4,17 @@
 
 lttng-enable-channel(1)
 =======================
-:revdate: 18 December 2025
+:revdate: 20 March 2026
 
 
 NAME
 ----
-lttng-enable-channel - Create or enable LTTng channels
+lttng-enable-channel - Create or enable LTTng event record channels
 
 
 SYNOPSIS
 --------
-Create a Linux kernel channel:
+Create a Linux kernel event record channel:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *enable-channel* option:--kernel
@@ -26,7 +26,7 @@ Create a Linux kernel channel:
       [option:--tracefile-size='SIZE' [option:--tracefile-count='COUNT']]
       [option:--session='SESSION'] 'CHANNEL'
 
-Create a user space channel:
+Create a user space event record channel:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *enable-channel* option:--userspace
@@ -42,7 +42,7 @@ Create a user space channel:
       [option:--tracefile-size='SIZE' [option:--tracefile-count='COUNT']]
       [option:--session='SESSION'] 'CHANNEL'
 
-Enable channel(s):
+Enable event record channel(s):
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *enable-channel* (option:--userspace | option:--kernel)
@@ -53,14 +53,14 @@ DESCRIPTION
 -----------
 The `lttng enable-channel` command does one of:
 
-* Create a channel named 'CHANNEL'.
+* Create an event record channel named 'CHANNEL'.
 
-* Enable one or more disabled channels named 'CHANNEL'
+* Enable one or more disabled event record channels named 'CHANNEL'
   (non-option argument, comma-separated).
 
-See man:lttng-concepts(7) to learn more about channels.
+See man:lttng-concepts(7) to learn more about event record channels.
 
-The channel(s) to create or enable belong to:
+The event record channel(s) to create or enable belong to:
 
 With the option:--session='SESSION' option::
     The recording session named 'SESSION'.
@@ -70,33 +70,34 @@ Without the option:--session option::
     more about the current recording session).
 
 NOTE: The man:lttng-enable-event(1) command can automatically create a
-default channel when no channel exists for the provided tracing domain.
+default event record channel when no event record channel exists for the
+provided tracing domain.
 
 See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
-List the channels of a given recording session with the
+List the event record channels of a given recording session with the
 man:lttng-list(1) and man:lttng-status(1) commands.
 
-Disable an enabled channel with the man:lttng-disable-channel(1)
-command.
+Disable an enabled event record channel with the
+man:lttng-disable-channel(1) command.
 
 [IMPORTANT]
 ====
 As of LTTng{nbsp}{lttng_version}, you may :not: perform the following
 operations with the `enable-channel` command:
 
-* Change an attribute of an existing channel.
+* Change an attribute of an existing event record channel.
 
-* Enable a disabled channel once its recording session has been active
-  (started; see man:lttng-start(1)) at least once.
+* Enable a disabled event record channel once its recording session has
+  been active (started; see man:lttng-start(1)) at least once.
 
-* Create a channel once its recording session has been active at least
-  once.
+* Create an event record channel once its recording session has been
+  active at least once.
 
-* Create a user space channel with a given buffer ownership model
-  (option:--buffer-ownership set to `user` or `process`) and create a
-  second user space channel with a different buffer ownership model in
-  the same recording session.
+* Create a user space event record channel with a given buffer ownership
+  model (option:--buffer-ownership set to `user` or `process`) and
+  create a second user space event record channel with a different
+  buffer ownership model in the same recording session.
 ====
 
 
@@ -108,16 +109,16 @@ Tracing domain
 One of:
 
 option:-k, option:--kernel::
-    Create or enable channels in the Linux kernel domain.
+    Create or enable event record channels in the Linux kernel domain.
 
 option:-u, option:--userspace::
-    Create or enable channels in the user space domain.
+    Create or enable event record channels in the user space domain.
 
 
 Recording target
 ~~~~~~~~~~~~~~~~
 option:-s 'SESSION', option:--session='SESSION'::
-    Create or enable channels in the recording session named 'SESSION'
+    Create or enable event record channels in the recording session named 'SESSION'
     instead of the current recording session.
 
 
@@ -135,8 +136,8 @@ option:--buffer-ownership='MODEL'::
 
 `process`:::
     Allocate one set of ring buffers (one per CPU or one for the whole
-    channel, depending on option:--buffer-allocation) for each
-    instrumented process of:
+    event record channel, depending on option:--buffer-allocation) for
+    each instrumented process of:
 +
 --
 If you connect to the root session daemon::
@@ -163,8 +164,8 @@ future.
 
 `user`:::
     Allocate one set of ring buffers (one per CPU or one for the whole
-    channel, depending on option:--buffer-allocation) shared by all the
-    instrumented processes of:
+    event record channel, depending on option:--buffer-allocation)
+    shared by all the instrumented processes of:
 +
 --
 If you connect to the root session daemon::
@@ -200,10 +201,10 @@ option:--buffer-allocation='POLICY'::
     Depending on 'POLICY', allocate one ring buffer for:
 
 `per-channel`:::
-    The whole channel.
+    The whole event record channel.
 +
 Setting option:--buffer-ownership to `user` or `process` determines
-what entity gets a channel-wise ring buffer.
+what entity gets an event-record-channel-wise ring buffer.
 +
 Only available with the option:--userspace option.
 
@@ -214,8 +215,8 @@ Setting option:--buffer-ownership to `user`, `process`, or `system`
 determines what entity gets a set of per-CPU ring buffers.
 +
 Using this buffer allocation policy implies adding the `cpu_id`
-context field, without any way to remove it, for the created channel,
-similar to running:
+context field, without any way to remove it, for the created event
+record channel, similar to running:
 +
 [role="term"]
 ----
@@ -235,7 +236,7 @@ option:--buffer-preallocation='POLICY'::
 --
 `preallocate`:::
     The full backing memory for all ring buffers when
-    you create the channel.
+    you create the event record channel.
 +
 This policy provides consistent performance but uses more memory
 upfront. Use this policy to optimize instrumented application
@@ -259,7 +260,7 @@ Automatic memory reclaim
 ~~~~~~~~~~~~~~~~~~~~~~~~
 option:--auto-reclaim-memory='STRATEGY'::
     Set the automatic memory reclaim strategy to 'STRATEGY'
-    for the created channel.
+    for the created event record channel.
 +
 'STRATEGY' is one of:
 +
@@ -271,8 +272,8 @@ option:--auto-reclaim-memory='STRATEGY'::
     LTTng automatically reclaims the memory of sub-buffers
     as soon as they're consumed (read).
 +
-This strategy is not available for channels of recording sessions
-in snapshot mode or without an output.
+This strategy is not available for event record channels of recording
+sessions in snapshot mode or without an output.
 
 **older-than:**__AGEUS__::
     LTTng automatically reclaims the memory of sub-buffers
@@ -296,8 +297,9 @@ If __AGEUS__{nbsp}>{nbsp}last stream activity age:::
     is greater than{nbsp}__AGEUS__ are eligible for a memory reclaim.
 
 If __AGEUS__{nbsp}<{nbsp}last stream activity age:::
-    _All_ sub-buffers are eligible and LTTng flushes the targeted
-    channel so that any open sub-buffer gets closed to become eligible.
+    _All_ sub-buffers are eligible and LTTng flushes the targeted event
+    record channel so that any open sub-buffer gets closed to become
+    eligible.
 --
 +
 Only available with the option:--userspace and
@@ -307,7 +309,7 @@ option:--discard options.
 Event record loss mode
 ~~~~~~~~~~~~~~~~~~~~~~
 option:--blocking-timeout='TIMEOUTUS'::
-    Set the blocking timeout value of the channel
+    Set the blocking timeout value of the event record channel
     to __TIMEOUTUS__{nbsp}µs
     for instrumented applications executed with a set
     `LTTNG_UST_ALLOW_BLOCKING` environment variable.
@@ -358,11 +360,11 @@ option:--userspace and option:--buffer-ownership=`process` options:::
     +{default_ust_pid_channel_subbuf_num}+
 option:--kernel and option:--buffer-ownership=`system` options:::
     +{default_kernel_channel_subbuf_num}+
-`metadata` channel:::
+`metadata` event record channel:::
     +{default_metadata_subbuf_num}+
 
 option:--output='TYPE'::
-    Set the output type of the channel to 'TYPE'.
+    Set the output type of the event record channel to 'TYPE'.
 +
 'TYPE' is one of:
 +
@@ -386,7 +388,7 @@ option:--userspace and option:--buffer-ownership=`process` options:::
     `mmap`
 option:--kernel and option:--buffer-ownership=`system` options:::
     `splice`
-`metadata` channel:::
+`metadata` event record channel:::
     `mmap`
 
 option:--subbuf-size='SIZE'::
@@ -409,15 +411,15 @@ option:--userspace and option:--buffer-ownership=`process` options:::
     +{default_ust_pid_channel_subbuf_size}+
 option:--kernel and option:--buffer-ownership=`system` options:::
     +{default_kernel_channel_subbuf_size}+
-`metadata` channel:::
+`metadata` event record channel:::
     +{default_metadata_subbuf_size}+
 
 
 Trace files
 ~~~~~~~~~~~
 option:--tracefile-count='COUNT'::
-    Limit the number of trace files which LTTng writes for this channel
-    to 'COUNT'.
+    Limit the number of trace files which LTTng writes for this event
+    record channel to 'COUNT'.
 +
 'COUNT' set to `0` means ``unlimited''.
 +
@@ -427,21 +429,21 @@ You must also use the option:--tracefile-size option with this option.
 
 option:--tracefile-size='SIZE'::
     Set the maximum size of each trace file which LTTng writes for
-    this channel to __SIZE__{nbsp}bytes.
+    this event record channel to __SIZE__{nbsp}bytes.
 +
 'SIZE' set to `0` means ``unlimited''.
 +
 Default: +{default_channel_tracefile_size}+.
 +
-NOTE: Data streams which LTTng writes for a channel configured with this
-option may inaccurately report discarded event records as of
-CTF{nbsp}1.8 and CTF{nbsp}2.
+NOTE: Data streams which LTTng writes for an event record channel
+configured with this option may inaccurately report discarded event
+records as of CTF{nbsp}1.8 and CTF{nbsp}2.
 
 
 Timers
 ~~~~~~
 option:--monitor-timer='PERIODUS'::
-    Set the period of the monitor timer of the channel to
+    Set the period of the monitor timer of the event record channel to
     __PERIODUS__{nbsp}µs.
 +
 Set 'PERIODUS' to `0` to disable the monitor timer.
@@ -456,7 +458,7 @@ option:--kernel and option:--buffer-ownership=`system` options:::
     +{default_kernel_channel_monitor_timer}+
 
 option:--read-timer='PERIODUS'::
-    Set the period of the read timer of the channel to
+    Set the period of the read timer of the event record channel to
     __PERIODUS__{nbsp}µs.
 +
 Set 'PERIODUS' to `0` to disable the read timer.
@@ -469,11 +471,11 @@ option:--userspace and option:--buffer-ownership=`process` options:::
     +{default_ust_pid_channel_read_timer}+
 option:--kernel and option:--buffer-ownership=`system` options:::
     +{default_kernel_channel_read_timer}+
-`metadata` channel:::
+`metadata` event record channel:::
     +{default_metadata_read_timer}+
 
 option:--switch-timer='PERIODUS'::
-    Set the period of the switch timer of the channel to
+    Set the period of the switch timer of the event record channel to
     __PERIODUS__{nbsp}µs.
 +
 Set 'PERIODUS' to `0` to disable the switch timer.
@@ -486,11 +488,11 @@ option:--userspace and option:--buffer-ownership=`process` options:::
     +{default_ust_pid_channel_switch_timer}+
 option:--kernel and option:--buffer-ownership=`system` options:::
     +{default_kernel_channel_switch_timer}+
-`metadata` channel:::
+`metadata` event record channel:::
     +{default_metadata_switch_timer}+
 
 option:--watchdog-timer='PERIODUS'::
-    Set the period of the watchdog timer of the channel to
+    Set the period of the watchdog timer of the event record channel to
     __PERIODUS__{nbsp}µs.
 +
 Set 'PERIODUS' to `0` to disable the watchdog timer.
@@ -510,11 +512,11 @@ include::common-lttng-cmd-after-options.txt[]
 [[examples]]
 EXAMPLES
 --------
-.Create a Linux kernel channel with default attributes in the current recording session.
+.Create a Linux kernel event record channel with default attributes in the current recording session.
 ====
-The following command line only creates a new channel if `my-channel`
-doesn't name an existing Linux kernel channel in the current recording
-session.
+The following command line only creates a new event record channel if
+`my-channel` doesn't name an existing Linux kernel event record channel
+in the current recording session.
 
 [role="term"]
 ----
@@ -522,7 +524,7 @@ $ lttng enable-channel --kernel my-channel
 ----
 ====
 
-.Create a user space channel with a per-process buffer ownership model in a specific recording session.
+.Create a user space event record channel with a per-process buffer ownership model in a specific recording session.
 ====
 See the option:--session and option:--buffer-ownership options.
 
@@ -533,7 +535,7 @@ $ lttng enable-channel --session=my-session --userspace \
 ----
 ====
 
-.Create a user space channel with a per-user buffer ownership model (default) and a per-channel buffer allocation policy.
+.Create a user space event record channel with a per-user buffer ownership model (default) and a per-event-record-channel buffer allocation policy.
 ====
 See the option:--buffer-allocation option.
 
@@ -544,7 +546,7 @@ $ lttng enable-channel --userspace \
 ----
 ====
 
-.Create a user space channel with an ``on-demand'' preallocation policy and an automatic memory reclaim.
+.Create a user space event record channel with an ``on-demand'' preallocation policy and an automatic memory reclaim.
 ====
 See the option:--buffer-preallocation and
 option:--auto-reclaim-memory options.
@@ -557,7 +559,7 @@ $ lttng enable-channel --userspace my-channel \
 ----
 ====
 
-.Create a Linux kernel channel in the current recording session with four 32-MiB sub-buffers per ring buffer.
+.Create a Linux kernel event record channel in the current recording session with four 32-MiB sub-buffers per ring buffer.
 ====
 See the option:--num-subbuf and option:--subbuf-size options.
 
@@ -568,7 +570,7 @@ $ lttng enable-channel --kernel my-channel \
 ----
 ====
 
-.Create a user space channel in the current recording session with trace file rotation.
+.Create a user space event record channel in the current recording session with trace file rotation.
 ====
 See the option:--tracefile-count and option:--tracefile-size options.
 
@@ -579,7 +581,7 @@ $ lttng enable-channel --userspace my-channel \
 ----
 ====
 
-.Enable two user space channels of a specific recording session.
+.Enable two user space event record channels of a specific recording session.
 ====
 [role="term"]
 ----

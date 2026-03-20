@@ -4,7 +4,7 @@
 
 lttng-disable-event(1)
 ======================
-:revdate: 1 April 2025
+:revdate: 20 March 2026
 
 
 NAME
@@ -47,13 +47,13 @@ Without the option:--session option::
     more about the current recording session).
 
 With the option:--channel='CHANNEL' option::
-    The channel named 'CHANNEL'.
+    The event record channel named 'CHANNEL'.
 
 Without the option:--channel option::
-    The channel named `channel0`.
+    The event record channel named `channel0`.
 +
-If there's more than one channel for the selected recording session and
-domain, the `disable-event` command fails.
+If there's more than one event record channel for the selected recording
+session and domain, the `disable-event` command fails.
 
 See man:lttng-concepts(7) to learn more about recording event rules.
 
@@ -69,7 +69,7 @@ kernel recording event rules regardless of their instrumentation point
 type.
 
 List the recording event rules of a given recording session
-and/or channel with the man:lttng-list(1) command.
+and/or event record channel with the man:lttng-list(1) command.
 
 Without the option:--all-events option, the `disable-event` command
 disables one recording event rule per 'NAME' argument. 'NAME' is the
@@ -114,8 +114,8 @@ option:-u, option:--userspace::
 Recording target
 ~~~~~~~~~~~~~~~~
 option:-c 'CHANNEL', option:--channel='CHANNEL'::
-    Disable recording event rules attached to the channel named
-    'CHANNEL' instead of `channel0`.
+    Disable recording event rules attached to the event record channel
+    named 'CHANNEL' instead of `channel0`.
 
 option:-s 'SESSION', option:--session='SESSION'::
     Disable recording event rules in the recording session named
@@ -170,7 +170,7 @@ include::common-lttng-cmd-after-options.txt[]
 [[examples]]
 EXAMPLES
 --------
-.Disable all Linux kernel tracepoint recording event rules in the default channel of the current recording session.
+.Disable all Linux kernel tracepoint recording event rules in the default event record channel of the current recording session.
 ====
 See the option:--all-events option.
 
@@ -180,7 +180,7 @@ $ lttng disable-event --kernel --tracepoint --all-events
 ----
 ====
 
-.Disable specific Apache log4j{nbsp}1.x recording event rules in the default channel of a specific recording session.
+.Disable specific Apache log4j{nbsp}1.x recording event rules in the default event record channel of a specific recording session.
 ====
 See the option:--session option.
 
@@ -191,7 +191,7 @@ $ lttng disable-event --session=my-session --log4j \
 ----
 ====
 
-.Disable all user space recording event rules in a specific channel of the current recording session.
+.Disable all user space recording event rules in a specific event record channel of the current recording session.
 ====
 See the option:--channel option.
 
@@ -202,7 +202,7 @@ $ lttng disable-event --channel=my-channel --userspace \
 ----
 ====
 
-.Disable specific Linux kernel system call recording event rules in the default channel of the current recording session.
+.Disable specific Linux kernel system call recording event rules in the default event record channel of the current recording session.
 ====
 [role="term"]
 ----

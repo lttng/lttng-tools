@@ -4,7 +4,7 @@
 
 lttng-load(1)
 =============
-:revdate: 14 June 2021
+:revdate: 20 March 2026
 
 
 NAME
@@ -28,9 +28,9 @@ See man:lttng-concepts(7) to learn more about recording sessions.
 
 Use the `load` command in conjunction with the man:lttng-save(1) command
 to save and restore the complete configurations of recording sessions. A
-recording session configuration includes the enabled channels and
-recording event rules, the context fields to be recorded, the recording
-activity, and more.
+recording session configuration includes the enabled event record
+channels and recording event rules, the context fields to be recorded,
+the recording activity, and more.
 
 Once LTTng loads one or more recording session configurations, they
 appear exactly as they were saved from the user's point of view.
