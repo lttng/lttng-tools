@@ -10,13 +10,19 @@
 
 #include "domain-orchestrator.hpp"
 #include "recording-channel-configuration.hpp"
+#include "ust-application-abi.hpp"
+#include "ust-stream-group.hpp"
+#include "ust-trace-class.hpp"
 
 #include <cstdint>
+#include <memory>
+#include <unordered_map>
 #include <unordered_set>
 
 struct ltt_session;
 struct ltt_ust_session;
 struct lttng_ust_context_attr;
+struct ust_app;
 
 namespace lttng {
 namespace sessiond {
@@ -117,6 +123,99 @@ private:
 	 * and event management are fully internalized.
 	 */
 	std::unordered_set<const config::event_rule_configuration *> _created_event_rules;
+
+	/*
+	 * Trace class and stream group ownership.
+	 *
+	 * Two sets of maps exist: one for per-UID mode, one for per-PID.
+	 * Only one set is populated, depending on
+	 * _default_buffer_ownership.
+	 *
+	 * Per-UID mode:
+	 *   - One trace_class per (uid, abi). Multiple apps with the
+	 *     same UID and ABI share a single trace_class.
+	 *   - One stream_group per (channel_config, uid, abi). Shared
+	 *     ring buffers: the first app creates them, subsequent apps
+	 *     receive duplicated object handles.
+	 *
+	 * Per-PID mode:
+	 *   - One trace_class per app. Each app has its own metadata.
+	 *   - One stream_group per (channel_config, app). Private ring
+	 *     buffers per app.
+	 *   - When an app departs, its trace_class and stream_groups
+	 *     are destroyed and per-PID closed-app statistics are
+	 *     accumulated (TODO).
+	 */
+
+	static std::size_t _hash_combine(std::size_t seed, std::size_t value) noexcept
+	{
+		/*
+		 * Golden-ratio hash combining (boost::hash_combine inspired). Use
+		 * the 64-bit constant when size_t is 8 bytes wide.
+		 */
+		constexpr auto golden_ratio = sizeof(std::size_t) == 8 ?
+			std::size_t(0x9e3779b97f4a7c15) :
+			std::size_t(0x9e3779b9);
+		return seed ^ (value + golden_ratio + (seed << 6) + (seed >> 2));
+	}
+
+	template <typename KeyType>
+	struct _key_hasher {
+		std::size_t operator()(const KeyType& key) const noexcept
+		{
+			return key.hash();
+		}
+	};
+
+	struct _per_uid_trace_class_key {
+		uid_t uid;
+		application_abi abi;
+
+		bool operator==(const _per_uid_trace_class_key& other) const noexcept;
+		std::size_t hash() const noexcept;
+	};
+
+	struct _per_uid_stream_group_key {
+		const config::recording_channel_configuration *channel_config;
+		uid_t uid;
+		application_abi abi;
+
+		bool operator==(const _per_uid_stream_group_key& other) const noexcept;
+		std::size_t hash() const noexcept;
+	};
+
+	struct _per_pid_stream_group_key {
+		const config::recording_channel_configuration *channel_config;
+		const ust_app *app;
+
+		bool operator==(const _per_pid_stream_group_key& other) const noexcept;
+		std::size_t hash() const noexcept;
+	};
+
+	/* (uid, abi) -> trace_class */
+	std::unordered_map<_per_uid_trace_class_key,
+			   std::unique_ptr<ust::trace_class>,
+			   _key_hasher<_per_uid_trace_class_key>>
+		_per_uid_trace_classes;
+
+	/* (uid, abi, recording channel configuration) -> stream group */
+	std::unordered_map<_per_uid_stream_group_key,
+			   std::unique_ptr<ust::stream_group>,
+			   _key_hasher<_per_uid_stream_group_key>>
+		_per_uid_stream_groups;
+
+	/*
+	 * Per-PID trace classes are keyed by app pointer. Each app gets
+	 * its own trace_class.
+	 */
+	std::unordered_map<const ust_app *, std::unique_ptr<ust::trace_class>>
+		_per_pid_trace_classes;
+
+	/* (app, recording channel configuration) -> stream group */
+	std::unordered_map<_per_pid_stream_group_key,
+			   std::unique_ptr<ust::stream_group>,
+			   _key_hasher<_per_pid_stream_group_key>>
+		_per_pid_stream_groups;
 };
 
 } /* namespace ust */

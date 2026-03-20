@@ -13,6 +13,7 @@
 #include "lttng-ust-ctl.hpp"
 #include "trace-class.hpp"
 #include "trace-ust.hpp"
+#include "ust-application-abi.hpp"
 #include "ust-field-quirks.hpp"
 
 #include <common/format.hpp>
@@ -293,7 +294,7 @@ public:
 	}
 
 	struct identifier {
-		enum class application_abi : std::uint8_t { ABI_32 = 32, ABI_64 = 64 };
+		using application_abi = lttng::sessiond::ust::application_abi;
 		enum class buffer_allocation_policy : std::uint8_t { PER_PID, PER_UID };
 
 		/* Unique identifier of the ust_app_session. */

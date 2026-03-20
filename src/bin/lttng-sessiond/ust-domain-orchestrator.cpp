@@ -27,6 +27,7 @@
 #include <lttng/event-rule/user-tracepoint.h>
 
 #include <cstring>
+#include <functional>
 
 namespace ls = lttng::sessiond;
 namespace lsc = lttng::sessiond::config;
@@ -384,3 +385,43 @@ ls::ust::domain_orchestrator::get_recording_channel_runtime_stats(
 }
 
 DIAGNOSTIC_POP; /* DIAGNOSTIC_IGNORE_MISSING_NORETURN */
+
+/* Key comparison and hash implementations. */
+
+bool ls::ust::domain_orchestrator::_per_uid_trace_class_key::operator==(
+	const _per_uid_trace_class_key& other) const noexcept
+{
+	return uid == other.uid && abi == other.abi;
+}
+
+std::size_t ls::ust::domain_orchestrator::_per_uid_trace_class_key::hash() const noexcept
+{
+	return _hash_combine(std::hash<uid_t>{}(uid),
+			     std::hash<std::uint8_t>{}(static_cast<std::uint8_t>(abi)));
+}
+
+bool ls::ust::domain_orchestrator::_per_uid_stream_group_key::operator==(
+	const _per_uid_stream_group_key& other) const noexcept
+{
+	return channel_config == other.channel_config && uid == other.uid && abi == other.abi;
+}
+
+std::size_t ls::ust::domain_orchestrator::_per_uid_stream_group_key::hash() const noexcept
+{
+	auto h = std::hash<const void *>{}(channel_config);
+	h = _hash_combine(h, std::hash<uid_t>{}(uid));
+	h = _hash_combine(h, std::hash<std::uint8_t>{}(static_cast<std::uint8_t>(abi)));
+	return h;
+}
+
+bool ls::ust::domain_orchestrator::_per_pid_stream_group_key::operator==(
+	const _per_pid_stream_group_key& other) const noexcept
+{
+	return channel_config == other.channel_config && app == other.app;
+}
+
+std::size_t ls::ust::domain_orchestrator::_per_pid_stream_group_key::hash() const noexcept
+{
+	return _hash_combine(std::hash<const void *>{}(channel_config),
+			     std::hash<const void *>{}(app));
+}
