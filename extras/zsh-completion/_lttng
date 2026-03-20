@@ -94,7 +94,7 @@ __lttng_run() {
 #
 # This function returns 1 with LTTng-tools < 2.6 and if `xmllint` isn't
 # available. In this case, this function adds completion through
-# _message(). Because of this, do NOT call this function in a subshell.
+# `_message`. Because of this, do NOT call this function in a subshell.
 __lttng_mi_run() {
   local -r msg=$1
 
@@ -768,8 +768,8 @@ __lttng_status_from_enabled_prop() {
 #
 # On error, show MSG.
 #
-# This function calls __lttng_mi_run(); see notes about
-# __lttng_mi_run().
+# This function calls `__lttng_mi_run ; see notes
+# about `__lttng_mi_run`.
 __lttng_session_xml() {
   local -r msg=$1 session_name=$2
 
@@ -1182,7 +1182,7 @@ __lttng_complete_log_level() {
   _wanted log-levels expl $title compadd -a log_levels -o nosort
 }
 
-# Forwards to __lttng_complete_log_level() when completing the
+# Forwards to `__lttng_complete_log_level` when completing the
 # log level options of the `enable-event` command.
 __lttng_complete_log_level_name() {
   __lttng_complete_log_level "log level name"
@@ -1853,7 +1853,7 @@ __lttng_complete_trigger_cond_event_rule_matches() {
     _message -e descriptions 'instrumentation point name exclusion pattern'
     return
   elif [[ $in_opt_val == log-level ]] || compset -P '--log-level='; then
-    # __lttng_complete_log_level() relies on `opt_args` for the
+    # `__lttng_complete_log_level` relies on `opt_args` for the
     # tracing domain.
     __lttng_set_opt_args_from_new_domain_type $ip_type
     __lttng_complete_log_level 'log level rule'
@@ -2026,7 +2026,7 @@ __lttng_complete_trigger_cond_simple() {
     return
   elif [[ $in_opt_val == channel ]] || compset -P '--channel='; then
     if ((with_channel_domain_opts)); then
-      # __lttng_complete_event_record_channel_name() relies on `line[1]`
+      # `__lttng_complete_event_record_channel_name` relies on `line[1]`
       # for the recording session name and on `opt_args` for the tracing
       # domain.
       line=($session_name)
@@ -2517,7 +2517,7 @@ __lttng_complete_event_record_channel_output_type() {
 #
 # Otherwise:
 #     Adds completions for a comma-separated list of known event record
-#     channel names using __lttng_complete_event_record_channel_name().
+#     channel names using `__lttng_complete_event_record_channel_name`.
 __lttng_complete_enable_channel_cmd_names() {
   local key
   local -r enable_opts=(
@@ -2742,7 +2742,7 @@ __lttng_complete_enable_event_cmd() {
   # available system call instrumentation point names.
   #
   # This function makes the arbitrary choice to provide the available
-  # instrumentation point names (__lttng_complete_ip_name()) because,
+  # instrumentation point names (`__lttng_complete_ip_name ) because,
   # interactively, it seems to be more common/useful than disabling
   # existing recording event rules.
   specs=(
