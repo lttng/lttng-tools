@@ -1,24 +1,21 @@
-Fix: Short description
+Fix: what are you fixing?
 
-Observed issue
-==============
+OBSERVED ISSUE
+━━━━━━━━━━━━━━
+Describe what's expected, the incorrect behavior, and how to reproduce it.
 
-Steps to reproduce (list of commands or narrative description).
+CAUSE
+━━━━━
+Explain your analysis of the root cause of the observed issue above.
 
-Cause
-=====
+SOLUTION
+━━━━━━━━
+Describe the approach you took to fix the issue.
 
-Solution
-========
+KNOWN DRAWBACKS
+━━━━━━━━━━━━━━━
+Mention any tradeoffs or regrettable limitations introduced by this fix.
 
-Known drawbacks
-===============
-
-References
-==========
-[1]:
-
-Fixes: #xxx
-Refs: #yyy
-
-Signed-off-by:
+REFERENCES
+━━━━━━━━━━
+Numbered Markdown-style links to relevant resources.
