@@ -5,7 +5,6 @@
  *
  */
 
-#include "agent.hpp"
 #include "context-configuration.hpp"
 #include "event-rule-configuration.hpp"
 #include "lttng-channel-from-config.hpp"
@@ -215,39 +214,17 @@ void ls::ust::domain_orchestrator::create_channel(
 	 * are handled specially: their attributes are copied to the
 	 * session instead of being added to the hash table.
 	 */
-	bool chan_published = false;
 	{
 		const lttng::urcu::read_lock_guard rcu_read_lock;
 
 		if (lttng::c_string_view(uchan->name) != DEFAULT_METADATA_NAME) {
 			lttng_ht_add_unique_str(_ust_session.domain_global.channels, &uchan->node);
-			chan_published = true;
 		} else {
 			memcpy(&_ust_session.metadata_attr,
 			       &uchan->attr,
 			       sizeof(_ust_session.metadata_attr));
 		}
 
-		/* For agent domains, ensure an agent object exists. */
-		if (domain != LTTNG_DOMAIN_UST) {
-			auto *agt = trace_ust_find_agent(&_ust_session, domain);
-			if (!agt) {
-				agt = agent_create(domain);
-				if (!agt) {
-					if (chan_published) {
-						/* Unpublish. */
-						trace_ust_delete_channel(
-							_ust_session.domain_global.channels,
-							uchan.get());
-					}
-
-					LTTNG_THROW_ALLOCATION_FAILURE_ERROR(
-						"Failed to create agent");
-				}
-
-				agent_add(agt, _ust_session.agents);
-			}
-		}
 	}
 
 	DBG_FMT("UST domain orchestrator created channel: channel_name=`{}`, trace_class_stream_class_handle={}",

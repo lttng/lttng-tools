@@ -2016,6 +2016,22 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 			orchestrator.create_channel(channel_config);
 			config_rollback.disarm();
 
+			/*
+			 * For agent sub-domains, ensure an agent object
+			 * exists for this session.
+			 */
+			if (domain->type != LTTNG_DOMAIN_UST) {
+				auto *agt = trace_ust_find_agent(usess, domain->type);
+				if (!agt) {
+					agt = agent_create(domain->type);
+					if (!agt) {
+						return LTTNG_ERR_NOMEM;
+					}
+
+					agent_add(agt, usess->agents);
+				}
+			}
+
 			if (new_channel_attr->name[0] != '\0') {
 				usess->has_non_default_channel = 1;
 			}
