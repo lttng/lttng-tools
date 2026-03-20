@@ -7,7 +7,6 @@
 
 #include "agent.hpp"
 #include "context-configuration.hpp"
-#include "context.hpp"
 #include "event-rule-configuration.hpp"
 #include "lttng-channel-from-config.hpp"
 #include "lttng-sessiond.hpp"
@@ -361,20 +360,15 @@ void ls::ust::domain_orchestrator::disable_event(
 	}
 }
 
-void ls::ust::domain_orchestrator::add_context(
-	const config::recording_channel_configuration& channel_config,
-	const config::context_configuration& context_config)
+void ls::ust::domain_orchestrator::add_context(const config::recording_channel_configuration&,
+					       const config::context_configuration&)
 {
+	/*
+	 * Nothing to do: the config layer already recorded the context
+	 * in the recording_channel_configuration. The per-app sync path
+	 * reads contexts from the config directly.
+	 */
 	LTTNG_ASSERT(!_active);
-
-	const auto ret =
-		context_ust_add(&_ust_session, context_config, channel_config.name.c_str());
-	if (ret != LTTNG_OK) {
-		LTTNG_THROW_CTL(lttng::format("Failed to add UST context: context={}, channel=`{}`",
-					      context_config,
-					      channel_config.name),
-				static_cast<lttng_error_code>(ret));
-	}
 }
 
 void ls::ust::domain_orchestrator::enable_event(

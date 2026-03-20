@@ -25,21 +25,6 @@
 
 struct agent;
 
-/* Context hash table nodes */
-struct ltt_ust_context {
-	explicit ltt_ust_context(const lttng::sessiond::config::context_configuration& config);
-
-	ltt_ust_context(const ltt_ust_context&) = delete;
-	ltt_ust_context(ltt_ust_context&&) = delete;
-	ltt_ust_context& operator=(const ltt_ust_context&) = delete;
-	ltt_ust_context& operator=(ltt_ust_context&&) = delete;
-	~ltt_ust_context() = default;
-
-	const lttng::sessiond::config::context_configuration& context_config;
-	struct lttng_ht_node_ulong node = {};
-	struct cds_list_head list;
-};
-
 /* UST channel */
 struct ltt_ust_channel {
 	/*
@@ -57,8 +42,6 @@ struct ltt_ust_channel {
 	enum lttng_domain_type domain = LTTNG_DOMAIN_NONE;
 	char name[LTTNG_UST_ABI_SYM_NAME_LEN] = {};
 	struct lttng_ust_abi_channel_attr attr = {};
-	struct lttng_ht *ctx = nullptr; /* Context hash table */
-	struct cds_list_head ctx_list = {};
 	struct lttng_ht_node_str node = {};
 	uint64_t tracefile_size = 0;
 	uint64_t tracefile_count = 0;
@@ -154,8 +137,6 @@ struct ltt_ust_session *trace_ust_create_session(uint64_t session_id);
 struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr,
 						 enum lttng_domain_type domain);
 
-struct ltt_ust_context *
-trace_ust_create_context(const lttng::sessiond::config::context_configuration& context_config);
 void trace_ust_delete_channel(struct lttng_ht *ht, struct ltt_ust_channel *channel);
 
 int trace_ust_regenerate_metadata(struct ltt_ust_session *usess);
@@ -166,7 +147,6 @@ int trace_ust_regenerate_metadata(struct ltt_ust_session *usess);
  */
 void trace_ust_destroy_session(struct ltt_ust_session *session);
 void trace_ust_destroy_channel(struct ltt_ust_channel *channel);
-void trace_ust_destroy_context(ltt_ust_context *ctx);
 void trace_ust_free_session(struct ltt_ust_session *session);
 
 bool trace_ust_runtime_ctl_version_matches_build_version();
@@ -207,13 +187,6 @@ static inline void trace_ust_destroy_channel(struct ltt_ust_channel *channel
 
 static inline void trace_ust_free_session(struct ltt_ust_session *session __attribute__((unused)))
 {
-}
-
-static inline struct ltt_ust_context *
-trace_ust_create_context(const lttng::sessiond::config::context_configuration& context_config
-			 __attribute__((unused)))
-{
-	return NULL;
 }
 
 static inline void trace_ust_delete_channel(struct lttng_ht *ht __attribute__((unused)),

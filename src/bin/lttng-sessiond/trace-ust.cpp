@@ -263,10 +263,6 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 
 	/* Init node */
 	lttng_ht_node_init_str(&luc->node, luc->name);
-	CDS_INIT_LIST_HEAD(&luc->ctx_list);
-
-	/* Alloc hash tables */
-	luc->ctx = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 
 	/* On-disk circular buffer parameters */
 	luc->tracefile_size = chan->attr.tracefile_size;
@@ -279,70 +275,6 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 error:
 	delete luc;
 	return nullptr;
-}
-
-ltt_ust_context::ltt_ust_context(const lttng::sessiond::config::context_configuration& config) :
-	context_config(config)
-{
-	CDS_INIT_LIST_HEAD(&list);
-
-	const auto ust_ctx_attr = lsu::domain_orchestrator::make_ust_context_attr(config);
-	lttng_ht_node_init_ulong(&node, (unsigned long) ust_ctx_attr.ctx);
-}
-
-/*
- * Allocate and initialize a UST context from a context_configuration.
- *
- * The context_configuration must outlive the returned structure.
- */
-struct ltt_ust_context *
-trace_ust_create_context(const lttng::sessiond::config::context_configuration& context_config)
-{
-	return new ltt_ust_context(context_config);
-}
-
-/*
- * RCU safe free context structure.
- */
-static void destroy_context_rcu(struct rcu_head *head)
-{
-	struct lttng_ht_node_ulong *node =
-		lttng::utils::container_of(head, &lttng_ht_node_ulong::head);
-	struct ltt_ust_context *ctx = lttng::utils::container_of(node, &ltt_ust_context::node);
-
-	trace_ust_destroy_context(ctx);
-}
-
-/*
- * Cleanup UST context hash table.
- */
-static void destroy_contexts(struct lttng_ht *ht)
-{
-	LTTNG_ASSERT(ht);
-
-	for (auto *ctx : lttng::urcu::lfht_iteration_adapter<ltt_ust_context,
-							     decltype(ltt_ust_context::node),
-							     &ltt_ust_context::node>(*ht->ht)) {
-		/* Remove from ordered list. */
-		cds_list_del(&ctx->list);
-		/* Remove from channel's hash table. */
-		const auto ret = cds_lfht_del(ht->ht, &ctx->node.node);
-		if (!ret) {
-			call_rcu(&ctx->node.head, destroy_context_rcu);
-		}
-	}
-
-	lttng_ht_destroy(ht);
-}
-
-/*
- * Cleanup ust context structure.
- */
-void trace_ust_destroy_context(ltt_ust_context *ctx)
-{
-	LTTNG_ASSERT(ctx);
-
-	delete ctx;
 }
 
 /*
@@ -372,9 +304,6 @@ static void destroy_channel_rcu(struct rcu_head *head)
 
 void trace_ust_destroy_channel(struct ltt_ust_channel *channel)
 {
-	/* Destroying all context of the channel */
-	destroy_contexts(channel->ctx);
-
 	call_rcu(&channel->node.head, destroy_channel_rcu);
 }
 
