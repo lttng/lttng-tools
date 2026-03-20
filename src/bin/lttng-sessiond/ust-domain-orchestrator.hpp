@@ -124,6 +124,9 @@ private:
 	 */
 	std::unordered_set<const config::event_rule_configuration *> _created_event_rules;
 
+	static void
+	_validate_channel_attributes(const config::recording_channel_configuration& channel_config);
+
 	/*
 	 * Trace class and stream group ownership.
 	 *

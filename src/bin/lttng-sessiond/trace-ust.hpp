@@ -165,31 +165,9 @@ struct ltt_ust_session {
 	}
 };
 
-/*
- * Validate that the id has reached the maximum allowed or not.
- *
- * Return 0 if NOT else 1.
- */
-static inline int trace_ust_is_max_id(uint64_t id)
+/* Return next available channel id and increment the used counter. */
+static inline uint64_t trace_ust_get_trace_class_stream_class_handle(struct ltt_ust_session *s)
 {
-	return (id == UINT64_MAX) ? 1 : 0;
-}
-
-/*
- * Return next available channel id and increment the used counter. The
- * trace_ust_is_max_id function MUST be called before in order to validate if
- * the maximum number of IDs have been reached. If not, it is safe to call this
- * function.
- *
- * Return a unique channel ID. If max is reached, the used_event_container_id counter
- * is returned.
- */
-static inline uint64_t trace_ust_get_next_event_container_id(struct ltt_ust_session *s)
-{
-	if (trace_ust_is_max_id(s->used_event_container_id)) {
-		return s->used_event_container_id;
-	}
-
 	s->used_event_container_id++;
 	return s->next_event_container_id++;
 }

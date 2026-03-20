@@ -14,6 +14,7 @@
 #include <lttng/lttng.h>
 
 #include <inttypes.h>
+#include <urcu/list.h>
 #include <urcu/urcu.h>
 
 namespace lttng {

@@ -5,11 +5,12 @@
  *
  */
 
-#include "channel.hpp"
+#include "agent.hpp"
 #include "context-configuration.hpp"
 #include "context.hpp"
 #include "event-rule-configuration.hpp"
 #include "lttng-channel-from-config.hpp"
+#include "lttng-sessiond.hpp"
 #include "lttng-ust-error.hpp"
 #include "recording-channel-configuration.hpp"
 #include "session.hpp"
@@ -17,10 +18,13 @@
 #include "ust-app.hpp"
 #include "ust-domain-orchestrator.hpp"
 
+#include <common/defaults.hpp>
 #include <common/error.hpp>
 #include <common/exception.hpp>
 #include <common/format.hpp>
 #include <common/macros.hpp>
+#include <common/scope-exit.hpp>
+#include <common/urcu.hpp>
 
 #include <lttng/event-rule/event-rule-internal.hpp>
 #include <lttng/event-rule/event-rule.h>
@@ -130,8 +134,8 @@ lttng_ust_context_attr ls::ust::domain_orchestrator::make_ust_context_attr(
 		break;
 	default:
 		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
-			lttng::format("Context type is not supported by the UST domain: type={}",
-				      context_config.context_type));
+			fmt::format("Context type is not supported by the UST domain: type={}",
+				    context_config.context_type));
 	}
 
 	return ust_ctx;
@@ -152,15 +156,153 @@ ls::ust::domain_orchestrator::~domain_orchestrator() = default;
 void ls::ust::domain_orchestrator::create_channel(
 	const config::recording_channel_configuration& channel_config)
 {
-	const auto lttng_channel = ls::make_lttng_channel(channel_config);
+	_validate_channel_attributes(channel_config);
+
 	const auto buffer_type = _default_buffer_ownership ==
 			lsc::recording_channel_configuration::owership_model_t::PER_PID ?
 		LTTNG_BUFFER_PER_PID :
 		LTTNG_BUFFER_PER_UID;
 
-	const auto ret = channel_ust_create(&_ust_session, lttng_channel.get(), buffer_type);
-	if (ret != LTTNG_OK) {
-		LTTNG_THROW_CTL("Failed to create UST channel", ret);
+	/*
+	 * Detect the agent sub-domain from the channel name. Agent channels
+	 * (JUL, Log4j, Log4j2, Python) use well-known names.
+	 */
+	auto domain = LTTNG_DOMAIN_UST;
+	if (channel_config.name == DEFAULT_JUL_CHANNEL_NAME) {
+		domain = LTTNG_DOMAIN_JUL;
+	} else if (channel_config.name == DEFAULT_LOG4J_CHANNEL_NAME) {
+		domain = LTTNG_DOMAIN_LOG4J;
+	} else if (channel_config.name == DEFAULT_LOG4J2_CHANNEL_NAME) {
+		domain = LTTNG_DOMAIN_LOG4J2;
+	} else if (channel_config.name == DEFAULT_PYTHON_CHANNEL_NAME) {
+		domain = LTTNG_DOMAIN_PYTHON;
+	}
+
+	/*
+	 * Build the legacy lttng_channel and ltt_ust_channel structures.
+	 * The per-app sync path still reads from ltt_ust_channel (name,
+	 * attributes, trace_class_stream_class_handle). This will be
+	 * eliminated when the sync path is internalized.
+	 */
+	auto lttng_channel = ls::make_lttng_channel(channel_config);
+
+	if (lttng_channel->attr.overwrite == DEFAULT_CHANNEL_OVERWRITE) {
+		lttng_channel->attr.overwrite = !!_ust_session.snapshot_mode;
+	}
+
+	if (_ust_session.snapshot_mode) {
+		lttng_channel->attr.output = LTTNG_EVENT_MMAP;
+	}
+
+	auto uchan = lttng::make_unique_wrapper<ltt_ust_channel, trace_ust_destroy_channel>(
+		trace_ust_create_channel(lttng_channel.get(), domain));
+	if (!uchan) {
+		LTTNG_THROW_ALLOCATION_FAILURE_ERROR("Failed to create UST channel structure");
+	}
+
+	uchan->enabled = true;
+
+	uchan->trace_class_stream_class_handle =
+		trace_ust_get_trace_class_stream_class_handle(&_ust_session);
+
+	/* Lock buffer type on the session. */
+	if (!_ust_session.buffer_type_changed) {
+		_ust_session.buffer_type = buffer_type;
+		_ust_session.buffer_type_changed = 1;
+	} else if (_ust_session.buffer_type != buffer_type) {
+		LTTNG_THROW_CTL("Buffer type mismatch", LTTNG_ERR_BUFFER_TYPE_MISMATCH);
+	}
+
+	/*
+	 * Add the channel to the legacy hash table. Metadata channels
+	 * are handled specially: their attributes are copied to the
+	 * session instead of being added to the hash table.
+	 */
+	bool chan_published = false;
+	{
+		const lttng::urcu::read_lock_guard rcu_read_lock;
+
+		if (lttng::c_string_view(uchan->name) != DEFAULT_METADATA_NAME) {
+			lttng_ht_add_unique_str(_ust_session.domain_global.channels, &uchan->node);
+			chan_published = true;
+		} else {
+			memcpy(&_ust_session.metadata_attr,
+			       &uchan->attr,
+			       sizeof(_ust_session.metadata_attr));
+		}
+
+		/* For agent domains, ensure an agent object exists. */
+		if (domain != LTTNG_DOMAIN_UST) {
+			auto *agt = trace_ust_find_agent(&_ust_session, domain);
+			if (!agt) {
+				agt = agent_create(domain);
+				if (!agt) {
+					if (chan_published) {
+						/* Unpublish. */
+						trace_ust_delete_channel(
+							_ust_session.domain_global.channels,
+							uchan.get());
+					}
+
+					LTTNG_THROW_ALLOCATION_FAILURE_ERROR(
+						"Failed to create agent");
+				}
+
+				agent_add(agt, _ust_session.agents);
+			}
+		}
+	}
+
+	DBG_FMT("UST domain orchestrator created channel: channel_name=`{}`, trace_class_stream_class_handle={}",
+		channel_config.name.c_str(),
+		uchan->trace_class_stream_class_handle);
+
+	/* Channel is now owned by the hash table. */
+	/* NOLINTNEXTLINE(bugprone-unused-return-value) */
+	uchan.release();
+}
+
+void ls::ust::domain_orchestrator::_validate_channel_attributes(
+	const lsc::recording_channel_configuration& channel_config)
+{
+	const auto subbuf_size = channel_config.subbuffer_size_bytes;
+	const auto num_subbuf = channel_config.subbuffer_count;
+
+	/* Overwrite mode requires at least 2 subbuffers. */
+	if (channel_config.buffer_full_policy ==
+		    lsc::channel_configuration::buffer_full_policy_t::OVERWRITE_OLDEST_PACKET &&
+	    num_subbuf < 2) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR("Overwrite mode requires at least 2 subbuffers");
+	}
+
+	/* Subbuffer size must be a nonzero power of 2. */
+	if (!subbuf_size || (subbuf_size & (subbuf_size - 1))) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR("Subbuffer size must be a nonzero power of 2");
+	}
+
+	/* Subbuffer size must be at least the page size. */
+	if (subbuf_size < static_cast<std::uint64_t>(the_page_size)) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR("Subbuffer size must be at least the page size");
+	}
+
+	/* Number of subbuffers must be a nonzero power of 2. */
+	if (!num_subbuf || (num_subbuf & (num_subbuf - 1))) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+			"Number of subbuffers must be a nonzero power of 2");
+	}
+
+	/* UST only supports MMAP output. */
+	if (channel_config.buffer_consumption_backend !=
+	    lsc::channel_configuration::buffer_consumption_backend_t::MMAP) {
+		LTTNG_THROW_UNSUPPORTED_ERROR("UST only supports MMAP output");
+	}
+
+	/* Tracefile size must be >= subbuffer size when set. */
+	if (channel_config.trace_file_size_limit_bytes &&
+	    *channel_config.trace_file_size_limit_bytes > 0 &&
+	    *channel_config.trace_file_size_limit_bytes < subbuf_size) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+			"Tracefile size must be at least the subbuffer size");
 	}
 }
 
