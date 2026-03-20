@@ -2479,7 +2479,7 @@ protected:
 		const auto count = lttng_list_channels(&lib_handle(), &lib_channels);
 
 		if (count < 0) {
-			LTTNG_THROW_ERROR("Failed to list channels");
+			LTTNG_THROW_ERROR("Failed to list event record channels");
 		}
 
 		LTTNG_ASSERT(count == 0 || lib_channels);

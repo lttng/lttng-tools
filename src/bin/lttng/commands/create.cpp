@@ -495,7 +495,7 @@ int create_session(const char *session_name)
 		if (*snapshot_url) {
 			MSG("Default snapshot output set to %s", snapshot_url);
 		}
-		MSG("Every channel enabled for this session will be set to mmap output and default to overwrite mode.");
+		MSG("Every event record channel enabled for this session will be set to mmap output and default to overwrite mode.");
 	}
 	if (opt_shm_path) {
 		MSG("Shared memory path set to %s", shm_path);

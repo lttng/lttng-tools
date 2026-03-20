@@ -134,15 +134,15 @@ const char *lttng_error_code_str(lttng_error_code code)
 	case LTTNG_ERR_KERN_SESS_FAIL:
 		return "Kernel create session failed";
 	case LTTNG_ERR_KERN_CHAN_EXIST:
-		return "Kernel channel already exists";
+		return "Kernel event record channel already exists";
 	case LTTNG_ERR_KERN_CHAN_FAIL:
-		return "Kernel create channel failed";
+		return "Kernel create event record channel failed";
 	case LTTNG_ERR_KERN_CHAN_NOT_FOUND:
-		return "Kernel channel not found";
+		return "Kernel event record channel not found";
 	case LTTNG_ERR_KERN_CHAN_DISABLE_FAIL:
-		return "Disable kernel channel failed";
+		return "Disable kernel event record channel failed";
 	case LTTNG_ERR_KERN_CHAN_ENABLE_FAIL:
-		return "Enable kernel channel failed";
+		return "Enable kernel event record channel failed";
 	case LTTNG_ERR_KERN_CONTEXT_FAIL:
 		return "Add kernel context failed";
 	case LTTNG_ERR_KERN_ENABLE_FAIL:
@@ -166,15 +166,15 @@ const char *lttng_error_code_str(lttng_error_code code)
 	case LTTNG_ERR_UST_SESS_FAIL:
 		return "User space tracer session creation failed";
 	case LTTNG_ERR_UST_CHAN_FAIL:
-		return "User space tracer channel creation failed";
+		return "User space tracer event record channel creation failed";
 	case LTTNG_ERR_UST_CHAN_EXIST:
-		return "User space tracer channel already exist";
+		return "User space tracer event record channel already exists";
 	case LTTNG_ERR_UST_CHAN_NOT_FOUND:
-		return "User space tracer channel not found";
+		return "User space tracer event record channel not found";
 	case LTTNG_ERR_UST_CHAN_DISABLE_FAIL:
-		return "Disabling user space tracer channel failed";
+		return "Disabling user space tracer event record channel failed";
 	case LTTNG_ERR_UST_CHAN_ENABLE_FAIL:
-		return "Enabling user space tracer channel failed";
+		return "Enabling user space tracer event record channel failed";
 	case LTTNG_ERR_UST_ENABLE_FAIL:
 		return "Enabling user space event failed";
 	case LTTNG_ERR_UST_DISABLE_FAIL:
@@ -212,7 +212,7 @@ const char *lttng_error_code_str(lttng_error_code code)
 	case LTTNG_ERR_KERN_EVENT_ENOSYS:
 		return "Kernel event type not supported";
 	case LTTNG_ERR_NEED_CHANNEL_NAME:
-		return "Non-default channel exists within session: channel name needs to be specified with '-c name'";
+		return "Non-default event record channel exists within session: event record channel name needs to be specified with '-c name'";
 	case LTTNG_ERR_INVALID:
 		return "Invalid parameter";
 	case LTTNG_ERR_NO_USTCONSUMERD:
@@ -270,11 +270,11 @@ const char *lttng_error_code_str(lttng_error_code code)
 	case LTTNG_ERR_NO_STREAM:
 		return "Index without stream on relay";
 	case LTTNG_ERR_CHAN_EXIST:
-		return "Channel already exists";
+		return "Event record channel already exists";
 	case LTTNG_ERR_SNAPSHOT_NODATA:
 		return "No data available in snapshot";
 	case LTTNG_ERR_NO_CHANNEL:
-		return "No channel found in the session";
+		return "No event record channel found in the session";
 	case LTTNG_ERR_SESSION_INVALID_CHAR:
 		return "Invalid character found in session name";
 	case LTTNG_ERR_SAVE_FILE_EXIST:
@@ -298,13 +298,13 @@ const char *lttng_error_code_str(lttng_error_code code)
 	case LTTNG_ERR_INVALID_EVENT_NAME:
 		return "Invalid event name";
 	case LTTNG_ERR_INVALID_CHANNEL_NAME:
-		return "Invalid channel name";
+		return "Invalid event record channel name";
 	case LTTNG_ERR_PROCESS_ATTR_EXISTS:
 		return "Process attribute is already tracked";
 	case LTTNG_ERR_PROCESS_ATTR_MISSING:
 		return "Process attribute was not tracked";
 	case LTTNG_ERR_INVALID_CHANNEL_DOMAIN:
-		return "Invalid channel domain";
+		return "Invalid event record channel domain";
 	case LTTNG_ERR_OVERFLOW:
 		return "Overflow occurred";
 	case LTTNG_ERR_SESSION_NOT_STARTED:
@@ -364,7 +364,7 @@ const char *lttng_error_code_str(lttng_error_code code)
 	case LTTNG_ERR_MKDIR_FAIL_CONSUMER:
 		return "Directory creation failure on consumer";
 	case LTTNG_ERR_CHAN_NOT_FOUND:
-		return "Channel not found";
+		return "Event record channel not found";
 	case LTTNG_ERR_SNAPSHOT_UNSUPPORTED:
 		return "Session configuration does not allow the use of snapshots";
 	case LTTNG_ERR_SESSION_NOT_EXIST:
@@ -414,7 +414,7 @@ const char *lttng_error_code_str(lttng_error_code code)
 	case LTTNG_ERR_BUFFER_FLUSH_FAILED:
 		return "Failed to flush stream buffer";
 	case LTTNG_ERR_INVALID_RECLAMATION_POLICY:
-		return "Invalid reclamation policy for this channel";
+		return "Invalid reclamation policy for this event record channel";
 	case LTTNG_ERR_UNSUPPORTED_TRACE_FORMAT:
 		return "Trace format is not supported";
 	case LTTNG_ERR_NR:

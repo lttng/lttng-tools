@@ -515,13 +515,13 @@ int get_session_stats_str(const char *session_name, char **out_str)
 
 			ret = lttng_channel_get_discarded_event_count(channel, &discarded_events);
 			if (ret) {
-				ERR("Failed to retrieve discarded event count from channel %s",
+				ERR("Failed to retrieve discarded event count from event record channel %s",
 				    channel->name);
 			}
 
 			ret = lttng_channel_get_lost_packet_count(channel, &lost_packets);
 			if (ret) {
-				ERR("Failed to retrieve lost packet count from channel %s",
+				ERR("Failed to retrieve lost packet count from event record channel %s",
 				    channel->name);
 			}
 
@@ -538,18 +538,18 @@ int get_session_stats_str(const char *session_name, char **out_str)
 		ret = asprintf(&stats_str,
 			       "Warning: %" PRIu64 " events were discarded and %" PRIu64
 			       " packets were lost, please refer to "
-			       "the documentation on channel configuration.",
+			       "the documentation on event record channel configuration.",
 			       discarded_events_total,
 			       lost_packets_total);
 	} else if (print_discarded_events) {
 		ret = asprintf(&stats_str,
 			       "Warning: %" PRIu64 " events were discarded, please refer to "
-			       "the documentation on channel configuration.",
+			       "the documentation on event record channel configuration.",
 			       discarded_events_total);
 	} else if (print_lost_packets) {
 		ret = asprintf(&stats_str,
 			       "Warning: %" PRIu64 " packets were lost, please refer to "
-			       "the documentation on channel configuration.",
+			       "the documentation on event record channel configuration.",
 			       lost_packets_total);
 	} else {
 		ret = 0;

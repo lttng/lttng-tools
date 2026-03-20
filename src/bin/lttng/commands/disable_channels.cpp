@@ -136,7 +136,7 @@ int disable_channels(char *session_name, char *channel_list)
 
 		ret = lttng_disable_channel(handle, channel_name);
 		if (ret < 0) {
-			ERR("Channel %s: %s (session %s)",
+			ERR("Event record channel %s: %s (session %s)",
 			    channel_name,
 			    lttng_strerror(ret),
 			    session_name);
@@ -153,7 +153,7 @@ int disable_channels(char *session_name, char *channel_list)
 			success = false;
 
 		} else {
-			MSG("%s channel %s disabled for session %s",
+			MSG("%s event record channel %s disabled for session %s",
 			    lttng_domain_type_str(dom.type),
 			    channel_name,
 			    session_name);
@@ -242,14 +242,14 @@ int cmd_disable_channels(int argc, const char **argv)
 
 	arg_channel_list = poptGetArg(pc);
 	if (arg_channel_list == nullptr) {
-		ERR("Missing channel name(s).");
+		ERR("Missing event record channel name(s).");
 		ret = CMD_ERROR;
 		goto end;
 	}
 
 	channel_list = strdup(arg_channel_list);
 	if (channel_list == nullptr) {
-		PERROR("Failed to copy channel name");
+		PERROR("Failed to copy event record channel name");
 		ret = CMD_ERROR;
 		goto end;
 	}

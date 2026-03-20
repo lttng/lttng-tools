@@ -919,7 +919,8 @@ struct lttng_condition *_handle_condition_buffer_usage(int *argc,
 	status = lttng_condition_buffer_usage_set_channel_name(condition.get(),
 							       result.channel_name.c_str());
 	if (status != LTTNG_CONDITION_STATUS_OK) {
-		ERR_FMT("Failed to set buffer-usage condition channel name: {}", status);
+		ERR_FMT("Failed to set buffer-usage condition event record channel name: {}",
+			status);
 		return nullptr;
 	}
 

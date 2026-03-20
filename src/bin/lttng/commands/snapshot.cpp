@@ -351,7 +351,7 @@ int cmd_add_output(int argc, const char **argv)
 	if (ret < 0) {
 		switch (-ret) {
 		case LTTNG_ERR_SNAPSHOT_UNSUPPORTED:
-			ERR("Session \"%s\" contains a channel that is incompatible with the snapshot functionality.\nMake sure all channels are configured in 'mmap' output mode.",
+			ERR("Session \"%s\" contains an event record channel that is incompatible with the snapshot functionality.\nMake sure all event record channels are configured in 'mmap' output mode.",
 			    current_session_name);
 			ret = CMD_ERROR;
 			break;

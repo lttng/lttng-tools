@@ -270,7 +270,7 @@ void show_basic_help()
 	puts("  save              " CONFIG_CMD_DESCR_SAVE);
 	puts("  set-session       " CONFIG_CMD_DESCR_SET_SESSION);
 	puts("");
-	puts("Channels:");
+	puts("Event record channels:");
 	puts("  add-context       " CONFIG_CMD_DESCR_ADD_CONTEXT);
 	puts("  disable-channel   " CONFIG_CMD_DESCR_DISABLE_CHANNEL);
 	puts("  enable-channel    " CONFIG_CMD_DESCR_ENABLE_CHANNEL);

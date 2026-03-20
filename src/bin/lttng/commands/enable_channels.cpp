@@ -205,7 +205,7 @@ bool system_has_memory_for_channel_buffers(char *session_name,
 
 	if (total_num_subbuf > UINT64_MAX / channel->attr.subbuf_size) {
 		/* Overflow */
-		ERR_FMT("Integer overflow calculating total buffer size per CPU on channel '{}': num_subbuf={}, subbuf_size={}",
+		ERR_FMT("Integer overflow calculating total buffer size per CPU on event record channel '{}': num_subbuf={}, subbuf_size={}",
 			channel->name,
 			total_num_subbuf,
 			channel->attr.subbuf_size)
@@ -305,7 +305,7 @@ int enable_channel(char *session_name, char *channel_list)
 		}
 
 		if (opt_watchdog_timer.set && (dom.buf_type != LTTNG_BUFFER_PER_UID)) {
-			ERR("Watchdog timer is only valid for channels with the `user` ownership model");
+			ERR("Watchdog timer is only valid for event record channels with the `user` ownership model");
 			ret = CMD_ERROR;
 			goto error;
 		}
@@ -370,7 +370,7 @@ int enable_channel(char *session_name, char *channel_list)
 
 		/* Validate channel name's length */
 		if (strlen(channel_name) >= sizeof(chan_opts.name)) {
-			ERR("Channel name is too long (max. %zu characters)",
+			ERR("Event record channel name is too long (max. %zu characters)",
 			    sizeof(chan_opts.name) - 1);
 			error = 1;
 			goto skip_enable;
@@ -382,7 +382,7 @@ int enable_channel(char *session_name, char *channel_list)
 		 */
 		channel = lttng_channel_create(&dom);
 		if (!channel) {
-			ERR("Unable to create channel object");
+			ERR("Unable to create event record channel object");
 			error = 1;
 			goto error;
 		}
@@ -397,7 +397,7 @@ int enable_channel(char *session_name, char *channel_list)
 			ret = lttng_channel_set_monitor_timer_interval(channel,
 								       opt_monitor_timer.interval);
 			if (ret) {
-				ERR("Failed to set the channel's monitor timer interval");
+				ERR("Failed to set the event record channel's monitor timer interval");
 				error = 1;
 				goto error;
 			}
@@ -406,7 +406,7 @@ int enable_channel(char *session_name, char *channel_list)
 			ret = lttng_channel_set_watchdog_timer_interval(
 				channel, opt_watchdog_timer.interval);
 			if (ret != LTTNG_CHANNEL_STATUS_OK) {
-				ERR("Failed to set the channel's watchdog timer interval");
+				ERR("Failed to set the event record channel's watchdog timer interval");
 				error = 1;
 				goto error;
 			}
@@ -415,7 +415,7 @@ int enable_channel(char *session_name, char *channel_list)
 			ret = lttng_channel_set_blocking_timeout(channel,
 								 opt_blocking_timeout.value);
 			if (ret) {
-				ERR("Failed to set the channel's blocking timeout");
+				ERR("Failed to set the event record channel's blocking timeout");
 				error = 1;
 				goto error;
 			}
@@ -423,14 +423,14 @@ int enable_channel(char *session_name, char *channel_list)
 
 		ret = lttng_channel_set_allocation_policy(channel, opt_allocation_policy);
 		if (ret != LTTNG_OK) {
-			ERR("Failed to set the channel's buffer allocation");
+			ERR("Failed to set the event record channel's buffer allocation");
 			error = 1;
 			goto error;
 		}
 
 		ret = lttng_channel_set_preallocation_policy(channel, opt_preallocation_policy);
 		if (ret != LTTNG_CHANNEL_STATUS_OK) {
-			ERR("Failed to set the channel's buffer preallocation policy");
+			ERR("Failed to set the event record channel's buffer preallocation policy");
 			error = 1;
 			goto error;
 		}
@@ -444,7 +444,7 @@ int enable_channel(char *session_name, char *channel_list)
 				ret = lttng_channel_set_automatic_memory_reclamation_policy(
 					channel, reclaim_age);
 				if (ret != LTTNG_CHANNEL_STATUS_OK) {
-					ERR("Failed to set the channel's automatic memory reclamation policy to 'consumed'");
+					ERR("Failed to set the event record channel's automatic memory reclamation policy to 'consumed'");
 					error = 1;
 					goto error;
 				}
@@ -454,7 +454,7 @@ int enable_channel(char *session_name, char *channel_list)
 				ret = lttng_channel_set_automatic_memory_reclamation_policy(
 					channel, reclaim_age);
 				if (ret != LTTNG_CHANNEL_STATUS_OK) {
-					ERR("Failed to set the channel's automatic memory reclamation policy");
+					ERR("Failed to set the event record channel's automatic memory reclamation policy");
 					error = 1;
 					goto error;
 				}
@@ -466,7 +466,7 @@ int enable_channel(char *session_name, char *channel_list)
 
 		if (!system_has_memory_for_channel_buffers(
 			    session_name, channel, &bytes_required, &bytes_available)) {
-			ERR_FMT("Not enough system memory available for channel '{}'. At least {}MiB required, {}MiB available",
+			ERR_FMT("Not enough system memory available for event record channel '{}'. At least {}MiB required, {}MiB available",
 				channel->name,
 				bytes_required / 1024 / 1024,
 				bytes_available / 1024 / 1024);
@@ -487,8 +487,8 @@ int enable_channel(char *session_name, char *channel_list)
 				warn = 1;
 				break;
 			case LTTNG_ERR_INVALID_CHANNEL_NAME:
-				ERR("Invalid channel name: \"%s\". "
-				    "Channel names may not start with '.', and "
+				ERR("Invalid event record channel name: \"%s\". "
+				    "Event record channel names may not start with '.', and "
 				    "may not contain '/'.",
 				    channel_name);
 				msg_already_printed = true;
@@ -501,7 +501,7 @@ int enable_channel(char *session_name, char *channel_list)
 
 			if (!msg_already_printed) {
 				LOG(error ? PRINT_ERR : PRINT_WARN,
-				    "Failed to enable channel `%s` under session `%s`: %s",
+				    "Failed to enable event record channel `%s` under session `%s`: %s",
 				    channel_name,
 				    session_name,
 				    lttng_strerror(ret));
@@ -511,7 +511,7 @@ int enable_channel(char *session_name, char *channel_list)
 				print_kernel_tracer_status_error();
 			}
 		} else {
-			MSG("%s channel `%s` enabled for session `%s`",
+			MSG("%s event record channel `%s` enabled for session `%s`",
 			    lttng_domain_type_str(dom.type),
 			    channel_name,
 			    session_name);
@@ -1043,7 +1043,7 @@ int cmd_enable_channels(int argc, const char **argv)
 
 	arg_channel_list = poptGetArg(pc);
 	if (arg_channel_list == nullptr) {
-		ERR("Missing channel name.");
+		ERR("Missing event record channel name.");
 		ret = CMD_ERROR;
 		success = 0;
 		goto mi_closing;
@@ -1051,7 +1051,7 @@ int cmd_enable_channels(int argc, const char **argv)
 
 	channel_list = strdup(arg_channel_list);
 	if (channel_list == nullptr) {
-		PERROR("Failed to copy channel name");
+		PERROR("Failed to copy event record channel name");
 		ret = CMD_ERROR;
 		success = 0;
 		goto mi_closing;

@@ -87,7 +87,7 @@ void print_condition_buffer_usage(const struct lttng_condition *condition)
 	LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_OK);
 
 	MSG("    session name: %s", session_name);
-	MSG("    channel name: %s", channel_name);
+	MSG("    event record channel name: %s", channel_name);
 	MSG("    domain: %s", lttng_domain_type_str(domain_type));
 
 	condition_status = lttng_condition_buffer_usage_get_threshold(condition, &threshold);

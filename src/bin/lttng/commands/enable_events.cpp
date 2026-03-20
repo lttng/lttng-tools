@@ -733,7 +733,7 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 				/* Turn ret to positive value to handle the positive error code */
 				switch (-command_ret) {
 				case LTTNG_ERR_KERN_EVENT_EXIST:
-					WARN("Kernel event rule %s%s and attached to channel `%s` is already enabled (session `%s`)",
+					WARN("Kernel event rule %s%s and attached to event record channel `%s` is already enabled (session `%s`)",
 					     opt_enable_all ? "matching all events" :
 							      (std::string("with pattern `") +
 							       pattern + std::string("`"))
@@ -751,14 +751,14 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 					break;
 				}
 				case LTTNG_ERR_SDT_PROBE_SEMAPHORE:
-					ERR("Failed to enable event rule with pattern `%s` and attached to channel `%s` as SDT probes guarded by semaphores are not supported (session `%s`)",
+					ERR("Failed to enable event rule with pattern `%s` and attached to event record channel `%s` as SDT probes guarded by semaphores are not supported (session `%s`)",
 					    pattern.c_str(),
 					    print_channel_name(channel_name),
 					    session_name.c_str());
 					error = 1;
 					break;
 				default:
-					ERR("Failed to enable event rule %s%s and attached to channel `%s`: %s (session `%s`)",
+					ERR("Failed to enable event rule %s%s and attached to event record channel `%s`: %s (session `%s`)",
 					    opt_enable_all ? "matching all events" :
 							     (std::string("with pattern `") +
 							      pattern + std::string("`"))
@@ -783,7 +783,7 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 				case LTTNG_DOMAIN_KERNEL:
 				case LTTNG_DOMAIN_UST:
 				{
-					MSG("Enabled %s event rule %s%s and attached to channel `%s`",
+					MSG("Enabled %s event rule %s%s and attached to event record channel `%s`",
 					    lttng_domain_type_str(dom.type),
 					    opt_enable_all ? "matching all events" :
 							     (std::string("with pattern `") +
@@ -836,7 +836,7 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 			if (command_ret < 0) {
 				switch (-command_ret) {
 				case LTTNG_ERR_FILTER_EXIST:
-					WARN("An event rule %s%s and filter expression `%s` is already attached to channel `%s`",
+					WARN("An event rule %s%s and filter expression `%s` is already attached to event record channel `%s`",
 					     opt_enable_all ? "matching all events" :
 							      (std::string("with pattern `") +
 							       pattern + std::string("`"))
@@ -854,7 +854,7 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 					break;
 				}
 				default:
-					ERR("Failed to enable event rule %s%s, with filter expression `%s`, and attached to channel `%s`: %s (session `%s`)",
+					ERR("Failed to enable event rule %s%s, with filter expression `%s`, and attached to event record channel `%s`: %s (session `%s`)",
 					    opt_enable_all ? "matching all events" :
 							     (std::string("with pattern `") +
 							      pattern + std::string("`"))

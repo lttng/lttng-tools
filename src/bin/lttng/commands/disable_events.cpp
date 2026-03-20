@@ -228,7 +228,7 @@ int disable_events(char *session_name, char *event_list)
 		} else {
 			enabled = false;
 			success = true;
-			MSG("All %s events of type %s are disabled in channel %s",
+			MSG("All %s events of type %s are disabled in event record channel %s",
 			    lttng_domain_type_str(dom.type),
 			    print_event_type((lttng_event_type) opt_event_type),
 			    print_channel_name(channel_name));
@@ -253,7 +253,7 @@ int disable_events(char *session_name, char *event_list)
 			const int disable_ret =
 				lttng_disable_event_ext(handle, &event, channel_name, nullptr);
 			if (disable_ret < 0) {
-				ERR("%s of type %s : %s (channel %s, session %s)",
+				ERR("%s of type %s : %s (event record channel %s, session %s)",
 				    event_name,
 				    print_event_type((lttng_event_type) opt_event_type),
 				    lttng_strerror(disable_ret),
@@ -270,7 +270,7 @@ int disable_events(char *session_name, char *event_list)
 				enabled = true;
 				command_ret = CMD_ERROR;
 			} else {
-				MSG("%s %s of type %s disabled in channel %s for session %s",
+				MSG("%s %s of type %s disabled in event record channel %s for session %s",
 				    lttng_domain_type_str(dom.type),
 				    event_name,
 				    print_event_type((lttng_event_type) opt_event_type),

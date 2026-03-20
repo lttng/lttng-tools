@@ -1929,11 +1929,11 @@ std::unique_ptr<node> node_from_channel(const lttng::cli::session& session,
 	}
 
 	/* Final node */
-	return make_group_node(lttng::mint_format("[c]Channel `[!*]{}[/]`[/]", channel.name()),
-			       std::move(children),
-			       channel.is_enabled() ? group_node::type::ENABLED :
-						      group_node::type::DISABLED,
-			       std::move(tags));
+	return make_group_node(
+		lttng::mint_format("[c]Event record channel `[!*]{}[/]`[/]", channel.name()),
+		std::move(children),
+		channel.is_enabled() ? group_node::type::ENABLED : group_node::type::DISABLED,
+		std::move(tags));
 }
 
 /*
@@ -1962,8 +1962,10 @@ std::unique_ptr<node> node_from_domain(const lttng::cli::session& session,
 						     plural("event rule", event_rule_count)));
 	} else {
 		/* Kernel/UST domains: show channel count */
-		tags.emplace_back(lttng::mint_format(
-			"[y][!]{}[/] {}[/]", channels.size(), plural("channel", channels.size())));
+		tags.emplace_back(
+			lttng::mint_format("[y][!]{}[/] {}[/]",
+					   channels.size(),
+					   plural("event record channel", channels.size())));
 	}
 
 	return make_group_node(

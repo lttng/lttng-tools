@@ -768,12 +768,12 @@ int add_context(char *session_name)
 			success = 0;
 		} else {
 			if (opt_channel_name) {
-				MSG("%s context %s added to channel %s",
+				MSG("%s context %s added to event record channel %s",
 				    lttng_domain_type_str(dom.type),
 				    type->opt->symbol,
 				    opt_channel_name);
 			} else {
-				MSG("%s context %s added to all channels",
+				MSG("%s context %s added to all event record channels",
 				    lttng_domain_type_str(dom.type),
 				    type->opt->symbol);
 			}

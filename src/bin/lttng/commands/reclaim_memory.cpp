@@ -122,9 +122,10 @@ channel_name_set get_session_channel_names(const std::string& session_name,
 			const_cast<lttng_handle *>(handle.get()), &raw_channels);
 
 		if (channel_count < 0) {
-			LTTNG_THROW_CTL(fmt::format("Failed to list channels for session `{}`",
-						    handle->session_name),
-					static_cast<lttng_error_code>(-channel_count));
+			LTTNG_THROW_CTL(
+				fmt::format("Failed to list event record channels for session `{}`",
+					    handle->session_name),
+				static_cast<lttng_error_code>(-channel_count));
 		}
 
 		return lttng::ctl::channel_list(raw_channels, channel_count);
@@ -271,7 +272,8 @@ nonstd::optional<reclaim_config> parse_cli_args(int argc, const char **argv)
 	auto existing_channel_names =
 		get_session_channel_names(target_session_name, *target_domain);
 	if (!target_channel_names.empty() && target_all_channels) {
-		LTTNG_THROW_CLI_INVALID_USAGE("Cannot specify channel names with --all");
+		LTTNG_THROW_CLI_INVALID_USAGE(
+			"Cannot specify event record channel names with --all");
 	}
 
 	if (target_all_channels) {
@@ -281,10 +283,10 @@ nonstd::optional<reclaim_config> parse_cli_args(int argc, const char **argv)
 		for (const auto& chan_name : target_channel_names) {
 			if (existing_channel_names.find(chan_name) ==
 			    existing_channel_names.end()) {
-				LTTNG_THROW_INVALID_ARGUMENT_ERROR(
-					fmt::format("Channel `{}` does not exist in session `{}`",
-						    chan_name,
-						    target_session_name));
+				LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+					"Event record channel `{}` does not exist in session `{}`",
+					chan_name,
+					target_session_name));
 			}
 		}
 	}
@@ -325,10 +327,10 @@ reclaim_result execute_reclaim(const reclaim_config& config)
 			if (reclaim_status == LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_OK) {
 				return request_handle;
 			} else {
-				LTTNG_THROW_ERROR(
-					fmt::format("Failed to reclaim memory for channel `{}`: {}",
-						    channel_name,
-						    reclaim_status));
+				LTTNG_THROW_ERROR(fmt::format(
+					"Failed to reclaim memory for event record channel `{}`: {}",
+					channel_name,
+					reclaim_status));
 			}
 		}();
 
@@ -380,7 +382,7 @@ void run_and_print_human_readable(const reclaim_config& config)
 {
 	const auto result = execute_reclaim(config);
 	if (result.reclaimed_per_channel.empty()) {
-		fmt::print("No channels to reclaim.\n");
+		fmt::print("No event record channels to reclaim.\n");
 		return;
 	}
 
@@ -389,14 +391,14 @@ void run_and_print_human_readable(const reclaim_config& config)
 		const auto& reclaimed_amount = channel_result.second;
 
 		if (reclaimed_amount.deferred_subbuffers > 0) {
-			fmt::print("Channel `{}`: {} {} reclaimed, {} pending\n",
+			fmt::print("Event record channel `{}`: {} {} reclaimed, {} pending\n",
 				   channel_name,
 				   reclaimed_amount.immediate_subbuffers,
 				   reclaimed_amount.immediate_subbuffers == 1 ? "sub-buffer" :
 										"sub-buffers",
 				   reclaimed_amount.deferred_subbuffers);
 		} else {
-			fmt::print("Channel `{}`: {} {} reclaimed\n",
+			fmt::print("Event record channel `{}`: {} {} reclaimed\n",
 				   channel_name,
 				   reclaimed_amount.immediate_subbuffers,
 				   reclaimed_amount.immediate_subbuffers == 1 ? "sub-buffer" :
