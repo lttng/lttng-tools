@@ -142,6 +142,18 @@ pthread_mutex_t relayd_net_seq_idx_lock = PTHREAD_MUTEX_INITIALIZER;
 uint64_t relayd_net_seq_idx;
 
 /*
+ * Return true if the channel name corresponds to an agent sub-domain
+ * (JUL, Log4j, Log4j2, Python) rather than a plain UST channel.
+ */
+bool is_agent_channel_name(lttng::c_string_view channel_name)
+{
+	return channel_name == DEFAULT_JUL_CHANNEL_NAME ||
+		channel_name == DEFAULT_LOG4J_CHANNEL_NAME ||
+		channel_name == DEFAULT_LOG4J2_CHANNEL_NAME ||
+		channel_name == DEFAULT_PYTHON_CHANNEL_NAME;
+}
+
+/*
  * Convert lttng_tracking_policy to the new tracking_policy enum.
  */
 lsc::tracking_policy convert_tracking_policy(enum lttng_tracking_policy policy)
@@ -3032,26 +3044,26 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 	}
 	case LTTNG_DOMAIN_UST:
 	{
-		struct ltt_ust_channel *uchan;
-		struct ltt_ust_session *usess = session.ust_session;
-
-		LTTNG_ASSERT(usess);
+		auto& ust_domain = session.get_domain(lttng::domain_class::USER_SPACE);
 
 		/*
 		 * If a non-default channel has been created in the
 		 * session, explicitly require that -c chan_name needs
 		 * to be provided.
 		 */
-		if (usess->has_non_default_channel && channel_name[0] == '\0') {
+		if (ust_domain.has_non_default_channel() && channel_name[0] == '\0') {
 			return LTTNG_ERR_NEED_CHANNEL_NAME;
 		}
 
-		/* Get channel from global UST domain */
-		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels, channel_name);
-		if (uchan == nullptr) {
-			/* Create default channel */
-			const auto attr =
-				channel_new_default_attr(LTTNG_DOMAIN_UST, usess->buffer_type);
+		/*
+		 * If the channel doesn't exist in the domain config,
+		 * implicitly create a default one.
+		 */
+		try {
+			ust_domain.get_channel(user_visible_channel_name);
+		} catch (const lttng::sessiond::config::exceptions::channel_not_found_error&) {
+			const auto attr = channel_new_default_attr(
+				LTTNG_DOMAIN_UST, session.ust_session->buffer_type);
 
 			if (lttng_strncpy(attr->name, channel_name, sizeof(attr->name))) {
 				return LTTNG_ERR_INVALID;
@@ -3061,14 +3073,9 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 			if (ret != LTTNG_OK) {
 				return static_cast<lttng_error_code>(ret);
 			}
-
-			/* Get the newly created channel reference back */
-			uchan = trace_ust_find_channel_by_name(usess->domain_global.channels,
-							       channel_name);
-			LTTNG_ASSERT(uchan);
 		}
 
-		if (uchan->domain != LTTNG_DOMAIN_UST && !internal_event) {
+		if (is_agent_channel_name(user_visible_channel_name) && !internal_event) {
 			/*
 			 * Don't allow users to add UST events to channels which
 			 * are assigned to a userspace subdomain (JUL, Log4J,
@@ -3089,8 +3096,7 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 			}
 		}
 
-		auto& channel_config = session.get_domain(lttng::domain_class::USER_SPACE)
-					       .get_channel(user_visible_channel_name);
+		auto& channel_config = ust_domain.get_channel(user_visible_channel_name);
 
 		/*
 		 * Write the event rule configuration before performing the
