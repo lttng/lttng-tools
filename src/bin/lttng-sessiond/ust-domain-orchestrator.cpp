@@ -170,21 +170,6 @@ void ls::ust::domain_orchestrator::create_channel(
 		LTTNG_BUFFER_PER_UID;
 
 	/*
-	 * Detect the agent sub-domain from the channel name. Agent channels
-	 * (JUL, Log4j, Log4j2, Python) use well-known names.
-	 */
-	auto domain = LTTNG_DOMAIN_UST;
-	if (channel_config.name == DEFAULT_JUL_CHANNEL_NAME) {
-		domain = LTTNG_DOMAIN_JUL;
-	} else if (channel_config.name == DEFAULT_LOG4J_CHANNEL_NAME) {
-		domain = LTTNG_DOMAIN_LOG4J;
-	} else if (channel_config.name == DEFAULT_LOG4J2_CHANNEL_NAME) {
-		domain = LTTNG_DOMAIN_LOG4J2;
-	} else if (channel_config.name == DEFAULT_PYTHON_CHANNEL_NAME) {
-		domain = LTTNG_DOMAIN_PYTHON;
-	}
-
-	/*
 	 * Build the legacy lttng_channel and ltt_ust_channel structures.
 	 * The ltt_ust_channel is still needed by code paths outside of
 	 * the per-app synchronization (e.g. ust_app_enable_channel_glb,
@@ -202,7 +187,7 @@ void ls::ust::domain_orchestrator::create_channel(
 	}
 
 	auto uchan = lttng::make_unique_wrapper<ltt_ust_channel, trace_ust_destroy_channel>(
-		trace_ust_create_channel(lttng_channel.get(), domain));
+		trace_ust_create_channel(lttng_channel.get()));
 	if (!uchan) {
 		LTTNG_THROW_ALLOCATION_FAILURE_ERROR("Failed to create UST channel structure");
 	}

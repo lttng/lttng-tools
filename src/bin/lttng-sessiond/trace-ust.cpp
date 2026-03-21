@@ -159,8 +159,7 @@ error_alloc:
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
-						 enum lttng_domain_type domain)
+struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan)
 {
 	struct ltt_ust_channel *luc;
 
@@ -177,8 +176,6 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 		static_cast<const struct lttng_channel_extended *>(chan->attr.extended.ptr);
 	const auto allocation_policy =
 		static_cast<enum lttng_channel_allocation_policy>(extended->allocation_policy);
-
-	luc->domain = domain;
 
 	/* Copy UST channel attributes */
 	luc->attr.overwrite = chan->attr.overwrite;

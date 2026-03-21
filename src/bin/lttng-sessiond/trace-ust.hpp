@@ -34,11 +34,6 @@ struct ltt_ust_channel {
 	 * meaning outside of trace_class internals.
 	 */
 	uint64_t trace_class_stream_class_handle = 0;
-	/*
-	 * A UST channel can be part of a userspace sub-domain such as JUL,
-	 * Log4j, Log4j2, Python.
-	 */
-	enum lttng_domain_type domain = LTTNG_DOMAIN_NONE;
 	char name[LTTNG_UST_ABI_SYM_NAME_LEN] = {};
 	struct lttng_ust_abi_channel_attr attr = {};
 	struct lttng_ht_node_str node = {};
@@ -124,8 +119,7 @@ struct agent *trace_ust_find_agent(struct ltt_ust_session *session,
  * Create functions malloc() the data structure.
  */
 struct ltt_ust_session *trace_ust_create_session(uint64_t session_id);
-struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr,
-						 enum lttng_domain_type domain);
+struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr);
 
 void trace_ust_delete_channel(struct lttng_ht *ht, struct ltt_ust_channel *channel);
 
@@ -158,8 +152,6 @@ static inline struct ltt_ust_session *trace_ust_create_session(unsigned int sess
 }
 
 static inline struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr
-							       __attribute__((unused)),
-							       enum lttng_domain_type domain
 							       __attribute__((unused)))
 {
 	return NULL;
