@@ -151,6 +151,14 @@ ls::ust::domain_orchestrator::domain_orchestrator(
 
 ls::ust::domain_orchestrator::~domain_orchestrator() = default;
 
+std::uint64_t ls::ust::domain_orchestrator::trace_class_stream_class_handle(
+	const config::recording_channel_configuration& channel_config) const
+{
+	const auto it = _channel_handles.find(&channel_config);
+	LTTNG_ASSERT(it != _channel_handles.end());
+	return it->second;
+}
+
 void ls::ust::domain_orchestrator::create_channel(
 	const config::recording_channel_configuration& channel_config)
 {
@@ -178,9 +186,10 @@ void ls::ust::domain_orchestrator::create_channel(
 
 	/*
 	 * Build the legacy lttng_channel and ltt_ust_channel structures.
-	 * The per-app sync path still reads from ltt_ust_channel (name,
-	 * attributes, trace_class_stream_class_handle). This will be
-	 * eliminated when the sync path is internalized.
+	 * The ltt_ust_channel is still needed by code paths outside of
+	 * the per-app synchronization (e.g. ust_app_enable_channel_glb,
+	 * ust_app_disable_channel_glb). This will be eliminated as those
+	 * paths are internalized.
 	 */
 	auto lttng_channel = ls::make_lttng_channel(channel_config);
 
@@ -198,8 +207,9 @@ void ls::ust::domain_orchestrator::create_channel(
 		LTTNG_THROW_ALLOCATION_FAILURE_ERROR("Failed to create UST channel structure");
 	}
 
-	uchan->trace_class_stream_class_handle =
-		trace_ust_get_trace_class_stream_class_handle(&_ust_session);
+	const auto handle = _next_trace_class_stream_class_handle++;
+	uchan->trace_class_stream_class_handle = handle;
+	_channel_handles[&channel_config] = handle;
 
 	/* Lock buffer type on the session. */
 	if (!_ust_session.buffer_type_changed) {
@@ -224,7 +234,6 @@ void ls::ust::domain_orchestrator::create_channel(
 			       &uchan->attr,
 			       sizeof(_ust_session.metadata_attr));
 		}
-
 	}
 
 	DBG_FMT("UST domain orchestrator created channel: channel_name=`{}`, trace_class_stream_class_handle={}",
@@ -382,7 +391,7 @@ void ls::ust::domain_orchestrator::set_tracking_policy(config::process_attribute
 	 * updated configuration to all running applications if tracing is active.
 	 */
 	if (_active) {
-		ust_app_global_update_all(&_ust_session, _session.user_space_domain);
+		ust_app_global_update_all(&_ust_session, _session.user_space_domain, *this);
 	}
 }
 
@@ -390,7 +399,7 @@ void ls::ust::domain_orchestrator::track_process_attribute(config::process_attri
 							   std::uint64_t)
 {
 	if (_active) {
-		ust_app_global_update_all(&_ust_session, _session.user_space_domain);
+		ust_app_global_update_all(&_ust_session, _session.user_space_domain, *this);
 	}
 }
 
@@ -398,7 +407,7 @@ void ls::ust::domain_orchestrator::untrack_process_attribute(config::process_att
 							     std::uint64_t)
 {
 	if (_active) {
-		ust_app_global_update_all(&_ust_session, _session.user_space_domain);
+		ust_app_global_update_all(&_ust_session, _session.user_space_domain, *this);
 	}
 }
 
@@ -408,7 +417,7 @@ void ls::ust::domain_orchestrator::start()
 		return;
 	}
 
-	const auto ret = ust_app_start_trace_all(&_ust_session, _session.user_space_domain);
+	const auto ret = ust_app_start_trace_all(&_ust_session, _session.user_space_domain, *this);
 	if (ret < 0) {
 		LTTNG_THROW_CTL("Failed to start UST tracing", LTTNG_ERR_UST_START_FAIL);
 	}

@@ -14,6 +14,7 @@
 #include "testpoint.hpp"
 #include "thread.hpp"
 #include "ust-app.hpp"
+#include "ust-domain-orchestrator.hpp"
 
 #include <common/futex.hpp>
 #include <common/macros.hpp>
@@ -73,7 +74,11 @@ static void update_ust_app(int app_sock)
 			goto unlock_session;
 		}
 
-		ust_app_global_update(sess->ust_session, app->get(), sess->user_space_domain);
+		ust_app_global_update(sess->ust_session,
+				      app->get(),
+				      sess->user_space_domain,
+				      static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
+					      sess->get_ust_orchestrator()));
 	unlock_session:
 		session_unlock(sess);
 		session_put(sess);

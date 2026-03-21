@@ -101,6 +101,21 @@ ust_channel_type_to_allocation_policy(enum lttng_ust_abi_chan_type type)
 	}
 }
 
+static inline enum lttng_ust_abi_chan_type allocation_policy_to_ust_channel_type(
+	lttng::sessiond::config::recording_channel_configuration::buffer_allocation_policy_t policy)
+{
+	namespace lsc = lttng::sessiond::config;
+
+	switch (policy) {
+	case lsc::recording_channel_configuration::buffer_allocation_policy_t::PER_CPU:
+		return LTTNG_UST_ABI_CHAN_PER_CPU;
+	case lsc::recording_channel_configuration::buffer_allocation_policy_t::PER_CHANNEL:
+		return LTTNG_UST_ABI_CHAN_PER_CHANNEL;
+	default:
+		abort();
+	}
+}
+
 /*
  * Return the session registry according to the buffer type of the given
  * session.
@@ -3986,11 +4001,9 @@ error:
  */
 static int ust_app_channel_allocate(
 	const ust_app_session::locked_weak_ref& ua_sess,
-	struct ltt_ust_channel *uchan,
-	enum lttng_ust_abi_chan_type type,
-	struct ltt_ust_session *usess __attribute__((unused)),
 	struct ust_app_channel **ua_chanp,
-	const lttng::sessiond::config::recording_channel_configuration& channel_config)
+	const lttng::sessiond::config::recording_channel_configuration& channel_config,
+	std::uint64_t trace_class_stream_class_handle)
 {
 	int ret = 0;
 	struct lttng_ht_iter iter;
@@ -4000,22 +4013,24 @@ static int ust_app_channel_allocate(
 	ASSERT_RCU_READ_LOCKED();
 
 	/* Lookup channel in the ust app session */
-	lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &iter);
+	lttng_ht_lookup(ua_sess->channels, (void *) channel_config.name.c_str(), &iter);
 	ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
 	if (ua_chan_node != nullptr) {
 		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
 		goto end;
 	}
 
-	ua_chan = alloc_ust_app_channel(uchan->name, ua_sess, &uchan->attr, channel_config);
+	ua_chan = alloc_ust_app_channel(
+		channel_config.name.c_str(), ua_sess, nullptr, channel_config);
 	if (ua_chan == nullptr) {
 		/* Only malloc can fail here */
 		ret = -ENOMEM;
 		goto error;
 	}
 	init_ust_app_channel_from_config(ua_chan);
-	ua_chan->trace_class_stream_class_handle = uchan->trace_class_stream_class_handle;
-	ua_chan->attr.type = type;
+	ua_chan->trace_class_stream_class_handle = trace_class_stream_class_handle;
+	ua_chan->attr.type =
+		allocation_policy_to_ust_channel_type(channel_config.buffer_allocation_policy);
 
 end:
 	if (ua_chanp) {
@@ -5386,57 +5401,46 @@ is_context_redundant(const lttng::sessiond::config::recording_channel_configurat
 static int ust_app_channel_create(
 	struct ltt_ust_session *usess,
 	const ust_app_session::locked_weak_ref& ua_sess,
-	struct ltt_ust_channel *uchan,
 	struct ust_app *app,
 	struct ust_app_channel **_ua_chan,
-	const lttng::sessiond::config::recording_channel_configuration& channel_config)
+	const lttng::sessiond::config::recording_channel_configuration& channel_config,
+	std::uint64_t trace_class_stream_class_handle)
 {
 	int ret = 0;
 	struct ust_app_channel *ua_chan = nullptr;
 
-	if (!strncmp(uchan->name, DEFAULT_METADATA_NAME, sizeof(uchan->name))) {
-		copy_channel_attr_to_ustctl(&ua_sess->metadata_attr, &uchan->attr);
-		ret = 0;
-	} else {
-		/*
-		 * Create channel onto application and synchronize its
-		 * configuration.
-		 */
-		ret = ust_app_channel_allocate(
-			ua_sess,
-			uchan,
-			static_cast<enum lttng_ust_abi_chan_type>(uchan->attr.type),
-			usess,
-			&ua_chan,
-			channel_config);
-		if (ret < 0) {
-			goto error;
+	/*
+	 * Create channel onto application and synchronize its
+	 * configuration.
+	 */
+	ret = ust_app_channel_allocate(
+		ua_sess, &ua_chan, channel_config, trace_class_stream_class_handle);
+	if (ret < 0) {
+		goto error;
+	}
+
+	ret = ust_app_channel_send(app, usess, ua_sess, ua_chan);
+	if (ret) {
+		goto error;
+	}
+
+	/* Only publish the channel if successfully created on the tracer/consumer. */
+	lttng_ht_add_unique_str(ua_sess->channels, &ua_chan->node);
+
+	/* Add contexts. */
+	for (const auto& ctx_uptr : channel_config.get_contexts()) {
+		const auto& ctx_config = *ctx_uptr;
+
+		if (is_context_redundant(channel_config, ctx_config)) {
+			continue;
 		}
 
-		ret = ust_app_channel_send(app, usess, ua_sess, ua_chan);
+		auto ust_ctx_attr =
+			lttng::sessiond::ust::domain_orchestrator::make_ust_context_attr(
+				ctx_config);
+		ret = create_ust_app_channel_context(ua_chan, &ust_ctx_attr, app, ctx_config);
 		if (ret) {
 			goto error;
-		}
-
-		/* Only publish the channel if successfully created on the tracer/consumer. */
-		lttng_ht_add_unique_str(ua_sess->channels, &ua_chan->node);
-
-		/* Add contexts. */
-		for (const auto& ctx_uptr : channel_config.get_contexts()) {
-			const auto& ctx_config = *ctx_uptr;
-
-			if (is_context_redundant(channel_config, ctx_config)) {
-				continue;
-			}
-
-			auto ust_ctx_attr =
-				lttng::sessiond::ust::domain_orchestrator::make_ust_context_attr(
-					ctx_config);
-			ret = create_ust_app_channel_context(
-				ua_chan, &ust_ctx_attr, app, ctx_config);
-			if (ret) {
-				goto error;
-			}
 		}
 	}
 
@@ -6162,7 +6166,8 @@ end:
  * Start tracing for the UST session.
  */
 int ust_app_start_trace_all(struct ltt_ust_session *usess,
-			    const lttng::sessiond::config::domain& domain)
+			    const lttng::sessiond::config::domain& domain,
+			    const lttng::sessiond::ust::domain_orchestrator& orchestrator)
 {
 	DBG("Starting all UST traces");
 
@@ -6192,7 +6197,7 @@ int ust_app_start_trace_all(struct ltt_ust_session *usess,
 		/* Prevent app teardown during use. */
 		const ust_app_reference app_ref(app);
 
-		ust_app_global_update(usess, app, domain);
+		ust_app_global_update(usess, app, domain, orchestrator);
 	}
 
 	return 0;
@@ -6268,22 +6273,23 @@ static int find_or_create_ust_app_channel(
 	struct ltt_ust_session *usess,
 	const ust_app_session::locked_weak_ref& ua_sess,
 	struct ust_app *app,
-	struct ltt_ust_channel *uchan,
 	struct ust_app_channel **ua_chan,
-	const lttng::sessiond::config::recording_channel_configuration& channel_config)
+	const lttng::sessiond::config::recording_channel_configuration& channel_config,
+	std::uint64_t trace_class_stream_class_handle)
 {
 	int ret = 0;
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_str *ua_chan_node;
 
-	lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &iter);
+	lttng_ht_lookup(ua_sess->channels, (void *) channel_config.name.c_str(), &iter);
 	ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
 	if (ua_chan_node) {
 		*ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
 		goto end;
 	}
 
-	ret = ust_app_channel_create(usess, ua_sess, uchan, app, ua_chan, channel_config);
+	ret = ust_app_channel_create(
+		usess, ua_sess, app, ua_chan, channel_config, trace_class_stream_class_handle);
 	if (ret) {
 		goto end;
 	}
@@ -6459,10 +6465,12 @@ end:
 /*
  * RCU read lock must be held by the caller.
  */
-static void ust_app_synchronize_all_channels(struct ltt_ust_session *usess,
-					     const ust_app_session::locked_weak_ref& ua_sess,
-					     struct ust_app *app,
-					     const lttng::sessiond::config::domain& config_domain)
+static void
+ust_app_synchronize_all_channels(struct ltt_ust_session *usess,
+				 const ust_app_session::locked_weak_ref& ua_sess,
+				 struct ust_app *app,
+				 const lttng::sessiond::config::domain& config_domain,
+				 const lttng::sessiond::ust::domain_orchestrator& orchestrator)
 {
 	LTTNG_ASSERT(usess);
 	LTTNG_ASSERT(app);
@@ -6471,17 +6479,7 @@ static void ust_app_synchronize_all_channels(struct ltt_ust_session *usess,
 	for (const auto& chan_config : config_domain.recording_channels()) {
 		struct ust_app_channel *ua_chan;
 
-		/*
-		 * Look up the legacy ltt_ust_channel by name. This is a
-		 * transition shim: find_or_create_ust_app_channel still needs
-		 * the legacy structure. It will be eliminated once all
-		 * per-app creation code reads from the config directly.
-		 */
-		auto *uchan = trace_ust_find_channel_by_name(usess->domain_global.channels,
-							     chan_config.name.c_str());
-		if (!uchan) {
-			continue;
-		}
+		const auto handle = orchestrator.trace_class_stream_class_handle(chan_config);
 
 		/*
 		 * Search for a matching ust_app_channel. If none is found,
@@ -6491,7 +6489,7 @@ static void ust_app_synchronize_all_channels(struct ltt_ust_session *usess,
 		 * all enabled contexts will be added to the channel.
 		 */
 		int ret = find_or_create_ust_app_channel(
-			usess, ua_sess, app, uchan, &ua_chan, chan_config);
+			usess, ua_sess, app, &ua_chan, chan_config, handle);
 		if (ret) {
 			/* Tracer is probably gone or ENOMEM. */
 			goto end;
@@ -6529,7 +6527,8 @@ end:
  */
 static void ust_app_synchronize(struct ltt_ust_session *usess,
 				struct ust_app *app,
-				const lttng::sessiond::config::domain& config_domain)
+				const lttng::sessiond::config::domain& config_domain,
+				const lttng::sessiond::ust::domain_orchestrator& orchestrator)
 {
 	int ret = 0;
 	struct ust_app_session *ua_sess = nullptr;
@@ -6556,7 +6555,8 @@ static void ust_app_synchronize(struct ltt_ust_session *usess,
 	{
 		const lttng::urcu::read_lock_guard read_lock;
 
-		ust_app_synchronize_all_channels(usess, locked_ua_sess, app, config_domain);
+		ust_app_synchronize_all_channels(
+			usess, locked_ua_sess, app, config_domain, orchestrator);
 
 		/*
 		 * Create the metadata for the application. This returns gracefully if a
@@ -6595,7 +6595,8 @@ static void ust_app_global_destroy(struct ltt_ust_session *usess, struct ust_app
  */
 void ust_app_global_update(struct ltt_ust_session *usess,
 			   struct ust_app *app,
-			   const lttng::sessiond::config::domain& domain)
+			   const lttng::sessiond::config::domain& domain,
+			   const lttng::sessiond::ust::domain_orchestrator& orchestrator)
 {
 	namespace lsc = lttng::sessiond::config;
 
@@ -6617,7 +6618,7 @@ void ust_app_global_update(struct ltt_ust_session *usess,
 		 * Synchronize the application's internal tracing configuration
 		 * and start tracing.
 		 */
-		ust_app_synchronize(usess, app, domain);
+		ust_app_synchronize(usess, app, domain, orchestrator);
 		ust_app_start_trace(usess, app);
 	} else {
 		ust_app_global_destroy(usess, app);
@@ -6656,7 +6657,8 @@ void ust_app_global_update_event_notifier_rules(struct ust_app *app)
  * Called with session lock held.
  */
 void ust_app_global_update_all(struct ltt_ust_session *usess,
-			       const lttng::sessiond::config::domain& domain)
+			       const lttng::sessiond::config::domain& domain,
+			       const lttng::sessiond::ust::domain_orchestrator& orchestrator)
 {
 	/* Iterate on all apps. */
 	for (auto *app :
@@ -6670,7 +6672,7 @@ void ust_app_global_update_all(struct ltt_ust_session *usess,
 		/* Prevent app teardown during use. */
 		const ust_app_reference app_ref(app);
 
-		ust_app_global_update(usess, app, domain);
+		ust_app_global_update(usess, app, domain, orchestrator);
 	}
 }
 

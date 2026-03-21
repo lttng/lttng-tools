@@ -48,6 +48,7 @@ class context_configuration;
 } /* namespace config */
 namespace ust {
 class trace_class;
+class domain_orchestrator;
 } /* namespace ust */
 } /* namespace sessiond */
 } /* namespace lttng */
@@ -529,7 +530,8 @@ int ust_app_register_done(struct ust_app *app);
 int ust_app_version(struct ust_app *app);
 void ust_app_unregister_by_socket(int sock);
 int ust_app_start_trace_all(struct ltt_ust_session *usess,
-			    const lttng::sessiond::config::domain& domain);
+			    const lttng::sessiond::config::domain& domain,
+			    const lttng::sessiond::ust::domain_orchestrator& orchestrator);
 int ust_app_stop_trace_all(struct ltt_ust_session *usess);
 int ust_app_destroy_trace_all(struct ltt_ust_session *usess);
 int ust_app_list_events(struct lttng_event **events);
@@ -551,9 +553,11 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 				const lttng::sessiond::config::context_configuration& ctx_config);
 void ust_app_global_update(struct ltt_ust_session *usess,
 			   struct ust_app *app,
-			   const lttng::sessiond::config::domain& domain);
+			   const lttng::sessiond::config::domain& domain,
+			   const lttng::sessiond::ust::domain_orchestrator& orchestrator);
 void ust_app_global_update_all(struct ltt_ust_session *usess,
-			       const lttng::sessiond::config::domain& domain);
+			       const lttng::sessiond::config::domain& domain,
+			       const lttng::sessiond::ust::domain_orchestrator& orchestrator);
 void ust_app_global_update_event_notifier_rules(struct ust_app *app);
 void ust_app_global_update_all_event_notifier_rules();
 
@@ -628,9 +632,11 @@ static inline int ust_app_start_trace(struct ltt_ust_session *usess __attribute_
 	return 0;
 }
 
-static inline int ust_app_start_trace_all(struct ltt_ust_session *usess __attribute__((unused)),
-					  const lttng::sessiond::config::domain& domain
-					  __attribute__((unused)))
+static inline int
+ust_app_start_trace_all(struct ltt_ust_session *usess __attribute__((unused)),
+			const lttng::sessiond::config::domain& domain __attribute__((unused)),
+			const lttng::sessiond::ust::domain_orchestrator& orchestrator
+			__attribute__((unused)))
 {
 	return 0;
 }
@@ -690,16 +696,20 @@ static inline int ust_app_ht_alloc(void)
 	return 0;
 }
 
-static inline void ust_app_global_update(struct ltt_ust_session *usess __attribute__((unused)),
-					 struct ust_app *app __attribute__((unused)),
-					 const lttng::sessiond::config::domain& domain
-					 __attribute__((unused)))
+static inline void
+ust_app_global_update(struct ltt_ust_session *usess __attribute__((unused)),
+		      struct ust_app *app __attribute__((unused)),
+		      const lttng::sessiond::config::domain& domain __attribute__((unused)),
+		      const lttng::sessiond::ust::domain_orchestrator& orchestrator
+		      __attribute__((unused)))
 {
 }
 
-static inline void ust_app_global_update_all(struct ltt_ust_session *usess __attribute__((unused)),
-					     const lttng::sessiond::config::domain& domain
-					     __attribute__((unused)))
+static inline void
+ust_app_global_update_all(struct ltt_ust_session *usess __attribute__((unused)),
+			  const lttng::sessiond::config::domain& domain __attribute__((unused)),
+			  const lttng::sessiond::ust::domain_orchestrator& orchestrator
+			  __attribute__((unused)))
 {
 }
 

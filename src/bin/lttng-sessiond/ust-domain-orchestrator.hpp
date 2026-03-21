@@ -109,6 +109,20 @@ public:
 	static lttng_ust_context_attr
 	make_ust_context_attr(const config::context_configuration& context_config);
 
+	/*
+	 * Return the trace class stream class handle assigned to a
+	 * recording channel configuration. This handle is used by the
+	 * per-app sync path as a key for trace_class::add_channel() and
+	 * buffer_reg_channel lookups.
+	 *
+	 * This is a transitional accessor: it will be eliminated once
+	 * the orchestrator owns trace class and buffer registry
+	 * creation directly (at which point the handle becomes an
+	 * internal detail).
+	 */
+	std::uint64_t trace_class_stream_class_handle(
+		const config::recording_channel_configuration& channel_config) const;
+
 private:
 	ltt_ust_session& _ust_session;
 	const ltt_session& _session;
@@ -123,6 +137,22 @@ private:
 	 * and event management are fully internalized.
 	 */
 	std::unordered_set<const config::event_rule_configuration *> _created_event_rules;
+
+	/*
+	 * Monotonically increasing counter used to assign a unique
+	 * trace class stream class handle to each recording channel.
+	 * This handle serves as the key for trace_class::add_channel()
+	 * and buffer_reg_channel lookups until the orchestrator owns
+	 * those subsystems directly.
+	 */
+	std::uint64_t _next_trace_class_stream_class_handle = 0;
+
+	/*
+	 * Maps each recording channel configuration to the trace class
+	 * stream class handle assigned at channel creation time.
+	 */
+	std::unordered_map<const config::recording_channel_configuration *, std::uint64_t>
+		_channel_handles;
 
 	static void
 	_validate_channel_attributes(const config::recording_channel_configuration& channel_config);
