@@ -2044,10 +2044,6 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 				}
 			}
 
-			if (new_channel_attr->name[0] != '\0') {
-				usess->has_non_default_channel = 1;
-			}
-
 			/*
 			 * Implicitly add "cpu_id" context to UST domain channels with the
 			 * "per-cpu" allocation policy on creation.
