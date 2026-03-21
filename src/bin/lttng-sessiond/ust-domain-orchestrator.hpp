@@ -123,6 +123,30 @@ public:
 	std::uint64_t trace_class_stream_class_handle(
 		const config::recording_channel_configuration& channel_config) const;
 
+	/*
+	 * Find or create a per-UID trace class for the given (uid, abi)
+	 * combination. The orchestrator owns the returned trace_class
+	 * (via unique_ptr in _per_uid_trace_classes). The caller receives
+	 * a reference and must NOT delete it.
+	 *
+	 * This is called from the per-app sync path
+	 * (setup_buffer_reg_uid) which supplies app-specific parameters
+	 * (ABI, tracer version, shared memory paths). Parameters that
+	 * come from the session (trace_format, uid, gid, tracing_id) are
+	 * obtained internally from _session and _ust_session.
+	 *
+	 * If a trace_class already exists for the key, the existing one
+	 * is returned and the creation parameters are ignored (the first
+	 * app for a given uid/abi pair determines the trace_class).
+	 */
+	ust::trace_class& find_or_create_per_uid_trace_class(uid_t uid,
+							     application_abi abi,
+							     const trace::abi& tracer_abi,
+							     std::uint32_t tracer_major,
+							     std::uint32_t tracer_minor,
+							     const char *root_shm_path,
+							     const char *shm_path);
+
 private:
 	ltt_ust_session& _ust_session;
 	const ltt_session& _session;

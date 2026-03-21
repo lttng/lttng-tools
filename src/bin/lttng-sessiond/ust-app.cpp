@@ -2921,29 +2921,33 @@ static int setup_buffer_reg_uid(struct ltt_ust_session *usess,
 		goto end;
 	}
 
-	/* Initialize registry. */
+	/*
+	 * Get the trace class from the orchestrator (which owns it).
+	 * The buffer registry stores a borrowed (non-owning) raw pointer.
+	 */
 	{
 		const auto session = ltt_session::find_session(ua_sess->tracing_id);
-		reg_uid->registry->reg.ust = ust_trace_class_per_uid_create(session->trace_format,
-									    app->abi,
-									    app->version.major,
-									    app->version.minor,
-									    reg_uid->root_shm_path,
-									    reg_uid->shm_path,
-									    usess->uid,
-									    usess->gid,
-									    ua_sess->tracing_id,
-									    app->uid);
-	}
-	if (!reg_uid->registry->reg.ust) {
-		/*
-		 * reg_uid->registry->reg.ust is NULL upon error, so we need to
-		 * destroy the buffer registry, because it is always expected
-		 * that if the buffer registry can be found, its ust registry is
-		 * non-NULL.
-		 */
-		buffer_reg_uid_destroy(reg_uid, nullptr);
-		goto error;
+		auto& orchestrator =
+			static_cast<lsu::domain_orchestrator&>(session->get_ust_orchestrator());
+
+		const auto app_abi = app->abi.bits_per_long == 32 ? lsu::application_abi::ABI_32 :
+								    lsu::application_abi::ABI_64;
+
+		try {
+			auto& tc = orchestrator.find_or_create_per_uid_trace_class(
+				app->uid,
+				app_abi,
+				app->abi,
+				app->version.major,
+				app->version.minor,
+				reg_uid->root_shm_path,
+				reg_uid->shm_path);
+			reg_uid->registry->reg.ust = &tc;
+		} catch (const std::exception& ex) {
+			ERR("Failed to create per-uid trace class: %s", ex.what());
+			buffer_reg_uid_destroy(reg_uid, nullptr);
+			goto error;
+		}
 	}
 
 	/* Add node to teardown list of the session. */

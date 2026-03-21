@@ -15,6 +15,7 @@
 #include "trace-ust.hpp"
 #include "ust-app.hpp"
 #include "ust-domain-orchestrator.hpp"
+#include "ust-registry.hpp"
 
 #include <common/defaults.hpp>
 #include <common/error.hpp>
@@ -157,6 +158,51 @@ std::uint64_t ls::ust::domain_orchestrator::trace_class_stream_class_handle(
 	const auto it = _channel_handles.find(&channel_config);
 	LTTNG_ASSERT(it != _channel_handles.end());
 	return it->second;
+}
+
+ls::ust::trace_class& ls::ust::domain_orchestrator::find_or_create_per_uid_trace_class(
+	uid_t uid,
+	application_abi abi,
+	const lttng::sessiond::trace::abi& tracer_abi,
+	std::uint32_t tracer_major,
+	std::uint32_t tracer_minor,
+	const char *root_shm_path,
+	const char *shm_path)
+{
+	LTTNG_ASSERT(_default_buffer_ownership ==
+		     lsc::recording_channel_configuration::owership_model_t::PER_UID);
+
+	const _per_uid_trace_class_key key = { uid, abi };
+	const auto it = _per_uid_trace_classes.find(key);
+	if (it != _per_uid_trace_classes.end()) {
+		return *it->second;
+	}
+
+	std::unique_ptr<ust::trace_class> tc(ust_trace_class_per_uid_create(_session.trace_format,
+									    tracer_abi,
+									    tracer_major,
+									    tracer_minor,
+									    root_shm_path,
+									    shm_path,
+									    _ust_session.uid,
+									    _ust_session.gid,
+									    _session.id,
+									    uid));
+	if (!tc) {
+		LTTNG_THROW_ERROR(
+			lttng::format("Failed to create per-UID trace class: uid={}, abi={}",
+				      uid,
+				      static_cast<int>(abi)));
+	}
+
+	auto& ref = *tc;
+	_per_uid_trace_classes.emplace(key, std::move(tc));
+
+	DBG_FMT("UST domain orchestrator created per-UID trace class: uid={}, abi={}",
+		uid,
+		static_cast<int>(abi));
+
+	return ref;
 }
 
 void ls::ust::domain_orchestrator::create_channel(

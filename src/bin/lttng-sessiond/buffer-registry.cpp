@@ -595,6 +595,14 @@ static void buffer_reg_session_destroy(struct buffer_reg_session *regp,
 
 	switch (domain) {
 	case LTTNG_DOMAIN_UST:
+		/*
+		 * reg.ust may be null if the trace_class is owned by the
+		 * UST domain orchestrator (per-UID mode). In that case,
+		 * the orchestrator's destructor handles deletion.
+		 *
+		 * For per-PID trace classes (still owned by buffer_reg),
+		 * reg.ust is non-null and must be deleted here.
+		 */
 		ust_trace_class_destroy(regp->reg.ust);
 		break;
 	default:
@@ -684,6 +692,14 @@ void buffer_reg_uid_destroy(struct buffer_reg_uid *regp, struct consumer_output 
 	}
 
 destroy:
+	/*
+	 * The per-UID trace_class is owned by the UST domain orchestrator.
+	 * Null the borrowed pointer so that buffer_reg_session_destroy()
+	 * (called from the deferred RCU callback) does not delete it.
+	 * The orchestrator's destructor handles the actual deletion.
+	 */
+	regp->registry->reg.ust = nullptr;
+
 	call_rcu(&regp->node.head, rcu_free_buffer_reg_uid);
 }
 
