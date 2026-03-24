@@ -2631,7 +2631,7 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 		    ltt_session::locked_ref& locked_session,
 		    const struct lttng_event_context *event_context)
 {
-	int ret, chan_ust_created = 0;
+	int ret;
 	const enum lttng_domain_type domain_type = cmd_ctx->lsm.domain.type;
 	const struct ltt_session& session = *locked_session;
 	const char *channel_name = cmd_ctx->lsm.u.context.channel_name;
@@ -2816,16 +2816,6 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 	goto end;
 
 error:
-
-	if (chan_ust_created) {
-		struct ltt_ust_channel *uchan = trace_ust_find_channel_by_name(
-			session.ust_session->domain_global.channels, DEFAULT_CHANNEL_NAME);
-		/* Created previously, this should NOT fail. */
-		LTTNG_ASSERT(uchan);
-		/* Remove from the channel list of the session. */
-		trace_ust_delete_channel(session.ust_session->domain_global.channels, uchan);
-		trace_ust_destroy_channel(uchan);
-	}
 end:
 	return ret;
 }
