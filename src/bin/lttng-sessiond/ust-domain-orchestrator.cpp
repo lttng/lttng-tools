@@ -9,7 +9,6 @@
 #include "consumer.hpp"
 #include "context-configuration.hpp"
 #include "event-rule-configuration.hpp"
-#include "lttng-channel-from-config.hpp"
 #include "lttng-sessiond.hpp"
 #include "lttng-ust-error.hpp"
 #include "recording-channel-configuration.hpp"
@@ -217,31 +216,7 @@ void ls::ust::domain_orchestrator::create_channel(
 		LTTNG_BUFFER_PER_PID :
 		LTTNG_BUFFER_PER_UID;
 
-	/*
-	 * Build the legacy lttng_channel and ltt_ust_channel structures.
-	 * The ltt_ust_channel is still needed by code paths outside of
-	 * the per-app synchronization (e.g. ust_app_enable_channel_glb,
-	 * ust_app_disable_channel_glb). This will be eliminated as those
-	 * paths are internalized.
-	 */
-	auto lttng_channel = ls::make_lttng_channel(channel_config);
-
-	if (lttng_channel->attr.overwrite == DEFAULT_CHANNEL_OVERWRITE) {
-		lttng_channel->attr.overwrite = !!_ust_session.snapshot_mode;
-	}
-
-	if (_ust_session.snapshot_mode) {
-		lttng_channel->attr.output = LTTNG_EVENT_MMAP;
-	}
-
-	auto uchan = lttng::make_unique_wrapper<ltt_ust_channel, trace_ust_destroy_channel>(
-		trace_ust_create_channel(lttng_channel.get()));
-	if (!uchan) {
-		LTTNG_THROW_ALLOCATION_FAILURE_ERROR("Failed to create UST channel structure");
-	}
-
 	const auto handle = _next_trace_class_stream_class_handle++;
-	uchan->trace_class_stream_class_handle = handle;
 	_channel_handles[&channel_config] = handle;
 
 	/* Lock buffer type on the session. */
@@ -252,30 +227,9 @@ void ls::ust::domain_orchestrator::create_channel(
 		LTTNG_THROW_CTL("Buffer type mismatch", LTTNG_ERR_BUFFER_TYPE_MISMATCH);
 	}
 
-	/*
-	 * Add the channel to the legacy hash table. Metadata channels
-	 * are handled specially: their attributes are copied to the
-	 * session instead of being added to the hash table.
-	 */
-	{
-		const lttng::urcu::read_lock_guard rcu_read_lock;
-
-		if (lttng::c_string_view(uchan->name) != DEFAULT_METADATA_NAME) {
-			lttng_ht_add_unique_str(_ust_session.domain_global.channels, &uchan->node);
-		} else {
-			memcpy(&_ust_session.metadata_attr,
-			       &uchan->attr,
-			       sizeof(_ust_session.metadata_attr));
-		}
-	}
-
 	DBG_FMT("UST domain orchestrator created channel: channel_name=`{}`, trace_class_stream_class_handle={}",
 		channel_config.name.c_str(),
-		uchan->trace_class_stream_class_handle);
-
-	/* Channel is now owned by the hash table. */
-	/* NOLINTNEXTLINE(bugprone-unused-return-value) */
-	uchan.release();
+		handle);
 }
 
 void ls::ust::domain_orchestrator::_validate_channel_attributes(

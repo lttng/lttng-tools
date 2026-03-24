@@ -3533,11 +3533,8 @@ int cmd_start_trace(const ltt_session::locked_ref& session)
 {
 	enum lttng_error_code ret;
 	unsigned long nb_chan = 0;
-	struct ltt_ust_session *usess;
 	const bool session_rotated_after_last_stop = session->rotated_after_last_stop;
 	const bool session_cleared_after_last_stop = session->cleared_after_last_stop;
-
-	usess = session->ust_session;
 
 	/* Is the session already started? */
 	if (session->active) {
@@ -3566,8 +3563,8 @@ int cmd_start_trace(const ltt_session::locked_ref& session)
 	 * Starting a session without channel is useless since after that it's not
 	 * possible to enable channel thus inform the client.
 	 */
-	if (usess && usess->domain_global.channels) {
-		nb_chan += lttng_ht_get_count(usess->domain_global.channels);
+	if (session->ust_orchestrator) {
+		nb_chan += session->user_space_domain.recording_channel_count();
 	}
 	if (session->kernel_orchestrator) {
 		nb_chan += session->kernel_space_domain.recording_channel_count();

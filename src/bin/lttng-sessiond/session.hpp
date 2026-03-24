@@ -149,19 +149,19 @@ private:
 	class _channel_filter_spec final {
 	public:
 		explicit _channel_filter_spec(
-			const lttng::c_string_view target_name,
+			lttng::c_string_view target_name,
 			nonstd::optional<std::uint64_t> config_key = nonstd::nullopt) noexcept :
 			name(target_name), _config_key(config_key)
 		{
 			/*
-			 * A metadata channel doesn't have a config key (the 'id' of a matching
-			 * ltt_ust_channel instance).
+			 * A metadata channel doesn't have a config key; a
+			 * data channel must have one.
 			 */
 			LTTNG_ASSERT((target_name == DEFAULT_METADATA_NAME) !=
-				     config_key.has_value());
+				     _config_key.has_value());
 		}
 
-		const lttng::c_string_view name;
+		lttng::c_string_view name;
 		bool is_metadata() const noexcept
 		{
 			return !_config_key.has_value();
@@ -174,8 +174,7 @@ private:
 		}
 
 	private:
-		/* Unique ID of the channel's ltt_ust_channel instance. */
-		const nonstd::optional<std::uint64_t> _config_key;
+		nonstd::optional<std::uint64_t> _config_key;
 	};
 
 	struct _iterator_creation_context final {
@@ -342,51 +341,21 @@ public:
 private:
 	user_space_consumer_channel_keys(const ltt_ust_session& ust_session,
 					 lttng_ht& apps,
-					 lttng::c_string_view channel_name_filter) :
-		_creation_context{ _iteration_mode::PER_PID,
-				   ust_session,
-				   &apps,
-				   _filter_from_channel_name(ust_session, channel_name_filter) }
+					 nonstd::optional<_channel_filter_spec> channel_filter) :
+		_creation_context{
+			_iteration_mode::PER_PID, ust_session, &apps, std::move(channel_filter)
+		}
 	{
 	}
 
 	user_space_consumer_channel_keys(const ltt_ust_session& ust_session,
 					 const cds_list_head& buffer_registry,
-					 lttng::c_string_view channel_name_filter) :
+					 nonstd::optional<_channel_filter_spec> channel_filter) :
 		_creation_context{ _iteration_mode::PER_UID,
 				   ust_session,
 				   &buffer_registry,
-				   _filter_from_channel_name(ust_session, channel_name_filter) }
-
+				   std::move(channel_filter) }
 	{
-	}
-
-	static nonstd::optional<_channel_filter_spec>
-	_filter_from_channel_name(const ltt_ust_session& ust_session,
-				  lttng::c_string_view channel_name)
-	{
-		if (!channel_name) {
-			/* No filter if no channel name is provided. */
-			return nonstd::nullopt;
-		}
-
-		if (channel_name == DEFAULT_METADATA_NAME) {
-			/*
-			 * Metadata channel is special, it has no config key since
-			 * it is not part of the ltt_ust_session's channels.
-			 */
-			return _channel_filter_spec(channel_name);
-		}
-
-		const lttng::urcu::read_lock_guard read_lock;
-		auto *ust_channel = trace_ust_find_channel_by_name(
-			ust_session.domain_global.channels, channel_name.data());
-		if (!ust_channel) {
-			LTTNG_THROW_CHANNEL_NOT_FOUND_BY_NAME_ERROR(channel_name);
-		}
-
-		return _channel_filter_spec(channel_name,
-					    ust_channel->trace_class_stream_class_handle);
 	}
 
 	class _scoped_rcu_read_lock {

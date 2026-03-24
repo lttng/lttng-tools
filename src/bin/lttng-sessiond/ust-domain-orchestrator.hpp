@@ -10,11 +10,15 @@
 
 #include "domain-orchestrator.hpp"
 #include "recording-channel-configuration.hpp"
+
+#include <cstdint>
+
+#ifdef HAVE_LIBLTTNG_UST_CTL
+
 #include "ust-application-abi.hpp"
 #include "ust-stream-group.hpp"
 #include "ust-trace-class.hpp"
 
-#include <cstdint>
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
@@ -305,5 +309,34 @@ private:
 } /* namespace ust */
 } /* namespace sessiond */
 } /* namespace lttng */
+
+#else /* !HAVE_LIBLTTNG_UST_CTL */
+
+namespace lttng {
+namespace sessiond {
+namespace ust {
+
+/*
+ * Stub definition for builds without lttng-ust. The class is never
+ * instantiated; it exists only so that code which static_casts a
+ * domain_orchestrator reference and calls trace_class_stream_class_handle()
+ * can compile and link. The method aborts since reaching it would indicate
+ * a logic error.
+ */
+class domain_orchestrator final : public sessiond::domain_orchestrator {
+public:
+	std::uint64_t trace_class_stream_class_handle(
+		const config::recording_channel_configuration& channel_config
+		[[maybe_unused]]) const
+	{
+		std::abort();
+	}
+};
+
+} /* namespace ust */
+} /* namespace sessiond */
+} /* namespace lttng */
+
+#endif /* HAVE_LIBLTTNG_UST_CTL */
 
 #endif /* LTTNG_SESSIOND_UST_DOMAIN_ORCHESTRATOR_HPP */

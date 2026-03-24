@@ -15,6 +15,7 @@
 #include "timer.hpp"
 #include "trace-ust.hpp"
 #include "ust-app.hpp"
+#include "ust-domain-orchestrator.hpp"
 #include "utils.hpp"
 
 #include <common/common.hpp>
@@ -1537,13 +1538,32 @@ std::unique_lock<std::mutex> ls::lock_session_list()
 lttng::sessiond::user_space_consumer_channel_keys
 ltt_session::user_space_consumer_channel_keys(lttng::c_string_view channel_name_filter) const
 {
+	using _channel_filter_spec = ls::user_space_consumer_channel_keys::_channel_filter_spec;
+
+	/* Compute the filter once, using the orchestrator and config domain. */
+	nonstd::optional<_channel_filter_spec> filter;
+	if (channel_name_filter) {
+		if (channel_name_filter == DEFAULT_METADATA_NAME) {
+			filter = _channel_filter_spec(channel_name_filter);
+		} else {
+			const auto& ust_domain = user_space_domain;
+			const auto& channel_config = ust_domain.get_channel(channel_name_filter);
+			const auto& ust_orch = static_cast<const ls::ust::domain_orchestrator&>(
+				get_ust_orchestrator());
+			const auto handle =
+				ust_orch.trace_class_stream_class_handle(channel_config);
+
+			filter = _channel_filter_spec(channel_name_filter, handle);
+		}
+	}
+
 	switch (ust_session->buffer_type) {
 	case LTTNG_BUFFER_PER_PID:
 		return lttng::sessiond::user_space_consumer_channel_keys(
-			*ust_session, *ust_app_get_all(), channel_name_filter);
+			*ust_session, *ust_app_get_all(), std::move(filter));
 	case LTTNG_BUFFER_PER_UID:
 		return lttng::sessiond::user_space_consumer_channel_keys(
-			*ust_session, ust_session->buffer_reg_uid_list, channel_name_filter);
+			*ust_session, ust_session->buffer_reg_uid_list, std::move(filter));
 	default:
 		abort();
 	}

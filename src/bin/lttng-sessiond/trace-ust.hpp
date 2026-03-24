@@ -11,12 +11,10 @@
 
 #include "consumer.hpp"
 #include "lttng-ust-ctl.hpp"
-#include "recording-channel-configuration.hpp"
 
 #include <common/defaults.hpp>
 #include <common/fs-utils.hpp>
 #include <common/hashtable/hashtable.hpp>
-#include <common/optional.hpp>
 
 #include <lttng/lttng.h>
 
@@ -25,23 +23,8 @@
 
 struct agent;
 
-/* UST channel */
-struct ltt_ust_channel {
-	/*
-	 * Opaque handle used to look up the stream_class within a
-	 * trace_class (via trace_class::channel()). This is NOT the CTF
-	 * stream class ID; it is a hash table key with no semantic
-	 * meaning outside of trace_class internals.
-	 */
-	uint64_t trace_class_stream_class_handle = 0;
-	char name[LTTNG_UST_ABI_SYM_NAME_LEN] = {};
-	struct lttng_ust_abi_channel_attr attr = {};
-	struct lttng_ht_node_str node = {};
-};
-
 /* UST domain global (LTTNG_DOMAIN_UST) */
 struct ltt_ust_domain_global {
-	struct lttng_ht *channels;
 	struct cds_list_head registry_buffer_uid_list;
 };
 
@@ -105,50 +88,21 @@ static inline uint64_t trace_ust_get_trace_class_stream_class_handle(struct ltt_
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
-/*
- * Lookup functions. NULL is returned if not found.
- */
-struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht, const char *name);
 struct agent *trace_ust_find_agent(struct ltt_ust_session *session,
 				   enum lttng_domain_type domain_type);
 
-/*
- * Create functions malloc() the data structure.
- */
 struct ltt_ust_session *trace_ust_create_session(uint64_t session_id);
-struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr);
-
-void trace_ust_delete_channel(struct lttng_ht *ht, struct ltt_ust_channel *channel);
 
 int trace_ust_regenerate_metadata(struct ltt_ust_session *usess);
 
-/*
- * Destroy functions free() the data structure and remove from linked list if
- * it's applies.
- */
 void trace_ust_destroy_session(struct ltt_ust_session *session);
-void trace_ust_destroy_channel(struct ltt_ust_channel *channel);
 void trace_ust_free_session(struct ltt_ust_session *session);
 
 bool trace_ust_runtime_ctl_version_matches_build_version();
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
-static inline struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht
-								     __attribute__((unused)),
-								     const char *name
-								     __attribute__((unused)))
-{
-	return NULL;
-}
-
 static inline struct ltt_ust_session *trace_ust_create_session(unsigned int session_id
-							       __attribute__((unused)))
-{
-	return NULL;
-}
-
-static inline struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr
 							       __attribute__((unused)))
 {
 	return NULL;
@@ -159,19 +113,8 @@ static inline void trace_ust_destroy_session(struct ltt_ust_session *session
 {
 }
 
-static inline void trace_ust_destroy_channel(struct ltt_ust_channel *channel
-					     __attribute__((unused)))
-{
-}
-
 static inline void trace_ust_free_session(struct ltt_ust_session *session __attribute__((unused)))
 {
-}
-
-static inline void trace_ust_delete_channel(struct lttng_ht *ht __attribute__((unused)),
-					    struct ltt_ust_channel *channel __attribute__((unused)))
-{
-	return;
 }
 
 static inline int trace_ust_regenerate_metadata(struct ltt_ust_session *usess
