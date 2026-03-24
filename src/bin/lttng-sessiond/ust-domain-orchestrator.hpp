@@ -178,6 +178,33 @@ public:
 	void release_per_pid_trace_class(const ust_app& app);
 
 	/*
+	 * Find or create a per-UID stream group for the given
+	 * (channel_config, uid, abi) combination. The orchestrator owns
+	 * the returned stream_group (via unique_ptr in
+	 * _per_uid_stream_groups). The caller receives a reference and
+	 * must NOT delete it.
+	 *
+	 * Called from create_channel_per_uid() after the buffer registry
+	 * channel has been set up. During the dual-write transition, the
+	 * channel_object is null because the buffer registry channel
+	 * retains the authoritative object handles. Ownership will be
+	 * transferred when the buffer registry layer is removed.
+	 *
+	 * If a stream_group already exists for the key, the existing one
+	 * is returned (this happens when multiple apps share the same
+	 * UID/ABI in per-UID mode -- only the first app creates the
+	 * stream group).
+	 */
+	ust::stream_group& find_or_create_per_uid_stream_group(
+		const config::recording_channel_configuration& channel_config,
+		uid_t uid,
+		application_abi abi,
+		std::uint64_t consumer_key,
+		ust_object_data channel_object,
+		ust::trace_class& trace_class,
+		ust::stream_class& stream_class);
+
+	/*
 	 * Accumulate per-PID closed-app discarded events and lost packets
 	 * for a channel. Called when a per-PID application's channel is
 	 * torn down; the counters are saved so they can be included in

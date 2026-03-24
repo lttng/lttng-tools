@@ -3831,6 +3831,36 @@ static int create_channel_per_uid(struct ust_app *app,
 		ust_reg_chan._consumer_key = ua_chan->key;
 	}
 
+	/*
+	 * Populate the orchestrator's stream group map. During the
+	 * dual-write transition, the buffer registry channel retains
+	 * the authoritative channel and stream objects. The stream
+	 * group's channel object is null during this period; ownership
+	 * will be transferred when the buffer registry layer is removed.
+	 */
+	{
+		const auto& recording_config =
+			static_cast<const lttng::sessiond::config::recording_channel_configuration&>(
+				ua_chan->channel_config);
+		const auto app_abi = app->abi.bits_per_long == 32 ? lsu::application_abi::ABI_32 :
+								    lsu::application_abi::ABI_64;
+		auto& trace_class_ref = *reg_uid->registry->reg.ust;
+		auto locked_registry = trace_class_ref.lock();
+		auto& stream_class_ref =
+			locked_registry->channel(ua_chan->trace_class_stream_class_handle);
+
+		auto& orchestrator =
+			static_cast<lsu::domain_orchestrator&>(session->get_ust_orchestrator());
+
+		orchestrator.find_or_create_per_uid_stream_group(recording_config,
+								 app->uid,
+								 app_abi,
+								 ua_chan->key,
+								 lsu::ust_object_data(nullptr),
+								 trace_class_ref,
+								 stream_class_ref);
+	}
+
 	/* Notify the notification subsystem of the channel's creation. */
 	notification_ret = notification_thread_command_add_channel(
 		the_notification_thread_handle,

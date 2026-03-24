@@ -325,41 +325,6 @@ end:
 }
 
 /*
- * Find the consumer channel key from a UST session per-uid channel key.
- *
- * Return the matching key or -1 if not found.
- */
-int buffer_reg_uid_consumer_channel_key(struct cds_list_head *buffer_reg_uid_list,
-					uint64_t chan_key,
-					uint64_t *consumer_chan_key)
-{
-	int ret = -1;
-
-	/*
-	 * For the per-uid registry, we have to iterate since we don't have the
-	 * uid and bitness key.
-	 */
-	for (auto uid_reg :
-	     lttng::urcu::list_iteration_adapter<buffer_reg_uid, &buffer_reg_uid::lnode>(
-		     *buffer_reg_uid_list)) {
-		auto *session_reg = uid_reg->registry;
-		for (auto *reg_chan :
-		     lttng::urcu::lfht_iteration_adapter<buffer_reg_channel,
-							 decltype(buffer_reg_channel::node),
-							 &buffer_reg_channel::node>(
-			     *session_reg->channels->ht)) {
-			if (reg_chan->key == chan_key) {
-				*consumer_chan_key = reg_chan->consumer_key;
-				ret = 0;
-				goto end;
-			}
-		}
-	}
-end:
-	return ret;
-}
-
-/*
  * Allocate and initialize a buffer registry channel with the given key. Set
  * regp with the object pointer.
  *

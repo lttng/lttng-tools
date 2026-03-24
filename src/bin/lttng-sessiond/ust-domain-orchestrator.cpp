@@ -5,7 +5,6 @@
  *
  */
 
-#include "buffer-registry.hpp"
 #include "consumer.hpp"
 #include "context-configuration.hpp"
 #include "event-rule-configuration.hpp"
@@ -256,6 +255,40 @@ void ls::ust::domain_orchestrator::release_per_pid_trace_class(const ust_app& ap
 
 	DBG_FMT("UST domain orchestrator releasing per-PID trace class: pid={}", app.pid);
 	_per_pid_trace_classes.erase(it);
+}
+
+ls::ust::stream_group& ls::ust::domain_orchestrator::find_or_create_per_uid_stream_group(
+	const config::recording_channel_configuration& channel_config,
+	uid_t uid,
+	application_abi abi,
+	std::uint64_t consumer_key,
+	ust::ust_object_data channel_object,
+	ust::trace_class& trace_class,
+	ust::stream_class& stream_class)
+{
+	LTTNG_ASSERT(_default_buffer_ownership ==
+		     lsc::recording_channel_configuration::owership_model_t::PER_UID);
+
+	const _per_uid_stream_group_key key = { &channel_config, uid, abi };
+	const auto it = _per_uid_stream_groups.find(key);
+	if (it != _per_uid_stream_groups.end()) {
+		return *it->second;
+	}
+
+	auto sg = lttng::make_unique<ust::stream_group>(
+		consumer_key, std::move(channel_object), channel_config, trace_class, stream_class);
+
+	auto& ref = *sg;
+	_per_uid_stream_groups.emplace(key, std::move(sg));
+
+	DBG_FMT("UST domain orchestrator created per-UID stream group: "
+		"channel_name=`{}`, uid={}, abi={}, consumer_key={}",
+		channel_config.name,
+		uid,
+		static_cast<int>(abi),
+		consumer_key);
+
+	return ref;
 }
 
 void ls::ust::domain_orchestrator::create_channel(
@@ -558,15 +591,22 @@ ls::ust::domain_orchestrator::get_recording_channel_runtime_stats(
 
 	if (_default_buffer_ownership ==
 	    lsc::recording_channel_configuration::owership_model_t::PER_UID) {
-		const auto handle_it = _channel_handles.find(&channel_config);
-		if (handle_it == _channel_handles.end()) {
-			goto add_closed_app_stats;
+		/*
+		 * Find the first per-UID stream group matching this channel
+		 * configuration and query the consumer daemon for its stats.
+		 */
+		uint64_t consumer_chan_key = 0;
+		bool found = false;
+
+		for (const auto& sg_entry : _per_uid_stream_groups) {
+			if (sg_entry.first.channel_config == &channel_config) {
+				consumer_chan_key = sg_entry.second->consumer_key();
+				found = true;
+				break;
+			}
 		}
 
-		uint64_t consumer_chan_key;
-		const auto ret = buffer_reg_uid_consumer_channel_key(
-			&_ust_session.buffer_reg_uid_list, handle_it->second, &consumer_chan_key);
-		if (ret < 0) {
+		if (!found) {
 			/* Channel not yet created on the consumer side. */
 			goto add_closed_app_stats;
 		}
