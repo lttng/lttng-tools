@@ -51,10 +51,6 @@ struct ltt_ust_session {
 	 * It contains separate instances on a per UID and ABI (32/64) basis.
 	 */
 	struct cds_list_head buffer_reg_uid_list;
-	/* Next channel ID available for a newly registered channel. */
-	uint64_t next_event_container_id;
-	/* Once this value reaches UINT64_MAX, no more id can be allocated. */
-	uint64_t used_event_container_id;
 	/* Tell or not if the session has to output the traces. */
 	unsigned int output_traces;
 	unsigned int snapshot_mode;
@@ -78,13 +74,6 @@ struct ltt_ust_session {
 			this->shm_path[0] != '\0' ? this->shm_path : nullptr);
 	}
 };
-
-/* Return next available channel id and increment the used counter. */
-static inline uint64_t trace_ust_get_trace_class_stream_class_handle(struct ltt_ust_session *s)
-{
-	s->used_event_container_id++;
-	return s->next_event_container_id++;
-}
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
