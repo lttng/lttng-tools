@@ -743,65 +743,6 @@ error:
 	return ret;
 }
 
-/*
- * Get run-time attributes if the session has been started (discarded events,
- * lost packets).
- */
-static int get_ust_runtime_stats(const ltt_session::locked_ref& session,
-				 struct ltt_ust_channel *uchan,
-				 uint64_t *discarded_events,
-				 uint64_t *lost_packets)
-{
-	int ret;
-	struct ltt_ust_session *usess;
-
-	if (!discarded_events || !lost_packets) {
-		ret = -1;
-		goto end;
-	}
-
-	usess = session->ust_session;
-	LTTNG_ASSERT(discarded_events);
-	LTTNG_ASSERT(lost_packets);
-
-	if (!usess || !session->has_been_started) {
-		*discarded_events = 0;
-		*lost_packets = 0;
-		ret = 0;
-		goto end;
-	}
-
-	if (usess->buffer_type == LTTNG_BUFFER_PER_UID) {
-		ret = ust_app_uid_get_channel_runtime_stats(usess->id,
-							    &usess->buffer_reg_uid_list,
-							    usess->consumer,
-							    uchan->trace_class_stream_class_handle,
-							    uchan->attr.overwrite,
-							    discarded_events,
-							    lost_packets);
-	} else if (usess->buffer_type == LTTNG_BUFFER_PER_PID) {
-		ret = ust_app_pid_get_channel_runtime_stats(usess,
-							    uchan,
-							    usess->consumer,
-							    uchan->attr.overwrite,
-							    discarded_events,
-							    lost_packets);
-		if (ret < 0) {
-			goto end;
-		}
-		*discarded_events += uchan->per_pid_closed_app_discarded;
-		*lost_packets += uchan->per_pid_closed_app_lost;
-	} else {
-		ERR("Unsupported buffer ownership");
-		abort();
-		ret = -1;
-		goto end;
-	}
-
-end:
-	return ret;
-}
-
 namespace {
 /*
  * Serialize a single event_rule_configuration to a payload buffer.
@@ -4606,32 +4547,20 @@ enum lttng_error_code cmd_list_channels(enum lttng_domain_type domain,
 					channel->attr.extended.ptr);
 
 				if (session->has_been_started) {
-					/*
-					 * Runtime stats (discarded events, lost packets) still
-					 * require the legacy ltt_ust_channel because the
-					 * trace_class_stream_class_handle and per-PID closed-app
-					 * counters live there. This lookup is a transition shim
-					 * until the orchestrator internalizes these.
-					 */
-					const lttng::urcu::read_lock_guard read_lock;
+					try {
+						const auto stats =
+							session->get_ust_orchestrator()
+								.get_recording_channel_runtime_stats(
+									channel_config);
 
-					auto *const uchan = trace_ust_find_channel_by_name(
-						session->ust_session->domain_global.channels,
-						channel_config.name.c_str());
-					if (uchan) {
-						uint64_t discarded_events = 0, lost_packets = 0;
-
-						ret = get_ust_runtime_stats(session,
-									    uchan,
-									    &discarded_events,
-									    &lost_packets);
-						if (ret < 0) {
-							ret_code = LTTNG_ERR_UNK;
-							goto end;
-						}
-
-						extended->discarded_events = discarded_events;
-						extended->lost_packets = lost_packets;
+						extended->discarded_events = stats.discarded_events;
+						extended->lost_packets = stats.lost_packets;
+					} catch (const std::exception& ex) {
+						ERR_FMT("Failed to get UST channel runtime stats: channel_name=`{}`, error=`{}`",
+							channel_config.name,
+							ex.what());
+						ret_code = LTTNG_ERR_UNK;
+						goto end;
 					}
 				}
 

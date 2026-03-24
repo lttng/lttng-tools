@@ -37,8 +37,6 @@ struct ltt_ust_channel {
 	char name[LTTNG_UST_ABI_SYM_NAME_LEN] = {};
 	struct lttng_ust_abi_channel_attr attr = {};
 	struct lttng_ht_node_str node = {};
-	uint64_t per_pid_closed_app_discarded = 0;
-	uint64_t per_pid_closed_app_lost = 0;
 };
 
 /* UST domain global (LTTNG_DOMAIN_UST) */

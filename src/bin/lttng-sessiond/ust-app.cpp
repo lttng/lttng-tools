@@ -642,16 +642,16 @@ static void delete_ust_app_channel_rcu(struct rcu_head *head)
 }
 
 /*
- * Extract the lost packet or discarded events counter when the channel is
- * being deleted and store the value in the parent channel so we can
- * access it from lttng list and at stop/destroy.
+ * Extract the lost packet or discarded events counter when a per-PID
+ * channel is being deleted and accumulate the values in the UST domain
+ * orchestrator so they can be included in runtime statistics after the
+ * application has exited.
  *
  * The session list lock must be held by the caller.
  */
 static void save_per_pid_lost_discarded_counters(struct ust_app_channel *ua_chan)
 {
 	uint64_t discarded = 0, lost = 0;
-	struct ltt_ust_channel *uchan;
 
 	/* Metadata channels do not have discarded counters. */
 	switch (ua_chan->attr.type) {
@@ -696,21 +696,20 @@ static void save_per_pid_lost_discarded_counters(struct ust_app_channel *ua_chan
 						      session->ust_session->consumer,
 						      &discarded);
 		}
-		uchan = trace_ust_find_channel_by_name(session->ust_session->domain_global.channels,
-						       ua_chan->name);
-		if (!uchan) {
-			ERR("Missing UST channel to store discarded counters");
-			return;
-		}
+
+		auto& orchestrator =
+			static_cast<lsu::domain_orchestrator&>(session->get_ust_orchestrator());
+		const auto& recording_config =
+			static_cast<const lttng::sessiond::config::recording_channel_configuration&>(
+				ua_chan->channel_config);
+
+		orchestrator.accumulate_per_pid_closed_app_stats(recording_config, discarded, lost);
 	} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
 		DBG_FMT("Failed to save per-pid lost/discarded counters: {}, location='{}'",
 			ex.what(),
 			ex.source_location);
 		return;
 	}
-
-	uchan->per_pid_closed_app_discarded += discarded;
-	uchan->per_pid_closed_app_lost += lost;
 }
 
 /*
@@ -7815,107 +7814,6 @@ uint64_t ust_app_get_size_one_more_packet_per_stream(const struct ltt_ust_sessio
 	}
 
 	return tot_size;
-}
-
-int ust_app_uid_get_channel_runtime_stats(uint64_t ust_session_id,
-					  struct cds_list_head *buffer_reg_uid_list,
-					  struct consumer_output *consumer,
-					  uint64_t uchan_id,
-					  int overwrite,
-					  uint64_t *discarded,
-					  uint64_t *lost)
-{
-	int ret;
-	uint64_t consumer_chan_key;
-
-	*discarded = 0;
-	*lost = 0;
-
-	ret = buffer_reg_uid_consumer_channel_key(
-		buffer_reg_uid_list, uchan_id, &consumer_chan_key);
-	if (ret < 0) {
-		/* Not found */
-		ret = 0;
-		goto end;
-	}
-
-	if (overwrite) {
-		ret = consumer_get_lost_packets(ust_session_id, consumer_chan_key, consumer, lost);
-	} else {
-		ret = consumer_get_discarded_events(
-			ust_session_id, consumer_chan_key, consumer, discarded);
-	}
-
-end:
-	return ret;
-}
-
-int ust_app_pid_get_channel_runtime_stats(struct ltt_ust_session *usess,
-					  struct ltt_ust_channel *uchan,
-					  struct consumer_output *consumer,
-					  int overwrite,
-					  uint64_t *discarded,
-					  uint64_t *lost)
-{
-	int ret = 0;
-	struct lttng_ht_node_str *ua_chan_node;
-	struct ust_app_session *ua_sess;
-	struct ust_app_channel *ua_chan;
-
-	*discarded = 0;
-	*lost = 0;
-
-	/*
-	 * Iterate over every registered applications. Sum counters for
-	 * all applications containing requested session and channel.
-	 */
-	for (auto *app :
-	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
-		     *ust_app_ht->ht)) {
-		struct lttng_ht_iter uiter;
-
-		if (!ust_app_get(*app)) {
-			/* Application unregistered concurrently, skip it. */
-			DBG("Could not get application reference as it is being torn down; skipping application");
-			continue;
-		}
-		/* Prevent app teardown during use. */
-		const ust_app_reference app_ref(app);
-
-		ua_sess = ust_app_lookup_app_session(usess, app);
-		if (ua_sess == nullptr) {
-			continue;
-		}
-
-		/* Get channel */
-		lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
-		ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
-		/* If the session is found for the app, the channel must be there */
-		LTTNG_ASSERT(ua_chan_node);
-
-		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
-
-		if (overwrite) {
-			uint64_t _lost;
-
-			ret = consumer_get_lost_packets(usess->id, ua_chan->key, consumer, &_lost);
-			if (ret < 0) {
-				break;
-			}
-			(*lost) += _lost;
-		} else {
-			uint64_t _discarded;
-
-			ret = consumer_get_discarded_events(
-				usess->id, ua_chan->key, consumer, &_discarded);
-			if (ret < 0) {
-				break;
-			}
-			(*discarded) += _discarded;
-		}
-	}
-
-	return ret;
 }
 
 static int ust_app_regenerate_statedump(struct ltt_ust_session *usess, struct ust_app *app)

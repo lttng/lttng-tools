@@ -5,6 +5,8 @@
  *
  */
 
+#include "buffer-registry.hpp"
+#include "consumer.hpp"
 #include "context-configuration.hpp"
 #include "event-rule-configuration.hpp"
 #include "lttng-channel-from-config.hpp"
@@ -527,15 +529,141 @@ void ls::ust::domain_orchestrator::reclaim_channel_memory(
 		"Reclaiming channel memory is not supported in the UST domain orchestrator");
 }
 
-ls::recording_channel_runtime_stats
-ls::ust::domain_orchestrator::get_recording_channel_runtime_stats(
-	const config::recording_channel_configuration&) const
+DIAGNOSTIC_POP; /* DIAGNOSTIC_IGNORE_MISSING_NORETURN */
+
+void ls::ust::domain_orchestrator::accumulate_per_pid_closed_app_stats(
+	const config::recording_channel_configuration& channel_config,
+	std::uint64_t discarded_events,
+	std::uint64_t lost_packets)
 {
-	LTTNG_THROW_UNSUPPORTED_ERROR(
-		"Getting recording channel runtime stats is not supported in the UST domain orchestrator");
+	auto& counters = _per_pid_closed_app_stats[&channel_config];
+
+	counters.discarded_events += discarded_events;
+	counters.lost_packets += lost_packets;
 }
 
-DIAGNOSTIC_POP; /* DIAGNOSTIC_IGNORE_MISSING_NORETURN */
+ls::recording_channel_runtime_stats
+ls::ust::domain_orchestrator::get_recording_channel_runtime_stats(
+	const config::recording_channel_configuration& channel_config) const
+{
+	recording_channel_runtime_stats stats = {};
+	const auto is_overwrite = channel_config.buffer_full_policy ==
+		lsc::channel_configuration::buffer_full_policy_t::OVERWRITE_OLDEST_PACKET;
+
+	if (_default_buffer_ownership ==
+	    lsc::recording_channel_configuration::owership_model_t::PER_UID) {
+		const auto handle_it = _channel_handles.find(&channel_config);
+		if (handle_it == _channel_handles.end()) {
+			goto add_closed_app_stats;
+		}
+
+		uint64_t consumer_chan_key;
+		const auto ret = buffer_reg_uid_consumer_channel_key(
+			&_ust_session.buffer_reg_uid_list, handle_it->second, &consumer_chan_key);
+		if (ret < 0) {
+			/* Channel not yet created on the consumer side. */
+			goto add_closed_app_stats;
+		}
+
+		if (is_overwrite) {
+			const auto ret_lost = consumer_get_lost_packets(_session.id,
+									consumer_chan_key,
+									_ust_session.consumer,
+									&stats.lost_packets);
+			if (ret_lost < 0) {
+				LTTNG_THROW_ERROR(lttng::format(
+					"Failed to get lost packets from consumer: channel_name=`{}`",
+					channel_config.name));
+			}
+		} else {
+			const auto ret_disc =
+				consumer_get_discarded_events(_session.id,
+							      consumer_chan_key,
+							      _ust_session.consumer,
+							      &stats.discarded_events);
+			if (ret_disc < 0) {
+				LTTNG_THROW_ERROR(lttng::format(
+					"Failed to get discarded events from consumer: channel_name=`{}`",
+					channel_config.name));
+			}
+		}
+	} else {
+		/*
+		 * Per-PID: iterate all registered applications, sum the
+		 * counters for each app that has this channel.
+		 */
+		const lttng::urcu::read_lock_guard read_lock;
+
+		for (auto *app :
+		     lttng::urcu::lfht_iteration_adapter<ust_app,
+							 decltype(ust_app::pid_n),
+							 &ust_app::pid_n>(*ust_app_ht->ht)) {
+			if (!ust_app_get(*app)) {
+				continue;
+			}
+
+			const ust_app_reference app_ref(app);
+
+			auto *ua_sess = ust_app_lookup_app_session(&_ust_session, app);
+			if (!ua_sess) {
+				continue;
+			}
+
+			struct lttng_ht_iter uiter;
+			lttng_ht_lookup(ua_sess->channels,
+					static_cast<const void *>(channel_config.name.c_str()),
+					&uiter);
+
+			const auto *ua_chan_node =
+				lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
+			if (!ua_chan_node) {
+				continue;
+			}
+
+			const auto *ua_chan =
+				lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
+
+			if (is_overwrite) {
+				uint64_t lost = 0;
+
+				const auto ret = consumer_get_lost_packets(_ust_session.id,
+									   ua_chan->key,
+									   _ust_session.consumer,
+									   &lost);
+				if (ret < 0) {
+					break;
+				}
+
+				stats.lost_packets += lost;
+			} else {
+				uint64_t discarded = 0;
+
+				const auto ret =
+					consumer_get_discarded_events(_ust_session.id,
+								      ua_chan->key,
+								      _ust_session.consumer,
+								      &discarded);
+				if (ret < 0) {
+					break;
+				}
+
+				stats.discarded_events += discarded;
+			}
+		}
+	}
+
+add_closed_app_stats:
+	/* Add accumulated stats from applications that have already exited. */
+	{
+		const auto closed_it = _per_pid_closed_app_stats.find(&channel_config);
+		if (closed_it != _per_pid_closed_app_stats.end()) {
+			stats.discarded_events += closed_it->second.discarded_events;
+			stats.lost_packets += closed_it->second.lost_packets;
+		}
+	}
+
+	return stats;
+}
 
 /* Key comparison and hash implementations. */
 

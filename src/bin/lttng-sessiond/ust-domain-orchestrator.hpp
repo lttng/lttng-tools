@@ -147,6 +147,17 @@ public:
 							     const char *root_shm_path,
 							     const char *shm_path);
 
+	/*
+	 * Accumulate per-PID closed-app discarded events and lost packets
+	 * for a channel. Called when a per-PID application's channel is
+	 * torn down; the counters are saved so they can be included in
+	 * the runtime statistics reported by get_recording_channel_runtime_stats().
+	 */
+	void accumulate_per_pid_closed_app_stats(
+		const config::recording_channel_configuration& channel_config,
+		std::uint64_t discarded_events,
+		std::uint64_t lost_packets);
+
 private:
 	ltt_ust_session& _ust_session;
 	const ltt_session& _session;
@@ -248,6 +259,22 @@ private:
 		bool operator==(const _per_pid_stream_group_key& other) const noexcept;
 		std::size_t hash() const noexcept;
 	};
+
+	/*
+	 * Per-PID closed-app statistics. When an application exits in
+	 * per-PID buffer mode, its discarded events and lost packets
+	 * are accumulated here, keyed by recording channel configuration.
+	 * These counters are added to the live-app stats when reporting
+	 * runtime statistics.
+	 */
+	struct _per_pid_closed_app_counters {
+		std::uint64_t discarded_events = 0;
+		std::uint64_t lost_packets = 0;
+	};
+
+	std::unordered_map<const config::recording_channel_configuration *,
+			   _per_pid_closed_app_counters>
+		_per_pid_closed_app_stats;
 
 	/* (uid, abi) -> trace_class */
 	std::unordered_map<_per_uid_trace_class_key,
