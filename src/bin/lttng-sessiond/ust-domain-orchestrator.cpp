@@ -206,6 +206,58 @@ ls::ust::trace_class& ls::ust::domain_orchestrator::find_or_create_per_uid_trace
 	return ref;
 }
 
+ls::ust::trace_class& ls::ust::domain_orchestrator::find_or_create_per_pid_trace_class(
+	ust_app& app,
+	const lttng::sessiond::trace::abi& tracer_abi,
+	std::uint32_t tracer_major,
+	std::uint32_t tracer_minor,
+	const char *root_shm_path,
+	const char *shm_path,
+	uid_t euid,
+	gid_t egid)
+{
+	LTTNG_ASSERT(_default_buffer_ownership ==
+		     lsc::recording_channel_configuration::owership_model_t::PER_PID);
+
+	const auto it = _per_pid_trace_classes.find(&app);
+	if (it != _per_pid_trace_classes.end()) {
+		return *it->second;
+	}
+
+	std::unique_ptr<ust::trace_class> tc(ust_trace_class_per_pid_create(&app,
+									    _session.trace_format,
+									    tracer_abi,
+									    tracer_major,
+									    tracer_minor,
+									    root_shm_path,
+									    shm_path,
+									    euid,
+									    egid,
+									    _session.id));
+	if (!tc) {
+		LTTNG_THROW_ERROR(
+			lttng::format("Failed to create per-PID trace class: pid={}", app.pid));
+	}
+
+	auto& ref = *tc;
+	_per_pid_trace_classes.emplace(&app, std::move(tc));
+
+	DBG_FMT("UST domain orchestrator created per-PID trace class: pid={}", app.pid);
+
+	return ref;
+}
+
+void ls::ust::domain_orchestrator::release_per_pid_trace_class(const ust_app& app)
+{
+	const auto it = _per_pid_trace_classes.find(&app);
+	if (it == _per_pid_trace_classes.end()) {
+		return;
+	}
+
+	DBG_FMT("UST domain orchestrator releasing per-PID trace class: pid={}", app.pid);
+	_per_pid_trace_classes.erase(it);
+}
+
 void ls::ust::domain_orchestrator::create_channel(
 	const config::recording_channel_configuration& channel_config)
 {

@@ -152,6 +152,32 @@ public:
 							     const char *shm_path);
 
 	/*
+	 * Find or create a per-PID trace class for the given application.
+	 * Called from setup_buffer_reg_pid() during per-app
+	 * synchronization.
+	 */
+	ust::trace_class& find_or_create_per_pid_trace_class(ust_app& app,
+							     const trace::abi& tracer_abi,
+							     std::uint32_t tracer_major,
+							     std::uint32_t tracer_minor,
+							     const char *root_shm_path,
+							     const char *shm_path,
+							     uid_t euid,
+							     gid_t egid);
+
+	/*
+	 * Release the per-PID trace class associated with the given
+	 * application. The trace_class is destroyed, which cleans up
+	 * shared memory files. Called from delete_ust_app_session()
+	 * when a per-PID application departs.
+	 *
+	 * No-op if no trace class exists for the given app (e.g. the
+	 * app session was being set up and failed before the trace
+	 * class was created).
+	 */
+	void release_per_pid_trace_class(const ust_app& app);
+
+	/*
 	 * Accumulate per-PID closed-app discarded events and lost packets
 	 * for a channel. Called when a per-PID application's channel is
 	 * torn down; the counters are saved so they can be included in
@@ -214,9 +240,10 @@ private:
 	 *   - One trace_class per app. Each app has its own metadata.
 	 *   - One stream_group per (channel_config, app). Private ring
 	 *     buffers per app.
-	 *   - When an app departs, its trace_class and stream_groups
-	 *     are destroyed and per-PID closed-app statistics are
-	 *     accumulated (TODO).
+	 *   - When an app departs, its trace_class is destroyed via
+	 *     release_per_pid_trace_class() (which also cleans up
+	 *     shared memory files). Stream group cleanup and per-PID
+	 *     closed-app statistics accumulation are TODO.
 	 */
 
 	static std::size_t _hash_combine(std::size_t seed, std::size_t value) noexcept

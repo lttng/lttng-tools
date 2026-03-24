@@ -596,12 +596,10 @@ static void buffer_reg_session_destroy(struct buffer_reg_session *regp,
 	switch (domain) {
 	case LTTNG_DOMAIN_UST:
 		/*
-		 * reg.ust may be null if the trace_class is owned by the
-		 * UST domain orchestrator (per-UID mode). In that case,
-		 * the orchestrator's destructor handles deletion.
-		 *
-		 * For per-PID trace classes (still owned by buffer_reg),
-		 * reg.ust is non-null and must be deleted here.
+		 * The trace_class is owned by the UST domain
+		 * orchestrator. The caller must null reg.ust before
+		 * destroying the buffer registry to prevent a
+		 * double-free.
 		 */
 		ust_trace_class_destroy(regp->reg.ust);
 		break;

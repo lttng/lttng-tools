@@ -1134,11 +1134,38 @@ static void delete_ust_app_session(int sock, struct ust_app_session *ua_sess, st
 		struct buffer_reg_pid *reg_pid = buffer_reg_pid_find(ua_sess->id);
 		if (reg_pid) {
 			/*
-			 * Registry can be null on error path during
-			 * initialization.
+			 * The per-PID trace_class is owned by the UST
+			 * domain orchestrator. Null the borrowed pointer
+			 * so that buffer_reg_session_destroy() does not
+			 * delete it.
 			 */
+			if (reg_pid->registry) {
+				reg_pid->registry->reg.ust = nullptr;
+			}
+
 			buffer_reg_pid_remove(reg_pid);
 			buffer_reg_pid_destroy(reg_pid);
+		}
+
+		/*
+		 * Release the per-PID trace_class from the orchestrator.
+		 * This destroys the trace_class (and cleans up its shared
+		 * memory files) now rather than deferring it until the
+		 * session is destroyed.
+		 *
+		 * The session may already be gone (e.g. if the session is
+		 * being torn down concurrently); in that case the
+		 * orchestrator's destructor handles the cleanup.
+		 */
+		try {
+			const auto session = ltt_session::find_session(ua_sess->tracing_id);
+			if (session->ust_orchestrator) {
+				static_cast<lsu::domain_orchestrator&>(
+					session->get_ust_orchestrator())
+					.release_per_pid_trace_class(*app);
+			}
+		} catch (const lttng::sessiond::exceptions::session_not_found_error&) {
+			/* Session is already gone; orchestrator will clean up. */
 		}
 	}
 
@@ -2842,20 +2869,21 @@ static int setup_buffer_reg_pid(struct ust_app_session *ua_sess,
 		goto end;
 	}
 
-	/* Initialize registry. */
+	/* Get the trace class from the orchestrator. */
 	{
 		const auto session = ltt_session::find_session(ua_sess->tracing_id);
-		reg_pid->registry->reg.ust = ust_trace_class_per_pid_create(
-			app,
-			session->trace_format,
+		auto& orchestrator =
+			static_cast<lsu::domain_orchestrator&>(session->get_ust_orchestrator());
+
+		reg_pid->registry->reg.ust = &orchestrator.find_or_create_per_pid_trace_class(
+			*app,
 			app->abi,
 			app->version.major,
 			app->version.minor,
 			reg_pid->root_shm_path,
 			reg_pid->shm_path,
 			lttng_credentials_get_uid(&ua_sess->effective_credentials),
-			lttng_credentials_get_gid(&ua_sess->effective_credentials),
-			ua_sess->tracing_id);
+			lttng_credentials_get_gid(&ua_sess->effective_credentials));
 	}
 	if (!reg_pid->registry->reg.ust) {
 		/*
