@@ -58,6 +58,7 @@ SERIAL_TESTS = tools/base-path/test_ust \
 	tools/notification/test_notification_notifier_discarded_count \
 	tools/notification/test_notification_kernel_userspace_probe \
 	tools/notification/test_notification_multi_app \
+	tools/notification/test_rotation \
 	tools/rotation/test_ust \
 	tools/rotation/test_kernel \
 	tools/rotation/test_ust_kernel \
