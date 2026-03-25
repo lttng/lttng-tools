@@ -33,6 +33,7 @@
 #include "rotation-thread.hpp"
 #include "session.hpp"
 #include "timer.hpp"
+#include "ust-domain-orchestrator.hpp"
 #include "utils.hpp"
 
 #include <common/buffer-view.hpp>
@@ -5694,9 +5695,11 @@ static uint64_t get_session_size_one_more_packet_per_stream(const ltt_session::l
 	}
 
 	if (session->ust_orchestrator) {
-		const struct ltt_ust_session *usess = session->ust_session;
+		const auto& ust_orch =
+			static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
+				session->get_ust_orchestrator());
 
-		tot_size += ust_app_get_size_one_more_packet_per_stream(usess, cur_nr_packets);
+		tot_size += ust_orch.get_size_one_more_packet_per_stream(cur_nr_packets);
 	}
 
 	return tot_size;

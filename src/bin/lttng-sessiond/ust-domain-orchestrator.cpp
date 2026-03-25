@@ -871,6 +871,37 @@ add_closed_app_stats:
 	return stats;
 }
 
+std::uint64_t ls::ust::domain_orchestrator::get_size_one_more_packet_per_stream(
+	std::uint64_t cur_nr_packets) const
+{
+	std::uint64_t tot_size = 0;
+
+	if (_default_buffer_ownership ==
+	    lsc::recording_channel_configuration::owership_model_t::PER_UID) {
+		for (const auto& sg_entry : _per_uid_stream_groups) {
+			const auto& config = sg_entry.second->configuration();
+
+			if (cur_nr_packets >= config.subbuffer_count) {
+				continue;
+			}
+
+			tot_size += config.subbuffer_size_bytes * sg_entry.second->stream_count();
+		}
+	} else {
+		for (const auto& sg_entry : _per_pid_stream_groups) {
+			const auto& config = sg_entry.second->configuration();
+
+			if (cur_nr_packets >= config.subbuffer_count) {
+				continue;
+			}
+
+			tot_size += config.subbuffer_size_bytes * sg_entry.second->stream_count();
+		}
+	}
+
+	return tot_size;
+}
+
 void ls::ust::domain_orchestrator::for_each_consumer_channel(
 	const consumer_channel_visitor& visitor) const
 {

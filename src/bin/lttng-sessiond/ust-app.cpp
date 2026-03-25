@@ -3855,13 +3855,26 @@ static int create_channel_per_uid(struct ust_app *app,
 		auto& orchestrator =
 			static_cast<lsu::domain_orchestrator&>(session->get_ust_orchestrator());
 
-		orchestrator.find_or_create_per_uid_stream_group(recording_config,
-								 app->uid,
-								 app_abi,
-								 ua_chan->key,
-								 lsu::ust_object_data(nullptr),
-								 trace_class_ref,
-								 stream_class_ref);
+		auto& stream_group = orchestrator.find_or_create_per_uid_stream_group(
+			recording_config,
+			app->uid,
+			app_abi,
+			ua_chan->key,
+			lsu::ust_object_data(nullptr),
+			trace_class_ref,
+			stream_class_ref);
+
+		/*
+		 * Mirror the buffer registry's stream count into the
+		 * orchestrator's stream group. The stream objects
+		 * themselves are still owned by the buffer registry
+		 * during the dual-write transition, but the stream
+		 * count must be accurate for snapshot sizing.
+		 */
+		for (uint64_t i = 0; i < buf_reg_chan->stream_count; i++) {
+			stream_group.add_stream(static_cast<unsigned int>(i),
+						lsu::ust_object_data(nullptr));
+		}
 	}
 
 	/* Notify the notification subsystem of the channel's creation. */
@@ -7711,85 +7724,6 @@ enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *uses
 error:
 	free(trace_path);
 	return status;
-}
-
-/*
- * Return the size taken by one more packet per stream.
- */
-uint64_t ust_app_get_size_one_more_packet_per_stream(const struct ltt_ust_session *usess,
-						     uint64_t cur_nr_packets)
-{
-	uint64_t tot_size = 0;
-
-	LTTNG_ASSERT(usess);
-
-	switch (usess->buffer_type) {
-	case LTTNG_BUFFER_PER_UID:
-	{
-		for (auto *reg :
-		     lttng::urcu::list_iteration_adapter<buffer_reg_uid, &buffer_reg_uid::lnode>(
-			     usess->buffer_reg_uid_list)) {
-			for (auto *buf_reg_chan :
-			     lttng::urcu::lfht_iteration_adapter<buffer_reg_channel,
-								 decltype(buffer_reg_channel::node),
-								 &buffer_reg_channel::node>(
-				     *reg->registry->channels->ht)) {
-				if (cur_nr_packets >= buf_reg_chan->num_subbuf) {
-					/*
-					 * Don't take channel into account if we
-					 * already grab all its packets.
-					 */
-					continue;
-				}
-				tot_size += buf_reg_chan->subbuf_size * buf_reg_chan->stream_count;
-			}
-		}
-		break;
-	}
-	case LTTNG_BUFFER_PER_PID:
-	{
-		/* Iterate on all apps. */
-		for (auto *app :
-		     lttng::urcu::lfht_iteration_adapter<ust_app,
-							 decltype(ust_app::pid_n),
-							 &ust_app::pid_n>(*ust_app_ht->ht)) {
-			if (!ust_app_get(*app)) {
-				/* Application unregistered concurrently, skip it. */
-				DBG("Could not get application reference as it is being torn down; skipping application");
-				continue;
-			}
-			/* Prevent app teardown during use. */
-			const ust_app_reference app_ref(app);
-
-			const auto *ua_sess = ust_app_lookup_app_session(usess, app);
-			if (!ua_sess) {
-				/* Session not associated with this app. */
-				continue;
-			}
-
-			for (auto *ua_chan :
-			     lttng::urcu::lfht_iteration_adapter<ust_app_channel,
-								 decltype(ust_app_channel::node),
-								 &ust_app_channel::node>(
-				     *ua_sess->channels->ht)) {
-				if (cur_nr_packets >= ua_chan->attr.num_subbuf) {
-					/*
-					 * Don't take channel into account if we
-					 * already grab all its packets.
-					 */
-					continue;
-				}
-				tot_size += ua_chan->attr.subbuf_size * ua_chan->streams.count;
-			}
-		}
-		break;
-	}
-	default:
-		abort();
-		break;
-	}
-
-	return tot_size;
 }
 
 static int ust_app_regenerate_statedump(struct ltt_ust_session *usess, struct ust_app *app)

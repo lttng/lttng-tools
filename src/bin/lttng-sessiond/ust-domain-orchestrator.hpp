@@ -114,6 +114,16 @@ public:
 		const config::recording_channel_configuration& channel_config) const override;
 
 	/*
+	 * Compute the total size added by one more packet per stream across
+	 * all data channels. Channels whose subbuffer count is at most
+	 * cur_nr_packets are excluded (all packets already grabbed).
+	 *
+	 * Used during snapshot sizing to determine how many packets fit
+	 * within the snapshot max size.
+	 */
+	std::uint64_t get_size_one_more_packet_per_stream(std::uint64_t cur_nr_packets) const;
+
+	/*
 	 * Descriptor yielded to the for_each_consumer_channel() callback.
 	 *
 	 * Each descriptor represents a single consumer-side channel: either
@@ -474,6 +484,12 @@ public:
 
 	void create_channel_subdirectories(struct lttng_trace_chunk& trace_chunk
 					   [[maybe_unused]]) const
+	{
+		std::abort();
+	}
+
+	std::uint64_t get_size_one_more_packet_per_stream(std::uint64_t cur_nr_packets
+							  [[maybe_unused]]) const
 	{
 		std::abort();
 	}

@@ -581,8 +581,6 @@ void ust_app_notify_sock_unregister(int sock);
 enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *usess,
 					      const struct consumer_output *output,
 					      uint64_t nb_packets_per_stream);
-uint64_t ust_app_get_size_one_more_packet_per_stream(const struct ltt_ust_session *usess,
-						     uint64_t cur_nr_packets);
 nonstd::optional<ust_app_reference> ust_app_find_by_sock(int sock);
 int ust_app_regenerate_statedump_all(struct ltt_ust_session *usess);
 int ust_app_release_object(struct ust_app *app, struct lttng_ust_abi_object_data *data);
@@ -849,14 +847,6 @@ static inline nonstd::optional<ust_app_reference> ust_app_find_by_pid(pid_t pid
 								      __attribute__((unused)))
 {
 	return nonstd::nullopt;
-}
-
-static inline uint64_t
-ust_app_get_size_one_more_packet_per_stream(const struct ltt_ust_session *usess
-					    __attribute__((unused)),
-					    uint64_t cur_nr_packets __attribute__((unused)))
-{
-	return 0;
 }
 
 static inline int ust_app_regenerate_statedump_all(struct ltt_ust_session *usess
