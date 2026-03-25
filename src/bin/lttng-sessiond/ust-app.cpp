@@ -5971,8 +5971,8 @@ static int ust_app_flush_app_session(ust_app& app, ust_app_session& ua_sess)
  * Flush buffers for all applications for a specific UST session.
  * Called with UST session lock held.
  */
-static int ust_app_flush_session(struct ltt_ust_session *usess)
-
+static int ust_app_flush_session(struct ltt_ust_session *usess,
+				 const lsu::domain_orchestrator& orchestrator)
 {
 	int ret = 0;
 
@@ -5982,40 +5982,26 @@ static int ust_app_flush_session(struct ltt_ust_session *usess)
 	switch (usess->buffer_type) {
 	case LTTNG_BUFFER_PER_UID:
 	{
-		/* Flush all per UID buffers associated to that session. */
-		for (auto *reg :
-		     lttng::urcu::list_iteration_adapter<buffer_reg_uid, &buffer_reg_uid::lnode>(
-			     usess->buffer_reg_uid_list)) {
-			const lttng::urcu::read_lock_guard read_lock;
-			lsu::trace_class *ust_session_reg;
-			struct consumer_socket *socket;
+		orchestrator.for_each_consumer_channel(
+			[&usess](
+				const lsu::domain_orchestrator::consumer_channel_descriptor& desc) {
+				const lttng::urcu::read_lock_guard read_lock;
 
-			/* Get consumer socket to use to push the metadata. */
-			socket = consumer_find_socket_by_bitness(reg->bits_per_long,
-								 usess->consumer);
-			if (!socket) {
-				/* Ignore request if no consumer is found for the session. */
-				continue;
-			}
+				const auto socket = consumer_find_socket_by_bitness(
+					static_cast<int>(desc.abi), usess->consumer);
+				if (!socket) {
+					/* Ignore request if no consumer is found for the session.
+					 */
+					return;
+				}
 
-			for (auto *buf_reg_chan :
-			     lttng::urcu::lfht_iteration_adapter<buffer_reg_channel,
-								 decltype(buffer_reg_channel::node),
-								 &buffer_reg_channel::node>(
-				     *reg->registry->channels->ht)) {
-				/*
-				 * The following call will print error values so the return
-				 * code is of little importance because whatever happens, we
-				 * have to try them all.
-				 */
-				(void) consumer_flush_channel(socket, buf_reg_chan->consumer_key);
-			}
-
-			ust_session_reg = reg->registry->reg.ust;
-			/* Push metadata. */
-			auto locked_registry = ust_session_reg->lock();
-			(void) push_metadata(locked_registry, usess->consumer);
-		}
+				if (desc.is_metadata) {
+					(void) push_metadata(desc.trace_class.lock(),
+							     usess->consumer);
+				} else {
+					(void) consumer_flush_channel(socket, desc.consumer_key);
+				}
+			});
 
 		break;
 	}
@@ -6114,8 +6100,8 @@ static int ust_app_clear_quiescent_app_session(struct ust_app *app, struct ust_a
  * specific UST session.
  * Called with UST session lock held.
  */
-static int ust_app_clear_quiescent_session(struct ltt_ust_session *usess)
-
+static int ust_app_clear_quiescent_session(struct ltt_ust_session *usess,
+					   const lsu::domain_orchestrator& orchestrator)
 {
 	int ret = 0;
 
@@ -6124,42 +6110,22 @@ static int ust_app_clear_quiescent_session(struct ltt_ust_session *usess)
 	switch (usess->buffer_type) {
 	case LTTNG_BUFFER_PER_UID:
 	{
-		/*
-		 * Clear quiescent for all per UID buffers associated to
-		 * that session.
-		 */
-		for (auto *reg :
-		     lttng::urcu::list_iteration_adapter<buffer_reg_uid, &buffer_reg_uid::lnode>(
-			     usess->buffer_reg_uid_list)) {
-			struct consumer_socket *socket;
-			const lttng::urcu::read_lock_guard read_lock;
+		orchestrator.for_each_consumer_channel(
+			[&usess](
+				const lsu::domain_orchestrator::consumer_channel_descriptor& desc) {
+				if (desc.is_metadata) {
+					return;
+				}
 
-			/* Get associated consumer socket. */
-			socket = consumer_find_socket_by_bitness(reg->bits_per_long,
-								 usess->consumer);
-			if (!socket) {
-				/*
-				 * Ignore request if no consumer is found for
-				 * the session.
-				 */
-				continue;
-			}
+				lttng::urcu::read_lock_guard read_lock;
+				const auto socket = consumer_find_socket_by_bitness(
+					static_cast<int>(desc.abi), usess->consumer);
+				if (!socket) {
+					return;
+				}
 
-			for (auto *buf_reg_chan :
-			     lttng::urcu::lfht_iteration_adapter<buffer_reg_channel,
-								 decltype(buffer_reg_channel::node),
-								 &buffer_reg_channel::node>(
-				     *reg->registry->channels->ht)) {
-				/*
-				 * The following call will print error values so
-				 * the return code is of little importance
-				 * because whatever happens, we have to try them
-				 * all.
-				 */
-				(void) consumer_clear_quiescent_channel(socket,
-									buf_reg_chan->consumer_key);
-			}
-		}
+				(void) consumer_clear_quiescent_channel(socket, desc.consumer_key);
+			});
 
 		break;
 	}
@@ -6274,7 +6240,7 @@ int ust_app_start_trace_all(struct ltt_ust_session *usess,
 	 * following stop or destroy is sure to grab a timestamp_end near those
 	 * operations, even if the packet is empty.
 	 */
-	(void) ust_app_clear_quiescent_session(usess);
+	(void) ust_app_clear_quiescent_session(usess, orchestrator);
 
 	/* Iterate on all apps. */
 	for (auto *app :
@@ -6298,7 +6264,8 @@ int ust_app_start_trace_all(struct ltt_ust_session *usess,
  * Start tracing for the UST session.
  * Called with UST session lock held.
  */
-int ust_app_stop_trace_all(struct ltt_ust_session *usess)
+int ust_app_stop_trace_all(struct ltt_ust_session *usess,
+			   const lsu::domain_orchestrator& orchestrator)
 {
 	int ret = 0;
 
@@ -6329,7 +6296,7 @@ int ust_app_stop_trace_all(struct ltt_ust_session *usess)
 		}
 	}
 
-	(void) ust_app_flush_session(usess);
+	(void) ust_app_flush_session(usess, orchestrator);
 
 	return 0;
 }
@@ -7977,68 +7944,53 @@ enum lttng_error_code ust_app_rotate_session(const ltt_session& session)
 	switch (usess->buffer_type) {
 	case LTTNG_BUFFER_PER_UID:
 	{
-		for (auto *reg :
-		     lttng::urcu::list_iteration_adapter<buffer_reg_uid, &buffer_reg_uid::lnode>(
-			     usess->buffer_reg_uid_list)) {
-			struct consumer_socket *socket;
-			const lttng::urcu::read_lock_guard read_lock;
+		const auto& orchestrator = static_cast<const lsu::domain_orchestrator&>(
+			session.get_ust_orchestrator());
 
-			/* Get consumer socket to use to push the metadata. */
-			socket = consumer_find_socket_by_bitness(reg->bits_per_long,
-								 usess->consumer);
-			if (!socket) {
-				cmd_ret = LTTNG_ERR_INVALID;
-				goto error;
-			}
+		orchestrator.for_each_consumer_channel(
+			[&usess, &cmd_ret](
+				const lsu::domain_orchestrator::consumer_channel_descriptor& desc) {
+				const lttng::urcu::read_lock_guard read_lock;
 
-			/* Rotate the data channels. */
-			for (auto *buf_reg_chan :
-			     lttng::urcu::lfht_iteration_adapter<buffer_reg_channel,
-								 decltype(buffer_reg_channel::node),
-								 &buffer_reg_channel::node>(
-				     *reg->registry->channels->ht)) {
-				ret = consumer_rotate_channel(socket,
-							      buf_reg_chan->consumer_key,
-							      usess->consumer,
-							      /* is_metadata_channel */ false);
-				if (ret < 0) {
-					cmd_ret = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
-					goto error;
+				if (cmd_ret != LTTNG_OK) {
+					return;
 				}
-			}
 
-			/*
-			 * The metadata channel might not be present.
-			 *
-			 * Consumer stream allocation can be done
-			 * asynchronously and can fail on intermediary
-			 * operations (i.e add context) and lead to data
-			 * channels created with no metadata channel.
-			 */
-			if (!reg->registry->reg.ust->_metadata_key) {
-				/* Skip since no metadata is present. */
-				continue;
-			}
+				const auto socket = consumer_find_socket_by_bitness(
+					static_cast<int>(desc.abi), usess->consumer);
+				if (!socket) {
+					cmd_ret = LTTNG_ERR_INVALID;
+					return;
+				}
 
-			{
-				auto locked_registry = reg->registry->reg.ust->lock();
-				(void) push_metadata(locked_registry, usess->consumer);
-			}
+				if (desc.is_metadata) {
+					(void) push_metadata(desc.trace_class.lock(),
+							     usess->consumer);
+				}
 
-			ret = consumer_rotate_channel(socket,
-						      reg->registry->reg.ust->_metadata_key,
-						      usess->consumer,
-						      /* is_metadata_channel */ true);
-			if (ret < 0) {
-				cmd_ret = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
-				goto error;
-			}
-		}
+				const auto rotate_ret = consumer_rotate_channel(socket,
+										desc.consumer_key,
+										usess->consumer,
+										desc.is_metadata);
+				if (rotate_ret < 0) {
+					cmd_ret = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
+				}
+			});
+
 		break;
 	}
 	case LTTNG_BUFFER_PER_PID:
 	{
-		/* Iterate on all apps. */
+		/*
+		 * Iterate on all apps using the ust_app hash table directly rather
+		 * than the orchestrator's per-PID maps. This is necessary because
+		 * ust_app_unregister() closes the metadata channel on the consumer
+		 * and removes the app from ust_app_ht before the orchestrator's
+		 * per-PID maps are cleaned up (which happens later in
+		 * delete_ust_app_session()). Using the orchestrator's maps would
+		 * cause rotation to attempt to rotate channels that have already
+		 * been closed on the consumer, resulting in a rotation failure.
+		 */
 		for (auto *app :
 		     lttng::urcu::lfht_iteration_adapter<ust_app,
 							 decltype(ust_app::pid_n),

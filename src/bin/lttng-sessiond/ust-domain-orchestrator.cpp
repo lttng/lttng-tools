@@ -550,7 +550,7 @@ void ls::ust::domain_orchestrator::stop()
 		return;
 	}
 
-	const auto ret = ust_app_stop_trace_all(&_ust_session);
+	const auto ret = ust_app_stop_trace_all(&_ust_session, *this);
 	if (ret < 0) {
 		LTTNG_THROW_CTL("Failed to stop UST tracing", LTTNG_ERR_UST_STOP_FAIL);
 	}

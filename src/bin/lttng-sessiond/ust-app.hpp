@@ -532,7 +532,8 @@ void ust_app_unregister_by_socket(int sock);
 int ust_app_start_trace_all(struct ltt_ust_session *usess,
 			    const lttng::sessiond::config::domain& domain,
 			    const lttng::sessiond::ust::domain_orchestrator& orchestrator);
-int ust_app_stop_trace_all(struct ltt_ust_session *usess);
+int ust_app_stop_trace_all(struct ltt_ust_session *usess,
+			   const lttng::sessiond::ust::domain_orchestrator& orchestrator);
 int ust_app_destroy_trace_all(struct ltt_ust_session *usess);
 int ust_app_list_events(struct lttng_event **events);
 int ust_app_list_event_fields(struct lttng_event_field **fields);
@@ -628,7 +629,10 @@ ust_app_start_trace_all(struct ltt_ust_session *usess __attribute__((unused)),
 	return 0;
 }
 
-static inline int ust_app_stop_trace_all(struct ltt_ust_session *usess __attribute__((unused)))
+static inline int
+ust_app_stop_trace_all(struct ltt_ust_session *usess __attribute__((unused)),
+		       const lttng::sessiond::ust::domain_orchestrator& orchestrator
+		       __attribute__((unused)))
 {
 	return 0;
 }
