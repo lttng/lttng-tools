@@ -23,7 +23,6 @@
 #include <common/format.hpp>
 #include <common/macros.hpp>
 #include <common/scope-exit.hpp>
-#include <common/urcu.hpp>
 
 #include <lttng/event-rule/event-rule-internal.hpp>
 #include <lttng/event-rule/event-rule.h>
@@ -289,6 +288,54 @@ ls::ust::stream_group& ls::ust::domain_orchestrator::find_or_create_per_uid_stre
 		consumer_key);
 
 	return ref;
+}
+
+ls::ust::stream_group& ls::ust::domain_orchestrator::find_or_create_per_pid_stream_group(
+	const config::recording_channel_configuration& channel_config,
+	const ust_app& app,
+	std::uint64_t consumer_key,
+	ust::ust_object_data channel_object,
+	ust::trace_class& trace_class,
+	ust::stream_class& stream_class)
+{
+	LTTNG_ASSERT(_default_buffer_ownership ==
+		     lsc::recording_channel_configuration::owership_model_t::PER_PID);
+
+	const _per_pid_stream_group_key key = { &channel_config, &app };
+	const auto it = _per_pid_stream_groups.find(key);
+	if (it != _per_pid_stream_groups.end()) {
+		return *it->second;
+	}
+
+	auto sg = lttng::make_unique<ust::stream_group>(
+		consumer_key, std::move(channel_object), channel_config, trace_class, stream_class);
+
+	auto& ref = *sg;
+	_per_pid_stream_groups.emplace(key, std::move(sg));
+
+	DBG_FMT("UST domain orchestrator created per-PID stream group: "
+		"channel_name=`{}`, pid={}, consumer_key={}",
+		channel_config.name,
+		app.pid,
+		consumer_key);
+
+	return ref;
+}
+
+void ls::ust::domain_orchestrator::release_per_pid_stream_groups(const ust_app& app)
+{
+	auto it = _per_pid_stream_groups.begin();
+	while (it != _per_pid_stream_groups.end()) {
+		if (it->first.app == &app) {
+			DBG_FMT("UST domain orchestrator releasing per-PID stream group: "
+				"channel_name=`{}`, pid={}",
+				it->second->configuration().name,
+				app.pid);
+			it = _per_pid_stream_groups.erase(it);
+		} else {
+			++it;
+		}
+	}
 }
 
 void ls::ust::domain_orchestrator::create_channel(
@@ -635,45 +682,22 @@ ls::ust::domain_orchestrator::get_recording_channel_runtime_stats(
 		}
 	} else {
 		/*
-		 * Per-PID: iterate all registered applications, sum the
-		 * counters for each app that has this channel.
+		 * Per-PID: iterate all per-PID stream groups matching this
+		 * channel configuration and query the consumer daemon for
+		 * each app's stats.
 		 */
-		const lttng::urcu::read_lock_guard read_lock;
-
-		for (auto *app :
-		     lttng::urcu::lfht_iteration_adapter<ust_app,
-							 decltype(ust_app::pid_n),
-							 &ust_app::pid_n>(*ust_app_ht->ht)) {
-			if (!ust_app_get(*app)) {
+		for (const auto& sg_entry : _per_pid_stream_groups) {
+			if (sg_entry.first.channel_config != &channel_config) {
 				continue;
 			}
 
-			const ust_app_reference app_ref(app);
-
-			auto *ua_sess = ust_app_lookup_app_session(&_ust_session, app);
-			if (!ua_sess) {
-				continue;
-			}
-
-			struct lttng_ht_iter uiter;
-			lttng_ht_lookup(ua_sess->channels,
-					static_cast<const void *>(channel_config.name.c_str()),
-					&uiter);
-
-			const auto *ua_chan_node =
-				lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
-			if (!ua_chan_node) {
-				continue;
-			}
-
-			const auto *ua_chan =
-				lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
+			const auto consumer_chan_key = sg_entry.second->consumer_key();
 
 			if (is_overwrite) {
 				uint64_t lost = 0;
 
-				const auto ret = consumer_get_lost_packets(_ust_session.id,
-									   ua_chan->key,
+				const auto ret = consumer_get_lost_packets(_session.id,
+									   consumer_chan_key,
 									   _ust_session.consumer,
 									   &lost);
 				if (ret < 0) {
@@ -685,8 +709,8 @@ ls::ust::domain_orchestrator::get_recording_channel_runtime_stats(
 				uint64_t discarded = 0;
 
 				const auto ret =
-					consumer_get_discarded_events(_ust_session.id,
-								      ua_chan->key,
+					consumer_get_discarded_events(_session.id,
+								      consumer_chan_key,
 								      _ust_session.consumer,
 								      &discarded);
 				if (ret < 0) {

@@ -1148,10 +1148,11 @@ static void delete_ust_app_session(int sock, struct ust_app_session *ua_sess, st
 		}
 
 		/*
-		 * Release the per-PID trace_class from the orchestrator.
-		 * This destroys the trace_class (and cleans up its shared
-		 * memory files) now rather than deferring it until the
-		 * session is destroyed.
+		 * Release the per-PID trace_class and stream groups from
+		 * the orchestrator. This destroys the trace_class (and
+		 * cleans up its shared memory files) and the stream
+		 * groups now rather than deferring until session
+		 * destruction.
 		 *
 		 * The session may already be gone (e.g. if the session is
 		 * being torn down concurrently); in that case the
@@ -1160,9 +1161,11 @@ static void delete_ust_app_session(int sock, struct ust_app_session *ua_sess, st
 		try {
 			const auto session = ltt_session::find_session(ua_sess->tracing_id);
 			if (session->ust_orchestrator) {
-				static_cast<lsu::domain_orchestrator&>(
-					session->get_ust_orchestrator())
-					.release_per_pid_trace_class(*app);
+				auto& orchestrator = static_cast<lsu::domain_orchestrator&>(
+					session->get_ust_orchestrator());
+
+				orchestrator.release_per_pid_stream_groups(*app);
+				orchestrator.release_per_pid_trace_class(*app);
 			}
 		} catch (const lttng::sessiond::exceptions::session_not_found_error&) {
 			/* Session is already gone; orchestrator will clean up. */
@@ -3962,6 +3965,33 @@ static int create_channel_per_pid(struct ust_app *app,
 
 		auto& ust_reg_chan = locked_registry->channel(chan_reg_key);
 		ust_reg_chan._consumer_key = ua_chan->key;
+	}
+
+	/*
+	 * Populate the orchestrator's per-PID stream group map.
+	 * During the dual-write transition, the per-app channel
+	 * retains the authoritative channel and stream objects. The
+	 * stream group's channel object is null during this period;
+	 * ownership will be transferred when the per-app channel
+	 * objects are managed by the orchestrator.
+	 */
+	{
+		const auto& recording_config =
+			static_cast<const lttng::sessiond::config::recording_channel_configuration&>(
+				ua_chan->channel_config);
+		auto& trace_class_ref = *registry;
+		auto locked_registry = trace_class_ref.lock();
+		auto& stream_class_ref = locked_registry->channel(chan_reg_key);
+
+		auto& orchestrator =
+			static_cast<lsu::domain_orchestrator&>(session->get_ust_orchestrator());
+
+		orchestrator.find_or_create_per_pid_stream_group(recording_config,
+								 *app,
+								 ua_chan->key,
+								 lsu::ust_object_data(nullptr),
+								 trace_class_ref,
+								 stream_class_ref);
 	}
 
 	cmd_ret = notification_thread_command_add_channel(the_notification_thread_handle,

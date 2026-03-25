@@ -178,6 +178,16 @@ public:
 	void release_per_pid_trace_class(const ust_app& app);
 
 	/*
+	 * Release all per-PID stream groups associated with the given
+	 * application. Called from delete_ust_app_session() when a
+	 * per-PID application departs, alongside
+	 * release_per_pid_trace_class().
+	 *
+	 * No-op if no stream groups exist for the given app.
+	 */
+	void release_per_pid_stream_groups(const ust_app& app);
+
+	/*
 	 * Find or create a per-UID stream group for the given
 	 * (channel_config, uid, abi) combination. The orchestrator owns
 	 * the returned stream_group (via unique_ptr in
@@ -199,6 +209,31 @@ public:
 		const config::recording_channel_configuration& channel_config,
 		uid_t uid,
 		application_abi abi,
+		std::uint64_t consumer_key,
+		ust_object_data channel_object,
+		ust::trace_class& trace_class,
+		ust::stream_class& stream_class);
+
+	/*
+	 * Find or create a per-PID stream group for the given
+	 * (channel_config, app) combination. The orchestrator owns
+	 * the returned stream_group (via unique_ptr in
+	 * _per_pid_stream_groups). The caller receives a reference and
+	 * must NOT delete it.
+	 *
+	 * Called from create_channel_per_pid() after the consumer
+	 * channel has been created. During the dual-write transition,
+	 * the channel_object is null because the per-app channel
+	 * retains the authoritative object handles. Ownership will be
+	 * transferred when the per-app channel objects are managed by
+	 * the orchestrator.
+	 *
+	 * Unlike per-UID, each app always gets its own stream group
+	 * (no sharing).
+	 */
+	ust::stream_group& find_or_create_per_pid_stream_group(
+		const config::recording_channel_configuration& channel_config,
+		const ust_app& app,
 		std::uint64_t consumer_key,
 		ust_object_data channel_object,
 		ust::trace_class& trace_class,
@@ -268,9 +303,9 @@ private:
 	 *   - One stream_group per (channel_config, app). Private ring
 	 *     buffers per app.
 	 *   - When an app departs, its trace_class is destroyed via
-	 *     release_per_pid_trace_class() (which also cleans up
-	 *     shared memory files). Stream group cleanup and per-PID
-	 *     closed-app statistics accumulation are TODO.
+	 *     release_per_pid_trace_class() and its stream groups are
+	 *     destroyed via release_per_pid_stream_groups() (both
+	 *     called from delete_ust_app_session).
 	 */
 
 	static std::size_t _hash_combine(std::size_t seed, std::size_t value) noexcept
