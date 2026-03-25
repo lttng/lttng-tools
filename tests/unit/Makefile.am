@@ -27,6 +27,7 @@ TESTS = \
 	test_relayd_backward_compat_group_by_session \
 	test_session \
 	test_string_utils \
+	test_condition \
 	test_unix_socket \
 	test_uri \
 	test_utils_compat_poll \
