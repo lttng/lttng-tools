@@ -8243,39 +8243,45 @@ enum lttng_error_code ust_app_clear_session(const ltt_session& session)
 		return LTTNG_ERR_FATAL;
 	}
 
-	const auto channel_keys = session.user_space_consumer_channel_keys();
-	for (auto it = channel_keys.begin(); it != channel_keys.end(); ++it) {
-		const auto key = *it;
+	const auto& orchestrator =
+		static_cast<const lsu::domain_orchestrator&>(session.get_ust_orchestrator());
+	auto result = LTTNG_OK;
 
-		const auto consumer_socket = consumer_find_socket_by_bitness(
-			key.bitness ==
-					lttng::sessiond::user_space_consumer_channel_keys::
-						consumer_bitness::ABI_32 ?
-				32 :
-				64,
-			usess.consumer);
-
-		if (key.type ==
-		    lttng::sessiond::user_space_consumer_channel_keys::channel_type::METADATA) {
-			(void) push_metadata(it.get_trace_class()->lock(), usess.consumer);
-		}
-
-		const auto clean_ret = consumer_clear_channel(consumer_socket, key.consumer_key);
-		if (clean_ret < 0) {
-			if (clean_ret == -LTTCOMM_CONSUMERD_CHAN_NOT_FOUND &&
-			    usess.buffer_type == LTTNG_BUFFER_PER_PID) {
-				continue;
+	orchestrator.for_each_consumer_channel(
+		[&usess,
+		 &result](const lsu::domain_orchestrator::consumer_channel_descriptor& desc) {
+			if (result != LTTNG_OK) {
+				return;
 			}
 
-			if (clean_ret == -LTTCOMM_CONSUMERD_RELAYD_CLEAR_DISALLOWED) {
-				return LTTNG_ERR_CLEAR_RELAY_DISALLOWED;
+			/* Protect looked-up consumer socket. */
+			const lttng::urcu::read_lock_guard read_lock;
+
+			const auto consumer_socket = consumer_find_socket_by_bitness(
+				static_cast<int>(desc.abi), usess.consumer);
+
+			if (desc.is_metadata) {
+				(void) push_metadata(desc.trace_class.lock(), usess.consumer);
 			}
 
-			return LTTNG_ERR_CLEAR_FAIL_CONSUMER;
-		}
-	}
+			const auto clean_ret =
+				consumer_clear_channel(consumer_socket, desc.consumer_key);
+			if (clean_ret < 0) {
+				if (clean_ret == -LTTCOMM_CONSUMERD_CHAN_NOT_FOUND &&
+				    usess.buffer_type == LTTNG_BUFFER_PER_PID) {
+					return;
+				}
 
-	return LTTNG_OK;
+				if (clean_ret == -LTTCOMM_CONSUMERD_RELAYD_CLEAR_DISALLOWED) {
+					result = LTTNG_ERR_CLEAR_RELAY_DISALLOWED;
+					return;
+				}
+
+				result = LTTNG_ERR_CLEAR_FAIL_CONSUMER;
+			}
+		});
+
+	return result;
 }
 
 /*
@@ -8297,34 +8303,37 @@ enum lttng_error_code ust_app_clear_session(const ltt_session& session)
 enum lttng_error_code ust_app_open_packets(const ltt_session& session)
 {
 	const ltt_ust_session& usess = *session.ust_session;
+	const auto& orchestrator =
+		static_cast<const lsu::domain_orchestrator&>(session.get_ust_orchestrator());
+	auto result = LTTNG_OK;
 
-	for (const auto key : session.user_space_consumer_channel_keys()) {
-		if (key.type !=
-		    lttng::sessiond::user_space_consumer_channel_keys::channel_type::DATA) {
-			continue;
-		}
-
-		const auto socket = consumer_find_socket_by_bitness(
-			key.bitness ==
-					lttng::sessiond::user_space_consumer_channel_keys::
-						consumer_bitness::ABI_32 ?
-				32 :
-				64,
-			usess.consumer);
-
-		const auto open_ret = consumer_open_channel_packets(socket, key.consumer_key);
-		if (open_ret < 0) {
-			/* Per-PID buffer and application going away. */
-			if (open_ret == -LTTCOMM_CONSUMERD_CHAN_NOT_FOUND &&
-			    usess.buffer_type == LTTNG_BUFFER_PER_PID) {
-				continue;
+	orchestrator.for_each_consumer_channel(
+		[&usess,
+		 &result](const lsu::domain_orchestrator::consumer_channel_descriptor& desc) {
+			if (result != LTTNG_OK || desc.is_metadata) {
+				return;
 			}
 
-			return LTTNG_ERR_UNK;
-		}
-	}
+			/* Protect looked-up consumer socket. */
+			const lttng::urcu::read_lock_guard read_lock;
 
-	return LTTNG_OK;
+			const auto socket = consumer_find_socket_by_bitness(
+				static_cast<int>(desc.abi), usess.consumer);
+
+			const auto open_ret =
+				consumer_open_channel_packets(socket, desc.consumer_key);
+			if (open_ret < 0) {
+				/* Per-PID buffer and application going away. */
+				if (open_ret == -LTTCOMM_CONSUMERD_CHAN_NOT_FOUND &&
+				    usess.buffer_type == LTTNG_BUFFER_PER_PID) {
+					return;
+				}
+
+				result = LTTNG_ERR_UNK;
+			}
+		});
+
+	return result;
 }
 
 lsu::ctl_field_quirks ust_app::ctl_field_quirks() const

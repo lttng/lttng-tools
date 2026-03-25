@@ -735,6 +735,55 @@ add_closed_app_stats:
 	return stats;
 }
 
+void ls::ust::domain_orchestrator::for_each_consumer_channel(
+	const consumer_channel_visitor& visitor) const
+{
+	if (_default_buffer_ownership ==
+	    lsc::recording_channel_configuration::owership_model_t::PER_UID) {
+		for (const auto& sg_entry : _per_uid_stream_groups) {
+			visitor(consumer_channel_descriptor{ sg_entry.first.abi,
+							     sg_entry.second->consumer_key(),
+							     false,
+							     sg_entry.second->get_trace_class() });
+		}
+
+		for (const auto& tc_entry : _per_uid_trace_classes) {
+			if (!tc_entry.second->_metadata_key) {
+				continue;
+			}
+
+			visitor(consumer_channel_descriptor{ tc_entry.first.abi,
+							     tc_entry.second->_metadata_key,
+							     true,
+							     *tc_entry.second });
+		}
+	} else {
+		for (const auto& sg_entry : _per_pid_stream_groups) {
+			const auto app_abi = sg_entry.first.app->abi.bits_per_long == 32 ?
+				application_abi::ABI_32 :
+				application_abi::ABI_64;
+
+			visitor(consumer_channel_descriptor{ app_abi,
+							     sg_entry.second->consumer_key(),
+							     false,
+							     sg_entry.second->get_trace_class() });
+		}
+
+		for (const auto& tc_entry : _per_pid_trace_classes) {
+			if (!tc_entry.second->_metadata_key) {
+				continue;
+			}
+
+			const auto app_abi = tc_entry.first->abi.bits_per_long == 32 ?
+				application_abi::ABI_32 :
+				application_abi::ABI_64;
+
+			visitor(consumer_channel_descriptor{
+				app_abi, tc_entry.second->_metadata_key, true, *tc_entry.second });
+		}
+	}
+}
+
 /* Key comparison and hash implementations. */
 
 bool ls::ust::domain_orchestrator::_per_uid_trace_class_key::operator==(

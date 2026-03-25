@@ -19,6 +19,7 @@
 #include "ust-stream-group.hpp"
 #include "ust-trace-class.hpp"
 
+#include <functional>
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
@@ -100,6 +101,42 @@ public:
 
 	recording_channel_runtime_stats get_recording_channel_runtime_stats(
 		const config::recording_channel_configuration& channel_config) const override;
+
+	/*
+	 * Descriptor yielded to the for_each_consumer_channel() callback.
+	 *
+	 * Each descriptor represents a single consumer-side channel: either
+	 * a data channel (backed by a stream_group) or a metadata channel
+	 * (backed by a trace_class).
+	 */
+	struct consumer_channel_descriptor {
+		application_abi abi;
+		std::uint64_t consumer_key;
+		bool is_metadata;
+		ust::trace_class& trace_class;
+	};
+
+	/*
+	 * Iterate all consumer channel keys (data + metadata) owned by this
+	 * orchestrator and call `visitor` for each one.
+	 *
+	 * For per-UID mode, iterates the per-UID stream groups (data
+	 * channels) and per-UID trace classes (metadata channels).
+	 *
+	 * For per-PID mode, iterates the per-PID stream groups (data
+	 * channels) and per-PID trace classes (metadata channels).
+	 *
+	 * Metadata channels with a zero key (not yet allocated) are
+	 * skipped.
+	 *
+	 * This method decouples callers (rotate, clear, open_packets,
+	 * snapshot, the user_space_consumer_channel_keys iterator) from
+	 * the buffer_reg_uid / ust_app_session internals.
+	 */
+
+	using consumer_channel_visitor = std::function<void(const consumer_channel_descriptor&)>;
+
+	void for_each_consumer_channel(const consumer_channel_visitor& visitor) const;
 
 	/*
 	 * Convert a context_configuration to the lttng_ust_context_attr ABI
