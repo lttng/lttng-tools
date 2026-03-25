@@ -332,6 +332,9 @@ private:
 	static void
 	_validate_channel_attributes(const config::recording_channel_configuration& channel_config);
 
+	void _record_snapshot_per_uid(const struct consumer_output& snapshot_consumer,
+				      std::uint64_t nb_packets_per_stream) const;
+
 	/*
 	 * Trace class and stream group ownership.
 	 *

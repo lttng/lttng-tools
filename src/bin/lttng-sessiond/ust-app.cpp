@@ -7605,82 +7605,8 @@ enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *uses
 
 	LTTNG_ASSERT(usess);
 	LTTNG_ASSERT(output);
+	LTTNG_ASSERT(usess->buffer_type == LTTNG_BUFFER_PER_PID);
 
-	switch (usess->buffer_type) {
-	case LTTNG_BUFFER_PER_UID:
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		for (auto *reg :
-		     lttng::urcu::list_iteration_adapter<buffer_reg_uid, &buffer_reg_uid::lnode>(
-			     usess->buffer_reg_uid_list)) {
-			struct consumer_socket *socket;
-			char pathname[PATH_MAX];
-			size_t consumer_path_offset = 0;
-
-			if (!reg->registry->reg.ust->_metadata_key) {
-				/* Skip since no metadata is present */
-				continue;
-			}
-
-			/* Get consumer socket to use to push the metadata. */
-			socket = consumer_find_socket_by_bitness(reg->bits_per_long,
-								 usess->consumer);
-			if (!socket) {
-				status = LTTNG_ERR_INVALID;
-				goto error;
-			}
-
-			memset(pathname, 0, sizeof(pathname));
-			ret = snprintf(pathname,
-				       sizeof(pathname),
-				       DEFAULT_UST_TRACE_UID_PATH,
-				       reg->uid,
-				       reg->bits_per_long);
-			if (ret < 0) {
-				PERROR("snprintf snapshot path");
-				status = LTTNG_ERR_INVALID;
-				goto error;
-			}
-			/* Free path allowed on previous iteration. */
-			free(trace_path);
-			trace_path = setup_channel_trace_path(
-				usess->consumer, pathname, &consumer_path_offset);
-			if (!trace_path) {
-				status = LTTNG_ERR_INVALID;
-				goto error;
-			}
-			/* Add the UST default trace dir to path. */
-			for (auto *buf_reg_chan :
-			     lttng::urcu::lfht_iteration_adapter<buffer_reg_channel,
-								 decltype(buffer_reg_channel::node),
-								 &buffer_reg_channel::node>(
-				     *reg->registry->channels->ht)) {
-				status =
-					consumer_snapshot_channel(socket,
-								  buf_reg_chan->consumer_key,
-								  output,
-								  0,
-								  &trace_path[consumer_path_offset],
-								  nb_packets_per_stream);
-				if (status != LTTNG_OK) {
-					goto error;
-				}
-			}
-			status = consumer_snapshot_channel(socket,
-							   reg->registry->reg.ust->_metadata_key,
-							   output,
-							   1,
-							   &trace_path[consumer_path_offset],
-							   0);
-			if (status != LTTNG_OK) {
-				goto error;
-			}
-		}
-
-		break;
-	}
-	case LTTNG_BUFFER_PER_PID:
 	{
 		/* Iterate on all apps. */
 		for (auto *app :
@@ -7780,11 +7706,6 @@ enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *uses
 				goto error;
 			}
 		}
-		break;
-	}
-	default:
-		abort();
-		break;
 	}
 
 error:

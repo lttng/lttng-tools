@@ -586,10 +586,77 @@ void ls::ust::domain_orchestrator::open_packets()
 void ls::ust::domain_orchestrator::record_snapshot(const struct consumer_output& snapshot_consumer,
 						   std::uint64_t nb_packets_per_stream)
 {
-	const auto ret =
-		ust_app_snapshot_record(&_ust_session, &snapshot_consumer, nb_packets_per_stream);
-	if (ret != LTTNG_OK) {
-		LTTNG_THROW_SNAPSHOT_FAILURE("Failed to record UST snapshot");
+	if (_default_buffer_ownership ==
+	    lsc::recording_channel_configuration::owership_model_t::PER_UID) {
+		_record_snapshot_per_uid(snapshot_consumer, nb_packets_per_stream);
+	} else {
+		const auto ret = ust_app_snapshot_record(
+			&_ust_session, &snapshot_consumer, nb_packets_per_stream);
+		if (ret != LTTNG_OK) {
+			LTTNG_THROW_SNAPSHOT_FAILURE("Failed to record UST snapshot");
+		}
+	}
+}
+
+void ls::ust::domain_orchestrator::_record_snapshot_per_uid(
+	const struct consumer_output& snapshot_consumer, std::uint64_t nb_packets_per_stream) const
+{
+	for (const auto& tc_entry : _per_uid_trace_classes) {
+		const auto& tc_key = tc_entry.first;
+		auto& trace_class = *tc_entry.second;
+
+		if (!trace_class._metadata_key) {
+			/* Skip since no metadata is present. */
+			continue;
+		}
+
+		lttng::urcu::read_lock_guard read_lock;
+		auto *socket = consumer_find_socket_by_bitness(static_cast<int>(tc_key.abi),
+							       _ust_session.consumer);
+		if (!socket) {
+			LTTNG_THROW_CTL("Failed to find consumer socket for snapshot",
+					LTTNG_ERR_INVALID);
+		}
+
+		const auto uid_path = lttng::format(
+			"uid/{}/{}-bit", tc_key.uid, static_cast<unsigned int>(tc_key.abi));
+
+		std::size_t consumer_path_offset = 0;
+		const auto trace_path_raw = setup_channel_trace_path(
+			_ust_session.consumer, uid_path.c_str(), &consumer_path_offset);
+		if (!trace_path_raw) {
+			LTTNG_THROW_CTL("Failed to setup channel trace path for snapshot",
+					LTTNG_ERR_INVALID);
+		}
+
+		const auto free_trace_path = lttng::make_scope_exit(
+			[trace_path_raw]() noexcept { free(trace_path_raw); });
+		const auto *trace_path = &trace_path_raw[consumer_path_offset];
+
+		/* Snapshot data channels. */
+		for (const auto& sg_entry : _per_uid_stream_groups) {
+			if (sg_entry.first.uid != tc_key.uid || sg_entry.first.abi != tc_key.abi) {
+				continue;
+			}
+
+			const auto status =
+				consumer_snapshot_channel(socket,
+							  sg_entry.second->consumer_key(),
+							  &snapshot_consumer,
+							  0,
+							  trace_path,
+							  nb_packets_per_stream);
+			if (status != LTTNG_OK) {
+				LTTNG_THROW_SNAPSHOT_FAILURE("Failed to snapshot UST data channel");
+			}
+		}
+
+		/* Snapshot metadata channel. */
+		const auto status = consumer_snapshot_channel(
+			socket, trace_class._metadata_key, &snapshot_consumer, 1, trace_path, 0);
+		if (status != LTTNG_OK) {
+			LTTNG_THROW_SNAPSHOT_FAILURE("Failed to snapshot UST metadata channel");
+		}
 	}
 }
 
