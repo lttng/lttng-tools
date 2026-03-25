@@ -23,6 +23,7 @@
 #include <common/format.hpp>
 #include <common/macros.hpp>
 #include <common/scope-exit.hpp>
+#include <common/trace-chunk.hpp>
 
 #include <lttng/event-rule/event-rule-internal.hpp>
 #include <lttng/event-rule/event-rule.h>
@@ -602,6 +603,74 @@ void ls::ust::domain_orchestrator::regenerate_statedump()
 	const auto ret = ust_app_regenerate_statedump_all(&_ust_session);
 	if (ret < 0) {
 		LTTNG_THROW_REGENERATE_STATEDUMP_FAILURE("Failed to regenerate UST statedump");
+	}
+}
+
+void ls::ust::domain_orchestrator::create_channel_subdirectories(
+	lttng_trace_chunk& trace_chunk) const
+{
+	if (_default_buffer_ownership ==
+	    lsc::recording_channel_configuration::owership_model_t::PER_UID) {
+		for (const auto& tc_entry : _per_uid_trace_classes) {
+			const auto uid = tc_entry.first.uid;
+			const auto bits_per_long = static_cast<unsigned int>(tc_entry.first.abi);
+
+			const auto pathname = lttng::format(DEFAULT_UST_TRACE_DIR
+							    "/uid/{}/{}-bit/" DEFAULT_INDEX_DIR,
+							    uid,
+							    bits_per_long);
+
+			const auto chunk_status = lttng_trace_chunk_create_subdirectory(
+				&trace_chunk, pathname.c_str());
+			if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+				LTTNG_THROW_CTL("Failed to create UST channel subdirectory",
+						LTTNG_ERR_CREATE_DIR_FAIL);
+			}
+		}
+	} else {
+		/*
+		 * Create the toplevel ust/ directory in case no apps are running.
+		 */
+		auto chunk_status =
+			lttng_trace_chunk_create_subdirectory(&trace_chunk, DEFAULT_UST_TRACE_DIR);
+		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+			LTTNG_THROW_CTL("Failed to create UST trace directory",
+					LTTNG_ERR_CREATE_DIR_FAIL);
+		}
+
+		for (auto *app :
+		     lttng::urcu::lfht_iteration_adapter<ust_app,
+							 decltype(ust_app::pid_n),
+							 &ust_app::pid_n>(*ust_app_ht->ht)) {
+			if (!ust_app_get(*app)) {
+				DBG("Could not get application reference as it is being torn down; skipping application");
+				continue;
+			}
+
+			const ust_app_reference app_ref(app);
+
+			const auto *ua_sess = ust_app_lookup_app_session(&_ust_session, app);
+			if (!ua_sess) {
+				continue;
+			}
+
+			const auto *registry =
+				ust_app_get_session_registry(ua_sess->get_identifier());
+			if (!registry) {
+				DBG("Application session is being torn down. Skip application.");
+				continue;
+			}
+
+			const auto pathname = lttng::format(
+				DEFAULT_UST_TRACE_DIR "/{}/" DEFAULT_INDEX_DIR, ua_sess->path);
+
+			chunk_status = lttng_trace_chunk_create_subdirectory(&trace_chunk,
+									     pathname.c_str());
+			if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+				LTTNG_THROW_CTL("Failed to create UST channel subdirectory",
+						LTTNG_ERR_CREATE_DIR_FAIL);
+			}
+		}
 	}
 }
 

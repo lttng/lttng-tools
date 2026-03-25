@@ -99,6 +99,17 @@ public:
 	void reclaim_channel_memory(
 		const config::recording_channel_configuration& target_channel) override;
 
+	/*
+	 * Create the output subdirectories for UST trace data in the
+	 * given trace chunk. For per-UID mode, creates one directory tree
+	 * per (uid, abi) combination. For per-PID mode, creates the
+	 * toplevel ust/ directory plus one directory tree per registered
+	 * application.
+	 *
+	 * Called during trace chunk rotation for local traces.
+	 */
+	void create_channel_subdirectories(lttng_trace_chunk& trace_chunk) const;
+
 	recording_channel_runtime_stats get_recording_channel_runtime_stats(
 		const config::recording_channel_configuration& channel_config) const override;
 
@@ -445,15 +456,21 @@ namespace ust {
 /*
  * Stub definition for builds without lttng-ust. The class is never
  * instantiated; it exists only so that code which static_casts a
- * domain_orchestrator reference and calls trace_class_stream_class_handle()
- * can compile and link. The method aborts since reaching it would indicate
- * a logic error.
+ * domain_orchestrator reference and calls its methods can compile and
+ * link. The methods abort since reaching them would indicate a logic
+ * error.
  */
 class domain_orchestrator final : public sessiond::domain_orchestrator {
 public:
 	std::uint64_t trace_class_stream_class_handle(
 		const config::recording_channel_configuration& channel_config
 		[[maybe_unused]]) const
+	{
+		std::abort();
+	}
+
+	void create_channel_subdirectories(struct lttng_trace_chunk& trace_chunk
+					   [[maybe_unused]]) const
 	{
 		std::abort();
 	}

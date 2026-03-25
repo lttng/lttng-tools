@@ -562,11 +562,12 @@ static int _session_set_trace_chunk_no_lock_check(const ltt_session::locked_ref&
 
 		session->ust_session->current_trace_chunk = new_trace_chunk;
 		if (is_local_trace) {
-			enum lttng_error_code ret_error_code;
-
-			ret_error_code =
-				ust_app_create_channel_subdirectories(session->ust_session);
-			if (ret_error_code != LTTNG_OK) {
+			try {
+				static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
+					session->get_ust_orchestrator())
+					.create_channel_subdirectories(*new_trace_chunk);
+			} catch (const std::exception& ex) {
+				ERR("Failed to create UST channel subdirectories: %s", ex.what());
 				goto error;
 			}
 		}
