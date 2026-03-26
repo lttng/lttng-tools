@@ -662,7 +662,9 @@ void ls::ust::domain_orchestrator::_record_snapshot_per_uid(
 
 void ls::ust::domain_orchestrator::regenerate_metadata()
 {
-	trace_ust_regenerate_metadata(&_ust_session);
+	for (const auto& tc_entry : _per_uid_trace_classes) {
+		tc_entry.second->regenerate_metadata();
+	}
 }
 
 void ls::ust::domain_orchestrator::regenerate_statedump()

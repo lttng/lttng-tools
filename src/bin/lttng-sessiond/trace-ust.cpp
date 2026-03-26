@@ -119,23 +119,6 @@ error_alloc:
 	return nullptr;
 }
 
-int trace_ust_regenerate_metadata(struct ltt_ust_session *usess)
-{
-	const lttng::urcu::read_lock_guard read_lock;
-	for (auto uid_reg :
-	     lttng::urcu::list_iteration_adapter<buffer_reg_uid, &buffer_reg_uid::lnode>(
-		     usess->buffer_reg_uid_list)) {
-		lsu::trace_class *registry;
-
-		auto *session_reg = uid_reg->registry;
-		registry = session_reg->reg.ust;
-
-		registry->regenerate_metadata();
-	}
-
-	return 0;
-}
-
 /*
  * Cleanup ust session structure, keeping data required by
  * destroy notifier.

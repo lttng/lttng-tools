@@ -82,8 +82,6 @@ struct agent *trace_ust_find_agent(struct ltt_ust_session *session,
 
 struct ltt_ust_session *trace_ust_create_session(uint64_t session_id);
 
-int trace_ust_regenerate_metadata(struct ltt_ust_session *usess);
-
 void trace_ust_destroy_session(struct ltt_ust_session *session);
 void trace_ust_free_session(struct ltt_ust_session *session);
 
@@ -104,12 +102,6 @@ static inline void trace_ust_destroy_session(struct ltt_ust_session *session
 
 static inline void trace_ust_free_session(struct ltt_ust_session *session __attribute__((unused)))
 {
-}
-
-static inline int trace_ust_regenerate_metadata(struct ltt_ust_session *usess
-						__attribute__((unused)))
-{
-	return 0;
 }
 
 static inline struct agent *trace_ust_find_agent(struct ltt_ust_session *session
