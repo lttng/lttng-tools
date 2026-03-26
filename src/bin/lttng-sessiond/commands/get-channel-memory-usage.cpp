@@ -5,45 +5,22 @@
  *
  */
 
-#include "bin/lttng-sessiond/recording-channel-configuration.hpp"
 #include "get-channel-memory-usage.hpp"
-#include "vendor/optional.hpp"
+
+#include <common/exception.hpp>
+
+#ifdef HAVE_LIBLTTNG_UST_CTL
 
 #include <common/error.hpp>
-#include <common/exception.hpp>
 #include <common/format.hpp>
 #include <common/urcu.hpp>
 
 #include <bin/lttng-sessiond/consumer.hpp>
-#include <unordered_map>
+#include <bin/lttng-sessiond/recording-channel-configuration.hpp>
+#include <bin/lttng-sessiond/ust-domain-orchestrator.hpp>
 
 namespace lsc = lttng::sessiond::commands;
-
-using channel_description_map = std::unordered_map<
-	std::pair<std::uint64_t, lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness>,
-	lttng::sessiond::user_space_consumer_channel_keys::iterator::key>;
-
-namespace std {
-template <>
-struct hash<std::pair<std::uint64_t,
-		      lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness>> {
-	std::size_t operator()(
-		const std::pair<std::uint64_t,
-				lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness>&
-			p) const noexcept
-	{
-		const auto key_hash = std::hash<std::uint64_t>{}(p.first);
-		const auto bitness_hash = std::hash<std::underlying_type<
-			lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness>::type>{}(
-			static_cast<std::underlying_type<
-				lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness>::
-					    type>(p.second));
-
-		/* Combine the two hashes */
-		return key_hash ^ bitness_hash;
-	}
-};
-} /* namespace std */
+namespace lsu = lttng::sessiond::ust;
 
 namespace {
 void validate_agent_channel_name(lttng::domain_class domain, lttng::c_string_view channel_name)
@@ -75,9 +52,7 @@ void validate_agent_channel_name(lttng::domain_class domain, lttng::c_string_vie
 void append_consumer_channel_memory_usage(
 	std::vector<lsc::stream_memory_usage_group>& result,
 	const std::vector<std::uint64_t>& consumer_channel_keys,
-	lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness bitness,
-	const channel_description_map& channel_descriptions,
-	const ltt_session::locked_ref& session,
+	const std::vector<lsc::stream_group_owner>& stream_group_owners,
 	bool is_per_cpu_stream,
 	consumer_socket& consumer_socket)
 {
@@ -90,31 +65,7 @@ void append_consumer_channel_memory_usage(
 		consumer_socket, consumer_channel_keys);
 
 	for (const auto& channel_usage : channels_memory_usage) {
-		const auto it = channel_descriptions.find(
-			std::make_pair(consumer_channel_keys.at(current_channel_index), bitness));
-		if (it == channel_descriptions.end()) {
-			LTTNG_THROW_ERROR(fmt::format(
-				"Consumer channel key not found in channel descriptions: key={}, bitness={}",
-				consumer_channel_keys.at(current_channel_index),
-				static_cast<int>(bitness)));
-		}
-
-		const auto& channel_description = it->second;
-
-		const auto desc_abi = static_cast<lttng::sessiond::ust::application_abi>(
-			channel_description.bitness);
-		const auto group_owner = [&session, &channel_description, desc_abi]() {
-			switch (session->ust_session->buffer_type) {
-			case LTTNG_BUFFER_PER_PID:
-				return lsc::stream_group_owner(desc_abi,
-							       channel_description.owner_pid());
-			case LTTNG_BUFFER_PER_UID:
-				return lsc::stream_group_owner(desc_abi,
-							       channel_description.owner_uid());
-			default:
-				std::abort();
-			}
-		}();
+		const auto& group_owner = stream_group_owners.at(current_channel_index);
 
 		std::uint64_t cpu_id = 0;
 		std::vector<lsc::stream_memory_usage> streams_memory_usage;
@@ -165,34 +116,60 @@ lsc::get_channel_memory_usage(const ltt_session::locked_ref& session,
 		std::abort();
 	}
 
-	const auto is_per_cpu_stream =
-		session->get_domain(domain).get_channel(channel_name).buffer_allocation_policy ==
+	const auto& target_channel_config = session->get_domain(domain).get_channel(channel_name);
+	const auto is_per_cpu_stream = target_channel_config.buffer_allocation_policy ==
 		lttng::sessiond::config::recording_channel_configuration::
 			buffer_allocation_policy_t::PER_CPU;
 
-	channel_description_map channel_descriptions;
+	const auto& orchestrator =
+		static_cast<const lsu::domain_orchestrator&>(session->get_ust_orchestrator());
 
 	/*
-	 * Iterate on all consumer daemon channels that map to the channel_name to build a list
-	 * of keys for which we will request memory usage statistics.
+	 * Iterate all consumer stream groups via the orchestrator, filtering for
+	 * data channels that belong to the target channel configuration. Build
+	 * per-bitness key vectors and parallel owner vectors for batch-querying
+	 * the consumer daemons.
 	 */
 	std::vector<std::uint64_t> consumer32_channel_keys, consumer64_channel_keys;
-	for (const auto consumer_channel_description :
-	     session->user_space_consumer_channel_keys(channel_name)) {
-		if (consumer_channel_description.bitness ==
-		    lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness::ABI_32) {
-			consumer32_channel_keys.emplace_back(
-				consumer_channel_description.consumer_key);
-		} else {
-			consumer64_channel_keys.emplace_back(
-				consumer_channel_description.consumer_key);
-		}
+	std::vector<lsc::stream_group_owner> consumer32_owners, consumer64_owners;
 
-		channel_descriptions.emplace(
-			std::make_pair(consumer_channel_description.consumer_key,
-				       consumer_channel_description.bitness),
-			consumer_channel_description);
-	}
+	orchestrator.for_each_consumer_stream_group(
+		[&target_channel_config,
+		 &consumer32_channel_keys,
+		 &consumer64_channel_keys,
+		 &consumer32_owners,
+		 &consumer64_owners](
+			const lsu::domain_orchestrator::consumer_stream_group_descriptor& desc) {
+			/* Only consider data channels. */
+			if (desc.is_metadata) {
+				return;
+			}
+
+			/*
+			 * Filter by channel configuration pointer identity: the
+			 * orchestrator passes the actual recording_channel_configuration
+			 * reference from the stream group key.
+			 */
+			if (&desc.channel_config != &target_channel_config) {
+				return;
+			}
+
+			const auto owner = [&desc]() {
+				if (desc.owner_uid) {
+					return lsc::stream_group_owner(desc.abi, *desc.owner_uid);
+				}
+
+				return lsc::stream_group_owner(desc.abi, *desc.owner_pid);
+			}();
+
+			if (desc.abi == lsu::application_abi::ABI_32) {
+				consumer32_channel_keys.emplace_back(desc.consumer_key);
+				consumer32_owners.emplace_back(owner);
+			} else {
+				consumer64_channel_keys.emplace_back(desc.consumer_key);
+				consumer64_owners.emplace_back(owner);
+			}
+		});
 
 	std::vector<lsc::stream_memory_usage_group> result;
 	if (!consumer32_channel_keys.empty()) {
@@ -202,9 +179,7 @@ lsc::get_channel_memory_usage(const ltt_session::locked_ref& session,
 		append_consumer_channel_memory_usage(
 			result,
 			consumer32_channel_keys,
-			lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness::ABI_32,
-			channel_descriptions,
-			session,
+			consumer32_owners,
 			is_per_cpu_stream,
 			*consumer_find_socket_by_bitness(32, session->ust_session->consumer));
 	}
@@ -216,9 +191,7 @@ lsc::get_channel_memory_usage(const ltt_session::locked_ref& session,
 		append_consumer_channel_memory_usage(
 			result,
 			consumer64_channel_keys,
-			lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness::ABI_64,
-			channel_descriptions,
-			session,
+			consumer64_owners,
 			is_per_cpu_stream,
 			*consumer_find_socket_by_bitness(64, session->ust_session->consumer));
 	}
@@ -262,3 +235,18 @@ lsc::get_channel_memory_usage(const ltt_session::locked_ref& session,
 
 	return result;
 }
+
+#else /* !HAVE_LIBLTTNG_UST_CTL */
+
+namespace lsc = lttng::sessiond::commands;
+
+std::vector<lsc::stream_memory_usage_group>
+lsc::get_channel_memory_usage(const ltt_session::locked_ref& session [[maybe_unused]],
+			      lttng::domain_class domain [[maybe_unused]],
+			      lttng::c_string_view channel_name [[maybe_unused]])
+{
+	LTTNG_THROW_UNSUPPORTED_ERROR(
+		"Getting the channel memory usage is not supported by a sessiond built without UST support");
+}
+
+#endif /* HAVE_LIBLTTNG_UST_CTL */

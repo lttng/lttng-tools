@@ -5,51 +5,24 @@
  *
  */
 
-#include "bin/lttng-sessiond/recording-channel-configuration.hpp"
 #include "reclaim-channel-memory.hpp"
-#include "vendor/optional.hpp"
+
+#include <common/exception.hpp>
+
+#ifdef HAVE_LIBLTTNG_UST_CTL
 
 #include <common/error.hpp>
-#include <common/exception.hpp>
 #include <common/format.hpp>
 #include <common/urcu.hpp>
 
 #include <bin/lttng-sessiond/consumer.hpp>
 #include <bin/lttng-sessiond/pending-memory-reclamation-request.hpp>
+#include <bin/lttng-sessiond/recording-channel-configuration.hpp>
+#include <bin/lttng-sessiond/ust-domain-orchestrator.hpp>
 #include <numeric>
-#include <unordered_map>
 
 namespace lsc = lttng::sessiond::commands;
-
-using channel_description_map = std::unordered_map<
-	std::pair<std::uint64_t, lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness>,
-	lttng::sessiond::user_space_consumer_channel_keys::iterator::key>;
-
-/*
- * Provide a hash function for the channel description map key (pair of stream group id and
- * bitness).
- */
-namespace std {
-template <>
-struct hash<std::pair<std::uint64_t,
-		      lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness>> {
-	std::size_t operator()(
-		const std::pair<std::uint64_t,
-				lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness>&
-			p) const noexcept
-	{
-		const auto key_hash = std::hash<std::uint64_t>{}(p.first);
-		const auto bitness_hash = std::hash<std::underlying_type<
-			lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness>::type>{}(
-			static_cast<std::underlying_type<
-				lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness>::
-					    type>(p.second));
-
-		/* Combine the two hashes. */
-		return key_hash ^ bitness_hash;
-	}
-};
-} /* namespace std */
+namespace lsu = lttng::sessiond::ust;
 
 namespace {
 void validate_agent_channel_name(lttng::domain_class domain, lttng::c_string_view channel_name)
@@ -82,15 +55,13 @@ void validate_agent_channel_name(lttng::domain_class domain, lttng::c_string_vie
  * Issue a memory reclamation request for the specified consumer channel keys
  * (effectively stream groups).
  *
- * The results are matched back to the channel descriptions provided to
+ * The results are matched back to the stream group owners provided to
  * populate the result vector providing proper stream group ownership
  * information along with the reclaimed memory sizes (completed and pending).
  */
 void issue_consumer_reclaim_channel_memory(
 	consumer_socket& consumer_socket,
-	lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness bitness,
-	const ltt_session::locked_ref& session,
-	const channel_description_map& channel_descriptions,
+	const std::vector<lsc::stream_group_owner>& stream_group_owners,
 	bool is_per_cpu_stream,
 	const std::vector<std::uint64_t>& target_consumer_channel_keys,
 	const nonstd::optional<std::chrono::microseconds>& reclaim_older_than_age,
@@ -111,31 +82,7 @@ void issue_consumer_reclaim_channel_memory(
 								   memory_reclaim_request_token);
 
 	for (const auto& channel_reclaimed_memory : channels_reclaimed_memory) {
-		const auto it = channel_descriptions.find(std::make_pair(
-			target_consumer_channel_keys.at(current_channel_index), bitness));
-		if (it == channel_descriptions.end()) {
-			LTTNG_THROW_ERROR(fmt::format(
-				"Consumer channel key not found in channel descriptions: key={}, bitness={}",
-				target_consumer_channel_keys.at(current_channel_index),
-				static_cast<int>(bitness)));
-		}
-
-		const auto& channel_description = it->second;
-
-		const auto desc_abi = static_cast<lttng::sessiond::ust::application_abi>(
-			channel_description.bitness);
-		const auto group_owner = [&session, &channel_description, desc_abi]() {
-			switch (session->ust_session->buffer_type) {
-			case LTTNG_BUFFER_PER_PID:
-				return lsc::stream_group_owner(desc_abi,
-							       channel_description.owner_pid());
-			case LTTNG_BUFFER_PER_UID:
-				return lsc::stream_group_owner(desc_abi,
-							       channel_description.owner_uid());
-			default:
-				std::abort();
-			}
-		}();
+		const auto& group_owner = stream_group_owners.at(current_channel_index);
 
 		std::uint64_t cpu_id = 0;
 		std::vector<lsc::stream_memory_reclamation_result> streams_reclaimed_memory;
@@ -195,34 +142,60 @@ lsc::reclaim_channel_memory_result lsc::reclaim_channel_memory(
 		std::abort();
 	}
 
-	const auto is_per_cpu_stream =
-		session->get_domain(domain).get_channel(channel_name).buffer_allocation_policy ==
+	const auto& target_channel_config = session->get_domain(domain).get_channel(channel_name);
+	const auto is_per_cpu_stream = target_channel_config.buffer_allocation_policy ==
 		lttng::sessiond::config::recording_channel_configuration::
 			buffer_allocation_policy_t::PER_CPU;
 
-	channel_description_map channel_descriptions;
+	const auto& orchestrator =
+		static_cast<const lsu::domain_orchestrator&>(session->get_ust_orchestrator());
 
 	/*
-	 * Iterate on all consumer daemon channels that map to the channel_name to build a list
-	 * of keys for which we will request memory usage statistics.
+	 * Iterate all consumer stream groups via the orchestrator, filtering for
+	 * data channels that belong to the target channel configuration. Build
+	 * per-bitness key vectors and parallel owner vectors for batch-querying
+	 * the consumer daemons.
 	 */
 	std::vector<std::uint64_t> consumer32_channel_keys, consumer64_channel_keys;
-	for (const auto consumer_channel_description :
-	     session->user_space_consumer_channel_keys(channel_name)) {
-		if (consumer_channel_description.bitness ==
-		    lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness::ABI_32) {
-			consumer32_channel_keys.emplace_back(
-				consumer_channel_description.consumer_key);
-		} else {
-			consumer64_channel_keys.emplace_back(
-				consumer_channel_description.consumer_key);
-		}
+	std::vector<lsc::stream_group_owner> consumer32_owners, consumer64_owners;
 
-		channel_descriptions.emplace(
-			std::make_pair(consumer_channel_description.consumer_key,
-				       consumer_channel_description.bitness),
-			consumer_channel_description);
-	}
+	orchestrator.for_each_consumer_stream_group(
+		[&target_channel_config,
+		 &consumer32_channel_keys,
+		 &consumer64_channel_keys,
+		 &consumer32_owners,
+		 &consumer64_owners](
+			const lsu::domain_orchestrator::consumer_stream_group_descriptor& desc) {
+			/* Only consider data channels. */
+			if (desc.is_metadata) {
+				return;
+			}
+
+			/*
+			 * Filter by channel configuration pointer identity: the
+			 * orchestrator passes the actual recording_channel_configuration
+			 * reference from the stream group key.
+			 */
+			if (&desc.channel_config != &target_channel_config) {
+				return;
+			}
+
+			const auto owner = [&desc]() {
+				if (desc.owner_uid) {
+					return lsc::stream_group_owner(desc.abi, *desc.owner_uid);
+				}
+
+				return lsc::stream_group_owner(desc.abi, *desc.owner_pid);
+			}();
+
+			if (desc.abi == lsu::application_abi::ABI_32) {
+				consumer32_channel_keys.emplace_back(desc.consumer_key);
+				consumer32_owners.emplace_back(owner);
+			} else {
+				consumer64_channel_keys.emplace_back(desc.consumer_key);
+				consumer64_owners.emplace_back(owner);
+			}
+		});
 
 	const unsigned int consumer_count = (!consumer32_channel_keys.empty() ? 1 : 0) +
 		(!consumer64_channel_keys.empty() ? 1 : 0);
@@ -254,10 +227,7 @@ lsc::reclaim_channel_memory_result lsc::reclaim_channel_memory(
 			issue_consumer_reclaim_channel_memory(
 				*consumer_find_socket_by_bitness(32,
 								 session->ust_session->consumer),
-				lttng::sessiond::user_space_consumer_channel_keys::
-					consumer_bitness::ABI_32,
-				session,
-				channel_descriptions,
+				consumer32_owners,
 				is_per_cpu_stream,
 				consumer32_channel_keys,
 				reclaim_older_than_age,
@@ -280,10 +250,7 @@ lsc::reclaim_channel_memory_result lsc::reclaim_channel_memory(
 			issue_consumer_reclaim_channel_memory(
 				*consumer_find_socket_by_bitness(64,
 								 session->ust_session->consumer),
-				lttng::sessiond::user_space_consumer_channel_keys::
-					consumer_bitness::ABI_64,
-				session,
-				channel_descriptions,
+				consumer64_owners,
 				is_per_cpu_stream,
 				consumer64_channel_keys,
 				reclaim_older_than_age,
@@ -338,3 +305,22 @@ lsc::reclaim_channel_memory_result lsc::reclaim_channel_memory(
 
 	return { std::move(result), token };
 }
+
+#else /* !HAVE_LIBLTTNG_UST_CTL */
+
+namespace lsc = lttng::sessiond::commands;
+
+lsc::reclaim_channel_memory_result lsc::reclaim_channel_memory(
+	const ltt_session::locked_ref& session [[maybe_unused]],
+	lttng::domain_class domain [[maybe_unused]],
+	lttng::c_string_view channel_name [[maybe_unused]],
+	const nonstd::optional<std::chrono::microseconds>& reclaim_older_than_age [[maybe_unused]],
+	bool require_consumed [[maybe_unused]],
+	lsc::completion_callback_t on_complete [[maybe_unused]],
+	lsc::cancellation_callback_t on_cancel [[maybe_unused]])
+{
+	LTTNG_THROW_UNSUPPORTED_ERROR(
+		"Reclaiming channel memory is not supported by a sessiond built without UST support");
+}
+
+#endif /* HAVE_LIBLTTNG_UST_CTL */
