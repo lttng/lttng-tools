@@ -14,6 +14,7 @@
 
 #include <bin/lttng-sessiond/domain.hpp>
 #include <bin/lttng-sessiond/session.hpp>
+#include <bin/lttng-sessiond/ust-application-abi.hpp>
 #include <vector>
 
 namespace lttng {
@@ -21,16 +22,12 @@ namespace sessiond {
 namespace commands {
 
 struct stream_group_owner {
-	stream_group_owner(
-		lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness bitness_,
-		pid_t pid_) noexcept :
+	stream_group_owner(ust::application_abi bitness_, pid_t pid_) noexcept :
 		owner_type(type::PROCESS), bitness(bitness_), id{ .pid = pid_ }
 	{
 	}
 
-	stream_group_owner(
-		lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness bitness_,
-		uid_t uid_) noexcept :
+	stream_group_owner(ust::application_abi bitness_, uid_t uid_) noexcept :
 		owner_type(type::USER), bitness(bitness_), id{ .uid = uid_ }
 	{
 	}
@@ -46,7 +43,7 @@ struct stream_group_owner {
 	};
 
 	const type owner_type;
-	const lttng::sessiond::user_space_consumer_channel_keys::consumer_bitness bitness;
+	const ust::application_abi bitness;
 	const union {
 		pid_t pid;
 		uid_t uid;

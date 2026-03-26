@@ -905,6 +905,8 @@ std::uint64_t ls::ust::domain_orchestrator::get_size_one_more_packet_per_stream(
 void ls::ust::domain_orchestrator::for_each_consumer_stream_group(
 	const consumer_stream_group_visitor& visitor) const
 {
+	const auto& metadata_config = _session.user_space_domain.metadata_channel();
+
 	if (_default_buffer_ownership ==
 	    lsc::recording_channel_configuration::owership_model_t::PER_UID) {
 		for (const auto& sg_entry : _per_uid_stream_groups) {
@@ -912,7 +914,10 @@ void ls::ust::domain_orchestrator::for_each_consumer_stream_group(
 				sg_entry.first.abi,
 				sg_entry.second->consumer_key(),
 				false,
-				sg_entry.second->get_trace_class() });
+				sg_entry.second->get_trace_class(),
+				*sg_entry.first.channel_config,
+				nonstd::optional<uid_t>(sg_entry.first.uid),
+				nonstd::nullopt });
 		}
 
 		for (const auto& tc_entry : _per_uid_trace_classes) {
@@ -920,10 +925,14 @@ void ls::ust::domain_orchestrator::for_each_consumer_stream_group(
 				continue;
 			}
 
-			visitor(consumer_stream_group_descriptor{ tc_entry.first.abi,
-								  tc_entry.second->_metadata_key,
-								  true,
-								  *tc_entry.second });
+			visitor(consumer_stream_group_descriptor{
+				tc_entry.first.abi,
+				tc_entry.second->_metadata_key,
+				true,
+				*tc_entry.second,
+				metadata_config,
+				nonstd::optional<uid_t>(tc_entry.first.uid),
+				nonstd::nullopt });
 		}
 	} else {
 		for (const auto& sg_entry : _per_pid_stream_groups) {
@@ -935,7 +944,10 @@ void ls::ust::domain_orchestrator::for_each_consumer_stream_group(
 				app_abi,
 				sg_entry.second->consumer_key(),
 				false,
-				sg_entry.second->get_trace_class() });
+				sg_entry.second->get_trace_class(),
+				*sg_entry.first.channel_config,
+				nonstd::nullopt,
+				nonstd::optional<pid_t>(sg_entry.first.app->pid) });
 		}
 
 		for (const auto& tc_entry : _per_pid_trace_classes) {
@@ -948,7 +960,13 @@ void ls::ust::domain_orchestrator::for_each_consumer_stream_group(
 				application_abi::ABI_64;
 
 			visitor(consumer_stream_group_descriptor{
-				app_abi, tc_entry.second->_metadata_key, true, *tc_entry.second });
+				app_abi,
+				tc_entry.second->_metadata_key,
+				true,
+				*tc_entry.second,
+				metadata_config,
+				nonstd::nullopt,
+				nonstd::optional<pid_t>(tc_entry.first->pid) });
 		}
 	}
 }

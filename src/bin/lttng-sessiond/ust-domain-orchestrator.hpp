@@ -11,6 +11,8 @@
 #include "domain-orchestrator.hpp"
 #include "recording-channel-configuration.hpp"
 
+#include <vendor/optional.hpp>
+
 #include <cstdint>
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
@@ -129,12 +131,23 @@ public:
 	 * Each descriptor represents a single consumer-side channel: either
 	 * a data channel (backed by a stream_group) or a metadata channel
 	 * (backed by a trace_class).
+	 *
+	 * `channel_config` refers to the channel_configuration from which
+	 * the consumer channel was derived. For data channels, the actual
+	 * type is recording_channel_configuration; for metadata channels,
+	 * it is metadata_channel_configuration. Use `is_metadata` to
+	 * determine the concrete type when a downcast is needed.
 	 */
 	struct consumer_stream_group_descriptor {
 		application_abi abi;
 		std::uint64_t consumer_key;
 		bool is_metadata;
 		ust::trace_class& trace_class;
+		const config::channel_configuration& channel_config;
+		/* Set in per-UID mode; absent in per-PID mode. */
+		nonstd::optional<uid_t> owner_uid;
+		/* Set in per-PID mode; absent in per-UID mode. */
+		nonstd::optional<pid_t> owner_pid;
 	};
 
 	/*

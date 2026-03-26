@@ -122,13 +122,15 @@ void issue_consumer_reclaim_channel_memory(
 
 		const auto& channel_description = it->second;
 
-		const auto group_owner = [&session, &channel_description]() {
+		const auto desc_abi = static_cast<lttng::sessiond::ust::application_abi>(
+			channel_description.bitness);
+		const auto group_owner = [&session, &channel_description, desc_abi]() {
 			switch (session->ust_session->buffer_type) {
 			case LTTNG_BUFFER_PER_PID:
-				return lsc::stream_group_owner(channel_description.bitness,
+				return lsc::stream_group_owner(desc_abi,
 							       channel_description.owner_pid());
 			case LTTNG_BUFFER_PER_UID:
-				return lsc::stream_group_owner(channel_description.bitness,
+				return lsc::stream_group_owner(desc_abi,
 							       channel_description.owner_uid());
 			default:
 				std::abort();
