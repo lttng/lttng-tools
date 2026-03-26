@@ -46,11 +46,6 @@ struct ltt_ust_session {
 	enum lttng_buffer_type buffer_type;
 	/* If set to 1, the buffer_type can not be changed anymore. */
 	int buffer_type_changed;
-	/*
-	 * For per UID buffer, every buffer_reg_uid object is kept of this session.
-	 * It contains separate instances on a per UID and ABI (32/64) basis.
-	 */
-	struct cds_list_head buffer_reg_uid_list;
 	/* Tell or not if the session has to output the traces. */
 	unsigned int output_traces;
 	unsigned int snapshot_mode;

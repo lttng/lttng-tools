@@ -10,7 +10,6 @@
 #define _LGPL_SOURCE
 #include "agent-thread.hpp"
 #include "agent.hpp"
-#include "buffer-registry.hpp"
 #include "channel.hpp"
 #include "client.hpp"
 #include "cmd.hpp"
@@ -39,6 +38,7 @@
 #include "timer.hpp"
 #include "ust-consumer.hpp"
 #include "ust-sigbus.hpp"
+#include "ust-trace-class-index.hpp"
 #include "utils.hpp"
 
 #include <common/common.hpp>
@@ -360,7 +360,9 @@ static void sessiond_cleanup()
 	agent_app_ht_clean();
 	DBG("Closing all UST sockets");
 	ust_app_clean_list();
-	buffer_reg_destroy_registries();
+
+	delete the_trace_class_index;
+	the_trace_class_index = nullptr;
 
 	close_consumer_sockets();
 
@@ -1881,9 +1883,8 @@ static int _main(int argc, char **argv)
 		goto stop_threads;
 	}
 
-	/* Initialize global buffer per UID and PID registry. */
-	buffer_reg_init_uid_registry();
-	buffer_reg_init_pid_registry();
+	/* Initialize the global trace class index for consumer metadata lookups. */
+	the_trace_class_index = new lttng::sessiond::ust::trace_class_index;
 
 	/* Init UST command queue. */
 	cds_wfcq_init(&ust_cmd_queue.head, &ust_cmd_queue.tail);

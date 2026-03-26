@@ -92,6 +92,18 @@ public:
 	void clear() override;
 	void open_packets() override;
 
+	/*
+	 * Close all per-UID metadata channels on the consumer daemon.
+	 *
+	 * Must be called during session teardown, before the consumer
+	 * sockets become unavailable. For per-PID buffers, metadata is
+	 * closed when the application disconnects (in
+	 * delete_ust_app_session). For per-UID buffers, the metadata
+	 * channels outlive the applications and must be closed
+	 * explicitly.
+	 */
+	void close_per_uid_metadata_on_consumer(struct consumer_output& consumer) const;
+
 	void record_snapshot(const struct consumer_output& snapshot_consumer,
 			     std::uint64_t nb_packets_per_stream) override;
 
@@ -164,8 +176,8 @@ public:
 	 * skipped.
 	 *
 	 * This method decouples callers (rotate, clear, open_packets,
-	 * snapshot, channel memory commands) from the buffer_reg_uid /
-	 * ust_app_session internals.
+	 * snapshot, channel memory commands) from ust_app_session
+	 * internals.
 	 */
 
 	using consumer_stream_group_visitor =
@@ -189,7 +201,7 @@ public:
 	 * Return the trace class stream class handle assigned to a
 	 * recording channel configuration. This handle is used by the
 	 * per-app sync path as a key for trace_class::add_channel() and
-	 * buffer_reg_channel lookups.
+	 * stream class lookups.
 	 *
 	 * This is a transitional accessor: it will be eliminated once
 	 * the orchestrator owns trace class and buffer registry
@@ -206,7 +218,7 @@ public:
 	 * a reference and must NOT delete it.
 	 *
 	 * This is called from the per-app sync path
-	 * (setup_buffer_reg_uid) which supplies app-specific parameters
+	 * (find_or_create_ust_app_session) which supplies app-specific parameters
 	 * (ABI, tracer version, shared memory paths). Parameters that
 	 * come from the session (trace_format, uid, gid, tracing_id) are
 	 * obtained internally from _session and _ust_session.
@@ -225,10 +237,11 @@ public:
 
 	/*
 	 * Find or create a per-PID trace class for the given application.
-	 * Called from setup_buffer_reg_pid() during per-app
+	 * Called from find_or_create_ust_app_session() during per-app
 	 * synchronization.
 	 */
 	ust::trace_class& find_or_create_per_pid_trace_class(ust_app& app,
+							     std::uint64_t app_session_id,
 							     const trace::abi& tracer_abi,
 							     std::uint32_t tracer_major,
 							     std::uint32_t tracer_minor,
@@ -301,6 +314,14 @@ public:
 				 application_abi abi);
 
 	/*
+	 * Check whether a per-UID stream group already exists for the
+	 * given (channel_config, uid, abi) combination.
+	 */
+	bool has_per_uid_stream_group(const config::recording_channel_configuration& channel_config,
+				      uid_t uid,
+				      application_abi abi) const;
+
+	/*
 	 * Find or create a per-PID stream group for the given
 	 * (channel_config, app) combination. The orchestrator owns
 	 * the returned stream_group (via unique_ptr in
@@ -354,8 +375,7 @@ private:
 	 * Monotonically increasing counter used to assign a unique
 	 * trace class stream class handle to each recording channel.
 	 * This handle serves as the key for trace_class::add_channel()
-	 * and buffer_reg_channel lookups until the orchestrator owns
-	 * those subsystems directly.
+	 * and stream class lookups.
 	 */
 	std::uint64_t _next_trace_class_stream_class_handle = 0;
 
@@ -459,7 +479,7 @@ private:
 
 	/* (uid, abi) -> trace_class */
 	std::unordered_map<_per_uid_trace_class_key,
-			   std::unique_ptr<ust::trace_class>,
+			   std::shared_ptr<ust::trace_class>,
 			   _key_hasher<_per_uid_trace_class_key>>
 		_per_uid_trace_classes;
 
@@ -473,8 +493,16 @@ private:
 	 * Per-PID trace classes are keyed by app pointer. Each app gets
 	 * its own trace_class.
 	 */
-	std::unordered_map<const ust_app *, std::unique_ptr<ust::trace_class>>
+	std::unordered_map<const ust_app *, std::shared_ptr<ust::trace_class>>
 		_per_pid_trace_classes;
+
+	/*
+	 * Maps app pointers to the ust_app_session::app_session_id used
+	 * as the trace_class_index key for per-PID trace classes. Needed
+	 * so that release_per_pid_trace_class() can unregister from the
+	 * index without the caller providing the app_session_id.
+	 */
+	std::unordered_map<const ust_app *, std::uint64_t> _per_pid_app_session_ids;
 
 	/* (app, recording channel configuration) -> stream group */
 	std::unordered_map<_per_pid_stream_group_key,
@@ -517,6 +545,12 @@ public:
 
 	std::uint64_t get_size_one_more_packet_per_stream(std::uint64_t cur_nr_packets
 							  [[maybe_unused]]) const
+	{
+		std::abort();
+	}
+
+	void close_per_uid_metadata_on_consumer(struct consumer_output& consumer
+						[[maybe_unused]]) const
 	{
 		std::abort();
 	}

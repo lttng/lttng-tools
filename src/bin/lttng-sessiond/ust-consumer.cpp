@@ -6,13 +6,14 @@
  */
 
 #define _LGPL_SOURCE
-#include "buffer-registry.hpp"
 #include "consumer.hpp"
 #include "health-sessiond.hpp"
 #include "lttng-sessiond.hpp"
 #include "lttng-ust-error.hpp"
 #include "session.hpp"
 #include "ust-consumer.hpp"
+#include "ust-trace-class-index.hpp"
+#include "ust-trace-class.hpp"
 
 #include <common/common.hpp>
 #include <common/compat/errno.hpp>
@@ -152,7 +153,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 						   nonstd::optional<uint64_t>{},
 					   output,
 					   (int) ua_chan->attr.type,
-					   ua_sess->tracing_id,
+					   ua_sess->recording_session_id,
 					   &(pathname.c_str()[consumer_path_offset]),
 					   ua_chan->name,
 					   consumer->net_seq_index,
@@ -161,7 +162,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 					   chan_id,
 					   ua_chan->tracefile_size,
 					   ua_chan->tracefile_count,
-					   ua_sess->id,
+					   ua_sess->app_session_id,
 					   ua_sess->output_traces,
 					   lttng_credentials_get_uid(&ua_sess->real_credentials),
 					   ua_chan->attr.blocking_timeout,
@@ -480,8 +481,7 @@ int ust_consumer_metadata_request(struct consumer_socket *socket)
 	int ret;
 	ssize_t ret_push;
 	struct lttcomm_metadata_request_msg request;
-	struct buffer_reg_uid *reg_uid;
-	lsu::trace_class *ust_reg;
+	std::shared_ptr<lsu::trace_class> trace;
 	struct lttcomm_consumer_msg msg;
 
 	LTTNG_ASSERT(socket);
@@ -501,35 +501,34 @@ int ust_consumer_metadata_request(struct consumer_socket *socket)
 	    request.session_id,
 	    request.key);
 
-	reg_uid = buffer_reg_uid_find(request.session_id, request.bits_per_long, request.uid);
-	if (reg_uid) {
-		ust_reg = reg_uid->registry->reg.ust;
-	} else {
-		struct buffer_reg_pid *reg_pid = buffer_reg_pid_find(request.session_id_per_pid);
-		if (!reg_pid) {
-			DBG("PID registry not found for session id %" PRIu64,
-			    request.session_id_per_pid);
-
-			memset(&msg, 0, sizeof(msg));
-			msg.cmd_type = LTTNG_ERR_UND;
-			pthread_mutex_lock(socket->lock);
-			(void) consumer_send_msg(socket, &msg);
-			pthread_mutex_unlock(socket->lock);
-			/*
-			 * This is possible since the session might have been destroyed
-			 * during a consumer metadata request. So here, return gracefully
-			 * because the destroy session will push the remaining metadata to
-			 * the consumer.
-			 */
-			ret = 0;
-			goto end;
-		}
-		ust_reg = reg_pid->registry->reg.ust;
+	trace = the_trace_class_index->find_per_uid(
+		request.session_id, request.bits_per_long, request.uid);
+	if (!trace) {
+		trace = the_trace_class_index->find_per_pid(request.session_id_per_pid);
 	}
-	LTTNG_ASSERT(ust_reg);
+	if (!trace) {
+		DBG("Trace class not found for session id %" PRIu64 ", per-pid %" PRIu64,
+		    request.session_id,
+		    request.session_id_per_pid);
+
+		memset(&msg, 0, sizeof(msg));
+		msg.cmd_type = LTTNG_ERR_UND;
+		pthread_mutex_lock(socket->lock);
+		(void) consumer_send_msg(socket, &msg);
+		pthread_mutex_unlock(socket->lock);
+		/*
+		 * This is possible since the session might have been destroyed
+		 * during a consumer metadata request. So here, return gracefully
+		 * because the destroy session will push the remaining metadata to
+		 * the consumer.
+		 */
+		ret = 0;
+		goto end;
+	}
+	LTTNG_ASSERT(trace);
 
 	{
-		auto locked_ust_reg = ust_reg->lock();
+		auto locked_ust_reg = trace->lock();
 		ret_push = ust_app_push_metadata(locked_ust_reg, socket, 1);
 	}
 	if (ret_push == -EPIPE) {

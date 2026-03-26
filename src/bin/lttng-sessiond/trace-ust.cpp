@@ -8,7 +8,6 @@
 
 #define _LGPL_SOURCE
 #include "agent.hpp"
-#include "buffer-registry.hpp"
 #include "trace-ust.hpp"
 #include "ust-domain-orchestrator.hpp"
 #include "utils.hpp"
@@ -97,9 +96,6 @@ struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 	lus->buffer_type = LTTNG_BUFFER_PER_UID;
 	/* Once set to 1, the buffer_type is immutable for the session. */
 	lus->buffer_type_changed = 0;
-	/* Init it in case it get used after allocation. */
-	CDS_INIT_LIST_HEAD(&lus->buffer_reg_uid_list);
-
 	/* Alloc agent hash table. */
 	lus->agents = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 
@@ -139,14 +135,6 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 	}
 
 	lttng_ht_destroy(session->agents);
-
-	/* Cleanup UID buffer registry object(s). */
-	for (auto reg : lttng::urcu::list_iteration_adapter<buffer_reg_uid, &buffer_reg_uid::lnode>(
-		     session->buffer_reg_uid_list)) {
-		cds_list_del(&reg->lnode);
-		buffer_reg_uid_remove(reg);
-		buffer_reg_uid_destroy(reg, session->consumer);
-	}
 
 	lttng_trace_chunk_put(session->current_trace_chunk);
 }

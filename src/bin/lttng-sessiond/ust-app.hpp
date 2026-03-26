@@ -303,9 +303,9 @@ public:
 		enum class buffer_allocation_policy : std::uint8_t { PER_PID, PER_UID };
 
 		/* Unique identifier of the ust_app_session. */
-		std::uint64_t id;
-		/* Unique identifier of the ltt_session. */
-		std::uint64_t session_id;
+		std::uint64_t app_session_id;
+		/* Unique identifier of the ltt_session (recording session). */
+		std::uint64_t recording_session_id;
 		/* Credentials of the application which owns the ust_app_session. */
 		lttng_credentials app_credentials;
 		application_abi abi;
@@ -338,8 +338,8 @@ public:
 		LTTNG_ASSERT(buffer_type == LTTNG_BUFFER_PER_PID ||
 			     buffer_type == LTTNG_BUFFER_PER_UID);
 
-		return { .id = id,
-			 .session_id = tracing_id,
+		return { .app_session_id = app_session_id,
+			 .recording_session_id = recording_session_id,
 			 .app_credentials = real_credentials,
 			 .abi = bits_per_long == 32 ? identifier::application_abi::ABI_32 :
 						      identifier::application_abi::ABI_64,
@@ -356,11 +356,13 @@ public:
 	bool deleted = false; /* Session deleted flag. Check with lock held. */
 
 	/*
-	 * Tracing session ID. Multiple ust app session can have the same tracing
-	 * session id making this value NOT unique to the object.
+	 * Recording session ID (ltt_session::id). Multiple ust_app_sessions
+	 * can share the same recording_session_id since each application
+	 * gets its own ust_app_session for the same recording session.
 	 */
-	uint64_t tracing_id = 0;
-	uint64_t id = 0; /* Unique session identifier */
+	uint64_t recording_session_id = 0;
+	/* Unique ust_app_session identifier, allocated by sessiond. */
+	uint64_t app_session_id = 0;
 	struct lttng_ht *channels = nullptr; /* Registered channels */
 	struct lttng_ht_node_u64 node = {};
 	/*

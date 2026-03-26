@@ -8,7 +8,6 @@
 
 #define _LGPL_SOURCE
 
-#include "buffer-registry.hpp"
 #include "event-notifier-error-accounting.hpp"
 #include "event.hpp"
 #include "fd-limit.hpp"
@@ -23,6 +22,7 @@
 #include "ust-consumer.hpp"
 #include "ust-domain-orchestrator.hpp"
 #include "ust-field-quirks.hpp"
+#include "ust-trace-class-index.hpp"
 #include "utils.hpp"
 
 #include <common/bytecode/bytecode.hpp>
@@ -125,38 +125,25 @@ static inline enum lttng_ust_abi_chan_type allocation_policy_to_ust_channel_type
  */
 lsu::trace_class *ust_app_get_session_registry(const ust_app_session::identifier& ua_sess_id)
 {
-	lsu::trace_class *registry = nullptr;
-
 	switch (ua_sess_id.allocation_policy) {
 	case ust_app_session::identifier::buffer_allocation_policy::PER_PID:
-	{
-		struct buffer_reg_pid *reg_pid = buffer_reg_pid_find(ua_sess_id.id);
-		if (!reg_pid) {
-			goto error;
-		}
-		registry = reg_pid->registry->reg.ust;
-		break;
-	}
+		return the_trace_class_index->find_per_pid(ua_sess_id.app_session_id).get();
 	case ust_app_session::identifier::buffer_allocation_policy::PER_UID:
 	{
-		struct buffer_reg_uid *reg_uid = buffer_reg_uid_find(
-			ua_sess_id.session_id,
-			ua_sess_id.abi == ust_app_session::identifier::application_abi::ABI_32 ?
-				32 :
-				64,
-			lttng_credentials_get_uid(&ua_sess_id.app_credentials));
-		if (!reg_uid) {
-			goto error;
-		}
-		registry = reg_uid->registry->reg.ust;
-		break;
+		const std::uint32_t bits_per_long = ua_sess_id.abi ==
+				ust_app_session::identifier::application_abi::ABI_32 ?
+			32 :
+			64;
+
+		return the_trace_class_index
+			->find_per_uid(ua_sess_id.recording_session_id,
+				       bits_per_long,
+				       lttng_credentials_get_uid(&ua_sess_id.app_credentials))
+			.get();
 	}
 	default:
 		abort();
 	};
-
-error:
-	return registry;
 }
 
 namespace {
@@ -664,7 +651,8 @@ static void save_per_pid_lost_discarded_counters(struct ust_app_channel *ua_chan
 	const lttng::urcu::read_lock_guard read_lock;
 
 	try {
-		const auto session = ltt_session::find_session(ua_chan->session->tracing_id);
+		const auto session =
+			ltt_session::find_session(ua_chan->session->recording_session_id);
 
 		if (!session->ust_orchestrator) {
 			/*
@@ -686,12 +674,12 @@ static void save_per_pid_lost_discarded_counters(struct ust_app_channel *ua_chan
 		}
 
 		if (ua_chan->attr.overwrite) {
-			consumer_get_lost_packets(ua_chan->session->tracing_id,
+			consumer_get_lost_packets(ua_chan->session->recording_session_id,
 						  ua_chan->key,
 						  session->ust_session->consumer,
 						  &lost);
 		} else {
-			consumer_get_discarded_events(ua_chan->session->tracing_id,
+			consumer_get_discarded_events(ua_chan->session->recording_session_id,
 						      ua_chan->key,
 						      session->ust_session->consumer,
 						      &discarded);
@@ -1131,22 +1119,6 @@ static void delete_ust_app_session(int sock, struct ust_app_session *ua_sess, st
 
 	/* In case of per PID, the registry is kept in the session. */
 	if (ua_sess->buffer_type == LTTNG_BUFFER_PER_PID) {
-		struct buffer_reg_pid *reg_pid = buffer_reg_pid_find(ua_sess->id);
-		if (reg_pid) {
-			/*
-			 * The per-PID trace_class is owned by the UST
-			 * domain orchestrator. Null the borrowed pointer
-			 * so that buffer_reg_session_destroy() does not
-			 * delete it.
-			 */
-			if (reg_pid->registry) {
-				reg_pid->registry->reg.ust = nullptr;
-			}
-
-			buffer_reg_pid_remove(reg_pid);
-			buffer_reg_pid_destroy(reg_pid);
-		}
-
 		/*
 		 * Release the per-PID trace_class and stream groups from
 		 * the orchestrator. This destroys the trace_class (and
@@ -1159,7 +1131,8 @@ static void delete_ust_app_session(int sock, struct ust_app_session *ua_sess, st
 		 * orchestrator's destructor handles the cleanup.
 		 */
 		try {
-			const auto session = ltt_session::find_session(ua_sess->tracing_id);
+			const auto session =
+				ltt_session::find_session(ua_sess->recording_session_id);
 			if (session->ust_orchestrator) {
 				auto& orchestrator = static_cast<lsu::domain_orchestrator&>(
 					session->get_ust_orchestrator());
@@ -2254,7 +2227,7 @@ static int send_channel_pid_to_ust(struct ust_app *app,
 		     "\".",
 		     app->pid,
 		     ua_chan->name,
-		     ua_sess->tracing_id);
+		     ua_sess->recording_session_id);
 		/* Treat this the same way as an application that is exiting. */
 		ret = -ENOTCONN;
 		goto error;
@@ -2279,7 +2252,7 @@ static int send_channel_pid_to_ust(struct ust_app *app,
 			     app->pid,
 			     stream->name,
 			     ua_chan->name,
-			     ua_sess->tracing_id);
+			     ua_sess->recording_session_id);
 			/*
 			 * Treat this the same way as an application that is
 			 * exiting.
@@ -2722,8 +2695,8 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 
 	DBG2("Shadow copy of session handle %d", ua_sess->handle);
 
-	ua_sess->tracing_id = usess->id;
-	ua_sess->id = get_next_session_id();
+	ua_sess->recording_session_id = usess->id;
+	ua_sess->app_session_id = get_next_session_id();
 	LTTNG_OPTIONAL_SET(&ua_sess->real_credentials.uid, app->uid);
 	LTTNG_OPTIONAL_SET(&ua_sess->real_credentials.gid, app->gid);
 	LTTNG_OPTIONAL_SET(&ua_sess->effective_credentials.uid, usess->uid);
@@ -2839,162 +2812,6 @@ error:
 }
 
 /*
- * Setup buffer registry per PID for the given session and application. If none
- * is found, a new one is created, added to the global registry and
- * initialized. If regp is valid, it's set with the newly created object.
- *
- * Return 0 on success or else a negative value.
- */
-static int setup_buffer_reg_pid(struct ust_app_session *ua_sess,
-				struct ust_app *app,
-				struct buffer_reg_pid **regp)
-{
-	int ret = 0;
-	struct buffer_reg_pid *reg_pid;
-
-	LTTNG_ASSERT(ua_sess);
-	LTTNG_ASSERT(app);
-
-	const lttng::urcu::read_lock_guard read_lock;
-
-	reg_pid = buffer_reg_pid_find(ua_sess->id);
-	if (!reg_pid) {
-		/*
-		 * This is the create channel path meaning that if there is NO
-		 * registry available, we have to create one for this session.
-		 */
-		ret = buffer_reg_pid_create(
-			ua_sess->id, &reg_pid, ua_sess->root_shm_path, ua_sess->shm_path);
-		if (ret < 0) {
-			goto error;
-		}
-	} else {
-		goto end;
-	}
-
-	/* Get the trace class from the orchestrator. */
-	{
-		const auto session = ltt_session::find_session(ua_sess->tracing_id);
-		auto& orchestrator =
-			static_cast<lsu::domain_orchestrator&>(session->get_ust_orchestrator());
-
-		reg_pid->registry->reg.ust = &orchestrator.find_or_create_per_pid_trace_class(
-			*app,
-			app->abi,
-			app->version.major,
-			app->version.minor,
-			reg_pid->root_shm_path,
-			reg_pid->shm_path,
-			lttng_credentials_get_uid(&ua_sess->effective_credentials),
-			lttng_credentials_get_gid(&ua_sess->effective_credentials));
-	}
-	if (!reg_pid->registry->reg.ust) {
-		/*
-		 * reg_pid->registry->reg.ust is NULL upon error, so we need to
-		 * destroy the buffer registry, because it is always expected
-		 * that if the buffer registry can be found, its ust registry is
-		 * non-NULL.
-		 */
-		buffer_reg_pid_destroy(reg_pid);
-		goto error;
-	}
-
-	buffer_reg_pid_add(reg_pid);
-
-	DBG3("UST app buffer registry per PID created successfully");
-
-end:
-	if (regp) {
-		*regp = reg_pid;
-	}
-error:
-	return ret;
-}
-
-/*
- * Setup buffer registry per UID for the given session and application. If none
- * is found, a new one is created, added to the global registry and
- * initialized. If regp is valid, it's set with the newly created object.
- *
- * Return 0 on success or else a negative value.
- */
-static int setup_buffer_reg_uid(struct ltt_ust_session *usess,
-				struct ust_app_session *ua_sess,
-				struct ust_app *app,
-				struct buffer_reg_uid **regp)
-{
-	int ret = 0;
-	struct buffer_reg_uid *reg_uid;
-
-	LTTNG_ASSERT(usess);
-	LTTNG_ASSERT(app);
-
-	const lttng::urcu::read_lock_guard read_lock;
-
-	reg_uid = buffer_reg_uid_find(usess->id, app->abi.bits_per_long, app->uid);
-	if (!reg_uid) {
-		/*
-		 * This is the create channel path meaning that if there is NO
-		 * registry available, we have to create one for this session.
-		 */
-		ret = buffer_reg_uid_create(usess->id,
-					    app->abi.bits_per_long,
-					    app->uid,
-					    LTTNG_DOMAIN_UST,
-					    &reg_uid,
-					    ua_sess->root_shm_path,
-					    ua_sess->shm_path);
-		if (ret < 0) {
-			goto error;
-		}
-	} else {
-		goto end;
-	}
-
-	/*
-	 * Get the trace class from the orchestrator (which owns it).
-	 * The buffer registry stores a borrowed (non-owning) raw pointer.
-	 */
-	{
-		const auto session = ltt_session::find_session(ua_sess->tracing_id);
-		auto& orchestrator =
-			static_cast<lsu::domain_orchestrator&>(session->get_ust_orchestrator());
-
-		const auto app_abi = app->abi.bits_per_long == 32 ? lsu::application_abi::ABI_32 :
-								    lsu::application_abi::ABI_64;
-
-		try {
-			auto& tc = orchestrator.find_or_create_per_uid_trace_class(
-				app->uid,
-				app_abi,
-				app->abi,
-				app->version.major,
-				app->version.minor,
-				reg_uid->root_shm_path,
-				reg_uid->shm_path);
-			reg_uid->registry->reg.ust = &tc;
-		} catch (const std::exception& ex) {
-			ERR("Failed to create per-uid trace class: %s", ex.what());
-			buffer_reg_uid_destroy(reg_uid, nullptr);
-			goto error;
-		}
-	}
-
-	/* Add node to teardown list of the session. */
-	cds_list_add(&reg_uid->lnode, &usess->buffer_reg_uid_list);
-
-	buffer_reg_uid_add(reg_uid);
-
-	DBG3("UST app buffer registry per UID created successfully");
-end:
-	if (regp) {
-		*regp = reg_uid;
-	}
-error:
-	return ret;
-}
-
-/*
  * Create a session on the tracer side for the given app.
  *
  * On success, ua_sess_ptr is populated with the session pointer or else left
@@ -3036,21 +2853,65 @@ static int find_or_create_ust_app_session(struct ltt_ust_session *usess,
 
 	switch (usess->buffer_type) {
 	case LTTNG_BUFFER_PER_PID:
-		/* Init local registry. */
-		ret = setup_buffer_reg_pid(ua_sess, app, nullptr);
-		if (ret < 0) {
+	{
+		/*
+		 * Find or create the per-PID trace class via the orchestrator.
+		 * The trace class is also registered in the global
+		 * trace_class_index for consumer metadata pull requests.
+		 */
+		const auto session = ltt_session::find_session(ua_sess->recording_session_id);
+		auto& orchestrator =
+			static_cast<lsu::domain_orchestrator&>(session->get_ust_orchestrator());
+
+		try {
+			orchestrator.find_or_create_per_pid_trace_class(
+				*app,
+				ua_sess->app_session_id,
+				app->abi,
+				app->version.major,
+				app->version.minor,
+				ua_sess->root_shm_path,
+				ua_sess->shm_path,
+				lttng_credentials_get_uid(&ua_sess->effective_credentials),
+				lttng_credentials_get_gid(&ua_sess->effective_credentials));
+		} catch (const std::exception& ex) {
+			ERR("Failed to create per-PID trace class: %s", ex.what());
 			delete_ust_app_session(-1, ua_sess, app);
+			ret = -1;
 			goto error;
 		}
 		break;
+	}
 	case LTTNG_BUFFER_PER_UID:
-		/* Look for a global registry. If none exists, create one. */
-		ret = setup_buffer_reg_uid(usess, ua_sess, app, nullptr);
-		if (ret < 0) {
+	{
+		/*
+		 * Find or create the per-UID trace class via the orchestrator.
+		 * The trace class is also registered in the global
+		 * trace_class_index for consumer metadata pull requests.
+		 */
+		const auto session_ref = ltt_session::find_session(ua_sess->recording_session_id);
+		auto& orchestrator_ref =
+			static_cast<lsu::domain_orchestrator&>(session_ref->get_ust_orchestrator());
+
+		const auto app_abi = app->abi.bits_per_long == 32 ? lsu::application_abi::ABI_32 :
+								    lsu::application_abi::ABI_64;
+
+		try {
+			orchestrator_ref.find_or_create_per_uid_trace_class(app->uid,
+									    app_abi,
+									    app->abi,
+									    app->version.major,
+									    app->version.minor,
+									    ua_sess->root_shm_path,
+									    ua_sess->shm_path);
+		} catch (const std::exception& ex) {
+			ERR("Failed to create per-UID trace class: %s", ex.what());
 			delete_ust_app_session(-1, ua_sess, app);
+			ret = -1;
 			goto error;
 		}
 		break;
+	}
 	default:
 		abort();
 		ret = -EINVAL;
@@ -3094,7 +2955,7 @@ static int find_or_create_ust_app_session(struct ltt_ust_session *usess,
 		ua_sess->handle = ret;
 
 		/* Add ust app session to app's HT */
-		lttng_ht_node_init_u64(&ua_sess->node, ua_sess->tracing_id);
+		lttng_ht_node_init_u64(&ua_sess->node, ua_sess->recording_session_id);
 		lttng_ht_add_unique_u64(app->sessions, &ua_sess->node);
 		lttng_ht_node_init_ulong(&ua_sess->ust_objd_node, ua_sess->handle);
 		lttng_ht_add_unique_ulong(app->ust_sessions_objd, &ua_sess->ust_objd_node);
@@ -3314,7 +3175,7 @@ static int enable_ust_app_channel(const ust_app_session::locked_weak_ref& ua_ses
 	if (ua_chan_node == nullptr) {
 		DBG2("Unable to find channel %s in ust session id %" PRIu64,
 		     channel_name.data(),
-		     ua_sess->tracing_id);
+		     ua_sess->recording_session_id);
 		goto error;
 	}
 
@@ -3432,151 +3293,6 @@ error:
 }
 
 /*
- * Duplicate the ust data object of the ust app stream and save it in the
- * buffer registry stream.
- *
- * Return 0 on success or else a negative value.
- */
-/*
- * For a given channel buffer registry, setup all streams of the given ust
- * application channel.
- *
- * Return 0 on success or else a negative value.
- */
-static int setup_buffer_reg_streams(struct buffer_reg_channel *buf_reg_chan,
-				    struct ust_app_channel *ua_chan,
-				    struct ust_app *app)
-{
-	int ret = 0;
-
-	LTTNG_ASSERT(buf_reg_chan);
-	LTTNG_ASSERT(ua_chan);
-
-	DBG2("UST app setup buffer registry stream");
-
-	/* Send all streams to application. */
-	for (auto *stream :
-	     lttng::urcu::list_iteration_adapter<ust_app_stream, &ust_app_stream::list>(
-		     ua_chan->streams.head)) {
-		struct buffer_reg_stream *reg_stream;
-
-		ret = buffer_reg_stream_create(&reg_stream);
-		if (ret < 0) {
-			goto error;
-		}
-
-		/*
-		 * Keep original pointer and nullify it in the stream so the delete
-		 * stream call does not release the object.
-		 */
-		reg_stream->obj.ust = stream->obj;
-		stream->obj = nullptr;
-		buffer_reg_stream_add(reg_stream, buf_reg_chan);
-
-		/* We don't need the streams anymore. */
-		cds_list_del(&stream->list);
-		delete_ust_app_stream(-1, stream, app);
-	}
-
-error:
-	return ret;
-}
-
-/*
- * Create a buffer registry channel for the given session registry and
- * application channel object. If regp pointer is valid, it's set with the
- * created object. Important, the created object is NOT added to the session
- * registry hash table.
- *
- * Return 0 on success else a negative value.
- */
-static int create_buffer_reg_channel(struct buffer_reg_session *reg_sess,
-				     struct ust_app_channel *ua_chan,
-				     struct buffer_reg_channel **regp)
-{
-	int ret;
-	struct buffer_reg_channel *buf_reg_chan = nullptr;
-
-	LTTNG_ASSERT(reg_sess);
-	LTTNG_ASSERT(ua_chan);
-
-	DBG2("UST app creating buffer registry channel for %s", ua_chan->name);
-
-	/* Create buffer registry channel. */
-	ret = buffer_reg_channel_create(ua_chan->trace_class_stream_class_handle, &buf_reg_chan);
-	if (ret < 0) {
-		goto error_create;
-	}
-	LTTNG_ASSERT(buf_reg_chan);
-	buf_reg_chan->consumer_key = ua_chan->key;
-	buf_reg_chan->subbuf_size = ua_chan->attr.subbuf_size;
-	buf_reg_chan->num_subbuf = ua_chan->attr.num_subbuf;
-
-	/* Create and add a channel registry to session. */
-	try {
-		reg_sess->reg.ust->add_channel(
-			ua_chan->trace_class_stream_class_handle,
-			ust_channel_type_to_allocation_policy(ua_chan->attr.type));
-	} catch (const std::exception& ex) {
-		ERR("Failed to add a channel registry to userspace registry session: %s",
-		    ex.what());
-		ret = -1;
-		goto error;
-	}
-
-	buffer_reg_channel_add(reg_sess, buf_reg_chan);
-
-	if (regp) {
-		*regp = buf_reg_chan;
-	}
-
-	return 0;
-
-error:
-	/* Safe because the registry channel object was not added to any HT. */
-	buffer_reg_channel_destroy(buf_reg_chan, LTTNG_DOMAIN_UST);
-error_create:
-	return ret;
-}
-
-/*
- * Setup buffer registry channel for the given session registry and application
- * channel object. If regp pointer is valid, it's set with the created object.
- *
- * Return 0 on success else a negative value.
- */
-static int setup_buffer_reg_channel(struct buffer_reg_session *reg_sess,
-				    struct ust_app_channel *ua_chan,
-				    struct buffer_reg_channel *buf_reg_chan,
-				    struct ust_app *app)
-{
-	int ret;
-
-	LTTNG_ASSERT(reg_sess);
-	LTTNG_ASSERT(buf_reg_chan);
-	LTTNG_ASSERT(ua_chan);
-	LTTNG_ASSERT(ua_chan->obj);
-
-	DBG2("UST app setup buffer registry channel for %s", ua_chan->name);
-
-	/* Setup all streams for the registry. */
-	ret = setup_buffer_reg_streams(buf_reg_chan, ua_chan, app);
-	if (ret < 0) {
-		goto error;
-	}
-
-	buf_reg_chan->obj.ust = ua_chan->obj;
-	ua_chan->obj = nullptr;
-
-	return 0;
-
-error:
-	buffer_reg_channel_remove(reg_sess, buf_reg_chan);
-	buffer_reg_channel_destroy(buf_reg_chan, LTTNG_DOMAIN_UST);
-	return ret;
-}
-
-/*
  * Send a per-UID stream group's channel and streams to the application by
  * duplicating the master objects held by the stream group.
  *
@@ -3627,7 +3343,7 @@ static int send_channel_uid_to_ust(lsu::stream_group& stream_group,
 		     "\".",
 		     app->pid,
 		     ua_chan->name,
-		     ua_sess->tracing_id);
+		     ua_sess->recording_session_id);
 		/* Treat this the same way as an application that is exiting. */
 		ret = -ENOTCONN;
 		goto error;
@@ -3663,7 +3379,7 @@ static int send_channel_uid_to_ust(lsu::stream_group& stream_group,
 				     "\".",
 				     app->pid,
 				     ua_chan->name,
-				     ua_sess->tracing_id);
+				     ua_sess->recording_session_id);
 				ret = -ENOTCONN;
 			}
 			(void) release_ust_app_stream(-1, &app_stream, app);
@@ -3691,8 +3407,6 @@ static int create_channel_per_uid(struct ust_app *app,
 				  struct ust_app_channel *ua_chan)
 {
 	int ret;
-	struct buffer_reg_uid *reg_uid;
-	struct buffer_reg_channel *buf_reg_chan;
 	enum lttng_error_code notification_ret;
 
 	LTTNG_ASSERT(app);
@@ -3704,135 +3418,110 @@ static int create_channel_per_uid(struct ust_app *app,
 	DBG("UST app creating channel %s with per UID buffers", ua_chan->name);
 
 	/* Guaranteed to exist; will not throw. */
-	const auto session = ltt_session::find_session(ua_sess->tracing_id);
+	const auto session = ltt_session::find_session(ua_sess->recording_session_id);
 	ASSERT_SESSION_LIST_LOCKED();
 
-	reg_uid = buffer_reg_uid_find(usess->id, app->abi.bits_per_long, app->uid);
-	/*
-	 * The session creation handles the creation of this global registry
-	 * object. If none can be find, there is a code flow problem or a
-	 * teardown race.
-	 */
-	LTTNG_ASSERT(reg_uid);
+	const auto& recording_config =
+		static_cast<const lttng::sessiond::config::recording_channel_configuration&>(
+			ua_chan->channel_config);
+	const auto app_abi = app->abi.bits_per_long == 32 ? lsu::application_abi::ABI_32 :
+							    lsu::application_abi::ABI_64;
+	auto& orchestrator =
+		static_cast<lsu::domain_orchestrator&>(session->get_ust_orchestrator());
 
-	buf_reg_chan = buffer_reg_channel_find(ua_chan->trace_class_stream_class_handle, reg_uid);
-	if (buf_reg_chan) {
+	/*
+	 * Check if the per-UID stream group already exists for this
+	 * channel. If so, the channel has already been created on the
+	 * consumer and we only need to send it to this application.
+	 */
+	if (orchestrator.has_per_uid_stream_group(recording_config, app->uid, app_abi)) {
 		goto send_channel;
 	}
 
-	/* Create the buffer registry channel object. */
-	ret = create_buffer_reg_channel(reg_uid->registry, ua_chan, &buf_reg_chan);
-	if (ret < 0) {
-		ERR("Error creating the UST channel \"%s\" registry instance", ua_chan->name);
-		goto error;
-	}
-
 	/*
-	 * Create the buffers on the consumer side. This call populates the
-	 * ust app channel object with all streams and data object.
+	 * Look up the per-UID trace class. It must exist: it was created
+	 * during app-session setup (find_or_create_ust_app_session).
 	 */
-	ret = do_consumer_create_channel(usess,
-					 ua_sess,
-					 ua_chan,
-					 app->abi.bits_per_long,
-					 reg_uid->registry->reg.ust,
-					 session->trace_format);
-	if (ret < 0) {
-		ERR("Error creating UST channel \"%s\" on the consumer daemon", ua_chan->name);
+	{
+		auto trace_class_ptr = the_trace_class_index->find_per_uid(
+			usess->id, static_cast<std::uint32_t>(app_abi), app->uid);
+		LTTNG_ASSERT(trace_class_ptr);
 
-		/*
-		 * Let's remove the previously created buffer registry channel so
-		 * it's not visible anymore in the session registry.
-		 */
-		auto locked_registry = reg_uid->registry->reg.ust->lock();
+		/* Register the stream class (CTF channel) in the trace class. */
 		try {
-			locked_registry->remove_channel(ua_chan->trace_class_stream_class_handle,
-							false);
+			trace_class_ptr->add_channel(
+				ua_chan->trace_class_stream_class_handle,
+				ust_channel_type_to_allocation_policy(ua_chan->attr.type));
 		} catch (const std::exception& ex) {
-			DBG("Could not find channel for removal: %s", ex.what());
+			ERR("Failed to add a channel registry to userspace registry session: %s",
+			    ex.what());
+			ret = -1;
+			goto error;
 		}
-		buffer_reg_channel_remove(reg_uid->registry, buf_reg_chan);
-		buffer_reg_channel_destroy(buf_reg_chan, LTTNG_DOMAIN_UST);
-		goto error;
-	}
-
-	/*
-	 * Setup the streams and add it to the session registry.
-	 */
-	ret = setup_buffer_reg_channel(reg_uid->registry, ua_chan, buf_reg_chan, app);
-	if (ret < 0) {
-		ERR("Error setting up UST channel \"%s\"", ua_chan->name);
-		goto error;
-	}
-
-	{
-		auto locked_registry = reg_uid->registry->reg.ust->lock();
-		auto& ust_reg_chan =
-			locked_registry->channel(ua_chan->trace_class_stream_class_handle);
-
-		ust_reg_chan._consumer_key = ua_chan->key;
-	}
-
-	/*
-	 * Populate the orchestrator's stream group map and transfer
-	 * ownership of the channel and stream objects from the buffer
-	 * registry to the orchestrator's stream group.
-	 *
-	 * The buffer registry channel retains its structural role
-	 * (hash table entry, stream count tracking) but no longer
-	 * owns the UST ABI object handles.
-	 */
-	{
-		const auto& recording_config =
-			static_cast<const lttng::sessiond::config::recording_channel_configuration&>(
-				ua_chan->channel_config);
-		const auto app_abi = app->abi.bits_per_long == 32 ? lsu::application_abi::ABI_32 :
-								    lsu::application_abi::ABI_64;
-		auto& trace_class_ref = *reg_uid->registry->reg.ust;
-		auto locked_registry = trace_class_ref.lock();
-		auto& stream_class_ref =
-			locked_registry->channel(ua_chan->trace_class_stream_class_handle);
-
-		auto& orchestrator =
-			static_cast<lsu::domain_orchestrator&>(session->get_ust_orchestrator());
 
 		/*
-		 * Steal the channel object from the buffer registry.
-		 * The buffer registry's obj.ust is nulled to prevent
-		 * double-free on teardown.
+		 * Create the buffers on the consumer side. This call populates the
+		 * ust app channel object with all streams and data object.
 		 */
-		lsu::ust_object_data channel_obj(buf_reg_chan->obj.ust);
-		buf_reg_chan->obj.ust = nullptr;
+		ret = do_consumer_create_channel(usess,
+						 ua_sess,
+						 ua_chan,
+						 app->abi.bits_per_long,
+						 trace_class_ptr.get(),
+						 session->trace_format);
+		if (ret < 0) {
+			ERR("Error creating UST channel \"%s\" on the consumer daemon",
+			    ua_chan->name);
 
-		auto& stream_group =
-			orchestrator.find_or_create_per_uid_stream_group(recording_config,
-									 app->uid,
-									 app_abi,
-									 ua_chan->key,
-									 std::move(channel_obj),
-									 trace_class_ref,
-									 stream_class_ref);
+			auto locked_registry = trace_class_ptr->lock();
+			try {
+				locked_registry->remove_channel(
+					ua_chan->trace_class_stream_class_handle, false);
+			} catch (const std::exception& ex) {
+				DBG("Could not find channel for removal: %s", ex.what());
+			}
+			goto error;
+		}
+
+		/* Set the consumer key on the stream class. */
+		{
+			auto locked_registry = trace_class_ptr->lock();
+			auto& ust_reg_chan =
+				locked_registry->channel(ua_chan->trace_class_stream_class_handle);
+
+			ust_reg_chan._consumer_key = ua_chan->key;
+		}
 
 		/*
-		 * Transfer stream objects from the buffer registry to
-		 * the orchestrator's stream group. Each stream object
-		 * is stolen from its buffer_reg_stream and wrapped in
-		 * an ust_object_data for RAII management.
+		 * Transfer channel and stream objects directly to the
+		 * orchestrator's stream group.
 		 */
 		{
-			unsigned int cpu_idx = 0;
+			auto locked_registry = trace_class_ptr->lock();
+			auto& stream_class_ref =
+				locked_registry->channel(ua_chan->trace_class_stream_class_handle);
 
-			pthread_mutex_lock(&buf_reg_chan->stream_list_lock);
-			for (auto *reg_stream :
-			     lttng::urcu::list_iteration_adapter<buffer_reg_stream,
-								 &buffer_reg_stream::lnode>(
-				     buf_reg_chan->streams)) {
-				stream_group.add_stream(cpu_idx,
-							lsu::ust_object_data(reg_stream->obj.ust));
-				reg_stream->obj.ust = nullptr;
+			lsu::ust_object_data channel_obj(ua_chan->obj);
+			ua_chan->obj = nullptr;
+
+			auto& stream_group = orchestrator.find_or_create_per_uid_stream_group(
+				recording_config,
+				app->uid,
+				app_abi,
+				ua_chan->key,
+				std::move(channel_obj),
+				*trace_class_ptr,
+				stream_class_ref);
+
+			unsigned int cpu_idx = 0;
+			for (auto *stream :
+			     lttng::urcu::list_iteration_adapter<ust_app_stream,
+								 &ust_app_stream::list>(
+				     ua_chan->streams.head)) {
+				stream_group.add_stream(cpu_idx, lsu::ust_object_data(stream->obj));
+				stream->obj = nullptr;
 				cpu_idx++;
 			}
-			pthread_mutex_unlock(&buf_reg_chan->stream_list_lock);
 		}
 	}
 
@@ -3853,13 +3542,6 @@ static int create_channel_per_uid(struct ust_app *app,
 send_channel:
 	/* Send buffers to the application. */
 	{
-		const auto& recording_config =
-			static_cast<const lttng::sessiond::config::recording_channel_configuration&>(
-				ua_chan->channel_config);
-		const auto app_abi = app->abi.bits_per_long == 32 ? lsu::application_abi::ABI_32 :
-								    lsu::application_abi::ABI_64;
-		auto& orchestrator =
-			static_cast<lsu::domain_orchestrator&>(session->get_ust_orchestrator());
 		auto& sg =
 			orchestrator.get_per_uid_stream_group(recording_config, app->uid, app_abi);
 
@@ -3907,7 +3589,7 @@ static int create_channel_per_pid(struct ust_app *app,
 	LTTNG_ASSERT(registry);
 
 	/* Guaranteed to exist; will not throw. */
-	const auto session = ltt_session::find_session(ua_sess->tracing_id);
+	const auto session = ltt_session::find_session(ua_sess->recording_session_id);
 	ASSERT_LOCKED(session->_lock);
 	ASSERT_SESSION_LIST_LOCKED();
 
@@ -4250,7 +3932,7 @@ static int create_ust_app_metadata(const ust_app_session::locked_weak_ref& ua_se
 	LTTNG_ASSERT(locked_registry);
 
 	/* Guaranteed to exist; will not throw. */
-	const auto session = ltt_session::find_session(ua_sess->tracing_id);
+	const auto session = ltt_session::find_session(ua_sess->recording_session_id);
 	ASSERT_LOCKED(session->_lock);
 	ASSERT_SESSION_LIST_LOCKED();
 

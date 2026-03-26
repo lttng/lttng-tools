@@ -9,6 +9,7 @@
 
 #include "hotplug-handler.hpp"
 #include "lttng-sessiond.hpp"
+#include "ust-trace-class-index.hpp"
 
 #include <common/lttng-kernel.hpp>
 #include <common/uuid.hpp>
@@ -16,6 +17,8 @@
 #include <memory>
 
 lttng_uuid the_sessiond_uuid;
+
+lttng::sessiond::ust::trace_class_index *the_trace_class_index;
 
 int the_ust_consumerd64_fd = -1;
 int the_ust_consumerd32_fd = -1;

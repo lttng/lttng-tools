@@ -16,6 +16,7 @@
 #include "ust-app.hpp"
 #include "ust-domain-orchestrator.hpp"
 #include "ust-registry.hpp"
+#include "ust-trace-class-index.hpp"
 
 #include <common/defaults.hpp>
 #include <common/error.hpp>
@@ -150,7 +151,19 @@ ls::ust::domain_orchestrator::domain_orchestrator(
 {
 }
 
-ls::ust::domain_orchestrator::~domain_orchestrator() = default;
+ls::ust::domain_orchestrator::~domain_orchestrator()
+{
+	/* Unregister all per-UID trace classes from the global index. */
+	for (const auto& entry : _per_uid_trace_classes) {
+		the_trace_class_index->remove_per_uid(
+			_session.id, static_cast<std::uint32_t>(entry.first.abi), entry.first.uid);
+	}
+
+	/* Unregister any remaining per-PID trace classes from the global index. */
+	for (const auto& entry : _per_pid_app_session_ids) {
+		the_trace_class_index->remove_per_pid(entry.second);
+	}
+}
 
 std::uint64_t ls::ust::domain_orchestrator::trace_class_stream_class_handle(
 	const config::recording_channel_configuration& channel_config) const
@@ -178,7 +191,7 @@ ls::ust::trace_class& ls::ust::domain_orchestrator::find_or_create_per_uid_trace
 		return *it->second;
 	}
 
-	std::unique_ptr<ust::trace_class> tc(ust_trace_class_per_uid_create(_session.trace_format,
+	std::shared_ptr<ust::trace_class> tc(ust_trace_class_per_uid_create(_session.trace_format,
 									    tracer_abi,
 									    tracer_major,
 									    tracer_minor,
@@ -196,7 +209,10 @@ ls::ust::trace_class& ls::ust::domain_orchestrator::find_or_create_per_uid_trace
 	}
 
 	auto& ref = *tc;
-	_per_uid_trace_classes.emplace(key, std::move(tc));
+	_per_uid_trace_classes.emplace(key, tc);
+
+	/* Register in the global trace class index for consumer metadata lookups. */
+	the_trace_class_index->add_per_uid(_session.id, static_cast<std::uint32_t>(abi), uid, tc);
 
 	DBG_FMT("UST domain orchestrator created per-UID trace class: uid={}, abi={}",
 		uid,
@@ -207,6 +223,7 @@ ls::ust::trace_class& ls::ust::domain_orchestrator::find_or_create_per_uid_trace
 
 ls::ust::trace_class& ls::ust::domain_orchestrator::find_or_create_per_pid_trace_class(
 	ust_app& app,
+	std::uint64_t app_session_id,
 	const lttng::sessiond::trace::abi& tracer_abi,
 	std::uint32_t tracer_major,
 	std::uint32_t tracer_minor,
@@ -223,7 +240,7 @@ ls::ust::trace_class& ls::ust::domain_orchestrator::find_or_create_per_pid_trace
 		return *it->second;
 	}
 
-	std::unique_ptr<ust::trace_class> tc(ust_trace_class_per_pid_create(&app,
+	std::shared_ptr<ust::trace_class> tc(ust_trace_class_per_pid_create(&app,
 									    _session.trace_format,
 									    tracer_abi,
 									    tracer_major,
@@ -239,7 +256,11 @@ ls::ust::trace_class& ls::ust::domain_orchestrator::find_or_create_per_pid_trace
 	}
 
 	auto& ref = *tc;
-	_per_pid_trace_classes.emplace(&app, std::move(tc));
+	_per_pid_trace_classes.emplace(&app, tc);
+	_per_pid_app_session_ids.emplace(&app, app_session_id);
+
+	/* Register in the global trace class index for consumer metadata lookups. */
+	the_trace_class_index->add_per_pid(app_session_id, tc);
 
 	DBG_FMT("UST domain orchestrator created per-PID trace class: pid={}", app.pid);
 
@@ -251,6 +272,13 @@ void ls::ust::domain_orchestrator::release_per_pid_trace_class(const ust_app& ap
 	const auto it = _per_pid_trace_classes.find(&app);
 	if (it == _per_pid_trace_classes.end()) {
 		return;
+	}
+
+	/* Unregister from the global trace class index. */
+	const auto id_it = _per_pid_app_session_ids.find(&app);
+	if (id_it != _per_pid_app_session_ids.end()) {
+		the_trace_class_index->remove_per_pid(id_it->second);
+		_per_pid_app_session_ids.erase(id_it);
 	}
 
 	DBG_FMT("UST domain orchestrator releasing per-PID trace class: pid={}", app.pid);
@@ -307,6 +335,16 @@ ls::ust::stream_group& ls::ust::domain_orchestrator::get_per_uid_stream_group(
 	}
 
 	return *it->second;
+}
+
+bool ls::ust::domain_orchestrator::has_per_uid_stream_group(
+	const config::recording_channel_configuration& channel_config,
+	uid_t uid,
+	application_abi abi) const
+{
+	const _per_uid_stream_group_key key = { &channel_config, uid, abi };
+
+	return _per_uid_stream_groups.find(key) != _per_uid_stream_groups.end();
 }
 
 ls::ust::stream_group& ls::ust::domain_orchestrator::find_or_create_per_pid_stream_group(
@@ -598,6 +636,28 @@ void ls::ust::domain_orchestrator::open_packets()
 	const auto ret = ust_app_open_packets(_session);
 	if (ret != LTTNG_OK) {
 		LTTNG_THROW_CTL("Failed to open UST packets", ret);
+	}
+}
+
+void ls::ust::domain_orchestrator::close_per_uid_metadata_on_consumer(
+	struct consumer_output& consumer) const
+{
+	const lttng::urcu::read_lock_guard read_lock;
+
+	for (const auto& tc_entry : _per_uid_trace_classes) {
+		const auto& abi = tc_entry.first.abi;
+		const auto& trace_class = *tc_entry.second;
+
+		if (!trace_class._metadata_key) {
+			continue;
+		}
+
+		auto *socket = consumer_find_socket_by_bitness(static_cast<int>(abi), &consumer);
+		if (!socket) {
+			continue;
+		}
+
+		(void) consumer_close_metadata(socket, trace_class._metadata_key);
 	}
 }
 

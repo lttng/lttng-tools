@@ -125,6 +125,9 @@ namespace sessiond {
 namespace hotplug_handler {
 struct command;
 } /* namespace hotplug_handler */
+namespace ust {
+class trace_class_index;
+} /* namespace ust */
 } /* namespace sessiond */
 template <typename>
 class command_queue;
@@ -132,6 +135,13 @@ class command_queue;
 
 extern std::unique_ptr<lttng::command_queue<lttng::sessiond::hotplug_handler::command>>
 	the_hotplug_handler_queue;
+
+/*
+ * Global index for looking up UST trace classes by consumer-side
+ * identifiers without holding the session lock. Used by the consumer
+ * management thread to resolve metadata pull requests.
+ */
+extern lttng::sessiond::ust::trace_class_index *the_trace_class_index;
 
 /*
  * Populated when the daemon starts with the current page size of the system.

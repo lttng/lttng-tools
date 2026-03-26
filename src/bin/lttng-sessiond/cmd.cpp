@@ -10,7 +10,6 @@
 #include "agent-domain.hpp"
 #include "agent-thread.hpp"
 #include "agent.hpp"
-#include "buffer-registry.hpp"
 #include "channel.hpp"
 #include "cmd.hpp"
 #include "commands/get-channel-memory-usage.hpp"

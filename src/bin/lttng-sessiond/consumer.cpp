@@ -2530,14 +2530,14 @@ unsigned int consumer_reclaim_session_owner_id(const struct ust_app_session& ua_
 	{
 		const lttng::pthread::lock_guard consumer_lock(consumer->lock);
 		ret = do_consumer_reclaim_session_owner_id(
-			*consumer, ua_sess.tracing_id, owner_id, &pending_reclamations);
+			*consumer, ua_sess.recording_session_id, owner_id, &pending_reclamations);
 	}
 
 	if (ret) {
 		ERR_FMT("Failed to reclaim application owner id during "
 			"application unregistration: "
 			"session_id={}, owner_id={}",
-			ua_sess.tracing_id,
+			ua_sess.recording_session_id,
 			owner_id);
 	}
 
