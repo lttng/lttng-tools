@@ -902,16 +902,17 @@ std::uint64_t ls::ust::domain_orchestrator::get_size_one_more_packet_per_stream(
 	return tot_size;
 }
 
-void ls::ust::domain_orchestrator::for_each_consumer_channel(
-	const consumer_channel_visitor& visitor) const
+void ls::ust::domain_orchestrator::for_each_consumer_stream_group(
+	const consumer_stream_group_visitor& visitor) const
 {
 	if (_default_buffer_ownership ==
 	    lsc::recording_channel_configuration::owership_model_t::PER_UID) {
 		for (const auto& sg_entry : _per_uid_stream_groups) {
-			visitor(consumer_channel_descriptor{ sg_entry.first.abi,
-							     sg_entry.second->consumer_key(),
-							     false,
-							     sg_entry.second->get_trace_class() });
+			visitor(consumer_stream_group_descriptor{
+				sg_entry.first.abi,
+				sg_entry.second->consumer_key(),
+				false,
+				sg_entry.second->get_trace_class() });
 		}
 
 		for (const auto& tc_entry : _per_uid_trace_classes) {
@@ -919,10 +920,10 @@ void ls::ust::domain_orchestrator::for_each_consumer_channel(
 				continue;
 			}
 
-			visitor(consumer_channel_descriptor{ tc_entry.first.abi,
-							     tc_entry.second->_metadata_key,
-							     true,
-							     *tc_entry.second });
+			visitor(consumer_stream_group_descriptor{ tc_entry.first.abi,
+								  tc_entry.second->_metadata_key,
+								  true,
+								  *tc_entry.second });
 		}
 	} else {
 		for (const auto& sg_entry : _per_pid_stream_groups) {
@@ -930,10 +931,11 @@ void ls::ust::domain_orchestrator::for_each_consumer_channel(
 				application_abi::ABI_32 :
 				application_abi::ABI_64;
 
-			visitor(consumer_channel_descriptor{ app_abi,
-							     sg_entry.second->consumer_key(),
-							     false,
-							     sg_entry.second->get_trace_class() });
+			visitor(consumer_stream_group_descriptor{
+				app_abi,
+				sg_entry.second->consumer_key(),
+				false,
+				sg_entry.second->get_trace_class() });
 		}
 
 		for (const auto& tc_entry : _per_pid_trace_classes) {
@@ -945,7 +947,7 @@ void ls::ust::domain_orchestrator::for_each_consumer_channel(
 				application_abi::ABI_32 :
 				application_abi::ABI_64;
 
-			visitor(consumer_channel_descriptor{
+			visitor(consumer_stream_group_descriptor{
 				app_abi, tc_entry.second->_metadata_key, true, *tc_entry.second });
 		}
 	}

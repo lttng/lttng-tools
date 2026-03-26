@@ -124,13 +124,13 @@ public:
 	std::uint64_t get_size_one_more_packet_per_stream(std::uint64_t cur_nr_packets) const;
 
 	/*
-	 * Descriptor yielded to the for_each_consumer_channel() callback.
+	 * Descriptor yielded to the for_each_consumer_stream_group() callback.
 	 *
 	 * Each descriptor represents a single consumer-side channel: either
 	 * a data channel (backed by a stream_group) or a metadata channel
 	 * (backed by a trace_class).
 	 */
-	struct consumer_channel_descriptor {
+	struct consumer_stream_group_descriptor {
 		application_abi abi;
 		std::uint64_t consumer_key;
 		bool is_metadata;
@@ -138,7 +138,7 @@ public:
 	};
 
 	/*
-	 * Iterate all consumer channel keys (data + metadata) owned by this
+	 * Iterate all consumer stream groups (data + metadata) owned by this
 	 * orchestrator and call `visitor` for each one.
 	 *
 	 * For per-UID mode, iterates the per-UID stream groups (data
@@ -155,9 +155,10 @@ public:
 	 * the buffer_reg_uid / ust_app_session internals.
 	 */
 
-	using consumer_channel_visitor = std::function<void(const consumer_channel_descriptor&)>;
+	using consumer_stream_group_visitor =
+		std::function<void(const consumer_stream_group_descriptor&)>;
 
-	void for_each_consumer_channel(const consumer_channel_visitor& visitor) const;
+	void for_each_consumer_stream_group(const consumer_stream_group_visitor& visitor) const;
 
 	/*
 	 * Convert a context_configuration to the lttng_ust_context_attr ABI

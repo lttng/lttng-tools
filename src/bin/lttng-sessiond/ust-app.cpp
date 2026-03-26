@@ -5995,9 +5995,9 @@ static int ust_app_flush_session(struct ltt_ust_session *usess,
 	switch (usess->buffer_type) {
 	case LTTNG_BUFFER_PER_UID:
 	{
-		orchestrator.for_each_consumer_channel(
-			[&usess](
-				const lsu::domain_orchestrator::consumer_channel_descriptor& desc) {
+		orchestrator.for_each_consumer_stream_group(
+			[&usess](const lsu::domain_orchestrator::consumer_stream_group_descriptor&
+					 desc) {
 				const lttng::urcu::read_lock_guard read_lock;
 
 				const auto socket = consumer_find_socket_by_bitness(
@@ -6123,9 +6123,9 @@ static int ust_app_clear_quiescent_session(struct ltt_ust_session *usess,
 	switch (usess->buffer_type) {
 	case LTTNG_BUFFER_PER_UID:
 	{
-		orchestrator.for_each_consumer_channel(
-			[&usess](
-				const lsu::domain_orchestrator::consumer_channel_descriptor& desc) {
+		orchestrator.for_each_consumer_stream_group(
+			[&usess](const lsu::domain_orchestrator::consumer_stream_group_descriptor&
+					 desc) {
 				if (desc.is_metadata) {
 					return;
 				}
@@ -7802,9 +7802,9 @@ enum lttng_error_code ust_app_rotate_session(const ltt_session& session)
 		const auto& orchestrator = static_cast<const lsu::domain_orchestrator&>(
 			session.get_ust_orchestrator());
 
-		orchestrator.for_each_consumer_channel(
+		orchestrator.for_each_consumer_stream_group(
 			[&usess, &cmd_ret](
-				const lsu::domain_orchestrator::consumer_channel_descriptor& desc) {
+				const lsu::domain_orchestrator::consumer_stream_group_descriptor& desc) {
 				const lttng::urcu::read_lock_guard read_lock;
 
 				if (cmd_ret != LTTNG_OK) {
@@ -7943,9 +7943,9 @@ enum lttng_error_code ust_app_clear_session(const ltt_session& session)
 		static_cast<const lsu::domain_orchestrator&>(session.get_ust_orchestrator());
 	auto result = LTTNG_OK;
 
-	orchestrator.for_each_consumer_channel(
+	orchestrator.for_each_consumer_stream_group(
 		[&usess,
-		 &result](const lsu::domain_orchestrator::consumer_channel_descriptor& desc) {
+		 &result](const lsu::domain_orchestrator::consumer_stream_group_descriptor& desc) {
 			if (result != LTTNG_OK) {
 				return;
 			}
@@ -8003,9 +8003,9 @@ enum lttng_error_code ust_app_open_packets(const ltt_session& session)
 		static_cast<const lsu::domain_orchestrator&>(session.get_ust_orchestrator());
 	auto result = LTTNG_OK;
 
-	orchestrator.for_each_consumer_channel(
+	orchestrator.for_each_consumer_stream_group(
 		[&usess,
-		 &result](const lsu::domain_orchestrator::consumer_channel_descriptor& desc) {
+		 &result](const lsu::domain_orchestrator::consumer_stream_group_descriptor& desc) {
 			if (result != LTTNG_OK || desc.is_metadata) {
 				return;
 			}
