@@ -164,8 +164,8 @@ public:
 	 * skipped.
 	 *
 	 * This method decouples callers (rotate, clear, open_packets,
-	 * snapshot, the user_space_consumer_channel_keys iterator) from
-	 * the buffer_reg_uid / ust_app_session internals.
+	 * snapshot, channel memory commands) from the buffer_reg_uid /
+	 * ust_app_session internals.
 	 */
 
 	using consumer_stream_group_visitor =
