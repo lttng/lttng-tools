@@ -291,6 +291,24 @@ ls::ust::stream_group& ls::ust::domain_orchestrator::find_or_create_per_uid_stre
 	return ref;
 }
 
+ls::ust::stream_group& ls::ust::domain_orchestrator::get_per_uid_stream_group(
+	const config::recording_channel_configuration& channel_config,
+	uid_t uid,
+	application_abi abi)
+{
+	const _per_uid_stream_group_key key = { &channel_config, uid, abi };
+	const auto it = _per_uid_stream_groups.find(key);
+	if (it == _per_uid_stream_groups.end()) {
+		LTTNG_THROW_ERROR(lttng::format(
+			"Per-UID stream group not found: channel_name=`{}`, uid={}, abi={}",
+			channel_config.name,
+			uid,
+			static_cast<int>(abi)));
+	}
+
+	return *it->second;
+}
+
 ls::ust::stream_group& ls::ust::domain_orchestrator::find_or_create_per_pid_stream_group(
 	const config::recording_channel_configuration& channel_config,
 	const ust_app& app,

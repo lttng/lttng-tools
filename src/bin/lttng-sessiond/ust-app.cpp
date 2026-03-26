@@ -3437,77 +3437,6 @@ error:
  *
  * Return 0 on success or else a negative value.
  */
-static int duplicate_stream_object(struct buffer_reg_stream *reg_stream,
-				   struct ust_app_stream *stream)
-{
-	int ret;
-
-	LTTNG_ASSERT(reg_stream);
-	LTTNG_ASSERT(stream);
-
-	/* Duplicating a stream requires 2 new fds. Reserve them. */
-	ret = lttng_fd_get(LTTNG_FD_APPS, 2);
-	if (ret < 0) {
-		ERR("Exhausted number of available FD upon duplicate stream");
-		goto error;
-	}
-
-	/* Duplicate object for stream once the original is in the registry. */
-	ret = lttng_ust_ctl_duplicate_ust_object_data(&stream->obj, reg_stream->obj.ust);
-	if (ret < 0) {
-		ERR("Duplicate stream obj from %p to %p failed with ret %d",
-		    reg_stream->obj.ust,
-		    stream->obj,
-		    ret);
-		lttng_fd_put(LTTNG_FD_APPS, 2);
-		goto error;
-	}
-	stream->handle = stream->obj->header.handle;
-
-error:
-	return ret;
-}
-
-/*
- * Duplicate the ust data object of the ust app. channel and save it in the
- * buffer registry channel.
- *
- * Return 0 on success or else a negative value.
- */
-static int duplicate_channel_object(struct buffer_reg_channel *buf_reg_chan,
-				    struct ust_app_channel *ua_chan)
-{
-	int ret;
-
-	LTTNG_ASSERT(buf_reg_chan);
-	LTTNG_ASSERT(ua_chan);
-
-	/* Duplicating a channel requires 1 new fd. Reserve it. */
-	ret = lttng_fd_get(LTTNG_FD_APPS, 1);
-	if (ret < 0) {
-		ERR("Exhausted number of available FD upon duplicate channel");
-		goto error_fd_get;
-	}
-
-	/* Duplicate object for stream once the original is in the registry. */
-	ret = lttng_ust_ctl_duplicate_ust_object_data(&ua_chan->obj, buf_reg_chan->obj.ust);
-	if (ret < 0) {
-		ERR("Duplicate channel obj from %p to %p failed with ret: %d",
-		    buf_reg_chan->obj.ust,
-		    ua_chan->obj,
-		    ret);
-		goto error;
-	}
-	ua_chan->handle = ua_chan->obj->header.handle;
-
-	return 0;
-
-error:
-	lttng_fd_put(LTTNG_FD_APPS, 1);
-error_fd_get:
-	return ret;
-}
-
 /*
  * For a given channel buffer registry, setup all streams of the given ust
  * application channel.
@@ -3648,27 +3577,43 @@ error:
 }
 
 /*
- * Send buffer registry channel to the application.
+ * Send a per-UID stream group's channel and streams to the application by
+ * duplicating the master objects held by the stream group.
+ *
+ * In per-UID mode, the stream group holds the "master" channel and stream
+ * objects obtained from the consumer daemon when the first application
+ * created the shared buffers. Each subsequent application receives
+ * duplicated copies of these objects.
  *
  * Return 0 on success else a negative value.
  */
-static int send_channel_uid_to_ust(struct buffer_reg_channel *buf_reg_chan,
+static int send_channel_uid_to_ust(lsu::stream_group& stream_group,
 				   struct ust_app *app,
 				   struct ust_app_session *ua_sess,
 				   struct ust_app_channel *ua_chan)
 {
 	int ret;
 
-	LTTNG_ASSERT(buf_reg_chan);
 	LTTNG_ASSERT(app);
 	LTTNG_ASSERT(ua_sess);
 	LTTNG_ASSERT(ua_chan);
 
-	DBG("UST app sending buffer registry channel to ust sock %d", app->sock);
+	DBG("UST app sending stream group channel to ust sock %d", app->sock);
 
-	ret = duplicate_channel_object(buf_reg_chan, ua_chan);
-	if (ret < 0) {
-		goto error;
+	/* Duplicate the master channel object for this application. */
+	{
+		try {
+			auto duplicated_channel = stream_group.duplicate_channel_object();
+			ua_chan->obj = duplicated_channel.release();
+		} catch (const std::exception& ex) {
+			ERR("Failed to duplicate channel object for app pid %d: %s",
+			    app->pid,
+			    ex.what());
+			ret = -ENOMEM;
+			goto error;
+		}
+
+		ua_chan->handle = ua_chan->obj->header.handle;
 	}
 
 	/* Send channel to the application. */
@@ -3692,28 +3637,28 @@ static int send_channel_uid_to_ust(struct buffer_reg_channel *buf_reg_chan,
 
 	health_code_update();
 
-	/* Send all streams to application. */
-	pthread_mutex_lock(&buf_reg_chan->stream_list_lock);
-	for (auto *reg_stream :
-	     lttng::urcu::list_iteration_adapter<buffer_reg_stream, &buffer_reg_stream::lnode>(
-		     buf_reg_chan->streams)) {
-		struct ust_app_stream stream = {};
+	/* Send all streams to application by duplicating from the stream group. */
+	for (const auto& stream_ptr : stream_group.streams()) {
+		struct ust_app_stream app_stream = {};
 
-		ret = duplicate_stream_object(reg_stream, &stream);
-		if (ret < 0) {
-			goto error_stream_unlock;
+		try {
+			auto duplicated_stream = stream_ptr->handle.duplicate();
+			app_stream.obj = duplicated_stream.release();
+		} catch (const std::exception& ex) {
+			ERR("Failed to duplicate stream object for app pid %d: %s",
+			    app->pid,
+			    ex.what());
+			ret = -ENOMEM;
+			goto error;
 		}
 
-		ret = ust_consumer_send_stream_to_ust(app, ua_chan, &stream);
+		app_stream.handle = app_stream.obj->header.handle;
+
+		ret = ust_consumer_send_stream_to_ust(app, ua_chan, &app_stream);
 		if (ret < 0) {
 			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 				ret = -ENOTCONN; /* Caused by app exiting. */
 			} else if (ret == -EAGAIN) {
-				/*
-				 * Caused by timeout.
-				 * Treat this the same way as an application
-				 * that is exiting.
-				 */
 				WARN("Communication with application %d timed out on send_stream for stream of channel \"%s\" of session \"%" PRIu64
 				     "\".",
 				     app->pid,
@@ -3721,19 +3666,13 @@ static int send_channel_uid_to_ust(struct buffer_reg_channel *buf_reg_chan,
 				     ua_sess->tracing_id);
 				ret = -ENOTCONN;
 			}
-			(void) release_ust_app_stream(-1, &stream, app);
-			goto error_stream_unlock;
+			(void) release_ust_app_stream(-1, &app_stream, app);
+			goto error;
 		}
 
-		/*
-		 * The return value is not important here. This function will output an
-		 * error if needed.
-		 */
-		(void) release_ust_app_stream(-1, &stream, app);
+		(void) release_ust_app_stream(-1, &app_stream, app);
 	}
 
-error_stream_unlock:
-	pthread_mutex_unlock(&buf_reg_chan->stream_list_lock);
 error:
 	return ret;
 }
@@ -3835,11 +3774,13 @@ static int create_channel_per_uid(struct ust_app *app,
 	}
 
 	/*
-	 * Populate the orchestrator's stream group map. During the
-	 * dual-write transition, the buffer registry channel retains
-	 * the authoritative channel and stream objects. The stream
-	 * group's channel object is null during this period; ownership
-	 * will be transferred when the buffer registry layer is removed.
+	 * Populate the orchestrator's stream group map and transfer
+	 * ownership of the channel and stream objects from the buffer
+	 * registry to the orchestrator's stream group.
+	 *
+	 * The buffer registry channel retains its structural role
+	 * (hash table entry, stream count tracking) but no longer
+	 * owns the UST ABI object handles.
 	 */
 	{
 		const auto& recording_config =
@@ -3855,25 +3796,43 @@ static int create_channel_per_uid(struct ust_app *app,
 		auto& orchestrator =
 			static_cast<lsu::domain_orchestrator&>(session->get_ust_orchestrator());
 
-		auto& stream_group = orchestrator.find_or_create_per_uid_stream_group(
-			recording_config,
-			app->uid,
-			app_abi,
-			ua_chan->key,
-			lsu::ust_object_data(nullptr),
-			trace_class_ref,
-			stream_class_ref);
+		/*
+		 * Steal the channel object from the buffer registry.
+		 * The buffer registry's obj.ust is nulled to prevent
+		 * double-free on teardown.
+		 */
+		lsu::ust_object_data channel_obj(buf_reg_chan->obj.ust);
+		buf_reg_chan->obj.ust = nullptr;
+
+		auto& stream_group =
+			orchestrator.find_or_create_per_uid_stream_group(recording_config,
+									 app->uid,
+									 app_abi,
+									 ua_chan->key,
+									 std::move(channel_obj),
+									 trace_class_ref,
+									 stream_class_ref);
 
 		/*
-		 * Mirror the buffer registry's stream count into the
-		 * orchestrator's stream group. The stream objects
-		 * themselves are still owned by the buffer registry
-		 * during the dual-write transition, but the stream
-		 * count must be accurate for snapshot sizing.
+		 * Transfer stream objects from the buffer registry to
+		 * the orchestrator's stream group. Each stream object
+		 * is stolen from its buffer_reg_stream and wrapped in
+		 * an ust_object_data for RAII management.
 		 */
-		for (uint64_t i = 0; i < buf_reg_chan->stream_count; i++) {
-			stream_group.add_stream(static_cast<unsigned int>(i),
-						lsu::ust_object_data(nullptr));
+		{
+			unsigned int cpu_idx = 0;
+
+			pthread_mutex_lock(&buf_reg_chan->stream_list_lock);
+			for (auto *reg_stream :
+			     lttng::urcu::list_iteration_adapter<buffer_reg_stream,
+								 &buffer_reg_stream::lnode>(
+				     buf_reg_chan->streams)) {
+				stream_group.add_stream(cpu_idx,
+							lsu::ust_object_data(reg_stream->obj.ust));
+				reg_stream->obj.ust = nullptr;
+				cpu_idx++;
+			}
+			pthread_mutex_unlock(&buf_reg_chan->stream_list_lock);
 		}
 	}
 
@@ -3893,12 +3852,24 @@ static int create_channel_per_uid(struct ust_app *app,
 
 send_channel:
 	/* Send buffers to the application. */
-	ret = send_channel_uid_to_ust(buf_reg_chan, app, ua_sess, ua_chan);
-	if (ret < 0) {
-		if (ret != -ENOTCONN) {
-			ERR("Error sending channel to application");
+	{
+		const auto& recording_config =
+			static_cast<const lttng::sessiond::config::recording_channel_configuration&>(
+				ua_chan->channel_config);
+		const auto app_abi = app->abi.bits_per_long == 32 ? lsu::application_abi::ABI_32 :
+								    lsu::application_abi::ABI_64;
+		auto& orchestrator =
+			static_cast<lsu::domain_orchestrator&>(session->get_ust_orchestrator());
+		auto& sg =
+			orchestrator.get_per_uid_stream_group(recording_config, app->uid, app_abi);
+
+		ret = send_channel_uid_to_ust(sg, app, ua_sess, ua_chan);
+		if (ret < 0) {
+			if (ret != -ENOTCONN) {
+				ERR("Error sending channel to application");
+			}
+			goto error;
 		}
-		goto error;
 	}
 
 error:
@@ -7803,8 +7774,9 @@ enum lttng_error_code ust_app_rotate_session(const ltt_session& session)
 			session.get_ust_orchestrator());
 
 		orchestrator.for_each_consumer_stream_group(
-			[&usess, &cmd_ret](
-				const lsu::domain_orchestrator::consumer_stream_group_descriptor& desc) {
+			[&usess,
+			 &cmd_ret](const lsu::domain_orchestrator::consumer_stream_group_descriptor&
+					   desc) {
 				const lttng::urcu::read_lock_guard read_lock;
 
 				if (cmd_ret != LTTNG_OK) {

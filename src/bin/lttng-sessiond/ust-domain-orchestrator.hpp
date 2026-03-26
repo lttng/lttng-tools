@@ -267,10 +267,10 @@ public:
 	 * must NOT delete it.
 	 *
 	 * Called from create_channel_per_uid() after the buffer registry
-	 * channel has been set up. During the dual-write transition, the
-	 * channel_object is null because the buffer registry channel
-	 * retains the authoritative object handles. Ownership will be
-	 * transferred when the buffer registry layer is removed.
+	 * channel has been set up. The channel_object is the "master"
+	 * channel handle obtained from the consumer daemon; it is owned
+	 * by the stream_group from this point on and will be duplicated
+	 * for each subsequent application that shares the same UID/ABI.
 	 *
 	 * If a stream_group already exists for the key, the existing one
 	 * is returned (this happens when multiple apps share the same
@@ -287,6 +287,20 @@ public:
 		ust::stream_class& stream_class);
 
 	/*
+	 * Look up an existing per-UID stream group for the given
+	 * (channel_config, uid, abi) combination.
+	 *
+	 * Returns a reference to the stream group. Throws
+	 * std::out_of_range if no stream group exists for the key
+	 * (which indicates a code flow error -- the caller should
+	 * guarantee a stream group was previously created).
+	 */
+	ust::stream_group&
+	get_per_uid_stream_group(const config::recording_channel_configuration& channel_config,
+				 uid_t uid,
+				 application_abi abi);
+
+	/*
 	 * Find or create a per-PID stream group for the given
 	 * (channel_config, app) combination. The orchestrator owns
 	 * the returned stream_group (via unique_ptr in
@@ -294,11 +308,10 @@ public:
 	 * must NOT delete it.
 	 *
 	 * Called from create_channel_per_pid() after the consumer
-	 * channel has been created. During the dual-write transition,
-	 * the channel_object is null because the per-app channel
-	 * retains the authoritative object handles. Ownership will be
-	 * transferred when the per-app channel objects are managed by
-	 * the orchestrator.
+	 * channel has been created. In per-PID mode, the channel and
+	 * stream objects are sent directly to the application and
+	 * consumed; the stream_group does not hold master object
+	 * handles for duplication (unlike per-UID).
 	 *
 	 * Unlike per-UID, each app always gets its own stream group
 	 * (no sharing).

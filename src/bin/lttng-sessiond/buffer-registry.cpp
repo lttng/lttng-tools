@@ -450,21 +450,28 @@ void buffer_reg_stream_destroy(struct buffer_reg_stream *regp, enum lttng_domain
 		return;
 	}
 
-	DBG3("Buffer registry stream destroy with handle %d", regp->obj.ust->header.handle);
-
 	switch (domain) {
 	case LTTNG_DOMAIN_UST:
 	{
-		int ret;
+		/*
+		 * The stream object may be null if ownership was
+		 * transferred to the orchestrator's stream group.
+		 */
+		if (regp->obj.ust) {
+			int ret;
 
-		ret = ust_app_release_object(nullptr, regp->obj.ust);
-		if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("Buffer reg stream release obj handle %d failed with ret %d",
-			    regp->obj.ust->header.handle,
-			    ret);
+			DBG3("Buffer registry stream destroy with handle %d",
+			     regp->obj.ust->header.handle);
+
+			ret = ust_app_release_object(nullptr, regp->obj.ust);
+			if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+				ERR("Buffer reg stream release obj handle %d failed with ret %d",
+				    regp->obj.ust->header.handle,
+				    ret);
+			}
+			free(regp->obj.ust);
+			lttng_fd_put(LTTNG_FD_APPS, 2);
 		}
-		free(regp->obj.ust);
-		lttng_fd_put(LTTNG_FD_APPS, 2);
 		break;
 	}
 	default:
@@ -506,8 +513,6 @@ void buffer_reg_channel_destroy(struct buffer_reg_channel *regp, enum lttng_doma
 	switch (domain) {
 	case LTTNG_DOMAIN_UST:
 	{
-		int ret;
-
 		/* Wipe stream */
 		for (auto reg_stream :
 		     lttng::urcu::list_iteration_adapter<buffer_reg_stream,
@@ -518,7 +523,13 @@ void buffer_reg_channel_destroy(struct buffer_reg_channel *regp, enum lttng_doma
 			buffer_reg_stream_destroy(reg_stream, domain);
 		}
 
+		/*
+		 * The channel object may be null if ownership was
+		 * transferred to the orchestrator's stream group.
+		 */
 		if (regp->obj.ust) {
+			int ret;
+
 			ret = ust_app_release_object(nullptr, regp->obj.ust);
 			if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
 				ERR("Buffer reg channel release obj handle %d failed with ret %d",
@@ -526,8 +537,8 @@ void buffer_reg_channel_destroy(struct buffer_reg_channel *regp, enum lttng_doma
 				    ret);
 			}
 			free(regp->obj.ust);
+			lttng_fd_put(LTTNG_FD_APPS, 1);
 		}
-		lttng_fd_put(LTTNG_FD_APPS, 1);
 		break;
 	}
 	default:
