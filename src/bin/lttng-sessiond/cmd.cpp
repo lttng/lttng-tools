@@ -684,9 +684,12 @@ build_network_session_path(char *dst, size_t size, const ltt_session::locked_ref
 			session->get_kernel_orchestrator().get_consumer_output().dst.net.data.port;
 	}
 
-	if (session->ust_orchestrator && session->ust_session->consumer) {
-		uuri = &session->ust_session->consumer->dst.net.control;
-		udata_port = session->ust_session->consumer->dst.net.data.port;
+	if (session->ust_orchestrator) {
+		auto& ust_consumer = static_cast<lttng::sessiond::ust::domain_orchestrator&>(
+					     session->get_ust_orchestrator())
+					     .get_consumer_output();
+		uuri = &ust_consumer.dst.net.control;
+		udata_port = ust_consumer.dst.net.data.port;
 	}
 
 	if (uuri == nullptr && kuri == nullptr) {
@@ -1190,10 +1193,7 @@ error:
 int cmd_setup_relayd(const ltt_session::locked_ref& session)
 {
 	int ret = LTTNG_OK;
-	struct ltt_ust_session *usess;
 	LTTNG_OPTIONAL(uint64_t) current_chunk_id = {};
-
-	usess = session->ust_session;
 
 	DBG("Setting relayd for session %s", session->name);
 
@@ -1210,38 +1210,43 @@ int cmd_setup_relayd(const ltt_session::locked_ref& session)
 		}
 	}
 
-	if (usess && usess->consumer && usess->consumer->type == CONSUMER_DST_NET &&
-	    usess->consumer->enabled) {
-		/* For each consumer socket, send relayd sockets */
-		for (auto *socket :
-		     lttng::urcu::lfht_iteration_adapter<consumer_socket,
-							 decltype(consumer_socket::node),
-							 &consumer_socket::node>(
-			     *usess->consumer->socks->ht)) {
-			pthread_mutex_lock(socket->lock);
-			ret = send_consumer_relayd_sockets(
-				session->id,
-				usess->consumer,
-				socket,
-				session->name,
-				session->hostname,
-				session->base_path,
-				session->live_timer,
-				current_chunk_id.is_set ? &current_chunk_id.value : nullptr,
-				session->creation_time,
-				session->name_contains_creation_time,
-				session->trace_format);
-			pthread_mutex_unlock(socket->lock);
-			if (ret != LTTNG_OK) {
-				goto error;
-			}
-			/* Session is now ready for network streaming. */
-			session->net_handle = 1;
-		}
+	if (session->ust_orchestrator) {
+		auto& ust_consumer = static_cast<lttng::sessiond::ust::domain_orchestrator&>(
+					     session->get_ust_orchestrator())
+					     .get_consumer_output();
 
-		session->consumer->relay_major_version = usess->consumer->relay_major_version;
-		session->consumer->relay_minor_version = usess->consumer->relay_minor_version;
-		session->consumer->relay_allows_clear = usess->consumer->relay_allows_clear;
+		if (ust_consumer.type == CONSUMER_DST_NET && ust_consumer.enabled) {
+			/* For each consumer socket, send relayd sockets */
+			for (auto *socket :
+			     lttng::urcu::lfht_iteration_adapter<consumer_socket,
+								 decltype(consumer_socket::node),
+								 &consumer_socket::node>(
+				     *ust_consumer.socks->ht)) {
+				pthread_mutex_lock(socket->lock);
+				ret = send_consumer_relayd_sockets(
+					session->id,
+					&ust_consumer,
+					socket,
+					session->name,
+					session->hostname,
+					session->base_path,
+					session->live_timer,
+					current_chunk_id.is_set ? &current_chunk_id.value : nullptr,
+					session->creation_time,
+					session->name_contains_creation_time,
+					session->trace_format);
+				pthread_mutex_unlock(socket->lock);
+				if (ret != LTTNG_OK) {
+					goto error;
+				}
+				/* Session is now ready for network streaming. */
+				session->net_handle = 1;
+			}
+
+			session->consumer->relay_major_version = ust_consumer.relay_major_version;
+			session->consumer->relay_minor_version = ust_consumer.relay_minor_version;
+			session->consumer->relay_allows_clear = ust_consumer.relay_allows_clear;
+		}
 	}
 
 	if (session->kernel_orchestrator) {
@@ -3807,10 +3812,13 @@ int cmd_set_consumer_uri(const ltt_session::locked_ref& session,
 	/* Set UST session URIs */
 	if (session->ust_orchestrator) {
 		for (i = 0; i < nb_uri; i++) {
-			ret = add_uri_to_consumer(session,
-						  session->ust_session->consumer,
-						  &uris[i],
-						  LTTNG_DOMAIN_UST);
+			ret = add_uri_to_consumer(
+				session,
+				&static_cast<lttng::sessiond::ust::domain_orchestrator&>(
+					 session->get_ust_orchestrator())
+					 .get_consumer_output(),
+				&uris[i],
+				LTTNG_DOMAIN_UST);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
@@ -4703,13 +4711,15 @@ void cmd_list_lttng_sessions(struct lttng_session *sessions,
 			continue;
 		}
 
-		struct ltt_ust_session *usess = session->ust_session;
-
 		if (session->consumer->type == CONSUMER_DST_NET ||
 		    (session->kernel_orchestrator &&
 		     session->get_kernel_orchestrator().get_consumer_output().type ==
 			     CONSUMER_DST_NET) ||
-		    (usess && usess->consumer->type == CONSUMER_DST_NET)) {
+		    (session->ust_orchestrator &&
+		     static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
+			     session->get_ust_orchestrator())
+				     .consumer()
+				     .type == CONSUMER_DST_NET)) {
 			ret = build_network_session_path(
 				sessions[i].path, sizeof(sessions[i].path), session);
 		} else {
@@ -4756,7 +4766,6 @@ enum lttng_error_code cmd_kernel_tracer_status(enum lttng_kernel_tracer_status *
 int cmd_data_pending(const ltt_session::locked_ref& session)
 {
 	int ret;
-	struct ltt_ust_session *usess = session->ust_session;
 
 	DBG("Data pending for session %s", session->name);
 
@@ -4797,8 +4806,12 @@ int cmd_data_pending(const ltt_session::locked_ref& session)
 		}
 	}
 
-	if (usess && usess->consumer) {
-		ret = consumer_is_data_pending(usess->id, usess->consumer);
+	if (session->ust_orchestrator) {
+		ret = consumer_is_data_pending(
+			session->ust_session->id,
+			&static_cast<lttng::sessiond::ust::domain_orchestrator&>(
+				 session->get_ust_orchestrator())
+				 .get_consumer_output());
 		if (ret == 1) {
 			/* Data is still being extracted for the kernel. */
 			goto error;
@@ -5765,8 +5778,8 @@ static enum lttng_error_code snapshot_record(const ltt_session::locked_ref& sess
 	int ret;
 	enum lttng_error_code ret_code = LTTNG_OK;
 	struct lttng_trace_chunk *snapshot_trace_chunk;
-	struct consumer_output *original_ust_consumer_output = nullptr;
-	struct consumer_output *snapshot_ust_consumer_output = nullptr;
+	lttng::sessiond::ust::domain_orchestrator::consumer_output_uptr snapshot_ust_consumer_output;
+	lttng::sessiond::ust::domain_orchestrator::consumer_output_uptr original_ust_consumer_output;
 	lttng::sessiond::modules::domain_orchestrator::consumer_output_uptr
 		snapshot_kernel_consumer_output;
 	lttng::sessiond::modules::domain_orchestrator::consumer_output_uptr
@@ -5817,33 +5830,34 @@ static enum lttng_error_code snapshot_record(const ltt_session::locked_ref& sess
 		}
 	}
 	if (session->ust_orchestrator) {
-		original_ust_consumer_output = session->ust_session->consumer;
-		snapshot_ust_consumer_output = consumer_copy_output(snapshot_output->consumer);
+		auto& ust_orchestrator = static_cast<lttng::sessiond::ust::domain_orchestrator&>(
+			session->get_ust_orchestrator());
+
+		snapshot_ust_consumer_output.reset(consumer_copy_output(snapshot_output->consumer));
 		strcpy(snapshot_ust_consumer_output->chunk_path, snapshot_chunk_name);
 
 		/* Copy the original domain subdir. */
 		strcpy(snapshot_ust_consumer_output->domain_subdir,
-		       original_ust_consumer_output->domain_subdir);
+		       ust_orchestrator.consumer().domain_subdir);
 
-		ret = consumer_copy_sockets(snapshot_ust_consumer_output,
-					    original_ust_consumer_output);
+		ret = consumer_copy_sockets(snapshot_ust_consumer_output.get(),
+					    &ust_orchestrator.get_consumer_output());
 		if (ret < 0) {
 			ERR("Failed to copy consumer sockets from snapshot output configuration");
 			ret_code = LTTNG_ERR_NOMEM;
 			goto error;
 		}
-		ret_code = set_relayd_for_snapshot(snapshot_ust_consumer_output, session);
+		ret_code = set_relayd_for_snapshot(snapshot_ust_consumer_output.get(), session);
 		if (ret_code != LTTNG_OK) {
 			ERR("Failed to setup relay daemon for userspace tracer snapshot");
 			goto error;
 		}
-		session->ust_session->consumer = snapshot_ust_consumer_output;
 	}
 
 	snapshot_trace_chunk = session_create_new_trace_chunk(
 		session,
 		snapshot_kernel_consumer_output ? snapshot_kernel_consumer_output.get() :
-						  snapshot_ust_consumer_output,
+						  snapshot_ust_consumer_output.get(),
 		consumer_output_get_base_path(snapshot_output->consumer),
 		snapshot_chunk_name);
 	if (!snapshot_trace_chunk) {
@@ -5867,6 +5881,12 @@ static enum lttng_error_code snapshot_record(const ltt_session::locked_ref& sess
 		original_kernel_consumer_output =
 			session->get_kernel_orchestrator().exchange_consumer_output(
 				std::move(snapshot_kernel_consumer_output));
+	}
+	if (snapshot_ust_consumer_output) {
+		original_ust_consumer_output =
+			static_cast<lttng::sessiond::ust::domain_orchestrator&>(
+				session->get_ust_orchestrator())
+				.exchange_consumer_output(std::move(snapshot_ust_consumer_output));
 	}
 
 	ret = session_set_trace_chunk(session, snapshot_trace_chunk, nullptr);
@@ -5901,8 +5921,12 @@ static enum lttng_error_code snapshot_record(const ltt_session::locked_ref& sess
 
 	if (session->ust_orchestrator) {
 		try {
-			session->get_ust_orchestrator().record_snapshot(
-				*snapshot_ust_consumer_output, nb_packets_per_stream);
+			auto& ust_orchestrator =
+				static_cast<lttng::sessiond::ust::domain_orchestrator&>(
+					session->get_ust_orchestrator());
+
+			ust_orchestrator.record_snapshot(ust_orchestrator.get_consumer_output(),
+							 nb_packets_per_stream);
 		} catch (const std::exception& ex) {
 			ERR_FMT("Failed to record UST snapshot: {}", ex.what());
 			ret_code = LTTNG_ERR_SNAPSHOT_FAIL;
@@ -5936,10 +5960,11 @@ error:
 			std::move(original_kernel_consumer_output));
 	}
 	if (original_ust_consumer_output) {
-		session->ust_session->consumer = original_ust_consumer_output;
+		static_cast<lttng::sessiond::ust::domain_orchestrator&>(
+			session->get_ust_orchestrator())
+			.exchange_consumer_output(std::move(original_ust_consumer_output));
 	}
 
-	consumer_output_put(snapshot_ust_consumer_output);
 	return ret_code;
 }
 

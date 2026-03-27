@@ -53,10 +53,18 @@ namespace ust {
  */
 class domain_orchestrator final : public sessiond::domain_orchestrator {
 public:
+	struct consumer_output_deleter {
+		void operator()(struct consumer_output *output) const noexcept;
+	};
+
+	using consumer_output_uptr =
+		std::unique_ptr<struct consumer_output, consumer_output_deleter>;
+
 	explicit domain_orchestrator(
 		ltt_ust_session& ust_session,
 		const ltt_session& session,
-		config::recording_channel_configuration::owership_model_t default_buffer_ownership);
+		config::recording_channel_configuration::owership_model_t default_buffer_ownership,
+		consumer_output_uptr consumer_output);
 
 	~domain_orchestrator() override;
 
@@ -64,6 +72,38 @@ public:
 	domain_orchestrator(domain_orchestrator&&) = delete;
 	domain_orchestrator& operator=(const domain_orchestrator&) = delete;
 	domain_orchestrator& operator=(domain_orchestrator&&) = delete;
+
+	struct consumer_output& get_consumer_output() noexcept
+	{
+		return *_consumer_output;
+	}
+
+	const struct consumer_output& consumer() const noexcept
+	{
+		return *_consumer_output;
+	}
+
+	/*
+	 * Return a non-owning raw pointer to the consumer output. Used
+	 * during the transition to set the legacy usess->consumer alias.
+	 * This will be removed once all usess->consumer access sites are
+	 * migrated to the orchestrator.
+	 */
+	struct consumer_output *get_consumer_output_ptr() noexcept
+	{
+		return _consumer_output.get();
+	}
+
+	/*
+	 * Temporarily replace the consumer output (e.g. during snapshot
+	 * recording) and return the previous one. The caller is
+	 * responsible for restoring the original consumer output.
+	 */
+	consumer_output_uptr exchange_consumer_output(consumer_output_uptr new_output) noexcept
+	{
+		std::swap(_consumer_output, new_output);
+		return new_output;
+	}
 
 	void create_channel(const config::recording_channel_configuration& channel_config) override;
 	void enable_channel(const config::recording_channel_configuration& channel_config) override;
@@ -360,6 +400,7 @@ private:
 	ltt_ust_session& _ust_session;
 	const ltt_session& _session;
 	const config::recording_channel_configuration::owership_model_t _default_buffer_ownership;
+	consumer_output_uptr _consumer_output;
 	bool _active = false;
 
 	/*
@@ -530,6 +571,37 @@ namespace ust {
  */
 class domain_orchestrator final : public sessiond::domain_orchestrator {
 public:
+	struct consumer_output_deleter {
+		void operator()(struct consumer_output *) const noexcept
+		{
+			std::abort();
+		}
+	};
+
+	using consumer_output_uptr =
+		std::unique_ptr<struct consumer_output, consumer_output_deleter>;
+
+	struct consumer_output& get_consumer_output() noexcept
+	{
+		std::abort();
+	}
+
+	const struct consumer_output& consumer() const noexcept
+	{
+		std::abort();
+	}
+
+	struct consumer_output *get_consumer_output_ptr() noexcept
+	{
+		std::abort();
+	}
+
+	consumer_output_uptr
+	exchange_consumer_output(consumer_output_uptr /* new_output */) noexcept
+	{
+		std::abort();
+	}
+
 	std::uint64_t trace_class_stream_class_handle(
 		const config::recording_channel_configuration& channel_config
 		[[maybe_unused]]) const
@@ -551,6 +623,12 @@ public:
 
 	void close_per_uid_metadata_on_consumer(struct consumer_output& consumer
 						[[maybe_unused]]) const
+	{
+		std::abort();
+	}
+
+	void record_snapshot(const struct consumer_output& /* snapshot_consumer */,
+			     std::uint64_t /* nb_packets_per_stream */) override
 	{
 		std::abort();
 	}

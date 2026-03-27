@@ -225,8 +225,11 @@ lsc::reclaim_channel_memory_result lsc::reclaim_channel_memory(
 
 		try {
 			issue_consumer_reclaim_channel_memory(
-				*consumer_find_socket_by_bitness(32,
-								 session->ust_session->consumer),
+				*consumer_find_socket_by_bitness(
+					32,
+					&static_cast<lttng::sessiond::ust::domain_orchestrator&>(
+						 session->get_ust_orchestrator())
+						 .get_consumer_output()),
 				consumer32_owners,
 				is_per_cpu_stream,
 				consumer32_channel_keys,
@@ -248,8 +251,11 @@ lsc::reclaim_channel_memory_result lsc::reclaim_channel_memory(
 
 		try {
 			issue_consumer_reclaim_channel_memory(
-				*consumer_find_socket_by_bitness(64,
-								 session->ust_session->consumer),
+				*consumer_find_socket_by_bitness(
+					64,
+					&static_cast<lttng::sessiond::ust::domain_orchestrator&>(
+						 session->get_ust_orchestrator())
+						 .get_consumer_output()),
 				consumer64_owners,
 				is_per_cpu_stream,
 				consumer64_channel_keys,

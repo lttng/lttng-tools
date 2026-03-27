@@ -142,7 +142,6 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 /* Free elements needed by destroy notifiers. */
 void trace_ust_free_session(struct ltt_ust_session *session)
 {
-	consumer_output_put(session->consumer);
 	free(session);
 }
 

@@ -597,8 +597,26 @@ int create_ust_session(const ltt_session::locked_ref& session, const struct lttn
 		goto error;
 	}
 
-	session->ust_orchestrator = lttng::make_unique<lttng::sessiond::ust::domain_orchestrator>(
-		*lus, *session, default_buffer_ownership);
+	{
+		/*
+		 * Transfer consumer output ownership from ltt_ust_session to
+		 * the orchestrator. The orchestrator takes a unique_ptr; the
+		 * legacy usess->consumer becomes a non-owning alias (set after
+		 * construction) for backward compatibility during the transition.
+		 */
+		namespace lsu = lttng::sessiond::ust;
+
+		lsu::domain_orchestrator::consumer_output_uptr consumer_output(lus->consumer);
+		lus->consumer = nullptr;
+
+		session->ust_orchestrator = lttng::make_unique<lsu::domain_orchestrator>(
+			*lus, *session, default_buffer_ownership, std::move(consumer_output));
+
+		/* Non-owning alias for code not yet migrated to the orchestrator. */
+		lus->consumer =
+			static_cast<lsu::domain_orchestrator&>(session->get_ust_orchestrator())
+				.get_consumer_output_ptr();
+	}
 
 	return LTTNG_OK;
 
@@ -1471,8 +1489,11 @@ int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_error)
 			 * Setup socket for consumer 64 bit. No need for atomic access
 			 * since it was set above and can ONLY be set in this thread.
 			 */
-			ret = consumer_create_socket(&the_ustconsumer64_data,
-						     (*target_session)->ust_session->consumer);
+			ret = consumer_create_socket(
+				&the_ustconsumer64_data,
+				&static_cast<lttng::sessiond::ust::domain_orchestrator&>(
+					 (*target_session)->get_ust_orchestrator())
+					 .get_consumer_output());
 			if (ret < 0) {
 				goto error;
 			}
@@ -1500,8 +1521,11 @@ int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_error)
 			 * Setup socket for consumer 32 bit. No need for atomic access
 			 * since it was set above and can ONLY be set in this thread.
 			 */
-			ret = consumer_create_socket(&the_ustconsumer32_data,
-						     (*target_session)->ust_session->consumer);
+			ret = consumer_create_socket(
+				&the_ustconsumer32_data,
+				&static_cast<lttng::sessiond::ust::domain_orchestrator&>(
+					 (*target_session)->get_ust_orchestrator())
+					 .get_consumer_output());
 			if (ret < 0) {
 				goto error;
 			}

@@ -181,7 +181,11 @@ lsc::get_channel_memory_usage(const ltt_session::locked_ref& session,
 			consumer32_channel_keys,
 			consumer32_owners,
 			is_per_cpu_stream,
-			*consumer_find_socket_by_bitness(32, session->ust_session->consumer));
+			*consumer_find_socket_by_bitness(
+				32,
+				&static_cast<lttng::sessiond::ust::domain_orchestrator&>(
+					 session->get_ust_orchestrator())
+					 .get_consumer_output()));
 	}
 
 	if (!consumer64_channel_keys.empty()) {
@@ -193,7 +197,11 @@ lsc::get_channel_memory_usage(const ltt_session::locked_ref& session,
 			consumer64_channel_keys,
 			consumer64_owners,
 			is_per_cpu_stream,
-			*consumer_find_socket_by_bitness(64, session->ust_session->consumer));
+			*consumer_find_socket_by_bitness(
+				64,
+				&static_cast<lttng::sessiond::ust::domain_orchestrator&>(
+					 session->get_ust_orchestrator())
+					 .get_consumer_output()));
 	}
 
 	/* Log results. */

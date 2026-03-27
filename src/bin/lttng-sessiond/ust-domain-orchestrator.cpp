@@ -141,14 +141,23 @@ lttng_ust_context_attr ls::ust::domain_orchestrator::make_ust_context_attr(
 	return ust_ctx;
 }
 
+void ls::ust::domain_orchestrator::consumer_output_deleter::operator()(
+	struct consumer_output *output) const noexcept
+{
+	consumer_output_put(output);
+}
+
 ls::ust::domain_orchestrator::domain_orchestrator(
 	ltt_ust_session& ust_session,
 	const ltt_session& session,
-	lsc::recording_channel_configuration::owership_model_t default_buffer_ownership) :
+	lsc::recording_channel_configuration::owership_model_t default_buffer_ownership,
+	consumer_output_uptr consumer_output) :
 	_ust_session(ust_session),
 	_session(session),
-	_default_buffer_ownership(default_buffer_ownership)
+	_default_buffer_ownership(default_buffer_ownership),
+	_consumer_output(std::move(consumer_output))
 {
+	LTTNG_ASSERT(_consumer_output);
 }
 
 ls::ust::domain_orchestrator::~domain_orchestrator()
@@ -690,7 +699,7 @@ void ls::ust::domain_orchestrator::_record_snapshot_per_uid(
 
 		lttng::urcu::read_lock_guard read_lock;
 		auto *socket = consumer_find_socket_by_bitness(static_cast<int>(tc_key.abi),
-							       _ust_session.consumer);
+							       _consumer_output.get());
 		if (!socket) {
 			LTTNG_THROW_CTL("Failed to find consumer socket for snapshot",
 					LTTNG_ERR_INVALID);
@@ -701,7 +710,7 @@ void ls::ust::domain_orchestrator::_record_snapshot_per_uid(
 
 		std::size_t consumer_path_offset = 0;
 		const auto trace_path_raw = setup_channel_trace_path(
-			_ust_session.consumer, uid_path.c_str(), &consumer_path_offset);
+			_consumer_output.get(), uid_path.c_str(), &consumer_path_offset);
 		if (!trace_path_raw) {
 			LTTNG_THROW_CTL("Failed to setup channel trace path for snapshot",
 					LTTNG_ERR_INVALID);
@@ -877,7 +886,7 @@ ls::ust::domain_orchestrator::get_recording_channel_runtime_stats(
 		if (is_overwrite) {
 			const auto ret_lost = consumer_get_lost_packets(_session.id,
 									consumer_chan_key,
-									_ust_session.consumer,
+									_consumer_output.get(),
 									&stats.lost_packets);
 			if (ret_lost < 0) {
 				LTTNG_THROW_ERROR(lttng::format(
@@ -888,7 +897,7 @@ ls::ust::domain_orchestrator::get_recording_channel_runtime_stats(
 			const auto ret_disc =
 				consumer_get_discarded_events(_session.id,
 							      consumer_chan_key,
-							      _ust_session.consumer,
+							      _consumer_output.get(),
 							      &stats.discarded_events);
 			if (ret_disc < 0) {
 				LTTNG_THROW_ERROR(lttng::format(
@@ -914,7 +923,7 @@ ls::ust::domain_orchestrator::get_recording_channel_runtime_stats(
 
 				const auto ret = consumer_get_lost_packets(_session.id,
 									   consumer_chan_key,
-									   _ust_session.consumer,
+									   _consumer_output.get(),
 									   &lost);
 				if (ret < 0) {
 					break;
@@ -927,7 +936,7 @@ ls::ust::domain_orchestrator::get_recording_channel_runtime_stats(
 				const auto ret =
 					consumer_get_discarded_events(_session.id,
 								      consumer_chan_key,
-								      _ust_session.consumer,
+								      _consumer_output.get(),
 								      &discarded);
 				if (ret < 0) {
 					break;

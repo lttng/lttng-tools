@@ -555,9 +555,12 @@ static int _session_set_trace_chunk_no_lock_check(const ltt_session::locked_ref&
 	}
 
 	if (session->ust_orchestrator) {
-		const uint64_t relayd_id = session->ust_session->consumer->net_seq_index;
-		const bool is_local_trace = session->ust_session->consumer->type ==
-			CONSUMER_DST_LOCAL;
+		const auto& ust_consumer =
+			static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
+				session->get_ust_orchestrator())
+				.consumer();
+		const uint64_t relayd_id = ust_consumer.net_seq_index;
+		const bool is_local_trace = ust_consumer.type == CONSUMER_DST_LOCAL;
 
 		session->ust_session->current_trace_chunk = new_trace_chunk;
 		if (is_local_trace) {
@@ -575,7 +578,7 @@ static int _session_set_trace_chunk_no_lock_check(const ltt_session::locked_ref&
 		     lttng::urcu::lfht_iteration_adapter<consumer_socket,
 							 decltype(consumer_socket::node),
 							 &consumer_socket::node>(
-			     *session->ust_session->consumer->socks->ht)) {
+			     *ust_consumer.socks->ht)) {
 			pthread_mutex_lock(socket->lock);
 			ret = consumer_create_trace_chunk(socket,
 							  relayd_id,
@@ -677,7 +680,9 @@ session_create_new_trace_chunk(const ltt_session::locked_ref& session,
 	} else {
 		LTTNG_ASSERT(session->ust_orchestrator || session->kernel_orchestrator);
 		output = session->ust_orchestrator ?
-			session->ust_session->consumer :
+			&static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
+				 session->get_ust_orchestrator())
+				 .consumer() :
 			&session->get_kernel_orchestrator().get_consumer_output();
 	}
 
@@ -829,13 +834,17 @@ int session_close_trace_chunk(const ltt_session::locked_ref& session,
 	}
 
 	if (session->ust_orchestrator) {
-		const uint64_t relayd_id = session->ust_session->consumer->net_seq_index;
+		const auto& ust_consumer =
+			static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
+				session->get_ust_orchestrator())
+				.consumer();
+		const uint64_t relayd_id = ust_consumer.net_seq_index;
 
 		for (auto *socket :
 		     lttng::urcu::lfht_iteration_adapter<consumer_socket,
 							 decltype(consumer_socket::node),
 							 &consumer_socket::node>(
-			     *session->ust_session->consumer->socks->ht)) {
+			     *ust_consumer.socks->ht)) {
 			pthread_mutex_lock(socket->lock);
 			ret = consumer_close_trace_chunk(socket,
 							 relayd_id,
@@ -978,8 +987,11 @@ static void session_release(struct urcu_ref *ref)
 
 	/* UST session teardown, keeping data for destroy notifier. */
 	if (session->ust_orchestrator) {
+		auto& ust_orchestrator = static_cast<lttng::sessiond::ust::domain_orchestrator&>(
+			session->get_ust_orchestrator());
+
 		/* Close any relayd session */
-		consumer_output_send_destroy_relayd(usess->consumer);
+		consumer_output_send_destroy_relayd(&ust_orchestrator.get_consumer_output());
 
 		/* Destroy every UST application related to this session. */
 		ret = ust_app_destroy_trace_all(usess);
@@ -993,9 +1005,8 @@ static void session_release(struct urcu_ref *ref)
 		 * per-UID metadata outlives the applications and must be
 		 * closed explicitly during session teardown.
 		 */
-		static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
-			session->get_ust_orchestrator())
-			.close_per_uid_metadata_on_consumer(*usess->consumer);
+		ust_orchestrator.close_per_uid_metadata_on_consumer(
+			ust_orchestrator.get_consumer_output());
 
 		/* Clean up the rest, keeping destroy notifier data. */
 		trace_ust_destroy_session(usess);

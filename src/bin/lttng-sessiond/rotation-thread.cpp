@@ -15,6 +15,7 @@
 #include "session.hpp"
 #include "thread.hpp"
 #include "timer.hpp"
+#include "ust-domain-orchestrator.hpp"
 #include "utils.hpp"
 
 #include <common/align.hpp>
@@ -132,28 +133,36 @@ void check_session_rotation_pending_on_consumers(const ltt_session::locked_ref& 
 		goto skip_ust;
 	}
 
-	for (auto *socket : lttng::urcu::lfht_iteration_adapter<consumer_socket,
-								decltype(consumer_socket::node),
-								&consumer_socket::node>(
-		     *session->ust_session->consumer->socks->ht)) {
-		relayd_id = session->ust_session->consumer->type == CONSUMER_DST_LOCAL ?
-			-1ULL :
-			session->ust_session->consumer->net_seq_index;
+	{
+		const auto& ust_consumer =
+			static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
+				session->get_ust_orchestrator())
+				.consumer();
 
-		const lttng::pthread::lock_guard socket_lock(*socket->lock);
-		ret = consumer_trace_chunk_exists(socket,
-						  relayd_id,
-						  session->id,
-						  session->chunk_being_archived,
-						  &exists_status);
-		if (ret) {
-			ERR("Error occurred while checking rotation status on consumer daemon");
-			goto end;
-		}
+		for (auto *socket :
+		     lttng::urcu::lfht_iteration_adapter<consumer_socket,
+							 decltype(consumer_socket::node),
+							 &consumer_socket::node>(
+			     *ust_consumer.socks->ht)) {
+			relayd_id = ust_consumer.type == CONSUMER_DST_LOCAL ?
+				-1ULL :
+				ust_consumer.net_seq_index;
 
-		if (exists_status != CONSUMER_TRACE_CHUNK_EXISTS_STATUS_UNKNOWN_CHUNK) {
-			chunk_exists_on_peer = true;
-			goto end;
+			const lttng::pthread::lock_guard socket_lock(*socket->lock);
+			ret = consumer_trace_chunk_exists(socket,
+							  relayd_id,
+							  session->id,
+							  session->chunk_being_archived,
+							  &exists_status);
+			if (ret) {
+				ERR("Error occurred while checking rotation status on consumer daemon");
+				goto end;
+			}
+
+			if (exists_status != CONSUMER_TRACE_CHUNK_EXISTS_STATUS_UNKNOWN_CHUNK) {
+				chunk_exists_on_peer = true;
+				goto end;
+			}
 		}
 	}
 
