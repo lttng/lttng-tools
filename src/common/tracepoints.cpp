@@ -25,7 +25,7 @@ std::vector<std::string> split_paths(const std::string& paths)
 		auto entry = paths.substr(current, next - current);
 
 		if (!entry.empty()) {
-			result.push_back(entry);
+			result.push_back(std::move(entry));
 		}
 
 		if (next == std::string::npos) {
@@ -41,7 +41,7 @@ std::vector<std::string> split_paths(const std::string& paths)
 void push_back_unique(std::vector<std::string>& v, std::string element)
 {
 	bool add = true;
-	for (auto e : v) {
+	for (const auto& e : v) {
 		if (e.compare(element) == 0) {
 			add = false;
 			break;
@@ -63,14 +63,14 @@ std::vector<std::string> _search_paths()
 	std::vector<std::string> paths;
 	const char *_tp_paths = lttng_secure_getenv(DEFAULT_TRACEPOINT_PROVIDER_PATH_ENV);
 	if (_tp_paths != nullptr) {
-		for (auto path : split_paths(std::string(_tp_paths))) {
-			push_back_unique(paths, path);
+		for (auto&& path : split_paths(std::string(_tp_paths))) {
+			push_back_unique(paths, std::move(path));
 		}
 	}
 
 	const char *_ld_library_path = lttng_secure_getenv("LD_LIBRARY_PATH");
 	if (_ld_library_path != nullptr) {
-		for (auto path : split_paths(std::string(_ld_library_path))) {
+		for (const auto& path : split_paths(std::string(_ld_library_path))) {
 			push_back_unique(paths, path + "/lttng");
 		}
 	}
@@ -88,14 +88,14 @@ std::vector<std::string> tracepoints_find_all(const std::string& basename)
 		return options;
 	}
 
-	for (auto path : search_paths) {
+	for (const auto& path : search_paths) {
 		DBG_FMT("Checking for tracepoint library='{}', path='{}'", basename, path);
 		struct stat statbuf = {};
 		auto file = path + "/" + basename;
 		if (stat(file.c_str(), &statbuf) != 0) {
 			DBG_FMT("Stat '{}' failed: {} ({})", file, strerror(errno), errno);
 		} else if (statbuf.st_mode & S_IFREG) {
-			options.push_back(file);
+			options.push_back(std::move(file));
 		} else {
 			DBG_FMT("'{}' is not a file or symbolic link, skipping", file);
 		}
@@ -132,7 +132,7 @@ tracepoints_load(const char *basename)
 {
 	auto options = ::tracepoints_find_all(std::string(basename));
 	void *ret = nullptr;
-	for (auto path : options) {
+	for (const auto& path : options) {
 		dlerror();
 		ret = dlopen(path.c_str(), RTLD_NOW);
 		if (ret != nullptr) {
