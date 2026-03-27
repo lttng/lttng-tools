@@ -45,7 +45,7 @@ done
 
 # The rotation application handles the actual testing once the tracing session
 # has been setup.
-$CURDIR/rotation $SESSION_NAME $SESSION_OUTPUT_PATH
+$CURDIR/rotation $SESSION_NAME "$(realpath "${SESSION_OUTPUT_PATH}")"
 if [ $? -ne 0 ]; then
 	diag "Failed to run rotation notification client"
 fi
