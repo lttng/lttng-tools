@@ -13,6 +13,7 @@
 #include <dlfcn.h>
 #include <string>
 #include <sys/stat.h>
+#include <unordered_set>
 
 namespace {
 std::vector<std::string> split_paths(const std::string& paths)
@@ -38,21 +39,6 @@ std::vector<std::string> split_paths(const std::string& paths)
 	return result;
 }
 
-void push_back_unique(std::vector<std::string>& v, std::string element)
-{
-	bool add = true;
-	for (const auto& e : v) {
-		if (e.compare(element) == 0) {
-			add = false;
-			break;
-		}
-	}
-
-	if (add) {
-		v.push_back(std::move(element));
-	}
-}
-
 std::vector<std::string> _search_paths()
 {
 	/*
@@ -61,21 +47,30 @@ std::vector<std::string> _search_paths()
 	 * 3. LTTNG_LIB_DIR (libdir/lttng)
 	 */
 	std::vector<std::string> paths;
+	std::unordered_set<std::string> seen;
+
+	const auto push_back_unique = [&paths, &seen](std::string element) {
+		if (seen.find(element) == seen.end()) {
+			seen.insert(element);
+			paths.push_back(std::move(element));
+		}
+	};
+
 	const char *_tp_paths = lttng_secure_getenv(DEFAULT_TRACEPOINT_PROVIDER_PATH_ENV);
 	if (_tp_paths != nullptr) {
 		for (auto&& path : split_paths(std::string(_tp_paths))) {
-			push_back_unique(paths, std::move(path));
+			push_back_unique(std::move(path));
 		}
 	}
 
 	const char *_ld_library_path = lttng_secure_getenv("LD_LIBRARY_PATH");
 	if (_ld_library_path != nullptr) {
 		for (const auto& path : split_paths(std::string(_ld_library_path))) {
-			push_back_unique(paths, path + "/lttng");
+			push_back_unique(path + "/lttng");
 		}
 	}
 
-	push_back_unique(paths, std::string(LTTNG_LIB_DIR));
+	push_back_unique(LTTNG_LIB_DIR);
 	return paths;
 }
 
