@@ -83,6 +83,11 @@ public:
 		return *_consumer_output;
 	}
 
+	const struct ltt_session& recording_session() const noexcept
+	{
+		return _session;
+	}
+
 	/*
 	 * Return a non-owning raw pointer to the consumer output. Used
 	 * during the transition to set the legacy usess->consumer alias.

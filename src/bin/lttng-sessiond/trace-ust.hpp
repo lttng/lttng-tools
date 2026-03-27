@@ -19,19 +19,12 @@
 #include <lttng/lttng.h>
 
 #include <limits.h>
-#include <urcu/list.h>
 
 struct agent;
-
-/* UST domain global (LTTNG_DOMAIN_UST) */
-struct ltt_ust_domain_global {
-	struct cds_list_head registry_buffer_uid_list;
-};
 
 /* UST session */
 struct ltt_ust_session {
 	uint64_t id; /* Unique identifier of session */
-	struct ltt_ust_domain_global domain_global;
 	/* Hash table of agent indexed by agent domain. */
 	struct lttng_ht *agents;
 	/* UID/GID of the user owning the session */
@@ -40,16 +33,10 @@ struct ltt_ust_session {
 	/* Is the session active meaning has is been started or stopped. */
 	bool active;
 	struct consumer_output *consumer;
-	/* Sequence number for filters so the tracer knows the ordering. */
-	uint64_t filter_seq_num;
 	/* This indicates which type of buffer this session is set for. */
 	enum lttng_buffer_type buffer_type;
 	/* If set to 1, the buffer_type can not be changed anymore. */
 	int buffer_type_changed;
-	/* Tell or not if the session has to output the traces. */
-	unsigned int output_traces;
-	unsigned int snapshot_mode;
-	unsigned int live_timer_interval; /* usec */
 
 	/* Metadata channel attributes. */
 	struct lttng_ust_abi_channel_attr metadata_attr;
@@ -59,9 +46,6 @@ struct ltt_ust_session {
 	 */
 	char root_shm_path[PATH_MAX];
 	char shm_path[PATH_MAX];
-
-	/* Current trace chunk of the ltt_session. */
-	struct lttng_trace_chunk *current_trace_chunk;
 
 	bool supports_madv_remove() const noexcept
 	{

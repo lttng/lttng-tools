@@ -14,7 +14,6 @@
 
 #include <common/common.hpp>
 #include <common/defaults.hpp>
-#include <common/trace-chunk.hpp>
 #include <common/urcu.hpp>
 #include <common/utils.hpp>
 
@@ -135,8 +134,6 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 	}
 
 	lttng_ht_destroy(session->agents);
-
-	lttng_trace_chunk_put(session->current_trace_chunk);
 }
 
 /* Free elements needed by destroy notifiers. */

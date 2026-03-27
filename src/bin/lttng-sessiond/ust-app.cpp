@@ -2683,6 +2683,7 @@ static void init_ust_app_channel_from_config(struct ust_app_channel *ua_chan)
  */
 static void shadow_copy_session(struct ust_app_session *ua_sess,
 				struct ltt_ust_session *usess,
+				const struct ltt_session& recording_session,
 				struct ust_app *app)
 {
 	struct tm *timeinfo;
@@ -2708,8 +2709,8 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 	consumer_output_get(usess->consumer);
 	ua_sess->consumer = usess->consumer;
 
-	ua_sess->output_traces = usess->output_traces;
-	ua_sess->live_timer_interval = usess->live_timer_interval;
+	ua_sess->output_traces = recording_session.output_traces;
+	ua_sess->live_timer_interval = recording_session.live_timer;
 	copy_channel_attr_to_ustctl(&ua_sess->metadata_attr, &usess->metadata_attr);
 
 	switch (ua_sess->buffer_type) {
@@ -2823,6 +2824,7 @@ error:
  * -ENOTCONN which is the default code if the lttng_ust_ctl_create_session fails.
  */
 static int find_or_create_ust_app_session(struct ltt_ust_session *usess,
+					  const struct ltt_session& recording_session,
 					  struct ust_app *app,
 					  struct ust_app_session **ua_sess_ptr,
 					  int *is_created)
@@ -2847,7 +2849,7 @@ static int find_or_create_ust_app_session(struct ltt_ust_session *usess,
 			ret = -ENOMEM;
 			goto error;
 		}
-		shadow_copy_session(ua_sess, usess, app);
+		shadow_copy_session(ua_sess, usess, recording_session, app);
 		created = 1;
 	}
 
@@ -3202,6 +3204,7 @@ static int do_consumer_create_channel(struct ltt_ust_session *usess,
 				      struct ust_app_channel *ua_chan,
 				      int bitness,
 				      lsu::trace_class *registry,
+				      struct lttng_trace_chunk *current_trace_chunk,
 				      enum lttng_trace_format trace_format)
 {
 	int ret;
@@ -3241,7 +3244,7 @@ static int do_consumer_create_channel(struct ltt_ust_session *usess,
 				       usess->consumer,
 				       socket,
 				       registry,
-				       usess->current_trace_chunk,
+				       current_trace_chunk,
 				       trace_format);
 	if (ret < 0) {
 		goto error_ask;
@@ -3468,6 +3471,7 @@ static int create_channel_per_uid(struct ust_app *app,
 						 ua_chan,
 						 app->abi.bits_per_long,
 						 trace_class_ptr.get(),
+						 session->current_trace_chunk,
 						 session->trace_format);
 		if (ret < 0) {
 			ERR("Error creating UST channel \"%s\" on the consumer daemon",
@@ -3611,6 +3615,7 @@ static int create_channel_per_pid(struct ust_app *app,
 					 ua_chan,
 					 app->abi.bits_per_long,
 					 registry,
+					 session->current_trace_chunk,
 					 session->trace_format);
 	if (ret < 0) {
 		ERR("Error creating UST channel \"%s\" on the consumer daemon", ua_chan->name);
@@ -6263,7 +6268,8 @@ static void ust_app_synchronize(struct ltt_ust_session *usess,
 	 */
 	LTTNG_ASSERT(usess->active);
 
-	ret = find_or_create_ust_app_session(usess, app, &ua_sess, nullptr);
+	ret = find_or_create_ust_app_session(
+		usess, orchestrator.recording_session(), app, &ua_sess, nullptr);
 	if (ret < 0) {
 		/* Tracer is probably gone or ENOMEM. */
 		return;

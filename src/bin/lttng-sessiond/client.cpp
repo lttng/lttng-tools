@@ -570,9 +570,6 @@ int create_ust_session(const ltt_session::locked_ref& session, const struct lttn
 
 	lus->uid = session->uid;
 	lus->gid = session->gid;
-	lus->output_traces = session->output_traces;
-	lus->snapshot_mode = session->snapshot_mode;
-	lus->live_timer_interval = session->live_timer;
 	session->ust_session = lus;
 	if (session->shm_path[0]) {
 		strncpy(lus->root_shm_path, session->shm_path, sizeof(lus->root_shm_path));

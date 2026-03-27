@@ -532,10 +532,6 @@ static int _session_set_trace_chunk_no_lock_check(const ltt_session::locked_ref&
 	 */
 	current_trace_chunk = session->current_trace_chunk;
 	session->current_trace_chunk = nullptr;
-	if (session->ust_orchestrator) {
-		lttng_trace_chunk_put(session->ust_session->current_trace_chunk);
-		session->ust_session->current_trace_chunk = nullptr;
-	}
 	if (!new_trace_chunk) {
 		ret = 0;
 		goto end;
@@ -544,7 +540,6 @@ static int _session_set_trace_chunk_no_lock_check(const ltt_session::locked_ref&
 	LTTNG_ASSERT(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
 
 	refs_to_acquire = 1;
-	refs_to_acquire += !!session->ust_orchestrator;
 
 	for (refs_acquired = 0; refs_acquired < refs_to_acquire; refs_acquired++) {
 		if (!lttng_trace_chunk_get(new_trace_chunk)) {
@@ -562,7 +557,6 @@ static int _session_set_trace_chunk_no_lock_check(const ltt_session::locked_ref&
 		const uint64_t relayd_id = ust_consumer.net_seq_index;
 		const bool is_local_trace = ust_consumer.type == CONSUMER_DST_LOCAL;
 
-		session->ust_session->current_trace_chunk = new_trace_chunk;
 		if (is_local_trace) {
 			try {
 				static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
@@ -639,9 +633,6 @@ end_no_move:
 	lttng_trace_chunk_put(current_trace_chunk);
 	return ret;
 error:
-	if (session->ust_orchestrator) {
-		session->ust_session->current_trace_chunk = nullptr;
-	}
 	/*
 	 * Release references taken in the case where all references could not
 	 * be acquired.
