@@ -39,7 +39,7 @@ std::vector<std::string> split_paths(const std::string& paths)
 	return result;
 }
 
-std::vector<std::string> _search_paths()
+std::vector<std::string> get_tp_search_paths()
 {
 	/*
 	 * 1. LTTNG_TP_PATH
@@ -56,16 +56,16 @@ std::vector<std::string> _search_paths()
 		}
 	};
 
-	const char *_tp_paths = lttng_secure_getenv(DEFAULT_TRACEPOINT_PROVIDER_PATH_ENV);
-	if (_tp_paths != nullptr) {
-		for (auto&& path : split_paths(std::string(_tp_paths))) {
+	const char *tp_paths_env = lttng_secure_getenv(DEFAULT_TRACEPOINT_PROVIDER_PATH_ENV);
+	if (tp_paths_env != nullptr) {
+		for (auto&& path : split_paths(std::string(tp_paths_env))) {
 			push_back_unique(std::move(path));
 		}
 	}
 
-	const char *_ld_library_path = lttng_secure_getenv("LD_LIBRARY_PATH");
-	if (_ld_library_path != nullptr) {
-		for (const auto& path : split_paths(std::string(_ld_library_path))) {
+	const char *loader_library_path = lttng_secure_getenv("LD_LIBRARY_PATH");
+	if (loader_library_path != nullptr) {
+		for (const auto& path : split_paths(std::string(loader_library_path))) {
 			push_back_unique(path + "/lttng");
 		}
 	}
@@ -76,7 +76,7 @@ std::vector<std::string> _search_paths()
 
 std::vector<std::string> tracepoints_find_all(const std::string& basename)
 {
-	auto search_paths = ::_search_paths();
+	auto search_paths = get_tp_search_paths();
 	std::vector<std::string> options;
 
 	if (search_paths.empty()) {
@@ -98,7 +98,7 @@ std::vector<std::string> tracepoints_find_all(const std::string& basename)
 
 	return options;
 }
-} // namespace
+} /* namespace */
 
 namespace lttng {
 namespace tracepoints {
