@@ -568,25 +568,7 @@ int create_ust_session(const ltt_session::locked_ref& session, const struct lttn
 		goto error;
 	}
 
-	lus->uid = session->uid;
-	lus->gid = session->gid;
 	session->ust_session = lus;
-	if (session->shm_path[0]) {
-		strncpy(lus->root_shm_path, session->shm_path, sizeof(lus->root_shm_path));
-		lus->root_shm_path[sizeof(lus->root_shm_path) - 1] = '\0';
-		strncpy(lus->shm_path, session->shm_path, sizeof(lus->shm_path));
-		lus->shm_path[sizeof(lus->shm_path) - 1] = '\0';
-		strncat(lus->shm_path, "/ust", sizeof(lus->shm_path) - strlen(lus->shm_path) - 1);
-	}
-
-	if (!lus->supports_madv_remove()) {
-		WARN_FMT(
-			"File-system containing shared memory location for UST session does not support "
-			"MADV_REMOVE; memory reclamation won't be possible for this session: "
-			"session_name=`{}`, shm_path=`{}`",
-			session->name,
-			session->shm_path);
-	}
 
 	/* Copy session output to the newly created UST session */
 	ret = copy_session_consumer(domain->type, session);
@@ -613,6 +595,16 @@ int create_ust_session(const ltt_session::locked_ref& session, const struct lttn
 		lus->consumer =
 			static_cast<lsu::domain_orchestrator&>(session->get_ust_orchestrator())
 				.get_consumer_output_ptr();
+
+		if (!static_cast<const lsu::domain_orchestrator&>(session->get_ust_orchestrator())
+			     .supports_madv_remove()) {
+			WARN_FMT(
+				"File-system containing shared memory location for UST session does not support "
+				"MADV_REMOVE; memory reclamation won't be possible for this session: "
+				"session_name=`{}`, shm_path=`{}`",
+				session->name,
+				session->shm_path);
+		}
 	}
 
 	return LTTNG_OK;

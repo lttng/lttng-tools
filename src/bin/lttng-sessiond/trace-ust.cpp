@@ -13,7 +13,6 @@
 #include "utils.hpp"
 
 #include <common/common.hpp>
-#include <common/defaults.hpp>
 #include <common/urcu.hpp>
 #include <common/utils.hpp>
 
@@ -76,15 +75,6 @@ struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 	/* Init data structure */
 	lus->id = session_id;
 	lus->active = false;
-
-	/* Set default metadata channel attribute. */
-	lus->metadata_attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
-	lus->metadata_attr.subbuf_size = default_get_metadata_subbuf_size();
-	lus->metadata_attr.num_subbuf = DEFAULT_METADATA_SUBBUF_NUM;
-	lus->metadata_attr.switch_timer_interval = DEFAULT_METADATA_SWITCH_TIMER;
-	lus->metadata_attr.read_timer_interval = DEFAULT_METADATA_READ_TIMER;
-	lus->metadata_attr.output = LTTNG_UST_ABI_MMAP;
-	lus->metadata_attr.type = LTTNG_UST_ABI_CHAN_METADATA;
 
 	/*
 	 * Default buffer type. This can be changed through an enable channel

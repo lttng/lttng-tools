@@ -401,12 +401,28 @@ public:
 		std::uint64_t discarded_events,
 		std::uint64_t lost_packets);
 
+	static struct lttng_ust_abi_channel_attr default_metadata_channel_attr() noexcept;
+
+	const std::string& root_shm_path() const noexcept
+	{
+		return _root_shm_path;
+	}
+
+	const std::string& shm_path() const noexcept
+	{
+		return _shm_path;
+	}
+
+	bool supports_madv_remove() const noexcept;
+
 private:
 	ltt_ust_session& _ust_session;
 	const ltt_session& _session;
 	const config::recording_channel_configuration::owership_model_t _default_buffer_ownership;
 	consumer_output_uptr _consumer_output;
 	bool _active = false;
+	const std::string _root_shm_path;
+	const std::string _shm_path;
 
 	/*
 	 * Tracks which event rule configurations have had their per-app
@@ -634,6 +650,16 @@ public:
 
 	void record_snapshot(const struct consumer_output& /* snapshot_consumer */,
 			     std::uint64_t /* nb_packets_per_stream */) override
+	{
+		std::abort();
+	}
+
+	const std::string& shm_path() const noexcept
+	{
+		std::abort();
+	}
+
+	bool supports_madv_remove() const noexcept
 	{
 		std::abort();
 	}

@@ -22,6 +22,7 @@
 #include <common/error.hpp>
 #include <common/exception.hpp>
 #include <common/format.hpp>
+#include <common/fs-utils.hpp>
 #include <common/macros.hpp>
 #include <common/scope-exit.hpp>
 #include <common/trace-chunk.hpp>
@@ -155,9 +156,33 @@ ls::ust::domain_orchestrator::domain_orchestrator(
 	_ust_session(ust_session),
 	_session(session),
 	_default_buffer_ownership(default_buffer_ownership),
-	_consumer_output(std::move(consumer_output))
+	_consumer_output(std::move(consumer_output)),
+	_root_shm_path(session.shm_path),
+	_shm_path(session.shm_path[0] != '\0' ? std::string(session.shm_path) + "/ust" :
+						std::string())
 {
 	LTTNG_ASSERT(_consumer_output);
+}
+
+struct lttng_ust_abi_channel_attr
+ls::ust::domain_orchestrator::default_metadata_channel_attr() noexcept
+{
+	struct lttng_ust_abi_channel_attr attr = {};
+
+	attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
+	attr.subbuf_size = default_get_metadata_subbuf_size();
+	attr.num_subbuf = DEFAULT_METADATA_SUBBUF_NUM;
+	attr.switch_timer_interval = DEFAULT_METADATA_SWITCH_TIMER;
+	attr.read_timer_interval = DEFAULT_METADATA_READ_TIMER;
+	attr.output = LTTNG_UST_ABI_MMAP;
+	attr.type = LTTNG_UST_ABI_CHAN_METADATA;
+	return attr;
+}
+
+bool ls::ust::domain_orchestrator::supports_madv_remove() const noexcept
+{
+	return lttng::utils::fs_supports_madv_remove(!_shm_path.empty() ? _shm_path.c_str() :
+									  nullptr);
 }
 
 ls::ust::domain_orchestrator::~domain_orchestrator()
@@ -206,8 +231,8 @@ ls::ust::trace_class& ls::ust::domain_orchestrator::find_or_create_per_uid_trace
 									    tracer_minor,
 									    root_shm_path,
 									    shm_path,
-									    _ust_session.uid,
-									    _ust_session.gid,
+									    _session.uid,
+									    _session.gid,
 									    _session.id,
 									    uid));
 	if (!tc) {

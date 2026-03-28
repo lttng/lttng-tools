@@ -356,7 +356,7 @@ static uint64_t get_next_session_id()
 }
 
 static void copy_channel_attr_to_ustctl(struct lttng_ust_ctl_consumer_channel_attr *attr,
-					struct lttng_ust_abi_channel_attr *uattr)
+					const struct lttng_ust_abi_channel_attr *uattr)
 {
 	/* Copy event attributes since the layout is different. */
 	attr->subbuf_size = uattr->subbuf_size;
@@ -2700,8 +2700,8 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 	ua_sess->app_session_id = get_next_session_id();
 	LTTNG_OPTIONAL_SET(&ua_sess->real_credentials.uid, app->uid);
 	LTTNG_OPTIONAL_SET(&ua_sess->real_credentials.gid, app->gid);
-	LTTNG_OPTIONAL_SET(&ua_sess->effective_credentials.uid, usess->uid);
-	LTTNG_OPTIONAL_SET(&ua_sess->effective_credentials.gid, usess->gid);
+	LTTNG_OPTIONAL_SET(&ua_sess->effective_credentials.uid, recording_session.uid);
+	LTTNG_OPTIONAL_SET(&ua_sess->effective_credentials.gid, recording_session.gid);
 	ua_sess->buffer_type = usess->buffer_type;
 	ua_sess->bits_per_long = app->abi.bits_per_long;
 
@@ -2711,7 +2711,15 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 
 	ua_sess->output_traces = recording_session.output_traces;
 	ua_sess->live_timer_interval = recording_session.live_timer;
-	copy_channel_attr_to_ustctl(&ua_sess->metadata_attr, &usess->metadata_attr);
+
+	const auto& ust_orchestrator =
+		static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
+			recording_session.get_ust_orchestrator());
+	{
+		const auto default_metadata_attr =
+			lttng::sessiond::ust::domain_orchestrator::default_metadata_channel_attr();
+		copy_channel_attr_to_ustctl(&ua_sess->metadata_attr, &default_metadata_attr);
+	}
 
 	switch (ua_sess->buffer_type) {
 	case LTTNG_BUFFER_PER_PID:
@@ -2739,9 +2747,11 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 		goto error;
 	}
 
-	strncpy(ua_sess->root_shm_path, usess->root_shm_path, sizeof(ua_sess->root_shm_path));
+	strncpy(ua_sess->root_shm_path,
+		ust_orchestrator.root_shm_path().c_str(),
+		sizeof(ua_sess->root_shm_path));
 	ua_sess->root_shm_path[sizeof(ua_sess->root_shm_path) - 1] = '\0';
-	strncpy(ua_sess->shm_path, usess->shm_path, sizeof(ua_sess->shm_path));
+	strncpy(ua_sess->shm_path, ust_orchestrator.shm_path().c_str(), sizeof(ua_sess->shm_path));
 	ua_sess->shm_path[sizeof(ua_sess->shm_path) - 1] = '\0';
 	if (ua_sess->shm_path[0]) {
 		switch (ua_sess->buffer_type) {

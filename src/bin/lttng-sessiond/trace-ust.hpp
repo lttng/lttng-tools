@@ -10,15 +10,10 @@
 #define _LTT_TRACE_UST_H
 
 #include "consumer.hpp"
-#include "lttng-ust-ctl.hpp"
 
-#include <common/defaults.hpp>
-#include <common/fs-utils.hpp>
 #include <common/hashtable/hashtable.hpp>
 
 #include <lttng/lttng.h>
-
-#include <limits.h>
 
 struct agent;
 
@@ -27,9 +22,6 @@ struct ltt_ust_session {
 	uint64_t id; /* Unique identifier of session */
 	/* Hash table of agent indexed by agent domain. */
 	struct lttng_ht *agents;
-	/* UID/GID of the user owning the session */
-	uid_t uid;
-	gid_t gid;
 	/* Is the session active meaning has is been started or stopped. */
 	bool active;
 	struct consumer_output *consumer;
@@ -37,21 +29,6 @@ struct ltt_ust_session {
 	enum lttng_buffer_type buffer_type;
 	/* If set to 1, the buffer_type can not be changed anymore. */
 	int buffer_type_changed;
-
-	/* Metadata channel attributes. */
-	struct lttng_ust_abi_channel_attr metadata_attr;
-
-	/*
-	 * Path where to keep the shared memory files.
-	 */
-	char root_shm_path[PATH_MAX];
-	char shm_path[PATH_MAX];
-
-	bool supports_madv_remove() const noexcept
-	{
-		return lttng::utils::fs_supports_madv_remove(
-			this->shm_path[0] != '\0' ? this->shm_path : nullptr);
-	}
 };
 
 #ifdef HAVE_LIBLTTNG_UST_CTL

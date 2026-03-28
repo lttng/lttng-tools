@@ -1468,8 +1468,10 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 		}
 
 		if (session->ust_orchestrator) {
-			const auto ust_session = session->ust_session;
-			if (!ust_session->supports_madv_remove()) {
+			const auto& ust_orchestrator =
+				static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
+					session->get_ust_orchestrator());
+			if (!ust_orchestrator.supports_madv_remove()) {
 				WARN_FMT(
 					"Auto-reclaim of memory requires that MADV_REMOVE is supported by the file-system "
 					"containing the shared memory path: "
@@ -1477,7 +1479,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 					session->name,
 					new_channel_attr->name,
 					domain->type,
-					ust_session->shm_path);
+					ust_orchestrator.shm_path());
 				return LTTNG_ERR_NOT_SUPPORTED;
 			}
 
@@ -6696,15 +6698,20 @@ void cmd_reclaim_channel_memory(ltt_session::locked_ref& session,
 {
 	DBG("Client reclaim channel memory \"%s\"", session->name);
 
-	if (!session->ust_session->supports_madv_remove()) {
-		LTTNG_THROW_CTL(
-			fmt::format(
-				"Reclaim of memory requires that MADV_REMOVE is supported by the file-system "
-				"containing the shared memory path: "
-				"session_name=`{}`, shm_path=`{}`",
-				session->name,
-				session->ust_session->shm_path),
-			LTTNG_ERR_NOT_SUPPORTED);
+	{
+		const auto& ust_orchestrator =
+			static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
+				session->get_ust_orchestrator());
+		if (!ust_orchestrator.supports_madv_remove()) {
+			LTTNG_THROW_CTL(
+				fmt::format(
+					"Reclaim of memory requires that MADV_REMOVE is supported by the file-system "
+					"containing the shared memory path: "
+					"session_name=`{}`, shm_path=`{}`",
+					session->name,
+					ust_orchestrator.shm_path()),
+				LTTNG_ERR_NOT_SUPPORTED);
+		}
 	}
 
 	/* Validate that channel_name is null-terminated. */
