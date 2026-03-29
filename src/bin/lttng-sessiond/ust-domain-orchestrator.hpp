@@ -26,8 +26,10 @@
 #include <unordered_map>
 #include <unordered_set>
 
+struct agent;
 struct ltt_session;
 struct ltt_ust_session;
+struct lttng_ht;
 struct lttng_ust_context_attr;
 struct ust_app;
 
@@ -298,7 +300,7 @@ public:
 	/*
 	 * Release the per-PID trace class associated with the given
 	 * application. The trace_class is destroyed, which cleans up
-	 * shared memory files. Called from delete_ust_app_session()
+	 * shared memory files. Called from ust_app_unregister()
 	 * when a per-PID application departs.
 	 *
 	 * No-op if no trace class exists for the given app (e.g. the

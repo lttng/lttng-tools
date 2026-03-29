@@ -125,6 +125,9 @@ namespace sessiond {
 namespace hotplug_handler {
 struct command;
 } /* namespace hotplug_handler */
+namespace app_management {
+struct command;
+} /* namespace app_management */
 namespace ust {
 class trace_class_index;
 } /* namespace ust */
@@ -135,6 +138,30 @@ class command_queue;
 
 extern std::unique_ptr<lttng::command_queue<lttng::sessiond::hotplug_handler::command>>
 	the_hotplug_handler_queue;
+
+/*
+ * Queue used to defer UST application unregistration and destruction to
+ * the application management thread.
+ *
+ * Application unregistration involves acquiring the recording session
+ * lock (for per-PID buffer cleanup). If this runs inline in the
+ * urcu_ref release callback, it can execute in any thread context,
+ * including the application notification thread. Blocking the
+ * notification thread prevents other threads from completing their
+ * communication with applications: some commands sent to applications
+ * cause the applications to send notifications to the session daemon
+ * which must be processed before the command reply can be sent back.
+ * This creates a circular dependency when the dispatch thread holds
+ * the session lock while waiting for an application reply, while the
+ * notification thread is blocked on the same session lock.
+ *
+ * By deferring unregistration to the application management thread
+ * (which is not in the notification processing path), the notification
+ * thread remains free to process application notifications, breaking
+ * the deadlock cycle.
+ */
+extern std::unique_ptr<lttng::command_queue<lttng::sessiond::app_management::command>>
+	the_app_unregistration_queue;
 
 /*
  * Global index for looking up UST trace classes by consumer-side

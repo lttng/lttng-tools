@@ -76,7 +76,10 @@ lsu::trace_class *ust_trace_class_per_uid_create(enum lttng_trace_format trace_f
 						 uid_t euid,
 						 gid_t egid,
 						 uint64_t tracing_id,
-						 uid_t tracing_uid)
+						 uid_t tracing_uid,
+						 std::string trace_name,
+						 std::string hostname,
+						 time_t creation_time)
 {
 	try {
 		return new lsu::trace_class_per_uid(trace_format,
@@ -88,7 +91,10 @@ lsu::trace_class *ust_trace_class_per_uid_create(enum lttng_trace_format trace_f
 						    euid,
 						    egid,
 						    tracing_id,
-						    tracing_uid);
+						    tracing_uid,
+						    std::move(trace_name),
+						    std::move(hostname),
+						    creation_time);
 	} catch (const std::exception& ex) {
 		ERR("Failed to create per-uid registry session: %s", ex.what());
 		return nullptr;
@@ -104,7 +110,10 @@ lsu::trace_class *ust_trace_class_per_pid_create(struct ust_app *app,
 						 const char *shm_path,
 						 uid_t euid,
 						 gid_t egid,
-						 uint64_t tracing_id)
+						 uint64_t tracing_id,
+						 std::string trace_name,
+						 std::string hostname,
+						 time_t creation_time)
 {
 	try {
 		return new lsu::trace_class_per_pid(*app,
@@ -116,7 +125,10 @@ lsu::trace_class *ust_trace_class_per_pid_create(struct ust_app *app,
 						    shm_path,
 						    euid,
 						    egid,
-						    tracing_id);
+						    tracing_id,
+						    std::move(trace_name),
+						    std::move(hostname),
+						    creation_time);
 	} catch (const std::exception& ex) {
 		ERR("Failed to create per-pid registry session: %s", ex.what());
 		return nullptr;

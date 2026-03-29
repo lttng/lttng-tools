@@ -11,6 +11,7 @@
 #include "fd-limit.hpp"
 #include "health-sessiond.hpp"
 #include "lttng-sessiond.hpp"
+#include "session.hpp"
 #include "testpoint.hpp"
 #include "thread.hpp"
 #include "ust-app.hpp"
@@ -18,11 +19,13 @@
 
 #include <common/futex.hpp>
 #include <common/macros.hpp>
+#include <common/scope-exit.hpp>
 #include <common/urcu.hpp>
 
 #include <stddef.h>
 #include <stdlib.h>
 #include <urcu.h>
+#include <vector>
 
 namespace {
 struct thread_notifiers {
@@ -34,8 +37,12 @@ struct thread_notifiers {
 } /* namespace */
 
 /*
- * For each tracing session, update newly registered apps. The session list
- * lock MUST be acquired before calling this.
+ * For each tracing session, update a newly registered app.
+ *
+ * The session list lock is NOT held across the blocking I/O to the
+ * application. Instead, the function snapshots the session list under
+ * the lock, then configures the app per-session under individual
+ * session locks.
  */
 static void update_ust_app(int app_sock)
 {
@@ -63,25 +70,50 @@ static void update_ust_app(int app_sock)
 	/* Update all event notifiers for the app. */
 	ust_app_global_update_event_notifier_rules(app->get());
 
-	/* For all tracing session(s) */
-	for (auto *sess : lttng::urcu::list_iteration_adapter<ltt_session, &ltt_session::list>(
-		     session_list->head)) {
-		if (!session_get(sess)) {
-			continue;
-		}
-		session_lock(sess);
-		if (!sess->active || !sess->ust_session || !sess->ust_session->active) {
-			goto unlock_session;
-		}
+	/*
+	 * Snapshot the session list under the list lock. Each session
+	 * is ref-counted so it stays alive while we iterate later
+	 * without the list lock.
+	 */
+	std::vector<ltt_session::ref> sessions_snapshot;
+	{
+		const auto list_lock = lttng::sessiond::lock_session_list();
 
-		ust_app_global_update(sess->ust_session,
-				      app->get(),
-				      sess->user_space_domain,
-				      static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
-					      sess->get_ust_orchestrator()));
-	unlock_session:
-		session_unlock(sess);
-		session_put(sess);
+		for (auto *session :
+		     lttng::urcu::list_iteration_adapter<ltt_session, &ltt_session::list>(
+			     session_list->head)) {
+			if (session_get(session)) {
+				sessions_snapshot.emplace_back(ltt_session::make_ref(*session));
+			}
+		}
+	}
+
+	/*
+	 * Configure the app for each active session. The per-session
+	 * lock serializes with concurrent session modifications.
+	 * No session list lock is held here, so other threads
+	 * (rotation, client commands) are not blocked.
+	 */
+	for (auto& session : sessions_snapshot) {
+		session->lock();
+		const auto unlock_session =
+			lttng::make_scope_exit([&session]() noexcept { session->unlock(); });
+
+		if (session->active && session->ust_session && session->ust_session->active) {
+			ust_app_global_update(
+				session->ust_session,
+				app->get(),
+				session->user_space_domain,
+				static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
+					session->get_ust_orchestrator()),
+				*session);
+		}
+	}
+
+	/* Release session refs under the list lock (session_put asserts it). */
+	{
+		const auto list_lock = lttng::sessiond::lock_session_list();
+		sessions_snapshot.clear();
 	}
 }
 
@@ -378,21 +410,16 @@ static void *thread_dispatch_ust_registration(void *data)
 
 			if (app) {
 				/*
-				 * @session_lock_list
-				 *
-				 * Lock the global session list so from the register up to the
-				 * registration done message, no thread can see the application
-				 * and change its state.
+				 * Publish the app under the session list lock so
+				 * that it is visible to new sessions before we
+				 * snapshot the existing ones.
 				 */
-				const auto list_lock = lttng::sessiond::lock_session_list();
-				const lttng::urcu::read_lock_guard read_lock;
+				{
+					const auto list_lock = lttng::sessiond::lock_session_list();
+					const lttng::urcu::read_lock_guard read_lock;
 
-				/*
-				 * Add application to the global hash table. This needs to be
-				 * done before the update to the UST registry can locate the
-				 * application.
-				 */
-				ust_app_add(app);
+					ust_app_add(app);
+				}
 
 				/* Set app version. This call will print an error if needed. */
 				(void) ust_app_version(app);
@@ -415,6 +442,11 @@ static void *thread_dispatch_ust_registration(void *data)
 				/*
 				 * Update newly registered application with the tracing
 				 * registry info already enabled information.
+				 *
+				 * The session list lock is NOT held across this
+				 * call. update_ust_app() snapshots sessions
+				 * internally and configures the app per-session
+				 * under individual session locks.
 				 */
 				update_ust_app(app->sock);
 

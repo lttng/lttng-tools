@@ -53,6 +53,8 @@ class domain_orchestrator;
 } /* namespace sessiond */
 } /* namespace lttng */
 
+struct ltt_session;
+
 extern int the_ust_consumerd64_fd, the_ust_consumerd32_fd;
 
 /*
@@ -533,7 +535,8 @@ int ust_app_version(struct ust_app *app);
 void ust_app_unregister_by_socket(int sock);
 int ust_app_start_trace_all(struct ltt_ust_session *usess,
 			    const lttng::sessiond::config::domain& domain,
-			    const lttng::sessiond::ust::domain_orchestrator& orchestrator);
+			    const lttng::sessiond::ust::domain_orchestrator& orchestrator,
+			    ltt_session& session);
 int ust_app_stop_trace_all(struct ltt_ust_session *usess,
 			   const lttng::sessiond::ust::domain_orchestrator& orchestrator);
 int ust_app_destroy_trace_all(struct ltt_ust_session *usess);
@@ -557,10 +560,12 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 void ust_app_global_update(struct ltt_ust_session *usess,
 			   struct ust_app *app,
 			   const lttng::sessiond::config::domain& domain,
-			   const lttng::sessiond::ust::domain_orchestrator& orchestrator);
+			   const lttng::sessiond::ust::domain_orchestrator& orchestrator,
+			   ltt_session& session);
 void ust_app_global_update_all(struct ltt_ust_session *usess,
 			       const lttng::sessiond::config::domain& domain,
-			       const lttng::sessiond::ust::domain_orchestrator& orchestrator);
+			       const lttng::sessiond::ust::domain_orchestrator& orchestrator,
+			       ltt_session& session);
 void ust_app_global_update_event_notifier_rules(struct ust_app *app);
 void ust_app_global_update_all_event_notifier_rules();
 
@@ -569,6 +574,7 @@ int ust_app_ht_alloc();
 
 bool ust_app_get(ust_app& app);
 void ust_app_put(ust_app *app);
+void ust_app_unregister_and_destroy(ust_app& app);
 using ust_app_reference =
 	std::unique_ptr<ust_app, lttng::memory::create_deleter_class<ust_app, ust_app_put>::deleter>;
 
@@ -596,7 +602,7 @@ static inline int ust_app_supported()
 
 ust_app_session *ust_app_lookup_app_session(const struct ltt_ust_session *usess,
 					    const struct ust_app *app);
-lttng::sessiond::ust::trace_class *
+std::shared_ptr<lttng::sessiond::ust::trace_class>
 ust_app_get_session_registry(const ust_app_session::identifier& identifier);
 
 lttng_ht *ust_app_get_all();
@@ -623,7 +629,8 @@ static inline int
 ust_app_start_trace_all(struct ltt_ust_session *usess __attribute__((unused)),
 			const lttng::sessiond::config::domain& domain __attribute__((unused)),
 			const lttng::sessiond::ust::domain_orchestrator& orchestrator
-			__attribute__((unused)))
+			__attribute__((unused)),
+			ltt_session& session __attribute__((unused)))
 {
 	return 0;
 }
@@ -691,7 +698,8 @@ ust_app_global_update(struct ltt_ust_session *usess __attribute__((unused)),
 		      struct ust_app *app __attribute__((unused)),
 		      const lttng::sessiond::config::domain& domain __attribute__((unused)),
 		      const lttng::sessiond::ust::domain_orchestrator& orchestrator
-		      __attribute__((unused)))
+		      __attribute__((unused)),
+		      ltt_session& session __attribute__((unused)))
 {
 }
 
@@ -699,7 +707,8 @@ static inline void
 ust_app_global_update_all(struct ltt_ust_session *usess __attribute__((unused)),
 			  const lttng::sessiond::config::domain& domain __attribute__((unused)),
 			  const lttng::sessiond::ust::domain_orchestrator& orchestrator
-			  __attribute__((unused)))
+			  __attribute__((unused)),
+			  ltt_session& session __attribute__((unused)))
 {
 }
 
@@ -862,7 +871,7 @@ static inline ust_app_session *ust_app_lookup_app_session(const ltt_ust_session 
 	return nullptr;
 }
 
-static inline lttng::sessiond::ust::trace_class *
+static inline std::shared_ptr<lttng::sessiond::ust::trace_class>
 ust_app_get_session_registry(const ust_app_session::identifier&)
 {
 	return nullptr;
@@ -882,6 +891,10 @@ static inline int ust_app_release_object(struct ust_app *app __attribute__((unus
 
 static inline void ust_app_notify_reclaimed_owner_ids(const std::vector<uint32_t>& owners
 						      __attribute__((unused)))
+{
+}
+
+static inline void ust_app_unregister_and_destroy(ust_app& app __attribute__((unused)))
 {
 }
 

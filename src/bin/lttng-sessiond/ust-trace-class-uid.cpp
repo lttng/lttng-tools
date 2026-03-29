@@ -19,9 +19,22 @@ lsu::trace_class_per_uid::trace_class_per_uid(enum lttng_trace_format trace_form
 					      uid_t euid,
 					      gid_t egid,
 					      uint64_t tracing_id,
-					      uid_t tracing_uid) :
-	trace_class{ trace_format, in_abi, major, minor,     root_shm_path,
-		     shm_path,	   euid,   egid,  tracing_id },
+					      uid_t tracing_uid,
+					      std::string trace_name,
+					      std::string hostname,
+					      time_t creation_time) :
+	trace_class{ trace_format,
+		     in_abi,
+		     major,
+		     minor,
+		     root_shm_path,
+		     shm_path,
+		     euid,
+		     egid,
+		     tracing_id,
+		     std::move(trace_name),
+		     std::move(hostname),
+		     creation_time },
 	_tracing_uid{ tracing_uid }
 {
 	const lttng::pthread::lock_guard registry_lock(_lock);

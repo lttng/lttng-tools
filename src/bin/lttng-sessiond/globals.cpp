@@ -9,6 +9,7 @@
 
 #include "hotplug-handler.hpp"
 #include "lttng-sessiond.hpp"
+#include "manage-apps.hpp"
 #include "ust-trace-class-index.hpp"
 
 #include <common/lttng-kernel.hpp>
@@ -38,6 +39,9 @@ struct lttng_kernel_abi_tracer_abi_version the_kernel_tracer_abi_version;
 
 std::unique_ptr<lttng::command_queue<lttng::sessiond::hotplug_handler::command>>
 	the_hotplug_handler_queue;
+
+std::unique_ptr<lttng::command_queue<lttng::sessiond::app_management::command>>
+	the_app_unregistration_queue;
 
 pid_t the_ppid;
 pid_t the_child_ppid;

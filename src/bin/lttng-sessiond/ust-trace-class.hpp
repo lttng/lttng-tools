@@ -113,7 +113,10 @@ protected:
 		    const char *shm_path,
 		    uid_t euid,
 		    gid_t egid,
-		    uint64_t tracing_id);
+		    uint64_t tracing_id,
+		    std::string trace_name,
+		    std::string hostname,
+		    time_t creation_time);
 	void accept(trace::trace_class_environment_visitor& environment_visitor) const override;
 	void _generate_metadata();
 
@@ -199,6 +202,10 @@ private:
 
 	/* The id of the parent session. */
 	const ltt_session::id_t _tracing_id;
+
+	const std::string _trace_name;
+	const std::string _hostname;
+	const time_t _creation_time;
 
 	lttng::sessiond::ust::clock_class::cuptr _clock;
 	const lttng::sessiond::trace::trace_class_visitor::cuptr _metadata_generating_visitor;

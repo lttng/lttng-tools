@@ -31,7 +31,10 @@ public:
 			    uid_t euid,
 			    gid_t egid,
 			    uint64_t tracing_id,
-			    uid_t tracing_uid);
+			    uid_t tracing_uid,
+			    std::string trace_name,
+			    std::string hostname,
+			    time_t creation_time);
 
 	lttng_buffer_type buffering_scheme() const noexcept final;
 	void accept(lttng::sessiond::trace::trace_class_environment_visitor& environment_visitor)

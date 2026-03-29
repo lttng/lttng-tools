@@ -16,6 +16,7 @@
 #include "lttng-sessiond.hpp"
 #include "lttng-ust-ctl.hpp"
 #include "lttng-ust-error.hpp"
+#include "manage-apps.hpp"
 #include "notification-thread-commands.hpp"
 #include "session.hpp"
 #include "ust-app.hpp"
@@ -123,11 +124,12 @@ static inline enum lttng_ust_abi_chan_type allocation_policy_to_ust_channel_type
  * A registry per UID object MUST exists before calling this function or else
  * it LTTNG_ASSERT() if not found. RCU read side lock must be acquired.
  */
-lsu::trace_class *ust_app_get_session_registry(const ust_app_session::identifier& ua_sess_id)
+std::shared_ptr<lsu::trace_class>
+ust_app_get_session_registry(const ust_app_session::identifier& ua_sess_id)
 {
 	switch (ua_sess_id.allocation_policy) {
 	case ust_app_session::identifier::buffer_allocation_policy::PER_PID:
-		return the_trace_class_index->find_per_pid(ua_sess_id.app_session_id).get();
+		return the_trace_class_index->find_per_pid(ua_sess_id.app_session_id);
 	case ust_app_session::identifier::buffer_allocation_policy::PER_UID:
 	{
 		const std::uint32_t bits_per_long = ua_sess_id.abi ==
@@ -135,11 +137,10 @@ lsu::trace_class *ust_app_get_session_registry(const ust_app_session::identifier
 			32 :
 			64;
 
-		return the_trace_class_index
-			->find_per_uid(ua_sess_id.recording_session_id,
-				       bits_per_long,
-				       lttng_credentials_get_uid(&ua_sess_id.app_credentials))
-			.get();
+		return the_trace_class_index->find_per_uid(
+			ua_sess_id.recording_session_id,
+			bits_per_long,
+			lttng_credentials_get_uid(&ua_sess_id.app_credentials));
 	}
 	default:
 		abort();
@@ -147,15 +148,60 @@ lsu::trace_class *ust_app_get_session_registry(const ust_app_session::identifier
 }
 
 namespace {
-lsu::trace_class::locked_ref
-get_locked_session_registry(const ust_app_session::identifier& identifier)
-{
-	auto session = ust_app_get_session_registry(identifier);
-	if (session) {
-		pthread_mutex_lock(&session->_lock);
+/*
+ * Bundles a shared_ptr (ownership) with a locked_ref (lock) so that
+ * the trace_class cannot be destroyed while the lock is held.
+ *
+ * Callers that need a `const locked_ref&` (e.g. push_metadata) should
+ * use the locked_ref() accessor.
+ */
+struct owned_locked_registry {
+	std::shared_ptr<lsu::trace_class> _ownership;
+	lsu::trace_class::locked_ref _lock;
+
+	explicit operator bool() const noexcept
+	{
+		return _ownership != nullptr;
 	}
 
-	return lsu::trace_class::locked_ref{ session };
+	lsu::trace_class *operator->() const noexcept
+	{
+		return _ownership.get();
+	}
+
+	lsu::trace_class& operator*() const noexcept
+	{
+		return *_ownership;
+	}
+
+	lsu::trace_class::locked_ref& locked_ref() noexcept
+	{
+		return _lock;
+	}
+
+	const lsu::trace_class::locked_ref& locked_ref() const noexcept
+	{
+		return _lock;
+	}
+
+	void reset() noexcept
+	{
+		_lock.reset();
+		_ownership.reset();
+	}
+};
+
+owned_locked_registry get_locked_session_registry(const ust_app_session::identifier& identifier)
+{
+	auto session = ust_app_get_session_registry(identifier);
+	lsu::trace_class::locked_ref lock;
+
+	if (session) {
+		pthread_mutex_lock(&session->_lock);
+		lock = lsu::trace_class::locked_ref{ session.get() };
+	}
+
+	return { std::move(session), std::move(lock) };
 }
 } /* namespace */
 
@@ -715,7 +761,6 @@ static void delete_ust_app_channel(int sock,
 
 	LTTNG_ASSERT(ua_chan);
 	ASSERT_RCU_READ_LOCKED();
-	ASSERT_SESSION_LIST_LOCKED();
 
 	DBG3("UST app deleting channel %s", ua_chan->name);
 
@@ -1084,7 +1129,7 @@ static void delete_ust_app_session(int sock, struct ust_app_session *ua_sess, st
 	/* Registry can be null on error path during initialization. */
 	if (locked_registry) {
 		/* Push metadata for application before freeing the application. */
-		(void) push_metadata(locked_registry, ua_sess->consumer);
+		(void) push_metadata(locked_registry.locked_ref(), ua_sess->consumer);
 	}
 
 	for (auto *ua_chan :
@@ -1093,7 +1138,7 @@ static void delete_ust_app_session(int sock, struct ust_app_session *ua_sess, st
 						 &ust_app_channel::node>(*ua_sess->channels->ht)) {
 		const auto ret = cds_lfht_del(ua_sess->channels->ht, &ua_chan->node.node);
 		LTTNG_ASSERT(ret == 0);
-		delete_ust_app_channel(sock, ua_chan, app, locked_registry);
+		delete_ust_app_channel(sock, ua_chan, app, locked_registry.locked_ref());
 	}
 
 	if (locked_registry) {
@@ -1114,34 +1159,6 @@ static void delete_ust_app_session(int sock, struct ust_app_session *ua_sess, st
 			/* Release lock before communication, see comments in close_metadata(). */
 			locked_registry.reset();
 			(void) close_metadata(metadata_key, consumer_bitness, ua_sess->consumer);
-		}
-	}
-
-	/* In case of per PID, the registry is kept in the session. */
-	if (ua_sess->buffer_type == LTTNG_BUFFER_PER_PID) {
-		/*
-		 * Release the per-PID trace_class and stream groups from
-		 * the orchestrator. This destroys the trace_class (and
-		 * cleans up its shared memory files) and the stream
-		 * groups now rather than deferring until session
-		 * destruction.
-		 *
-		 * The session may already be gone (e.g. if the session is
-		 * being torn down concurrently); in that case the
-		 * orchestrator's destructor handles the cleanup.
-		 */
-		try {
-			const auto session =
-				ltt_session::find_session(ua_sess->recording_session_id);
-			if (session->ust_orchestrator) {
-				auto& orchestrator = static_cast<lsu::domain_orchestrator&>(
-					session->get_ust_orchestrator());
-
-				orchestrator.release_per_pid_stream_groups(*app);
-				orchestrator.release_per_pid_trace_class(*app);
-			}
-		} catch (const lttng::sessiond::exceptions::session_not_found_error&) {
-			/* Session is already gone; orchestrator will clean up. */
 		}
 	}
 
@@ -1312,18 +1329,96 @@ static void destroy_app_session(struct ust_app *app, struct ust_app_session *ua_
 	LTTNG_ASSERT(app);
 	LTTNG_ASSERT(ua_sess);
 
+	/*
+	 * For per-PID buffers, perform the same orchestrator and metadata
+	 * cleanup that ust_app_unregister() performs for the app-going-away
+	 * case. The sequence mirrors ust_app_unregister():
+	 *
+	 *   1. Get the registry, push metadata, capture close info, mark closed
+	 *   2. Release the registry lock
+	 *   3. Release per-PID stream groups and trace class from orchestrator
+	 *   4. Remove ua_sess from app->sessions hash table
+	 *   5. Close metadata on the consumer
+	 *   6. Delegate remaining cleanup to delete_ust_app_session()
+	 *
+	 * Step 1 must happen before step 3 because releasing the trace
+	 * class removes it from the_trace_class_index, after which
+	 * get_locked_session_registry() (used by delete_ust_app_session)
+	 * would return null and skip metadata handling.
+	 *
+	 * Step 3 must happen before step 4 so that
+	 * for_each_consumer_stream_group() never visits entries whose
+	 * consumer-side channels have been closed, and so that
+	 * create_channel_subdirectories() can still look up ua_sess for
+	 * apps present in the orchestrator's per-PID maps.
+	 *
+	 * The session list lock and the per-session lock are held by the
+	 * caller (command handler).
+	 */
+	if (ua_sess->buffer_type == LTTNG_BUFFER_PER_PID) {
+		uint64_t metadata_key_to_close = 0;
+		unsigned int consumer_bitness_to_close = 0;
+		struct consumer_output *consumer_to_close = nullptr;
+
+		{
+			auto locked_ua_sess = ua_sess->lock();
+
+			auto locked_registry =
+				get_locked_session_registry(locked_ua_sess->get_identifier());
+			if (locked_registry) {
+				(void) push_metadata(locked_registry.locked_ref(),
+						     ua_sess->consumer);
+
+				metadata_key_to_close = locked_registry->_metadata_key;
+				consumer_bitness_to_close = locked_registry->abi.bits_per_long;
+				consumer_to_close = ua_sess->consumer;
+
+				if (!locked_registry->_metadata_closed &&
+				    metadata_key_to_close != 0) {
+					locked_registry->_metadata_closed = true;
+				}
+			}
+		}
+
+		try {
+			const auto session =
+				ltt_session::find_session(ua_sess->recording_session_id);
+
+			auto& orchestrator = static_cast<lsu::domain_orchestrator&>(
+				session->get_ust_orchestrator());
+
+			orchestrator.release_per_pid_stream_groups(*app);
+			orchestrator.release_per_pid_trace_class(*app);
+		} catch (const lttng::sessiond::exceptions::session_not_found_error&) {
+			/* Session is already gone; orchestrator will clean up in its destructor. */
+		}
+
+		iter.iter.node = &ua_sess->node.node;
+		ret = lttng_ht_del(app->sessions, &iter);
+		if (ret) {
+			/* Already scheduled for teardown. */
+			return;
+		}
+
+		if (consumer_to_close) {
+			(void) close_metadata(metadata_key_to_close,
+					      consumer_bitness_to_close,
+					      consumer_to_close);
+		}
+
+		delete_ust_app_session(app->sock, ua_sess, app);
+		return;
+	}
+
 	iter.iter.node = &ua_sess->node.node;
 	ret = lttng_ht_del(app->sessions, &iter);
 	if (ret) {
 		/* Already scheduled for teardown. */
-		goto end;
+		return;
 	}
 
 	/* Once deleted, free the data structure. */
 	delete_ust_app_session(app->sock, ua_sess, app);
-
-end:
-	return;
 }
 
 /*
@@ -2871,9 +2966,8 @@ static int find_or_create_ust_app_session(struct ltt_ust_session *usess,
 		 * The trace class is also registered in the global
 		 * trace_class_index for consumer metadata pull requests.
 		 */
-		const auto session = ltt_session::find_session(ua_sess->recording_session_id);
-		auto& orchestrator =
-			static_cast<lsu::domain_orchestrator&>(session->get_ust_orchestrator());
+		auto& orchestrator = static_cast<lsu::domain_orchestrator&>(
+			const_cast<ltt_session&>(recording_session).get_ust_orchestrator());
 
 		try {
 			orchestrator.find_or_create_per_pid_trace_class(
@@ -2901,9 +2995,8 @@ static int find_or_create_ust_app_session(struct ltt_ust_session *usess,
 		 * The trace class is also registered in the global
 		 * trace_class_index for consumer metadata pull requests.
 		 */
-		const auto session_ref = ltt_session::find_session(ua_sess->recording_session_id);
-		auto& orchestrator_ref =
-			static_cast<lsu::domain_orchestrator&>(session_ref->get_ust_orchestrator());
+		auto& orchestrator_ref = static_cast<lsu::domain_orchestrator&>(
+			const_cast<ltt_session&>(recording_session).get_ust_orchestrator());
 
 		const auto app_abi = app->abi.bits_per_long == 32 ? lsu::application_abi::ABI_32 :
 								    lsu::application_abi::ABI_64;
@@ -3410,14 +3503,15 @@ error:
  * Create and send to the application the created buffers with per UID buffers.
  *
  * This MUST be called with a RCU read side lock acquired.
- * The session list lock and the session's lock must be acquired.
+ * The session's lock must be acquired.
  *
  * Return 0 on success else a negative value.
  */
 static int create_channel_per_uid(struct ust_app *app,
 				  struct ltt_ust_session *usess,
 				  struct ust_app_session *ua_sess,
-				  struct ust_app_channel *ua_chan)
+				  struct ust_app_channel *ua_chan,
+				  ltt_session& session)
 {
 	int ret;
 	enum lttng_error_code notification_ret;
@@ -3430,17 +3524,12 @@ static int create_channel_per_uid(struct ust_app *app,
 
 	DBG("UST app creating channel %s with per UID buffers", ua_chan->name);
 
-	/* Guaranteed to exist; will not throw. */
-	const auto session = ltt_session::find_session(ua_sess->recording_session_id);
-	ASSERT_SESSION_LIST_LOCKED();
-
 	const auto& recording_config =
 		static_cast<const lttng::sessiond::config::recording_channel_configuration&>(
 			ua_chan->channel_config);
 	const auto app_abi = app->abi.bits_per_long == 32 ? lsu::application_abi::ABI_32 :
 							    lsu::application_abi::ABI_64;
-	auto& orchestrator =
-		static_cast<lsu::domain_orchestrator&>(session->get_ust_orchestrator());
+	auto& orchestrator = static_cast<lsu::domain_orchestrator&>(session.get_ust_orchestrator());
 
 	/*
 	 * Check if the per-UID stream group already exists for this
@@ -3481,8 +3570,8 @@ static int create_channel_per_uid(struct ust_app *app,
 						 ua_chan,
 						 app->abi.bits_per_long,
 						 trace_class_ptr.get(),
-						 session->current_trace_chunk,
-						 session->trace_format);
+						 session.current_trace_chunk,
+						 session.trace_format);
 		if (ret < 0) {
 			ERR("Error creating UST channel \"%s\" on the consumer daemon",
 			    ua_chan->name);
@@ -3542,7 +3631,7 @@ static int create_channel_per_uid(struct ust_app *app,
 	/* Notify the notification subsystem of the channel's creation. */
 	notification_ret = notification_thread_command_add_channel(
 		the_notification_thread_handle,
-		session->id,
+		session.id,
 		ua_chan->name,
 		ua_chan->key,
 		LTTNG_DOMAIN_UST,
@@ -3576,17 +3665,17 @@ error:
  * Create and send to the application the created buffers with per PID buffers.
  *
  * Called with UST app session lock held.
- * The session list lock and the session's lock must be acquired.
+ * The session's lock must be acquired.
  *
  * Return 0 on success else a negative value.
  */
 static int create_channel_per_pid(struct ust_app *app,
 				  struct ltt_ust_session *usess,
 				  const ust_app_session::locked_weak_ref& ua_sess,
-				  struct ust_app_channel *ua_chan)
+				  struct ust_app_channel *ua_chan,
+				  ltt_session& session)
 {
 	int ret;
-	lsu::trace_class *registry;
 	enum lttng_error_code cmd_ret;
 	uint64_t chan_reg_key;
 
@@ -3598,14 +3687,11 @@ static int create_channel_per_pid(struct ust_app *app,
 
 	const lttng::urcu::read_lock_guard read_lock;
 
-	registry = ust_app_get_session_registry(ua_sess->get_identifier());
+	auto registry = ust_app_get_session_registry(ua_sess->get_identifier());
 	/* The UST app session lock is held, registry shall not be null. */
 	LTTNG_ASSERT(registry);
 
-	/* Guaranteed to exist; will not throw. */
-	const auto session = ltt_session::find_session(ua_sess->recording_session_id);
-	ASSERT_LOCKED(session->_lock);
-	ASSERT_SESSION_LIST_LOCKED();
+	ASSERT_LOCKED(session._lock);
 
 	/* Create and add a new channel registry to session. */
 	try {
@@ -3624,9 +3710,9 @@ static int create_channel_per_pid(struct ust_app *app,
 					 &ua_sess.get(),
 					 ua_chan,
 					 app->abi.bits_per_long,
-					 registry,
-					 session->current_trace_chunk,
-					 session->trace_format);
+					 registry.get(),
+					 session.current_trace_chunk,
+					 session.trace_format);
 	if (ret < 0) {
 		ERR("Error creating UST channel \"%s\" on the consumer daemon", ua_chan->name);
 		goto error_remove_from_registry;
@@ -3665,7 +3751,7 @@ static int create_channel_per_pid(struct ust_app *app,
 		auto& stream_class_ref = locked_registry->channel(chan_reg_key);
 
 		auto& orchestrator =
-			static_cast<lsu::domain_orchestrator&>(session->get_ust_orchestrator());
+			static_cast<lsu::domain_orchestrator&>(session.get_ust_orchestrator());
 
 		orchestrator.find_or_create_per_pid_stream_group(recording_config,
 								 *app,
@@ -3676,7 +3762,7 @@ static int create_channel_per_pid(struct ust_app *app,
 	}
 
 	cmd_ret = notification_thread_command_add_channel(the_notification_thread_handle,
-							  session->id,
+							  session.id,
 							  ua_chan->name,
 							  ua_chan->key,
 							  LTTNG_DOMAIN_UST,
@@ -3714,7 +3800,8 @@ error:
 static int ust_app_channel_send(struct ust_app *app,
 				struct ltt_ust_session *usess,
 				const ust_app_session::locked_weak_ref& ua_sess,
-				struct ust_app_channel *ua_chan)
+				struct ust_app_channel *ua_chan,
+				ltt_session& session)
 {
 	int ret;
 
@@ -3728,7 +3815,7 @@ static int ust_app_channel_send(struct ust_app *app,
 	switch (usess->buffer_type) {
 	case LTTNG_BUFFER_PER_UID:
 	{
-		ret = create_channel_per_uid(app, usess, &ua_sess.get(), ua_chan);
+		ret = create_channel_per_uid(app, usess, &ua_sess.get(), ua_chan, session);
 		if (ret < 0) {
 			goto error;
 		}
@@ -3736,7 +3823,7 @@ static int ust_app_channel_send(struct ust_app *app,
 	}
 	case LTTNG_BUFFER_PER_PID:
 	{
-		ret = create_channel_per_pid(app, usess, ua_sess, ua_chan);
+		ret = create_channel_per_pid(app, usess, ua_sess, ua_chan, session);
 		if (ret < 0) {
 			goto error;
 		}
@@ -3932,7 +4019,8 @@ end:
  */
 static int create_ust_app_metadata(const ust_app_session::locked_weak_ref& ua_sess,
 				   struct ust_app *app,
-				   struct consumer_output *consumer)
+				   struct consumer_output *consumer,
+				   const ltt_session& session)
 {
 	int ret = 0;
 	struct ust_app_channel *metadata;
@@ -3946,13 +4034,10 @@ static int create_ust_app_metadata(const ust_app_session::locked_weak_ref& ua_se
 	/* The UST app session is held registry shall not be null. */
 	LTTNG_ASSERT(locked_registry);
 
-	/* Guaranteed to exist; will not throw. */
-	const auto session = ltt_session::find_session(ua_sess->recording_session_id);
-	ASSERT_LOCKED(session->_lock);
-	ASSERT_SESSION_LIST_LOCKED();
+	ASSERT_LOCKED(session._lock);
 
 	const auto& metadata_config =
-		session->get_domain(lttng::domain_class::USER_SPACE).metadata_channel();
+		session.get_domain(lttng::domain_class::USER_SPACE).metadata_channel();
 
 	/* Metadata already exists for this registry or it was closed previously */
 	if (locked_registry->_metadata_key || locked_registry->_metadata_closed) {
@@ -4002,9 +4087,9 @@ static int create_ust_app_metadata(const ust_app_session::locked_weak_ref& ua_se
 				       metadata,
 				       consumer,
 				       socket,
-				       locked_registry.get(),
-				       session->current_trace_chunk,
-				       session->trace_format);
+				       locked_registry.locked_ref().get(),
+				       session.current_trace_chunk,
+				       session.trace_format);
 	if (ret < 0) {
 		/* Nullify the metadata key so we don't try to close it later on. */
 		locked_registry->_metadata_key = 0;
@@ -4028,7 +4113,7 @@ static int create_ust_app_metadata(const ust_app_session::locked_weak_ref& ua_se
 
 error_consumer:
 	lttng_fd_put(LTTNG_FD_APPS, 1);
-	delete_ust_app_channel(-1, metadata, app, locked_registry);
+	delete_ust_app_channel(-1, metadata, app, locked_registry.locked_ref());
 error:
 	return ret;
 }
@@ -4406,18 +4491,16 @@ static void ust_app_unregister(ust_app& app)
 	 * For per-PID buffers, perform "push metadata" and flush all
 	 * application streams before removing app from hash tables,
 	 * ensuring proper behavior of data_pending check.
-	 * Remove sessions so they are not visible during deletion.
+	 *
+	 * Sessions are removed from the hash table after the
+	 * orchestrator maps have been cleaned up so that concurrent
+	 * operations (e.g. rotation) can still look up the ua_sess
+	 * for apps present in the orchestrator maps.
 	 */
 	for (auto *ua_sess :
 	     lttng::urcu::lfht_iteration_adapter<ust_app_session,
 						 decltype(ust_app_session::node),
 						 &ust_app_session::node>(*app.sessions->ht)) {
-		const auto del_ret = cds_lfht_del(app.sessions->ht, &ua_sess->node.node);
-		if (del_ret) {
-			/* The session was already removed so scheduled for teardown. */
-			continue;
-		}
-
 		if (ua_sess->buffer_type == LTTNG_BUFFER_PER_PID) {
 			(void) ust_app_flush_app_session(app, *ua_sess);
 		}
@@ -4443,11 +4526,15 @@ static void ust_app_unregister(ust_app& app)
 		 * The close metadata below nullifies the metadata pointer in the
 		 * session so the delete session will NOT push/close a second time.
 		 */
+		uint64_t metadata_key_to_close = 0;
+		unsigned int consumer_bitness_to_close = 0;
+		struct consumer_output *consumer_to_close = nullptr;
+
 		auto locked_registry =
 			get_locked_session_registry(locked_ua_sess->get_identifier());
 		if (locked_registry) {
 			/* Push metadata for application before freeing the application. */
-			(void) push_metadata(locked_registry, ua_sess->consumer);
+			(void) push_metadata(locked_registry.locked_ref(), ua_sess->consumer);
 
 			/*
 			 * Don't ask to close metadata for global per UID buffers. Close
@@ -4456,21 +4543,137 @@ static void ust_app_unregister(ust_app& app)
 			 * close so don't send a close command if closed.
 			 */
 			if (ua_sess->buffer_type != LTTNG_BUFFER_PER_UID) {
-				const auto metadata_key = locked_registry->_metadata_key;
-				const auto consumer_bitness = locked_registry->abi.bits_per_long;
+				metadata_key_to_close = locked_registry->_metadata_key;
+				consumer_bitness_to_close = locked_registry->abi.bits_per_long;
+				consumer_to_close = ua_sess->consumer;
 
-				if (!locked_registry->_metadata_closed && metadata_key != 0) {
+				if (!locked_registry->_metadata_closed &&
+				    metadata_key_to_close != 0) {
 					locked_registry->_metadata_closed = true;
 				}
-
-				/* Release lock before communication, see comments in
-				 * close_metadata(). */
-				locked_registry.reset();
-				(void) close_metadata(
-					metadata_key, consumer_bitness, ua_sess->consumer);
-			} else {
-				locked_registry.reset();
 			}
+
+			locked_registry.reset();
+		}
+
+		/*
+		 * Release the per-PID stream groups and trace class from the
+		 * orchestrator BEFORE closing metadata on the consumer, then
+		 * remove the session from the hash table and close metadata,
+		 * all while holding the recording session lock.
+		 *
+		 * Holding the recording session lock across the entire
+		 * sequence (orchestrator cleanup, hash table removal, and
+		 * metadata close) ensures mutual exclusion with the
+		 * rotation/clear path (cmd_clear_session ->
+		 * for_each_consumer_stream_group), which holds the same
+		 * lock. Either the unregistration completes first (entries
+		 * removed, metadata closed: the clear sees nothing to
+		 * rotate for this app) or the clear completes first (all
+		 * entries are still present and properly rotated before
+		 * removal).
+		 *
+		 * Without this, a window exists where the orchestrator
+		 * entries are removed but the consumer channels are still
+		 * open. A concurrent clear during that window would omit
+		 * these streams from the rotation command sent to the relay,
+		 * causing the live viewer to stay on the old (deleted) trace
+		 * chunk and observe an INDEX_ERR.
+		 *
+		 * The session lock and reference obtained from
+		 * find_locked_session are managed manually (via
+		 * locked_ref::release) rather than through the locked_ref
+		 * RAII wrapper. This is necessary because:
+		 *
+		 *  - The session list lock must NOT be held during the
+		 *    consumer I/O (close_metadata) to avoid contention.
+		 *
+		 *  - The session lock must NOT be held while acquiring the
+		 *    session list lock, as that would invert the established
+		 *    lock ordering (list lock -> session lock) and deadlock
+		 *    with the client thread.
+		 *
+		 *  - locked_ref's destructor calls session_put() which
+		 *    asserts the session list lock, so it cannot be
+		 *    destroyed outside the list lock scope.
+		 *
+		 * The sequence is:
+		 *
+		 *  1. Acquire list lock, find and lock the session, do
+		 *     orchestrator cleanup, transfer ownership via
+		 *     release(), release list lock.
+		 *
+		 *  2. Hash table removal and close_metadata under the
+		 *     session lock only (no list lock).
+		 *
+		 *  3. Unlock the session, then acquire the list lock and
+		 *     call session_put() (preserving list -> session order).
+		 *
+		 * Between session_unlock and session_put (step 3), the
+		 * session object remains alive because the reference from
+		 * find_locked_session (via session_get) has not yet been
+		 * released.
+		 *
+		 * The remaining per-app cleanup (channel deletion, UST
+		 * handle release, etc.) is deferred to
+		 * delete_ust_app_session() in the RCU callback.
+		 */
+		ltt_session *recording_session = nullptr;
+
+		if (ua_sess->buffer_type == LTTNG_BUFFER_PER_PID) {
+			const auto list_lock = lttng::sessiond::lock_session_list();
+
+			try {
+				auto locked_session = ltt_session::find_locked_session(
+					ua_sess->recording_session_id);
+
+				LTTNG_ASSERT(locked_session->ust_orchestrator);
+
+				auto& orchestrator = static_cast<lsu::domain_orchestrator&>(
+					locked_session->get_ust_orchestrator());
+
+				orchestrator.release_per_pid_stream_groups(app);
+				orchestrator.release_per_pid_trace_class(app);
+
+				recording_session = &*locked_session;
+				locked_session.release();
+			} catch (const lttng::sessiond::exceptions::session_not_found_error&) {
+				/*
+				 * Session already gone; orchestrator will
+				 * clean up in its destructor.
+				 */
+			}
+		}
+
+		/*
+		 * Remove the session from the app's hash table after the
+		 * orchestrator maps have been cleaned up. This ordering
+		 * ensures that create_channel_subdirectories() (which looks
+		 * up ua_sess via ust_app_lookup_app_session under the
+		 * session lock) can find the ua_sess for any app still
+		 * present in the orchestrator's per-PID maps.
+		 */
+		{
+			const auto del_ret = cds_lfht_del(app.sessions->ht, &ua_sess->node.node);
+			LTTNG_ASSERT(del_ret == 0);
+		}
+
+		if (consumer_to_close) {
+			(void) close_metadata(metadata_key_to_close,
+					      consumer_bitness_to_close,
+					      consumer_to_close);
+		}
+
+		/*
+		 * Release the recording session lock, then the reference.
+		 * Unlocking before acquiring the list lock preserves the
+		 * lock ordering (list lock -> session lock).
+		 */
+		if (recording_session) {
+			session_unlock(recording_session);
+
+			const auto list_lock = lttng::sessiond::lock_session_list();
+			session_put(recording_session);
 		}
 
 		const auto pending_reclamations =
@@ -5176,7 +5379,8 @@ static int ust_app_channel_create(
 	struct ust_app *app,
 	struct ust_app_channel **_ua_chan,
 	const lttng::sessiond::config::recording_channel_configuration& channel_config,
-	std::uint64_t trace_class_stream_class_handle)
+	std::uint64_t trace_class_stream_class_handle,
+	ltt_session& session)
 {
 	int ret = 0;
 	struct ust_app_channel *ua_chan = nullptr;
@@ -5191,7 +5395,7 @@ static int ust_app_channel_create(
 		goto error;
 	}
 
-	ret = ust_app_channel_send(app, usess, ua_sess, ua_chan);
+	ret = ust_app_channel_send(app, usess, ua_sess, ua_chan, session);
 	if (ret) {
 		goto error;
 	}
@@ -5589,7 +5793,7 @@ static int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app
 		LTTNG_ASSERT(locked_registry);
 
 		/* Push metadata for application before freeing the application. */
-		(void) push_metadata(locked_registry, ua_sess->consumer);
+		(void) push_metadata(locked_registry.locked_ref(), ua_sess->consumer);
 	}
 
 	return 0;
@@ -5905,7 +6109,8 @@ end:
  */
 int ust_app_start_trace_all(struct ltt_ust_session *usess,
 			    const lttng::sessiond::config::domain& domain,
-			    const lttng::sessiond::ust::domain_orchestrator& orchestrator)
+			    const lttng::sessiond::ust::domain_orchestrator& orchestrator,
+			    ltt_session& session)
 {
 	DBG("Starting all UST traces");
 
@@ -5935,7 +6140,7 @@ int ust_app_start_trace_all(struct ltt_ust_session *usess,
 		/* Prevent app teardown during use. */
 		const ust_app_reference app_ref(app);
 
-		ust_app_global_update(usess, app, domain, orchestrator);
+		ust_app_global_update(usess, app, domain, orchestrator, session);
 	}
 
 	return 0;
@@ -6014,7 +6219,8 @@ static int find_or_create_ust_app_channel(
 	struct ust_app *app,
 	struct ust_app_channel **ua_chan,
 	const lttng::sessiond::config::recording_channel_configuration& channel_config,
-	std::uint64_t trace_class_stream_class_handle)
+	std::uint64_t trace_class_stream_class_handle,
+	ltt_session& session)
 {
 	int ret = 0;
 	struct lttng_ht_iter iter;
@@ -6027,8 +6233,13 @@ static int find_or_create_ust_app_channel(
 		goto end;
 	}
 
-	ret = ust_app_channel_create(
-		usess, ua_sess, app, ua_chan, channel_config, trace_class_stream_class_handle);
+	ret = ust_app_channel_create(usess,
+				     ua_sess,
+				     app,
+				     ua_chan,
+				     channel_config,
+				     trace_class_stream_class_handle,
+				     session);
 	if (ret) {
 		goto end;
 	}
@@ -6209,7 +6420,8 @@ ust_app_synchronize_all_channels(struct ltt_ust_session *usess,
 				 const ust_app_session::locked_weak_ref& ua_sess,
 				 struct ust_app *app,
 				 const lttng::sessiond::config::domain& config_domain,
-				 const lttng::sessiond::ust::domain_orchestrator& orchestrator)
+				 const lttng::sessiond::ust::domain_orchestrator& orchestrator,
+				 ltt_session& session)
 {
 	LTTNG_ASSERT(usess);
 	LTTNG_ASSERT(app);
@@ -6228,7 +6440,7 @@ ust_app_synchronize_all_channels(struct ltt_ust_session *usess,
 		 * all enabled contexts will be added to the channel.
 		 */
 		int ret = find_or_create_ust_app_channel(
-			usess, ua_sess, app, &ua_chan, chan_config, handle);
+			usess, ua_sess, app, &ua_chan, chan_config, handle, session);
 		if (ret) {
 			/* Tracer is probably gone or ENOMEM. */
 			goto end;
@@ -6267,7 +6479,8 @@ end:
 static void ust_app_synchronize(struct ltt_ust_session *usess,
 				struct ust_app *app,
 				const lttng::sessiond::config::domain& config_domain,
-				const lttng::sessiond::ust::domain_orchestrator& orchestrator)
+				const lttng::sessiond::ust::domain_orchestrator& orchestrator,
+				ltt_session& session)
 {
 	int ret = 0;
 	struct ust_app_session *ua_sess = nullptr;
@@ -6296,7 +6509,7 @@ static void ust_app_synchronize(struct ltt_ust_session *usess,
 		const lttng::urcu::read_lock_guard read_lock;
 
 		ust_app_synchronize_all_channels(
-			usess, locked_ua_sess, app, config_domain, orchestrator);
+			usess, locked_ua_sess, app, config_domain, orchestrator, session);
 
 		/*
 		 * Create the metadata for the application. This returns gracefully if a
@@ -6307,7 +6520,7 @@ static void ust_app_synchronize(struct ltt_ust_session *usess,
 		 * daemon, the consumer will use this assumption to send the
 		 * "STREAMS_SENT" message to the relay daemon.
 		 */
-		ret = create_ust_app_metadata(locked_ua_sess, app, usess->consumer);
+		ret = create_ust_app_metadata(locked_ua_sess, app, usess->consumer, session);
 		if (ret < 0) {
 			ERR("Metadata creation failed for app sock %d for session id %" PRIu64,
 			    app->sock,
@@ -6336,7 +6549,8 @@ static void ust_app_global_destroy(struct ltt_ust_session *usess, struct ust_app
 void ust_app_global_update(struct ltt_ust_session *usess,
 			   struct ust_app *app,
 			   const lttng::sessiond::config::domain& domain,
-			   const lttng::sessiond::ust::domain_orchestrator& orchestrator)
+			   const lttng::sessiond::ust::domain_orchestrator& orchestrator,
+			   ltt_session& session)
 {
 	namespace lsc = lttng::sessiond::config;
 
@@ -6358,7 +6572,7 @@ void ust_app_global_update(struct ltt_ust_session *usess,
 		 * Synchronize the application's internal tracing configuration
 		 * and start tracing.
 		 */
-		ust_app_synchronize(usess, app, domain, orchestrator);
+		ust_app_synchronize(usess, app, domain, orchestrator, session);
 		ust_app_start_trace(usess, app);
 	} else {
 		ust_app_global_destroy(usess, app);
@@ -6398,7 +6612,8 @@ void ust_app_global_update_event_notifier_rules(struct ust_app *app)
  */
 void ust_app_global_update_all(struct ltt_ust_session *usess,
 			       const lttng::sessiond::config::domain& domain,
-			       const lttng::sessiond::ust::domain_orchestrator& orchestrator)
+			       const lttng::sessiond::ust::domain_orchestrator& orchestrator,
+			       ltt_session& session)
 {
 	/* Iterate on all apps. */
 	for (auto *app :
@@ -6412,7 +6627,7 @@ void ust_app_global_update_all(struct ltt_ust_session *usess,
 		/* Prevent app teardown during use. */
 		const ust_app_reference app_ref(app);
 
-		ust_app_global_update(usess, app, domain, orchestrator);
+		ust_app_global_update(usess, app, domain, orchestrator, session);
 	}
 }
 
@@ -7297,7 +7512,6 @@ enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *uses
 							 &ust_app::pid_n>(*ust_app_ht->ht)) {
 			struct consumer_socket *socket;
 			struct ust_app_session *ua_sess;
-			lsu::trace_class *registry;
 			char pathname[PATH_MAX];
 			size_t consumer_path_offset = 0;
 
@@ -7365,7 +7579,8 @@ enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *uses
 				}
 			}
 
-			registry = ust_app_get_session_registry(ua_sess->get_identifier());
+			const auto registry =
+				ust_app_get_session_registry(ua_sess->get_identifier());
 			if (!registry) {
 				DBG("Application session is being torn down. Skip application.");
 				/* Continue loop to next app. */
@@ -7459,139 +7674,46 @@ int ust_app_regenerate_statedump_all(struct ltt_ust_session *usess)
  */
 enum lttng_error_code ust_app_rotate_session(const ltt_session& session)
 {
-	int ret;
 	enum lttng_error_code cmd_ret = LTTNG_OK;
-	struct ltt_ust_session *usess = session.ust_session;
+	const auto *usess = session.ust_session;
 
 	LTTNG_ASSERT(usess);
 
-	switch (usess->buffer_type) {
-	case LTTNG_BUFFER_PER_UID:
-	{
-		const auto& orchestrator = static_cast<const lsu::domain_orchestrator&>(
-			session.get_ust_orchestrator());
+	const auto& orchestrator =
+		static_cast<const lsu::domain_orchestrator&>(session.get_ust_orchestrator());
 
-		orchestrator.for_each_consumer_stream_group(
-			[&usess,
-			 &cmd_ret](const lsu::domain_orchestrator::consumer_stream_group_descriptor&
-					   desc) {
-				const lttng::urcu::read_lock_guard read_lock;
+	/*
+	 * Both per-UID and per-PID modes use the same iteration pattern.
+	 * For per-PID, departed applications are skipped by the iterator
+	 * (it checks _metadata_closed on each per-PID trace class).
+	 */
+	orchestrator.for_each_consumer_stream_group(
+		[&usess,
+		 &cmd_ret](const lsu::domain_orchestrator::consumer_stream_group_descriptor& desc) {
+			const lttng::urcu::read_lock_guard read_lock;
 
-				if (cmd_ret != LTTNG_OK) {
-					return;
-				}
-
-				const auto socket = consumer_find_socket_by_bitness(
-					static_cast<int>(desc.abi), usess->consumer);
-				if (!socket) {
-					cmd_ret = LTTNG_ERR_INVALID;
-					return;
-				}
-
-				if (desc.is_metadata) {
-					(void) push_metadata(desc.trace_class.lock(),
-							     usess->consumer);
-				}
-
-				const auto rotate_ret = consumer_rotate_channel(socket,
-										desc.consumer_key,
-										usess->consumer,
-										desc.is_metadata);
-				if (rotate_ret < 0) {
-					cmd_ret = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
-				}
-			});
-
-		break;
-	}
-	case LTTNG_BUFFER_PER_PID:
-	{
-		/*
-		 * Iterate on all apps using the ust_app hash table directly rather
-		 * than the orchestrator's per-PID maps. This is necessary because
-		 * ust_app_unregister() closes the metadata channel on the consumer
-		 * and removes the app from ust_app_ht before the orchestrator's
-		 * per-PID maps are cleaned up (which happens later in
-		 * delete_ust_app_session()). Using the orchestrator's maps would
-		 * cause rotation to attempt to rotate channels that have already
-		 * been closed on the consumer, resulting in a rotation failure.
-		 */
-		for (auto *app :
-		     lttng::urcu::lfht_iteration_adapter<ust_app,
-							 decltype(ust_app::pid_n),
-							 &ust_app::pid_n>(*ust_app_ht->ht)) {
-			struct consumer_socket *socket;
-			struct ust_app_session *ua_sess;
-			lsu::trace_class *registry;
-
-			if (!ust_app_get(*app)) {
-				/* Application unregistered concurrently, skip it. */
-				DBG("Could not get application reference as it is being torn down; skipping application");
-				continue;
-			}
-			/* Prevent app teardown during use. */
-			const ust_app_reference app_ref(app);
-
-			ua_sess = ust_app_lookup_app_session(usess, app);
-			if (!ua_sess) {
-				/* Session not associated with this app. */
-				continue;
+			if (cmd_ret != LTTNG_OK) {
+				return;
 			}
 
-			/* Get the right consumer socket for the application. */
-			socket = consumer_find_socket_by_bitness(app->abi.bits_per_long,
-								 usess->consumer);
+			const auto socket = consumer_find_socket_by_bitness(
+				static_cast<int>(desc.abi), usess->consumer);
 			if (!socket) {
 				cmd_ret = LTTNG_ERR_INVALID;
-				goto error;
+				return;
 			}
 
-			registry = ust_app_get_session_registry(ua_sess->get_identifier());
-			LTTNG_ASSERT(registry);
-
-			/* Rotate the data channels. */
-			for (auto *ua_chan :
-			     lttng::urcu::lfht_iteration_adapter<ust_app_channel,
-								 decltype(ust_app_channel::node),
-								 &ust_app_channel::node>(
-				     *ua_sess->channels->ht)) {
-				ret = consumer_rotate_channel(socket,
-							      ua_chan->key,
-							      ua_sess->consumer,
-							      /* is_metadata_channel */ false);
-				if (ret < 0) {
-					cmd_ret = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
-					goto error;
-				}
+			if (desc.is_metadata) {
+				(void) push_metadata(desc.trace_class.lock(), usess->consumer);
 			}
 
-			/* Rotate the metadata channel. */
-			{
-				auto locked_registry = registry->lock();
-
-				(void) push_metadata(locked_registry, usess->consumer);
-			}
-
-			ret = consumer_rotate_channel(socket,
-						      registry->_metadata_key,
-						      ua_sess->consumer,
-						      /* is_metadata_channel */ true);
-			if (ret < 0) {
+			const auto rotate_ret = consumer_rotate_channel(
+				socket, desc.consumer_key, usess->consumer, desc.is_metadata);
+			if (rotate_ret < 0) {
 				cmd_ret = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
-				goto error;
 			}
-		}
+		});
 
-		break;
-	}
-	default:
-		abort();
-		break;
-	}
-
-	cmd_ret = LTTNG_OK;
-
-error:
 	return cmd_ret;
 }
 
@@ -7731,8 +7853,17 @@ lsu::ctl_field_quirks ust_app::ctl_field_quirks() const
 
 static void ust_app_release(urcu_ref *ref)
 {
+	namespace lam = lttng::sessiond::app_management;
+
 	auto& app = *lttng::utils::container_of(ref, &ust_app::ref);
 
+	the_app_unregistration_queue->send(
+		lam::command(lam::command_type::UNREGISTER_AND_DESTROY_APP, app));
+}
+
+void ust_app_unregister_and_destroy(ust_app& app)
+{
+	LTTNG_ASSERT(uatomic_read(&app.ref.refcount) == 0);
 	ust_app_unregister(app);
 	ust_app_destroy(app);
 }

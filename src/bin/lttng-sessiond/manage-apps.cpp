@@ -11,15 +11,31 @@
 #include "manage-apps.hpp"
 #include "testpoint.hpp"
 #include "thread.hpp"
+#include "ust-app.hpp"
 #include "utils.hpp"
 
 #include <fcntl.h>
+
+namespace lam = lttng::sessiond::app_management;
 
 namespace {
 struct thread_notifiers {
 	struct lttng_pipe *quit_pipe;
 	int apps_cmd_pipe_read_fd;
+	lttng::command_queue<lam::command>& unregistration_queue;
 };
+
+void process_unregistration_commands(lttng::command_queue<lam::command>& queue)
+{
+	while (auto cmd = queue.pop()) {
+		switch (cmd->type) {
+		case lam::command_type::UNREGISTER_AND_DESTROY_APP:
+			LTTNG_ASSERT(cmd->app);
+			ust_app_unregister_and_destroy(*cmd->app);
+			break;
+		}
+	}
+}
 } /* namespace */
 
 static void cleanup_application_management_thread(void *data)
@@ -27,7 +43,7 @@ static void cleanup_application_management_thread(void *data)
 	struct thread_notifiers *notifiers = (thread_notifiers *) data;
 
 	lttng_pipe_destroy(notifiers->quit_pipe);
-	free(notifiers);
+	delete notifiers;
 }
 
 /*
@@ -38,6 +54,11 @@ static void cleanup_application_management_thread(void *data)
  * At that point, it flushes the data (tracing and metadata) associated
  * with this application and tears down ust app sessions and other
  * associated data structures through ust_app_unregister_by_socket().
+ *
+ * This thread also processes deferred application unregistration
+ * and destruction commands from the_app_unregistration_queue.
+ * See the comment on the_app_unregistration_queue in
+ * lttng-sessiond.hpp for details on why this is necessary.
  *
  * Note that this thread never sends commands to the applications
  * through the command sockets; it merely listens for hang-ups
@@ -51,6 +72,7 @@ static void *thread_application_management(void *data)
 	struct lttng_poll_event events;
 	struct thread_notifiers *notifiers = (thread_notifiers *) data;
 	const auto thread_quit_pipe_fd = lttng_pipe_get_readfd(notifiers->quit_pipe);
+	auto& unregistration_queue = notifiers->unregistration_queue;
 
 	DBG("[thread] Manage application started");
 
@@ -76,6 +98,11 @@ static void *thread_application_management(void *data)
 	}
 
 	ret = lttng_poll_add(&events, thread_quit_pipe_fd, LPOLLIN);
+	if (ret < 0) {
+		goto error;
+	}
+
+	ret = lttng_poll_add(&events, unregistration_queue.wake_fd().fd(), LPOLLIN);
 	if (ret < 0) {
 		goto error;
 	}
@@ -154,6 +181,8 @@ static void *thread_application_management(void *data)
 					ERR("Unknown poll events %u for sock %d", revents, pollfd);
 					goto error;
 				}
+			} else if (pollfd == unregistration_queue.wake_fd().fd()) {
+				process_unregistration_commands(unregistration_queue);
 			} else {
 				/*
 				 * At this point, we know that a registered application made
@@ -211,13 +240,15 @@ static bool shutdown_application_management_thread(void *data)
 	return notify_thread_pipe(write_fd) == 1;
 }
 
-bool launch_application_management_thread(int apps_cmd_pipe_read_fd)
+bool launch_application_management_thread(
+	int apps_cmd_pipe_read_fd,
+	lttng::command_queue<lam::command>& unregistration_queue)
 {
 	struct lttng_pipe *quit_pipe;
 	struct thread_notifiers *notifiers = nullptr;
 	struct lttng_thread *thread;
 
-	notifiers = zmalloc<thread_notifiers>();
+	notifiers = new (std::nothrow) thread_notifiers{ nullptr, 0, unregistration_queue };
 	if (!notifiers) {
 		goto error_alloc;
 	}

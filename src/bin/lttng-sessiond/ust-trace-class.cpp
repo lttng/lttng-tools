@@ -241,7 +241,10 @@ lsu::trace_class::trace_class(enum lttng_trace_format trace_format,
 			      const char *shm_path,
 			      uid_t euid,
 			      gid_t egid,
-			      uint64_t tracing_id) :
+			      uint64_t tracing_id,
+			      std::string trace_name,
+			      std::string hostname,
+			      time_t creation_time) :
 	lst::trace_class(in_abi, generate_uuid_or_throw()),
 	_root_shm_path{ root_shm_path ? root_shm_path : "" },
 	_shm_path{ shm_path ? shm_path : "" },
@@ -251,6 +254,9 @@ lsu::trace_class::trace_class(enum lttng_trace_format trace_format,
 	_gid{ egid },
 	_app_tracer_version{ .major = major, .minor = minor },
 	_tracing_id{ tracing_id },
+	_trace_name{ std::move(trace_name) },
+	_hostname{ std::move(hostname) },
+	_creation_time{ creation_time },
 	_clock{ lttng::make_unique<lsu::clock_class>() },
 	_metadata_generating_visitor{ [&]() -> std::unique_ptr<trace::trace_class_visitor> {
 		auto func = [this](const std::string& fragment) {
@@ -559,20 +565,10 @@ void lsu::trace_class::accept(lttng::sessiond::trace::trace_class_environment_vi
 		buffering_scheme() == LTTNG_BUFFER_PER_PID ? "pid" : "uid"));
 	visitor.visit(lst::environment_field<int64_t>("architecture_bit_width", abi.bits_per_long));
 
-	{
-		/* The caller already holds the session and session list locks. */
-		ASSERT_SESSION_LIST_LOCKED();
-		const auto session = ltt_session::find_session(_tracing_id);
-		ASSERT_LOCKED(session->_lock);
-
-		visitor.visit(lst::environment_field<const char *>(
-			"trace_name",
-			session->has_auto_generated_name ? DEFAULT_SESSION_NAME : session->name));
-		visitor.visit(lst::environment_field<std::string>(
-			"trace_creation_datetime",
-			lttng::utils::time_to_iso8601_str(session->creation_time)));
-		visitor.visit(lst::environment_field<const char *>("hostname", session->hostname));
-	}
+	visitor.visit(lst::environment_field<const char *>("trace_name", _trace_name.c_str()));
+	visitor.visit(lst::environment_field<std::string>(
+		"trace_creation_datetime", lttng::utils::time_to_iso8601_str(_creation_time)));
+	visitor.visit(lst::environment_field<const char *>("hostname", _hostname.c_str()));
 }
 
 void lsu::trace_class::_accept_on_clock_classes(lst::trace_class_visitor& visitor) const

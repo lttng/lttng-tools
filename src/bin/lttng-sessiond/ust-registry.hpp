@@ -181,7 +181,10 @@ ust_trace_class_per_uid_create(enum lttng_trace_format trace_format,
 			       uid_t euid,
 			       gid_t egid,
 			       uint64_t tracing_id,
-			       uid_t tracing_uid);
+			       uid_t tracing_uid,
+			       std::string trace_name,
+			       std::string hostname,
+			       time_t creation_time);
 
 /*
  * Create per-pid registry with default values.
@@ -198,7 +201,10 @@ ust_trace_class_per_pid_create(struct ust_app *app,
 			       const char *shm_path,
 			       uid_t euid,
 			       gid_t egid,
-			       uint64_t tracing_id);
+			       uint64_t tracing_id,
+			       std::string trace_name,
+			       std::string hostname,
+			       time_t creation_time);
 void ust_trace_class_destroy(lttng::sessiond::ust::trace_class *session);
 
 void ust_stream_class_destroy_event(lttng::sessiond::ust::stream_class *chan,

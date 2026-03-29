@@ -276,16 +276,20 @@ ls::ust::trace_class& ls::ust::domain_orchestrator::find_or_create_per_uid_trace
 		return *it->second;
 	}
 
-	std::shared_ptr<ust::trace_class> tc(ust_trace_class_per_uid_create(_session.trace_format,
-									    tracer_abi,
-									    tracer_major,
-									    tracer_minor,
-									    root_shm_path,
-									    shm_path,
-									    _session.uid,
-									    _session.gid,
-									    _session.id,
-									    uid));
+	std::shared_ptr<ust::trace_class> tc(ust_trace_class_per_uid_create(
+		_session.trace_format,
+		tracer_abi,
+		tracer_major,
+		tracer_minor,
+		root_shm_path,
+		shm_path,
+		_session.uid,
+		_session.gid,
+		_session.id,
+		uid,
+		_session.has_auto_generated_name ? DEFAULT_SESSION_NAME : _session.name,
+		_session.hostname,
+		_session.creation_time));
 	if (!tc) {
 		LTTNG_THROW_ERROR(
 			lttng::format("Failed to create per-UID trace class: uid={}, abi={}",
@@ -325,16 +329,20 @@ ls::ust::trace_class& ls::ust::domain_orchestrator::find_or_create_per_pid_trace
 		return *it->second;
 	}
 
-	std::shared_ptr<ust::trace_class> tc(ust_trace_class_per_pid_create(&app,
-									    _session.trace_format,
-									    tracer_abi,
-									    tracer_major,
-									    tracer_minor,
-									    root_shm_path,
-									    shm_path,
-									    euid,
-									    egid,
-									    _session.id));
+	std::shared_ptr<ust::trace_class> tc(ust_trace_class_per_pid_create(
+		&app,
+		_session.trace_format,
+		tracer_abi,
+		tracer_major,
+		tracer_minor,
+		root_shm_path,
+		shm_path,
+		euid,
+		egid,
+		_session.id,
+		_session.has_auto_generated_name ? DEFAULT_SESSION_NAME : _session.name,
+		_session.hostname,
+		_session.creation_time));
 	if (!tc) {
 		LTTNG_THROW_ERROR(
 			lttng::format("Failed to create per-PID trace class: pid={}", app.pid));
@@ -652,7 +660,10 @@ void ls::ust::domain_orchestrator::set_tracking_policy(config::process_attribute
 	 * updated configuration to all running applications if tracing is active.
 	 */
 	if (_active) {
-		ust_app_global_update_all(&_ust_session, _session.user_space_domain, *this);
+		ust_app_global_update_all(&_ust_session,
+					  _session.user_space_domain,
+					  *this,
+					  const_cast<ltt_session&>(_session));
 	}
 }
 
@@ -660,7 +671,10 @@ void ls::ust::domain_orchestrator::track_process_attribute(config::process_attri
 							   std::uint64_t)
 {
 	if (_active) {
-		ust_app_global_update_all(&_ust_session, _session.user_space_domain, *this);
+		ust_app_global_update_all(&_ust_session,
+					  _session.user_space_domain,
+					  *this,
+					  const_cast<ltt_session&>(_session));
 	}
 }
 
@@ -668,7 +682,10 @@ void ls::ust::domain_orchestrator::untrack_process_attribute(config::process_att
 							     std::uint64_t)
 {
 	if (_active) {
-		ust_app_global_update_all(&_ust_session, _session.user_space_domain, *this);
+		ust_app_global_update_all(&_ust_session,
+					  _session.user_space_domain,
+					  *this,
+					  const_cast<ltt_session&>(_session));
 	}
 }
 
@@ -678,7 +695,10 @@ void ls::ust::domain_orchestrator::start()
 		return;
 	}
 
-	const auto ret = ust_app_start_trace_all(&_ust_session, _session.user_space_domain, *this);
+	const auto ret = ust_app_start_trace_all(&_ust_session,
+						 _session.user_space_domain,
+						 *this,
+						 const_cast<ltt_session&>(_session));
 	if (ret < 0) {
 		LTTNG_THROW_CTL("Failed to start UST tracing", LTTNG_ERR_UST_START_FAIL);
 	}
@@ -870,26 +890,22 @@ void ls::ust::domain_orchestrator::create_channel_subdirectories(
 					LTTNG_ERR_CREATE_DIR_FAIL);
 		}
 
-		for (auto *app :
-		     lttng::urcu::lfht_iteration_adapter<ust_app,
-							 decltype(ust_app::pid_n),
-							 &ust_app::pid_n>(*ust_app_ht->ht)) {
-			if (!ust_app_get(*app)) {
-				DBG("Could not get application reference as it is being torn down; skipping application");
-				continue;
-			}
-
-			const ust_app_reference app_ref(app);
-
-			const auto *ua_sess = ust_app_lookup_app_session(&_ust_session, app);
+		/*
+		 * Iterate the orchestrator's per-PID trace class map so that
+		 * subdirectories are created for exactly the same set of
+		 * applications that for_each_consumer_stream_group() will visit
+		 * during rotation. Both maps are only mutated under the session
+		 * lock, so there is no TOCTOU race between subdirectory creation
+		 * and the subsequent rotation.
+		 *
+		 * Any app present in the map is guaranteed to still have its
+		 * ua_sess accessible: the orchestrator entry is removed (under
+		 * session lock) before the app session is torn down.
+		 */
+		for (const auto& tc_entry : _per_pid_trace_classes) {
+			const auto *ua_sess =
+				ust_app_lookup_app_session(&_ust_session, tc_entry.first);
 			if (!ua_sess) {
-				continue;
-			}
-
-			const auto *registry =
-				ust_app_get_session_registry(ua_sess->get_identifier());
-			if (!registry) {
-				DBG("Application session is being torn down. Skip application.");
 				continue;
 			}
 

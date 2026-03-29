@@ -1983,8 +1983,12 @@ static int _main(int argc, char **argv)
 		goto stop_threads;
 	}
 
+	the_app_unregistration_queue =
+		lttng::make_unique<lttng::command_queue<lttng::sessiond::app_management::command>>();
+
 	/* Create thread to manage application socket */
-	if (!launch_application_management_thread(apps_cmd_pipe[0])) {
+	if (!launch_application_management_thread(apps_cmd_pipe[0],
+						  *the_app_unregistration_queue)) {
 		retval = -1;
 		goto stop_threads;
 	}
