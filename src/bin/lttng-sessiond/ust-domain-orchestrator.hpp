@@ -101,6 +101,11 @@ public:
 		return _consumer_output.get();
 	}
 
+	struct consumer_output *get_consumer_output_ptr() const noexcept
+	{
+		return _consumer_output.get();
+	}
+
 	/*
 	 * Temporarily replace the consumer output (e.g. during snapshot
 	 * recording) and return the previous one. The caller is
@@ -646,6 +651,11 @@ public:
 	}
 
 	struct consumer_output *get_consumer_output_ptr() noexcept
+	{
+		std::abort();
+	}
+
+	struct consumer_output *get_consumer_output_ptr() const noexcept
 	{
 		std::abort();
 	}

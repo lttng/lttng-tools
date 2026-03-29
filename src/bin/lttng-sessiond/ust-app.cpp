@@ -2777,7 +2777,7 @@ static void init_ust_app_channel_from_config(struct ust_app_channel *ua_chan)
  * Copy data between a UST app session and a regular LTT session.
  */
 static void shadow_copy_session(struct ust_app_session *ua_sess,
-				struct ltt_ust_session *usess,
+				const lsu::domain_orchestrator& orchestrator,
 				const struct ltt_session& recording_session,
 				struct ust_app *app)
 {
@@ -2791,18 +2791,18 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 
 	DBG2("Shadow copy of session handle %d", ua_sess->handle);
 
-	ua_sess->recording_session_id = usess->id;
+	ua_sess->recording_session_id = orchestrator.session_id();
 	ua_sess->app_session_id = get_next_session_id();
 	LTTNG_OPTIONAL_SET(&ua_sess->real_credentials.uid, app->uid);
 	LTTNG_OPTIONAL_SET(&ua_sess->real_credentials.gid, app->gid);
 	LTTNG_OPTIONAL_SET(&ua_sess->effective_credentials.uid, recording_session.uid);
 	LTTNG_OPTIONAL_SET(&ua_sess->effective_credentials.gid, recording_session.gid);
-	ua_sess->buffer_type = usess->buffer_type;
+	ua_sess->buffer_type = orchestrator.buffer_type();
 	ua_sess->bits_per_long = app->abi.bits_per_long;
 
 	/* There is only one consumer object per session possible. */
-	consumer_output_get(usess->consumer);
-	ua_sess->consumer = usess->consumer;
+	consumer_output_get(orchestrator.get_consumer_output_ptr());
+	ua_sess->consumer = orchestrator.get_consumer_output_ptr();
 
 	ua_sess->output_traces = recording_session.output_traces;
 	ua_sess->live_timer_interval = recording_session.live_timer;
@@ -2927,7 +2927,7 @@ error:
  * Returns 0 on success or else a negative code which is either -ENOMEM or
  * -ENOTCONN which is the default code if the lttng_ust_ctl_create_session fails.
  */
-static int find_or_create_ust_app_session(struct ltt_ust_session *usess,
+static int find_or_create_ust_app_session(const lsu::domain_orchestrator& orchestrator,
 					  const struct ltt_session& recording_session,
 					  struct ust_app *app,
 					  struct ust_app_session **ua_sess_ptr,
@@ -2935,29 +2935,29 @@ static int find_or_create_ust_app_session(struct ltt_ust_session *usess,
 {
 	int ret, created = 0;
 	struct ust_app_session *ua_sess;
+	const auto session_id = orchestrator.session_id();
 
-	LTTNG_ASSERT(usess);
 	LTTNG_ASSERT(app);
 	LTTNG_ASSERT(ua_sess_ptr);
 
 	health_code_update();
 
-	ua_sess = ust_app_lookup_app_session(usess->id, app);
+	ua_sess = ust_app_lookup_app_session(session_id, app);
 	if (ua_sess == nullptr) {
 		DBG2("UST app pid: %d session id %" PRIu64 " not found, creating it",
 		     app->pid,
-		     usess->id);
+		     session_id);
 		ua_sess = alloc_ust_app_session();
 		if (ua_sess == nullptr) {
 			/* Only malloc can failed so something is really wrong */
 			ret = -ENOMEM;
 			goto error;
 		}
-		shadow_copy_session(ua_sess, usess, recording_session, app);
+		shadow_copy_session(ua_sess, orchestrator, recording_session, app);
 		created = 1;
 	}
 
-	switch (usess->buffer_type) {
+	switch (orchestrator.buffer_type()) {
 	case LTTNG_BUFFER_PER_PID:
 	{
 		/*
@@ -3301,7 +3301,7 @@ error:
  *
  * Return 0 on success or else a negative value.
  */
-static int do_consumer_create_channel(struct ltt_ust_session *usess,
+static int do_consumer_create_channel(struct consumer_output *consumer,
 				      struct ust_app_session *ua_sess,
 				      struct ust_app_channel *ua_chan,
 				      int bitness,
@@ -3313,7 +3313,7 @@ static int do_consumer_create_channel(struct ltt_ust_session *usess,
 	unsigned int nb_fd = 0;
 	struct consumer_socket *socket;
 
-	LTTNG_ASSERT(usess);
+	LTTNG_ASSERT(consumer);
 	LTTNG_ASSERT(ua_sess);
 	LTTNG_ASSERT(ua_chan);
 	LTTNG_ASSERT(registry);
@@ -3322,7 +3322,7 @@ static int do_consumer_create_channel(struct ltt_ust_session *usess,
 	health_code_update();
 
 	/* Get the right consumer socket for the application. */
-	socket = consumer_find_socket_by_bitness(bitness, usess->consumer);
+	socket = consumer_find_socket_by_bitness(bitness, consumer);
 	if (!socket) {
 		ret = -EINVAL;
 		goto error;
@@ -3341,13 +3341,8 @@ static int do_consumer_create_channel(struct ltt_ust_session *usess,
 	 * Ask consumer to create channel. The consumer will return the number of
 	 * stream we have to expect.
 	 */
-	ret = ust_consumer_ask_channel(ua_sess,
-				       ua_chan,
-				       usess->consumer,
-				       socket,
-				       registry,
-				       current_trace_chunk,
-				       trace_format);
+	ret = ust_consumer_ask_channel(
+		ua_sess, ua_chan, consumer, socket, registry, current_trace_chunk, trace_format);
 	if (ret < 0) {
 		goto error_ask;
 	}
@@ -3371,7 +3366,7 @@ static int do_consumer_create_channel(struct ltt_ust_session *usess,
 	 * Now get the channel from the consumer. This call will populate the stream
 	 * list of that channel and set the ust objects.
 	 */
-	if (usess->consumer->enabled) {
+	if (consumer->enabled) {
 		ret = ust_consumer_get_channel(socket, ua_chan);
 		if (ret < 0) {
 			goto error_destroy;
@@ -3507,7 +3502,8 @@ error:
  * Return 0 on success else a negative value.
  */
 static int create_channel_per_uid(struct ust_app *app,
-				  struct ltt_ust_session *usess,
+				  struct consumer_output *consumer,
+				  std::uint64_t session_id,
 				  struct ust_app_session *ua_sess,
 				  struct ust_app_channel *ua_chan,
 				  ltt_session& session)
@@ -3516,7 +3512,7 @@ static int create_channel_per_uid(struct ust_app *app,
 	enum lttng_error_code notification_ret;
 
 	LTTNG_ASSERT(app);
-	LTTNG_ASSERT(usess);
+	LTTNG_ASSERT(consumer);
 	LTTNG_ASSERT(ua_sess);
 	LTTNG_ASSERT(ua_chan);
 	ASSERT_RCU_READ_LOCKED();
@@ -3545,7 +3541,7 @@ static int create_channel_per_uid(struct ust_app *app,
 	 */
 	{
 		auto trace_class_ptr = the_trace_class_index->find_per_uid(
-			usess->id, static_cast<std::uint32_t>(app_abi), app->uid);
+			session_id, static_cast<std::uint32_t>(app_abi), app->uid);
 		LTTNG_ASSERT(trace_class_ptr);
 
 		/* Register the stream class (CTF channel) in the trace class. */
@@ -3564,7 +3560,7 @@ static int create_channel_per_uid(struct ust_app *app,
 		 * Create the buffers on the consumer side. This call populates the
 		 * ust app channel object with all streams and data object.
 		 */
-		ret = do_consumer_create_channel(usess,
+		ret = do_consumer_create_channel(consumer,
 						 ua_sess,
 						 ua_chan,
 						 app->abi.bits_per_long,
@@ -3669,7 +3665,7 @@ error:
  * Return 0 on success else a negative value.
  */
 static int create_channel_per_pid(struct ust_app *app,
-				  struct ltt_ust_session *usess,
+				  struct consumer_output *consumer,
 				  const ust_app_session::locked_weak_ref& ua_sess,
 				  struct ust_app_channel *ua_chan,
 				  ltt_session& session)
@@ -3679,7 +3675,7 @@ static int create_channel_per_pid(struct ust_app *app,
 	uint64_t chan_reg_key;
 
 	LTTNG_ASSERT(app);
-	LTTNG_ASSERT(usess);
+	LTTNG_ASSERT(consumer);
 	LTTNG_ASSERT(ua_chan);
 
 	DBG("UST app creating channel %s with per PID buffers", ua_chan->name);
@@ -3705,7 +3701,7 @@ static int create_channel_per_pid(struct ust_app *app,
 	}
 
 	/* Create and get channel on the consumer side. */
-	ret = do_consumer_create_channel(usess,
+	ret = do_consumer_create_channel(consumer,
 					 &ua_sess.get(),
 					 ua_chan,
 					 app->abi.bits_per_long,
@@ -3797,7 +3793,9 @@ error:
  * the application exited concurrently.
  */
 static int ust_app_channel_send(struct ust_app *app,
-				struct ltt_ust_session *usess,
+				struct consumer_output *consumer,
+				lttng_buffer_type buffer_type,
+				std::uint64_t session_id,
 				const ust_app_session::locked_weak_ref& ua_sess,
 				struct ust_app_channel *ua_chan,
 				ltt_session& session)
@@ -3805,16 +3803,15 @@ static int ust_app_channel_send(struct ust_app *app,
 	int ret;
 
 	LTTNG_ASSERT(app);
-	LTTNG_ASSERT(usess);
-	LTTNG_ASSERT(usess->active);
+	LTTNG_ASSERT(consumer);
 	LTTNG_ASSERT(ua_chan);
 	ASSERT_RCU_READ_LOCKED();
 
 	/* Handle buffer type before sending the channel to the application. */
-	switch (usess->buffer_type) {
+	switch (buffer_type) {
 	case LTTNG_BUFFER_PER_UID:
 	{
-		ret = create_channel_per_uid(app, usess, &ua_sess.get(), ua_chan, session);
+		ret = create_channel_per_uid(app, consumer, session_id, &ua_sess.get(), ua_chan, session);
 		if (ret < 0) {
 			goto error;
 		}
@@ -3822,7 +3819,7 @@ static int ust_app_channel_send(struct ust_app *app,
 	}
 	case LTTNG_BUFFER_PER_PID:
 	{
-		ret = create_channel_per_pid(app, usess, ua_sess, ua_chan, session);
+		ret = create_channel_per_pid(app, consumer, ua_sess, ua_chan, session);
 		if (ret < 0) {
 			goto error;
 		}
@@ -5370,7 +5367,9 @@ is_context_redundant(const lttng::sessiond::config::recording_channel_configurat
 
 /* The ua_sess lock must be held by the caller.  */
 static int ust_app_channel_create(
-	struct ltt_ust_session *usess,
+	struct consumer_output *consumer,
+	lttng_buffer_type buffer_type,
+	std::uint64_t session_id,
 	const ust_app_session::locked_weak_ref& ua_sess,
 	struct ust_app *app,
 	struct ust_app_channel **_ua_chan,
@@ -5391,7 +5390,7 @@ static int ust_app_channel_create(
 		goto error;
 	}
 
-	ret = ust_app_channel_send(app, usess, ua_sess, ua_chan, session);
+	ret = ust_app_channel_send(app, consumer, buffer_type, session_id, ua_sess, ua_chan, session);
 	if (ret) {
 		goto error;
 	}
@@ -6211,7 +6210,9 @@ int ust_app_destroy_trace_all(std::uint64_t session_id)
 
 /* The ua_sess lock must be held by the caller. */
 static int find_or_create_ust_app_channel(
-	struct ltt_ust_session *usess,
+	struct consumer_output *consumer,
+	lttng_buffer_type buffer_type,
+	std::uint64_t session_id,
 	const ust_app_session::locked_weak_ref& ua_sess,
 	struct ust_app *app,
 	struct ust_app_channel **ua_chan,
@@ -6230,7 +6231,9 @@ static int find_or_create_ust_app_channel(
 		goto end;
 	}
 
-	ret = ust_app_channel_create(usess,
+	ret = ust_app_channel_create(consumer,
+				     buffer_type,
+				     session_id,
 				     ua_sess,
 				     app,
 				     ua_chan,
@@ -6413,14 +6416,16 @@ end:
  * RCU read lock must be held by the caller.
  */
 static void
-ust_app_synchronize_all_channels(struct ltt_ust_session *usess,
+ust_app_synchronize_all_channels(struct consumer_output *consumer,
+				 lttng_buffer_type buffer_type,
+				 std::uint64_t session_id,
 				 const ust_app_session::locked_weak_ref& ua_sess,
 				 struct ust_app *app,
 				 const lttng::sessiond::config::domain& config_domain,
 				 const lttng::sessiond::ust::domain_orchestrator& orchestrator,
 				 ltt_session& session)
 {
-	LTTNG_ASSERT(usess);
+	LTTNG_ASSERT(consumer);
 	LTTNG_ASSERT(app);
 	ASSERT_RCU_READ_LOCKED();
 
@@ -6436,8 +6441,15 @@ ust_app_synchronize_all_channels(struct ltt_ust_session *usess,
 		 * allocated (if necessary) and sent to the application, and
 		 * all enabled contexts will be added to the channel.
 		 */
-		int ret = find_or_create_ust_app_channel(
-			usess, ua_sess, app, &ua_chan, chan_config, handle, session);
+		int ret = find_or_create_ust_app_channel(consumer,
+							 buffer_type,
+							 session_id,
+							 ua_sess,
+							 app,
+							 &ua_chan,
+							 chan_config,
+							 handle,
+							 session);
 		if (ret) {
 			/* Tracer is probably gone or ENOMEM. */
 			goto end;
@@ -6473,23 +6485,19 @@ end:
  * The caller must ensure that the application is compatible and is tracked
  * by the process attribute trackers.
  */
-static void ust_app_synchronize(struct ltt_ust_session *usess,
-				struct ust_app *app,
+static void ust_app_synchronize(struct ust_app *app,
 				const lttng::sessiond::config::domain& config_domain,
-				const lttng::sessiond::ust::domain_orchestrator& orchestrator,
+				const lsu::domain_orchestrator& orchestrator,
 				ltt_session& session)
 {
 	int ret = 0;
 	struct ust_app_session *ua_sess = nullptr;
-
-	/*
-	 * The application's configuration should only be synchronized for
-	 * active sessions.
-	 */
-	LTTNG_ASSERT(usess->active);
+	auto *consumer = orchestrator.get_consumer_output_ptr();
+	const auto buffer_type = orchestrator.buffer_type();
+	const auto session_id = orchestrator.session_id();
 
 	ret = find_or_create_ust_app_session(
-		usess, orchestrator.recording_session(), app, &ua_sess, nullptr);
+		orchestrator, orchestrator.recording_session(), app, &ua_sess, nullptr);
 	if (ret < 0) {
 		/* Tracer is probably gone or ENOMEM. */
 		return;
@@ -6505,8 +6513,14 @@ static void ust_app_synchronize(struct ltt_ust_session *usess,
 	{
 		const lttng::urcu::read_lock_guard read_lock;
 
-		ust_app_synchronize_all_channels(
-			usess, locked_ua_sess, app, config_domain, orchestrator, session);
+		ust_app_synchronize_all_channels(consumer,
+						 buffer_type,
+						 session_id,
+						 locked_ua_sess,
+						 app,
+						 config_domain,
+						 orchestrator,
+						 session);
 
 		/*
 		 * Create the metadata for the application. This returns gracefully if a
@@ -6517,20 +6531,20 @@ static void ust_app_synchronize(struct ltt_ust_session *usess,
 		 * daemon, the consumer will use this assumption to send the
 		 * "STREAMS_SENT" message to the relay daemon.
 		 */
-		ret = create_ust_app_metadata(locked_ua_sess, app, usess->consumer, session);
+		ret = create_ust_app_metadata(locked_ua_sess, app, consumer, session);
 		if (ret < 0) {
 			ERR("Metadata creation failed for app sock %d for session id %" PRIu64,
 			    app->sock,
-			    usess->id);
+			    session_id);
 		}
 	}
 }
 
-static void ust_app_global_destroy(struct ltt_ust_session *usess, struct ust_app *app)
+static void ust_app_global_destroy(std::uint64_t session_id, struct ust_app *app)
 {
 	struct ust_app_session *ua_sess;
 
-	ua_sess = ust_app_lookup_app_session(usess->id, app);
+	ua_sess = ust_app_lookup_app_session(session_id, app);
 	if (ua_sess == nullptr) {
 		return;
 	}
@@ -6543,19 +6557,20 @@ static void ust_app_global_destroy(struct ltt_ust_session *usess, struct ust_app
  * Called with session lock held.
  * Called with RCU read-side lock held.
  */
-void ust_app_global_update(struct ltt_ust_session *usess,
+void ust_app_global_update(struct ltt_ust_session * /* usess */,
 			   struct ust_app *app,
 			   const lttng::sessiond::config::domain& domain,
 			   const lttng::sessiond::ust::domain_orchestrator& orchestrator,
 			   ltt_session& session)
 {
 	namespace lsc = lttng::sessiond::config;
+	const auto session_id = orchestrator.session_id();
 
-	LTTNG_ASSERT(usess);
-	LTTNG_ASSERT(usess->active);
 	ASSERT_RCU_READ_LOCKED();
 
-	DBG2("UST app global update for app sock %d for session id %" PRIu64, app->sock, usess->id);
+	DBG2("UST app global update for app sock %d for session id %" PRIu64,
+	     app->sock,
+	     session_id);
 
 	if (!app->compatible) {
 		return;
@@ -6569,10 +6584,10 @@ void ust_app_global_update(struct ltt_ust_session *usess,
 		 * Synchronize the application's internal tracing configuration
 		 * and start tracing.
 		 */
-		ust_app_synchronize(usess, app, domain, orchestrator, session);
-		ust_app_start_trace(usess->id, app);
+		ust_app_synchronize(app, domain, orchestrator, session);
+		ust_app_start_trace(session_id, app);
 	} else {
-		ust_app_global_destroy(usess, app);
+		ust_app_global_destroy(session_id, app);
 	}
 }
 
@@ -7552,12 +7567,9 @@ int ust_app_regenerate_statedump_all(std::uint64_t session_id)
 enum lttng_error_code ust_app_rotate_session(const ltt_session& session)
 {
 	enum lttng_error_code cmd_ret = LTTNG_OK;
-	const auto *usess = session.ust_session;
-
-	LTTNG_ASSERT(usess);
-
 	const auto& orchestrator =
 		static_cast<const lsu::domain_orchestrator&>(session.get_ust_orchestrator());
+	auto *consumer = orchestrator.get_consumer_output_ptr();
 
 	/*
 	 * Both per-UID and per-PID modes use the same iteration pattern.
@@ -7565,7 +7577,7 @@ enum lttng_error_code ust_app_rotate_session(const ltt_session& session)
 	 * (it checks _metadata_closed on each per-PID trace class).
 	 */
 	orchestrator.for_each_consumer_stream_group(
-		[&usess,
+		[consumer,
 		 &cmd_ret](const lsu::domain_orchestrator::consumer_stream_group_descriptor& desc) {
 			const lttng::urcu::read_lock_guard read_lock;
 
@@ -7574,18 +7586,18 @@ enum lttng_error_code ust_app_rotate_session(const ltt_session& session)
 			}
 
 			const auto socket = consumer_find_socket_by_bitness(
-				static_cast<int>(desc.abi), usess->consumer);
+				static_cast<int>(desc.abi), consumer);
 			if (!socket) {
 				cmd_ret = LTTNG_ERR_INVALID;
 				return;
 			}
 
 			if (desc.is_metadata) {
-				(void) push_metadata(desc.trace_class.lock(), usess->consumer);
+				(void) push_metadata(desc.trace_class.lock(), consumer);
 			}
 
 			const auto rotate_ret = consumer_rotate_channel(
-				socket, desc.consumer_key, usess->consumer, desc.is_metadata);
+				socket, desc.consumer_key, consumer, desc.is_metadata);
 			if (rotate_ret < 0) {
 				cmd_ret = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
 			}
