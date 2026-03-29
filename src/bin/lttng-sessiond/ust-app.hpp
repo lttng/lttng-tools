@@ -538,7 +538,7 @@ int ust_app_start_trace_all(struct ltt_ust_session *usess,
 			    const lttng::sessiond::ust::domain_orchestrator& orchestrator,
 			    ltt_session& session);
 int ust_app_stop_trace_all(struct ltt_ust_session *usess,
-			   const lttng::sessiond::ust::domain_orchestrator& orchestrator);
+			   lttng::sessiond::ust::domain_orchestrator& orchestrator);
 int ust_app_destroy_trace_all(std::uint64_t session_id);
 int ust_app_list_events(struct lttng_event **events);
 int ust_app_list_event_fields(struct lttng_event_field **fields);
@@ -631,9 +631,8 @@ ust_app_start_trace_all(struct ltt_ust_session *usess __attribute__((unused)),
 }
 
 static inline int
-ust_app_stop_trace_all(struct ltt_ust_session *usess __attribute__((unused)),
-		       const lttng::sessiond::ust::domain_orchestrator& orchestrator
-		       __attribute__((unused)))
+ust_app_stop_trace_all(struct ltt_ust_session * /* usess */,
+		       lttng::sessiond::ust::domain_orchestrator& /* orchestrator */)
 {
 	return 0;
 }

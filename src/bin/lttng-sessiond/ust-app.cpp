@@ -5599,7 +5599,7 @@ int ust_app_create_event_glb(
  * Called with UST app session lock held.
  *
  */
-static int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
+static int ust_app_start_trace(std::uint64_t session_id, struct ust_app *app)
 {
 	int ret = 0;
 	struct ust_app_session *ua_sess;
@@ -5614,7 +5614,7 @@ static int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *ap
 		return 0;
 	}
 
-	ua_sess = ust_app_lookup_app_session(usess->id, app);
+	ua_sess = ust_app_lookup_app_session(session_id, app);
 	if (ua_sess == nullptr) {
 		/* The session is in teardown process. Ignore and continue. */
 		return 0;
@@ -5689,7 +5689,7 @@ static int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *ap
 /*
  * Stop tracing for a specific UST session and app.
  */
-static int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
+static int ust_app_stop_trace(std::uint64_t session_id, struct ust_app *app)
 {
 	int ret = 0;
 	struct ust_app_session *ua_sess;
@@ -5704,7 +5704,7 @@ static int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app
 		return 0;
 	}
 
-	ua_sess = ust_app_lookup_app_session(usess->id, app);
+	ua_sess = ust_app_lookup_app_session(session_id, app);
 	if (ua_sess == nullptr) {
 		return 0;
 	}
@@ -5850,24 +5850,24 @@ static int ust_app_flush_app_session(ust_app& app, ust_app_session& ua_sess)
  * Flush buffers for all applications for a specific UST session.
  * Called with UST session lock held.
  */
-static int ust_app_flush_session(struct ltt_ust_session *usess,
-				 const lsu::domain_orchestrator& orchestrator)
+static int ust_app_flush_session(lsu::domain_orchestrator& orchestrator)
 {
 	int ret = 0;
 
 	DBG("Flushing session buffers for all ust apps");
 
 	/* Flush buffers and push metadata. */
-	switch (usess->buffer_type) {
+	switch (orchestrator.buffer_type()) {
 	case LTTNG_BUFFER_PER_UID:
 	{
+		auto *consumer = orchestrator.get_consumer_output_ptr();
 		orchestrator.for_each_consumer_stream_group(
-			[&usess](const lsu::domain_orchestrator::consumer_stream_group_descriptor&
-					 desc) {
+			[consumer](const lsu::domain_orchestrator::consumer_stream_group_descriptor&
+					   desc) {
 				const lttng::urcu::read_lock_guard read_lock;
 
 				const auto socket = consumer_find_socket_by_bitness(
-					static_cast<int>(desc.abi), usess->consumer);
+					static_cast<int>(desc.abi), consumer);
 				if (!socket) {
 					/* Ignore request if no consumer is found for the session.
 					 */
@@ -5875,8 +5875,7 @@ static int ust_app_flush_session(struct ltt_ust_session *usess,
 				}
 
 				if (desc.is_metadata) {
-					(void) push_metadata(desc.trace_class.lock(),
-							     usess->consumer);
+					(void) push_metadata(desc.trace_class.lock(), consumer);
 				} else {
 					(void) consumer_flush_channel(socket, desc.consumer_key);
 				}
@@ -5886,6 +5885,8 @@ static int ust_app_flush_session(struct ltt_ust_session *usess,
 	}
 	case LTTNG_BUFFER_PER_PID:
 	{
+		const auto session_id = orchestrator.session_id();
+
 		/* Iterate on all apps. */
 		for (auto *app :
 		     lttng::urcu::lfht_iteration_adapter<ust_app,
@@ -5899,7 +5900,7 @@ static int ust_app_flush_session(struct ltt_ust_session *usess,
 			/* Prevent app teardown during use. */
 			const ust_app_reference app_ref(app);
 
-			auto *ua_sess = ust_app_lookup_app_session(usess->id, app);
+			auto *ua_sess = ust_app_lookup_app_session(session_id, app);
 			if (ua_sess == nullptr) {
 				continue;
 			}
@@ -5979,26 +5980,26 @@ static int ust_app_clear_quiescent_app_session(struct ust_app *app, struct ust_a
  * specific UST session.
  * Called with UST session lock held.
  */
-static int ust_app_clear_quiescent_session(struct ltt_ust_session *usess,
-					   const lsu::domain_orchestrator& orchestrator)
+static int ust_app_clear_quiescent_session(const lsu::domain_orchestrator& orchestrator)
 {
 	int ret = 0;
 
 	DBG("Clearing stream quiescent state for all ust apps");
 
-	switch (usess->buffer_type) {
+	switch (orchestrator.buffer_type()) {
 	case LTTNG_BUFFER_PER_UID:
 	{
 		orchestrator.for_each_consumer_stream_group(
-			[&usess](const lsu::domain_orchestrator::consumer_stream_group_descriptor&
-					 desc) {
+			[&orchestrator](
+				const lsu::domain_orchestrator::consumer_stream_group_descriptor&
+					desc) {
 				if (desc.is_metadata) {
 					return;
 				}
 
 				lttng::urcu::read_lock_guard read_lock;
 				const auto socket = consumer_find_socket_by_bitness(
-					static_cast<int>(desc.abi), usess->consumer);
+					static_cast<int>(desc.abi), &orchestrator.consumer());
 				if (!socket) {
 					return;
 				}
@@ -6010,6 +6011,8 @@ static int ust_app_clear_quiescent_session(struct ltt_ust_session *usess,
 	}
 	case LTTNG_BUFFER_PER_PID:
 	{
+		const auto session_id = orchestrator.session_id();
+
 		/* Iterate on all apps. */
 		for (auto *app :
 		     lttng::urcu::lfht_iteration_adapter<ust_app,
@@ -6023,7 +6026,7 @@ static int ust_app_clear_quiescent_session(struct ltt_ust_session *usess,
 			/* Prevent app teardown during use. */
 			const ust_app_reference app_ref(app);
 
-			auto *ua_sess = ust_app_lookup_app_session(usess->id, app);
+			auto *ua_sess = ust_app_lookup_app_session(session_id, app);
 			if (ua_sess == nullptr) {
 				continue;
 			}
@@ -6120,7 +6123,7 @@ int ust_app_start_trace_all(struct ltt_ust_session *usess,
 	 * following stop or destroy is sure to grab a timestamp_end near those
 	 * operations, even if the packet is empty.
 	 */
-	(void) ust_app_clear_quiescent_session(usess, orchestrator);
+	(void) ust_app_clear_quiescent_session(orchestrator);
 
 	/* Iterate on all apps. */
 	for (auto *app :
@@ -6144,10 +6147,10 @@ int ust_app_start_trace_all(struct ltt_ust_session *usess,
  * Start tracing for the UST session.
  * Called with UST session lock held.
  */
-int ust_app_stop_trace_all(struct ltt_ust_session *usess,
-			   const lsu::domain_orchestrator& orchestrator)
+int ust_app_stop_trace_all(struct ltt_ust_session *usess, lsu::domain_orchestrator& orchestrator)
 {
 	int ret = 0;
+	const auto session_id = orchestrator.session_id();
 
 	DBG("Stopping all UST traces");
 
@@ -6169,14 +6172,14 @@ int ust_app_stop_trace_all(struct ltt_ust_session *usess,
 		/* Prevent app teardown during use. */
 		const ust_app_reference app_ref(app);
 
-		ret = ust_app_stop_trace(usess, app);
+		ret = ust_app_stop_trace(session_id, app);
 		if (ret < 0) {
 			/* Continue to next apps even on error */
 			continue;
 		}
 	}
 
-	(void) ust_app_flush_session(usess, orchestrator);
+	(void) ust_app_flush_session(orchestrator);
 
 	return 0;
 }
@@ -6567,7 +6570,7 @@ void ust_app_global_update(struct ltt_ust_session *usess,
 		 * and start tracing.
 		 */
 		ust_app_synchronize(usess, app, domain, orchestrator, session);
-		ust_app_start_trace(usess, app);
+		ust_app_start_trace(usess->id, app);
 	} else {
 		ust_app_global_destroy(usess, app);
 	}
