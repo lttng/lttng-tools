@@ -11,15 +11,11 @@
 
 #include "consumer.hpp"
 
-#include <common/hashtable/hashtable.hpp>
-
 #include <lttng/lttng.h>
 
 /* UST session */
 struct ltt_ust_session {
 	uint64_t id; /* Unique identifier of session */
-	/* Hash table of agent indexed by agent domain. */
-	struct lttng_ht *agents;
 	/* Is the session active meaning has is been started or stopped. */
 	bool active;
 	struct consumer_output *consumer;

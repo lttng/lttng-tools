@@ -46,21 +46,17 @@ struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 	 * type by the UST domain orchestrator.
 	 */
 	lus->buffer_type = LTTNG_BUFFER_PER_UID;
-	/* Alloc agent hash table. */
-	lus->agents = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 
 	lus->consumer = consumer_create_output(CONSUMER_DST_LOCAL);
 	if (lus->consumer == nullptr) {
-		goto error;
+		free(lus);
+		return nullptr;
 	}
 
 	DBG2("UST trace session create successful");
 
 	return lus;
 
-error:
-	lttng_ht_destroy(lus->agents);
-	free(lus);
 error_alloc:
 	return nullptr;
 }

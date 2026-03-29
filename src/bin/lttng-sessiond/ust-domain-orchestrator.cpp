@@ -158,16 +158,13 @@ ls::ust::domain_orchestrator::domain_orchestrator(
 	_session(session),
 	_default_buffer_ownership(default_buffer_ownership),
 	_consumer_output(std::move(consumer_output)),
-	_agents(ust_session.agents),
+	_agents(lttng_ht_new(0, LTTNG_HT_TYPE_U64)),
 	_root_shm_path(session.shm_path),
 	_shm_path(session.shm_path[0] != '\0' ? std::string(session.shm_path) + "/ust" :
 						std::string())
 {
 	LTTNG_ASSERT(_consumer_output);
 	LTTNG_ASSERT(_agents);
-
-	/* Transfer ownership: the orchestrator now owns the agents hash table. */
-	ust_session.agents = nullptr;
 }
 
 struct lttng_ust_abi_channel_attr
