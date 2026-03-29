@@ -5155,17 +5155,16 @@ int ust_app_ht_alloc()
 /*
  * For a specific UST session, disable the channel for all registered apps.
  */
-int ust_app_disable_channel_glb(struct ltt_ust_session *usess, lttng::c_string_view channel_name)
+int ust_app_disable_channel_glb(std::uint64_t session_id, lttng::c_string_view channel_name)
 {
 	int ret = 0;
 	struct lttng_ht_node_str *ua_chan_node;
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
 
-	LTTNG_ASSERT(usess->active);
 	DBG2("UST app disabling channel %s from global domain for session id %" PRIu64,
 	     channel_name.data(),
-	     usess->id);
+	     session_id);
 
 	/* Iterate on all apps. */
 	for (auto *app :
@@ -5189,7 +5188,7 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess, lttng::c_string_v
 			continue;
 		}
 
-		ua_sess = ust_app_lookup_app_session(usess->id, app);
+		ua_sess = ust_app_lookup_app_session(session_id, app);
 		if (ua_sess == nullptr) {
 			continue;
 		}
@@ -5218,15 +5217,14 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess, lttng::c_string_v
 /*
  * For a specific UST session, enable the channel for all registered apps.
  */
-int ust_app_enable_channel_glb(struct ltt_ust_session *usess, lttng::c_string_view channel_name)
+int ust_app_enable_channel_glb(std::uint64_t session_id, lttng::c_string_view channel_name)
 {
 	int ret = 0;
 	struct ust_app_session *ua_sess;
 
-	LTTNG_ASSERT(usess->active);
 	DBG2("UST app enabling channel %s to global domain for session id %" PRIu64,
 	     channel_name.data(),
-	     usess->id);
+	     session_id);
 
 	/* For every registered applications */
 	for (auto *app :
@@ -5248,7 +5246,7 @@ int ust_app_enable_channel_glb(struct ltt_ust_session *usess, lttng::c_string_vi
 			continue;
 		}
 
-		ua_sess = ust_app_lookup_app_session(usess->id, app);
+		ua_sess = ust_app_lookup_app_session(session_id, app);
 		if (ua_sess == nullptr) {
 			continue;
 		}
@@ -5267,7 +5265,7 @@ int ust_app_enable_channel_glb(struct ltt_ust_session *usess, lttng::c_string_vi
 /*
  * Disable an event in a channel and for a specific session.
  */
-int ust_app_disable_event_glb(struct ltt_ust_session *usess,
+int ust_app_disable_event_glb(std::uint64_t session_id,
 			      lttng::c_string_view channel_name,
 			      const lttng::sessiond::config::event_rule_configuration& event_config)
 {
@@ -5278,11 +5276,10 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 	struct ust_app_channel *ua_chan;
 	struct ust_app_event *ua_event;
 
-	LTTNG_ASSERT(usess->active);
 	DBG("UST app disabling event for all apps in channel "
 	    "%s for session id %" PRIu64,
 	    channel_name.data(),
-	    usess->id);
+	    session_id);
 
 	/* Iterate on all apps. */
 	for (auto *app :
@@ -5300,7 +5297,7 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 			continue;
 		}
 
-		ua_sess = ust_app_lookup_app_session(usess->id, app);
+		ua_sess = ust_app_lookup_app_session(session_id, app);
 		if (ua_sess == nullptr) {
 			/* Next app */
 			continue;
@@ -5313,7 +5310,7 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 			DBG2("Channel %s not found in session id %" PRIu64 " for app pid %d."
 			     "Skipping",
 			     channel_name.data(),
-			     usess->id,
+			     session_id,
 			     app->pid);
 			continue;
 		}
@@ -5443,7 +5440,7 @@ error:
 /*
  * Enable event for a specific session and channel on the tracer.
  */
-int ust_app_enable_event_glb(struct ltt_ust_session *usess,
+int ust_app_enable_event_glb(std::uint64_t session_id,
 			     lttng::c_string_view channel_name,
 			     const lttng::sessiond::config::event_rule_configuration& event_config)
 {
@@ -5454,8 +5451,7 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 	struct ust_app_channel *ua_chan;
 	struct ust_app_event *ua_event;
 
-	LTTNG_ASSERT(usess->active);
-	DBG("UST app enabling event for all apps for session id %" PRIu64, usess->id);
+	DBG("UST app enabling event for all apps for session id %" PRIu64, session_id);
 
 	/*
 	 * NOTE: At this point, this function is called only if the session and
@@ -5483,7 +5479,7 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 			continue;
 		}
 
-		ua_sess = ust_app_lookup_app_session(usess->id, app);
+		ua_sess = ust_app_lookup_app_session(session_id, app);
 		if (!ua_sess) {
 			/* The application has problem or is probably dead. */
 			continue;
@@ -5530,7 +5526,7 @@ error:
  * all registered apps.
  */
 int ust_app_create_event_glb(
-	struct ltt_ust_session *usess,
+	std::uint64_t session_id,
 	lttng::c_string_view channel_name,
 	const lttng::sessiond::config::event_rule_configuration& event_rule_config)
 {
@@ -5540,8 +5536,7 @@ int ust_app_create_event_glb(
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
 
-	LTTNG_ASSERT(usess->active);
-	DBG("UST app creating event for all apps for session id %" PRIu64, usess->id);
+	DBG("UST app creating event for all apps for session id %" PRIu64, session_id);
 
 	/* Iterate on all apps. */
 	for (auto *app :
@@ -5563,7 +5558,7 @@ int ust_app_create_event_glb(
 			continue;
 		}
 
-		ua_sess = ust_app_lookup_app_session(usess->id, app);
+		ua_sess = ust_app_lookup_app_session(session_id, app);
 		if (!ua_sess) {
 			/* The application has problem or is probably dead. */
 			continue;
@@ -6651,7 +6646,7 @@ void ust_app_global_update_all_event_notifier_rules()
 /*
  * Add context to a specific channel for global UST domain.
  */
-int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
+int ust_app_add_ctx_channel_glb(std::uint64_t session_id,
 				lttng::c_string_view channel_name,
 				const lttng::sessiond::config::context_configuration& ctx_config)
 {
@@ -6660,8 +6655,6 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 	struct lttng_ht_iter uiter;
 	struct ust_app_channel *ua_chan = nullptr;
 	struct ust_app_session *ua_sess;
-
-	LTTNG_ASSERT(usess->active);
 
 	/* Iterate on all apps. */
 	for (auto *app :
@@ -6683,7 +6676,7 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 			continue;
 		}
 
-		ua_sess = ust_app_lookup_app_session(usess->id, app);
+		ua_sess = ust_app_lookup_app_session(session_id, app);
 		if (ua_sess == nullptr) {
 			continue;
 		}

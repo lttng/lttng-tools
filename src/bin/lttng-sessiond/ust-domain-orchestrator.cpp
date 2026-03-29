@@ -590,7 +590,7 @@ void ls::ust::domain_orchestrator::enable_channel(
 	 * successfully enabled on the session daemon side so the enable-channel
 	 * command is a success.
 	 */
-	(void) ust_app_enable_channel_glb(&_ust_session, channel_config.name);
+	(void) ust_app_enable_channel_glb(session_id(), channel_config.name);
 }
 
 void ls::ust::domain_orchestrator::disable_channel(
@@ -605,7 +605,7 @@ void ls::ust::domain_orchestrator::disable_channel(
 		return;
 	}
 
-	const auto ret = ust_app_disable_channel_glb(&_ust_session, channel_config.name);
+	const auto ret = ust_app_disable_channel_glb(session_id(), channel_config.name);
 	if (ret < 0 && ret != -LTTNG_UST_ERR_EXIST) {
 		LTTNG_THROW_CTL("Failed to disable UST channel", LTTNG_ERR_UST_CHAN_DISABLE_FAIL);
 	}
@@ -615,12 +615,12 @@ void ls::ust::domain_orchestrator::disable_event(
 	const config::recording_channel_configuration& channel_config,
 	const config::event_rule_configuration& event_rule_config)
 {
-	if (!_ust_session.active) {
+	if (!_active) {
 		return;
 	}
 
 	const auto ret =
-		ust_app_disable_event_glb(&_ust_session, channel_config.name, event_rule_config);
+		ust_app_disable_event_glb(session_id(), channel_config.name, event_rule_config);
 	if (ret < 0) {
 		LTTNG_THROW_CTL("Failed to disable UST event", LTTNG_ERR_UST_DISABLE_FAIL);
 	}
@@ -641,7 +641,7 @@ void ls::ust::domain_orchestrator::enable_event(
 	const config::recording_channel_configuration& channel_config,
 	const config::event_rule_configuration& event_rule_config)
 {
-	if (!_ust_session.active) {
+	if (!_active) {
 		_created_event_rules.insert(&event_rule_config);
 		return;
 	}
@@ -651,10 +651,10 @@ void ls::ust::domain_orchestrator::enable_event(
 	int ret;
 	if (already_created) {
 		ret = ust_app_enable_event_glb(
-			&_ust_session, channel_config.name, event_rule_config);
+			session_id(), channel_config.name, event_rule_config);
 	} else {
 		ret = ust_app_create_event_glb(
-			&_ust_session, channel_config.name, event_rule_config);
+			session_id(), channel_config.name, event_rule_config);
 		if (ret >= 0) {
 			_created_event_rules.insert(&event_rule_config);
 		}

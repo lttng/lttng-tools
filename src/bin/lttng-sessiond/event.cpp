@@ -448,7 +448,7 @@ static int event_agent_disable_one(struct ltt_ust_session *usess,
 
 	if (usess->active) {
 		ret = ust_app_disable_event_glb(
-			usess, ust_channel_name, *aevent->ust_event_rule_config);
+			usess->id, ust_channel_name, *aevent->ust_event_rule_config);
 		if (ret < 0 && ret != -LTTNG_UST_ERR_EXIST) {
 			ret = LTTNG_ERR_UST_DISABLE_FAIL;
 			goto error;

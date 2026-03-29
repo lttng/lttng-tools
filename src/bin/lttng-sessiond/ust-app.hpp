@@ -543,18 +543,18 @@ int ust_app_destroy_trace_all(struct ltt_ust_session *usess);
 int ust_app_list_events(struct lttng_event **events);
 int ust_app_list_event_fields(struct lttng_event_field **fields);
 int ust_app_create_event_glb(
-	struct ltt_ust_session *usess,
+	std::uint64_t session_id,
 	lttng::c_string_view channel_name,
 	const lttng::sessiond::config::event_rule_configuration& event_rule_config);
-int ust_app_disable_channel_glb(struct ltt_ust_session *usess, lttng::c_string_view channel_name);
-int ust_app_enable_channel_glb(struct ltt_ust_session *usess, lttng::c_string_view channel_name);
-int ust_app_enable_event_glb(struct ltt_ust_session *usess,
+int ust_app_disable_channel_glb(std::uint64_t session_id, lttng::c_string_view channel_name);
+int ust_app_enable_channel_glb(std::uint64_t session_id, lttng::c_string_view channel_name);
+int ust_app_enable_event_glb(std::uint64_t session_id,
 			     lttng::c_string_view channel_name,
 			     const lttng::sessiond::config::event_rule_configuration& event_config);
-int ust_app_disable_event_glb(struct ltt_ust_session *usess,
+int ust_app_disable_event_glb(std::uint64_t session_id,
 			      lttng::c_string_view channel_name,
 			      const lttng::sessiond::config::event_rule_configuration& event_config);
-int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
+int ust_app_add_ctx_channel_glb(std::uint64_t session_id,
 				lttng::c_string_view channel_name,
 				const lttng::sessiond::config::context_configuration& ctx_config);
 void ust_app_global_update(struct ltt_ust_session *usess,
@@ -721,52 +721,46 @@ static inline int ust_app_setup_event_notifier_group(struct ust_app *app __attri
 	return 0;
 }
 
-static inline int ust_app_disable_channel_glb(struct ltt_ust_session *usess __attribute__((unused)),
-					      lttng::c_string_view channel_name
-					      __attribute__((unused)))
+static inline int ust_app_disable_channel_glb(std::uint64_t /* session_id */,
+					      lttng::c_string_view /* channel_name */)
 {
 	return 0;
 }
 
-static inline int ust_app_enable_channel_glb(struct ltt_ust_session *usess __attribute__((unused)),
-					     lttng::c_string_view channel_name
-					     __attribute__((unused)))
+static inline int ust_app_enable_channel_glb(std::uint64_t /* session_id */,
+					     lttng::c_string_view /* channel_name */)
 {
 	return 0;
 }
 
-static inline int
-ust_app_create_event_glb(struct ltt_ust_session *usess __attribute__((unused)),
-			 lttng::c_string_view channel_name __attribute__((unused)),
-			 const lttng::sessiond::config::event_rule_configuration& event_rule_config
-			 __attribute__((unused)))
+static inline int ust_app_create_event_glb(
+	std::uint64_t /* session_id */,
+	lttng::c_string_view /* channel_name */,
+	const lttng::sessiond::config::event_rule_configuration& /* event_rule_config */)
 {
 	return 0;
 }
 
-static inline int
-ust_app_disable_event_glb(struct ltt_ust_session *usess __attribute__((unused)),
-			  lttng::c_string_view channel_name __attribute__((unused)),
-			  const lttng::sessiond::config::event_rule_configuration& event_config
-			  __attribute__((unused)))
+static inline int ust_app_disable_event_glb(
+	std::uint64_t /* session_id */,
+	lttng::c_string_view /* channel_name */,
+	const lttng::sessiond::config::event_rule_configuration& /* event_config */)
 {
 	return 0;
 }
 
-static inline int
-ust_app_enable_event_glb(struct ltt_ust_session *usess __attribute__((unused)),
-			 lttng::c_string_view channel_name __attribute__((unused)),
-			 const lttng::sessiond::config::event_rule_configuration& event_config
-			 __attribute__((unused)))
+static inline int ust_app_enable_event_glb(
+	std::uint64_t /* session_id */,
+	lttng::c_string_view /* channel_name */,
+	const lttng::sessiond::config::event_rule_configuration& /* event_config */)
 {
 	return 0;
 }
 
 static inline int
-ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess __attribute__((unused)),
-			    lttng::c_string_view channel_name __attribute__((unused)),
-			    const lttng::sessiond::config::context_configuration& ctx_config
-			    __attribute__((unused)))
+ust_app_add_ctx_channel_glb(std::uint64_t /* session_id */,
+			    lttng::c_string_view /* channel_name */,
+			    const lttng::sessiond::config::context_configuration& /* ctx_config */)
 {
 	return 0;
 }
