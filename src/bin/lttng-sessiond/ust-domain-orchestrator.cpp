@@ -673,10 +673,8 @@ void ls::ust::domain_orchestrator::set_tracking_policy(config::process_attribute
 	 * updated configuration to all running applications if tracing is active.
 	 */
 	if (_active) {
-		ust_app_global_update_all(&_ust_session,
-					  _session.user_space_domain,
-					  *this,
-					  const_cast<ltt_session&>(_session));
+		ust_app_global_update_all(
+			_session.user_space_domain, *this, const_cast<ltt_session&>(_session));
 	}
 }
 
@@ -684,10 +682,8 @@ void ls::ust::domain_orchestrator::track_process_attribute(config::process_attri
 							   std::uint64_t)
 {
 	if (_active) {
-		ust_app_global_update_all(&_ust_session,
-					  _session.user_space_domain,
-					  *this,
-					  const_cast<ltt_session&>(_session));
+		ust_app_global_update_all(
+			_session.user_space_domain, *this, const_cast<ltt_session&>(_session));
 	}
 }
 
@@ -695,10 +691,8 @@ void ls::ust::domain_orchestrator::untrack_process_attribute(config::process_att
 							     std::uint64_t)
 {
 	if (_active) {
-		ust_app_global_update_all(&_ust_session,
-					  _session.user_space_domain,
-					  *this,
-					  const_cast<ltt_session&>(_session));
+		ust_app_global_update_all(
+			_session.user_space_domain, *this, const_cast<ltt_session&>(_session));
 	}
 }
 
@@ -708,15 +702,19 @@ void ls::ust::domain_orchestrator::start()
 		return;
 	}
 
-	const auto ret = ust_app_start_trace_all(&_ust_session,
-						 _session.user_space_domain,
-						 *this,
-						 const_cast<ltt_session&>(_session));
+	/*
+	 * Set _active before iterating applications so that newly
+	 * registering apps (via dispatch thread) see the session as
+	 * active and are started by default.
+	 */
+	_active = true;
+
+	const auto ret = ust_app_start_trace_all(
+		_session.user_space_domain, *this, const_cast<ltt_session&>(_session));
 	if (ret < 0) {
+		_active = false;
 		LTTNG_THROW_CTL("Failed to start UST tracing", LTTNG_ERR_UST_START_FAIL);
 	}
-
-	_active = true;
 }
 
 void ls::ust::domain_orchestrator::stop()
@@ -725,12 +723,17 @@ void ls::ust::domain_orchestrator::stop()
 		return;
 	}
 
-	const auto ret = ust_app_stop_trace_all(&_ust_session, *this);
+	/*
+	 * Set _active before iterating applications so that newly
+	 * registering apps (via dispatch thread) see the session as
+	 * inactive and are not started.
+	 */
+	_active = false;
+
+	const auto ret = ust_app_stop_trace_all(*this);
 	if (ret < 0) {
 		LTTNG_THROW_CTL("Failed to stop UST tracing", LTTNG_ERR_UST_STOP_FAIL);
 	}
-
-	_active = false;
 }
 
 void ls::ust::domain_orchestrator::rotate()

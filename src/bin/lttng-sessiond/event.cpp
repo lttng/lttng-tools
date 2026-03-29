@@ -409,7 +409,8 @@ error:
  * Must be called with the RCU read lock held.
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-static int event_agent_disable_one(struct ltt_ust_session *usess,
+static int event_agent_disable_one(std::uint64_t session_id,
+				   bool is_active,
 				   struct agent *agt,
 				   struct agent_event *aevent)
 {
@@ -417,14 +418,13 @@ static int event_agent_disable_one(struct ltt_ust_session *usess,
 	const char *ust_channel_name;
 
 	LTTNG_ASSERT(agt);
-	LTTNG_ASSERT(usess);
 	LTTNG_ASSERT(aevent);
 
 	DBG("Event agent disabling %s (loglevel type %d, loglevel value %d) for session %" PRIu64,
 	    aevent->name,
 	    aevent->loglevel_type,
 	    aevent->loglevel_value,
-	    usess->id);
+	    session_id);
 
 	/* Already disabled? */
 	if (!AGENT_EVENT_IS_ENABLED(aevent)) {
@@ -446,9 +446,9 @@ static int event_agent_disable_one(struct ltt_ust_session *usess,
 
 	LTTNG_ASSERT(aevent->ust_event_rule_config);
 
-	if (usess->active) {
+	if (is_active) {
 		ret = ust_app_disable_event_glb(
-			usess->id, ust_channel_name, *aevent->ust_event_rule_config);
+			session_id, ust_channel_name, *aevent->ust_event_rule_config);
 		if (ret < 0 && ret != -LTTNG_UST_ERR_EXIST) {
 			ret = LTTNG_ERR_UST_DISABLE_FAIL;
 			goto error;
@@ -541,7 +541,7 @@ int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt, const 
 
 	do {
 		aevent = lttng::utils::container_of(node, &agent_event::node);
-		ret = event_agent_disable_one(usess, agt, aevent);
+		ret = event_agent_disable_one(usess->id, usess->active, agt, aevent);
 
 		if (ret != LTTNG_OK) {
 			goto end;

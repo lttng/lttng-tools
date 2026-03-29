@@ -6103,18 +6103,11 @@ end:
 /*
  * Start tracing for the UST session.
  */
-int ust_app_start_trace_all(struct ltt_ust_session *usess,
-			    const lttng::sessiond::config::domain& domain,
+int ust_app_start_trace_all(const lttng::sessiond::config::domain& domain,
 			    const lttng::sessiond::ust::domain_orchestrator& orchestrator,
 			    ltt_session& session)
 {
 	DBG("Starting all UST traces");
-
-	/*
-	 * Even though the start trace might fail, flag this session active so
-	 * other application coming in are started by default.
-	 */
-	usess->active = true;
 
 	/*
 	 * In a start-stop-start use-case, we need to clear the quiescent state
@@ -6136,7 +6129,7 @@ int ust_app_start_trace_all(struct ltt_ust_session *usess,
 		/* Prevent app teardown during use. */
 		const ust_app_reference app_ref(app);
 
-		ust_app_global_update(usess, app, domain, orchestrator, session);
+		ust_app_global_update(app, domain, orchestrator, session);
 	}
 
 	return 0;
@@ -6146,18 +6139,12 @@ int ust_app_start_trace_all(struct ltt_ust_session *usess,
  * Start tracing for the UST session.
  * Called with UST session lock held.
  */
-int ust_app_stop_trace_all(struct ltt_ust_session *usess, lsu::domain_orchestrator& orchestrator)
+int ust_app_stop_trace_all(lsu::domain_orchestrator& orchestrator)
 {
 	int ret = 0;
 	const auto session_id = orchestrator.session_id();
 
 	DBG("Stopping all UST traces");
-
-	/*
-	 * Even though the stop trace might fail, flag this session inactive so
-	 * other application coming in are not started by default.
-	 */
-	usess->active = false;
 
 	/* Iterate on all apps. */
 	for (auto *app :
@@ -6557,8 +6544,7 @@ static void ust_app_global_destroy(std::uint64_t session_id, struct ust_app *app
  * Called with session lock held.
  * Called with RCU read-side lock held.
  */
-void ust_app_global_update(struct ltt_ust_session * /* usess */,
-			   struct ust_app *app,
+void ust_app_global_update(struct ust_app *app,
 			   const lttng::sessiond::config::domain& domain,
 			   const lttng::sessiond::ust::domain_orchestrator& orchestrator,
 			   ltt_session& session)
@@ -6622,8 +6608,7 @@ void ust_app_global_update_event_notifier_rules(struct ust_app *app)
 /*
  * Called with session lock held.
  */
-void ust_app_global_update_all(struct ltt_ust_session *usess,
-			       const lttng::sessiond::config::domain& domain,
+void ust_app_global_update_all(const lttng::sessiond::config::domain& domain,
 			       const lttng::sessiond::ust::domain_orchestrator& orchestrator,
 			       ltt_session& session)
 {
@@ -6639,7 +6624,7 @@ void ust_app_global_update_all(struct ltt_ust_session *usess,
 		/* Prevent app teardown during use. */
 		const ust_app_reference app_ref(app);
 
-		ust_app_global_update(usess, app, domain, orchestrator, session);
+		ust_app_global_update(app, domain, orchestrator, session);
 	}
 }
 
@@ -7613,20 +7598,21 @@ enum lttng_error_code ust_app_rotate_session(const ltt_session& session)
  */
 enum lttng_error_code ust_app_clear_session(const ltt_session& session)
 {
-	const ltt_ust_session& usess = *session.ust_session;
+	const auto& orchestrator =
+		static_cast<const lsu::domain_orchestrator&>(session.get_ust_orchestrator());
 
-	if (usess.active) {
+	if (orchestrator.is_active()) {
 		ERR("Expecting inactive session %s (%" PRIu64 ")", session.name, session.id);
 		return LTTNG_ERR_FATAL;
 	}
 
-	const auto& orchestrator =
-		static_cast<const lsu::domain_orchestrator&>(session.get_ust_orchestrator());
+	auto *consumer = orchestrator.get_consumer_output_ptr();
+	const auto buffer_type = orchestrator.buffer_type();
 	auto result = LTTNG_OK;
 
 	orchestrator.for_each_consumer_stream_group(
-		[&usess,
-		 &result](const lsu::domain_orchestrator::consumer_stream_group_descriptor& desc) {
+		[consumer, buffer_type, &result](
+			const lsu::domain_orchestrator::consumer_stream_group_descriptor& desc) {
 			if (result != LTTNG_OK) {
 				return;
 			}
@@ -7635,17 +7621,17 @@ enum lttng_error_code ust_app_clear_session(const ltt_session& session)
 			const lttng::urcu::read_lock_guard read_lock;
 
 			const auto consumer_socket = consumer_find_socket_by_bitness(
-				static_cast<int>(desc.abi), usess.consumer);
+				static_cast<int>(desc.abi), consumer);
 
 			if (desc.is_metadata) {
-				(void) push_metadata(desc.trace_class.lock(), usess.consumer);
+				(void) push_metadata(desc.trace_class.lock(), consumer);
 			}
 
 			const auto clean_ret =
 				consumer_clear_channel(consumer_socket, desc.consumer_key);
 			if (clean_ret < 0) {
 				if (clean_ret == -LTTCOMM_CONSUMERD_CHAN_NOT_FOUND &&
-				    usess.buffer_type == LTTNG_BUFFER_PER_PID) {
+				    buffer_type == LTTNG_BUFFER_PER_PID) {
 					return;
 				}
 
@@ -7679,14 +7665,15 @@ enum lttng_error_code ust_app_clear_session(const ltt_session& session)
  */
 enum lttng_error_code ust_app_open_packets(const ltt_session& session)
 {
-	const ltt_ust_session& usess = *session.ust_session;
 	const auto& orchestrator =
 		static_cast<const lsu::domain_orchestrator&>(session.get_ust_orchestrator());
+	auto *consumer = orchestrator.get_consumer_output_ptr();
+	const auto buffer_type = orchestrator.buffer_type();
 	auto result = LTTNG_OK;
 
 	orchestrator.for_each_consumer_stream_group(
-		[&usess,
-		 &result](const lsu::domain_orchestrator::consumer_stream_group_descriptor& desc) {
+		[consumer, buffer_type, &result](
+			const lsu::domain_orchestrator::consumer_stream_group_descriptor& desc) {
 			if (result != LTTNG_OK || desc.is_metadata) {
 				return;
 			}
@@ -7695,14 +7682,14 @@ enum lttng_error_code ust_app_open_packets(const ltt_session& session)
 			const lttng::urcu::read_lock_guard read_lock;
 
 			const auto socket = consumer_find_socket_by_bitness(
-				static_cast<int>(desc.abi), usess.consumer);
+				static_cast<int>(desc.abi), consumer);
 
 			const auto open_ret =
 				consumer_open_channel_packets(socket, desc.consumer_key);
 			if (open_ret < 0) {
 				/* Per-PID buffer and application going away. */
 				if (open_ret == -LTTCOMM_CONSUMERD_CHAN_NOT_FOUND &&
-				    usess.buffer_type == LTTNG_BUFFER_PER_PID) {
+				    buffer_type == LTTNG_BUFFER_PER_PID) {
 					return;
 				}
 
