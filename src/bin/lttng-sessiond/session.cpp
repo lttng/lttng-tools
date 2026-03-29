@@ -957,13 +957,10 @@ void session_notify_clear(const ltt_session::locked_ref& session)
 static void session_release(struct urcu_ref *ref)
 {
 	int ret;
-	struct ltt_ust_session *usess;
 	struct ltt_session *session = lttng::utils::container_of(ref, &ltt_session::ref_count);
 	const bool session_published = session->published;
 
 	LTTNG_ASSERT(!session->chunk_being_archived);
-
-	usess = session->ust_session;
 
 	/*
 	 * Destroy the kernel domain: send relayd destruction, then
@@ -985,7 +982,7 @@ static void session_release(struct urcu_ref *ref)
 		consumer_output_send_destroy_relayd(&ust_orchestrator.get_consumer_output());
 
 		/* Destroy every UST application related to this session. */
-		ret = ust_app_destroy_trace_all(usess->id);
+		ret = ust_app_destroy_trace_all(ust_orchestrator.session_id());
 		if (ret) {
 			ERR("Error in ust_app_destroy_trace_all");
 		}
@@ -999,8 +996,7 @@ static void session_release(struct urcu_ref *ref)
 		ust_orchestrator.close_per_uid_metadata_on_consumer(
 			ust_orchestrator.get_consumer_output());
 
-		/* Clean up the rest, keeping destroy notifier data. */
-		trace_ust_destroy_session(usess);
+		DBG2("Trace UST destroy session %" PRIu64, session->id);
 	}
 
 	/*
@@ -1043,10 +1039,7 @@ static void session_release(struct urcu_ref *ref)
 	pthread_mutex_destroy(&session->_lock);
 
 	consumer_output_put(session->consumer);
-	if (usess) {
-		trace_ust_free_session(usess);
-		session->ust_session = nullptr;
-	}
+	session->ust_orchestrator.reset();
 
 	lttng_dynamic_array_reset(&session->destroy_notifiers);
 	lttng_dynamic_array_reset(&session->clear_notifiers);

@@ -477,54 +477,12 @@ error:
  * function also applies the right modification on a per domain basis for the
  * trace files destination directory.
  */
-int copy_session_consumer(int domain, const ltt_session::locked_ref& session)
-{
-	int ret;
-	const char *dir_name;
-	struct consumer_output *consumer;
-
-	LTTNG_ASSERT(session->consumer);
-
-	switch (domain) {
-	case LTTNG_DOMAIN_JUL:
-	case LTTNG_DOMAIN_LOG4J:
-	case LTTNG_DOMAIN_LOG4J2:
-	case LTTNG_DOMAIN_PYTHON:
-	case LTTNG_DOMAIN_UST:
-		DBG3("Copying tracing session consumer output in UST session");
-		if (session->ust_session->consumer) {
-			consumer_output_put(session->ust_session->consumer);
-		}
-		session->ust_session->consumer = consumer_copy_output(session->consumer);
-		/* Ease our life a bit for the next part */
-		consumer = session->ust_session->consumer;
-		dir_name = DEFAULT_UST_TRACE_DIR;
-		break;
-	default:
-		ret = LTTNG_ERR_UNKNOWN_DOMAIN;
-		goto error;
-	}
-
-	/* Append correct directory to subdir */
-	ret = lttng_strncpy(consumer->domain_subdir, dir_name, sizeof(consumer->domain_subdir));
-	if (ret) {
-		ret = LTTNG_ERR_UNK;
-		goto error;
-	}
-	DBG3("Copy session consumer subdir %s", consumer->domain_subdir);
-	ret = LTTNG_OK;
-
-error:
-	return ret;
-}
-
 /*
  * Create an UST session and add it to the session ust list.
  */
 int create_ust_session(const ltt_session::locked_ref& session, const struct lttng_domain *domain)
 {
 	int ret;
-	struct ltt_ust_session *lus = nullptr;
 
 	LTTNG_ASSERT(domain);
 	LTTNG_ASSERT(session->consumer);
@@ -562,39 +520,34 @@ int create_ust_session(const ltt_session::locked_ref& session, const struct lttn
 
 	DBG("Creating UST session");
 
-	lus = trace_ust_create_session(session->id);
-	if (lus == nullptr) {
-		ret = LTTNG_ERR_UST_SESS_FAIL;
-		goto error;
-	}
-
-	session->ust_session = lus;
-
-	/* Copy session output to the newly created UST session */
-	ret = copy_session_consumer(domain->type, session);
-	if (ret != LTTNG_OK) {
-		goto error;
-	}
-
 	{
-		/*
-		 * Transfer consumer output ownership from ltt_ust_session to
-		 * the orchestrator. The orchestrator takes a unique_ptr; the
-		 * legacy usess->consumer becomes a non-owning alias (set after
-		 * construction) for backward compatibility during the transition.
-		 */
 		namespace lsu = lttng::sessiond::ust;
 
-		lsu::domain_orchestrator::consumer_output_uptr consumer_output(lus->consumer);
-		lus->consumer = nullptr;
+		/*
+		 * Create a consumer output by copying the session-level
+		 * consumer and setting the UST domain subdirectory.
+		 */
+		auto *consumer_raw = consumer_copy_output(session->consumer);
+		if (!consumer_raw) {
+			ret = LTTNG_ERR_UST_SESS_FAIL;
+			goto error;
+		}
+
+		ret = lttng_strncpy(consumer_raw->domain_subdir,
+				    DEFAULT_UST_TRACE_DIR,
+				    sizeof(consumer_raw->domain_subdir));
+		if (ret) {
+			consumer_output_put(consumer_raw);
+			ret = LTTNG_ERR_UNK;
+			goto error;
+		}
+
+		DBG3("Copy session consumer subdir %s", consumer_raw->domain_subdir);
+
+		lsu::domain_orchestrator::consumer_output_uptr consumer_output(consumer_raw);
 
 		session->ust_orchestrator = lttng::make_unique<lsu::domain_orchestrator>(
-			*lus, *session, default_buffer_ownership, std::move(consumer_output));
-
-		/* Non-owning alias for code not yet migrated to the orchestrator. */
-		lus->consumer =
-			static_cast<lsu::domain_orchestrator&>(session->get_ust_orchestrator())
-				.get_consumer_output_ptr();
+			*session, default_buffer_ownership, std::move(consumer_output));
 
 		if (!static_cast<const lsu::domain_orchestrator&>(session->get_ust_orchestrator())
 			     .supports_madv_remove()) {
@@ -610,8 +563,6 @@ int create_ust_session(const ltt_session::locked_ref& session, const struct lttn
 	return LTTNG_OK;
 
 error:
-	free(lus);
-	session->ust_session = nullptr;
 	return ret;
 }
 #else /* !HAVE_LIBLTTNG_UST_CTL */

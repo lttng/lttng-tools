@@ -2517,10 +2517,6 @@ lttng_error_code cmd_disable_event(struct command_ctx *cmd_ctx,
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_PYTHON:
 	{
-		struct ltt_ust_session *usess = session.ust_session;
-
-		LTTNG_ASSERT(usess);
-
 		switch (event->type) {
 		case LTTNG_EVENT_ALL:
 			break;
@@ -2536,10 +2532,12 @@ lttng_error_code cmd_disable_event(struct command_ctx *cmd_ctx,
 			return LTTNG_ERR_UST_EVENT_NOT_FOUND;
 		}
 
+		const auto session_id = ust_orchestrator.session_id();
+		const auto active = ust_orchestrator.is_active();
 		if (pattern_disables_all) {
-			ret = event_agent_disable_all(usess, agt);
+			ret = event_agent_disable_all(session_id, active, agt);
 		} else {
-			ret = event_agent_disable(usess, agt, event_name);
+			ret = event_agent_disable(session_id, active, agt, event_name);
 		}
 
 		if (ret != LTTNG_OK) {
@@ -2676,11 +2674,16 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 		if (session.user_space_domain.recording_channel_count() == 0) {
 			/* Create default channel through the orchestrator. */
 			const auto attr = channel_new_default_attr(
-				LTTNG_DOMAIN_UST, session.ust_session->buffer_type);
+				LTTNG_DOMAIN_UST,
+				static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
+					session.get_ust_orchestrator())
+					.buffer_type());
 			lttng_domain ust_domain = {};
 			ust_domain.type = LTTNG_DOMAIN_UST;
-			ust_domain.buf_type =
-				static_cast<lttng_buffer_type>(session.ust_session->buffer_type);
+			ust_domain.buf_type = static_cast<lttng_buffer_type>(
+				static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
+					session.get_ust_orchestrator())
+					.buffer_type());
 
 			ret = cmd_enable_channel_internal(locked_session, &ust_domain, *attr);
 			if (ret != LTTNG_OK) {
@@ -2986,7 +2989,10 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 			ust_domain.get_channel(user_visible_channel_name);
 		} catch (const lttng::sessiond::config::exceptions::channel_not_found_error&) {
 			const auto attr = channel_new_default_attr(
-				LTTNG_DOMAIN_UST, session.ust_session->buffer_type);
+				LTTNG_DOMAIN_UST,
+				static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
+					session.get_ust_orchestrator())
+					.buffer_type());
 
 			if (lttng_strncpy(attr->name, channel_name, sizeof(attr->name))) {
 				return LTTNG_ERR_INVALID;
@@ -3083,12 +3089,8 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 		struct agent *agt;
 		struct lttng_event uevent;
 		struct lttng_domain tmp_dom;
-		struct ltt_ust_session *usess = session.ust_session;
-
 		lttng::ctl::event_rule_uptr internal_event_rule =
 			create_agent_internal_event_rule(domain->type, filter_expression.get());
-
-		LTTNG_ASSERT(usess);
 
 		if (!agent_tracing_is_enabled()) {
 			DBG("Attempted to enable an event in an agent domain but the agent thread is not running");
@@ -3195,16 +3197,21 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 				 .get_channel(default_chan_name)
 				 .get_event_rule_configuration(*lookup_rule);
 
+		const auto session_id =
+			static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
+				session.get_ust_orchestrator())
+				.session_id();
+
 		/* The wild card * means that everything should be enabled. */
 		if (strncmp(event->name, "*", 1) == 0 && strlen(event->name) == 1) {
-			ret = event_agent_enable_all(usess,
+			ret = event_agent_enable_all(session_id,
 						     agt,
 						     event,
 						     bytecode.release(),
 						     filter_expression.release(),
 						     ust_event_rule_cfg);
 		} else {
-			ret = event_agent_enable(usess,
+			ret = event_agent_enable(session_id,
 						 agt,
 						 event,
 						 bytecode.release(),
@@ -4435,7 +4442,10 @@ ssize_t cmd_list_domains(const ltt_session::locked_ref& session, struct lttng_do
 				session->get_ust_orchestrator());
 
 		(*domains)[index].type = LTTNG_DOMAIN_UST;
-		(*domains)[index].buf_type = session->ust_session->buffer_type;
+		(*domains)[index].buf_type =
+			static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
+				session->get_ust_orchestrator())
+				.buffer_type();
 		index++;
 
 		{
@@ -4448,7 +4458,10 @@ ssize_t cmd_list_domains(const ltt_session::locked_ref& session, struct lttng_do
 				if (agt->being_used) {
 					(*domains)[index].type = agt->domain;
 					(*domains)[index].buf_type =
-						session->ust_session->buffer_type;
+						static_cast<const lttng::sessiond::ust::
+								    domain_orchestrator&>(
+							session->get_ust_orchestrator())
+							.buffer_type();
 					index++;
 				}
 			}
@@ -5036,7 +5049,9 @@ static void check_regenerate_metadata_support(const ltt_session::locked_ref& ses
 				LTTNG_ERR_SESSION_NOT_STARTED);
 	}
 	if (session->ust_orchestrator) {
-		switch (session->ust_session->buffer_type) {
+		switch (static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
+				session->get_ust_orchestrator())
+				.buffer_type()) {
 		case LTTNG_BUFFER_PER_UID:
 			break;
 		case LTTNG_BUFFER_PER_PID:

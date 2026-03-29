@@ -43,8 +43,6 @@
 
 #define ASSERT_SESSION_LIST_LOCKED() LTTNG_ASSERT(session_trylock_list())
 
-struct ltt_ust_session;
-
 struct ltt_session;
 struct ltt_session_list;
 
@@ -237,7 +235,6 @@ public:
 	time_t creation_time = 0;
 	std::unique_ptr<lttng::sessiond::modules::domain_orchestrator> kernel_orchestrator;
 	std::unique_ptr<lttng::sessiond::domain_orchestrator> ust_orchestrator;
-	struct ltt_ust_session *ust_session = nullptr;
 	mutable struct urcu_ref ref_count = {};
 	/*
 	 * Protect any read/write on this session data structure. This lock must be

@@ -719,20 +719,20 @@ static void save_per_pid_lost_discarded_counters(struct ust_app_channel *ua_chan
 			return;
 		}
 
+		auto& orchestrator =
+			static_cast<lsu::domain_orchestrator&>(session->get_ust_orchestrator());
+
 		if (ua_chan->attr.overwrite) {
 			consumer_get_lost_packets(ua_chan->session->recording_session_id,
 						  ua_chan->key,
-						  session->ust_session->consumer,
+						  orchestrator.get_consumer_output_ptr(),
 						  &lost);
 		} else {
 			consumer_get_discarded_events(ua_chan->session->recording_session_id,
 						      ua_chan->key,
-						      session->ust_session->consumer,
+						      orchestrator.get_consumer_output_ptr(),
 						      &discarded);
 		}
-
-		auto& orchestrator =
-			static_cast<lsu::domain_orchestrator&>(session->get_ust_orchestrator());
 		const auto& recording_config =
 			static_cast<const lttng::sessiond::config::recording_channel_configuration&>(
 				ua_chan->channel_config);

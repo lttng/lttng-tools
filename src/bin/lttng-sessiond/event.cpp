@@ -51,7 +51,7 @@ static void agent_enable_all(struct agent *agt)
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
 int event_agent_enable_all(
-	struct ltt_ust_session *usess,
+	std::uint64_t session_id,
 	struct agent *agt,
 	struct lttng_event *event,
 	struct lttng_bytecode *filter,
@@ -60,13 +60,11 @@ int event_agent_enable_all(
 {
 	int ret;
 
-	LTTNG_ASSERT(usess);
-
-	DBG("Event agent enabling ALL events for session %" PRIu64, usess->id);
+	DBG("Event agent enabling ALL events for session %" PRIu64, session_id);
 
 	/* Enable event on agent application through TCP socket. */
 	ret = event_agent_enable(
-		usess, agt, event, filter, filter_expression, ust_event_rule_config);
+		session_id, agt, event, filter, filter_expression, ust_event_rule_config);
 	if (ret != LTTNG_OK) {
 		goto error;
 	}
@@ -217,21 +215,20 @@ end:
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
 int event_agent_enable(
-	struct ltt_ust_session *usess,
+	std::uint64_t session_id,
 	struct agent *agt,
 	struct lttng_event *event,
 	struct lttng_bytecode *filter,
 	char *filter_expression,
 	const lttng::sessiond::config::event_rule_configuration *ust_event_rule_config)
 {
-	LTTNG_ASSERT(usess);
 	LTTNG_ASSERT(event);
 	LTTNG_ASSERT(agt);
 
 	DBG("Enabling agent event: event pattern = '%s', session id = %" PRIu64
 	    ", loglevel type = %d, loglevel = %d, filter expression = '%s'",
 	    event->name,
-	    usess->id,
+	    session_id,
 	    event->loglevel_type,
 	    event->loglevel,
 	    filter_expression ? filter_expression : "(none)");
@@ -516,7 +513,10 @@ end:
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt, const char *event_name)
+int event_agent_disable(std::uint64_t session_id,
+			bool is_active,
+			struct agent *agt,
+			const char *event_name)
 {
 	int ret = LTTNG_OK;
 	struct agent_event *aevent;
@@ -524,10 +524,11 @@ int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt, const 
 	struct lttng_ht_node_str *node;
 
 	LTTNG_ASSERT(agt);
-	LTTNG_ASSERT(usess);
 	LTTNG_ASSERT(event_name);
 
-	DBG("Event agent disabling %s (all loglevels) for session %" PRIu64, event_name, usess->id);
+	DBG("Event agent disabling %s (all loglevels) for session %" PRIu64,
+	    event_name,
+	    session_id);
 
 	const lttng::urcu::read_lock_guard read_lock;
 	agent_find_events_by_name(event_name, agt, &iter);
@@ -541,7 +542,7 @@ int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt, const 
 
 	do {
 		aevent = lttng::utils::container_of(node, &agent_event::node);
-		ret = event_agent_disable_one(usess->id, usess->active, agt, aevent);
+		ret = event_agent_disable_one(session_id, is_active, agt, aevent);
 
 		if (ret != LTTNG_OK) {
 			goto end;
@@ -559,18 +560,17 @@ end:
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-int event_agent_disable_all(struct ltt_ust_session *usess, struct agent *agt)
+int event_agent_disable_all(std::uint64_t session_id, bool is_active, struct agent *agt)
 {
 	int ret;
 
 	LTTNG_ASSERT(agt);
-	LTTNG_ASSERT(usess);
 
 	/*
 	 * Disable event on agent application. Continue to disable all other events
 	 * if the * event is not found.
 	 */
-	ret = event_agent_disable(usess, agt, "*");
+	ret = event_agent_disable(session_id, is_active, agt, "*");
 	if (ret != LTTNG_OK && ret != LTTNG_ERR_UST_EVENT_NOT_FOUND) {
 		goto error;
 	}
@@ -584,7 +584,7 @@ int event_agent_disable_all(struct ltt_ust_session *usess, struct agent *agt)
 			continue;
 		}
 
-		ret = event_agent_disable(usess, agt, aevent->name);
+		ret = event_agent_disable(session_id, is_active, agt, aevent->name);
 		if (ret != LTTNG_OK) {
 			goto error_unlock;
 		}

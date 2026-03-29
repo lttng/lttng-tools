@@ -150,11 +150,9 @@ void ls::ust::domain_orchestrator::consumer_output_deleter::operator()(
 }
 
 ls::ust::domain_orchestrator::domain_orchestrator(
-	ltt_ust_session& ust_session,
 	const ltt_session& session,
 	lsc::recording_channel_configuration::owership_model_t default_buffer_ownership,
 	consumer_output_uptr consumer_output) :
-	_ust_session(ust_session),
 	_session(session),
 	_default_buffer_ownership(default_buffer_ownership),
 	_consumer_output(std::move(consumer_output)),
@@ -517,7 +515,6 @@ void ls::ust::domain_orchestrator::create_channel(
 	/* Lock buffer type on first channel creation. */
 	if (!_locked_buffer_type) {
 		_locked_buffer_type = buffer_type;
-		_ust_session.buffer_type = buffer_type;
 	} else if (*_locked_buffer_type != buffer_type) {
 		LTTNG_THROW_CTL("Buffer type mismatch", LTTNG_ERR_BUFFER_TYPE_MISMATCH);
 	}

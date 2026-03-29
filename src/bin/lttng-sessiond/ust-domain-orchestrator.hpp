@@ -28,7 +28,6 @@
 
 struct agent;
 struct ltt_session;
-struct ltt_ust_session;
 struct lttng_ht;
 struct lttng_ust_context_attr;
 struct ust_app;
@@ -63,7 +62,6 @@ public:
 		std::unique_ptr<struct consumer_output, consumer_output_deleter>;
 
 	explicit domain_orchestrator(
-		ltt_ust_session& ust_session,
 		const ltt_session& session,
 		config::recording_channel_configuration::owership_model_t default_buffer_ownership,
 		consumer_output_uptr consumer_output);
@@ -450,7 +448,6 @@ public:
 	bool supports_madv_remove() const noexcept;
 
 private:
-	ltt_ust_session& _ust_session;
 	const ltt_session& _session;
 	const config::recording_channel_configuration::owership_model_t _default_buffer_ownership;
 	consumer_output_uptr _consumer_output;

@@ -12,25 +12,30 @@
 
 #include <lttng/lttng.h>
 
+#include <cstdint>
+
 struct agent;
 
 int event_agent_enable(
-	struct ltt_ust_session *usess,
+	std::uint64_t session_id,
 	struct agent *agt,
 	struct lttng_event *event,
 	struct lttng_bytecode *filter,
 	char *filter_expression,
 	const lttng::sessiond::config::event_rule_configuration *ust_event_rule_config);
 int event_agent_enable_all(
-	struct ltt_ust_session *usess,
+	std::uint64_t session_id,
 	struct agent *agt,
 	struct lttng_event *event,
 	struct lttng_bytecode *filter,
 	char *filter_expression,
 	const lttng::sessiond::config::event_rule_configuration *ust_event_rule_config);
 
-int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt, const char *event_name);
-int event_agent_disable_all(struct ltt_ust_session *usess, struct agent *agt);
+int event_agent_disable(std::uint64_t session_id,
+			bool is_active,
+			struct agent *agt,
+			const char *event_name);
+int event_agent_disable_all(std::uint64_t session_id, bool is_active, struct agent *agt);
 
 int trigger_agent_enable(const struct lttng_trigger *trigger, struct agent *agt);
 int trigger_agent_disable(const struct lttng_trigger *trigger, struct agent *agt);

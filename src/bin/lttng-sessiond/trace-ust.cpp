@@ -7,76 +7,10 @@
  */
 
 #define _LGPL_SOURCE
+#include "lttng-ust-ctl.hpp"
 #include "trace-ust.hpp"
-#include "utils.hpp"
 
-#include <common/common.hpp>
-#include <common/utils.hpp>
-
-#include <inttypes.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-
-namespace lsu = lttng::sessiond::ust;
-
-/*
- * Allocate and initialize a ust session data structure.
- *
- * Return pointer to structure or NULL.
- */
-struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
-{
-	struct ltt_ust_session *lus;
-
-	/* Allocate a new ltt ust session */
-	lus = zmalloc<ltt_ust_session>();
-	if (lus == nullptr) {
-		PERROR("create ust session zmalloc");
-		goto error_alloc;
-	}
-
-	/* Init data structure */
-	lus->id = session_id;
-	lus->active = false;
-
-	/*
-	 * Default buffer type. Locked to the first explicitly requested
-	 * type by the UST domain orchestrator.
-	 */
-	lus->buffer_type = LTTNG_BUFFER_PER_UID;
-
-	lus->consumer = consumer_create_output(CONSUMER_DST_LOCAL);
-	if (lus->consumer == nullptr) {
-		free(lus);
-		return nullptr;
-	}
-
-	DBG2("UST trace session create successful");
-
-	return lus;
-
-error_alloc:
-	return nullptr;
-}
-
-/*
- * Cleanup ust session structure, keeping data required by
- * destroy notifier.
- */
-void trace_ust_destroy_session(struct ltt_ust_session *session)
-{
-	LTTNG_ASSERT(session);
-
-	DBG2("Trace UST destroy session %" PRIu64, session->id);
-}
-
-/* Free elements needed by destroy notifiers. */
-void trace_ust_free_session(struct ltt_ust_session *session)
-{
-	free(session);
-}
+#include <common/error.hpp>
 
 bool trace_ust_runtime_ctl_version_matches_build_version()
 {

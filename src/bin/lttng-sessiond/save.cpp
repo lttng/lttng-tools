@@ -12,6 +12,7 @@
 #include "recording-channel-configuration.hpp"
 #include "save.hpp"
 #include "session.hpp"
+#include "ust-domain-orchestrator.hpp"
 
 #include <common/config/session-config.hpp>
 #include <common/defaults.hpp>
@@ -1236,11 +1237,13 @@ const char *get_buffer_type_string_for_domain(const lsc::domain& domain, const l
 	}
 
 	/*
-	 * For UST domains, we need to derive the buffer type from the session's ust_session.
+	 * For UST domains, we need to derive the buffer type from the UST orchestrator.
 	 * The buffer type is consistent across all channels in the domain.
 	 */
 	if (session.ust_orchestrator) {
-		switch (session.ust_session->buffer_type) {
+		switch (static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
+				session.get_ust_orchestrator())
+				.buffer_type()) {
 		case LTTNG_BUFFER_PER_PID:
 			return config_buffer_type_per_pid;
 		case LTTNG_BUFFER_PER_UID:
@@ -1433,10 +1436,12 @@ void save_agent_domain_from_config(session_config::writer& writer,
 
 	writer.write(config_element_type, domain_type_str);
 
-	/* Buffer type - get from ust_session */
+	/* Buffer type - get from UST orchestrator. */
 	const char *buffer_type_str = nullptr;
 	if (session.ust_orchestrator) {
-		switch (session.ust_session->buffer_type) {
+		switch (static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
+				session.get_ust_orchestrator())
+				.buffer_type()) {
 		case LTTNG_BUFFER_PER_PID:
 			buffer_type_str = config_buffer_type_per_pid;
 			break;

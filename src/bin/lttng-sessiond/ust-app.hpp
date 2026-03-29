@@ -9,10 +9,10 @@
 #ifndef _LTT_UST_APP_H
 #define _LTT_UST_APP_H
 
+#include "consumer.hpp"
 #include "domain.hpp"
 #include "lttng-ust-ctl.hpp"
 #include "trace-class.hpp"
-#include "trace-ust.hpp"
 #include "ust-application-abi.hpp"
 #include "ust-field-quirks.hpp"
 
@@ -610,12 +610,6 @@ static inline int ust_app_destroy_trace_all(std::uint64_t /* session_id */)
 	return 0;
 }
 
-static inline int ust_app_start_trace(struct ltt_ust_session *usess __attribute__((unused)),
-				      struct ust_app *app __attribute__((unused)))
-{
-	return 0;
-}
-
 static inline int
 ust_app_start_trace_all(const lttng::sessiond::config::domain& /* domain */,
 			const lttng::sessiond::ust::domain_orchestrator& /* orchestrator */,
@@ -776,12 +770,6 @@ static inline void ust_app_add(struct ust_app *app __attribute__((unused)))
 
 static inline void ust_app_notify_sock_unregister(int sock __attribute__((unused)))
 {
-}
-
-static inline unsigned int ust_app_get_nb_stream(struct ltt_ust_session *usess
-						 __attribute__((unused)))
-{
-	return 0;
 }
 
 static inline void ust_app_update_event_notifier_error_count(struct lttng_trigger *lttng_trigger
