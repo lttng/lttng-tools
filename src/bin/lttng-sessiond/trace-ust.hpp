@@ -15,8 +15,6 @@
 
 #include <lttng/lttng.h>
 
-struct agent;
-
 /* UST session */
 struct ltt_ust_session {
 	uint64_t id; /* Unique identifier of session */
@@ -27,14 +25,9 @@ struct ltt_ust_session {
 	struct consumer_output *consumer;
 	/* This indicates which type of buffer this session is set for. */
 	enum lttng_buffer_type buffer_type;
-	/* If set to 1, the buffer_type can not be changed anymore. */
-	int buffer_type_changed;
 };
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
-
-struct agent *trace_ust_find_agent(struct ltt_ust_session *session,
-				   enum lttng_domain_type domain_type);
 
 struct ltt_ust_session *trace_ust_create_session(uint64_t session_id);
 
@@ -58,14 +51,6 @@ static inline void trace_ust_destroy_session(struct ltt_ust_session *session
 
 static inline void trace_ust_free_session(struct ltt_ust_session *session __attribute__((unused)))
 {
-}
-
-static inline struct agent *trace_ust_find_agent(struct ltt_ust_session *session
-						 __attribute__((unused)),
-						 enum lttng_domain_type domain_type
-						 __attribute__((unused)))
-{
-	return NULL;
 }
 
 static inline bool trace_ust_runtime_ctl_version_matches_build_version()

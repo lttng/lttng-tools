@@ -1409,7 +1409,6 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 							 const struct lttng_channel& channel_attr)
 {
 	enum lttng_error_code ret_code = LTTNG_OK;
-	struct ltt_ust_session *usess = session->ust_session;
 	size_t len;
 
 	LTTNG_ASSERT(domain);
@@ -1981,15 +1980,10 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 			 * exists for this session.
 			 */
 			if (domain->type != LTTNG_DOMAIN_UST) {
-				auto *agt = trace_ust_find_agent(usess, domain->type);
-				if (!agt) {
-					agt = agent_create(domain->type);
-					if (!agt) {
-						return LTTNG_ERR_NOMEM;
-					}
-
-					agent_add(agt, usess->agents);
-				}
+				auto& ust_orchestrator =
+					static_cast<lttng::sessiond::ust::domain_orchestrator&>(
+						session->get_ust_orchestrator());
+				ust_orchestrator.find_or_create_agent(domain->type);
 			}
 
 			/*
@@ -2523,7 +2517,6 @@ lttng_error_code cmd_disable_event(struct command_ctx *cmd_ctx,
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_PYTHON:
 	{
-		struct agent *agt;
 		struct ltt_ust_session *usess = session.ust_session;
 
 		LTTNG_ASSERT(usess);
@@ -2535,7 +2528,10 @@ lttng_error_code cmd_disable_event(struct command_ctx *cmd_ctx,
 			return LTTNG_ERR_UNK;
 		}
 
-		agt = trace_ust_find_agent(usess, domain);
+		const auto& ust_orchestrator =
+			static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
+				session.get_ust_orchestrator());
+		auto *agt = ust_orchestrator.find_agent(domain);
 		if (!agt) {
 			return LTTNG_ERR_UST_EVENT_NOT_FOUND;
 		}
@@ -2705,19 +2701,12 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 					"Application contexts are not supported by the Python domain");
 			}
 
-			auto *agt = trace_ust_find_agent(session.ust_session, domain_type);
+			auto& ust_orchestrator =
+				static_cast<lttng::sessiond::ust::domain_orchestrator&>(
+					locked_session->get_ust_orchestrator());
+			auto& agt = ust_orchestrator.find_or_create_agent(domain_type);
 
-			if (!agt) {
-				agt = agent_create(domain_type);
-				if (!agt) {
-					ret = LTTNG_ERR_NOMEM;
-					goto error;
-				}
-
-				agent_add(agt, session.ust_session->agents);
-			}
-
-			ret = agent_add_context(event_context, agt);
+			ret = agent_add_context(event_context, &agt);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
@@ -3106,15 +3095,11 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 			return LTTNG_ERR_AGENT_TRACING_DISABLED;
 		}
 
-		agt = trace_ust_find_agent(usess, domain->type);
-		if (!agt) {
-			agt = agent_create(domain->type);
-			if (!agt) {
-				return LTTNG_ERR_NOMEM;
-			}
-
-			/* Ownership of agt is transferred. */
-			agent_add(agt, usess->agents);
+		{
+			auto& ust_orchestrator =
+				static_cast<lttng::sessiond::ust::domain_orchestrator&>(
+					session.get_ust_orchestrator());
+			agt = &ust_orchestrator.find_or_create_agent(domain->type);
 		}
 
 		/* Create the default tracepoint. */
@@ -4412,9 +4397,13 @@ ssize_t cmd_list_domains(const ltt_session::locked_ref& session, struct lttng_do
 		DBG3("Listing domains found UST global domain");
 		nb_dom++;
 
+		const auto& ust_orchestrator =
+			static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
+				session->get_ust_orchestrator());
+
 		for (auto *agt :
 		     lttng::urcu::lfht_iteration_adapter<agent, decltype(agent::node), &agent::node>(
-			     *session->ust_session->agents->ht)) {
+			     *ust_orchestrator.agents_ht().ht)) {
 			if (agt->being_used) {
 				nb_dom++;
 			}
@@ -4441,6 +4430,10 @@ ssize_t cmd_list_domains(const ltt_session::locked_ref& session, struct lttng_do
 	}
 
 	if (session->ust_orchestrator != nullptr) {
+		const auto& ust_orchestrator =
+			static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
+				session->get_ust_orchestrator());
+
 		(*domains)[index].type = LTTNG_DOMAIN_UST;
 		(*domains)[index].buf_type = session->ust_session->buffer_type;
 		index++;
@@ -4451,7 +4444,7 @@ ssize_t cmd_list_domains(const ltt_session::locked_ref& session, struct lttng_do
 			for (auto *agt : lttng::urcu::lfht_iteration_adapter<agent,
 									     decltype(agent::node),
 									     &agent::node>(
-				     *session->ust_session->agents->ht)) {
+				     *ust_orchestrator.agents_ht().ht)) {
 				if (agt->being_used) {
 					(*domains)[index].type = agt->domain;
 					(*domains)[index].buf_type =
@@ -4805,7 +4798,7 @@ int cmd_data_pending(const ltt_session::locked_ref& session)
 
 	if (session->ust_orchestrator) {
 		ret = consumer_is_data_pending(
-			session->ust_session->id,
+			session->id,
 			&static_cast<lttng::sessiond::ust::domain_orchestrator&>(
 				 session->get_ust_orchestrator())
 				 .get_consumer_output());

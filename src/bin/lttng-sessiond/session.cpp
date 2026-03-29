@@ -1003,6 +1003,16 @@ static void session_release(struct urcu_ref *ref)
 		trace_ust_destroy_session(usess);
 	}
 
+	/*
+	 * Destroy the UST orchestrator before firing the destroy notifiers.
+	 * The orchestrator destructor disables agent events and application
+	 * contexts, sending the corresponding commands to connected agent
+	 * applications. This must happen before the destroy notification is
+	 * sent to the client so that agent applications have received their
+	 * updated state by the time the "lttng destroy" command returns.
+	 */
+	session->ust_orchestrator.reset();
+
 	DBG("Destroying session %s (id %" PRIu64 ")", session->name, session->id);
 
 	snapshot_destroy(&session->snapshot);
@@ -1033,7 +1043,7 @@ static void session_release(struct urcu_ref *ref)
 	pthread_mutex_destroy(&session->_lock);
 
 	consumer_output_put(session->consumer);
-	if (session->ust_orchestrator) {
+	if (usess) {
 		trace_ust_free_session(usess);
 		session->ust_session = nullptr;
 	}

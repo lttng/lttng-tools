@@ -403,6 +403,24 @@ public:
 
 	static struct lttng_ust_abi_channel_attr default_metadata_channel_attr() noexcept;
 
+	/*
+	 * Find the agent for a given domain type (JUL, Log4j2, Python).
+	 * Returns nullptr if no agent exists for the domain.
+	 */
+	struct agent *find_agent(enum lttng_domain_type domain_type) const noexcept;
+
+	/*
+	 * Find or create the agent for a given domain type. Throws on
+	 * allocation failure.
+	 */
+	struct agent& find_or_create_agent(enum lttng_domain_type domain_type);
+
+	/* Underlying hash table for agent iteration. */
+	struct lttng_ht& agents_ht() const noexcept
+	{
+		return *_agents;
+	}
+
 	const std::string& root_shm_path() const noexcept
 	{
 		return _root_shm_path;
@@ -421,6 +439,8 @@ private:
 	const config::recording_channel_configuration::owership_model_t _default_buffer_ownership;
 	consumer_output_uptr _consumer_output;
 	bool _active = false;
+	nonstd::optional<lttng_buffer_type> _locked_buffer_type;
+	struct lttng_ht *_agents;
 	const std::string _root_shm_path;
 	const std::string _shm_path;
 
@@ -660,6 +680,36 @@ public:
 	}
 
 	bool supports_madv_remove() const noexcept
+	{
+		std::abort();
+	}
+
+	const struct ltt_session& recording_session() const noexcept
+	{
+		std::abort();
+	}
+
+	static struct lttng_ust_abi_channel_attr default_metadata_channel_attr() noexcept
+	{
+		std::abort();
+	}
+
+	const std::string& root_shm_path() const noexcept
+	{
+		std::abort();
+	}
+
+	struct agent *find_agent(enum lttng_domain_type /* domain_type */) const noexcept
+	{
+		std::abort();
+	}
+
+	struct agent& find_or_create_agent(enum lttng_domain_type /* domain_type */)
+	{
+		std::abort();
+	}
+
+	struct lttng_ht& agents_ht() const noexcept
 	{
 		std::abort();
 	}

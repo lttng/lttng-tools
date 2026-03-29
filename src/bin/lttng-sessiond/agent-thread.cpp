@@ -13,6 +13,7 @@
 #include "lttng-sessiond.hpp"
 #include "session.hpp"
 #include "thread.hpp"
+#include "ust-domain-orchestrator.hpp"
 #include "utils.hpp"
 
 #include <common/common.hpp>
@@ -72,10 +73,11 @@ static void update_agent_app(const struct agent_app *app)
 
 		session_lock(session);
 		if (session->ust_orchestrator) {
-			const struct agent *agt;
-
 			const lttng::urcu::read_lock_guard read_lock;
-			agt = trace_ust_find_agent(session->ust_session, app->domain);
+			const auto *agt =
+				static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
+					session->get_ust_orchestrator())
+					.find_agent(app->domain);
 			if (agt) {
 				agent_update(agt, app);
 			}

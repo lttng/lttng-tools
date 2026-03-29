@@ -7,13 +7,10 @@
  */
 
 #define _LGPL_SOURCE
-#include "agent.hpp"
 #include "trace-ust.hpp"
-#include "ust-domain-orchestrator.hpp"
 #include "utils.hpp"
 
 #include <common/common.hpp>
-#include <common/urcu.hpp>
 #include <common/utils.hpp>
 
 #include <inttypes.h>
@@ -23,38 +20,6 @@
 #include <unistd.h>
 
 namespace lsu = lttng::sessiond::ust;
-
-/*
- * Lookup an agent in the session agents hash table by domain type and return
- * the object if found else NULL.
- *
- * RCU read side lock must be acquired before calling and only released
- * once the agent is no longer in scope or being used.
- */
-struct agent *trace_ust_find_agent(struct ltt_ust_session *session,
-				   enum lttng_domain_type domain_type)
-{
-	struct agent *agt = nullptr;
-	struct lttng_ht_node_u64 *node;
-	struct lttng_ht_iter iter;
-	uint64_t key;
-
-	LTTNG_ASSERT(session);
-
-	DBG3("Trace ust agent lookup for domain %d", domain_type);
-
-	key = domain_type;
-
-	lttng_ht_lookup(session->agents, &key, &iter);
-	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
-	if (!node) {
-		goto end;
-	}
-	agt = lttng::utils::container_of(node, &agent::node);
-
-end:
-	return agt;
-}
 
 /*
  * Allocate and initialize a ust session data structure.
@@ -77,14 +42,10 @@ struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 	lus->active = false;
 
 	/*
-	 * Default buffer type. This can be changed through an enable channel
-	 * requesting a different type. Note that this can only be changed once
-	 * during the session lifetime which is at the first enable channel and
-	 * only before start. The flag buffer_type_changed indicates the status.
+	 * Default buffer type. Locked to the first explicitly requested
+	 * type by the UST domain orchestrator.
 	 */
 	lus->buffer_type = LTTNG_BUFFER_PER_UID;
-	/* Once set to 1, the buffer_type is immutable for the session. */
-	lus->buffer_type_changed = 0;
 	/* Alloc agent hash table. */
 	lus->agents = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 
@@ -113,17 +74,6 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 	LTTNG_ASSERT(session);
 
 	DBG2("Trace UST destroy session %" PRIu64, session->id);
-
-	for (auto *agt :
-	     lttng::urcu::lfht_iteration_adapter<agent, decltype(agent::node), &agent::node>(
-		     *session->agents->ht)) {
-		const int ret = cds_lfht_del(session->agents->ht, &agt->node.node);
-
-		LTTNG_ASSERT(!ret);
-		agent_destroy(agt);
-	}
-
-	lttng_ht_destroy(session->agents);
 }
 
 /* Free elements needed by destroy notifiers. */

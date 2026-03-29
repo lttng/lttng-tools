@@ -5,6 +5,7 @@
  *
  */
 
+#include "agent.hpp"
 #include "consumer.hpp"
 #include "context-configuration.hpp"
 #include "event-rule-configuration.hpp"
@@ -157,11 +158,16 @@ ls::ust::domain_orchestrator::domain_orchestrator(
 	_session(session),
 	_default_buffer_ownership(default_buffer_ownership),
 	_consumer_output(std::move(consumer_output)),
+	_agents(ust_session.agents),
 	_root_shm_path(session.shm_path),
 	_shm_path(session.shm_path[0] != '\0' ? std::string(session.shm_path) + "/ust" :
 						std::string())
 {
 	LTTNG_ASSERT(_consumer_output);
+	LTTNG_ASSERT(_agents);
+
+	/* Transfer ownership: the orchestrator now owns the agents hash table. */
+	ust_session.agents = nullptr;
 }
 
 struct lttng_ust_abi_channel_attr
@@ -197,6 +203,54 @@ ls::ust::domain_orchestrator::~domain_orchestrator()
 	for (const auto& entry : _per_pid_app_session_ids) {
 		the_trace_class_index->remove_per_pid(entry.second);
 	}
+
+	/* Destroy all agents. */
+	if (_agents) {
+		const lttng::urcu::read_lock_guard read_lock;
+
+		for (auto *agt :
+		     lttng::urcu::lfht_iteration_adapter<agent, decltype(agent::node), &agent::node>(
+			     *_agents->ht)) {
+			const int ret = cds_lfht_del(_agents->ht, &agt->node.node);
+
+			LTTNG_ASSERT(!ret);
+			agent_destroy(agt);
+		}
+
+		lttng_ht_destroy(_agents);
+	}
+}
+
+struct agent *
+ls::ust::domain_orchestrator::find_agent(enum lttng_domain_type domain_type) const noexcept
+{
+	struct lttng_ht_node_u64 *node;
+	struct lttng_ht_iter iter;
+	uint64_t key = domain_type;
+
+	lttng_ht_lookup(_agents, &key, &iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
+	if (!node) {
+		return nullptr;
+	}
+
+	return lttng::utils::container_of(node, &agent::node);
+}
+
+struct agent& ls::ust::domain_orchestrator::find_or_create_agent(enum lttng_domain_type domain_type)
+{
+	auto *agt = find_agent(domain_type);
+	if (agt) {
+		return *agt;
+	}
+
+	agt = agent_create(domain_type);
+	if (!agt) {
+		LTTNG_THROW_ALLOCATION_FAILURE_ERROR("Failed to create agent");
+	}
+
+	agent_add(agt, _agents);
+	return *agt;
 }
 
 std::uint64_t ls::ust::domain_orchestrator::trace_class_stream_class_handle(
@@ -442,11 +496,11 @@ void ls::ust::domain_orchestrator::create_channel(
 	const auto handle = _next_trace_class_stream_class_handle++;
 	_channel_handles[&channel_config] = handle;
 
-	/* Lock buffer type on the session. */
-	if (!_ust_session.buffer_type_changed) {
+	/* Lock buffer type on first channel creation. */
+	if (!_locked_buffer_type) {
+		_locked_buffer_type = buffer_type;
 		_ust_session.buffer_type = buffer_type;
-		_ust_session.buffer_type_changed = 1;
-	} else if (_ust_session.buffer_type != buffer_type) {
+	} else if (*_locked_buffer_type != buffer_type) {
 		LTTNG_THROW_CTL("Buffer type mismatch", LTTNG_ERR_BUFFER_TYPE_MISMATCH);
 	}
 
