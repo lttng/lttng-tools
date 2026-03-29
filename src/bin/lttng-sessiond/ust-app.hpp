@@ -585,10 +585,6 @@ int ust_app_recv_notify(int sock);
 void ust_app_add(struct ust_app *app);
 struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock);
 void ust_app_notify_sock_unregister(int sock);
-
-enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *usess,
-					      const struct consumer_output *output,
-					      uint64_t nb_packets_per_stream);
 nonstd::optional<ust_app_reference> ust_app_find_by_sock(int sock);
 int ust_app_regenerate_statedump_all(struct ltt_ust_session *usess);
 int ust_app_release_object(struct ust_app *app, struct lttng_ust_abi_object_data *data);
@@ -799,14 +795,6 @@ static inline void ust_app_add(struct ust_app *app __attribute__((unused)))
 
 static inline void ust_app_notify_sock_unregister(int sock __attribute__((unused)))
 {
-}
-
-static inline enum lttng_error_code
-ust_app_snapshot_record(struct ltt_ust_session *usess __attribute__((unused)),
-			const struct consumer_output *output __attribute__((unused)),
-			uint64_t max_stream_size __attribute__((unused)))
-{
-	return LTTNG_ERR_UNK;
 }
 
 static inline unsigned int ust_app_get_nb_stream(struct ltt_ust_session *usess

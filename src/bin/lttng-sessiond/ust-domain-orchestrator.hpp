@@ -475,6 +475,8 @@ private:
 
 	void _record_snapshot_per_uid(const struct consumer_output& snapshot_consumer,
 				      std::uint64_t nb_packets_per_stream) const;
+	void _record_snapshot_per_pid(const struct consumer_output& snapshot_consumer,
+				      std::uint64_t nb_packets_per_stream) const;
 
 	/*
 	 * Trace class and stream group ownership.
