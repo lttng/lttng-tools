@@ -2886,26 +2886,25 @@ error:
 }
 
 /*
- * Lookup sesison wrapper.
+ * Lookup session wrapper.
  */
 static void
-__lookup_session_by_app(const ltt_ust_session *usess, const ust_app *app, lttng_ht_iter *iter)
+__lookup_session_by_app(std::uint64_t session_id, const ust_app *app, lttng_ht_iter *iter)
 {
 	/* Get right UST app session from app */
-	lttng_ht_lookup(app->sessions, &usess->id, iter);
+	lttng_ht_lookup(app->sessions, &session_id, iter);
 }
 
 /*
  * Return ust app session from the app session hashtable using the UST session
  * id.
  */
-ust_app_session *ust_app_lookup_app_session(const struct ltt_ust_session *usess,
-					    const struct ust_app *app)
+ust_app_session *ust_app_lookup_app_session(std::uint64_t session_id, const struct ust_app *app)
 {
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_u64 *node;
 
-	__lookup_session_by_app(usess, app, &iter);
+	__lookup_session_by_app(session_id, app, &iter);
 	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (node == nullptr) {
 		goto error;
@@ -2943,7 +2942,7 @@ static int find_or_create_ust_app_session(struct ltt_ust_session *usess,
 
 	health_code_update();
 
-	ua_sess = ust_app_lookup_app_session(usess, app);
+	ua_sess = ust_app_lookup_app_session(usess->id, app);
 	if (ua_sess == nullptr) {
 		DBG2("UST app pid: %d session id %" PRIu64 " not found, creating it",
 		     app->pid,
@@ -5190,7 +5189,7 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess, lttng::c_string_v
 			continue;
 		}
 
-		ua_sess = ust_app_lookup_app_session(usess, app);
+		ua_sess = ust_app_lookup_app_session(usess->id, app);
 		if (ua_sess == nullptr) {
 			continue;
 		}
@@ -5249,7 +5248,7 @@ int ust_app_enable_channel_glb(struct ltt_ust_session *usess, lttng::c_string_vi
 			continue;
 		}
 
-		ua_sess = ust_app_lookup_app_session(usess, app);
+		ua_sess = ust_app_lookup_app_session(usess->id, app);
 		if (ua_sess == nullptr) {
 			continue;
 		}
@@ -5301,7 +5300,7 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 			continue;
 		}
 
-		ua_sess = ust_app_lookup_app_session(usess, app);
+		ua_sess = ust_app_lookup_app_session(usess->id, app);
 		if (ua_sess == nullptr) {
 			/* Next app */
 			continue;
@@ -5484,7 +5483,7 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 			continue;
 		}
 
-		ua_sess = ust_app_lookup_app_session(usess, app);
+		ua_sess = ust_app_lookup_app_session(usess->id, app);
 		if (!ua_sess) {
 			/* The application has problem or is probably dead. */
 			continue;
@@ -5564,7 +5563,7 @@ int ust_app_create_event_glb(
 			continue;
 		}
 
-		ua_sess = ust_app_lookup_app_session(usess, app);
+		ua_sess = ust_app_lookup_app_session(usess->id, app);
 		if (!ua_sess) {
 			/* The application has problem or is probably dead. */
 			continue;
@@ -5620,7 +5619,7 @@ static int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *ap
 		return 0;
 	}
 
-	ua_sess = ust_app_lookup_app_session(usess, app);
+	ua_sess = ust_app_lookup_app_session(usess->id, app);
 	if (ua_sess == nullptr) {
 		/* The session is in teardown process. Ignore and continue. */
 		return 0;
@@ -5710,7 +5709,7 @@ static int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app
 		return 0;
 	}
 
-	ua_sess = ust_app_lookup_app_session(usess, app);
+	ua_sess = ust_app_lookup_app_session(usess->id, app);
 	if (ua_sess == nullptr) {
 		return 0;
 	}
@@ -5905,7 +5904,7 @@ static int ust_app_flush_session(struct ltt_ust_session *usess,
 			/* Prevent app teardown during use. */
 			const ust_app_reference app_ref(app);
 
-			auto *ua_sess = ust_app_lookup_app_session(usess, app);
+			auto *ua_sess = ust_app_lookup_app_session(usess->id, app);
 			if (ua_sess == nullptr) {
 				continue;
 			}
@@ -6029,7 +6028,7 @@ static int ust_app_clear_quiescent_session(struct ltt_ust_session *usess,
 			/* Prevent app teardown during use. */
 			const ust_app_reference app_ref(app);
 
-			auto *ua_sess = ust_app_lookup_app_session(usess, app);
+			auto *ua_sess = ust_app_lookup_app_session(usess->id, app);
 			if (ua_sess == nullptr) {
 				continue;
 			}
@@ -6066,7 +6065,7 @@ static int destroy_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		goto end;
 	}
 
-	__lookup_session_by_app(usess, app, &iter);
+	__lookup_session_by_app(usess->id, app, &iter);
 	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (node == nullptr) {
 		/* Session is being or is deleted. */
@@ -6533,7 +6532,7 @@ static void ust_app_global_destroy(struct ltt_ust_session *usess, struct ust_app
 {
 	struct ust_app_session *ua_sess;
 
-	ua_sess = ust_app_lookup_app_session(usess, app);
+	ua_sess = ust_app_lookup_app_session(usess->id, app);
 	if (ua_sess == nullptr) {
 		return;
 	}
@@ -6684,7 +6683,7 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 			continue;
 		}
 
-		ua_sess = ust_app_lookup_app_session(usess, app);
+		ua_sess = ust_app_lookup_app_session(usess->id, app);
 		if (ua_sess == nullptr) {
 			continue;
 		}
@@ -7503,7 +7502,7 @@ static int ust_app_regenerate_statedump(struct ltt_ust_session *usess, struct us
 	const auto update_health_code_on_exit =
 		lttng::make_scope_exit([]() noexcept { health_code_update(); });
 
-	ua_sess = ust_app_lookup_app_session(usess, app);
+	ua_sess = ust_app_lookup_app_session(usess->id, app);
 	if (ua_sess == nullptr) {
 		/* The session is in teardown process. Ignore and continue. */
 		return 0;

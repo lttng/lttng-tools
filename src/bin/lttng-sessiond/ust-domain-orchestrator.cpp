@@ -188,6 +188,19 @@ bool ls::ust::domain_orchestrator::supports_madv_remove() const noexcept
 									  nullptr);
 }
 
+std::uint64_t ls::ust::domain_orchestrator::session_id() const noexcept
+{
+	return _session.id;
+}
+
+lttng_buffer_type ls::ust::domain_orchestrator::buffer_type() const noexcept
+{
+	return _default_buffer_ownership ==
+			lsc::recording_channel_configuration::owership_model_t::PER_UID ?
+		LTTNG_BUFFER_PER_UID :
+		LTTNG_BUFFER_PER_PID;
+}
+
 ls::ust::domain_orchestrator::~domain_orchestrator()
 {
 	/* Unregister all per-UID trace classes from the global index. */
@@ -995,7 +1008,7 @@ void ls::ust::domain_orchestrator::create_channel_subdirectories(
 		 */
 		for (const auto& tc_entry : _per_pid_trace_classes) {
 			const auto *ua_sess =
-				ust_app_lookup_app_session(&_ust_session, tc_entry.first);
+				ust_app_lookup_app_session(session_id(), tc_entry.first);
 			if (!ua_sess) {
 				continue;
 			}

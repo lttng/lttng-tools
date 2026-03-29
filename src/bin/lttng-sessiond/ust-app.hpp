@@ -596,8 +596,7 @@ static inline int ust_app_supported()
 	return 1;
 }
 
-ust_app_session *ust_app_lookup_app_session(const struct ltt_ust_session *usess,
-					    const struct ust_app *app);
+ust_app_session *ust_app_lookup_app_session(std::uint64_t session_id, const struct ust_app *app);
 std::shared_ptr<lttng::sessiond::ust::trace_class>
 ust_app_get_session_registry(const ust_app_session::identifier& identifier);
 
@@ -854,7 +853,7 @@ static inline int ust_app_regenerate_statedump_all(struct ltt_ust_session *usess
 	return 0;
 }
 
-static inline ust_app_session *ust_app_lookup_app_session(const ltt_ust_session *, const ust_app *)
+static inline ust_app_session *ust_app_lookup_app_session(std::uint64_t, const ust_app *)
 {
 	return nullptr;
 }
