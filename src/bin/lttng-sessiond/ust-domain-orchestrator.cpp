@@ -956,7 +956,7 @@ void ls::ust::domain_orchestrator::regenerate_metadata()
 
 void ls::ust::domain_orchestrator::regenerate_statedump()
 {
-	const auto ret = ust_app_regenerate_statedump_all(&_ust_session);
+	const auto ret = ust_app_regenerate_statedump_all(session_id());
 	if (ret < 0) {
 		LTTNG_THROW_REGENERATE_STATEDUMP_FAILURE("Failed to regenerate UST statedump");
 	}

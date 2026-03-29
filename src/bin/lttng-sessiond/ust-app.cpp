@@ -6045,7 +6045,7 @@ static int ust_app_clear_quiescent_session(struct ltt_ust_session *usess,
 /*
  * Destroy a specific UST session in apps.
  */
-static int destroy_trace(struct ltt_ust_session *usess, struct ust_app *app)
+static int destroy_trace(std::uint64_t session_id, struct ust_app *app)
 {
 	int ret;
 	struct ust_app_session *ua_sess;
@@ -6060,7 +6060,7 @@ static int destroy_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		goto end;
 	}
 
-	__lookup_session_by_app(usess->id, app, &iter);
+	__lookup_session_by_app(session_id, app, &iter);
 	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (node == nullptr) {
 		/* Session is being or is deleted. */
@@ -6184,7 +6184,7 @@ int ust_app_stop_trace_all(struct ltt_ust_session *usess,
 /*
  * Destroy app UST session.
  */
-int ust_app_destroy_trace_all(struct ltt_ust_session *usess)
+int ust_app_destroy_trace_all(std::uint64_t session_id)
 {
 	DBG("Destroy all UST traces");
 
@@ -6200,7 +6200,7 @@ int ust_app_destroy_trace_all(struct ltt_ust_session *usess)
 		/* Prevent app teardown during use. */
 		const ust_app_reference app_ref(app);
 
-		(void) destroy_trace(usess, app);
+		(void) destroy_trace(session_id, app);
 	}
 
 	return 0;
@@ -7484,7 +7484,7 @@ static void ust_app_destroy(ust_app& app)
  *
  * Returns LTTNG_OK on success or a LTTNG_ERR error code.
  */
-static int ust_app_regenerate_statedump(struct ltt_ust_session *usess, struct ust_app *app)
+static int ust_app_regenerate_statedump(std::uint64_t session_id, struct ust_app *app)
 {
 	int ret = 0;
 	struct ust_app_session *ua_sess;
@@ -7495,7 +7495,7 @@ static int ust_app_regenerate_statedump(struct ltt_ust_session *usess, struct us
 	const auto update_health_code_on_exit =
 		lttng::make_scope_exit([]() noexcept { health_code_update(); });
 
-	ua_sess = ust_app_lookup_app_session(usess->id, app);
+	ua_sess = ust_app_lookup_app_session(session_id, app);
 	if (ua_sess == nullptr) {
 		/* The session is in teardown process. Ignore and continue. */
 		return 0;
@@ -7515,7 +7515,7 @@ static int ust_app_regenerate_statedump(struct ltt_ust_session *usess, struct us
 /*
  * Regenerate the statedump for each app in the session.
  */
-int ust_app_regenerate_statedump_all(struct ltt_ust_session *usess)
+int ust_app_regenerate_statedump_all(std::uint64_t session_id)
 {
 	DBG("Regenerating the metadata for all UST apps");
 
@@ -7535,7 +7535,7 @@ int ust_app_regenerate_statedump_all(struct ltt_ust_session *usess)
 			continue;
 		}
 
-		(void) ust_app_regenerate_statedump(usess, app);
+		(void) ust_app_regenerate_statedump(session_id, app);
 	}
 
 	return 0;

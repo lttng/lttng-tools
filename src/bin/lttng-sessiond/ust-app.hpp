@@ -539,7 +539,7 @@ int ust_app_start_trace_all(struct ltt_ust_session *usess,
 			    ltt_session& session);
 int ust_app_stop_trace_all(struct ltt_ust_session *usess,
 			   const lttng::sessiond::ust::domain_orchestrator& orchestrator);
-int ust_app_destroy_trace_all(struct ltt_ust_session *usess);
+int ust_app_destroy_trace_all(std::uint64_t session_id);
 int ust_app_list_events(struct lttng_event **events);
 int ust_app_list_event_fields(struct lttng_event_field **fields);
 int ust_app_create_event_glb(
@@ -586,7 +586,7 @@ void ust_app_add(struct ust_app *app);
 struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock);
 void ust_app_notify_sock_unregister(int sock);
 nonstd::optional<ust_app_reference> ust_app_find_by_sock(int sock);
-int ust_app_regenerate_statedump_all(struct ltt_ust_session *usess);
+int ust_app_regenerate_statedump_all(std::uint64_t session_id);
 int ust_app_release_object(struct ust_app *app, struct lttng_ust_abi_object_data *data);
 
 int ust_app_setup_event_notifier_group(struct ust_app *app);
@@ -609,7 +609,7 @@ void ust_app_notify_reclaimed_owner_ids(const std::vector<uint32_t>& owners);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
-static inline int ust_app_destroy_trace_all(struct ltt_ust_session *usess __attribute__((unused)))
+static inline int ust_app_destroy_trace_all(std::uint64_t /* session_id */)
 {
 	return 0;
 }
@@ -841,8 +841,7 @@ static inline nonstd::optional<ust_app_reference> ust_app_find_by_pid(pid_t pid
 	return nonstd::nullopt;
 }
 
-static inline int ust_app_regenerate_statedump_all(struct ltt_ust_session *usess
-						   __attribute__((unused)))
+static inline int ust_app_regenerate_statedump_all(std::uint64_t /* session_id */)
 {
 	return 0;
 }
