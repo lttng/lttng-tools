@@ -14,15 +14,7 @@ import json
 
 from collections import defaultdict
 
-try:
-    import bt2
-except ImportError:
-    # quick fix for debian-based distros
-    sys.path.append(
-        "/usr/local/lib/python%d.%d/site-packages"
-        % (sys.version_info.major, sys.version_info.minor)
-    )
-    import bt2
+import bt2
 
 NSEC_PER_SEC = 1000000000
 
