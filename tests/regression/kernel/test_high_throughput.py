@@ -18,7 +18,7 @@ import time
 
 test_utils_import_path = pathlib.Path(__file__).absolute().parents[2] / "utils"
 print(test_utils_import_path)
-sys.path.append(str(test_utils_import_path))
+sys.path.insert(0, str(test_utils_import_path))
 
 import bt2
 import lttngtest

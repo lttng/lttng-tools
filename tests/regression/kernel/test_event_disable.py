@@ -21,7 +21,7 @@ import sys
 import traceback
 
 test_utils_import_path = pathlib.Path(__file__).absolute().parents[2] / "utils"
-sys.path.append(str(test_utils_import_path))
+sys.path.insert(0, str(test_utils_import_path))
 
 import lttngtest
 
