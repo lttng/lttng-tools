@@ -46,8 +46,15 @@ def get_consumerd_pid(sessiond_pid):
         )
         process.wait()
         output = str(process.stdout.read(), encoding="UTF-8").splitlines()
-        if len(output) == 1:
-            return int(output[0])
+        if len(output) > 1:
+            print(
+                "# Warning: multiple consumerds found, using the first (pid: {})".format(
+                    output[0]
+                ),
+                file=sys.stderr,
+            )
+
+        return int(output[0])
     except Exception:
         pass
     return None
