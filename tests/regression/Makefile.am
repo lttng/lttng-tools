@@ -69,7 +69,6 @@ SERIAL_TESTS = tools/base-path/test_ust \
 	tools/metadata/test_kernel \
 	tools/working-directory/test_relayd_working_directory \
 	tools/clear/test_kernel \
-	tools/clear/test_live_hang.py \
 	tools/tracker/test_event_tracker \
 	tools/trigger/start-stop/test_start_stop \
 	tools/trigger/test_add_trigger_cli \
@@ -81,6 +80,7 @@ SERIAL_TESTS = tools/base-path/test_ust \
 	tools/trace-format/test_trace_format_kernel.py
 
 TESTS = tools/clear/test_disallow.py \
+	tools/clear/test_live_hang.py \
 	tools/clear/test_ust.py \
 	tools/clear/test_ust_multi_user.py \
 	tools/live/test_early_inactive_app.py \
