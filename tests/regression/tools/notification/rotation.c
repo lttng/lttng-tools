@@ -17,7 +17,7 @@
 #include <tap/tap.h>
 #include <unistd.h>
 
-#define TEST_COUNT 36
+#define TEST_COUNT 32
 
 struct session {
 	const char *name;
@@ -171,7 +171,6 @@ static int test_notification(struct lttng_notification_channel *notification_cha
 			     enum lttng_condition_type expected_condition_type)
 {
 	int ret = 0;
-	bool notification_pending;
 	enum lttng_notification_channel_status notification_channel_status;
 	enum lttng_condition_status condition_status;
 	enum lttng_evaluation_status evaluation_status;
@@ -185,26 +184,11 @@ static int test_notification(struct lttng_notification_channel *notification_cha
 	uint64_t rotation_id = UINT64_MAX;
 	const char *chunk_path = NULL;
 
-	notification_channel_status = lttng_notification_channel_has_pending_notification(
-		notification_channel, &notification_pending);
-	ok(notification_channel_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
-	   "Check for %s notification pending on notification channel",
-	   expected_notification_type_name);
-	if (notification_channel_status != LTTNG_NOTIFICATION_CHANNEL_STATUS_OK) {
-		ret = -1;
-		goto end;
-	}
-
-	ok(notification_pending,
-	   "Session %s notification is pending on notification channel",
-	   expected_notification_type_name);
-	if (!notification_pending) {
-		ret = -1;
-		goto end;
-	}
-
-	notification_channel_status = lttng_notification_channel_get_next_notification(
-		notification_channel, &notification);
+	do {
+		notification_channel_status = lttng_notification_channel_get_next_notification(
+			notification_channel, &notification);
+	} while (notification_channel_status ==
+		 LTTNG_NOTIFICATION_CHANNEL_STATUS_INTERRUPTED);
 	ok(notification_channel_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK && notification,
 	   "Get %s notification from notification channel",
 	   expected_notification_type_name);
@@ -361,6 +345,10 @@ int main(int argc, const char *argv[])
 
 	do {
 		rotation_status = lttng_rotation_handle_get_state(rotation_handle, &rotation_state);
+		if (rotation_state == LTTNG_ROTATION_STATE_ONGOING &&
+		    rotation_status == LTTNG_ROTATION_STATUS_OK) {
+			sleep(1);
+		}
 	} while (rotation_state == LTTNG_ROTATION_STATE_ONGOING &&
 		 rotation_status == LTTNG_ROTATION_STATUS_OK);
 	ok(rotation_status == LTTNG_ROTATION_STATUS_OK &&
