@@ -70,6 +70,8 @@ static void stream_complete_rotation(struct relay_stream *stream)
 		tracefile_array_reset(stream->tfa);
 		tracefile_array_commit_seq(stream->tfa, stream->index_received_seqcount);
 	}
+	stream->last_rotation_was_to_null_chunk = stream->ongoing_rotation.value.next_trace_chunk ==
+		nullptr;
 	lttng_trace_chunk_put(stream->trace_chunk);
 	stream->trace_chunk = stream->ongoing_rotation.value.next_trace_chunk;
 	stream->ongoing_rotation = LTTNG_OPTIONAL_INIT_UNSET;

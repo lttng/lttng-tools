@@ -180,6 +180,15 @@ struct relay_stream {
 	struct lttng_trace_chunk *trace_chunk;
 	LTTNG_OPTIONAL(struct relay_stream_rotation) ongoing_rotation;
 	uint64_t completed_rotation_count;
+	/*
+	 * Whether the last completed rotation transitioned the stream
+	 * to a NULL trace chunk. This distinguishes session destruction
+	 * (rotation to NULL: viewer should consume the last chunk) from
+	 * a stream close after a clear (rotation to a new chunk, then
+	 * close sets trace_chunk to NULL: viewer must rotate away from
+	 * the deleted chunk).
+	 */
+	bool last_rotation_was_to_null_chunk;
 };
 
 struct relay_stream *stream_create(struct ctf_trace *trace,

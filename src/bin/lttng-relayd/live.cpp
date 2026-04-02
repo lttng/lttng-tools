@@ -2033,7 +2033,20 @@ static int viewer_get_next_index(struct relay_connection *conn)
 			conn->viewer_session->current_trace_chunk ?
 				viewer_session_chunk_id.value_or("anonymous") :
 				"None");
-	} else if (viewer_stream_one_rotation_behind && !rstream->trace_chunk) {
+	} else if (viewer_stream_one_rotation_behind && !rstream->trace_chunk &&
+		   rstream->last_rotation_was_to_null_chunk) {
+		/*
+		 * The relay stream's last rotation transitioned it to a NULL
+		 * trace chunk (e.g. session destruction). The viewer is one
+		 * rotation behind and should consume the last chunk's data
+		 * before receiving HUP.
+		 *
+		 * This condition must NOT match when the relay stream rotated
+		 * to a new (non-NULL) chunk and was subsequently closed by
+		 * try_stream_close (e.g. per-PID app exit after a clear). In
+		 * that case, the old chunk may have been deleted and the viewer
+		 * must rotate away from it.
+		 */
 		DBG_FMT("Transition to latest chunk check ({} -> {}): One chunk behind relay stream which is being destroyed, no need to rotate",
 			vstream->stream_file.trace_chunk ?
 				stream_file_chunk_id.value_or("anonymous") :
