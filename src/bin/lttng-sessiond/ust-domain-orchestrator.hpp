@@ -169,8 +169,15 @@ public:
 	void regenerate_metadata() override;
 	void regenerate_statedump() override;
 
-	void reclaim_channel_memory(
-		const config::recording_channel_configuration& target_channel) override;
+	commands::reclaim_channel_memory_result reclaim_channel_memory(
+		const config::recording_channel_configuration& target_channel,
+		const nonstd::optional<std::chrono::microseconds>& reclaim_older_than_age,
+		bool require_consumed,
+		commands::completion_callback_t on_complete,
+		commands::cancellation_callback_t on_cancel) override;
+
+	std::vector<commands::stream_memory_usage_group> get_channel_memory_usage(
+		const config::recording_channel_configuration& target_channel) const override;
 
 	/*
 	 * Create the output subdirectories for UST trace data in the
@@ -235,8 +242,7 @@ public:
 	 * skipped.
 	 *
 	 * This method decouples callers (rotate, clear, open_packets,
-	 * snapshot, channel memory commands) from ust_app_session
-	 * internals.
+	 * snapshot) from ust_app_session internals.
 	 */
 
 	using consumer_stream_group_visitor =

@@ -3811,7 +3811,8 @@ static int ust_app_channel_send(struct ust_app *app,
 	switch (buffer_type) {
 	case LTTNG_BUFFER_PER_UID:
 	{
-		ret = create_channel_per_uid(app, consumer, session_id, &ua_sess.get(), ua_chan, session);
+		ret = create_channel_per_uid(
+			app, consumer, session_id, &ua_sess.get(), ua_chan, session);
 		if (ret < 0) {
 			goto error;
 		}
@@ -5390,7 +5391,8 @@ static int ust_app_channel_create(
 		goto error;
 	}
 
-	ret = ust_app_channel_send(app, consumer, buffer_type, session_id, ua_sess, ua_chan, session);
+	ret = ust_app_channel_send(
+		app, consumer, buffer_type, session_id, ua_sess, ua_chan, session);
 	if (ret) {
 		goto error;
 	}

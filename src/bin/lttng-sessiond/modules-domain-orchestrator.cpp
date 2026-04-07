@@ -1385,11 +1385,24 @@ void ls::modules::domain_orchestrator::regenerate_statedump()
 	}
 }
 
-void ls::modules::domain_orchestrator::reclaim_channel_memory(
-	const lsc::recording_channel_configuration& target_channel [[maybe_unused]])
+ls::commands::reclaim_channel_memory_result
+ls::modules::domain_orchestrator::reclaim_channel_memory(
+	const lsc::recording_channel_configuration& target_channel [[maybe_unused]],
+	const nonstd::optional<std::chrono::microseconds>& reclaim_older_than_age [[maybe_unused]],
+	bool require_consumed [[maybe_unused]],
+	ls::commands::completion_callback_t on_complete [[maybe_unused]],
+	ls::commands::cancellation_callback_t on_cancel [[maybe_unused]])
 {
 	LTTNG_THROW_UNSUPPORTED_ERROR(
 		"Channel memory reclamation is not supported by the lttng-modules tracer");
+}
+
+std::vector<ls::commands::stream_memory_usage_group>
+ls::modules::domain_orchestrator::get_channel_memory_usage(
+	const lsc::recording_channel_configuration& target_channel [[maybe_unused]]) const
+{
+	LTTNG_THROW_UNSUPPORTED_ERROR(
+		"Getting channel memory usage is not supported by the lttng-modules tracer");
 }
 
 ls::recording_channel_runtime_stats

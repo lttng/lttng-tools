@@ -11,8 +11,13 @@
 #include <common/exception.hpp>
 #include <common/format.hpp>
 
+#include <vendor/optional.hpp>
+
+#include <bin/lttng-sessiond/channel-memory-types.hpp>
+#include <chrono>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 struct consumer_output;
 
@@ -111,8 +116,15 @@ public:
 	virtual void regenerate_metadata() = 0;
 	virtual void regenerate_statedump() = 0;
 
-	virtual void
-	reclaim_channel_memory(const config::recording_channel_configuration& target_channel) = 0;
+	virtual commands::reclaim_channel_memory_result reclaim_channel_memory(
+		const config::recording_channel_configuration& target_channel,
+		const nonstd::optional<std::chrono::microseconds>& reclaim_older_than_age,
+		bool require_consumed,
+		commands::completion_callback_t on_complete,
+		commands::cancellation_callback_t on_cancel) = 0;
+
+	virtual std::vector<commands::stream_memory_usage_group> get_channel_memory_usage(
+		const config::recording_channel_configuration& target_channel) const = 0;
 
 	/*
 	 * Query the consumer daemon for the runtime statistics of a

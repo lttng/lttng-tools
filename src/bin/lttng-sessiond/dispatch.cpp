@@ -104,11 +104,10 @@ static void update_ust_app(int app_sock)
 				static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
 					session->get_ust_orchestrator());
 			if (orchestrator.is_active()) {
-				ust_app_global_update(
-					app->get(),
-					session->user_space_domain,
-					orchestrator,
-					*session);
+				ust_app_global_update(app->get(),
+						      session->user_space_domain,
+						      orchestrator,
+						      *session);
 			}
 		}
 	}

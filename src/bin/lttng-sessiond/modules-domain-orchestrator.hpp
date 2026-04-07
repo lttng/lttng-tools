@@ -549,8 +549,15 @@ public:
 	void regenerate_statedump() override;
 
 	/* Unsupported by the LTTng-modules tracer. */
-	[[noreturn]] void reclaim_channel_memory(
-		const config::recording_channel_configuration& target_channel) override;
+	[[noreturn]] commands::reclaim_channel_memory_result reclaim_channel_memory(
+		const config::recording_channel_configuration& target_channel,
+		const nonstd::optional<std::chrono::microseconds>& reclaim_older_than_age,
+		bool require_consumed,
+		commands::completion_callback_t on_complete,
+		commands::cancellation_callback_t on_cancel) override;
+
+	[[noreturn]] std::vector<commands::stream_memory_usage_group> get_channel_memory_usage(
+		const config::recording_channel_configuration& target_channel) const override;
 
 	recording_channel_runtime_stats get_recording_channel_runtime_stats(
 		const config::recording_channel_configuration& channel_config) const override;

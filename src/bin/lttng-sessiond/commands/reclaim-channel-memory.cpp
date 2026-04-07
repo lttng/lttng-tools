@@ -13,16 +13,8 @@
 
 #include <common/error.hpp>
 #include <common/format.hpp>
-#include <common/urcu.hpp>
-
-#include <bin/lttng-sessiond/consumer.hpp>
-#include <bin/lttng-sessiond/pending-memory-reclamation-request.hpp>
-#include <bin/lttng-sessiond/recording-channel-configuration.hpp>
-#include <bin/lttng-sessiond/ust-domain-orchestrator.hpp>
-#include <numeric>
 
 namespace lsc = lttng::sessiond::commands;
-namespace lsu = lttng::sessiond::ust;
 
 namespace {
 void validate_agent_channel_name(lttng::domain_class domain, lttng::c_string_view channel_name)
@@ -48,61 +40,6 @@ void validate_agent_channel_name(lttng::domain_class domain, lttng::c_string_vie
 			domain,
 			expected_channel_name,
 			channel_name));
-	}
-}
-
-/*
- * Issue a memory reclamation request for the specified consumer channel keys
- * (effectively stream groups).
- *
- * The results are matched back to the stream group owners provided to
- * populate the result vector providing proper stream group ownership
- * information along with the reclaimed memory sizes (completed and pending).
- */
-void issue_consumer_reclaim_channel_memory(
-	consumer_socket& consumer_socket,
-	const std::vector<lsc::stream_group_owner>& stream_group_owners,
-	bool is_per_cpu_stream,
-	const std::vector<std::uint64_t>& target_consumer_channel_keys,
-	const nonstd::optional<std::chrono::microseconds>& reclaim_older_than_age,
-	bool only_reclaim_consumed_data,
-	std::uint64_t memory_reclaim_request_token,
-	std::vector<lsc::stream_memory_reclamation_result_group>& result)
-{
-	if (target_consumer_channel_keys.empty()) {
-		return;
-	}
-
-	std::size_t current_channel_index = 0;
-	const auto channels_reclaimed_memory =
-		lttng::sessiond::consumer::reclaim_channels_memory(consumer_socket,
-								   target_consumer_channel_keys,
-								   reclaim_older_than_age,
-								   only_reclaim_consumed_data,
-								   memory_reclaim_request_token);
-
-	for (const auto& channel_reclaimed_memory : channels_reclaimed_memory) {
-		const auto& group_owner = stream_group_owners.at(current_channel_index);
-
-		std::uint64_t cpu_id = 0;
-		std::vector<lsc::stream_memory_reclamation_result> streams_reclaimed_memory;
-		for (const auto& stream_reclaimed_memory :
-		     channel_reclaimed_memory.streams_reclaimed_memory) {
-			const lsc::stream_identifier stream_identifier{
-				is_per_cpu_stream ?
-					decltype(lsc::stream_identifier::cpu_id)(cpu_id++) :
-					nonstd::nullopt
-			};
-
-			streams_reclaimed_memory.emplace_back(
-				stream_identifier,
-				stream_reclaimed_memory.subbuffers_reclaimed,
-				stream_reclaimed_memory.pending_subbuffers_to_reclaim);
-		}
-
-		result.emplace_back(group_owner, std::move(streams_reclaimed_memory));
-
-		current_channel_index++;
 	}
 }
 } /* namespace */
@@ -143,173 +80,12 @@ lsc::reclaim_channel_memory_result lsc::reclaim_channel_memory(
 	}
 
 	const auto& target_channel_config = session->get_domain(domain).get_channel(channel_name);
-	const auto is_per_cpu_stream = target_channel_config.buffer_allocation_policy ==
-		lttng::sessiond::config::recording_channel_configuration::
-			buffer_allocation_policy_t::PER_CPU;
 
-	const auto& orchestrator =
-		static_cast<const lsu::domain_orchestrator&>(session->get_ust_orchestrator());
-
-	/*
-	 * Iterate all consumer stream groups via the orchestrator, filtering for
-	 * data channels that belong to the target channel configuration. Build
-	 * per-bitness key vectors and parallel owner vectors for batch-querying
-	 * the consumer daemons.
-	 */
-	std::vector<std::uint64_t> consumer32_channel_keys, consumer64_channel_keys;
-	std::vector<lsc::stream_group_owner> consumer32_owners, consumer64_owners;
-
-	orchestrator.for_each_consumer_stream_group(
-		[&target_channel_config,
-		 &consumer32_channel_keys,
-		 &consumer64_channel_keys,
-		 &consumer32_owners,
-		 &consumer64_owners](
-			const lsu::domain_orchestrator::consumer_stream_group_descriptor& desc) {
-			/* Only consider data channels. */
-			if (desc.is_metadata) {
-				return;
-			}
-
-			/*
-			 * Filter by channel configuration pointer identity: the
-			 * orchestrator passes the actual recording_channel_configuration
-			 * reference from the stream group key.
-			 */
-			if (&desc.channel_config != &target_channel_config) {
-				return;
-			}
-
-			const auto owner = [&desc]() {
-				if (desc.owner_uid) {
-					return lsc::stream_group_owner(desc.abi, *desc.owner_uid);
-				}
-
-				return lsc::stream_group_owner(desc.abi, *desc.owner_pid);
-			}();
-
-			if (desc.abi == lsu::application_abi::ABI_32) {
-				consumer32_channel_keys.emplace_back(desc.consumer_key);
-				consumer32_owners.emplace_back(owner);
-			} else {
-				consumer64_channel_keys.emplace_back(desc.consumer_key);
-				consumer64_owners.emplace_back(owner);
-			}
-		});
-
-	const unsigned int consumer_count = (!consumer32_channel_keys.empty() ? 1 : 0) +
-		(!consumer64_channel_keys.empty() ? 1 : 0);
-
-	/*
-	 * Create the completion tracking request before issuing reclaim operations.
-	 * The consumers will signal completion on their own when they're done.
-	 */
-	DBG_FMT("Creating completion tracking request: consumer_count={}", consumer_count);
-
-	const auto token = lttng::sessiond::the_pending_memory_reclamation_registry.create_request(
-		*session,
-		channel_name,
-		consumer_count,
-		std::move(on_complete),
-		std::move(on_cancel));
-
-	/*
-	 * Issue reclaim requests with the token. Consumers will report completion
-	 * when they're done processing any pending sub-buffers.
-	 */
-	std::vector<lsc::stream_memory_reclamation_result_group> result;
-
-	/* Handle 32-bit ABI stream groups. */
-	if (!consumer32_channel_keys.empty()) {
-		const lttng::urcu::read_lock_guard read_lock;
-
-		try {
-			issue_consumer_reclaim_channel_memory(
-				*consumer_find_socket_by_bitness(
-					32,
-					&static_cast<lttng::sessiond::ust::domain_orchestrator&>(
-						 session->get_ust_orchestrator())
-						 .get_consumer_output()),
-				consumer32_owners,
-				is_per_cpu_stream,
-				consumer32_channel_keys,
-				reclaim_older_than_age,
-				require_consumed,
-				token,
-				result);
-		} catch (const std::exception& e) {
-			/* Clean up the pending request on error. */
-			lttng::sessiond::the_pending_memory_reclamation_registry.cancel_request(
-				token);
-			throw;
-		}
-	}
-
-	/* Handle 64-bit ABI stream groups. */
-	if (!consumer64_channel_keys.empty()) {
-		const lttng::urcu::read_lock_guard read_lock;
-
-		try {
-			issue_consumer_reclaim_channel_memory(
-				*consumer_find_socket_by_bitness(
-					64,
-					&static_cast<lttng::sessiond::ust::domain_orchestrator&>(
-						 session->get_ust_orchestrator())
-						 .get_consumer_output()),
-				consumer64_owners,
-				is_per_cpu_stream,
-				consumer64_channel_keys,
-				reclaim_older_than_age,
-				require_consumed,
-				token,
-				result);
-		} catch (const std::exception& e) {
-			/* Clean up the pending request on error. */
-			lttng::sessiond::the_pending_memory_reclamation_registry.cancel_request(
-				token);
-			throw;
-		}
-	}
-
-	/* Log results. */
-	for (const auto& stream_group : result) {
-		const auto total_reclaimed = std::accumulate(
-			stream_group.reclaimed_streams_memory.begin(),
-			stream_group.reclaimed_streams_memory.end(),
-			0ULL,
-			[](std::uint64_t sum,
-			   const lsc::stream_memory_reclamation_result& stream_result) {
-				return sum + stream_result.subbuffers_reclaimed;
-			});
-		const auto total_pending = std::accumulate(
-			stream_group.reclaimed_streams_memory.begin(),
-			stream_group.reclaimed_streams_memory.end(),
-			0ULL,
-			[](std::uint64_t sum,
-			   const lsc::stream_memory_reclamation_result& stream_result) {
-				return sum + stream_result.pending_subbuffers_to_reclaim;
-			});
-
-		DBG_FMT("Reclaimed sub-buffers for streams in group: session_name=`{}`, domain={}, channel_name=`{}`, "
-			"owner_type={}, bitness={}, streams_count={}, total_reclaimed={}, total_pending={}",
-			session->name,
-			domain,
-			channel_name,
-			stream_group.owner.owner_type,
-			stream_group.owner.bitness,
-			stream_group.reclaimed_streams_memory.size(),
-			total_reclaimed,
-			total_pending);
-
-		for (const auto& stream_result : stream_group.reclaimed_streams_memory) {
-			DBG_FMT("Reclaimed stream sub-buffers: id={}, subbuffers_reclaimed={}, pending_subbuffers={}",
-				stream_result.id,
-				stream_result.subbuffers_reclaimed,
-				stream_result.pending_subbuffers_to_reclaim);
-		}
-	}
-
-	return { std::move(result), token };
+	return session->get_ust_orchestrator().reclaim_channel_memory(target_channel_config,
+								      reclaim_older_than_age,
+								      require_consumed,
+								      std::move(on_complete),
+								      std::move(on_cancel));
 }
 
 #else /* !HAVE_LIBLTTNG_UST_CTL */

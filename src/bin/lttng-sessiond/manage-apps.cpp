@@ -240,9 +240,8 @@ static bool shutdown_application_management_thread(void *data)
 	return notify_thread_pipe(write_fd) == 1;
 }
 
-bool launch_application_management_thread(
-	int apps_cmd_pipe_read_fd,
-	lttng::command_queue<lam::command>& unregistration_queue)
+bool launch_application_management_thread(int apps_cmd_pipe_read_fd,
+					  lttng::command_queue<lam::command>& unregistration_queue)
 {
 	struct lttng_pipe *quit_pipe;
 	struct thread_notifiers *notifiers = nullptr;
