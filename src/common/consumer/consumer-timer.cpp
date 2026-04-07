@@ -65,7 +65,7 @@ void consumer_timer_switch_start(struct lttng_consumer_channel *channel,
 				sessiond_metadata_socket,
 				consumer_error_socket);
 
-		scheduler.schedule(channel->live_timer_task,
+		scheduler.schedule(channel->metadata_switch_timer_task,
 				   std::chrono::steady_clock::now() +
 					   std::chrono::microseconds(switch_timer_interval_us));
 	} catch (const std::bad_alloc& e) {
