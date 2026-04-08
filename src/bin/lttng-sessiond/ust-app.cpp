@@ -2009,7 +2009,7 @@ static nonstd::optional<ust_app_reference> find_app_by_notify_sock(int sock)
  * Returns the matching ust_app_event or nullptr if not found.
  * Must be called with the RCU read lock held.
  */
-static struct ust_app_event *
+struct ust_app_event *
 find_ust_app_event_by_config(struct lttng_ht *ht,
 			     const lttng::sessiond::config::event_rule_configuration& event_config)
 {
@@ -3330,11 +3330,10 @@ end:
  *
  * Called with UST app session lock held and a RCU read side lock.
  */
-static int
-create_ust_app_channel_context(struct ust_app_channel *ua_chan,
-			       struct lttng_ust_context_attr *uctx,
-			       lsu::app *app,
-			       const lttng::sessiond::config::context_configuration& ctx_config)
+int create_ust_app_channel_context(struct ust_app_channel *ua_chan,
+				   struct lttng_ust_context_attr *uctx,
+				   lsu::app *app,
+				   const lttng::sessiond::config::context_configuration& ctx_config)
 {
 	int ret = 0;
 	struct ust_app_ctx *ua_ctx;
@@ -3373,7 +3372,7 @@ error:
  *
  * Called with UST app session lock held.
  */
-static int enable_ust_app_event(struct ust_app_event *ua_event, lsu::app *app)
+int enable_ust_app_event(struct ust_app_event *ua_event, lsu::app *app)
 {
 	int ret;
 
@@ -3391,7 +3390,7 @@ error:
 /*
  * Disable on the tracer side a ust app event for the session and channel.
  */
-static int disable_ust_app_event(struct ust_app_event *ua_event, lsu::app *app)
+int disable_ust_app_event(struct ust_app_event *ua_event, lsu::app *app)
 {
 	int ret;
 
@@ -3409,9 +3408,9 @@ error:
 /*
  * Lookup ust app channel for session and disable it on the tracer side.
  */
-static int disable_ust_app_channel(const lsu::app_session::locked_weak_ref& ua_sess,
-				   struct ust_app_channel *ua_chan,
-				   lsu::app *app)
+int disable_ust_app_channel(const lsu::app_session::locked_weak_ref& ua_sess,
+			    struct ust_app_channel *ua_chan,
+			    lsu::app *app)
 {
 	int ret;
 
@@ -3430,9 +3429,9 @@ error:
  * Lookup ust app channel for session and enable it on the tracer side. This
  * MUST be called with a RCU read side lock acquired.
  */
-static int enable_ust_app_channel(const lsu::app_session::locked_weak_ref& ua_sess,
-				  lttng::c_string_view channel_name,
-				  lsu::app *app)
+int enable_ust_app_channel(const lsu::app_session::locked_weak_ref& ua_sess,
+			   lttng::c_string_view channel_name,
+			   lsu::app *app)
 {
 	int ret = 0;
 	struct lttng_ht_iter iter;
@@ -4078,10 +4077,9 @@ error:
  * Must be called with the RCU read side lock held.
  * Called with ust app session mutex held.
  */
-static int
-create_ust_app_event(struct ust_app_channel *ua_chan,
-		     lsu::app *app,
-		     const lttng::sessiond::config::event_rule_configuration& event_config)
+int create_ust_app_event(struct ust_app_channel *ua_chan,
+			 lsu::app *app,
+			 const lttng::sessiond::config::event_rule_configuration& event_config)
 {
 	int ret = 0;
 	struct ust_app_event *ua_event;

@@ -617,6 +617,31 @@ bool ust_app_supports_counters(const lttng::sessiond::ust::app *app);
 
 void ust_app_notify_reclaimed_owner_ids(const std::vector<uint32_t>& owners);
 
+/*
+ * Per-app helpers shared between ust-app.cpp and the domain orchestrator.
+ * These are low-level functions that operate on a single app session and
+ * its channel/event structures. The orchestrator iterates its app session
+ * index and calls these for each app.
+ */
+int enable_ust_app_channel(const lttng::sessiond::ust::app_session::locked_weak_ref& ua_sess,
+			   lttng::c_string_view channel_name,
+			   lttng::sessiond::ust::app *app);
+int disable_ust_app_channel(const lttng::sessiond::ust::app_session::locked_weak_ref& ua_sess,
+			    struct ust_app_channel *ua_chan,
+			    lttng::sessiond::ust::app *app);
+int enable_ust_app_event(struct ust_app_event *ua_event, lttng::sessiond::ust::app *app);
+int disable_ust_app_event(struct ust_app_event *ua_event, lttng::sessiond::ust::app *app);
+int create_ust_app_event(struct ust_app_channel *ua_chan,
+			 lttng::sessiond::ust::app *app,
+			 const lttng::sessiond::config::event_rule_configuration& event_config);
+int create_ust_app_channel_context(struct ust_app_channel *ua_chan,
+				   struct lttng_ust_context_attr *uctx,
+				   lttng::sessiond::ust::app *app,
+				   const lttng::sessiond::config::context_configuration& ctx_config);
+struct ust_app_event *
+find_ust_app_event_by_config(struct lttng_ht *ht,
+			     const lttng::sessiond::config::event_rule_configuration& event_config);
+
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
 static inline int ust_app_destroy_trace_all(std::uint64_t /* session_id */)
