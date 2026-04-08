@@ -526,6 +526,20 @@ private:
 			   std::unique_ptr<ust::stream_group>,
 			   _key_hasher<_per_pid_stream_group_key>>
 		_per_pid_stream_groups;
+
+	/*
+	 * Non-owning index mapping each application to its app_session
+	 * for this recording session. Ownership remains with
+	 * ust::app::sessions and the RCU deletion path.
+	 *
+	 * Populated when an app session is created
+	 * (find_or_create_ust_app_session); removed when an app
+	 * departs (ust_app_unregister) or when the recording session
+	 * destroys the app session (destroy_app_session).
+	 *
+	 * Protected by the recording session lock.
+	 */
+	std::unordered_map<const ust::app *, ust::app_session *> _app_sessions;
 };
 
 } /* namespace ust */
