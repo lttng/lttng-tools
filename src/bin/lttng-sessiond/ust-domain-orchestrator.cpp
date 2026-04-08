@@ -41,6 +41,29 @@
 namespace ls = lttng::sessiond;
 namespace lsc = lttng::sessiond::config;
 
+void ls::ust::domain_orchestrator::_assert_app_sessions_consistent() const
+{
+	const lttng::urcu::read_lock_guard read_lock;
+	std::size_t ust_app_ht_match_count = 0;
+
+	for (const auto *app :
+	     lttng::urcu::lfht_iteration_adapter<ust::app,
+						 decltype(ust::app::pid_n),
+						 &ust::app::pid_n>(*ust_app_ht->ht)) {
+		const auto *ua_sess = ust_app_lookup_app_session(session_id(), app);
+		if (!ua_sess) {
+			continue;
+		}
+
+		const auto it = _app_sessions.find(app);
+		LTTNG_ASSERT(it != _app_sessions.end());
+		LTTNG_ASSERT(it->second == ua_sess);
+		++ust_app_ht_match_count;
+	}
+
+	LTTNG_ASSERT(_app_sessions.size() == ust_app_ht_match_count);
+}
+
 lttng_ust_context_attr ls::ust::domain_orchestrator::make_ust_context_attr(
 	const lsc::context_configuration& context_config)
 {
@@ -591,6 +614,8 @@ void ls::ust::domain_orchestrator::enable_channel(
 	 * command is a success.
 	 */
 	(void) ust_app_enable_channel_glb(session_id(), channel_config.name);
+
+	_assert_app_sessions_consistent();
 }
 
 void ls::ust::domain_orchestrator::disable_channel(
@@ -609,6 +634,8 @@ void ls::ust::domain_orchestrator::disable_channel(
 	if (ret < 0 && ret != -LTTNG_UST_ERR_EXIST) {
 		LTTNG_THROW_CTL("Failed to disable UST channel", LTTNG_ERR_UST_CHAN_DISABLE_FAIL);
 	}
+
+	_assert_app_sessions_consistent();
 }
 
 void ls::ust::domain_orchestrator::disable_event(
@@ -624,6 +651,8 @@ void ls::ust::domain_orchestrator::disable_event(
 	if (ret < 0) {
 		LTTNG_THROW_CTL("Failed to disable UST event", LTTNG_ERR_UST_DISABLE_FAIL);
 	}
+
+	_assert_app_sessions_consistent();
 }
 
 void ls::ust::domain_orchestrator::add_context(const config::recording_channel_configuration&,
@@ -663,6 +692,8 @@ void ls::ust::domain_orchestrator::enable_event(
 	if (ret < 0) {
 		LTTNG_THROW_CTL("Failed to enable UST event", LTTNG_ERR_UST_ENABLE_FAIL);
 	}
+
+	_assert_app_sessions_consistent();
 }
 
 void ls::ust::domain_orchestrator::set_tracking_policy(config::process_attribute_type,

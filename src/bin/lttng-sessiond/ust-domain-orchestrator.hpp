@@ -392,6 +392,15 @@ private:
 	_validate_channel_attributes(const config::recording_channel_configuration& channel_config);
 
 	/*
+	 * Verify that the _app_sessions index is consistent with the
+	 * global ust_app_ht hash table. For every app that has an
+	 * app_session for this recording session, assert that
+	 * _app_sessions contains the same (app, ua_sess) pair, and
+	 * vice versa.
+	 */
+	void _assert_app_sessions_consistent() const;
+
+	/*
 	 * Push pending metadata from a trace class to its consumer.
 	 * The return value is intentionally ignored by most callers
 	 * (best-effort push before rotate, clear, flush).
