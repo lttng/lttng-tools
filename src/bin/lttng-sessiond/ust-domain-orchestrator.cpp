@@ -1308,59 +1308,52 @@ void append_consumer_channel_memory_usage(
 	}
 }
 
-/*
- * Iterate all consumer stream groups, filtering for data channels that belong
- * to the target channel configuration. Build per-bitness key vectors and
- * parallel owner vectors.
- */
-void collect_stream_group_keys_by_bitness(
-	const ls::ust::domain_orchestrator& orchestrator,
+} /* namespace */
+
+void ls::ust::domain_orchestrator::_collect_stream_group_keys_by_bitness(
 	const lsc::recording_channel_configuration& target_channel_config,
 	std::vector<std::uint64_t>& consumer32_channel_keys,
 	std::vector<std::uint64_t>& consumer64_channel_keys,
 	std::vector<ls::commands::stream_group_owner>& consumer32_owners,
-	std::vector<ls::commands::stream_group_owner>& consumer64_owners)
+	std::vector<ls::commands::stream_group_owner>& consumer64_owners) const
 {
-	orchestrator.for_each_consumer_stream_group(
-		[&target_channel_config,
-		 &consumer32_channel_keys,
-		 &consumer64_channel_keys,
-		 &consumer32_owners,
-		 &consumer64_owners](
-			const ls::ust::domain_orchestrator::consumer_stream_group_descriptor& desc) {
-			/* Only consider data channels. */
-			if (desc.is_metadata) {
-				return;
+	for_each_consumer_stream_group([&target_channel_config,
+					&consumer32_channel_keys,
+					&consumer64_channel_keys,
+					&consumer32_owners,
+					&consumer64_owners](
+					       const consumer_stream_group_descriptor& desc) {
+		/* Only consider data channels. */
+		if (desc.is_metadata) {
+			return;
+		}
+
+		/*
+		 * Filter by channel configuration pointer identity: the
+		 * orchestrator passes the actual recording_channel_configuration
+		 * reference from the stream group key.
+		 */
+		if (&desc.channel_config != &target_channel_config) {
+			return;
+		}
+
+		const auto owner = [&desc]() {
+			if (desc.owner_uid) {
+				return ls::commands::stream_group_owner(desc.abi, *desc.owner_uid);
 			}
 
-			/*
-			 * Filter by channel configuration pointer identity: the
-			 * orchestrator passes the actual recording_channel_configuration
-			 * reference from the stream group key.
-			 */
-			if (&desc.channel_config != &target_channel_config) {
-				return;
-			}
+			return ls::commands::stream_group_owner(desc.abi, *desc.owner_pid);
+		}();
 
-			const auto owner = [&desc]() {
-				if (desc.owner_uid) {
-					return ls::commands::stream_group_owner(desc.abi,
-										*desc.owner_uid);
-				}
-
-				return ls::commands::stream_group_owner(desc.abi, *desc.owner_pid);
-			}();
-
-			if (desc.abi == ls::ust::application_abi::ABI_32) {
-				consumer32_channel_keys.emplace_back(desc.consumer_key);
-				consumer32_owners.emplace_back(owner);
-			} else {
-				consumer64_channel_keys.emplace_back(desc.consumer_key);
-				consumer64_owners.emplace_back(owner);
-			}
-		});
+		if (desc.abi == ls::ust::application_abi::ABI_32) {
+			consumer32_channel_keys.emplace_back(desc.consumer_key);
+			consumer32_owners.emplace_back(owner);
+		} else {
+			consumer64_channel_keys.emplace_back(desc.consumer_key);
+			consumer64_owners.emplace_back(owner);
+		}
+	});
 }
-} /* namespace */
 
 ls::commands::reclaim_channel_memory_result ls::ust::domain_orchestrator::reclaim_channel_memory(
 	const config::recording_channel_configuration& target_channel,
@@ -1375,12 +1368,11 @@ ls::commands::reclaim_channel_memory_result ls::ust::domain_orchestrator::reclai
 	std::vector<std::uint64_t> consumer32_channel_keys, consumer64_channel_keys;
 	std::vector<ls::commands::stream_group_owner> consumer32_owners, consumer64_owners;
 
-	collect_stream_group_keys_by_bitness(*this,
-					     target_channel,
-					     consumer32_channel_keys,
-					     consumer64_channel_keys,
-					     consumer32_owners,
-					     consumer64_owners);
+	_collect_stream_group_keys_by_bitness(target_channel,
+					      consumer32_channel_keys,
+					      consumer64_channel_keys,
+					      consumer32_owners,
+					      consumer64_owners);
 
 	const unsigned int consumer_count = (!consumer32_channel_keys.empty() ? 1 : 0) +
 		(!consumer64_channel_keys.empty() ? 1 : 0);
@@ -1494,12 +1486,11 @@ ls::ust::domain_orchestrator::get_channel_memory_usage(
 	std::vector<std::uint64_t> consumer32_channel_keys, consumer64_channel_keys;
 	std::vector<ls::commands::stream_group_owner> consumer32_owners, consumer64_owners;
 
-	collect_stream_group_keys_by_bitness(*this,
-					     target_channel,
-					     consumer32_channel_keys,
-					     consumer64_channel_keys,
-					     consumer32_owners,
-					     consumer64_owners);
+	_collect_stream_group_keys_by_bitness(target_channel,
+					      consumer32_channel_keys,
+					      consumer64_channel_keys,
+					      consumer32_owners,
+					      consumer64_owners);
 
 	std::vector<ls::commands::stream_memory_usage_group> result;
 

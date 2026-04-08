@@ -204,53 +204,6 @@ public:
 	std::uint64_t get_size_one_more_packet_per_stream(std::uint64_t cur_nr_packets) const;
 
 	/*
-	 * Descriptor yielded to the for_each_consumer_stream_group() callback.
-	 *
-	 * Each descriptor represents a single consumer-side channel: either
-	 * a data channel (backed by a stream_group) or a metadata channel
-	 * (backed by a trace_class).
-	 *
-	 * `channel_config` refers to the channel_configuration from which
-	 * the consumer channel was derived. For data channels, the actual
-	 * type is recording_channel_configuration; for metadata channels,
-	 * it is metadata_channel_configuration. Use `is_metadata` to
-	 * determine the concrete type when a downcast is needed.
-	 */
-	struct consumer_stream_group_descriptor {
-		application_abi abi;
-		std::uint64_t consumer_key;
-		bool is_metadata;
-		ust::trace_class& trace_class;
-		const config::channel_configuration& channel_config;
-		/* Set in per-UID mode; absent in per-PID mode. */
-		nonstd::optional<uid_t> owner_uid;
-		/* Set in per-PID mode; absent in per-UID mode. */
-		nonstd::optional<pid_t> owner_pid;
-	};
-
-	/*
-	 * Iterate all consumer stream groups (data + metadata) owned by this
-	 * orchestrator and call `visitor` for each one.
-	 *
-	 * For per-UID mode, iterates the per-UID stream groups (data
-	 * channels) and per-UID trace classes (metadata channels).
-	 *
-	 * For per-PID mode, iterates the per-PID stream groups (data
-	 * channels) and per-PID trace classes (metadata channels).
-	 *
-	 * Metadata channels with a zero key (not yet allocated) are
-	 * skipped.
-	 *
-	 * This method decouples callers (rotate, clear, open_packets,
-	 * snapshot) from ust_app_session internals.
-	 */
-
-	using consumer_stream_group_visitor =
-		std::function<void(const consumer_stream_group_descriptor&)>;
-
-	void for_each_consumer_stream_group(const consumer_stream_group_visitor& visitor) const;
-
-	/*
 	 * Convert a context_configuration to the lttng_ust_context_attr ABI
 	 * structure used to communicate with the UST tracer.
 	 *
@@ -454,6 +407,47 @@ public:
 	bool supports_madv_remove() const noexcept;
 
 private:
+	/*
+	 * Descriptor yielded to the for_each_consumer_stream_group() callback.
+	 *
+	 * Each descriptor represents a single consumer-side channel: either
+	 * a data channel (backed by a stream_group) or a metadata channel
+	 * (backed by a trace_class).
+	 *
+	 * `channel_config` refers to the channel_configuration from which
+	 * the consumer channel was derived. For data channels, the actual
+	 * type is recording_channel_configuration; for metadata channels,
+	 * it is metadata_channel_configuration. Use `is_metadata` to
+	 * determine the concrete type when a downcast is needed.
+	 */
+	struct consumer_stream_group_descriptor {
+		application_abi abi;
+		std::uint64_t consumer_key;
+		bool is_metadata;
+		ust::trace_class& trace_class;
+		const config::channel_configuration& channel_config;
+		/* Set in per-UID mode; absent in per-PID mode. */
+		nonstd::optional<uid_t> owner_uid;
+		/* Set in per-PID mode; absent in per-UID mode. */
+		nonstd::optional<pid_t> owner_pid;
+	};
+
+	using consumer_stream_group_visitor =
+		std::function<void(const consumer_stream_group_descriptor&)>;
+
+	void for_each_consumer_stream_group(const consumer_stream_group_visitor& visitor) const;
+
+	/*
+	 * Collect consumer channel keys for stream groups matching a given
+	 * recording channel configuration, partitioned by ABI bitness.
+	 */
+	void _collect_stream_group_keys_by_bitness(
+		const config::recording_channel_configuration& target_channel_config,
+		std::vector<std::uint64_t>& consumer32_channel_keys,
+		std::vector<std::uint64_t>& consumer64_channel_keys,
+		std::vector<commands::stream_group_owner>& consumer32_owners,
+		std::vector<commands::stream_group_owner>& consumer64_owners) const;
+
 	const ltt_session& _session;
 	const config::recording_channel_configuration::owership_model_t _default_buffer_ownership;
 	consumer_output_uptr _consumer_output;
