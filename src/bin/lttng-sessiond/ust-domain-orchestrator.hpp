@@ -490,6 +490,13 @@ private:
 	static void
 	_validate_channel_attributes(const config::recording_channel_configuration& channel_config);
 
+	/*
+	 * Push pending metadata from a trace class to its consumer.
+	 * The return value is intentionally ignored by most callers
+	 * (best-effort push before rotate, clear, flush).
+	 */
+	void _push_metadata(const ust::trace_class::locked_ref& locked_trace_class) const;
+
 	void _record_snapshot_per_uid(const struct consumer_output& snapshot_consumer,
 				      std::uint64_t nb_packets_per_stream) const;
 	void _record_snapshot_per_pid(const struct consumer_output& snapshot_consumer,

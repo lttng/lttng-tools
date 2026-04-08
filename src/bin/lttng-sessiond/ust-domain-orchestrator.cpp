@@ -736,27 +736,147 @@ void ls::ust::domain_orchestrator::stop()
 	}
 }
 
+void ls::ust::domain_orchestrator::_push_metadata(
+	const ls::ust::trace_class::locked_ref& locked_trace_class) const
+{
+	if (locked_trace_class->_metadata_closed) {
+		return;
+	}
+
+	const auto socket = consumer_find_socket_by_bitness(locked_trace_class->abi.bits_per_long,
+							    get_consumer_output_ptr());
+	if (!socket) {
+		return;
+	}
+
+	(void) ust_app_push_metadata(locked_trace_class, socket, 0);
+}
+
 void ls::ust::domain_orchestrator::rotate()
 {
-	const auto ret = ust_app_rotate_session(_session);
-	if (ret != LTTNG_OK) {
-		LTTNG_THROW_CTL("Failed to rotate UST session", ret);
+	auto result = LTTNG_OK;
+	auto *consumer = get_consumer_output_ptr();
+
+	for_each_consumer_stream_group([this, consumer, &result](
+					       const consumer_stream_group_descriptor& desc) {
+		const lttng::urcu::read_lock_guard read_lock;
+
+		if (result != LTTNG_OK) {
+			return;
+		}
+
+		const auto socket =
+			consumer_find_socket_by_bitness(static_cast<int>(desc.abi), consumer);
+		if (!socket) {
+			result = LTTNG_ERR_INVALID;
+			return;
+		}
+
+		if (desc.is_metadata) {
+			_push_metadata(desc.trace_class.lock());
+		}
+
+		const auto rotate_ret = consumer_rotate_channel(
+			socket, desc.consumer_key, consumer, desc.is_metadata);
+		if (rotate_ret < 0) {
+			result = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
+		}
+	});
+
+	if (result != LTTNG_OK) {
+		LTTNG_THROW_CTL("Failed to rotate UST session", result);
 	}
 }
 
 void ls::ust::domain_orchestrator::clear()
 {
-	const auto ret = ust_app_clear_session(_session);
-	if (ret != LTTNG_OK) {
-		LTTNG_THROW_CTL("Failed to clear UST session", ret);
+	if (_active) {
+		ERR("Expecting inactive session %s (%" PRIu64 ")", _session.name, _session.id);
+		LTTNG_THROW_CTL("Failed to clear UST session", LTTNG_ERR_FATAL);
+	}
+
+	auto *consumer = get_consumer_output_ptr();
+	const auto buf_type = buffer_type();
+	auto result = LTTNG_OK;
+
+	for_each_consumer_stream_group([this, consumer, buf_type, &result](
+					       const consumer_stream_group_descriptor& desc) {
+		if (result != LTTNG_OK) {
+			return;
+		}
+
+		/* Protect looked-up consumer socket. */
+		const lttng::urcu::read_lock_guard read_lock;
+
+		const auto consumer_socket =
+			consumer_find_socket_by_bitness(static_cast<int>(desc.abi), consumer);
+
+		if (desc.is_metadata) {
+			_push_metadata(desc.trace_class.lock());
+		}
+
+		const auto clean_ret = consumer_clear_channel(consumer_socket, desc.consumer_key);
+		if (clean_ret < 0) {
+			if (clean_ret == -LTTCOMM_CONSUMERD_CHAN_NOT_FOUND &&
+			    buf_type == LTTNG_BUFFER_PER_PID) {
+				return;
+			}
+
+			if (clean_ret == -LTTCOMM_CONSUMERD_RELAYD_CLEAR_DISALLOWED) {
+				result = LTTNG_ERR_CLEAR_RELAY_DISALLOWED;
+				return;
+			}
+
+			result = LTTNG_ERR_CLEAR_FAIL_CONSUMER;
+		}
+	});
+
+	if (result != LTTNG_OK) {
+		LTTNG_THROW_CTL("Failed to clear UST session", result);
 	}
 }
 
+/*
+ * Open data channel packets for all consumer stream groups.
+ *
+ * Metadata channels are skipped: the begin/end timestamps of a metadata
+ * packet are useless. Moreover, opening a packet after a "clear" would
+ * introduce padding that was not part of the first trace chunk. The
+ * relay daemon expects the content of the metadata stream of successive
+ * metadata trace chunks to be strict supersets of one another.
+ */
 void ls::ust::domain_orchestrator::open_packets()
 {
-	const auto ret = ust_app_open_packets(_session);
-	if (ret != LTTNG_OK) {
-		LTTNG_THROW_CTL("Failed to open UST packets", ret);
+	auto *consumer = get_consumer_output_ptr();
+	const auto buf_type = buffer_type();
+	auto result = LTTNG_OK;
+
+	for_each_consumer_stream_group([consumer, buf_type, &result](
+					       const consumer_stream_group_descriptor& desc) {
+		if (result != LTTNG_OK || desc.is_metadata) {
+			return;
+		}
+
+		/* Protect looked-up consumer socket. */
+		const lttng::urcu::read_lock_guard read_lock;
+
+		const auto socket =
+			consumer_find_socket_by_bitness(static_cast<int>(desc.abi), consumer);
+
+		const auto open_ret = consumer_open_channel_packets(socket, desc.consumer_key);
+		if (open_ret < 0) {
+			/* Per-PID buffer and application going away. */
+			if (open_ret == -LTTCOMM_CONSUMERD_CHAN_NOT_FOUND &&
+			    buf_type == LTTNG_BUFFER_PER_PID) {
+				return;
+			}
+
+			result = LTTNG_ERR_UNK;
+		}
+	});
+
+	if (result != LTTNG_OK) {
+		LTTNG_THROW_CTL("Failed to open UST packets", result);
 	}
 }
 
