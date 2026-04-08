@@ -64,6 +64,138 @@
 
 namespace lsu = lttng::sessiond::ust;
 namespace lst = lttng::sessiond::trace;
+namespace lsc = lttng::sessiond::config;
+
+/*
+ * Bridge struct granting transitional access to the orchestrator's
+ * private trace class, stream group, and statistics methods.
+ *
+ * This struct is declared as a friend of domain_orchestrator. It
+ * exists solely so that static functions in this file (which cannot
+ * be friended directly due to internal linkage) can continue to call
+ * orchestrator methods that were moved from public to private.
+ *
+ * Each forwarding method here will be removed as the corresponding
+ * caller is internalized into the orchestrator (Phases 1-4).
+ */
+struct ust_app_session_operations {
+	static lttng_ust_context_attr
+	make_ust_context_attr(const lsc::context_configuration& ctx_config)
+	{
+		return lsu::domain_orchestrator::make_ust_context_attr(ctx_config);
+	}
+
+	static std::uint64_t
+	trace_class_stream_class_handle(const lsu::domain_orchestrator& o,
+					const lsc::recording_channel_configuration& chan_config)
+	{
+		return o.trace_class_stream_class_handle(chan_config);
+	}
+
+	static lsu::trace_class& find_or_create_per_uid_trace_class(lsu::domain_orchestrator& o,
+								    uid_t uid,
+								    lsu::application_abi abi,
+								    const lst::abi& tracer_abi,
+								    std::uint32_t tracer_major,
+								    std::uint32_t tracer_minor,
+								    const char *root_shm_path,
+								    const char *shm_path)
+	{
+		return o.find_or_create_per_uid_trace_class(
+			uid, abi, tracer_abi, tracer_major, tracer_minor, root_shm_path, shm_path);
+	}
+
+	static lsu::trace_class& find_or_create_per_pid_trace_class(lsu::domain_orchestrator& o,
+								    ust_app& app,
+								    std::uint64_t app_session_id,
+								    const lst::abi& tracer_abi,
+								    std::uint32_t tracer_major,
+								    std::uint32_t tracer_minor,
+								    const char *root_shm_path,
+								    const char *shm_path,
+								    uid_t euid,
+								    gid_t egid)
+	{
+		return o.find_or_create_per_pid_trace_class(app,
+							    app_session_id,
+							    tracer_abi,
+							    tracer_major,
+							    tracer_minor,
+							    root_shm_path,
+							    shm_path,
+							    euid,
+							    egid);
+	}
+
+	static void release_per_pid_trace_class(lsu::domain_orchestrator& o, const ust_app& app)
+	{
+		o.release_per_pid_trace_class(app);
+	}
+
+	static void release_per_pid_stream_groups(lsu::domain_orchestrator& o, const ust_app& app)
+	{
+		o.release_per_pid_stream_groups(app);
+	}
+
+	static lsu::stream_group&
+	find_or_create_per_uid_stream_group(lsu::domain_orchestrator& o,
+					    const lsc::recording_channel_configuration& chan_config,
+					    uid_t uid,
+					    lsu::application_abi abi,
+					    std::uint64_t consumer_key,
+					    lttng::sessiond::ust::ust_object_data channel_object,
+					    lsu::trace_class& tc,
+					    lsu::stream_class& sc)
+	{
+		return o.find_or_create_per_uid_stream_group(
+			chan_config, uid, abi, consumer_key, std::move(channel_object), tc, sc);
+	}
+
+	static lsu::stream_group&
+	get_per_uid_stream_group(lsu::domain_orchestrator& o,
+				 const lsc::recording_channel_configuration& chan_config,
+				 uid_t uid,
+				 lsu::application_abi abi)
+	{
+		return o.get_per_uid_stream_group(chan_config, uid, abi);
+	}
+
+	static bool
+	has_per_uid_stream_group(const lsu::domain_orchestrator& o,
+				 const lsc::recording_channel_configuration& chan_config,
+				 uid_t uid,
+				 lsu::application_abi abi)
+	{
+		return o.has_per_uid_stream_group(chan_config, uid, abi);
+	}
+
+	static lsu::stream_group&
+	find_or_create_per_pid_stream_group(lsu::domain_orchestrator& o,
+					    const lsc::recording_channel_configuration& chan_config,
+					    const ust_app& app,
+					    std::uint64_t consumer_key,
+					    lttng::sessiond::ust::ust_object_data channel_object,
+					    lsu::trace_class& tc,
+					    lsu::stream_class& sc)
+	{
+		return o.find_or_create_per_pid_stream_group(
+			chan_config, app, consumer_key, std::move(channel_object), tc, sc);
+	}
+
+	static void
+	accumulate_per_pid_closed_app_stats(lsu::domain_orchestrator& o,
+					    const lsc::recording_channel_configuration& chan_config,
+					    std::uint64_t discarded_events,
+					    std::uint64_t lost_packets)
+	{
+		o.accumulate_per_pid_closed_app_stats(chan_config, discarded_events, lost_packets);
+	}
+
+	static struct lttng_ust_abi_channel_attr default_metadata_channel_attr() noexcept
+	{
+		return lsu::domain_orchestrator::default_metadata_channel_attr();
+	}
+};
 
 enum owner_id_allocation_status {
 	OWNER_ID_ALLOCATION_STATUS_OK,
@@ -737,7 +869,8 @@ static void save_per_pid_lost_discarded_counters(struct ust_app_channel *ua_chan
 			static_cast<const lttng::sessiond::config::recording_channel_configuration&>(
 				ua_chan->channel_config);
 
-		orchestrator.accumulate_per_pid_closed_app_stats(recording_config, discarded, lost);
+		ust_app_session_operations::accumulate_per_pid_closed_app_stats(
+			orchestrator, recording_config, discarded, lost);
 	} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
 		DBG_FMT("Failed to save per-pid lost/discarded counters: {}, location='{}'",
 			ex.what(),
@@ -1387,8 +1520,9 @@ static void destroy_app_session(struct ust_app *app, struct ust_app_session *ua_
 			auto& orchestrator = static_cast<lsu::domain_orchestrator&>(
 				session->get_ust_orchestrator());
 
-			orchestrator.release_per_pid_stream_groups(*app);
-			orchestrator.release_per_pid_trace_class(*app);
+			ust_app_session_operations::release_per_pid_stream_groups(orchestrator,
+										  *app);
+			ust_app_session_operations::release_per_pid_trace_class(orchestrator, *app);
 		} catch (const lttng::sessiond::exceptions::session_not_found_error&) {
 			/* Session is already gone; orchestrator will clean up in its destructor. */
 		}
@@ -2812,7 +2946,7 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 			recording_session.get_ust_orchestrator());
 	{
 		const auto default_metadata_attr =
-			lttng::sessiond::ust::domain_orchestrator::default_metadata_channel_attr();
+			ust_app_session_operations::default_metadata_channel_attr();
 		copy_channel_attr_to_ustctl(&ua_sess->metadata_attr, &default_metadata_attr);
 	}
 
@@ -2969,7 +3103,8 @@ static int find_or_create_ust_app_session(const lsu::domain_orchestrator& orches
 			const_cast<ltt_session&>(recording_session).get_ust_orchestrator());
 
 		try {
-			orchestrator.find_or_create_per_pid_trace_class(
+			ust_app_session_operations::find_or_create_per_pid_trace_class(
+				orchestrator,
 				*app,
 				ua_sess->app_session_id,
 				app->abi,
@@ -3001,13 +3136,15 @@ static int find_or_create_ust_app_session(const lsu::domain_orchestrator& orches
 								    lsu::application_abi::ABI_64;
 
 		try {
-			orchestrator_ref.find_or_create_per_uid_trace_class(app->uid,
-									    app_abi,
-									    app->abi,
-									    app->version.major,
-									    app->version.minor,
-									    ua_sess->root_shm_path,
-									    ua_sess->shm_path);
+			ust_app_session_operations::find_or_create_per_uid_trace_class(
+				orchestrator_ref,
+				app->uid,
+				app_abi,
+				app->abi,
+				app->version.major,
+				app->version.minor,
+				ua_sess->root_shm_path,
+				ua_sess->shm_path);
 		} catch (const std::exception& ex) {
 			ERR("Failed to create per-UID trace class: %s", ex.what());
 			delete_ust_app_session(-1, ua_sess, app);
@@ -3531,7 +3668,8 @@ static int create_channel_per_uid(struct ust_app *app,
 	 * channel. If so, the channel has already been created on the
 	 * consumer and we only need to send it to this application.
 	 */
-	if (orchestrator.has_per_uid_stream_group(recording_config, app->uid, app_abi)) {
+	if (ust_app_session_operations::has_per_uid_stream_group(
+		    orchestrator, recording_config, app->uid, app_abi)) {
 		goto send_channel;
 	}
 
@@ -3602,14 +3740,16 @@ static int create_channel_per_uid(struct ust_app *app,
 			lsu::ust_object_data channel_obj(ua_chan->obj);
 			ua_chan->obj = nullptr;
 
-			auto& stream_group = orchestrator.find_or_create_per_uid_stream_group(
-				recording_config,
-				app->uid,
-				app_abi,
-				ua_chan->key,
-				std::move(channel_obj),
-				*trace_class_ptr,
-				stream_class_ref);
+			auto& stream_group =
+				ust_app_session_operations::find_or_create_per_uid_stream_group(
+					orchestrator,
+					recording_config,
+					app->uid,
+					app_abi,
+					ua_chan->key,
+					std::move(channel_obj),
+					*trace_class_ptr,
+					stream_class_ref);
 
 			unsigned int cpu_idx = 0;
 			for (auto *stream :
@@ -3640,8 +3780,8 @@ static int create_channel_per_uid(struct ust_app *app,
 send_channel:
 	/* Send buffers to the application. */
 	{
-		auto& sg =
-			orchestrator.get_per_uid_stream_group(recording_config, app->uid, app_abi);
+		auto& sg = ust_app_session_operations::get_per_uid_stream_group(
+			orchestrator, recording_config, app->uid, app_abi);
 
 		ret = send_channel_uid_to_ust(sg, app, ua_sess, ua_chan);
 		if (ret < 0) {
@@ -3748,12 +3888,14 @@ static int create_channel_per_pid(struct ust_app *app,
 		auto& orchestrator =
 			static_cast<lsu::domain_orchestrator&>(session.get_ust_orchestrator());
 
-		orchestrator.find_or_create_per_pid_stream_group(recording_config,
-								 *app,
-								 ua_chan->key,
-								 lsu::ust_object_data(nullptr),
-								 trace_class_ref,
-								 stream_class_ref);
+		ust_app_session_operations::find_or_create_per_pid_stream_group(
+			orchestrator,
+			recording_config,
+			*app,
+			ua_chan->key,
+			lsu::ust_object_data(nullptr),
+			trace_class_ref,
+			stream_class_ref);
 	}
 
 	cmd_ret = notification_thread_command_add_channel(the_notification_thread_handle,
@@ -4629,8 +4771,10 @@ static void ust_app_unregister(ust_app& app)
 				auto& orchestrator = static_cast<lsu::domain_orchestrator&>(
 					locked_session->get_ust_orchestrator());
 
-				orchestrator.release_per_pid_stream_groups(app);
-				orchestrator.release_per_pid_trace_class(app);
+				ust_app_session_operations::release_per_pid_stream_groups(
+					orchestrator, app);
+				ust_app_session_operations::release_per_pid_trace_class(
+					orchestrator, app);
 
 				recording_session = &*locked_session;
 				locked_session.release();
@@ -5408,9 +5552,7 @@ static int ust_app_channel_create(
 			continue;
 		}
 
-		auto ust_ctx_attr =
-			lttng::sessiond::ust::domain_orchestrator::make_ust_context_attr(
-				ctx_config);
+		auto ust_ctx_attr = ust_app_session_operations::make_ust_context_attr(ctx_config);
 		ret = create_ust_app_channel_context(ua_chan, &ust_ctx_attr, app, ctx_config);
 		if (ret) {
 			goto error;
@@ -6361,7 +6503,8 @@ ust_app_synchronize_all_channels(struct consumer_output *consumer,
 	for (const auto& chan_config : config_domain.recording_channels()) {
 		struct ust_app_channel *ua_chan;
 
-		const auto handle = orchestrator.trace_class_stream_class_handle(chan_config);
+		const auto handle = ust_app_session_operations::trace_class_stream_class_handle(
+			orchestrator, chan_config);
 
 		/*
 		 * Search for a matching ust_app_channel. If none is found,
@@ -6640,8 +6783,7 @@ int ust_app_add_ctx_channel_glb(std::uint64_t session_id,
 		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
 		{
 			auto ust_ctx_attr =
-				lttng::sessiond::ust::domain_orchestrator::make_ust_context_attr(
-					ctx_config);
+				ust_app_session_operations::make_ust_context_attr(ctx_config);
 			ret = create_ust_app_channel_context(
 				ua_chan, &ust_ctx_attr, app, ctx_config);
 		}

@@ -31,6 +31,7 @@ struct ltt_session;
 struct lttng_ht;
 struct lttng_ust_context_attr;
 struct ust_app;
+struct ust_app_session_operations;
 
 namespace lttng {
 namespace sessiond {
@@ -204,179 +205,6 @@ public:
 	std::uint64_t get_size_one_more_packet_per_stream(std::uint64_t cur_nr_packets) const;
 
 	/*
-	 * Convert a context_configuration to the lttng_ust_context_attr ABI
-	 * structure used to communicate with the UST tracer.
-	 *
-	 * This is a public static method so that it can be used by code outside
-	 * the orchestrator (e.g. ust-app.cpp) during the transition period.
-	 * It will become a private helper once per-app context creation is
-	 * internalized.
-	 */
-	static lttng_ust_context_attr
-	make_ust_context_attr(const config::context_configuration& context_config);
-
-	/*
-	 * Return the trace class stream class handle assigned to a
-	 * recording channel configuration. This handle is used by the
-	 * per-app sync path as a key for trace_class::add_channel() and
-	 * stream class lookups.
-	 *
-	 * This is a transitional accessor: it will be eliminated once
-	 * the orchestrator owns trace class and buffer registry
-	 * creation directly (at which point the handle becomes an
-	 * internal detail).
-	 */
-	std::uint64_t trace_class_stream_class_handle(
-		const config::recording_channel_configuration& channel_config) const;
-
-	/*
-	 * Find or create a per-UID trace class for the given (uid, abi)
-	 * combination. The orchestrator owns the returned trace_class
-	 * (via unique_ptr in _per_uid_trace_classes). The caller receives
-	 * a reference and must NOT delete it.
-	 *
-	 * This is called from the per-app sync path
-	 * (find_or_create_ust_app_session) which supplies app-specific parameters
-	 * (ABI, tracer version, shared memory paths). Parameters that
-	 * come from the session (trace_format, uid, gid, tracing_id) are
-	 * obtained internally from _session and _ust_session.
-	 *
-	 * If a trace_class already exists for the key, the existing one
-	 * is returned and the creation parameters are ignored (the first
-	 * app for a given uid/abi pair determines the trace_class).
-	 */
-	ust::trace_class& find_or_create_per_uid_trace_class(uid_t uid,
-							     application_abi abi,
-							     const trace::abi& tracer_abi,
-							     std::uint32_t tracer_major,
-							     std::uint32_t tracer_minor,
-							     const char *root_shm_path,
-							     const char *shm_path);
-
-	/*
-	 * Find or create a per-PID trace class for the given application.
-	 * Called from find_or_create_ust_app_session() during per-app
-	 * synchronization.
-	 */
-	ust::trace_class& find_or_create_per_pid_trace_class(ust_app& app,
-							     std::uint64_t app_session_id,
-							     const trace::abi& tracer_abi,
-							     std::uint32_t tracer_major,
-							     std::uint32_t tracer_minor,
-							     const char *root_shm_path,
-							     const char *shm_path,
-							     uid_t euid,
-							     gid_t egid);
-
-	/*
-	 * Release the per-PID trace class associated with the given
-	 * application. The trace_class is destroyed, which cleans up
-	 * shared memory files. Called from ust_app_unregister()
-	 * when a per-PID application departs.
-	 *
-	 * No-op if no trace class exists for the given app (e.g. the
-	 * app session was being set up and failed before the trace
-	 * class was created).
-	 */
-	void release_per_pid_trace_class(const ust_app& app);
-
-	/*
-	 * Release all per-PID stream groups associated with the given
-	 * application. Called from delete_ust_app_session() when a
-	 * per-PID application departs, alongside
-	 * release_per_pid_trace_class().
-	 *
-	 * No-op if no stream groups exist for the given app.
-	 */
-	void release_per_pid_stream_groups(const ust_app& app);
-
-	/*
-	 * Find or create a per-UID stream group for the given
-	 * (channel_config, uid, abi) combination. The orchestrator owns
-	 * the returned stream_group (via unique_ptr in
-	 * _per_uid_stream_groups). The caller receives a reference and
-	 * must NOT delete it.
-	 *
-	 * Called from create_channel_per_uid() after the buffer registry
-	 * channel has been set up. The channel_object is the "master"
-	 * channel handle obtained from the consumer daemon; it is owned
-	 * by the stream_group from this point on and will be duplicated
-	 * for each subsequent application that shares the same UID/ABI.
-	 *
-	 * If a stream_group already exists for the key, the existing one
-	 * is returned (this happens when multiple apps share the same
-	 * UID/ABI in per-UID mode -- only the first app creates the
-	 * stream group).
-	 */
-	ust::stream_group& find_or_create_per_uid_stream_group(
-		const config::recording_channel_configuration& channel_config,
-		uid_t uid,
-		application_abi abi,
-		std::uint64_t consumer_key,
-		ust_object_data channel_object,
-		ust::trace_class& trace_class,
-		ust::stream_class& stream_class);
-
-	/*
-	 * Look up an existing per-UID stream group for the given
-	 * (channel_config, uid, abi) combination.
-	 *
-	 * Returns a reference to the stream group. Throws
-	 * std::out_of_range if no stream group exists for the key
-	 * (which indicates a code flow error -- the caller should
-	 * guarantee a stream group was previously created).
-	 */
-	ust::stream_group&
-	get_per_uid_stream_group(const config::recording_channel_configuration& channel_config,
-				 uid_t uid,
-				 application_abi abi);
-
-	/*
-	 * Check whether a per-UID stream group already exists for the
-	 * given (channel_config, uid, abi) combination.
-	 */
-	bool has_per_uid_stream_group(const config::recording_channel_configuration& channel_config,
-				      uid_t uid,
-				      application_abi abi) const;
-
-	/*
-	 * Find or create a per-PID stream group for the given
-	 * (channel_config, app) combination. The orchestrator owns
-	 * the returned stream_group (via unique_ptr in
-	 * _per_pid_stream_groups). The caller receives a reference and
-	 * must NOT delete it.
-	 *
-	 * Called from create_channel_per_pid() after the consumer
-	 * channel has been created. In per-PID mode, the channel and
-	 * stream objects are sent directly to the application and
-	 * consumed; the stream_group does not hold master object
-	 * handles for duplication (unlike per-UID).
-	 *
-	 * Unlike per-UID, each app always gets its own stream group
-	 * (no sharing).
-	 */
-	ust::stream_group& find_or_create_per_pid_stream_group(
-		const config::recording_channel_configuration& channel_config,
-		const ust_app& app,
-		std::uint64_t consumer_key,
-		ust_object_data channel_object,
-		ust::trace_class& trace_class,
-		ust::stream_class& stream_class);
-
-	/*
-	 * Accumulate per-PID closed-app discarded events and lost packets
-	 * for a channel. Called when a per-PID application's channel is
-	 * torn down; the counters are saved so they can be included in
-	 * the runtime statistics reported by get_recording_channel_runtime_stats().
-	 */
-	void accumulate_per_pid_closed_app_stats(
-		const config::recording_channel_configuration& channel_config,
-		std::uint64_t discarded_events,
-		std::uint64_t lost_packets);
-
-	static struct lttng_ust_abi_channel_attr default_metadata_channel_attr() noexcept;
-
-	/*
 	 * Find the agent for a given domain type (JUL, Log4j2, Python).
 	 * Returns nullptr if no agent exists for the domain.
 	 */
@@ -407,6 +235,85 @@ public:
 	bool supports_madv_remove() const noexcept;
 
 private:
+	/*
+	 * Transitional internal API
+	 *
+	 * The following methods are used only by ust-app.cpp functions
+	 * that have not yet been moved into the orchestrator. They form
+	 * the intended private API boundary for trace class, stream
+	 * group, and per-app statistics management.
+	 *
+	 * Do NOT add new callers outside of ust-app.cpp and
+	 * ust-domain-orchestrator.cpp. These methods will lose their
+	 * transitional callers as the corresponding code is
+	 * internalized (Phases 1-4).
+	 *
+	 * Friend declaration: ust-app.cpp static functions cannot be
+	 * friended directly (internal linkage). A bridge struct defined
+	 * in ust-app.cpp provides compile-time-scoped access.
+	 */
+	friend struct ::ust_app_session_operations;
+
+	static lttng_ust_context_attr
+	make_ust_context_attr(const config::context_configuration& context_config);
+
+	std::uint64_t trace_class_stream_class_handle(
+		const config::recording_channel_configuration& channel_config) const;
+
+	ust::trace_class& find_or_create_per_uid_trace_class(uid_t uid,
+							     application_abi abi,
+							     const trace::abi& tracer_abi,
+							     std::uint32_t tracer_major,
+							     std::uint32_t tracer_minor,
+							     const char *root_shm_path,
+							     const char *shm_path);
+
+	ust::trace_class& find_or_create_per_pid_trace_class(ust_app& app,
+							     std::uint64_t app_session_id,
+							     const trace::abi& tracer_abi,
+							     std::uint32_t tracer_major,
+							     std::uint32_t tracer_minor,
+							     const char *root_shm_path,
+							     const char *shm_path,
+							     uid_t euid,
+							     gid_t egid);
+
+	void release_per_pid_trace_class(const ust_app& app);
+	void release_per_pid_stream_groups(const ust_app& app);
+
+	ust::stream_group& find_or_create_per_uid_stream_group(
+		const config::recording_channel_configuration& channel_config,
+		uid_t uid,
+		application_abi abi,
+		std::uint64_t consumer_key,
+		ust_object_data channel_object,
+		ust::trace_class& trace_class,
+		ust::stream_class& stream_class);
+
+	ust::stream_group&
+	get_per_uid_stream_group(const config::recording_channel_configuration& channel_config,
+				 uid_t uid,
+				 application_abi abi);
+
+	bool has_per_uid_stream_group(const config::recording_channel_configuration& channel_config,
+				      uid_t uid,
+				      application_abi abi) const;
+
+	ust::stream_group& find_or_create_per_pid_stream_group(
+		const config::recording_channel_configuration& channel_config,
+		const ust_app& app,
+		std::uint64_t consumer_key,
+		ust_object_data channel_object,
+		ust::trace_class& trace_class,
+		ust::stream_class& stream_class);
+
+	void accumulate_per_pid_closed_app_stats(
+		const config::recording_channel_configuration& channel_config,
+		std::uint64_t discarded_events,
+		std::uint64_t lost_packets);
+
+	static struct lttng_ust_abi_channel_attr default_metadata_channel_attr() noexcept;
+
 	/*
 	 * Descriptor yielded to the for_each_consumer_stream_group() callback.
 	 *
