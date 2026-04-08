@@ -47,24 +47,25 @@ event_notifier_error_accounting_register_kernel(int kernel_event_notifier_group_
  * This reuses (or creates) the counter object of the app UID.
  */
 enum event_notifier_error_accounting_status
-event_notifier_error_accounting_register_app(struct ust_app *app);
+event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app);
 
 /*
  * Unregister a UST application.
  */
 enum event_notifier_error_accounting_status
-event_notifier_error_accounting_unregister_app(struct ust_app *app);
+event_notifier_error_accounting_unregister_app(lttng::sessiond::ust::app *app);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
 static inline enum event_notifier_error_accounting_status
-event_notifier_error_accounting_register_app(struct ust_app *app __attribute__((unused)))
+event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app __attribute__((unused)))
 {
 	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 }
 
 static inline enum event_notifier_error_accounting_status
-event_notifier_error_accounting_unregister_app(struct ust_app *app __attribute__((unused)))
+event_notifier_error_accounting_unregister_app(lttng::sessiond::ust::app *app
+					       __attribute__((unused)))
 {
 	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 }

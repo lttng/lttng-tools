@@ -11,7 +11,6 @@
 #include "consumer-destination-type.hpp"
 #include "recording-channel-configuration.hpp"
 #include "snapshot.hpp"
-#include "ust-app.hpp"
 
 #include <common/consumer/consumer-type.hpp>
 #include <common/hashtable/hashtable.hpp>
@@ -25,6 +24,14 @@
 
 struct snapshot;
 struct snapshot_output;
+
+namespace lttng {
+namespace sessiond {
+namespace ust {
+struct app_session;
+} /* namespace ust */
+} /* namespace sessiond */
+} /* namespace lttng */
 
 /*
  * Needed until we use C++14, where std::max is constexpr.
@@ -352,7 +359,7 @@ int consumer_trace_chunk_exists(struct consumer_socket *socket,
 				enum consumer_trace_chunk_exists_status *result);
 int consumer_open_channel_packets(struct consumer_socket *socket, uint64_t key);
 
-unsigned int consumer_reclaim_session_owner_id(const struct ust_app_session& ua_sess,
+unsigned int consumer_reclaim_session_owner_id(const lttng::sessiond::ust::app_session& ua_sess,
 					       uint32_t owner_id);
 
 char *setup_channel_trace_path(struct consumer_output *consumer,

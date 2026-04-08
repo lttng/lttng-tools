@@ -2508,7 +2508,7 @@ static int do_consumer_reclaim_session_owner_id(struct consumer_data& consumer,
  * reclamation. This can happen if the channels were destroyed while sending the
  * reclamation request.
  */
-unsigned int consumer_reclaim_session_owner_id(const struct ust_app_session& ua_sess,
+unsigned int consumer_reclaim_session_owner_id(const lttng::sessiond::ust::app_session& ua_sess,
 					       uint32_t owner_id)
 {
 	struct consumer_data *consumer;

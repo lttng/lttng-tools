@@ -106,7 +106,7 @@ struct ust_app_session_operations {
 	}
 
 	static lsu::trace_class& find_or_create_per_pid_trace_class(lsu::domain_orchestrator& o,
-								    ust_app& app,
+								    lsu::app& app,
 								    std::uint64_t app_session_id,
 								    const lst::abi& tracer_abi,
 								    std::uint32_t tracer_major,
@@ -127,12 +127,12 @@ struct ust_app_session_operations {
 							    egid);
 	}
 
-	static void release_per_pid_trace_class(lsu::domain_orchestrator& o, const ust_app& app)
+	static void release_per_pid_trace_class(lsu::domain_orchestrator& o, const lsu::app& app)
 	{
 		o.release_per_pid_trace_class(app);
 	}
 
-	static void release_per_pid_stream_groups(lsu::domain_orchestrator& o, const ust_app& app)
+	static void release_per_pid_stream_groups(lsu::domain_orchestrator& o, const lsu::app& app)
 	{
 		o.release_per_pid_stream_groups(app);
 	}
@@ -172,7 +172,7 @@ struct ust_app_session_operations {
 	static lsu::stream_group&
 	find_or_create_per_pid_stream_group(lsu::domain_orchestrator& o,
 					    const lsc::recording_channel_configuration& chan_config,
-					    const ust_app& app,
+					    const lsu::app& app,
 					    std::uint64_t consumer_key,
 					    lttng::sessiond::ust::ust_object_data channel_object,
 					    lsu::trace_class& tc,
@@ -207,7 +207,7 @@ struct lttng_ht *ust_app_ht_by_sock;
 struct lttng_ht *ust_app_ht_by_notify_sock;
 struct lttng_ht *ust_app_ht_by_owner_id;
 
-static int ust_app_flush_app_session(ust_app& app, ust_app_session& ua_sess);
+static int ust_app_flush_app_session(lsu::app& app, lsu::app_session& ua_sess);
 
 /* Next available channel key. Access under next_channel_key_lock. */
 static uint64_t _next_channel_key;
@@ -257,15 +257,15 @@ static inline enum lttng_ust_abi_chan_type allocation_policy_to_ust_channel_type
  * it LTTNG_ASSERT() if not found. RCU read side lock must be acquired.
  */
 std::shared_ptr<lsu::trace_class>
-ust_app_get_session_registry(const ust_app_session::identifier& ua_sess_id)
+ust_app_get_session_registry(const lsu::app_session::identifier& ua_sess_id)
 {
 	switch (ua_sess_id.allocation_policy) {
-	case ust_app_session::identifier::buffer_allocation_policy::PER_PID:
+	case lsu::app_session::identifier::buffer_allocation_policy::PER_PID:
 		return the_trace_class_index->find_per_pid(ua_sess_id.app_session_id);
-	case ust_app_session::identifier::buffer_allocation_policy::PER_UID:
+	case lsu::app_session::identifier::buffer_allocation_policy::PER_UID:
 	{
 		const std::uint32_t bits_per_long = ua_sess_id.abi ==
-				ust_app_session::identifier::application_abi::ABI_32 ?
+				lsu::app_session::identifier::application_abi::ABI_32 ?
 			32 :
 			64;
 
@@ -323,7 +323,7 @@ struct owned_locked_registry {
 	}
 };
 
-owned_locked_registry get_locked_session_registry(const ust_app_session::identifier& identifier)
+owned_locked_registry get_locked_session_registry(const lsu::app_session::identifier& identifier)
 {
 	auto session = ust_app_get_session_registry(identifier);
 	lsu::trace_class::locked_ref lock;
@@ -442,7 +442,7 @@ static bool is_legal_owner_id(uint32_t owner_id)
  * For guaranteeing forward progress, there is a maximum of UINT32_MAX attempts,
  * which is enough to scan the whole possible value for a owner id.
  */
-static enum owner_id_allocation_status ust_app_allocate_owner_id(struct ust_app& app)
+static enum owner_id_allocation_status ust_app_allocate_owner_id(lsu::app& app)
 {
 	uint64_t attempt_count = 0;
 
@@ -502,7 +502,7 @@ static enum owner_id_allocation_status ust_app_allocate_owner_id(struct ust_app&
  * owner-id table, but the ID could still be in the garbage table and not usable
  * yet.
  */
-static void ust_app_release_owner_id(struct ust_app& app)
+static void ust_app_release_owner_id(lsu::app& app)
 {
 	cds_lfht_del(ust_app_ht_by_owner_id->ht, &app.owner_id_n.node);
 }
@@ -616,7 +616,7 @@ static void close_notify_sock_rcu(struct rcu_head *head)
  * Delete ust context safely. RCU read lock must be held before calling
  * this function.
  */
-static void delete_ust_app_ctx(int sock, struct ust_app_ctx *ua_ctx, struct ust_app *app)
+static void delete_ust_app_ctx(int sock, struct ust_app_ctx *ua_ctx, lsu::app *app)
 {
 	int ret;
 
@@ -659,7 +659,7 @@ static void delete_ust_app_ctx(int sock, struct ust_app_ctx *ua_ctx, struct ust_
  * Delete ust app event safely. RCU read lock must be held before calling
  * this function.
  */
-static void delete_ust_app_event(int sock, struct ust_app_event *ua_event, struct ust_app *app)
+static void delete_ust_app_event(int sock, struct ust_app_event *ua_event, lsu::app *app)
 {
 	int ret;
 
@@ -707,7 +707,7 @@ static void free_ust_app_event_notifier_rule_rcu(struct rcu_head *head)
  * Delete ust app event notifier rule safely.
  */
 static void delete_ust_app_event_notifier_rule(
-	int sock, struct ust_app_event_notifier_rule *ua_event_notifier_rule, struct ust_app *app)
+	int sock, struct ust_app_event_notifier_rule *ua_event_notifier_rule, lsu::app *app)
 {
 	int ret;
 
@@ -750,7 +750,7 @@ static void delete_ust_app_event_notifier_rule(
  *
  * Return 0 on success or else a negative value.
  */
-static int release_ust_app_stream(int sock, struct ust_app_stream *stream, struct ust_app *app)
+static int release_ust_app_stream(int sock, lsu::app_stream *stream, lsu::app *app)
 {
 	int ret = 0;
 
@@ -787,7 +787,7 @@ static int release_ust_app_stream(int sock, struct ust_app_stream *stream, struc
  * Delete ust app stream safely. RCU read lock must be held before calling
  * this function.
  */
-static void delete_ust_app_stream(int sock, struct ust_app_stream *stream, struct ust_app *app)
+static void delete_ust_app_stream(int sock, lsu::app_stream *stream, lsu::app *app)
 {
 	LTTNG_ASSERT(stream);
 	ASSERT_RCU_READ_LOCKED();
@@ -887,7 +887,7 @@ static void save_per_pid_lost_discarded_counters(struct ust_app_channel *ua_chan
  */
 static void delete_ust_app_channel(int sock,
 				   struct ust_app_channel *ua_chan,
-				   struct ust_app *app,
+				   lsu::app *app,
 				   const lsu::trace_class::locked_ref& locked_registry)
 {
 	int ret;
@@ -899,7 +899,7 @@ static void delete_ust_app_channel(int sock,
 
 	/* Wipe stream */
 	for (auto *stream :
-	     lttng::urcu::list_iteration_adapter<ust_app_stream, &ust_app_stream::list>(
+	     lttng::urcu::list_iteration_adapter<lsu::app_stream, &lsu::app_stream::list>(
 		     ua_chan->streams.head)) {
 		cds_list_del(&stream->list);
 		delete_ust_app_stream(sock, stream, app);
@@ -980,7 +980,7 @@ static void delete_ust_app_channel(int sock,
 	call_rcu(&ua_chan->rcu_head, delete_ust_app_channel_rcu);
 }
 
-int ust_app_register_done(struct ust_app *app)
+int ust_app_register_done(lsu::app *app)
 {
 	int ret;
 
@@ -990,7 +990,7 @@ int ust_app_register_done(struct ust_app *app)
 	return ret;
 }
 
-int ust_app_release_object(struct ust_app *app, struct lttng_ust_abi_object_data *data)
+int ust_app_release_object(lsu::app *app, struct lttng_ust_abi_object_data *data)
 {
 	int ret, sock;
 
@@ -1234,8 +1234,7 @@ end:
 
 static void delete_ust_app_session_rcu(struct rcu_head *head)
 {
-	struct ust_app_session *ua_sess =
-		lttng::utils::container_of(head, &ust_app_session::rcu_head);
+	lsu::app_session *ua_sess = lttng::utils::container_of(head, &lsu::app_session::rcu_head);
 
 	lttng_ht_destroy(ua_sess->channels);
 	delete ua_sess;
@@ -1247,7 +1246,7 @@ static void delete_ust_app_session_rcu(struct rcu_head *head)
  *
  * The session list lock must be held by the caller.
  */
-static void delete_ust_app_session(int sock, struct ust_app_session *ua_sess, struct ust_app *app)
+static void delete_ust_app_session(int sock, lsu::app_session *ua_sess, lsu::app *app)
 {
 	LTTNG_ASSERT(ua_sess);
 	ASSERT_RCU_READ_LOCKED();
@@ -1329,7 +1328,7 @@ static void delete_ust_app_session(int sock, struct ust_app_session *ua_sess, st
  * Delete a traceable application structure from the global list. Never call
  * this function outside of a call_rcu call.
  */
-static void delete_ust_app(struct ust_app *app)
+static void delete_ust_app(lsu::app *app)
 {
 	int ret, sock;
 	bool event_notifier_write_fd_is_open;
@@ -1442,7 +1441,7 @@ static void delete_ust_app_rcu(struct rcu_head *head)
 {
 	struct lttng_ht_node_ulong *node =
 		lttng::utils::container_of(head, &lttng_ht_node_ulong::head);
-	struct ust_app *app = lttng::utils::container_of(node, &ust_app::pid_n);
+	lsu::app *app = lttng::utils::container_of(node, &lsu::app::pid_n);
 
 	DBG3("Call RCU deleting app PID %d", app->pid);
 	delete_ust_app(app);
@@ -1454,7 +1453,7 @@ static void delete_ust_app_rcu(struct rcu_head *head)
  *
  * The session list lock must be held by the caller.
  */
-static void destroy_app_session(struct ust_app *app, struct ust_app_session *ua_sess)
+static void destroy_app_session(lsu::app *app, lsu::app_session *ua_sess)
 {
 	int ret;
 	struct lttng_ht_iter iter;
@@ -1558,12 +1557,12 @@ static void destroy_app_session(struct ust_app *app, struct ust_app_session *ua_
 /*
  * Alloc new UST app session.
  */
-static struct ust_app_session *alloc_ust_app_session()
+static lsu::app_session *alloc_ust_app_session()
 {
-	struct ust_app_session *ua_sess;
+	lsu::app_session *ua_sess;
 
 	/* Init most of the default value by allocating and zeroing */
-	ua_sess = new ust_app_session;
+	ua_sess = new lsu::app_session;
 	if (ua_sess == nullptr) {
 		PERROR("malloc");
 		goto error_free;
@@ -1588,7 +1587,7 @@ error_free:
  */
 static void init_ust_app_channel(struct ust_app_channel *ua_chan,
 				 const char *name,
-				 const ust_app_session::locked_weak_ref& ua_sess,
+				 const lsu::app_session::locked_weak_ref& ua_sess,
 				 struct lttng_ust_abi_channel_attr *attr)
 {
 	strncpy(ua_chan->name, name, sizeof(ua_chan->name));
@@ -1628,7 +1627,7 @@ static void init_ust_app_channel(struct ust_app_channel *ua_chan,
  */
 static struct ust_app_channel *
 alloc_ust_app_channel(const char *name,
-		      const ust_app_session::locked_weak_ref& ua_sess,
+		      const lsu::app_session::locked_weak_ref& ua_sess,
 		      struct lttng_ust_abi_channel_attr *attr,
 		      const lttng::sessiond::config::recording_channel_configuration& config)
 {
@@ -1650,7 +1649,7 @@ alloc_ust_app_channel(const char *name,
  */
 static struct ust_app_channel *alloc_ust_app_metadata_channel(
 	const char *name,
-	const ust_app_session::locked_weak_ref& ua_sess,
+	const lsu::app_session::locked_weak_ref& ua_sess,
 	const lttng::sessiond::config::metadata_channel_configuration& metadata_config)
 {
 	struct ust_app_channel *ua_chan;
@@ -1671,11 +1670,11 @@ static struct ust_app_channel *alloc_ust_app_metadata_channel(
  *
  * Return newly allocated stream pointer or NULL on error.
  */
-struct ust_app_stream *ust_app_alloc_stream()
+lsu::app_stream *ust_app_alloc_stream()
 {
-	struct ust_app_stream *stream = nullptr;
+	lsu::app_stream *stream = nullptr;
 
-	stream = zmalloc<ust_app_stream>();
+	stream = zmalloc<lsu::app_stream>();
 	if (stream == nullptr) {
 		PERROR("zmalloc ust app stream");
 		goto error;
@@ -1935,7 +1934,7 @@ error:
 }
 
 /*
- * Find an ust_app using the sock and return it. RCU read side lock must be
+ * Find an lsu::app using the sock and return it. RCU read side lock must be
  * held before calling this helper function.
  */
 nonstd::optional<ust_app_reference> ust_app_find_by_sock(int sock)
@@ -1952,13 +1951,13 @@ nonstd::optional<ust_app_reference> ust_app_find_by_sock(int sock)
 		return nonstd::nullopt;
 	}
 
-	auto raw_app = lttng::utils::container_of(node, &ust_app::sock_n);
+	auto raw_app = lttng::utils::container_of(node, &lsu::app::sock_n);
 	return ust_app_get(*raw_app) ? nonstd::make_optional<ust_app_reference>(raw_app) :
 				       nonstd::nullopt;
 }
 
 /*
- * Find an ust_app using the notify sock and return it. RCU read side lock must
+ * Find an lsu::app using the notify sock and return it. RCU read side lock must
  * be held before calling this helper function.
  */
 static nonstd::optional<ust_app_reference> find_app_by_notify_sock(int sock)
@@ -1975,7 +1974,7 @@ static nonstd::optional<ust_app_reference> find_app_by_notify_sock(int sock)
 		return nonstd::nullopt;
 	}
 
-	auto app = lttng::utils::container_of(node, &ust_app::notify_sock_n);
+	auto app = lttng::utils::container_of(node, &lsu::app::notify_sock_n);
 	return ust_app_get(*app) ? nonstd::make_optional<ust_app_reference>(app) : nonstd::nullopt;
 }
 
@@ -2037,7 +2036,7 @@ end:
  */
 static int create_ust_channel_context(struct ust_app_channel *ua_chan,
 				      struct ust_app_ctx *ua_ctx,
-				      struct ust_app *app)
+				      lsu::app *app)
 {
 	int ret;
 
@@ -2080,7 +2079,7 @@ error:
 /*
  * Set the filter on the tracer.
  */
-static int set_ust_object_filter(struct ust_app *app,
+static int set_ust_object_filter(lsu::app *app,
 				 const struct lttng_bytecode *bytecode,
 				 struct lttng_ust_abi_object_data *ust_object)
 {
@@ -2131,7 +2130,7 @@ error:
  * The sequence number enforces the ordering at runtime and on reception of
  * the captured payloads.
  */
-static int set_ust_capture(struct ust_app *app,
+static int set_ust_capture(lsu::app *app,
 			   const struct lttng_bytecode *bytecode,
 			   unsigned int capture_seqnum,
 			   struct lttng_ust_abi_object_data *ust_object)
@@ -2208,7 +2207,7 @@ end:
 /*
  * Set event exclusions on the tracer.
  */
-static int set_ust_object_exclusions(struct ust_app *app,
+static int set_ust_object_exclusions(lsu::app *app,
 				     const struct lttng_event_exclusion *exclusions,
 				     struct lttng_ust_abi_object_data *ust_object)
 {
@@ -2259,7 +2258,7 @@ error:
 /*
  * Disable the specified event on to UST tracer for the UST session.
  */
-static int disable_ust_object(struct ust_app *app, struct lttng_ust_abi_object_data *object)
+static int disable_ust_object(lsu::app *app, struct lttng_ust_abi_object_data *object)
 {
 	int ret;
 
@@ -2299,8 +2298,8 @@ error:
 /*
  * Disable the specified channel on to UST tracer for the UST session.
  */
-static int disable_ust_channel(struct ust_app *app,
-			       const ust_app_session::locked_weak_ref& ua_sess,
+static int disable_ust_channel(lsu::app *app,
+			       const lsu::app_session::locked_weak_ref& ua_sess,
 			       struct ust_app_channel *ua_chan)
 {
 	int ret;
@@ -2342,8 +2341,8 @@ error:
 /*
  * Enable the specified channel on to UST tracer for the UST session.
  */
-static int enable_ust_channel(struct ust_app *app,
-			      const ust_app_session::locked_weak_ref& ua_sess,
+static int enable_ust_channel(lsu::app *app,
+			      const lsu::app_session::locked_weak_ref& ua_sess,
 			      struct ust_app_channel *ua_chan)
 {
 	int ret;
@@ -2389,7 +2388,7 @@ error:
 /*
  * Enable the specified event on to UST tracer for the UST session.
  */
-static int enable_ust_object(struct ust_app *app, struct lttng_ust_abi_object_data *ust_object)
+static int enable_ust_object(lsu::app *app, struct lttng_ust_abi_object_data *ust_object)
 {
 	int ret;
 
@@ -2431,9 +2430,8 @@ error:
  *
  * Return 0 on success. On error, a negative value is returned.
  */
-static int send_channel_pid_to_ust(struct ust_app *app,
-				   struct ust_app_session *ua_sess,
-				   struct ust_app_channel *ua_chan)
+static int
+send_channel_pid_to_ust(lsu::app *app, lsu::app_session *ua_sess, struct ust_app_channel *ua_chan)
 {
 	int ret;
 
@@ -2468,7 +2466,7 @@ static int send_channel_pid_to_ust(struct ust_app *app,
 
 	/* Send all streams to application. */
 	for (auto *stream :
-	     lttng::urcu::list_iteration_adapter<ust_app_stream, &ust_app_stream::list>(
+	     lttng::urcu::list_iteration_adapter<lsu::app_stream, &lsu::app_stream::list>(
 		     ua_chan->streams.head)) {
 		ret = ust_consumer_send_stream_to_ust(app, ua_chan, stream);
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
@@ -2505,9 +2503,8 @@ error:
  *
  * Should be called with session mutex held.
  */
-static int create_ust_event(struct ust_app *app,
-			    struct ust_app_channel *ua_chan,
-			    struct ust_app_event *ua_event)
+static int
+create_ust_event(lsu::app *app, struct ust_app_channel *ua_chan, struct ust_app_event *ua_event)
 {
 	int ret = 0;
 
@@ -2688,7 +2685,7 @@ end:
  * Create the specified event notifier against the user space tracer of a
  * given application.
  */
-static int create_ust_event_notifier(struct ust_app *app,
+static int create_ust_event_notifier(lsu::app *app,
 				     struct ust_app_event_notifier_rule *ua_event_notifier_rule)
 {
 	int ret = 0;
@@ -2910,10 +2907,10 @@ static void init_ust_app_channel_from_config(struct ust_app_channel *ua_chan)
 /*
  * Copy data between a UST app session and a regular LTT session.
  */
-static void shadow_copy_session(struct ust_app_session *ua_sess,
+static void shadow_copy_session(lsu::app_session *ua_sess,
 				const lsu::domain_orchestrator& orchestrator,
 				const struct ltt_session& recording_session,
-				struct ust_app *app)
+				lsu::app *app)
 {
 	struct tm *timeinfo;
 	char datetime[16];
@@ -3023,7 +3020,7 @@ error:
  * Lookup session wrapper.
  */
 static void
-__lookup_session_by_app(std::uint64_t session_id, const ust_app *app, lttng_ht_iter *iter)
+__lookup_session_by_app(std::uint64_t session_id, const lsu::app *app, lttng_ht_iter *iter)
 {
 	/* Get right UST app session from app */
 	lttng_ht_lookup(app->sessions, &session_id, iter);
@@ -3033,7 +3030,7 @@ __lookup_session_by_app(std::uint64_t session_id, const ust_app *app, lttng_ht_i
  * Return ust app session from the app session hashtable using the UST session
  * id.
  */
-ust_app_session *ust_app_lookup_app_session(std::uint64_t session_id, const struct ust_app *app)
+lsu::app_session *ust_app_lookup_app_session(std::uint64_t session_id, const lsu::app *app)
 {
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_u64 *node;
@@ -3044,7 +3041,7 @@ ust_app_session *ust_app_lookup_app_session(std::uint64_t session_id, const stru
 		goto error;
 	}
 
-	return lttng::utils::container_of(node, &ust_app_session::node);
+	return lttng::utils::container_of(node, &lsu::app_session::node);
 
 error:
 	return nullptr;
@@ -3063,12 +3060,12 @@ error:
  */
 static int find_or_create_ust_app_session(const lsu::domain_orchestrator& orchestrator,
 					  const struct ltt_session& recording_session,
-					  struct ust_app *app,
-					  struct ust_app_session **ua_sess_ptr,
+					  lsu::app *app,
+					  lsu::app_session **ua_sess_ptr,
 					  int *is_created)
 {
 	int ret, created = 0;
-	struct ust_app_session *ua_sess;
+	lsu::app_session *ua_sess;
 	const auto session_id = orchestrator.session_id();
 
 	LTTNG_ASSERT(app);
@@ -3303,7 +3300,7 @@ end:
 static int
 create_ust_app_channel_context(struct ust_app_channel *ua_chan,
 			       struct lttng_ust_context_attr *uctx,
-			       struct ust_app *app,
+			       lsu::app *app,
 			       const lttng::sessiond::config::context_configuration& ctx_config)
 {
 	int ret = 0;
@@ -3343,7 +3340,7 @@ error:
  *
  * Called with UST app session lock held.
  */
-static int enable_ust_app_event(struct ust_app_event *ua_event, struct ust_app *app)
+static int enable_ust_app_event(struct ust_app_event *ua_event, lsu::app *app)
 {
 	int ret;
 
@@ -3361,7 +3358,7 @@ error:
 /*
  * Disable on the tracer side a ust app event for the session and channel.
  */
-static int disable_ust_app_event(struct ust_app_event *ua_event, struct ust_app *app)
+static int disable_ust_app_event(struct ust_app_event *ua_event, lsu::app *app)
 {
 	int ret;
 
@@ -3379,9 +3376,9 @@ error:
 /*
  * Lookup ust app channel for session and disable it on the tracer side.
  */
-static int disable_ust_app_channel(const ust_app_session::locked_weak_ref& ua_sess,
+static int disable_ust_app_channel(const lsu::app_session::locked_weak_ref& ua_sess,
 				   struct ust_app_channel *ua_chan,
-				   struct ust_app *app)
+				   lsu::app *app)
 {
 	int ret;
 
@@ -3400,9 +3397,9 @@ error:
  * Lookup ust app channel for session and enable it on the tracer side. This
  * MUST be called with a RCU read side lock acquired.
  */
-static int enable_ust_app_channel(const ust_app_session::locked_weak_ref& ua_sess,
+static int enable_ust_app_channel(const lsu::app_session::locked_weak_ref& ua_sess,
 				  lttng::c_string_view channel_name,
-				  struct ust_app *app)
+				  lsu::app *app)
 {
 	int ret = 0;
 	struct lttng_ht_iter iter;
@@ -3439,7 +3436,7 @@ error:
  * Return 0 on success or else a negative value.
  */
 static int do_consumer_create_channel(struct consumer_output *consumer,
-				      struct ust_app_session *ua_sess,
+				      lsu::app_session *ua_sess,
 				      struct ust_app_channel *ua_chan,
 				      int bitness,
 				      lsu::trace_class *registry,
@@ -3541,8 +3538,8 @@ error:
  * Return 0 on success else a negative value.
  */
 static int send_channel_uid_to_ust(lsu::stream_group& stream_group,
-				   struct ust_app *app,
-				   struct ust_app_session *ua_sess,
+				   lsu::app *app,
+				   lsu::app_session *ua_sess,
 				   struct ust_app_channel *ua_chan)
 {
 	int ret;
@@ -3592,7 +3589,7 @@ static int send_channel_uid_to_ust(lsu::stream_group& stream_group,
 
 	/* Send all streams to application by duplicating from the stream group. */
 	for (const auto& stream_ptr : stream_group.streams()) {
-		struct ust_app_stream app_stream = {};
+		lsu::app_stream app_stream = {};
 
 		try {
 			auto duplicated_stream = stream_ptr->handle.duplicate();
@@ -3638,10 +3635,10 @@ error:
  *
  * Return 0 on success else a negative value.
  */
-static int create_channel_per_uid(struct ust_app *app,
+static int create_channel_per_uid(lsu::app *app,
 				  struct consumer_output *consumer,
 				  std::uint64_t session_id,
-				  struct ust_app_session *ua_sess,
+				  lsu::app_session *ua_sess,
 				  struct ust_app_channel *ua_chan,
 				  ltt_session& session)
 {
@@ -3753,8 +3750,8 @@ static int create_channel_per_uid(struct ust_app *app,
 
 			unsigned int cpu_idx = 0;
 			for (auto *stream :
-			     lttng::urcu::list_iteration_adapter<ust_app_stream,
-								 &ust_app_stream::list>(
+			     lttng::urcu::list_iteration_adapter<lsu::app_stream,
+								 &lsu::app_stream::list>(
 				     ua_chan->streams.head)) {
 				stream_group.add_stream(cpu_idx, lsu::ust_object_data(stream->obj));
 				stream->obj = nullptr;
@@ -3804,9 +3801,9 @@ error:
  *
  * Return 0 on success else a negative value.
  */
-static int create_channel_per_pid(struct ust_app *app,
+static int create_channel_per_pid(lsu::app *app,
 				  struct consumer_output *consumer,
-				  const ust_app_session::locked_weak_ref& ua_sess,
+				  const lsu::app_session::locked_weak_ref& ua_sess,
 				  struct ust_app_channel *ua_chan,
 				  ltt_session& session)
 {
@@ -3934,11 +3931,11 @@ error:
  * Return 0 on success or else a negative value. Returns -ENOTCONN if
  * the application exited concurrently.
  */
-static int ust_app_channel_send(struct ust_app *app,
+static int ust_app_channel_send(lsu::app *app,
 				struct consumer_output *consumer,
 				lttng_buffer_type buffer_type,
 				std::uint64_t session_id,
-				const ust_app_session::locked_weak_ref& ua_sess,
+				const lsu::app_session::locked_weak_ref& ua_sess,
 				struct ust_app_channel *ua_chan,
 				ltt_session& session)
 {
@@ -3998,7 +3995,7 @@ error:
  * Return 0 on success or else a negative value.
  */
 static int ust_app_channel_allocate(
-	const ust_app_session::locked_weak_ref& ua_sess,
+	const lsu::app_session::locked_weak_ref& ua_sess,
 	struct ust_app_channel **ua_chanp,
 	const lttng::sessiond::config::recording_channel_configuration& channel_config,
 	std::uint64_t trace_class_stream_class_handle)
@@ -4050,7 +4047,7 @@ error:
  */
 static int
 create_ust_app_event(struct ust_app_channel *ua_chan,
-		     struct ust_app *app,
+		     lsu::app *app,
 		     const lttng::sessiond::config::event_rule_configuration& event_config)
 {
 	int ret = 0;
@@ -4100,7 +4097,7 @@ error:
  * Must be called with the RCU read side lock held.
  * Called with ust app session mutex held.
  */
-static int create_ust_app_event_notifier_rule(struct lttng_trigger *trigger, struct ust_app *app)
+static int create_ust_app_event_notifier_rule(struct lttng_trigger *trigger, lsu::app *app)
 {
 	int ret = 0;
 	struct ust_app_event_notifier_rule *ua_event_notifier_rule;
@@ -4156,8 +4153,8 @@ end:
  *
  * Called with UST app session lock held and RCU read side lock.
  */
-static int create_ust_app_metadata(const ust_app_session::locked_weak_ref& ua_sess,
-				   struct ust_app *app,
+static int create_ust_app_metadata(const lsu::app_session::locked_weak_ref& ua_sess,
+				   lsu::app *app,
 				   struct consumer_output *consumer,
 				   const ltt_session& session)
 {
@@ -4275,7 +4272,7 @@ nonstd::optional<ust_app_reference> ust_app_find_by_pid(pid_t pid)
 
 	DBG2("Found UST app by pid %d", pid);
 
-	auto raw_app = lttng::utils::container_of(node, &ust_app::pid_n);
+	auto raw_app = lttng::utils::container_of(node, &lsu::app::pid_n);
 	return ust_app_get(*raw_app) ? nonstd::make_optional(ust_app_reference{ raw_app }) :
 				       nonstd::nullopt;
 }
@@ -4287,10 +4284,10 @@ nonstd::optional<ust_app_reference> ust_app_find_by_pid(pid_t pid)
  *
  * The object is returned on success or else NULL.
  */
-struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock)
+lsu::app *ust_app_create(struct ust_register_msg *msg, int sock)
 {
 	int ret;
-	struct ust_app *lta = nullptr;
+	lsu::app *lta = nullptr;
 	struct lttng_pipe *event_notifier_event_source_pipe = nullptr;
 
 	LTTNG_ASSERT(msg);
@@ -4330,7 +4327,7 @@ struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock)
 	}
 
 	try {
-		lta = new ust_app;
+		lta = new lsu::app;
 	} catch (const std::bad_alloc&) {
 		ERR_FMT("Failed to allocate ust application instance: name=`{}`, pid={}, uid={}",
 			msg->name,
@@ -4406,7 +4403,7 @@ error:
 /*
  * For a given application object, add it to every hash table.
  */
-void ust_app_add(struct ust_app *app)
+void ust_app_add(lsu::app *app)
 {
 	LTTNG_ASSERT(app);
 	LTTNG_ASSERT(app->notify_sock >= 0);
@@ -4451,7 +4448,7 @@ void ust_app_add(struct ust_app *app)
  * Return 0 on success else a negative value either an errno code or a
  * LTTng-UST error code.
  */
-int ust_app_version(struct ust_app *app)
+int ust_app_version(lsu::app *app)
 {
 	int ret;
 
@@ -4480,12 +4477,12 @@ int ust_app_version(struct ust_app *app)
 	return ret;
 }
 
-bool ust_app_supports_notifiers(const struct ust_app *app)
+bool ust_app_supports_notifiers(const lsu::app *app)
 {
 	return app->v_major >= 9;
 }
 
-bool ust_app_supports_counters(const struct ust_app *app)
+bool ust_app_supports_counters(const lsu::app *app)
 {
 	return app->v_major >= 9;
 }
@@ -4503,7 +4500,7 @@ void ust_app_notify_reclaimed_owner_ids(const std::vector<uint32_t>& owners)
  * Return 0 on success else a negative value either an errno code or a
  * LTTng-UST error code.
  */
-int ust_app_setup_event_notifier_group(struct ust_app *app)
+int ust_app_setup_event_notifier_group(lsu::app *app)
 {
 	int ret;
 	int event_pipe_write_fd;
@@ -4614,7 +4611,7 @@ error:
 	return ret;
 }
 
-static void ust_app_unregister(ust_app& app)
+static void ust_app_unregister(lsu::app& app)
 {
 	const lttng::urcu::read_lock_guard read_lock;
 
@@ -4637,9 +4634,9 @@ static void ust_app_unregister(ust_app& app)
 	 * for apps present in the orchestrator maps.
 	 */
 	for (auto *ua_sess :
-	     lttng::urcu::lfht_iteration_adapter<ust_app_session,
-						 decltype(ust_app_session::node),
-						 &ust_app_session::node>(*app.sessions->ht)) {
+	     lttng::urcu::lfht_iteration_adapter<lsu::app_session,
+						 decltype(lsu::app_session::node),
+						 &lsu::app_session::node>(*app.sessions->ht)) {
 		if (ua_sess->buffer_type == LTTNG_BUFFER_PER_PID) {
 			(void) ust_app_flush_app_session(app, *ua_sess);
 		}
@@ -4869,7 +4866,7 @@ void ust_app_unregister_by_socket(int sock_fd)
 	node = lttng_ht_iter_get_node<lttng_ht_node_ulong>(&ust_app_sock_iter);
 	assert(node);
 
-	auto *app = lttng::utils::container_of(node, &ust_app::sock_n);
+	auto *app = lttng::utils::container_of(node, &lsu::app::sock_n);
 
 	DBG_FMT("Application unregistering after socket activity: app={}, socket_fd={}",
 		*app,
@@ -4904,9 +4901,9 @@ int ust_app_list_events(struct lttng_event **events)
 	}
 
 	/* Iterate on all apps. */
-	for (auto *app :
-	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
-		     *ust_app_ht->ht)) {
+	for (auto *app : lttng::urcu::lfht_iteration_adapter<lsu::app,
+							     decltype(lsu::app::pid_n),
+							     &lsu::app::pid_n>(*ust_app_ht->ht)) {
 		struct lttng_ust_abi_tracepoint_iter uiter;
 
 		health_code_update();
@@ -5062,9 +5059,9 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 	}
 
 	/* Iterate on all apps. */
-	for (auto *app :
-	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
-		     *ust_app_ht->ht)) {
+	for (auto *app : lttng::urcu::lfht_iteration_adapter<lsu::app,
+							     decltype(lsu::app::pid_n),
+							     &lsu::app::pid_n>(*ust_app_ht->ht)) {
 		struct lttng_ust_abi_field_iter uiter;
 
 		health_code_update();
@@ -5208,9 +5205,9 @@ void ust_app_clean_list()
 	/* Cleanup notify socket hash table */
 	if (ust_app_ht_by_notify_sock) {
 		for (auto *app :
-		     lttng::urcu::lfht_iteration_adapter<ust_app,
-							 decltype(ust_app::notify_sock_n),
-							 &ust_app::notify_sock_n>(
+		     lttng::urcu::lfht_iteration_adapter<lsu::app,
+							 decltype(lsu::app::notify_sock_n),
+							 &lsu::app::notify_sock_n>(
 			     *ust_app_ht_by_notify_sock->ht)) {
 			if (!ust_app_get(*app)) {
 				/* Application unregistered concurrently, skip it. */
@@ -5233,9 +5230,9 @@ void ust_app_clean_list()
 	if (ust_app_ht_by_sock) {
 		const lttng::urcu::read_lock_guard read_lock;
 
-		for (auto *app : lttng::urcu::lfht_iteration_adapter<ust_app,
-								     decltype(ust_app::sock_n),
-								     &ust_app::sock_n>(
+		for (auto *app : lttng::urcu::lfht_iteration_adapter<lsu::app,
+								     decltype(lsu::app::sock_n),
+								     &lsu::app::sock_n>(
 			     *ust_app_ht_by_sock->ht)) {
 			if (!ust_app_get(*app)) {
 				/* Application unregistered concurrently, skip it. */
@@ -5301,7 +5298,7 @@ int ust_app_disable_channel_glb(std::uint64_t session_id, lttng::c_string_view c
 {
 	int ret = 0;
 	struct lttng_ht_node_str *ua_chan_node;
-	struct ust_app_session *ua_sess;
+	lsu::app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
 
 	DBG2("UST app disabling channel %s from global domain for session id %" PRIu64,
@@ -5309,9 +5306,9 @@ int ust_app_disable_channel_glb(std::uint64_t session_id, lttng::c_string_view c
 	     session_id);
 
 	/* Iterate on all apps. */
-	for (auto *app :
-	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
-		     *ust_app_ht->ht)) {
+	for (auto *app : lttng::urcu::lfht_iteration_adapter<lsu::app,
+							     decltype(lsu::app::pid_n),
+							     &lsu::app::pid_n>(*ust_app_ht->ht)) {
 		struct lttng_ht_iter uiter;
 
 		if (!ust_app_get(*app)) {
@@ -5362,16 +5359,16 @@ int ust_app_disable_channel_glb(std::uint64_t session_id, lttng::c_string_view c
 int ust_app_enable_channel_glb(std::uint64_t session_id, lttng::c_string_view channel_name)
 {
 	int ret = 0;
-	struct ust_app_session *ua_sess;
+	lsu::app_session *ua_sess;
 
 	DBG2("UST app enabling channel %s to global domain for session id %" PRIu64,
 	     channel_name.data(),
 	     session_id);
 
 	/* For every registered applications */
-	for (auto *app :
-	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
-		     *ust_app_ht->ht)) {
+	for (auto *app : lttng::urcu::lfht_iteration_adapter<lsu::app,
+							     decltype(lsu::app::pid_n),
+							     &lsu::app::pid_n>(*ust_app_ht->ht)) {
 		if (!ust_app_get(*app)) {
 			/* Application unregistered concurrently, skip it. */
 			DBG("Could not get application reference as it is being torn down; skipping application");
@@ -5414,7 +5411,7 @@ int ust_app_disable_event_glb(std::uint64_t session_id,
 	int ret = 0;
 	struct lttng_ht_iter uiter;
 	struct lttng_ht_node_str *ua_chan_node;
-	struct ust_app_session *ua_sess;
+	lsu::app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
 	struct ust_app_event *ua_event;
 
@@ -5424,9 +5421,9 @@ int ust_app_disable_event_glb(std::uint64_t session_id,
 	    session_id);
 
 	/* Iterate on all apps. */
-	for (auto *app :
-	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
-		     *ust_app_ht->ht)) {
+	for (auto *app : lttng::urcu::lfht_iteration_adapter<lsu::app,
+							     decltype(lsu::app::pid_n),
+							     &lsu::app::pid_n>(*ust_app_ht->ht)) {
 		if (!ust_app_get(*app)) {
 			/* Application unregistered concurrently, skip it. */
 			DBG("Could not get application reference as it is being torn down; skipping application");
@@ -5515,8 +5512,8 @@ static int ust_app_channel_create(
 	struct consumer_output *consumer,
 	lttng_buffer_type buffer_type,
 	std::uint64_t session_id,
-	const ust_app_session::locked_weak_ref& ua_sess,
-	struct ust_app *app,
+	const lsu::app_session::locked_weak_ref& ua_sess,
+	lsu::app *app,
 	struct ust_app_channel **_ua_chan,
 	const lttng::sessiond::config::recording_channel_configuration& channel_config,
 	std::uint64_t trace_class_stream_class_handle,
@@ -5590,7 +5587,7 @@ int ust_app_enable_event_glb(std::uint64_t session_id,
 	int ret = 0;
 	struct lttng_ht_iter uiter;
 	struct lttng_ht_node_str *ua_chan_node;
-	struct ust_app_session *ua_sess;
+	lsu::app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
 	struct ust_app_event *ua_event;
 
@@ -5603,9 +5600,9 @@ int ust_app_enable_event_glb(std::uint64_t session_id,
 	 */
 
 	/* Iterate on all apps. */
-	for (auto *app :
-	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
-		     *ust_app_ht->ht)) {
+	for (auto *app : lttng::urcu::lfht_iteration_adapter<lsu::app,
+							     decltype(lsu::app::pid_n),
+							     &lsu::app::pid_n>(*ust_app_ht->ht)) {
 		if (!ust_app_get(*app)) {
 			/* Application unregistered concurrently, skip it. */
 			DBG("Could not get application reference as it is being torn down; skipping application");
@@ -5676,15 +5673,15 @@ int ust_app_create_event_glb(
 	int ret = 0;
 	struct lttng_ht_iter uiter;
 	struct lttng_ht_node_str *ua_chan_node;
-	struct ust_app_session *ua_sess;
+	lsu::app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
 
 	DBG("UST app creating event for all apps for session id %" PRIu64, session_id);
 
 	/* Iterate on all apps. */
-	for (auto *app :
-	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
-		     *ust_app_ht->ht)) {
+	for (auto *app : lttng::urcu::lfht_iteration_adapter<lsu::app,
+							     decltype(lsu::app::pid_n),
+							     &lsu::app::pid_n>(*ust_app_ht->ht)) {
 		if (!ust_app_get(*app)) {
 			/* Application unregistered concurrently, skip it. */
 			DBG("Could not get application reference as it is being torn down; skipping application");
@@ -5742,10 +5739,10 @@ int ust_app_create_event_glb(
  * Called with UST app session lock held.
  *
  */
-static int ust_app_start_trace(std::uint64_t session_id, struct ust_app *app)
+static int ust_app_start_trace(std::uint64_t session_id, lsu::app *app)
 {
 	int ret = 0;
-	struct ust_app_session *ua_sess;
+	lsu::app_session *ua_sess;
 
 	DBG("Starting tracing for ust app pid %d", app->pid);
 
@@ -5832,10 +5829,10 @@ static int ust_app_start_trace(std::uint64_t session_id, struct ust_app *app)
 /*
  * Stop tracing for a specific UST session and app.
  */
-static int ust_app_stop_trace(std::uint64_t session_id, struct ust_app *app)
+static int ust_app_stop_trace(std::uint64_t session_id, lsu::app *app)
 {
 	int ret = 0;
-	struct ust_app_session *ua_sess;
+	lsu::app_session *ua_sess;
 
 	DBG("Stopping tracing for ust app pid %d", app->pid);
 
@@ -5936,7 +5933,7 @@ static int ust_app_stop_trace(std::uint64_t session_id, struct ust_app *app)
 	return 0;
 }
 
-static int ust_app_flush_app_session(ust_app& app, ust_app_session& ua_sess)
+static int ust_app_flush_app_session(lsu::app& app, lsu::app_session& ua_sess)
 {
 	int ret, retval = 0;
 	struct consumer_socket *socket;
@@ -6007,9 +6004,9 @@ static int ust_app_flush_session(lsu::domain_orchestrator& orchestrator)
 		const auto session_id = orchestrator.session_id();
 
 		for (auto *app :
-		     lttng::urcu::lfht_iteration_adapter<ust_app,
-							 decltype(ust_app::pid_n),
-							 &ust_app::pid_n>(*ust_app_ht->ht)) {
+		     lttng::urcu::lfht_iteration_adapter<lsu::app,
+							 decltype(lsu::app::pid_n),
+							 &lsu::app::pid_n>(*ust_app_ht->ht)) {
 			if (!ust_app_get(*app)) {
 				/* Application unregistered concurrently, skip it. */
 				DBG("Could not get application reference as it is being torn down; skipping application");
@@ -6031,7 +6028,7 @@ static int ust_app_flush_session(lsu::domain_orchestrator& orchestrator)
 	return ret;
 }
 
-static int ust_app_clear_quiescent_app_session(struct ust_app *app, struct ust_app_session *ua_sess)
+static int ust_app_clear_quiescent_app_session(lsu::app *app, lsu::app_session *ua_sess)
 {
 	int ret = 0;
 	struct consumer_socket *socket;
@@ -6105,9 +6102,9 @@ static int ust_app_clear_quiescent_session(const lsu::domain_orchestrator& orche
 		const auto session_id = orchestrator.session_id();
 
 		for (auto *app :
-		     lttng::urcu::lfht_iteration_adapter<ust_app,
-							 decltype(ust_app::pid_n),
-							 &ust_app::pid_n>(*ust_app_ht->ht)) {
+		     lttng::urcu::lfht_iteration_adapter<lsu::app,
+							 decltype(lsu::app::pid_n),
+							 &lsu::app::pid_n>(*ust_app_ht->ht)) {
 			if (!ust_app_get(*app)) {
 				/* Application unregistered concurrently, skip it. */
 				DBG("Could not get application reference as it is being torn down; skipping application");
@@ -6131,10 +6128,10 @@ static int ust_app_clear_quiescent_session(const lsu::domain_orchestrator& orche
 /*
  * Destroy a specific UST session in apps.
  */
-static int destroy_trace(std::uint64_t session_id, struct ust_app *app)
+static int destroy_trace(std::uint64_t session_id, lsu::app *app)
 {
 	int ret;
-	struct ust_app_session *ua_sess;
+	lsu::app_session *ua_sess;
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_u64 *node;
 
@@ -6152,7 +6149,7 @@ static int destroy_trace(std::uint64_t session_id, struct ust_app *app)
 		/* Session is being or is deleted. */
 		goto end;
 	}
-	ua_sess = lttng::utils::container_of(node, &ust_app_session::node);
+	ua_sess = lttng::utils::container_of(node, &lsu::app_session::node);
 
 	health_code_update();
 	destroy_app_session(app, ua_sess);
@@ -6202,9 +6199,9 @@ int ust_app_start_trace_all(const lttng::sessiond::config::domain& domain,
 	(void) ust_app_clear_quiescent_session(orchestrator);
 
 	/* Iterate on all apps. */
-	for (auto *app :
-	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
-		     *ust_app_ht->ht)) {
+	for (auto *app : lttng::urcu::lfht_iteration_adapter<lsu::app,
+							     decltype(lsu::app::pid_n),
+							     &lsu::app::pid_n>(*ust_app_ht->ht)) {
 		if (!ust_app_get(*app)) {
 			/* Application unregistered concurrently, skip it. */
 			DBG("Could not get application reference as it is being torn down; skipping application");
@@ -6231,9 +6228,9 @@ int ust_app_stop_trace_all(lsu::domain_orchestrator& orchestrator)
 	DBG("Stopping all UST traces");
 
 	/* Iterate on all apps. */
-	for (auto *app :
-	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
-		     *ust_app_ht->ht)) {
+	for (auto *app : lttng::urcu::lfht_iteration_adapter<lsu::app,
+							     decltype(lsu::app::pid_n),
+							     &lsu::app::pid_n>(*ust_app_ht->ht)) {
 		if (!ust_app_get(*app)) {
 			/* Application unregistered concurrently, skip it. */
 			DBG("Could not get application reference as it is being torn down; skipping application");
@@ -6262,9 +6259,9 @@ int ust_app_destroy_trace_all(std::uint64_t session_id)
 	DBG("Destroy all UST traces");
 
 	/* Iterate on all apps. */
-	for (auto *app :
-	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
-		     *ust_app_ht->ht)) {
+	for (auto *app : lttng::urcu::lfht_iteration_adapter<lsu::app,
+							     decltype(lsu::app::pid_n),
+							     &lsu::app::pid_n>(*ust_app_ht->ht)) {
 		if (!ust_app_get(*app)) {
 			/* Application unregistered concurrently, skip it. */
 			DBG("Could not get application reference as it is being torn down; skipping application");
@@ -6284,8 +6281,8 @@ static int find_or_create_ust_app_channel(
 	struct consumer_output *consumer,
 	lttng_buffer_type buffer_type,
 	std::uint64_t session_id,
-	const ust_app_session::locked_weak_ref& ua_sess,
-	struct ust_app *app,
+	const lsu::app_session::locked_weak_ref& ua_sess,
+	lsu::app *app,
 	struct ust_app_channel **ua_chan,
 	const lttng::sessiond::config::recording_channel_configuration& channel_config,
 	std::uint64_t trace_class_stream_class_handle,
@@ -6320,7 +6317,7 @@ end:
 
 static int ust_app_channel_synchronize_event(
 	struct ust_app_channel *ua_chan,
-	struct ust_app *app,
+	lsu::app *app,
 	const lttng::sessiond::config::event_rule_configuration& event_config)
 {
 	int ret = 0;
@@ -6343,7 +6340,7 @@ end:
 }
 
 /* Called with RCU read-side lock held. */
-static void ust_app_synchronize_event_notifier_rules(struct ust_app *app)
+static void ust_app_synchronize_event_notifier_rules(lsu::app *app)
 {
 	int ret = 0;
 	enum lttng_error_code ret_code;
@@ -6490,8 +6487,8 @@ static void
 ust_app_synchronize_all_channels(struct consumer_output *consumer,
 				 lttng_buffer_type buffer_type,
 				 std::uint64_t session_id,
-				 const ust_app_session::locked_weak_ref& ua_sess,
-				 struct ust_app *app,
+				 const lsu::app_session::locked_weak_ref& ua_sess,
+				 lsu::app *app,
 				 const lttng::sessiond::config::domain& config_domain,
 				 const lttng::sessiond::ust::domain_orchestrator& orchestrator,
 				 ltt_session& session)
@@ -6557,13 +6554,13 @@ end:
  * The caller must ensure that the application is compatible and is tracked
  * by the process attribute trackers.
  */
-static void ust_app_synchronize(struct ust_app *app,
+static void ust_app_synchronize(lsu::app *app,
 				const lttng::sessiond::config::domain& config_domain,
 				const lsu::domain_orchestrator& orchestrator,
 				ltt_session& session)
 {
 	int ret = 0;
-	struct ust_app_session *ua_sess = nullptr;
+	lsu::app_session *ua_sess = nullptr;
 	auto *consumer = orchestrator.get_consumer_output_ptr();
 	const auto buffer_type = orchestrator.buffer_type();
 	const auto session_id = orchestrator.session_id();
@@ -6612,9 +6609,9 @@ static void ust_app_synchronize(struct ust_app *app,
 	}
 }
 
-static void ust_app_global_destroy(std::uint64_t session_id, struct ust_app *app)
+static void ust_app_global_destroy(std::uint64_t session_id, lsu::app *app)
 {
-	struct ust_app_session *ua_sess;
+	lsu::app_session *ua_sess;
 
 	ua_sess = ust_app_lookup_app_session(session_id, app);
 	if (ua_sess == nullptr) {
@@ -6629,7 +6626,7 @@ static void ust_app_global_destroy(std::uint64_t session_id, struct ust_app *app
  * Called with session lock held.
  * Called with RCU read-side lock held.
  */
-void ust_app_global_update(struct ust_app *app,
+void ust_app_global_update(lsu::app *app,
 			   const lttng::sessiond::config::domain& domain,
 			   const lttng::sessiond::ust::domain_orchestrator& orchestrator,
 			   ltt_session& session)
@@ -6668,7 +6665,7 @@ void ust_app_global_update(struct ust_app *app,
  * Called with session lock held.
  * Called with RCU read-side lock held.
  */
-void ust_app_global_update_event_notifier_rules(struct ust_app *app)
+void ust_app_global_update_event_notifier_rules(lsu::app *app)
 {
 	ASSERT_RCU_READ_LOCKED();
 
@@ -6698,9 +6695,9 @@ void ust_app_global_update_all(const lttng::sessiond::config::domain& domain,
 			       ltt_session& session)
 {
 	/* Iterate on all apps. */
-	for (auto *app :
-	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
-		     *ust_app_ht->ht)) {
+	for (auto *app : lttng::urcu::lfht_iteration_adapter<lsu::app,
+							     decltype(lsu::app::pid_n),
+							     &lsu::app::pid_n>(*ust_app_ht->ht)) {
 		if (!ust_app_get(*app)) {
 			/* Application unregistered concurrently, skip it. */
 			DBG("Could not get application reference as it is being torn down; skipping application");
@@ -6716,9 +6713,9 @@ void ust_app_global_update_all(const lttng::sessiond::config::domain& domain,
 void ust_app_global_update_all_event_notifier_rules()
 {
 	/* Iterate on all apps. */
-	for (auto *app :
-	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
-		     *ust_app_ht->ht)) {
+	for (auto *app : lttng::urcu::lfht_iteration_adapter<lsu::app,
+							     decltype(lsu::app::pid_n),
+							     &lsu::app::pid_n>(*ust_app_ht->ht)) {
 		if (!ust_app_get(*app)) {
 			/* Application unregistered concurrently, skip it. */
 			DBG("Could not get application reference as it is being torn down; skipping application");
@@ -6742,12 +6739,12 @@ int ust_app_add_ctx_channel_glb(std::uint64_t session_id,
 	struct lttng_ht_node_str *ua_chan_node;
 	struct lttng_ht_iter uiter;
 	struct ust_app_channel *ua_chan = nullptr;
-	struct ust_app_session *ua_sess;
+	lsu::app_session *ua_sess;
 
 	/* Iterate on all apps. */
-	for (auto *app :
-	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
-		     *ust_app_ht->ht)) {
+	for (auto *app : lttng::urcu::lfht_iteration_adapter<lsu::app,
+							     decltype(lsu::app::pid_n),
+							     &lsu::app::pid_n>(*ust_app_ht->ht)) {
 		if (!ust_app_get(*app)) {
 			/* Application unregistered concurrently, skip it. */
 			DBG("Could not get application reference as it is being torn down; skipping application");
@@ -6857,11 +6854,11 @@ error:
  * session object descriptor has a key. If not found, NULL is returned.
  * A RCU read side lock MUST be acquired when calling this function.
  */
-static struct ust_app_session *find_session_by_objd(struct ust_app *app, int objd)
+static lsu::app_session *find_session_by_objd(lsu::app *app, int objd)
 {
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
-	struct ust_app_session *ua_sess = nullptr;
+	lsu::app_session *ua_sess = nullptr;
 
 	LTTNG_ASSERT(app);
 	ASSERT_RCU_READ_LOCKED();
@@ -6873,7 +6870,7 @@ static struct ust_app_session *find_session_by_objd(struct ust_app *app, int obj
 		goto error;
 	}
 
-	ua_sess = lttng::utils::container_of(node, &ust_app_session::ust_objd_node);
+	ua_sess = lttng::utils::container_of(node, &lsu::app_session::ust_objd_node);
 
 error:
 	return ua_sess;
@@ -6884,7 +6881,7 @@ error:
  * object descriptor has a key. If not found, NULL is returned. A RCU read side
  * lock MUST be acquired before calling this function.
  */
-static struct ust_app_channel *find_channel_by_objd(struct ust_app *app, int objd)
+static struct ust_app_channel *find_channel_by_objd(lsu::app *app, int objd)
 {
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
@@ -6923,7 +6920,7 @@ static int handle_app_register_channel_notification(int sock,
 	uint32_t chan_id;
 	uint64_t chan_reg_key;
 	struct ust_app_channel *ua_chan;
-	struct ust_app_session *ua_sess;
+	lsu::app_session *ua_sess;
 	auto ust_ctl_context_fields =
 		lttng::make_unique_wrapper<lttng_ust_ctl_field, lttng::memory::free>(
 			raw_context_fields);
@@ -6953,7 +6950,7 @@ static int handle_app_register_channel_notification(int sock,
 	 * HACK: ua_sess is already locked by the client thread. This is called
 	 * in the context of the handling of a notification from the application.
 	 */
-	auto locked_ua_sess = ust_app_session::make_locked_weak_ref(*ua_sess);
+	auto locked_ua_sess = lsu::app_session::make_locked_weak_ref(*ua_sess);
 	auto locked_trace_class = get_locked_session_registry(locked_ua_sess->get_identifier());
 	locked_ua_sess.release();
 	if (!locked_trace_class) {
@@ -7094,7 +7091,7 @@ static int add_event_ust_registry(int sock,
 	lsu::event_id event_id = 0;
 	uint64_t chan_reg_key;
 	struct ust_app_channel *ua_chan;
-	struct ust_app_session *ua_sess;
+	lsu::app_session *ua_sess;
 	const lttng::urcu::read_lock_guard rcu_lock;
 	auto signature = lttng::make_unique_wrapper<char, lttng::memory::free>(raw_signature);
 	auto fields =
@@ -7217,7 +7214,7 @@ static int add_enum_ust_registry(int sock,
 				 size_t nr_entries)
 {
 	int ret = 0;
-	struct ust_app_session *ua_sess;
+	lsu::app_session *ua_sess;
 	uint64_t enum_id = -1ULL;
 	const lttng::urcu::read_lock_guard read_lock_guard;
 	auto entries =
@@ -7559,7 +7556,7 @@ close_socket:
 /*
  * Destroy a ust app data structure and free its memory.
  */
-static void ust_app_destroy(ust_app& app)
+static void ust_app_destroy(lsu::app& app)
 {
 	ust_app_release_owner_id(app);
 	call_rcu(&app.pid_n.head, delete_ust_app_rcu);
@@ -7571,10 +7568,10 @@ static void ust_app_destroy(ust_app& app)
  *
  * Returns LTTNG_OK on success or a LTTNG_ERR error code.
  */
-static int ust_app_regenerate_statedump(std::uint64_t session_id, struct ust_app *app)
+static int ust_app_regenerate_statedump(std::uint64_t session_id, lsu::app *app)
 {
 	int ret = 0;
-	struct ust_app_session *ua_sess;
+	lsu::app_session *ua_sess;
 
 	DBG("Regenerating the metadata for ust app pid %d", app->pid);
 
@@ -7607,9 +7604,9 @@ int ust_app_regenerate_statedump_all(std::uint64_t session_id)
 	DBG("Regenerating the metadata for all UST apps");
 
 	/* Iterate on all apps. */
-	for (auto *app :
-	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
-		     *ust_app_ht->ht)) {
+	for (auto *app : lttng::urcu::lfht_iteration_adapter<lsu::app,
+							     decltype(lsu::app::pid_n),
+							     &lsu::app::pid_n>(*ust_app_ht->ht)) {
 		if (!ust_app_get(*app)) {
 			/* Application unregistered concurrently, skip it. */
 			DBG("Could not get application reference as it is being torn down; skipping application");
@@ -7628,7 +7625,7 @@ int ust_app_regenerate_statedump_all(std::uint64_t session_id)
 	return 0;
 }
 
-lsu::ctl_field_quirks ust_app::ctl_field_quirks() const
+lsu::ctl_field_quirks lsu::app::ctl_field_quirks() const
 {
 	/*
 	 * Application contexts are expressed as variants. LTTng-UST announces
@@ -7659,25 +7656,25 @@ static void ust_app_release(urcu_ref *ref)
 {
 	namespace lam = lttng::sessiond::app_management;
 
-	auto& app = *lttng::utils::container_of(ref, &ust_app::ref);
+	auto& app = *lttng::utils::container_of(ref, &lsu::app::ref);
 
 	the_app_unregistration_queue->send(
 		lam::command(lam::command_type::UNREGISTER_AND_DESTROY_APP, app));
 }
 
-void ust_app_unregister_and_destroy(ust_app& app)
+void ust_app_unregister_and_destroy(lsu::app& app)
 {
 	LTTNG_ASSERT(uatomic_read(&app.ref.refcount) == 0);
 	ust_app_unregister(app);
 	ust_app_destroy(app);
 }
 
-bool ust_app_get(ust_app& app)
+bool ust_app_get(lsu::app& app)
 {
 	return urcu_ref_get_unless_zero(&app.ref);
 }
 
-void ust_app_put(struct ust_app *app)
+void ust_app_put(lsu::app *app)
 {
 	if (!app) {
 		return;

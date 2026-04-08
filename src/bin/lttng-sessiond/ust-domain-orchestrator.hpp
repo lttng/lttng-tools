@@ -30,7 +30,6 @@ struct agent;
 struct ltt_session;
 struct lttng_ht;
 struct lttng_ust_context_attr;
-struct ust_app;
 struct ust_app_session_operations;
 
 namespace lttng {
@@ -42,6 +41,7 @@ class context_configuration;
 } /* namespace config */
 
 namespace ust {
+struct app;
 
 /*
  * The UST domain orchestrator manages user space tracing runtime resources on
@@ -268,7 +268,7 @@ private:
 							     const char *root_shm_path,
 							     const char *shm_path);
 
-	ust::trace_class& find_or_create_per_pid_trace_class(ust_app& app,
+	ust::trace_class& find_or_create_per_pid_trace_class(ust::app& app,
 							     std::uint64_t app_session_id,
 							     const trace::abi& tracer_abi,
 							     std::uint32_t tracer_major,
@@ -278,8 +278,8 @@ private:
 							     uid_t euid,
 							     gid_t egid);
 
-	void release_per_pid_trace_class(const ust_app& app);
-	void release_per_pid_stream_groups(const ust_app& app);
+	void release_per_pid_trace_class(const ust::app& app);
+	void release_per_pid_stream_groups(const ust::app& app);
 
 	ust::stream_group& find_or_create_per_uid_stream_group(
 		const config::recording_channel_configuration& channel_config,
@@ -301,7 +301,7 @@ private:
 
 	ust::stream_group& find_or_create_per_pid_stream_group(
 		const config::recording_channel_configuration& channel_config,
-		const ust_app& app,
+		const ust::app& app,
 		std::uint64_t consumer_key,
 		ust_object_data channel_object,
 		ust::trace_class& trace_class,
@@ -472,7 +472,7 @@ private:
 
 	struct _per_pid_stream_group_key {
 		const config::recording_channel_configuration *channel_config;
-		const ust_app *app;
+		const ust::app *app;
 
 		bool operator==(const _per_pid_stream_group_key& other) const noexcept;
 		std::size_t hash() const noexcept;
@@ -510,16 +510,16 @@ private:
 	 * Per-PID trace classes are keyed by app pointer. Each app gets
 	 * its own trace_class.
 	 */
-	std::unordered_map<const ust_app *, std::shared_ptr<ust::trace_class>>
+	std::unordered_map<const ust::app *, std::shared_ptr<ust::trace_class>>
 		_per_pid_trace_classes;
 
 	/*
-	 * Maps app pointers to the ust_app_session::app_session_id used
+	 * Maps app pointers to the app_session::app_session_id used
 	 * as the trace_class_index key for per-PID trace classes. Needed
 	 * so that release_per_pid_trace_class() can unregister from the
 	 * index without the caller providing the app_session_id.
 	 */
-	std::unordered_map<const ust_app *, std::uint64_t> _per_pid_app_session_ids;
+	std::unordered_map<const ust::app *, std::uint64_t> _per_pid_app_session_ids;
 
 	/* (app, recording channel configuration) -> stream group */
 	std::unordered_map<_per_pid_stream_group_key,

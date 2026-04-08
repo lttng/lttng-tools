@@ -18,11 +18,10 @@
 #include <functional>
 #include <urcu.h>
 
-struct ust_app;
-
 namespace lttng {
 namespace sessiond {
 namespace ust {
+struct app;
 
 class event_class;
 
@@ -50,7 +49,7 @@ public:
 		       int loglevel_value,
 		       nonstd::optional<std::string> model_emf_uri,
 		       lttng_buffer_type buffer_type,
-		       const ust_app& app,
+		       const ust::app& app,
 		       event_id& out_event_id);
 	~stream_class() override;
 	stream_class(const stream_class&) = delete;

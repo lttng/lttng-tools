@@ -402,7 +402,7 @@ void lsu::stream_class::add_event(int session_objd,
 				  int loglevel_value,
 				  nonstd::optional<std::string> model_emf_uri,
 				  lttng_buffer_type buffer_type,
-				  const ust_app& app,
+				  const lsu::app& app,
 				  lsu::event_id& out_event_id)
 {
 	lsu::event_id event_id;

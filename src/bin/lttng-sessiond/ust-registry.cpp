@@ -101,7 +101,7 @@ lsu::trace_class *ust_trace_class_per_uid_create(enum lttng_trace_format trace_f
 	}
 }
 
-lsu::trace_class *ust_trace_class_per_pid_create(struct ust_app *app,
+lsu::trace_class *ust_trace_class_per_pid_create(lsu::app *app,
 						 enum lttng_trace_format trace_format,
 						 const lttng::sessiond::trace::abi& abi,
 						 uint32_t major,

@@ -39,7 +39,7 @@ class trace_class;
  *
  * 2. Per-PID key space: in per-PID buffer mode, the consumer
  *    identifies the trace class by an app_session_id
- *    (ust_app_session::app_session_id) which is a sessiond-internal
+ *    (app_session::app_session_id) which is a sessiond-internal
  *    identifier with no relation to ltt_session::id. There is no way
  *    to derive an ltt_session from this value alone.
  *
@@ -89,7 +89,7 @@ public:
 
 	/*
 	 * Register a per-PID trace class. The key is the
-	 * ust_app_session::app_session_id, which the consumer daemon
+	 * app_session::app_session_id, which the consumer daemon
 	 * includes in metadata request messages as session_id_per_pid.
 	 */
 	void add_per_pid(std::uint64_t app_session_id, const std::shared_ptr<trace_class>& tc);

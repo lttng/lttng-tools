@@ -115,7 +115,7 @@ struct ust_reg_wait_queue {
  * notify socket.
  */
 struct ust_reg_wait_node {
-	struct ust_app *app;
+	lttng::sessiond::ust::app *app;
 	struct cds_list_head head;
 };
 

@@ -325,7 +325,7 @@ ls::ust::trace_class& ls::ust::domain_orchestrator::find_or_create_per_uid_trace
 }
 
 ls::ust::trace_class& ls::ust::domain_orchestrator::find_or_create_per_pid_trace_class(
-	ust_app& app,
+	ls::ust::app& app,
 	std::uint64_t app_session_id,
 	const lttng::sessiond::trace::abi& tracer_abi,
 	std::uint32_t tracer_major,
@@ -374,7 +374,7 @@ ls::ust::trace_class& ls::ust::domain_orchestrator::find_or_create_per_pid_trace
 	return ref;
 }
 
-void ls::ust::domain_orchestrator::release_per_pid_trace_class(const ust_app& app)
+void ls::ust::domain_orchestrator::release_per_pid_trace_class(const ls::ust::app& app)
 {
 	const auto it = _per_pid_trace_classes.find(&app);
 	if (it == _per_pid_trace_classes.end()) {
@@ -456,7 +456,7 @@ bool ls::ust::domain_orchestrator::has_per_uid_stream_group(
 
 ls::ust::stream_group& ls::ust::domain_orchestrator::find_or_create_per_pid_stream_group(
 	const config::recording_channel_configuration& channel_config,
-	const ust_app& app,
+	const ls::ust::app& app,
 	std::uint64_t consumer_key,
 	ust::ust_object_data channel_object,
 	ust::trace_class& trace_class,
@@ -486,7 +486,7 @@ ls::ust::stream_group& ls::ust::domain_orchestrator::find_or_create_per_pid_stre
 	return ref;
 }
 
-void ls::ust::domain_orchestrator::release_per_pid_stream_groups(const ust_app& app)
+void ls::ust::domain_orchestrator::release_per_pid_stream_groups(const ls::ust::app& app)
 {
 	auto it = _per_pid_stream_groups.begin();
 	while (it != _per_pid_stream_groups.end()) {

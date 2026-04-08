@@ -17,10 +17,12 @@
 #include <cstdint>
 #include <stdbool.h>
 
-struct ust_app;
-
 namespace lttng {
 namespace sessiond {
+namespace ust {
+struct app;
+} /* namespace ust */
+
 namespace app_management {
 
 enum class command_type : std::uint8_t {
@@ -28,7 +30,7 @@ enum class command_type : std::uint8_t {
 };
 
 struct command : public lttng::command_base {
-	command(command_type type_, ust_app& app_) noexcept : type(type_), app(&app_)
+	command(command_type type_, ust::app& app_) noexcept : type(type_), app(&app_)
 	{
 	}
 
@@ -40,7 +42,7 @@ struct command : public lttng::command_base {
 	command& operator=(const command&) = delete;
 
 	command_type type;
-	ust_app *app = nullptr;
+	ust::app *app = nullptr;
 };
 
 } /* namespace app_management */

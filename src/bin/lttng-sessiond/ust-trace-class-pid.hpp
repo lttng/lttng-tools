@@ -24,7 +24,7 @@ namespace ust {
 
 class trace_class_per_pid : public trace_class {
 public:
-	trace_class_per_pid(const struct ust_app& app,
+	trace_class_per_pid(const ust::app& app,
 			    enum lttng_trace_format trace_format,
 			    const struct lttng::sessiond::trace::abi& trace_abi,
 			    uint32_t major,

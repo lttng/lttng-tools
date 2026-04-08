@@ -22,7 +22,7 @@ class trace_class;
 } /* namespace sessiond */
 } /* namespace lttng */
 
-int ust_consumer_ask_channel(struct ust_app_session *ua_sess,
+int ust_consumer_ask_channel(lttng::sessiond::ust::app_session *ua_sess,
 			     struct ust_app_channel *ua_chan,
 			     struct consumer_output *consumer,
 			     struct consumer_socket *socket,
@@ -34,12 +34,12 @@ int ust_consumer_get_channel(struct consumer_socket *socket, struct ust_app_chan
 
 int ust_consumer_destroy_channel(struct consumer_socket *socket, struct ust_app_channel *ua_chan);
 
-int ust_consumer_send_stream_to_ust(struct ust_app *app,
+int ust_consumer_send_stream_to_ust(lttng::sessiond::ust::app *app,
 				    struct ust_app_channel *channel,
-				    struct ust_app_stream *stream);
+				    lttng::sessiond::ust::app_stream *stream);
 
-int ust_consumer_send_channel_to_ust(struct ust_app *app,
-				     struct ust_app_session *ua_sess,
+int ust_consumer_send_channel_to_ust(lttng::sessiond::ust::app *app,
+				     lttng::sessiond::ust::app_session *ua_sess,
 				     struct ust_app_channel *channel);
 
 #ifdef HAVE_LIBLTTNG_UST_CTL

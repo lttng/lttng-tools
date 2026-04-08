@@ -13,7 +13,7 @@
 namespace lst = lttng::sessiond::trace;
 namespace lsu = lttng::sessiond::ust;
 
-lsu::trace_class_per_pid::trace_class_per_pid(const struct ust_app& app,
+lsu::trace_class_per_pid::trace_class_per_pid(const lsu::app& app,
 					      enum lttng_trace_format trace_format,
 					      const struct lst::abi& in_abi,
 					      uint32_t major,

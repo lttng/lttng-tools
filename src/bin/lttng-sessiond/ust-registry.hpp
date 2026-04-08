@@ -39,11 +39,10 @@
 #define CTF_SPEC_MAJOR 1
 #define CTF_SPEC_MINOR 8
 
-struct ust_app;
-
 namespace lttng {
 namespace sessiond {
 namespace ust {
+struct app;
 
 class trace_class;
 
@@ -192,7 +191,7 @@ ust_trace_class_per_uid_create(enum lttng_trace_format trace_format,
  * Return new instance on success, nullptr on error.
  */
 lttng::sessiond::ust::trace_class *
-ust_trace_class_per_pid_create(struct ust_app *app,
+ust_trace_class_per_pid_create(lttng::sessiond::ust::app *app,
 			       enum lttng_trace_format trace_format,
 			       const lttng::sessiond::trace::abi& abi,
 			       uint32_t major,
@@ -234,7 +233,7 @@ ust_trace_class_per_uid_create(uint32_t bits_per_long __attribute__((unused)),
 }
 
 static inline lttng::sessiond::ust::trace_class *
-ust_trace_class_per_pid_create(struct ust_app *app __attribute__((unused)),
+ust_trace_class_per_pid_create(lttng::sessiond::ust::app *app __attribute__((unused)),
 			       enum lttng_trace_format trace_format __attribute__((unused)),
 			       uint32_t bits_per_long __attribute__((unused)),
 			       uint32_t uint8_t_alignment __attribute__((unused)),

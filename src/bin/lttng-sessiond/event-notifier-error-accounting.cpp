@@ -316,8 +316,8 @@ static enum event_notifier_error_accounting_status get_error_counter_index_for_t
  * Find the entry for this app's UID, the caller acquires a reference if the
  * entry is found.
  */
-static struct ust_error_accounting_entry *ust_error_accounting_entry_find(struct lttng_ht *uid_ht,
-									  const struct ust_app *app)
+static struct ust_error_accounting_entry *
+ust_error_accounting_entry_find(struct lttng_ht *uid_ht, const lttng::sessiond::ust::app *app)
 {
 	struct ust_error_accounting_entry *entry;
 	struct lttng_ht_node_u64 *node;
@@ -347,7 +347,7 @@ static struct ust_error_accounting_entry *ust_error_accounting_entry_find(struct
  * entry,
  */
 static struct ust_error_accounting_entry *
-ust_error_accounting_entry_create(const struct ust_app *app)
+ust_error_accounting_entry_create(const lttng::sessiond::ust::app *app)
 {
 	int i, ret, *cpu_counter_fds = nullptr;
 	struct lttng_ust_ctl_daemon_counter *daemon_counter;
@@ -510,7 +510,8 @@ end:
 }
 
 static enum event_notifier_error_accounting_status
-send_counter_data_to_ust(struct ust_app *app, struct lttng_ust_abi_object_data *new_counter)
+send_counter_data_to_ust(lttng::sessiond::ust::app *app,
+			 struct lttng_ust_abi_object_data *new_counter)
 {
 	int ret;
 	enum event_notifier_error_accounting_status status;
@@ -544,7 +545,7 @@ end:
 }
 
 static enum event_notifier_error_accounting_status
-send_counter_cpu_data_to_ust(struct ust_app *app,
+send_counter_cpu_data_to_ust(lttng::sessiond::ust::app *app,
 			     struct lttng_ust_abi_object_data *counter,
 			     struct lttng_ust_abi_object_data *counter_cpu)
 {
@@ -578,7 +579,7 @@ end:
 }
 
 enum event_notifier_error_accounting_status
-event_notifier_error_accounting_register_app(struct ust_app *app)
+event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app)
 {
 	int ret;
 	uint64_t i;
@@ -733,7 +734,7 @@ end:
 }
 
 enum event_notifier_error_accounting_status
-event_notifier_error_accounting_unregister_app(struct ust_app *app)
+event_notifier_error_accounting_unregister_app(lttng::sessiond::ust::app *app)
 {
 	enum event_notifier_error_accounting_status status;
 	struct ust_error_accounting_entry *entry;

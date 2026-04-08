@@ -293,7 +293,7 @@ static void *thread_dispatch_ust_registration(void *data)
 		}
 
 		do {
-			struct ust_app *app = nullptr;
+			lttng::sessiond::ust::app *app = nullptr;
 			ust_cmd = nullptr;
 
 			/*
