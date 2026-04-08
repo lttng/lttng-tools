@@ -5857,38 +5857,13 @@ static int ust_app_flush_session(lsu::domain_orchestrator& orchestrator)
 
 	DBG("Flushing session buffers for all ust apps");
 
-	/* Flush buffers and push metadata. */
-	switch (orchestrator.buffer_type()) {
-	case LTTNG_BUFFER_PER_UID:
-	{
-		auto *consumer = orchestrator.get_consumer_output_ptr();
-		orchestrator.for_each_consumer_stream_group(
-			[consumer](const lsu::domain_orchestrator::consumer_stream_group_descriptor&
-					   desc) {
-				const lttng::urcu::read_lock_guard read_lock;
-
-				const auto socket = consumer_find_socket_by_bitness(
-					static_cast<int>(desc.abi), consumer);
-				if (!socket) {
-					/* Ignore request if no consumer is found for the session.
-					 */
-					return;
-				}
-
-				if (desc.is_metadata) {
-					(void) push_metadata(desc.trace_class.lock(), consumer);
-				} else {
-					(void) consumer_flush_channel(socket, desc.consumer_key);
-				}
-			});
-
-		break;
-	}
-	case LTTNG_BUFFER_PER_PID:
-	{
+	/*
+	 * Flush per-PID buffers. Per-UID buffers are flushed directly by
+	 * the orchestrator's stop() method.
+	 */
+	if (orchestrator.buffer_type() == LTTNG_BUFFER_PER_PID) {
 		const auto session_id = orchestrator.session_id();
 
-		/* Iterate on all apps. */
 		for (auto *app :
 		     lttng::urcu::lfht_iteration_adapter<ust_app,
 							 decltype(ust_app::pid_n),
@@ -5908,13 +5883,6 @@ static int ust_app_flush_session(lsu::domain_orchestrator& orchestrator)
 
 			(void) ust_app_flush_app_session(*app, *ua_sess);
 		}
-
-		break;
-	}
-	default:
-		ret = -1;
-		abort();
-		break;
 	}
 
 	health_code_update();
@@ -5987,34 +5955,13 @@ static int ust_app_clear_quiescent_session(const lsu::domain_orchestrator& orche
 
 	DBG("Clearing stream quiescent state for all ust apps");
 
-	switch (orchestrator.buffer_type()) {
-	case LTTNG_BUFFER_PER_UID:
-	{
-		orchestrator.for_each_consumer_stream_group(
-			[&orchestrator](
-				const lsu::domain_orchestrator::consumer_stream_group_descriptor&
-					desc) {
-				if (desc.is_metadata) {
-					return;
-				}
-
-				lttng::urcu::read_lock_guard read_lock;
-				const auto socket = consumer_find_socket_by_bitness(
-					static_cast<int>(desc.abi), &orchestrator.consumer());
-				if (!socket) {
-					return;
-				}
-
-				(void) consumer_clear_quiescent_channel(socket, desc.consumer_key);
-			});
-
-		break;
-	}
-	case LTTNG_BUFFER_PER_PID:
-	{
+	/*
+	 * Clear quiescent state for per-PID channels. Per-UID channels
+	 * are handled directly by the orchestrator's start() method.
+	 */
+	if (orchestrator.buffer_type() == LTTNG_BUFFER_PER_PID) {
 		const auto session_id = orchestrator.session_id();
 
-		/* Iterate on all apps. */
 		for (auto *app :
 		     lttng::urcu::lfht_iteration_adapter<ust_app,
 							 decltype(ust_app::pid_n),
@@ -6033,13 +5980,6 @@ static int ust_app_clear_quiescent_session(const lsu::domain_orchestrator& orche
 			}
 			(void) ust_app_clear_quiescent_app_session(app, ua_sess);
 		}
-
-		break;
-	}
-	default:
-		ret = -1;
-		abort();
-		break;
 	}
 
 	health_code_update();

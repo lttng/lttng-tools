@@ -709,6 +709,18 @@ void ls::ust::domain_orchestrator::start()
 	 */
 	_active = true;
 
+	/*
+	 * Clear the quiescent state of per-UID consumer channels so that a
+	 * following stop or destroy produces a timestamp_end near the
+	 * actual operation, even if the packet is empty.
+	 *
+	 * Per-PID channels are handled within ust_app_start_trace_all()
+	 * on a per-application basis.
+	 */
+	if (buffer_type() == LTTNG_BUFFER_PER_UID) {
+		_clear_quiescent_per_uid_channels();
+	}
+
 	const auto ret = ust_app_start_trace_all(
 		_session.user_space_domain, *this, const_cast<ltt_session&>(_session));
 	if (ret < 0) {
@@ -734,6 +746,16 @@ void ls::ust::domain_orchestrator::stop()
 	if (ret < 0) {
 		LTTNG_THROW_CTL("Failed to stop UST tracing", LTTNG_ERR_UST_STOP_FAIL);
 	}
+
+	/*
+	 * Flush per-UID consumer buffers and push pending metadata.
+	 *
+	 * Per-PID buffers are flushed within ust_app_stop_trace_all()
+	 * on a per-application basis.
+	 */
+	if (buffer_type() == LTTNG_BUFFER_PER_UID) {
+		_flush_per_uid_buffers();
+	}
 }
 
 void ls::ust::domain_orchestrator::_push_metadata(
@@ -750,6 +772,47 @@ void ls::ust::domain_orchestrator::_push_metadata(
 	}
 
 	(void) ust_app_push_metadata(locked_trace_class, socket, 0);
+}
+
+void ls::ust::domain_orchestrator::_flush_per_uid_buffers() const
+{
+	auto *consumer = get_consumer_output_ptr();
+
+	for_each_consumer_stream_group([this,
+					consumer](const consumer_stream_group_descriptor& desc) {
+		const lttng::urcu::read_lock_guard read_lock;
+
+		const auto socket =
+			consumer_find_socket_by_bitness(static_cast<int>(desc.abi), consumer);
+		if (!socket) {
+			return;
+		}
+
+		if (desc.is_metadata) {
+			_push_metadata(desc.trace_class.lock());
+		} else {
+			(void) consumer_flush_channel(socket, desc.consumer_key);
+		}
+	});
+}
+
+void ls::ust::domain_orchestrator::_clear_quiescent_per_uid_channels() const
+{
+	for_each_consumer_stream_group([this](const consumer_stream_group_descriptor& desc) {
+		if (desc.is_metadata) {
+			return;
+		}
+
+		const lttng::urcu::read_lock_guard read_lock;
+
+		const auto socket = consumer_find_socket_by_bitness(static_cast<int>(desc.abi),
+								    get_consumer_output_ptr());
+		if (!socket) {
+			return;
+		}
+
+		(void) consumer_clear_quiescent_channel(socket, desc.consumer_key);
+	});
 }
 
 void ls::ust::domain_orchestrator::rotate()

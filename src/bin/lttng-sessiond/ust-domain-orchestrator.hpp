@@ -497,6 +497,12 @@ private:
 	 */
 	void _push_metadata(const ust::trace_class::locked_ref& locked_trace_class) const;
 
+	/* Flush all per-UID consumer data channels and push metadata. */
+	void _flush_per_uid_buffers() const;
+
+	/* Clear the quiescent state of all per-UID consumer data channels. */
+	void _clear_quiescent_per_uid_channels() const;
+
 	void _record_snapshot_per_uid(const struct consumer_output& snapshot_consumer,
 				      std::uint64_t nb_packets_per_stream) const;
 	void _record_snapshot_per_pid(const struct consumer_output& snapshot_consumer,
