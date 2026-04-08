@@ -1251,7 +1251,9 @@ def test_reclaim_memory_command_unknown_channel(tap, test_env, client):
         tap.diagnostic("Expected LTTngClientError but command succeeded")
         assert not "lttng-reclaim-memory(1) succeeds on non-existing channel"
     except lttngtest.LTTngClientError as ex:
-        expected_error = "Error: Channel `not-a-channel` does not exist"
+        expected_error = (
+            "Failed to reclaim memory: Channel `not-a-channel` does not exist"
+        )
         tap.diagnostic(
             "error_output contains '{}': {}".format(
                 expected_error, expected_error in ex._error_output
