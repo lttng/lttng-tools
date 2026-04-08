@@ -521,8 +521,10 @@ int cmd_reclaim_memory(int argc, const char **argv)
 
 		return CMD_SUCCESS;
 	} catch (const lttng::ctl::error& e) {
-		LTTNG_THROW_ERROR(
-			fmt::format("Failed to reclaim memory: {}", lttng_strerror(e.code())));
+		ERR_FMT("Failed to reclaim memory: {}", lttng_strerror(e.code()));
+		return CMD_ERROR;
+	} catch (const std::exception& e) {
+		ERR_FMT("Failed to reclaim memory: {}", e.what());
 		return CMD_ERROR;
 	}
 }
