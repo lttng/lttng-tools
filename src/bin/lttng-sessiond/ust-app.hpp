@@ -218,14 +218,6 @@ struct ust_app_channel {
 	struct lttng_ht *ctx = nullptr;
 	/* Hashtable of ust_app_event instances. */
 	struct lttng_ht *events = nullptr;
-	uint64_t tracefile_size = 0;
-	uint64_t tracefile_count = 0;
-	uint64_t monitor_timer_interval = 0;
-	LTTNG_OPTIONAL(uint64_t) watchdog_timer_interval = {};
-	lttng::sessiond::config::recording_channel_configuration::buffer_preallocation_policy_t
-		preallocation_policy = lttng::sessiond::config::recording_channel_configuration::
-			buffer_preallocation_policy_t::PREALLOCATE;
-	nonstd::optional<std::chrono::microseconds> automatic_memory_reclamation_maximal_age;
 	/*
 	 * Node indexed by channel name in the channels' hash table of a session.
 	 */

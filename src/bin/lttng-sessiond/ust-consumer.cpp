@@ -10,6 +10,7 @@
 #include "health-sessiond.hpp"
 #include "lttng-sessiond.hpp"
 #include "lttng-ust-error.hpp"
+#include "recording-channel-configuration.hpp"
 #include "session.hpp"
 #include "ust-consumer.hpp"
 #include "ust-trace-class-index.hpp"
@@ -26,6 +27,7 @@
 #include <string.h>
 #include <unistd.h>
 
+namespace lsc = lttng::sessiond::config;
 namespace lsu = lttng::sessiond::ust;
 
 /*
@@ -126,16 +128,46 @@ static int ask_channel_creation(lsu::app_session *ua_sess,
 	}
 
 	/*
+	 * Recording channel configuration fields are only meaningful for data
+	 * channels. Metadata channels use default values (zero/unset).
+	 */
+	const auto *recording_config = ua_chan->attr.type != LTTNG_UST_ABI_CHAN_METADATA ?
+		&static_cast<const lsc::recording_channel_configuration&>(ua_chan->channel_config) :
+		nullptr;
+
+	const auto reclamation_age = recording_config ?
+		recording_config->automatic_memory_reclamation_maximal_age :
+		nonstd::optional<std::chrono::microseconds>{};
+
+	/*
 	 * A reclamation policy with an age of zero effectively means that buffers should be
 	 * continuously reclaimed. In that case, set the continuously_reclaimed flag to true
 	 * and disable the periodic evaluation of the age of buffers.
 	 */
-	const bool continuously_reclaimed =
-		ua_chan->automatic_memory_reclamation_maximal_age.has_value() &&
-		ua_chan->automatic_memory_reclamation_maximal_age->count() == 0;
-	const auto automatic_memory_reclamation_maximal_age = continuously_reclaimed ?
-		nonstd::nullopt :
-		ua_chan->automatic_memory_reclamation_maximal_age;
+	const bool continuously_reclaimed = reclamation_age.has_value() &&
+		reclamation_age->count() == 0;
+	const auto automatic_memory_reclamation_maximal_age =
+		continuously_reclaimed ? nonstd::nullopt : reclamation_age;
+
+	const auto monitor_timer_interval = recording_config ?
+		recording_config->monitor_timer_period_us.value_or(0) :
+		uint64_t(0);
+
+	const auto watchdog_timer_interval = recording_config &&
+			recording_config->watchdog_timer_period_us ?
+		nonstd::optional<uint64_t>(*recording_config->watchdog_timer_period_us) :
+		nonstd::optional<uint64_t>{};
+
+	const auto tracefile_size = recording_config ?
+		recording_config->trace_file_size_limit_bytes.value_or(0) :
+		uint64_t(0);
+
+	const auto tracefile_count =
+		recording_config ? recording_config->trace_file_count_limit.value_or(0) : 0u;
+
+	const auto preallocation_policy = recording_config ?
+		recording_config->buffer_preallocation_policy :
+		lsc::recording_channel_configuration::buffer_preallocation_policy_t::PREALLOCATE;
 
 	consumer_init_ask_channel_comm_msg(&msg,
 					   ua_chan->attr.subbuf_size,
@@ -146,11 +178,8 @@ static int ask_channel_creation(lsu::app_session *ua_sess,
 					   ua_sess->live_timer_interval,
 					   ua_sess->live_timer_interval != 0,
 					   continuously_reclaimed,
-					   ua_chan->monitor_timer_interval,
-					   ua_chan->watchdog_timer_interval.is_set ?
-						   nonstd::optional<uint64_t>(LTTNG_OPTIONAL_GET(
-							   ua_chan->watchdog_timer_interval)) :
-						   nonstd::optional<uint64_t>{},
+					   monitor_timer_interval,
+					   watchdog_timer_interval,
 					   output,
 					   (int) ua_chan->attr.type,
 					   ua_sess->recording_session_id,
@@ -160,13 +189,13 @@ static int ask_channel_creation(lsu::app_session *ua_sess,
 					   ua_chan->key,
 					   registry->uuid,
 					   chan_id,
-					   ua_chan->tracefile_size,
-					   ua_chan->tracefile_count,
+					   tracefile_size,
+					   tracefile_count,
 					   ua_sess->app_session_id,
 					   ua_sess->output_traces,
 					   lttng_credentials_get_uid(&ua_sess->real_credentials),
 					   ua_chan->attr.blocking_timeout,
-					   ua_chan->preallocation_policy,
+					   preallocation_policy,
 					   automatic_memory_reclamation_maximal_age,
 					   root_shm_path,
 					   shm_path,

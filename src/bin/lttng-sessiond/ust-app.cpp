@@ -2754,9 +2754,6 @@ void init_ust_app_channel_from_config(struct ust_app_channel *ua_chan)
 
 	DBG2("UST app initializing channel %s from config", ua_chan->name);
 
-	ua_chan->tracefile_size = config.trace_file_size_limit_bytes.value_or(0);
-	ua_chan->tracefile_count = config.trace_file_count_limit.value_or(0);
-
 	ua_chan->attr.subbuf_size = config.subbuffer_size_bytes;
 	ua_chan->attr.num_subbuf = config.subbuffer_count;
 	ua_chan->attr.overwrite = config.buffer_full_policy ==
@@ -2765,19 +2762,6 @@ void init_ust_app_channel_from_config(struct ust_app_channel *ua_chan)
 		0;
 	ua_chan->attr.switch_timer_interval = config.switch_timer_period_us.value_or(0);
 	ua_chan->attr.read_timer_interval = config.read_timer_period_us.value_or(0);
-	ua_chan->monitor_timer_interval = config.monitor_timer_period_us.value_or(0);
-
-	if (config.watchdog_timer_period_us) {
-		LTTNG_OPTIONAL_SET(&ua_chan->watchdog_timer_interval,
-				   *config.watchdog_timer_period_us);
-	} else {
-		LTTNG_OPTIONAL_UNSET(&ua_chan->watchdog_timer_interval);
-	}
-
-	ua_chan->preallocation_policy = config.buffer_preallocation_policy;
-
-	ua_chan->automatic_memory_reclamation_maximal_age =
-		config.automatic_memory_reclamation_maximal_age;
 
 	ua_chan->attr.output = config.buffer_consumption_backend ==
 			lsc::channel_configuration::buffer_consumption_backend_t::MMAP ?
