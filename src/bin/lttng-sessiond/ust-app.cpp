@@ -68,27 +68,15 @@ namespace lst = lttng::sessiond::trace;
 namespace lsc = lttng::sessiond::config;
 
 /*
- * Bridge struct granting access to the orchestrator's private methods
- * from ust-app.cpp. This struct is declared as a friend of
- * domain_orchestrator because static functions in this file have
- * internal linkage and cannot be friended directly.
+ * Bridge struct granting access to the orchestrator's private
+ * _disable_event_on_apps() method from ust-app.cpp. This struct is
+ * declared as a friend of domain_orchestrator because static functions
+ * in this file have internal linkage and cannot be friended directly.
  *
- * Two methods remain:
- * - accumulate_per_pid_closed_app_stats: called during app session
- *   teardown to record discarded/lost counters.
- * - disable_event_on_apps: called by the agent event disable path
- *   (event.cpp -> ust_app_disable_event_on_apps).
+ * Used by the agent event disable path:
+ * event.cpp -> ust_app_disable_event_on_apps -> bridge -> orchestrator.
  */
 struct ust_app_session_operations {
-	static void
-	accumulate_per_pid_closed_app_stats(lsu::domain_orchestrator& o,
-					    const lsc::recording_channel_configuration& chan_config,
-					    std::uint64_t discarded_events,
-					    std::uint64_t lost_packets)
-	{
-		o.accumulate_per_pid_closed_app_stats(chan_config, discarded_events, lost_packets);
-	}
-
 	static int disable_event_on_apps(lsu::domain_orchestrator& o,
 					 lttng::c_string_view channel_name,
 					 const lsc::event_rule_configuration& event_rule_config)
@@ -732,8 +720,7 @@ static void save_per_pid_lost_discarded_counters(struct ust_app_channel *ua_chan
 			static_cast<const lttng::sessiond::config::recording_channel_configuration&>(
 				ua_chan->channel_config);
 
-		ust_app_session_operations::accumulate_per_pid_closed_app_stats(
-			orchestrator, recording_config, discarded, lost);
+		orchestrator.accumulate_per_pid_closed_app_stats(recording_config, discarded, lost);
 	} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
 		DBG_FMT("Failed to save per-pid lost/discarded counters: {}, location='{}'",
 			ex.what(),

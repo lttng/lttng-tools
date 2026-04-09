@@ -257,6 +257,16 @@ public:
 
 	bool supports_madv_remove() const noexcept;
 
+	/*
+	 * Record discarded events and lost packets for a departing
+	 * per-PID application. Called during app session teardown so
+	 * the counters survive for runtime statistics reporting.
+	 */
+	void accumulate_per_pid_closed_app_stats(
+		const config::recording_channel_configuration& channel_config,
+		std::uint64_t discarded_events,
+		std::uint64_t lost_packets);
+
 private:
 	std::uint64_t session_id() const noexcept;
 
@@ -327,11 +337,6 @@ private:
 		ust_object_data channel_object,
 		ust::trace_class& trace_class,
 		ust::stream_class& stream_class);
-
-	void accumulate_per_pid_closed_app_stats(
-		const config::recording_channel_configuration& channel_config,
-		std::uint64_t discarded_events,
-		std::uint64_t lost_packets);
 
 	static struct lttng_ust_abi_channel_attr default_metadata_channel_attr() noexcept;
 
