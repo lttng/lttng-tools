@@ -684,11 +684,7 @@ std::uint64_t get_next_session_id();
  * app-level logic (lttng_ust_ctl calls, channel/metadata creation)
  * that has not yet been internalized.
  */
-int ust_app_start_trace(std::uint64_t session_id, lttng::sessiond::ust::app *app);
-int ust_app_stop_trace(std::uint64_t session_id, lttng::sessiond::ust::app *app);
 void ust_app_global_destroy(std::uint64_t session_id, lttng::sessiond::ust::app *app);
-int ust_app_flush_session(lttng::sessiond::ust::domain_orchestrator& orchestrator);
-int ust_app_clear_quiescent_session(const lttng::sessiond::ust::domain_orchestrator& orchestrator);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 

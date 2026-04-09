@@ -1802,7 +1802,7 @@ void ls::ust::domain_orchestrator::synchronize_app(ust::app& app)
 		}
 
 		if (_active) {
-			ust_app_start_trace(session_id(), &app);
+			_start_app_trace(&app);
 		}
 	} else {
 		ust_app_global_destroy(session_id(), &app);
@@ -1835,6 +1835,308 @@ void ls::ust::domain_orchestrator::_synchronize_all_apps()
 	}
 }
 
+int ls::ust::domain_orchestrator::_start_app_trace(ust::app *app)
+{
+	int ret = 0;
+	ust::app_session *ua_sess;
+
+	DBG("Starting tracing for ust app pid %d", app->pid);
+
+	const lttng::urcu::read_lock_guard read_lock;
+	const auto update_health_code_on_exit =
+		lttng::make_scope_exit([]() noexcept { health_code_update(); });
+
+	if (!app->compatible) {
+		return 0;
+	}
+
+	ua_sess = ust_app_lookup_app_session(session_id(), app);
+	if (ua_sess == nullptr) {
+		/* The session is in teardown process. Ignore and continue. */
+		return 0;
+	}
+
+	auto locked_ua_sess = ua_sess->lock();
+
+	if (locked_ua_sess->deleted) {
+		return 0;
+	}
+
+	if (locked_ua_sess->enabled) {
+		return 0;
+	}
+
+	/* This starts the UST tracing */
+	pthread_mutex_lock(&app->sock_lock);
+	ret = lttng_ust_ctl_start_session(app->sock, ua_sess->handle);
+	pthread_mutex_unlock(&app->sock_lock);
+	if (ret < 0) {
+		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+			DBG3("UST app start session failed. Application is dead: pid = %d, sock = %d",
+			     app->pid,
+			     app->sock);
+			return 0;
+		} else if (ret == -EAGAIN) {
+			WARN("UST app start session failed. Communication time out: pid = %d, sock = %d",
+			     app->pid,
+			     app->sock);
+			return 0;
+
+		} else {
+			ERR("UST app start session failed with ret %d: pid = %d, sock = %d",
+			    ret,
+			    app->pid,
+			    app->sock);
+		}
+
+		return -1;
+	}
+
+	/* Indicate that the session has been started once */
+	ua_sess->started = true;
+	ua_sess->enabled = true;
+
+	health_code_update();
+
+	/* Quiescent wait after starting trace */
+	pthread_mutex_lock(&app->sock_lock);
+	ret = lttng_ust_ctl_wait_quiescent(app->sock);
+	pthread_mutex_unlock(&app->sock_lock);
+	if (ret < 0) {
+		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+			DBG3("UST app wait quiescent failed. Application is dead: pid = %d, sock = %d",
+			     app->pid,
+			     app->sock);
+		} else if (ret == -EAGAIN) {
+			WARN("UST app wait quiescent failed. Communication time out: pid =  %d, sock = %d",
+			     app->pid,
+			     app->sock);
+		} else {
+			ERR("UST app wait quiescent failed with ret %d: pid %d, sock = %d",
+			    ret,
+			    app->pid,
+			    app->sock);
+		}
+	}
+
+	return 0;
+}
+
+int ls::ust::domain_orchestrator::_stop_app_trace(ust::app *app)
+{
+	int ret = 0;
+	ust::app_session *ua_sess;
+
+	DBG("Stopping tracing for ust app pid %d", app->pid);
+
+	const lttng::urcu::read_lock_guard read_lock;
+	const auto update_health_code_on_exit =
+		lttng::make_scope_exit([]() noexcept { health_code_update(); });
+
+	if (!app->compatible) {
+		return 0;
+	}
+
+	ua_sess = ust_app_lookup_app_session(session_id(), app);
+	if (ua_sess == nullptr) {
+		return 0;
+	}
+
+	auto locked_ua_sess = ua_sess->lock();
+
+	if (ua_sess->deleted) {
+		return 0;
+	}
+
+	/*
+	 * If started = 0, it means that stop trace has been called for a session
+	 * that was never started. It's possible since we can have a fail start
+	 * from either the application manager thread or the command thread. Simply
+	 * indicate that this is a stop error.
+	 */
+	if (!ua_sess->started) {
+		return -1;
+	}
+
+	health_code_update();
+
+	/* This inhibits UST tracing */
+	pthread_mutex_lock(&app->sock_lock);
+	ret = lttng_ust_ctl_stop_session(app->sock, ua_sess->handle);
+	pthread_mutex_unlock(&app->sock_lock);
+	if (ret < 0) {
+		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+			DBG3("UST app stop session failed. Application is dead: pid = %d, sock = %d",
+			     app->pid,
+			     app->sock);
+			return 0;
+		} else if (ret == -EAGAIN) {
+			WARN("UST app stop session failed. Communication time out: pid = %d, sock = %d",
+			     app->pid,
+			     app->sock);
+			return 0;
+
+		} else {
+			ERR("UST app stop session failed with ret %d: pid = %d, sock = %d",
+			    ret,
+			    app->pid,
+			    app->sock);
+		}
+
+		return -1;
+	}
+
+	health_code_update();
+	ua_sess->enabled = false;
+
+	/* Quiescent wait after stopping trace */
+	pthread_mutex_lock(&app->sock_lock);
+	ret = lttng_ust_ctl_wait_quiescent(app->sock);
+	pthread_mutex_unlock(&app->sock_lock);
+	if (ret < 0) {
+		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+			DBG3("UST app wait quiescent failed. Application is dead: pid= %d, sock = %d",
+			     app->pid,
+			     app->sock);
+		} else if (ret == -EAGAIN) {
+			WARN("UST app wait quiescent failed. Communication time out: pid= %d, sock = %d",
+			     app->pid,
+			     app->sock);
+		} else {
+			ERR("UST app wait quiescent failed with ret %d: pid= %d, sock = %d",
+			    ret,
+			    app->pid,
+			    app->sock);
+		}
+	}
+
+	health_code_update();
+
+	{
+		auto registry = ust_app_get_session_registry(locked_ua_sess->get_identifier());
+		LTTNG_ASSERT(registry);
+		auto locked_registry = registry->lock();
+		if (!locked_registry->_metadata_closed) {
+			const auto socket = consumer_find_socket_by_bitness(
+				locked_registry->abi.bits_per_long, ua_sess->consumer);
+			if (socket) {
+				(void) ust_app_push_metadata(locked_registry, socket, 0);
+			}
+		}
+	}
+
+	return 0;
+}
+
+int ls::ust::domain_orchestrator::_flush_app_session(ust::app& app, ust::app_session& ua_sess)
+{
+	int ret, retval = 0;
+	struct consumer_socket *socket;
+
+	const auto update_health_code_on_exit =
+		lttng::make_scope_exit([]() noexcept { health_code_update(); });
+
+	DBG("Flushing app session buffers for ust app pid %d", app.pid);
+
+	if (!app.compatible) {
+		return 0;
+	}
+
+	const auto locked_ua_sess = ua_sess.lock();
+	if (locked_ua_sess->deleted) {
+		return 0;
+	}
+
+	health_code_update();
+
+	/* Flushing buffers */
+	socket = consumer_find_socket_by_bitness(app.abi.bits_per_long, ua_sess.consumer);
+
+	/* Flush buffers and push metadata. */
+	switch (ua_sess.buffer_type) {
+	case LTTNG_BUFFER_PER_PID:
+	{
+		for (auto *ua_chan :
+		     lttng::urcu::lfht_iteration_adapter<ust_app_channel,
+							 decltype(ust_app_channel::node),
+							 &ust_app_channel::node>(
+			     *ua_sess.channels->ht)) {
+			health_code_update();
+			ret = consumer_flush_channel(socket, ua_chan->key);
+			if (ret) {
+				ERR("Error flushing consumer channel");
+				retval = -1;
+				continue;
+			}
+		}
+
+		break;
+	}
+	case LTTNG_BUFFER_PER_UID:
+	default:
+		abort();
+		break;
+	}
+
+	return retval;
+}
+
+int ls::ust::domain_orchestrator::_clear_quiescent_app_session(ust::app *app,
+							       ust::app_session *ua_sess)
+{
+	int ret = 0;
+	struct consumer_socket *socket;
+
+	DBG("Clearing stream quiescent state for ust app pid %d", app->pid);
+
+	const lttng::urcu::read_lock_guard read_lock;
+	const auto update_health_code_on_exit =
+		lttng::make_scope_exit([]() noexcept { health_code_update(); });
+
+	if (!app->compatible) {
+		return 0;
+	}
+
+	const auto locked_ua_sess = ua_sess->lock();
+	if (locked_ua_sess->deleted) {
+		return 0;
+	}
+
+	health_code_update();
+
+	socket = consumer_find_socket_by_bitness(app->abi.bits_per_long, ua_sess->consumer);
+	if (!socket) {
+		ERR("Failed to find consumer (%" PRIu32 ") socket", app->abi.bits_per_long);
+		return -1;
+	}
+
+	/* Clear quiescent state. */
+	switch (ua_sess->buffer_type) {
+	case LTTNG_BUFFER_PER_PID:
+		for (auto *ua_chan :
+		     lttng::urcu::lfht_iteration_adapter<ust_app_channel,
+							 decltype(ust_app_channel::node),
+							 &ust_app_channel::node>(
+			     *ua_sess->channels->ht)) {
+			health_code_update();
+			ret = consumer_clear_quiescent_channel(socket, ua_chan->key);
+			if (ret) {
+				ERR("Error clearing quiescent state for consumer channel");
+				ret = -1;
+				continue;
+			}
+		}
+		break;
+	case LTTNG_BUFFER_PER_UID:
+	default:
+		abort();
+		ret = -1;
+		break;
+	}
+
+	return ret;
+}
+
 void ls::ust::domain_orchestrator::start()
 {
 	if (_active) {
@@ -1861,7 +2163,20 @@ void ls::ust::domain_orchestrator::start()
 		_clear_quiescent_per_uid_channels();
 	}
 
-	(void) ust_app_clear_quiescent_session(*this);
+	if (buffer_type() == LTTNG_BUFFER_PER_PID) {
+		const lttng::urcu::read_lock_guard read_lock;
+
+		for (const auto& app_session_pair : _app_sessions) {
+			auto *app = const_cast<ust::app *>(app_session_pair.first);
+
+			if (!ust_app_get(*app)) {
+				continue;
+			}
+
+			const ust_app_reference app_ref(app);
+			(void) _clear_quiescent_app_session(app, app_session_pair.second);
+		}
+	}
 
 	_synchronize_all_apps();
 }
@@ -1896,11 +2211,25 @@ void ls::ust::domain_orchestrator::stop()
 
 			const ust_app_reference app_ref(app);
 
-			(void) ust_app_stop_trace(session_id(), app);
+			(void) _stop_app_trace(app);
 		}
 	}
 
-	(void) ust_app_flush_session(*this);
+	/*
+	 * Flush per-PID application buffers. Per-UID buffers are flushed
+	 * below via _flush_per_uid_buffers().
+	 */
+	if (buffer_type() == LTTNG_BUFFER_PER_PID) {
+		const lttng::urcu::read_lock_guard read_lock;
+		for (const auto& app_session_pair : _app_sessions) {
+			auto *app = const_cast<ust::app *>(app_session_pair.first);
+			if (!ust_app_get(*app)) {
+				continue;
+			}
+			const ust_app_reference app_ref(app);
+			(void) _flush_app_session(*app, *app_session_pair.second);
+		}
+	}
 
 	/*
 	 * Flush per-UID consumer buffers and push pending metadata.

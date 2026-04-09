@@ -446,6 +446,11 @@ private:
 	void _add_context_on_apps(lttng::c_string_view channel_name,
 				  const config::context_configuration& ctx_config);
 
+	int _start_app_trace(ust::app *app);
+	int _stop_app_trace(ust::app *app);
+	int _flush_app_session(ust::app& app, ust::app_session& ua_sess);
+	int _clear_quiescent_app_session(ust::app *app, ust::app_session *ua_sess);
+
 	/*
 	 * Initialize a newly allocated app session from the orchestrator's
 	 * configuration and the recording session's properties.
