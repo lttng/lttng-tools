@@ -41,7 +41,9 @@ static int ask_channel_creation(lsu::app_session *ua_sess,
 				struct consumer_socket *socket,
 				lsu::trace_class *registry,
 				struct lttng_trace_chunk *trace_chunk,
-				enum lttng_trace_format trace_format)
+				enum lttng_trace_format trace_format,
+				unsigned int output_traces,
+				unsigned int live_timer_interval)
 {
 	int ret, output;
 	uint32_t chan_id;
@@ -175,8 +177,8 @@ static int ask_channel_creation(lsu::app_session *ua_sess,
 					   ua_chan->attr.overwrite,
 					   ua_chan->attr.switch_timer_interval,
 					   ua_chan->attr.read_timer_interval,
-					   ua_sess->live_timer_interval,
-					   ua_sess->live_timer_interval != 0,
+					   live_timer_interval,
+					   live_timer_interval != 0,
 					   continuously_reclaimed,
 					   monitor_timer_interval,
 					   watchdog_timer_interval,
@@ -192,7 +194,7 @@ static int ask_channel_creation(lsu::app_session *ua_sess,
 					   tracefile_size,
 					   tracefile_count,
 					   ua_sess->app_session_id,
-					   ua_sess->output_traces,
+					   output_traces,
 					   lttng_credentials_get_uid(&ua_sess->real_credentials),
 					   ua_chan->attr.blocking_timeout,
 					   preallocation_policy,
@@ -220,7 +222,7 @@ static int ask_channel_creation(lsu::app_session *ua_sess,
 	/* Communication protocol error. */
 	LTTNG_ASSERT(key == ua_chan->key);
 	/* We need at least one where 1 stream for 1 cpu. */
-	if (ua_sess->output_traces) {
+	if (output_traces) {
 		LTTNG_ASSERT(ua_chan->expected_stream_count > 0);
 	}
 
@@ -244,7 +246,9 @@ int ust_consumer_ask_channel(lsu::app_session *ua_sess,
 			     struct consumer_socket *socket,
 			     lsu::trace_class *registry,
 			     struct lttng_trace_chunk *trace_chunk,
-			     enum lttng_trace_format trace_format)
+			     enum lttng_trace_format trace_format,
+			     unsigned int output_traces,
+			     unsigned int live_timer_interval)
 {
 	int ret;
 
@@ -261,8 +265,15 @@ int ust_consumer_ask_channel(lsu::app_session *ua_sess,
 	}
 
 	pthread_mutex_lock(socket->lock);
-	ret = ask_channel_creation(
-		ua_sess, ua_chan, consumer, socket, registry, trace_chunk, trace_format);
+	ret = ask_channel_creation(ua_sess,
+				   ua_chan,
+				   consumer,
+				   socket,
+				   registry,
+				   trace_chunk,
+				   trace_format,
+				   output_traces,
+				   live_timer_interval);
 	pthread_mutex_unlock(socket->lock);
 	if (ret < 0) {
 		ERR("ask_channel_creation consumer command failed");

@@ -1079,9 +1079,6 @@ void ls::ust::domain_orchestrator::_init_app_session(ust::app_session *ua_sess, 
 	consumer_output_get(get_consumer_output_ptr());
 	ua_sess->consumer = get_consumer_output_ptr();
 
-	ua_sess->output_traces = _session.output_traces;
-	ua_sess->live_timer_interval = _session.live_timer;
-
 	switch (ua_sess->buffer_type) {
 	case LTTNG_BUFFER_PER_PID:
 		ret = snprintf(ua_sess->path,
@@ -1383,7 +1380,9 @@ int ls::ust::domain_orchestrator::_create_channel_per_uid(ust::app *app,
 						 app->abi.bits_per_long,
 						 trace_class_ptr.get(),
 						 session.current_trace_chunk,
-						 session.trace_format);
+						 session.trace_format,
+						 _session.output_traces,
+						 _session.live_timer);
 		if (ret < 0) {
 			ERR("Error creating UST channel \"%s\" on the consumer daemon",
 			    ua_chan->name);
@@ -1516,7 +1515,9 @@ int ls::ust::domain_orchestrator::_create_channel_per_pid(
 					 app->abi.bits_per_long,
 					 registry.get(),
 					 session.current_trace_chunk,
-					 session.trace_format);
+					 session.trace_format,
+					 _session.output_traces,
+					 _session.live_timer);
 	if (ret < 0) {
 		ERR("Error creating UST channel \"%s\" on the consumer daemon", ua_chan->name);
 		goto error_remove_from_registry;
@@ -1882,7 +1883,9 @@ int ls::ust::domain_orchestrator::_create_app_metadata(
 				       socket,
 				       locked_registry.locked_ref().get(),
 				       _session.current_trace_chunk,
-				       _session.trace_format);
+				       _session.trace_format,
+				       _session.output_traces,
+				       _session.live_timer);
 	if (ret < 0) {
 		/* Nullify the metadata key so we don't try to close it later on. */
 		locked_registry->_metadata_key = 0;

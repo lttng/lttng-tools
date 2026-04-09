@@ -3025,7 +3025,9 @@ int do_consumer_create_channel(struct consumer_output *consumer,
 			       int bitness,
 			       lsu::trace_class *registry,
 			       struct lttng_trace_chunk *current_trace_chunk,
-			       enum lttng_trace_format trace_format)
+			       enum lttng_trace_format trace_format,
+			       unsigned int output_traces,
+			       unsigned int live_timer_interval)
 {
 	int ret;
 	unsigned int nb_fd = 0;
@@ -3059,8 +3061,15 @@ int do_consumer_create_channel(struct consumer_output *consumer,
 	 * Ask consumer to create channel. The consumer will return the number of
 	 * stream we have to expect.
 	 */
-	ret = ust_consumer_ask_channel(
-		ua_sess, ua_chan, consumer, socket, registry, current_trace_chunk, trace_format);
+	ret = ust_consumer_ask_channel(ua_sess,
+				       ua_chan,
+				       consumer,
+				       socket,
+				       registry,
+				       current_trace_chunk,
+				       trace_format,
+				       output_traces,
+				       live_timer_interval);
 	if (ret < 0) {
 		goto error_ask;
 	}

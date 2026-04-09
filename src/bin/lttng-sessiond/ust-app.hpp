@@ -392,9 +392,6 @@ public:
 	uint32_t bits_per_long = 0;
 	/* For delayed reclaim */
 	::rcu_head rcu_head = {};
-	/* If the channel's streams have to be outputed or not. */
-	unsigned int output_traces = 0;
-	unsigned int live_timer_interval = 0; /* usec */
 
 	char root_shm_path[PATH_MAX] = {};
 	char shm_path[PATH_MAX] = {};
@@ -606,7 +603,9 @@ int do_consumer_create_channel(struct consumer_output *consumer,
 			       int bitness,
 			       lttng::sessiond::ust::trace_class *registry,
 			       struct lttng_trace_chunk *current_trace_chunk,
-			       enum lttng_trace_format trace_format);
+			       enum lttng_trace_format trace_format,
+			       unsigned int output_traces,
+			       unsigned int live_timer_interval);
 int send_channel_pid_to_ust(lttng::sessiond::ust::app *app,
 			    lttng::sessiond::ust::app_session *ua_sess,
 			    struct ust_app_channel *ua_chan);

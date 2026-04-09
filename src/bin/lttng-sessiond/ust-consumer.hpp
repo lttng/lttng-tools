@@ -28,7 +28,9 @@ int ust_consumer_ask_channel(lttng::sessiond::ust::app_session *ua_sess,
 			     struct consumer_socket *socket,
 			     lttng::sessiond::ust::trace_class *registry,
 			     struct lttng_trace_chunk *trace_chunk,
-			     enum lttng_trace_format trace_format);
+			     enum lttng_trace_format trace_format,
+			     unsigned int output_traces,
+			     unsigned int live_timer_interval);
 
 int ust_consumer_get_channel(struct consumer_socket *socket, struct ust_app_channel *ua_chan);
 
