@@ -15,7 +15,6 @@
 #include "lttng-ust-error.hpp"
 #include "session.hpp"
 #include "trace-ust.hpp"
-#include "ust-app.hpp"
 #include "ust-domain-orchestrator.hpp"
 #include "utils.hpp"
 
@@ -443,9 +442,13 @@ static int event_agent_disable_one(lttng::sessiond::ust::domain_orchestrator& or
 
 	LTTNG_ASSERT(aevent->ust_event_rule_config);
 
-	ret = ust_app_disable_event_on_apps(
-		orchestrator, ust_channel_name, *aevent->ust_event_rule_config);
-	if (ret < 0 && ret != -LTTNG_UST_ERR_EXIST) {
+	try {
+		const auto& channel_config = orchestrator.recording_session()
+						     .get_domain(lttng::domain_class::USER_SPACE)
+						     .get_channel(ust_channel_name);
+
+		orchestrator.disable_event(channel_config, *aevent->ust_event_rule_config);
+	} catch (const lttng::ctl::error&) {
 		ret = LTTNG_ERR_UST_DISABLE_FAIL;
 		goto error;
 	}

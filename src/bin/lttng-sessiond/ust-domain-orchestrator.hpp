@@ -30,8 +30,6 @@ struct agent;
 struct ltt_session;
 struct lttng_ht;
 struct lttng_ust_context_attr;
-struct ust_app_session_operations;
-
 namespace lttng {
 namespace sessiond {
 
@@ -274,16 +272,6 @@ private:
 	{
 		return _active;
 	}
-
-	/*
-	 * Bridge for the remaining ust-app.cpp callers that need access
-	 * to private methods: accumulate_per_pid_closed_app_stats()
-	 * (app session teardown) and _disable_event_on_apps() (agent
-	 * event disable path). ust-app.cpp static functions cannot be
-	 * friended directly (internal linkage), so a bridge struct
-	 * provides compile-time-scoped access.
-	 */
-	friend struct ::ust_app_session_operations;
 
 	static lttng_ust_context_attr
 	make_ust_context_attr(const config::context_configuration& context_config);
@@ -754,6 +742,12 @@ public:
 	}
 
 	void synchronize_app(ust::app& /* app */)
+	{
+		std::abort();
+	}
+
+	void disable_event(const config::recording_channel_configuration& /* channel_config */,
+			   const config::event_rule_configuration& /* event_rule_config */) override
 	{
 		std::abort();
 	}

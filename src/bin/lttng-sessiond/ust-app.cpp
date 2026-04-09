@@ -67,28 +67,6 @@ namespace lsu = lttng::sessiond::ust;
 namespace lst = lttng::sessiond::trace;
 namespace lsc = lttng::sessiond::config;
 
-/*
- * Bridge struct granting access to the orchestrator's private
- * _disable_event_on_apps() method from ust-app.cpp. This struct is
- * declared as a friend of domain_orchestrator because static functions
- * in this file have internal linkage and cannot be friended directly.
- *
- * Used by the agent event disable path:
- * event.cpp -> ust_app_disable_event_on_apps -> bridge -> orchestrator.
- */
-struct ust_app_session_operations {
-	static int disable_event_on_apps(lsu::domain_orchestrator& o,
-					 lttng::c_string_view channel_name,
-					 const lsc::event_rule_configuration& event_rule_config)
-	{
-		if (!o.is_active()) {
-			return 0;
-		}
-
-		return o._disable_event_on_apps(channel_name, event_rule_config);
-	}
-};
-
 enum owner_id_allocation_status {
 	OWNER_ID_ALLOCATION_STATUS_OK,
 	OWNER_ID_ALLOCATION_STATUS_FAIL,
@@ -4383,15 +4361,6 @@ int ust_app_ht_alloc()
 		return -1;
 	}
 	return 0;
-}
-
-int ust_app_disable_event_on_apps(
-	lsu::domain_orchestrator& orchestrator,
-	lttng::c_string_view channel_name,
-	const lttng::sessiond::config::event_rule_configuration& event_rule_config)
-{
-	return ust_app_session_operations::disable_event_on_apps(
-		orchestrator, channel_name, event_rule_config);
 }
 
 /*

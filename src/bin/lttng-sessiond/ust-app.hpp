@@ -650,16 +650,6 @@ struct ust_app_event *find_ust_app_event_by_config(
 	const lttng::sessiond::config::event_rule_configuration& event_config);
 
 /*
- * Disable an event on all applications tracked by the orchestrator.
- * Used by the agent event disable path (event.cpp) which does not have
- * direct access to the orchestrator's private iteration method.
- */
-int ust_app_disable_event_on_apps(
-	lttng::sessiond::ust::domain_orchestrator& orchestrator,
-	lttng::c_string_view channel_name,
-	const lttng::sessiond::config::event_rule_configuration& event_rule_config);
-
-/*
  * App session allocation and deletion helpers. These remain in
  * ust-app.cpp as they manage app-level data structures (hash tables,
  * RCU callbacks, UST handle release). Exposed for the orchestrator's
