@@ -493,6 +493,7 @@ private:
 				       const config::event_rule_configuration& event_config);
 	void _synchronize_all_channels(const ust::app_session::locked_weak_ref& ua_sess,
 				       ust::app *app);
+	int _create_app_metadata(const ust::app_session::locked_weak_ref& ua_sess, ust::app *app);
 
 	/*
 	 * Iterate all registered applications and call synchronize_app()

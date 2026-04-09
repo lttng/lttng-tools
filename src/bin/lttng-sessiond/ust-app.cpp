@@ -1543,7 +1543,7 @@ alloc_ust_app_channel(const char *name,
 /*
  * Allocate a metadata channel (no recording_channel_configuration).
  */
-static struct ust_app_channel *alloc_ust_app_metadata_channel(
+struct ust_app_channel *alloc_ust_app_metadata_channel(
 	const char *name,
 	const lsu::app_session::locked_weak_ref& ua_sess,
 	const lttng::sessiond::config::metadata_channel_configuration& metadata_config)
@@ -3349,112 +3349,6 @@ error:
 	/* The RCU read side lock is already being held by the caller. */
 	delete_ust_app_event_notifier_rule(-1, ua_event_notifier_rule, app);
 end:
-	return ret;
-}
-
-/*
- * Create UST metadata and open it on the tracer side.
- *
- * Called with UST app session lock held and RCU read side lock.
- */
-int create_ust_app_metadata(const lsu::app_session::locked_weak_ref& ua_sess,
-			    lsu::app *app,
-			    struct consumer_output *consumer,
-			    const ltt_session& session)
-{
-	int ret = 0;
-	struct ust_app_channel *metadata;
-	struct consumer_socket *socket;
-
-	LTTNG_ASSERT(app);
-	LTTNG_ASSERT(consumer);
-	ASSERT_RCU_READ_LOCKED();
-
-	auto locked_registry = get_locked_session_registry(ua_sess->get_identifier());
-	/* The UST app session is held registry shall not be null. */
-	LTTNG_ASSERT(locked_registry);
-
-	ASSERT_LOCKED(session._lock);
-
-	const auto& metadata_config =
-		session.get_domain(lttng::domain_class::USER_SPACE).metadata_channel();
-
-	/* Metadata already exists for this registry or it was closed previously */
-	if (locked_registry->_metadata_key || locked_registry->_metadata_closed) {
-		ret = 0;
-		goto error;
-	}
-
-	/* Allocate UST metadata */
-	metadata = alloc_ust_app_metadata_channel(DEFAULT_METADATA_NAME, ua_sess, metadata_config);
-	if (!metadata) {
-		/* malloc() failed */
-		ret = -ENOMEM;
-		goto error;
-	}
-
-	memcpy(&metadata->attr, &ua_sess->metadata_attr, sizeof(metadata->attr));
-
-	/* Need one fd for the channel. */
-	ret = lttng_fd_get(LTTNG_FD_APPS, 1);
-	if (ret < 0) {
-		ERR("Exhausted number of available FD upon create metadata");
-		goto error;
-	}
-
-	/* Get the right consumer socket for the application. */
-	socket = consumer_find_socket_by_bitness(app->abi.bits_per_long, consumer);
-	if (!socket) {
-		ret = -EINVAL;
-		goto error_consumer;
-	}
-
-	/*
-	 * Keep metadata key so we can identify it on the consumer side. Assign it
-	 * to the registry *before* we ask the consumer so we avoid the race of the
-	 * consumer requesting the metadata and the ask_channel call on our side
-	 * did not returned yet.
-	 */
-	locked_registry->_metadata_key = metadata->key;
-
-	/*
-	 * Ask the metadata channel creation to the consumer. The metadata object
-	 * will be created by the consumer and kept their. However, the stream is
-	 * never added or monitored until we do a first push metadata to the
-	 * consumer.
-	 */
-	ret = ust_consumer_ask_channel(&ua_sess.get(),
-				       metadata,
-				       consumer,
-				       socket,
-				       locked_registry.locked_ref().get(),
-				       session.current_trace_chunk,
-				       session.trace_format);
-	if (ret < 0) {
-		/* Nullify the metadata key so we don't try to close it later on. */
-		locked_registry->_metadata_key = 0;
-		goto error_consumer;
-	}
-
-	/*
-	 * The setup command will make the metadata stream be sent to the relayd,
-	 * if applicable, and the thread managing the metadatas. This is important
-	 * because after this point, if an error occurs, the only way the stream
-	 * can be deleted is to be monitored in the consumer.
-	 */
-	ret = consumer_setup_metadata(socket, metadata->key);
-	if (ret < 0) {
-		/* Nullify the metadata key so we don't try to close it later on. */
-		locked_registry->_metadata_key = 0;
-		goto error_consumer;
-	}
-
-	DBG2("UST metadata with key %" PRIu64 " created for app pid %d", metadata->key, app->pid);
-
-error_consumer:
-	lttng_fd_put(LTTNG_FD_APPS, 1);
-	delete_ust_app_channel(-1, metadata, app, locked_registry.locked_ref());
-error:
 	return ret;
 }
 

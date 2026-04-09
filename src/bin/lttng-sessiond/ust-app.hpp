@@ -626,10 +626,10 @@ int enable_ust_channel(lttng::sessiond::ust::app *app,
 int disable_ust_channel(lttng::sessiond::ust::app *app,
 			const lttng::sessiond::ust::app_session::locked_weak_ref& ua_sess,
 			struct ust_app_channel *ua_chan);
-int create_ust_app_metadata(const lttng::sessiond::ust::app_session::locked_weak_ref& ua_sess,
-			    lttng::sessiond::ust::app *app,
-			    struct consumer_output *consumer,
-			    const ltt_session& session);
+struct ust_app_channel *alloc_ust_app_metadata_channel(
+	const char *name,
+	const lttng::sessiond::ust::app_session::locked_weak_ref& ua_sess,
+	const lttng::sessiond::config::metadata_channel_configuration& metadata_config);
 
 /*
  * Per-app helpers shared between ust-app.cpp and the domain orchestrator.

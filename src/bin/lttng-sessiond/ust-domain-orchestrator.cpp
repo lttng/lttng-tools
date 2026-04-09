@@ -9,6 +9,7 @@
 #include "consumer.hpp"
 #include "context-configuration.hpp"
 #include "event-rule-configuration.hpp"
+#include "fd-limit.hpp"
 #include "health-sessiond.hpp"
 #include "lttng-sessiond.hpp"
 #include "lttng-ust-ctl.hpp"
@@ -994,6 +995,63 @@ void copy_channel_attr_to_ustctl(struct lttng_ust_ctl_consumer_channel_attr *att
 	attr->type = static_cast<enum lttng_ust_abi_chan_type>(uattr->type);
 }
 
+/*
+ * Wrapper that acquires shared ownership of a trace class (session registry)
+ * and locks it. The lock is released when the wrapper is destroyed.
+ *
+ * Callers that need a `const locked_ref&` (e.g. push_metadata) should
+ * use the locked_ref() accessor.
+ */
+struct owned_locked_registry {
+	std::shared_ptr<ls::ust::trace_class> _ownership;
+	ls::ust::trace_class::locked_ref _lock;
+
+	explicit operator bool() const noexcept
+	{
+		return _ownership != nullptr;
+	}
+
+	ls::ust::trace_class *operator->() const noexcept
+	{
+		return _ownership.get();
+	}
+
+	ls::ust::trace_class& operator*() const noexcept
+	{
+		return *_ownership;
+	}
+
+	ls::ust::trace_class::locked_ref& locked_ref() noexcept
+	{
+		return _lock;
+	}
+
+	const ls::ust::trace_class::locked_ref& locked_ref() const noexcept
+	{
+		return _lock;
+	}
+
+	void reset() noexcept
+	{
+		_lock.reset();
+		_ownership.reset();
+	}
+};
+
+owned_locked_registry
+get_locked_session_registry(const ls::ust::app_session::identifier& identifier)
+{
+	auto session = ust_app_get_session_registry(identifier);
+	ls::ust::trace_class::locked_ref lock;
+
+	if (session) {
+		pthread_mutex_lock(&session->_lock);
+		lock = ls::ust::trace_class::locked_ref{ session.get() };
+	}
+
+	return { std::move(session), std::move(lock) };
+}
+
 } /* anonymous namespace */
 
 void ls::ust::domain_orchestrator::_init_app_session(ust::app_session *ua_sess, ust::app *app)
@@ -1751,6 +1809,110 @@ end:
 	return;
 }
 
+/*
+ * Create UST metadata and open it on the tracer side.
+ *
+ * Called with UST app session lock held and RCU read side lock.
+ */
+int ls::ust::domain_orchestrator::_create_app_metadata(
+	const ust::app_session::locked_weak_ref& ua_sess, ust::app *app)
+{
+	int ret = 0;
+	struct ust_app_channel *metadata;
+	struct consumer_socket *socket;
+
+	LTTNG_ASSERT(app);
+	LTTNG_ASSERT(get_consumer_output_ptr());
+	ASSERT_RCU_READ_LOCKED();
+
+	auto locked_registry = get_locked_session_registry(ua_sess->get_identifier());
+	/* The UST app session is held registry shall not be null. */
+	LTTNG_ASSERT(locked_registry);
+
+	ASSERT_LOCKED(_session._lock);
+
+	const auto& metadata_config =
+		_session.get_domain(lttng::domain_class::USER_SPACE).metadata_channel();
+
+	/* Metadata already exists for this registry or it was closed previously */
+	if (locked_registry->_metadata_key || locked_registry->_metadata_closed) {
+		ret = 0;
+		goto error;
+	}
+
+	/* Allocate UST metadata */
+	metadata = alloc_ust_app_metadata_channel(DEFAULT_METADATA_NAME, ua_sess, metadata_config);
+	if (!metadata) {
+		/* malloc() failed */
+		ret = -ENOMEM;
+		goto error;
+	}
+
+	memcpy(&metadata->attr, &ua_sess->metadata_attr, sizeof(metadata->attr));
+
+	/* Need one fd for the channel. */
+	ret = lttng_fd_get(LTTNG_FD_APPS, 1);
+	if (ret < 0) {
+		ERR("Exhausted number of available FD upon create metadata");
+		goto error;
+	}
+
+	/* Get the right consumer socket for the application. */
+	socket = consumer_find_socket_by_bitness(app->abi.bits_per_long, get_consumer_output_ptr());
+	if (!socket) {
+		ret = -EINVAL;
+		goto error_consumer;
+	}
+
+	/*
+	 * Keep metadata key so we can identify it on the consumer side. Assign it
+	 * to the registry *before* we ask the consumer so we avoid the race of the
+	 * consumer requesting the metadata and the ask_channel call on our side
+	 * did not returned yet.
+	 */
+	locked_registry->_metadata_key = metadata->key;
+
+	/*
+	 * Ask the metadata channel creation to the consumer. The metadata object
+	 * will be created by the consumer and kept their. However, the stream is
+	 * never added or monitored until we do a first push metadata to the
+	 * consumer.
+	 */
+	ret = ust_consumer_ask_channel(&ua_sess.get(),
+				       metadata,
+				       get_consumer_output_ptr(),
+				       socket,
+				       locked_registry.locked_ref().get(),
+				       _session.current_trace_chunk,
+				       _session.trace_format);
+	if (ret < 0) {
+		/* Nullify the metadata key so we don't try to close it later on. */
+		locked_registry->_metadata_key = 0;
+		goto error_consumer;
+	}
+
+	/*
+	 * The setup command will make the metadata stream be sent to the relayd,
+	 * if applicable, and the thread managing the metadatas. This is important
+	 * because after this point, if an error occurs, the only way the stream
+	 * can be deleted is to be monitored in the consumer.
+	 */
+	ret = consumer_setup_metadata(socket, metadata->key);
+	if (ret < 0) {
+		/* Nullify the metadata key so we don't try to close it later on. */
+		locked_registry->_metadata_key = 0;
+		goto error_consumer;
+	}
+
+	DBG2("UST metadata with key %" PRIu64 " created for app pid %d", metadata->key, app->pid);
+
+error_consumer:
+	lttng_fd_put(LTTNG_FD_APPS, 1);
+	delete_ust_app_channel(-1, metadata, app, locked_registry.locked_ref());
+error:
+	return ret;
+}
+
 void ls::ust::domain_orchestrator::synchronize_app(ust::app& app)
 {
 	namespace lsc = lttng::sessiond::config;
@@ -1791,8 +1953,7 @@ void ls::ust::domain_orchestrator::synchronize_app(ust::app& app)
 				 * use this assumption to send the "STREAMS_SENT" message
 				 * to the relay daemon.
 				 */
-				const auto md_ret = create_ust_app_metadata(
-					locked_ua_sess, &app, get_consumer_output_ptr(), _session);
+				const auto md_ret = _create_app_metadata(locked_ua_sess, &app);
 				if (md_ret < 0) {
 					ERR("Metadata creation failed for app sock %d for session id %" PRIu64,
 					    app.sock,
