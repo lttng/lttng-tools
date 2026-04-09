@@ -93,6 +93,10 @@ struct ust_app_session_operations {
 					 lttng::c_string_view channel_name,
 					 const lsc::event_rule_configuration& event_rule_config)
 	{
+		if (!o.is_active()) {
+			return 0;
+		}
+
 		return o._disable_event_on_apps(channel_name, event_rule_config);
 	}
 };

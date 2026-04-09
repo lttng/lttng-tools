@@ -116,11 +116,6 @@ public:
 		return new_output;
 	}
 
-	bool is_active() const noexcept
-	{
-		return _active;
-	}
-
 	lttng_buffer_type buffer_type() const noexcept;
 
 	void create_channel(const config::recording_channel_configuration& channel_config) override;
@@ -264,6 +259,11 @@ public:
 
 private:
 	std::uint64_t session_id() const noexcept;
+
+	bool is_active() const noexcept
+	{
+		return _active;
+	}
 
 	/*
 	 * Transitional internal API
@@ -704,11 +704,6 @@ public:
 
 	consumer_output_uptr
 	exchange_consumer_output(consumer_output_uptr /* new_output */) noexcept
-	{
-		std::abort();
-	}
-
-	bool is_active() const noexcept
 	{
 		std::abort();
 	}
