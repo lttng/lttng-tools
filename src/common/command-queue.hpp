@@ -132,6 +132,24 @@ public:
 		return cmd;
 	}
 
+	/*
+	 * Non-blocking pop: returns the front element if one is queued,
+	 * nullopt otherwise. Unlike pop(), never touches the eventfd so
+	 * it is safe to call even when no wakeup event is pending.
+	 */
+	nonstd::optional<CommandType> try_pop()
+	{
+		const std::lock_guard<std::mutex> guard(_lock);
+
+		if (_queue.empty()) {
+			return nonstd::nullopt;
+		}
+
+		auto cmd = nonstd::optional<CommandType>(std::move(_queue.front()));
+		_queue.pop_front();
+		return cmd;
+	}
+
 	const lttng::eventfd& wake_fd() const noexcept
 	{
 		return _wake_fd;

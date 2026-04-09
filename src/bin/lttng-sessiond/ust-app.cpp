@@ -5272,6 +5272,34 @@ void ust_app_clean_list()
 		}
 	}
 
+	/*
+	 * The application management thread, which normally processes
+	 * deferred unregistration commands, has been joined by this
+	 * point. Drain any commands it did not get to process, as well
+	 * as those enqueued by the ust_app_put() calls above, so that
+	 * applications are fully removed from the remaining hash tables
+	 * before they are destroyed.
+	 */
+	if (the_app_unregistration_queue) {
+		namespace lam = lttng::sessiond::app_management;
+
+		while (auto cmd = the_app_unregistration_queue->try_pop()) {
+			switch (cmd->type) {
+			case lam::command_type::UNREGISTER_AND_DESTROY_APP:
+				LTTNG_ASSERT(cmd->app);
+				ust_app_unregister_and_destroy(*cmd->app);
+				break;
+			}
+		}
+	}
+
+	/*
+	 * Ensure all call_rcu callbacks (queued by ust_app_destroy
+	 * during unregistration) complete before destroying the hash
+	 * tables they may still reference.
+	 */
+	rcu_barrier();
+
 	/* Destroy is done only when the ht is empty */
 	if (ust_app_ht) {
 		lttng_ht_destroy(ust_app_ht);

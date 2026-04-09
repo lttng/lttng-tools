@@ -89,10 +89,16 @@ static void update_ust_app(int app_sock)
 	}
 
 	/*
-	 * Configure the app for each active session. The per-session
-	 * lock serializes with concurrent session modifications.
-	 * No session list lock is held here, so other threads
-	 * (rotation, client commands) are not blocked.
+	 * Synchronize the app with every active session that has a UST
+	 * orchestrator. Inactive sessions are skipped since their
+	 * consumer resources (trace chunks, relayd connections) may
+	 * already be torn down. Applications that register while a
+	 * session is inactive are caught up by _synchronize_all_apps()
+	 * when the session is started.
+	 *
+	 * The per-session lock serializes with concurrent session
+	 * modifications. No session list lock is held here, so other
+	 * threads (rotation, client commands) are not blocked.
 	 */
 	for (auto& session : sessions_snapshot) {
 		session->lock();
@@ -103,9 +109,8 @@ static void update_ust_app(int app_sock)
 			auto& orchestrator =
 				static_cast<lttng::sessiond::ust::domain_orchestrator&>(
 					session->get_ust_orchestrator());
-			if (orchestrator.is_active()) {
-				orchestrator.synchronize_app(*app->get());
-			}
+
+			orchestrator.synchronize_app(*app->get());
 		}
 	}
 

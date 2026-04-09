@@ -1075,25 +1075,24 @@ void ls::ust::domain_orchestrator::stop()
 	_active = false;
 
 	/*
-	 * Stop every running application and flush per-PID buffers.
-	 *
-	 * This iterates ust_app_ht (not _app_sessions) for the same
-	 * reason as start(): some apps may have been registered
-	 * concurrently. This will be replaced by an _app_sessions-based
-	 * iteration once synchronize_app() (Phase 3) guarantees
-	 * completeness.
+	 * Stop every running application. _app_sessions is complete at
+	 * this point: start() synchronized all pre-existing apps, and
+	 * the dispatch thread added any apps that registered since then.
 	 */
-	for (auto *app : lttng::urcu::lfht_iteration_adapter<ust::app,
-							     decltype(ust::app::pid_n),
-							     &ust::app::pid_n>(*ust_app_ht->ht)) {
-		if (!ust_app_get(*app)) {
-			DBG("Could not get application reference as it is being torn down; skipping application");
-			continue;
+	{
+		const lttng::urcu::read_lock_guard read_lock;
+
+		for (const auto& app_session_pair : _app_sessions) {
+			auto *app = const_cast<ust::app *>(app_session_pair.first);
+
+			if (!ust_app_get(*app)) {
+				continue;
+			}
+
+			const ust_app_reference app_ref(app);
+
+			(void) ust_app_stop_trace(session_id(), app);
 		}
-
-		const ust_app_reference app_ref(app);
-
-		(void) ust_app_stop_trace(session_id(), app);
 	}
 
 	(void) ust_app_flush_session(*this);
