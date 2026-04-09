@@ -713,13 +713,6 @@ public:
 		std::abort();
 	}
 
-	std::uint64_t trace_class_stream_class_handle(
-		const config::recording_channel_configuration& channel_config
-		[[maybe_unused]]) const
-	{
-		std::abort();
-	}
-
 	void create_channel_subdirectories(struct lttng_trace_chunk& trace_chunk
 					   [[maybe_unused]]) const
 	{
@@ -755,11 +748,6 @@ public:
 	}
 
 	const struct ltt_session& recording_session() const noexcept
-	{
-		std::abort();
-	}
-
-	static struct lttng_ust_abi_channel_attr default_metadata_channel_attr() noexcept
 	{
 		std::abort();
 	}
