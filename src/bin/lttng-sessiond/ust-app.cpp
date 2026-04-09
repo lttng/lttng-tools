@@ -207,6 +207,13 @@ struct ust_app_session_operations {
 	{
 		o._app_sessions.erase(&app);
 	}
+
+	static int disable_event_on_apps(lsu::domain_orchestrator& o,
+					 lttng::c_string_view channel_name,
+					 const lsc::event_rule_configuration& event_rule_config)
+	{
+		return o._disable_event_on_apps(channel_name, event_rule_config);
+	}
 };
 
 enum owner_id_allocation_status {
@@ -5330,76 +5337,13 @@ int ust_app_ht_alloc()
 	return 0;
 }
 
-/*
- * Disable an event in a channel and for a specific session.
- */
-int ust_app_disable_event_glb(std::uint64_t session_id,
-			      lttng::c_string_view channel_name,
-			      const lttng::sessiond::config::event_rule_configuration& event_config)
+int ust_app_disable_event_on_apps(
+	lsu::domain_orchestrator& orchestrator,
+	lttng::c_string_view channel_name,
+	const lttng::sessiond::config::event_rule_configuration& event_rule_config)
 {
-	int ret = 0;
-	struct lttng_ht_iter uiter;
-	struct lttng_ht_node_str *ua_chan_node;
-	lsu::app_session *ua_sess;
-	struct ust_app_channel *ua_chan;
-	struct ust_app_event *ua_event;
-
-	DBG("UST app disabling event for all apps in channel "
-	    "%s for session id %" PRIu64,
-	    channel_name.data(),
-	    session_id);
-
-	/* Iterate on all apps. */
-	for (auto *app : lttng::urcu::lfht_iteration_adapter<lsu::app,
-							     decltype(lsu::app::pid_n),
-							     &lsu::app::pid_n>(*ust_app_ht->ht)) {
-		if (!ust_app_get(*app)) {
-			/* Application unregistered concurrently, skip it. */
-			DBG("Could not get application reference as it is being torn down; skipping application");
-			continue;
-		}
-		/* Prevent app teardown during use. */
-		const ust_app_reference app_ref(app);
-
-		if (!app->compatible) {
-			continue;
-		}
-
-		ua_sess = ust_app_lookup_app_session(session_id, app);
-		if (ua_sess == nullptr) {
-			/* Next app */
-			continue;
-		}
-
-		/* Lookup channel in the ust app session */
-		lttng_ht_lookup(ua_sess->channels, (void *) channel_name.data(), &uiter);
-		ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
-		if (ua_chan_node == nullptr) {
-			DBG2("Channel %s not found in session id %" PRIu64 " for app pid %d."
-			     "Skipping",
-			     channel_name.data(),
-			     session_id,
-			     app->pid);
-			continue;
-		}
-		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
-
-		ua_event = find_ust_app_event_by_config(ua_chan->events, event_config);
-		if (ua_event == nullptr) {
-			DBG2("Event not found in channel %s for app pid %d."
-			     "Skipping",
-			     channel_name.data(),
-			     app->pid);
-			continue;
-		}
-
-		ret = disable_ust_app_event(ua_event, app);
-		if (ret < 0) {
-			continue;
-		}
-	}
-
-	return ret;
+	return ust_app_session_operations::disable_event_on_apps(
+		orchestrator, channel_name, event_rule_config);
 }
 
 /*
@@ -5501,162 +5445,6 @@ error:
 		 * channel hashtable on error.
 		 */
 		*_ua_chan = ua_chan;
-	}
-
-	return ret;
-}
-
-/*
- * Enable event for a specific session and channel on the tracer.
- */
-int ust_app_enable_event_glb(std::uint64_t session_id,
-			     lttng::c_string_view channel_name,
-			     const lttng::sessiond::config::event_rule_configuration& event_config)
-{
-	int ret = 0;
-	struct lttng_ht_iter uiter;
-	struct lttng_ht_node_str *ua_chan_node;
-	lsu::app_session *ua_sess;
-	struct ust_app_channel *ua_chan;
-	struct ust_app_event *ua_event;
-
-	DBG("UST app enabling event for all apps for session id %" PRIu64, session_id);
-
-	/*
-	 * NOTE: At this point, this function is called only if the session and
-	 * channel passed are already created for all apps. and enabled on the
-	 * tracer also.
-	 */
-
-	/* Iterate on all apps. */
-	for (auto *app : lttng::urcu::lfht_iteration_adapter<lsu::app,
-							     decltype(lsu::app::pid_n),
-							     &lsu::app::pid_n>(*ust_app_ht->ht)) {
-		if (!ust_app_get(*app)) {
-			/* Application unregistered concurrently, skip it. */
-			DBG("Could not get application reference as it is being torn down; skipping application");
-			continue;
-		}
-		/* Prevent app teardown during use. */
-		const ust_app_reference app_ref(app);
-
-		if (!app->compatible) {
-			/*
-			 * TODO: In time, we should notice the caller of this error by
-			 * telling him that this is a version error.
-			 */
-			continue;
-		}
-
-		ua_sess = ust_app_lookup_app_session(session_id, app);
-		if (!ua_sess) {
-			/* The application has problem or is probably dead. */
-			continue;
-		}
-
-		auto locked_ua_sess = ua_sess->lock();
-		if (ua_sess->deleted) {
-			continue;
-		}
-
-		/* Lookup channel in the ust app session */
-		lttng_ht_lookup(ua_sess->channels, (void *) channel_name.data(), &uiter);
-		ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
-		/*
-		 * It is possible that the channel cannot be found is
-		 * the channel/event creation occurs concurrently with
-		 * an application exit.
-		 */
-		if (!ua_chan_node) {
-			continue;
-		}
-
-		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
-
-		ua_event = find_ust_app_event_by_config(ua_chan->events, event_config);
-		if (ua_event == nullptr) {
-			DBG3("UST app enable event not found for app PID %d."
-			     "Skipping app",
-			     app->pid);
-			continue;
-		}
-
-		ret = enable_ust_app_event(ua_event, app);
-		if (ret < 0) {
-			goto error;
-		}
-	}
-error:
-	return ret;
-}
-
-/*
- * For a specific existing UST session and UST channel, creates the event for
- * all registered apps.
- */
-int ust_app_create_event_glb(
-	std::uint64_t session_id,
-	lttng::c_string_view channel_name,
-	const lttng::sessiond::config::event_rule_configuration& event_rule_config)
-{
-	int ret = 0;
-	struct lttng_ht_iter uiter;
-	struct lttng_ht_node_str *ua_chan_node;
-	lsu::app_session *ua_sess;
-	struct ust_app_channel *ua_chan;
-
-	DBG("UST app creating event for all apps for session id %" PRIu64, session_id);
-
-	/* Iterate on all apps. */
-	for (auto *app : lttng::urcu::lfht_iteration_adapter<lsu::app,
-							     decltype(lsu::app::pid_n),
-							     &lsu::app::pid_n>(*ust_app_ht->ht)) {
-		if (!ust_app_get(*app)) {
-			/* Application unregistered concurrently, skip it. */
-			DBG("Could not get application reference as it is being torn down; skipping application");
-			continue;
-		}
-		/* Prevent app teardown during use. */
-		const ust_app_reference app_ref(app);
-
-		if (!app->compatible) {
-			/*
-			 * TODO: In time, we should notice the caller of this error by
-			 * telling him that this is a version error.
-			 */
-			continue;
-		}
-
-		ua_sess = ust_app_lookup_app_session(session_id, app);
-		if (!ua_sess) {
-			/* The application has problem or is probably dead. */
-			continue;
-		}
-
-		auto locked_ua_sess = ua_sess->lock();
-
-		if (locked_ua_sess->deleted) {
-			continue;
-		}
-
-		/* Lookup channel in the ust app session */
-		lttng_ht_lookup(ua_sess->channels, (void *) channel_name.data(), &uiter);
-		ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
-		/* If the channel is not found, there is a code flow error */
-		LTTNG_ASSERT(ua_chan_node);
-
-		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
-
-		ret = create_ust_app_event(ua_chan, app, event_rule_config);
-		if (ret < 0) {
-			if (ret != -LTTNG_UST_ERR_EXIST) {
-				/* Possible value at this point: -ENOMEM. If so, we stop! */
-				break;
-			}
-
-			DBG2("UST app event already exists on app PID %d", app->pid);
-			continue;
-		}
 	}
 
 	return ret;

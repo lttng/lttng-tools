@@ -16,6 +16,7 @@
 #include "session.hpp"
 #include "trace-ust.hpp"
 #include "ust-app.hpp"
+#include "ust-domain-orchestrator.hpp"
 #include "utils.hpp"
 
 #include <common/bytecode/bytecode.hpp>
@@ -406,8 +407,7 @@ error:
  * Must be called with the RCU read lock held.
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-static int event_agent_disable_one(std::uint64_t session_id,
-				   bool is_active,
+static int event_agent_disable_one(lttng::sessiond::ust::domain_orchestrator& orchestrator,
 				   struct agent *agt,
 				   struct agent_event *aevent)
 {
@@ -421,7 +421,7 @@ static int event_agent_disable_one(std::uint64_t session_id,
 	    aevent->name,
 	    aevent->loglevel_type,
 	    aevent->loglevel_value,
-	    session_id);
+	    orchestrator.session_id());
 
 	/* Already disabled? */
 	if (!AGENT_EVENT_IS_ENABLED(aevent)) {
@@ -443,9 +443,9 @@ static int event_agent_disable_one(std::uint64_t session_id,
 
 	LTTNG_ASSERT(aevent->ust_event_rule_config);
 
-	if (is_active) {
-		ret = ust_app_disable_event_glb(
-			session_id, ust_channel_name, *aevent->ust_event_rule_config);
+	if (orchestrator.is_active()) {
+		ret = ust_app_disable_event_on_apps(
+			orchestrator, ust_channel_name, *aevent->ust_event_rule_config);
 		if (ret < 0 && ret != -LTTNG_UST_ERR_EXIST) {
 			ret = LTTNG_ERR_UST_DISABLE_FAIL;
 			goto error;
@@ -513,8 +513,7 @@ end:
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-int event_agent_disable(std::uint64_t session_id,
-			bool is_active,
+int event_agent_disable(lttng::sessiond::ust::domain_orchestrator& orchestrator,
 			struct agent *agt,
 			const char *event_name)
 {
@@ -528,7 +527,7 @@ int event_agent_disable(std::uint64_t session_id,
 
 	DBG("Event agent disabling %s (all loglevels) for session %" PRIu64,
 	    event_name,
-	    session_id);
+	    orchestrator.session_id());
 
 	const lttng::urcu::read_lock_guard read_lock;
 	agent_find_events_by_name(event_name, agt, &iter);
@@ -542,7 +541,7 @@ int event_agent_disable(std::uint64_t session_id,
 
 	do {
 		aevent = lttng::utils::container_of(node, &agent_event::node);
-		ret = event_agent_disable_one(session_id, is_active, agt, aevent);
+		ret = event_agent_disable_one(orchestrator, agt, aevent);
 
 		if (ret != LTTNG_OK) {
 			goto end;
@@ -560,7 +559,8 @@ end:
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-int event_agent_disable_all(std::uint64_t session_id, bool is_active, struct agent *agt)
+int event_agent_disable_all(lttng::sessiond::ust::domain_orchestrator& orchestrator,
+			    struct agent *agt)
 {
 	int ret;
 
@@ -570,7 +570,7 @@ int event_agent_disable_all(std::uint64_t session_id, bool is_active, struct age
 	 * Disable event on agent application. Continue to disable all other events
 	 * if the * event is not found.
 	 */
-	ret = event_agent_disable(session_id, is_active, agt, "*");
+	ret = event_agent_disable(orchestrator, agt, "*");
 	if (ret != LTTNG_OK && ret != LTTNG_ERR_UST_EVENT_NOT_FOUND) {
 		goto error;
 	}
@@ -584,7 +584,7 @@ int event_agent_disable_all(std::uint64_t session_id, bool is_active, struct age
 			continue;
 		}
 
-		ret = event_agent_disable(session_id, is_active, agt, aevent->name);
+		ret = event_agent_disable(orchestrator, agt, aevent->name);
 		if (ret != LTTNG_OK) {
 			goto error_unlock;
 		}

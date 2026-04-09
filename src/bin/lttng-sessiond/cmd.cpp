@@ -2524,20 +2524,17 @@ lttng_error_code cmd_disable_event(struct command_ctx *cmd_ctx,
 			return LTTNG_ERR_UNK;
 		}
 
-		const auto& ust_orchestrator =
-			static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
-				session.get_ust_orchestrator());
+		auto& ust_orchestrator = static_cast<lttng::sessiond::ust::domain_orchestrator&>(
+			locked_session->get_ust_orchestrator());
 		auto *agt = ust_orchestrator.find_agent(domain);
 		if (!agt) {
 			return LTTNG_ERR_UST_EVENT_NOT_FOUND;
 		}
 
-		const auto session_id = ust_orchestrator.session_id();
-		const auto active = ust_orchestrator.is_active();
 		if (pattern_disables_all) {
-			ret = event_agent_disable_all(session_id, active, agt);
+			ret = event_agent_disable_all(ust_orchestrator, agt);
 		} else {
-			ret = event_agent_disable(session_id, active, agt, event_name);
+			ret = event_agent_disable(ust_orchestrator, agt, event_name);
 		}
 
 		if (ret != LTTNG_OK) {

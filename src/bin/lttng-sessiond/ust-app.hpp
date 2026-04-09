@@ -552,16 +552,6 @@ int ust_app_stop_trace_all(lttng::sessiond::ust::domain_orchestrator& orchestrat
 int ust_app_destroy_trace_all(std::uint64_t session_id);
 int ust_app_list_events(struct lttng_event **events);
 int ust_app_list_event_fields(struct lttng_event_field **fields);
-int ust_app_create_event_glb(
-	std::uint64_t session_id,
-	lttng::c_string_view channel_name,
-	const lttng::sessiond::config::event_rule_configuration& event_rule_config);
-int ust_app_enable_event_glb(std::uint64_t session_id,
-			     lttng::c_string_view channel_name,
-			     const lttng::sessiond::config::event_rule_configuration& event_config);
-int ust_app_disable_event_glb(std::uint64_t session_id,
-			      lttng::c_string_view channel_name,
-			      const lttng::sessiond::config::event_rule_configuration& event_config);
 int ust_app_add_ctx_channel_glb(std::uint64_t session_id,
 				lttng::c_string_view channel_name,
 				const lttng::sessiond::config::context_configuration& ctx_config);
@@ -639,6 +629,16 @@ int create_ust_app_channel_context(struct ust_app_channel *ua_chan,
 struct ust_app_event *
 find_ust_app_event_by_config(struct lttng_ht *ht,
 			     const lttng::sessiond::config::event_rule_configuration& event_config);
+
+/*
+ * Disable an event on all applications tracked by the orchestrator.
+ * Used by the agent event disable path (event.cpp) which does not have
+ * direct access to the orchestrator's private iteration method.
+ */
+int ust_app_disable_event_on_apps(
+	lttng::sessiond::ust::domain_orchestrator& orchestrator,
+	lttng::c_string_view channel_name,
+	const lttng::sessiond::config::event_rule_configuration& event_rule_config);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -737,30 +737,6 @@ static inline void ust_app_global_update_all_event_notifier_rules(void)
 
 static inline int ust_app_setup_event_notifier_group(lttng::sessiond::ust::app *app
 						     __attribute__((unused)))
-{
-	return 0;
-}
-
-static inline int ust_app_create_event_glb(
-	std::uint64_t /* session_id */,
-	lttng::c_string_view /* channel_name */,
-	const lttng::sessiond::config::event_rule_configuration& /* event_rule_config */)
-{
-	return 0;
-}
-
-static inline int ust_app_disable_event_glb(
-	std::uint64_t /* session_id */,
-	lttng::c_string_view /* channel_name */,
-	const lttng::sessiond::config::event_rule_configuration& /* event_config */)
-{
-	return 0;
-}
-
-static inline int ust_app_enable_event_glb(
-	std::uint64_t /* session_id */,
-	lttng::c_string_view /* channel_name */,
-	const lttng::sessiond::config::event_rule_configuration& /* event_config */)
 {
 	return 0;
 }
@@ -884,6 +860,14 @@ static inline void ust_app_notify_reclaimed_owner_ids(const std::vector<uint32_t
 static inline void ust_app_unregister_and_destroy(lttng::sessiond::ust::app& app
 						  __attribute__((unused)))
 {
+}
+
+static inline int ust_app_disable_event_on_apps(
+	lttng::sessiond::ust::domain_orchestrator& /* orchestrator */,
+	lttng::c_string_view /* channel_name */,
+	const lttng::sessiond::config::event_rule_configuration& /* event_rule_config */)
+{
+	return 0;
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */

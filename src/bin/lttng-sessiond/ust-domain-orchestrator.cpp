@@ -653,6 +653,157 @@ void ls::ust::domain_orchestrator::_disable_channel_on_apps(lttng::c_string_view
 	}
 }
 
+int ls::ust::domain_orchestrator::_create_event_on_apps(
+	lttng::c_string_view channel_name,
+	const config::event_rule_configuration& event_rule_config)
+{
+	int ret = 0;
+	const lttng::urcu::read_lock_guard read_lock;
+
+	for (const auto& app_session_pair : _app_sessions) {
+		auto *app = const_cast<ust::app *>(app_session_pair.first);
+		auto *ua_sess = app_session_pair.second;
+
+		if (!ust_app_get(*app)) {
+			continue;
+		}
+
+		const ust_app_reference app_ref(app);
+
+		if (!app->compatible) {
+			continue;
+		}
+
+		auto locked_ua_sess = ua_sess->lock();
+		if (locked_ua_sess->deleted) {
+			continue;
+		}
+
+		struct lttng_ht_iter uiter;
+		lttng_ht_lookup(ua_sess->channels, (void *) channel_name.data(), &uiter);
+		auto *ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
+		/* If the channel is not found, there is a code flow error. */
+		LTTNG_ASSERT(ua_chan_node);
+
+		auto *ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
+
+		ret = create_ust_app_event(ua_chan, app, event_rule_config);
+		if (ret < 0) {
+			if (ret != -LTTNG_UST_ERR_EXIST) {
+				break;
+			}
+
+			DBG2("UST app event already exists on app PID %d", app->pid);
+			continue;
+		}
+	}
+
+	return ret;
+}
+
+int ls::ust::domain_orchestrator::_enable_event_on_apps(
+	lttng::c_string_view channel_name,
+	const config::event_rule_configuration& event_rule_config)
+{
+	int ret = 0;
+	const lttng::urcu::read_lock_guard read_lock;
+
+	for (const auto& app_session_pair : _app_sessions) {
+		auto *app = const_cast<ust::app *>(app_session_pair.first);
+		auto *ua_sess = app_session_pair.second;
+
+		if (!ust_app_get(*app)) {
+			continue;
+		}
+
+		const ust_app_reference app_ref(app);
+
+		if (!app->compatible) {
+			continue;
+		}
+
+		auto locked_ua_sess = ua_sess->lock();
+		if (ua_sess->deleted) {
+			continue;
+		}
+
+		struct lttng_ht_iter uiter;
+		lttng_ht_lookup(ua_sess->channels, (void *) channel_name.data(), &uiter);
+		auto *ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
+		if (!ua_chan_node) {
+			continue;
+		}
+
+		auto *ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
+
+		auto *ua_event = find_ust_app_event_by_config(ua_chan->events, event_rule_config);
+		if (ua_event == nullptr) {
+			DBG3("UST app enable event not found for app PID %d. Skipping app",
+			     app->pid);
+			continue;
+		}
+
+		ret = enable_ust_app_event(ua_event, app);
+		if (ret < 0) {
+			return ret;
+		}
+	}
+
+	return ret;
+}
+
+int ls::ust::domain_orchestrator::_disable_event_on_apps(
+	lttng::c_string_view channel_name,
+	const config::event_rule_configuration& event_rule_config)
+{
+	int ret = 0;
+	const lttng::urcu::read_lock_guard read_lock;
+
+	for (const auto& app_session_pair : _app_sessions) {
+		auto *app = const_cast<ust::app *>(app_session_pair.first);
+		auto *ua_sess = app_session_pair.second;
+
+		if (!ust_app_get(*app)) {
+			continue;
+		}
+
+		const ust_app_reference app_ref(app);
+
+		if (!app->compatible) {
+			continue;
+		}
+
+		struct lttng_ht_iter uiter;
+		lttng_ht_lookup(ua_sess->channels, (void *) channel_name.data(), &uiter);
+		auto *ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
+		if (ua_chan_node == nullptr) {
+			DBG2("Channel %s not found in session id %" PRIu64
+			     " for app pid %d. Skipping",
+			     channel_name.data(),
+			     session_id(),
+			     app->pid);
+			continue;
+		}
+
+		auto *ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
+
+		auto *ua_event = find_ust_app_event_by_config(ua_chan->events, event_rule_config);
+		if (ua_event == nullptr) {
+			DBG2("Event not found in channel %s for app pid %d. Skipping",
+			     channel_name.data(),
+			     app->pid);
+			continue;
+		}
+
+		ret = disable_ust_app_event(ua_event, app);
+		if (ret < 0) {
+			continue;
+		}
+	}
+
+	return ret;
+}
+
 void ls::ust::domain_orchestrator::enable_channel(
 	const config::recording_channel_configuration& channel_config)
 {
@@ -702,8 +853,7 @@ void ls::ust::domain_orchestrator::disable_event(
 		return;
 	}
 
-	const auto ret =
-		ust_app_disable_event_glb(session_id(), channel_config.name, event_rule_config);
+	const auto ret = _disable_event_on_apps(channel_config.name, event_rule_config);
 	if (ret < 0) {
 		LTTNG_THROW_CTL("Failed to disable UST event", LTTNG_ERR_UST_DISABLE_FAIL);
 	}
@@ -735,11 +885,9 @@ void ls::ust::domain_orchestrator::enable_event(
 
 	int ret;
 	if (already_created) {
-		ret = ust_app_enable_event_glb(
-			session_id(), channel_config.name, event_rule_config);
+		ret = _enable_event_on_apps(channel_config.name, event_rule_config);
 	} else {
-		ret = ust_app_create_event_glb(
-			session_id(), channel_config.name, event_rule_config);
+		ret = _create_event_on_apps(channel_config.name, event_rule_config);
 		if (ret >= 0) {
 			_created_event_rules.insert(&event_rule_config);
 		}

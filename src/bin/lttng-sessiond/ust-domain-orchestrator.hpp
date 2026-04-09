@@ -366,7 +366,7 @@ private:
 
 	/*
 	 * Tracks which event rule configurations have had their per-app
-	 * events created (via ust_app_create_event_glb). Used to
+	 * events created (via _create_event_on_apps). Used to
 	 * distinguish the initial creation from a re-enable. This will
 	 * be superseded by more structured per-app state when channel
 	 * and event management are fully internalized.
@@ -407,6 +407,12 @@ private:
 	 */
 	void _enable_channel_on_apps(lttng::c_string_view channel_name);
 	void _disable_channel_on_apps(lttng::c_string_view channel_name);
+	int _create_event_on_apps(lttng::c_string_view channel_name,
+				  const config::event_rule_configuration& event_rule_config);
+	int _enable_event_on_apps(lttng::c_string_view channel_name,
+				  const config::event_rule_configuration& event_rule_config);
+	int _disable_event_on_apps(lttng::c_string_view channel_name,
+				   const config::event_rule_configuration& event_rule_config);
 
 	/*
 	 * Push pending metadata from a trace class to its consumer.

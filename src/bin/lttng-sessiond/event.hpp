@@ -16,6 +16,14 @@
 
 struct agent;
 
+namespace lttng {
+namespace sessiond {
+namespace ust {
+class domain_orchestrator;
+} /* namespace ust */
+} /* namespace sessiond */
+} /* namespace lttng */
+
 int event_agent_enable(
 	std::uint64_t session_id,
 	struct agent *agt,
@@ -31,11 +39,11 @@ int event_agent_enable_all(
 	char *filter_expression,
 	const lttng::sessiond::config::event_rule_configuration *ust_event_rule_config);
 
-int event_agent_disable(std::uint64_t session_id,
-			bool is_active,
+int event_agent_disable(lttng::sessiond::ust::domain_orchestrator& orchestrator,
 			struct agent *agt,
 			const char *event_name);
-int event_agent_disable_all(std::uint64_t session_id, bool is_active, struct agent *agt);
+int event_agent_disable_all(lttng::sessiond::ust::domain_orchestrator& orchestrator,
+			    struct agent *agt);
 
 int trigger_agent_enable(const struct lttng_trigger *trigger, struct agent *agt);
 int trigger_agent_disable(const struct lttng_trigger *trigger, struct agent *agt);
