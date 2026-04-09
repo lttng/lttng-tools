@@ -148,6 +148,22 @@ public:
 	void start() override;
 	void stop() override;
 
+	/*
+	 * Synchronize a single application's tracing configuration
+	 * with this recording session.
+	 *
+	 * If the application is tracked by the process attribute
+	 * trackers, its channels, events, and contexts are brought in
+	 * sync with the session configuration. When the session is
+	 * active, the trace is also started on the application.
+	 *
+	 * If the application is not tracked, any existing app session
+	 * for this recording session is destroyed.
+	 *
+	 * Called with the session lock held.
+	 */
+	void synchronize_app(ust::app& app);
+
 	void rotate() override;
 	void clear() override;
 	void open_packets() override;
@@ -415,6 +431,13 @@ private:
 				   const config::event_rule_configuration& event_rule_config);
 	void _add_context_on_apps(lttng::c_string_view channel_name,
 				  const config::context_configuration& ctx_config);
+
+	/*
+	 * Iterate all registered applications and call synchronize_app()
+	 * for each one. Used by start() and process attribute tracking
+	 * methods to push the current session configuration to all apps.
+	 */
+	void _synchronize_all_apps();
 
 	/*
 	 * Push pending metadata from a trace class to its consumer.
@@ -689,6 +712,11 @@ public:
 	}
 
 	const std::string& root_shm_path() const noexcept
+	{
+		std::abort();
+	}
+
+	void synchronize_app(ust::app& /* app */)
 	{
 		std::abort();
 	}

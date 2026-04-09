@@ -100,14 +100,11 @@ static void update_ust_app(int app_sock)
 			lttng::make_scope_exit([&session]() noexcept { session->unlock(); });
 
 		if (session->active && session->ust_orchestrator) {
-			const auto& orchestrator =
-				static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
+			auto& orchestrator =
+				static_cast<lttng::sessiond::ust::domain_orchestrator&>(
 					session->get_ust_orchestrator());
 			if (orchestrator.is_active()) {
-				ust_app_global_update(app->get(),
-						      session->user_space_domain,
-						      orchestrator,
-						      *session);
+				orchestrator.synchronize_app(*app->get());
 			}
 		}
 	}

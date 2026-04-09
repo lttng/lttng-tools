@@ -5456,7 +5456,7 @@ error:
  * Called with UST app session lock held.
  *
  */
-static int ust_app_start_trace(std::uint64_t session_id, lsu::app *app)
+int ust_app_start_trace(std::uint64_t session_id, lsu::app *app)
 {
 	int ret = 0;
 	lsu::app_session *ua_sess;
@@ -6201,10 +6201,10 @@ end:
  * The caller must ensure that the application is compatible and is tracked
  * by the process attribute trackers.
  */
-static void ust_app_synchronize(lsu::app *app,
-				const lttng::sessiond::config::domain& config_domain,
-				const lsu::domain_orchestrator& orchestrator,
-				ltt_session& session)
+void ust_app_synchronize(lsu::app *app,
+			 const lttng::sessiond::config::domain& config_domain,
+			 const lsu::domain_orchestrator& orchestrator,
+			 ltt_session& session)
 {
 	int ret = 0;
 	lsu::app_session *ua_sess = nullptr;
@@ -6256,7 +6256,7 @@ static void ust_app_synchronize(lsu::app *app,
 	}
 }
 
-static void ust_app_global_destroy(std::uint64_t session_id, lsu::app *app)
+void ust_app_global_destroy(std::uint64_t session_id, lsu::app *app)
 {
 	lsu::app_session *ua_sess;
 
@@ -6265,45 +6265,6 @@ static void ust_app_global_destroy(std::uint64_t session_id, lsu::app *app)
 		return;
 	}
 	destroy_app_session(app, ua_sess);
-}
-
-/*
- * Add channels/events from UST global domain to registered apps at sock.
- *
- * Called with session lock held.
- * Called with RCU read-side lock held.
- */
-void ust_app_global_update(lsu::app *app,
-			   const lttng::sessiond::config::domain& domain,
-			   const lttng::sessiond::ust::domain_orchestrator& orchestrator,
-			   ltt_session& session)
-{
-	namespace lsc = lttng::sessiond::config;
-	const auto session_id = orchestrator.session_id();
-
-	ASSERT_RCU_READ_LOCKED();
-
-	DBG2("UST app global update for app sock %d for session id %" PRIu64,
-	     app->sock,
-	     session_id);
-
-	if (!app->compatible) {
-		return;
-	}
-	if (domain.virtual_process_id_tracker().is_tracked(app->pid) &&
-	    domain.virtual_user_id_tracker().is_tracked(
-		    lsc::resolved_process_attr_value<uid_t>(app->uid)) &&
-	    domain.virtual_group_id_tracker().is_tracked(
-		    lsc::resolved_process_attr_value<gid_t>(app->gid))) {
-		/*
-		 * Synchronize the application's internal tracing configuration
-		 * and start tracing.
-		 */
-		ust_app_synchronize(app, domain, orchestrator, session);
-		ust_app_start_trace(session_id, app);
-	} else {
-		ust_app_global_destroy(session_id, app);
-	}
 }
 
 /*
@@ -6332,29 +6293,6 @@ void ust_app_global_update_event_notifier_rules(lsu::app *app)
 	}
 
 	ust_app_synchronize_event_notifier_rules(app);
-}
-
-/*
- * Called with session lock held.
- */
-void ust_app_global_update_all(const lttng::sessiond::config::domain& domain,
-			       const lttng::sessiond::ust::domain_orchestrator& orchestrator,
-			       ltt_session& session)
-{
-	/* Iterate on all apps. */
-	for (auto *app : lttng::urcu::lfht_iteration_adapter<lsu::app,
-							     decltype(lsu::app::pid_n),
-							     &lsu::app::pid_n>(*ust_app_ht->ht)) {
-		if (!ust_app_get(*app)) {
-			/* Application unregistered concurrently, skip it. */
-			DBG("Could not get application reference as it is being torn down; skipping application");
-			continue;
-		}
-		/* Prevent app teardown during use. */
-		const ust_app_reference app_ref(app);
-
-		ust_app_global_update(app, domain, orchestrator, session);
-	}
 }
 
 void ust_app_global_update_all_event_notifier_rules()

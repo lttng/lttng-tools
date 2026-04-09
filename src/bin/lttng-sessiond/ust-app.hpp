@@ -548,13 +548,6 @@ void ust_app_unregister_by_socket(int sock);
 int ust_app_destroy_trace_all(std::uint64_t session_id);
 int ust_app_list_events(struct lttng_event **events);
 int ust_app_list_event_fields(struct lttng_event_field **fields);
-void ust_app_global_update(lttng::sessiond::ust::app *app,
-			   const lttng::sessiond::config::domain& domain,
-			   const lttng::sessiond::ust::domain_orchestrator& orchestrator,
-			   ltt_session& session);
-void ust_app_global_update_all(const lttng::sessiond::config::domain& domain,
-			       const lttng::sessiond::ust::domain_orchestrator& orchestrator,
-			       ltt_session& session);
 void ust_app_global_update_event_notifier_rules(lttng::sessiond::ust::app *app);
 void ust_app_global_update_all_event_notifier_rules();
 
@@ -634,11 +627,18 @@ int ust_app_disable_event_on_apps(
 	const lttng::sessiond::config::event_rule_configuration& event_rule_config);
 
 /*
- * Per-app trace control helpers used by the orchestrator's start()/stop()
- * methods. These remain in ust-app.cpp because they contain app-level
- * logic (lttng_ust_ctl calls) that has not yet been internalized.
+ * Per-app trace control and synchronization helpers used by the
+ * orchestrator. These remain in ust-app.cpp because they contain
+ * app-level logic (lttng_ust_ctl calls, per-app session creation)
+ * that has not yet been internalized.
  */
+void ust_app_synchronize(lttng::sessiond::ust::app *app,
+			 const lttng::sessiond::config::domain& config_domain,
+			 const lttng::sessiond::ust::domain_orchestrator& orchestrator,
+			 ltt_session& session);
+int ust_app_start_trace(std::uint64_t session_id, lttng::sessiond::ust::app *app);
 int ust_app_stop_trace(std::uint64_t session_id, lttng::sessiond::ust::app *app);
+void ust_app_global_destroy(std::uint64_t session_id, lttng::sessiond::ust::app *app);
 int ust_app_flush_session(lttng::sessiond::ust::domain_orchestrator& orchestrator);
 int ust_app_clear_quiescent_session(const lttng::sessiond::ust::domain_orchestrator& orchestrator);
 
@@ -697,21 +697,6 @@ static inline lttng::sessiond::ust::app *ust_app_get_by_pid(pid_t pid __attribut
 static inline int ust_app_ht_alloc(void)
 {
 	return 0;
-}
-
-static inline void
-ust_app_global_update(lttng::sessiond::ust::app * /* app */,
-		      const lttng::sessiond::config::domain& /* domain */,
-		      const lttng::sessiond::ust::domain_orchestrator& /* orchestrator */,
-		      ltt_session& /* session */)
-{
-}
-
-static inline void
-ust_app_global_update_all(const lttng::sessiond::config::domain& /* domain */,
-			  const lttng::sessiond::ust::domain_orchestrator& /* orchestrator */,
-			  ltt_session& /* session */)
-{
 }
 
 static inline void ust_app_global_update_event_notifier_rules(lttng::sessiond::ust::app *app

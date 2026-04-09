@@ -954,8 +954,7 @@ void ls::ust::domain_orchestrator::set_tracking_policy(config::process_attribute
 	 * updated configuration to all running applications if tracing is active.
 	 */
 	if (_active) {
-		ust_app_global_update_all(
-			_session.user_space_domain, *this, const_cast<ltt_session&>(_session));
+		_synchronize_all_apps();
 	}
 }
 
@@ -963,8 +962,7 @@ void ls::ust::domain_orchestrator::track_process_attribute(config::process_attri
 							   std::uint64_t)
 {
 	if (_active) {
-		ust_app_global_update_all(
-			_session.user_space_domain, *this, const_cast<ltt_session&>(_session));
+		_synchronize_all_apps();
 	}
 }
 
@@ -972,8 +970,53 @@ void ls::ust::domain_orchestrator::untrack_process_attribute(config::process_att
 							     std::uint64_t)
 {
 	if (_active) {
-		ust_app_global_update_all(
-			_session.user_space_domain, *this, const_cast<ltt_session&>(_session));
+		_synchronize_all_apps();
+	}
+}
+
+void ls::ust::domain_orchestrator::synchronize_app(ust::app& app)
+{
+	namespace lsc = lttng::sessiond::config;
+
+	if (!app.compatible) {
+		return;
+	}
+
+	const auto& domain = _session.user_space_domain;
+
+	if (domain.virtual_process_id_tracker().is_tracked(app.pid) &&
+	    domain.virtual_user_id_tracker().is_tracked(
+		    lsc::resolved_process_attr_value<uid_t>(app.uid)) &&
+	    domain.virtual_group_id_tracker().is_tracked(
+		    lsc::resolved_process_attr_value<gid_t>(app.gid))) {
+		/*
+		 * Synchronize the application's internal tracing
+		 * configuration and start tracing if the session is
+		 * active.
+		 */
+		ust_app_synchronize(&app, domain, *this, const_cast<ltt_session&>(_session));
+
+		if (_active) {
+			ust_app_start_trace(session_id(), &app);
+		}
+	} else {
+		ust_app_global_destroy(session_id(), &app);
+	}
+}
+
+void ls::ust::domain_orchestrator::_synchronize_all_apps()
+{
+	for (auto *app : lttng::urcu::lfht_iteration_adapter<ust::app,
+							     decltype(ust::app::pid_n),
+							     &ust::app::pid_n>(*ust_app_ht->ht)) {
+		if (!ust_app_get(*app)) {
+			DBG("Could not get application reference as it is being torn down; skipping application");
+			continue;
+		}
+
+		const ust_app_reference app_ref(app);
+
+		synchronize_app(*app);
 	}
 }
 
@@ -1005,28 +1048,7 @@ void ls::ust::domain_orchestrator::start()
 
 	(void) ust_app_clear_quiescent_session(*this);
 
-	/*
-	 * Synchronize every registered application: create the app
-	 * session if needed, push channels/events, and start the trace.
-	 *
-	 * This iterates ust_app_ht (not _app_sessions) because apps
-	 * that registered while the session was inactive do not yet have
-	 * an app session. synchronize_app() (Phase 3) will replace this
-	 * with an _app_sessions-based iteration.
-	 */
-	for (auto *app : lttng::urcu::lfht_iteration_adapter<ust::app,
-							     decltype(ust::app::pid_n),
-							     &ust::app::pid_n>(*ust_app_ht->ht)) {
-		if (!ust_app_get(*app)) {
-			DBG("Could not get application reference as it is being torn down; skipping application");
-			continue;
-		}
-
-		const ust_app_reference app_ref(app);
-
-		ust_app_global_update(
-			app, _session.user_space_domain, *this, const_cast<ltt_session&>(_session));
-	}
+	_synchronize_all_apps();
 }
 
 void ls::ust::domain_orchestrator::stop()
