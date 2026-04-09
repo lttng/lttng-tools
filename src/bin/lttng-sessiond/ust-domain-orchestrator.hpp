@@ -266,21 +266,12 @@ private:
 	}
 
 	/*
-	 * Transitional internal API
-	 *
-	 * The following methods are used only by ust-app.cpp functions
-	 * that have not yet been moved into the orchestrator. They form
-	 * the intended private API boundary for trace class, stream
-	 * group, and per-app statistics management.
-	 *
-	 * Do NOT add new callers outside of ust-app.cpp and
-	 * ust-domain-orchestrator.cpp. These methods will lose their
-	 * transitional callers as the corresponding code is
-	 * internalized (Phases 1-4).
-	 *
-	 * Friend declaration: ust-app.cpp static functions cannot be
-	 * friended directly (internal linkage). A bridge struct defined
-	 * in ust-app.cpp provides compile-time-scoped access.
+	 * Bridge for the remaining ust-app.cpp callers that need access
+	 * to private methods: accumulate_per_pid_closed_app_stats()
+	 * (app session teardown) and _disable_event_on_apps() (agent
+	 * event disable path). ust-app.cpp static functions cannot be
+	 * friended directly (internal linkage), so a bridge struct
+	 * provides compile-time-scoped access.
 	 */
 	friend struct ::ust_app_session_operations;
 

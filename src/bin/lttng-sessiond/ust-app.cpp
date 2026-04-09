@@ -68,16 +68,16 @@ namespace lst = lttng::sessiond::trace;
 namespace lsc = lttng::sessiond::config;
 
 /*
- * Bridge struct granting transitional access to the orchestrator's
- * private trace class, stream group, and statistics methods.
+ * Bridge struct granting access to the orchestrator's private methods
+ * from ust-app.cpp. This struct is declared as a friend of
+ * domain_orchestrator because static functions in this file have
+ * internal linkage and cannot be friended directly.
  *
- * This struct is declared as a friend of domain_orchestrator. It
- * exists solely so that static functions in this file (which cannot
- * be friended directly due to internal linkage) can continue to call
- * orchestrator methods that were moved from public to private.
- *
- * Each forwarding method here will be removed as the corresponding
- * caller is internalized into the orchestrator (Phases 1-4).
+ * Two methods remain:
+ * - accumulate_per_pid_closed_app_stats: called during app session
+ *   teardown to record discarded/lost counters.
+ * - disable_event_on_apps: called by the agent event disable path
+ *   (event.cpp -> ust_app_disable_event_on_apps).
  */
 struct ust_app_session_operations {
 	static void
