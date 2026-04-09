@@ -28,6 +28,7 @@
 
 #include <list>
 #include <stdint.h>
+#include <unordered_map>
 #include <urcu/list.h>
 #include <vector>
 
@@ -155,8 +156,6 @@ struct ust_app_event {
 	bool enabled = false;
 	int handle = 0;
 	struct lttng_ust_abi_object_data *obj = nullptr;
-	char name[LTTNG_UST_ABI_SYM_NAME_LEN] = {};
-	struct lttng_ht_node_str node = {};
 	const lttng::sessiond::config::event_rule_configuration& event_rule_config;
 };
 
@@ -215,8 +214,14 @@ struct ust_app_channel {
 	lttng::sessiond::ust::app_session *session = nullptr;
 	/* Hashtable of ust_app_ctx instances. */
 	struct lttng_ht *ctx = nullptr;
-	/* Hashtable of ust_app_event instances. */
-	struct lttng_ht *events = nullptr;
+	/*
+	 * Per-app events indexed by their event rule configuration. The
+	 * configuration pointer is stable for the lifetime of the recording
+	 * session.
+	 */
+	std::unordered_map<const lttng::sessiond::config::event_rule_configuration *,
+			   ust_app_event *>
+		events;
 	/*
 	 * Node indexed by channel name in the channels' hash table of a session.
 	 */
@@ -643,9 +648,10 @@ int create_ust_app_channel_context(struct ust_app_channel *ua_chan,
 				   struct lttng_ust_context_attr *uctx,
 				   lttng::sessiond::ust::app *app,
 				   const lttng::sessiond::config::context_configuration& ctx_config);
-struct ust_app_event *
-find_ust_app_event_by_config(struct lttng_ht *ht,
-			     const lttng::sessiond::config::event_rule_configuration& event_config);
+struct ust_app_event *find_ust_app_event_by_config(
+	const std::unordered_map<const lttng::sessiond::config::event_rule_configuration *,
+				 ust_app_event *>& events,
+	const lttng::sessiond::config::event_rule_configuration& event_config);
 
 /*
  * Disable an event on all applications tracked by the orchestrator.

@@ -440,40 +440,16 @@ uint64_t get_next_session_id()
  * name, the filter bytecode and the loglevel.
  */
 /*
- * Match function for ust_app_event in the per-channel event hash table.
- * Events are uniquely identified by their event_rule_configuration pointer.
- */
-static int ht_match_ust_app_event(struct cds_lfht_node *node, const void *_key)
-{
-	LTTNG_ASSERT(node);
-	LTTNG_ASSERT(_key);
-
-	const auto *event = lttng_ht_node_container_of(node, &ust_app_event::node);
-	const auto *key =
-		static_cast<const lttng::sessiond::config::event_rule_configuration *>(_key);
-
-	return &event->event_rule_config == key ? 1 : 0;
-}
-
-/*
- * Unique add of an ust app event in the given ht. This uses the custom
- * ht_match_ust_app_event match function and the event name as hash.
+ * Add a per-app event to its channel's event map. The event must not already
+ * exist (keyed by its event rule configuration pointer).
  */
 static void add_unique_ust_app_event(struct ust_app_channel *ua_chan, struct ust_app_event *event)
 {
 	LTTNG_ASSERT(ua_chan);
-	LTTNG_ASSERT(ua_chan->events);
 	LTTNG_ASSERT(event);
 
-	auto *ht = ua_chan->events;
-	const auto *key = &event->event_rule_config;
-
-	auto *node_ptr = cds_lfht_add_unique(ht->ht,
-					     ht->hash_fct(event->node.key, lttng_ht_seed),
-					     ht_match_ust_app_event,
-					     key,
-					     &event->node.node);
-	LTTNG_ASSERT(node_ptr == &event->node.node);
+	const auto result = ua_chan->events.emplace(&event->event_rule_config, event);
+	LTTNG_ASSERT(result.second);
 }
 
 /*
@@ -542,15 +518,13 @@ static void delete_ust_app_ctx(int sock, struct ust_app_ctx *ua_ctx, lsu::app *a
 }
 
 /*
- * Delete ust app event safely. RCU read lock must be held before calling
- * this function.
+ * Delete ust app event safely.
  */
 static void delete_ust_app_event(int sock, struct ust_app_event *ua_event, lsu::app *app)
 {
 	int ret;
 
 	LTTNG_ASSERT(ua_event);
-	ASSERT_RCU_READ_LOCKED();
 
 	if (ua_event->obj != nullptr) {
 		pthread_mutex_lock(&app->sock_lock);
@@ -688,7 +662,6 @@ static void delete_ust_app_channel_rcu(struct rcu_head *head)
 		lttng::utils::container_of(head, &ust_app_channel::rcu_head);
 
 	lttng_ht_destroy(ua_chan->ctx);
-	lttng_ht_destroy(ua_chan->events);
 	delete ua_chan;
 }
 
@@ -802,14 +775,10 @@ void delete_ust_app_channel(int sock,
 	}
 
 	/* Wipe events */
-	for (auto ua_event :
-	     lttng::urcu::lfht_iteration_adapter<ust_app_event,
-						 decltype(ust_app_event::node),
-						 &ust_app_event::node>(*ua_chan->events->ht)) {
-		ret = cds_lfht_del(ua_chan->events->ht, &ua_event->node.node);
-		LTTNG_ASSERT(!ret);
-		delete_ust_app_event(sock, ua_event, app);
+	for (auto& event_pair : ua_chan->events) {
+		delete_ust_app_event(sock, event_pair.second, app);
 	}
+	ua_chan->events.clear();
 
 	if (ua_chan->session->buffer_type == LTTNG_BUFFER_PER_PID) {
 		/* Wipe and free registry from session registry. */
@@ -1494,7 +1463,6 @@ static void init_ust_app_channel(struct ust_app_channel *ua_chan,
 	ua_chan->session = &ua_sess.get();
 	ua_chan->key = get_next_channel_key();
 	ua_chan->ctx = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
-	ua_chan->events = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
 	lttng_ht_node_init_str(&ua_chan->node, ua_chan->name);
 
 	CDS_INIT_LIST_HEAD(&ua_chan->streams.head);
@@ -1683,12 +1651,9 @@ alloc_ust_app_event(const lttng::sessiond::config::event_rule_configuration& eve
 	}
 
 	ua_event->enabled = true;
-	lttng_strncpy(ua_event->name,
-		      get_ust_event_name_from_rule(event_config.event_rule.get()),
-		      sizeof(ua_event->name));
-	lttng_ht_node_init_str(&ua_event->node, ua_event->name);
 
-	DBG3("UST app event %s allocated", ua_event->name);
+	DBG3("UST app event %s allocated",
+	     get_ust_event_name_from_rule(event_config.event_rule.get()));
 
 	return ua_event;
 
@@ -1898,23 +1863,13 @@ static nonstd::optional<ust_app_reference> find_app_by_notify_sock(int sock)
  * Find a per-app event by matching its config pointer.
  *
  * Returns the matching ust_app_event or nullptr if not found.
- * Must be called with the RCU read lock held.
  */
-struct ust_app_event *
-find_ust_app_event_by_config(struct lttng_ht *ht,
-			     const lttng::sessiond::config::event_rule_configuration& event_config)
+struct ust_app_event *find_ust_app_event_by_config(
+	const std::unordered_map<const lsc::event_rule_configuration *, ust_app_event *>& events,
+	const lsc::event_rule_configuration& event_config)
 {
-	LTTNG_ASSERT(ht);
-
-	for (auto *ua_event : lttng::urcu::lfht_iteration_adapter<ust_app_event,
-								  decltype(ust_app_event::node),
-								  &ust_app_event::node>(*ht->ht)) {
-		if (&ua_event->event_rule_config == &event_config) {
-			return ua_event;
-		}
-	}
-
-	return nullptr;
+	const auto it = events.find(&event_config);
+	return it != events.end() ? it->second : nullptr;
 }
 
 /*
@@ -2452,7 +2407,8 @@ create_ust_event(lsu::app *app, struct ust_app_channel *ua_chan, struct ust_app_
 			     app->sock);
 		} else {
 			ERR("UST app create event '%s' failed with ret %d: pid = %d, sock = %d",
-			    ua_event->name,
+			    get_ust_event_name_from_rule(
+				    ua_event->event_rule_config.event_rule.get()),
 			    ret,
 			    app->pid,
 			    app->sock);
@@ -2463,7 +2419,7 @@ create_ust_event(lsu::app *app, struct ust_app_channel *ua_chan, struct ust_app_
 	ua_event->handle = ua_event->obj->header.handle;
 
 	DBG2("UST app event %s created successfully for pid:%d object = %p",
-	     ua_event->name,
+	     get_ust_event_name_from_rule(ua_event->event_rule_config.event_rule.get()),
 	     app->pid,
 	     ua_event->obj);
 
@@ -3285,7 +3241,8 @@ int create_ust_app_event(struct ust_app_channel *ua_chan,
 		if (ret == -LTTNG_UST_ERR_EXIST) {
 			ERR("Tracer for application reported that an event being created already existed: "
 			    "event_name = \"%s\", pid = %d, ppid = %d, uid = %d, gid = %d",
-			    ua_event->name,
+			    get_ust_event_name_from_rule(
+				    ua_event->event_rule_config.event_rule.get()),
 			    app->pid,
 			    app->ppid,
 			    app->uid,
