@@ -50,6 +50,7 @@
 #include <sys/types.h>
 #include <type_traits>
 #include <unistd.h>
+#include <unordered_map>
 #include <unordered_set>
 
 lttng_consumer_global_data the_consumer_data;
@@ -1182,6 +1183,7 @@ int consumer_add_channel(struct lttng_consumer_channel *channel,
 static int update_poll_events(struct lttng_consumer_local_data *ctx,
 			      struct lttng_poll_event *poll_events,
 			      std::vector<struct lttng_consumer_stream *>& streams_to_monitor,
+			      std::unordered_map<int, size_t>& fd_to_stream_index,
 			      struct lttng_ht *ht,
 			      int *nb_inactive_fd,
 			      const std::unordered_set<int>& cool_down,
@@ -1230,6 +1232,7 @@ static int update_poll_events(struct lttng_consumer_local_data *ctx,
 			return -1;
 		}
 
+		fd_to_stream_index[stream->wait_fd] = streams_to_monitor.size();
 		streams_to_monitor.push_back(stream);
 	}
 
@@ -2522,6 +2525,7 @@ void *consumer_thread_data_poll(void *data)
 	/* local view of the streams */
 	struct lttng_consumer_stream *new_stream = nullptr;
 	std::vector<struct lttng_consumer_stream *> local_streams;
+	std::unordered_map<int, size_t> fd_to_stream_index;
 	/* 2 for the consumer_data_pipe and wake up pipe */
 	const int nb_pipes_fd = 2;
 	/* Number of FDs with CONSUMER_ENDPOINT_INACTIVE but still open. */
@@ -2567,6 +2571,7 @@ void *consumer_thread_data_poll(void *data)
 			}
 
 			local_streams.clear();
+			fd_to_stream_index.clear();
 			try {
 				local_streams.reserve(the_consumer_data.stream_count + nb_pipes_fd);
 			} catch (const std::exception& ex) {
@@ -2579,6 +2584,7 @@ void *consumer_thread_data_poll(void *data)
 			ret = update_poll_events(ctx,
 						 &poll_events,
 						 local_streams,
+						 fd_to_stream_index,
 						 data_ht,
 						 &nb_inactive_fd,
 						 cool_down,
@@ -2650,16 +2656,11 @@ void *consumer_thread_data_poll(void *data)
 			continue;
 		}
 
-		/* Determine event indices for data & wakeup FDs */
-		int data_index = -1;
-		int wakeup_index = -1;
+		/* Build fd-to-revents map from the ready set. */
+		std::unordered_map<int, int> ready_revents;
 		for (int idx = 0; idx < num_rdy; idx++) {
-			const auto loop_fd = LTTNG_POLL_GETFD(&poll_events, idx);
-			if (loop_fd == wakeup_fd) {
-				wakeup_index = idx;
-			} else if (loop_fd == data_fd) {
-				data_index = idx;
-			}
+			ready_revents[LTTNG_POLL_GETFD(&poll_events, idx)] =
+				(int) LTTNG_POLL_GETEV(&poll_events, idx);
 		}
 
 		/*
@@ -2667,8 +2668,8 @@ void *consumer_thread_data_poll(void *data)
 		 * beginning of the loop to update the array. We want to prioritize
 		 * array update over low-priority reads.
 		 */
-		if (data_index >= 0 &&
-		    LTTNG_POLL_GETEV(&poll_events, data_index) & (LPOLLIN | LPOLLPRI)) {
+		if (ready_revents.count(data_fd) &&
+		    (ready_revents[data_fd] & (LPOLLIN | LPOLLPRI))) {
 			ssize_t pipe_readlen;
 
 			DBG("consumer_data_pipe wake up");
@@ -2708,8 +2709,8 @@ void *consumer_thread_data_poll(void *data)
 		}
 
 		/* Handle wakeup pipe. */
-		if (wakeup_index >= 0 &&
-		    LTTNG_POLL_GETEV(&poll_events, wakeup_index) & (LPOLLIN | LPOLLPRI)) {
+		if (ready_revents.count(wakeup_fd) &&
+		    (ready_revents[wakeup_fd] & (LPOLLIN | LPOLLPRI))) {
 			char dummy;
 			ssize_t pipe_readlen;
 
@@ -2723,33 +2724,26 @@ void *consumer_thread_data_poll(void *data)
 		}
 
 		/* Take care of high priority channels first. */
-		for (int i = 0; i < num_rdy; i++) {
+		for (const auto& revents_entry : ready_revents) {
 			health_code_update();
 
-			const auto fd = LTTNG_POLL_GETFD(&poll_events, i);
+			const auto fd = revents_entry.first;
 			if (fd == data_fd || fd == wakeup_fd) {
 				continue;
 			}
 
-			int idx = 0;
-			struct lttng_consumer_stream *stream = nullptr;
-			for (auto _stream : local_streams) {
-				if (_stream != nullptr && _stream->wait_fd == fd) {
-					stream = _stream;
-					break;
-				}
-				idx++;
-			}
-
-			if (!stream) {
-				DBG_FMT("Could not find local stream matching fd={}", fd);
+			const auto stream_it = fd_to_stream_index.find(fd);
+			if (stream_it == fd_to_stream_index.end() ||
+			    !local_streams[stream_it->second]) {
 				continue;
 			}
 
-			if (LTTNG_POLL_GETEV(&poll_events, i) & LPOLLPRI) {
+			const auto stream_idx = stream_it->second;
+
+			if (revents_entry.second & LPOLLPRI) {
 				DBG_FMT("Urgent read on fd={}", fd);
 				high_prio = 1;
-				len = ctx->on_buffer_ready(stream, ctx, false);
+				len = ctx->on_buffer_ready(local_streams[stream_idx], ctx, false);
 
 				if (len == 0 || len == -ENODATA || len == -EAGAIN) {
 					cool_down.insert(fd);
@@ -2758,10 +2752,11 @@ void *consumer_thread_data_poll(void *data)
 				/* it's ok to have an unavailable sub-buffer */
 				if (len < 0 && len != -EAGAIN && len != -ENODATA) {
 					/* Clean the stream and free it. */
-					consumer_del_stream(stream, data_ht);
-					local_streams[idx] = nullptr;
+					consumer_del_stream(local_streams[stream_idx], data_ht);
+					local_streams[stream_idx] = nullptr;
 				} else if (len > 0) {
-					stream->has_data_left_to_be_read_before_teardown = 1;
+					local_streams[stream_idx]
+						->has_data_left_to_be_read_before_teardown = 1;
 				}
 			}
 		}
@@ -2797,19 +2792,15 @@ void *consumer_thread_data_poll(void *data)
 				continue;
 			}
 
-			nonstd::optional<int> revent;
-			for (int idx = 0; idx < num_rdy; idx++) {
-				if (LTTNG_POLL_GETFD(&poll_events, idx) == fd) {
-					revent = (int) LTTNG_POLL_GETEV(&poll_events, idx);
-					break;
-				}
-			}
+			const auto revents_it = ready_revents.find(fd);
+			const auto has_revent = revents_it != ready_revents.end();
+			const auto revent = has_revent ? revents_it->second : 0;
 
-			if ((revent && (revent.value() & LPOLLIN)) ||
+			if ((has_revent && (revent & LPOLLIN)) ||
 			    local_streams[i]->hangup_flush_done || local_streams[i]->has_data) {
 				DBG_FMT("Normal read on fd={}, revents={}, has_data={}, hangup_flush_done={}",
 					fd,
-					revent.value_or(0),
+					revent,
 					(int) local_streams[i]->has_data,
 					local_streams[i]->hangup_flush_done);
 				len = ctx->on_buffer_ready(local_streams[i], ctx, false);
@@ -2848,16 +2839,12 @@ void *consumer_thread_data_poll(void *data)
 				continue;
 			}
 
-			nonstd::optional<int> revent;
-			for (int idx = 0; idx < num_rdy; idx++) {
-				if (LTTNG_POLL_GETFD(&poll_events, idx) == fd) {
-					revent = (int) LTTNG_POLL_GETEV(&poll_events, idx);
-					break;
-				}
-			}
+			const auto revents_it = ready_revents.find(fd);
+			const auto has_revent = revents_it != ready_revents.end();
+			const auto revent = has_revent ? revents_it->second : 0;
 
 			if (!local_streams[i]->hangup_flush_done &&
-			    (revent && (revent.value() & (LPOLLHUP | LPOLLERR))) &&
+			    (has_revent && (revent & (LPOLLHUP | LPOLLERR))) &&
 			    (the_consumer_data.type == LTTNG_CONSUMER32_UST ||
 			     the_consumer_data.type == LTTNG_CONSUMER64_UST)) {
 				DBG_FMT("fd={} is hup|err. Attempting flush and read.", fd);
@@ -2879,13 +2866,13 @@ void *consumer_thread_data_poll(void *data)
 			 * read no data in this pass, we can remove the
 			 * stream from its hash table.
 			 */
-			if (revent && (revent.value() & LPOLLHUP)) {
+			if (has_revent && (revent & LPOLLHUP)) {
 				DBG_FMT("Polling fd={} tells it has hung up.", fd);
 				if (!local_streams[i]->has_data_left_to_be_read_before_teardown) {
 					consumer_del_stream(local_streams[i], data_ht);
 					local_streams[i] = nullptr;
 				}
-			} else if (revent && (revent.value() & LPOLLERR)) {
+			} else if (has_revent && (revent & LPOLLERR)) {
 				ERR_FMT("Error returned in polling fd={}", fd);
 				if (!local_streams[i]->has_data_left_to_be_read_before_teardown) {
 					consumer_del_stream(local_streams[i], data_ht);
