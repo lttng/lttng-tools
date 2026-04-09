@@ -187,8 +187,7 @@ static int test_notification(struct lttng_notification_channel *notification_cha
 	do {
 		notification_channel_status = lttng_notification_channel_get_next_notification(
 			notification_channel, &notification);
-	} while (notification_channel_status ==
-		 LTTNG_NOTIFICATION_CHANNEL_STATUS_INTERRUPTED);
+	} while (notification_channel_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INTERRUPTED);
 	ok(notification_channel_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK && notification,
 	   "Get %s notification from notification channel",
 	   expected_notification_type_name);
