@@ -190,11 +190,14 @@ function test_multi_app ()
 	# Test notification reception
 	for (( i = 0; i < $nr_notification_expected; i++ )); do
 
-		# Stop consumerd consumption to force high notification
-		start_lttng_tracing_ok $SESSION_NAME
+		# Pause consumerd consumption before starting tracing to
+		# prevent data consumption from racing with the start of
+		# tracing. This ensures that the buffer usage crosses the
+		# high threshold deterministically.
 		for pipe in "${consumerd_pipe[@]}"; do
 			stop_consumerd "${pipe}"
 		done
+		start_lttng_tracing_ok $SESSION_NAME
 
 		wait_for_message $output_dir "${high_output_file_pattern}" "notification: high $i"
 
@@ -392,12 +395,13 @@ function test_on_register_evaluation ()
 
 	wait_for_message $output_dir "${high_app_output_file}" "sync: ready"
 
-	# Stop consumerd consumption to force high notification
-	start_lttng_tracing_ok $SESSION_NAME
-
+	# Pause consumerd consumption before starting tracing to
+	# prevent data consumption from racing with the start of
+	# tracing.
 	for pipe in "${consumerd_pipe[@]}"; do
 		stop_consumerd "${pipe}"
 	done
+	start_lttng_tracing_ok $SESSION_NAME
 
 	wait_for_message $output_dir "${high_app_output_file}" "notification: high 0"
 
