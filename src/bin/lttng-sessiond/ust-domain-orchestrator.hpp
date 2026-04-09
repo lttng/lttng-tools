@@ -401,6 +401,14 @@ private:
 	void _assert_app_sessions_consistent() const;
 
 	/*
+	 * Apply a channel or event operation on all applications that have
+	 * an app session for this recording session. These methods iterate
+	 * `_app_sessions` and call the corresponding per-app helpers.
+	 */
+	void _enable_channel_on_apps(lttng::c_string_view channel_name);
+	void _disable_channel_on_apps(lttng::c_string_view channel_name);
+
+	/*
 	 * Push pending metadata from a trace class to its consumer.
 	 * The return value is intentionally ignored by most callers
 	 * (best-effort push before rotate, clear, flush).

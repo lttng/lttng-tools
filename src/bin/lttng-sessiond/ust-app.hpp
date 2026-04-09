@@ -556,8 +556,6 @@ int ust_app_create_event_glb(
 	std::uint64_t session_id,
 	lttng::c_string_view channel_name,
 	const lttng::sessiond::config::event_rule_configuration& event_rule_config);
-int ust_app_disable_channel_glb(std::uint64_t session_id, lttng::c_string_view channel_name);
-int ust_app_enable_channel_glb(std::uint64_t session_id, lttng::c_string_view channel_name);
 int ust_app_enable_event_glb(std::uint64_t session_id,
 			     lttng::c_string_view channel_name,
 			     const lttng::sessiond::config::event_rule_configuration& event_config);
@@ -739,18 +737,6 @@ static inline void ust_app_global_update_all_event_notifier_rules(void)
 
 static inline int ust_app_setup_event_notifier_group(lttng::sessiond::ust::app *app
 						     __attribute__((unused)))
-{
-	return 0;
-}
-
-static inline int ust_app_disable_channel_glb(std::uint64_t /* session_id */,
-					      lttng::c_string_view /* channel_name */)
-{
-	return 0;
-}
-
-static inline int ust_app_enable_channel_glb(std::uint64_t /* session_id */,
-					     lttng::c_string_view /* channel_name */)
 {
 	return 0;
 }

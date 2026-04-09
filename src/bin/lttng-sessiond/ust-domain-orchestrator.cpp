@@ -594,6 +594,65 @@ void ls::ust::domain_orchestrator::_validate_channel_attributes(
 	}
 }
 
+void ls::ust::domain_orchestrator::_enable_channel_on_apps(lttng::c_string_view channel_name)
+{
+	const lttng::urcu::read_lock_guard read_lock;
+
+	for (const auto& app_session_pair : _app_sessions) {
+		auto *app = const_cast<ust::app *>(app_session_pair.first);
+		auto *ua_sess = app_session_pair.second;
+
+		if (!ust_app_get(*app)) {
+			continue;
+		}
+
+		const ust_app_reference app_ref(app);
+
+		if (!app->compatible) {
+			continue;
+		}
+
+		/* Enable channel onto application. */
+		(void) enable_ust_app_channel(ua_sess->lock(), channel_name, app);
+	}
+}
+
+void ls::ust::domain_orchestrator::_disable_channel_on_apps(lttng::c_string_view channel_name)
+{
+	int ret = 0;
+	const lttng::urcu::read_lock_guard read_lock;
+
+	for (const auto& app_session_pair : _app_sessions) {
+		auto *app = const_cast<ust::app *>(app_session_pair.first);
+		auto *ua_sess = app_session_pair.second;
+
+		if (!ust_app_get(*app)) {
+			continue;
+		}
+
+		const ust_app_reference app_ref(app);
+
+		if (!app->compatible) {
+			continue;
+		}
+
+		struct lttng_ht_iter uiter;
+		lttng_ht_lookup(ua_sess->channels, (void *) channel_name.data(), &uiter);
+		auto *ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
+
+		/* If the session exists for the app, the channel must be there. */
+		LTTNG_ASSERT(ua_chan_node);
+
+		auto *ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
+		LTTNG_ASSERT(ua_chan->enabled);
+
+		ret = disable_ust_app_channel(ua_sess->lock(), ua_chan, app);
+		if (ret < 0) {
+			continue;
+		}
+	}
+}
+
 void ls::ust::domain_orchestrator::enable_channel(
 	const config::recording_channel_configuration& channel_config)
 {
@@ -613,7 +672,7 @@ void ls::ust::domain_orchestrator::enable_channel(
 	 * successfully enabled on the session daemon side so the enable-channel
 	 * command is a success.
 	 */
-	(void) ust_app_enable_channel_glb(session_id(), channel_config.name);
+	_enable_channel_on_apps(channel_config.name);
 
 	_assert_app_sessions_consistent();
 }
@@ -630,10 +689,7 @@ void ls::ust::domain_orchestrator::disable_channel(
 		return;
 	}
 
-	const auto ret = ust_app_disable_channel_glb(session_id(), channel_config.name);
-	if (ret < 0 && ret != -LTTNG_UST_ERR_EXIST) {
-		LTTNG_THROW_CTL("Failed to disable UST channel", LTTNG_ERR_UST_CHAN_DISABLE_FAIL);
-	}
+	_disable_channel_on_apps(channel_config.name);
 
 	_assert_app_sessions_consistent();
 }
