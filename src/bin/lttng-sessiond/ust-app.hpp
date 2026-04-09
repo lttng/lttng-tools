@@ -592,6 +592,46 @@ bool ust_app_supports_counters(const lttng::sessiond::ust::app *app);
 void ust_app_notify_reclaimed_owner_ids(const std::vector<uint32_t>& owners);
 
 /*
+ * Low-level channel helpers that remain in ust-app.cpp. They perform
+ * I/O with applications and consumer daemons but do not access
+ * orchestrator state. Exposed so the orchestrator's channel sync
+ * methods can call them.
+ */
+struct ust_app_channel *
+alloc_ust_app_channel(const char *name,
+		      const lttng::sessiond::ust::app_session::locked_weak_ref& ua_sess,
+		      struct lttng_ust_abi_channel_attr *attr,
+		      const lttng::sessiond::config::recording_channel_configuration& config);
+void init_ust_app_channel_from_config(struct ust_app_channel *ua_chan);
+enum lttng_ust_abi_chan_type allocation_policy_to_ust_channel_type(
+	lttng::sessiond::config::recording_channel_configuration::buffer_allocation_policy_t policy);
+lttng::sessiond::config::recording_channel_configuration::buffer_allocation_policy_t
+ust_channel_type_to_allocation_policy(enum lttng_ust_abi_chan_type type);
+int do_consumer_create_channel(struct consumer_output *consumer,
+			       lttng::sessiond::ust::app_session *ua_sess,
+			       struct ust_app_channel *ua_chan,
+			       int bitness,
+			       lttng::sessiond::ust::trace_class *registry,
+			       struct lttng_trace_chunk *current_trace_chunk,
+			       enum lttng_trace_format trace_format);
+int send_channel_pid_to_ust(lttng::sessiond::ust::app *app,
+			    lttng::sessiond::ust::app_session *ua_sess,
+			    struct ust_app_channel *ua_chan);
+bool is_context_redundant(
+	const lttng::sessiond::config::recording_channel_configuration& chan_config,
+	const lttng::sessiond::config::context_configuration& ctx_config);
+int enable_ust_channel(lttng::sessiond::ust::app *app,
+		       const lttng::sessiond::ust::app_session::locked_weak_ref& ua_sess,
+		       struct ust_app_channel *ua_chan);
+int disable_ust_channel(lttng::sessiond::ust::app *app,
+			const lttng::sessiond::ust::app_session::locked_weak_ref& ua_sess,
+			struct ust_app_channel *ua_chan);
+int create_ust_app_metadata(const lttng::sessiond::ust::app_session::locked_weak_ref& ua_sess,
+			    lttng::sessiond::ust::app *app,
+			    struct consumer_output *consumer,
+			    const ltt_session& session);
+
+/*
  * Per-app helpers shared between ust-app.cpp and the domain orchestrator.
  * These are low-level functions that operate on a single app session and
  * its channel/event structures. The orchestrator iterates its app session
@@ -644,12 +684,6 @@ std::uint64_t get_next_session_id();
  * app-level logic (lttng_ust_ctl calls, channel/metadata creation)
  * that has not yet been internalized.
  */
-void ust_app_synchronize_channels_and_metadata(
-	lttng::sessiond::ust::app *app,
-	lttng::sessiond::ust::app_session *ua_sess,
-	const lttng::sessiond::config::domain& config_domain,
-	const lttng::sessiond::ust::domain_orchestrator& orchestrator,
-	ltt_session& session);
 int ust_app_start_trace(std::uint64_t session_id, lttng::sessiond::ust::app *app);
 int ust_app_stop_trace(std::uint64_t session_id, lttng::sessiond::ust::app *app);
 void ust_app_global_destroy(std::uint64_t session_id, lttng::sessiond::ust::app *app);

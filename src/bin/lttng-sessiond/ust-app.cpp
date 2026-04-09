@@ -19,6 +19,7 @@
 #include "manage-apps.hpp"
 #include "notification-thread-commands.hpp"
 #include "session.hpp"
+#include "ust-app-channel-helpers.hpp"
 #include "ust-app.hpp"
 #include "ust-consumer.hpp"
 #include "ust-domain-orchestrator.hpp"
@@ -79,64 +80,6 @@ namespace lsc = lttng::sessiond::config;
  * caller is internalized into the orchestrator (Phases 1-4).
  */
 struct ust_app_session_operations {
-	static lttng_ust_context_attr
-	make_ust_context_attr(const lsc::context_configuration& ctx_config)
-	{
-		return lsu::domain_orchestrator::make_ust_context_attr(ctx_config);
-	}
-
-	static std::uint64_t
-	trace_class_stream_class_handle(const lsu::domain_orchestrator& o,
-					const lsc::recording_channel_configuration& chan_config)
-	{
-		return o.trace_class_stream_class_handle(chan_config);
-	}
-
-	static lsu::stream_group&
-	find_or_create_per_uid_stream_group(lsu::domain_orchestrator& o,
-					    const lsc::recording_channel_configuration& chan_config,
-					    uid_t uid,
-					    lsu::application_abi abi,
-					    std::uint64_t consumer_key,
-					    lttng::sessiond::ust::ust_object_data channel_object,
-					    lsu::trace_class& tc,
-					    lsu::stream_class& sc)
-	{
-		return o.find_or_create_per_uid_stream_group(
-			chan_config, uid, abi, consumer_key, std::move(channel_object), tc, sc);
-	}
-
-	static lsu::stream_group&
-	get_per_uid_stream_group(lsu::domain_orchestrator& o,
-				 const lsc::recording_channel_configuration& chan_config,
-				 uid_t uid,
-				 lsu::application_abi abi)
-	{
-		return o.get_per_uid_stream_group(chan_config, uid, abi);
-	}
-
-	static bool
-	has_per_uid_stream_group(const lsu::domain_orchestrator& o,
-				 const lsc::recording_channel_configuration& chan_config,
-				 uid_t uid,
-				 lsu::application_abi abi)
-	{
-		return o.has_per_uid_stream_group(chan_config, uid, abi);
-	}
-
-	static lsu::stream_group&
-	find_or_create_per_pid_stream_group(lsu::domain_orchestrator& o,
-					    const lsc::recording_channel_configuration& chan_config,
-					    const lsu::app& app,
-					    std::uint64_t consumer_key,
-					    lttng::sessiond::ust::ust_object_data channel_object,
-					    lsu::trace_class& tc,
-					    lsu::stream_class& sc)
-	{
-		return o.find_or_create_per_pid_stream_group(
-			chan_config, app, consumer_key, std::move(channel_object), tc, sc);
-	}
-
 	static void
 	accumulate_per_pid_closed_app_stats(lsu::domain_orchestrator& o,
 					    const lsc::recording_channel_configuration& chan_config,
@@ -174,7 +117,7 @@ static pthread_mutex_t next_channel_key_lock = PTHREAD_MUTEX_INITIALIZER;
 static uint64_t _next_session_id;
 static pthread_mutex_t next_session_id_lock = PTHREAD_MUTEX_INITIALIZER;
 
-static inline lttng::sessiond::config::recording_channel_configuration::buffer_allocation_policy_t
+lttng::sessiond::config::recording_channel_configuration::buffer_allocation_policy_t
 ust_channel_type_to_allocation_policy(enum lttng_ust_abi_chan_type type)
 {
 	switch (type) {
@@ -191,7 +134,7 @@ ust_channel_type_to_allocation_policy(enum lttng_ust_abi_chan_type type)
 	}
 }
 
-static inline enum lttng_ust_abi_chan_type allocation_policy_to_ust_channel_type(
+enum lttng_ust_abi_chan_type allocation_policy_to_ust_channel_type(
 	lttng::sessiond::config::recording_channel_configuration::buffer_allocation_policy_t policy)
 {
 	namespace lsc = lttng::sessiond::config;
@@ -828,10 +771,10 @@ static void save_per_pid_lost_discarded_counters(struct ust_app_channel *ua_chan
  *
  * The session list lock must be held by the caller.
  */
-static void delete_ust_app_channel(int sock,
-				   struct ust_app_channel *ua_chan,
-				   lsu::app *app,
-				   const lsu::trace_class::locked_ref& locked_registry)
+void delete_ust_app_channel(int sock,
+			    struct ust_app_channel *ua_chan,
+			    lsu::app *app,
+			    const lsu::trace_class::locked_ref& locked_registry)
 {
 	int ret;
 
@@ -1578,7 +1521,7 @@ static void init_ust_app_channel(struct ust_app_channel *ua_chan,
 /*
  * Allocate a recording channel with an associated config reference.
  */
-static struct ust_app_channel *
+struct ust_app_channel *
 alloc_ust_app_channel(const char *name,
 		      const lsu::app_session::locked_weak_ref& ua_sess,
 		      struct lttng_ust_abi_channel_attr *attr,
@@ -2251,9 +2194,9 @@ error:
 /*
  * Disable the specified channel on to UST tracer for the UST session.
  */
-static int disable_ust_channel(lsu::app *app,
-			       const lsu::app_session::locked_weak_ref& ua_sess,
-			       struct ust_app_channel *ua_chan)
+int disable_ust_channel(lsu::app *app,
+			const lsu::app_session::locked_weak_ref& ua_sess,
+			struct ust_app_channel *ua_chan)
 {
 	int ret;
 
@@ -2294,9 +2237,9 @@ error:
 /*
  * Enable the specified channel on to UST tracer for the UST session.
  */
-static int enable_ust_channel(lsu::app *app,
-			      const lsu::app_session::locked_weak_ref& ua_sess,
-			      struct ust_app_channel *ua_chan)
+int enable_ust_channel(lsu::app *app,
+		       const lsu::app_session::locked_weak_ref& ua_sess,
+		       struct ust_app_channel *ua_chan)
 {
 	int ret;
 
@@ -2383,8 +2326,9 @@ error:
  *
  * Return 0 on success. On error, a negative value is returned.
  */
-static int
-send_channel_pid_to_ust(lsu::app *app, lsu::app_session *ua_sess, struct ust_app_channel *ua_chan)
+int send_channel_pid_to_ust(lsu::app *app,
+			    lsu::app_session *ua_sess,
+			    struct ust_app_channel *ua_chan)
 {
 	int ret;
 
@@ -2802,7 +2746,7 @@ static void shadow_copy_event(struct ust_app_event *ua_event)
  * This replaces the former shadow_copy_channel which copied from ltt_ust_channel.
  * The trace_class_stream_class_handle and channel type are set by the caller.
  */
-static void init_ust_app_channel_from_config(struct ust_app_channel *ua_chan)
+void init_ust_app_channel_from_config(struct ust_app_channel *ua_chan)
 {
 	namespace lsc = lttng::sessiond::config;
 	const auto& config =
@@ -3108,13 +3052,13 @@ error:
  *
  * Return 0 on success or else a negative value.
  */
-static int do_consumer_create_channel(struct consumer_output *consumer,
-				      lsu::app_session *ua_sess,
-				      struct ust_app_channel *ua_chan,
-				      int bitness,
-				      lsu::trace_class *registry,
-				      struct lttng_trace_chunk *current_trace_chunk,
-				      enum lttng_trace_format trace_format)
+int do_consumer_create_channel(struct consumer_output *consumer,
+			       lsu::app_session *ua_sess,
+			       struct ust_app_channel *ua_chan,
+			       int bitness,
+			       lsu::trace_class *registry,
+			       struct lttng_trace_chunk *current_trace_chunk,
+			       enum lttng_trace_format trace_format)
 {
 	int ret;
 	unsigned int nb_fd = 0;
@@ -3210,10 +3154,10 @@ error:
  *
  * Return 0 on success else a negative value.
  */
-static int send_channel_uid_to_ust(lsu::stream_group& stream_group,
-				   lsu::app *app,
-				   lsu::app_session *ua_sess,
-				   struct ust_app_channel *ua_chan)
+int send_channel_uid_to_ust(lsu::stream_group& stream_group,
+			    lsu::app *app,
+			    lsu::app_session *ua_sess,
+			    struct ust_app_channel *ua_chan)
 {
 	int ret;
 
@@ -3295,418 +3239,6 @@ static int send_channel_uid_to_ust(lsu::stream_group& stream_group,
 
 		(void) release_ust_app_stream(-1, &app_stream, app);
 	}
-
-error:
-	return ret;
-}
-
-/*
- * Create and send to the application the created buffers with per UID buffers.
- *
- * This MUST be called with a RCU read side lock acquired.
- * The session's lock must be acquired.
- *
- * Return 0 on success else a negative value.
- */
-static int create_channel_per_uid(lsu::app *app,
-				  struct consumer_output *consumer,
-				  std::uint64_t session_id,
-				  lsu::app_session *ua_sess,
-				  struct ust_app_channel *ua_chan,
-				  ltt_session& session)
-{
-	int ret;
-	enum lttng_error_code notification_ret;
-
-	LTTNG_ASSERT(app);
-	LTTNG_ASSERT(consumer);
-	LTTNG_ASSERT(ua_sess);
-	LTTNG_ASSERT(ua_chan);
-	ASSERT_RCU_READ_LOCKED();
-
-	DBG("UST app creating channel %s with per UID buffers", ua_chan->name);
-
-	const auto& recording_config =
-		static_cast<const lttng::sessiond::config::recording_channel_configuration&>(
-			ua_chan->channel_config);
-	const auto app_abi = app->abi.bits_per_long == 32 ? lsu::application_abi::ABI_32 :
-							    lsu::application_abi::ABI_64;
-	auto& orchestrator = static_cast<lsu::domain_orchestrator&>(session.get_ust_orchestrator());
-
-	/*
-	 * Check if the per-UID stream group already exists for this
-	 * channel. If so, the channel has already been created on the
-	 * consumer and we only need to send it to this application.
-	 */
-	if (ust_app_session_operations::has_per_uid_stream_group(
-		    orchestrator, recording_config, app->uid, app_abi)) {
-		goto send_channel;
-	}
-
-	/*
-	 * Look up the per-UID trace class. It must exist: it was created
-	 * during app-session setup (find_or_create_ust_app_session).
-	 */
-	{
-		auto trace_class_ptr = the_trace_class_index->find_per_uid(
-			session_id, static_cast<std::uint32_t>(app_abi), app->uid);
-		LTTNG_ASSERT(trace_class_ptr);
-
-		/* Register the stream class (CTF channel) in the trace class. */
-		try {
-			trace_class_ptr->add_channel(
-				ua_chan->trace_class_stream_class_handle,
-				ust_channel_type_to_allocation_policy(ua_chan->attr.type));
-		} catch (const std::exception& ex) {
-			ERR("Failed to add a channel registry to userspace registry session: %s",
-			    ex.what());
-			ret = -1;
-			goto error;
-		}
-
-		/*
-		 * Create the buffers on the consumer side. This call populates the
-		 * ust app channel object with all streams and data object.
-		 */
-		ret = do_consumer_create_channel(consumer,
-						 ua_sess,
-						 ua_chan,
-						 app->abi.bits_per_long,
-						 trace_class_ptr.get(),
-						 session.current_trace_chunk,
-						 session.trace_format);
-		if (ret < 0) {
-			ERR("Error creating UST channel \"%s\" on the consumer daemon",
-			    ua_chan->name);
-
-			auto locked_registry = trace_class_ptr->lock();
-			try {
-				locked_registry->remove_channel(
-					ua_chan->trace_class_stream_class_handle, false);
-			} catch (const std::exception& ex) {
-				DBG("Could not find channel for removal: %s", ex.what());
-			}
-			goto error;
-		}
-
-		/* Set the consumer key on the stream class. */
-		{
-			auto locked_registry = trace_class_ptr->lock();
-			auto& ust_reg_chan =
-				locked_registry->channel(ua_chan->trace_class_stream_class_handle);
-
-			ust_reg_chan._consumer_key = ua_chan->key;
-		}
-
-		/*
-		 * Transfer channel and stream objects directly to the
-		 * orchestrator's stream group.
-		 */
-		{
-			auto locked_registry = trace_class_ptr->lock();
-			auto& stream_class_ref =
-				locked_registry->channel(ua_chan->trace_class_stream_class_handle);
-
-			lsu::ust_object_data channel_obj(ua_chan->obj);
-			ua_chan->obj = nullptr;
-
-			auto& stream_group =
-				ust_app_session_operations::find_or_create_per_uid_stream_group(
-					orchestrator,
-					recording_config,
-					app->uid,
-					app_abi,
-					ua_chan->key,
-					std::move(channel_obj),
-					*trace_class_ptr,
-					stream_class_ref);
-
-			unsigned int cpu_idx = 0;
-			for (auto *stream :
-			     lttng::urcu::list_iteration_adapter<lsu::app_stream,
-								 &lsu::app_stream::list>(
-				     ua_chan->streams.head)) {
-				stream_group.add_stream(cpu_idx, lsu::ust_object_data(stream->obj));
-				stream->obj = nullptr;
-				cpu_idx++;
-			}
-		}
-	}
-
-	/* Notify the notification subsystem of the channel's creation. */
-	notification_ret = notification_thread_command_add_channel(
-		the_notification_thread_handle,
-		session.id,
-		ua_chan->name,
-		ua_chan->key,
-		LTTNG_DOMAIN_UST,
-		ua_chan->attr.subbuf_size * ua_chan->attr.num_subbuf);
-	if (notification_ret != LTTNG_OK) {
-		ret = -(int) notification_ret;
-		ERR("Failed to add channel to notification thread");
-		goto error;
-	}
-
-send_channel:
-	/* Send buffers to the application. */
-	{
-		auto& sg = ust_app_session_operations::get_per_uid_stream_group(
-			orchestrator, recording_config, app->uid, app_abi);
-
-		ret = send_channel_uid_to_ust(sg, app, ua_sess, ua_chan);
-		if (ret < 0) {
-			if (ret != -ENOTCONN) {
-				ERR("Error sending channel to application");
-			}
-			goto error;
-		}
-	}
-
-error:
-	return ret;
-}
-
-/*
- * Create and send to the application the created buffers with per PID buffers.
- *
- * Called with UST app session lock held.
- * The session's lock must be acquired.
- *
- * Return 0 on success else a negative value.
- */
-static int create_channel_per_pid(lsu::app *app,
-				  struct consumer_output *consumer,
-				  const lsu::app_session::locked_weak_ref& ua_sess,
-				  struct ust_app_channel *ua_chan,
-				  ltt_session& session)
-{
-	int ret;
-	enum lttng_error_code cmd_ret;
-	uint64_t chan_reg_key;
-
-	LTTNG_ASSERT(app);
-	LTTNG_ASSERT(consumer);
-	LTTNG_ASSERT(ua_chan);
-
-	DBG("UST app creating channel %s with per PID buffers", ua_chan->name);
-
-	const lttng::urcu::read_lock_guard read_lock;
-
-	auto registry = ust_app_get_session_registry(ua_sess->get_identifier());
-	/* The UST app session lock is held, registry shall not be null. */
-	LTTNG_ASSERT(registry);
-
-	ASSERT_LOCKED(session._lock);
-
-	/* Create and add a new channel registry to session. */
-	try {
-		registry->add_channel(ua_chan->key,
-				      ust_channel_type_to_allocation_policy(ua_chan->attr.type));
-	} catch (const std::exception& ex) {
-		ERR("Error creating the UST channel \"%s\" registry instance: %s",
-		    ua_chan->name,
-		    ex.what());
-		ret = -1;
-		goto error;
-	}
-
-	/* Create and get channel on the consumer side. */
-	ret = do_consumer_create_channel(consumer,
-					 &ua_sess.get(),
-					 ua_chan,
-					 app->abi.bits_per_long,
-					 registry.get(),
-					 session.current_trace_chunk,
-					 session.trace_format);
-	if (ret < 0) {
-		ERR("Error creating UST channel \"%s\" on the consumer daemon", ua_chan->name);
-		goto error_remove_from_registry;
-	}
-
-	ret = send_channel_pid_to_ust(app, &ua_sess.get(), ua_chan);
-	if (ret < 0) {
-		if (ret != -ENOTCONN) {
-			ERR("Error sending channel to application");
-		}
-		goto error_remove_from_registry;
-	}
-
-	chan_reg_key = ua_chan->key;
-	{
-		auto locked_registry = registry->lock();
-
-		auto& ust_reg_chan = locked_registry->channel(chan_reg_key);
-		ust_reg_chan._consumer_key = ua_chan->key;
-	}
-
-	/*
-	 * Populate the orchestrator's per-PID stream group map.
-	 * During the dual-write transition, the per-app channel
-	 * retains the authoritative channel and stream objects. The
-	 * stream group's channel object is null during this period;
-	 * ownership will be transferred when the per-app channel
-	 * objects are managed by the orchestrator.
-	 */
-	{
-		const auto& recording_config =
-			static_cast<const lttng::sessiond::config::recording_channel_configuration&>(
-				ua_chan->channel_config);
-		auto& trace_class_ref = *registry;
-		auto locked_registry = trace_class_ref.lock();
-		auto& stream_class_ref = locked_registry->channel(chan_reg_key);
-
-		auto& orchestrator =
-			static_cast<lsu::domain_orchestrator&>(session.get_ust_orchestrator());
-
-		ust_app_session_operations::find_or_create_per_pid_stream_group(
-			orchestrator,
-			recording_config,
-			*app,
-			ua_chan->key,
-			lsu::ust_object_data(nullptr),
-			trace_class_ref,
-			stream_class_ref);
-	}
-
-	cmd_ret = notification_thread_command_add_channel(the_notification_thread_handle,
-							  session.id,
-							  ua_chan->name,
-							  ua_chan->key,
-							  LTTNG_DOMAIN_UST,
-							  ua_chan->attr.subbuf_size *
-								  ua_chan->attr.num_subbuf);
-	if (cmd_ret != LTTNG_OK) {
-		ret = -(int) cmd_ret;
-		ERR("Failed to add channel to notification thread");
-		goto error_remove_from_registry;
-	}
-
-error_remove_from_registry:
-	if (ret) {
-		try {
-			auto locked_registry = registry->lock();
-			locked_registry->remove_channel(ua_chan->key, false);
-		} catch (const std::exception& ex) {
-			DBG("Could not find channel for removal: %s", ex.what());
-		}
-	}
-error:
-	return ret;
-}
-
-/*
- * From an already allocated ust app channel, create the channel buffers if
- * needed and send them to the application. This MUST be called with a RCU read
- * side lock acquired.
- *
- * Called with UST app session lock held.
- *
- * Return 0 on success or else a negative value. Returns -ENOTCONN if
- * the application exited concurrently.
- */
-static int ust_app_channel_send(lsu::app *app,
-				struct consumer_output *consumer,
-				lttng_buffer_type buffer_type,
-				std::uint64_t session_id,
-				const lsu::app_session::locked_weak_ref& ua_sess,
-				struct ust_app_channel *ua_chan,
-				ltt_session& session)
-{
-	int ret;
-
-	LTTNG_ASSERT(app);
-	LTTNG_ASSERT(consumer);
-	LTTNG_ASSERT(ua_chan);
-	ASSERT_RCU_READ_LOCKED();
-
-	/* Handle buffer type before sending the channel to the application. */
-	switch (buffer_type) {
-	case LTTNG_BUFFER_PER_UID:
-	{
-		ret = create_channel_per_uid(
-			app, consumer, session_id, &ua_sess.get(), ua_chan, session);
-		if (ret < 0) {
-			goto error;
-		}
-		break;
-	}
-	case LTTNG_BUFFER_PER_PID:
-	{
-		ret = create_channel_per_pid(app, consumer, ua_sess, ua_chan, session);
-		if (ret < 0) {
-			goto error;
-		}
-		break;
-	}
-	default:
-		abort();
-		ret = -EINVAL;
-		goto error;
-	}
-
-	/* Initialize ust objd object using the received handle and add it. */
-	lttng_ht_node_init_ulong(&ua_chan->ust_objd_node, ua_chan->handle);
-	lttng_ht_add_unique_ulong(app->ust_objd, &ua_chan->ust_objd_node);
-
-	/* If channel is not enabled, disable it on the tracer */
-	if (!ua_chan->enabled) {
-		ret = disable_ust_channel(app, ua_sess, ua_chan);
-		if (ret < 0) {
-			goto error;
-		}
-	}
-
-error:
-	return ret;
-}
-
-/*
- * Create UST app channel and return it through ua_chanp if not NULL.
- *
- * Called with UST app session lock and RCU read-side lock held.
- *
- * Return 0 on success or else a negative value.
- */
-static int ust_app_channel_allocate(
-	const lsu::app_session::locked_weak_ref& ua_sess,
-	struct ust_app_channel **ua_chanp,
-	const lttng::sessiond::config::recording_channel_configuration& channel_config,
-	std::uint64_t trace_class_stream_class_handle)
-{
-	int ret = 0;
-	struct lttng_ht_iter iter;
-	struct lttng_ht_node_str *ua_chan_node;
-	struct ust_app_channel *ua_chan;
-
-	ASSERT_RCU_READ_LOCKED();
-
-	/* Lookup channel in the ust app session */
-	lttng_ht_lookup(ua_sess->channels, (void *) channel_config.name.c_str(), &iter);
-	ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
-	if (ua_chan_node != nullptr) {
-		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
-		goto end;
-	}
-
-	ua_chan = alloc_ust_app_channel(
-		channel_config.name.c_str(), ua_sess, nullptr, channel_config);
-	if (ua_chan == nullptr) {
-		/* Only malloc can fail here */
-		ret = -ENOMEM;
-		goto error;
-	}
-	init_ust_app_channel_from_config(ua_chan);
-	ua_chan->trace_class_stream_class_handle = trace_class_stream_class_handle;
-	ua_chan->attr.type =
-		allocation_policy_to_ust_channel_type(channel_config.buffer_allocation_policy);
-
-end:
-	if (ua_chanp) {
-		*ua_chanp = ua_chan;
-	}
-
-	/* Everything went well. */
-	return 0;
 
 error:
 	return ret;
@@ -3825,10 +3357,10 @@ end:
  *
  * Called with UST app session lock held and RCU read side lock.
  */
-static int create_ust_app_metadata(const lsu::app_session::locked_weak_ref& ua_sess,
-				   lsu::app *app,
-				   struct consumer_output *consumer,
-				   const ltt_session& session)
+int create_ust_app_metadata(const lsu::app_session::locked_weak_ref& ua_sess,
+			    lsu::app *app,
+			    struct consumer_output *consumer,
+			    const ltt_session& session)
 {
 	int ret = 0;
 	struct ust_app_channel *metadata;
@@ -5018,9 +4550,9 @@ int ust_app_disable_event_on_apps(
  * Config-based overload: determines whether a context is redundant
  * based on the channel configuration's buffer allocation policy.
  */
-static bool
-is_context_redundant(const lttng::sessiond::config::recording_channel_configuration& chan_config,
-		     const lttng::sessiond::config::context_configuration& ctx_config)
+bool is_context_redundant(
+	const lttng::sessiond::config::recording_channel_configuration& chan_config,
+	const lttng::sessiond::config::context_configuration& ctx_config)
 {
 	namespace lsc = lttng::sessiond::config;
 
@@ -5032,76 +4564,6 @@ is_context_redundant(const lttng::sessiond::config::recording_channel_configurat
 	}
 
 	return false;
-}
-
-/* The ua_sess lock must be held by the caller.  */
-static int ust_app_channel_create(
-	struct consumer_output *consumer,
-	lttng_buffer_type buffer_type,
-	std::uint64_t session_id,
-	const lsu::app_session::locked_weak_ref& ua_sess,
-	lsu::app *app,
-	struct ust_app_channel **_ua_chan,
-	const lttng::sessiond::config::recording_channel_configuration& channel_config,
-	std::uint64_t trace_class_stream_class_handle,
-	ltt_session& session)
-{
-	int ret = 0;
-	struct ust_app_channel *ua_chan = nullptr;
-
-	/*
-	 * Create channel onto application and synchronize its
-	 * configuration.
-	 */
-	ret = ust_app_channel_allocate(
-		ua_sess, &ua_chan, channel_config, trace_class_stream_class_handle);
-	if (ret < 0) {
-		goto error;
-	}
-
-	ret = ust_app_channel_send(
-		app, consumer, buffer_type, session_id, ua_sess, ua_chan, session);
-	if (ret) {
-		goto error;
-	}
-
-	/* Only publish the channel if successfully created on the tracer/consumer. */
-	lttng_ht_add_unique_str(ua_sess->channels, &ua_chan->node);
-
-	/* Add contexts. */
-	for (const auto& ctx_uptr : channel_config.get_contexts()) {
-		const auto& ctx_config = *ctx_uptr;
-
-		if (is_context_redundant(channel_config, ctx_config)) {
-			continue;
-		}
-
-		auto ust_ctx_attr = ust_app_session_operations::make_ust_context_attr(ctx_config);
-		ret = create_ust_app_channel_context(ua_chan, &ust_ctx_attr, app, ctx_config);
-		if (ret) {
-			goto error;
-		}
-	}
-
-error:
-	if (ret < 0 && ua_chan) {
-		const auto registry = ust_app_get_session_registry(ua_sess->get_identifier());
-		/* The UST app session lock is held, registry shall not be null. */
-		LTTNG_ASSERT(registry);
-
-		const auto locked_registry = registry->lock();
-		delete_ust_app_channel(-1, ua_chan, app, locked_registry);
-		ua_chan = nullptr;
-	} else if (ret == 0 && _ua_chan) {
-		/*
-		 * Only return the application's channel on success. Note
-		 * that the channel can still be part of the application's
-		 * channel hashtable on error.
-		 */
-		*_ua_chan = ua_chan;
-	}
-
-	return ret;
 }
 
 /*
@@ -5577,69 +5039,6 @@ int ust_app_destroy_trace_all(std::uint64_t session_id)
 	return 0;
 }
 
-/* The ua_sess lock must be held by the caller. */
-static int find_or_create_ust_app_channel(
-	struct consumer_output *consumer,
-	lttng_buffer_type buffer_type,
-	std::uint64_t session_id,
-	const lsu::app_session::locked_weak_ref& ua_sess,
-	lsu::app *app,
-	struct ust_app_channel **ua_chan,
-	const lttng::sessiond::config::recording_channel_configuration& channel_config,
-	std::uint64_t trace_class_stream_class_handle,
-	ltt_session& session)
-{
-	int ret = 0;
-	struct lttng_ht_iter iter;
-	struct lttng_ht_node_str *ua_chan_node;
-
-	lttng_ht_lookup(ua_sess->channels, (void *) channel_config.name.c_str(), &iter);
-	ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
-	if (ua_chan_node) {
-		*ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
-		goto end;
-	}
-
-	ret = ust_app_channel_create(consumer,
-				     buffer_type,
-				     session_id,
-				     ua_sess,
-				     app,
-				     ua_chan,
-				     channel_config,
-				     trace_class_stream_class_handle,
-				     session);
-	if (ret) {
-		goto end;
-	}
-end:
-	return ret;
-}
-
-static int ust_app_channel_synchronize_event(
-	struct ust_app_channel *ua_chan,
-	lsu::app *app,
-	const lttng::sessiond::config::event_rule_configuration& event_config)
-{
-	int ret = 0;
-
-	auto *ua_event = find_ust_app_event_by_config(ua_chan->events, event_config);
-	if (!ua_event) {
-		ret = create_ust_app_event(ua_chan, app, event_config);
-		if (ret < 0) {
-			goto end;
-		}
-	} else {
-		if (ua_event->enabled != event_config.is_enabled) {
-			ret = event_config.is_enabled ? enable_ust_app_event(ua_event, app) :
-							disable_ust_app_event(ua_event, app);
-		}
-	}
-
-end:
-	return ret;
-}
-
 /* Called with RCU read-side lock held. */
 static void ust_app_synchronize_event_notifier_rules(lsu::app *app)
 {
@@ -5779,131 +5178,6 @@ static void ust_app_synchronize_event_notifier_rules(lsu::app *app)
 end:
 	lttng_triggers_destroy(triggers);
 	return;
-}
-
-/*
- * RCU read lock must be held by the caller.
- */
-static void
-ust_app_synchronize_all_channels(struct consumer_output *consumer,
-				 lttng_buffer_type buffer_type,
-				 std::uint64_t session_id,
-				 const lsu::app_session::locked_weak_ref& ua_sess,
-				 lsu::app *app,
-				 const lttng::sessiond::config::domain& config_domain,
-				 const lttng::sessiond::ust::domain_orchestrator& orchestrator,
-				 ltt_session& session)
-{
-	LTTNG_ASSERT(consumer);
-	LTTNG_ASSERT(app);
-	ASSERT_RCU_READ_LOCKED();
-
-	for (const auto& chan_config : config_domain.recording_channels()) {
-		struct ust_app_channel *ua_chan;
-
-		const auto handle = ust_app_session_operations::trace_class_stream_class_handle(
-			orchestrator, chan_config);
-
-		/*
-		 * Search for a matching ust_app_channel. If none is found,
-		 * create it. Creating the channel will cause the ua_chan
-		 * structure to be allocated, the channel buffers to be
-		 * allocated (if necessary) and sent to the application, and
-		 * all enabled contexts will be added to the channel.
-		 */
-		int ret = find_or_create_ust_app_channel(consumer,
-							 buffer_type,
-							 session_id,
-							 ua_sess,
-							 app,
-							 &ua_chan,
-							 chan_config,
-							 handle,
-							 session);
-		if (ret) {
-			/* Tracer is probably gone or ENOMEM. */
-			goto end;
-		}
-
-		if (!ua_chan) {
-			/* ua_chan will be NULL for the metadata channel */
-			continue;
-		}
-
-		for (const auto& event_rule_entry : chan_config.event_rules) {
-			ret = ust_app_channel_synchronize_event(
-				ua_chan, app, *event_rule_entry.second);
-			if (ret) {
-				goto end;
-			}
-		}
-
-		if (ua_chan->enabled != chan_config.is_enabled) {
-			ret = chan_config.is_enabled ?
-				enable_ust_channel(app, ua_sess, ua_chan) :
-				disable_ust_app_channel(ua_sess, ua_chan, app);
-			if (ret) {
-				goto end;
-			}
-		}
-	}
-end:
-	return;
-}
-
-/*
- * Synchronize channels and metadata for a single application. The app
- * session must already exist (created by the orchestrator's
- * _find_or_create_app_session).
- *
- * The caller must ensure that the application is compatible and is tracked
- * by the process attribute trackers.
- */
-void ust_app_synchronize_channels_and_metadata(lsu::app *app,
-					       lsu::app_session *ua_sess,
-					       const lttng::sessiond::config::domain& config_domain,
-					       const lsu::domain_orchestrator& orchestrator,
-					       ltt_session& session)
-{
-	LTTNG_ASSERT(ua_sess);
-
-	auto *consumer = orchestrator.get_consumer_output_ptr();
-	const auto buffer_type = orchestrator.buffer_type();
-	const auto session_id = orchestrator.session_id();
-
-	const auto locked_ua_sess = ua_sess->lock();
-	if (locked_ua_sess->deleted) {
-		return;
-	}
-
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		ust_app_synchronize_all_channels(consumer,
-						 buffer_type,
-						 session_id,
-						 locked_ua_sess,
-						 app,
-						 config_domain,
-						 orchestrator,
-						 session);
-
-		/*
-		 * Create the metadata for the application. This returns gracefully if a
-		 * metadata was already set for the session.
-		 *
-		 * The metadata channel must be created after the data channels as the
-		 * consumer daemon assumes this ordering. When interacting with a relay
-		 * daemon, the consumer will use this assumption to send the
-		 * "STREAMS_SENT" message to the relay daemon.
-		 */
-		const auto ret = create_ust_app_metadata(locked_ua_sess, app, consumer, session);
-		if (ret < 0) {
-			ERR("Metadata creation failed for app sock %d for session id %" PRIu64,
-			    app->sock,
-			    session_id);
-		}
-	}
 }
 
 void ust_app_global_destroy(std::uint64_t session_id, lsu::app *app)

@@ -17,7 +17,7 @@ noinst_LTLIBRARIES = liblttng-sessiond-common.la
 liblttng_sessiond_common_la_SOURCES = utils.cpp utils.hpp \
                        trace-kernel.cpp trace-kernel.hpp \
                        kernel.cpp kernel.hpp \
-                       ust-app.hpp ust-sigbus.hpp trace-ust.hpp notify-apps.hpp \
+                       ust-app.hpp ust-app-channel-helpers.hpp ust-sigbus.hpp trace-ust.hpp notify-apps.hpp \
                        lttng-ust-ctl.hpp lttng-ust-abi.hpp lttng-ust-error.hpp \
                        ust-ctl-internal.hpp ust-abi-internal.hpp ust-error-internal.hpp \
                        ust-registry.hpp \
