@@ -155,7 +155,6 @@ struct ust_app_event {
 	bool enabled = false;
 	int handle = 0;
 	struct lttng_ust_abi_object_data *obj = nullptr;
-	struct lttng_ust_abi_event attr = {};
 	char name[LTTNG_UST_ABI_SYM_NAME_LEN] = {};
 	struct lttng_ht_node_str node = {};
 	const lttng::sessiond::config::event_rule_configuration& event_rule_config;

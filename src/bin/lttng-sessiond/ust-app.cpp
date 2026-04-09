@@ -1584,6 +1584,26 @@ error:
 }
 
 /*
+ * Return the UST event name for an event rule. For user tracepoints, this is
+ * the name pattern. For agent domain rules, this is the default UST event name
+ * used by the agent tracepoint (the agent filter carries the real event name).
+ */
+static const char *get_ust_event_name_from_rule(const struct lttng_event_rule *rule)
+{
+	if (lttng_event_rule_targets_agent_domain(rule)) {
+		return event_get_default_agent_ust_name(lttng_event_rule_get_domain_type(rule));
+	}
+
+	const char *pattern;
+	const auto status = lttng_event_rule_user_tracepoint_get_name_pattern(rule, &pattern);
+	if (status != LTTNG_EVENT_RULE_STATUS_OK) {
+		abort();
+	}
+
+	return pattern;
+}
+
+/*
  * Build a lttng_ust_abi_event from an event rule. Only user tracepoint
  * rules are supported.
  */
@@ -1663,9 +1683,9 @@ alloc_ust_app_event(const lttng::sessiond::config::event_rule_configuration& eve
 	}
 
 	ua_event->enabled = true;
-	ua_event->attr = make_ust_abi_event_from_event_rule(event_config.event_rule.get());
-	strncpy(ua_event->name, ua_event->attr.name, sizeof(ua_event->name));
-	ua_event->name[sizeof(ua_event->name) - 1] = '\0';
+	lttng_strncpy(ua_event->name,
+		      get_ust_event_name_from_rule(event_config.event_rule.get()),
+		      sizeof(ua_event->name));
 	lttng_ht_node_init_str(&ua_event->node, ua_event->name);
 
 	DBG3("UST app event %s allocated", ua_event->name);
@@ -2407,9 +2427,17 @@ create_ust_event(lsu::app *app, struct ust_app_channel *ua_chan, struct ust_app_
 
 	health_code_update();
 
+	/*
+	 * Build the UST ABI event structure from the event rule configuration.
+	 * This is only needed for the tracer command; the per-app event does
+	 * not need to retain it.
+	 */
+	auto ust_abi_event =
+		make_ust_abi_event_from_event_rule(ua_event->event_rule_config.event_rule.get());
+
 	/* Create UST event on tracer */
 	pthread_mutex_lock(&app->sock_lock);
-	ret = lttng_ust_ctl_create_event(app->sock, &ua_event->attr, ua_chan->obj, &ua_event->obj);
+	ret = lttng_ust_ctl_create_event(app->sock, &ust_abi_event, ua_chan->obj, &ua_event->obj);
 	pthread_mutex_unlock(&app->sock_lock);
 	if (ret < 0) {
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
@@ -2424,7 +2452,7 @@ create_ust_event(lsu::app *app, struct ust_app_channel *ua_chan, struct ust_app_
 			     app->sock);
 		} else {
 			ERR("UST app create event '%s' failed with ret %d: pid = %d, sock = %d",
-			    ua_event->attr.name,
+			    ua_event->name,
 			    ret,
 			    app->pid,
 			    app->sock);
@@ -2435,7 +2463,7 @@ create_ust_event(lsu::app *app, struct ust_app_channel *ua_chan, struct ust_app_
 	ua_event->handle = ua_event->obj->header.handle;
 
 	DBG2("UST app event %s created successfully for pid:%d object = %p",
-	     ua_event->attr.name,
+	     ua_event->name,
 	     app->pid,
 	     ua_event->obj);
 
@@ -2728,9 +2756,9 @@ error:
  */
 /*
  * Populate the per-app event's mutable fields from its associated
- * event rule configuration. The `attr` and `name` fields are already
- * set by `alloc_ust_app_event`, so this function only needs to copy
- * the enabled state, filter bytecode, and exclusions.
+ * event rule configuration. The `name` field is already set by
+ * `alloc_ust_app_event`, so this function only needs to copy the
+ * enabled state.
  */
 static void shadow_copy_event(struct ust_app_event *ua_event)
 {
@@ -3257,7 +3285,7 @@ int create_ust_app_event(struct ust_app_channel *ua_chan,
 		if (ret == -LTTNG_UST_ERR_EXIST) {
 			ERR("Tracer for application reported that an event being created already existed: "
 			    "event_name = \"%s\", pid = %d, ppid = %d, uid = %d, gid = %d",
-			    ua_event->attr.name,
+			    ua_event->name,
 			    app->pid,
 			    app->ppid,
 			    app->uid,
