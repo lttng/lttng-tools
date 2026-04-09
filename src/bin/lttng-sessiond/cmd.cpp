@@ -5042,20 +5042,6 @@ static void check_regenerate_metadata_support(const ltt_session::locked_ref& ses
 		LTTNG_THROW_CTL("Metadata regeneration requires an active session",
 				LTTNG_ERR_SESSION_NOT_STARTED);
 	}
-	if (session->ust_orchestrator) {
-		switch (static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
-				session->get_ust_orchestrator())
-				.buffer_type()) {
-		case LTTNG_BUFFER_PER_UID:
-			break;
-		case LTTNG_BUFFER_PER_PID:
-			LTTNG_THROW_CTL(
-				"Metadata regeneration is not supported for per-PID buffering sessions",
-				LTTNG_ERR_PER_PID_SESSION);
-		default:
-			abort();
-		}
-	}
 	if (session->consumer->type == CONSUMER_DST_NET &&
 	    session->consumer->relay_minor_version < 8) {
 		LTTNG_THROW_CTL("Metadata regeneration is not supported by the relay daemon",

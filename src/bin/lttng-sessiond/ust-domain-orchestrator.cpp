@@ -2779,6 +2779,12 @@ void ls::ust::domain_orchestrator::_record_snapshot_per_pid(
 
 void ls::ust::domain_orchestrator::regenerate_metadata()
 {
+	if (buffer_type() == LTTNG_BUFFER_PER_PID) {
+		LTTNG_THROW_CTL(
+			"Metadata regeneration is not supported for per-PID buffering sessions",
+			LTTNG_ERR_PER_PID_SESSION);
+	}
+
 	for (const auto& tc_entry : _per_uid_trace_classes) {
 		tc_entry.second->regenerate_metadata();
 	}
