@@ -127,16 +127,6 @@ struct ust_app_session_operations {
 							    egid);
 	}
 
-	static void release_per_pid_trace_class(lsu::domain_orchestrator& o, const lsu::app& app)
-	{
-		o.release_per_pid_trace_class(app);
-	}
-
-	static void release_per_pid_stream_groups(lsu::domain_orchestrator& o, const lsu::app& app)
-	{
-		o.release_per_pid_stream_groups(app);
-	}
-
 	static lsu::stream_group&
 	find_or_create_per_uid_stream_group(lsu::domain_orchestrator& o,
 					    const lsc::recording_channel_configuration& chan_config,
@@ -201,11 +191,6 @@ struct ust_app_session_operations {
 					 lsu::app_session& ua_sess)
 	{
 		o._app_sessions[&app] = &ua_sess;
-	}
-
-	static void unregister_app_session(lsu::domain_orchestrator& o, const lsu::app& app)
-	{
-		o._app_sessions.erase(&app);
 	}
 
 	static int disable_event_on_apps(lsu::domain_orchestrator& o,
@@ -1538,10 +1523,7 @@ static void destroy_app_session(lsu::app *app, lsu::app_session *ua_sess)
 			auto& orchestrator = static_cast<lsu::domain_orchestrator&>(
 				session->get_ust_orchestrator());
 
-			ust_app_session_operations::unregister_app_session(orchestrator, *app);
-			ust_app_session_operations::release_per_pid_stream_groups(orchestrator,
-										  *app);
-			ust_app_session_operations::release_per_pid_trace_class(orchestrator, *app);
+			orchestrator.on_app_departure(*app);
 		} catch (const lttng::sessiond::exceptions::session_not_found_error&) {
 			/* Session is already gone; orchestrator will clean up in its destructor. */
 		}
@@ -1563,14 +1545,14 @@ static void destroy_app_session(lsu::app *app, lsu::app_session *ua_sess)
 		return;
 	}
 
-	/* Per-UID path: remove from orchestrator's app session index. */
+	/* Remove from orchestrator's app session index. */
 	try {
 		const auto session = ltt_session::find_session(ua_sess->recording_session_id);
 
 		auto& orchestrator =
 			static_cast<lsu::domain_orchestrator&>(session->get_ust_orchestrator());
 
-		ust_app_session_operations::unregister_app_session(orchestrator, *app);
+		orchestrator.on_app_departure(*app);
 	} catch (const lttng::sessiond::exceptions::session_not_found_error&) {
 		/* Session already gone; orchestrator destroyed with it. */
 	}
@@ -4808,15 +4790,7 @@ static void ust_app_unregister(lsu::app& app)
 				auto& orchestrator = static_cast<lsu::domain_orchestrator&>(
 					locked_session->get_ust_orchestrator());
 
-				ust_app_session_operations::unregister_app_session(orchestrator,
-										   app);
-
-				if (ua_sess->buffer_type == LTTNG_BUFFER_PER_PID) {
-					ust_app_session_operations::release_per_pid_stream_groups(
-						orchestrator, app);
-					ust_app_session_operations::release_per_pid_trace_class(
-						orchestrator, app);
-				}
+				orchestrator.on_app_departure(app);
 
 				recording_session = &*locked_session;
 				locked_session.release();

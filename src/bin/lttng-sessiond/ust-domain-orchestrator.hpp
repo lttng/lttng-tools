@@ -164,6 +164,20 @@ public:
 	 */
 	void synchronize_app(ust::app& app);
 
+	/*
+	 * Clean up orchestrator state associated with a departing
+	 * application: remove the app from the _app_sessions index
+	 * and, for per-PID buffers, release the per-PID stream groups
+	 * and trace class.
+	 *
+	 * Called with the session lock held, during application
+	 * unregistration (ust_app_unregister) or app session
+	 * destruction (destroy_app_session). The caller is responsible
+	 * for the remaining per-app cleanup (hash table removal,
+	 * metadata close, UST handle release).
+	 */
+	void on_app_departure(const ust::app& app);
+
 	void rotate() override;
 	void clear() override;
 	void open_packets() override;

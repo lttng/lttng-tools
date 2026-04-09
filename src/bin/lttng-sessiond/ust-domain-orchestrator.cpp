@@ -1004,6 +1004,16 @@ void ls::ust::domain_orchestrator::synchronize_app(ust::app& app)
 	}
 }
 
+void ls::ust::domain_orchestrator::on_app_departure(const ust::app& app)
+{
+	_app_sessions.erase(&app);
+
+	if (buffer_type() == LTTNG_BUFFER_PER_PID) {
+		release_per_pid_stream_groups(app);
+		release_per_pid_trace_class(app);
+	}
+}
+
 void ls::ust::domain_orchestrator::_synchronize_all_apps()
 {
 	for (auto *app : lttng::urcu::lfht_iteration_adapter<ust::app,
