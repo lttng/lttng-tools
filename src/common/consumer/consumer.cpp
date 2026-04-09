@@ -2673,6 +2673,10 @@ void *consumer_thread_data_poll(void *data)
 			continue;
 		}
 
+		if (testpoint(consumerd_thread_data_poll)) {
+			goto end;
+		}
+
 		if (caa_unlikely(data_consumption_paused)) {
 			DBG("Data consumption paused, sleeping...");
 			sleep(1);
