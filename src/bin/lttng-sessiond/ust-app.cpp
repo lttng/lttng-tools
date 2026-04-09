@@ -5546,7 +5546,7 @@ static int ust_app_start_trace(std::uint64_t session_id, lsu::app *app)
 /*
  * Stop tracing for a specific UST session and app.
  */
-static int ust_app_stop_trace(std::uint64_t session_id, lsu::app *app)
+int ust_app_stop_trace(std::uint64_t session_id, lsu::app *app)
 {
 	int ret = 0;
 	lsu::app_session *ua_sess;
@@ -5707,7 +5707,7 @@ static int ust_app_flush_app_session(lsu::app& app, lsu::app_session& ua_sess)
  * Flush buffers for all applications for a specific UST session.
  * Called with UST session lock held.
  */
-static int ust_app_flush_session(lsu::domain_orchestrator& orchestrator)
+int ust_app_flush_session(lsu::domain_orchestrator& orchestrator)
 {
 	int ret = 0;
 
@@ -5805,7 +5805,7 @@ static int ust_app_clear_quiescent_app_session(lsu::app *app, lsu::app_session *
  * specific UST session.
  * Called with UST session lock held.
  */
-static int ust_app_clear_quiescent_session(const lsu::domain_orchestrator& orchestrator)
+int ust_app_clear_quiescent_session(const lsu::domain_orchestrator& orchestrator)
 {
 	int ret = 0;
 
@@ -5895,76 +5895,6 @@ static int destroy_trace(std::uint64_t session_id, lsu::app *app)
 	}
 end:
 	health_code_update();
-	return 0;
-}
-
-/*
- * Start tracing for the UST session.
- */
-int ust_app_start_trace_all(const lttng::sessiond::config::domain& domain,
-			    const lttng::sessiond::ust::domain_orchestrator& orchestrator,
-			    ltt_session& session)
-{
-	DBG("Starting all UST traces");
-
-	/*
-	 * In a start-stop-start use-case, we need to clear the quiescent state
-	 * of each channel set by the prior stop command, thus ensuring that a
-	 * following stop or destroy is sure to grab a timestamp_end near those
-	 * operations, even if the packet is empty.
-	 */
-	(void) ust_app_clear_quiescent_session(orchestrator);
-
-	/* Iterate on all apps. */
-	for (auto *app : lttng::urcu::lfht_iteration_adapter<lsu::app,
-							     decltype(lsu::app::pid_n),
-							     &lsu::app::pid_n>(*ust_app_ht->ht)) {
-		if (!ust_app_get(*app)) {
-			/* Application unregistered concurrently, skip it. */
-			DBG("Could not get application reference as it is being torn down; skipping application");
-			continue;
-		}
-		/* Prevent app teardown during use. */
-		const ust_app_reference app_ref(app);
-
-		ust_app_global_update(app, domain, orchestrator, session);
-	}
-
-	return 0;
-}
-
-/*
- * Start tracing for the UST session.
- * Called with UST session lock held.
- */
-int ust_app_stop_trace_all(lsu::domain_orchestrator& orchestrator)
-{
-	int ret = 0;
-	const auto session_id = orchestrator.session_id();
-
-	DBG("Stopping all UST traces");
-
-	/* Iterate on all apps. */
-	for (auto *app : lttng::urcu::lfht_iteration_adapter<lsu::app,
-							     decltype(lsu::app::pid_n),
-							     &lsu::app::pid_n>(*ust_app_ht->ht)) {
-		if (!ust_app_get(*app)) {
-			/* Application unregistered concurrently, skip it. */
-			DBG("Could not get application reference as it is being torn down; skipping application");
-			continue;
-		}
-		/* Prevent app teardown during use. */
-		const ust_app_reference app_ref(app);
-
-		ret = ust_app_stop_trace(session_id, app);
-		if (ret < 0) {
-			/* Continue to next apps even on error */
-			continue;
-		}
-	}
-
-	(void) ust_app_flush_session(orchestrator);
-
 	return 0;
 }
 

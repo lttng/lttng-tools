@@ -545,10 +545,6 @@ int ust_app_register(struct ust_register_msg *msg, int sock);
 int ust_app_register_done(lttng::sessiond::ust::app *app);
 int ust_app_version(lttng::sessiond::ust::app *app);
 void ust_app_unregister_by_socket(int sock);
-int ust_app_start_trace_all(const lttng::sessiond::config::domain& domain,
-			    const lttng::sessiond::ust::domain_orchestrator& orchestrator,
-			    ltt_session& session);
-int ust_app_stop_trace_all(lttng::sessiond::ust::domain_orchestrator& orchestrator);
 int ust_app_destroy_trace_all(std::uint64_t session_id);
 int ust_app_list_events(struct lttng_event **events);
 int ust_app_list_event_fields(struct lttng_event_field **fields);
@@ -637,23 +633,18 @@ int ust_app_disable_event_on_apps(
 	lttng::c_string_view channel_name,
 	const lttng::sessiond::config::event_rule_configuration& event_rule_config);
 
+/*
+ * Per-app trace control helpers used by the orchestrator's start()/stop()
+ * methods. These remain in ust-app.cpp because they contain app-level
+ * logic (lttng_ust_ctl calls) that has not yet been internalized.
+ */
+int ust_app_stop_trace(std::uint64_t session_id, lttng::sessiond::ust::app *app);
+int ust_app_flush_session(lttng::sessiond::ust::domain_orchestrator& orchestrator);
+int ust_app_clear_quiescent_session(const lttng::sessiond::ust::domain_orchestrator& orchestrator);
+
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
 static inline int ust_app_destroy_trace_all(std::uint64_t /* session_id */)
-{
-	return 0;
-}
-
-static inline int
-ust_app_start_trace_all(const lttng::sessiond::config::domain& /* domain */,
-			const lttng::sessiond::ust::domain_orchestrator& /* orchestrator */,
-			ltt_session& /* session */)
-{
-	return 0;
-}
-
-static inline int
-ust_app_stop_trace_all(lttng::sessiond::ust::domain_orchestrator& /* orchestrator */)
 {
 	return 0;
 }

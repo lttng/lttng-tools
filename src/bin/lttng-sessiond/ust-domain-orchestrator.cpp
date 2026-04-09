@@ -991,22 +991,41 @@ void ls::ust::domain_orchestrator::start()
 	_active = true;
 
 	/*
-	 * Clear the quiescent state of per-UID consumer channels so that a
-	 * following stop or destroy produces a timestamp_end near the
-	 * actual operation, even if the packet is empty.
+	 * In a start-stop-start use-case, clear the quiescent state of
+	 * each channel so that a following stop or destroy grabs a
+	 * timestamp_end near those operations, even if the packet is
+	 * empty.
 	 *
-	 * Per-PID channels are handled within ust_app_start_trace_all()
-	 * on a per-application basis.
+	 * Per-UID channels are handled by the orchestrator directly;
+	 * per-PID channels are handled via the per-app iteration.
 	 */
 	if (buffer_type() == LTTNG_BUFFER_PER_UID) {
 		_clear_quiescent_per_uid_channels();
 	}
 
-	const auto ret = ust_app_start_trace_all(
-		_session.user_space_domain, *this, const_cast<ltt_session&>(_session));
-	if (ret < 0) {
-		_active = false;
-		LTTNG_THROW_CTL("Failed to start UST tracing", LTTNG_ERR_UST_START_FAIL);
+	(void) ust_app_clear_quiescent_session(*this);
+
+	/*
+	 * Synchronize every registered application: create the app
+	 * session if needed, push channels/events, and start the trace.
+	 *
+	 * This iterates ust_app_ht (not _app_sessions) because apps
+	 * that registered while the session was inactive do not yet have
+	 * an app session. synchronize_app() (Phase 3) will replace this
+	 * with an _app_sessions-based iteration.
+	 */
+	for (auto *app : lttng::urcu::lfht_iteration_adapter<ust::app,
+							     decltype(ust::app::pid_n),
+							     &ust::app::pid_n>(*ust_app_ht->ht)) {
+		if (!ust_app_get(*app)) {
+			DBG("Could not get application reference as it is being torn down; skipping application");
+			continue;
+		}
+
+		const ust_app_reference app_ref(app);
+
+		ust_app_global_update(
+			app, _session.user_space_domain, *this, const_cast<ltt_session&>(_session));
 	}
 }
 
@@ -1023,16 +1042,33 @@ void ls::ust::domain_orchestrator::stop()
 	 */
 	_active = false;
 
-	const auto ret = ust_app_stop_trace_all(*this);
-	if (ret < 0) {
-		LTTNG_THROW_CTL("Failed to stop UST tracing", LTTNG_ERR_UST_STOP_FAIL);
+	/*
+	 * Stop every running application and flush per-PID buffers.
+	 *
+	 * This iterates ust_app_ht (not _app_sessions) for the same
+	 * reason as start(): some apps may have been registered
+	 * concurrently. This will be replaced by an _app_sessions-based
+	 * iteration once synchronize_app() (Phase 3) guarantees
+	 * completeness.
+	 */
+	for (auto *app : lttng::urcu::lfht_iteration_adapter<ust::app,
+							     decltype(ust::app::pid_n),
+							     &ust::app::pid_n>(*ust_app_ht->ht)) {
+		if (!ust_app_get(*app)) {
+			DBG("Could not get application reference as it is being torn down; skipping application");
+			continue;
+		}
+
+		const ust_app_reference app_ref(app);
+
+		(void) ust_app_stop_trace(session_id(), app);
 	}
+
+	(void) ust_app_flush_session(*this);
 
 	/*
 	 * Flush per-UID consumer buffers and push pending metadata.
-	 *
-	 * Per-PID buffers are flushed within ust_app_stop_trace_all()
-	 * on a per-application basis.
+	 * Per-PID buffers were flushed per-application above.
 	 */
 	if (buffer_type() == LTTNG_BUFFER_PER_UID) {
 		_flush_per_uid_buffers();
