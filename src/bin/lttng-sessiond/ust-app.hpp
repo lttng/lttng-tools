@@ -627,15 +627,29 @@ int ust_app_disable_event_on_apps(
 	const lttng::sessiond::config::event_rule_configuration& event_rule_config);
 
 /*
+ * App session allocation and deletion helpers. These remain in
+ * ust-app.cpp as they manage app-level data structures (hash tables,
+ * RCU callbacks, UST handle release). Exposed for the orchestrator's
+ * _find_or_create_app_session() method.
+ */
+lttng::sessiond::ust::app_session *alloc_ust_app_session();
+void delete_ust_app_session(int sock,
+			    lttng::sessiond::ust::app_session *ua_sess,
+			    lttng::sessiond::ust::app *app);
+std::uint64_t get_next_session_id();
+
+/*
  * Per-app trace control and synchronization helpers used by the
  * orchestrator. These remain in ust-app.cpp because they contain
- * app-level logic (lttng_ust_ctl calls, per-app session creation)
+ * app-level logic (lttng_ust_ctl calls, channel/metadata creation)
  * that has not yet been internalized.
  */
-void ust_app_synchronize(lttng::sessiond::ust::app *app,
-			 const lttng::sessiond::config::domain& config_domain,
-			 const lttng::sessiond::ust::domain_orchestrator& orchestrator,
-			 ltt_session& session);
+void ust_app_synchronize_channels_and_metadata(
+	lttng::sessiond::ust::app *app,
+	lttng::sessiond::ust::app_session *ua_sess,
+	const lttng::sessiond::config::domain& config_domain,
+	const lttng::sessiond::ust::domain_orchestrator& orchestrator,
+	ltt_session& session);
 int ust_app_start_trace(std::uint64_t session_id, lttng::sessiond::ust::app *app);
 int ust_app_stop_trace(std::uint64_t session_id, lttng::sessiond::ust::app *app);
 void ust_app_global_destroy(std::uint64_t session_id, lttng::sessiond::ust::app *app);

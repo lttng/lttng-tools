@@ -9,7 +9,9 @@
 #include "consumer.hpp"
 #include "context-configuration.hpp"
 #include "event-rule-configuration.hpp"
+#include "health-sessiond.hpp"
 #include "lttng-sessiond.hpp"
+#include "lttng-ust-ctl.hpp"
 #include "lttng-ust-error.hpp"
 #include "pending-memory-reclamation-request.hpp"
 #include "recording-channel-configuration.hpp"
@@ -974,6 +976,250 @@ void ls::ust::domain_orchestrator::untrack_process_attribute(config::process_att
 	}
 }
 
+namespace {
+
+void copy_channel_attr_to_ustctl(struct lttng_ust_ctl_consumer_channel_attr *attr,
+				 const struct lttng_ust_abi_channel_attr *uattr)
+{
+	attr->subbuf_size = uattr->subbuf_size;
+	attr->num_subbuf = uattr->num_subbuf;
+	attr->overwrite = uattr->overwrite;
+	attr->switch_timer_interval = uattr->switch_timer_interval;
+	attr->read_timer_interval = uattr->read_timer_interval;
+	attr->output = static_cast<lttng_ust_abi_output>(uattr->output);
+	attr->blocking_timeout = uattr->blocking_timeout;
+	attr->type = static_cast<enum lttng_ust_abi_chan_type>(uattr->type);
+}
+
+} /* anonymous namespace */
+
+void ls::ust::domain_orchestrator::_init_app_session(ust::app_session *ua_sess, ust::app *app)
+{
+	struct tm *timeinfo;
+	char datetime[16];
+	int ret;
+	char tmp_shm_path[PATH_MAX];
+
+	timeinfo = localtime(&app->registration_time);
+	strftime(datetime, sizeof(datetime), "%Y%m%d-%H%M%S", timeinfo);
+
+	DBG2("Shadow copy of session handle %d", ua_sess->handle);
+
+	ua_sess->recording_session_id = session_id();
+	ua_sess->app_session_id = get_next_session_id();
+	LTTNG_OPTIONAL_SET(&ua_sess->real_credentials.uid, app->uid);
+	LTTNG_OPTIONAL_SET(&ua_sess->real_credentials.gid, app->gid);
+	LTTNG_OPTIONAL_SET(&ua_sess->effective_credentials.uid, _session.uid);
+	LTTNG_OPTIONAL_SET(&ua_sess->effective_credentials.gid, _session.gid);
+	ua_sess->buffer_type = buffer_type();
+	ua_sess->bits_per_long = app->abi.bits_per_long;
+
+	/* There is only one consumer object per session possible. */
+	consumer_output_get(get_consumer_output_ptr());
+	ua_sess->consumer = get_consumer_output_ptr();
+
+	ua_sess->output_traces = _session.output_traces;
+	ua_sess->live_timer_interval = _session.live_timer;
+
+	{
+		const auto default_attr = default_metadata_channel_attr();
+		copy_channel_attr_to_ustctl(&ua_sess->metadata_attr, &default_attr);
+	}
+
+	switch (ua_sess->buffer_type) {
+	case LTTNG_BUFFER_PER_PID:
+		ret = snprintf(ua_sess->path,
+			       sizeof(ua_sess->path),
+			       DEFAULT_UST_TRACE_PID_PATH "/%s-%d-%s",
+			       app->name,
+			       app->pid,
+			       datetime);
+		break;
+	case LTTNG_BUFFER_PER_UID:
+		ret = snprintf(ua_sess->path,
+			       sizeof(ua_sess->path),
+			       DEFAULT_UST_TRACE_UID_PATH,
+			       lttng_credentials_get_uid(&ua_sess->real_credentials),
+			       app->abi.bits_per_long);
+		break;
+	default:
+		abort();
+		goto error;
+	}
+	if (ret < 0) {
+		PERROR("asprintf UST shadow copy session");
+		abort();
+		goto error;
+	}
+
+	strncpy(ua_sess->root_shm_path, root_shm_path().c_str(), sizeof(ua_sess->root_shm_path));
+	ua_sess->root_shm_path[sizeof(ua_sess->root_shm_path) - 1] = '\0';
+	strncpy(ua_sess->shm_path, shm_path().c_str(), sizeof(ua_sess->shm_path));
+	ua_sess->shm_path[sizeof(ua_sess->shm_path) - 1] = '\0';
+	if (ua_sess->shm_path[0]) {
+		switch (ua_sess->buffer_type) {
+		case LTTNG_BUFFER_PER_PID:
+			ret = snprintf(tmp_shm_path,
+				       sizeof(tmp_shm_path),
+				       "/" DEFAULT_UST_TRACE_PID_PATH "/%s-%d-%s",
+				       app->name,
+				       app->pid,
+				       datetime);
+			break;
+		case LTTNG_BUFFER_PER_UID:
+			ret = snprintf(tmp_shm_path,
+				       sizeof(tmp_shm_path),
+				       "/" DEFAULT_UST_TRACE_UID_PATH,
+				       app->uid,
+				       app->abi.bits_per_long);
+			break;
+		default:
+			abort();
+			goto error;
+		}
+		if (ret < 0) {
+			PERROR("sprintf UST shadow copy session");
+			abort();
+			goto error;
+		}
+		strncat(ua_sess->shm_path,
+			tmp_shm_path,
+			sizeof(ua_sess->shm_path) - strlen(ua_sess->shm_path) - 1);
+		ua_sess->shm_path[sizeof(ua_sess->shm_path) - 1] = '\0';
+	}
+	return;
+
+error:
+	consumer_output_put(ua_sess->consumer);
+}
+
+int ls::ust::domain_orchestrator::_find_or_create_app_session(ust::app *app,
+							      ust::app_session **ua_sess_ptr)
+{
+	int ret;
+
+	LTTNG_ASSERT(app);
+	LTTNG_ASSERT(ua_sess_ptr);
+
+	health_code_update();
+
+	auto *ua_sess = ust_app_lookup_app_session(session_id(), app);
+	if (ua_sess == nullptr) {
+		DBG2("UST app pid: %d session id %" PRIu64 " not found, creating it",
+		     app->pid,
+		     session_id());
+		ua_sess = alloc_ust_app_session();
+		if (ua_sess == nullptr) {
+			ret = -ENOMEM;
+			goto error;
+		}
+		_init_app_session(ua_sess, app);
+	}
+
+	switch (buffer_type()) {
+	case LTTNG_BUFFER_PER_PID:
+	{
+		try {
+			find_or_create_per_pid_trace_class(
+				*app,
+				ua_sess->app_session_id,
+				app->abi,
+				app->version.major,
+				app->version.minor,
+				ua_sess->root_shm_path,
+				ua_sess->shm_path,
+				lttng_credentials_get_uid(&ua_sess->effective_credentials),
+				lttng_credentials_get_gid(&ua_sess->effective_credentials));
+		} catch (const std::exception& ex) {
+			ERR("Failed to create per-PID trace class: %s", ex.what());
+			delete_ust_app_session(-1, ua_sess, app);
+			ret = -1;
+			goto error;
+		}
+		break;
+	}
+	case LTTNG_BUFFER_PER_UID:
+	{
+		const auto app_abi = app->abi.bits_per_long == 32 ? application_abi::ABI_32 :
+								    application_abi::ABI_64;
+
+		try {
+			find_or_create_per_uid_trace_class(app->uid,
+							   app_abi,
+							   app->abi,
+							   app->version.major,
+							   app->version.minor,
+							   ua_sess->root_shm_path,
+							   ua_sess->shm_path);
+		} catch (const std::exception& ex) {
+			ERR("Failed to create per-UID trace class: %s", ex.what());
+			delete_ust_app_session(-1, ua_sess, app);
+			ret = -1;
+			goto error;
+		}
+		break;
+	}
+	default:
+		abort();
+		ret = -EINVAL;
+		goto error;
+	}
+
+	health_code_update();
+
+	if (ua_sess->handle == -1) {
+		pthread_mutex_lock(&app->sock_lock);
+		ret = lttng_ust_ctl_create_session(app->sock);
+		pthread_mutex_unlock(&app->sock_lock);
+		if (ret < 0) {
+			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+				DBG("UST app creating session failed. Application is dead: pid = %d, sock = %d",
+				    app->pid,
+				    app->sock);
+				ret = 0;
+			} else if (ret == -EAGAIN) {
+				DBG("UST app creating session failed. Communication time out: pid = %d, sock = %d",
+				    app->pid,
+				    app->sock);
+				ret = 0;
+			} else {
+				ERR("UST app creating session failed with ret %d: pid = %d, sock =%d",
+				    ret,
+				    app->pid,
+				    app->sock);
+			}
+			delete_ust_app_session(-1, ua_sess, app);
+			if (ret != -ENOMEM) {
+				/*
+				 * Tracer is probably gone or got an internal error so let's
+				 * behave like it will soon unregister or not usable.
+				 */
+				ret = -ENOTCONN;
+			}
+			goto error;
+		}
+
+		ua_sess->handle = ret;
+
+		/* Add ust app session to app's HT */
+		lttng_ht_node_init_u64(&ua_sess->node, ua_sess->recording_session_id);
+		lttng_ht_add_unique_u64(app->sessions, &ua_sess->node);
+		lttng_ht_node_init_ulong(&ua_sess->ust_objd_node, ua_sess->handle);
+		lttng_ht_add_unique_ulong(app->ust_sessions_objd, &ua_sess->ust_objd_node);
+
+		_app_sessions[app] = ua_sess;
+
+		DBG2("UST app session created successfully with handle %d", ret);
+	}
+
+	*ua_sess_ptr = ua_sess;
+	ret = 0;
+
+error:
+	health_code_update();
+	return ret;
+}
+
 void ls::ust::domain_orchestrator::synchronize_app(ust::app& app)
 {
 	namespace lsc = lttng::sessiond::config;
@@ -989,12 +1235,17 @@ void ls::ust::domain_orchestrator::synchronize_app(ust::app& app)
 		    lsc::resolved_process_attr_value<uid_t>(app.uid)) &&
 	    domain.virtual_group_id_tracker().is_tracked(
 		    lsc::resolved_process_attr_value<gid_t>(app.gid))) {
-		/*
-		 * Synchronize the application's internal tracing
-		 * configuration and start tracing if the session is
-		 * active.
-		 */
-		ust_app_synchronize(&app, domain, *this, const_cast<ltt_session&>(_session));
+		ust::app_session *ua_sess = nullptr;
+		const auto ret = _find_or_create_app_session(&app, &ua_sess);
+		if (ret < 0) {
+			/* Tracer is probably gone or ENOMEM. */
+			return;
+		}
+
+		LTTNG_ASSERT(ua_sess);
+
+		ust_app_synchronize_channels_and_metadata(
+			&app, ua_sess, domain, *this, const_cast<ltt_session&>(_session));
 
 		if (_active) {
 			ust_app_start_trace(session_id(), &app);

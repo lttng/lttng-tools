@@ -447,6 +447,19 @@ private:
 				  const config::context_configuration& ctx_config);
 
 	/*
+	 * Initialize a newly allocated app session from the orchestrator's
+	 * configuration and the recording session's properties.
+	 */
+	void _init_app_session(ust::app_session *ua_sess, ust::app *app);
+
+	/*
+	 * Look up or create the app session for the given application.
+	 * On success, *ua_sess_ptr is set to the app session. Returns 0
+	 * on success, or a negative errno on failure (-ENOMEM, -ENOTCONN).
+	 */
+	int _find_or_create_app_session(ust::app *app, ust::app_session **ua_sess_ptr);
+
+	/*
 	 * Iterate all registered applications and call synchronize_app()
 	 * for each one. Used by start() and process attribute tracking
 	 * methods to push the current session configuration to all apps.
