@@ -413,6 +413,8 @@ private:
 				  const config::event_rule_configuration& event_rule_config);
 	int _disable_event_on_apps(lttng::c_string_view channel_name,
 				   const config::event_rule_configuration& event_rule_config);
+	void _add_context_on_apps(lttng::c_string_view channel_name,
+				  const config::context_configuration& ctx_config);
 
 	/*
 	 * Push pending metadata from a trace class to its consumer.

@@ -552,9 +552,6 @@ int ust_app_stop_trace_all(lttng::sessiond::ust::domain_orchestrator& orchestrat
 int ust_app_destroy_trace_all(std::uint64_t session_id);
 int ust_app_list_events(struct lttng_event **events);
 int ust_app_list_event_fields(struct lttng_event_field **fields);
-int ust_app_add_ctx_channel_glb(std::uint64_t session_id,
-				lttng::c_string_view channel_name,
-				const lttng::sessiond::config::context_configuration& ctx_config);
 void ust_app_global_update(lttng::sessiond::ust::app *app,
 			   const lttng::sessiond::config::domain& domain,
 			   const lttng::sessiond::ust::domain_orchestrator& orchestrator,
@@ -737,14 +734,6 @@ static inline void ust_app_global_update_all_event_notifier_rules(void)
 
 static inline int ust_app_setup_event_notifier_group(lttng::sessiond::ust::app *app
 						     __attribute__((unused)))
-{
-	return 0;
-}
-
-static inline int
-ust_app_add_ctx_channel_glb(std::uint64_t /* session_id */,
-			    lttng::c_string_view /* channel_name */,
-			    const lttng::sessiond::config::context_configuration& /* ctx_config */)
 {
 	return 0;
 }

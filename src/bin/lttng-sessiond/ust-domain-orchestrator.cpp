@@ -804,6 +804,44 @@ int ls::ust::domain_orchestrator::_disable_event_on_apps(
 	return ret;
 }
 
+void ls::ust::domain_orchestrator::_add_context_on_apps(
+	lttng::c_string_view channel_name, const config::context_configuration& ctx_config)
+{
+	const lttng::urcu::read_lock_guard read_lock;
+
+	for (const auto& app_session_pair : _app_sessions) {
+		auto *app = const_cast<ust::app *>(app_session_pair.first);
+		auto *ua_sess = app_session_pair.second;
+
+		if (!ust_app_get(*app)) {
+			continue;
+		}
+
+		const ust_app_reference app_ref(app);
+
+		if (!app->compatible) {
+			continue;
+		}
+
+		const auto locked_ua_sess = ua_sess->lock();
+		if (locked_ua_sess->deleted) {
+			continue;
+		}
+
+		struct lttng_ht_iter uiter;
+		lttng_ht_lookup(ua_sess->channels, (void *) channel_name.data(), &uiter);
+		auto *ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
+		if (ua_chan_node == nullptr) {
+			continue;
+		}
+
+		auto *ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
+
+		auto ust_ctx_attr = make_ust_context_attr(ctx_config);
+		(void) create_ust_app_channel_context(ua_chan, &ust_ctx_attr, app, ctx_config);
+	}
+}
+
 void ls::ust::domain_orchestrator::enable_channel(
 	const config::recording_channel_configuration& channel_config)
 {
@@ -861,15 +899,23 @@ void ls::ust::domain_orchestrator::disable_event(
 	_assert_app_sessions_consistent();
 }
 
-void ls::ust::domain_orchestrator::add_context(const config::recording_channel_configuration&,
-					       const config::context_configuration&)
+void ls::ust::domain_orchestrator::add_context(
+	const config::recording_channel_configuration& channel_config,
+	const config::context_configuration& ctx_config)
 {
-	/*
-	 * Nothing to do: the config layer already recorded the context
-	 * in the recording_channel_configuration. The per-app sync path
-	 * reads contexts from the config directly.
-	 */
-	LTTNG_ASSERT(!_active);
+	if (!_active) {
+		/*
+		 * The config layer already recorded the context in
+		 * the recording_channel_configuration. The per-app sync
+		 * path reads contexts from the config directly when
+		 * applications register while the session is inactive.
+		 */
+		return;
+	}
+
+	_add_context_on_apps(channel_config.name, ctx_config);
+
+	_assert_app_sessions_consistent();
 }
 
 void ls::ust::domain_orchestrator::enable_event(
