@@ -396,9 +396,6 @@ public:
 	unsigned int output_traces = 0;
 	unsigned int live_timer_interval = 0; /* usec */
 
-	/* Metadata channel attributes. */
-	lttng_ust_ctl_consumer_channel_attr metadata_attr = {};
-
 	char root_shm_path[PATH_MAX] = {};
 	char shm_path[PATH_MAX] = {};
 

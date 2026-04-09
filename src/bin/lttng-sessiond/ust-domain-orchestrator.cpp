@@ -1082,11 +1082,6 @@ void ls::ust::domain_orchestrator::_init_app_session(ust::app_session *ua_sess, 
 	ua_sess->output_traces = _session.output_traces;
 	ua_sess->live_timer_interval = _session.live_timer;
 
-	{
-		const auto default_attr = default_metadata_channel_attr();
-		copy_channel_attr_to_ustctl(&ua_sess->metadata_attr, &default_attr);
-	}
-
 	switch (ua_sess->buffer_type) {
 	case LTTNG_BUFFER_PER_PID:
 		ret = snprintf(ua_sess->path,
@@ -1848,7 +1843,10 @@ int ls::ust::domain_orchestrator::_create_app_metadata(
 		goto error;
 	}
 
-	memcpy(&metadata->attr, &ua_sess->metadata_attr, sizeof(metadata->attr));
+	{
+		const auto default_attr = default_metadata_channel_attr();
+		copy_channel_attr_to_ustctl(&metadata->attr, &default_attr);
+	}
 
 	/* Need one fd for the channel. */
 	ret = lttng_fd_get(LTTNG_FD_APPS, 1);

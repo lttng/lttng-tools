@@ -1435,7 +1435,6 @@ lsu::app_session *alloc_ust_app_session()
 
 	ua_sess->handle = -1;
 	ua_sess->channels = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
-	ua_sess->metadata_attr.type = LTTNG_UST_ABI_CHAN_METADATA;
 
 	return ua_sess;
 
