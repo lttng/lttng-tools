@@ -421,7 +421,7 @@ static int event_agent_disable_one(lttng::sessiond::ust::domain_orchestrator& or
 	    aevent->name,
 	    aevent->loglevel_type,
 	    aevent->loglevel_value,
-	    orchestrator.session_id());
+	    orchestrator.recording_session().id);
 
 	/* Already disabled? */
 	if (!AGENT_EVENT_IS_ENABLED(aevent)) {
@@ -527,7 +527,7 @@ int event_agent_disable(lttng::sessiond::ust::domain_orchestrator& orchestrator,
 
 	DBG("Event agent disabling %s (all loglevels) for session %" PRIu64,
 	    event_name,
-	    orchestrator.session_id());
+	    orchestrator.recording_session().id);
 
 	const lttng::urcu::read_lock_guard read_lock;
 	agent_find_events_by_name(event_name, agt, &iter);

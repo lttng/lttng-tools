@@ -3194,10 +3194,7 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 				 .get_channel(default_chan_name)
 				 .get_event_rule_configuration(*lookup_rule);
 
-		const auto session_id =
-			static_cast<const lttng::sessiond::ust::domain_orchestrator&>(
-				session.get_ust_orchestrator())
-				.session_id();
+		const auto session_id = session.id;
 
 		/* The wild card * means that everything should be enabled. */
 		if (strncmp(event->name, "*", 1) == 0 && strlen(event->name) == 1) {

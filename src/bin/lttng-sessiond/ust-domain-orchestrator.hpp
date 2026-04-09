@@ -116,8 +116,6 @@ public:
 		return new_output;
 	}
 
-	std::uint64_t session_id() const noexcept;
-
 	bool is_active() const noexcept
 	{
 		return _active;
@@ -265,6 +263,8 @@ public:
 	bool supports_madv_remove() const noexcept;
 
 private:
+	std::uint64_t session_id() const noexcept;
+
 	/*
 	 * Transitional internal API
 	 *
@@ -704,11 +704,6 @@ public:
 
 	consumer_output_uptr
 	exchange_consumer_output(consumer_output_uptr /* new_output */) noexcept
-	{
-		std::abort();
-	}
-
-	std::uint64_t session_id() const noexcept
 	{
 		std::abort();
 	}
