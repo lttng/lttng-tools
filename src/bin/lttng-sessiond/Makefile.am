@@ -87,6 +87,7 @@ liblttng_sessiond_common_la_SOURCES = utils.cpp utils.hpp \
 
 if HAVE_LIBLTTNG_UST_CTL
 liblttng_sessiond_common_la_SOURCES += trace-ust.cpp ust-registry.cpp ust-app.cpp \
+			ust-app-event.hpp ust-app-event.cpp \
 			ust-consumer.cpp ust-consumer.hpp notify-apps.cpp \
 			ust-application-abi.hpp \
 			ust-domain-orchestrator.hpp ust-domain-orchestrator.cpp \

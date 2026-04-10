@@ -13,6 +13,8 @@
 
 #include <unordered_map>
 
+struct lttng_bytecode;
+struct lttng_event_exclusion;
 struct ust_app_channel;
 
 namespace lttng {
@@ -56,6 +58,20 @@ struct ust_app_event *find_ust_app_event_by_config(
 	const std::unordered_map<const lttng::sessiond::config::event_rule_configuration *,
 				 ust_app_event *>& events,
 	const lttng::sessiond::config::event_rule_configuration& event_config);
+void delete_ust_app_event(int sock, struct ust_app_event *ua_event, lttng::sessiond::ust::app *app);
+
+/*
+ * UST object tracer-side enable/disable/filter/exclusion helpers. Used
+ * both for per-app events and for event notifier rules.
+ */
+int enable_ust_object(lttng::sessiond::ust::app *app, struct lttng_ust_abi_object_data *ust_object);
+int disable_ust_object(lttng::sessiond::ust::app *app, struct lttng_ust_abi_object_data *object);
+int set_ust_object_filter(lttng::sessiond::ust::app *app,
+			  const struct lttng_bytecode *bytecode,
+			  struct lttng_ust_abi_object_data *ust_object);
+int set_ust_object_exclusions(lttng::sessiond::ust::app *app,
+			      const struct lttng_event_exclusion *exclusions,
+			      struct lttng_ust_abi_object_data *ust_object);
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */
 
