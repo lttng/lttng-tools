@@ -3235,69 +3235,6 @@ static void ust_app_destroy(lsu::app& app)
 	call_rcu(&app.pid_n.head, delete_ust_app_rcu);
 }
 
-/*
- * Take a snapshot for a given UST session. The snapshot is sent to the given
- * output.
- *
- * Returns LTTNG_OK on success or a LTTNG_ERR error code.
- */
-static int ust_app_regenerate_statedump(std::uint64_t session_id, lsu::app *app)
-{
-	int ret = 0;
-	lsu::app_session *ua_sess;
-
-	DBG("Regenerating the metadata for ust app pid %d", app->pid);
-
-	const lttng::urcu::read_lock_guard read_lock;
-	const auto update_health_code_on_exit =
-		lttng::make_scope_exit([]() noexcept { health_code_update(); });
-
-	ua_sess = ust_app_lookup_app_session(session_id, app);
-	if (ua_sess == nullptr) {
-		/* The session is in teardown process. Ignore and continue. */
-		return 0;
-	}
-
-	const auto locked_ua_sess = ua_sess->lock();
-	if (locked_ua_sess->deleted) {
-		return 0;
-	}
-
-	pthread_mutex_lock(&app->sock_lock);
-	ret = lttng_ust_ctl_regenerate_statedump(app->sock, ua_sess->handle);
-	pthread_mutex_unlock(&app->sock_lock);
-	return ret;
-}
-
-/*
- * Regenerate the statedump for each app in the session.
- */
-int ust_app_regenerate_statedump_all(std::uint64_t session_id)
-{
-	DBG("Regenerating the metadata for all UST apps");
-
-	/* Iterate on all apps. */
-	for (auto *app : lttng::urcu::lfht_iteration_adapter<lsu::app,
-							     decltype(lsu::app::pid_n),
-							     &lsu::app::pid_n>(*ust_app_ht->ht)) {
-		if (!ust_app_get(*app)) {
-			/* Application unregistered concurrently, skip it. */
-			DBG("Could not get application reference as it is being torn down; skipping application");
-			continue;
-		}
-		/* Prevent app teardown during use. */
-		const ust_app_reference app_ref(app);
-
-		if (!app->compatible) {
-			continue;
-		}
-
-		(void) ust_app_regenerate_statedump(session_id, app);
-	}
-
-	return 0;
-}
-
 lsu::ctl_field_quirks lsu::app::ctl_field_quirks() const
 {
 	/*

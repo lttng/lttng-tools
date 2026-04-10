@@ -289,7 +289,6 @@ void ust_app_add(lttng::sessiond::ust::app *app);
 lttng::sessiond::ust::app *ust_app_create(struct ust_register_msg *msg, int sock);
 void ust_app_notify_sock_unregister(int sock);
 nonstd::optional<ust_app_reference> ust_app_find_by_sock(int sock);
-int ust_app_regenerate_statedump_all(std::uint64_t session_id);
 int ust_app_release_object(lttng::sessiond::ust::app *app, struct lttng_ust_abi_object_data *data);
 
 int ust_app_setup_event_notifier_group(lttng::sessiond::ust::app *app);
@@ -450,11 +449,6 @@ static inline nonstd::optional<ust_app_reference> ust_app_find_by_pid(pid_t pid
 								      __attribute__((unused)))
 {
 	return nonstd::nullopt;
-}
-
-static inline int ust_app_regenerate_statedump_all(std::uint64_t /* session_id */)
-{
-	return 0;
 }
 
 static inline lttng::sessiond::ust::app_session *

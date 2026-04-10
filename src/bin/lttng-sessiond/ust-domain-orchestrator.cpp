@@ -2792,9 +2792,49 @@ void ls::ust::domain_orchestrator::regenerate_metadata()
 
 void ls::ust::domain_orchestrator::regenerate_statedump()
 {
-	const auto ret = ust_app_regenerate_statedump_all(session_id());
-	if (ret < 0) {
-		LTTNG_THROW_REGENERATE_STATEDUMP_FAILURE("Failed to regenerate UST statedump");
+	DBG("Regenerating the statedump for all UST apps");
+
+	const lttng::urcu::read_lock_guard read_lock;
+
+	for (const auto& app_session_pair : _app_sessions) {
+		auto *app = const_cast<ust::app *>(app_session_pair.first);
+		auto *ua_sess = app_session_pair.second;
+
+		if (!ust_app_get(*app)) {
+			continue;
+		}
+
+		const ust_app_reference app_ref(app);
+
+		if (!app->compatible) {
+			continue;
+		}
+
+		const auto locked_ua_sess = ua_sess->lock();
+		if (locked_ua_sess->deleted) {
+			continue;
+		}
+
+		pthread_mutex_lock(&app->sock_lock);
+		const auto ret = lttng_ust_ctl_regenerate_statedump(app->sock, ua_sess->handle);
+		pthread_mutex_unlock(&app->sock_lock);
+
+		if (ret < 0) {
+			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+				DBG3("UST app regenerate statedump failed. Application is dead: pid = %d, sock = %d",
+				     app->pid,
+				     app->sock);
+			} else if (ret == -EAGAIN) {
+				WARN("UST app regenerate statedump failed. Communication time out: pid = %d, sock = %d",
+				     app->pid,
+				     app->sock);
+			} else {
+				ERR("UST app regenerate statedump failed with ret %d: pid = %d, sock = %d",
+				    ret,
+				    app->pid,
+				    app->sock);
+			}
+		}
 	}
 }
 
