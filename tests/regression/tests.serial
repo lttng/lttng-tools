@@ -27,6 +27,7 @@ import logging
 import os
 import pathlib
 import re
+import select
 import shlex
 import shutil
 import subprocess
@@ -65,14 +66,8 @@ def handle_abort(signum, frame):
         logging.info("Forwarding {} to test process".format(signal_name))
         try:
             current_test_process.send_signal(signum)
-            current_test_process.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            logging.warning(
-                "Test process did not terminate before timeout, sending SIGKILL"
-            )
-            current_test_process.kill()
-            current_test_process.wait()
-        print(current_test_process.stdout.read().decode("utf-8"))
+        except OSError:
+            pass
     else:
         logging.debug("No test process to terminate")
 
@@ -172,25 +167,40 @@ def run_test(test_script):
         return (str(e), -1)
 
     return_code = 0
-    communication_timeout = int(
+    poll_timeout = int(
         os.getenv("LTTNG_TEST_SERIAL_TEST_POLL_PERIOD_SECONDS", 60)
     )
     # abort the test if there is more than 30 minutes without new output
     test_timeout_minutes = int(os.getenv("LTTNG_TEST_SERIAL_TEST_TIMEOUT_MINUTES", 30))
     last_output = time.time()
     with open(str(test_log), "w") as f:
-        while current_test_process.returncode is None:
+        stdout_fd = current_test_process.stdout.fileno()
+        while True:
             try:
-                out, err = current_test_process.communicate(
-                    timeout=communication_timeout
-                )
-                data = out.decode("utf-8")
-                stdout += data
-                if f.write(data) > 0:
-                    last_output = time.time()
-            except subprocess.TimeoutExpired:
+                # Use a short timeout when an abort is pending so the
+                # child is killed promptly even if it ignores the
+                # forwarded signal and keeps producing output.
+                effective_timeout = 10 if test_being_aborted else poll_timeout
+                ready, _, _ = select.select([stdout_fd], [], [], effective_timeout)
+            except select.error:
+                # Interrupted by signal; the child was already signaled by
+                # handle_abort, so just loop back to drain remaining output.
+                continue
+
+            if ready:
+                data = os.read(stdout_fd, 4096)
+                if not data:
+                    # EOF: the child closed its stdout
+                    break
+                decoded = data.decode("utf-8", errors="replace")
+                stdout += decoded
+                f.write(decoded)
+                f.flush()
+                last_output = time.time()
+            else:
+                # Timeout with no new data
                 logging.info("Test '{}' still running...".format(test_script))
-                if (time.time() - last_output) >= (test_timeout_minutes * 60):
+                if test_being_aborted or (time.time() - last_output) >= (test_timeout_minutes * 60):
                     logging.info(
                         "{}s since last output, aborting test '{}'".format(
                             time.time() - last_output, test_script
@@ -198,19 +208,25 @@ def run_test(test_script):
                     )
                     try:
                         current_test_process.terminate()
-                        out, _ = current_test_process.communicate(timeout=10)
-                        stdout += out.decode("utf-8")
-                        f.write(out.decode("utf-8"))
+                        current_test_process.wait(timeout=10)
                     except subprocess.TimeoutExpired:
                         logging.warning(
                             "Test process did not terminate before timeout, sending SIGKILL"
                         )
                         current_test_process.kill()
-                        out, _ = current_test_process.communicate()
-                        stdout += out.decode("utf-8")
-                        f.write(out.decode("utf-8"))
+                        current_test_process.wait()
+                    # Drain any remaining output after the child is gone
+                    while True:
+                        remaining = os.read(stdout_fd, 4096)
+                        if not remaining:
+                            break
+                        decoded = remaining.decode("utf-8", errors="replace")
+                        stdout += decoded
+                        f.write(decoded)
+                    f.flush()
+                    break
 
-                continue
+        current_test_process.wait()
 
     return_code = current_test_process.returncode
     current_test_process = None
