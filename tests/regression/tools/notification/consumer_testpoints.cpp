@@ -132,7 +132,12 @@ int __testpoint_consumerd_thread_data_poll(void)
 		}
 	} while (ret == sizeof(value));
 
-	ret = (errno == EAGAIN) ? 0 : -errno;
+	if (ret == 0) {
+		/* No writers on the FIFO; not an error. */
+		ret = 0;
+	} else {
+		ret = (errno == EAGAIN) ? 0 : -errno;
+	}
 
 	if (value_read) {
 		*data_consumption_state = !!value;
