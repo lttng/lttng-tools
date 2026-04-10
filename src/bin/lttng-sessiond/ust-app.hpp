@@ -13,6 +13,7 @@
 #include "domain.hpp"
 #include "lttng-ust-ctl.hpp"
 #include "trace-class.hpp"
+#include "ust-app-ctx.hpp"
 #include "ust-app-event.hpp"
 #include "ust-application-abi.hpp"
 #include "ust-field-quirks.hpp"
@@ -120,25 +121,6 @@ extern struct lttng_ht *ust_app_ht_by_notify_sock;
 struct ust_app_stream_list {
 	unsigned int count;
 	struct cds_list_head head;
-};
-
-struct ust_app_ctx {
-	explicit ust_app_ctx(const lttng::sessiond::config::context_configuration& context_config_) :
-		context_config(context_config_)
-	{
-	}
-
-	~ust_app_ctx() = default;
-	ust_app_ctx(const ust_app_ctx&) = delete;
-	ust_app_ctx(ust_app_ctx&&) = delete;
-	ust_app_ctx& operator=(const ust_app_ctx&) = delete;
-	ust_app_ctx& operator=(ust_app_ctx&&) = delete;
-
-	int handle = 0;
-	struct lttng_ust_context_attr ctx = {};
-	struct lttng_ust_abi_object_data *obj = nullptr;
-	struct lttng_ht_node_ulong node = {};
-	const lttng::sessiond::config::context_configuration& context_config;
 };
 
 struct ust_app_event_notifier_rule {
@@ -591,9 +573,6 @@ int do_consumer_create_channel(struct consumer_output *consumer,
 int send_channel_pid_to_ust(lttng::sessiond::ust::app *app,
 			    lttng::sessiond::ust::app_session *ua_sess,
 			    struct ust_app_channel *ua_chan);
-bool is_context_redundant(
-	const lttng::sessiond::config::recording_channel_configuration& chan_config,
-	const lttng::sessiond::config::context_configuration& ctx_config);
 int enable_ust_channel(lttng::sessiond::ust::app *app,
 		       const lttng::sessiond::ust::app_session::locked_weak_ref& ua_sess,
 		       struct ust_app_channel *ua_chan);
@@ -617,10 +596,6 @@ int enable_ust_app_channel(const lttng::sessiond::ust::app_session::locked_weak_
 int disable_ust_app_channel(const lttng::sessiond::ust::app_session::locked_weak_ref& ua_sess,
 			    struct ust_app_channel *ua_chan,
 			    lttng::sessiond::ust::app *app);
-int create_ust_app_channel_context(struct ust_app_channel *ua_chan,
-				   struct lttng_ust_context_attr *uctx,
-				   lttng::sessiond::ust::app *app,
-				   const lttng::sessiond::config::context_configuration& ctx_config);
 
 /*
  * App session allocation and deletion helpers. These remain in
