@@ -206,6 +206,12 @@ std::uint64_t get_next_session_id();
 int ust_app_destroy_trace_all(std::uint64_t session_id);
 void ust_app_global_destroy(std::uint64_t session_id, lttng::sessiond::ust::app *app);
 
+int close_metadata(uint64_t metadata_key,
+		   unsigned int consumer_bitness,
+		   struct consumer_output *consumer);
+int ust_app_flush_app_session(lttng::sessiond::ust::app& app,
+			      lttng::sessiond::ust::app_session& ua_sess);
+
 #endif /* HAVE_LIBLTTNG_UST_CTL */
 
 #endif /* LTTNG_SESSIOND_UST_APP_SESSION_HPP */
