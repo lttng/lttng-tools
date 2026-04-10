@@ -11,6 +11,7 @@
 #include "lttng-ust-ctl.hpp"
 #include "lttng-ust-error.hpp"
 #include "recording-channel-configuration.hpp"
+#include "ust-app-channel.hpp"
 #include "ust-app-ctx.hpp"
 #include "ust-app.hpp"
 

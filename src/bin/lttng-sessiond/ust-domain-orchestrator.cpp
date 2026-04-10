@@ -19,7 +19,7 @@
 #include "recording-channel-configuration.hpp"
 #include "session.hpp"
 #include "trace-ust.hpp"
-#include "ust-app-channel-helpers.hpp"
+#include "ust-app-channel.hpp"
 #include "ust-app.hpp"
 #include "ust-consumer.hpp"
 #include "ust-domain-orchestrator.hpp"

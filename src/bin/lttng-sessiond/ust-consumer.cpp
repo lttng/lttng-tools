@@ -12,6 +12,7 @@
 #include "lttng-ust-error.hpp"
 #include "recording-channel-configuration.hpp"
 #include "session.hpp"
+#include "ust-app-channel.hpp"
 #include "ust-consumer.hpp"
 #include "ust-trace-class-index.hpp"
 #include "ust-trace-class.hpp"

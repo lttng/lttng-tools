@@ -19,7 +19,7 @@
 #include "manage-apps.hpp"
 #include "notification-thread-commands.hpp"
 #include "session.hpp"
-#include "ust-app-channel-helpers.hpp"
+#include "ust-app-channel.hpp"
 #include "ust-app.hpp"
 #include "ust-consumer.hpp"
 #include "ust-domain-orchestrator.hpp"
