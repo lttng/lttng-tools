@@ -21,6 +21,8 @@
 #include <unordered_map>
 #include <urcu/list.h>
 
+struct ust_app_event;
+
 /* Stream list containing lttng::sessiond::ust::app_stream. */
 struct ust_app_stream_list {
 	unsigned int count;

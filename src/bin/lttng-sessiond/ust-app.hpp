@@ -13,7 +13,6 @@
 #include "domain.hpp"
 #include "lttng-ust-ctl.hpp"
 #include "trace-class.hpp"
-#include "ust-app-event.hpp"
 #include "ust-app-session.hpp"
 #include "ust-application-abi.hpp"
 #include "ust-field-quirks.hpp"

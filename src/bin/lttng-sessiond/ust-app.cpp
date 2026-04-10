@@ -20,6 +20,7 @@
 #include "notification-thread-commands.hpp"
 #include "session.hpp"
 #include "ust-app-channel.hpp"
+#include "ust-app-event.hpp"
 #include "ust-app.hpp"
 #include "ust-consumer.hpp"
 #include "ust-domain-orchestrator.hpp"

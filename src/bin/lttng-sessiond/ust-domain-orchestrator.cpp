@@ -21,6 +21,7 @@
 #include "trace-ust.hpp"
 #include "ust-app-channel.hpp"
 #include "ust-app-ctx.hpp"
+#include "ust-app-event.hpp"
 #include "ust-app.hpp"
 #include "ust-consumer.hpp"
 #include "ust-domain-orchestrator.hpp"
