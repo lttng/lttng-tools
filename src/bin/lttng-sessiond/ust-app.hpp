@@ -13,6 +13,7 @@
 #include "domain.hpp"
 #include "lttng-ust-ctl.hpp"
 #include "trace-class.hpp"
+#include "ust-app-event.hpp"
 #include "ust-application-abi.hpp"
 #include "ust-field-quirks.hpp"
 
@@ -138,25 +139,6 @@ struct ust_app_ctx {
 	struct lttng_ust_abi_object_data *obj = nullptr;
 	struct lttng_ht_node_ulong node = {};
 	const lttng::sessiond::config::context_configuration& context_config;
-};
-
-struct ust_app_event {
-	explicit ust_app_event(
-		const lttng::sessiond::config::event_rule_configuration& event_rule_config_) :
-		event_rule_config(event_rule_config_)
-	{
-	}
-
-	~ust_app_event() = default;
-	ust_app_event(const ust_app_event&) = delete;
-	ust_app_event(ust_app_event&&) = delete;
-	ust_app_event& operator=(const ust_app_event&) = delete;
-	ust_app_event& operator=(ust_app_event&&) = delete;
-
-	bool enabled = false;
-	int handle = 0;
-	struct lttng_ust_abi_object_data *obj = nullptr;
-	const lttng::sessiond::config::event_rule_configuration& event_rule_config;
 };
 
 struct ust_app_event_notifier_rule {
@@ -635,19 +617,10 @@ int enable_ust_app_channel(const lttng::sessiond::ust::app_session::locked_weak_
 int disable_ust_app_channel(const lttng::sessiond::ust::app_session::locked_weak_ref& ua_sess,
 			    struct ust_app_channel *ua_chan,
 			    lttng::sessiond::ust::app *app);
-int enable_ust_app_event(struct ust_app_event *ua_event, lttng::sessiond::ust::app *app);
-int disable_ust_app_event(struct ust_app_event *ua_event, lttng::sessiond::ust::app *app);
-int create_ust_app_event(struct ust_app_channel *ua_chan,
-			 lttng::sessiond::ust::app *app,
-			 const lttng::sessiond::config::event_rule_configuration& event_config);
 int create_ust_app_channel_context(struct ust_app_channel *ua_chan,
 				   struct lttng_ust_context_attr *uctx,
 				   lttng::sessiond::ust::app *app,
 				   const lttng::sessiond::config::context_configuration& ctx_config);
-struct ust_app_event *find_ust_app_event_by_config(
-	const std::unordered_map<const lttng::sessiond::config::event_rule_configuration *,
-				 ust_app_event *>& events,
-	const lttng::sessiond::config::event_rule_configuration& event_config);
 
 /*
  * App session allocation and deletion helpers. These remain in
