@@ -17,6 +17,7 @@
 namespace lttng {
 namespace sessiond {
 namespace ust {
+struct app_stream;
 class trace_class;
 } /* namespace ust */
 } /* namespace sessiond */

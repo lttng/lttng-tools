@@ -45,13 +45,10 @@ struct lttng_pipe;
 namespace lttng {
 namespace sessiond {
 namespace config {
-class recording_channel_configuration;
 class event_rule_configuration;
-class context_configuration;
 } /* namespace config */
 namespace ust {
 class domain_orchestrator;
-struct app_stream;
 } /* namespace ust */
 } /* namespace sessiond */
 } /* namespace lttng */
