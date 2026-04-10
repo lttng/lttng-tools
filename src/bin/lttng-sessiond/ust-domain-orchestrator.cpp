@@ -1223,25 +1223,26 @@ int ls::ust::domain_orchestrator::_find_or_create_app_session(ust::app *app,
 	health_code_update();
 
 	if (ua_sess->handle == -1) {
-		pthread_mutex_lock(&app->sock_lock);
-		ret = lttng_ust_ctl_create_session(app->sock);
-		pthread_mutex_unlock(&app->sock_lock);
+		{
+			const auto protocol = app->command_socket.lock();
+			ret = lttng_ust_ctl_create_session(protocol.fd());
+		}
 		if (ret < 0) {
 			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 				DBG("UST app creating session failed. Application is dead: pid = %d, sock = %d",
 				    app->pid,
-				    app->sock);
+				    app->command_socket.fd());
 				ret = 0;
 			} else if (ret == -EAGAIN) {
 				DBG("UST app creating session failed. Communication time out: pid = %d, sock = %d",
 				    app->pid,
-				    app->sock);
+				    app->command_socket.fd());
 				ret = 0;
 			} else {
 				ERR("UST app creating session failed with ret %d: pid = %d, sock =%d",
 				    ret,
 				    app->pid,
-				    app->sock);
+				    app->command_socket.fd());
 			}
 			delete_ust_app_session(-1, ua_sess, app);
 			if (ret != -ENOMEM) {
@@ -1959,7 +1960,7 @@ void ls::ust::domain_orchestrator::synchronize_app(ust::app& app)
 				const auto md_ret = _create_app_metadata(locked_ua_sess, &app);
 				if (md_ret < 0) {
 					ERR("Metadata creation failed for app sock %d for session id %" PRIu64,
-					    app.sock,
+					    app.command_socket.fd(),
 					    session_id());
 				}
 			}
@@ -2031,26 +2032,27 @@ int ls::ust::domain_orchestrator::_start_app_trace(ust::app *app)
 	}
 
 	/* This starts the UST tracing */
-	pthread_mutex_lock(&app->sock_lock);
-	ret = lttng_ust_ctl_start_session(app->sock, ua_sess->handle);
-	pthread_mutex_unlock(&app->sock_lock);
+	{
+		const auto protocol = app->command_socket.lock();
+		ret = lttng_ust_ctl_start_session(protocol.fd(), ua_sess->handle);
+	}
 	if (ret < 0) {
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			DBG3("UST app start session failed. Application is dead: pid = %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 			return 0;
 		} else if (ret == -EAGAIN) {
 			WARN("UST app start session failed. Communication time out: pid = %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 			return 0;
 
 		} else {
 			ERR("UST app start session failed with ret %d: pid = %d, sock = %d",
 			    ret,
 			    app->pid,
-			    app->sock);
+			    app->command_socket.fd());
 		}
 
 		return -1;
@@ -2063,23 +2065,24 @@ int ls::ust::domain_orchestrator::_start_app_trace(ust::app *app)
 	health_code_update();
 
 	/* Quiescent wait after starting trace */
-	pthread_mutex_lock(&app->sock_lock);
-	ret = lttng_ust_ctl_wait_quiescent(app->sock);
-	pthread_mutex_unlock(&app->sock_lock);
+	{
+		const auto protocol = app->command_socket.lock();
+		ret = lttng_ust_ctl_wait_quiescent(protocol.fd());
+	}
 	if (ret < 0) {
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			DBG3("UST app wait quiescent failed. Application is dead: pid = %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else if (ret == -EAGAIN) {
 			WARN("UST app wait quiescent failed. Communication time out: pid =  %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else {
 			ERR("UST app wait quiescent failed with ret %d: pid %d, sock = %d",
 			    ret,
 			    app->pid,
-			    app->sock);
+			    app->command_socket.fd());
 		}
 	}
 
@@ -2125,26 +2128,27 @@ int ls::ust::domain_orchestrator::_stop_app_trace(ust::app *app)
 	health_code_update();
 
 	/* This inhibits UST tracing */
-	pthread_mutex_lock(&app->sock_lock);
-	ret = lttng_ust_ctl_stop_session(app->sock, ua_sess->handle);
-	pthread_mutex_unlock(&app->sock_lock);
+	{
+		const auto protocol = app->command_socket.lock();
+		ret = lttng_ust_ctl_stop_session(protocol.fd(), ua_sess->handle);
+	}
 	if (ret < 0) {
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			DBG3("UST app stop session failed. Application is dead: pid = %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 			return 0;
 		} else if (ret == -EAGAIN) {
 			WARN("UST app stop session failed. Communication time out: pid = %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 			return 0;
 
 		} else {
 			ERR("UST app stop session failed with ret %d: pid = %d, sock = %d",
 			    ret,
 			    app->pid,
-			    app->sock);
+			    app->command_socket.fd());
 		}
 
 		return -1;
@@ -2154,23 +2158,24 @@ int ls::ust::domain_orchestrator::_stop_app_trace(ust::app *app)
 	ua_sess->enabled = false;
 
 	/* Quiescent wait after stopping trace */
-	pthread_mutex_lock(&app->sock_lock);
-	ret = lttng_ust_ctl_wait_quiescent(app->sock);
-	pthread_mutex_unlock(&app->sock_lock);
+	{
+		const auto protocol = app->command_socket.lock();
+		ret = lttng_ust_ctl_wait_quiescent(protocol.fd());
+	}
 	if (ret < 0) {
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			DBG3("UST app wait quiescent failed. Application is dead: pid= %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else if (ret == -EAGAIN) {
 			WARN("UST app wait quiescent failed. Communication time out: pid= %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else {
 			ERR("UST app wait quiescent failed with ret %d: pid= %d, sock = %d",
 			    ret,
 			    app->pid,
-			    app->sock);
+			    app->command_socket.fd());
 		}
 	}
 
@@ -2817,24 +2822,26 @@ void ls::ust::domain_orchestrator::regenerate_statedump()
 			continue;
 		}
 
-		pthread_mutex_lock(&app->sock_lock);
-		const auto ret = lttng_ust_ctl_regenerate_statedump(app->sock, ua_sess->handle);
-		pthread_mutex_unlock(&app->sock_lock);
+		int ret;
+		{
+			const auto protocol = app->command_socket.lock();
+			ret = lttng_ust_ctl_regenerate_statedump(protocol.fd(), ua_sess->handle);
+		}
 
 		if (ret < 0) {
 			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 				DBG3("UST app regenerate statedump failed. Application is dead: pid = %d, sock = %d",
 				     app->pid,
-				     app->sock);
+				     app->command_socket.fd());
 			} else if (ret == -EAGAIN) {
 				WARN("UST app regenerate statedump failed. Communication time out: pid = %d, sock = %d",
 				     app->pid,
-				     app->sock);
+				     app->command_socket.fd());
 			} else {
 				ERR("UST app regenerate statedump failed with ret %d: pid = %d, sock = %d",
 				    ret,
 				    app->pid,
-				    app->sock);
+				    app->command_socket.fd());
 			}
 		}
 	}

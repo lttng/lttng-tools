@@ -517,10 +517,13 @@ send_counter_data_to_ust(lttng::sessiond::ust::app *app,
 	enum event_notifier_error_accounting_status status;
 
 	/* Attach counter to trigger group. */
-	pthread_mutex_lock(&app->sock_lock);
-	ret = lttng_ust_ctl_send_counter_data_to_ust(
-		app->sock, app->event_notifier_group.object->header.handle, new_counter);
-	pthread_mutex_unlock(&app->sock_lock);
+	{
+		const auto protocol = app->command_socket.lock();
+		ret = lttng_ust_ctl_send_counter_data_to_ust(
+			protocol.fd(),
+			app->event_notifier_group.object->header.handle,
+			new_counter);
+	}
 	if (ret < 0) {
 		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
 			ERR("Failed to send counter data to application: application name = '%s', pid = %d, ret = %d",
@@ -552,9 +555,11 @@ send_counter_cpu_data_to_ust(lttng::sessiond::ust::app *app,
 	int ret;
 	enum event_notifier_error_accounting_status status;
 
-	pthread_mutex_lock(&app->sock_lock);
-	ret = lttng_ust_ctl_send_counter_cpu_data_to_ust(app->sock, counter, counter_cpu);
-	pthread_mutex_unlock(&app->sock_lock);
+	{
+		const auto protocol = app->command_socket.lock();
+		ret = lttng_ust_ctl_send_counter_cpu_data_to_ust(
+			protocol.fd(), counter, counter_cpu);
+	}
 	if (ret < 0) {
 		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
 			ERR("Failed to send counter CPU data to application: application name = '%s', pid = %d, ret = %d",
@@ -764,15 +769,19 @@ event_notifier_error_accounting_unregister_app(lttng::sessiond::ust::app *app)
 		ust_error_accounting_entry_put(entry);
 	}
 
-	for (i = 0; i < app->event_notifier_group.nr_counter_cpu; i++) {
-		lttng_ust_ctl_release_object(app->sock, app->event_notifier_group.counter_cpu[i]);
-		free(app->event_notifier_group.counter_cpu[i]);
+	{
+		const auto protocol = app->command_socket.lock();
+		for (i = 0; i < app->event_notifier_group.nr_counter_cpu; i++) {
+			lttng_ust_ctl_release_object(protocol.fd(),
+						     app->event_notifier_group.counter_cpu[i]);
+			free(app->event_notifier_group.counter_cpu[i]);
+		}
+
+		free(app->event_notifier_group.counter_cpu);
+
+		lttng_ust_ctl_release_object(protocol.fd(), app->event_notifier_group.counter);
+		free(app->event_notifier_group.counter);
 	}
-
-	free(app->event_notifier_group.counter_cpu);
-
-	lttng_ust_ctl_release_object(app->sock, app->event_notifier_group.counter);
-	free(app->event_notifier_group.counter);
 
 	status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 end:

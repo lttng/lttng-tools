@@ -242,7 +242,7 @@ void destroy_app_session(lsu::app *app, lsu::app_session *ua_sess)
 					      consumer_to_close);
 		}
 
-		delete_ust_app_session(app->sock, ua_sess, app);
+		delete_ust_app_session(app->command_socket.fd(), ua_sess, app);
 		return;
 	}
 
@@ -266,7 +266,7 @@ void destroy_app_session(lsu::app *app, lsu::app_session *ua_sess)
 	}
 
 	/* Once deleted, free the data structure. */
-	delete_ust_app_session(app->sock, ua_sess, app);
+	delete_ust_app_session(app->command_socket.fd(), ua_sess, app);
 }
 
 /*
@@ -310,23 +310,24 @@ int destroy_trace(std::uint64_t session_id, lsu::app *app)
 	health_code_update();
 
 	/* Quiescent wait after stopping trace */
-	pthread_mutex_lock(&app->sock_lock);
-	ret = lttng_ust_ctl_wait_quiescent(app->sock);
-	pthread_mutex_unlock(&app->sock_lock);
+	{
+		const auto protocol = app->command_socket.lock();
+		ret = lttng_ust_ctl_wait_quiescent(protocol.fd());
+	}
 	if (ret < 0) {
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			DBG3("UST app wait quiescent failed. Application is dead: pid= %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else if (ret == -EAGAIN) {
 			WARN("UST app wait quiescent failed. Communication time out: pid= %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else {
 			ERR("UST app wait quiescent failed with ret %d: pid= %d, sock = %d",
 			    ret,
 			    app->pid,
-			    app->sock);
+			    app->command_socket.fd());
 		}
 	}
 end:
@@ -472,23 +473,25 @@ void delete_ust_app_session(int sock, lsu::app_session *ua_sess, lsu::app *app)
 	}
 
 	if (ua_sess->handle != -1) {
-		pthread_mutex_lock(&app->sock_lock);
-		auto ret = lttng_ust_ctl_release_handle(sock, ua_sess->handle);
-		pthread_mutex_unlock(&app->sock_lock);
+		int ret;
+		{
+			const auto protocol = app->command_socket.lock();
+			ret = lttng_ust_ctl_release_handle(sock, ua_sess->handle);
+		}
 		if (ret < 0) {
 			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 				DBG3("UST app release session handle failed. Application is dead: pid = %d, sock = %d",
 				     app->pid,
-				     app->sock);
+				     app->command_socket.fd());
 			} else if (ret == -EAGAIN) {
 				WARN("UST app release session handle failed. Communication time out: pid = %d, sock = %d",
 				     app->pid,
-				     app->sock);
+				     app->command_socket.fd());
 			} else {
 				ERR("UST app release session handle failed with ret %d: pid = %d, sock = %d",
 				    ret,
 				    app->pid,
-				    app->sock);
+				    app->command_socket.fd());
 			}
 		}
 

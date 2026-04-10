@@ -21,7 +21,6 @@
 #include <common/urcu.hpp>
 
 #include <cstring>
-#include <pthread.h>
 
 namespace lsu = lttng::sessiond::ust;
 namespace lsc = lttng::sessiond::config;
@@ -156,25 +155,27 @@ int create_ust_channel_context(struct ust_app_channel *ua_chan,
 
 	health_code_update();
 
-	pthread_mutex_lock(&app->sock_lock);
-	ret = lttng_ust_ctl_add_context(app->sock, &ua_ctx->ctx, ua_chan->obj, &ua_ctx->obj);
-	pthread_mutex_unlock(&app->sock_lock);
+	{
+		const auto protocol = app->command_socket.lock();
+		ret = lttng_ust_ctl_add_context(
+			protocol.fd(), &ua_ctx->ctx, ua_chan->obj, &ua_ctx->obj);
+	}
 	if (ret < 0) {
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			ret = 0;
 			DBG3("UST app create channel context failed. Application is dead: pid = %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else if (ret == -EAGAIN) {
 			ret = 0;
 			WARN("UST app create channel context failed. Communication time out: pid = %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else {
 			ERR("UST app create channel context failed with ret %d: pid = %d, sock = %d",
 			    ret,
 			    app->pid,
-			    app->sock);
+			    app->command_socket.fd());
 		}
 		goto error;
 	}
@@ -203,24 +204,25 @@ void delete_ust_app_ctx(int sock, struct ust_app_ctx *ua_ctx, lsu::app *app)
 	ASSERT_RCU_READ_LOCKED();
 
 	if (ua_ctx->obj) {
-		pthread_mutex_lock(&app->sock_lock);
-		ret = lttng_ust_ctl_release_object(sock, ua_ctx->obj);
-		pthread_mutex_unlock(&app->sock_lock);
+		{
+			const auto protocol = app->command_socket.lock();
+			ret = lttng_ust_ctl_release_object(sock, ua_ctx->obj);
+		}
 		if (ret < 0) {
 			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 				DBG3("UST app release ctx failed. Application is dead: pid = %d, sock = %d",
 				     app->pid,
-				     app->sock);
+				     app->command_socket.fd());
 			} else if (ret == -EAGAIN) {
 				WARN("UST app release ctx failed. Communication time out: pid = %d, sock = %d",
 				     app->pid,
-				     app->sock);
+				     app->command_socket.fd());
 			} else {
 				ERR("UST app release ctx obj handle %d failed with ret %d: pid = %d, sock = %d",
 				    ua_ctx->obj->header.handle,
 				    ret,
 				    app->pid,
-				    app->sock);
+				    app->command_socket.fd());
 			}
 		}
 		free(ua_ctx->obj);

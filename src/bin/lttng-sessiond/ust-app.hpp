@@ -13,6 +13,7 @@
 #include "domain.hpp"
 #include "lttng-ust-ctl.hpp"
 #include "trace-class.hpp"
+#include "ust-app-command-socket.hpp"
 #include "ust-app-session.hpp"
 #include "ust-application-abi.hpp"
 #include "ust-field-quirks.hpp"
@@ -138,15 +139,17 @@ namespace ust {
  */
 struct app {
 	/*
-	 * The lifetime of 'sock' holds a reference to the application; the
-	 * application management thread will release a reference to the
-	 * application if the application dies.
+	 * The lifetime of the command socket holds a reference to the
+	 * application; the application management thread will release a
+	 * reference to the application if the application dies.
 	 */
 	urcu_ref ref = {};
 
-	/* Traffic initiated from the session daemon to the application. */
-	int sock = -1;
-	pthread_mutex_t sock_lock = {}; /* Protects sock protocol. */
+	/*
+	 * Socket used for session daemon to application communication,
+	 * bundled with its protocol-serializing mutex.
+	 */
+	app_command_socket command_socket;
 
 	/* Traffic initiated from the application to the session daemon. */
 	int notify_sock = static_cast<int>(-1);

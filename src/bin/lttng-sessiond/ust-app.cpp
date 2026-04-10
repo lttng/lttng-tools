@@ -355,23 +355,24 @@ static void delete_ust_app_event_notifier_rule(
 	}
 
 	if (ua_event_notifier_rule->obj != nullptr) {
-		pthread_mutex_lock(&app->sock_lock);
-		ret = lttng_ust_ctl_release_object(sock, ua_event_notifier_rule->obj);
-		pthread_mutex_unlock(&app->sock_lock);
+		{
+			const auto protocol = app->command_socket.lock();
+			ret = lttng_ust_ctl_release_object(sock, ua_event_notifier_rule->obj);
+		}
 		if (ret < 0) {
 			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 				DBG3("UST app release event notifier failed. Application is dead: pid = %d, sock = %d",
 				     app->pid,
-				     app->sock);
+				     app->command_socket.fd());
 			} else if (ret == -EAGAIN) {
 				WARN("UST app release event notifier failed. Communication time out: pid = %d, sock = %d",
 				     app->pid,
-				     app->sock);
+				     app->command_socket.fd());
 			} else {
 				ERR("UST app release event notifier failed with ret %d: pid = %d, sock = %d",
 				    ret,
 				    app->pid,
-				    app->sock);
+				    app->command_socket.fd());
 			}
 		}
 
@@ -386,25 +387,22 @@ int ust_app_register_done(lsu::app *app)
 {
 	int ret;
 
-	pthread_mutex_lock(&app->sock_lock);
-	ret = lttng_ust_ctl_register_done(app->sock);
-	pthread_mutex_unlock(&app->sock_lock);
+	{
+		const auto protocol = app->command_socket.lock();
+		ret = lttng_ust_ctl_register_done(protocol.fd());
+	}
 	return ret;
 }
 
 int ust_app_release_object(lsu::app *app, struct lttng_ust_abi_object_data *data)
 {
-	int ret, sock;
+	int ret;
 
 	if (app) {
-		pthread_mutex_lock(&app->sock_lock);
-		sock = app->sock;
+		const auto protocol = app->command_socket.lock();
+		ret = lttng_ust_ctl_release_object(protocol.fd(), data);
 	} else {
-		sock = -1;
-	}
-	ret = lttng_ust_ctl_release_object(sock, data);
-	if (app) {
-		pthread_mutex_unlock(&app->sock_lock);
+		ret = lttng_ust_ctl_release_object(-1, data);
 	}
 	return ret;
 }
@@ -611,8 +609,7 @@ static void delete_ust_app(lsu::app *app)
 	 */
 	const auto list_lock = lttng::sessiond::lock_session_list();
 	/* Delete ust app sessions info */
-	sock = app->sock;
-	app->sock = -1;
+	sock = app->command_socket.release_fd();
 
 	/* Wipe sessions */
 	{
@@ -637,7 +634,8 @@ static void delete_ust_app(lsu::app *app)
 					   &event_notifier_rule->node.node);
 			LTTNG_ASSERT(!ret);
 
-			delete_ust_app_event_notifier_rule(app->sock, event_notifier_rule, app);
+			delete_ust_app_event_notifier_rule(
+				app->command_socket.fd(), event_notifier_rule, app);
 		}
 	}
 
@@ -906,25 +904,26 @@ static int set_ust_capture(lsu::app *app,
 	 */
 	ust_bytecode->seqnum = capture_seqnum;
 
-	pthread_mutex_lock(&app->sock_lock);
-	ret = lttng_ust_ctl_set_capture(app->sock, ust_bytecode, ust_object);
-	pthread_mutex_unlock(&app->sock_lock);
+	{
+		const auto protocol = app->command_socket.lock();
+		ret = lttng_ust_ctl_set_capture(protocol.fd(), ust_bytecode, ust_object);
+	}
 	if (ret < 0) {
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			ret = 0;
 			DBG3("UST app set capture failed. Application is dead: pid = %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else if (ret == -EAGAIN) {
 			ret = 0;
 			DBG3("UST app set capture failed. Communication timeout: pid = %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else {
 			ERR("UST app event set capture failed with ret %d: pid = %d, sock = %d",
 			    ret,
 			    app->pid,
-			    app->sock);
+			    app->command_socket.fd());
 		}
 
 		goto error;
@@ -1053,29 +1052,30 @@ static int create_ust_event_notifier(lsu::app *app,
 	event_notifier.error_counter_index = ua_event_notifier_rule->error_counter_index;
 
 	/* Create UST event notifier against the tracer. */
-	pthread_mutex_lock(&app->sock_lock);
-	ret = lttng_ust_ctl_create_event_notifier(app->sock,
-						  &event_notifier,
-						  app->event_notifier_group.object,
-						  &ua_event_notifier_rule->obj);
-	pthread_mutex_unlock(&app->sock_lock);
+	{
+		const auto protocol = app->command_socket.lock();
+		ret = lttng_ust_ctl_create_event_notifier(protocol.fd(),
+							  &event_notifier,
+							  app->event_notifier_group.object,
+							  &ua_event_notifier_rule->obj);
+	}
 	if (ret < 0) {
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			ret = 0;
 			DBG3("UST app create event notifier failed. Application is dead: pid = %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else if (ret == -EAGAIN) {
 			ret = 0;
 			WARN("UST app create event notifier failed. Communication time out: pid = %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else {
 			ERR("UST app create event notifier '%s' failed with ret %d: pid = %d, sock = %d",
 			    event_notifier.name,
 			    ret,
 			    app->pid,
-			    app->sock);
+			    app->command_socket.fd());
 		}
 		goto error;
 	}
@@ -1337,9 +1337,8 @@ lsu::app *ust_app_create(struct ust_register_msg *msg, int sock)
 
 	lta->pid = msg->pid;
 	lttng_ht_node_init_ulong(&lta->pid_n, (unsigned long) lta->pid);
-	lta->sock = sock;
-	pthread_mutex_init(&lta->sock_lock, nullptr);
-	lttng_ht_node_init_ulong(&lta->sock_n, (unsigned long) lta->sock);
+	lta->command_socket.set_fd(sock);
+	lttng_ht_node_init_ulong(&lta->sock_n, (unsigned long) lta->command_socket.fd());
 
 	if (ust_app_allocate_owner_id(*lta) != OWNER_ID_ALLOCATION_STATUS_OK) {
 		ERR_FMT("Failed to allocate unique owner identity for application: name=`{}`, pid={}, uid={}",
@@ -1395,7 +1394,7 @@ void ust_app_add(lsu::app *app)
 	    app->ppid,
 	    app->uid,
 	    app->gid,
-	    app->sock,
+	    app->command_socket.fd(),
 	    app->name,
 	    app->notify_sock,
 	    app->v_major,
@@ -1414,23 +1413,24 @@ int ust_app_version(lsu::app *app)
 
 	LTTNG_ASSERT(app);
 
-	pthread_mutex_lock(&app->sock_lock);
-	ret = lttng_ust_ctl_tracer_version(app->sock, &app->version);
-	pthread_mutex_unlock(&app->sock_lock);
+	{
+		const auto protocol = app->command_socket.lock();
+		ret = lttng_ust_ctl_tracer_version(protocol.fd(), &app->version);
+	}
 	if (ret < 0) {
 		if (ret == -LTTNG_UST_ERR_EXITING || ret == -EPIPE) {
 			DBG3("UST app version failed. Application is dead: pid = %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else if (ret == -EAGAIN) {
 			WARN("UST app version failed. Communication time out: pid = %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else {
 			ERR("UST app version failed with ret %d: pid = %d, sock = %d",
 			    ret,
 			    app->pid,
-			    app->sock);
+			    app->command_socket.fd());
 		}
 	}
 
@@ -1478,26 +1478,27 @@ int ust_app_setup_event_notifier_group(lsu::app *app)
 	/* Get the write side of the pipe. */
 	event_pipe_write_fd = lttng_pipe_get_writefd(app->event_notifier_group.event_pipe);
 
-	pthread_mutex_lock(&app->sock_lock);
-	ret = lttng_ust_ctl_create_event_notifier_group(
-		app->sock, event_pipe_write_fd, &event_notifier_group);
-	pthread_mutex_unlock(&app->sock_lock);
+	{
+		const auto protocol = app->command_socket.lock();
+		ret = lttng_ust_ctl_create_event_notifier_group(
+			protocol.fd(), event_pipe_write_fd, &event_notifier_group);
+	}
 	if (ret < 0) {
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			ret = 0;
 			DBG3("UST app create event notifier group failed. Application is dead: pid = %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else if (ret == -EAGAIN) {
 			ret = 0;
 			WARN("UST app create event notifier group failed. Communication time out: pid = %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else {
 			ERR("UST app create event notifier group failed with ret %d: pid = %d, sock = %d, event_pipe_write_fd: %d",
 			    ret,
 			    app->pid,
-			    app->sock,
+			    app->command_socket.fd(),
 			    event_pipe_write_fd);
 		}
 		goto error;
@@ -1536,14 +1537,14 @@ int ust_app_setup_event_notifier_group(lsu::app *app)
 		break;
 	case EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_UNSUPPORTED:
 		DBG3("Failed to setup event notifier error accounting (application does not support notifier error accounting): app socket fd = %d, app name = '%s', app pid = %d",
-		     app->sock,
+		     app->command_socket.fd(),
 		     app->name,
 		     (int) app->pid);
 		ret = 0;
 		goto error_accounting;
 	case EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_APP_DEAD:
 		DBG3("Failed to setup event notifier error accounting (application is dead): app socket fd = %d, app name = '%s', app pid = %d",
-		     app->sock,
+		     app->command_socket.fd(),
 		     app->name,
 		     (int) app->pid);
 		ret = 0;
@@ -1565,7 +1566,7 @@ error_accounting:
 	}
 
 error:
-	lttng_ust_ctl_release_object(app->sock, app->event_notifier_group.object);
+	lttng_ust_ctl_release_object(app->command_socket.fd(), app->event_notifier_group.object);
 	free(app->event_notifier_group.object);
 	app->event_notifier_group.object = nullptr;
 	return ret;
@@ -1885,108 +1886,111 @@ int ust_app_list_events(struct lttng_event **events)
 			continue;
 		}
 
-		pthread_mutex_lock(&app->sock_lock);
-		handle = lttng_ust_ctl_tracepoint_list(app->sock);
-		if (handle < 0) {
-			if (handle != -EPIPE && handle != -LTTNG_UST_ERR_EXITING) {
-				ERR("UST app list events getting handle failed for app pid %d",
-				    app->pid);
-			}
-			pthread_mutex_unlock(&app->sock_lock);
-			continue;
-		}
-
-		while ((ret = lttng_ust_ctl_tracepoint_list_get(app->sock, handle, &uiter)) !=
-		       -LTTNG_UST_ERR_NOENT) {
-			/* Handle ustctl error. */
-			if (ret < 0) {
-				int release_ret;
-
-				if (ret != -LTTNG_UST_ERR_EXITING && ret != -EPIPE) {
-					ERR("UST app tp list get failed for app %d with ret %d",
-					    app->sock,
-					    ret);
-				} else {
-					DBG3("UST app tp list get failed. Application is dead");
-					break;
+		{
+			const auto protocol = app->command_socket.lock();
+			handle = lttng_ust_ctl_tracepoint_list(protocol.fd());
+			if (handle < 0) {
+				if (handle != -EPIPE && handle != -LTTNG_UST_ERR_EXITING) {
+					ERR("UST app list events getting handle failed for app pid %d",
+					    app->pid);
 				}
-
-				free(tmp_event);
-				release_ret = lttng_ust_ctl_release_handle(app->sock, handle);
-				if (release_ret < 0 && release_ret != -LTTNG_UST_ERR_EXITING &&
-				    release_ret != -EPIPE) {
-					ERR("Error releasing app handle for app %d with ret %d",
-					    app->sock,
-					    release_ret);
-				}
-
-				pthread_mutex_unlock(&app->sock_lock);
-				goto error;
+				continue;
 			}
 
-			health_code_update();
-			if (count >= nbmem) {
-				/* In case the realloc fails, we free the memory */
-				struct lttng_event *new_tmp_event;
-				size_t new_nbmem;
-
-				new_nbmem = nbmem << 1;
-				DBG2("Reallocating event list from %zu to %zu entries",
-				     nbmem,
-				     new_nbmem);
-				new_tmp_event = (lttng_event *) realloc(
-					tmp_event, new_nbmem * sizeof(struct lttng_event));
-				if (new_tmp_event == nullptr) {
+			while ((ret = lttng_ust_ctl_tracepoint_list_get(
+					protocol.fd(), handle, &uiter)) != -LTTNG_UST_ERR_NOENT) {
+				/* Handle ustctl error. */
+				if (ret < 0) {
 					int release_ret;
 
-					PERROR("realloc ust app events");
+					if (ret != -LTTNG_UST_ERR_EXITING && ret != -EPIPE) {
+						ERR("UST app tp list get failed for app %d with ret %d",
+						    app->command_socket.fd(),
+						    ret);
+					} else {
+						DBG3("UST app tp list get failed. Application is dead");
+						break;
+					}
+
 					free(tmp_event);
-					ret = -ENOMEM;
 					release_ret =
-						lttng_ust_ctl_release_handle(app->sock, handle);
+						lttng_ust_ctl_release_handle(protocol.fd(), handle);
 					if (release_ret < 0 &&
 					    release_ret != -LTTNG_UST_ERR_EXITING &&
 					    release_ret != -EPIPE) {
 						ERR("Error releasing app handle for app %d with ret %d",
-						    app->sock,
+						    app->command_socket.fd(),
 						    release_ret);
 					}
 
-					pthread_mutex_unlock(&app->sock_lock);
 					goto error;
 				}
-				/* Zero the new memory */
-				memset(new_tmp_event + nbmem,
-				       0,
-				       (new_nbmem - nbmem) * sizeof(struct lttng_event));
-				nbmem = new_nbmem;
-				tmp_event = new_tmp_event;
+
+				health_code_update();
+				if (count >= nbmem) {
+					/* In case the realloc fails, we free the memory */
+					struct lttng_event *new_tmp_event;
+					size_t new_nbmem;
+
+					new_nbmem = nbmem << 1;
+					DBG2("Reallocating event list from %zu to %zu entries",
+					     nbmem,
+					     new_nbmem);
+					new_tmp_event = (lttng_event *) realloc(
+						tmp_event, new_nbmem * sizeof(struct lttng_event));
+					if (new_tmp_event == nullptr) {
+						int release_ret;
+
+						PERROR("realloc ust app events");
+						free(tmp_event);
+						ret = -ENOMEM;
+						release_ret = lttng_ust_ctl_release_handle(
+							protocol.fd(), handle);
+						if (release_ret < 0 &&
+						    release_ret != -LTTNG_UST_ERR_EXITING &&
+						    release_ret != -EPIPE) {
+							ERR("Error releasing app handle for app %d with ret %d",
+							    app->command_socket.fd(),
+							    release_ret);
+						}
+
+						goto error;
+					}
+					/* Zero the new memory */
+					memset(new_tmp_event + nbmem,
+					       0,
+					       (new_nbmem - nbmem) * sizeof(struct lttng_event));
+					nbmem = new_nbmem;
+					tmp_event = new_tmp_event;
+				}
+
+				memcpy(tmp_event[count].name,
+				       uiter.name,
+				       LTTNG_UST_ABI_SYM_NAME_LEN);
+				tmp_event[count].loglevel = uiter.loglevel;
+				tmp_event[count].type =
+					(enum lttng_event_type) LTTNG_UST_ABI_TRACEPOINT;
+				tmp_event[count].pid = app->pid;
+				tmp_event[count].enabled = -1;
+				count++;
 			}
 
-			memcpy(tmp_event[count].name, uiter.name, LTTNG_UST_ABI_SYM_NAME_LEN);
-			tmp_event[count].loglevel = uiter.loglevel;
-			tmp_event[count].type = (enum lttng_event_type) LTTNG_UST_ABI_TRACEPOINT;
-			tmp_event[count].pid = app->pid;
-			tmp_event[count].enabled = -1;
-			count++;
+			ret = lttng_ust_ctl_release_handle(protocol.fd(), handle);
 		}
-
-		ret = lttng_ust_ctl_release_handle(app->sock, handle);
-		pthread_mutex_unlock(&app->sock_lock);
 		if (ret < 0) {
 			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 				DBG3("Error releasing app handle. Application died: pid = %d, sock = %d",
 				     app->pid,
-				     app->sock);
+				     app->command_socket.fd());
 			} else if (ret == -EAGAIN) {
 				WARN("Error releasing app handle. Communication time out: pid = %d, sock = %d",
 				     app->pid,
-				     app->sock);
+				     app->command_socket.fd());
 			} else {
 				ERR("Error releasing app handle with ret %d: pid = %d, sock = %d",
 				    ret,
 				    app->pid,
-				    app->sock);
+				    app->command_socket.fd());
 			}
 		}
 	}
@@ -2042,105 +2046,110 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 			continue;
 		}
 
-		pthread_mutex_lock(&app->sock_lock);
-		handle = lttng_ust_ctl_tracepoint_field_list(app->sock);
-		if (handle < 0) {
-			if (handle != -EPIPE && handle != -LTTNG_UST_ERR_EXITING) {
-				ERR("UST app list field getting handle failed for app pid %d",
-				    app->pid);
-			}
-			pthread_mutex_unlock(&app->sock_lock);
-			continue;
-		}
-
-		while ((ret = lttng_ust_ctl_tracepoint_field_list_get(app->sock, handle, &uiter)) !=
-		       -LTTNG_UST_ERR_NOENT) {
-			/* Handle ustctl error. */
-			if (ret < 0) {
-				int release_ret;
-
-				if (ret != -LTTNG_UST_ERR_EXITING && ret != -EPIPE) {
-					ERR("UST app tp list field failed for app %d with ret %d",
-					    app->sock,
-					    ret);
-				} else {
-					DBG3("UST app tp list field failed. Application is dead");
-					break;
+		{
+			const auto protocol = app->command_socket.lock();
+			handle = lttng_ust_ctl_tracepoint_field_list(protocol.fd());
+			if (handle < 0) {
+				if (handle != -EPIPE && handle != -LTTNG_UST_ERR_EXITING) {
+					ERR("UST app list field getting handle failed for app pid %d",
+					    app->pid);
 				}
-
-				free(tmp_event);
-				release_ret = lttng_ust_ctl_release_handle(app->sock, handle);
-				pthread_mutex_unlock(&app->sock_lock);
-				if (release_ret < 0 && release_ret != -LTTNG_UST_ERR_EXITING &&
-				    release_ret != -EPIPE) {
-					ERR("Error releasing app handle for app %d with ret %d",
-					    app->sock,
-					    release_ret);
-				}
-
-				goto error;
+				continue;
 			}
 
-			health_code_update();
-			if (count >= nbmem) {
-				/* In case the realloc fails, we free the memory */
-				struct lttng_event_field *new_tmp_event;
-				size_t new_nbmem;
-
-				new_nbmem = nbmem << 1;
-				DBG2("Reallocating event field list from %zu to %zu entries",
-				     nbmem,
-				     new_nbmem);
-				new_tmp_event = (lttng_event_field *) realloc(
-					tmp_event, new_nbmem * sizeof(struct lttng_event_field));
-				if (new_tmp_event == nullptr) {
+			while ((ret = lttng_ust_ctl_tracepoint_field_list_get(
+					protocol.fd(), handle, &uiter)) != -LTTNG_UST_ERR_NOENT) {
+				/* Handle ustctl error. */
+				if (ret < 0) {
 					int release_ret;
 
-					PERROR("realloc ust app event fields");
+					if (ret != -LTTNG_UST_ERR_EXITING && ret != -EPIPE) {
+						ERR("UST app tp list field failed for app %d with ret %d",
+						    app->command_socket.fd(),
+						    ret);
+					} else {
+						DBG3("UST app tp list field failed. Application is dead");
+						break;
+					}
+
 					free(tmp_event);
-					ret = -ENOMEM;
 					release_ret =
-						lttng_ust_ctl_release_handle(app->sock, handle);
-					pthread_mutex_unlock(&app->sock_lock);
-					if (release_ret && release_ret != -LTTNG_UST_ERR_EXITING &&
+						lttng_ust_ctl_release_handle(protocol.fd(), handle);
+					if (release_ret < 0 &&
+					    release_ret != -LTTNG_UST_ERR_EXITING &&
 					    release_ret != -EPIPE) {
 						ERR("Error releasing app handle for app %d with ret %d",
-						    app->sock,
+						    app->command_socket.fd(),
 						    release_ret);
 					}
 
 					goto error;
 				}
 
-				/* Zero the new memory */
-				memset(new_tmp_event + nbmem,
-				       0,
-				       (new_nbmem - nbmem) * sizeof(struct lttng_event_field));
-				nbmem = new_nbmem;
-				tmp_event = new_tmp_event;
+				health_code_update();
+				if (count >= nbmem) {
+					/* In case the realloc fails, we free the memory */
+					struct lttng_event_field *new_tmp_event;
+					size_t new_nbmem;
+
+					new_nbmem = nbmem << 1;
+					DBG2("Reallocating event field list from %zu to %zu entries",
+					     nbmem,
+					     new_nbmem);
+					new_tmp_event = (lttng_event_field *) realloc(
+						tmp_event,
+						new_nbmem * sizeof(struct lttng_event_field));
+					if (new_tmp_event == nullptr) {
+						int release_ret;
+
+						PERROR("realloc ust app event fields");
+						free(tmp_event);
+						ret = -ENOMEM;
+						release_ret = lttng_ust_ctl_release_handle(
+							protocol.fd(), handle);
+						if (release_ret &&
+						    release_ret != -LTTNG_UST_ERR_EXITING &&
+						    release_ret != -EPIPE) {
+							ERR("Error releasing app handle for app %d with ret %d",
+							    app->command_socket.fd(),
+							    release_ret);
+						}
+
+						goto error;
+					}
+
+					/* Zero the new memory */
+					memset(new_tmp_event + nbmem,
+					       0,
+					       (new_nbmem - nbmem) *
+						       sizeof(struct lttng_event_field));
+					nbmem = new_nbmem;
+					tmp_event = new_tmp_event;
+				}
+
+				memcpy(tmp_event[count].field_name,
+				       uiter.field_name,
+				       LTTNG_UST_ABI_SYM_NAME_LEN);
+				/* Mapping between these enums matches 1 to 1. */
+				tmp_event[count].type = (enum lttng_event_field_type) uiter.type;
+				tmp_event[count].nowrite = uiter.nowrite;
+
+				memcpy(tmp_event[count].event.name,
+				       uiter.event_name,
+				       LTTNG_UST_ABI_SYM_NAME_LEN);
+				tmp_event[count].event.loglevel = uiter.loglevel;
+				tmp_event[count].event.type = LTTNG_EVENT_TRACEPOINT;
+				tmp_event[count].event.pid = app->pid;
+				tmp_event[count].event.enabled = -1;
+				count++;
 			}
 
-			memcpy(tmp_event[count].field_name,
-			       uiter.field_name,
-			       LTTNG_UST_ABI_SYM_NAME_LEN);
-			/* Mapping between these enums matches 1 to 1. */
-			tmp_event[count].type = (enum lttng_event_field_type) uiter.type;
-			tmp_event[count].nowrite = uiter.nowrite;
-
-			memcpy(tmp_event[count].event.name,
-			       uiter.event_name,
-			       LTTNG_UST_ABI_SYM_NAME_LEN);
-			tmp_event[count].event.loglevel = uiter.loglevel;
-			tmp_event[count].event.type = LTTNG_EVENT_TRACEPOINT;
-			tmp_event[count].event.pid = app->pid;
-			tmp_event[count].event.enabled = -1;
-			count++;
+			ret = lttng_ust_ctl_release_handle(protocol.fd(), handle);
 		}
-
-		ret = lttng_ust_ctl_release_handle(app->sock, handle);
-		pthread_mutex_unlock(&app->sock_lock);
 		if (ret < 0 && ret != -LTTNG_UST_ERR_EXITING && ret != -EPIPE) {
-			ERR("Error releasing app handle for app %d with ret %d", app->sock, ret);
+			ERR("Error releasing app handle for app %d with ret %d",
+			    app->command_socket.fd(),
+			    ret);
 		}
 	}
 
@@ -2412,7 +2421,8 @@ static void ust_app_synchronize_event_notifier_rules(lsu::app *app)
 
 		/* Callee logs errors. */
 		(void) disable_ust_object(app, event_notifier_rule->obj);
-		delete_ust_app_event_notifier_rule(app->sock, event_notifier_rule, app);
+		delete_ust_app_event_notifier_rule(
+			app->command_socket.fd(), event_notifier_rule, app);
 	}
 
 end:
@@ -2693,7 +2703,7 @@ static int handle_app_register_channel_notification(int sock,
 			if (!context_fields_match) {
 				ERR("Registering application channel due to context field mismatch: pid = %d, sock = %d",
 				    (*app)->pid,
-				    (*app)->sock);
+				    (*app)->command_socket.fd());
 				ret_code = -EINVAL;
 				goto reply;
 			}
@@ -2721,16 +2731,16 @@ reply:
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			DBG3("UST app reply channel failed. Application died: pid = %d, sock = %d",
 			     (*app)->pid,
-			     (*app)->sock);
+			     (*app)->command_socket.fd());
 		} else if (ret == -EAGAIN) {
 			WARN("UST app reply channel failed. Communication time out: pid = %d, sock = %d",
 			     (*app)->pid,
-			     (*app)->sock);
+			     (*app)->command_socket.fd());
 		} else {
 			ERR("UST app reply channel failed with ret %d: pid = %d, sock = %d",
 			    ret,
 			    (*app)->pid,
-			    (*app)->sock);
+			    (*app)->command_socket.fd());
 		}
 
 		return ret;
@@ -2851,16 +2861,16 @@ static int add_event_ust_registry(int sock,
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			DBG3("UST app reply event failed. Application died: pid = %d, sock = %d.",
 			     (*app)->pid,
-			     (*app)->sock);
+			     (*app)->command_socket.fd());
 		} else if (ret == -EAGAIN) {
 			WARN("UST app reply event failed. Communication time out: pid = %d, sock = %d",
 			     (*app)->pid,
-			     (*app)->sock);
+			     (*app)->command_socket.fd());
 		} else {
 			ERR("UST app reply event failed with ret %d: pid = %d, sock = %d",
 			    ret,
 			    (*app)->pid,
-			    (*app)->sock);
+			    (*app)->command_socket.fd());
 		}
 		/*
 		 * No need to wipe the create event since the application socket will
@@ -2948,16 +2958,16 @@ static int add_enum_ust_registry(int sock,
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			DBG3("UST app reply enum failed. Application died: pid = %d, sock = %d",
 			     (*app)->pid,
-			     (*app)->sock);
+			     (*app)->command_socket.fd());
 		} else if (ret == -EAGAIN) {
 			WARN("UST app reply enum failed. Communication time out: pid = %d, sock = %d",
 			     (*app)->pid,
-			     (*app)->sock);
+			     (*app)->command_socket.fd());
 		} else {
 			ERR("UST app reply enum failed with ret %d: pid = %d, sock = %d",
 			    ret,
 			    (*app)->pid,
-			    (*app)->sock);
+			    (*app)->command_socket.fd());
 		}
 		/*
 		 * No need to wipe the create enum since the application socket will

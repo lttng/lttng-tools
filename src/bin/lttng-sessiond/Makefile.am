@@ -83,12 +83,12 @@ liblttng_sessiond_common_la_SOURCES = utils.cpp utils.hpp \
                        modules-domain-orchestrator.hpp modules-domain-orchestrator.cpp \
                        commands/get-channel-memory-usage.cpp commands/get-channel-memory-usage.hpp \
                        commands/reclaim-channel-memory.cpp commands/reclaim-channel-memory.hpp \
-                       pending-memory-reclamation-request.cpp pending-memory-reclamation-request.hpp
+                       pending-memory-reclamation-request.cpp pending-memory-reclamation-request.hpp \
+                       ust-app-command-socket.hpp ust-app-command-socket.cpp
 
 if HAVE_LIBLTTNG_UST_CTL
 liblttng_sessiond_common_la_SOURCES += trace-ust.cpp ust-registry.cpp ust-app.cpp \
 			ust-app-channel.cpp \
-			ust-app-command-socket.hpp ust-app-command-socket.cpp \
 			ust-app-ctx.hpp ust-app-ctx.cpp \
 			ust-app-event.hpp ust-app-event.cpp \
 			ust-app-session.hpp ust-app-session.cpp \

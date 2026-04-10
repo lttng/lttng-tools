@@ -24,7 +24,6 @@
 #include <lttng/event-rule/user-tracepoint.h>
 
 #include <inttypes.h>
-#include <pthread.h>
 
 namespace lsu = lttng::sessiond::ust;
 namespace lsc = lttng::sessiond::config;
@@ -87,23 +86,24 @@ void delete_ust_app_event(int sock, struct ust_app_event *ua_event, lsu::app *ap
 	LTTNG_ASSERT(ua_event);
 
 	if (ua_event->obj != nullptr) {
-		pthread_mutex_lock(&app->sock_lock);
-		ret = lttng_ust_ctl_release_object(sock, ua_event->obj);
-		pthread_mutex_unlock(&app->sock_lock);
+		{
+			const auto protocol = app->command_socket.lock();
+			ret = lttng_ust_ctl_release_object(sock, ua_event->obj);
+		}
 		if (ret < 0) {
 			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 				DBG3("UST app release event failed. Application is dead: pid = %d, sock = %d",
 				     app->pid,
-				     app->sock);
+				     app->command_socket.fd());
 			} else if (ret == -EAGAIN) {
 				WARN("UST app release event failed. Communication time out: pid = %d, sock = %d",
 				     app->pid,
-				     app->sock);
+				     app->command_socket.fd());
 			} else {
 				ERR("UST app release event obj failed with ret %d: pid = %d, sock = %d",
 				    ret,
 				    app->pid,
-				    app->sock);
+				    app->command_socket.fd());
 			}
 		}
 		free(ua_event->obj);
@@ -128,25 +128,26 @@ int set_ust_object_filter(lsu::app *app,
 		ret = -LTTNG_ERR_NOMEM;
 		goto error;
 	}
-	pthread_mutex_lock(&app->sock_lock);
-	ret = lttng_ust_ctl_set_filter(app->sock, ust_bytecode, ust_object);
-	pthread_mutex_unlock(&app->sock_lock);
+	{
+		const auto protocol = app->command_socket.lock();
+		ret = lttng_ust_ctl_set_filter(protocol.fd(), ust_bytecode, ust_object);
+	}
 	if (ret < 0) {
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			ret = 0;
 			DBG3("UST app  set filter failed. Application is dead: pid = %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else if (ret == -EAGAIN) {
 			ret = 0;
 			WARN("UST app  set filter failed. Communication time out: pid = %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else {
 			ERR("UST app  set filter failed with ret %d: pid = %d, sock = %d, object = %p",
 			    ret,
 			    app->pid,
-			    app->sock,
+			    app->command_socket.fd(),
 			    ust_object);
 		}
 		goto error;
@@ -179,25 +180,26 @@ int set_ust_object_exclusions(lsu::app *app,
 		ret = -LTTNG_ERR_NOMEM;
 		goto error;
 	}
-	pthread_mutex_lock(&app->sock_lock);
-	ret = lttng_ust_ctl_set_exclusion(app->sock, ust_exclusions, ust_object);
-	pthread_mutex_unlock(&app->sock_lock);
+	{
+		const auto protocol = app->command_socket.lock();
+		ret = lttng_ust_ctl_set_exclusion(protocol.fd(), ust_exclusions, ust_object);
+	}
 	if (ret < 0) {
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			ret = 0;
 			DBG3("UST app event exclusion failed. Application is dead: pid = %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else if (ret == -EAGAIN) {
 			ret = 0;
 			WARN("UST app event exclusion failed. Communication time out(pid: %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else {
 			ERR("UST app event exclusions failed with ret %d: pid = %d, sock = %d, object = %p",
 			    ret,
 			    app->pid,
-			    app->sock,
+			    app->command_socket.fd(),
 			    ust_object);
 		}
 		goto error;
@@ -220,25 +222,26 @@ int disable_ust_object(lsu::app *app, struct lttng_ust_abi_object_data *object)
 
 	health_code_update();
 
-	pthread_mutex_lock(&app->sock_lock);
-	ret = lttng_ust_ctl_disable(app->sock, object);
-	pthread_mutex_unlock(&app->sock_lock);
+	{
+		const auto protocol = app->command_socket.lock();
+		ret = lttng_ust_ctl_disable(protocol.fd(), object);
+	}
 	if (ret < 0) {
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			ret = 0;
 			DBG3("UST app disable object failed. Application is dead: pid = %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else if (ret == -EAGAIN) {
 			ret = 0;
 			WARN("UST app disable object failed. Communication time out: pid = %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else {
 			ERR("UST app disable object failed with ret %d: pid = %d, sock = %d, object = %p",
 			    ret,
 			    app->pid,
-			    app->sock,
+			    app->command_socket.fd(),
 			    object);
 		}
 		goto error;
@@ -260,25 +263,26 @@ int enable_ust_object(lsu::app *app, struct lttng_ust_abi_object_data *ust_objec
 
 	health_code_update();
 
-	pthread_mutex_lock(&app->sock_lock);
-	ret = lttng_ust_ctl_enable(app->sock, ust_object);
-	pthread_mutex_unlock(&app->sock_lock);
+	{
+		const auto protocol = app->command_socket.lock();
+		ret = lttng_ust_ctl_enable(protocol.fd(), ust_object);
+	}
 	if (ret < 0) {
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			ret = 0;
 			DBG3("UST app enable object failed. Application is dead: pid = %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else if (ret == -EAGAIN) {
 			ret = 0;
 			WARN("UST app enable object failed. Communication time out: pid = %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else {
 			ERR("UST app enable object failed with ret %d: pid = %d, sock = %d, object = %p",
 			    ret,
 			    app->pid,
-			    app->sock,
+			    app->command_socket.fd(),
 			    ust_object);
 		}
 		goto error;
@@ -421,27 +425,29 @@ int create_ust_event(lsu::app *app, struct ust_app_channel *ua_chan, struct ust_
 		make_ust_abi_event_from_event_rule(ua_event->event_rule_config.event_rule.get());
 
 	/* Create UST event on tracer */
-	pthread_mutex_lock(&app->sock_lock);
-	ret = lttng_ust_ctl_create_event(app->sock, &ust_abi_event, ua_chan->obj, &ua_event->obj);
-	pthread_mutex_unlock(&app->sock_lock);
+	{
+		const auto protocol = app->command_socket.lock();
+		ret = lttng_ust_ctl_create_event(
+			protocol.fd(), &ust_abi_event, ua_chan->obj, &ua_event->obj);
+	}
 	if (ret < 0) {
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			ret = 0;
 			DBG3("UST app create event failed. Application is dead: pid = %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else if (ret == -EAGAIN) {
 			ret = 0;
 			WARN("UST app create event failed. Communication time out: pid = %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else {
 			ERR("UST app create event '%s' failed with ret %d: pid = %d, sock = %d",
 			    get_ust_event_name_from_rule(
 				    ua_event->event_rule_config.event_rule.get()),
 			    ret,
 			    app->pid,
-			    app->sock);
+			    app->command_socket.fd());
 		}
 		goto error;
 	}

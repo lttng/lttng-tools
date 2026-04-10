@@ -150,7 +150,7 @@ static void sanitize_wait_queue(struct ust_reg_wait_queue *wait_queue)
 	     lttng::urcu::list_iteration_adapter<ust_reg_wait_node, &ust_reg_wait_node::head>(
 		     wait_queue->head)) {
 		LTTNG_ASSERT(wait_node->app);
-		ret = lttng_poll_add(&events, wait_node->app->sock, LPOLLIN);
+		ret = lttng_poll_add(&events, wait_node->app->command_socket.fd(), LPOLLIN);
 		if (ret < 0) {
 			goto error;
 		}
@@ -181,7 +181,8 @@ static void sanitize_wait_queue(struct ust_reg_wait_queue *wait_queue)
 		     lttng::urcu::list_iteration_adapter<ust_reg_wait_node,
 							 &ust_reg_wait_node::head>(
 			     wait_queue->head)) {
-			if (pollfd == wait_node->app->sock && (revents & (LPOLLHUP | LPOLLERR))) {
+			if (pollfd == wait_node->app->command_socket.fd() &&
+			    (revents & (LPOLLHUP | LPOLLERR))) {
 				cds_list_del(&wait_node->head);
 				wait_queue->count--;
 				ust_app_put(wait_node->app);
@@ -462,7 +463,7 @@ static void *thread_dispatch_ust_registration(void *data)
 				 * internally and configures the app per-session
 				 * under individual session locks.
 				 */
-				update_ust_app(app->sock);
+				update_ust_app(app->command_socket.fd());
 
 				/*
 				 * Don't care about return value. Let the manage apps threads
@@ -476,7 +477,7 @@ static void *thread_dispatch_ust_registration(void *data)
 				 * place.
 				 */
 				ret = send_socket_to_thread(notifiers->apps_cmd_pipe_write_fd,
-							    app->sock);
+							    app->command_socket.fd());
 				if (ret < 0) {
 					/*
 					 * No apps. thread, stop the UST tracing. However, this is

@@ -64,23 +64,24 @@ int release_ust_app_stream(int sock, lsu::app_stream *stream, lsu::app *app)
 	LTTNG_ASSERT(stream);
 
 	if (stream->obj) {
-		pthread_mutex_lock(&app->sock_lock);
-		ret = lttng_ust_ctl_release_object(sock, stream->obj);
-		pthread_mutex_unlock(&app->sock_lock);
+		{
+			const auto protocol = app->command_socket.lock();
+			ret = lttng_ust_ctl_release_object(sock, stream->obj);
+		}
 		if (ret < 0) {
 			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 				DBG3("UST app release stream failed. Application is dead: pid = %d, sock = %d",
 				     app->pid,
-				     app->sock);
+				     app->command_socket.fd());
 			} else if (ret == -EAGAIN) {
 				WARN("UST app release stream failed. Communication time out: pid = %d, sock = %d",
 				     app->pid,
-				     app->sock);
+				     app->command_socket.fd());
 			} else {
 				ERR("UST app release stream obj failed with ret %d: pid = %d, sock = %d",
 				    ret,
 				    app->pid,
-				    app->sock);
+				    app->command_socket.fd());
 			}
 		}
 		lttng_fd_put(LTTNG_FD_APPS, 2);
@@ -391,26 +392,27 @@ void delete_ust_app_channel(int sock,
 		iter.iter.node = &ua_chan->ust_objd_node.node;
 		ret = lttng_ht_del(app->ust_objd, &iter);
 		LTTNG_ASSERT(!ret);
-		pthread_mutex_lock(&app->sock_lock);
-		ret = lttng_ust_ctl_release_object(sock, ua_chan->obj);
-		pthread_mutex_unlock(&app->sock_lock);
+		{
+			const auto protocol = app->command_socket.lock();
+			ret = lttng_ust_ctl_release_object(sock, ua_chan->obj);
+		}
 		if (ret < 0) {
 			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 				DBG3("UST app channel %s release failed. Application is dead: pid = %d, sock = %d",
 				     ua_chan->name,
 				     app->pid,
-				     app->sock);
+				     app->command_socket.fd());
 			} else if (ret == -EAGAIN) {
 				WARN("UST app channel %s release failed. Communication time out: pid = %d, sock = %d",
 				     ua_chan->name,
 				     app->pid,
-				     app->sock);
+				     app->command_socket.fd());
 			} else {
 				ERR("UST app channel %s release failed with ret %d: pid = %d, sock = %d",
 				    ua_chan->name,
 				    ret,
 				    app->pid,
-				    app->sock);
+				    app->command_socket.fd());
 			}
 		}
 		lttng_fd_put(LTTNG_FD_APPS, 1);
@@ -430,27 +432,28 @@ int disable_ust_channel(lsu::app *app,
 
 	health_code_update();
 
-	pthread_mutex_lock(&app->sock_lock);
-	ret = lttng_ust_ctl_disable(app->sock, ua_chan->obj);
-	pthread_mutex_unlock(&app->sock_lock);
+	{
+		const auto protocol = app->command_socket.lock();
+		ret = lttng_ust_ctl_disable(protocol.fd(), ua_chan->obj);
+	}
 	if (ret < 0) {
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			ret = 0;
 			DBG3("UST app disable channel failed. Application is dead: pid = %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else if (ret == -EAGAIN) {
 			ret = 0;
 			WARN("UST app disable channel failed. Communication time out: pid = %d, sock = %d",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else {
 			ERR("UST app channel %s disable failed, session handle %d, with ret %d: pid = %d, sock = %d",
 			    ua_chan->name,
 			    ua_sess->handle,
 			    ret,
 			    app->pid,
-			    app->sock);
+			    app->command_socket.fd());
 		}
 		goto error;
 	}
@@ -473,29 +476,30 @@ int enable_ust_channel(lsu::app *app,
 
 	health_code_update();
 
-	pthread_mutex_lock(&app->sock_lock);
-	ret = lttng_ust_ctl_enable(app->sock, ua_chan->obj);
-	pthread_mutex_unlock(&app->sock_lock);
+	{
+		const auto protocol = app->command_socket.lock();
+		ret = lttng_ust_ctl_enable(protocol.fd(), ua_chan->obj);
+	}
 	if (ret < 0) {
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			ret = 0;
 			DBG3("UST app channel %s enable failed. Application is dead: pid = %d, sock = %d",
 			     ua_chan->name,
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else if (ret == -EAGAIN) {
 			ret = 0;
 			WARN("UST app channel %s enable failed. Communication time out: pid = %d, sock = %d",
 			     ua_chan->name,
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else {
 			ERR("UST app channel %s enable failed, session handle %d, with ret %d: pid = %d, sock = %d",
 			    ua_chan->name,
 			    ua_sess->handle,
 			    ret,
 			    app->pid,
-			    app->sock);
+			    app->command_socket.fd());
 		}
 		goto error;
 	}
@@ -733,7 +737,9 @@ int send_channel_pid_to_ust(lsu::app *app,
 
 	health_code_update();
 
-	DBG("UST app sending channel %s to UST app sock %d", ua_chan->name, app->sock);
+	DBG("UST app sending channel %s to UST app sock %d",
+	    ua_chan->name,
+	    app->command_socket.fd());
 
 	/* Send channel to the application. */
 	ret = ust_consumer_send_channel_to_ust(app, ua_sess, ua_chan);
@@ -812,7 +818,7 @@ int send_channel_uid_to_ust(lsu::stream_group& stream_group,
 	LTTNG_ASSERT(ua_sess);
 	LTTNG_ASSERT(ua_chan);
 
-	DBG("UST app sending stream group channel to ust sock %d", app->sock);
+	DBG("UST app sending stream group channel to ust sock %d", app->command_socket.fd());
 
 	/* Duplicate the master channel object for this application. */
 	{

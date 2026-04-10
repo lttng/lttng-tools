@@ -427,27 +427,28 @@ int ust_consumer_send_stream_to_ust(lsu::app *app,
 	LTTNG_ASSERT(stream);
 	LTTNG_ASSERT(channel);
 
-	DBG2("UST consumer send stream to app %d", app->sock);
+	DBG2("UST consumer send stream to app %d", app->command_socket.fd());
 
 	/* Relay stream to application. */
-	pthread_mutex_lock(&app->sock_lock);
-	ret = lttng_ust_ctl_send_stream_to_ust(app->sock, channel->obj, stream->obj);
-	pthread_mutex_unlock(&app->sock_lock);
+	{
+		const auto protocol = app->command_socket.lock();
+		ret = lttng_ust_ctl_send_stream_to_ust(protocol.fd(), channel->obj, stream->obj);
+	}
 	if (ret < 0) {
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			DBG3("UST app send stream to ust failed. Application is dead. (pid: %d, sock: %d).",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else if (ret == -EAGAIN) {
 			WARN("UST app send stream to ust failed. Communication time out (pid: %d, sock: %d).",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else {
 			ERR("UST app send stream, handle %d, to ust failed with ret %d (pid: %d, sock: %d).",
 			    stream->obj->header.handle,
 			    ret,
 			    app->pid,
-			    app->sock);
+			    app->command_socket.fd());
 		}
 		goto error;
 	}
@@ -474,7 +475,7 @@ int ust_consumer_send_channel_to_ust(lsu::app *app,
 	LTTNG_ASSERT(channel->obj);
 
 	DBG2("UST app send channel to sock %d pid %d (name: %s, key: %" PRIu64 ")",
-	     app->sock,
+	     app->command_socket.fd(),
 	     app->pid,
 	     channel->name,
 	     channel->trace_class_stream_class_handle);
@@ -486,24 +487,26 @@ int ust_consumer_send_channel_to_ust(lsu::app *app,
 	lttng_ust_ctl_set_channel_owner_id(channel->obj, app->owner_id_n.key);
 
 	/* Send stream to application. */
-	pthread_mutex_lock(&app->sock_lock);
-	ret = lttng_ust_ctl_send_channel_to_ust(app->sock, ua_sess->handle, channel->obj);
-	pthread_mutex_unlock(&app->sock_lock);
+	{
+		const auto protocol = app->command_socket.lock();
+		ret = lttng_ust_ctl_send_channel_to_ust(
+			protocol.fd(), ua_sess->handle, channel->obj);
+	}
 	if (ret < 0) {
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			DBG3("UST app send channel to ust failed. Application is dead (pid: %d, sock: %d).",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else if (ret == -EAGAIN) {
 			WARN("UST app send channel to ust failed. Communication timeout (pid: %d, sock: %d).",
 			     app->pid,
-			     app->sock);
+			     app->command_socket.fd());
 		} else {
 			ERR("UST app send channel %s, to ust failed with ret %d (pid: %d, sock: %d).",
 			    channel->name,
 			    ret,
 			    app->pid,
-			    app->sock);
+			    app->command_socket.fd());
 		}
 		goto error;
 	}
