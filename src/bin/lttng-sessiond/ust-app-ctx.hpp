@@ -48,6 +48,7 @@ struct ust_app_ctx {
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
+void delete_ust_app_ctx(int sock, struct ust_app_ctx *ua_ctx, lttng::sessiond::ust::app *app);
 int create_ust_app_channel_context(struct ust_app_channel *ua_chan,
 				   struct lttng_ust_context_attr *uctx,
 				   lttng::sessiond::ust::app *app,
