@@ -513,38 +513,17 @@ static enum event_notifier_error_accounting_status
 send_counter_data_to_ust(lttng::sessiond::ust::app *app,
 			 struct lttng_ust_abi_object_data *new_counter)
 {
-	int ret;
-	enum event_notifier_error_accounting_status status;
-
 	/* Attach counter to trigger group. */
-	{
-		const auto protocol = app->command_socket.lock();
-		ret = lttng_ust_ctl_send_counter_data_to_ust(
-			protocol.fd(),
-			app->event_notifier_group.object->header.handle,
-			new_counter);
-	}
-	if (ret < 0) {
-		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("Failed to send counter data to application: application name = '%s', pid = %d, ret = %d",
-			    app->name,
-			    app->pid,
-			    ret);
-			status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
-		} else {
-			DBG3("Failed to send counter data to application (application is dead): application name = '%s', pid = %d, ret = %d",
-			     app->name,
-			     app->pid,
-			     ret);
-			status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_APP_DEAD;
-		}
-
-		goto end;
+	try {
+		app->command_socket.lock().send_counter_data_to_ust(
+			app->event_notifier_group.object->header.handle, new_counter);
+	} catch (const lttng::sessiond::ust::app_communication_error&) {
+		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_APP_DEAD;
+	} catch (const lttng::runtime_error&) {
+		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
 	}
 
-	status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
-end:
-	return status;
+	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 }
 
 static enum event_notifier_error_accounting_status
@@ -552,35 +531,15 @@ send_counter_cpu_data_to_ust(lttng::sessiond::ust::app *app,
 			     struct lttng_ust_abi_object_data *counter,
 			     struct lttng_ust_abi_object_data *counter_cpu)
 {
-	int ret;
-	enum event_notifier_error_accounting_status status;
-
-	{
-		const auto protocol = app->command_socket.lock();
-		ret = lttng_ust_ctl_send_counter_cpu_data_to_ust(
-			protocol.fd(), counter, counter_cpu);
-	}
-	if (ret < 0) {
-		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("Failed to send counter CPU data to application: application name = '%s', pid = %d, ret = %d",
-			    app->name,
-			    app->pid,
-			    ret);
-			status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
-		} else {
-			DBG3("Failed to send counter CPU data to application: application name = '%s', pid = %d, ret = %d",
-			     app->name,
-			     app->pid,
-			     ret);
-			status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_APP_DEAD;
-		}
-
-		goto end;
+	try {
+		app->command_socket.lock().send_counter_cpu_data_to_ust(counter, counter_cpu);
+	} catch (const lttng::sessiond::ust::app_communication_error&) {
+		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_APP_DEAD;
+	} catch (const lttng::runtime_error&) {
+		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
 	}
 
-	status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
-end:
-	return status;
+	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 }
 
 enum event_notifier_error_accounting_status
@@ -770,16 +729,25 @@ event_notifier_error_accounting_unregister_app(lttng::sessiond::ust::app *app)
 	}
 
 	{
-		const auto protocol = app->command_socket.lock();
+		auto protocol = app->command_socket.lock();
 		for (i = 0; i < app->event_notifier_group.nr_counter_cpu; i++) {
-			lttng_ust_ctl_release_object(protocol.fd(),
-						     app->event_notifier_group.counter_cpu[i]);
+			try {
+				protocol.release_object(app->event_notifier_group.counter_cpu[i]);
+			} catch (const lttng::sessiond::ust::app_communication_error&) {
+			} catch (const lttng::runtime_error&) {
+			}
+
 			free(app->event_notifier_group.counter_cpu[i]);
 		}
 
 		free(app->event_notifier_group.counter_cpu);
 
-		lttng_ust_ctl_release_object(protocol.fd(), app->event_notifier_group.counter);
+		try {
+			protocol.release_object(app->event_notifier_group.counter);
+		} catch (const lttng::sessiond::ust::app_communication_error&) {
+		} catch (const lttng::runtime_error&) {
+		}
+
 		free(app->event_notifier_group.counter);
 	}
 
