@@ -283,7 +283,6 @@ void __lookup_session_by_app(std::uint64_t session_id, const lsu::app *app, lttn
  */
 int destroy_trace(std::uint64_t session_id, lsu::app *app)
 {
-	int ret;
 	lsu::app_session *ua_sess;
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_u64 *node;
@@ -310,26 +309,12 @@ int destroy_trace(std::uint64_t session_id, lsu::app *app)
 	health_code_update();
 
 	/* Quiescent wait after stopping trace */
-	{
-		const auto protocol = app->command_socket.lock();
-		ret = lttng_ust_ctl_wait_quiescent(protocol.fd());
+	try {
+		app->command_socket.lock().wait_quiescent();
+	} catch (const lsu::app_communication_error&) {
+	} catch (const lttng::runtime_error&) {
 	}
-	if (ret < 0) {
-		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-			DBG3("UST app wait quiescent failed. Application is dead: pid= %d, sock = %d",
-			     app->pid,
-			     app->command_socket.fd());
-		} else if (ret == -EAGAIN) {
-			WARN("UST app wait quiescent failed. Communication time out: pid= %d, sock = %d",
-			     app->pid,
-			     app->command_socket.fd());
-		} else {
-			ERR("UST app wait quiescent failed with ret %d: pid= %d, sock = %d",
-			    ret,
-			    app->pid,
-			    app->command_socket.fd());
-		}
-	}
+
 end:
 	health_code_update();
 	return 0;
