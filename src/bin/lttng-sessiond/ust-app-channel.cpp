@@ -424,37 +424,18 @@ void delete_ust_app_channel(int sock,
 /*
  * Disable the specified channel on to UST tracer for the UST session.
  */
-int disable_ust_channel(lsu::app *app,
-			const lsu::app_session::locked_weak_ref& ua_sess,
-			struct ust_app_channel *ua_chan)
+int disable_ust_channel(lsu::app *app, struct ust_app_channel *ua_chan)
 {
-	int ret;
+	int ret = 0;
 
 	health_code_update();
 
-	{
-		const auto protocol = app->command_socket.lock();
-		ret = lttng_ust_ctl_disable(protocol.fd(), ua_chan->obj);
-	}
-	if (ret < 0) {
-		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-			ret = 0;
-			DBG3("UST app disable channel failed. Application is dead: pid = %d, sock = %d",
-			     app->pid,
-			     app->command_socket.fd());
-		} else if (ret == -EAGAIN) {
-			ret = 0;
-			WARN("UST app disable channel failed. Communication time out: pid = %d, sock = %d",
-			     app->pid,
-			     app->command_socket.fd());
-		} else {
-			ERR("UST app channel %s disable failed, session handle %d, with ret %d: pid = %d, sock = %d",
-			    ua_chan->name,
-			    ua_sess->handle,
-			    ret,
-			    app->pid,
-			    app->command_socket.fd());
-		}
+	try {
+		app->command_socket.lock().disable(ua_chan->obj);
+	} catch (const lsu::app_communication_error&) {
+		goto error;
+	} catch (const lttng::runtime_error&) {
+		ret = -1;
 		goto error;
 	}
 
@@ -468,39 +449,18 @@ error:
 /*
  * Enable the specified channel on to UST tracer for the UST session.
  */
-int enable_ust_channel(lsu::app *app,
-		       const lsu::app_session::locked_weak_ref& ua_sess,
-		       struct ust_app_channel *ua_chan)
+int enable_ust_channel(lsu::app *app, struct ust_app_channel *ua_chan)
 {
-	int ret;
+	int ret = 0;
 
 	health_code_update();
 
-	{
-		const auto protocol = app->command_socket.lock();
-		ret = lttng_ust_ctl_enable(protocol.fd(), ua_chan->obj);
-	}
-	if (ret < 0) {
-		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-			ret = 0;
-			DBG3("UST app channel %s enable failed. Application is dead: pid = %d, sock = %d",
-			     ua_chan->name,
-			     app->pid,
-			     app->command_socket.fd());
-		} else if (ret == -EAGAIN) {
-			ret = 0;
-			WARN("UST app channel %s enable failed. Communication time out: pid = %d, sock = %d",
-			     ua_chan->name,
-			     app->pid,
-			     app->command_socket.fd());
-		} else {
-			ERR("UST app channel %s enable failed, session handle %d, with ret %d: pid = %d, sock = %d",
-			    ua_chan->name,
-			    ua_sess->handle,
-			    ret,
-			    app->pid,
-			    app->command_socket.fd());
-		}
+	try {
+		app->command_socket.lock().enable(ua_chan->obj);
+	} catch (const lsu::app_communication_error&) {
+		goto error;
+	} catch (const lttng::runtime_error&) {
+		ret = -1;
 		goto error;
 	}
 
@@ -522,7 +482,7 @@ int disable_ust_app_channel(const lsu::app_session::locked_weak_ref& ua_sess,
 {
 	int ret;
 
-	ret = disable_ust_channel(app, ua_sess, ua_chan);
+	ret = disable_ust_channel(app, ua_chan);
 	if (ret < 0) {
 		goto error;
 	}
@@ -559,7 +519,7 @@ int enable_ust_app_channel(const lsu::app_session::locked_weak_ref& ua_sess,
 
 	ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
 
-	ret = enable_ust_channel(app, ua_sess, ua_chan);
+	ret = enable_ust_channel(app, ua_chan);
 	if (ret < 0) {
 		goto error;
 	}
@@ -743,20 +703,7 @@ int send_channel_pid_to_ust(lsu::app *app,
 
 	/* Send channel to the application. */
 	ret = ust_consumer_send_channel_to_ust(app, ua_sess, ua_chan);
-	if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-		ret = -ENOTCONN; /* Caused by app exiting. */
-		goto error;
-	} else if (ret == -EAGAIN) {
-		/* Caused by timeout. */
-		WARN("Communication with application %d timed out on send_channel for channel \"%s\" of session \"%" PRIu64
-		     "\".",
-		     app->pid,
-		     ua_chan->name,
-		     ua_sess->recording_session_id);
-		/* Treat this the same way as an application that is exiting. */
-		ret = -ENOTCONN;
-		goto error;
-	} else if (ret < 0) {
+	if (ret < 0) {
 		goto error;
 	}
 
@@ -767,23 +714,7 @@ int send_channel_pid_to_ust(lsu::app *app,
 	     lttng::urcu::list_iteration_adapter<lsu::app_stream, &lsu::app_stream::list>(
 		     ua_chan->streams.head)) {
 		ret = ust_consumer_send_stream_to_ust(app, ua_chan, stream);
-		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-			ret = -ENOTCONN; /* Caused by app exiting. */
-			goto error;
-		} else if (ret == -EAGAIN) {
-			/* Caused by timeout. */
-			WARN("Communication with application %d timed out on send_stream for stream \"%s\" of channel \"%s\" of session \"%" PRIu64
-			     "\".",
-			     app->pid,
-			     stream->name,
-			     ua_chan->name,
-			     ua_sess->recording_session_id);
-			/*
-			 * Treat this the same way as an application that is
-			 * exiting.
-			 */
-			ret = -ENOTCONN;
-		} else if (ret < 0) {
+		if (ret < 0) {
 			goto error;
 		}
 		/* We don't need the stream anymore once sent to the tracer. */
@@ -838,20 +769,7 @@ int send_channel_uid_to_ust(lsu::stream_group& stream_group,
 
 	/* Send channel to the application. */
 	ret = ust_consumer_send_channel_to_ust(app, ua_sess, ua_chan);
-	if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-		ret = -ENOTCONN; /* Caused by app exiting. */
-		goto error;
-	} else if (ret == -EAGAIN) {
-		/* Caused by timeout. */
-		WARN("Communication with application %d timed out on send_channel for channel \"%s\" of session \"%" PRIu64
-		     "\".",
-		     app->pid,
-		     ua_chan->name,
-		     ua_sess->recording_session_id);
-		/* Treat this the same way as an application that is exiting. */
-		ret = -ENOTCONN;
-		goto error;
-	} else if (ret < 0) {
+	if (ret < 0) {
 		goto error;
 	}
 
@@ -876,16 +794,6 @@ int send_channel_uid_to_ust(lsu::stream_group& stream_group,
 
 		ret = ust_consumer_send_stream_to_ust(app, ua_chan, &app_stream);
 		if (ret < 0) {
-			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-				ret = -ENOTCONN; /* Caused by app exiting. */
-			} else if (ret == -EAGAIN) {
-				WARN("Communication with application %d timed out on send_stream for stream of channel \"%s\" of session \"%" PRIu64
-				     "\".",
-				     app->pid,
-				     ua_chan->name,
-				     ua_sess->recording_session_id);
-				ret = -ENOTCONN;
-			}
 			(void) release_ust_app_stream(-1, &app_stream, app);
 			goto error;
 		}

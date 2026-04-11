@@ -1223,39 +1223,20 @@ int ls::ust::domain_orchestrator::_find_or_create_app_session(ust::app *app,
 	health_code_update();
 
 	if (ua_sess->handle == -1) {
-		{
-			const auto protocol = app->command_socket.lock();
-			ret = lttng_ust_ctl_create_session(protocol.fd());
-		}
-		if (ret < 0) {
-			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-				DBG("UST app creating session failed. Application is dead: pid = %d, sock = %d",
-				    app->pid,
-				    app->command_socket.fd());
-				ret = 0;
-			} else if (ret == -EAGAIN) {
-				DBG("UST app creating session failed. Communication time out: pid = %d, sock = %d",
-				    app->pid,
-				    app->command_socket.fd());
-				ret = 0;
-			} else {
-				ERR("UST app creating session failed with ret %d: pid = %d, sock =%d",
-				    ret,
-				    app->pid,
-				    app->command_socket.fd());
-			}
+		int handle;
+		try {
+			handle = app->command_socket.lock().create_session();
+		} catch (const ls::ust::app_communication_error&) {
 			delete_ust_app_session(-1, ua_sess, app);
-			if (ret != -ENOMEM) {
-				/*
-				 * Tracer is probably gone or got an internal error so let's
-				 * behave like it will soon unregister or not usable.
-				 */
-				ret = -ENOTCONN;
-			}
+			ret = -ENOTCONN;
+			goto error;
+		} catch (const lttng::runtime_error&) {
+			delete_ust_app_session(-1, ua_sess, app);
+			ret = -ENOTCONN;
 			goto error;
 		}
 
-		ua_sess->handle = ret;
+		ua_sess->handle = handle;
 
 		/* Add ust app session to app's HT */
 		lttng_ht_node_init_u64(&ua_sess->node, ua_sess->recording_session_id);
@@ -1265,7 +1246,7 @@ int ls::ust::domain_orchestrator::_find_or_create_app_session(ust::app *app,
 
 		_app_sessions[app] = ua_sess;
 
-		DBG2("UST app session created successfully with handle %d", ret);
+		DBG2("UST app session created successfully with handle %d", handle);
 	}
 
 	*ua_sess_ptr = ua_sess;
@@ -1632,7 +1613,7 @@ int ls::ust::domain_orchestrator::_send_app_channel(ust::app *app,
 
 	/* If channel is not enabled, disable it on the tracer */
 	if (!ua_chan->enabled) {
-		ret = disable_ust_channel(app, ua_sess, ua_chan);
+		ret = disable_ust_channel(app, ua_chan);
 		if (ret < 0) {
 			goto error;
 		}
@@ -1797,7 +1778,7 @@ void ls::ust::domain_orchestrator::_synchronize_all_channels(
 
 		if (ua_chan->enabled != chan_config.is_enabled) {
 			ret = chan_config.is_enabled ?
-				enable_ust_channel(app, ua_sess, ua_chan) :
+				enable_ust_channel(app, ua_chan) :
 				disable_ust_app_channel(ua_sess, ua_chan, app);
 			if (ret) {
 				goto end;
@@ -2002,7 +1983,6 @@ void ls::ust::domain_orchestrator::_synchronize_all_apps()
 
 int ls::ust::domain_orchestrator::_start_app_trace(ust::app *app)
 {
-	int ret = 0;
 	ust::app_session *ua_sess;
 
 	DBG("Starting tracing for ust app pid %d", app->pid);
@@ -2032,29 +2012,11 @@ int ls::ust::domain_orchestrator::_start_app_trace(ust::app *app)
 	}
 
 	/* This starts the UST tracing */
-	{
-		const auto protocol = app->command_socket.lock();
-		ret = lttng_ust_ctl_start_session(protocol.fd(), ua_sess->handle);
-	}
-	if (ret < 0) {
-		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-			DBG3("UST app start session failed. Application is dead: pid = %d, sock = %d",
-			     app->pid,
-			     app->command_socket.fd());
-			return 0;
-		} else if (ret == -EAGAIN) {
-			WARN("UST app start session failed. Communication time out: pid = %d, sock = %d",
-			     app->pid,
-			     app->command_socket.fd());
-			return 0;
-
-		} else {
-			ERR("UST app start session failed with ret %d: pid = %d, sock = %d",
-			    ret,
-			    app->pid,
-			    app->command_socket.fd());
-		}
-
+	try {
+		app->command_socket.lock().start_session(ua_sess->handle);
+	} catch (const ls::ust::app_communication_error&) {
+		return 0;
+	} catch (const lttng::runtime_error&) {
 		return -1;
 	}
 
@@ -2065,25 +2027,10 @@ int ls::ust::domain_orchestrator::_start_app_trace(ust::app *app)
 	health_code_update();
 
 	/* Quiescent wait after starting trace */
-	{
-		const auto protocol = app->command_socket.lock();
-		ret = lttng_ust_ctl_wait_quiescent(protocol.fd());
-	}
-	if (ret < 0) {
-		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-			DBG3("UST app wait quiescent failed. Application is dead: pid = %d, sock = %d",
-			     app->pid,
-			     app->command_socket.fd());
-		} else if (ret == -EAGAIN) {
-			WARN("UST app wait quiescent failed. Communication time out: pid =  %d, sock = %d",
-			     app->pid,
-			     app->command_socket.fd());
-		} else {
-			ERR("UST app wait quiescent failed with ret %d: pid %d, sock = %d",
-			    ret,
-			    app->pid,
-			    app->command_socket.fd());
-		}
+	try {
+		app->command_socket.lock().wait_quiescent();
+	} catch (const ls::ust::app_communication_error&) {
+	} catch (const lttng::runtime_error&) {
 	}
 
 	return 0;
@@ -2091,7 +2038,6 @@ int ls::ust::domain_orchestrator::_start_app_trace(ust::app *app)
 
 int ls::ust::domain_orchestrator::_stop_app_trace(ust::app *app)
 {
-	int ret = 0;
 	ust::app_session *ua_sess;
 
 	DBG("Stopping tracing for ust app pid %d", app->pid);
@@ -2128,29 +2074,11 @@ int ls::ust::domain_orchestrator::_stop_app_trace(ust::app *app)
 	health_code_update();
 
 	/* This inhibits UST tracing */
-	{
-		const auto protocol = app->command_socket.lock();
-		ret = lttng_ust_ctl_stop_session(protocol.fd(), ua_sess->handle);
-	}
-	if (ret < 0) {
-		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-			DBG3("UST app stop session failed. Application is dead: pid = %d, sock = %d",
-			     app->pid,
-			     app->command_socket.fd());
-			return 0;
-		} else if (ret == -EAGAIN) {
-			WARN("UST app stop session failed. Communication time out: pid = %d, sock = %d",
-			     app->pid,
-			     app->command_socket.fd());
-			return 0;
-
-		} else {
-			ERR("UST app stop session failed with ret %d: pid = %d, sock = %d",
-			    ret,
-			    app->pid,
-			    app->command_socket.fd());
-		}
-
+	try {
+		app->command_socket.lock().stop_session(ua_sess->handle);
+	} catch (const ls::ust::app_communication_error&) {
+		return 0;
+	} catch (const lttng::runtime_error&) {
 		return -1;
 	}
 
@@ -2158,25 +2086,10 @@ int ls::ust::domain_orchestrator::_stop_app_trace(ust::app *app)
 	ua_sess->enabled = false;
 
 	/* Quiescent wait after stopping trace */
-	{
-		const auto protocol = app->command_socket.lock();
-		ret = lttng_ust_ctl_wait_quiescent(protocol.fd());
-	}
-	if (ret < 0) {
-		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-			DBG3("UST app wait quiescent failed. Application is dead: pid= %d, sock = %d",
-			     app->pid,
-			     app->command_socket.fd());
-		} else if (ret == -EAGAIN) {
-			WARN("UST app wait quiescent failed. Communication time out: pid= %d, sock = %d",
-			     app->pid,
-			     app->command_socket.fd());
-		} else {
-			ERR("UST app wait quiescent failed with ret %d: pid= %d, sock = %d",
-			    ret,
-			    app->pid,
-			    app->command_socket.fd());
-		}
+	try {
+		app->command_socket.lock().wait_quiescent();
+	} catch (const ls::ust::app_communication_error&) {
+	} catch (const lttng::runtime_error&) {
 	}
 
 	health_code_update();
@@ -2822,27 +2735,10 @@ void ls::ust::domain_orchestrator::regenerate_statedump()
 			continue;
 		}
 
-		int ret;
-		{
-			const auto protocol = app->command_socket.lock();
-			ret = lttng_ust_ctl_regenerate_statedump(protocol.fd(), ua_sess->handle);
-		}
-
-		if (ret < 0) {
-			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-				DBG3("UST app regenerate statedump failed. Application is dead: pid = %d, sock = %d",
-				     app->pid,
-				     app->command_socket.fd());
-			} else if (ret == -EAGAIN) {
-				WARN("UST app regenerate statedump failed. Communication time out: pid = %d, sock = %d",
-				     app->pid,
-				     app->command_socket.fd());
-			} else {
-				ERR("UST app regenerate statedump failed with ret %d: pid = %d, sock = %d",
-				    ret,
-				    app->pid,
-				    app->command_socket.fd());
-			}
+		try {
+			app->command_socket.lock().regenerate_statedump(ua_sess->handle);
+		} catch (const ls::ust::app_communication_error&) {
+		} catch (const lttng::runtime_error&) {
 		}
 	}
 }

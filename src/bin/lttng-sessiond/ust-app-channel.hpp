@@ -135,12 +135,8 @@ int enable_ust_app_channel(const lttng::sessiond::ust::app_session::locked_weak_
 int disable_ust_app_channel(const lttng::sessiond::ust::app_session::locked_weak_ref& ua_sess,
 			    struct ust_app_channel *ua_chan,
 			    lttng::sessiond::ust::app *app);
-int enable_ust_channel(lttng::sessiond::ust::app *app,
-		       const lttng::sessiond::ust::app_session::locked_weak_ref& ua_sess,
-		       struct ust_app_channel *ua_chan);
-int disable_ust_channel(lttng::sessiond::ust::app *app,
-			const lttng::sessiond::ust::app_session::locked_weak_ref& ua_sess,
-			struct ust_app_channel *ua_chan);
+int enable_ust_channel(lttng::sessiond::ust::app *app, struct ust_app_channel *ua_chan);
+int disable_ust_channel(lttng::sessiond::ust::app *app, struct ust_app_channel *ua_chan);
 lttng::sessiond::ust::app_stream *ust_app_alloc_stream();
 int do_consumer_create_channel(struct consumer_output *consumer,
 			       lttng::sessiond::ust::app_session *ua_sess,
