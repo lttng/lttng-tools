@@ -78,6 +78,11 @@ end:
 
 /*
  * Delete ust app event safely.
+ *
+ * The sock parameter may differ from the command socket's current fd
+ * during application teardown (where the fd has been released).
+ * This function uses the raw lttng_ust_ctl call directly to handle
+ * this case.
  */
 void delete_ust_app_event(int sock, struct ust_app_event *ua_event, lsu::app *app)
 {
@@ -118,7 +123,7 @@ int set_ust_object_filter(lsu::app *app,
 			  const struct lttng_bytecode *bytecode,
 			  struct lttng_ust_abi_object_data *ust_object)
 {
-	int ret;
+	int ret = 0;
 	struct lttng_ust_abi_filter_bytecode *ust_bytecode = nullptr;
 
 	health_code_update();
@@ -128,28 +133,13 @@ int set_ust_object_filter(lsu::app *app,
 		ret = -LTTNG_ERR_NOMEM;
 		goto error;
 	}
-	{
-		const auto protocol = app->command_socket.lock();
-		ret = lttng_ust_ctl_set_filter(protocol.fd(), ust_bytecode, ust_object);
-	}
-	if (ret < 0) {
-		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-			ret = 0;
-			DBG3("UST app  set filter failed. Application is dead: pid = %d, sock = %d",
-			     app->pid,
-			     app->command_socket.fd());
-		} else if (ret == -EAGAIN) {
-			ret = 0;
-			WARN("UST app  set filter failed. Communication time out: pid = %d, sock = %d",
-			     app->pid,
-			     app->command_socket.fd());
-		} else {
-			ERR("UST app  set filter failed with ret %d: pid = %d, sock = %d, object = %p",
-			    ret,
-			    app->pid,
-			    app->command_socket.fd(),
-			    ust_object);
-		}
+
+	try {
+		app->command_socket.lock().set_filter(ust_bytecode, ust_object);
+	} catch (const lsu::app_communication_error&) {
+		goto error;
+	} catch (const lttng::runtime_error&) {
+		ret = -1;
 		goto error;
 	}
 
@@ -168,7 +158,7 @@ int set_ust_object_exclusions(lsu::app *app,
 			      const struct lttng_event_exclusion *exclusions,
 			      struct lttng_ust_abi_object_data *ust_object)
 {
-	int ret;
+	int ret = 0;
 	struct lttng_ust_abi_event_exclusion *ust_exclusions = nullptr;
 
 	LTTNG_ASSERT(exclusions && exclusions->count > 0);
@@ -180,28 +170,13 @@ int set_ust_object_exclusions(lsu::app *app,
 		ret = -LTTNG_ERR_NOMEM;
 		goto error;
 	}
-	{
-		const auto protocol = app->command_socket.lock();
-		ret = lttng_ust_ctl_set_exclusion(protocol.fd(), ust_exclusions, ust_object);
-	}
-	if (ret < 0) {
-		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-			ret = 0;
-			DBG3("UST app event exclusion failed. Application is dead: pid = %d, sock = %d",
-			     app->pid,
-			     app->command_socket.fd());
-		} else if (ret == -EAGAIN) {
-			ret = 0;
-			WARN("UST app event exclusion failed. Communication time out(pid: %d, sock = %d",
-			     app->pid,
-			     app->command_socket.fd());
-		} else {
-			ERR("UST app event exclusions failed with ret %d: pid = %d, sock = %d, object = %p",
-			    ret,
-			    app->pid,
-			    app->command_socket.fd(),
-			    ust_object);
-		}
+
+	try {
+		app->command_socket.lock().set_exclusion(ust_exclusions, ust_object);
+	} catch (const lsu::app_communication_error&) {
+		goto error;
+	} catch (const lttng::runtime_error&) {
+		ret = -1;
 		goto error;
 	}
 
@@ -218,32 +193,16 @@ error:
  */
 int disable_ust_object(lsu::app *app, struct lttng_ust_abi_object_data *object)
 {
-	int ret;
+	int ret = 0;
 
 	health_code_update();
 
-	{
-		const auto protocol = app->command_socket.lock();
-		ret = lttng_ust_ctl_disable(protocol.fd(), object);
-	}
-	if (ret < 0) {
-		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-			ret = 0;
-			DBG3("UST app disable object failed. Application is dead: pid = %d, sock = %d",
-			     app->pid,
-			     app->command_socket.fd());
-		} else if (ret == -EAGAIN) {
-			ret = 0;
-			WARN("UST app disable object failed. Communication time out: pid = %d, sock = %d",
-			     app->pid,
-			     app->command_socket.fd());
-		} else {
-			ERR("UST app disable object failed with ret %d: pid = %d, sock = %d, object = %p",
-			    ret,
-			    app->pid,
-			    app->command_socket.fd(),
-			    object);
-		}
+	try {
+		app->command_socket.lock().disable(object);
+	} catch (const lsu::app_communication_error&) {
+		goto error;
+	} catch (const lttng::runtime_error&) {
+		ret = -1;
 		goto error;
 	}
 
@@ -259,32 +218,16 @@ error:
  */
 int enable_ust_object(lsu::app *app, struct lttng_ust_abi_object_data *ust_object)
 {
-	int ret;
+	int ret = 0;
 
 	health_code_update();
 
-	{
-		const auto protocol = app->command_socket.lock();
-		ret = lttng_ust_ctl_enable(protocol.fd(), ust_object);
-	}
-	if (ret < 0) {
-		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-			ret = 0;
-			DBG3("UST app enable object failed. Application is dead: pid = %d, sock = %d",
-			     app->pid,
-			     app->command_socket.fd());
-		} else if (ret == -EAGAIN) {
-			ret = 0;
-			WARN("UST app enable object failed. Communication time out: pid = %d, sock = %d",
-			     app->pid,
-			     app->command_socket.fd());
-		} else {
-			ERR("UST app enable object failed with ret %d: pid = %d, sock = %d, object = %p",
-			    ret,
-			    app->pid,
-			    app->command_socket.fd(),
-			    ust_object);
-		}
+	try {
+		app->command_socket.lock().enable(ust_object);
+	} catch (const lsu::app_communication_error&) {
+		goto error;
+	} catch (const lttng::runtime_error&) {
+		ret = -1;
 		goto error;
 	}
 
@@ -424,31 +367,14 @@ int create_ust_event(lsu::app *app, struct ust_app_channel *ua_chan, struct ust_
 	auto ust_abi_event =
 		make_ust_abi_event_from_event_rule(ua_event->event_rule_config.event_rule.get());
 
-	/* Create UST event on tracer */
-	{
-		const auto protocol = app->command_socket.lock();
-		ret = lttng_ust_ctl_create_event(
-			protocol.fd(), &ust_abi_event, ua_chan->obj, &ua_event->obj);
-	}
-	if (ret < 0) {
-		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-			ret = 0;
-			DBG3("UST app create event failed. Application is dead: pid = %d, sock = %d",
-			     app->pid,
-			     app->command_socket.fd());
-		} else if (ret == -EAGAIN) {
-			ret = 0;
-			WARN("UST app create event failed. Communication time out: pid = %d, sock = %d",
-			     app->pid,
-			     app->command_socket.fd());
-		} else {
-			ERR("UST app create event '%s' failed with ret %d: pid = %d, sock = %d",
-			    get_ust_event_name_from_rule(
-				    ua_event->event_rule_config.event_rule.get()),
-			    ret,
-			    app->pid,
-			    app->command_socket.fd());
-		}
+	/* Create UST event on tracer. */
+	try {
+		app->command_socket.lock().create_event(
+			&ust_abi_event, ua_chan->obj, &ua_event->obj);
+	} catch (const lsu::app_communication_error&) {
+		goto error;
+	} catch (const lttng::runtime_error&) {
+		ret = -1;
 		goto error;
 	}
 
@@ -473,7 +399,7 @@ int create_ust_event(lsu::app *app, struct ust_app_channel *ua_chan, struct ust_
 		}
 	}
 
-	/* Set exclusions for the event */
+	/* Set exclusions for the event. */
 	{
 		struct lttng_event_exclusion *exclusion = nullptr;
 		const auto exclusion_status = lttng_event_rule_generate_exclusions(
@@ -491,7 +417,7 @@ int create_ust_event(lsu::app *app, struct ust_app_channel *ua_chan, struct ust_
 		}
 	}
 
-	/* If event not enabled, disable it on the tracer */
+	/* Enable the event if the configuration says so. */
 	if (ua_event->enabled) {
 		/*
 		 * We now need to explicitly enable the event, since it
@@ -499,22 +425,6 @@ int create_ust_event(lsu::app *app, struct ust_app_channel *ua_chan, struct ust_
 		 */
 		ret = enable_ust_object(app, ua_event->obj);
 		if (ret < 0) {
-			/*
-			 * If we hit an EPERM, something is wrong with our enable call. If
-			 * we get an EEXIST, there is a problem on the tracer side since we
-			 * just created it.
-			 */
-			switch (ret) {
-			case -LTTNG_UST_ERR_PERM:
-				/* Code flow problem */
-				abort();
-			case -LTTNG_UST_ERR_EXIST:
-				/* It's OK for our use case. */
-				ret = 0;
-				break;
-			default:
-				break;
-			}
 			goto error;
 		}
 	}
@@ -630,16 +540,6 @@ int create_ust_app_event(struct ust_app_channel *ua_chan,
 	/* Create it on the tracer side */
 	ret = create_ust_event(app, ua_chan, ua_event);
 	if (ret < 0) {
-		if (ret == -LTTNG_UST_ERR_EXIST) {
-			ERR("Tracer for application reported that an event being created already existed: "
-			    "event_name = \"%s\", pid = %d, ppid = %d, uid = %d, gid = %d",
-			    get_ust_event_name_from_rule(
-				    ua_event->event_rule_config.event_rule.get()),
-			    app->pid,
-			    app->ppid,
-			    app->uid,
-			    app->gid);
-		}
 		goto error;
 	}
 
