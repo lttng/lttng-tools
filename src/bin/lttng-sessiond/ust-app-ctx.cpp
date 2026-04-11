@@ -151,32 +151,16 @@ int create_ust_channel_context(struct ust_app_channel *ua_chan,
 			       struct ust_app_ctx *ua_ctx,
 			       lsu::app *app)
 {
-	int ret;
+	int ret = 0;
 
 	health_code_update();
 
-	{
-		const auto protocol = app->command_socket.lock();
-		ret = lttng_ust_ctl_add_context(
-			protocol.fd(), &ua_ctx->ctx, ua_chan->obj, &ua_ctx->obj);
-	}
-	if (ret < 0) {
-		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-			ret = 0;
-			DBG3("UST app create channel context failed. Application is dead: pid = %d, sock = %d",
-			     app->pid,
-			     app->command_socket.fd());
-		} else if (ret == -EAGAIN) {
-			ret = 0;
-			WARN("UST app create channel context failed. Communication time out: pid = %d, sock = %d",
-			     app->pid,
-			     app->command_socket.fd());
-		} else {
-			ERR("UST app create channel context failed with ret %d: pid = %d, sock = %d",
-			    ret,
-			    app->pid,
-			    app->command_socket.fd());
-		}
+	try {
+		app->command_socket.lock().add_context(&ua_ctx->ctx, ua_chan->obj, &ua_ctx->obj);
+	} catch (const lsu::app_communication_error&) {
+		goto error;
+	} catch (const lttng::runtime_error&) {
+		ret = -1;
 		goto error;
 	}
 
