@@ -1337,7 +1337,7 @@ lsu::app *ust_app_create(struct ust_register_msg *msg, int sock)
 
 	lta->pid = msg->pid;
 	lttng_ht_node_init_ulong(&lta->pid_n, (unsigned long) lta->pid);
-	lta->command_socket.set_fd(sock);
+	lta->command_socket.set_fd(sock, msg->pid);
 	lttng_ht_node_init_ulong(&lta->sock_n, (unsigned long) lta->command_socket.fd());
 
 	if (ust_app_allocate_owner_id(*lta) != OWNER_ID_ALLOCATION_STATUS_OK) {

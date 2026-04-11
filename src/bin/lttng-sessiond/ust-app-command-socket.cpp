@@ -11,9 +11,10 @@ namespace lsu = lttng::sessiond::ust;
 
 lsu::app_command_socket::app_command_socket() = default;
 
-void lsu::app_command_socket::set_fd(int fd) noexcept
+void lsu::app_command_socket::set_fd(int fd, pid_t pid) noexcept
 {
 	_fd = fd;
+	_pid = pid;
 }
 
 int lsu::app_command_socket::fd() const noexcept
