@@ -409,18 +409,6 @@ static void *thread_dispatch_ust_registration(void *data)
 			}
 
 			if (app) {
-				/*
-				 * Publish the app under the session list lock so
-				 * that it is visible to new sessions before we
-				 * snapshot the existing ones.
-				 */
-				{
-					const auto list_lock = lttng::sessiond::lock_session_list();
-					const lttng::urcu::read_lock_guard read_lock;
-
-					ust_app_add(app);
-				}
-
 				/* Set app version. This call will print an error if needed. */
 				(void) ust_app_version(app);
 
@@ -437,6 +425,28 @@ static void *thread_dispatch_ust_registration(void *data)
 					 */
 					err = 0;
 					goto error;
+				}
+
+				/*
+				 * Publish the app under the session list lock so
+				 * that it is visible to new sessions before we
+				 * snapshot the existing ones in update_ust_app().
+				 *
+				 * This must be done after the event notifier
+				 * setup and notify socket registration above:
+				 * once published, other threads (e.g. the client
+				 * thread processing a start command) may
+				 * synchronize the app, sending commands that
+				 * cause the app to interact with the session
+				 * daemon through its notify socket. The notify
+				 * socket must be monitored before that can
+				 * happen.
+				 */
+				{
+					const auto list_lock = lttng::sessiond::lock_session_list();
+					const lttng::urcu::read_lock_guard read_lock;
+
+					ust_app_add(app);
 				}
 
 				/*
