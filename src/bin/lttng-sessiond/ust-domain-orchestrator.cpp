@@ -1957,17 +1957,18 @@ void ls::ust::domain_orchestrator::synchronize_app(ust::app& app)
 			_start_app_trace(&app);
 		}
 	} else {
-		if (find_app_session(app)) {
+		if (_find_app_session(app)) {
 			on_app_departure(app);
 		}
 	}
 }
 
-void ls::ust::domain_orchestrator::on_app_departure(ust::app& app)
+unsigned int ls::ust::domain_orchestrator::on_app_departure(
+	ust::app& app, const nonstd::optional<uint32_t>& owner_id_to_reclaim)
 {
 	const auto it = _app_sessions.find(&app);
 	if (it == _app_sessions.end()) {
-		return;
+		return 0;
 	}
 
 	/*
@@ -1987,12 +1988,25 @@ void ls::ust::domain_orchestrator::on_app_departure(ust::app& app)
 		(void) _flush_app_session(app, *owned_session);
 	}
 
+	/*
+	 * When reclaiming an owner ID, tell the consumer daemon before
+	 * destroying the app session: the consumer needs the channels
+	 * to still exist when processing the reclamation command.
+	 */
+	unsigned int pending_reclamations = 0;
+	if (owner_id_to_reclaim) {
+		pending_reclamations = consumer_reclaim_session_owner_id(
+			*owned_session, *owner_id_to_reclaim);
+	}
+
 	delete_ust_app_session(app.command_socket.fd(), owned_session.release(), &app, this);
 
 	if (buffer_type() == LTTNG_BUFFER_PER_PID) {
 		_release_per_pid_stream_groups(app);
 		_release_per_pid_trace_class(app);
 	}
+
+	return pending_reclamations;
 }
 
 void ls::ust::domain_orchestrator::_synchronize_all_apps()
@@ -2025,7 +2039,7 @@ int ls::ust::domain_orchestrator::_start_app_trace(ust::app *app)
 		return 0;
 	}
 
-	ua_sess = find_app_session(*app);
+	ua_sess = _find_app_session(*app);
 	if (ua_sess == nullptr) {
 		/* The session is in teardown process. Ignore and continue. */
 		return 0;
@@ -2080,7 +2094,7 @@ int ls::ust::domain_orchestrator::_stop_app_trace(ust::app *app)
 		return 0;
 	}
 
-	ua_sess = find_app_session(*app);
+	ua_sess = _find_app_session(*app);
 	if (ua_sess == nullptr) {
 		return 0;
 	}
@@ -2818,7 +2832,7 @@ void ls::ust::domain_orchestrator::create_channel_subdirectories(
 		 * session lock) before the app session is torn down.
 		 */
 		for (const auto& tc_entry : _per_pid_trace_classes) {
-			const auto *ua_sess = find_app_session(*tc_entry.first);
+			const auto *ua_sess = _find_app_session(*tc_entry.first);
 			if (!ua_sess) {
 				continue;
 			}

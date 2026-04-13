@@ -1469,20 +1469,8 @@ static void ust_app_unregister(lsu::app& app)
 			auto& orchestrator = static_cast<lsu::domain_orchestrator&>(
 				session_ref->get_ust_orchestrator());
 
-			const auto *ua_sess = orchestrator.find_app_session(app);
-			if (ua_sess) {
-				/*
-				 * Tell the consumer daemon to reclaim the
-				 * departing application's owner ID from any
-				 * stalled sub-buffers before destroying the
-				 * app session (the consumer needs the
-				 * channels to still exist).
-				 */
-				total_pending_reclamations += consumer_reclaim_session_owner_id(
-					*ua_sess, app.owner_id_n.key);
-
-				orchestrator.on_app_departure(app);
-			}
+			total_pending_reclamations += orchestrator.on_app_departure(
+				app, nonstd::optional<uint32_t>(app.owner_id_n.key));
 		}
 
 		session_unlock(&*session_ref);

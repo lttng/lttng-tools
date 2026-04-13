@@ -162,23 +162,17 @@ public:
 	 * metadata), and releases per-PID stream groups and trace
 	 * classes.
 	 *
+	 * When `owner_id_to_reclaim` is provided, the consumer daemon
+	 * is asked to reclaim the owner ID from any stalled
+	 * sub-buffers before destroying the app session (the consumer
+	 * needs the channels to still exist). The number of consumer
+	 * channels that must acknowledge the reclamation is returned.
+	 *
 	 * Called with the session lock held.
 	 */
-	void on_app_departure(ust::app& app);
-
-	/*
-	 * Return a non-owning pointer to the app_session for the given
-	 * application, or nullptr if none exists.
-	 */
-	ust::app_session *find_app_session(const ust::app& app) const noexcept
-	{
-		const auto it = _app_sessions.find(&app);
-		if (it == _app_sessions.end()) {
-			return nullptr;
-		}
-
-		return it->second.get();
-	}
+	unsigned int on_app_departure(
+		ust::app& app,
+		const nonstd::optional<uint32_t>& owner_id_to_reclaim = nonstd::nullopt);
 
 	void rotate() override;
 	void clear() override;
@@ -272,6 +266,20 @@ public:
 		std::uint64_t lost_packets);
 
 private:
+	/*
+	 * Return a non-owning pointer to the app_session for the given
+	 * application, or nullptr if none exists.
+	 */
+	ust::app_session *_find_app_session(const ust::app& app) const noexcept
+	{
+		const auto it = _app_sessions.find(&app);
+		if (it == _app_sessions.end()) {
+			return nullptr;
+		}
+
+		return it->second.get();
+	}
+
 	std::uint64_t _session_id() const noexcept;
 
 	bool _is_active() const noexcept

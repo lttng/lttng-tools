@@ -424,7 +424,7 @@ int ust_app_destroy_trace_all(lsu::domain_orchestrator& orchestrator)
 
 		const ust_app_reference app_ref(app);
 
-		if (!app->compatible || !orchestrator.find_app_session(*app)) {
+		if (!app->compatible) {
 			continue;
 		}
 
