@@ -101,7 +101,6 @@ namespace ust {
 
 struct app_stream {
 	int handle;
-	char pathname[PATH_MAX];
 	/* Format is %s_%d respectively channel name and CPU number. */
 	char name[DEFAULT_STREAM_NAME_LEN];
 	::lttng_ust_abi_object_data *obj;
