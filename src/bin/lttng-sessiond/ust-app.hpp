@@ -45,9 +45,6 @@ struct lttng_pipe;
 
 namespace lttng {
 namespace sessiond {
-namespace config {
-class event_rule_configuration;
-} /* namespace config */
 namespace ust {
 class domain_orchestrator;
 } /* namespace ust */
@@ -335,16 +332,6 @@ static inline void ust_app_clean_list(void)
 {
 }
 
-static inline struct ust_app_list *ust_app_get_list(void)
-{
-	return NULL;
-}
-
-static inline lttng::sessiond::ust::app *ust_app_get_by_pid(pid_t pid __attribute__((unused)))
-{
-	return NULL;
-}
-
 static inline int ust_app_ht_alloc(void)
 {
 	return 0;
@@ -389,12 +376,6 @@ static inline void ust_app_add(lttng::sessiond::ust::app *app __attribute__((unu
 
 static inline void ust_app_notify_sock_unregister(int sock __attribute__((unused)))
 {
-}
-
-static inline void ust_app_update_event_notifier_error_count(struct lttng_trigger *lttng_trigger
-							     __attribute__((unused)))
-{
-	return;
 }
 
 static inline int ust_app_supported(void)
@@ -465,14 +446,6 @@ static inline void ust_app_notify_reclaimed_owner_ids(const std::vector<uint32_t
 static inline void ust_app_unregister_and_destroy(lttng::sessiond::ust::app& app
 						  __attribute__((unused)))
 {
-}
-
-static inline int ust_app_disable_event_on_apps(
-	lttng::sessiond::ust::domain_orchestrator& /* orchestrator */,
-	lttng::c_string_view /* channel_name */,
-	const lttng::sessiond::config::event_rule_configuration& /* event_rule_config */)
-{
-	return 0;
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */
