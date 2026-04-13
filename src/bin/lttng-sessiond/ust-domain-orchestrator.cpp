@@ -1986,6 +1986,7 @@ unsigned int ls::ust::domain_orchestrator::on_app_departure(
 
 	if (owned_session->buffer_type == LTTNG_BUFFER_PER_PID) {
 		(void) _flush_app_session(app, *owned_session);
+		_save_per_pid_stats_on_departure(*owned_session);
 	}
 
 	/*
@@ -1999,7 +2000,7 @@ unsigned int ls::ust::domain_orchestrator::on_app_departure(
 			*owned_session, *owner_id_to_reclaim);
 	}
 
-	delete_ust_app_session(app.command_socket.fd(), owned_session.release(), &app, this);
+	delete_ust_app_session(app.command_socket.fd(), owned_session.release(), &app);
 
 	if (buffer_type() == LTTNG_BUFFER_PER_PID) {
 		_release_per_pid_stream_groups(app);
@@ -3193,7 +3194,40 @@ ls::ust::domain_orchestrator::get_channel_memory_usage(
 	return result;
 }
 
-void ls::ust::domain_orchestrator::accumulate_per_pid_closed_app_stats(
+void ls::ust::domain_orchestrator::_save_per_pid_stats_on_departure(const ust::app_session& ua_sess)
+{
+	for (const auto *ua_chan :
+	     lttng::urcu::lfht_iteration_adapter<ust_app_channel,
+						 decltype(ust_app_channel::node),
+						 &ust_app_channel::node>(*ua_sess.channels->ht)) {
+		/* Metadata channels do not have discarded/lost counters. */
+		if (ua_chan->attr.type == LTTNG_UST_ABI_CHAN_METADATA) {
+			continue;
+		}
+
+		std::uint64_t discarded = 0, lost = 0;
+
+		if (ua_chan->attr.overwrite) {
+			consumer_get_lost_packets(ua_sess.recording_session_id,
+						  ua_chan->key,
+						  get_consumer_output_ptr(),
+						  &lost);
+		} else {
+			consumer_get_discarded_events(ua_sess.recording_session_id,
+						      ua_chan->key,
+						      get_consumer_output_ptr(),
+						      &discarded);
+		}
+
+		const auto& recording_config =
+			static_cast<const lsc::recording_channel_configuration&>(
+				ua_chan->channel_config);
+
+		_accumulate_per_pid_closed_app_stats(recording_config, discarded, lost);
+	}
+}
+
+void ls::ust::domain_orchestrator::_accumulate_per_pid_closed_app_stats(
 	const config::recording_channel_configuration& channel_config,
 	std::uint64_t discarded_events,
 	std::uint64_t lost_packets)

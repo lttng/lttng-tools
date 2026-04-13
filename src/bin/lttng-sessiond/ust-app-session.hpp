@@ -193,8 +193,7 @@ ust_app_get_session_registry(const lttng::sessiond::ust::app_session::identifier
 lttng::sessiond::ust::app_session *alloc_ust_app_session();
 void delete_ust_app_session(int sock,
 			    lttng::sessiond::ust::app_session *ua_sess,
-			    lttng::sessiond::ust::app *app,
-			    lttng::sessiond::ust::domain_orchestrator *orchestrator = nullptr);
+			    lttng::sessiond::ust::app *app);
 std::uint64_t get_next_session_id();
 
 int ust_app_destroy_trace_all(lttng::sessiond::ust::domain_orchestrator& orchestrator);

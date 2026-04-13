@@ -255,16 +255,6 @@ public:
 
 	bool supports_madv_remove() const noexcept;
 
-	/*
-	 * Record discarded events and lost packets for a departing
-	 * per-PID application. Called during app session teardown so
-	 * the counters survive for runtime statistics reporting.
-	 */
-	void accumulate_per_pid_closed_app_stats(
-		const config::recording_channel_configuration& channel_config,
-		std::uint64_t discarded_events,
-		std::uint64_t lost_packets);
-
 private:
 	/*
 	 * Return a non-owning pointer to the app_session for the given
@@ -491,6 +481,18 @@ private:
 	 * methods to push the current session configuration to all apps.
 	 */
 	void _synchronize_all_apps();
+
+	/*
+	 * Iterate the channels of a departing per-PID app_session and
+	 * accumulate lost/discarded counters before teardown. Must be
+	 * called while the app_session and its channels still exist.
+	 */
+	void _save_per_pid_stats_on_departure(const ust::app_session& ua_sess);
+
+	void _accumulate_per_pid_closed_app_stats(
+		const config::recording_channel_configuration& channel_config,
+		std::uint64_t discarded_events,
+		std::uint64_t lost_packets);
 
 	/*
 	 * Push pending metadata from a trace class to its consumer.

@@ -20,7 +20,6 @@
 #include "ust-app-event.hpp"
 #include "ust-app.hpp"
 #include "ust-consumer.hpp"
-#include "ust-domain-orchestrator.hpp"
 
 #include <common/common.hpp>
 #include <common/compat/errno.hpp>
@@ -111,44 +110,6 @@ void delete_ust_app_channel_rcu(struct rcu_head *head)
 
 	lttng_ht_destroy(ua_chan->ctx);
 	delete ua_chan;
-}
-
-/*
- * Extract the lost packet or discarded events counter when a per-PID
- * channel is being deleted and accumulate the values in the UST domain
- * orchestrator so they can be included in runtime statistics after the
- * application has exited.
- */
-void save_per_pid_lost_discarded_counters(struct ust_app_channel *ua_chan,
-					  lsu::domain_orchestrator& orchestrator)
-{
-	uint64_t discarded = 0, lost = 0;
-
-	/* Metadata channels do not have discarded counters. */
-	switch (ua_chan->attr.type) {
-	case LTTNG_UST_ABI_CHAN_METADATA:
-		return;
-	default:
-		break;
-	}
-
-	if (ua_chan->attr.overwrite) {
-		consumer_get_lost_packets(ua_chan->session->recording_session_id,
-					  ua_chan->key,
-					  orchestrator.get_consumer_output_ptr(),
-					  &lost);
-	} else {
-		consumer_get_discarded_events(ua_chan->session->recording_session_id,
-					      ua_chan->key,
-					      orchestrator.get_consumer_output_ptr(),
-					      &discarded);
-	}
-
-	const auto& recording_config =
-		static_cast<const lttng::sessiond::config::recording_channel_configuration&>(
-			ua_chan->channel_config);
-
-	orchestrator.accumulate_per_pid_closed_app_stats(recording_config, discarded, lost);
 }
 
 /*
@@ -295,8 +256,7 @@ error:
 void delete_ust_app_channel(int sock,
 			    struct ust_app_channel *ua_chan,
 			    lsu::app *app,
-			    const lsu::trace_class::locked_ref& locked_registry,
-			    lsu::domain_orchestrator *orchestrator)
+			    const lsu::trace_class::locked_ref& locked_registry)
 {
 	int ret;
 
@@ -337,15 +297,6 @@ void delete_ust_app_channel(int sock,
 			} catch (const std::exception& ex) {
 				DBG("Could not find channel for removal: %s", ex.what());
 			}
-		}
-
-		/*
-		 * A negative socket can be used by the caller when
-		 * cleaning-up a ua_chan in an error path. Skip the
-		 * accounting in this case.
-		 */
-		if (sock >= 0 && orchestrator) {
-			save_per_pid_lost_discarded_counters(ua_chan, *orchestrator);
 		}
 	}
 

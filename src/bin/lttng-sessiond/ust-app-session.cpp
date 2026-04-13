@@ -247,10 +247,7 @@ end:
  *
  * The session list lock must be held by the caller.
  */
-void delete_ust_app_session(int sock,
-			    lsu::app_session *ua_sess,
-			    lsu::app *app,
-			    lsu::domain_orchestrator *orchestrator)
+void delete_ust_app_session(int sock, lsu::app_session *ua_sess, lsu::app *app)
 {
 	LTTNG_ASSERT(ua_sess);
 	ASSERT_RCU_READ_LOCKED();
@@ -274,8 +271,7 @@ void delete_ust_app_session(int sock,
 						 &ust_app_channel::node>(*ua_sess->channels->ht)) {
 		const auto ret = cds_lfht_del(ua_sess->channels->ht, &ua_chan->node.node);
 		LTTNG_ASSERT(ret == 0);
-		delete_ust_app_channel(
-			sock, ua_chan, app, locked_registry.locked_ref(), orchestrator);
+		delete_ust_app_channel(sock, ua_chan, app, locked_registry.locked_ref());
 	}
 
 	if (locked_registry) {

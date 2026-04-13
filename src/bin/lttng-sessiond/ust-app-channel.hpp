@@ -129,8 +129,7 @@ void init_ust_app_channel_from_config(struct ust_app_channel *ua_chan);
 void delete_ust_app_channel(int sock,
 			    struct ust_app_channel *ua_chan,
 			    lttng::sessiond::ust::app *app,
-			    const lttng::sessiond::ust::trace_class::locked_ref& locked_registry,
-			    lttng::sessiond::ust::domain_orchestrator *orchestrator = nullptr);
+			    const lttng::sessiond::ust::trace_class::locked_ref& locked_registry);
 int enable_ust_app_channel(const lttng::sessiond::ust::app_session::locked_weak_ref& ua_sess,
 			   lttng::c_string_view channel_name,
 			   lttng::sessiond::ust::app *app);
