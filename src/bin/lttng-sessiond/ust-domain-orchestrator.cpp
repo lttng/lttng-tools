@@ -49,19 +49,6 @@
 namespace ls = lttng::sessiond;
 namespace lsc = lttng::sessiond::config;
 
-void ls::ust::domain_orchestrator::_assert_app_sessions_consistent() const
-{
-	/*
-	 * Verify that every entry in _app_sessions has a non-null
-	 * session pointer. The orchestrator is the sole owner, so
-	 * there is no external state to cross-check against.
-	 */
-	for (const auto& app_session_pair : _app_sessions) {
-		LTTNG_ASSERT(app_session_pair.first);
-		LTTNG_ASSERT(app_session_pair.second);
-	}
-}
-
 lttng_ust_context_attr ls::ust::domain_orchestrator::_make_ust_context_attr(
 	const lsc::context_configuration& context_config)
 {
@@ -868,8 +855,6 @@ void ls::ust::domain_orchestrator::enable_channel(
 	 * command is a success.
 	 */
 	_enable_channel_on_apps(channel_config.name);
-
-	_assert_app_sessions_consistent();
 }
 
 void ls::ust::domain_orchestrator::disable_channel(
@@ -885,8 +870,6 @@ void ls::ust::domain_orchestrator::disable_channel(
 	}
 
 	_disable_channel_on_apps(channel_config.name);
-
-	_assert_app_sessions_consistent();
 }
 
 void ls::ust::domain_orchestrator::disable_event(
@@ -901,8 +884,6 @@ void ls::ust::domain_orchestrator::disable_event(
 	if (ret < 0) {
 		LTTNG_THROW_CTL("Failed to disable UST event", LTTNG_ERR_UST_DISABLE_FAIL);
 	}
-
-	_assert_app_sessions_consistent();
 }
 
 void ls::ust::domain_orchestrator::add_context(
@@ -920,8 +901,6 @@ void ls::ust::domain_orchestrator::add_context(
 	}
 
 	_add_context_on_apps(channel_config.name, ctx_config);
-
-	_assert_app_sessions_consistent();
 }
 
 void ls::ust::domain_orchestrator::enable_event(
@@ -948,8 +927,6 @@ void ls::ust::domain_orchestrator::enable_event(
 	if (ret < 0) {
 		LTTNG_THROW_CTL("Failed to enable UST event", LTTNG_ERR_UST_ENABLE_FAIL);
 	}
-
-	_assert_app_sessions_consistent();
 }
 
 void ls::ust::domain_orchestrator::set_tracking_policy(config::process_attribute_type,
