@@ -254,11 +254,6 @@ public:
 		return *_agents;
 	}
 
-	const std::string& root_shm_path() const noexcept
-	{
-		return _root_shm_path;
-	}
-
 	const std::string& shm_path() const noexcept
 	{
 		return _shm_path;
@@ -740,11 +735,6 @@ public:
 	}
 
 	const struct ltt_session& recording_session() const noexcept
-	{
-		std::abort();
-	}
-
-	const std::string& root_shm_path() const noexcept
 	{
 		std::abort();
 	}

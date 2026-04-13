@@ -1097,7 +1097,7 @@ void ls::ust::domain_orchestrator::_init_app_session(ust::app_session *ua_sess, 
 		goto error;
 	}
 
-	strncpy(ua_sess->root_shm_path, root_shm_path().c_str(), sizeof(ua_sess->root_shm_path));
+	strncpy(ua_sess->root_shm_path, _root_shm_path.c_str(), sizeof(ua_sess->root_shm_path));
 	ua_sess->root_shm_path[sizeof(ua_sess->root_shm_path) - 1] = '\0';
 	strncpy(ua_sess->shm_path, shm_path().c_str(), sizeof(ua_sess->shm_path));
 	ua_sess->shm_path[sizeof(ua_sess->shm_path) - 1] = '\0';
