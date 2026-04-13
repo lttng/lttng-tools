@@ -101,8 +101,6 @@ namespace ust {
 
 struct app_stream {
 	int handle;
-	/* Format is %s_%d respectively channel name and CPU number. */
-	char name[DEFAULT_STREAM_NAME_LEN];
 	::lttng_ust_abi_object_data *obj;
 	/* Using a list of streams to keep order. */
 	cds_list_head list;
