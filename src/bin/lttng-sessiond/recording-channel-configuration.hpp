@@ -81,7 +81,7 @@ public:
 		ON_DEMAND,
 	};
 
-	enum class owership_model_t {
+	enum class ownership_model_t {
 		PER_PID,
 		PER_UID,
 	};

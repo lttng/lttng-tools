@@ -501,16 +501,16 @@ int create_ust_session(const ltt_session::locked_ref& session, const struct lttn
 	}
 
 	namespace lsc = lttng::sessiond::config;
-	lsc::recording_channel_configuration::owership_model_t default_buffer_ownership;
+	lsc::recording_channel_configuration::ownership_model_t default_buffer_ownership;
 
 	switch (domain->buf_type) {
 	case LTTNG_BUFFER_PER_PID:
 		default_buffer_ownership =
-			lsc::recording_channel_configuration::owership_model_t::PER_PID;
+			lsc::recording_channel_configuration::ownership_model_t::PER_PID;
 		break;
 	case LTTNG_BUFFER_PER_UID:
 		default_buffer_ownership =
-			lsc::recording_channel_configuration::owership_model_t::PER_UID;
+			lsc::recording_channel_configuration::ownership_model_t::PER_UID;
 		break;
 	default:
 		LTTNG_THROW_CTL(fmt::format("Invalid buffer type for UST domain: buf_type={}",

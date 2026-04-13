@@ -175,7 +175,7 @@ void ls::ust::domain_orchestrator::consumer_output_deleter::operator()(
 
 ls::ust::domain_orchestrator::domain_orchestrator(
 	const ltt_session& session,
-	lsc::recording_channel_configuration::owership_model_t default_buffer_ownership,
+	lsc::recording_channel_configuration::ownership_model_t default_buffer_ownership,
 	consumer_output_uptr consumer_output) :
 	_session(session),
 	_default_buffer_ownership(default_buffer_ownership),
@@ -218,7 +218,7 @@ std::uint64_t ls::ust::domain_orchestrator::_session_id() const noexcept
 lttng_buffer_type ls::ust::domain_orchestrator::buffer_type() const noexcept
 {
 	return _default_buffer_ownership ==
-			lsc::recording_channel_configuration::owership_model_t::PER_UID ?
+			lsc::recording_channel_configuration::ownership_model_t::PER_UID ?
 		LTTNG_BUFFER_PER_UID :
 		LTTNG_BUFFER_PER_PID;
 }
@@ -311,7 +311,7 @@ ls::ust::trace_class& ls::ust::domain_orchestrator::_find_or_create_per_uid_trac
 	const char *shm_path)
 {
 	LTTNG_ASSERT(_default_buffer_ownership ==
-		     lsc::recording_channel_configuration::owership_model_t::PER_UID);
+		     lsc::recording_channel_configuration::ownership_model_t::PER_UID);
 
 	const _per_uid_trace_class_key key = { uid, abi };
 	const auto it = _per_uid_trace_classes.find(key);
@@ -365,7 +365,7 @@ ls::ust::trace_class& ls::ust::domain_orchestrator::_find_or_create_per_pid_trac
 	gid_t egid)
 {
 	LTTNG_ASSERT(_default_buffer_ownership ==
-		     lsc::recording_channel_configuration::owership_model_t::PER_PID);
+		     lsc::recording_channel_configuration::ownership_model_t::PER_PID);
 
 	const auto it = _per_pid_trace_classes.find(&app);
 	if (it != _per_pid_trace_classes.end()) {
@@ -431,7 +431,7 @@ ls::ust::stream_group& ls::ust::domain_orchestrator::_find_or_create_per_uid_str
 	ust::stream_class& stream_class)
 {
 	LTTNG_ASSERT(_default_buffer_ownership ==
-		     lsc::recording_channel_configuration::owership_model_t::PER_UID);
+		     lsc::recording_channel_configuration::ownership_model_t::PER_UID);
 
 	const _per_uid_stream_group_key key = { &channel_config, uid, abi };
 	const auto it = _per_uid_stream_groups.find(key);
@@ -492,7 +492,7 @@ ls::ust::stream_group& ls::ust::domain_orchestrator::_find_or_create_per_pid_str
 	ust::stream_class& stream_class)
 {
 	LTTNG_ASSERT(_default_buffer_ownership ==
-		     lsc::recording_channel_configuration::owership_model_t::PER_PID);
+		     lsc::recording_channel_configuration::ownership_model_t::PER_PID);
 
 	const _per_pid_stream_group_key key = { &channel_config, &app };
 	const auto it = _per_pid_stream_groups.find(key);
@@ -537,7 +537,7 @@ void ls::ust::domain_orchestrator::create_channel(
 	_validate_channel_attributes(channel_config);
 
 	const auto buffer_type = _default_buffer_ownership ==
-			lsc::recording_channel_configuration::owership_model_t::PER_PID ?
+			lsc::recording_channel_configuration::ownership_model_t::PER_PID ?
 		LTTNG_BUFFER_PER_PID :
 		LTTNG_BUFFER_PER_UID;
 
@@ -2586,7 +2586,7 @@ void ls::ust::domain_orchestrator::record_snapshot(const struct consumer_output&
 						   std::uint64_t nb_packets_per_stream)
 {
 	if (_default_buffer_ownership ==
-	    lsc::recording_channel_configuration::owership_model_t::PER_UID) {
+	    lsc::recording_channel_configuration::ownership_model_t::PER_UID) {
 		_record_snapshot_per_uid(snapshot_consumer, nb_packets_per_stream);
 	} else {
 		_record_snapshot_per_pid(snapshot_consumer, nb_packets_per_stream);
@@ -2800,7 +2800,7 @@ void ls::ust::domain_orchestrator::create_channel_subdirectories(
 	lttng_trace_chunk& trace_chunk) const
 {
 	if (_default_buffer_ownership ==
-	    lsc::recording_channel_configuration::owership_model_t::PER_UID) {
+	    lsc::recording_channel_configuration::ownership_model_t::PER_UID) {
 		for (const auto& tc_entry : _per_uid_trace_classes) {
 			const auto uid = tc_entry.first.uid;
 			const auto bits_per_long = static_cast<unsigned int>(tc_entry.first.abi);
@@ -3255,7 +3255,7 @@ ls::ust::domain_orchestrator::get_recording_channel_runtime_stats(
 		lsc::channel_configuration::buffer_full_policy_t::OVERWRITE_OLDEST_PACKET;
 
 	if (_default_buffer_ownership ==
-	    lsc::recording_channel_configuration::owership_model_t::PER_UID) {
+	    lsc::recording_channel_configuration::ownership_model_t::PER_UID) {
 		/*
 		 * Find the first per-UID stream group matching this channel
 		 * configuration and query the consumer daemon for its stats.
@@ -3359,7 +3359,7 @@ std::uint64_t ls::ust::domain_orchestrator::get_size_one_more_packet_per_stream(
 	std::uint64_t tot_size = 0;
 
 	if (_default_buffer_ownership ==
-	    lsc::recording_channel_configuration::owership_model_t::PER_UID) {
+	    lsc::recording_channel_configuration::ownership_model_t::PER_UID) {
 		for (const auto& sg_entry : _per_uid_stream_groups) {
 			const auto& config = sg_entry.second->configuration();
 
@@ -3390,7 +3390,7 @@ void ls::ust::domain_orchestrator::_for_each_consumer_stream_group(
 	const auto& metadata_config = _session.user_space_domain.metadata_channel();
 
 	if (_default_buffer_ownership ==
-	    lsc::recording_channel_configuration::owership_model_t::PER_UID) {
+	    lsc::recording_channel_configuration::ownership_model_t::PER_UID) {
 		for (const auto& sg_entry : _per_uid_stream_groups) {
 			visitor(_consumer_stream_group_descriptor{
 				sg_entry.first.abi,

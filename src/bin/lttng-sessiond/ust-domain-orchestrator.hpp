@@ -62,7 +62,7 @@ public:
 
 	explicit domain_orchestrator(
 		const ltt_session& session,
-		config::recording_channel_configuration::owership_model_t default_buffer_ownership,
+		config::recording_channel_configuration::ownership_model_t default_buffer_ownership,
 		consumer_output_uptr consumer_output);
 
 	~domain_orchestrator() override;
@@ -579,7 +579,7 @@ private:
 	};
 
 	const ltt_session& _session;
-	const config::recording_channel_configuration::owership_model_t _default_buffer_ownership;
+	const config::recording_channel_configuration::ownership_model_t _default_buffer_ownership;
 	consumer_output_uptr _consumer_output;
 	bool _active = false;
 	nonstd::optional<lttng_buffer_type> _locked_buffer_type;
