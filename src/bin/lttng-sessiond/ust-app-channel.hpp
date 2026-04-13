@@ -17,6 +17,8 @@
 #include <common/defaults.hpp>
 #include <common/hashtable/hashtable.hpp>
 
+#include <vendor/optional.hpp>
+
 #include <stdint.h>
 #include <unordered_map>
 #include <urcu/list.h>
@@ -77,11 +79,16 @@ struct ust_app_channel {
 	 * Node indexed by channel name in the channels' hash table of a session.
 	 */
 	struct lttng_ht_node_str node = {};
+
 	/*
-	 * Node indexed by UST channel object descriptor (handle). Stored in the
-	 * ust_objd hash table in the lttng::sessiond::ust::app object.
+	 * RAII token: registers this channel's UST tracer-side handle
+	 * in the owning app's objd_registry. Deregisters automatically
+	 * when this channel is destroyed.
+	 *
+	 * Optional because the token is acquired after the channel
+	 * handle is obtained from the tracer (not at construction time).
 	 */
-	struct lttng_ht_node_ulong ust_objd_node = {};
+	nonstd::optional<lttng::sessiond::ust::app_objd_registry::registration_token> objd_token;
 	/* For delayed reclaim */
 	struct rcu_head rcu_head = {};
 	/*
@@ -122,7 +129,8 @@ void init_ust_app_channel_from_config(struct ust_app_channel *ua_chan);
 void delete_ust_app_channel(int sock,
 			    struct ust_app_channel *ua_chan,
 			    lttng::sessiond::ust::app *app,
-			    const lttng::sessiond::ust::trace_class::locked_ref& locked_registry);
+			    const lttng::sessiond::ust::trace_class::locked_ref& locked_registry,
+			    lttng::sessiond::ust::domain_orchestrator *orchestrator = nullptr);
 int enable_ust_app_channel(const lttng::sessiond::ust::app_session::locked_weak_ref& ua_sess,
 			   lttng::c_string_view channel_name,
 			   lttng::sessiond::ust::app *app);

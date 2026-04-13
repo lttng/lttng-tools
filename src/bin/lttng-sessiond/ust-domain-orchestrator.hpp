@@ -157,17 +157,28 @@ public:
 
 	/*
 	 * Clean up orchestrator state associated with a departing
-	 * application: remove the app from the _app_sessions index
-	 * and, for per-PID buffers, release the per-PID stream groups
-	 * and trace class.
+	 * application. Destroys the app_session owned by this
+	 * orchestrator (including its channels, UST handles, and
+	 * metadata), and releases per-PID stream groups and trace
+	 * classes.
 	 *
-	 * Called with the session lock held, during application
-	 * unregistration (ust_app_unregister) or app session
-	 * destruction (destroy_app_session). The caller is responsible
-	 * for the remaining per-app cleanup (hash table removal,
-	 * metadata close, UST handle release).
+	 * Called with the session lock held.
 	 */
-	void on_app_departure(const ust::app& app);
+	void on_app_departure(ust::app& app);
+
+	/*
+	 * Return a non-owning pointer to the app_session for the given
+	 * application, or nullptr if none exists.
+	 */
+	ust::app_session *find_app_session(const ust::app& app) const noexcept
+	{
+		const auto it = _app_sessions.find(&app);
+		if (it == _app_sessions.end()) {
+			return nullptr;
+		}
+
+		return it->second.get();
+	}
 
 	void rotate() override;
 	void clear() override;
@@ -623,18 +634,14 @@ private:
 		_per_pid_stream_groups;
 
 	/*
-	 * Non-owning index mapping each application to its app_session
-	 * for this recording session. Ownership remains with
-	 * ust::app::sessions and the RCU deletion path.
-	 *
-	 * Populated when an app session is created
-	 * (find_or_create_ust_app_session); removed when an app
-	 * departs (ust_app_unregister) or when the recording session
-	 * destroys the app session (destroy_app_session).
+	 * Owning index mapping each application to its app_session for
+	 * this recording session. The orchestrator creates the
+	 * app_session when an application is synchronized and destroys
+	 * it on app departure or recording session teardown.
 	 *
 	 * Protected by the recording session lock.
 	 */
-	std::unordered_map<const ust::app *, ust::app_session *> _app_sessions;
+	std::unordered_map<const ust::app *, std::unique_ptr<ust::app_session>> _app_sessions;
 };
 
 } /* namespace ust */

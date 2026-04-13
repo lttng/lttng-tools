@@ -118,10 +118,9 @@ void delete_ust_app_channel_rcu(struct rcu_head *head)
  * channel is being deleted and accumulate the values in the UST domain
  * orchestrator so they can be included in runtime statistics after the
  * application has exited.
- *
- * The session list lock must be held by the caller.
  */
-void save_per_pid_lost_discarded_counters(struct ust_app_channel *ua_chan)
+void save_per_pid_lost_discarded_counters(struct ust_app_channel *ua_chan,
+					  lsu::domain_orchestrator& orchestrator)
 {
 	uint64_t discarded = 0, lost = 0;
 
@@ -133,56 +132,23 @@ void save_per_pid_lost_discarded_counters(struct ust_app_channel *ua_chan)
 		break;
 	}
 
-	const lttng::urcu::read_lock_guard read_lock;
-
-	try {
-		const auto session =
-			ltt_session::find_session(ua_chan->session->recording_session_id);
-
-		if (!session->ust_orchestrator) {
-			/*
-			 * Not finding the session is not an error because there are
-			 * multiple ways the channels can be torn down.
-			 *
-			 * 1) The session daemon can initiate the destruction of the
-			 *    ust app session after receiving a destroy command or
-			 *    during its shutdown/teardown.
-			 * 2) The application, since we are in per-pid tracing, is
-			 *    unregistering and tearing down its ust app session.
-			 *
-			 * Both paths are protected by the session list lock which
-			 * ensures that the accounting of lost packets and discarded
-			 * events is done exactly once. The session is then unpublished
-			 * from the session list, resulting in this condition.
-			 */
-			return;
-		}
-
-		auto& orchestrator =
-			static_cast<lsu::domain_orchestrator&>(session->get_ust_orchestrator());
-
-		if (ua_chan->attr.overwrite) {
-			consumer_get_lost_packets(ua_chan->session->recording_session_id,
-						  ua_chan->key,
-						  orchestrator.get_consumer_output_ptr(),
-						  &lost);
-		} else {
-			consumer_get_discarded_events(ua_chan->session->recording_session_id,
-						      ua_chan->key,
-						      orchestrator.get_consumer_output_ptr(),
-						      &discarded);
-		}
-		const auto& recording_config =
-			static_cast<const lttng::sessiond::config::recording_channel_configuration&>(
-				ua_chan->channel_config);
-
-		orchestrator.accumulate_per_pid_closed_app_stats(recording_config, discarded, lost);
-	} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
-		DBG_FMT("Failed to save per-pid lost/discarded counters: {}, location='{}'",
-			ex.what(),
-			ex.source_location);
-		return;
+	if (ua_chan->attr.overwrite) {
+		consumer_get_lost_packets(ua_chan->session->recording_session_id,
+					  ua_chan->key,
+					  orchestrator.get_consumer_output_ptr(),
+					  &lost);
+	} else {
+		consumer_get_discarded_events(ua_chan->session->recording_session_id,
+					      ua_chan->key,
+					      orchestrator.get_consumer_output_ptr(),
+					      &discarded);
 	}
+
+	const auto& recording_config =
+		static_cast<const lttng::sessiond::config::recording_channel_configuration&>(
+			ua_chan->channel_config);
+
+	orchestrator.accumulate_per_pid_closed_app_stats(recording_config, discarded, lost);
 }
 
 /*
@@ -329,7 +295,8 @@ error:
 void delete_ust_app_channel(int sock,
 			    struct ust_app_channel *ua_chan,
 			    lsu::app *app,
-			    const lsu::trace_class::locked_ref& locked_registry)
+			    const lsu::trace_class::locked_ref& locked_registry,
+			    lsu::domain_orchestrator *orchestrator)
 {
 	int ret;
 
@@ -377,18 +344,15 @@ void delete_ust_app_channel(int sock,
 		 * cleaning-up a ua_chan in an error path. Skip the
 		 * accounting in this case.
 		 */
-		if (sock >= 0) {
-			save_per_pid_lost_discarded_counters(ua_chan);
+		if (sock >= 0 && orchestrator) {
+			save_per_pid_lost_discarded_counters(ua_chan, *orchestrator);
 		}
 	}
 
 	if (ua_chan->obj != nullptr) {
-		lttng_ht_iter iter;
+		/* Deregister objd from the app's registry via RAII token. */
+		ua_chan->objd_token.reset();
 
-		/* Remove channel from application UST object descriptor. */
-		iter.iter.node = &ua_chan->ust_objd_node.node;
-		ret = lttng_ht_del(app->ust_objd, &iter);
-		LTTNG_ASSERT(!ret);
 		{
 			const auto protocol = app->command_socket.lock();
 			ret = lttng_ust_ctl_release_object(sock, ua_chan->obj);

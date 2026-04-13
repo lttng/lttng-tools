@@ -158,168 +158,6 @@ void delete_ust_app_session_rcu(struct rcu_head *head)
  *
  * The session list lock must be held by the caller.
  */
-void destroy_app_session(lsu::app *app, lsu::app_session *ua_sess)
-{
-	int ret;
-	struct lttng_ht_iter iter;
-
-	LTTNG_ASSERT(app);
-	LTTNG_ASSERT(ua_sess);
-
-	/*
-	 * For per-PID buffers, perform the same orchestrator and metadata
-	 * cleanup that ust_app_unregister() performs for the app-going-away
-	 * case. The sequence mirrors ust_app_unregister():
-	 *
-	 *   1. Get the registry, push metadata, capture close info, mark closed
-	 *   2. Release the registry lock
-	 *   3. Release per-PID stream groups and trace class from orchestrator
-	 *   4. Remove ua_sess from app->sessions hash table
-	 *   5. Close metadata on the consumer
-	 *   6. Delegate remaining cleanup to delete_ust_app_session()
-	 *
-	 * Step 1 must happen before step 3 because releasing the trace
-	 * class removes it from the_trace_class_index, after which
-	 * get_locked_session_registry() (used by delete_ust_app_session)
-	 * would return null and skip metadata handling.
-	 *
-	 * Step 3 must happen before step 4 so that
-	 * for_each_consumer_stream_group() never visits entries whose
-	 * consumer-side channels have been closed, and so that
-	 * create_channel_subdirectories() can still look up ua_sess for
-	 * apps present in the orchestrator's per-PID maps.
-	 *
-	 * The session list lock and the per-session lock are held by the
-	 * caller (command handler).
-	 */
-	if (ua_sess->buffer_type == LTTNG_BUFFER_PER_PID) {
-		uint64_t metadata_key_to_close = 0;
-		unsigned int consumer_bitness_to_close = 0;
-		struct consumer_output *consumer_to_close = nullptr;
-
-		{
-			auto locked_ua_sess = ua_sess->lock();
-
-			auto locked_registry =
-				get_locked_session_registry(locked_ua_sess->get_identifier());
-			if (locked_registry) {
-				(void) push_metadata(locked_registry.locked_ref(),
-						     ua_sess->consumer);
-
-				metadata_key_to_close = locked_registry->_metadata_key;
-				consumer_bitness_to_close = locked_registry->abi.bits_per_long;
-				consumer_to_close = ua_sess->consumer;
-
-				if (!locked_registry->_metadata_closed &&
-				    metadata_key_to_close != 0) {
-					locked_registry->_metadata_closed = true;
-				}
-			}
-		}
-
-		try {
-			const auto session =
-				ltt_session::find_session(ua_sess->recording_session_id);
-
-			auto& orchestrator = static_cast<lsu::domain_orchestrator&>(
-				session->get_ust_orchestrator());
-
-			orchestrator.on_app_departure(*app);
-		} catch (const lttng::sessiond::exceptions::session_not_found_error&) {
-			/* Session is already gone; orchestrator will clean up in its destructor. */
-		}
-
-		iter.iter.node = &ua_sess->node.node;
-		ret = lttng_ht_del(app->sessions, &iter);
-		if (ret) {
-			/* Already scheduled for teardown. */
-			return;
-		}
-
-		if (consumer_to_close) {
-			(void) close_metadata(metadata_key_to_close,
-					      consumer_bitness_to_close,
-					      consumer_to_close);
-		}
-
-		delete_ust_app_session(app->command_socket.fd(), ua_sess, app);
-		return;
-	}
-
-	/* Remove from orchestrator's app session index. */
-	try {
-		const auto session = ltt_session::find_session(ua_sess->recording_session_id);
-
-		auto& orchestrator =
-			static_cast<lsu::domain_orchestrator&>(session->get_ust_orchestrator());
-
-		orchestrator.on_app_departure(*app);
-	} catch (const lttng::sessiond::exceptions::session_not_found_error&) {
-		/* Session already gone; orchestrator destroyed with it. */
-	}
-
-	iter.iter.node = &ua_sess->node.node;
-	ret = lttng_ht_del(app->sessions, &iter);
-	if (ret) {
-		/* Already scheduled for teardown. */
-		return;
-	}
-
-	/* Once deleted, free the data structure. */
-	delete_ust_app_session(app->command_socket.fd(), ua_sess, app);
-}
-
-/*
- * Lookup session wrapper.
- */
-void __lookup_session_by_app(std::uint64_t session_id, const lsu::app *app, lttng_ht_iter *iter)
-{
-	/* Get right UST app session from app */
-	lttng_ht_lookup(app->sessions, &session_id, iter);
-}
-
-/*
- * Destroy a specific UST session in apps.
- */
-int destroy_trace(std::uint64_t session_id, lsu::app *app)
-{
-	lsu::app_session *ua_sess;
-	struct lttng_ht_iter iter;
-	struct lttng_ht_node_u64 *node;
-
-	DBG("Destroy tracing for ust app pid %d", app->pid);
-
-	const lttng::urcu::read_lock_guard read_lock;
-
-	if (!app->compatible) {
-		goto end;
-	}
-
-	__lookup_session_by_app(session_id, app, &iter);
-	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
-	if (node == nullptr) {
-		/* Session is being or is deleted. */
-		goto end;
-	}
-	ua_sess = lttng::utils::container_of(node, &lsu::app_session::node);
-
-	health_code_update();
-	destroy_app_session(app, ua_sess);
-
-	health_code_update();
-
-	/* Quiescent wait after stopping trace */
-	try {
-		app->command_socket.lock().wait_quiescent();
-	} catch (const lsu::app_communication_error&) {
-	} catch (const lttng::runtime_error&) {
-	}
-
-end:
-	health_code_update();
-	return 0;
-}
-
 } /* namespace */
 
 /*
@@ -409,7 +247,10 @@ end:
  *
  * The session list lock must be held by the caller.
  */
-void delete_ust_app_session(int sock, lsu::app_session *ua_sess, lsu::app *app)
+void delete_ust_app_session(int sock,
+			    lsu::app_session *ua_sess,
+			    lsu::app *app,
+			    lsu::domain_orchestrator *orchestrator)
 {
 	LTTNG_ASSERT(ua_sess);
 	ASSERT_RCU_READ_LOCKED();
@@ -433,7 +274,8 @@ void delete_ust_app_session(int sock, lsu::app_session *ua_sess, lsu::app *app)
 						 &ust_app_channel::node>(*ua_sess->channels->ht)) {
 		const auto ret = cds_lfht_del(ua_sess->channels->ht, &ua_chan->node.node);
 		LTTNG_ASSERT(ret == 0);
-		delete_ust_app_channel(sock, ua_chan, app, locked_registry.locked_ref());
+		delete_ust_app_channel(
+			sock, ua_chan, app, locked_registry.locked_ref(), orchestrator);
 	}
 
 	if (locked_registry) {
@@ -479,10 +321,6 @@ void delete_ust_app_session(int sock, lsu::app_session *ua_sess, lsu::app *app)
 				    app->command_socket.fd());
 			}
 		}
-
-		/* Remove session from application UST object descriptor. */
-		ret = cds_lfht_del(app->ust_sessions_objd->ht, &ua_sess->ust_objd_node.node);
-		LTTNG_ASSERT(!ret);
 	}
 
 	consumer_output_put(ua_sess->consumer);
@@ -509,27 +347,6 @@ lsu::app_session *alloc_ust_app_session()
 	return ua_sess;
 
 error_free:
-	return nullptr;
-}
-
-/*
- * Return ust app session from the app session hashtable using the UST session
- * id.
- */
-lsu::app_session *ust_app_lookup_app_session(std::uint64_t session_id, const lsu::app *app)
-{
-	struct lttng_ht_iter iter;
-	struct lttng_ht_node_u64 *node;
-
-	__lookup_session_by_app(session_id, app, &iter);
-	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
-	if (node == nullptr) {
-		goto error;
-	}
-
-	return lttng::utils::container_of(node, &lsu::app_session::node);
-
-error:
 	return nullptr;
 }
 
@@ -587,37 +404,40 @@ int ust_app_flush_app_session(lsu::app& app, lsu::app_session& ua_sess)
 }
 
 /*
- * Destroy app UST session.
+ * Destroy all app sessions for a recording session. The orchestrator
+ * owns the sessions and handles their full teardown.
  */
-int ust_app_destroy_trace_all(std::uint64_t session_id)
+int ust_app_destroy_trace_all(lsu::domain_orchestrator& orchestrator)
 {
 	DBG("Destroy all UST traces");
+
+	const lttng::urcu::read_lock_guard read_lock;
 
 	/* Iterate on all apps. */
 	for (auto *app : lttng::urcu::lfht_iteration_adapter<lsu::app,
 							     decltype(lsu::app::pid_n),
 							     &lsu::app::pid_n>(*ust_app_ht->ht)) {
 		if (!ust_app_get(*app)) {
-			/* Application unregistered concurrently, skip it. */
 			DBG("Could not get application reference as it is being torn down; skipping application");
 			continue;
 		}
-		/* Prevent app teardown during use. */
+
 		const ust_app_reference app_ref(app);
 
-		(void) destroy_trace(session_id, app);
+		if (!app->compatible || !orchestrator.find_app_session(*app)) {
+			continue;
+		}
+
+		health_code_update();
+		orchestrator.on_app_departure(*app);
+		health_code_update();
+
+		try {
+			app->command_socket.lock().wait_quiescent();
+		} catch (const lsu::app_communication_error&) {
+		} catch (const lttng::runtime_error&) {
+		}
 	}
 
 	return 0;
-}
-
-void ust_app_global_destroy(std::uint64_t session_id, lsu::app *app)
-{
-	lsu::app_session *ua_sess;
-
-	ua_sess = ust_app_lookup_app_session(session_id, app);
-	if (ua_sess == nullptr) {
-		return;
-	}
-	destroy_app_session(app, ua_sess);
 }

@@ -14,6 +14,7 @@
 #include "lttng-ust-ctl.hpp"
 #include "trace-class.hpp"
 #include "ust-app-command-socket.hpp"
+#include "ust-app-objd-registry.hpp"
 #include "ust-app-session.hpp"
 #include "ust-application-abi.hpp"
 #include "ust-field-quirks.hpp"
@@ -28,7 +29,6 @@
 
 #include <vendor/optional.hpp>
 
-#include <list>
 #include <stdint.h>
 #include <unordered_map>
 #include <urcu/list.h>
@@ -170,29 +170,19 @@ struct app {
 	/* Extra for the NULL byte. */
 	char name[UST_APP_PROCNAME_LEN + 1] = {};
 
-	::lttng_ht *sessions = nullptr;
 	lttng_ht_node_ulong pid_n = {};
 	lttng_ht_node_ulong sock_n = {};
 	lttng_ht_node_ulong notify_sock_n = {};
 	lttng_ht_node_u64 owner_id_n = {};
+
 	/*
-	 * This is a list of ust app session that, once the app is going into
-	 * teardown mode, in the RCU call, each node in this list is removed and
-	 * deleted.
-	 *
-	 * Element of the list are added when an application unregisters after each
-	 * ht_del of app_session associated to this app. This list is NOT used
-	 * when a session is destroyed.
+	 * Per-app registry mapping UST object descriptors to recording
+	 * session identifiers. Populated via RAII tokens held by
+	 * app_session and ust_app_channel objects. Queried by the
+	 * notification thread to resolve an objd without holding any
+	 * recording session lock.
 	 */
-	std::list<app_session *> sessions_to_teardown;
-	/*
-	 * Hash table containing ust_app_channel indexed by channel objd.
-	 */
-	::lttng_ht *ust_objd = nullptr;
-	/*
-	 * Hash table containing app_session indexed by objd.
-	 */
-	::lttng_ht *ust_sessions_objd = nullptr;
+	ust::app_objd_registry objd_registry;
 
 	/*
 	 * If this application is of the agent domain and this is non negative then
@@ -305,7 +295,7 @@ void ust_app_notify_reclaimed_owner_ids(const std::vector<uint32_t>& owners);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
-static inline int ust_app_destroy_trace_all(std::uint64_t /* session_id */)
+static inline int ust_app_destroy_trace_all(lttng::sessiond::ust::domain_orchestrator&)
 {
 	return 0;
 }
@@ -447,12 +437,6 @@ static inline nonstd::optional<ust_app_reference> ust_app_find_by_pid(pid_t pid
 								      __attribute__((unused)))
 {
 	return nonstd::nullopt;
-}
-
-static inline lttng::sessiond::ust::app_session *
-ust_app_lookup_app_session(std::uint64_t, const lttng::sessiond::ust::app *)
-{
-	return nullptr;
 }
 
 static inline std::shared_ptr<lttng::sessiond::ust::trace_class>

@@ -9,6 +9,8 @@
 #ifndef LTTNG_SESSIOND_UST_APP_SESSION_HPP
 #define LTTNG_SESSIOND_UST_APP_SESSION_HPP
 
+#include "ust-app-objd-registry.hpp"
+#include "ust-app-session-id.hpp"
 #include "ust-application-abi.hpp"
 
 #include <common/credentials.hpp>
@@ -28,6 +30,7 @@ struct consumer_output;
 namespace lttng {
 namespace sessiond {
 namespace ust {
+class domain_orchestrator;
 class trace_class;
 struct app;
 } /* namespace ust */
@@ -85,19 +88,7 @@ public:
 		return app_session::make_locked_weak_ref(*this);
 	}
 
-	struct identifier {
-		using application_abi = lttng::sessiond::ust::application_abi;
-		enum class buffer_allocation_policy : std::uint8_t { PER_PID, PER_UID };
-
-		/* Unique identifier of the app_session. */
-		std::uint64_t app_session_id;
-		/* Unique identifier of the ltt_session (recording session). */
-		std::uint64_t recording_session_id;
-		/* Credentials of the application which owns the app_session. */
-		lttng_credentials app_credentials;
-		application_abi abi;
-		buffer_allocation_policy allocation_policy;
-	};
+	using identifier = app_session_identifier;
 
 	identifier get_identifier() const noexcept
 	{
@@ -151,12 +142,16 @@ public:
 	/* Unique app_session identifier, allocated by sessiond. */
 	uint64_t app_session_id = 0;
 	::lttng_ht *channels = nullptr; /* Registered channels */
-	lttng_ht_node_u64 node = {};
+
 	/*
-	 * Node indexed by UST session object descriptor (handle). Stored in the
-	 * ust_sessions_objd hash table in the app object.
+	 * RAII token: registers this session's UST tracer-side handle
+	 * in the owning app's objd_registry. Deregisters automatically
+	 * when this app_session is destroyed.
+	 *
+	 * Optional because the token is acquired after the UST handle
+	 * is created (not at construction time).
 	 */
-	lttng_ht_node_ulong ust_objd_node = {};
+	nonstd::optional<app_objd_registry::registration_token> objd_token;
 	/* Starts with 'ust'; no leading slash. */
 	char path[PATH_MAX] = {};
 	/* UID/GID of the application owning the session */
@@ -192,19 +187,17 @@ private:
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
-lttng::sessiond::ust::app_session *ust_app_lookup_app_session(std::uint64_t session_id,
-							      const lttng::sessiond::ust::app *app);
 std::shared_ptr<lttng::sessiond::ust::trace_class>
 ust_app_get_session_registry(const lttng::sessiond::ust::app_session::identifier& identifier);
 
 lttng::sessiond::ust::app_session *alloc_ust_app_session();
 void delete_ust_app_session(int sock,
 			    lttng::sessiond::ust::app_session *ua_sess,
-			    lttng::sessiond::ust::app *app);
+			    lttng::sessiond::ust::app *app,
+			    lttng::sessiond::ust::domain_orchestrator *orchestrator = nullptr);
 std::uint64_t get_next_session_id();
 
-int ust_app_destroy_trace_all(std::uint64_t session_id);
-void ust_app_global_destroy(std::uint64_t session_id, lttng::sessiond::ust::app *app);
+int ust_app_destroy_trace_all(lttng::sessiond::ust::domain_orchestrator& orchestrator);
 
 int close_metadata(uint64_t metadata_key,
 		   unsigned int consumer_bitness,

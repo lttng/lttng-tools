@@ -982,7 +982,7 @@ static void session_release(struct urcu_ref *ref)
 		consumer_output_send_destroy_relayd(&ust_orchestrator.get_consumer_output());
 
 		/* Destroy every UST application related to this session. */
-		ret = ust_app_destroy_trace_all(session->id);
+		ret = ust_app_destroy_trace_all(ust_orchestrator);
 		if (ret) {
 			ERR("Error in ust_app_destroy_trace_all");
 		}

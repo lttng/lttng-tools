@@ -51,25 +51,15 @@ namespace lsc = lttng::sessiond::config;
 
 void ls::ust::domain_orchestrator::_assert_app_sessions_consistent() const
 {
-	const lttng::urcu::read_lock_guard read_lock;
-	std::size_t ust_app_ht_match_count = 0;
-
-	for (const auto *app :
-	     lttng::urcu::lfht_iteration_adapter<ust::app,
-						 decltype(ust::app::pid_n),
-						 &ust::app::pid_n>(*ust_app_ht->ht)) {
-		const auto *ua_sess = ust_app_lookup_app_session(session_id(), app);
-		if (!ua_sess) {
-			continue;
-		}
-
-		const auto it = _app_sessions.find(app);
-		LTTNG_ASSERT(it != _app_sessions.end());
-		LTTNG_ASSERT(it->second == ua_sess);
-		++ust_app_ht_match_count;
+	/*
+	 * Verify that every entry in _app_sessions has a non-null
+	 * session pointer. The orchestrator is the sole owner, so
+	 * there is no external state to cross-check against.
+	 */
+	for (const auto& app_session_pair : _app_sessions) {
+		LTTNG_ASSERT(app_session_pair.first);
+		LTTNG_ASSERT(app_session_pair.second);
 	}
-
-	LTTNG_ASSERT(_app_sessions.size() == ust_app_ht_match_count);
 }
 
 lttng_ust_context_attr ls::ust::domain_orchestrator::make_ust_context_attr(
@@ -608,7 +598,7 @@ void ls::ust::domain_orchestrator::_enable_channel_on_apps(lttng::c_string_view 
 
 	for (const auto& app_session_pair : _app_sessions) {
 		auto *app = const_cast<ust::app *>(app_session_pair.first);
-		auto *ua_sess = app_session_pair.second;
+		auto *ua_sess = app_session_pair.second.get();
 
 		if (!ust_app_get(*app)) {
 			continue;
@@ -632,7 +622,7 @@ void ls::ust::domain_orchestrator::_disable_channel_on_apps(lttng::c_string_view
 
 	for (const auto& app_session_pair : _app_sessions) {
 		auto *app = const_cast<ust::app *>(app_session_pair.first);
-		auto *ua_sess = app_session_pair.second;
+		auto *ua_sess = app_session_pair.second.get();
 
 		if (!ust_app_get(*app)) {
 			continue;
@@ -670,7 +660,7 @@ int ls::ust::domain_orchestrator::_create_event_on_apps(
 
 	for (const auto& app_session_pair : _app_sessions) {
 		auto *app = const_cast<ust::app *>(app_session_pair.first);
-		auto *ua_sess = app_session_pair.second;
+		auto *ua_sess = app_session_pair.second.get();
 
 		if (!ust_app_get(*app)) {
 			continue;
@@ -718,7 +708,7 @@ int ls::ust::domain_orchestrator::_enable_event_on_apps(
 
 	for (const auto& app_session_pair : _app_sessions) {
 		auto *app = const_cast<ust::app *>(app_session_pair.first);
-		auto *ua_sess = app_session_pair.second;
+		auto *ua_sess = app_session_pair.second.get();
 
 		if (!ust_app_get(*app)) {
 			continue;
@@ -769,7 +759,7 @@ int ls::ust::domain_orchestrator::_disable_event_on_apps(
 
 	for (const auto& app_session_pair : _app_sessions) {
 		auto *app = const_cast<ust::app *>(app_session_pair.first);
-		auto *ua_sess = app_session_pair.second;
+		auto *ua_sess = app_session_pair.second.get();
 
 		if (!ust_app_get(*app)) {
 			continue;
@@ -819,7 +809,7 @@ void ls::ust::domain_orchestrator::_add_context_on_apps(
 
 	for (const auto& app_session_pair : _app_sessions) {
 		auto *app = const_cast<ust::app *>(app_session_pair.first);
-		auto *ua_sess = app_session_pair.second;
+		auto *ua_sess = app_session_pair.second.get();
 
 		if (!ust_app_get(*app)) {
 			continue;
@@ -1158,18 +1148,25 @@ int ls::ust::domain_orchestrator::_find_or_create_app_session(ust::app *app,
 
 	health_code_update();
 
-	auto *ua_sess = ust_app_lookup_app_session(session_id(), app);
-	if (ua_sess == nullptr) {
-		DBG2("UST app pid: %d session id %" PRIu64 " not found, creating it",
-		     app->pid,
-		     session_id());
-		ua_sess = alloc_ust_app_session();
-		if (ua_sess == nullptr) {
-			ret = -ENOMEM;
-			goto error;
+	{
+		const auto it = _app_sessions.find(app);
+		if (it != _app_sessions.end()) {
+			*ua_sess_ptr = it->second.get();
+			return 0;
 		}
-		_init_app_session(ua_sess, app);
 	}
+
+	DBG2("UST app pid: %d session id %" PRIu64 " not found, creating it",
+	     app->pid,
+	     session_id());
+
+	std::unique_ptr<ust::app_session> new_session(alloc_ust_app_session());
+	if (!new_session) {
+		ret = -ENOMEM;
+		goto error;
+	}
+
+	_init_app_session(new_session.get(), app);
 
 	switch (buffer_type()) {
 	case LTTNG_BUFFER_PER_PID:
@@ -1177,17 +1174,17 @@ int ls::ust::domain_orchestrator::_find_or_create_app_session(ust::app *app,
 		try {
 			find_or_create_per_pid_trace_class(
 				*app,
-				ua_sess->app_session_id,
+				new_session->app_session_id,
 				app->abi,
 				app->version.major,
 				app->version.minor,
-				ua_sess->root_shm_path,
-				ua_sess->shm_path,
-				lttng_credentials_get_uid(&ua_sess->effective_credentials),
-				lttng_credentials_get_gid(&ua_sess->effective_credentials));
+				new_session->root_shm_path,
+				new_session->shm_path,
+				lttng_credentials_get_uid(&new_session->effective_credentials),
+				lttng_credentials_get_gid(&new_session->effective_credentials));
 		} catch (const std::exception& ex) {
 			ERR("Failed to create per-PID trace class: %s", ex.what());
-			delete_ust_app_session(-1, ua_sess, app);
+			delete_ust_app_session(-1, new_session.release(), app);
 			ret = -1;
 			goto error;
 		}
@@ -1204,11 +1201,11 @@ int ls::ust::domain_orchestrator::_find_or_create_app_session(ust::app *app,
 							   app->abi,
 							   app->version.major,
 							   app->version.minor,
-							   ua_sess->root_shm_path,
-							   ua_sess->shm_path);
+							   new_session->root_shm_path,
+							   new_session->shm_path);
 		} catch (const std::exception& ex) {
 			ERR("Failed to create per-UID trace class: %s", ex.what());
-			delete_ust_app_session(-1, ua_sess, app);
+			delete_ust_app_session(-1, new_session.release(), app);
 			ret = -1;
 			goto error;
 		}
@@ -1222,34 +1219,35 @@ int ls::ust::domain_orchestrator::_find_or_create_app_session(ust::app *app,
 
 	health_code_update();
 
-	if (ua_sess->handle == -1) {
+	if (new_session->handle == -1) {
 		int handle;
 		try {
 			handle = app->command_socket.lock().create_session();
 		} catch (const ls::ust::app_communication_error&) {
-			delete_ust_app_session(-1, ua_sess, app);
+			delete_ust_app_session(-1, new_session.release(), app);
 			ret = -ENOTCONN;
 			goto error;
 		} catch (const lttng::runtime_error&) {
-			delete_ust_app_session(-1, ua_sess, app);
+			delete_ust_app_session(-1, new_session.release(), app);
 			ret = -ENOTCONN;
 			goto error;
 		}
 
-		ua_sess->handle = handle;
+		new_session->handle = handle;
 
-		/* Add ust app session to app's HT */
-		lttng_ht_node_init_u64(&ua_sess->node, ua_sess->recording_session_id);
-		lttng_ht_add_unique_u64(app->sessions, &ua_sess->node);
-		lttng_ht_node_init_ulong(&ua_sess->ust_objd_node, ua_sess->handle);
-		lttng_ht_add_unique_ulong(app->ust_sessions_objd, &ua_sess->ust_objd_node);
-
-		_app_sessions[app] = ua_sess;
+		/* Register the session's objd in the app's registry. */
+		new_session->objd_token = app->objd_registry.register_session_objd(
+			new_session->handle, new_session->get_identifier());
 
 		DBG2("UST app session created successfully with handle %d", handle);
 	}
 
-	*ua_sess_ptr = ua_sess;
+	{
+		auto *ua_sess = new_session.get();
+		_app_sessions[app] = std::move(new_session);
+		*ua_sess_ptr = ua_sess;
+	}
+
 	ret = 0;
 
 error:
@@ -1609,9 +1607,15 @@ int ls::ust::domain_orchestrator::_send_app_channel(ust::app *app,
 		goto error;
 	}
 
-	/* Initialize ust objd object using the received handle and add it. */
-	lttng_ht_node_init_ulong(&ua_chan->ust_objd_node, ua_chan->handle);
-	lttng_ht_add_unique_ulong(app->ust_objd, &ua_chan->ust_objd_node);
+	/* Register the channel's objd in the app's registry. */
+	{
+		const auto chan_reg_key = (buffer_type() == LTTNG_BUFFER_PER_UID) ?
+			ua_chan->trace_class_stream_class_handle :
+			ua_chan->key;
+
+		ua_chan->objd_token = app->objd_registry.register_channel_objd(
+			ua_chan->handle, ua_sess->get_identifier(), chan_reg_key);
+	}
 
 	/* If channel is not enabled, disable it on the tracer */
 	if (!ua_chan->enabled) {
@@ -1953,13 +1957,37 @@ void ls::ust::domain_orchestrator::synchronize_app(ust::app& app)
 			_start_app_trace(&app);
 		}
 	} else {
-		ust_app_global_destroy(session_id(), &app);
+		if (find_app_session(app)) {
+			on_app_departure(app);
+		}
 	}
 }
 
-void ls::ust::domain_orchestrator::on_app_departure(const ust::app& app)
+void ls::ust::domain_orchestrator::on_app_departure(ust::app& app)
 {
-	_app_sessions.erase(&app);
+	const auto it = _app_sessions.find(&app);
+	if (it == _app_sessions.end()) {
+		return;
+	}
+
+	/*
+	 * Destroy the app_session. For per-PID buffers, flush all
+	 * application streams before teardown to ensure proper
+	 * data_pending behavior.
+	 *
+	 * The unique_ptr destruction runs the app_session's RAII token
+	 * destructor, which deregisters the session objd from
+	 * app.objd_registry. Channel tokens are destroyed when their
+	 * channels are destroyed during delete_ust_app_session().
+	 */
+	auto owned_session = std::move(it->second);
+	_app_sessions.erase(it);
+
+	if (owned_session->buffer_type == LTTNG_BUFFER_PER_PID) {
+		(void) _flush_app_session(app, *owned_session);
+	}
+
+	delete_ust_app_session(app.command_socket.fd(), owned_session.release(), &app, this);
 
 	if (buffer_type() == LTTNG_BUFFER_PER_PID) {
 		release_per_pid_stream_groups(app);
@@ -1997,7 +2025,7 @@ int ls::ust::domain_orchestrator::_start_app_trace(ust::app *app)
 		return 0;
 	}
 
-	ua_sess = ust_app_lookup_app_session(session_id(), app);
+	ua_sess = find_app_session(*app);
 	if (ua_sess == nullptr) {
 		/* The session is in teardown process. Ignore and continue. */
 		return 0;
@@ -2052,7 +2080,7 @@ int ls::ust::domain_orchestrator::_stop_app_trace(ust::app *app)
 		return 0;
 	}
 
-	ua_sess = ust_app_lookup_app_session(session_id(), app);
+	ua_sess = find_app_session(*app);
 	if (ua_sess == nullptr) {
 		return 0;
 	}
@@ -2258,7 +2286,7 @@ void ls::ust::domain_orchestrator::start()
 			}
 
 			const ust_app_reference app_ref(app);
-			(void) _clear_quiescent_app_session(app, app_session_pair.second);
+			(void) _clear_quiescent_app_session(app, app_session_pair.second.get());
 		}
 	}
 
@@ -2720,7 +2748,7 @@ void ls::ust::domain_orchestrator::regenerate_statedump()
 
 	for (const auto& app_session_pair : _app_sessions) {
 		auto *app = const_cast<ust::app *>(app_session_pair.first);
-		auto *ua_sess = app_session_pair.second;
+		auto *ua_sess = app_session_pair.second.get();
 
 		if (!ust_app_get(*app)) {
 			continue;
@@ -2790,8 +2818,7 @@ void ls::ust::domain_orchestrator::create_channel_subdirectories(
 		 * session lock) before the app session is torn down.
 		 */
 		for (const auto& tc_entry : _per_pid_trace_classes) {
-			const auto *ua_sess =
-				ust_app_lookup_app_session(session_id(), tc_entry.first);
+			const auto *ua_sess = find_app_session(*tc_entry.first);
 			if (!ua_sess) {
 				continue;
 			}
