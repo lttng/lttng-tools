@@ -987,15 +987,6 @@ static void session_release(struct urcu_ref *ref)
 			ERR("Error in ust_app_destroy_trace_all");
 		}
 
-		/*
-		 * Close per-UID metadata channels on the consumer. Per-PID
-		 * metadata is closed when each application disconnects, but
-		 * per-UID metadata outlives the applications and must be
-		 * closed explicitly during session teardown.
-		 */
-		ust_orchestrator.close_per_uid_metadata_on_consumer(
-			ust_orchestrator.get_consumer_output());
-
 		DBG2("Trace UST destroy session %" PRIu64, session->id);
 	}
 

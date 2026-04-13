@@ -225,6 +225,14 @@ lttng_buffer_type ls::ust::domain_orchestrator::buffer_type() const noexcept
 
 ls::ust::domain_orchestrator::~domain_orchestrator()
 {
+	/*
+	 * Close per-UID metadata channels on the consumer before
+	 * destroying trace classes. Per-PID metadata is closed when
+	 * each application disconnects; per-UID metadata outlives the
+	 * applications and must be closed explicitly.
+	 */
+	_close_per_uid_metadata_on_consumer();
+
 	/* Unregister all per-UID trace classes from the global index. */
 	for (const auto& entry : _per_uid_trace_classes) {
 		the_trace_class_index->remove_per_uid(
@@ -2552,8 +2560,7 @@ void ls::ust::domain_orchestrator::open_packets()
 	}
 }
 
-void ls::ust::domain_orchestrator::close_per_uid_metadata_on_consumer(
-	struct consumer_output& consumer) const
+void ls::ust::domain_orchestrator::_close_per_uid_metadata_on_consumer() const
 {
 	const lttng::urcu::read_lock_guard read_lock;
 
@@ -2565,7 +2572,8 @@ void ls::ust::domain_orchestrator::close_per_uid_metadata_on_consumer(
 			continue;
 		}
 
-		auto *socket = consumer_find_socket_by_bitness(static_cast<int>(abi), &consumer);
+		auto *socket = consumer_find_socket_by_bitness(static_cast<int>(abi),
+							       _consumer_output.get());
 		if (!socket) {
 			continue;
 		}

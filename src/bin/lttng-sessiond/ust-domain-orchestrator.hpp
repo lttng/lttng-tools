@@ -178,18 +178,6 @@ public:
 	void clear() override;
 	void open_packets() override;
 
-	/*
-	 * Close all per-UID metadata channels on the consumer daemon.
-	 *
-	 * Must be called during session teardown, before the consumer
-	 * sockets become unavailable. For per-PID buffers, metadata is
-	 * closed when the application disconnects (in
-	 * delete_ust_app_session). For per-UID buffers, the metadata
-	 * channels outlive the applications and must be closed
-	 * explicitly.
-	 */
-	void close_per_uid_metadata_on_consumer(struct consumer_output& consumer) const;
-
 	void record_snapshot(const struct consumer_output& snapshot_consumer,
 			     std::uint64_t nb_packets_per_stream) override;
 
@@ -269,6 +257,15 @@ private:
 
 		return it->second.get();
 	}
+
+	/*
+	 * Close all per-UID metadata channels on the consumer daemon.
+	 * For per-PID buffers, metadata is closed when the application
+	 * disconnects (in delete_ust_app_session). For per-UID buffers,
+	 * the metadata channels outlive the applications and must be
+	 * closed explicitly.
+	 */
+	void _close_per_uid_metadata_on_consumer() const;
 
 	std::uint64_t _session_id() const noexcept;
 
@@ -718,12 +715,6 @@ public:
 
 	std::uint64_t get_size_one_more_packet_per_stream(std::uint64_t cur_nr_packets
 							  [[maybe_unused]]) const
-	{
-		std::abort();
-	}
-
-	void close_per_uid_metadata_on_consumer(struct consumer_output& consumer
-						[[maybe_unused]]) const
 	{
 		std::abort();
 	}
