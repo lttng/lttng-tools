@@ -168,7 +168,7 @@ int create_ust_channel_context(struct ust_app_channel *ua_chan,
 
 	DBG2("UST app context handle %d created successfully for channel %s",
 	     ua_ctx->handle,
-	     ua_chan->name);
+	     ua_chan->channel_config.name.c_str());
 
 error:
 	health_code_update();
@@ -235,7 +235,7 @@ int create_ust_app_channel_context(struct ust_app_channel *ua_chan,
 
 	ASSERT_RCU_READ_LOCKED();
 
-	DBG2("UST app adding context to channel %s", ua_chan->name);
+	DBG2("UST app adding context to channel %s", ua_chan->channel_config.name.c_str());
 
 	ua_ctx = find_ust_app_context(ua_chan->ctx, uctx);
 	if (ua_ctx) {

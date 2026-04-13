@@ -190,19 +190,18 @@ void save_per_pid_lost_discarded_counters(struct ust_app_channel *ua_chan)
  * channel and metadata channel allocation paths.
  */
 void init_ust_app_channel(struct ust_app_channel *ua_chan,
-			  const char *name,
 			  const lsu::app_session::locked_weak_ref& ua_sess,
 			  struct lttng_ust_abi_channel_attr *attr)
 {
-	strncpy(ua_chan->name, name, sizeof(ua_chan->name));
-	ua_chan->name[sizeof(ua_chan->name) - 1] = '\0';
-
 	ua_chan->enabled = true;
 	ua_chan->handle = -1;
 	ua_chan->session = &ua_sess.get();
 	ua_chan->key = get_next_channel_key();
 	ua_chan->ctx = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
-	lttng_ht_node_init_str(&ua_chan->node, ua_chan->name);
+
+	/* The hashtable node key points to the channel_config's name which is stable and const. */
+	lttng_ht_node_init_str(&ua_chan->node,
+			       const_cast<char *>(ua_chan->channel_config.name.c_str()));
 
 	CDS_INIT_LIST_HEAD(&ua_chan->streams.head);
 
@@ -222,7 +221,7 @@ void init_ust_app_channel(struct ust_app_channel *ua_chan,
 		ua_chan->attr.type = static_cast<enum lttng_ust_abi_chan_type>(attr->type);
 	}
 
-	DBG3("UST app channel %s allocated", ua_chan->name);
+	DBG3("UST app channel %s allocated", ua_chan->channel_config.name.c_str());
 }
 } /* namespace */
 
@@ -262,8 +261,7 @@ enum lttng_ust_abi_chan_type allocation_policy_to_ust_channel_type(
  * Allocate a recording channel with an associated config reference.
  */
 struct ust_app_channel *
-alloc_ust_app_channel(const char *name,
-		      const lsu::app_session::locked_weak_ref& ua_sess,
+alloc_ust_app_channel(const lsu::app_session::locked_weak_ref& ua_sess,
 		      struct lttng_ust_abi_channel_attr *attr,
 		      const lttng::sessiond::config::recording_channel_configuration& config)
 {
@@ -276,7 +274,7 @@ alloc_ust_app_channel(const char *name,
 		return nullptr;
 	}
 
-	init_ust_app_channel(ua_chan, name, ua_sess, attr);
+	init_ust_app_channel(ua_chan, ua_sess, attr);
 	return ua_chan;
 }
 
@@ -284,7 +282,6 @@ alloc_ust_app_channel(const char *name,
  * Allocate a metadata channel (no recording_channel_configuration).
  */
 struct ust_app_channel *alloc_ust_app_metadata_channel(
-	const char *name,
 	const lsu::app_session::locked_weak_ref& ua_sess,
 	const lttng::sessiond::config::metadata_channel_configuration& metadata_config)
 {
@@ -297,7 +294,7 @@ struct ust_app_channel *alloc_ust_app_metadata_channel(
 		return nullptr;
 	}
 
-	init_ust_app_channel(ua_chan, name, ua_sess, nullptr);
+	init_ust_app_channel(ua_chan, ua_sess, nullptr);
 	return ua_chan;
 }
 
@@ -339,7 +336,7 @@ void delete_ust_app_channel(int sock,
 	LTTNG_ASSERT(ua_chan);
 	ASSERT_RCU_READ_LOCKED();
 
-	DBG3("UST app deleting channel %s", ua_chan->name);
+	DBG3("UST app deleting channel %s", ua_chan->channel_config.name.c_str());
 
 	/* Wipe stream */
 	for (auto *stream :
@@ -399,17 +396,17 @@ void delete_ust_app_channel(int sock,
 		if (ret < 0) {
 			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 				DBG3("UST app channel %s release failed. Application is dead: pid = %d, sock = %d",
-				     ua_chan->name,
+				     ua_chan->channel_config.name.c_str(),
 				     app->pid,
 				     app->command_socket.fd());
 			} else if (ret == -EAGAIN) {
 				WARN("UST app channel %s release failed. Communication time out: pid = %d, sock = %d",
-				     ua_chan->name,
+				     ua_chan->channel_config.name.c_str(),
 				     app->pid,
 				     app->command_socket.fd());
 			} else {
 				ERR("UST app channel %s release failed with ret %d: pid = %d, sock = %d",
-				    ua_chan->name,
+				    ua_chan->channel_config.name.c_str(),
 				    ret,
 				    app->pid,
 				    app->command_socket.fd());
@@ -439,7 +436,9 @@ int disable_ust_channel(lsu::app *app, struct ust_app_channel *ua_chan)
 		goto error;
 	}
 
-	DBG2("UST app channel %s disabled successfully for app: pid = %d", ua_chan->name, app->pid);
+	DBG2("UST app channel %s disabled successfully for app: pid = %d",
+	     ua_chan->channel_config.name.c_str(),
+	     app->pid);
 
 error:
 	health_code_update();
@@ -466,7 +465,9 @@ int enable_ust_channel(lsu::app *app, struct ust_app_channel *ua_chan)
 
 	ua_chan->enabled = true;
 
-	DBG2("UST app channel %s enabled successfully for app: pid = %d", ua_chan->name, app->pid);
+	DBG2("UST app channel %s enabled successfully for app: pid = %d",
+	     ua_chan->channel_config.name.c_str(),
+	     app->pid);
 
 error:
 	health_code_update();
@@ -540,7 +541,7 @@ void init_ust_app_channel_from_config(struct ust_app_channel *ua_chan)
 	const auto& config =
 		static_cast<const lsc::recording_channel_configuration&>(ua_chan->channel_config);
 
-	DBG2("UST app initializing channel %s from config", ua_chan->name);
+	DBG2("UST app initializing channel %s from config", ua_chan->channel_config.name.c_str());
 
 	ua_chan->attr.subbuf_size = config.subbuffer_size_bytes;
 	ua_chan->attr.num_subbuf = config.subbuffer_count;
@@ -570,7 +571,7 @@ void init_ust_app_channel_from_config(struct ust_app_channel *ua_chan)
 
 	ua_chan->enabled = config.is_enabled;
 
-	DBG3("UST app channel %s initialized from config", ua_chan->name);
+	DBG3("UST app channel %s initialized from config", ua_chan->channel_config.name.c_str());
 }
 
 /*
@@ -698,7 +699,7 @@ int send_channel_pid_to_ust(lsu::app *app,
 	health_code_update();
 
 	DBG("UST app sending channel %s to UST app sock %d",
-	    ua_chan->name,
+	    ua_chan->channel_config.name.c_str(),
 	    app->command_socket.fd());
 
 	/* Send channel to the application. */

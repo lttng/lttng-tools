@@ -993,7 +993,7 @@ void ls::modules::domain_orchestrator::_send_stream_group_to_consumer(consumer_s
 		const auto status = notification_thread_command_add_channel(
 			the_notification_thread_handle,
 			_session.id,
-			const_cast<char *>(channel_config.name.c_str()),
+			channel_config.name.c_str(),
 			group.consumer_key(),
 			LTTNG_DOMAIN_KERNEL,
 			channel_config.subbuffer_size_bytes * channel_config.subbuffer_count);

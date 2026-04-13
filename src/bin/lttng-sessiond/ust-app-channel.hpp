@@ -58,7 +58,6 @@ struct ust_app_channel {
 	uint64_t trace_class_stream_class_handle = 0;
 	/* Number of stream that this channel is expected to receive. */
 	unsigned int expected_stream_count = 0;
-	char name[LTTNG_UST_ABI_SYM_NAME_LEN] = {};
 	struct lttng_ust_abi_object_data *obj = nullptr;
 	struct lttng_ust_ctl_consumer_channel_attr attr = {};
 	struct ust_app_stream_list streams = {};
@@ -113,12 +112,10 @@ struct app_stream {
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
 struct ust_app_channel *
-alloc_ust_app_channel(const char *name,
-		      const lttng::sessiond::ust::app_session::locked_weak_ref& ua_sess,
+alloc_ust_app_channel(const lttng::sessiond::ust::app_session::locked_weak_ref& ua_sess,
 		      struct lttng_ust_abi_channel_attr *attr,
 		      const lttng::sessiond::config::recording_channel_configuration& config);
 struct ust_app_channel *alloc_ust_app_metadata_channel(
-	const char *name,
 	const lttng::sessiond::ust::app_session::locked_weak_ref& ua_sess,
 	const lttng::sessiond::config::metadata_channel_configuration& metadata_config);
 void init_ust_app_channel_from_config(struct ust_app_channel *ua_chan);

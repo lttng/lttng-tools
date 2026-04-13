@@ -116,7 +116,9 @@ static int ask_channel_creation(lsu::app_session *ua_sess,
 			strncpy(shm_path, ua_sess->shm_path, sizeof(shm_path));
 			shm_path[sizeof(shm_path) - 1] = '\0';
 			strncat(shm_path, "/", sizeof(shm_path) - strlen(shm_path) - 1);
-			strncat(shm_path, ua_chan->name, sizeof(shm_path) - strlen(shm_path) - 1);
+			strncat(shm_path,
+				ua_chan->channel_config.name.c_str(),
+				sizeof(shm_path) - strlen(shm_path) - 1);
 			strncat(shm_path, "_", sizeof(shm_path) - strlen(shm_path) - 1);
 		}
 		strncpy(root_shm_path, ua_sess->root_shm_path, sizeof(root_shm_path));
@@ -187,7 +189,7 @@ static int ask_channel_creation(lsu::app_session *ua_sess,
 					   (int) ua_chan->attr.type,
 					   ua_sess->recording_session_id,
 					   &(pathname.c_str()[consumer_path_offset]),
-					   ua_chan->name,
+					   ua_chan->channel_config.name.c_str(),
 					   consumer->net_seq_index,
 					   ua_chan->key,
 					   registry->uuid,
@@ -465,7 +467,7 @@ int ust_consumer_send_channel_to_ust(lsu::app *app,
 	DBG2("UST app send channel to sock %d pid %d (name: %s, key: %" PRIu64 ")",
 	     app->command_socket.fd(),
 	     app->pid,
-	     channel->name,
+	     channel->channel_config.name.c_str(),
 	     channel->trace_class_stream_class_handle);
 
 	/*

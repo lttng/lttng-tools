@@ -1278,8 +1278,7 @@ int ls::ust::domain_orchestrator::_allocate_app_channel(
 		goto end;
 	}
 
-	ua_chan = alloc_ust_app_channel(
-		channel_config.name.c_str(), ua_sess, nullptr, channel_config);
+	ua_chan = alloc_ust_app_channel(ua_sess, nullptr, channel_config);
 	if (ua_chan == nullptr) {
 		/* Only malloc can fail here */
 		ret = -ENOMEM;
@@ -1317,7 +1316,8 @@ int ls::ust::domain_orchestrator::_create_channel_per_uid(ust::app *app,
 	auto *consumer = get_consumer_output_ptr();
 	auto& session = const_cast<ltt_session&>(_session);
 
-	DBG("UST app creating channel %s with per UID buffers", ua_chan->name);
+	DBG("UST app creating channel %s with per UID buffers",
+	    ua_chan->channel_config.name.c_str());
 
 	const auto& recording_config =
 		static_cast<const lsc::recording_channel_configuration&>(ua_chan->channel_config);
@@ -1369,7 +1369,7 @@ int ls::ust::domain_orchestrator::_create_channel_per_uid(ust::app *app,
 						 _session.live_timer);
 		if (ret < 0) {
 			ERR("Error creating UST channel \"%s\" on the consumer daemon",
-			    ua_chan->name);
+			    ua_chan->channel_config.name.c_str());
 
 			auto locked_registry = trace_class_ptr->lock();
 			try {
@@ -1427,7 +1427,7 @@ int ls::ust::domain_orchestrator::_create_channel_per_uid(ust::app *app,
 	notification_ret = notification_thread_command_add_channel(
 		the_notification_thread_handle,
 		_session.id,
-		ua_chan->name,
+		ua_chan->channel_config.name.c_str(),
 		ua_chan->key,
 		LTTNG_DOMAIN_UST,
 		ua_chan->attr.subbuf_size * ua_chan->attr.num_subbuf);
@@ -1470,7 +1470,8 @@ int ls::ust::domain_orchestrator::_create_channel_per_pid(
 	auto *consumer = get_consumer_output_ptr();
 	auto& session = const_cast<ltt_session&>(_session);
 
-	DBG("UST app creating channel %s with per PID buffers", ua_chan->name);
+	DBG("UST app creating channel %s with per PID buffers",
+	    ua_chan->channel_config.name.c_str());
 
 	const lttng::urcu::read_lock_guard read_lock;
 
@@ -1486,7 +1487,7 @@ int ls::ust::domain_orchestrator::_create_channel_per_pid(
 				      ust_channel_type_to_allocation_policy(ua_chan->attr.type));
 	} catch (const std::exception& ex) {
 		ERR("Error creating the UST channel \"%s\" registry instance: %s",
-		    ua_chan->name,
+		    ua_chan->channel_config.name.c_str(),
 		    ex.what());
 		ret = -1;
 		goto error;
@@ -1503,7 +1504,8 @@ int ls::ust::domain_orchestrator::_create_channel_per_pid(
 					 _session.output_traces,
 					 _session.live_timer);
 	if (ret < 0) {
-		ERR("Error creating UST channel \"%s\" on the consumer daemon", ua_chan->name);
+		ERR("Error creating UST channel \"%s\" on the consumer daemon",
+		    ua_chan->channel_config.name.c_str());
 		goto error_remove_from_registry;
 	}
 
@@ -1549,7 +1551,7 @@ int ls::ust::domain_orchestrator::_create_channel_per_pid(
 
 	cmd_ret = notification_thread_command_add_channel(the_notification_thread_handle,
 							  _session.id,
-							  ua_chan->name,
+							  ua_chan->channel_config.name.c_str(),
 							  ua_chan->key,
 							  LTTNG_DOMAIN_UST,
 							  ua_chan->attr.subbuf_size *
@@ -1821,7 +1823,7 @@ int ls::ust::domain_orchestrator::_create_app_metadata(
 	}
 
 	/* Allocate UST metadata */
-	metadata = alloc_ust_app_metadata_channel(DEFAULT_METADATA_NAME, ua_sess, metadata_config);
+	metadata = alloc_ust_app_metadata_channel(ua_sess, metadata_config);
 	if (!metadata) {
 		/* malloc() failed */
 		ret = -ENOMEM;

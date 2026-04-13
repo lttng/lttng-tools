@@ -153,7 +153,7 @@ notification_thread_command_remove_session(struct notification_thread_handle *ha
 enum lttng_error_code
 notification_thread_command_add_channel(struct notification_thread_handle *handle,
 					uint64_t session_id,
-					char *channel_name,
+					const char *channel_name,
 					uint64_t key,
 					enum lttng_domain_type domain,
 					uint64_t capacity);
