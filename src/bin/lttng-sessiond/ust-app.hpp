@@ -426,18 +426,6 @@ ust_app_get_session_registry(const lttng::sessiond::ust::app_session::identifier
 	return nullptr;
 }
 
-static inline lttng_ht *ust_app_get_all()
-{
-	return nullptr;
-}
-
-static inline int ust_app_release_object(lttng::sessiond::ust::app *app __attribute__((unused)),
-					 struct lttng_ust_abi_object_data *data
-					 __attribute__((unused)))
-{
-	return 0;
-}
-
 static inline void ust_app_notify_reclaimed_owner_ids(const std::vector<uint32_t>& owners
 						      __attribute__((unused)))
 {

@@ -24,6 +24,7 @@
 #include "ust-app.hpp"
 #include "ust-consumer.hpp"
 #include "ust-domain-orchestrator.hpp"
+#include "ust-field-convert.hpp"
 #include "ust-field-quirks.hpp"
 #include "ust-trace-class-index.hpp"
 #include "utils.hpp"

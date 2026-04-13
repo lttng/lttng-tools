@@ -163,8 +163,6 @@ using registry_unsigned_enum = registry_typed_enum<uint64_t>;
 } /* namespace sessiond */
 } /* namespace lttng */
 
-#ifdef HAVE_LIBLTTNG_UST_CTL
-
 /*
  * Create per-uid registry with default values.
  *
@@ -208,99 +206,5 @@ void ust_trace_class_destroy(lttng::sessiond::ust::trace_class *session);
 
 void ust_stream_class_destroy_event(lttng::sessiond::ust::stream_class *chan,
 				    lttng::sessiond::ust::event_class *event);
-
-#else /* HAVE_LIBLTTNG_UST_CTL */
-
-static inline lttng::sessiond::ust::trace_class *
-ust_trace_class_per_uid_create(uint32_t bits_per_long __attribute__((unused)),
-			       enum lttng_trace_format trace_format __attribute__((unused)),
-			       uint32_t uint8_t_alignment __attribute__((unused)),
-			       uint32_t uint16_t_alignment __attribute__((unused)),
-			       uint32_t uint32_t_alignment __attribute__((unused)),
-			       uint32_t uint64_t_alignment __attribute__((unused)),
-			       uint32_t long_alignment __attribute__((unused)),
-			       int byte_order __attribute__((unused)),
-			       uint32_t major __attribute__((unused)),
-			       uint32_t minor __attribute__((unused)),
-			       const char *root_shm_path __attribute__((unused)),
-			       const char *shm_path __attribute__((unused)),
-			       uid_t euid __attribute__((unused)),
-			       gid_t egid __attribute__((unused)),
-			       uint64_t tracing_id __attribute__((unused)),
-			       uid_t tracing_uid __attribute__((unused)))
-{
-	return nullptr;
-}
-
-static inline lttng::sessiond::ust::trace_class *
-ust_trace_class_per_pid_create(lttng::sessiond::ust::app *app __attribute__((unused)),
-			       enum lttng_trace_format trace_format __attribute__((unused)),
-			       uint32_t bits_per_long __attribute__((unused)),
-			       uint32_t uint8_t_alignment __attribute__((unused)),
-			       uint32_t uint16_t_alignment __attribute__((unused)),
-			       uint32_t uint32_t_alignment __attribute__((unused)),
-			       uint32_t uint64_t_alignment __attribute__((unused)),
-			       uint32_t long_alignment __attribute__((unused)),
-			       int byte_order __attribute__((unused)),
-			       uint32_t major __attribute__((unused)),
-			       uint32_t minor __attribute__((unused)),
-			       const char *root_shm_path __attribute__((unused)),
-			       const char *shm_path __attribute__((unused)),
-			       uid_t euid __attribute__((unused)),
-			       gid_t egid __attribute__((unused)),
-			       uint64_t tracing_id __attribute__((unused)))
-{
-	return nullptr;
-}
-
-static inline void ust_trace_class_destroy(lttng::sessiond::ust::trace_class *session
-					   __attribute__((unused)))
-{
-}
-
-static inline void ust_destroy_event_class(lttng::sessiond::ust::stream_class *chan
-					   __attribute__((unused)),
-					   lttng::sessiond::ust::event_class *event
-					   __attribute__((unused)))
-{
-}
-
-/* The app object can be NULL for registry shared across applications. */
-static inline int ust_metadata_session_statedump(lttng::sessiond::ust::trace_class *session
-						 __attribute__((unused)))
-{
-	return 0;
-}
-
-static inline int ust_metadata_channel_statedump(lttng::sessiond::ust::trace_class *session
-						 __attribute__((unused)),
-						 lttng::sessiond::ust::stream_class *chan
-						 __attribute__((unused)))
-{
-	return 0;
-}
-
-static inline int
-ust_metadata_event_statedump(lttng::sessiond::ust::trace_class *session __attribute__((unused)),
-			     lttng::sessiond::ust::stream_class *chan __attribute__((unused)),
-			     lttng::sessiond::ust::event_class *event __attribute__((unused)))
-{
-	return 0;
-}
-
-#endif /* HAVE_LIBLTTNG_UST_CTL */
-
-namespace lttng {
-namespace sessiond {
-namespace ust {
-std::vector<trace::field::cuptr>
-create_trace_fields_from_ust_ctl_fields(const lttng::sessiond::ust::trace_class& session,
-					const lttng_ust_ctl_field *fields,
-					std::size_t field_count,
-					trace::field_location::root lookup_root,
-					ctl_field_quirks quirks = ctl_field_quirks::NONE);
-} /* namespace ust */
-} /* namespace sessiond */
-} /* namespace lttng */
 
 #endif /* LTTNG_UST_REGISTRY_H */

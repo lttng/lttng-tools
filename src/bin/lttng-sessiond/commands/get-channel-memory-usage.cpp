@@ -7,11 +7,8 @@
 
 #include "get-channel-memory-usage.hpp"
 
-#include <common/exception.hpp>
-
-#ifdef HAVE_LIBLTTNG_UST_CTL
-
 #include <common/error.hpp>
+#include <common/exception.hpp>
 #include <common/format.hpp>
 
 namespace lsc = lttng::sessiond::commands;
@@ -76,18 +73,3 @@ lsc::get_channel_memory_usage(const ltt_session::locked_ref& session,
 
 	return session->get_ust_orchestrator().get_channel_memory_usage(target_channel_config);
 }
-
-#else /* !HAVE_LIBLTTNG_UST_CTL */
-
-namespace lsc = lttng::sessiond::commands;
-
-std::vector<lsc::stream_memory_usage_group>
-lsc::get_channel_memory_usage(const ltt_session::locked_ref& session [[maybe_unused]],
-			      lttng::domain_class domain [[maybe_unused]],
-			      lttng::c_string_view channel_name [[maybe_unused]])
-{
-	LTTNG_THROW_UNSUPPORTED_ERROR(
-		"Getting the channel memory usage is not supported by a sessiond built without UST support");
-}
-
-#endif /* HAVE_LIBLTTNG_UST_CTL */

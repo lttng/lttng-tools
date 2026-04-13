@@ -7,6 +7,7 @@
 
 #include "field.hpp"
 #include "ust-app.hpp"
+#include "ust-field-convert.hpp"
 #include "ust-field-quirks.hpp"
 #include "ust-registry.hpp"
 #include "ust-trace-class.hpp"

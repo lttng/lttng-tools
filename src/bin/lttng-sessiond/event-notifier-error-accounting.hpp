@@ -39,8 +39,6 @@ event_notifier_error_accounting_init(uint64_t buffer_size_kernel, uint64_t buffe
 enum event_notifier_error_accounting_status
 event_notifier_error_accounting_register_kernel(int kernel_event_notifier_group_fd);
 
-#ifdef HAVE_LIBLTTNG_UST_CTL
-
 /*
  * Register a UST application.
  *
@@ -54,22 +52,6 @@ event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app);
  */
 enum event_notifier_error_accounting_status
 event_notifier_error_accounting_unregister_app(lttng::sessiond::ust::app *app);
-
-#else /* HAVE_LIBLTTNG_UST_CTL */
-
-static inline enum event_notifier_error_accounting_status
-event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app __attribute__((unused)))
-{
-	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
-}
-
-static inline enum event_notifier_error_accounting_status
-event_notifier_error_accounting_unregister_app(lttng::sessiond::ust::app *app
-					       __attribute__((unused)))
-{
-	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
-}
-#endif /* HAVE_LIBLTTNG_UST_CTL */
 
 /*
  * Allocates, reserves and returns the error counter index for that trigger.

@@ -103,7 +103,7 @@ liblttng_sessiond_common_la_SOURCES += trace-ust.cpp ust-registry.cpp ust-app.cp
 			ust-trace-class-index.hpp ust-trace-class-index.cpp \
 			ust-clock-class.hpp ust-clock-class.cpp \
 			agent-thread.cpp agent-thread.hpp \
-			ust-field-convert.cpp ust-field-quirks.hpp \
+			ust-field-convert.cpp ust-field-convert.hpp ust-field-quirks.hpp \
 			ust-sigbus.cpp \
 			ust-trace-class.cpp ust-trace-class.hpp \
 			ust-event-class.cpp ust-event-class.hpp \

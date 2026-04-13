@@ -7,11 +7,8 @@
 
 #include "reclaim-channel-memory.hpp"
 
-#include <common/exception.hpp>
-
-#ifdef HAVE_LIBLTTNG_UST_CTL
-
 #include <common/error.hpp>
+#include <common/exception.hpp>
 #include <common/format.hpp>
 
 namespace lsc = lttng::sessiond::commands;
@@ -87,22 +84,3 @@ lsc::reclaim_channel_memory_result lsc::reclaim_channel_memory(
 								      std::move(on_complete),
 								      std::move(on_cancel));
 }
-
-#else /* !HAVE_LIBLTTNG_UST_CTL */
-
-namespace lsc = lttng::sessiond::commands;
-
-lsc::reclaim_channel_memory_result lsc::reclaim_channel_memory(
-	const ltt_session::locked_ref& session [[maybe_unused]],
-	lttng::domain_class domain [[maybe_unused]],
-	lttng::c_string_view channel_name [[maybe_unused]],
-	const nonstd::optional<std::chrono::microseconds>& reclaim_older_than_age [[maybe_unused]],
-	bool require_consumed [[maybe_unused]],
-	lsc::completion_callback_t on_complete [[maybe_unused]],
-	lsc::cancellation_callback_t on_cancel [[maybe_unused]])
-{
-	LTTNG_THROW_UNSUPPORTED_ERROR(
-		"Reclaiming channel memory is not supported by a sessiond built without UST support");
-}
-
-#endif /* HAVE_LIBLTTNG_UST_CTL */

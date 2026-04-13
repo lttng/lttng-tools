@@ -5,8 +5,8 @@
  *
  */
 
-#ifndef LTTNG_UST_FIELD_CONVERT_H
-#define LTTNG_UST_FIELD_CONVERT_H
+#ifndef LTTNG_SESSIOND_UST_FIELD_QUIRKS_HPP
+#define LTTNG_SESSIOND_UST_FIELD_QUIRKS_HPP
 
 #include <cstddef>
 #include <type_traits>
@@ -42,4 +42,4 @@ inline ctl_field_quirks operator|(ctl_field_quirks lhs, ctl_field_quirks rhs)
 } /* namespace sessiond */
 } /* namespace lttng */
 
-#endif /* LTTNG_UST_FIELD_CONVERT_H */
+#endif /* LTTNG_SESSIOND_UST_FIELD_QUIRKS_HPP */
