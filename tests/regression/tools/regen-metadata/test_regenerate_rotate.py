@@ -262,7 +262,7 @@ def setup(tap):
         delay_table = "{device} 0 0 {device} 0 10 {device} 0 0".format(
             device=loopback_device
         )
-        major, minor, _ = platform.uname().release.split(".", 3)
+        major, minor, _ = platform.uname().release.split(".", 2)
         if (int(major) == 4 and int(minor) < 19) or int(major) <= 3:
             delay_table = "{device} 0 0 {device} 0 10".format(device=loopback_device)
 
