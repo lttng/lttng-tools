@@ -277,41 +277,41 @@ public:
 		std::uint64_t lost_packets);
 
 private:
-	std::uint64_t session_id() const noexcept;
+	std::uint64_t _session_id() const noexcept;
 
-	bool is_active() const noexcept
+	bool _is_active() const noexcept
 	{
 		return _active;
 	}
 
 	static lttng_ust_context_attr
-	make_ust_context_attr(const config::context_configuration& context_config);
+	_make_ust_context_attr(const config::context_configuration& context_config);
 
-	std::uint64_t trace_class_stream_class_handle(
+	std::uint64_t _trace_class_stream_class_handle(
 		const config::recording_channel_configuration& channel_config) const;
 
-	ust::trace_class& find_or_create_per_uid_trace_class(uid_t uid,
-							     application_abi abi,
-							     const trace::abi& tracer_abi,
-							     std::uint32_t tracer_major,
-							     std::uint32_t tracer_minor,
-							     const char *root_shm_path,
-							     const char *shm_path);
+	ust::trace_class& _find_or_create_per_uid_trace_class(uid_t uid,
+							      application_abi abi,
+							      const trace::abi& tracer_abi,
+							      std::uint32_t tracer_major,
+							      std::uint32_t tracer_minor,
+							      const char *root_shm_path,
+							      const char *shm_path);
 
-	ust::trace_class& find_or_create_per_pid_trace_class(ust::app& app,
-							     std::uint64_t app_session_id,
-							     const trace::abi& tracer_abi,
-							     std::uint32_t tracer_major,
-							     std::uint32_t tracer_minor,
-							     const char *root_shm_path,
-							     const char *shm_path,
-							     uid_t euid,
-							     gid_t egid);
+	ust::trace_class& _find_or_create_per_pid_trace_class(ust::app& app,
+							      std::uint64_t app_session_id,
+							      const trace::abi& tracer_abi,
+							      std::uint32_t tracer_major,
+							      std::uint32_t tracer_minor,
+							      const char *root_shm_path,
+							      const char *shm_path,
+							      uid_t euid,
+							      gid_t egid);
 
-	void release_per_pid_trace_class(const ust::app& app);
-	void release_per_pid_stream_groups(const ust::app& app);
+	void _release_per_pid_trace_class(const ust::app& app);
+	void _release_per_pid_stream_groups(const ust::app& app);
 
-	ust::stream_group& find_or_create_per_uid_stream_group(
+	ust::stream_group& _find_or_create_per_uid_stream_group(
 		const config::recording_channel_configuration& channel_config,
 		uid_t uid,
 		application_abi abi,
@@ -321,15 +321,16 @@ private:
 		ust::stream_class& stream_class);
 
 	ust::stream_group&
-	get_per_uid_stream_group(const config::recording_channel_configuration& channel_config,
-				 uid_t uid,
-				 application_abi abi);
+	_get_per_uid_stream_group(const config::recording_channel_configuration& channel_config,
+				  uid_t uid,
+				  application_abi abi);
 
-	bool has_per_uid_stream_group(const config::recording_channel_configuration& channel_config,
-				      uid_t uid,
-				      application_abi abi) const;
+	bool
+	_has_per_uid_stream_group(const config::recording_channel_configuration& channel_config,
+				  uid_t uid,
+				  application_abi abi) const;
 
-	ust::stream_group& find_or_create_per_pid_stream_group(
+	ust::stream_group& _find_or_create_per_pid_stream_group(
 		const config::recording_channel_configuration& channel_config,
 		const ust::app& app,
 		std::uint64_t consumer_key,
@@ -337,7 +338,7 @@ private:
 		ust::trace_class& trace_class,
 		ust::stream_class& stream_class);
 
-	static struct lttng_ust_abi_channel_attr default_metadata_channel_attr() noexcept;
+	static struct lttng_ust_abi_channel_attr _default_metadata_channel_attr() noexcept;
 
 	/*
 	 * Descriptor yielded to the for_each_consumer_stream_group() callback.
@@ -352,7 +353,7 @@ private:
 	 * it is metadata_channel_configuration. Use `is_metadata` to
 	 * determine the concrete type when a downcast is needed.
 	 */
-	struct consumer_stream_group_descriptor {
+	struct _consumer_stream_group_descriptor {
 		application_abi abi;
 		std::uint64_t consumer_key;
 		bool is_metadata;
@@ -365,9 +366,9 @@ private:
 	};
 
 	using consumer_stream_group_visitor =
-		std::function<void(const consumer_stream_group_descriptor&)>;
+		std::function<void(const _consumer_stream_group_descriptor&)>;
 
-	void for_each_consumer_stream_group(const consumer_stream_group_visitor& visitor) const;
+	void _for_each_consumer_stream_group(const consumer_stream_group_visitor& visitor) const;
 
 	/*
 	 * Collect consumer channel keys for stream groups matching a given
@@ -379,15 +380,6 @@ private:
 		std::vector<std::uint64_t>& consumer64_channel_keys,
 		std::vector<commands::stream_group_owner>& consumer32_owners,
 		std::vector<commands::stream_group_owner>& consumer64_owners) const;
-
-	const ltt_session& _session;
-	const config::recording_channel_configuration::owership_model_t _default_buffer_ownership;
-	consumer_output_uptr _consumer_output;
-	bool _active = false;
-	nonstd::optional<lttng_buffer_type> _locked_buffer_type;
-	struct lttng_ht *_agents;
-	const std::string _root_shm_path;
-	const std::string _shm_path;
 
 	/*
 	 * Tracks which event rule configurations have had their per-app
@@ -583,6 +575,15 @@ private:
 		bool operator==(const _per_pid_stream_group_key& other) const noexcept;
 		std::size_t hash() const noexcept;
 	};
+
+	const ltt_session& _session;
+	const config::recording_channel_configuration::owership_model_t _default_buffer_ownership;
+	consumer_output_uptr _consumer_output;
+	bool _active = false;
+	nonstd::optional<lttng_buffer_type> _locked_buffer_type;
+	struct lttng_ht *_agents;
+	const std::string _root_shm_path;
+	const std::string _shm_path;
 
 	/*
 	 * Per-PID closed-app statistics. When an application exits in
