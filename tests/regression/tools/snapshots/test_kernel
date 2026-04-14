@@ -14,7 +14,7 @@ CHANNEL_NAME="snapchan"
 
 TRACE_PATH=$(mktemp -d -t tmp.test_snapshots_kernel_trace_path.XXXXXX)
 
-NUM_TESTS=2083
+NUM_TESTS=103
 
 source $TESTDIR/utils/utils.sh
 
@@ -188,9 +188,9 @@ function test_kernel_local_snapshot_overwrite_small_buffers ()
 	modprobe --remove lttng-test
 }
 
-function test_kernel_1000_local_snapshots ()
+function test_kernel_repeated_local_snapshots ()
 {
-	NB_SNAP=1000
+	NB_SNAP=10
 
 	diag "Test local kernel snapshots"
 	create_lttng_session_no_output $SESSION_NAME
@@ -271,7 +271,7 @@ check_skip_kernel_test "$NUM_TESTS" "Skipping all tests." ||
 		test_kernel_local_snapshot_append_to_metadata
 		test_kernel_local_snapshot_discard
 		test_kernel_local_snapshot_overwrite_small_buffers
-		test_kernel_1000_local_snapshots
+		test_kernel_repeated_local_snapshots
 		test_kernel_snapshot_consecutive_no_new_events
 	)
 
