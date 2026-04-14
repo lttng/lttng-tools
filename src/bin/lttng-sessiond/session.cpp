@@ -956,7 +956,6 @@ void session_notify_clear(const ltt_session::locked_ref& session)
 
 static void session_release(struct urcu_ref *ref)
 {
-	int ret;
 	struct ltt_session *session = lttng::utils::container_of(ref, &ltt_session::ref_count);
 	const bool session_published = session->published;
 
@@ -973,31 +972,22 @@ static void session_release(struct urcu_ref *ref)
 	}
 	session->kernel_orchestrator.reset();
 
-	/* UST session teardown, keeping data for destroy notifier. */
-	if (session->ust_orchestrator) {
-		auto& ust_orchestrator = static_cast<lttng::sessiond::ust::domain_orchestrator&>(
-			session->get_ust_orchestrator());
-
-		/* Close any relayd session */
-		consumer_output_send_destroy_relayd(&ust_orchestrator.get_consumer_output());
-
-		/* Destroy every UST application related to this session. */
-		ret = ust_app_destroy_trace_all(ust_orchestrator);
-		if (ret) {
-			ERR("Error in ust_app_destroy_trace_all");
-		}
-
-		DBG2("Trace UST destroy session %" PRIu64, session->id);
-	}
-
 	/*
-	 * Destroy the UST orchestrator before firing the destroy notifiers.
-	 * The orchestrator destructor disables agent events and application
-	 * contexts, sending the corresponding commands to connected agent
-	 * applications. This must happen before the destroy notification is
-	 * sent to the client so that agent applications have received their
-	 * updated state by the time the "lttng destroy" command returns.
+	 * Destroy the UST orchestrator. The destructor tears down all
+	 * app sessions, closes per-UID metadata, unregisters trace
+	 * classes, and destroys agents. Agent event/context disabling
+	 * commands are sent during agent destruction, which must happen
+	 * before the destroy notification is sent to the client so that
+	 * agent applications have received their updated state by the
+	 * time the "lttng destroy" command returns.
 	 */
+	if (session->ust_orchestrator) {
+		/* Close any relayd session before tearing down the orchestrator. */
+		consumer_output_send_destroy_relayd(
+			&static_cast<lttng::sessiond::ust::domain_orchestrator&>(
+				 session->get_ust_orchestrator())
+				 .get_consumer_output());
+	}
 	session->ust_orchestrator.reset();
 
 	DBG("Destroying session %s (id %" PRIu64 ")", session->name, session->id);

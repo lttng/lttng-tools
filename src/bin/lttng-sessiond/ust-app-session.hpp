@@ -196,8 +196,6 @@ void delete_ust_app_session(int sock,
 			    lttng::sessiond::ust::app *app);
 std::uint64_t get_next_session_id();
 
-int ust_app_destroy_trace_all(lttng::sessiond::ust::domain_orchestrator& orchestrator);
-
 int close_metadata(uint64_t metadata_key,
 		   unsigned int consumer_bitness,
 		   struct consumer_output *consumer);

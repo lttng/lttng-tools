@@ -292,11 +292,6 @@ void ust_app_notify_reclaimed_owner_ids(const std::vector<uint32_t>& owners);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
-static inline int ust_app_destroy_trace_all(lttng::sessiond::ust::domain_orchestrator&)
-{
-	return 0;
-}
-
 static inline int ust_app_list_events(struct lttng_event **events __attribute__((unused)))
 {
 	return -ENOSYS;

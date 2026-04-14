@@ -17,7 +17,6 @@
 #include "ust-app-channel.hpp"
 #include "ust-app-session.hpp"
 #include "ust-app.hpp"
-#include "ust-domain-orchestrator.hpp"
 #include "ust-trace-class-index.hpp"
 #include "ust-trace-class.hpp"
 
@@ -397,43 +396,4 @@ int ust_app_flush_app_session(lsu::app& app, lsu::app_session& ua_sess)
 	}
 
 	return retval;
-}
-
-/*
- * Destroy all app sessions for a recording session. The orchestrator
- * owns the sessions and handles their full teardown.
- */
-int ust_app_destroy_trace_all(lsu::domain_orchestrator& orchestrator)
-{
-	DBG("Destroy all UST traces");
-
-	const lttng::urcu::read_lock_guard read_lock;
-
-	/* Iterate on all apps. */
-	for (auto *app : lttng::urcu::lfht_iteration_adapter<lsu::app,
-							     decltype(lsu::app::pid_n),
-							     &lsu::app::pid_n>(*ust_app_ht->ht)) {
-		if (!ust_app_get(*app)) {
-			DBG("Could not get application reference as it is being torn down; skipping application");
-			continue;
-		}
-
-		const ust_app_reference app_ref(app);
-
-		if (!app->compatible) {
-			continue;
-		}
-
-		health_code_update();
-		orchestrator.on_app_departure(*app);
-		health_code_update();
-
-		try {
-			app->command_socket.lock().wait_quiescent();
-		} catch (const lsu::app_communication_error&) {
-		} catch (const lttng::runtime_error&) {
-		}
-	}
-
-	return 0;
 }

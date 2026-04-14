@@ -213,6 +213,45 @@ lttng_buffer_type ls::ust::domain_orchestrator::buffer_type() const noexcept
 ls::ust::domain_orchestrator::~domain_orchestrator()
 {
 	/*
+	 * Tear down all app sessions owned by this orchestrator. Each
+	 * app session holds UST handles, consumer channel registrations,
+	 * and per-PID stream groups/trace classes that must be released
+	 * while the applications are still reachable.
+	 *
+	 * on_app_departure() erases from _app_sessions, so iterate
+	 * until the map is drained.
+	 */
+	{
+		const lttng::urcu::read_lock_guard read_lock;
+
+		while (!_app_sessions.empty()) {
+			auto *app = const_cast<ust::app *>(_app_sessions.begin()->first);
+
+			if (!ust_app_get(*app)) {
+				/*
+				 * Application is being torn down concurrently;
+				 * drop the session entry without interacting
+				 * with the app.
+				 */
+				_app_sessions.erase(_app_sessions.begin());
+				continue;
+			}
+
+			const ust_app_reference app_ref(app);
+
+			health_code_update();
+			on_app_departure(*app);
+			health_code_update();
+
+			try {
+				app->command_socket.lock().wait_quiescent();
+			} catch (const ust::app_communication_error&) {
+			} catch (const lttng::runtime_error&) {
+			}
+		}
+	}
+
+	/*
 	 * Close per-UID metadata channels on the consumer before
 	 * destroying trace classes. Per-PID metadata is closed when
 	 * each application disconnects; per-UID metadata outlives the
