@@ -109,12 +109,8 @@ public:
 	const std::uint64_t recording_session_id;
 	/* Unique app_session identifier, allocated by sessiond. */
 	const std::uint64_t app_session_id;
-	/*
-	 * Per-app channels indexed by channel name. Channels are owned
-	 * by the session and cleaned up via delete_ust_app_channel()
-	 * before session destruction.
-	 */
-	std::unordered_map<std::string, ust_app_channel *> channels;
+	/* Per-app channels indexed by channel name. */
+	std::unordered_map<std::string, std::unique_ptr<ust_app_channel>> channels;
 
 	/*
 	 * RAII token: registers this session's UST tracer-side handle
@@ -156,9 +152,6 @@ private:
 std::shared_ptr<lttng::sessiond::ust::trace_class>
 ust_app_get_session_registry(const lttng::sessiond::ust::app_session::identifier& identifier);
 
-void delete_ust_app_session(int sock,
-			    lttng::sessiond::ust::app_session *ua_sess,
-			    lttng::sessiond::ust::app *app);
 std::uint64_t get_next_session_id();
 
 int close_metadata(uint64_t metadata_key,

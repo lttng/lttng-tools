@@ -70,7 +70,66 @@ ust_app_channel::ust_app_channel(lsu::app_session& session_,
 	DBG3("UST app channel %s allocated", channel_config.name.c_str());
 }
 
-ust_app_channel::~ust_app_channel() = default;
+ust_app_channel::~ust_app_channel()
+{
+	DBG3("UST app deleting channel %s", channel_config.name.c_str());
+
+	/*
+	 * Wipe streams first. Stream destructors access the app's
+	 * command socket, which must still be reachable at this point.
+	 */
+	streams.clear();
+
+	/* Wipe contexts. Destructors release UST objects. */
+	contexts.clear();
+
+	/* Wipe events. */
+	{
+		auto& app = session.app();
+		const auto sock = app.command_socket.fd();
+
+		for (auto& event_pair : events) {
+			delete_ust_app_event(sock, event_pair.second, &app);
+		}
+		events.clear();
+	}
+
+	if (obj != nullptr) {
+		auto& app = session.app();
+		int ret;
+
+		/* Deregister objd from the app's registry via RAII token. */
+		objd_token.reset();
+
+		{
+			const auto protocol = app.command_socket.lock();
+			ret = lttng_ust_ctl_release_object(protocol.fd(), obj);
+		}
+
+		if (ret < 0) {
+			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+				DBG3("UST app channel %s release failed. Application is dead: pid = %d, sock = %d",
+				     channel_config.name.c_str(),
+				     app.pid,
+				     app.command_socket.fd());
+			} else if (ret == -EAGAIN) {
+				WARN("UST app channel %s release failed. Communication time out: pid = %d, sock = %d",
+				     channel_config.name.c_str(),
+				     app.pid,
+				     app.command_socket.fd());
+			} else {
+				ERR("UST app channel %s release failed with ret %d: pid = %d, sock = %d",
+				    channel_config.name.c_str(),
+				    ret,
+				    app.pid,
+				    app.command_socket.fd());
+			}
+		}
+
+		lttng_fd_put(LTTNG_FD_APPS, 1);
+		free(obj);
+	}
+}
 
 int ust_app_channel::enable()
 {
@@ -384,83 +443,6 @@ enum lttng_ust_abi_chan_type allocation_policy_to_ust_channel_type(
 	default:
 		abort();
 	}
-}
-
-/*
- * Delete ust app channel safely.
- *
- * The session list lock must be held by the caller.
- */
-void delete_ust_app_channel(int sock,
-			    struct ust_app_channel *ua_chan,
-			    lsu::app *app,
-			    const lsu::trace_class::locked_ref& locked_registry)
-{
-	int ret;
-
-	LTTNG_ASSERT(ua_chan);
-	ASSERT_RCU_READ_LOCKED();
-
-	DBG3("UST app deleting channel %s", ua_chan->channel_config.name.c_str());
-
-	/*
-	 * Wipe streams before scheduling the channel for RCU reclamation.
-	 * Stream destructors access the app's command socket, which must
-	 * still be reachable at this point.
-	 */
-	ua_chan->streams.clear();
-
-	/* Wipe contexts. Destructors release UST objects. */
-	ua_chan->contexts.clear();
-
-	/* Wipe events */
-	for (auto& event_pair : ua_chan->events) {
-		delete_ust_app_event(sock, event_pair.second, app);
-	}
-	ua_chan->events.clear();
-
-	if (ua_chan->session.buffer_type == LTTNG_BUFFER_PER_PID) {
-		/* Wipe and free registry from session registry. */
-		if (locked_registry) {
-			try {
-				locked_registry->remove_channel(ua_chan->key, sock >= 0);
-			} catch (const std::exception& ex) {
-				DBG("Could not find channel for removal: %s", ex.what());
-			}
-		}
-	}
-
-	if (ua_chan->obj != nullptr) {
-		/* Deregister objd from the app's registry via RAII token. */
-		ua_chan->objd_token.reset();
-
-		{
-			const auto protocol = app->command_socket.lock();
-			ret = lttng_ust_ctl_release_object(sock, ua_chan->obj);
-		}
-		if (ret < 0) {
-			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-				DBG3("UST app channel %s release failed. Application is dead: pid = %d, sock = %d",
-				     ua_chan->channel_config.name.c_str(),
-				     app->pid,
-				     app->command_socket.fd());
-			} else if (ret == -EAGAIN) {
-				WARN("UST app channel %s release failed. Communication time out: pid = %d, sock = %d",
-				     ua_chan->channel_config.name.c_str(),
-				     app->pid,
-				     app->command_socket.fd());
-			} else {
-				ERR("UST app channel %s release failed with ret %d: pid = %d, sock = %d",
-				    ua_chan->channel_config.name.c_str(),
-				    ret,
-				    app->pid,
-				    app->command_socket.fd());
-			}
-		}
-		lttng_fd_put(LTTNG_FD_APPS, 1);
-		free(ua_chan->obj);
-	}
-	delete ua_chan;
 }
 
 /*

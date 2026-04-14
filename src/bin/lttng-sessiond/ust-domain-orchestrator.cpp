@@ -673,7 +673,7 @@ void ls::ust::domain_orchestrator::_disable_channel_on_apps(lttng::c_string_view
 		/* If the session exists for the app, the channel must be there. */
 		LTTNG_ASSERT(chan_it != ua_sess->channels.end());
 
-		auto *ua_chan = chan_it->second;
+		auto *ua_chan = chan_it->second.get();
 		LTTNG_ASSERT(ua_chan->enabled);
 
 		ret = ua_chan->disable();
@@ -712,7 +712,7 @@ int ls::ust::domain_orchestrator::_create_event_on_apps(
 		/* If the channel is not found, there is a code flow error. */
 		LTTNG_ASSERT(chan_it != ua_sess->channels.end());
 
-		auto *ua_chan = chan_it->second;
+		auto *ua_chan = chan_it->second.get();
 
 		ret = create_ust_app_event(ua_chan, app, event_rule_config);
 		if (ret < 0) {
@@ -758,7 +758,7 @@ int ls::ust::domain_orchestrator::_enable_event_on_apps(
 			continue;
 		}
 
-		auto *ua_chan = chan_it->second;
+		auto *ua_chan = chan_it->second.get();
 
 		auto *ua_event = find_ust_app_event_by_config(ua_chan->events, event_rule_config);
 		if (ua_event == nullptr) {
@@ -807,7 +807,7 @@ int ls::ust::domain_orchestrator::_disable_event_on_apps(
 			continue;
 		}
 
-		auto *ua_chan = chan_it->second;
+		auto *ua_chan = chan_it->second.get();
 
 		auto *ua_event = find_ust_app_event_by_config(ua_chan->events, event_rule_config);
 		if (ua_event == nullptr) {
@@ -854,7 +854,7 @@ void ls::ust::domain_orchestrator::_add_context_on_apps(
 			continue;
 		}
 
-		auto *ua_chan = chan_it->second;
+		auto *ua_chan = chan_it->second.get();
 
 		auto ust_ctx_attr = _make_ust_context_attr(ctx_config);
 		(void) create_ust_app_channel_context(ua_chan, &ust_ctx_attr, ctx_config);
@@ -1130,7 +1130,7 @@ int ls::ust::domain_orchestrator::_find_or_create_app_session(ust::app *app,
 
 	/*
 	 * Acquire a consumer output reference for the new session.
-	 * delete_ust_app_session() releases it on all error/teardown paths.
+	 * ~app_session() releases it on all error/teardown paths.
 	 */
 	consumer_output_get(get_consumer_output_ptr());
 
@@ -1162,7 +1162,6 @@ int ls::ust::domain_orchestrator::_find_or_create_app_session(ust::app *app,
 				lttng_credentials_get_gid(&new_session->effective_credentials));
 		} catch (const std::exception& ex) {
 			ERR("Failed to create per-PID trace class: %s", ex.what());
-			delete_ust_app_session(-1, new_session.release(), app);
 			ret = -1;
 			goto error;
 		}
@@ -1183,7 +1182,6 @@ int ls::ust::domain_orchestrator::_find_or_create_app_session(ust::app *app,
 							    new_session->shm_path.c_str());
 		} catch (const std::exception& ex) {
 			ERR("Failed to create per-UID trace class: %s", ex.what());
-			delete_ust_app_session(-1, new_session.release(), app);
 			ret = -1;
 			goto error;
 		}
@@ -1202,11 +1200,9 @@ int ls::ust::domain_orchestrator::_find_or_create_app_session(ust::app *app,
 		try {
 			handle = app->command_socket.lock().create_session();
 		} catch (const ls::ust::app_communication_error&) {
-			delete_ust_app_session(-1, new_session.release(), app);
 			ret = -ENOTCONN;
 			goto error;
 		} catch (const lttng::runtime_error&) {
-			delete_ust_app_session(-1, new_session.release(), app);
 			ret = -ENOTCONN;
 			goto error;
 		}
@@ -1247,7 +1243,7 @@ int ls::ust::domain_orchestrator::_allocate_app_channel(
 	{
 		const auto it = ua_sess.channels.find(channel_config.name);
 		if (it != ua_sess.channels.end()) {
-			ua_chan = it->second;
+			ua_chan = it->second.get();
 			goto end;
 		}
 	}
@@ -1618,7 +1614,8 @@ int ls::ust::domain_orchestrator::_create_app_channel(
 	}
 
 	/* Only publish the channel if successfully created on the tracer/consumer. */
-	ua_sess.channels.emplace(ua_chan->channel_config.name, ua_chan);
+	ua_sess.channels.emplace(ua_chan->channel_config.name,
+				 std::unique_ptr<ust_app_channel>(ua_chan));
 
 	/* Add contexts. */
 	for (const auto& ctx_uptr : channel_config.get_contexts()) {
@@ -1637,12 +1634,28 @@ int ls::ust::domain_orchestrator::_create_app_channel(
 
 error:
 	if (ret < 0 && ua_chan) {
-		const auto registry = ust_app_get_session_registry(ua_sess.get_identifier());
-		/* The UST app session lock is held, registry shall not be null. */
-		LTTNG_ASSERT(registry);
+		/*
+		 * Remove from registry before destroying. Pass false to
+		 * avoid notifying the consumer on this error path.
+		 */
+		if (ua_sess.buffer_type == LTTNG_BUFFER_PER_PID) {
+			const auto registry =
+				ust_app_get_session_registry(ua_sess.get_identifier());
 
-		const auto locked_registry = registry->lock();
-		delete_ust_app_channel(-1, ua_chan, app, locked_registry);
+			if (registry) {
+				const auto locked_registry = registry->lock();
+
+				try {
+					locked_registry->remove_channel(ua_chan->key, false);
+				} catch (const std::exception& ex) {
+					DBG("Could not find channel for removal: %s", ex.what());
+				}
+			}
+		}
+
+		if (ua_sess.channels.erase(ua_chan->channel_config.name) == 0) {
+			delete ua_chan;
+		}
 		ua_chan = nullptr;
 	} else if (ret == 0 && _ua_chan) {
 		/*
@@ -1668,7 +1681,7 @@ int ls::ust::domain_orchestrator::_find_or_create_app_channel(
 	{
 		const auto it = ua_sess.channels.find(channel_config.name);
 		if (it != ua_sess.channels.end()) {
-			*ua_chan = it->second;
+			*ua_chan = it->second.get();
 			goto end;
 		}
 	}
@@ -1853,7 +1866,7 @@ int ls::ust::domain_orchestrator::_create_app_metadata(ust::app_session& ua_sess
 
 error_consumer:
 	lttng_fd_put(LTTNG_FD_APPS, 1);
-	delete_ust_app_channel(-1, metadata, app, locked_registry.locked_ref());
+	delete metadata;
 error:
 	return ret;
 }
@@ -1930,7 +1943,7 @@ unsigned int ls::ust::domain_orchestrator::on_app_departure(
 	 * The unique_ptr destruction runs the app_session's RAII token
 	 * destructor, which deregisters the session objd from
 	 * app.objd_registry. Channel tokens are destroyed when their
-	 * channels are destroyed during delete_ust_app_session().
+	 * channels are destroyed during ~app_session().
 	 */
 	auto owned_session = std::move(it->second);
 	_app_sessions.erase(it);
@@ -1951,7 +1964,8 @@ unsigned int ls::ust::domain_orchestrator::on_app_departure(
 			consumer_reclaim_session_owner_id(*owned_session, *owner_id_to_reclaim);
 	}
 
-	delete_ust_app_session(app.command_socket.fd(), owned_session.release(), &app);
+	/* Destructor handles channel/context/stream cleanup and consumer output release. */
+	owned_session.reset();
 
 	if (buffer_type() == LTTNG_BUFFER_PER_PID) {
 		_release_per_pid_stream_groups(app);
@@ -3132,7 +3146,7 @@ ls::ust::domain_orchestrator::get_channel_memory_usage(
 void ls::ust::domain_orchestrator::_save_per_pid_stats_on_departure(const ust::app_session& ua_sess)
 {
 	for (const auto& chan_pair : ua_sess.channels) {
-		const auto *ua_chan = chan_pair.second;
+		const auto *ua_chan = chan_pair.second.get();
 
 		/* Metadata channels do not have discarded/lost counters. */
 		if (ua_chan->attr.type == LTTNG_UST_ABI_CHAN_METADATA) {

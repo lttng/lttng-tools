@@ -97,12 +97,11 @@ owned_locked_registry get_locked_session_registry(const lsu::app_session::identi
 
 /*
  * For a given application and session, push metadata to consumer.
- * Either sock or consumer is required : if sock is NULL, the default
- * socket to send the metadata is retrieved from consumer, if sock
- * is not NULL we use it to send the metadata.
- * RCU read-side lock must be held while calling this function,
- * therefore ensuring existence of registry. It also ensures existence
- * of socket throughout this function.
+ * The consumer socket is retrieved from the consumer output.
+ *
+ * The RCU read-side lock is acquired internally to look up the consumer
+ * socket and kept held while the socket is used, ensuring it is not
+ * freed concurrently.
  *
  * Return 0 on success else a negative error.
  * Returning a -EPIPE return value means we could not send the metadata,
@@ -118,25 +117,30 @@ int push_metadata(const lsu::trace_class::locked_ref& locked_registry,
 
 	LTTNG_ASSERT(locked_registry);
 	LTTNG_ASSERT(consumer);
-	ASSERT_RCU_READ_LOCKED();
 
 	if (locked_registry->_metadata_closed) {
 		ret_val = -EPIPE;
 		goto error;
 	}
 
-	/* Get consumer socket to use to push the metadata. */
-	socket = consumer_find_socket_by_bitness(locked_registry->abi.bits_per_long, consumer);
-	if (!socket) {
-		ret_val = -1;
-		goto error;
+	{
+		const lttng::urcu::read_lock_guard read_lock;
+
+		/* Get consumer socket to use to push the metadata. */
+		socket = consumer_find_socket_by_bitness(locked_registry->abi.bits_per_long,
+							 consumer);
+		if (!socket) {
+			ret_val = -1;
+			goto error;
+		}
+
+		ret = ust_app_push_metadata(locked_registry, socket, 0);
+		if (ret < 0) {
+			ret_val = ret;
+			goto error;
+		}
 	}
 
-	ret = ust_app_push_metadata(locked_registry, socket, 0);
-	if (ret < 0) {
-		ret_val = ret;
-		goto error;
-	}
 	return 0;
 
 error:
@@ -171,7 +175,83 @@ lsu::app_session::app_session(lsu::app& app,
 	LTTNG_ASSERT(consumer);
 }
 
-lsu::app_session::~app_session() = default;
+lsu::app_session::~app_session()
+{
+	LTTNG_ASSERT(!deleted);
+	deleted = true;
+
+	auto locked_registry = get_locked_session_registry(get_identifier());
+	/* Registry can be null on error path during initialization. */
+	if (locked_registry) {
+		/* Push metadata for application before freeing the application. */
+		(void) push_metadata(locked_registry.locked_ref(), consumer);
+	}
+
+	/* Remove per-PID channels from the registry while it is locked. */
+	if (buffer_type == LTTNG_BUFFER_PER_PID && locked_registry) {
+		for (const auto& chan_pair : channels) {
+			try {
+				locked_registry->remove_channel(chan_pair.second->key, true);
+			} catch (const std::exception& ex) {
+				DBG("Could not find channel for removal: %s", ex.what());
+			}
+		}
+	}
+
+	if (locked_registry) {
+		/*
+		 * Don't ask to close metadata for global per UID buffers. Close
+		 * metadata only on destroy trace session in this case. Also, the
+		 * previous push metadata could have flag the metadata registry to
+		 * close so don't send a close command if closed.
+		 */
+		if (buffer_type != LTTNG_BUFFER_PER_UID) {
+			const auto metadata_key = locked_registry->_metadata_key;
+			const auto consumer_bitness = locked_registry->abi.bits_per_long;
+
+			if (!locked_registry->_metadata_closed && metadata_key != 0) {
+				locked_registry->_metadata_closed = true;
+			}
+
+			/* Release lock before communication, see comments in close_metadata(). */
+			locked_registry.reset();
+			(void) close_metadata(metadata_key, consumer_bitness, consumer);
+		}
+	}
+
+	/*
+	 * Channel destructors handle UST object release,
+	 * event/context/stream teardown.
+	 */
+	channels.clear();
+
+	if (handle != -1) {
+		int ret;
+		{
+			const auto protocol = _app.command_socket.lock();
+			ret = lttng_ust_ctl_release_handle(protocol.fd(), handle);
+		}
+
+		if (ret < 0) {
+			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+				DBG3("UST app release session handle failed. Application is dead: pid = %d, sock = %d",
+				     _app.pid,
+				     _app.command_socket.fd());
+			} else if (ret == -EAGAIN) {
+				WARN("UST app release session handle failed. Communication time out: pid = %d, sock = %d",
+				     _app.pid,
+				     _app.command_socket.fd());
+			} else {
+				ERR("UST app release session handle failed with ret %d: pid = %d, sock = %d",
+				    ret,
+				    _app.pid,
+				    _app.command_socket.fd());
+			}
+		}
+	}
+
+	consumer_output_put(consumer);
+}
 
 /*
  * Return the atomically incremented value of next_session_id.
@@ -260,74 +340,6 @@ end:
  *
  * The session list lock must be held by the caller.
  */
-void delete_ust_app_session(int sock, lsu::app_session *ua_sess, lsu::app *app)
-{
-	LTTNG_ASSERT(ua_sess);
-	ASSERT_RCU_READ_LOCKED();
-
-	LTTNG_ASSERT(!ua_sess->deleted);
-	ua_sess->deleted = true;
-
-	auto locked_registry = get_locked_session_registry(ua_sess->get_identifier());
-	/* Registry can be null on error path during initialization. */
-	if (locked_registry) {
-		/* Push metadata for application before freeing the application. */
-		(void) push_metadata(locked_registry.locked_ref(), ua_sess->consumer);
-	}
-
-	for (auto& chan_pair : ua_sess->channels) {
-		delete_ust_app_channel(sock, chan_pair.second, app, locked_registry.locked_ref());
-	}
-	ua_sess->channels.clear();
-
-	if (locked_registry) {
-		/*
-		 * Don't ask to close metadata for global per UID buffers. Close
-		 * metadata only on destroy trace session in this case. Also, the
-		 * previous push metadata could have flag the metadata registry to
-		 * close so don't send a close command if closed.
-		 */
-		if (ua_sess->buffer_type != LTTNG_BUFFER_PER_UID) {
-			const auto metadata_key = locked_registry->_metadata_key;
-			const auto consumer_bitness = locked_registry->abi.bits_per_long;
-
-			if (!locked_registry->_metadata_closed && metadata_key != 0) {
-				locked_registry->_metadata_closed = true;
-			}
-
-			/* Release lock before communication, see comments in close_metadata(). */
-			locked_registry.reset();
-			(void) close_metadata(metadata_key, consumer_bitness, ua_sess->consumer);
-		}
-	}
-
-	if (ua_sess->handle != -1) {
-		int ret;
-		{
-			const auto protocol = app->command_socket.lock();
-			ret = lttng_ust_ctl_release_handle(sock, ua_sess->handle);
-		}
-		if (ret < 0) {
-			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-				DBG3("UST app release session handle failed. Application is dead: pid = %d, sock = %d",
-				     app->pid,
-				     app->command_socket.fd());
-			} else if (ret == -EAGAIN) {
-				WARN("UST app release session handle failed. Communication time out: pid = %d, sock = %d",
-				     app->pid,
-				     app->command_socket.fd());
-			} else {
-				ERR("UST app release session handle failed with ret %d: pid = %d, sock = %d",
-				    ret,
-				    app->pid,
-				    app->command_socket.fd());
-			}
-		}
-	}
-
-	consumer_output_put(ua_sess->consumer);
-	delete ua_sess;
-}
 
 int ust_app_flush_app_session(lsu::app& app, lsu::app_session& ua_sess)
 {

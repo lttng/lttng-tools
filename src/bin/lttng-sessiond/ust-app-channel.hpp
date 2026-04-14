@@ -182,10 +182,6 @@ private:
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
-void delete_ust_app_channel(int sock,
-			    struct ust_app_channel *ua_chan,
-			    lttng::sessiond::ust::app *app,
-			    const lttng::sessiond::ust::trace_class::locked_ref& locked_registry);
 int enable_ust_app_channel(lttng::sessiond::ust::app_session& ua_sess,
 			   lttng::c_string_view channel_name);
 int do_consumer_create_channel(struct consumer_output *consumer,
