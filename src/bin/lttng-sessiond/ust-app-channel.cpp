@@ -410,10 +410,7 @@ void delete_ust_app_channel(int sock,
 	 */
 	ua_chan->streams.clear();
 
-	/* Wipe context */
-	for (auto& ctx_pair : ua_chan->contexts) {
-		delete_ust_app_ctx(sock, ctx_pair.second, app);
-	}
+	/* Wipe contexts. Destructors release UST objects. */
 	ua_chan->contexts.clear();
 
 	/* Wipe events */

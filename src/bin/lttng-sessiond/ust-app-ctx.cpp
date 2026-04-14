@@ -17,67 +17,90 @@
 
 #include <common/common.hpp>
 #include <common/compat/errno.hpp>
+#include <common/make-unique.hpp>
 
 #include <cstring>
 
 namespace lsu = lttng::sessiond::ust;
 namespace lsc = lttng::sessiond::config;
 
-namespace {
-/*
- * Alloc new UST app context.
- */
-struct ust_app_ctx *alloc_ust_app_ctx(struct lttng_ust_context_attr *uctx,
-				      const lsc::context_configuration& ctx_config)
+ust_app_ctx::ust_app_ctx(ust_app_channel& channel,
+			 const lsc::context_configuration& context_config_,
+			 const lttng_ust_context_attr *uctx) :
+	context_config(context_config_), _channel(channel)
 {
-	struct ust_app_ctx *ua_ctx;
-
-	try {
-		ua_ctx = new ust_app_ctx(ctx_config);
-	} catch (const std::bad_alloc&) {
-		goto error;
-	}
-
 	if (uctx) {
-		memcpy(&ua_ctx->ctx, uctx, sizeof(ua_ctx->ctx));
+		memcpy(&ctx, uctx, sizeof(ctx));
 		if (uctx->ctx == LTTNG_UST_ABI_CONTEXT_APP_CONTEXT) {
-			char *provider_name = nullptr, *ctx_name = nullptr;
-
-			provider_name = strdup(uctx->u.app_ctx.provider_name);
-			ctx_name = strdup(uctx->u.app_ctx.ctx_name);
+			auto *provider_name = strdup(uctx->u.app_ctx.provider_name);
+			auto *ctx_name = strdup(uctx->u.app_ctx.ctx_name);
 			if (!provider_name || !ctx_name) {
 				free(provider_name);
 				free(ctx_name);
-				goto error;
+				throw std::bad_alloc();
 			}
 
-			ua_ctx->ctx.u.app_ctx.provider_name = provider_name;
-			ua_ctx->ctx.u.app_ctx.ctx_name = ctx_name;
+			ctx.u.app_ctx.provider_name = provider_name;
+			ctx.u.app_ctx.ctx_name = ctx_name;
 		}
 	}
 
-	DBG3("UST app context %d allocated", ua_ctx->ctx.ctx);
-	return ua_ctx;
-error:
-	delete ua_ctx;
-	return nullptr;
+	DBG3("UST app context %d allocated", ctx.ctx);
 }
 
+ust_app_ctx::~ust_app_ctx()
+{
+	if (obj) {
+		auto& app = _channel.session.app();
+		int ret;
+
+		{
+			const auto protocol = app.command_socket.lock();
+			ret = lttng_ust_ctl_release_object(protocol.fd(), obj);
+		}
+
+		if (ret < 0) {
+			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+				DBG3("UST app release ctx failed. Application is dead: pid = %d, sock = %d",
+				     app.pid,
+				     app.command_socket.fd());
+			} else if (ret == -EAGAIN) {
+				WARN("UST app release ctx failed. Communication time out: pid = %d, sock = %d",
+				     app.pid,
+				     app.command_socket.fd());
+			} else {
+				ERR("UST app release ctx obj handle %d failed with ret %d: pid = %d, sock = %d",
+				    obj->header.handle,
+				    ret,
+				    app.pid,
+				    app.command_socket.fd());
+			}
+		}
+
+		free(obj);
+	}
+
+	if (ctx.ctx == LTTNG_UST_ABI_CONTEXT_APP_CONTEXT) {
+		free(ctx.u.app_ctx.provider_name);
+		free(ctx.u.app_ctx.ctx_name);
+	}
+}
+
+namespace {
 /*
  * Create the channel context on the tracer.
  *
  * Called with UST app session lock held.
  */
-int create_ust_channel_context(struct ust_app_channel *ua_chan,
-			       struct ust_app_ctx *ua_ctx,
-			       lsu::app *app)
+int create_ust_channel_context(struct ust_app_channel *ua_chan, struct ust_app_ctx *ua_ctx)
 {
 	int ret = 0;
 
 	health_code_update();
 
+	auto& app = ua_chan->session.app();
 	try {
-		app->command_socket.lock().add_context(&ua_ctx->ctx, ua_chan->obj, &ua_ctx->obj);
+		app.command_socket.lock().add_context(&ua_ctx->ctx, ua_chan->obj, &ua_ctx->obj);
 	} catch (const lsu::app_communication_error&) {
 		goto error;
 	} catch (const lttng::runtime_error&) {
@@ -98,60 +121,15 @@ error:
 } /* anonymous namespace */
 
 /*
- * Delete ust context safely. RCU read lock must be held before calling
- * this function.
- */
-void delete_ust_app_ctx(int sock, struct ust_app_ctx *ua_ctx, lsu::app *app)
-{
-	int ret;
-
-	LTTNG_ASSERT(ua_ctx);
-
-	if (ua_ctx->obj) {
-		{
-			const auto protocol = app->command_socket.lock();
-			ret = lttng_ust_ctl_release_object(sock, ua_ctx->obj);
-		}
-		if (ret < 0) {
-			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-				DBG3("UST app release ctx failed. Application is dead: pid = %d, sock = %d",
-				     app->pid,
-				     app->command_socket.fd());
-			} else if (ret == -EAGAIN) {
-				WARN("UST app release ctx failed. Communication time out: pid = %d, sock = %d",
-				     app->pid,
-				     app->command_socket.fd());
-			} else {
-				ERR("UST app release ctx obj handle %d failed with ret %d: pid = %d, sock = %d",
-				    ua_ctx->obj->header.handle,
-				    ret,
-				    app->pid,
-				    app->command_socket.fd());
-			}
-		}
-		free(ua_ctx->obj);
-	}
-
-	if (ua_ctx->ctx.ctx == LTTNG_UST_ABI_CONTEXT_APP_CONTEXT) {
-		free(ua_ctx->ctx.u.app_ctx.provider_name);
-		free(ua_ctx->ctx.u.app_ctx.ctx_name);
-	}
-
-	delete ua_ctx;
-}
-
-/*
  * Create a context for the channel on the tracer.
  *
  * Called with UST app session lock held.
  */
 int create_ust_app_channel_context(struct ust_app_channel *ua_chan,
 				   struct lttng_ust_context_attr *uctx,
-				   lsu::app *app,
 				   const lsc::context_configuration& ctx_config)
 {
 	int ret = 0;
-	struct ust_app_ctx *ua_ctx;
 
 	DBG2("UST app adding context to channel %s", ua_chan->channel_config.name.c_str());
 
@@ -160,18 +138,15 @@ int create_ust_app_channel_context(struct ust_app_channel *ua_chan,
 		goto error;
 	}
 
-	ua_ctx = alloc_ust_app_ctx(uctx, ctx_config);
-	if (ua_ctx == nullptr) {
-		/* malloc failed */
-		ret = -ENOMEM;
-		goto error;
-	}
+	{
+		auto ua_ctx = lttng::make_unique<ust_app_ctx>(*ua_chan, ctx_config, uctx);
 
-	ua_chan->contexts.emplace(&ctx_config, ua_ctx);
+		ret = create_ust_channel_context(ua_chan, ua_ctx.get());
+		if (ret < 0) {
+			goto error;
+		}
 
-	ret = create_ust_channel_context(ua_chan, ua_ctx, app);
-	if (ret < 0) {
-		goto error;
+		ua_chan->contexts.emplace(&ctx_config, std::move(ua_ctx));
 	}
 
 error:

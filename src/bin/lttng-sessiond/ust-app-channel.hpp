@@ -100,7 +100,8 @@ struct ust_app_channel {
 	 * configuration pointer is stable for the lifetime of the recording
 	 * session.
 	 */
-	std::unordered_map<const lttng::sessiond::config::context_configuration *, ust_app_ctx *>
+	std::unordered_map<const lttng::sessiond::config::context_configuration *,
+			   std::unique_ptr<ust_app_ctx>>
 		contexts;
 	/*
 	 * Per-app events indexed by their event rule configuration. The

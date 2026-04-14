@@ -17,21 +17,16 @@ namespace config {
 class context_configuration;
 class recording_channel_configuration;
 } /* namespace config */
-namespace ust {
-struct app;
-} /* namespace ust */
 } /* namespace sessiond */
 } /* namespace lttng */
 
 struct ust_app_channel;
 
 struct ust_app_ctx {
-	explicit ust_app_ctx(const lttng::sessiond::config::context_configuration& context_config_) :
-		context_config(context_config_)
-	{
-	}
-
-	~ust_app_ctx() = default;
+	explicit ust_app_ctx(ust_app_channel& channel,
+			     const lttng::sessiond::config::context_configuration& context_config_,
+			     const lttng_ust_context_attr *uctx = nullptr);
+	~ust_app_ctx();
 	ust_app_ctx(const ust_app_ctx&) = delete;
 	ust_app_ctx(ust_app_ctx&&) = delete;
 	ust_app_ctx& operator=(const ust_app_ctx&) = delete;
@@ -41,14 +36,15 @@ struct ust_app_ctx {
 	struct lttng_ust_context_attr ctx = {};
 	struct lttng_ust_abi_object_data *obj = nullptr;
 	const lttng::sessiond::config::context_configuration& context_config;
+
+private:
+	ust_app_channel& _channel;
 };
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
-void delete_ust_app_ctx(int sock, struct ust_app_ctx *ua_ctx, lttng::sessiond::ust::app *app);
 int create_ust_app_channel_context(struct ust_app_channel *ua_chan,
 				   struct lttng_ust_context_attr *uctx,
-				   lttng::sessiond::ust::app *app,
 				   const lttng::sessiond::config::context_configuration& ctx_config);
 bool is_context_redundant(
 	const lttng::sessiond::config::recording_channel_configuration& chan_config,
