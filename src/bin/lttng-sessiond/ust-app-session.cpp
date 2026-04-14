@@ -84,7 +84,7 @@ struct owned_locked_registry {
 
 owned_locked_registry get_locked_session_registry(const lsu::app_session::identifier& identifier)
 {
-	auto session = ust_app_get_session_registry(identifier);
+	auto session = lsu::app_session::get_registry(identifier);
 	lsu::trace_class::locked_ref lock;
 
 	if (session) {
@@ -256,7 +256,7 @@ lsu::app_session::~app_session()
 /*
  * Return the atomically incremented value of next_session_id.
  */
-uint64_t get_next_session_id()
+uint64_t lsu::app_session::next_id()
 {
 	uint64_t ret;
 
@@ -274,7 +274,7 @@ uint64_t get_next_session_id()
  * it LTTNG_ASSERT() if not found. RCU read side lock must be acquired.
  */
 std::shared_ptr<lsu::trace_class>
-ust_app_get_session_registry(const lsu::app_session::identifier& ua_sess_id)
+lsu::app_session::get_registry(const lsu::app_session::identifier& ua_sess_id)
 {
 	switch (ua_sess_id.allocation_policy) {
 	case lsu::app_session::identifier::buffer_allocation_policy::PER_PID:
@@ -308,9 +308,9 @@ ust_app_get_session_registry(const lsu::app_session::identifier& ua_sess_id)
  *
  * Return 0 on success else a negative value.
  */
-int close_metadata(uint64_t metadata_key,
-		   unsigned int consumer_bitness,
-		   struct consumer_output *consumer)
+int lsu::app_session::close_metadata(uint64_t metadata_key,
+				     unsigned int consumer_bitness,
+				     struct consumer_output *consumer)
 {
 	int ret;
 	struct consumer_socket *socket;
@@ -341,7 +341,7 @@ end:
  * The session list lock must be held by the caller.
  */
 
-int ust_app_flush_app_session(lsu::app& app, lsu::app_session& ua_sess)
+int lsu::app_session::flush()
 {
 	int ret, retval = 0;
 	struct consumer_socket *socket;
@@ -349,26 +349,26 @@ int ust_app_flush_app_session(lsu::app& app, lsu::app_session& ua_sess)
 	const auto update_health_code_on_exit =
 		lttng::make_scope_exit([]() noexcept { health_code_update(); });
 
-	DBG("Flushing app session buffers for ust app pid %d", app.pid);
+	DBG("Flushing app session buffers for ust app pid %d", _app.pid);
 
-	if (!app.compatible) {
+	if (!_app.compatible) {
 		return 0;
 	}
 
-	if (ua_sess.deleted) {
+	if (deleted) {
 		return 0;
 	}
 
 	health_code_update();
 
 	/* Flushing buffers */
-	socket = consumer_find_socket_by_bitness(app.abi.bits_per_long, ua_sess.consumer);
+	socket = consumer_find_socket_by_bitness(_app.abi.bits_per_long, consumer);
 
 	/* Flush buffers and push metadata. */
-	switch (ua_sess.buffer_type) {
+	switch (buffer_type) {
 	case LTTNG_BUFFER_PER_PID:
 	{
-		for (auto& chan_pair : ua_sess.channels) {
+		for (auto& chan_pair : channels) {
 			health_code_update();
 			ret = consumer_flush_channel(socket, chan_pair.second->key);
 			if (ret) {

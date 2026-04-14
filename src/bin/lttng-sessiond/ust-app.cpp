@@ -125,7 +125,7 @@ struct owned_locked_registry {
 
 owned_locked_registry get_locked_session_registry(const lsu::app_session::identifier& identifier)
 {
-	auto session = ust_app_get_session_registry(identifier);
+	auto session = lsu::app_session::get_registry(identifier);
 	lsu::trace_class::locked_ref lock;
 
 	if (session) {

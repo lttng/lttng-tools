@@ -714,7 +714,7 @@ int ls::ust::domain_orchestrator::_create_event_on_apps(
 
 		auto *ua_chan = chan_it->second.get();
 
-		ret = create_ust_app_event(ua_chan, app, event_rule_config);
+		ret = ust_app_event::create(*ua_chan, event_rule_config);
 		if (ret < 0) {
 			if (ret != -LTTNG_UST_ERR_EXIST) {
 				break;
@@ -760,14 +760,14 @@ int ls::ust::domain_orchestrator::_enable_event_on_apps(
 
 		auto *ua_chan = chan_it->second.get();
 
-		auto *ua_event = find_ust_app_event_by_config(ua_chan->events, event_rule_config);
+		auto *ua_event = ust_app_event::find_by_config(ua_chan->events, event_rule_config);
 		if (ua_event == nullptr) {
 			DBG3("UST app enable event not found for app PID %d. Skipping app",
 			     app->pid);
 			continue;
 		}
 
-		ret = enable_ust_app_event(ua_event, app);
+		ret = ua_event->enable();
 		if (ret < 0) {
 			return ret;
 		}
@@ -809,7 +809,7 @@ int ls::ust::domain_orchestrator::_disable_event_on_apps(
 
 		auto *ua_chan = chan_it->second.get();
 
-		auto *ua_event = find_ust_app_event_by_config(ua_chan->events, event_rule_config);
+		auto *ua_event = ust_app_event::find_by_config(ua_chan->events, event_rule_config);
 		if (ua_event == nullptr) {
 			DBG2("Event not found in channel %s for app pid %d. Skipping",
 			     channel_name.data(),
@@ -817,7 +817,7 @@ int ls::ust::domain_orchestrator::_disable_event_on_apps(
 			continue;
 		}
 
-		ret = disable_ust_app_event(ua_event, app);
+		ret = ua_event->disable();
 		if (ret < 0) {
 			continue;
 		}
@@ -1044,7 +1044,7 @@ struct owned_locked_registry {
 owned_locked_registry
 get_locked_session_registry(const ls::ust::app_session::identifier& identifier)
 {
-	auto session = ust_app_get_session_registry(identifier);
+	auto session = ls::ust::app_session::get_registry(identifier);
 	ls::ust::trace_class::locked_ref lock;
 
 	if (session) {
@@ -1136,7 +1136,7 @@ int ls::ust::domain_orchestrator::_find_or_create_app_session(ust::app *app,
 
 	auto new_session = lttng::make_unique<ust::app_session>(*app,
 								_session_id(),
-								get_next_session_id(),
+								ust::app_session::next_id(),
 								real_creds,
 								effective_creds,
 								buf_type,
@@ -1432,7 +1432,7 @@ int ls::ust::domain_orchestrator::_create_channel_per_pid(ust::app *app,
 
 	const lttng::urcu::read_lock_guard read_lock;
 
-	auto registry = ust_app_get_session_registry(ua_sess.get_identifier());
+	auto registry = ust::app_session::get_registry(ua_sess.get_identifier());
 	/* The UST app session lock is held, registry shall not be null. */
 	LTTNG_ASSERT(registry);
 
@@ -1640,7 +1640,7 @@ error:
 		 */
 		if (ua_sess.buffer_type == LTTNG_BUFFER_PER_PID) {
 			const auto registry =
-				ust_app_get_session_registry(ua_sess.get_identifier());
+				ust::app_session::get_registry(ua_sess.get_identifier());
 
 			if (registry) {
 				const auto locked_registry = registry->lock();
@@ -1696,22 +1696,19 @@ end:
 }
 
 int ls::ust::domain_orchestrator::_synchronize_channel_event(
-	struct ust_app_channel *ua_chan,
-	ust::app *app,
-	const lsc::event_rule_configuration& event_config)
+	struct ust_app_channel *ua_chan, const lsc::event_rule_configuration& event_config)
 {
 	int ret = 0;
 
-	auto *ua_event = find_ust_app_event_by_config(ua_chan->events, event_config);
+	auto *ua_event = ust_app_event::find_by_config(ua_chan->events, event_config);
 	if (!ua_event) {
-		ret = create_ust_app_event(ua_chan, app, event_config);
+		ret = ust_app_event::create(*ua_chan, event_config);
 		if (ret < 0) {
 			goto end;
 		}
 	} else {
 		if (ua_event->enabled != event_config.is_enabled) {
-			ret = event_config.is_enabled ? enable_ust_app_event(ua_event, app) :
-							disable_ust_app_event(ua_event, app);
+			ret = event_config.is_enabled ? ua_event->enable() : ua_event->disable();
 		}
 	}
 
@@ -1751,7 +1748,7 @@ void ls::ust::domain_orchestrator::_synchronize_all_channels(ust::app_session& u
 		}
 
 		for (const auto& event_rule_entry : chan_config.event_rules) {
-			ret = _synchronize_channel_event(ua_chan, app, *event_rule_entry.second);
+			ret = _synchronize_channel_event(ua_chan, *event_rule_entry.second);
 			if (ret) {
 				goto end;
 			}
@@ -1949,7 +1946,7 @@ unsigned int ls::ust::domain_orchestrator::on_app_departure(
 	_app_sessions.erase(it);
 
 	if (owned_session->buffer_type == LTTNG_BUFFER_PER_PID) {
-		(void) _flush_app_session(app, *owned_session);
+		(void) _flush_app_session(*owned_session);
 		_save_per_pid_stats_on_departure(*owned_session);
 	}
 
@@ -2101,7 +2098,7 @@ int ls::ust::domain_orchestrator::_stop_app_trace(ust::app *app)
 	health_code_update();
 
 	{
-		auto registry = ust_app_get_session_registry(ua_sess->get_identifier());
+		auto registry = ust::app_session::get_registry(ua_sess->get_identifier());
 		LTTNG_ASSERT(registry);
 		auto locked_registry = registry->lock();
 		if (!locked_registry->_metadata_closed) {
@@ -2116,52 +2113,9 @@ int ls::ust::domain_orchestrator::_stop_app_trace(ust::app *app)
 	return 0;
 }
 
-int ls::ust::domain_orchestrator::_flush_app_session(ust::app& app, ust::app_session& ua_sess)
+int ls::ust::domain_orchestrator::_flush_app_session(ust::app_session& ua_sess)
 {
-	int ret, retval = 0;
-	struct consumer_socket *socket;
-
-	const auto update_health_code_on_exit =
-		lttng::make_scope_exit([]() noexcept { health_code_update(); });
-
-	DBG("Flushing app session buffers for ust app pid %d", app.pid);
-
-	if (!app.compatible) {
-		return 0;
-	}
-
-	if (ua_sess.deleted) {
-		return 0;
-	}
-
-	health_code_update();
-
-	/* Flushing buffers */
-	socket = consumer_find_socket_by_bitness(app.abi.bits_per_long, ua_sess.consumer);
-
-	/* Flush buffers and push metadata. */
-	switch (ua_sess.buffer_type) {
-	case LTTNG_BUFFER_PER_PID:
-	{
-		for (auto& chan_pair : ua_sess.channels) {
-			health_code_update();
-			ret = consumer_flush_channel(socket, chan_pair.second->key);
-			if (ret) {
-				ERR("Error flushing consumer channel");
-				retval = -1;
-				continue;
-			}
-		}
-
-		break;
-	}
-	case LTTNG_BUFFER_PER_UID:
-	default:
-		abort();
-		break;
-	}
-
-	return retval;
+	return ua_sess.flush();
 }
 
 int ls::ust::domain_orchestrator::_clear_quiescent_app_session(ust::app *app,
@@ -2305,7 +2259,7 @@ void ls::ust::domain_orchestrator::stop()
 				continue;
 			}
 			const ust_app_reference app_ref(app);
-			(void) _flush_app_session(*app, *app_session_pair.second);
+			(void) _flush_app_session(*app_session_pair.second);
 		}
 	}
 

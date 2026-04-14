@@ -29,9 +29,14 @@ struct app;
 } /* namespace lttng */
 
 struct ust_app_event {
+	using event_map =
+		std::unordered_map<const lttng::sessiond::config::event_rule_configuration *,
+				   ust_app_event *>;
+
 	explicit ust_app_event(
+		struct ust_app_channel& channel_,
 		const lttng::sessiond::config::event_rule_configuration& event_rule_config_) :
-		event_rule_config(event_rule_config_)
+		channel(channel_), event_rule_config(event_rule_config_)
 	{
 	}
 
@@ -41,24 +46,35 @@ struct ust_app_event {
 	ust_app_event& operator=(const ust_app_event&) = delete;
 	ust_app_event& operator=(ust_app_event&&) = delete;
 
+	/* Release the tracer-side event object and free local resources. */
+	void destroy(int sock);
+
+	/* Enable this event on the UST tracer and update local state. */
+	int enable();
+
+	/* Disable this event on the UST tracer and update local state. */
+	int disable();
+
+	/* Create this event on the UST tracer and synchronize local state. */
+	int create_on_ust();
+
+	/* Create and register a per-app event in the channel's event map. */
+	static int create(struct ust_app_channel& channel,
+			  const lttng::sessiond::config::event_rule_configuration& event_config);
+
+	/* Find a per-app event by matching its configuration pointer. */
+	static struct ust_app_event *
+	find_by_config(const event_map& events,
+		       const lttng::sessiond::config::event_rule_configuration& event_config);
+
 	bool enabled = false;
 	int handle = 0;
 	struct lttng_ust_abi_object_data *obj = nullptr;
+	struct ust_app_channel& channel;
 	const lttng::sessiond::config::event_rule_configuration& event_rule_config;
 };
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
-
-int create_ust_app_event(struct ust_app_channel *ua_chan,
-			 lttng::sessiond::ust::app *app,
-			 const lttng::sessiond::config::event_rule_configuration& event_config);
-int enable_ust_app_event(struct ust_app_event *ua_event, lttng::sessiond::ust::app *app);
-int disable_ust_app_event(struct ust_app_event *ua_event, lttng::sessiond::ust::app *app);
-struct ust_app_event *find_ust_app_event_by_config(
-	const std::unordered_map<const lttng::sessiond::config::event_rule_configuration *,
-				 ust_app_event *>& events,
-	const lttng::sessiond::config::event_rule_configuration& event_config);
-void delete_ust_app_event(int sock, struct ust_app_event *ua_event, lttng::sessiond::ust::app *app);
 
 /*
  * UST object tracer-side enable/disable/filter/exclusion helpers. Used

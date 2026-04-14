@@ -77,43 +77,42 @@ end:
 } /* anonymous namespace */
 
 /*
- * Delete ust app event safely.
+ * Release the tracer-side event object safely.
  *
  * The sock parameter may differ from the command socket's current fd
  * during application teardown (where the fd has been released).
  * This function uses the raw lttng_ust_ctl call directly to handle
  * this case.
  */
-void delete_ust_app_event(int sock, struct ust_app_event *ua_event, lsu::app *app)
+void ust_app_event::destroy(int sock)
 {
+	auto& app = channel.session.app();
 	int ret;
 
-	LTTNG_ASSERT(ua_event);
-
-	if (ua_event->obj != nullptr) {
+	if (obj != nullptr) {
 		{
-			const auto protocol = app->command_socket.lock();
-			ret = lttng_ust_ctl_release_object(sock, ua_event->obj);
+			const auto protocol = app.command_socket.lock();
+			ret = lttng_ust_ctl_release_object(sock, obj);
 		}
 		if (ret < 0) {
 			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 				DBG3("UST app release event failed. Application is dead: pid = %d, sock = %d",
-				     app->pid,
-				     app->command_socket.fd());
+				     app.pid,
+				     app.command_socket.fd());
 			} else if (ret == -EAGAIN) {
 				WARN("UST app release event failed. Communication time out: pid = %d, sock = %d",
-				     app->pid,
-				     app->command_socket.fd());
+				     app.pid,
+				     app.command_socket.fd());
 			} else {
 				ERR("UST app release event obj failed with ret %d: pid = %d, sock = %d",
 				    ret,
-				    app->pid,
-				    app->command_socket.fd());
+				    app.pid,
+				    app.command_socket.fd());
 			}
 		}
-		free(ua_event->obj);
+		free(obj);
+		obj = nullptr;
 	}
-	delete ua_event;
 }
 
 /*
@@ -326,12 +325,13 @@ struct lttng_ust_abi_event make_ust_abi_event_from_event_rule(const struct lttng
  * Alloc new UST app event from its event rule configuration.
  */
 struct ust_app_event *
-alloc_ust_app_event(const lttng::sessiond::config::event_rule_configuration& event_config)
+alloc_ust_app_event(struct ust_app_channel& channel,
+		    const lttng::sessiond::config::event_rule_configuration& event_config)
 {
 	struct ust_app_event *ua_event;
 
 	try {
-		ua_event = new ust_app_event(event_config);
+		ua_event = new ust_app_event(channel, event_config);
 	} catch (const std::bad_alloc&) {
 		PERROR("Failed to allocate ust_app_event structure");
 		goto error;
@@ -353,9 +353,10 @@ error:
  *
  * Should be called with session mutex held.
  */
-int create_ust_event(lsu::app *app, struct ust_app_channel *ua_chan, struct ust_app_event *ua_event)
+int create_ust_event(struct ust_app_event& event)
 {
 	int ret = 0;
+	auto& app = event.channel.session.app();
 
 	health_code_update();
 
@@ -365,12 +366,12 @@ int create_ust_event(lsu::app *app, struct ust_app_channel *ua_chan, struct ust_
 	 * not need to retain it.
 	 */
 	auto ust_abi_event =
-		make_ust_abi_event_from_event_rule(ua_event->event_rule_config.event_rule.get());
+		make_ust_abi_event_from_event_rule(event.event_rule_config.event_rule.get());
 
 	/* Create UST event on tracer. */
 	try {
-		app->command_socket.lock().create_event(
-			&ust_abi_event, ua_chan->obj, &ua_event->obj);
+		app.command_socket.lock().create_event(
+			&ust_abi_event, event.channel.obj, &event.obj);
 	} catch (const lsu::app_communication_error&) {
 		goto error;
 	} catch (const lttng::runtime_error&) {
@@ -378,21 +379,21 @@ int create_ust_event(lsu::app *app, struct ust_app_channel *ua_chan, struct ust_
 		goto error;
 	}
 
-	ua_event->handle = ua_event->obj->header.handle;
+	event.handle = event.obj->header.handle;
 
 	DBG2("UST app event %s created successfully for pid:%d object = %p",
-	     get_ust_event_name_from_rule(ua_event->event_rule_config.event_rule.get()),
-	     app->pid,
-	     ua_event->obj);
+	     get_ust_event_name_from_rule(event.event_rule_config.event_rule.get()),
+	     app.pid,
+	     event.obj);
 
 	health_code_update();
 
 	/* Set filter if one is present. */
 	{
 		const auto *filter_bytecode = lttng_event_rule_get_filter_bytecode(
-			ua_event->event_rule_config.event_rule.get());
+			event.event_rule_config.event_rule.get());
 		if (filter_bytecode) {
-			ret = set_ust_object_filter(app, filter_bytecode, ua_event->obj);
+			ret = set_ust_object_filter(&app, filter_bytecode, event.obj);
 			if (ret < 0) {
 				goto error;
 			}
@@ -403,10 +404,10 @@ int create_ust_event(lsu::app *app, struct ust_app_channel *ua_chan, struct ust_
 	{
 		struct lttng_event_exclusion *exclusion = nullptr;
 		const auto exclusion_status = lttng_event_rule_generate_exclusions(
-			ua_event->event_rule_config.event_rule.get(), &exclusion);
+			event.event_rule_config.event_rule.get(), &exclusion);
 		if (exclusion_status == LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_OK &&
 		    exclusion) {
-			ret = set_ust_object_exclusions(app, exclusion, ua_event->obj);
+			ret = set_ust_object_exclusions(&app, exclusion, event.obj);
 			free(exclusion);
 			if (ret < 0) {
 				goto error;
@@ -418,12 +419,12 @@ int create_ust_event(lsu::app *app, struct ust_app_channel *ua_chan, struct ust_
 	}
 
 	/* Enable the event if the configuration says so. */
-	if (ua_event->enabled) {
+	if (event.enabled) {
 		/*
 		 * We now need to explicitly enable the event, since it
 		 * is now disabled at creation.
 		 */
-		ret = enable_ust_object(app, ua_event->obj);
+		ret = enable_ust_object(&app, event.obj);
 		if (ret < 0) {
 			goto error;
 		}
@@ -462,14 +463,19 @@ void add_unique_ust_app_event(struct ust_app_channel *ua_chan, struct ust_app_ev
 }
 } /* anonymous namespace */
 
+int ust_app_event::create_on_ust()
+{
+	return create_ust_event(*this);
+}
+
 /*
  * Find a per-app event by matching its config pointer.
  *
  * Returns the matching ust_app_event or nullptr if not found.
  */
-struct ust_app_event *find_ust_app_event_by_config(
-	const std::unordered_map<const lsc::event_rule_configuration *, ust_app_event *>& events,
-	const lsc::event_rule_configuration& event_config)
+struct ust_app_event *
+ust_app_event::find_by_config(const event_map& events,
+			      const lsc::event_rule_configuration& event_config)
 {
 	const auto it = events.find(&event_config);
 	return it != events.end() ? it->second : nullptr;
@@ -480,16 +486,17 @@ struct ust_app_event *find_ust_app_event_by_config(
  *
  * Called with UST app session lock held.
  */
-int enable_ust_app_event(struct ust_app_event *ua_event, lsu::app *app)
+int ust_app_event::enable()
 {
 	int ret;
+	auto& app = channel.session.app();
 
-	ret = enable_ust_object(app, ua_event->obj);
+	ret = enable_ust_object(&app, obj);
 	if (ret < 0) {
 		goto error;
 	}
 
-	ua_event->enabled = true;
+	enabled = true;
 
 error:
 	return ret;
@@ -498,16 +505,17 @@ error:
 /*
  * Disable on the tracer side a ust app event for the session and channel.
  */
-int disable_ust_app_event(struct ust_app_event *ua_event, lsu::app *app)
+int ust_app_event::disable()
 {
 	int ret;
+	auto& app = channel.session.app();
 
-	ret = disable_ust_object(app, ua_event->obj);
+	ret = disable_ust_object(&app, obj);
 	if (ret < 0) {
 		goto error;
 	}
 
-	ua_event->enabled = false;
+	enabled = false;
 
 error:
 	return ret;
@@ -520,16 +528,16 @@ error:
  * Must be called with the RCU read side lock held.
  * Called with ust app session mutex held.
  */
-int create_ust_app_event(struct ust_app_channel *ua_chan,
-			 lsu::app *app,
-			 const lttng::sessiond::config::event_rule_configuration& event_config)
+int ust_app_event::create(struct ust_app_channel& channel,
+			  const lttng::sessiond::config::event_rule_configuration& event_config)
 {
 	int ret = 0;
+	auto& app = channel.session.app();
 	struct ust_app_event *ua_event;
 
 	ASSERT_RCU_READ_LOCKED();
 
-	ua_event = alloc_ust_app_event(event_config);
+	ua_event = alloc_ust_app_event(channel, event_config);
 	if (ua_event == nullptr) {
 		/* Only failure mode of alloc_ust_app_event(). */
 		ret = -ENOMEM;
@@ -538,20 +546,21 @@ int create_ust_app_event(struct ust_app_channel *ua_chan,
 	shadow_copy_event(ua_event);
 
 	/* Create it on the tracer side */
-	ret = create_ust_event(app, ua_chan, ua_event);
+	ret = ua_event->create_on_ust();
 	if (ret < 0) {
 		goto error;
 	}
 
-	add_unique_ust_app_event(ua_chan, ua_event);
+	add_unique_ust_app_event(&channel, ua_event);
 
-	DBG2("UST app create event completed: app = '%s' pid = %d", app->name, app->pid);
+	DBG2("UST app create event completed: app = '%s' pid = %d", app.name, app.pid);
 
 end:
 	return ret;
 
 error:
 	/* Valid. Calling here is already in a read side lock */
-	delete_ust_app_event(-1, ua_event, app);
+	ua_event->destroy(-1);
+	delete ua_event;
 	return ret;
 }

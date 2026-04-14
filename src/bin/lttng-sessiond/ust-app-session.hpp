@@ -94,6 +94,12 @@ public:
 				 identifier::buffer_allocation_policy::PER_UID };
 	}
 
+	static std::shared_ptr<ust::trace_class> get_registry(const identifier& identifier);
+
+	static std::uint64_t next_id();
+
+	int flush();
+
 	bool enabled = false;
 	/* started: has the session been in started state at any time ? */
 	bool started = false; /* allows detection of start vs restart. */
@@ -140,6 +146,10 @@ public:
 	const std::string shm_path;
 
 private:
+	static int close_metadata(uint64_t metadata_key,
+				  unsigned int consumer_bitness,
+				  struct consumer_output *consumer);
+
 	ust::app& _app;
 };
 
@@ -148,17 +158,6 @@ private:
 } /* namespace lttng */
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
-
-std::shared_ptr<lttng::sessiond::ust::trace_class>
-ust_app_get_session_registry(const lttng::sessiond::ust::app_session::identifier& identifier);
-
-std::uint64_t get_next_session_id();
-
-int close_metadata(uint64_t metadata_key,
-		   unsigned int consumer_bitness,
-		   struct consumer_output *consumer);
-int ust_app_flush_app_session(lttng::sessiond::ust::app& app,
-			      lttng::sessiond::ust::app_session& ua_sess);
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */
 

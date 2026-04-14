@@ -425,7 +425,7 @@ private:
 
 	int _start_app_trace(ust::app *app);
 	int _stop_app_trace(ust::app *app);
-	int _flush_app_session(ust::app& app, ust::app_session& ua_sess);
+	int _flush_app_session(ust::app_session& ua_sess);
 	int _clear_quiescent_app_session(ust::app *app, ust::app_session *ua_sess);
 
 	/*
@@ -460,7 +460,6 @@ private:
 				    const config::recording_channel_configuration& channel_config,
 				    std::uint64_t trace_class_stream_class_handle);
 	int _synchronize_channel_event(struct ust_app_channel *ua_chan,
-				       ust::app *app,
 				       const config::event_rule_configuration& event_config);
 	void _synchronize_all_channels(ust::app_session& ua_sess, ust::app *app);
 	int _create_app_metadata(ust::app_session& ua_sess, ust::app *app);

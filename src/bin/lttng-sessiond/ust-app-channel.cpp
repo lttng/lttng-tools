@@ -89,7 +89,8 @@ ust_app_channel::~ust_app_channel()
 		const auto sock = app.command_socket.fd();
 
 		for (auto& event_pair : events) {
-			delete_ust_app_event(sock, event_pair.second, &app);
+			event_pair.second->destroy(sock);
+			delete event_pair.second;
 		}
 		events.clear();
 	}
