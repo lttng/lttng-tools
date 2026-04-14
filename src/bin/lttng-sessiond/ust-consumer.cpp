@@ -21,6 +21,7 @@
 #include <common/compat/errno.hpp>
 #include <common/defaults.hpp>
 #include <common/make-unique-wrapper.hpp>
+#include <common/make-unique.hpp>
 
 #include <inttypes.h>
 #include <stdio.h>
@@ -328,19 +329,11 @@ int ust_consumer_get_channel(struct consumer_socket *socket, struct ust_app_chan
 
 	/* Next, get all streams. */
 	while (true) {
-		lsu::app_stream *stream;
-
-		/* Create UST stream */
-		stream = ust_app_alloc_stream();
-		if (stream == nullptr) {
-			ret = -ENOMEM;
-			goto error;
-		}
+		auto stream = lttng::make_unique<lsu::app_stream>(*ua_chan);
 
 		/* Stream object is populated by this call if successful. */
 		ret = lttng_ust_ctl_recv_stream_from_consumer(*socket->fd_ptr, &stream->obj);
 		if (ret < 0) {
-			free(stream);
 			if (ret == -LTTNG_UST_ERR_NOENT) {
 				DBG3("UST app consumer has no more stream available");
 				break;
@@ -355,15 +348,14 @@ int ust_consumer_get_channel(struct consumer_socket *socket, struct ust_app_chan
 			goto error;
 		}
 
-		/* Order is important this is why a list is used. */
-		cds_list_add_tail(&stream->list, &ua_chan->streams.head);
-		ua_chan->streams.count++;
+		/* Order matters: push_back preserves the CPU index ordering. */
+		ua_chan->streams.push_back(std::move(stream));
 
-		DBG2("UST app stream %d received successfully", ua_chan->streams.count);
+		DBG2("UST app stream %zu received successfully", ua_chan->streams.size());
 	}
 
 	/* This MUST match or else we have a synchronization problem. */
-	LTTNG_ASSERT(ua_chan->expected_stream_count == ua_chan->streams.count);
+	LTTNG_ASSERT(ua_chan->expected_stream_count == ua_chan->streams.size());
 
 	/* Wait for confirmation that we can proceed with the streams. */
 	ret = consumer_recv_status_reply(socket);

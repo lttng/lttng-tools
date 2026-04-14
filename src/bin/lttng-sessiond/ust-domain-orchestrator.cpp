@@ -645,7 +645,7 @@ void ls::ust::domain_orchestrator::_enable_channel_on_apps(lttng::c_string_view 
 		}
 
 		/* Enable channel onto application. */
-		(void) enable_ust_app_channel(ua_sess->lock(), channel_name, app);
+		(void) enable_ust_app_channel(ua_sess->lock(), channel_name);
 	}
 }
 
@@ -668,17 +668,15 @@ void ls::ust::domain_orchestrator::_disable_channel_on_apps(lttng::c_string_view
 			continue;
 		}
 
-		struct lttng_ht_iter uiter;
-		lttng_ht_lookup(ua_sess->channels, (void *) channel_name.data(), &uiter);
-		auto *ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
+		const auto chan_it = ua_sess->channels.find(channel_name.data());
 
 		/* If the session exists for the app, the channel must be there. */
-		LTTNG_ASSERT(ua_chan_node);
+		LTTNG_ASSERT(chan_it != ua_sess->channels.end());
 
-		auto *ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
+		auto *ua_chan = chan_it->second;
 		LTTNG_ASSERT(ua_chan->enabled);
 
-		ret = disable_ust_app_channel(ua_sess->lock(), ua_chan, app);
+		ret = ua_chan->disable();
 		if (ret < 0) {
 			continue;
 		}
@@ -711,13 +709,11 @@ int ls::ust::domain_orchestrator::_create_event_on_apps(
 			continue;
 		}
 
-		struct lttng_ht_iter uiter;
-		lttng_ht_lookup(ua_sess->channels, (void *) channel_name.data(), &uiter);
-		auto *ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
+		const auto chan_it = ua_sess->channels.find(channel_name.data());
 		/* If the channel is not found, there is a code flow error. */
-		LTTNG_ASSERT(ua_chan_node);
+		LTTNG_ASSERT(chan_it != ua_sess->channels.end());
 
-		auto *ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
+		auto *ua_chan = chan_it->second;
 
 		ret = create_ust_app_event(ua_chan, app, event_rule_config);
 		if (ret < 0) {
@@ -759,14 +755,12 @@ int ls::ust::domain_orchestrator::_enable_event_on_apps(
 			continue;
 		}
 
-		struct lttng_ht_iter uiter;
-		lttng_ht_lookup(ua_sess->channels, (void *) channel_name.data(), &uiter);
-		auto *ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
-		if (!ua_chan_node) {
+		const auto chan_it = ua_sess->channels.find(channel_name.data());
+		if (chan_it == ua_sess->channels.end()) {
 			continue;
 		}
 
-		auto *ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
+		auto *ua_chan = chan_it->second;
 
 		auto *ua_event = find_ust_app_event_by_config(ua_chan->events, event_rule_config);
 		if (ua_event == nullptr) {
@@ -805,10 +799,8 @@ int ls::ust::domain_orchestrator::_disable_event_on_apps(
 			continue;
 		}
 
-		struct lttng_ht_iter uiter;
-		lttng_ht_lookup(ua_sess->channels, (void *) channel_name.data(), &uiter);
-		auto *ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
-		if (ua_chan_node == nullptr) {
+		const auto chan_it = ua_sess->channels.find(channel_name.data());
+		if (chan_it == ua_sess->channels.end()) {
 			DBG2("Channel %s not found in session id %" PRIu64
 			     " for app pid %d. Skipping",
 			     channel_name.data(),
@@ -817,7 +809,7 @@ int ls::ust::domain_orchestrator::_disable_event_on_apps(
 			continue;
 		}
 
-		auto *ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
+		auto *ua_chan = chan_it->second;
 
 		auto *ua_event = find_ust_app_event_by_config(ua_chan->events, event_rule_config);
 		if (ua_event == nullptr) {
@@ -860,14 +852,12 @@ void ls::ust::domain_orchestrator::_add_context_on_apps(
 			continue;
 		}
 
-		struct lttng_ht_iter uiter;
-		lttng_ht_lookup(ua_sess->channels, (void *) channel_name.data(), &uiter);
-		auto *ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
-		if (ua_chan_node == nullptr) {
+		const auto chan_it = ua_sess->channels.find(channel_name.data());
+		if (chan_it == ua_sess->channels.end()) {
 			continue;
 		}
 
-		auto *ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
+		auto *ua_chan = chan_it->second;
 
 		auto ust_ctx_attr = _make_ust_context_attr(ctx_config);
 		(void) create_ust_app_channel_context(ua_chan, &ust_ctx_attr, app, ctx_config);
@@ -1147,7 +1137,8 @@ int ls::ust::domain_orchestrator::_find_or_create_app_session(ust::app *app,
 	 */
 	consumer_output_get(get_consumer_output_ptr());
 
-	auto new_session = lttng::make_unique<ust::app_session>(_session_id(),
+	auto new_session = lttng::make_unique<ust::app_session>(*app,
+								_session_id(),
 								get_next_session_id(),
 								real_creds,
 								effective_creds,
@@ -1252,18 +1243,17 @@ int ls::ust::domain_orchestrator::_allocate_app_channel(
 	std::uint64_t trace_class_stream_class_handle)
 {
 	int ret = 0;
-	struct lttng_ht_iter iter;
-	struct lttng_ht_node_str *ua_chan_node;
 	struct ust_app_channel *ua_chan;
 
 	ASSERT_RCU_READ_LOCKED();
 
 	/* Lookup channel in the ust app session */
-	lttng_ht_lookup(ua_sess->channels, (void *) channel_config.name.c_str(), &iter);
-	ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
-	if (ua_chan_node != nullptr) {
-		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
-		goto end;
+	{
+		const auto it = ua_sess->channels.find(channel_config.name);
+		if (it != ua_sess->channels.end()) {
+			ua_chan = it->second;
+			goto end;
+		}
 	}
 
 	ua_chan = alloc_ust_app_channel(ua_sess, nullptr, channel_config);
@@ -1272,7 +1262,7 @@ int ls::ust::domain_orchestrator::_allocate_app_channel(
 		ret = -ENOMEM;
 		goto error;
 	}
-	init_ust_app_channel_from_config(ua_chan);
+	ua_chan->init_from_config();
 	ua_chan->trace_class_stream_class_handle = trace_class_stream_class_handle;
 	ua_chan->attr.type =
 		allocation_policy_to_ust_channel_type(channel_config.buffer_allocation_policy);
@@ -1400,12 +1390,9 @@ int ls::ust::domain_orchestrator::_create_channel_per_uid(ust::app *app,
 								     stream_class_ref);
 
 			unsigned int cpu_idx = 0;
-			for (auto *stream :
-			     lttng::urcu::list_iteration_adapter<ust::app_stream,
-								 &ust::app_stream::list>(
-				     ua_chan->streams.head)) {
-				stream_group.add_stream(cpu_idx, ust::ust_object_data(stream->obj));
-				stream->obj = nullptr;
+			for (auto& stream_ptr : ua_chan->streams) {
+				stream_group.add_stream(
+					cpu_idx, ust::ust_object_data(stream_ptr->release_obj()));
 				cpu_idx++;
 			}
 		}
@@ -1430,7 +1417,7 @@ send_channel:
 	{
 		auto& sg = _get_per_uid_stream_group(recording_config, app->uid, app_abi);
 
-		ret = send_channel_uid_to_ust(sg, app, ua_sess, ua_chan);
+		ret = ua_chan->send_to_app_per_uid(sg);
 		if (ret < 0) {
 			if (ret != -ENOTCONN) {
 				ERR("Error sending channel to application");
@@ -1497,7 +1484,7 @@ int ls::ust::domain_orchestrator::_create_channel_per_pid(
 		goto error_remove_from_registry;
 	}
 
-	ret = send_channel_pid_to_ust(app, &ua_sess.get(), ua_chan);
+	ret = ua_chan->send_to_app_per_pid();
 	if (ret < 0) {
 		if (ret != -ENOTCONN) {
 			ERR("Error sending channel to application");
@@ -1609,7 +1596,7 @@ int ls::ust::domain_orchestrator::_send_app_channel(ust::app *app,
 
 	/* If channel is not enabled, disable it on the tracer */
 	if (!ua_chan->enabled) {
-		ret = disable_ust_channel(app, ua_chan);
+		ret = ua_chan->disable();
 		if (ret < 0) {
 			goto error;
 		}
@@ -1645,7 +1632,7 @@ int ls::ust::domain_orchestrator::_create_app_channel(
 	}
 
 	/* Only publish the channel if successfully created on the tracer/consumer. */
-	lttng_ht_add_unique_str(ua_sess->channels, &ua_chan->node);
+	ua_sess->channels.emplace(ua_chan->channel_config.name, ua_chan);
 
 	/* Add contexts. */
 	for (const auto& ctx_uptr : channel_config.get_contexts()) {
@@ -1691,14 +1678,13 @@ int ls::ust::domain_orchestrator::_find_or_create_app_channel(
 	std::uint64_t trace_class_stream_class_handle)
 {
 	int ret = 0;
-	struct lttng_ht_iter iter;
-	struct lttng_ht_node_str *ua_chan_node;
 
-	lttng_ht_lookup(ua_sess->channels, (void *) channel_config.name.c_str(), &iter);
-	ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
-	if (ua_chan_node) {
-		*ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
-		goto end;
+	{
+		const auto it = ua_sess->channels.find(channel_config.name);
+		if (it != ua_sess->channels.end()) {
+			*ua_chan = it->second;
+			goto end;
+		}
 	}
 
 	ret = _create_app_channel(
@@ -1773,9 +1759,7 @@ void ls::ust::domain_orchestrator::_synchronize_all_channels(
 		}
 
 		if (ua_chan->enabled != chan_config.is_enabled) {
-			ret = chan_config.is_enabled ?
-				enable_ust_channel(app, ua_chan) :
-				disable_ust_app_channel(ua_sess, ua_chan, app);
+			ret = chan_config.is_enabled ? ua_chan->enable() : ua_chan->disable();
 			if (ret) {
 				goto end;
 			}
@@ -2173,13 +2157,9 @@ int ls::ust::domain_orchestrator::_flush_app_session(ust::app& app, ust::app_ses
 	switch (ua_sess.buffer_type) {
 	case LTTNG_BUFFER_PER_PID:
 	{
-		for (auto *ua_chan :
-		     lttng::urcu::lfht_iteration_adapter<ust_app_channel,
-							 decltype(ust_app_channel::node),
-							 &ust_app_channel::node>(
-			     *ua_sess.channels->ht)) {
+		for (auto& chan_pair : ua_sess.channels) {
 			health_code_update();
-			ret = consumer_flush_channel(socket, ua_chan->key);
+			ret = consumer_flush_channel(socket, chan_pair.second->key);
 			if (ret) {
 				ERR("Error flushing consumer channel");
 				retval = -1;
@@ -2230,13 +2210,9 @@ int ls::ust::domain_orchestrator::_clear_quiescent_app_session(ust::app *app,
 	/* Clear quiescent state. */
 	switch (ua_sess->buffer_type) {
 	case LTTNG_BUFFER_PER_PID:
-		for (auto *ua_chan :
-		     lttng::urcu::lfht_iteration_adapter<ust_app_channel,
-							 decltype(ust_app_channel::node),
-							 &ust_app_channel::node>(
-			     *ua_sess->channels->ht)) {
+		for (auto& chan_pair : ua_sess->channels) {
 			health_code_update();
-			ret = consumer_clear_quiescent_channel(socket, ua_chan->key);
+			ret = consumer_clear_quiescent_channel(socket, chan_pair.second->key);
 			if (ret) {
 				ERR("Error clearing quiescent state for consumer channel");
 				ret = -1;
@@ -3185,10 +3161,9 @@ ls::ust::domain_orchestrator::get_channel_memory_usage(
 
 void ls::ust::domain_orchestrator::_save_per_pid_stats_on_departure(const ust::app_session& ua_sess)
 {
-	for (const auto *ua_chan :
-	     lttng::urcu::lfht_iteration_adapter<ust_app_channel,
-						 decltype(ust_app_channel::node),
-						 &ust_app_channel::node>(*ua_sess.channels->ht)) {
+	for (const auto& chan_pair : ua_sess.channels) {
+		const auto *ua_chan = chan_pair.second;
+
 		/* Metadata channels do not have discarded/lost counters. */
 		if (ua_chan->attr.type == LTTNG_UST_ABI_CHAN_METADATA) {
 			continue;

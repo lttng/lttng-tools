@@ -25,6 +25,7 @@
 #include <common/compat/errno.hpp>
 #include <common/exception.hpp>
 #include <common/format.hpp>
+#include <common/make-unique.hpp>
 #include <common/urcu.hpp>
 
 #include <inttypes.h>
@@ -51,64 +52,11 @@ uint64_t get_next_channel_key()
 	return ret;
 }
 
-/*
- * Release ust data object of the given stream.
- *
- * Return 0 on success or else a negative value.
- */
-int release_ust_app_stream(int sock, lsu::app_stream *stream, lsu::app *app)
-{
-	int ret = 0;
-
-	LTTNG_ASSERT(stream);
-
-	if (stream->obj) {
-		{
-			const auto protocol = app->command_socket.lock();
-			ret = lttng_ust_ctl_release_object(sock, stream->obj);
-		}
-		if (ret < 0) {
-			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-				DBG3("UST app release stream failed. Application is dead: pid = %d, sock = %d",
-				     app->pid,
-				     app->command_socket.fd());
-			} else if (ret == -EAGAIN) {
-				WARN("UST app release stream failed. Communication time out: pid = %d, sock = %d",
-				     app->pid,
-				     app->command_socket.fd());
-			} else {
-				ERR("UST app release stream obj failed with ret %d: pid = %d, sock = %d",
-				    ret,
-				    app->pid,
-				    app->command_socket.fd());
-			}
-		}
-		lttng_fd_put(LTTNG_FD_APPS, 2);
-		free(stream->obj);
-	}
-
-	return ret;
-}
-
-/*
- * Delete ust app stream safely. RCU read lock must be held before calling
- * this function.
- */
-void delete_ust_app_stream(int sock, lsu::app_stream *stream, lsu::app *app)
-{
-	LTTNG_ASSERT(stream);
-	ASSERT_RCU_READ_LOCKED();
-
-	(void) release_ust_app_stream(sock, stream, app);
-	free(stream);
-}
-
 void delete_ust_app_channel_rcu(struct rcu_head *head)
 {
 	struct ust_app_channel *ua_chan =
 		lttng::utils::container_of(head, &ust_app_channel::rcu_head);
 
-	lttng_ht_destroy(ua_chan->ctx);
 	delete ua_chan;
 }
 
@@ -116,21 +64,11 @@ void delete_ust_app_channel_rcu(struct rcu_head *head)
  * Common initialization for ust_app_channel. Used by both the recording
  * channel and metadata channel allocation paths.
  */
-void init_ust_app_channel(struct ust_app_channel *ua_chan,
-			  const lsu::app_session::locked_weak_ref& ua_sess,
-			  struct lttng_ust_abi_channel_attr *attr)
+void init_ust_app_channel(struct ust_app_channel *ua_chan, struct lttng_ust_abi_channel_attr *attr)
 {
 	ua_chan->enabled = true;
 	ua_chan->handle = -1;
-	ua_chan->session = &ua_sess.get();
 	ua_chan->key = get_next_channel_key();
-	ua_chan->ctx = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
-
-	/* The hashtable node key points to the channel_config's name which is stable and const. */
-	lttng_ht_node_init_str(&ua_chan->node,
-			       const_cast<char *>(ua_chan->channel_config.name.c_str()));
-
-	CDS_INIT_LIST_HEAD(&ua_chan->streams.head);
 
 	/* By default, the channel is a per cpu channel. */
 	ua_chan->attr.type = LTTNG_UST_ABI_CHAN_PER_CPU;
@@ -151,6 +89,292 @@ void init_ust_app_channel(struct ust_app_channel *ua_chan,
 	DBG3("UST app channel %s allocated", ua_chan->channel_config.name.c_str());
 }
 } /* namespace */
+
+/* -- ust_app_channel -- */
+
+ust_app_channel::~ust_app_channel() = default;
+
+int ust_app_channel::enable()
+{
+	int ret = 0;
+
+	health_code_update();
+
+	auto& app = session.app();
+
+	try {
+		app.command_socket.lock().enable(obj);
+	} catch (const lsu::app_communication_error&) {
+		goto error;
+	} catch (const lttng::runtime_error&) {
+		ret = -1;
+		goto error;
+	}
+
+	enabled = true;
+
+	DBG2("UST app channel %s enabled successfully for app: pid = %d",
+	     channel_config.name.c_str(),
+	     app.pid);
+
+error:
+	health_code_update();
+	return ret;
+}
+
+int ust_app_channel::disable()
+{
+	int ret = 0;
+
+	health_code_update();
+
+	auto& app = session.app();
+
+	try {
+		app.command_socket.lock().disable(obj);
+	} catch (const lsu::app_communication_error&) {
+		goto error;
+	} catch (const lttng::runtime_error&) {
+		ret = -1;
+		goto error;
+	}
+
+	enabled = false;
+
+	DBG2("UST app channel %s disabled successfully for app: pid = %d",
+	     channel_config.name.c_str(),
+	     app.pid);
+
+error:
+	health_code_update();
+	return ret;
+}
+
+void ust_app_channel::init_from_config()
+{
+	const auto& config =
+		static_cast<const lsc::recording_channel_configuration&>(channel_config);
+
+	DBG2("UST app initializing channel %s from config", channel_config.name.c_str());
+
+	attr.subbuf_size = config.subbuffer_size_bytes;
+	attr.num_subbuf = config.subbuffer_count;
+	attr.overwrite = config.buffer_full_policy ==
+			lsc::channel_configuration::buffer_full_policy_t::OVERWRITE_OLDEST_PACKET ?
+		1 :
+		0;
+	attr.switch_timer_interval = config.switch_timer_period_us.value_or(0);
+	attr.read_timer_interval = config.read_timer_period_us.value_or(0);
+
+	attr.output = config.buffer_consumption_backend ==
+			lsc::channel_configuration::buffer_consumption_backend_t::MMAP ?
+		LTTNG_UST_ABI_MMAP :
+		static_cast<lttng_ust_abi_output>(-1);
+
+	switch (config.consumption_blocking_policy_.mode_) {
+	case lsc::recording_channel_configuration::consumption_blocking_policy::mode::NONE:
+		attr.blocking_timeout = 0;
+		break;
+	case lsc::recording_channel_configuration::consumption_blocking_policy::mode::UNBOUNDED:
+		attr.blocking_timeout = -1;
+		break;
+	case lsc::recording_channel_configuration::consumption_blocking_policy::mode::TIMED:
+		attr.blocking_timeout = *config.consumption_blocking_policy_.timeout_us;
+		break;
+	}
+
+	enabled = config.is_enabled;
+
+	DBG3("UST app channel %s initialized from config", channel_config.name.c_str());
+}
+
+int ust_app_channel::send_to_app_per_pid()
+{
+	int ret;
+
+	auto& app = session.app();
+
+	health_code_update();
+
+	DBG("UST app sending channel %s to UST app sock %d",
+	    channel_config.name.c_str(),
+	    app.command_socket.fd());
+
+	/* Send channel to the application. */
+	ret = ust_consumer_send_channel_to_ust(&app, &session, this);
+	if (ret < 0) {
+		goto error;
+	}
+
+	health_code_update();
+
+	/* Send all streams to application. */
+	for (auto& stream_ptr : streams) {
+		ret = ust_consumer_send_stream_to_ust(&app, this, stream_ptr.get());
+		if (ret < 0) {
+			goto error;
+		}
+
+		/*
+		 * The stream has been sent to the tracer; discard the local
+		 * resources without sending a release command to the tracer
+		 * (it now owns the handle).
+		 */
+		stream_ptr->discard_locally();
+	}
+
+	streams.clear();
+
+error:
+	health_code_update();
+	return ret;
+}
+
+int ust_app_channel::send_to_app_per_uid(lsu::stream_group& stream_group)
+{
+	int ret;
+
+	auto& app = session.app();
+
+	DBG("UST app sending stream group channel to ust sock %d", app.command_socket.fd());
+
+	/* Duplicate the master channel object for this application. */
+	{
+		try {
+			auto duplicated_channel = stream_group.duplicate_channel_object();
+			obj = duplicated_channel.release();
+		} catch (const std::exception& ex) {
+			ERR("Failed to duplicate channel object for app pid %d: %s",
+			    app.pid,
+			    ex.what());
+			ret = -ENOMEM;
+			goto error;
+		}
+
+		handle = obj->header.handle;
+	}
+
+	/* Send channel to the application. */
+	ret = ust_consumer_send_channel_to_ust(&app, &session, this);
+	if (ret < 0) {
+		goto error;
+	}
+
+	health_code_update();
+
+	/* Send all streams to application by duplicating from the stream group. */
+	for (const auto& stream_ptr : stream_group.streams()) {
+		lsu::app_stream tmp_stream(*this);
+
+		try {
+			auto duplicated_stream = stream_ptr->handle.duplicate();
+			tmp_stream.obj = duplicated_stream.release();
+		} catch (const std::exception& ex) {
+			ERR("Failed to duplicate stream object for app pid %d: %s",
+			    app.pid,
+			    ex.what());
+			ret = -ENOMEM;
+			goto error;
+		}
+
+		tmp_stream.handle = tmp_stream.obj->header.handle;
+
+		ret = ust_consumer_send_stream_to_ust(&app, this, &tmp_stream);
+		if (ret < 0) {
+			/*
+			 * discard_locally releases the local resources without
+			 * notifying the tracer (the send may have failed).
+			 * The destructor will then be a no-op.
+			 */
+			tmp_stream.discard_locally();
+			goto error;
+		}
+
+		/*
+		 * The stream was sent successfully. Release local resources
+		 * without sending a release command to the tracer.
+		 */
+		tmp_stream.discard_locally();
+	}
+
+error:
+	return ret;
+}
+
+/* -- app_stream -- */
+
+lsu::app_stream::app_stream(ust_app_channel& channel) : _channel(channel)
+{
+}
+
+lsu::app_stream::app_stream(app_stream&& other) noexcept :
+	handle(other.handle), obj(other.obj), _channel(other._channel)
+{
+	other.obj = nullptr;
+	other.handle = -1;
+}
+
+lsu::app_stream::~app_stream()
+{
+	if (!obj) {
+		return;
+	}
+
+	auto& app = _channel.session.app();
+	int ret;
+
+	{
+		const auto protocol = app.command_socket.lock();
+		ret = lttng_ust_ctl_release_object(protocol.fd(), obj);
+	}
+
+	if (ret < 0) {
+		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+			DBG3("UST app release stream failed. Application is dead: pid = %d, sock = %d",
+			     app.pid,
+			     app.command_socket.fd());
+		} else if (ret == -EAGAIN) {
+			WARN("UST app release stream failed. Communication time out: pid = %d, sock = %d",
+			     app.pid,
+			     app.command_socket.fd());
+		} else {
+			ERR("UST app release stream obj failed with ret %d: pid = %d, sock = %d",
+			    ret,
+			    app.pid,
+			    app.command_socket.fd());
+		}
+	}
+
+	lttng_fd_put(LTTNG_FD_APPS, 2);
+	free(obj);
+}
+
+lttng_ust_abi_object_data *lsu::app_stream::release_obj() noexcept
+{
+	auto *ret = obj;
+	obj = nullptr;
+	return ret;
+}
+
+void lsu::app_stream::discard_locally() noexcept
+{
+	if (!obj) {
+		return;
+	}
+
+	auto& app = _channel.session.app();
+
+	{
+		const auto protocol = app.command_socket.lock();
+		(void) lttng_ust_ctl_release_object(-1, obj);
+	}
+
+	lttng_fd_put(LTTNG_FD_APPS, 2);
+	free(obj);
+	obj = nullptr;
+}
+
+/* -- channel allocation/deallocation -- */
 
 lsc::recording_channel_configuration::buffer_allocation_policy_t
 ust_channel_type_to_allocation_policy(enum lttng_ust_abi_chan_type type)
@@ -195,13 +419,13 @@ alloc_ust_app_channel(const lsu::app_session::locked_weak_ref& ua_sess,
 	struct ust_app_channel *ua_chan;
 
 	try {
-		ua_chan = new ust_app_channel(config);
+		ua_chan = new ust_app_channel(ua_sess.get(), config);
 	} catch (const std::bad_alloc&) {
 		PERROR("ust_app_channel allocation");
 		return nullptr;
 	}
 
-	init_ust_app_channel(ua_chan, ua_sess, attr);
+	init_ust_app_channel(ua_chan, attr);
 	return ua_chan;
 }
 
@@ -215,36 +439,14 @@ struct ust_app_channel *alloc_ust_app_metadata_channel(
 	struct ust_app_channel *ua_chan;
 
 	try {
-		ua_chan = new ust_app_channel(metadata_config);
+		ua_chan = new ust_app_channel(ua_sess.get(), metadata_config);
 	} catch (const std::bad_alloc&) {
 		PERROR("ust_app_channel allocation");
 		return nullptr;
 	}
 
-	init_ust_app_channel(ua_chan, ua_sess, nullptr);
+	init_ust_app_channel(ua_chan, nullptr);
 	return ua_chan;
-}
-
-/*
- * Allocate and initialize a UST app stream.
- *
- * Return newly allocated stream pointer or NULL on error.
- */
-lsu::app_stream *ust_app_alloc_stream()
-{
-	lsu::app_stream *stream = nullptr;
-
-	stream = zmalloc<lsu::app_stream>();
-	if (stream == nullptr) {
-		PERROR("zmalloc ust app stream");
-		goto error;
-	}
-
-	/* Zero could be a valid value for a handle so flag it to -1. */
-	stream->handle = -1;
-
-error:
-	return stream;
 }
 
 /*
@@ -265,23 +467,18 @@ void delete_ust_app_channel(int sock,
 
 	DBG3("UST app deleting channel %s", ua_chan->channel_config.name.c_str());
 
-	/* Wipe stream */
-	for (auto *stream :
-	     lttng::urcu::list_iteration_adapter<lsu::app_stream, &lsu::app_stream::list>(
-		     ua_chan->streams.head)) {
-		cds_list_del(&stream->list);
-		delete_ust_app_stream(sock, stream, app);
-	}
+	/*
+	 * Wipe streams before scheduling the channel for RCU reclamation.
+	 * Stream destructors access the app's command socket, which must
+	 * still be reachable at this point.
+	 */
+	ua_chan->streams.clear();
 
 	/* Wipe context */
-	for (auto ua_ctx :
-	     lttng::urcu::lfht_iteration_adapter<ust_app_ctx,
-						 decltype(ust_app_ctx::node),
-						 &ust_app_ctx::node>(*ua_chan->ctx->ht)) {
-		ret = cds_lfht_del(ua_chan->ctx->ht, &ua_ctx->node.node);
-		LTTNG_ASSERT(!ret);
-		delete_ust_app_ctx(sock, ua_ctx, app);
+	for (auto& ctx_pair : ua_chan->contexts) {
+		delete_ust_app_ctx(sock, ctx_pair.second, app);
 	}
+	ua_chan->contexts.clear();
 
 	/* Wipe events */
 	for (auto& event_pair : ua_chan->events) {
@@ -289,7 +486,7 @@ void delete_ust_app_channel(int sock,
 	}
 	ua_chan->events.clear();
 
-	if (ua_chan->session->buffer_type == LTTNG_BUFFER_PER_PID) {
+	if (ua_chan->session.buffer_type == LTTNG_BUFFER_PER_PID) {
 		/* Wipe and free registry from session registry. */
 		if (locked_registry) {
 			try {
@@ -334,159 +531,29 @@ void delete_ust_app_channel(int sock,
 }
 
 /*
- * Disable the specified channel on to UST tracer for the UST session.
- */
-int disable_ust_channel(lsu::app *app, struct ust_app_channel *ua_chan)
-{
-	int ret = 0;
-
-	health_code_update();
-
-	try {
-		app->command_socket.lock().disable(ua_chan->obj);
-	} catch (const lsu::app_communication_error&) {
-		goto error;
-	} catch (const lttng::runtime_error&) {
-		ret = -1;
-		goto error;
-	}
-
-	DBG2("UST app channel %s disabled successfully for app: pid = %d",
-	     ua_chan->channel_config.name.c_str(),
-	     app->pid);
-
-error:
-	health_code_update();
-	return ret;
-}
-
-/*
- * Enable the specified channel on to UST tracer for the UST session.
- */
-int enable_ust_channel(lsu::app *app, struct ust_app_channel *ua_chan)
-{
-	int ret = 0;
-
-	health_code_update();
-
-	try {
-		app->command_socket.lock().enable(ua_chan->obj);
-	} catch (const lsu::app_communication_error&) {
-		goto error;
-	} catch (const lttng::runtime_error&) {
-		ret = -1;
-		goto error;
-	}
-
-	ua_chan->enabled = true;
-
-	DBG2("UST app channel %s enabled successfully for app: pid = %d",
-	     ua_chan->channel_config.name.c_str(),
-	     app->pid);
-
-error:
-	health_code_update();
-	return ret;
-}
-
-/*
- * Lookup ust app channel for session and disable it on the tracer side.
- */
-int disable_ust_app_channel(const lsu::app_session::locked_weak_ref& ua_sess,
-			    struct ust_app_channel *ua_chan,
-			    lsu::app *app)
-{
-	int ret;
-
-	ret = disable_ust_channel(app, ua_chan);
-	if (ret < 0) {
-		goto error;
-	}
-
-	ua_chan->enabled = false;
-
-error:
-	return ret;
-}
-
-/*
  * Lookup ust app channel for session and enable it on the tracer side. This
  * MUST be called with a RCU read side lock acquired.
  */
 int enable_ust_app_channel(const lsu::app_session::locked_weak_ref& ua_sess,
-			   lttng::c_string_view channel_name,
-			   lsu::app *app)
+			   lttng::c_string_view channel_name)
 {
 	int ret = 0;
-	struct lttng_ht_iter iter;
-	struct lttng_ht_node_str *ua_chan_node;
-	struct ust_app_channel *ua_chan;
 
-	ASSERT_RCU_READ_LOCKED();
-
-	lttng_ht_lookup(ua_sess->channels, (void *) channel_name.data(), &iter);
-	ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
-	if (ua_chan_node == nullptr) {
+	const auto it = ua_sess->channels.find(channel_name.data());
+	if (it == ua_sess->channels.end()) {
 		DBG2("Unable to find channel %s in ust session id %" PRIu64,
 		     channel_name.data(),
 		     ua_sess->recording_session_id);
 		goto error;
 	}
 
-	ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
-
-	ret = enable_ust_channel(app, ua_chan);
+	ret = it->second->enable();
 	if (ret < 0) {
 		goto error;
 	}
 
 error:
 	return ret;
-}
-
-/*
- * Initialize per-app channel attributes from its recording_channel_configuration.
- *
- * This replaces the former shadow_copy_channel which copied from ltt_ust_channel.
- * The trace_class_stream_class_handle and channel type are set by the caller.
- */
-void init_ust_app_channel_from_config(struct ust_app_channel *ua_chan)
-{
-	namespace lsc = lttng::sessiond::config;
-	const auto& config =
-		static_cast<const lsc::recording_channel_configuration&>(ua_chan->channel_config);
-
-	DBG2("UST app initializing channel %s from config", ua_chan->channel_config.name.c_str());
-
-	ua_chan->attr.subbuf_size = config.subbuffer_size_bytes;
-	ua_chan->attr.num_subbuf = config.subbuffer_count;
-	ua_chan->attr.overwrite = config.buffer_full_policy ==
-			lsc::channel_configuration::buffer_full_policy_t::OVERWRITE_OLDEST_PACKET ?
-		1 :
-		0;
-	ua_chan->attr.switch_timer_interval = config.switch_timer_period_us.value_or(0);
-	ua_chan->attr.read_timer_interval = config.read_timer_period_us.value_or(0);
-
-	ua_chan->attr.output = config.buffer_consumption_backend ==
-			lsc::channel_configuration::buffer_consumption_backend_t::MMAP ?
-		LTTNG_UST_ABI_MMAP :
-		static_cast<lttng_ust_abi_output>(-1);
-
-	switch (config.consumption_blocking_policy_.mode_) {
-	case lsc::recording_channel_configuration::consumption_blocking_policy::mode::NONE:
-		ua_chan->attr.blocking_timeout = 0;
-		break;
-	case lsc::recording_channel_configuration::consumption_blocking_policy::mode::UNBOUNDED:
-		ua_chan->attr.blocking_timeout = -1;
-		break;
-	case lsc::recording_channel_configuration::consumption_blocking_policy::mode::TIMED:
-		ua_chan->attr.blocking_timeout = *config.consumption_blocking_policy_.timeout_us;
-		break;
-	}
-
-	ua_chan->enabled = config.is_enabled;
-
-	DBG3("UST app channel %s initialized from config", ua_chan->channel_config.name.c_str());
 }
 
 /*
@@ -568,7 +635,7 @@ int do_consumer_create_channel(struct consumer_output *consumer,
 
 	/*
 	 * Now get the channel from the consumer. This call will populate the stream
-	 * list of that channel and set the ust objects.
+	 * vector of that channel and set the ust objects.
 	 */
 	if (consumer->enabled) {
 		ret = ust_consumer_get_channel(socket, ua_chan);
@@ -593,130 +660,5 @@ error_ask:
 	lttng_fd_put(LTTNG_FD_APPS, 1);
 error:
 	health_code_update();
-	return ret;
-}
-
-/*
- * Send channel and stream buffer to application.
- *
- * Return 0 on success. On error, a negative value is returned.
- */
-int send_channel_pid_to_ust(lsu::app *app,
-			    lsu::app_session *ua_sess,
-			    struct ust_app_channel *ua_chan)
-{
-	int ret;
-
-	LTTNG_ASSERT(app);
-	LTTNG_ASSERT(ua_sess);
-	LTTNG_ASSERT(ua_chan);
-
-	health_code_update();
-
-	DBG("UST app sending channel %s to UST app sock %d",
-	    ua_chan->channel_config.name.c_str(),
-	    app->command_socket.fd());
-
-	/* Send channel to the application. */
-	ret = ust_consumer_send_channel_to_ust(app, ua_sess, ua_chan);
-	if (ret < 0) {
-		goto error;
-	}
-
-	health_code_update();
-
-	/* Send all streams to application. */
-	for (auto *stream :
-	     lttng::urcu::list_iteration_adapter<lsu::app_stream, &lsu::app_stream::list>(
-		     ua_chan->streams.head)) {
-		ret = ust_consumer_send_stream_to_ust(app, ua_chan, stream);
-		if (ret < 0) {
-			goto error;
-		}
-		/* We don't need the stream anymore once sent to the tracer. */
-		cds_list_del(&stream->list);
-		delete_ust_app_stream(-1, stream, app);
-	}
-
-error:
-	health_code_update();
-	return ret;
-}
-
-/*
- * Send a per-UID stream group's channel and streams to the application by
- * duplicating the master objects held by the stream group.
- *
- * In per-UID mode, the stream group holds the "master" channel and stream
- * objects obtained from the consumer daemon when the first application
- * created the shared buffers. Each subsequent application receives
- * duplicated copies of these objects.
- *
- * Return 0 on success else a negative value.
- */
-int send_channel_uid_to_ust(lsu::stream_group& stream_group,
-			    lsu::app *app,
-			    lsu::app_session *ua_sess,
-			    struct ust_app_channel *ua_chan)
-{
-	int ret;
-
-	LTTNG_ASSERT(app);
-	LTTNG_ASSERT(ua_sess);
-	LTTNG_ASSERT(ua_chan);
-
-	DBG("UST app sending stream group channel to ust sock %d", app->command_socket.fd());
-
-	/* Duplicate the master channel object for this application. */
-	{
-		try {
-			auto duplicated_channel = stream_group.duplicate_channel_object();
-			ua_chan->obj = duplicated_channel.release();
-		} catch (const std::exception& ex) {
-			ERR("Failed to duplicate channel object for app pid %d: %s",
-			    app->pid,
-			    ex.what());
-			ret = -ENOMEM;
-			goto error;
-		}
-
-		ua_chan->handle = ua_chan->obj->header.handle;
-	}
-
-	/* Send channel to the application. */
-	ret = ust_consumer_send_channel_to_ust(app, ua_sess, ua_chan);
-	if (ret < 0) {
-		goto error;
-	}
-
-	health_code_update();
-
-	/* Send all streams to application by duplicating from the stream group. */
-	for (const auto& stream_ptr : stream_group.streams()) {
-		lsu::app_stream app_stream = {};
-
-		try {
-			auto duplicated_stream = stream_ptr->handle.duplicate();
-			app_stream.obj = duplicated_stream.release();
-		} catch (const std::exception& ex) {
-			ERR("Failed to duplicate stream object for app pid %d: %s",
-			    app->pid,
-			    ex.what());
-			ret = -ENOMEM;
-			goto error;
-		}
-
-		app_stream.handle = app_stream.obj->header.handle;
-
-		ret = ust_consumer_send_stream_to_ust(app, ua_chan, &app_stream);
-		if (ret < 0) {
-			(void) release_ust_app_stream(-1, &app_stream, app);
-			goto error;
-		}
-
-		(void) release_ust_app_stream(-1, &app_stream, app);
-	}
-
-error:
 	return ret;
 }

@@ -25,6 +25,7 @@
 #include <string>
 
 struct consumer_output;
+struct ust_app_channel;
 
 namespace lttng {
 namespace sessiond {
@@ -70,7 +71,8 @@ public:
 	 * caller; the app_session does not acquire an additional
 	 * reference.
 	 */
-	explicit app_session(std::uint64_t recording_session_id,
+	explicit app_session(ust::app& app,
+			     std::uint64_t recording_session_id,
 			     std::uint64_t app_session_id,
 			     lttng_credentials real_credentials,
 			     lttng_credentials effective_credentials,
@@ -111,6 +113,16 @@ public:
 	{
 		pthread_mutex_lock(&_lock);
 		return app_session::make_locked_weak_ref(*this);
+	}
+
+	ust::app& app() noexcept
+	{
+		return _app;
+	}
+
+	const ust::app& app() const noexcept
+	{
+		return _app;
 	}
 
 	identifier get_identifier() const noexcept
@@ -164,7 +176,12 @@ public:
 	const std::uint64_t recording_session_id;
 	/* Unique app_session identifier, allocated by sessiond. */
 	const std::uint64_t app_session_id;
-	::lttng_ht *channels; /* Registered channels */
+	/*
+	 * Per-app channels indexed by channel name. Channels are owned
+	 * by the session and cleaned up via delete_ust_app_channel()
+	 * before session destruction.
+	 */
+	std::unordered_map<std::string, ust_app_channel *> channels;
 
 	/*
 	 * RAII token: registers this session's UST tracer-side handle
@@ -194,6 +211,7 @@ public:
 	const std::string shm_path;
 
 private:
+	ust::app& _app;
 	/*
 	 * Lock protecting this session's ust app interaction. Held
 	 * across command send/recv to/from app. Never nests within the

@@ -11,8 +11,6 @@
 
 #include "lttng-ust-ctl.hpp"
 
-#include <common/hashtable/hashtable.hpp>
-
 namespace lttng {
 namespace sessiond {
 namespace config {
@@ -42,7 +40,6 @@ struct ust_app_ctx {
 	int handle = 0;
 	struct lttng_ust_context_attr ctx = {};
 	struct lttng_ust_abi_object_data *obj = nullptr;
-	struct lttng_ht_node_ulong node = {};
 	const lttng::sessiond::config::context_configuration& context_config;
 };
 

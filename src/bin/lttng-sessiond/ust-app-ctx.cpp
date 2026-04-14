@@ -17,8 +17,6 @@
 
 #include <common/common.hpp>
 #include <common/compat/errno.hpp>
-#include <common/hashtable/utils.hpp>
-#include <common/urcu.hpp>
 
 #include <cstring>
 
@@ -66,83 +64,6 @@ error:
 }
 
 /*
- * Match function for a hash table lookup of ust_app_ctx.
- *
- * It matches an ust app context based on the context type and, in the case
- * of perf counters, their name.
- */
-int ht_match_ust_app_ctx(struct cds_lfht_node *node, const void *_key)
-{
-	LTTNG_ASSERT(node);
-	LTTNG_ASSERT(_key);
-
-	auto *ctx = lttng_ht_node_container_of(node, &ust_app_ctx::node);
-	const auto *key = (lttng_ust_context_attr *) _key;
-
-	/* Context type */
-	if (ctx->ctx.ctx != key->ctx) {
-		goto no_match;
-	}
-
-	switch (key->ctx) {
-	case LTTNG_UST_ABI_CONTEXT_PERF_THREAD_COUNTER:
-		if (strncmp(key->u.perf_counter.name,
-			    ctx->ctx.u.perf_counter.name,
-			    sizeof(key->u.perf_counter.name)) != 0) {
-			goto no_match;
-		}
-		break;
-	case LTTNG_UST_ABI_CONTEXT_APP_CONTEXT:
-		if (strcmp(key->u.app_ctx.provider_name, ctx->ctx.u.app_ctx.provider_name) != 0 ||
-		    strcmp(key->u.app_ctx.ctx_name, ctx->ctx.u.app_ctx.ctx_name) != 0) {
-			goto no_match;
-		}
-		break;
-	default:
-		break;
-	}
-
-	/* Match. */
-	return 1;
-
-no_match:
-	return 0;
-}
-
-/*
- * Lookup for an ust app context from an lttng_ust_context.
- *
- * Must be called while holding RCU read side lock.
- * Return an ust_app_ctx object or NULL on error.
- */
-struct ust_app_ctx *find_ust_app_context(struct lttng_ht *ht, struct lttng_ust_context_attr *uctx)
-{
-	struct lttng_ht_iter iter;
-	struct lttng_ht_node_ulong *node;
-	struct ust_app_ctx *app_ctx = nullptr;
-
-	LTTNG_ASSERT(uctx);
-	LTTNG_ASSERT(ht);
-	ASSERT_RCU_READ_LOCKED();
-
-	/* Lookup using the lttng_ust_context_type and a custom match fct. */
-	cds_lfht_lookup(ht->ht,
-			ht->hash_fct((void *) uctx->ctx, lttng_ht_seed),
-			ht_match_ust_app_ctx,
-			uctx,
-			&iter.iter);
-	node = lttng_ht_iter_get_node<lttng_ht_node_ulong>(&iter);
-	if (!node) {
-		goto end;
-	}
-
-	app_ctx = lttng::utils::container_of(node, &ust_app_ctx::node);
-
-end:
-	return app_ctx;
-}
-
-/*
  * Create the channel context on the tracer.
  *
  * Called with UST app session lock held.
@@ -185,7 +106,6 @@ void delete_ust_app_ctx(int sock, struct ust_app_ctx *ua_ctx, lsu::app *app)
 	int ret;
 
 	LTTNG_ASSERT(ua_ctx);
-	ASSERT_RCU_READ_LOCKED();
 
 	if (ua_ctx->obj) {
 		{
@@ -223,7 +143,7 @@ void delete_ust_app_ctx(int sock, struct ust_app_ctx *ua_ctx, lsu::app *app)
 /*
  * Create a context for the channel on the tracer.
  *
- * Called with UST app session lock held and a RCU read side lock.
+ * Called with UST app session lock held.
  */
 int create_ust_app_channel_context(struct ust_app_channel *ua_chan,
 				   struct lttng_ust_context_attr *uctx,
@@ -233,12 +153,9 @@ int create_ust_app_channel_context(struct ust_app_channel *ua_chan,
 	int ret = 0;
 	struct ust_app_ctx *ua_ctx;
 
-	ASSERT_RCU_READ_LOCKED();
-
 	DBG2("UST app adding context to channel %s", ua_chan->channel_config.name.c_str());
 
-	ua_ctx = find_ust_app_context(ua_chan->ctx, uctx);
-	if (ua_ctx) {
+	if (ua_chan->contexts.find(&ctx_config) != ua_chan->contexts.end()) {
 		ret = -EEXIST;
 		goto error;
 	}
@@ -250,8 +167,7 @@ int create_ust_app_channel_context(struct ust_app_channel *ua_chan,
 		goto error;
 	}
 
-	lttng_ht_node_init_ulong(&ua_ctx->node, (unsigned long) ua_ctx->ctx.ctx);
-	lttng_ht_add_ulong(ua_chan->ctx, &ua_ctx->node);
+	ua_chan->contexts.emplace(&ctx_config, ua_ctx);
 
 	ret = create_ust_channel_context(ua_chan, ua_ctx, app);
 	if (ret < 0) {

@@ -145,7 +145,8 @@ error:
 
 } /* anonymous namespace */
 
-lsu::app_session::app_session(std::uint64_t recording_session_id_,
+lsu::app_session::app_session(lsu::app& app,
+			      std::uint64_t recording_session_id_,
 			      std::uint64_t app_session_id_,
 			      lttng_credentials real_credentials_,
 			      lttng_credentials effective_credentials_,
@@ -157,7 +158,6 @@ lsu::app_session::app_session(std::uint64_t recording_session_id_,
 			      consumer_output *consumer_) :
 	recording_session_id(recording_session_id_),
 	app_session_id(app_session_id_),
-	channels(lttng_ht_new(0, LTTNG_HT_TYPE_STRING)),
 	path(std::move(path_)),
 	real_credentials(real_credentials_),
 	effective_credentials(effective_credentials_),
@@ -165,16 +165,13 @@ lsu::app_session::app_session(std::uint64_t recording_session_id_,
 	buffer_type(buffer_type_),
 	bits_per_long(bits_per_long_),
 	root_shm_path(std::move(root_shm_path_)),
-	shm_path(std::move(shm_path_))
+	shm_path(std::move(shm_path_)),
+	_app(app)
 {
-	LTTNG_ASSERT(channels);
 	LTTNG_ASSERT(consumer);
 }
 
-lsu::app_session::~app_session()
-{
-	lttng_ht_destroy(channels);
-}
+lsu::app_session::~app_session() = default;
 
 /*
  * Return the atomically incremented value of next_session_id.
@@ -281,14 +278,10 @@ void delete_ust_app_session(int sock, lsu::app_session *ua_sess, lsu::app *app)
 		(void) push_metadata(locked_registry.locked_ref(), ua_sess->consumer);
 	}
 
-	for (auto *ua_chan :
-	     lttng::urcu::lfht_iteration_adapter<ust_app_channel,
-						 decltype(ust_app_channel::node),
-						 &ust_app_channel::node>(*ua_sess->channels->ht)) {
-		const auto ret = cds_lfht_del(ua_sess->channels->ht, &ua_chan->node.node);
-		LTTNG_ASSERT(ret == 0);
-		delete_ust_app_channel(sock, ua_chan, app, locked_registry.locked_ref());
+	for (auto& chan_pair : ua_sess->channels) {
+		delete_ust_app_channel(sock, chan_pair.second, app, locked_registry.locked_ref());
 	}
+	ua_sess->channels.clear();
 
 	if (locked_registry) {
 		/*
@@ -367,13 +360,9 @@ int ust_app_flush_app_session(lsu::app& app, lsu::app_session& ua_sess)
 	switch (ua_sess.buffer_type) {
 	case LTTNG_BUFFER_PER_PID:
 	{
-		for (auto *ua_chan :
-		     lttng::urcu::lfht_iteration_adapter<ust_app_channel,
-							 decltype(ust_app_channel::node),
-							 &ust_app_channel::node>(
-			     *ua_sess.channels->ht)) {
+		for (auto& chan_pair : ua_sess.channels) {
 			health_code_update();
-			ret = consumer_flush_channel(socket, ua_chan->key);
+			ret = consumer_flush_channel(socket, chan_pair.second->key);
 			if (ret) {
 				ERR("Error flushing consumer channel");
 				retval = -1;
