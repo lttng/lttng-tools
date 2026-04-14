@@ -1072,12 +1072,10 @@ get_locked_session_registry(const ls::ust::app_session::identifier& identifier)
 
 void ls::ust::domain_orchestrator::_init_app_session(ust::app_session *ua_sess, ust::app *app)
 {
-	struct tm *timeinfo;
+	struct tm timeinfo_buf = {};
+	const auto *timeinfo = localtime_r(&app->registration_time, &timeinfo_buf);
 	char datetime[16];
-	int ret;
-	char tmp_shm_path[PATH_MAX];
 
-	timeinfo = localtime(&app->registration_time);
 	strftime(datetime, sizeof(datetime), "%Y%m%d-%H%M%S", timeinfo);
 
 	DBG2("Shadow copy of session handle %d", ua_sess->handle);
@@ -1091,75 +1089,45 @@ void ls::ust::domain_orchestrator::_init_app_session(ust::app_session *ua_sess, 
 	ua_sess->buffer_type = buffer_type();
 	ua_sess->bits_per_long = app->abi.bits_per_long;
 
-	/* There is only one consumer object per session possible. */
-	consumer_output_get(get_consumer_output_ptr());
-	ua_sess->consumer = get_consumer_output_ptr();
-
+	/*
+	 * Build the trace output path. Per-PID traces use
+	 * "pid/<name>-<pid>-<datetime>"; per-UID traces use
+	 * "uid/<uid>/<bits>-bit".
+	 */
 	switch (ua_sess->buffer_type) {
 	case LTTNG_BUFFER_PER_PID:
-		ret = snprintf(ua_sess->path,
-			       sizeof(ua_sess->path),
-			       DEFAULT_UST_TRACE_PID_PATH "/%s-%d-%s",
-			       app->name,
-			       app->pid,
-			       datetime);
+		ua_sess->path = fmt::format("pid/{}-{}-{}", app->name, app->pid, datetime);
 		break;
 	case LTTNG_BUFFER_PER_UID:
-		ret = snprintf(ua_sess->path,
-			       sizeof(ua_sess->path),
-			       DEFAULT_UST_TRACE_UID_PATH,
-			       lttng_credentials_get_uid(&ua_sess->real_credentials),
-			       app->abi.bits_per_long);
+		ua_sess->path = fmt::format("uid/{}/{}-bit",
+					    lttng_credentials_get_uid(&ua_sess->real_credentials),
+					    app->abi.bits_per_long);
 		break;
 	default:
 		abort();
-		goto error;
-	}
-	if (ret < 0) {
-		PERROR("asprintf UST shadow copy session");
-		abort();
-		goto error;
 	}
 
-	strncpy(ua_sess->root_shm_path, _root_shm_path.c_str(), sizeof(ua_sess->root_shm_path));
-	ua_sess->root_shm_path[sizeof(ua_sess->root_shm_path) - 1] = '\0';
-	strncpy(ua_sess->shm_path, shm_path().c_str(), sizeof(ua_sess->shm_path));
-	ua_sess->shm_path[sizeof(ua_sess->shm_path) - 1] = '\0';
-	if (ua_sess->shm_path[0]) {
+	ua_sess->root_shm_path = _root_shm_path;
+	ua_sess->shm_path = shm_path();
+
+	if (!ua_sess->shm_path.empty()) {
 		switch (ua_sess->buffer_type) {
 		case LTTNG_BUFFER_PER_PID:
-			ret = snprintf(tmp_shm_path,
-				       sizeof(tmp_shm_path),
-				       "/" DEFAULT_UST_TRACE_PID_PATH "/%s-%d-%s",
-				       app->name,
-				       app->pid,
-				       datetime);
+			ua_sess->shm_path +=
+				fmt::format("/pid/{}-{}-{}", app->name, app->pid, datetime);
 			break;
 		case LTTNG_BUFFER_PER_UID:
-			ret = snprintf(tmp_shm_path,
-				       sizeof(tmp_shm_path),
-				       "/" DEFAULT_UST_TRACE_UID_PATH,
-				       app->uid,
-				       app->abi.bits_per_long);
+			ua_sess->shm_path +=
+				fmt::format("/uid/{}/{}-bit", app->uid, app->abi.bits_per_long);
 			break;
 		default:
 			abort();
-			goto error;
 		}
-		if (ret < 0) {
-			PERROR("sprintf UST shadow copy session");
-			abort();
-			goto error;
-		}
-		strncat(ua_sess->shm_path,
-			tmp_shm_path,
-			sizeof(ua_sess->shm_path) - strlen(ua_sess->shm_path) - 1);
-		ua_sess->shm_path[sizeof(ua_sess->shm_path) - 1] = '\0';
 	}
-	return;
 
-error:
-	consumer_output_put(ua_sess->consumer);
+	/* Acquire the consumer reference last, after all potentially-throwing operations. */
+	consumer_output_get(get_consumer_output_ptr());
+	ua_sess->consumer = get_consumer_output_ptr();
 }
 
 int ls::ust::domain_orchestrator::_find_or_create_app_session(ust::app *app,
@@ -1202,8 +1170,8 @@ int ls::ust::domain_orchestrator::_find_or_create_app_session(ust::app *app,
 				app->abi,
 				app->version.major,
 				app->version.minor,
-				new_session->root_shm_path,
-				new_session->shm_path,
+				new_session->root_shm_path.c_str(),
+				new_session->shm_path.c_str(),
 				lttng_credentials_get_uid(&new_session->effective_credentials),
 				lttng_credentials_get_gid(&new_session->effective_credentials));
 		} catch (const std::exception& ex) {
@@ -1225,8 +1193,8 @@ int ls::ust::domain_orchestrator::_find_or_create_app_session(ust::app *app,
 							    app->abi,
 							    app->version.major,
 							    app->version.minor,
-							    new_session->root_shm_path,
-							    new_session->shm_path);
+							    new_session->root_shm_path.c_str(),
+							    new_session->shm_path.c_str());
 		} catch (const std::exception& ex) {
 			ERR("Failed to create per-UID trace class: %s", ex.what());
 			delete_ust_app_session(-1, new_session.release(), app);
@@ -2020,8 +1988,8 @@ unsigned int ls::ust::domain_orchestrator::on_app_departure(
 	 */
 	unsigned int pending_reclamations = 0;
 	if (owner_id_to_reclaim) {
-		pending_reclamations = consumer_reclaim_session_owner_id(
-			*owned_session, *owner_id_to_reclaim);
+		pending_reclamations =
+			consumer_reclaim_session_owner_id(*owned_session, *owner_id_to_reclaim);
 	}
 
 	delete_ust_app_session(app.command_socket.fd(), owned_session.release(), &app);
@@ -2712,8 +2680,7 @@ void ls::ust::domain_orchestrator::_record_snapshot_per_pid(
 		char datetime[16];
 		strftime(datetime, sizeof(datetime), "%Y%m%d-%H%M%S", timeinfo);
 
-		const auto pid_path = lttng::format(
-			DEFAULT_UST_TRACE_PID_PATH "/{}-{}-{}", app->name, app->pid, datetime);
+		const auto pid_path = fmt::format("pid/{}-{}-{}", app->name, app->pid, datetime);
 
 		std::size_t consumer_path_offset = 0;
 		const auto trace_path_raw = setup_channel_trace_path(

@@ -68,7 +68,8 @@ static int ask_channel_creation(lsu::app_session *ua_sess,
 	std::string pathname;
 	{
 		const auto raw_pathname = lttng::make_unique_wrapper<char, lttng::memory::free>(
-			setup_channel_trace_path(consumer, ua_sess->path, &consumer_path_offset));
+			setup_channel_trace_path(
+				consumer, ua_sess->path.c_str(), &consumer_path_offset));
 		if (!raw_pathname) {
 			return -1;
 		}
@@ -112,16 +113,14 @@ static int ask_channel_creation(lsu::app_session *ua_sess,
 			chan_id = ust_reg_chan.id;
 		}
 
-		if (ua_sess->shm_path[0]) {
-			strncpy(shm_path, ua_sess->shm_path, sizeof(shm_path));
+		if (!ua_sess->shm_path.empty()) {
+			const auto shm_path_str =
+				ua_sess->shm_path + "/" + ua_chan->channel_config.name + "_";
+
+			strncpy(shm_path, shm_path_str.c_str(), sizeof(shm_path));
 			shm_path[sizeof(shm_path) - 1] = '\0';
-			strncat(shm_path, "/", sizeof(shm_path) - strlen(shm_path) - 1);
-			strncat(shm_path,
-				ua_chan->channel_config.name.c_str(),
-				sizeof(shm_path) - strlen(shm_path) - 1);
-			strncat(shm_path, "_", sizeof(shm_path) - strlen(shm_path) - 1);
 		}
-		strncpy(root_shm_path, ua_sess->root_shm_path, sizeof(root_shm_path));
+		strncpy(root_shm_path, ua_sess->root_shm_path.c_str(), sizeof(root_shm_path));
 		root_shm_path[sizeof(root_shm_path) - 1] = '\0';
 	}
 

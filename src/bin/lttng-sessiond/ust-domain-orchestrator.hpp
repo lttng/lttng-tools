@@ -170,9 +170,9 @@ public:
 	 *
 	 * Called with the session lock held.
 	 */
-	unsigned int on_app_departure(
-		ust::app& app,
-		const nonstd::optional<uint32_t>& owner_id_to_reclaim = nonstd::nullopt);
+	unsigned int
+	on_app_departure(ust::app& app,
+			 const nonstd::optional<uint32_t>& owner_id_to_reclaim = nonstd::nullopt);
 
 	void rotate() override;
 	void clear() override;

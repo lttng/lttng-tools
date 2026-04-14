@@ -327,22 +327,12 @@ void delete_ust_app_session(int sock, lsu::app_session *ua_sess, lsu::app *app)
  */
 lsu::app_session *alloc_ust_app_session()
 {
-	lsu::app_session *ua_sess;
-
-	/* Init most of the default value by allocating and zeroing */
-	ua_sess = new lsu::app_session;
-	if (ua_sess == nullptr) {
-		PERROR("malloc");
-		goto error_free;
-	}
+	auto *ua_sess = new lsu::app_session;
 
 	ua_sess->handle = -1;
 	ua_sess->channels = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
 
 	return ua_sess;
-
-error_free:
-	return nullptr;
 }
 
 int ust_app_flush_app_session(lsu::app& app, lsu::app_session& ua_sess)

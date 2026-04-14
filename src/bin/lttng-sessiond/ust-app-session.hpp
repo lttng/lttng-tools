@@ -20,10 +20,10 @@
 
 #include <lttng/domain.h>
 
-#include <limits.h>
 #include <memory>
 #include <pthread.h>
 #include <stdint.h>
+#include <string>
 
 struct consumer_output;
 
@@ -153,7 +153,7 @@ public:
 	 */
 	nonstd::optional<app_objd_registry::registration_token> objd_token;
 	/* Starts with 'ust'; no leading slash. */
-	char path[PATH_MAX] = {};
+	std::string path;
 	/* UID/GID of the application owning the session */
 	lttng_credentials real_credentials = {};
 	/* Effective UID and GID. Same as the tracing session. */
@@ -169,8 +169,8 @@ public:
 	/* For delayed reclaim */
 	::rcu_head rcu_head = {};
 
-	char root_shm_path[PATH_MAX] = {};
-	char shm_path[PATH_MAX] = {};
+	std::string root_shm_path;
+	std::string shm_path;
 
 private:
 	/*
