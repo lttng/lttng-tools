@@ -1454,7 +1454,7 @@ end:
 
 /*
  * Send a close metadata command to consumer using the given channel key.
- * Called with registry lock held.
+ * Called with trace class lock held.
  *
  * Return 0 on success else a negative value.
  */

@@ -94,7 +94,7 @@ public:
 				 identifier::buffer_allocation_policy::PER_UID };
 	}
 
-	static std::shared_ptr<ust::trace_class> get_registry(const identifier& identifier);
+	static std::shared_ptr<ust::trace_class> get_trace_class(const identifier& identifier);
 
 	static std::uint64_t next_id();
 

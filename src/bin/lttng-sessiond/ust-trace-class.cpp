@@ -103,9 +103,9 @@ void destroy_channel_rcu(struct rcu_head *head)
 }
 
 /*
- * Destroy every element of the registry and free the memory. This does NOT
- * free the registry pointer since it might not have been allocated before so
- * it's the caller responsability.
+ * Destroy every element of the trace class and free the memory. This does NOT
+ * free the trace class pointer since it might not have been allocated before,
+ * so it's the caller responsability.
  *
  * Called from ~trace_class(), must not throw.
  */
@@ -122,7 +122,7 @@ void destroy_channel(lsu::stream_class *chan, bool notify) noexcept
 	}
 
 	if (chan->_events) {
-		/* Destroy all event associated with this registry. */
+		/* Destroy all events associated with this trace class. */
 		try {
 			for (auto *event :
 			     lttng::urcu::lfht_iteration_adapter<lsu::event_class,
@@ -288,7 +288,7 @@ lsu::trace_class::trace_class(enum lttng_trace_format trace_format,
 		if (ret < 0) {
 			LTTNG_THROW_POSIX(
 				lttng::format(
-					"Failed to open metadata file during registry session creation: path = {}",
+					"Failed to open metadata file during trace class creation: path = {}",
 					_metadata_path),
 				errno);
 		}
@@ -370,7 +370,7 @@ const lst::type *lsu::trace_class::packet_header() const noexcept
 }
 
 /*
- * For a given enumeration in a registry, delete the entry and destroy
+ * For a given enumeration in a trace class, delete the entry and destroy
  * the enumeration.
  *
  * Note that this is used by ~trace_class() and must not throw.
@@ -401,7 +401,7 @@ lsu::trace_class::~trace_class()
 
 	if (_channels) {
 		try {
-			/* Destroy all event associated with this registry. */
+			/* Destroy all events associated with this trace class. */
 			for (auto *chan :
 			     lttng::urcu::lfht_iteration_adapter<lsu::stream_class,
 								 decltype(lsu::stream_class::_node),
@@ -442,7 +442,7 @@ lsu::trace_class::~trace_class()
 	/* Destroy the enum hash table */
 	if (_enums) {
 		try {
-			/* Destroy all enum entries associated with this registry. */
+			/* Destroy all enum entries associated with this trace class. */
 			for (auto *reg_enum :
 			     lttng::urcu::lfht_iteration_adapter<lsu::registry_enum,
 								 decltype(lsu::registry_enum::node),
@@ -464,7 +464,7 @@ lsu::trace_class::locked_ref lsu::trace_class::lock() noexcept
 }
 
 /*
- * Initialize registry with default values.
+ * Initialize a stream class with default values.
  */
 lsu::stream_class& lsu::trace_class::add_channel(
 	uint64_t key,
@@ -690,7 +690,7 @@ void lsu::trace_class::_generate_metadata()
 
 void lsu::trace_class::regenerate_metadata()
 {
-	const lttng::pthread::lock_guard registry_lock(_lock);
+	const lttng::pthread::lock_guard trace_class_lock(_lock);
 
 	/* Resample the clock */
 	_clock = lttng::make_unique<lsu::clock_class>();
@@ -703,7 +703,7 @@ void lsu::trace_class::regenerate_metadata()
 /*
  * Lookup enumeration by enum ID.
  *
- * Note that there is no need to lock the registry session as this only
+ * Note that there is no need to lock the trace class as this only
  * performs an RCU-protected look-up. The function also return an rcu-protected
  * reference, which ensures that the caller keeps the RCU read lock until it
  * disposes of the object.
@@ -778,9 +778,9 @@ end:
 
 /*
  * Create a lsu::registry_enum from the given parameters and add it to the
- * registry hash table, or find it if already there.
+ * trace class's enum hash table, or find it if already there.
  *
- * Should be called with session registry mutex held.
+ * Should be called with the trace class mutex held.
  *
  * We receive ownership of entries.
  */
@@ -804,17 +804,17 @@ void lsu::trace_class::create_or_find_enum(int session_objd,
 	 */
 	if (session_objd < 0) {
 		LTTNG_THROW_INVALID_ARGUMENT_ERROR(lttng::format(
-			"Invalid parameters used to create or look-up enumeration from registry session: session_objd = {}",
+			"Invalid parameters used to create or look-up enumeration from trace class: session_objd = {}",
 			session_objd));
 	}
 	if (nr_entries == 0) {
 		LTTNG_THROW_INVALID_ARGUMENT_ERROR(lttng::format(
-			"Invalid parameters used to create or look-up enumeration from registry session: nr_entries = {}",
+			"Invalid parameters used to create or look-up enumeration from trace class: nr_entries = {}",
 			nr_entries));
 	}
 	if (lttng_strnlen(enum_name, LTTNG_UST_ABI_SYM_NAME_LEN) == LTTNG_UST_ABI_SYM_NAME_LEN) {
 		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
-			"Invalid parameters used to create or look-up enumeration from registry session: enumeration name is not null terminated");
+			"Invalid parameters used to create or look-up enumeration from trace class: enumeration name is not null terminated");
 	}
 
 	if (entries->start.signedness) {
@@ -830,7 +830,7 @@ void lsu::trace_class::create_or_find_enum(int session_objd,
 		destroy_enum(reg_enum);
 		reg_enum = old_reg_enum;
 	} else {
-		DBG("UST registry creating enum: %s, sess_objd: %u", enum_name, session_objd);
+		DBG("UST trace class creating enum: %s, sess_objd: %u", enum_name, session_objd);
 		if (_next_enum_id == -1ULL) {
 			destroy_enum(reg_enum);
 			LTTNG_THROW_ERROR(
@@ -846,7 +846,7 @@ void lsu::trace_class::create_or_find_enum(int session_objd,
 		LTTNG_ASSERT(nodep == &reg_enum->node.node);
 	}
 
-	DBG("UST registry reply with enum %s with id %" PRIu64 " in sess_objd: %u",
+	DBG("UST trace class reply with enum %s with id %" PRIu64 " in sess_objd: %u",
 	    enum_name,
 	    reg_enum->id,
 	    session_objd);

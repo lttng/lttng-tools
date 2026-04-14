@@ -87,7 +87,7 @@ namespace {
  * Callers that need a `const locked_ref&` (e.g. push_metadata) should
  * use the locked_ref() accessor.
  */
-struct owned_locked_registry {
+struct owned_locked_trace_class {
 	std::shared_ptr<lsu::trace_class> _ownership;
 	lsu::trace_class::locked_ref _lock;
 
@@ -123,9 +123,9 @@ struct owned_locked_registry {
 	}
 };
 
-owned_locked_registry get_locked_session_registry(const lsu::app_session::identifier& identifier)
+owned_locked_trace_class get_locked_trace_class(const lsu::app_session::identifier& identifier)
 {
-	auto session = lsu::app_session::get_registry(identifier);
+	auto session = lsu::app_session::get_trace_class(identifier);
 	lsu::trace_class::locked_ref lock;
 
 	if (session) {
@@ -415,14 +415,14 @@ int ust_app_release_object(lsu::app *app, struct lttng_ust_abi_object_data *data
  *
  * RCU read-side lock must be held to guarantee existence of socket.
  * Must be called with the ust app session lock held.
- * Must be called with the registry lock held.
+ * Must be called with the trace class lock held.
  *
  * On success, return the len of metadata pushed or else a negative value.
  * Returning a -EPIPE return value means we could not send the metadata,
  * but it can be caused by recoverable errors (e.g. the application has
  * terminated concurrently).
  */
-ssize_t ust_app_push_metadata(const lsu::trace_class::locked_ref& locked_registry,
+ssize_t ust_app_push_metadata(const lsu::trace_class::locked_ref& locked_trace_class,
 			      struct consumer_socket *socket,
 			      int send_zero_data)
 {
@@ -432,11 +432,11 @@ ssize_t ust_app_push_metadata(const lsu::trace_class::locked_ref& locked_registr
 	ssize_t ret_val;
 	uint64_t metadata_key, metadata_version;
 
-	LTTNG_ASSERT(locked_registry);
+	LTTNG_ASSERT(locked_trace_class);
 	LTTNG_ASSERT(socket);
 	ASSERT_RCU_READ_LOCKED();
 
-	metadata_key = locked_registry->_metadata_key;
+	metadata_key = locked_trace_class->_metadata_key;
 
 	/*
 	 * Means that no metadata was assigned to the session. This can
@@ -446,13 +446,13 @@ ssize_t ust_app_push_metadata(const lsu::trace_class::locked_ref& locked_registr
 		return 0;
 	}
 
-	offset = locked_registry->_metadata_len_sent;
-	len = locked_registry->_metadata_len - locked_registry->_metadata_len_sent;
-	new_metadata_len_sent = locked_registry->_metadata_len;
-	metadata_version = locked_registry->_metadata_version;
+	offset = locked_trace_class->_metadata_len_sent;
+	len = locked_trace_class->_metadata_len - locked_trace_class->_metadata_len_sent;
+	new_metadata_len_sent = locked_trace_class->_metadata_len;
+	metadata_version = locked_trace_class->_metadata_version;
 	if (len == 0) {
 		DBG3("No metadata to push for metadata key %" PRIu64,
-		     locked_registry->_metadata_key);
+		     locked_trace_class->_metadata_key);
 		ret_val = len;
 		if (send_zero_data) {
 			DBG("No metadata to push");
@@ -469,32 +469,32 @@ ssize_t ust_app_push_metadata(const lsu::trace_class::locked_ref& locked_registr
 		goto error;
 	}
 	/* Copy what we haven't sent out. */
-	memcpy(metadata_str, locked_registry->_metadata + offset, len);
+	memcpy(metadata_str, locked_trace_class->_metadata + offset, len);
 
 push_data:
-	pthread_mutex_unlock(&locked_registry->_lock);
+	pthread_mutex_unlock(&locked_trace_class->_lock);
 	/*
-	 * We need to unlock the registry while we push metadata to
+	 * We need to unlock the trace class while we push metadata to
 	 * break a circular dependency between the consumerd metadata
-	 * lock and the sessiond registry lock. Indeed, pushing metadata
+	 * lock and the sessiond trace class lock. Indeed, pushing metadata
 	 * to the consumerd awaits that it gets pushed all the way to
 	 * relayd, but doing so requires grabbing the metadata lock. If
 	 * a concurrent metadata request is being performed by
-	 * consumerd, this can try to grab the registry lock on the
+	 * consumerd, this can try to grab the trace class lock on the
 	 * sessiond while holding the metadata lock on the consumer
 	 * daemon. Those push and pull schemes are performed on two
 	 * different bidirectionnal communication sockets.
 	 */
 	ret = consumer_push_metadata(
 		socket, metadata_key, metadata_str, len, offset, metadata_version);
-	pthread_mutex_lock(&locked_registry->_lock);
+	pthread_mutex_lock(&locked_trace_class->_lock);
 	if (ret < 0) {
 		/*
-		 * There is an acceptable race here between the registry
+		 * There is an acceptable race here between the trace class
 		 * metadata key assignment and the creation on the
 		 * consumer. The session daemon can concurrently push
-		 * metadata for this registry while being created on the
-		 * consumer since the metadata key of the registry is
+		 * metadata for this trace class while being created on the
+		 * consumer since the metadata key of the trace class is
 		 * assigned *before* it is setup to avoid the consumer
 		 * to ask for metadata that could possibly be not found
 		 * in the session daemon.
@@ -513,7 +513,7 @@ push_data:
 	} else {
 		/*
 		 * Metadata may have been concurrently pushed, since
-		 * we're not holding the registry lock while pushing to
+		 * we're not holding the trace class lock while pushing to
 		 * consumer.  This is handled by the fact that we send
 		 * the metadata content, size, and the offset at which
 		 * that metadata belongs. This may arrive out of order
@@ -524,9 +524,9 @@ push_data:
 		 * largest metadata_len_sent value of the concurrent
 		 * send.
 		 */
-		if (locked_registry->_metadata_version == metadata_version) {
-			locked_registry->_metadata_len_sent = std::max(
-				locked_registry->_metadata_len_sent, new_metadata_len_sent);
+		if (locked_trace_class->_metadata_version == metadata_version) {
+			locked_trace_class->_metadata_len_sent = std::max(
+				locked_trace_class->_metadata_len_sent, new_metadata_len_sent);
 		}
 	}
 	free(metadata_str);
@@ -536,13 +536,13 @@ end:
 error:
 	if (ret_val) {
 		/*
-		 * On error, flag the registry that the metadata is
+		 * On error, flag the trace class that the metadata is
 		 * closed. We were unable to push anything and this
 		 * means that either the consumer is not responding or
 		 * the metadata cache has been destroyed on the
 		 * consumer.
 		 */
-		locked_registry->_metadata_closed = true;
+		locked_trace_class->_metadata_closed = true;
 	}
 error_push:
 	free(metadata_str);
@@ -2195,7 +2195,7 @@ error:
  * Reply to a register channel notification from an application on the notify
  * socket. The channel metadata is also created.
  *
- * The session UST registry lock is acquired in this function.
+ * The trace class lock is acquired in this function.
  *
  * On success 0 is returned else a negative value.
  */
@@ -2226,17 +2226,17 @@ static int handle_app_register_channel_notification(int sock,
 		return 0;
 	}
 
-	auto locked_trace_class = get_locked_session_registry(channel_entry->session_id);
+	auto locked_trace_class = get_locked_trace_class(channel_entry->session_id);
 	if (!locked_trace_class) {
 		DBG("Application session is being torn down. Abort event notify");
 		return 0;
 	}
 
-	const auto chan_reg_key = channel_entry->channel_registry_key;
-	auto& ust_reg_chan = locked_trace_class->channel(chan_reg_key);
+	const auto tc_channel_key = channel_entry->trace_class_channel_key;
+	auto& tc_channel = locked_trace_class->channel(tc_channel_key);
 
 	/* Channel id is set during the object creation. */
-	chan_id = ust_reg_chan.id;
+	chan_id = tc_channel.id;
 
 	/*
 	 * The application returns the typing information of the channel's
@@ -2259,20 +2259,20 @@ static int handle_app_register_channel_notification(int sock,
 			lst::field_location::root::EVENT_RECORD_COMMON_CONTEXT,
 			lsu::ctl_field_quirks::UNDERSCORE_PREFIXED_VARIANT_TAG_MAPPINGS);
 
-		if (!ust_reg_chan.is_registered()) {
+		if (!tc_channel.is_registered()) {
 			lst::type::cuptr event_context = app_context_fields.size() ?
 				lttng::make_unique<lst::structure_type>(
 					0, std::move(app_context_fields)) :
 				nullptr;
 
-			ust_reg_chan.event_context(std::move(event_context));
+			tc_channel.event_context(std::move(event_context));
 		} else {
 			/*
 			 * Validate that the context fields match between
-			 * registry and newcoming application.
+			 * the trace class and newcoming application.
 			 */
 			bool context_fields_match;
-			const auto *previous_event_context = ust_reg_chan.event_context();
+			const auto *previous_event_context = tc_channel.event_context();
 
 			if (!previous_event_context) {
 				context_fields_match = app_context_fields.size() == 0;
@@ -2300,14 +2300,14 @@ static int handle_app_register_channel_notification(int sock,
 
 reply:
 	DBG3("UST app replying to register channel key %" PRIu64 " with id %u, ret = %d",
-	     chan_reg_key,
+	     tc_channel_key,
 	     chan_id,
 	     ret_code);
 
 	ret = lttng_ust_ctl_reply_register_channel(
 		sock,
 		chan_id,
-		ust_reg_chan.header_type_ == lst::stream_class::header_type::COMPACT ?
+		tc_channel.header_type_ == lst::stream_class::header_type::COMPACT ?
 			LTTNG_UST_CTL_CHANNEL_HEADER_COMPACT :
 			LTTNG_UST_CTL_CHANNEL_HEADER_LARGE,
 		ret_code);
@@ -2330,30 +2330,30 @@ reply:
 		return ret;
 	}
 
-	/* This channel registry's registration is completed. */
-	ust_reg_chan.set_as_registered();
+	/* This channel's registration is completed. */
+	tc_channel.set_as_registered();
 
 	return ret;
 }
 
 /*
- * Add event to the UST channel registry. When the event is added to the
- * registry, the metadata is also created. Once done, this replies to the
+ * Add event to the trace class. When the event is added to the
+ * trace class, the metadata is also created. Once done, this replies to the
  * application with the appropriate error code.
  *
- * The session UST registry lock is acquired in the function.
+ * The trace class lock is acquired in the function.
  *
  * On success 0 is returned else a negative value.
  */
-static int add_event_ust_registry(int sock,
-				  int sobjd,
-				  int cobjd,
-				  const char *name,
-				  char *raw_signature,
-				  size_t nr_fields,
-				  struct lttng_ust_ctl_field *raw_fields,
-				  int loglevel_value,
-				  char *raw_model_emf_uri)
+static int add_event_to_trace_class(int sock,
+				    int sobjd,
+				    int cobjd,
+				    const char *name,
+				    char *raw_signature,
+				    size_t nr_fields,
+				    struct lttng_ust_ctl_field *raw_fields,
+				    int loglevel_value,
+				    char *raw_model_emf_uri)
 {
 	int ret, ret_code;
 	lsu::event_id event_id = 0;
@@ -2378,22 +2378,22 @@ static int add_event_ust_registry(int sock,
 		return 0;
 	}
 
-	const auto chan_reg_key = channel_entry->channel_registry_key;
+	const auto tc_channel_key = channel_entry->trace_class_channel_key;
 	const auto buffer_type = (channel_entry->session_id.allocation_policy ==
 				  lsu::app_session_identifier::buffer_allocation_policy::PER_UID) ?
 		LTTNG_BUFFER_PER_UID :
 		LTTNG_BUFFER_PER_PID;
 
 	{
-		auto locked_registry = get_locked_session_registry(channel_entry->session_id);
-		if (locked_registry) {
+		auto locked_trace_class = get_locked_trace_class(channel_entry->session_id);
+		if (locked_trace_class) {
 			/*
 			 * From this point on, this call acquires the ownership of the signature,
 			 * fields and model_emf_uri meaning any free are done inside it if needed.
 			 * These three variables MUST NOT be read/write after this.
 			 */
 			try {
-				auto& channel = locked_registry->channel(chan_reg_key);
+				auto& channel = locked_trace_class->channel(tc_channel_key);
 
 				/* id is set on success. */
 				channel.add_event(
@@ -2402,7 +2402,7 @@ static int add_event_ust_registry(int sock,
 					name,
 					signature.get(),
 					lsu::create_trace_fields_from_ust_ctl_fields(
-						*locked_registry,
+						*locked_trace_class,
 						fields.get(),
 						nr_fields,
 						lst::field_location::root::EVENT_RECORD_PAYLOAD,
@@ -2417,9 +2417,7 @@ static int add_event_ust_registry(int sock,
 					event_id);
 				ret_code = 0;
 			} catch (const std::exception& ex) {
-				ERR("Failed to add event `%s` to registry session: %s",
-				    name,
-				    ex.what());
+				ERR("Failed to add event `%s` to trace class: %s", name, ex.what());
 				/* Inform the application of the error; don't return directly. */
 				ret_code = -EINVAL;
 			}
@@ -2457,23 +2455,23 @@ static int add_event_ust_registry(int sock,
 		return ret;
 	}
 
-	DBG_FMT("UST registry event successfully added: name={}, id={}", name, event_id);
+	DBG_FMT("UST trace class event successfully added: name={}, id={}", name, event_id);
 	return ret;
 }
 
 /*
- * Add enum to the UST session registry. Once done, this replies to the
+ * Add enum to the trace class. Once done, this replies to the
  * application with the appropriate error code.
  *
- * The session UST registry lock is acquired within this function.
+ * The trace class lock is acquired within this function.
  *
  * On success 0 is returned else a negative value.
  */
-static int add_enum_ust_registry(int sock,
-				 int sobjd,
-				 const char *name,
-				 struct lttng_ust_ctl_enum_entry *raw_entries,
-				 size_t nr_entries)
+static int add_enum_to_trace_class(int sock,
+				   int sobjd,
+				   const char *name,
+				   struct lttng_ust_ctl_enum_entry *raw_entries,
+				   size_t nr_entries)
 {
 	int ret = 0;
 	uint64_t enum_id = -1ULL;
@@ -2497,9 +2495,9 @@ static int add_enum_ust_registry(int sock,
 		return 0;
 	}
 
-	auto locked_registry = get_locked_session_registry(session_entry->session_id);
-	if (!locked_registry) {
-		DBG("Application session is being torn down (registry not found). Aborting enum registration.");
+	auto locked_trace_class = get_locked_trace_class(session_entry->session_id);
+	if (!locked_trace_class) {
+		DBG("Application session is being torn down (trace class not found). Aborting enum registration.");
 		return 0;
 	}
 
@@ -2510,7 +2508,7 @@ static int add_enum_ust_registry(int sock,
 	 */
 	int application_reply_code;
 	try {
-		locked_registry->create_or_find_enum(
+		locked_trace_class->create_or_find_enum(
 			sobjd, name, entries.release(), nr_entries, &enum_id);
 		application_reply_code = 0;
 	} catch (const std::exception& ex) {
@@ -2552,7 +2550,7 @@ static int add_enum_ust_registry(int sock,
 		return ret;
 	}
 
-	DBG3("UST registry enum %s added successfully or already found", name);
+	DBG3("UST trace class enum %s added successfully or already found", name);
 	return 0;
 }
 
@@ -2635,20 +2633,20 @@ int ust_app_recv_notify(int sock)
 		}
 
 		/*
-		 * Add event to the UST registry coming from the notify socket. This
+		 * Add event to the trace class coming from the notify socket. This
 		 * call will free if needed the sig, fields and model_emf_uri. This
 		 * code path loses the ownsership of these variables and transfer them
 		 * to the this function.
 		 */
-		ret = add_event_ust_registry(sock,
-					     sobjd,
-					     cobjd,
-					     name,
-					     sig,
-					     nr_fields,
-					     fields,
-					     loglevel_value,
-					     model_emf_uri);
+		ret = add_event_to_trace_class(sock,
+					       sobjd,
+					       cobjd,
+					       name,
+					       sig,
+					       nr_fields,
+					       fields,
+					       loglevel_value,
+					       model_emf_uri);
 		if (ret < 0) {
 			goto error;
 		}
@@ -2716,7 +2714,7 @@ int ust_app_recv_notify(int sock)
 		}
 
 		/* Callee assumes ownership of entries. */
-		ret = add_enum_ust_registry(sock, sobjd, name, entries, nr_entries);
+		ret = add_enum_to_trace_class(sock, sobjd, name, entries, nr_entries);
 		if (ret < 0) {
 			goto error;
 		}

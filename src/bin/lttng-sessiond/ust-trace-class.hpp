@@ -50,7 +50,7 @@ public:
 		lttng::sessiond::config::recording_channel_configuration::buffer_allocation_policy_t
 			buffer_allocation_policy);
 
-	/* A channel is protected by its parent registry session's lock. */
+	/* A channel is protected by its parent trace class lock. */
 	lttng::sessiond::ust::stream_class& channel(uint64_t channel_key) const;
 
 	void remove_channel(uint64_t channel_key, bool notify);

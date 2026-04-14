@@ -46,7 +46,7 @@ pthread_mutex_t next_session_id_lock = PTHREAD_MUTEX_INITIALIZER;
  * Callers that need a `const locked_ref&` (e.g. push_metadata) should
  * use the locked_ref() accessor.
  */
-struct owned_locked_registry {
+struct owned_locked_trace_class {
 	std::shared_ptr<lsu::trace_class> _ownership;
 	lsu::trace_class::locked_ref _lock;
 
@@ -82,9 +82,9 @@ struct owned_locked_registry {
 	}
 };
 
-owned_locked_registry get_locked_session_registry(const lsu::app_session::identifier& identifier)
+owned_locked_trace_class get_locked_trace_class(const lsu::app_session::identifier& identifier)
 {
-	auto session = lsu::app_session::get_registry(identifier);
+	auto session = lsu::app_session::get_trace_class(identifier);
 	lsu::trace_class::locked_ref lock;
 
 	if (session) {
@@ -108,17 +108,17 @@ owned_locked_registry get_locked_session_registry(const lsu::app_session::identi
  * but it can be caused by recoverable errors (e.g. the application has
  * terminated concurrently).
  */
-int push_metadata(const lsu::trace_class::locked_ref& locked_registry,
+int push_metadata(const lsu::trace_class::locked_ref& locked_trace_class,
 		  struct consumer_output *consumer)
 {
 	int ret_val;
 	ssize_t ret;
 	struct consumer_socket *socket;
 
-	LTTNG_ASSERT(locked_registry);
+	LTTNG_ASSERT(locked_trace_class);
 	LTTNG_ASSERT(consumer);
 
-	if (locked_registry->_metadata_closed) {
+	if (locked_trace_class->_metadata_closed) {
 		ret_val = -EPIPE;
 		goto error;
 	}
@@ -127,14 +127,14 @@ int push_metadata(const lsu::trace_class::locked_ref& locked_registry,
 		const lttng::urcu::read_lock_guard read_lock;
 
 		/* Get consumer socket to use to push the metadata. */
-		socket = consumer_find_socket_by_bitness(locked_registry->abi.bits_per_long,
+		socket = consumer_find_socket_by_bitness(locked_trace_class->abi.bits_per_long,
 							 consumer);
 		if (!socket) {
 			ret_val = -1;
 			goto error;
 		}
 
-		ret = ust_app_push_metadata(locked_registry, socket, 0);
+		ret = ust_app_push_metadata(locked_trace_class, socket, 0);
 		if (ret < 0) {
 			ret_val = ret;
 			goto error;
@@ -180,41 +180,41 @@ lsu::app_session::~app_session()
 	LTTNG_ASSERT(!deleted);
 	deleted = true;
 
-	auto locked_registry = get_locked_session_registry(get_identifier());
-	/* Registry can be null on error path during initialization. */
-	if (locked_registry) {
+	auto locked_trace_class = get_locked_trace_class(get_identifier());
+	/* Trace class can be null on error path during initialization. */
+	if (locked_trace_class) {
 		/* Push metadata for application before freeing the application. */
-		(void) push_metadata(locked_registry.locked_ref(), consumer);
+		(void) push_metadata(locked_trace_class.locked_ref(), consumer);
 	}
 
-	/* Remove per-PID channels from the registry while it is locked. */
-	if (buffer_type == LTTNG_BUFFER_PER_PID && locked_registry) {
+	/* Remove per-PID channels from the trace class while it is locked. */
+	if (buffer_type == LTTNG_BUFFER_PER_PID && locked_trace_class) {
 		for (const auto& chan_pair : channels) {
 			try {
-				locked_registry->remove_channel(chan_pair.second->key, true);
+				locked_trace_class->remove_channel(chan_pair.second->key, true);
 			} catch (const std::exception& ex) {
 				DBG("Could not find channel for removal: %s", ex.what());
 			}
 		}
 	}
 
-	if (locked_registry) {
+	if (locked_trace_class) {
 		/*
 		 * Don't ask to close metadata for global per UID buffers. Close
 		 * metadata only on destroy trace session in this case. Also, the
-		 * previous push metadata could have flag the metadata registry to
+		 * previous push metadata could have flagged the metadata trace class to
 		 * close so don't send a close command if closed.
 		 */
 		if (buffer_type != LTTNG_BUFFER_PER_UID) {
-			const auto metadata_key = locked_registry->_metadata_key;
-			const auto consumer_bitness = locked_registry->abi.bits_per_long;
+			const auto metadata_key = locked_trace_class->_metadata_key;
+			const auto consumer_bitness = locked_trace_class->abi.bits_per_long;
 
-			if (!locked_registry->_metadata_closed && metadata_key != 0) {
-				locked_registry->_metadata_closed = true;
+			if (!locked_trace_class->_metadata_closed && metadata_key != 0) {
+				locked_trace_class->_metadata_closed = true;
 			}
 
 			/* Release lock before communication, see comments in close_metadata(). */
-			locked_registry.reset();
+			locked_trace_class.reset();
 			(void) close_metadata(metadata_key, consumer_bitness, consumer);
 		}
 	}
@@ -267,14 +267,14 @@ uint64_t lsu::app_session::next_id()
 }
 
 /*
- * Return the session registry according to the buffer type of the given
+ * Return the session trace class according to the buffer type of the given
  * session.
  *
- * A registry per UID object MUST exists before calling this function or else
+ * A per-UID trace class object MUST exist before calling this function or else
  * it LTTNG_ASSERT() if not found. RCU read side lock must be acquired.
  */
 std::shared_ptr<lsu::trace_class>
-lsu::app_session::get_registry(const lsu::app_session::identifier& ua_sess_id)
+lsu::app_session::get_trace_class(const lsu::app_session::identifier& ua_sess_id)
 {
 	switch (ua_sess_id.allocation_policy) {
 	case lsu::app_session::identifier::buffer_allocation_policy::PER_PID:
@@ -302,7 +302,7 @@ lsu::app_session::get_registry(const lsu::app_session::identifier& ua_sess_id)
  * nullified. The session lock MUST be held unless the application is
  * in the destroy path.
  *
- * Do not hold the registry lock while communicating with the consumerd, because
+ * Do not hold the trace class lock while communicating with the consumerd, because
  * doing so causes inter-process deadlocks between consumerd and sessiond with
  * the metadata request notification.
  *

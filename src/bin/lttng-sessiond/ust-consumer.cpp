@@ -41,7 +41,7 @@ static int ask_channel_creation(lsu::app_session *ua_sess,
 				struct ust_app_channel *ua_chan,
 				struct consumer_output *consumer,
 				struct consumer_socket *socket,
-				lsu::trace_class *registry,
+				lsu::trace_class *trace_class,
 				struct lttng_trace_chunk *trace_chunk,
 				enum lttng_trace_format trace_format,
 				unsigned int output_traces,
@@ -49,7 +49,7 @@ static int ask_channel_creation(lsu::app_session *ua_sess,
 {
 	int ret, output;
 	uint32_t chan_id;
-	uint64_t key, chan_reg_key;
+	uint64_t key, trace_class_channel_key;
 	struct lttcomm_consumer_msg msg;
 	char shm_path[PATH_MAX] = "";
 	char root_shm_path[PATH_MAX] = "";
@@ -60,7 +60,7 @@ static int ask_channel_creation(lsu::app_session *ua_sess,
 	LTTNG_ASSERT(ua_chan);
 	LTTNG_ASSERT(socket);
 	LTTNG_ASSERT(consumer);
-	LTTNG_ASSERT(registry);
+	LTTNG_ASSERT(trace_class);
 
 	DBG2("Asking UST consumer for channel");
 
@@ -94,9 +94,9 @@ static int ask_channel_creation(lsu::app_session *ua_sess,
 
 	/* Depending on the buffer type, a different channel key is used. */
 	if (ua_sess->buffer_type == LTTNG_BUFFER_PER_UID) {
-		chan_reg_key = ua_chan->trace_class_stream_class_handle;
+		trace_class_channel_key = ua_chan->trace_class_stream_class_handle;
 	} else {
-		chan_reg_key = ua_chan->key;
+		trace_class_channel_key = ua_chan->key;
 	}
 
 	if (ua_chan->attr.type == LTTNG_UST_ABI_CHAN_METADATA) {
@@ -108,10 +108,10 @@ static int ask_channel_creation(lsu::app_session *ua_sess,
 		 */
 	} else {
 		{
-			auto locked_registry = registry->lock();
-			auto& ust_reg_chan = registry->channel(chan_reg_key);
+			auto locked_trace_class = trace_class->lock();
+			auto& trace_class_channel = trace_class->channel(trace_class_channel_key);
 
-			chan_id = ust_reg_chan.id;
+			chan_id = trace_class_channel.id;
 		}
 
 		if (!ua_sess->shm_path.empty()) {
@@ -192,7 +192,7 @@ static int ask_channel_creation(lsu::app_session *ua_sess,
 					   ua_chan->channel_config.name.c_str(),
 					   consumer->net_seq_index,
 					   ua_chan->key,
-					   registry->uuid,
+					   trace_class->uuid,
 					   chan_id,
 					   tracefile_size,
 					   tracefile_count,
@@ -247,7 +247,7 @@ int ust_consumer_ask_channel(lsu::app_session *ua_sess,
 			     struct ust_app_channel *ua_chan,
 			     struct consumer_output *consumer,
 			     struct consumer_socket *socket,
-			     lsu::trace_class *registry,
+			     lsu::trace_class *trace_class,
 			     struct lttng_trace_chunk *trace_chunk,
 			     enum lttng_trace_format trace_format,
 			     unsigned int output_traces,
@@ -259,7 +259,7 @@ int ust_consumer_ask_channel(lsu::app_session *ua_sess,
 	LTTNG_ASSERT(ua_chan);
 	LTTNG_ASSERT(consumer);
 	LTTNG_ASSERT(socket);
-	LTTNG_ASSERT(registry);
+	LTTNG_ASSERT(trace_class);
 
 	if (!consumer->enabled) {
 		ret = -LTTNG_ERR_NO_CONSUMER;
@@ -272,7 +272,7 @@ int ust_consumer_ask_channel(lsu::app_session *ua_sess,
 				   ua_chan,
 				   consumer,
 				   socket,
-				   registry,
+				   trace_class,
 				   trace_chunk,
 				   trace_format,
 				   output_traces,

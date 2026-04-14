@@ -444,7 +444,7 @@ void lsu::stream_class::add_event(int session_objd,
 				     loglevel_value,
 				     std::move(model_emf_uri)));
 
-	DBG3("%s", lttng::format("UST registry creating event: event = {}", *event).c_str());
+	DBG3("%s", lttng::format("UST trace class creating event: event = {}", *event).c_str());
 
 	/*
 	 * This is an add unique with a custom match function for event. The node
@@ -466,7 +466,7 @@ void lsu::stream_class::add_event(int session_objd,
 			event_id = existing_event->id;
 		} else {
 			LTTNG_THROW_INVALID_ARGUMENT_ERROR(lttng::format(
-				"UST registry create event add unique failed for event: event = {}",
+				"UST trace class create event add unique failed for event: event = {}",
 				*event));
 		}
 	} else {

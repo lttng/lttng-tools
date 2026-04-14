@@ -26,7 +26,7 @@ namespace ust {
  *
  * The notification thread receives objds from UST applications and
  * needs to resolve them to a trace_class (via the global
- * trace_class_index) and, for channel objds, a channel registry key.
+ * trace_class_index) and, for channel objds, a trace class channel key.
  * It achieves this using the app_session_identifier, which contains
  * the immutable properties needed for the trace_class_index lookup
  * (app_session_id, recording_session_id, credentials, abi, buffer
@@ -58,13 +58,13 @@ public:
 	struct channel_entry {
 		app_session_identifier session_id;
 		/*
-		 * Pre-computed channel registry key: either the
+		 * Pre-computed trace class channel key: either the
 		 * trace_class_stream_class_handle (per-UID) or the
 		 * consumer channel key (per-PID). This avoids the
 		 * notification thread having to find the ust_app_channel
 		 * object to determine which key to use.
 		 */
-		std::uint64_t channel_registry_key;
+		std::uint64_t trace_class_channel_key;
 	};
 
 	/*
@@ -155,11 +155,11 @@ public:
 	 */
 	registration_token register_channel_objd(int objd,
 						 const app_session_identifier& session_id,
-						 std::uint64_t channel_registry_key)
+						 std::uint64_t trace_class_channel_key)
 	{
 		const std::lock_guard<std::mutex> guard(_lock);
 
-		_channel_entries[objd] = channel_entry{ session_id, channel_registry_key };
+		_channel_entries[objd] = channel_entry{ session_id, trace_class_channel_key };
 		return registration_token(*this, objd);
 	}
 

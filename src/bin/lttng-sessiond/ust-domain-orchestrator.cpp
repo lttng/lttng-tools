@@ -999,13 +999,13 @@ void copy_channel_attr_to_ustctl(struct lttng_ust_ctl_consumer_channel_attr *att
 }
 
 /*
- * Wrapper that acquires shared ownership of a trace class (session registry)
- * and locks it. The lock is released when the wrapper is destroyed.
+ * Wrapper that acquires shared ownership of a trace class and locks it.
+ * The lock is released when the wrapper is destroyed.
  *
  * Callers that need a `const locked_ref&` (e.g. push_metadata) should
  * use the locked_ref() accessor.
  */
-struct owned_locked_registry {
+struct owned_locked_trace_class {
 	std::shared_ptr<ls::ust::trace_class> _ownership;
 	ls::ust::trace_class::locked_ref _lock;
 
@@ -1041,10 +1041,9 @@ struct owned_locked_registry {
 	}
 };
 
-owned_locked_registry
-get_locked_session_registry(const ls::ust::app_session::identifier& identifier)
+owned_locked_trace_class get_locked_trace_class(const ls::ust::app_session::identifier& identifier)
 {
-	auto session = ls::ust::app_session::get_registry(identifier);
+	auto session = ls::ust::app_session::get_trace_class(identifier);
 	ls::ust::trace_class::locked_ref lock;
 
 	if (session) {
@@ -1309,8 +1308,7 @@ int ls::ust::domain_orchestrator::_create_channel_per_uid(ust::app *app,
 				ua_chan->trace_class_stream_class_handle,
 				ust_channel_type_to_allocation_policy(ua_chan->attr.type));
 		} catch (const std::exception& ex) {
-			ERR("Failed to add a channel registry to userspace registry session: %s",
-			    ex.what());
+			ERR("Failed to add a channel to trace class: %s", ex.what());
 			ret = -1;
 			goto error;
 		}
@@ -1332,9 +1330,9 @@ int ls::ust::domain_orchestrator::_create_channel_per_uid(ust::app *app,
 			ERR("Error creating UST channel \"%s\" on the consumer daemon",
 			    ua_chan->channel_config.name.c_str());
 
-			auto locked_registry = trace_class_ptr->lock();
+			auto locked_trace_class = trace_class_ptr->lock();
 			try {
-				locked_registry->remove_channel(
+				locked_trace_class->remove_channel(
 					ua_chan->trace_class_stream_class_handle, false);
 			} catch (const std::exception& ex) {
 				DBG("Could not find channel for removal: %s", ex.what());
@@ -1344,11 +1342,11 @@ int ls::ust::domain_orchestrator::_create_channel_per_uid(ust::app *app,
 
 		/* Set the consumer key on the stream class. */
 		{
-			auto locked_registry = trace_class_ptr->lock();
-			auto& ust_reg_chan =
-				locked_registry->channel(ua_chan->trace_class_stream_class_handle);
+			auto locked_trace_class = trace_class_ptr->lock();
+			auto& trace_class_channel = locked_trace_class->channel(
+				ua_chan->trace_class_stream_class_handle);
 
-			ust_reg_chan._consumer_key = ua_chan->key;
+			trace_class_channel._consumer_key = ua_chan->key;
 		}
 
 		/*
@@ -1356,9 +1354,9 @@ int ls::ust::domain_orchestrator::_create_channel_per_uid(ust::app *app,
 		 * orchestrator's stream group.
 		 */
 		{
-			auto locked_registry = trace_class_ptr->lock();
-			auto& stream_class_ref =
-				locked_registry->channel(ua_chan->trace_class_stream_class_handle);
+			auto locked_trace_class = trace_class_ptr->lock();
+			auto& stream_class_ref = locked_trace_class->channel(
+				ua_chan->trace_class_stream_class_handle);
 
 			ust::ust_object_data channel_obj(ua_chan->obj);
 			ua_chan->obj = nullptr;
@@ -1419,7 +1417,7 @@ int ls::ust::domain_orchestrator::_create_channel_per_pid(ust::app *app,
 {
 	int ret;
 	enum lttng_error_code cmd_ret;
-	uint64_t chan_reg_key;
+	uint64_t trace_class_channel_key;
 
 	LTTNG_ASSERT(app);
 	LTTNG_ASSERT(ua_chan);
@@ -1432,18 +1430,18 @@ int ls::ust::domain_orchestrator::_create_channel_per_pid(ust::app *app,
 
 	const lttng::urcu::read_lock_guard read_lock;
 
-	auto registry = ust::app_session::get_registry(ua_sess.get_identifier());
-	/* The UST app session lock is held, registry shall not be null. */
-	LTTNG_ASSERT(registry);
+	auto trace_class = ust::app_session::get_trace_class(ua_sess.get_identifier());
+	/* The UST app session lock is held, trace class shall not be null. */
+	LTTNG_ASSERT(trace_class);
 
 	ASSERT_LOCKED(session._lock);
 
-	/* Create and add a new channel registry to session. */
+	/* Create and add a new stream class to the trace class. */
 	try {
-		registry->add_channel(ua_chan->key,
-				      ust_channel_type_to_allocation_policy(ua_chan->attr.type));
+		trace_class->add_channel(ua_chan->key,
+					 ust_channel_type_to_allocation_policy(ua_chan->attr.type));
 	} catch (const std::exception& ex) {
-		ERR("Error creating the UST channel \"%s\" registry instance: %s",
+		ERR("Error creating UST stream class for channel \"%s\": %s",
 		    ua_chan->channel_config.name.c_str(),
 		    ex.what());
 		ret = -1;
@@ -1455,7 +1453,7 @@ int ls::ust::domain_orchestrator::_create_channel_per_pid(ust::app *app,
 					 &ua_sess,
 					 ua_chan,
 					 app->abi.bits_per_long,
-					 registry.get(),
+					 trace_class.get(),
 					 session.current_trace_chunk,
 					 session.trace_format,
 					 _session.output_traces,
@@ -1463,7 +1461,7 @@ int ls::ust::domain_orchestrator::_create_channel_per_pid(ust::app *app,
 	if (ret < 0) {
 		ERR("Error creating UST channel \"%s\" on the consumer daemon",
 		    ua_chan->channel_config.name.c_str());
-		goto error_remove_from_registry;
+		goto error_remove_from_trace_class;
 	}
 
 	ret = ua_chan->send_to_app_per_pid();
@@ -1471,15 +1469,15 @@ int ls::ust::domain_orchestrator::_create_channel_per_pid(ust::app *app,
 		if (ret != -ENOTCONN) {
 			ERR("Error sending channel to application");
 		}
-		goto error_remove_from_registry;
+		goto error_remove_from_trace_class;
 	}
 
-	chan_reg_key = ua_chan->key;
+	trace_class_channel_key = ua_chan->key;
 	{
-		auto locked_registry = registry->lock();
+		auto locked_trace_class = trace_class->lock();
 
-		auto& ust_reg_chan = locked_registry->channel(chan_reg_key);
-		ust_reg_chan._consumer_key = ua_chan->key;
+		auto& trace_class_channel = locked_trace_class->channel(trace_class_channel_key);
+		trace_class_channel._consumer_key = ua_chan->key;
 	}
 
 	/*
@@ -1494,9 +1492,9 @@ int ls::ust::domain_orchestrator::_create_channel_per_pid(ust::app *app,
 		const auto& recording_config =
 			static_cast<const lsc::recording_channel_configuration&>(
 				ua_chan->channel_config);
-		auto& trace_class_ref = *registry;
-		auto locked_registry = trace_class_ref.lock();
-		auto& stream_class_ref = locked_registry->channel(chan_reg_key);
+		auto& trace_class_ref = *trace_class;
+		auto locked_trace_class = trace_class_ref.lock();
+		auto& stream_class_ref = locked_trace_class->channel(trace_class_channel_key);
 
 		_find_or_create_per_pid_stream_group(recording_config,
 						     *app,
@@ -1516,14 +1514,14 @@ int ls::ust::domain_orchestrator::_create_channel_per_pid(ust::app *app,
 	if (cmd_ret != LTTNG_OK) {
 		ret = -(int) cmd_ret;
 		ERR("Failed to add channel to notification thread");
-		goto error_remove_from_registry;
+		goto error_remove_from_trace_class;
 	}
 
-error_remove_from_registry:
+error_remove_from_trace_class:
 	if (ret) {
 		try {
-			auto locked_registry = registry->lock();
-			locked_registry->remove_channel(ua_chan->key, false);
+			auto locked_trace_class = trace_class->lock();
+			locked_trace_class->remove_channel(ua_chan->key, false);
 		} catch (const std::exception& ex) {
 			DBG("Could not find channel for removal: %s", ex.what());
 		}
@@ -1568,12 +1566,12 @@ int ls::ust::domain_orchestrator::_send_app_channel(ust::app *app,
 
 	/* Register the channel's objd in the app's registry. */
 	{
-		const auto chan_reg_key = (buffer_type() == LTTNG_BUFFER_PER_UID) ?
+		const auto trace_class_channel_key = (buffer_type() == LTTNG_BUFFER_PER_UID) ?
 			ua_chan->trace_class_stream_class_handle :
 			ua_chan->key;
 
 		ua_chan->objd_token = app->objd_registry.register_channel_objd(
-			ua_chan->handle, ua_sess.get_identifier(), chan_reg_key);
+			ua_chan->handle, ua_sess.get_identifier(), trace_class_channel_key);
 	}
 
 	/* If channel is not enabled, disable it on the tracer */
@@ -1635,18 +1633,18 @@ int ls::ust::domain_orchestrator::_create_app_channel(
 error:
 	if (ret < 0 && ua_chan) {
 		/*
-		 * Remove from registry before destroying. Pass false to
+		 * Remove from trace class before destroying. Pass false to
 		 * avoid notifying the consumer on this error path.
 		 */
 		if (ua_sess.buffer_type == LTTNG_BUFFER_PER_PID) {
-			const auto registry =
-				ust::app_session::get_registry(ua_sess.get_identifier());
+			const auto trace_class =
+				ust::app_session::get_trace_class(ua_sess.get_identifier());
 
-			if (registry) {
-				const auto locked_registry = registry->lock();
+			if (trace_class) {
+				const auto locked_trace_class = trace_class->lock();
 
 				try {
-					locked_registry->remove_channel(ua_chan->key, false);
+					locked_trace_class->remove_channel(ua_chan->key, false);
 				} catch (const std::exception& ex) {
 					DBG("Could not find channel for removal: %s", ex.what());
 				}
@@ -1780,17 +1778,17 @@ int ls::ust::domain_orchestrator::_create_app_metadata(ust::app_session& ua_sess
 	LTTNG_ASSERT(get_consumer_output_ptr());
 	ASSERT_RCU_READ_LOCKED();
 
-	auto locked_registry = get_locked_session_registry(ua_sess.get_identifier());
-	/* The UST app session is held registry shall not be null. */
-	LTTNG_ASSERT(locked_registry);
+	auto locked_trace_class = get_locked_trace_class(ua_sess.get_identifier());
+	/* The UST app session is held, trace class shall not be null. */
+	LTTNG_ASSERT(locked_trace_class);
 
 	ASSERT_LOCKED(_session._lock);
 
 	const auto& metadata_config =
 		_session.get_domain(lttng::domain_class::USER_SPACE).metadata_channel();
 
-	/* Metadata already exists for this registry or it was closed previously */
-	if (locked_registry->_metadata_key || locked_registry->_metadata_closed) {
+	/* Metadata already exists for this trace class or it was closed previously */
+	if (locked_trace_class->_metadata_key || locked_trace_class->_metadata_closed) {
 		ret = 0;
 		goto error;
 	}
@@ -1819,11 +1817,11 @@ int ls::ust::domain_orchestrator::_create_app_metadata(ust::app_session& ua_sess
 
 	/*
 	 * Keep metadata key so we can identify it on the consumer side. Assign it
-	 * to the registry *before* we ask the consumer so we avoid the race of the
+	 * to the trace class *before* we ask the consumer so we avoid the race of the
 	 * consumer requesting the metadata and the ask_channel call on our side
 	 * did not returned yet.
 	 */
-	locked_registry->_metadata_key = metadata->key;
+	locked_trace_class->_metadata_key = metadata->key;
 
 	/*
 	 * Ask the metadata channel creation to the consumer. The metadata object
@@ -1835,14 +1833,14 @@ int ls::ust::domain_orchestrator::_create_app_metadata(ust::app_session& ua_sess
 				       metadata,
 				       get_consumer_output_ptr(),
 				       socket,
-				       locked_registry.locked_ref().get(),
+				       locked_trace_class.locked_ref().get(),
 				       _session.current_trace_chunk,
 				       _session.trace_format,
 				       _session.output_traces,
 				       _session.live_timer);
 	if (ret < 0) {
 		/* Nullify the metadata key so we don't try to close it later on. */
-		locked_registry->_metadata_key = 0;
+		locked_trace_class->_metadata_key = 0;
 		goto error_consumer;
 	}
 
@@ -1855,7 +1853,7 @@ int ls::ust::domain_orchestrator::_create_app_metadata(ust::app_session& ua_sess
 	ret = consumer_setup_metadata(socket, metadata->key);
 	if (ret < 0) {
 		/* Nullify the metadata key so we don't try to close it later on. */
-		locked_registry->_metadata_key = 0;
+		locked_trace_class->_metadata_key = 0;
 		goto error_consumer;
 	}
 
@@ -2098,14 +2096,14 @@ int ls::ust::domain_orchestrator::_stop_app_trace(ust::app *app)
 	health_code_update();
 
 	{
-		auto registry = ust::app_session::get_registry(ua_sess->get_identifier());
-		LTTNG_ASSERT(registry);
-		auto locked_registry = registry->lock();
-		if (!locked_registry->_metadata_closed) {
+		auto trace_class = ust::app_session::get_trace_class(ua_sess->get_identifier());
+		LTTNG_ASSERT(trace_class);
+		auto locked_trace_class = trace_class->lock();
+		if (!locked_trace_class->_metadata_closed) {
 			const auto socket = consumer_find_socket_by_bitness(
-				locked_registry->abi.bits_per_long, ua_sess->consumer);
+				locked_trace_class->abi.bits_per_long, ua_sess->consumer);
 			if (socket) {
-				(void) ust_app_push_metadata(locked_registry, socket, 0);
+				(void) ust_app_push_metadata(locked_trace_class, socket, 0);
 			}
 		}
 	}

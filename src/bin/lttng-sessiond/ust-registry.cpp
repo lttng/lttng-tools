@@ -44,7 +44,7 @@ static void ust_event_class_destroy_rcu(struct rcu_head *head)
 }
 
 /*
- * For a given event in a registry, delete the entry and destroy the event.
+ * For a given event in a trace class, delete the entry and destroy the event.
  * This MUST be called within a RCU read side lock section.
  */
 void ust_stream_class_destroy_event(lsu::stream_class *chan,
@@ -96,7 +96,7 @@ lsu::trace_class *ust_trace_class_per_uid_create(enum lttng_trace_format trace_f
 						    std::move(hostname),
 						    creation_time);
 	} catch (const std::exception& ex) {
-		ERR("Failed to create per-uid registry session: %s", ex.what());
+		ERR("Failed to create per-UID trace class: %s", ex.what());
 		return nullptr;
 	}
 }
@@ -130,14 +130,14 @@ lsu::trace_class *ust_trace_class_per_pid_create(lsu::app *app,
 						    std::move(hostname),
 						    creation_time);
 	} catch (const std::exception& ex) {
-		ERR("Failed to create per-pid registry session: %s", ex.what());
+		ERR("Failed to create per-PID trace class: %s", ex.what());
 		return nullptr;
 	}
 }
 
 /*
- * Destroy session registry. This does NOT free the given pointer since it
- * might get passed as a reference. The registry lock should NOT be acquired.
+ * Destroy a trace class. This does NOT free the given pointer since it
+ * might get passed as a reference. The trace class lock should NOT be acquired.
  */
 void ust_trace_class_destroy(lsu::trace_class *reg)
 {
