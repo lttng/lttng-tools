@@ -1070,66 +1070,6 @@ get_locked_session_registry(const ls::ust::app_session::identifier& identifier)
 
 } /* anonymous namespace */
 
-void ls::ust::domain_orchestrator::_init_app_session(ust::app_session *ua_sess, ust::app *app)
-{
-	struct tm timeinfo_buf = {};
-	const auto *timeinfo = localtime_r(&app->registration_time, &timeinfo_buf);
-	char datetime[16];
-
-	strftime(datetime, sizeof(datetime), "%Y%m%d-%H%M%S", timeinfo);
-
-	DBG2("Shadow copy of session handle %d", ua_sess->handle);
-
-	ua_sess->recording_session_id = _session_id();
-	ua_sess->app_session_id = get_next_session_id();
-	LTTNG_OPTIONAL_SET(&ua_sess->real_credentials.uid, app->uid);
-	LTTNG_OPTIONAL_SET(&ua_sess->real_credentials.gid, app->gid);
-	LTTNG_OPTIONAL_SET(&ua_sess->effective_credentials.uid, _session.uid);
-	LTTNG_OPTIONAL_SET(&ua_sess->effective_credentials.gid, _session.gid);
-	ua_sess->buffer_type = buffer_type();
-	ua_sess->bits_per_long = app->abi.bits_per_long;
-
-	/*
-	 * Build the trace output path. Per-PID traces use
-	 * "pid/<name>-<pid>-<datetime>"; per-UID traces use
-	 * "uid/<uid>/<bits>-bit".
-	 */
-	switch (ua_sess->buffer_type) {
-	case LTTNG_BUFFER_PER_PID:
-		ua_sess->path = fmt::format("pid/{}-{}-{}", app->name, app->pid, datetime);
-		break;
-	case LTTNG_BUFFER_PER_UID:
-		ua_sess->path = fmt::format("uid/{}/{}-bit",
-					    lttng_credentials_get_uid(&ua_sess->real_credentials),
-					    app->abi.bits_per_long);
-		break;
-	default:
-		abort();
-	}
-
-	ua_sess->root_shm_path = _root_shm_path;
-	ua_sess->shm_path = shm_path();
-
-	if (!ua_sess->shm_path.empty()) {
-		switch (ua_sess->buffer_type) {
-		case LTTNG_BUFFER_PER_PID:
-			ua_sess->shm_path +=
-				fmt::format("/pid/{}-{}-{}", app->name, app->pid, datetime);
-			break;
-		case LTTNG_BUFFER_PER_UID:
-			ua_sess->shm_path +=
-				fmt::format("/uid/{}/{}-bit", app->uid, app->abi.bits_per_long);
-			break;
-		default:
-			abort();
-		}
-	}
-
-	/* Acquire the consumer reference last, after all potentially-throwing operations. */
-	consumer_output_get(get_consumer_output_ptr());
-	ua_sess->consumer = get_consumer_output_ptr();
-}
-
 int ls::ust::domain_orchestrator::_find_or_create_app_session(ust::app *app,
 							      ust::app_session **ua_sess_ptr)
 {
@@ -1152,13 +1092,71 @@ int ls::ust::domain_orchestrator::_find_or_create_app_session(ust::app *app,
 	     app->pid,
 	     _session_id());
 
-	std::unique_ptr<ust::app_session> new_session(alloc_ust_app_session());
-	if (!new_session) {
-		ret = -ENOMEM;
-		goto error;
+	/*
+	 * Build the trace output path and shared-memory path for this
+	 * app session. Per-PID traces use "pid/<name>-<pid>-<datetime>";
+	 * per-UID traces use "uid/<uid>/<bits>-bit".
+	 */
+	struct tm timeinfo_buf = {};
+	const auto *timeinfo = localtime_r(&app->registration_time, &timeinfo_buf);
+	char datetime[16];
+	strftime(datetime, sizeof(datetime), "%Y%m%d-%H%M%S", timeinfo);
+
+	lttng_credentials real_creds = {};
+	LTTNG_OPTIONAL_SET(&real_creds.uid, app->uid);
+	LTTNG_OPTIONAL_SET(&real_creds.gid, app->gid);
+
+	lttng_credentials effective_creds = {};
+	LTTNG_OPTIONAL_SET(&effective_creds.uid, _session.uid);
+	LTTNG_OPTIONAL_SET(&effective_creds.gid, _session.gid);
+
+	const auto buf_type = buffer_type();
+
+	auto trace_path = [&]() -> std::string {
+		switch (buf_type) {
+		case LTTNG_BUFFER_PER_PID:
+			return fmt::format("pid/{}-{}-{}", app->name, app->pid, datetime);
+		case LTTNG_BUFFER_PER_UID:
+			return fmt::format("uid/{}/{}-bit",
+					   lttng_credentials_get_uid(&real_creds),
+					   app->abi.bits_per_long);
+		default:
+			abort();
+		}
+	}();
+
+	auto session_shm_path = shm_path();
+	if (!session_shm_path.empty()) {
+		switch (buf_type) {
+		case LTTNG_BUFFER_PER_PID:
+			session_shm_path +=
+				fmt::format("/pid/{}-{}-{}", app->name, app->pid, datetime);
+			break;
+		case LTTNG_BUFFER_PER_UID:
+			session_shm_path +=
+				fmt::format("/uid/{}/{}-bit", app->uid, app->abi.bits_per_long);
+			break;
+		default:
+			abort();
+		}
 	}
 
-	_init_app_session(new_session.get(), app);
+	/*
+	 * Acquire a consumer output reference for the new session.
+	 * delete_ust_app_session() releases it on all error/teardown paths.
+	 */
+	consumer_output_get(get_consumer_output_ptr());
+
+	auto new_session = lttng::make_unique<ust::app_session>(_session_id(),
+								get_next_session_id(),
+								real_creds,
+								effective_creds,
+								buf_type,
+								app->abi.bits_per_long,
+								std::move(trace_path),
+								_root_shm_path,
+								std::move(session_shm_path),
+								get_consumer_output_ptr());
 
 	switch (buffer_type()) {
 	case LTTNG_BUFFER_PER_PID:

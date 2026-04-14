@@ -429,12 +429,6 @@ private:
 	int _clear_quiescent_app_session(ust::app *app, ust::app_session *ua_sess);
 
 	/*
-	 * Initialize a newly allocated app session from the orchestrator's
-	 * configuration and the recording session's properties.
-	 */
-	void _init_app_session(ust::app_session *ua_sess, ust::app *app);
-
-	/*
 	 * Look up or create the app session for the given application.
 	 * On success, *ua_sess_ptr is set to the app session. Returns 0
 	 * on success, or a negative errno on failure (-ENOMEM, -ENOTCONN).

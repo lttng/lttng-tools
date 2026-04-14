@@ -11,7 +11,6 @@
 
 #include "ust-app-objd-registry.hpp"
 #include "ust-app-session-id.hpp"
-#include "ust-application-abi.hpp"
 
 #include <common/credentials.hpp>
 #include <common/hashtable/hashtable.hpp>
@@ -41,7 +40,7 @@ namespace lttng {
 namespace sessiond {
 namespace ust {
 
-struct app_session {
+class app_session {
 private:
 	static void _session_unlock(app_session *session)
 	{
@@ -62,6 +61,32 @@ public:
 		const app_session,
 		lttng::memory::create_deleter_class<const app_session,
 						    app_session::_const_session_unlock>::deleter>;
+
+	using identifier = app_session_identifier;
+
+	/*
+	 * Construct an app session. The consumer_output pointer must
+	 * already have had its reference count incremented by the
+	 * caller; the app_session does not acquire an additional
+	 * reference.
+	 */
+	explicit app_session(std::uint64_t recording_session_id,
+			     std::uint64_t app_session_id,
+			     lttng_credentials real_credentials,
+			     lttng_credentials effective_credentials,
+			     lttng_buffer_type buffer_type,
+			     std::uint32_t bits_per_long,
+			     std::string path,
+			     std::string root_shm_path,
+			     std::string shm_path,
+			     consumer_output *consumer);
+
+	~app_session();
+
+	app_session(const app_session&) = delete;
+	app_session(app_session&&) = delete;
+	app_session& operator=(const app_session&) = delete;
+	app_session& operator=(app_session&&) = delete;
 
 	static locked_weak_ref make_locked_weak_ref(app_session& ua_session)
 	{
@@ -87,8 +112,6 @@ public:
 		pthread_mutex_lock(&_lock);
 		return app_session::make_locked_weak_ref(*this);
 	}
-
-	using identifier = app_session_identifier;
 
 	identifier get_identifier() const noexcept
 	{
@@ -129,7 +152,7 @@ public:
 	bool enabled = false;
 	/* started: has the session been in started state at any time ? */
 	bool started = false; /* allows detection of start vs restart. */
-	int handle = 0; /* used has unique identifier for app session */
+	int handle = -1; /* used as unique identifier for app session */
 
 	bool deleted = false; /* Session deleted flag. Check with lock held. */
 
@@ -138,10 +161,10 @@ public:
 	 * can share the same recording_session_id since each application
 	 * gets its own app_session for the same recording session.
 	 */
-	uint64_t recording_session_id = 0;
+	const std::uint64_t recording_session_id;
 	/* Unique app_session identifier, allocated by sessiond. */
-	uint64_t app_session_id = 0;
-	::lttng_ht *channels = nullptr; /* Registered channels */
+	const std::uint64_t app_session_id;
+	::lttng_ht *channels; /* Registered channels */
 
 	/*
 	 * RAII token: registers this session's UST tracer-side handle
@@ -153,24 +176,22 @@ public:
 	 */
 	nonstd::optional<app_objd_registry::registration_token> objd_token;
 	/* Starts with 'ust'; no leading slash. */
-	std::string path;
+	const std::string path;
 	/* UID/GID of the application owning the session */
-	lttng_credentials real_credentials = {};
+	const lttng_credentials real_credentials;
 	/* Effective UID and GID. Same as the tracing session. */
-	lttng_credentials effective_credentials = {};
+	const lttng_credentials effective_credentials;
 	/*
 	 * Once at least *one* session is created onto the application, the
 	 * corresponding consumer is set so we can use it on unregistration.
 	 */
-	::consumer_output *consumer = nullptr;
-	enum lttng_buffer_type buffer_type = LTTNG_BUFFER_PER_PID;
+	::consumer_output *consumer;
+	const enum lttng_buffer_type buffer_type;
 	/* ABI of the session. Same value as the application. */
-	uint32_t bits_per_long = 0;
-	/* For delayed reclaim */
-	::rcu_head rcu_head = {};
+	const std::uint32_t bits_per_long;
 
-	std::string root_shm_path;
-	std::string shm_path;
+	const std::string root_shm_path;
+	const std::string shm_path;
 
 private:
 	/*
@@ -190,7 +211,6 @@ private:
 std::shared_ptr<lttng::sessiond::ust::trace_class>
 ust_app_get_session_registry(const lttng::sessiond::ust::app_session::identifier& identifier);
 
-lttng::sessiond::ust::app_session *alloc_ust_app_session();
 void delete_ust_app_session(int sock,
 			    lttng::sessiond::ust::app_session *ua_sess,
 			    lttng::sessiond::ust::app *app);

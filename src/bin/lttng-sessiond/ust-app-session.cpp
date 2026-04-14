@@ -143,21 +143,38 @@ error:
 	return ret_val;
 }
 
-void delete_ust_app_session_rcu(struct rcu_head *head)
-{
-	lsu::app_session *ua_sess = lttng::utils::container_of(head, &lsu::app_session::rcu_head);
+} /* anonymous namespace */
 
-	lttng_ht_destroy(ua_sess->channels);
-	delete ua_sess;
+lsu::app_session::app_session(std::uint64_t recording_session_id_,
+			      std::uint64_t app_session_id_,
+			      lttng_credentials real_credentials_,
+			      lttng_credentials effective_credentials_,
+			      lttng_buffer_type buffer_type_,
+			      std::uint32_t bits_per_long_,
+			      std::string path_,
+			      std::string root_shm_path_,
+			      std::string shm_path_,
+			      consumer_output *consumer_) :
+	recording_session_id(recording_session_id_),
+	app_session_id(app_session_id_),
+	channels(lttng_ht_new(0, LTTNG_HT_TYPE_STRING)),
+	path(std::move(path_)),
+	real_credentials(real_credentials_),
+	effective_credentials(effective_credentials_),
+	consumer(consumer_),
+	buffer_type(buffer_type_),
+	bits_per_long(bits_per_long_),
+	root_shm_path(std::move(root_shm_path_)),
+	shm_path(std::move(shm_path_))
+{
+	LTTNG_ASSERT(channels);
+	LTTNG_ASSERT(consumer);
 }
 
-/*
- * Delete the session from the application ht and delete the data structure by
- * freeing every object inside and releasing them.
- *
- * The session list lock must be held by the caller.
- */
-} /* namespace */
+lsu::app_session::~app_session()
+{
+	lttng_ht_destroy(channels);
+}
 
 /*
  * Return the atomically incremented value of next_session_id.
@@ -319,20 +336,7 @@ void delete_ust_app_session(int sock, lsu::app_session *ua_sess, lsu::app *app)
 	}
 
 	consumer_output_put(ua_sess->consumer);
-	call_rcu(&ua_sess->rcu_head, delete_ust_app_session_rcu);
-}
-
-/*
- * Alloc new UST app session.
- */
-lsu::app_session *alloc_ust_app_session()
-{
-	auto *ua_sess = new lsu::app_session;
-
-	ua_sess->handle = -1;
-	ua_sess->channels = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
-
-	return ua_sess;
+	delete ua_sess;
 }
 
 int ust_app_flush_app_session(lsu::app& app, lsu::app_session& ua_sess)
