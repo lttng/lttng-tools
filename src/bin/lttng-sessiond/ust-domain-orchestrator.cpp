@@ -1239,7 +1239,6 @@ int ls::ust::domain_orchestrator::_allocate_app_channel(
 	const lsc::recording_channel_configuration& channel_config,
 	std::uint64_t trace_class_stream_class_handle)
 {
-	int ret = 0;
 	struct ust_app_channel *ua_chan;
 
 	ASSERT_RCU_READ_LOCKED();
@@ -1253,12 +1252,7 @@ int ls::ust::domain_orchestrator::_allocate_app_channel(
 		}
 	}
 
-	ua_chan = alloc_ust_app_channel(ua_sess, nullptr, channel_config);
-	if (ua_chan == nullptr) {
-		/* Only malloc can fail here */
-		ret = -ENOMEM;
-		goto error;
-	}
+	ua_chan = new ust_app_channel(ua_sess, channel_config);
 	ua_chan->init_from_config();
 	ua_chan->trace_class_stream_class_handle = trace_class_stream_class_handle;
 	ua_chan->attr.type =
@@ -1269,11 +1263,7 @@ end:
 		*ua_chanp = ua_chan;
 	}
 
-	/* Everything went well. */
 	return 0;
-
-error:
-	return ret;
 }
 
 int ls::ust::domain_orchestrator::_create_channel_per_uid(ust::app *app,
@@ -1796,12 +1786,7 @@ int ls::ust::domain_orchestrator::_create_app_metadata(ust::app_session& ua_sess
 	}
 
 	/* Allocate UST metadata */
-	metadata = alloc_ust_app_metadata_channel(ua_sess, metadata_config);
-	if (!metadata) {
-		/* malloc() failed */
-		ret = -ENOMEM;
-		goto error;
-	}
+	metadata = new ust_app_channel(ua_sess, metadata_config);
 
 	{
 		const auto default_attr = _default_metadata_channel_attr();

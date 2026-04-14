@@ -52,45 +52,23 @@ uint64_t get_next_channel_key()
 	return ret;
 }
 
-void delete_ust_app_channel_rcu(struct rcu_head *head)
-{
-	struct ust_app_channel *ua_chan =
-		lttng::utils::container_of(head, &ust_app_channel::rcu_head);
-
-	delete ua_chan;
-}
-
-/*
- * Common initialization for ust_app_channel. Used by both the recording
- * channel and metadata channel allocation paths.
- */
-void init_ust_app_channel(struct ust_app_channel *ua_chan, struct lttng_ust_abi_channel_attr *attr)
-{
-	ua_chan->enabled = true;
-	ua_chan->handle = -1;
-	ua_chan->key = get_next_channel_key();
-
-	/* By default, the channel is a per cpu channel. */
-	ua_chan->attr.type = LTTNG_UST_ABI_CHAN_PER_CPU;
-
-	/* Copy attributes */
-	if (attr) {
-		/* Translate from lttng_ust_channel to lttng_ust_ctl_consumer_channel_attr. */
-		ua_chan->attr.subbuf_size = attr->subbuf_size;
-		ua_chan->attr.num_subbuf = attr->num_subbuf;
-		ua_chan->attr.overwrite = attr->overwrite;
-		ua_chan->attr.switch_timer_interval = attr->switch_timer_interval;
-		ua_chan->attr.read_timer_interval = attr->read_timer_interval;
-		ua_chan->attr.output = (lttng_ust_abi_output) attr->output;
-		ua_chan->attr.blocking_timeout = attr->blocking_timeout;
-		ua_chan->attr.type = static_cast<enum lttng_ust_abi_chan_type>(attr->type);
-	}
-
-	DBG3("UST app channel %s allocated", ua_chan->channel_config.name.c_str());
-}
 } /* namespace */
 
 /* -- ust_app_channel -- */
+
+ust_app_channel::ust_app_channel(lsu::app_session& session_,
+				 const lsc::channel_configuration& channel_config_) :
+	enabled(true),
+	handle(-1),
+	key(get_next_channel_key()),
+	session(session_),
+	channel_config(channel_config_)
+{
+	/* By default, the channel is a per cpu channel. */
+	attr.type = LTTNG_UST_ABI_CHAN_PER_CPU;
+
+	DBG3("UST app channel %s allocated", channel_config.name.c_str());
+}
 
 ust_app_channel::~ust_app_channel() = default;
 
@@ -409,49 +387,7 @@ enum lttng_ust_abi_chan_type allocation_policy_to_ust_channel_type(
 }
 
 /*
- * Allocate a recording channel with an associated config reference.
- */
-struct ust_app_channel *
-alloc_ust_app_channel(lsu::app_session& ua_sess,
-		      struct lttng_ust_abi_channel_attr *attr,
-		      const lttng::sessiond::config::recording_channel_configuration& config)
-{
-	struct ust_app_channel *ua_chan;
-
-	try {
-		ua_chan = new ust_app_channel(ua_sess, config);
-	} catch (const std::bad_alloc&) {
-		PERROR("ust_app_channel allocation");
-		return nullptr;
-	}
-
-	init_ust_app_channel(ua_chan, attr);
-	return ua_chan;
-}
-
-/*
- * Allocate a metadata channel (no recording_channel_configuration).
- */
-struct ust_app_channel *alloc_ust_app_metadata_channel(
-	lsu::app_session& ua_sess,
-	const lttng::sessiond::config::metadata_channel_configuration& metadata_config)
-{
-	struct ust_app_channel *ua_chan;
-
-	try {
-		ua_chan = new ust_app_channel(ua_sess, metadata_config);
-	} catch (const std::bad_alloc&) {
-		PERROR("ust_app_channel allocation");
-		return nullptr;
-	}
-
-	init_ust_app_channel(ua_chan, nullptr);
-	return ua_chan;
-}
-
-/*
- * Delete ust app channel safely. RCU read lock must be held before calling
- * this function.
+ * Delete ust app channel safely.
  *
  * The session list lock must be held by the caller.
  */
@@ -527,7 +463,7 @@ void delete_ust_app_channel(int sock,
 		lttng_fd_put(LTTNG_FD_APPS, 1);
 		free(ua_chan->obj);
 	}
-	call_rcu(&ua_chan->rcu_head, delete_ust_app_channel_rcu);
+	delete ua_chan;
 }
 
 /*

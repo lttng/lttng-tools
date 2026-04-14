@@ -38,10 +38,7 @@ class app_stream;
 struct ust_app_channel {
 	explicit ust_app_channel(
 		lttng::sessiond::ust::app_session& session_,
-		const lttng::sessiond::config::channel_configuration& channel_config_) :
-		session(session_), channel_config(channel_config_)
-	{
-	}
+		const lttng::sessiond::config::channel_configuration& channel_config_);
 
 	~ust_app_channel();
 	ust_app_channel(const ust_app_channel&) = delete;
@@ -122,8 +119,6 @@ struct ust_app_channel {
 	 * handle is obtained from the tracer (not at construction time).
 	 */
 	nonstd::optional<lttng::sessiond::ust::app_objd_registry::registration_token> objd_token;
-	/* For delayed reclaim */
-	struct rcu_head rcu_head = {};
 	/*
 	 * Reference to the channel configuration from which this per-app
 	 * channel was derived. Points to a recording_channel_configuration
@@ -186,13 +181,6 @@ private:
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
-struct ust_app_channel *
-alloc_ust_app_channel(lttng::sessiond::ust::app_session& ua_sess,
-		      struct lttng_ust_abi_channel_attr *attr,
-		      const lttng::sessiond::config::recording_channel_configuration& config);
-struct ust_app_channel *alloc_ust_app_metadata_channel(
-	lttng::sessiond::ust::app_session& ua_sess,
-	const lttng::sessiond::config::metadata_channel_configuration& metadata_config);
 void delete_ust_app_channel(int sock,
 			    struct ust_app_channel *ua_chan,
 			    lttng::sessiond::ust::app *app,
