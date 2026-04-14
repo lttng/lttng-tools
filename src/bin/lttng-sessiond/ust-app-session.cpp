@@ -265,13 +265,10 @@ void delete_ust_app_session(int sock, lsu::app_session *ua_sess, lsu::app *app)
 	LTTNG_ASSERT(ua_sess);
 	ASSERT_RCU_READ_LOCKED();
 
-	/* Locked for the duration of the function. */
-	auto locked_ua_sess = ua_sess->lock();
-
 	LTTNG_ASSERT(!ua_sess->deleted);
 	ua_sess->deleted = true;
 
-	auto locked_registry = get_locked_session_registry(locked_ua_sess->get_identifier());
+	auto locked_registry = get_locked_session_registry(ua_sess->get_identifier());
 	/* Registry can be null on error path during initialization. */
 	if (locked_registry) {
 		/* Push metadata for application before freeing the application. */
@@ -346,8 +343,7 @@ int ust_app_flush_app_session(lsu::app& app, lsu::app_session& ua_sess)
 		return 0;
 	}
 
-	const auto locked_ua_sess = ua_sess.lock();
-	if (locked_ua_sess->deleted) {
+	if (ua_sess.deleted) {
 		return 0;
 	}
 

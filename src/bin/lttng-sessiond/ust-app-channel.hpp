@@ -187,17 +187,17 @@ private:
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
 struct ust_app_channel *
-alloc_ust_app_channel(const lttng::sessiond::ust::app_session::locked_weak_ref& ua_sess,
+alloc_ust_app_channel(lttng::sessiond::ust::app_session& ua_sess,
 		      struct lttng_ust_abi_channel_attr *attr,
 		      const lttng::sessiond::config::recording_channel_configuration& config);
 struct ust_app_channel *alloc_ust_app_metadata_channel(
-	const lttng::sessiond::ust::app_session::locked_weak_ref& ua_sess,
+	lttng::sessiond::ust::app_session& ua_sess,
 	const lttng::sessiond::config::metadata_channel_configuration& metadata_config);
 void delete_ust_app_channel(int sock,
 			    struct ust_app_channel *ua_chan,
 			    lttng::sessiond::ust::app *app,
 			    const lttng::sessiond::ust::trace_class::locked_ref& locked_registry);
-int enable_ust_app_channel(const lttng::sessiond::ust::app_session::locked_weak_ref& ua_sess,
+int enable_ust_app_channel(lttng::sessiond::ust::app_session& ua_sess,
 			   lttng::c_string_view channel_name);
 int do_consumer_create_channel(struct consumer_output *consumer,
 			       lttng::sessiond::ust::app_session *ua_sess,

@@ -412,14 +412,14 @@ enum lttng_ust_abi_chan_type allocation_policy_to_ust_channel_type(
  * Allocate a recording channel with an associated config reference.
  */
 struct ust_app_channel *
-alloc_ust_app_channel(const lsu::app_session::locked_weak_ref& ua_sess,
+alloc_ust_app_channel(lsu::app_session& ua_sess,
 		      struct lttng_ust_abi_channel_attr *attr,
 		      const lttng::sessiond::config::recording_channel_configuration& config)
 {
 	struct ust_app_channel *ua_chan;
 
 	try {
-		ua_chan = new ust_app_channel(ua_sess.get(), config);
+		ua_chan = new ust_app_channel(ua_sess, config);
 	} catch (const std::bad_alloc&) {
 		PERROR("ust_app_channel allocation");
 		return nullptr;
@@ -433,13 +433,13 @@ alloc_ust_app_channel(const lsu::app_session::locked_weak_ref& ua_sess,
  * Allocate a metadata channel (no recording_channel_configuration).
  */
 struct ust_app_channel *alloc_ust_app_metadata_channel(
-	const lsu::app_session::locked_weak_ref& ua_sess,
+	lsu::app_session& ua_sess,
 	const lttng::sessiond::config::metadata_channel_configuration& metadata_config)
 {
 	struct ust_app_channel *ua_chan;
 
 	try {
-		ua_chan = new ust_app_channel(ua_sess.get(), metadata_config);
+		ua_chan = new ust_app_channel(ua_sess, metadata_config);
 	} catch (const std::bad_alloc&) {
 		PERROR("ust_app_channel allocation");
 		return nullptr;
@@ -534,16 +534,15 @@ void delete_ust_app_channel(int sock,
  * Lookup ust app channel for session and enable it on the tracer side. This
  * MUST be called with a RCU read side lock acquired.
  */
-int enable_ust_app_channel(const lsu::app_session::locked_weak_ref& ua_sess,
-			   lttng::c_string_view channel_name)
+int enable_ust_app_channel(lsu::app_session& ua_sess, lttng::c_string_view channel_name)
 {
 	int ret = 0;
 
-	const auto it = ua_sess->channels.find(channel_name.data());
-	if (it == ua_sess->channels.end()) {
+	const auto it = ua_sess.channels.find(channel_name.data());
+	if (it == ua_sess.channels.end()) {
 		DBG2("Unable to find channel %s in ust session id %" PRIu64,
 		     channel_name.data(),
-		     ua_sess->recording_session_id);
+		     ua_sess.recording_session_id);
 		goto error;
 	}
 

@@ -645,7 +645,7 @@ void ls::ust::domain_orchestrator::_enable_channel_on_apps(lttng::c_string_view 
 		}
 
 		/* Enable channel onto application. */
-		(void) enable_ust_app_channel(ua_sess->lock(), channel_name);
+		(void) enable_ust_app_channel(*ua_sess, channel_name);
 	}
 }
 
@@ -704,8 +704,7 @@ int ls::ust::domain_orchestrator::_create_event_on_apps(
 			continue;
 		}
 
-		auto locked_ua_sess = ua_sess->lock();
-		if (locked_ua_sess->deleted) {
+		if (ua_sess->deleted) {
 			continue;
 		}
 
@@ -750,7 +749,6 @@ int ls::ust::domain_orchestrator::_enable_event_on_apps(
 			continue;
 		}
 
-		auto locked_ua_sess = ua_sess->lock();
 		if (ua_sess->deleted) {
 			continue;
 		}
@@ -847,8 +845,7 @@ void ls::ust::domain_orchestrator::_add_context_on_apps(
 			continue;
 		}
 
-		const auto locked_ua_sess = ua_sess->lock();
-		if (locked_ua_sess->deleted) {
+		if (ua_sess->deleted) {
 			continue;
 		}
 
@@ -1237,7 +1234,7 @@ error:
 }
 
 int ls::ust::domain_orchestrator::_allocate_app_channel(
-	const ust::app_session::locked_weak_ref& ua_sess,
+	ust::app_session& ua_sess,
 	struct ust_app_channel **ua_chanp,
 	const lsc::recording_channel_configuration& channel_config,
 	std::uint64_t trace_class_stream_class_handle)
@@ -1249,8 +1246,8 @@ int ls::ust::domain_orchestrator::_allocate_app_channel(
 
 	/* Lookup channel in the ust app session */
 	{
-		const auto it = ua_sess->channels.find(channel_config.name);
-		if (it != ua_sess->channels.end()) {
+		const auto it = ua_sess.channels.find(channel_config.name);
+		if (it != ua_sess.channels.end()) {
 			ua_chan = it->second;
 			goto end;
 		}
@@ -1430,10 +1427,9 @@ error:
 	return ret;
 }
 
-int ls::ust::domain_orchestrator::_create_channel_per_pid(
-	ust::app *app,
-	const ust::app_session::locked_weak_ref& ua_sess,
-	struct ust_app_channel *ua_chan)
+int ls::ust::domain_orchestrator::_create_channel_per_pid(ust::app *app,
+							  ust::app_session& ua_sess,
+							  struct ust_app_channel *ua_chan)
 {
 	int ret;
 	enum lttng_error_code cmd_ret;
@@ -1450,7 +1446,7 @@ int ls::ust::domain_orchestrator::_create_channel_per_pid(
 
 	const lttng::urcu::read_lock_guard read_lock;
 
-	auto registry = ust_app_get_session_registry(ua_sess->get_identifier());
+	auto registry = ust_app_get_session_registry(ua_sess.get_identifier());
 	/* The UST app session lock is held, registry shall not be null. */
 	LTTNG_ASSERT(registry);
 
@@ -1470,7 +1466,7 @@ int ls::ust::domain_orchestrator::_create_channel_per_pid(
 
 	/* Create and get channel on the consumer side. */
 	ret = do_consumer_create_channel(consumer,
-					 &ua_sess.get(),
+					 &ua_sess,
 					 ua_chan,
 					 app->abi.bits_per_long,
 					 registry.get(),
@@ -1551,7 +1547,7 @@ error:
 }
 
 int ls::ust::domain_orchestrator::_send_app_channel(ust::app *app,
-						    const ust::app_session::locked_weak_ref& ua_sess,
+						    ust::app_session& ua_sess,
 						    struct ust_app_channel *ua_chan)
 {
 	int ret;
@@ -1564,7 +1560,7 @@ int ls::ust::domain_orchestrator::_send_app_channel(ust::app *app,
 	switch (buffer_type()) {
 	case LTTNG_BUFFER_PER_UID:
 	{
-		ret = _create_channel_per_uid(app, &ua_sess.get(), ua_chan);
+		ret = _create_channel_per_uid(app, &ua_sess, ua_chan);
 		if (ret < 0) {
 			goto error;
 		}
@@ -1591,7 +1587,7 @@ int ls::ust::domain_orchestrator::_send_app_channel(ust::app *app,
 			ua_chan->key;
 
 		ua_chan->objd_token = app->objd_registry.register_channel_objd(
-			ua_chan->handle, ua_sess->get_identifier(), chan_reg_key);
+			ua_chan->handle, ua_sess.get_identifier(), chan_reg_key);
 	}
 
 	/* If channel is not enabled, disable it on the tracer */
@@ -1607,7 +1603,7 @@ error:
 }
 
 int ls::ust::domain_orchestrator::_create_app_channel(
-	const ust::app_session::locked_weak_ref& ua_sess,
+	ust::app_session& ua_sess,
 	ust::app *app,
 	struct ust_app_channel **_ua_chan,
 	const lsc::recording_channel_configuration& channel_config,
@@ -1632,7 +1628,7 @@ int ls::ust::domain_orchestrator::_create_app_channel(
 	}
 
 	/* Only publish the channel if successfully created on the tracer/consumer. */
-	ua_sess->channels.emplace(ua_chan->channel_config.name, ua_chan);
+	ua_sess.channels.emplace(ua_chan->channel_config.name, ua_chan);
 
 	/* Add contexts. */
 	for (const auto& ctx_uptr : channel_config.get_contexts()) {
@@ -1651,7 +1647,7 @@ int ls::ust::domain_orchestrator::_create_app_channel(
 
 error:
 	if (ret < 0 && ua_chan) {
-		const auto registry = ust_app_get_session_registry(ua_sess->get_identifier());
+		const auto registry = ust_app_get_session_registry(ua_sess.get_identifier());
 		/* The UST app session lock is held, registry shall not be null. */
 		LTTNG_ASSERT(registry);
 
@@ -1671,7 +1667,7 @@ error:
 }
 
 int ls::ust::domain_orchestrator::_find_or_create_app_channel(
-	const ust::app_session::locked_weak_ref& ua_sess,
+	ust::app_session& ua_sess,
 	ust::app *app,
 	struct ust_app_channel **ua_chan,
 	const lsc::recording_channel_configuration& channel_config,
@@ -1680,8 +1676,8 @@ int ls::ust::domain_orchestrator::_find_or_create_app_channel(
 	int ret = 0;
 
 	{
-		const auto it = ua_sess->channels.find(channel_config.name);
-		if (it != ua_sess->channels.end()) {
+		const auto it = ua_sess.channels.find(channel_config.name);
+		if (it != ua_sess.channels.end()) {
 			*ua_chan = it->second;
 			goto end;
 		}
@@ -1720,8 +1716,8 @@ end:
 	return ret;
 }
 
-void ls::ust::domain_orchestrator::_synchronize_all_channels(
-	const ust::app_session::locked_weak_ref& ua_sess, ust::app *app)
+void ls::ust::domain_orchestrator::_synchronize_all_channels(ust::app_session& ua_sess,
+							     ust::app *app)
 {
 	LTTNG_ASSERT(app);
 	ASSERT_RCU_READ_LOCKED();
@@ -1774,8 +1770,7 @@ end:
  *
  * Called with UST app session lock held and RCU read side lock.
  */
-int ls::ust::domain_orchestrator::_create_app_metadata(
-	const ust::app_session::locked_weak_ref& ua_sess, ust::app *app)
+int ls::ust::domain_orchestrator::_create_app_metadata(ust::app_session& ua_sess, ust::app *app)
 {
 	int ret = 0;
 	struct ust_app_channel *metadata;
@@ -1785,7 +1780,7 @@ int ls::ust::domain_orchestrator::_create_app_metadata(
 	LTTNG_ASSERT(get_consumer_output_ptr());
 	ASSERT_RCU_READ_LOCKED();
 
-	auto locked_registry = get_locked_session_registry(ua_sess->get_identifier());
+	auto locked_registry = get_locked_session_registry(ua_sess.get_identifier());
 	/* The UST app session is held registry shall not be null. */
 	LTTNG_ASSERT(locked_registry);
 
@@ -1841,7 +1836,7 @@ int ls::ust::domain_orchestrator::_create_app_metadata(
 	 * never added or monitored until we do a first push metadata to the
 	 * consumer.
 	 */
-	ret = ust_consumer_ask_channel(&ua_sess.get(),
+	ret = ust_consumer_ask_channel(&ua_sess,
 				       metadata,
 				       get_consumer_output_ptr(),
 				       socket,
@@ -1902,28 +1897,25 @@ void ls::ust::domain_orchestrator::synchronize_app(ust::app& app)
 
 		LTTNG_ASSERT(ua_sess);
 
-		{
-			const auto locked_ua_sess = ua_sess->lock();
-			if (!locked_ua_sess->deleted) {
-				const lttng::urcu::read_lock_guard read_lock;
-				_synchronize_all_channels(locked_ua_sess, &app);
+		if (!ua_sess->deleted) {
+			const lttng::urcu::read_lock_guard read_lock;
+			_synchronize_all_channels(*ua_sess, &app);
 
-				/*
-				 * Create the metadata for the application. This returns
-				 * gracefully if a metadata was already set for the session.
-				 *
-				 * The metadata channel must be created after the data
-				 * channels as the consumer daemon assumes this ordering.
-				 * When interacting with a relay daemon, the consumer will
-				 * use this assumption to send the "STREAMS_SENT" message
-				 * to the relay daemon.
-				 */
-				const auto md_ret = _create_app_metadata(locked_ua_sess, &app);
-				if (md_ret < 0) {
-					ERR("Metadata creation failed for app sock %d for session id %" PRIu64,
-					    app.command_socket.fd(),
-					    _session_id());
-				}
+			/*
+			 * Create the metadata for the application. This returns
+			 * gracefully if a metadata was already set for the session.
+			 *
+			 * The metadata channel must be created after the data
+			 * channels as the consumer daemon assumes this ordering.
+			 * When interacting with a relay daemon, the consumer will
+			 * use this assumption to send the "STREAMS_SENT" message
+			 * to the relay daemon.
+			 */
+			const auto md_ret = _create_app_metadata(*ua_sess, &app);
+			if (md_ret < 0) {
+				ERR("Metadata creation failed for app sock %d for session id %" PRIu64,
+				    app.command_socket.fd(),
+				    _session_id());
 			}
 		}
 
@@ -2020,13 +2012,11 @@ int ls::ust::domain_orchestrator::_start_app_trace(ust::app *app)
 		return 0;
 	}
 
-	auto locked_ua_sess = ua_sess->lock();
-
-	if (locked_ua_sess->deleted) {
+	if (ua_sess->deleted) {
 		return 0;
 	}
 
-	if (locked_ua_sess->enabled) {
+	if (ua_sess->enabled) {
 		return 0;
 	}
 
@@ -2074,8 +2064,6 @@ int ls::ust::domain_orchestrator::_stop_app_trace(ust::app *app)
 		return 0;
 	}
 
-	auto locked_ua_sess = ua_sess->lock();
-
 	if (ua_sess->deleted) {
 		return 0;
 	}
@@ -2114,7 +2102,7 @@ int ls::ust::domain_orchestrator::_stop_app_trace(ust::app *app)
 	health_code_update();
 
 	{
-		auto registry = ust_app_get_session_registry(locked_ua_sess->get_identifier());
+		auto registry = ust_app_get_session_registry(ua_sess->get_identifier());
 		LTTNG_ASSERT(registry);
 		auto locked_registry = registry->lock();
 		if (!locked_registry->_metadata_closed) {
@@ -2143,8 +2131,7 @@ int ls::ust::domain_orchestrator::_flush_app_session(ust::app& app, ust::app_ses
 		return 0;
 	}
 
-	const auto locked_ua_sess = ua_sess.lock();
-	if (locked_ua_sess->deleted) {
+	if (ua_sess.deleted) {
 		return 0;
 	}
 
@@ -2194,8 +2181,7 @@ int ls::ust::domain_orchestrator::_clear_quiescent_app_session(ust::app *app,
 		return 0;
 	}
 
-	const auto locked_ua_sess = ua_sess->lock();
-	if (locked_ua_sess->deleted) {
+	if (ua_sess->deleted) {
 		return 0;
 	}
 
@@ -2740,8 +2726,7 @@ void ls::ust::domain_orchestrator::regenerate_statedump()
 			continue;
 		}
 
-		const auto locked_ua_sess = ua_sess->lock();
-		if (locked_ua_sess->deleted) {
+		if (ua_sess->deleted) {
 			continue;
 		}
 

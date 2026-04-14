@@ -13,16 +13,14 @@
 #include "ust-app-session-id.hpp"
 
 #include <common/credentials.hpp>
-#include <common/hashtable/hashtable.hpp>
 #include <common/macros.hpp>
-#include <common/reference.hpp>
 
 #include <lttng/domain.h>
 
 #include <memory>
-#include <pthread.h>
 #include <stdint.h>
 #include <string>
+#include <unordered_map>
 
 struct consumer_output;
 struct ust_app_channel;
@@ -42,27 +40,7 @@ namespace sessiond {
 namespace ust {
 
 class app_session {
-private:
-	static void _session_unlock(app_session *session)
-	{
-		_const_session_unlock(session);
-	}
-
-	static void _const_session_unlock(const app_session *session)
-	{
-		pthread_mutex_unlock(&session->_lock);
-	}
-
 public:
-	using locked_weak_ref = lttng::non_copyable_reference<
-		app_session,
-		lttng::memory::create_deleter_class<app_session,
-						    app_session::_session_unlock>::deleter>;
-	using const_locked_weak_ref = lttng::non_copyable_reference<
-		const app_session,
-		lttng::memory::create_deleter_class<const app_session,
-						    app_session::_const_session_unlock>::deleter>;
-
 	using identifier = app_session_identifier;
 
 	/*
@@ -90,31 +68,6 @@ public:
 	app_session& operator=(const app_session&) = delete;
 	app_session& operator=(app_session&&) = delete;
 
-	static locked_weak_ref make_locked_weak_ref(app_session& ua_session)
-	{
-		return lttng::make_non_copyable_reference<locked_weak_ref::referenced_type,
-							  locked_weak_ref::deleter>(ua_session);
-	}
-
-	static const_locked_weak_ref make_locked_weak_ref(const app_session& ua_session)
-	{
-		return lttng::make_non_copyable_reference<const_locked_weak_ref::referenced_type,
-							  const_locked_weak_ref::deleter>(
-			ua_session);
-	}
-
-	app_session::const_locked_weak_ref lock() const noexcept
-	{
-		pthread_mutex_lock(&_lock);
-		return app_session::make_locked_weak_ref(*this);
-	}
-
-	app_session::locked_weak_ref lock() noexcept
-	{
-		pthread_mutex_lock(&_lock);
-		return app_session::make_locked_weak_ref(*this);
-	}
-
 	ust::app& app() noexcept
 	{
 		return _app;
@@ -127,26 +80,6 @@ public:
 
 	identifier get_identifier() const noexcept
 	{
-		/*
-		 * To work around synchro design issues, this method allows the sampling
-		 * of an app_session's identifying properties without taking its lock.
-		 *
-		 * Since those properties are immutable, it is safe to sample them without
-		 * holding the lock (as long as the existence of the instance is somehow
-		 * guaranteed).
-		 *
-		 * The locking issue that motivates this method is that the application
-		 * notitication handling thread needs to access the trace_class in response to
-		 * a message from the application. The app_session's ID is needed to look-up the
-		 * registry session.
-		 *
-		 * The application's message can be emited in response to a command from the
-		 * session daemon that is emited by the client thread.
-		 *
-		 * During that command, the client thread holds the app_session lock until
-		 * the application replies to the command. This causes the notification thread
-		 * to block when it attempts to sample the app_session's ID properties.
-		 */
 		LTTNG_ASSERT(bits_per_long == 32 || bits_per_long == 64);
 		LTTNG_ASSERT(buffer_type == LTTNG_BUFFER_PER_PID ||
 			     buffer_type == LTTNG_BUFFER_PER_UID);
@@ -166,7 +99,7 @@ public:
 	bool started = false; /* allows detection of start vs restart. */
 	int handle = -1; /* used as unique identifier for app session */
 
-	bool deleted = false; /* Session deleted flag. Check with lock held. */
+	bool deleted = false; /* Session deleted flag. */
 
 	/*
 	 * Recording session ID (ltt_session::id). Multiple app_sessions
@@ -212,12 +145,6 @@ public:
 
 private:
 	ust::app& _app;
-	/*
-	 * Lock protecting this session's ust app interaction. Held
-	 * across command send/recv to/from app. Never nests within the
-	 * session registry lock.
-	 */
-	mutable pthread_mutex_t _lock = PTHREAD_MUTEX_INITIALIZER;
 };
 
 } /* namespace ust */
