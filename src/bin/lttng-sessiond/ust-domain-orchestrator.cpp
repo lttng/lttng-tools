@@ -853,7 +853,7 @@ void ls::ust::domain_orchestrator::_add_context_on_apps(
 		}
 
 		auto ust_ctx_attr = _make_ust_context_attr(ctx_config);
-		(void) create_ust_app_channel_context(ua_chan, &ust_ctx_attr, ctx_config);
+		(void) ua_chan->create_context(ctx_config, &ust_ctx_attr);
 	}
 }
 
@@ -1620,7 +1620,7 @@ int ls::ust::domain_orchestrator::_create_app_channel(
 		}
 
 		auto ust_ctx_attr = _make_ust_context_attr(ctx_config);
-		ret = create_ust_app_channel_context(ua_chan, &ust_ctx_attr, ctx_config);
+		ret = ua_chan->create_context(ctx_config, &ust_ctx_attr);
 		if (ret) {
 			goto error;
 		}

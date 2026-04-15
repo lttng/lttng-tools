@@ -64,6 +64,13 @@ public:
 	void init_from_config();
 
 	/*
+	 * Create a context on the UST tracer for this channel and register it in
+	 * the local context map.
+	 */
+	int create_context(const lttng::sessiond::config::context_configuration& context_config,
+			   const lttng_ust_context_attr *uctx = nullptr);
+
+	/*
 	 * Send channel and stream buffers to the application (per-PID mode).
 	 * After a successful call, the channel's stream vector is empty:
 	 * streams are discarded locally after being sent to the tracer.

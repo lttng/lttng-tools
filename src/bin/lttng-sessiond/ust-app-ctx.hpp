@@ -54,9 +54,6 @@ private:
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
-int create_ust_app_channel_context(lttng::sessiond::ust::app_channel *ua_chan,
-				   struct lttng_ust_context_attr *uctx,
-				   const lttng::sessiond::config::context_configuration& ctx_config);
 bool is_context_redundant(
 	const lttng::sessiond::config::recording_channel_configuration& chan_config,
 	const lttng::sessiond::config::context_configuration& ctx_config);

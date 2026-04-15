@@ -226,6 +226,44 @@ void lsu::app_channel::init_from_config()
 	DBG3("UST app channel %s initialized from config", channel_config.name.c_str());
 }
 
+int lsu::app_channel::create_context(const lsc::context_configuration& context_config,
+				     const lttng_ust_context_attr *uctx)
+{
+	int ret = 0;
+
+	DBG2("UST app adding context to channel %s", channel_config.name.c_str());
+
+	if (contexts.find(&context_config) != contexts.end()) {
+		return -EEXIST;
+	}
+
+	auto app_context = lttng::make_unique<lsu::app_context>(*this, context_config, uctx);
+	auto& app = session.app();
+
+	health_code_update();
+
+	try {
+		app.command_socket.lock().add_context(&app_context->ctx, obj, &app_context->obj);
+	} catch (const lsu::app_communication_error&) {
+		goto error;
+	} catch (const lttng::runtime_error&) {
+		ret = -1;
+		goto error;
+	}
+
+	app_context->handle = app_context->obj->header.handle;
+
+	DBG2("UST app context handle %d created successfully for channel %s",
+	     app_context->handle,
+	     channel_config.name.c_str());
+
+	contexts.emplace(&context_config, std::move(app_context));
+
+error:
+	health_code_update();
+	return ret;
+}
+
 int lsu::app_channel::send_to_app_per_pid()
 {
 	int ret;

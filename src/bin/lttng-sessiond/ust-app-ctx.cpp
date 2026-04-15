@@ -17,7 +17,6 @@
 
 #include <common/common.hpp>
 #include <common/compat/errno.hpp>
-#include <common/make-unique.hpp>
 
 #include <cstring>
 
@@ -84,73 +83,6 @@ lsu::app_context::~app_context()
 		free(ctx.u.app_ctx.provider_name);
 		free(ctx.u.app_ctx.ctx_name);
 	}
-}
-
-namespace {
-/*
- * Create the channel context on the tracer.
- *
- * Called with UST app session lock held.
- */
-int create_ust_channel_context(lsu::app_channel *ua_chan, lsu::app_context *ua_ctx)
-{
-	int ret = 0;
-
-	health_code_update();
-
-	auto& app = ua_chan->session.app();
-	try {
-		app.command_socket.lock().add_context(&ua_ctx->ctx, ua_chan->obj, &ua_ctx->obj);
-	} catch (const lsu::app_communication_error&) {
-		goto error;
-	} catch (const lttng::runtime_error&) {
-		ret = -1;
-		goto error;
-	}
-
-	ua_ctx->handle = ua_ctx->obj->header.handle;
-
-	DBG2("UST app context handle %d created successfully for channel %s",
-	     ua_ctx->handle,
-	     ua_chan->channel_config.name.c_str());
-
-error:
-	health_code_update();
-	return ret;
-}
-} /* anonymous namespace */
-
-/*
- * Create a context for the channel on the tracer.
- *
- * Called with UST app session lock held.
- */
-int create_ust_app_channel_context(lsu::app_channel *ua_chan,
-				   struct lttng_ust_context_attr *uctx,
-				   const lsc::context_configuration& ctx_config)
-{
-	int ret = 0;
-
-	DBG2("UST app adding context to channel %s", ua_chan->channel_config.name.c_str());
-
-	if (ua_chan->contexts.find(&ctx_config) != ua_chan->contexts.end()) {
-		ret = -EEXIST;
-		goto error;
-	}
-
-	{
-		auto ua_ctx = lttng::make_unique<lsu::app_context>(*ua_chan, ctx_config, uctx);
-
-		ret = create_ust_channel_context(ua_chan, ua_ctx.get());
-		if (ret < 0) {
-			goto error;
-		}
-
-		ua_chan->contexts.emplace(&ctx_config, std::move(ua_ctx));
-	}
-
-error:
-	return ret;
 }
 
 /*
