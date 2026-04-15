@@ -644,8 +644,15 @@ void ls::ust::domain_orchestrator::_enable_channel_on_apps(lttng::c_string_view 
 			continue;
 		}
 
-		/* Enable channel onto application. */
-		(void) enable_ust_app_channel(*ua_sess, channel_name);
+		auto *ua_chan = ua_sess->find_channel(channel_name.data());
+		if (ua_chan == nullptr) {
+			DBG2("Unable to find channel %s in ust session id %" PRIu64,
+			     channel_name.data(),
+			     ua_sess->recording_session_id);
+			continue;
+		}
+
+		(void) ua_chan->enable();
 	}
 }
 
@@ -668,12 +675,9 @@ void ls::ust::domain_orchestrator::_disable_channel_on_apps(lttng::c_string_view
 			continue;
 		}
 
-		const auto chan_it = ua_sess->channels.find(channel_name.data());
-
+		auto *ua_chan = ua_sess->find_channel(channel_name.data());
 		/* If the session exists for the app, the channel must be there. */
-		LTTNG_ASSERT(chan_it != ua_sess->channels.end());
-
-		auto *ua_chan = chan_it->second.get();
+		LTTNG_ASSERT(ua_chan);
 		LTTNG_ASSERT(ua_chan->enabled);
 
 		ret = ua_chan->disable();
@@ -708,11 +712,9 @@ int ls::ust::domain_orchestrator::_create_event_on_apps(
 			continue;
 		}
 
-		const auto chan_it = ua_sess->channels.find(channel_name.data());
+		auto *ua_chan = ua_sess->find_channel(channel_name.data());
 		/* If the channel is not found, there is a code flow error. */
-		LTTNG_ASSERT(chan_it != ua_sess->channels.end());
-
-		auto *ua_chan = chan_it->second.get();
+		LTTNG_ASSERT(ua_chan);
 
 		ret = app_event::create(*ua_chan, event_rule_config);
 		if (ret < 0) {
@@ -753,12 +755,10 @@ int ls::ust::domain_orchestrator::_enable_event_on_apps(
 			continue;
 		}
 
-		const auto chan_it = ua_sess->channels.find(channel_name.data());
-		if (chan_it == ua_sess->channels.end()) {
+		auto *ua_chan = ua_sess->find_channel(channel_name.data());
+		if (ua_chan == nullptr) {
 			continue;
 		}
-
-		auto *ua_chan = chan_it->second.get();
 
 		auto *ua_event = app_event::find_by_config(ua_chan->events, event_rule_config);
 		if (ua_event == nullptr) {
@@ -797,8 +797,8 @@ int ls::ust::domain_orchestrator::_disable_event_on_apps(
 			continue;
 		}
 
-		const auto chan_it = ua_sess->channels.find(channel_name.data());
-		if (chan_it == ua_sess->channels.end()) {
+		auto *ua_chan = ua_sess->find_channel(channel_name.data());
+		if (ua_chan == nullptr) {
 			DBG2("Channel %s not found in session id %" PRIu64
 			     " for app pid %d. Skipping",
 			     channel_name.data(),
@@ -806,8 +806,6 @@ int ls::ust::domain_orchestrator::_disable_event_on_apps(
 			     app->pid);
 			continue;
 		}
-
-		auto *ua_chan = chan_it->second.get();
 
 		auto *ua_event = app_event::find_by_config(ua_chan->events, event_rule_config);
 		if (ua_event == nullptr) {
@@ -849,12 +847,10 @@ void ls::ust::domain_orchestrator::_add_context_on_apps(
 			continue;
 		}
 
-		const auto chan_it = ua_sess->channels.find(channel_name.data());
-		if (chan_it == ua_sess->channels.end()) {
+		auto *ua_chan = ua_sess->find_channel(channel_name.data());
+		if (ua_chan == nullptr) {
 			continue;
 		}
-
-		auto *ua_chan = chan_it->second.get();
 
 		auto ust_ctx_attr = _make_ust_context_attr(ctx_config);
 		(void) create_ust_app_channel_context(ua_chan, &ust_ctx_attr, ctx_config);

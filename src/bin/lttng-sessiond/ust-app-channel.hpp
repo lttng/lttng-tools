@@ -181,8 +181,6 @@ private:
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
-int enable_ust_app_channel(lttng::sessiond::ust::app_session& ua_sess,
-			   lttng::c_string_view channel_name);
 int do_consumer_create_channel(struct consumer_output *consumer,
 			       lttng::sessiond::ust::app_session *ua_sess,
 			       lttng::sessiond::ust::app_channel *ua_chan,

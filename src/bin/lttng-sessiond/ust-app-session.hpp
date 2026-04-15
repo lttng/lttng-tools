@@ -100,6 +100,18 @@ public:
 
 	int flush();
 
+	app_channel *find_channel(const char *channel_name) noexcept
+	{
+		const auto it = channels.find(channel_name);
+		return it == channels.end() ? nullptr : it->second.get();
+	}
+
+	const app_channel *find_channel(const char *channel_name) const noexcept
+	{
+		const auto it = channels.find(channel_name);
+		return it == channels.end() ? nullptr : it->second.get();
+	}
+
 	bool enabled = false;
 	/* started: has the session been in started state at any time ? */
 	bool started = false; /* allows detection of start vs restart. */

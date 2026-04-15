@@ -447,31 +447,6 @@ enum lttng_ust_abi_chan_type allocation_policy_to_ust_channel_type(
 }
 
 /*
- * Lookup ust app channel for session and enable it on the tracer side. This
- * MUST be called with a RCU read side lock acquired.
- */
-int enable_ust_app_channel(lsu::app_session& ua_sess, lttng::c_string_view channel_name)
-{
-	int ret = 0;
-
-	const auto it = ua_sess.channels.find(channel_name.data());
-	if (it == ua_sess.channels.end()) {
-		DBG2("Unable to find channel %s in ust session id %" PRIu64,
-		     channel_name.data(),
-		     ua_sess.recording_session_id);
-		goto error;
-	}
-
-	ret = it->second->enable();
-	if (ret < 0) {
-		goto error;
-	}
-
-error:
-	return ret;
-}
-
-/*
  * Ask the consumer to create a channel and get it if successful.
  *
  * Called with UST app session lock held.
