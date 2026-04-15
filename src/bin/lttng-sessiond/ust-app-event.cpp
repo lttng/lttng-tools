@@ -79,43 +79,34 @@ end:
 }
 } /* anonymous namespace */
 
-/*
- * Release the tracer-side event object safely.
- *
- * The sock parameter may differ from the command socket's current fd
- * during application teardown (where the fd has been released).
- * This function uses the raw lttng_ust_ctl call directly to handle
- * this case.
- */
-void lsu::app_event::destroy(int sock)
+lsu::app_event::~app_event()
 {
-	auto& app = channel.session.app();
-	int ret;
-
-	if (obj != nullptr) {
-		{
-			const auto protocol = app.command_socket.lock();
-			ret = lttng_ust_ctl_release_object(sock, obj);
-		}
-		if (ret < 0) {
-			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-				DBG3("UST app release event failed. Application is dead: pid = %d, sock = %d",
-				     app.pid,
-				     app.command_socket.fd());
-			} else if (ret == -EAGAIN) {
-				WARN("UST app release event failed. Communication time out: pid = %d, sock = %d",
-				     app.pid,
-				     app.command_socket.fd());
-			} else {
-				ERR("UST app release event obj failed with ret %d: pid = %d, sock = %d",
-				    ret,
-				    app.pid,
-				    app.command_socket.fd());
-			}
-		}
-		free(obj);
-		obj = nullptr;
+	if (obj == nullptr) {
+		return;
 	}
+
+	auto& app = channel.session.app();
+
+	const auto protocol = app.command_socket.lock();
+	const auto ret = lttng_ust_ctl_release_object(protocol.fd(), obj);
+	if (ret < 0) {
+		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+			DBG3("UST app release event failed. Application is dead: pid = %d, sock = %d",
+			     app.pid,
+			     app.command_socket.fd());
+		} else if (ret == -EAGAIN) {
+			WARN("UST app release event failed. Communication time out: pid = %d, sock = %d",
+			     app.pid,
+			     app.command_socket.fd());
+		} else {
+			ERR("UST app release event obj failed with ret %d: pid = %d, sock = %d",
+			    ret,
+			    app.pid,
+			    app.command_socket.fd());
+		}
+	}
+
+	free(obj);
 }
 
 /*
@@ -514,16 +505,8 @@ void lsu::app_event::create(lsu::app_channel& ua_chan,
 	auto ua_event = alloc_ust_app_event(ua_chan, event_config);
 	shadow_copy_event(*ua_event);
 
-	/* Create it on the tracer side */
-	try {
-		ua_event->create_on_ust();
-	} catch (...) {
-		/*
-		 * Release tracer-side resources before letting the unique_ptr destroy the object.
-		 */
-		ua_event->destroy(-1);
-		throw;
-	}
+	/* Create it on the tracer side. On failure, ~app_event releases the tracer object. */
+	ua_event->create_on_ust();
 
 	add_unique_ust_app_event(ua_chan, std::move(ua_event));
 

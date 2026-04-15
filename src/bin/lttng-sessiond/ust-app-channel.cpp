@@ -84,16 +84,8 @@ lsu::app_channel::~app_channel()
 	/* Wipe contexts. Destructors release UST objects. */
 	contexts.clear();
 
-	/* Wipe events. */
-	{
-		auto& app = session.app();
-		const auto sock = app.command_socket.fd();
-
-		for (auto& event_pair : events) {
-			event_pair.second->destroy(sock);
-		}
-		events.clear();
-	}
+	/* Wipe events. Destructors release UST tracer-side objects. */
+	events.clear();
 
 	if (obj != nullptr) {
 		auto& app = session.app();

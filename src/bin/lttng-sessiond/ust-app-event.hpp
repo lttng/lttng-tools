@@ -47,14 +47,11 @@ public:
 	{
 	}
 
-	~app_event() = default;
+	~app_event();
 	app_event(const app_event&) = delete;
 	app_event(app_event&&) = delete;
 	app_event& operator=(const app_event&) = delete;
 	app_event& operator=(app_event&&) = delete;
-
-	/* Release the tracer-side event object and free local resources. */
-	void destroy(int sock);
 
 	/* Enable this event on the UST tracer and update local state. */
 	void enable();
