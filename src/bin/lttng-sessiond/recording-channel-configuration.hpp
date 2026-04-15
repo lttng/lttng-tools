@@ -324,6 +324,30 @@ struct formatter<lttng::sessiond::config::recording_channel_configuration>
 			channel.event_rules.size());
 	}
 };
+template <>
+struct formatter<lttng::sessiond::config::recording_channel_configuration::ownership_model_t>
+	: formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator
+	format(lttng::sessiond::config::recording_channel_configuration::ownership_model_t model,
+	       FormatContextType& ctx) const
+	{
+		auto name = "unknown";
+
+		switch (model) {
+		case lttng::sessiond::config::recording_channel_configuration::ownership_model_t::
+			PER_PID:
+			name = "per-pid";
+			break;
+		case lttng::sessiond::config::recording_channel_configuration::ownership_model_t::
+			PER_UID:
+			name = "per-uid";
+			break;
+		}
+
+		return format_to(ctx.out(), name);
+	}
+};
 } /* namespace fmt */
 
 #endif /* LTTNG_SESSIOND_RECORDING_CHANNEL_CONFIGURATION_HPP */

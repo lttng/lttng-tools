@@ -28,6 +28,7 @@
 #include "ust-registry.hpp"
 #include "ust-trace-class-index.hpp"
 
+#include <common/ctl/format.hpp>
 #include <common/defaults.hpp>
 #include <common/error.hpp>
 #include <common/exception.hpp>
@@ -174,6 +175,13 @@ ls::ust::domain_orchestrator::domain_orchestrator(
 {
 	LTTNG_ASSERT(_consumer_output);
 	LTTNG_ASSERT(_agents);
+
+	DBG_FMT("UST domain orchestrator created: session_name=`{}`, session_id={}, "
+		"buffer_ownership={}, shm_path=`{}`",
+		_session.name,
+		_session.id,
+		_default_buffer_ownership,
+		_shm_path);
 }
 
 struct lttng_ust_abi_channel_attr
@@ -212,6 +220,14 @@ lttng_buffer_type ls::ust::domain_orchestrator::buffer_type() const noexcept
 
 ls::ust::domain_orchestrator::~domain_orchestrator()
 {
+	DBG_FMT("UST domain orchestrator destroying: session_name=`{}`, session_id={}, "
+		"app_sessions_count={}, per_uid_trace_classes={}, per_pid_trace_classes={}",
+		_session.name,
+		_session.id,
+		_app_sessions.size(),
+		_per_uid_trace_classes.size(),
+		_per_pid_trace_classes.size());
+
 	/*
 	 * Tear down all app sessions owned by this orchestrator. Each
 	 * app session holds UST handles, consumer channel registrations,
@@ -413,8 +429,7 @@ ls::ust::trace_class& ls::ust::domain_orchestrator::_find_or_create_per_pid_trac
 		_session.hostname,
 		_session.creation_time));
 	if (!tc) {
-		LTTNG_THROW_ERROR(
-			fmt::format("Failed to create per-PID trace class: pid={}", app.pid));
+		LTTNG_THROW_ERROR(fmt::format("Failed to create per-PID trace class: app={}", app));
 	}
 
 	auto& ref = *tc;
@@ -424,7 +439,7 @@ ls::ust::trace_class& ls::ust::domain_orchestrator::_find_or_create_per_pid_trac
 	/* Register in the global trace class index for consumer metadata lookups. */
 	the_trace_class_index->add_per_pid(app_session_id, tc);
 
-	DBG_FMT("UST domain orchestrator created per-PID trace class: pid={}", app.pid);
+	DBG_FMT("UST domain orchestrator created per-PID trace class: app={}", app);
 
 	return ref;
 }
@@ -443,7 +458,9 @@ void ls::ust::domain_orchestrator::_release_per_pid_trace_class(const ls::ust::a
 		_per_pid_app_session_ids.erase(id_it);
 	}
 
-	DBG_FMT("UST domain orchestrator releasing per-PID trace class: pid={}", app.pid);
+	DBG_FMT("UST domain orchestrator releasing per-PID trace class: session_name=`{}`, app={}",
+		_session.name,
+		app);
 	_per_pid_trace_classes.erase(it);
 }
 
@@ -547,9 +564,10 @@ void ls::ust::domain_orchestrator::_release_per_pid_stream_groups(const ls::ust:
 	while (it != _per_pid_stream_groups.end()) {
 		if (it->first.app == &app) {
 			DBG_FMT("UST domain orchestrator releasing per-PID stream group: "
-				"channel_name=`{}`, pid={}",
+				"session_name=`{}`, channel_name=`{}`, app={}",
+				_session.name,
 				it->second->configuration().name,
-				app.pid);
+				app);
 			it = _per_pid_stream_groups.erase(it);
 		} else {
 			++it;
@@ -577,9 +595,12 @@ void ls::ust::domain_orchestrator::create_channel(
 		LTTNG_THROW_UST_BUFFER_TYPE_MISMATCH();
 	}
 
-	DBG_FMT("UST domain orchestrator created channel: channel_name=`{}`, trace_class_stream_class_handle={}",
-		channel_config.name.c_str(),
-		handle);
+	DBG_FMT("UST domain orchestrator created channel: session_name=`{}`, session_id={}, "
+		"trace_class_stream_class_handle={}, channel_config={}",
+		_session.name,
+		_session.id,
+		handle,
+		channel_config);
 }
 
 void ls::ust::domain_orchestrator::_validate_channel_attributes(
@@ -646,9 +667,11 @@ void ls::ust::domain_orchestrator::_enable_channel_on_apps(lttng::c_string_view 
 
 		auto *ua_chan = ua_sess->find_channel(channel_name.data());
 		if (ua_chan == nullptr) {
-			DBG2("Unable to find channel %s in ust session id %" PRIu64,
-			     channel_name.data(),
-			     ua_sess->recording_session_id);
+			DBG_FMT("UST domain orchestrator channel not found while enabling on app: "
+				"session_name=`{}`, channel_name=`{}`, app={}",
+				_session.name,
+				channel_name.data(),
+				*app);
 			continue;
 		}
 
@@ -768,8 +791,11 @@ void ls::ust::domain_orchestrator::_enable_event_on_apps(
 
 		auto *ua_event = app_event::find_by_config(ua_chan->events, event_rule_config);
 		if (ua_event == nullptr) {
-			DBG3("UST app enable event not found for app PID %d. Skipping app",
-			     app->pid);
+			DBG_FMT("UST domain orchestrator event not found while enabling on app, "
+				"skipping: session_name=`{}`, channel_name=`{}`, app={}",
+				_session.name,
+				channel_name.data(),
+				*app);
 			continue;
 		}
 
@@ -808,19 +834,21 @@ void ls::ust::domain_orchestrator::_disable_event_on_apps(
 
 		auto *ua_chan = ua_sess->find_channel(channel_name.data());
 		if (ua_chan == nullptr) {
-			DBG2("Channel %s not found in session id %" PRIu64
-			     " for app pid %d. Skipping",
-			     channel_name.data(),
-			     _session_id(),
-			     app->pid);
+			DBG_FMT("UST domain orchestrator channel not found while disabling event on app, "
+				"skipping: session_name=`{}`, channel_name=`{}`, app={}",
+				_session.name,
+				channel_name.data(),
+				*app);
 			continue;
 		}
 
 		auto *ua_event = app_event::find_by_config(ua_chan->events, event_rule_config);
 		if (ua_event == nullptr) {
-			DBG2("Event not found in channel %s for app pid %d. Skipping",
-			     channel_name.data(),
-			     app->pid);
+			DBG_FMT("UST domain orchestrator event not found while disabling on app, "
+				"skipping: session_name=`{}`, channel_name=`{}`, app={}",
+				_session.name,
+				channel_name.data(),
+				*app);
 			continue;
 		}
 
@@ -888,6 +916,13 @@ void ls::ust::domain_orchestrator::_add_context_on_apps(
 void ls::ust::domain_orchestrator::enable_channel(
 	const config::recording_channel_configuration& channel_config)
 {
+	DBG_FMT("UST domain orchestrator enabling channel: session_name=`{}`, session_id={}, "
+		"session_is_active={}, channel_config={}",
+		_session.name,
+		_session.id,
+		_active,
+		channel_config);
+
 	if (!_active) {
 		/*
 		 * The channel will be enabled on all applications when the
@@ -910,6 +945,13 @@ void ls::ust::domain_orchestrator::enable_channel(
 void ls::ust::domain_orchestrator::disable_channel(
 	const config::recording_channel_configuration& channel_config)
 {
+	DBG_FMT("UST domain orchestrator disabling channel: session_name=`{}`, session_id={}, "
+		"session_is_active={}, channel_config={}",
+		_session.name,
+		_session.id,
+		_active,
+		channel_config);
+
 	if (!_active) {
 		/*
 		 * If the session is inactive, the tracers are not notified
@@ -926,6 +968,14 @@ void ls::ust::domain_orchestrator::disable_event(
 	const config::recording_channel_configuration& channel_config,
 	const config::event_rule_configuration& event_rule_config)
 {
+	DBG_FMT("UST domain orchestrator disabling event: session_name=`{}`, session_id={}, "
+		"channel_name=`{}`, session_is_active={}, event_rule_config={}",
+		_session.name,
+		_session.id,
+		channel_config.name,
+		_active,
+		event_rule_config);
+
 	if (!_active) {
 		return;
 	}
@@ -937,6 +987,14 @@ void ls::ust::domain_orchestrator::add_context(
 	const config::recording_channel_configuration& channel_config,
 	const config::context_configuration& ctx_config)
 {
+	DBG_FMT("UST domain orchestrator adding context: session_name=`{}`, session_id={}, "
+		"channel_name=`{}`, session_is_active={}, context_config={}",
+		_session.name,
+		_session.id,
+		channel_config.name,
+		_active,
+		ctx_config);
+
 	if (!_active) {
 		/*
 		 * The config layer already recorded the context in
@@ -954,6 +1012,14 @@ void ls::ust::domain_orchestrator::enable_event(
 	const config::recording_channel_configuration& channel_config,
 	const config::event_rule_configuration& event_rule_config)
 {
+	DBG_FMT("UST domain orchestrator enabling event: session_name=`{}`, session_id={}, "
+		"channel_name=`{}`, session_is_active={}, event_rule_config={}",
+		_session.name,
+		_session.id,
+		channel_config.name,
+		_active,
+		event_rule_config);
+
 	if (!_active) {
 		_created_event_rules.insert(&event_rule_config);
 		return;
@@ -962,16 +1028,34 @@ void ls::ust::domain_orchestrator::enable_event(
 	const auto already_created = _created_event_rules.count(&event_rule_config) > 0;
 
 	if (already_created) {
+		DBG_FMT("UST domain orchestrator re-enabling existing event on apps: "
+			"session_name=`{}`, channel_name=`{}`, event_rule_config={}",
+			_session.name,
+			channel_config.name,
+			event_rule_config);
 		_enable_event_on_apps(channel_config.name, event_rule_config);
 	} else {
+		DBG_FMT("UST domain orchestrator creating new event on apps: "
+			"session_name=`{}`, channel_name=`{}`, event_rule_config={}",
+			_session.name,
+			channel_config.name,
+			event_rule_config);
 		_create_event_on_apps(channel_config.name, event_rule_config);
 		_created_event_rules.insert(&event_rule_config);
 	}
 }
 
-void ls::ust::domain_orchestrator::set_tracking_policy(config::process_attribute_type,
-						       config::tracking_policy)
+void ls::ust::domain_orchestrator::set_tracking_policy(
+	config::process_attribute_type attribute_type, config::tracking_policy policy)
 {
+	DBG_FMT("UST domain orchestrator setting tracking policy: session_name=`{}`, session_id={}, "
+		"attribute_type={}, policy={}, session_is_active={}",
+		_session.name,
+		_session.id,
+		attribute_type,
+		policy,
+		_active);
+
 	/*
 	 * The config has already been updated by the command layer. Push the
 	 * updated configuration to all running applications if tracing is active.
@@ -981,17 +1065,33 @@ void ls::ust::domain_orchestrator::set_tracking_policy(config::process_attribute
 	}
 }
 
-void ls::ust::domain_orchestrator::track_process_attribute(config::process_attribute_type,
-							   std::uint64_t)
+void ls::ust::domain_orchestrator::track_process_attribute(
+	config::process_attribute_type attribute_type, std::uint64_t value)
 {
+	DBG_FMT("UST domain orchestrator tracking process attribute: session_name=`{}`, session_id={}, "
+		"attribute_type={}, value={}, session_is_active={}",
+		_session.name,
+		_session.id,
+		attribute_type,
+		value,
+		_active);
+
 	if (_active) {
 		_synchronize_all_apps();
 	}
 }
 
-void ls::ust::domain_orchestrator::untrack_process_attribute(config::process_attribute_type,
-							     std::uint64_t)
+void ls::ust::domain_orchestrator::untrack_process_attribute(
+	config::process_attribute_type attribute_type, std::uint64_t value)
 {
+	DBG_FMT("UST domain orchestrator untracking process attribute: session_name=`{}`, session_id={}, "
+		"attribute_type={}, value={}, session_is_active={}",
+		_session.name,
+		_session.id,
+		attribute_type,
+		value,
+		_active);
+
 	if (_active) {
 		_synchronize_all_apps();
 	}
@@ -1083,9 +1183,12 @@ ls::ust::app_session& ls::ust::domain_orchestrator::_find_or_create_app_session(
 		}
 	}
 
-	DBG2("UST app pid: %d session id %" PRIu64 " not found, creating it",
-	     app.pid,
-	     _session_id());
+	DBG_FMT("UST domain orchestrator creating app session: session_name=`{}`, session_id={}, "
+		"app={}, buffer_type={}",
+		_session.name,
+		_session_id(),
+		app,
+		buffer_type());
 
 	/*
 	 * Build the trace output path and shared-memory path for this
@@ -1213,7 +1316,12 @@ ls::ust::app_session& ls::ust::domain_orchestrator::_find_or_create_app_session(
 		new_session->objd_token = app.objd_registry.register_session_objd(
 			new_session->handle, new_session->get_identifier());
 
-		DBG2("UST app session created successfully with handle %d", new_session->handle);
+		DBG_FMT("UST domain orchestrator created app session: session_name=`{}`, "
+			"session_id={}, app={}, handle={}",
+			_session.name,
+			_session_id(),
+			app,
+			new_session->handle);
 	}
 
 	auto *ua_sess = new_session.get();
@@ -1256,8 +1364,12 @@ void ls::ust::domain_orchestrator::_create_channel_per_uid(ust::app *app,
 	auto *consumer = get_consumer_output_ptr();
 	auto& session = const_cast<ltt_session&>(_session);
 
-	DBG("UST app creating channel %s with per UID buffers",
-	    ua_chan->channel_config.name.c_str());
+	DBG_FMT("UST domain orchestrator creating channel with per-UID buffers: "
+		"session_name=`{}`, session_id={}, channel_name=`{}`, app={}",
+		_session.name,
+		_session_id(),
+		ua_chan->channel_config.name,
+		*app);
 
 	const auto& recording_config =
 		static_cast<const lsc::recording_channel_configuration&>(ua_chan->channel_config);
@@ -1403,8 +1515,12 @@ void ls::ust::domain_orchestrator::_create_channel_per_pid(ust::app *app,
 	auto *consumer = get_consumer_output_ptr();
 	auto& session = const_cast<ltt_session&>(_session);
 
-	DBG("UST app creating channel %s with per PID buffers",
-	    ua_chan->channel_config.name.c_str());
+	DBG_FMT("UST domain orchestrator creating channel with per-PID buffers: "
+		"session_name=`{}`, session_id={}, channel_name=`{}`, app={}",
+		_session.name,
+		_session_id(),
+		ua_chan->channel_config.name,
+		*app);
 
 	const lttng::urcu::read_lock_guard read_lock;
 
@@ -1420,14 +1536,15 @@ void ls::ust::domain_orchestrator::_create_channel_per_pid(ust::app *app,
 					 ust_channel_type_to_allocation_policy(ua_chan->attr.type));
 		trace_class_channel_added = true;
 	} catch (const std::exception& ex) {
-		LTTNG_THROW_ERROR(
-			fmt::format("Failed to create per-PID UST stream class: channel_name=`{}`, "
-				    "session_id={}, pid={}, channel_key={}, error={}",
-				    ua_chan->channel_config.name,
-				    _session_id(),
-				    app->pid,
-				    ua_chan->key,
-				    ex.what()));
+		LTTNG_THROW_ERROR(fmt::format(
+			"Failed to create per-PID UST stream class: channel_name=`{}`, "
+			"session_name=`{}`, session_id={}, app={}, channel_key={}, error={}",
+			ua_chan->channel_config.name,
+			_session.name,
+			_session_id(),
+			*app,
+			ua_chan->key,
+			ex.what()));
 	}
 
 	/* Create and get channel on the consumer side. */
@@ -1443,14 +1560,11 @@ void ls::ust::domain_orchestrator::_create_channel_per_pid(ust::app *app,
 					       _session.live_timer) < 0) {
 			LTTNG_THROW_ERROR(fmt::format(
 				"Failed to create per-PID UST channel on consumer: channel_name=`{}`, "
-				"session_id={}, pid={}, abi={}, consumer_output_type={}",
+				"session_name=`{}`, session_id={}, app={}",
 				ua_chan->channel_config.name,
+				_session.name,
 				_session_id(),
-				app->pid,
-				static_cast<unsigned int>(app->abi.bits_per_long == 32 ?
-								  application_abi::ABI_32 :
-								  application_abi::ABI_64),
-				static_cast<int>(_consumer_output->type)));
+				*app));
 		}
 
 		ua_chan->send_to_app_per_pid();
@@ -1499,10 +1613,11 @@ void ls::ust::domain_orchestrator::_create_channel_per_pid(ust::app *app,
 		if (cmd_ret != LTTNG_OK) {
 			LTTNG_THROW_ERROR(fmt::format(
 				"Failed to notify per-PID UST channel creation: channel_name=`{}`, "
-				"session_id={}, pid={}, channel_key={}, notification_ret={}",
+				"session_name=`{}`, session_id={}, app={}, channel_key={}, notification_ret={}",
 				ua_chan->channel_config.name,
+				_session.name,
 				_session_id(),
-				app->pid,
+				*app,
 				ua_chan->key,
 				static_cast<int>(cmd_ret)));
 		}
@@ -1749,11 +1864,11 @@ void ls::ust::domain_orchestrator::_create_app_metadata(ust::app_session& ua_ses
 	/* Need one fd for the channel. */
 	if (lttng_fd_get(LTTNG_FD_APPS, 1) < 0) {
 		LTTNG_THROW_ERROR(fmt::format(
-			"Failed to allocate metadata file descriptor: session_id={}, pid={}, "
-			"channel_name=`{}`",
+			"Failed to allocate metadata file descriptor: session_name=`{}`, "
+			"session_id={}, app={}",
+			_session.name,
 			_session_id(),
-			app->pid,
-			metadata_config.name));
+			*app));
 	}
 	const auto put_fd_on_exit =
 		lttng::make_scope_exit([]() noexcept { lttng_fd_put(LTTNG_FD_APPS, 1); });
@@ -1804,14 +1919,29 @@ void ls::ust::domain_orchestrator::_create_app_metadata(ust::app_session& ua_ses
 		LTTNG_THROW_ERROR("Failed to setup metadata channel on consumer");
 	}
 
-	DBG2("UST metadata with key %" PRIu64 " created for app pid %d", metadata->key, app->pid);
+	DBG_FMT("UST domain orchestrator created metadata: session_name=`{}`, session_id={}, "
+		"metadata_key={}, app={}",
+		_session.name,
+		_session_id(),
+		metadata->key,
+		*app);
 }
 
 void ls::ust::domain_orchestrator::synchronize_app(ust::app& app)
 {
 	namespace lsc = lttng::sessiond::config;
 
+	DBG_FMT("UST domain orchestrator synchronizing app: session_name=`{}`, session_id={}, "
+		"app={}, session_is_active={}",
+		_session.name,
+		_session.id,
+		app,
+		_active);
+
 	if (!app.compatible) {
+		DBG_FMT("UST domain orchestrator skipping incompatible app: session_name=`{}`, app={}",
+			_session.name,
+			app);
 		return;
 	}
 
@@ -1827,6 +1957,10 @@ void ls::ust::domain_orchestrator::synchronize_app(ust::app& app)
 		try {
 			ua_sess = &_find_or_create_app_session(app);
 		} catch (const lttng::runtime_error&) {
+			DBG_FMT("UST domain orchestrator failed to find or create app session: "
+				"session_name=`{}`, app={}",
+				_session.name,
+				app);
 			/* Tracer is probably gone or ENOMEM. */
 			return;
 		}
@@ -1860,10 +1994,18 @@ void ls::ust::domain_orchestrator::synchronize_app(ust::app& app)
 			try {
 				_start_app_trace(&app);
 			} catch (const lttng::runtime_error&) {
+				DBG_FMT("UST domain orchestrator failed to start app trace during "
+					"synchronization: session_name=`{}`, app={}",
+					_session.name,
+					app);
 				/* The app may have departed; synchronize on next interaction. */
 			}
 		}
 	} else {
+		DBG_FMT("UST domain orchestrator app is not tracked, tearing down app session: "
+			"session_name=`{}`, app={}",
+			_session.name,
+			app);
 		if (_find_app_session(app)) {
 			on_app_departure(app);
 		}
@@ -1873,8 +2015,19 @@ void ls::ust::domain_orchestrator::synchronize_app(ust::app& app)
 unsigned int ls::ust::domain_orchestrator::on_app_departure(
 	ust::app& app, const nonstd::optional<uint32_t>& owner_id_to_reclaim)
 {
+	DBG_FMT("UST domain orchestrator handling app departure: session_name=`{}`, session_id={}, "
+		"app={}, owner_id_to_reclaim={}",
+		_session.name,
+		_session.id,
+		app,
+		owner_id_to_reclaim ? std::to_string(*owner_id_to_reclaim) : "none");
+
 	const auto it = _app_sessions.find(&app);
 	if (it == _app_sessions.end()) {
+		DBG_FMT("UST domain orchestrator has no app session for departing app: "
+			"session_name=`{}`, app={}",
+			_session.name,
+			app);
 		return 0;
 	}
 
@@ -1920,11 +2073,17 @@ unsigned int ls::ust::domain_orchestrator::on_app_departure(
 
 void ls::ust::domain_orchestrator::_synchronize_all_apps()
 {
+	DBG_FMT("UST domain orchestrator synchronizing all apps: session_name=`{}`, session_id={}",
+		_session.name,
+		_session.id);
+
 	for (auto *app : lttng::urcu::lfht_iteration_adapter<ust::app,
 							     decltype(ust::app::pid_n),
 							     &ust::app::pid_n>(*ust_app_ht->ht)) {
 		if (!ust_app_get(*app)) {
-			DBG("Could not get application reference as it is being torn down; skipping application");
+			DBG_FMT("UST domain orchestrator skipping app being torn down during "
+				"synchronization: session_name=`{}`",
+				_session.name);
 			continue;
 		}
 
@@ -1938,7 +2097,10 @@ void ls::ust::domain_orchestrator::_start_app_trace(ust::app *app)
 {
 	ust::app_session *ua_sess;
 
-	DBG("Starting tracing for ust app pid %d", app->pid);
+	DBG_FMT("UST domain orchestrator starting app trace: session_name=`{}`, session_id={}, app={}",
+		_session.name,
+		_session.id,
+		*app);
 
 	const lttng::urcu::read_lock_guard read_lock;
 	const auto update_health_code_on_exit =
@@ -1966,9 +2128,16 @@ void ls::ust::domain_orchestrator::_start_app_trace(ust::app *app)
 	try {
 		app->command_socket.lock().start_session(ua_sess->handle);
 	} catch (const ls::ust::app_communication_error&) {
+		DBG_FMT("UST domain orchestrator failed to start app trace (communication error): "
+			"session_name=`{}`, app={}",
+			_session.name,
+			*app);
 		return;
 	} catch (const lttng::runtime_error&) {
-		LTTNG_THROW_ERROR("Failed to start UST app trace");
+		LTTNG_THROW_ERROR(
+			lttng::format("Failed to start UST app trace: session_name=`{}`, app={}",
+				      _session.name,
+				      *app));
 	}
 
 	/* Indicate that the session has been started once */
@@ -1989,7 +2158,10 @@ void ls::ust::domain_orchestrator::_stop_app_trace(ust::app *app)
 {
 	ust::app_session *ua_sess;
 
-	DBG("Stopping tracing for ust app pid %d", app->pid);
+	DBG_FMT("UST domain orchestrator stopping app trace: session_name=`{}`, session_id={}, app={}",
+		_session.name,
+		_session.id,
+		*app);
 
 	const lttng::urcu::read_lock_guard read_lock;
 	const auto update_health_code_on_exit =
@@ -2015,7 +2187,10 @@ void ls::ust::domain_orchestrator::_stop_app_trace(ust::app *app)
 	 * indicate that this is a stop error.
 	 */
 	if (!ua_sess->started) {
-		LTTNG_THROW_ERROR("Failed to stop UST app trace");
+		LTTNG_THROW_ERROR(lttng::format(
+			"Failed to stop UST app trace (never started): session_name=`{}`, app={}",
+			_session.name,
+			*app));
 	}
 
 	health_code_update();
@@ -2024,9 +2199,16 @@ void ls::ust::domain_orchestrator::_stop_app_trace(ust::app *app)
 	try {
 		app->command_socket.lock().stop_session(ua_sess->handle);
 	} catch (const ls::ust::app_communication_error&) {
+		DBG_FMT("UST domain orchestrator failed to stop app trace (communication error): "
+			"session_name=`{}`, app={}",
+			_session.name,
+			*app);
 		return;
 	} catch (const lttng::runtime_error&) {
-		LTTNG_THROW_ERROR("Failed to stop UST app trace");
+		LTTNG_THROW_ERROR(
+			lttng::format("Failed to stop UST app trace: session_name=`{}`, app={}",
+				      _session.name,
+				      *app));
 	}
 
 	health_code_update();
@@ -2065,7 +2247,10 @@ void ls::ust::domain_orchestrator::_clear_quiescent_app_session(ust::app *app,
 {
 	struct consumer_socket *socket;
 
-	DBG("Clearing stream quiescent state for ust app pid %d", app->pid);
+	DBG_FMT("UST domain orchestrator clearing quiescent state: session_name=`{}`, session_id={}, app={}",
+		_session.name,
+		_session.id,
+		*app);
 
 	const lttng::urcu::read_lock_guard read_lock;
 	const auto update_health_code_on_exit =
@@ -2107,7 +2292,18 @@ void ls::ust::domain_orchestrator::_clear_quiescent_app_session(ust::app *app,
 
 void ls::ust::domain_orchestrator::start()
 {
+	DBG_FMT("UST domain orchestrator starting: session_name=`{}`, session_id={}, "
+		"buffer_type={}, app_sessions_count={}",
+		_session.name,
+		_session.id,
+		buffer_type(),
+		_app_sessions.size());
+
 	if (_active) {
+		DBG_FMT("UST domain orchestrator already active, skipping start: "
+			"session_name=`{}`, session_id={}",
+			_session.name,
+			_session.id);
 		return;
 	}
 
@@ -2151,7 +2347,18 @@ void ls::ust::domain_orchestrator::start()
 
 void ls::ust::domain_orchestrator::stop()
 {
+	DBG_FMT("UST domain orchestrator stopping: session_name=`{}`, session_id={}, "
+		"buffer_type={}, app_sessions_count={}",
+		_session.name,
+		_session.id,
+		buffer_type(),
+		_app_sessions.size());
+
 	if (!_active) {
+		DBG_FMT("UST domain orchestrator already inactive, skipping stop: "
+			"session_name=`{}`, session_id={}",
+			_session.name,
+			_session.id);
 		return;
 	}
 
@@ -2271,6 +2478,12 @@ void ls::ust::domain_orchestrator::_clear_quiescent_per_uid_channels() const
 
 void ls::ust::domain_orchestrator::rotate()
 {
+	DBG_FMT("UST domain orchestrator rotating: session_name=`{}`, session_id={}, "
+		"buffer_type={}",
+		_session.name,
+		_session.id,
+		buffer_type());
+
 	auto *consumer = get_consumer_output_ptr();
 
 	_for_each_consumer_stream_group([this,
@@ -2312,6 +2525,13 @@ void ls::ust::domain_orchestrator::rotate()
 
 void ls::ust::domain_orchestrator::clear()
 {
+	DBG_FMT("UST domain orchestrator clearing: session_name=`{}`, session_id={}, "
+		"buffer_type={}, session_is_active={}",
+		_session.name,
+		_session.id,
+		buffer_type(),
+		_active);
+
 	if (_active) {
 		LTTNG_THROW_CLEAR_FAILURE(fmt::format(
 			"Failed to clear UST session while active: session_name=`{}`, session_id={}",
@@ -2390,6 +2610,12 @@ void ls::ust::domain_orchestrator::clear()
  */
 void ls::ust::domain_orchestrator::open_packets()
 {
+	DBG_FMT("UST domain orchestrator opening packets: session_name=`{}`, session_id={}, "
+		"buffer_type={}",
+		_session.name,
+		_session.id,
+		buffer_type());
+
 	auto *consumer = get_consumer_output_ptr();
 	const auto buf_type = buffer_type();
 
@@ -2462,6 +2688,13 @@ void ls::ust::domain_orchestrator::_close_per_uid_metadata_on_consumer() const
 void ls::ust::domain_orchestrator::record_snapshot(const struct consumer_output& snapshot_consumer,
 						   std::uint64_t nb_packets_per_stream)
 {
+	DBG_FMT("UST domain orchestrator recording snapshot: session_name=`{}`, session_id={}, "
+		"buffer_ownership={}, nb_packets_per_stream={}",
+		_session.name,
+		_session.id,
+		_default_buffer_ownership,
+		nb_packets_per_stream);
+
 	if (_default_buffer_ownership ==
 	    lsc::recording_channel_configuration::ownership_model_t::PER_UID) {
 		_record_snapshot_per_uid(snapshot_consumer, nb_packets_per_stream);
@@ -2628,6 +2861,12 @@ void ls::ust::domain_orchestrator::_record_snapshot_per_pid(
 
 void ls::ust::domain_orchestrator::regenerate_metadata()
 {
+	DBG_FMT("UST domain orchestrator regenerating metadata: session_name=`{}`, session_id={}, "
+		"buffer_type={}",
+		_session.name,
+		_session.id,
+		buffer_type());
+
 	if (buffer_type() == LTTNG_BUFFER_PER_PID) {
 		LTTNG_THROW_UST_METADATA_REGENERATION_UNSUPPORTED();
 	}
@@ -2639,7 +2878,11 @@ void ls::ust::domain_orchestrator::regenerate_metadata()
 
 void ls::ust::domain_orchestrator::regenerate_statedump()
 {
-	DBG("Regenerating the statedump for all UST apps");
+	DBG_FMT("UST domain orchestrator regenerating statedump: session_name=`{}`, session_id={}, "
+		"app_sessions_count={}",
+		_session.name,
+		_session.id,
+		_app_sessions.size());
 
 	const lttng::urcu::read_lock_guard read_lock;
 
@@ -2672,6 +2915,12 @@ void ls::ust::domain_orchestrator::regenerate_statedump()
 void ls::ust::domain_orchestrator::create_channel_subdirectories(
 	lttng_trace_chunk& trace_chunk) const
 {
+	DBG_FMT("UST domain orchestrator creating channel subdirectories: session_name=`{}`, "
+		"session_id={}, buffer_ownership={}",
+		_session.name,
+		_session.id,
+		_default_buffer_ownership);
+
 	if (_default_buffer_ownership ==
 	    lsc::recording_channel_configuration::ownership_model_t::PER_UID) {
 		for (const auto& tc_entry : _per_uid_trace_classes) {
