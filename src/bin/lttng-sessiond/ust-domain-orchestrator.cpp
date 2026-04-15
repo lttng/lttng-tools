@@ -714,7 +714,7 @@ int ls::ust::domain_orchestrator::_create_event_on_apps(
 
 		auto *ua_chan = chan_it->second.get();
 
-		ret = ust_app_event::create(*ua_chan, event_rule_config);
+		ret = app_event::create(*ua_chan, event_rule_config);
 		if (ret < 0) {
 			if (ret != -LTTNG_UST_ERR_EXIST) {
 				break;
@@ -760,7 +760,7 @@ int ls::ust::domain_orchestrator::_enable_event_on_apps(
 
 		auto *ua_chan = chan_it->second.get();
 
-		auto *ua_event = ust_app_event::find_by_config(ua_chan->events, event_rule_config);
+		auto *ua_event = app_event::find_by_config(ua_chan->events, event_rule_config);
 		if (ua_event == nullptr) {
 			DBG3("UST app enable event not found for app PID %d. Skipping app",
 			     app->pid);
@@ -809,7 +809,7 @@ int ls::ust::domain_orchestrator::_disable_event_on_apps(
 
 		auto *ua_chan = chan_it->second.get();
 
-		auto *ua_event = ust_app_event::find_by_config(ua_chan->events, event_rule_config);
+		auto *ua_event = app_event::find_by_config(ua_chan->events, event_rule_config);
 		if (ua_event == nullptr) {
 			DBG2("Event not found in channel %s for app pid %d. Skipping",
 			     channel_name.data(),
@@ -1230,11 +1230,11 @@ error:
 
 int ls::ust::domain_orchestrator::_allocate_app_channel(
 	ust::app_session& ua_sess,
-	struct ust_app_channel **ua_chanp,
+	ust::app_channel **ua_chanp,
 	const lsc::recording_channel_configuration& channel_config,
 	std::uint64_t trace_class_stream_class_handle)
 {
-	struct ust_app_channel *ua_chan;
+	ust::app_channel *ua_chan;
 
 	ASSERT_RCU_READ_LOCKED();
 
@@ -1247,7 +1247,7 @@ int ls::ust::domain_orchestrator::_allocate_app_channel(
 		}
 	}
 
-	ua_chan = new ust_app_channel(ua_sess, channel_config);
+	ua_chan = new app_channel(ua_sess, channel_config);
 	ua_chan->init_from_config();
 	ua_chan->trace_class_stream_class_handle = trace_class_stream_class_handle;
 	ua_chan->attr.type =
@@ -1263,7 +1263,7 @@ end:
 
 int ls::ust::domain_orchestrator::_create_channel_per_uid(ust::app *app,
 							  ust::app_session *ua_sess,
-							  struct ust_app_channel *ua_chan)
+							  ust::app_channel *ua_chan)
 {
 	int ret;
 	enum lttng_error_code notification_ret;
@@ -1413,7 +1413,7 @@ error:
 
 int ls::ust::domain_orchestrator::_create_channel_per_pid(ust::app *app,
 							  ust::app_session& ua_sess,
-							  struct ust_app_channel *ua_chan)
+							  ust::app_channel *ua_chan)
 {
 	int ret;
 	enum lttng_error_code cmd_ret;
@@ -1532,7 +1532,7 @@ error:
 
 int ls::ust::domain_orchestrator::_send_app_channel(ust::app *app,
 						    ust::app_session& ua_sess,
-						    struct ust_app_channel *ua_chan)
+						    ust::app_channel *ua_chan)
 {
 	int ret;
 
@@ -1589,12 +1589,12 @@ error:
 int ls::ust::domain_orchestrator::_create_app_channel(
 	ust::app_session& ua_sess,
 	ust::app *app,
-	struct ust_app_channel **_ua_chan,
+	ust::app_channel **_ua_chan,
 	const lsc::recording_channel_configuration& channel_config,
 	std::uint64_t trace_class_stream_class_handle)
 {
 	int ret = 0;
-	struct ust_app_channel *ua_chan = nullptr;
+	ust::app_channel *ua_chan = nullptr;
 
 	/*
 	 * Create channel onto application and synchronize its
@@ -1613,7 +1613,7 @@ int ls::ust::domain_orchestrator::_create_app_channel(
 
 	/* Only publish the channel if successfully created on the tracer/consumer. */
 	ua_sess.channels.emplace(ua_chan->channel_config.name,
-				 std::unique_ptr<ust_app_channel>(ua_chan));
+				 std::unique_ptr<app_channel>(ua_chan));
 
 	/* Add contexts. */
 	for (const auto& ctx_uptr : channel_config.get_contexts()) {
@@ -1670,7 +1670,7 @@ error:
 int ls::ust::domain_orchestrator::_find_or_create_app_channel(
 	ust::app_session& ua_sess,
 	ust::app *app,
-	struct ust_app_channel **ua_chan,
+	ust::app_channel **ua_chan,
 	const lsc::recording_channel_configuration& channel_config,
 	std::uint64_t trace_class_stream_class_handle)
 {
@@ -1694,13 +1694,13 @@ end:
 }
 
 int ls::ust::domain_orchestrator::_synchronize_channel_event(
-	struct ust_app_channel *ua_chan, const lsc::event_rule_configuration& event_config)
+	ust::app_channel *ua_chan, const lsc::event_rule_configuration& event_config)
 {
 	int ret = 0;
 
-	auto *ua_event = ust_app_event::find_by_config(ua_chan->events, event_config);
+	auto *ua_event = app_event::find_by_config(ua_chan->events, event_config);
 	if (!ua_event) {
-		ret = ust_app_event::create(*ua_chan, event_config);
+		ret = app_event::create(*ua_chan, event_config);
 		if (ret < 0) {
 			goto end;
 		}
@@ -1723,12 +1723,12 @@ void ls::ust::domain_orchestrator::_synchronize_all_channels(ust::app_session& u
 	const auto& config_domain = _session.user_space_domain;
 
 	for (const auto& chan_config : config_domain.recording_channels()) {
-		struct ust_app_channel *ua_chan;
+		ust::app_channel *ua_chan;
 
 		const auto handle = _trace_class_stream_class_handle(chan_config);
 
 		/*
-		 * Search for a matching ust_app_channel. If none is found,
+		 * Search for a matching app_channel. If none is found,
 		 * create it. Creating the channel will cause the ua_chan
 		 * structure to be allocated, the channel buffers to be
 		 * allocated (if necessary) and sent to the application, and
@@ -1771,7 +1771,7 @@ end:
 int ls::ust::domain_orchestrator::_create_app_metadata(ust::app_session& ua_sess, ust::app *app)
 {
 	int ret = 0;
-	struct ust_app_channel *metadata;
+	ust::app_channel *metadata;
 	struct consumer_socket *socket;
 
 	LTTNG_ASSERT(app);
@@ -1794,7 +1794,7 @@ int ls::ust::domain_orchestrator::_create_app_metadata(ust::app_session& ua_sess
 	}
 
 	/* Allocate UST metadata */
-	metadata = new ust_app_channel(ua_sess, metadata_config);
+	metadata = new app_channel(ua_sess, metadata_config);
 
 	{
 		const auto default_attr = _default_metadata_channel_attr();

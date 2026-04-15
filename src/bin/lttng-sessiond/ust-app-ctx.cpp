@@ -24,9 +24,9 @@
 namespace lsu = lttng::sessiond::ust;
 namespace lsc = lttng::sessiond::config;
 
-ust_app_ctx::ust_app_ctx(ust_app_channel& channel,
-			 const lsc::context_configuration& context_config_,
-			 const lttng_ust_context_attr *uctx) :
+lsu::app_context::app_context(lsu::app_channel& channel,
+			      const lsc::context_configuration& context_config_,
+			      const lttng_ust_context_attr *uctx) :
 	context_config(context_config_), _channel(channel)
 {
 	if (uctx) {
@@ -48,7 +48,7 @@ ust_app_ctx::ust_app_ctx(ust_app_channel& channel,
 	DBG3("UST app context %d allocated", ctx.ctx);
 }
 
-ust_app_ctx::~ust_app_ctx()
+lsu::app_context::~app_context()
 {
 	if (obj) {
 		auto& app = _channel.session.app();
@@ -92,7 +92,7 @@ namespace {
  *
  * Called with UST app session lock held.
  */
-int create_ust_channel_context(struct ust_app_channel *ua_chan, struct ust_app_ctx *ua_ctx)
+int create_ust_channel_context(lsu::app_channel *ua_chan, lsu::app_context *ua_ctx)
 {
 	int ret = 0;
 
@@ -125,7 +125,7 @@ error:
  *
  * Called with UST app session lock held.
  */
-int create_ust_app_channel_context(struct ust_app_channel *ua_chan,
+int create_ust_app_channel_context(lsu::app_channel *ua_chan,
 				   struct lttng_ust_context_attr *uctx,
 				   const lsc::context_configuration& ctx_config)
 {
@@ -139,7 +139,7 @@ int create_ust_app_channel_context(struct ust_app_channel *ua_chan,
 	}
 
 	{
-		auto ua_ctx = lttng::make_unique<ust_app_ctx>(*ua_chan, ctx_config, uctx);
+		auto ua_ctx = lttng::make_unique<lsu::app_context>(*ua_chan, ctx_config, uctx);
 
 		ret = create_ust_channel_context(ua_chan, ua_ctx.get());
 		if (ret < 0) {

@@ -17,20 +17,27 @@ namespace config {
 class context_configuration;
 class recording_channel_configuration;
 } /* namespace config */
+namespace ust {
+class app_channel;
+class app_context;
+} /* namespace ust */
 } /* namespace sessiond */
 } /* namespace lttng */
 
-struct ust_app_channel;
+namespace lttng {
+namespace sessiond {
+namespace ust {
 
-struct ust_app_ctx {
-	explicit ust_app_ctx(ust_app_channel& channel,
+class app_context {
+public:
+	explicit app_context(app_channel& channel,
 			     const lttng::sessiond::config::context_configuration& context_config_,
 			     const lttng_ust_context_attr *uctx = nullptr);
-	~ust_app_ctx();
-	ust_app_ctx(const ust_app_ctx&) = delete;
-	ust_app_ctx(ust_app_ctx&&) = delete;
-	ust_app_ctx& operator=(const ust_app_ctx&) = delete;
-	ust_app_ctx& operator=(ust_app_ctx&&) = delete;
+	~app_context();
+	app_context(const app_context&) = delete;
+	app_context(app_context&&) = delete;
+	app_context& operator=(const app_context&) = delete;
+	app_context& operator=(app_context&&) = delete;
 
 	int handle = 0;
 	struct lttng_ust_context_attr ctx = {};
@@ -38,12 +45,16 @@ struct ust_app_ctx {
 	const lttng::sessiond::config::context_configuration& context_config;
 
 private:
-	ust_app_channel& _channel;
+	app_channel& _channel;
 };
+
+} /* namespace ust */
+} /* namespace sessiond */
+} /* namespace lttng */
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
-int create_ust_app_channel_context(struct ust_app_channel *ua_chan,
+int create_ust_app_channel_context(lttng::sessiond::ust::app_channel *ua_chan,
 				   struct lttng_ust_context_attr *uctx,
 				   const lttng::sessiond::config::context_configuration& ctx_config);
 bool is_context_redundant(

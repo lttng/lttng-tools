@@ -23,11 +23,11 @@
 #include <unordered_map>
 
 struct consumer_output;
-struct ust_app_channel;
 
 namespace lttng {
 namespace sessiond {
 namespace ust {
+class app_channel;
 class domain_orchestrator;
 class trace_class;
 struct app;
@@ -116,7 +116,7 @@ public:
 	/* Unique app_session identifier, allocated by sessiond. */
 	const std::uint64_t app_session_id;
 	/* Per-app channels indexed by channel name. */
-	std::unordered_map<std::string, std::unique_ptr<ust_app_channel>> channels;
+	std::unordered_map<std::string, std::unique_ptr<app_channel>> channels;
 
 	/*
 	 * RAII token: registers this session's UST tracer-side handle

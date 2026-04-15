@@ -15,7 +15,6 @@
 
 struct lttng_bytecode;
 struct lttng_event_exclusion;
-struct ust_app_channel;
 
 namespace lttng {
 namespace sessiond {
@@ -24,27 +23,34 @@ class event_rule_configuration;
 } /* namespace config */
 namespace ust {
 struct app;
+class app_channel;
+class app_event;
 } /* namespace ust */
 } /* namespace sessiond */
 } /* namespace lttng */
 
-struct ust_app_event {
+namespace lttng {
+namespace sessiond {
+namespace ust {
+
+class app_event {
+public:
 	using event_map =
 		std::unordered_map<const lttng::sessiond::config::event_rule_configuration *,
-				   ust_app_event *>;
+				   app_event *>;
 
-	explicit ust_app_event(
-		struct ust_app_channel& channel_,
+	explicit app_event(
+		app_channel& channel_,
 		const lttng::sessiond::config::event_rule_configuration& event_rule_config_) :
 		channel(channel_), event_rule_config(event_rule_config_)
 	{
 	}
 
-	~ust_app_event() = default;
-	ust_app_event(const ust_app_event&) = delete;
-	ust_app_event(ust_app_event&&) = delete;
-	ust_app_event& operator=(const ust_app_event&) = delete;
-	ust_app_event& operator=(ust_app_event&&) = delete;
+	~app_event() = default;
+	app_event(const app_event&) = delete;
+	app_event(app_event&&) = delete;
+	app_event& operator=(const app_event&) = delete;
+	app_event& operator=(app_event&&) = delete;
 
 	/* Release the tracer-side event object and free local resources. */
 	void destroy(int sock);
@@ -59,20 +65,24 @@ struct ust_app_event {
 	int create_on_ust();
 
 	/* Create and register a per-app event in the channel's event map. */
-	static int create(struct ust_app_channel& channel,
+	static int create(app_channel& channel,
 			  const lttng::sessiond::config::event_rule_configuration& event_config);
 
 	/* Find a per-app event by matching its configuration pointer. */
-	static struct ust_app_event *
+	static app_event *
 	find_by_config(const event_map& events,
 		       const lttng::sessiond::config::event_rule_configuration& event_config);
 
 	bool enabled = false;
 	int handle = 0;
 	struct lttng_ust_abi_object_data *obj = nullptr;
-	struct ust_app_channel& channel;
+	app_channel& channel;
 	const lttng::sessiond::config::event_rule_configuration& event_rule_config;
 };
+
+} /* namespace ust */
+} /* namespace sessiond */
+} /* namespace lttng */
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 

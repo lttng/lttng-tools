@@ -54,10 +54,10 @@ uint64_t get_next_channel_key()
 
 } /* namespace */
 
-/* -- ust_app_channel -- */
+/* -- app_channel -- */
 
-ust_app_channel::ust_app_channel(lsu::app_session& session_,
-				 const lsc::channel_configuration& channel_config_) :
+lsu::app_channel::app_channel(lsu::app_session& session_,
+			      const lsc::channel_configuration& channel_config_) :
 	enabled(true),
 	handle(-1),
 	key(get_next_channel_key()),
@@ -70,7 +70,7 @@ ust_app_channel::ust_app_channel(lsu::app_session& session_,
 	DBG3("UST app channel %s allocated", channel_config.name.c_str());
 }
 
-ust_app_channel::~ust_app_channel()
+lsu::app_channel::~app_channel()
 {
 	DBG3("UST app deleting channel %s", channel_config.name.c_str());
 
@@ -132,7 +132,7 @@ ust_app_channel::~ust_app_channel()
 	}
 }
 
-int ust_app_channel::enable()
+int lsu::app_channel::enable()
 {
 	int ret = 0;
 
@@ -160,7 +160,7 @@ error:
 	return ret;
 }
 
-int ust_app_channel::disable()
+int lsu::app_channel::disable()
 {
 	int ret = 0;
 
@@ -188,7 +188,7 @@ error:
 	return ret;
 }
 
-void ust_app_channel::init_from_config()
+void lsu::app_channel::init_from_config()
 {
 	const auto& config =
 		static_cast<const lsc::recording_channel_configuration&>(channel_config);
@@ -226,7 +226,7 @@ void ust_app_channel::init_from_config()
 	DBG3("UST app channel %s initialized from config", channel_config.name.c_str());
 }
 
-int ust_app_channel::send_to_app_per_pid()
+int lsu::app_channel::send_to_app_per_pid()
 {
 	int ret;
 
@@ -268,7 +268,7 @@ error:
 	return ret;
 }
 
-int ust_app_channel::send_to_app_per_uid(lsu::stream_group& stream_group)
+int lsu::app_channel::send_to_app_per_uid(lsu::stream_group& stream_group)
 {
 	int ret;
 
@@ -341,7 +341,7 @@ error:
 
 /* -- app_stream -- */
 
-lsu::app_stream::app_stream(ust_app_channel& channel) : _channel(channel)
+lsu::app_stream::app_stream(lsu::app_channel& channel) : _channel(channel)
 {
 }
 
@@ -480,7 +480,7 @@ error:
  */
 int do_consumer_create_channel(struct consumer_output *consumer,
 			       lsu::app_session *ua_sess,
-			       struct ust_app_channel *ua_chan,
+			       lsu::app_channel *ua_chan,
 			       int bitness,
 			       lsu::trace_class *registry,
 			       struct lttng_trace_chunk *current_trace_chunk,

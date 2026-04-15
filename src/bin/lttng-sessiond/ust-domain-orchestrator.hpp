@@ -436,30 +436,28 @@ private:
 	int _find_or_create_app_session(ust::app *app, ust::app_session **ua_sess_ptr);
 
 	int _allocate_app_channel(ust::app_session& ua_sess,
-				  struct ust_app_channel **ua_chanp,
+				  ust::app_channel **ua_chanp,
 				  const config::recording_channel_configuration& channel_config,
 				  std::uint64_t trace_class_stream_class_handle);
 	int _create_channel_per_uid(ust::app *app,
 				    ust::app_session *ua_sess,
-				    struct ust_app_channel *ua_chan);
+				    ust::app_channel *ua_chan);
 	int _create_channel_per_pid(ust::app *app,
 				    ust::app_session& ua_sess,
-				    struct ust_app_channel *ua_chan);
-	int _send_app_channel(ust::app *app,
-			      ust::app_session& ua_sess,
-			      struct ust_app_channel *ua_chan);
+				    ust::app_channel *ua_chan);
+	int _send_app_channel(ust::app *app, ust::app_session& ua_sess, ust::app_channel *ua_chan);
 	int _create_app_channel(ust::app_session& ua_sess,
 				ust::app *app,
-				struct ust_app_channel **ua_chanp,
+				ust::app_channel **ua_chanp,
 				const config::recording_channel_configuration& channel_config,
 				std::uint64_t trace_class_stream_class_handle);
 	int
 	_find_or_create_app_channel(ust::app_session& ua_sess,
 				    ust::app *app,
-				    struct ust_app_channel **ua_chan,
+				    ust::app_channel **ua_chan,
 				    const config::recording_channel_configuration& channel_config,
 				    std::uint64_t trace_class_stream_class_handle);
-	int _synchronize_channel_event(struct ust_app_channel *ua_chan,
+	int _synchronize_channel_event(ust::app_channel *ua_chan,
 				       const config::event_rule_configuration& event_config);
 	void _synchronize_all_channels(ust::app_session& ua_sess, ust::app *app);
 	int _create_app_metadata(ust::app_session& ua_sess, ust::app *app);

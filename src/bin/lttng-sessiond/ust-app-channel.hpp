@@ -24,27 +24,31 @@
 #include <unordered_map>
 #include <vector>
 
-struct ust_app_ctx;
-struct ust_app_event;
-
 namespace lttng {
 namespace sessiond {
 namespace ust {
+class app_channel;
+class app_context;
+class app_event;
 class app_stream;
 } /* namespace ust */
 } /* namespace sessiond */
 } /* namespace lttng */
 
-struct ust_app_channel {
-	explicit ust_app_channel(
-		lttng::sessiond::ust::app_session& session_,
-		const lttng::sessiond::config::channel_configuration& channel_config_);
+namespace lttng {
+namespace sessiond {
+namespace ust {
 
-	~ust_app_channel();
-	ust_app_channel(const ust_app_channel&) = delete;
-	ust_app_channel(ust_app_channel&&) = delete;
-	ust_app_channel& operator=(const ust_app_channel&) = delete;
-	ust_app_channel& operator=(ust_app_channel&&) = delete;
+class app_channel {
+public:
+	explicit app_channel(lttng::sessiond::ust::app_session& session_,
+			     const lttng::sessiond::config::channel_configuration& channel_config_);
+
+	~app_channel();
+	app_channel(const app_channel&) = delete;
+	app_channel(app_channel&&) = delete;
+	app_channel& operator=(const app_channel&) = delete;
+	app_channel& operator=(app_channel&&) = delete;
 
 	/* Enable channel on the UST tracer and update local state. */
 	int enable();
@@ -101,15 +105,14 @@ struct ust_app_channel {
 	 * session.
 	 */
 	std::unordered_map<const lttng::sessiond::config::context_configuration *,
-			   std::unique_ptr<ust_app_ctx>>
+			   std::unique_ptr<app_context>>
 		contexts;
 	/*
 	 * Per-app events indexed by their event rule configuration. The
 	 * configuration pointer is stable for the lifetime of the recording
 	 * session.
 	 */
-	std::unordered_map<const lttng::sessiond::config::event_rule_configuration *,
-			   ust_app_event *>
+	std::unordered_map<const lttng::sessiond::config::event_rule_configuration *, app_event *>
 		events;
 	/*
 	 * RAII token: registers this channel's UST tracer-side handle
@@ -130,10 +133,6 @@ struct ust_app_channel {
 	const lttng::sessiond::config::channel_configuration& channel_config;
 };
 
-namespace lttng {
-namespace sessiond {
-namespace ust {
-
 /*
  * Represents a single stream within a per-app channel.
  *
@@ -144,7 +143,7 @@ namespace ust {
  */
 class app_stream {
 public:
-	explicit app_stream(ust_app_channel& channel);
+	explicit app_stream(app_channel& channel);
 	~app_stream();
 
 	app_stream(const app_stream&) = delete;
@@ -173,7 +172,7 @@ public:
 	void discard_locally() noexcept;
 
 private:
-	ust_app_channel& _channel;
+	app_channel& _channel;
 };
 
 } /* namespace ust */
@@ -186,7 +185,7 @@ int enable_ust_app_channel(lttng::sessiond::ust::app_session& ua_sess,
 			   lttng::c_string_view channel_name);
 int do_consumer_create_channel(struct consumer_output *consumer,
 			       lttng::sessiond::ust::app_session *ua_sess,
-			       struct ust_app_channel *ua_chan,
+			       lttng::sessiond::ust::app_channel *ua_chan,
 			       int bitness,
 			       lttng::sessiond::ust::trace_class *registry,
 			       struct lttng_trace_chunk *current_trace_chunk,

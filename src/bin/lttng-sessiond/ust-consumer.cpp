@@ -38,7 +38,7 @@ namespace lsu = lttng::sessiond::ust;
  * Consumer socket lock MUST be acquired before calling this.
  */
 static int ask_channel_creation(lsu::app_session *ua_sess,
-				struct ust_app_channel *ua_chan,
+				lsu::app_channel *ua_chan,
 				struct consumer_output *consumer,
 				struct consumer_socket *socket,
 				lsu::trace_class *trace_class,
@@ -244,7 +244,7 @@ static int ask_channel_creation(lsu::app_session *ua_sess,
  * Returns 0 on success else a negative value.
  */
 int ust_consumer_ask_channel(lsu::app_session *ua_sess,
-			     struct ust_app_channel *ua_chan,
+			     lsu::app_channel *ua_chan,
 			     struct consumer_output *consumer,
 			     struct consumer_socket *socket,
 			     lsu::trace_class *trace_class,
@@ -293,7 +293,7 @@ error:
  *
  * Return 0 on success else a negative value.
  */
-int ust_consumer_get_channel(struct consumer_socket *socket, struct ust_app_channel *ua_chan)
+int ust_consumer_get_channel(struct consumer_socket *socket, lsu::app_channel *ua_chan)
 {
 	int ret;
 	struct lttcomm_consumer_msg msg;
@@ -379,7 +379,7 @@ error:
  *
  * Return 0 on success else a negative value.
  */
-int ust_consumer_destroy_channel(struct consumer_socket *socket, struct ust_app_channel *ua_chan)
+int ust_consumer_destroy_channel(struct consumer_socket *socket, lsu::app_channel *ua_chan)
 {
 	int ret;
 	struct lttcomm_consumer_msg msg;
@@ -411,7 +411,7 @@ error:
  * On success return 0 else a negative value.
  */
 int ust_consumer_send_stream_to_ust(lsu::app *app,
-				    struct ust_app_channel *channel,
+				    lsu::app_channel *channel,
 				    lsu::app_stream *stream)
 {
 	int ret = 0;
@@ -446,7 +446,7 @@ error:
  */
 int ust_consumer_send_channel_to_ust(lsu::app *app,
 				     lsu::app_session *ua_sess,
-				     struct ust_app_channel *channel)
+				     lsu::app_channel *channel)
 {
 	int ret = 0;
 

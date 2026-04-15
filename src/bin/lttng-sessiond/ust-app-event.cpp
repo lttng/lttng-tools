@@ -84,7 +84,7 @@ end:
  * This function uses the raw lttng_ust_ctl call directly to handle
  * this case.
  */
-void ust_app_event::destroy(int sock)
+void lsu::app_event::destroy(int sock)
 {
 	auto& app = channel.session.app();
 	int ret;
@@ -324,16 +324,16 @@ struct lttng_ust_abi_event make_ust_abi_event_from_event_rule(const struct lttng
 /*
  * Alloc new UST app event from its event rule configuration.
  */
-struct ust_app_event *
-alloc_ust_app_event(struct ust_app_channel& channel,
+lsu::app_event *
+alloc_ust_app_event(lsu::app_channel& channel,
 		    const lttng::sessiond::config::event_rule_configuration& event_config)
 {
-	struct ust_app_event *ua_event;
+	lsu::app_event *ua_event;
 
 	try {
-		ua_event = new ust_app_event(channel, event_config);
+		ua_event = new lsu::app_event(channel, event_config);
 	} catch (const std::bad_alloc&) {
-		PERROR("Failed to allocate ust_app_event structure");
+		PERROR("Failed to allocate app_event structure");
 		goto error;
 	}
 
@@ -353,7 +353,7 @@ error:
  *
  * Should be called with session mutex held.
  */
-int create_ust_event(struct ust_app_event& event)
+int create_ust_event(lsu::app_event& event)
 {
 	int ret = 0;
 	auto& app = event.channel.session.app();
@@ -444,7 +444,7 @@ error:
  * `alloc_ust_app_event`, so this function only needs to copy the
  * enabled state.
  */
-void shadow_copy_event(struct ust_app_event *ua_event)
+void shadow_copy_event(lsu::app_event *ua_event)
 {
 	ua_event->enabled = ua_event->event_rule_config.is_enabled;
 }
@@ -453,7 +453,7 @@ void shadow_copy_event(struct ust_app_event *ua_event)
  * Add a per-app event to its channel's event map. The event must not already
  * exist (keyed by its event rule configuration pointer).
  */
-void add_unique_ust_app_event(struct ust_app_channel *ua_chan, struct ust_app_event *event)
+void add_unique_ust_app_event(lsu::app_channel *ua_chan, lsu::app_event *event)
 {
 	LTTNG_ASSERT(ua_chan);
 	LTTNG_ASSERT(event);
@@ -463,7 +463,7 @@ void add_unique_ust_app_event(struct ust_app_channel *ua_chan, struct ust_app_ev
 }
 } /* anonymous namespace */
 
-int ust_app_event::create_on_ust()
+int lsu::app_event::create_on_ust()
 {
 	return create_ust_event(*this);
 }
@@ -471,11 +471,10 @@ int ust_app_event::create_on_ust()
 /*
  * Find a per-app event by matching its config pointer.
  *
- * Returns the matching ust_app_event or nullptr if not found.
+ * Returns the matching app_event or nullptr if not found.
  */
-struct ust_app_event *
-ust_app_event::find_by_config(const event_map& events,
-			      const lsc::event_rule_configuration& event_config)
+lsu::app_event *lsu::app_event::find_by_config(const event_map& events,
+					       const lsc::event_rule_configuration& event_config)
 {
 	const auto it = events.find(&event_config);
 	return it != events.end() ? it->second : nullptr;
@@ -486,7 +485,7 @@ ust_app_event::find_by_config(const event_map& events,
  *
  * Called with UST app session lock held.
  */
-int ust_app_event::enable()
+int lsu::app_event::enable()
 {
 	int ret;
 	auto& app = channel.session.app();
@@ -505,7 +504,7 @@ error:
 /*
  * Disable on the tracer side a ust app event for the session and channel.
  */
-int ust_app_event::disable()
+int lsu::app_event::disable()
 {
 	int ret;
 	auto& app = channel.session.app();
@@ -528,12 +527,12 @@ error:
  * Must be called with the RCU read side lock held.
  * Called with ust app session mutex held.
  */
-int ust_app_event::create(struct ust_app_channel& channel,
-			  const lttng::sessiond::config::event_rule_configuration& event_config)
+int lsu::app_event::create(lsu::app_channel& channel,
+			   const lttng::sessiond::config::event_rule_configuration& event_config)
 {
 	int ret = 0;
 	auto& app = channel.session.app();
-	struct ust_app_event *ua_event;
+	lsu::app_event *ua_event;
 
 	ASSERT_RCU_READ_LOCKED();
 
