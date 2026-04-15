@@ -51,10 +51,10 @@ public:
 	app_channel& operator=(app_channel&&) = delete;
 
 	/* Enable channel on the UST tracer and update local state. */
-	int enable();
+	void enable();
 
 	/* Disable channel on the UST tracer and update local state. */
-	int disable();
+	void disable();
 
 	/*
 	 * Initialize per-app channel attributes from its
@@ -67,22 +67,22 @@ public:
 	 * Create a context on the UST tracer for this channel and register it in
 	 * the local context map.
 	 */
-	int create_context(const lttng::sessiond::config::context_configuration& context_config,
-			   const lttng_ust_context_attr *uctx = nullptr);
+	void create_context(const lttng::sessiond::config::context_configuration& context_config,
+			    const lttng_ust_context_attr *uctx = nullptr);
 
 	/*
 	 * Send channel and stream buffers to the application (per-PID mode).
 	 * After a successful call, the channel's stream vector is empty:
 	 * streams are discarded locally after being sent to the tracer.
 	 */
-	int send_to_app_per_pid();
+	void send_to_app_per_pid();
 
 	/*
 	 * Send a per-UID stream group's channel and streams to the application
 	 * by duplicating the master objects held by the stream group. Each
 	 * application receives duplicated copies of the shared objects.
 	 */
-	int send_to_app_per_uid(lttng::sessiond::ust::stream_group& stream_group);
+	void send_to_app_per_uid(lttng::sessiond::ust::stream_group& stream_group);
 
 	bool enabled = false;
 	int handle = 0;

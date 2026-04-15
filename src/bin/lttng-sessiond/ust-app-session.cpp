@@ -341,9 +341,9 @@ end:
  * The session list lock must be held by the caller.
  */
 
-int lsu::app_session::flush()
+void lsu::app_session::flush()
 {
-	int ret, retval = 0;
+	int ret;
 	struct consumer_socket *socket;
 
 	const auto update_health_code_on_exit =
@@ -352,11 +352,11 @@ int lsu::app_session::flush()
 	DBG("Flushing app session buffers for ust app pid %d", _app.pid);
 
 	if (!_app.compatible) {
-		return 0;
+		return;
 	}
 
 	if (deleted) {
-		return 0;
+		return;
 	}
 
 	health_code_update();
@@ -373,7 +373,6 @@ int lsu::app_session::flush()
 			ret = consumer_flush_channel(socket, chan_pair.second->key);
 			if (ret) {
 				ERR("Error flushing consumer channel");
-				retval = -1;
 				continue;
 			}
 		}
@@ -385,6 +384,4 @@ int lsu::app_session::flush()
 		abort();
 		break;
 	}
-
-	return retval;
 }

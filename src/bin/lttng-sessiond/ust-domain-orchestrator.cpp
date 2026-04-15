@@ -652,7 +652,13 @@ void ls::ust::domain_orchestrator::_enable_channel_on_apps(lttng::c_string_view 
 			continue;
 		}
 
-		if (ua_chan->enable() < 0) {
+		try {
+			ua_chan->enable();
+		} catch (const lttng::runtime_error& ex) {
+			DBG_FMT("Failed to enable UST channel on app: channel_name=`{}`, app={}, error='{}'",
+				channel_name.data(),
+				*app,
+				ex.what());
 			continue;
 		}
 	}
@@ -681,7 +687,13 @@ void ls::ust::domain_orchestrator::_disable_channel_on_apps(lttng::c_string_view
 		LTTNG_ASSERT(ua_chan);
 		LTTNG_ASSERT(ua_chan->enabled);
 
-		if (ua_chan->disable() < 0) {
+		try {
+			ua_chan->disable();
+		} catch (const lttng::runtime_error& ex) {
+			DBG_FMT("Failed to disable UST channel on app: channel_name=`{}`, app={}, error='{}'",
+				channel_name.data(),
+				*app,
+				ex.what());
 			continue;
 		}
 	}
@@ -844,7 +856,7 @@ void ls::ust::domain_orchestrator::_add_context_on_apps(
 		}
 
 		auto ust_ctx_attr = _make_ust_context_attr(ctx_config);
-		(void) ua_chan->create_context(ctx_config, &ust_ctx_attr);
+		ua_chan->create_context(ctx_config, &ust_ctx_attr);
 	}
 }
 
@@ -1350,19 +1362,7 @@ void ls::ust::domain_orchestrator::_create_channel_per_uid(ust::app *app,
 	{
 		auto& sg = _get_per_uid_stream_group(recording_config, app->uid, app_abi);
 
-		const auto ret = ua_chan->send_to_app_per_uid(sg);
-		if (ret < 0) {
-			LTTNG_THROW_ERROR(fmt::format(
-				"Failed to send per-UID UST channel to application: channel_name=`{}`, "
-				"session_id={}, pid={}, uid={}, abi={}, channel_key={}, status={}",
-				ua_chan->channel_config.name,
-				_session_id(),
-				app->pid,
-				app->uid,
-				static_cast<unsigned int>(app_abi),
-				ua_chan->key,
-				ret));
-		}
+		ua_chan->send_to_app_per_uid(sg);
 	}
 }
 
@@ -1428,17 +1428,7 @@ void ls::ust::domain_orchestrator::_create_channel_per_pid(ust::app *app,
 				static_cast<int>(_consumer_output->type)));
 		}
 
-		const auto send_ret = ua_chan->send_to_app_per_pid();
-		if (send_ret < 0) {
-			LTTNG_THROW_ERROR(fmt::format(
-				"Failed to send per-PID UST channel to application: channel_name=`{}`, "
-				"session_id={}, pid={}, channel_key={}, status={}",
-				ua_chan->channel_config.name,
-				_session_id(),
-				app->pid,
-				ua_chan->key,
-				send_ret));
-		}
+		ua_chan->send_to_app_per_pid();
 
 		const auto trace_class_channel_key = ua_chan->key;
 		{
@@ -1537,9 +1527,7 @@ void ls::ust::domain_orchestrator::_send_app_channel(ust::app *app,
 
 	/* If channel is not enabled, disable it on the tracer */
 	if (!ua_chan->enabled) {
-		if (ua_chan->disable() < 0) {
-			LTTNG_THROW_ERROR("Failed to disable newly-created UST channel");
-		}
+		ua_chan->disable();
 	}
 }
 
@@ -1574,9 +1562,7 @@ ls::ust::app_channel& ls::ust::domain_orchestrator::_create_app_channel(
 			}
 
 			auto ust_ctx_attr = _make_ust_context_attr(ctx_config);
-			if (ua_chan.create_context(ctx_config, &ust_ctx_attr) != 0) {
-				LTTNG_THROW_ERROR("Failed to add context to UST channel");
-			}
+			ua_chan.create_context(ctx_config, &ust_ctx_attr);
 		}
 	} catch (...) {
 		/*
@@ -1685,9 +1671,13 @@ void ls::ust::domain_orchestrator::_synchronize_all_channels(ust::app_session& u
 		}
 
 		if (ua_chan->enabled != chan_config.is_enabled) {
-			const auto ret = chan_config.is_enabled ? ua_chan->enable() :
-								  ua_chan->disable();
-			if (ret != 0) {
+			try {
+				if (chan_config.is_enabled) {
+					ua_chan->enable();
+				} else {
+					ua_chan->disable();
+				}
+			} catch (const lttng::runtime_error&) {
 				return;
 			}
 		}
@@ -2043,7 +2033,7 @@ void ls::ust::domain_orchestrator::_stop_app_trace(ust::app *app)
 
 void ls::ust::domain_orchestrator::_flush_app_session(ust::app_session& ua_sess)
 {
-	(void) ua_sess.flush();
+	ua_sess.flush();
 }
 
 void ls::ust::domain_orchestrator::_clear_quiescent_app_session(ust::app *app,

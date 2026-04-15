@@ -26,6 +26,7 @@
 #include <common/exception.hpp>
 #include <common/format.hpp>
 #include <common/make-unique.hpp>
+#include <common/scope-exit.hpp>
 #include <common/urcu.hpp>
 
 #include <inttypes.h>
@@ -131,21 +132,18 @@ lsu::app_channel::~app_channel()
 	}
 }
 
-int lsu::app_channel::enable()
+void lsu::app_channel::enable()
 {
-	int ret = 0;
-
 	health_code_update();
+	const auto update_health_code_on_exit =
+		lttng::make_scope_exit([]() noexcept { health_code_update(); });
 
 	auto& app = session.app();
 
 	try {
 		app.command_socket.lock().enable(obj);
 	} catch (const lsu::app_communication_error&) {
-		goto error;
-	} catch (const lttng::runtime_error&) {
-		ret = -1;
-		goto error;
+		return;
 	}
 
 	enabled = true;
@@ -153,27 +151,20 @@ int lsu::app_channel::enable()
 	DBG2("UST app channel %s enabled successfully for app: pid = %d",
 	     channel_config.name.c_str(),
 	     app.pid);
-
-error:
-	health_code_update();
-	return ret;
 }
 
-int lsu::app_channel::disable()
+void lsu::app_channel::disable()
 {
-	int ret = 0;
-
 	health_code_update();
+	const auto update_health_code_on_exit =
+		lttng::make_scope_exit([]() noexcept { health_code_update(); });
 
 	auto& app = session.app();
 
 	try {
 		app.command_socket.lock().disable(obj);
 	} catch (const lsu::app_communication_error&) {
-		goto error;
-	} catch (const lttng::runtime_error&) {
-		ret = -1;
-		goto error;
+		return;
 	}
 
 	enabled = false;
@@ -181,10 +172,6 @@ int lsu::app_channel::disable()
 	DBG2("UST app channel %s disabled successfully for app: pid = %d",
 	     channel_config.name.c_str(),
 	     app.pid);
-
-error:
-	health_code_update();
-	return ret;
 }
 
 void lsu::app_channel::init_from_config()
@@ -225,29 +212,35 @@ void lsu::app_channel::init_from_config()
 	DBG3("UST app channel %s initialized from config", channel_config.name.c_str());
 }
 
-int lsu::app_channel::create_context(const lsc::context_configuration& context_config,
-				     const lttng_ust_context_attr *uctx)
+void lsu::app_channel::create_context(const lsc::context_configuration& context_config,
+				      const lttng_ust_context_attr *uctx)
 {
-	int ret = 0;
-
 	DBG2("UST app adding context to channel %s", channel_config.name.c_str());
 
 	if (contexts.find(&context_config) != contexts.end()) {
-		return -EEXIST;
+		return;
 	}
 
 	auto app_context = lttng::make_unique<lsu::app_context>(*this, context_config, uctx);
 	auto& app = session.app();
 
 	health_code_update();
+	const auto update_health_code_on_exit =
+		lttng::make_scope_exit([]() noexcept { health_code_update(); });
 
 	try {
 		app.command_socket.lock().add_context(&app_context->ctx, obj, &app_context->obj);
 	} catch (const lsu::app_communication_error&) {
-		goto error;
-	} catch (const lttng::runtime_error&) {
-		ret = -1;
-		goto error;
+		return;
+	}
+
+	if (!app_context->obj) {
+		LTTNG_THROW_ERROR(lttng::format(
+			"Failed to add UST context: no context object returned: channel_name=`{}`, pid={}, "
+			"sock={}",
+			channel_config.name,
+			app.pid,
+			app.command_socket.fd()));
 	}
 
 	app_context->handle = app_context->obj->header.handle;
@@ -257,16 +250,10 @@ int lsu::app_channel::create_context(const lsc::context_configuration& context_c
 	     channel_config.name.c_str());
 
 	contexts.emplace(&context_config, std::move(app_context));
-
-error:
-	health_code_update();
-	return ret;
 }
 
-int lsu::app_channel::send_to_app_per_pid()
+void lsu::app_channel::send_to_app_per_pid()
 {
-	int ret;
-
 	auto& app = session.app();
 
 	health_code_update();
@@ -276,18 +263,35 @@ int lsu::app_channel::send_to_app_per_pid()
 	    app.command_socket.fd());
 
 	/* Send channel to the application. */
-	ret = ust_consumer_send_channel_to_ust(&app, &session, this);
-	if (ret < 0) {
-		goto error;
+	const auto channel_send_ret = ust_consumer_send_channel_to_ust(&app, &session, this);
+	if (channel_send_ret < 0) {
+		LTTNG_THROW_ERROR(lttng::format(
+			"Failed to send UST channel to application: channel_name=`{}`, pid={}, sock={}, "
+			"session_id={}, channel_key={}, status={}",
+			channel_config.name,
+			app.pid,
+			app.command_socket.fd(),
+			session.recording_session_id,
+			key,
+			channel_send_ret));
 	}
 
 	health_code_update();
 
 	/* Send all streams to application. */
 	for (auto& stream_ptr : streams) {
-		ret = ust_consumer_send_stream_to_ust(&app, this, stream_ptr.get());
-		if (ret < 0) {
-			goto error;
+		const auto stream_send_ret =
+			ust_consumer_send_stream_to_ust(&app, this, stream_ptr.get());
+		if (stream_send_ret < 0) {
+			LTTNG_THROW_ERROR(lttng::format(
+				"Failed to send UST stream to application: channel_name=`{}`, pid={}, "
+				"sock={}, session_id={}, channel_key={}, status={}",
+				channel_config.name,
+				app.pid,
+				app.command_socket.fd(),
+				session.recording_session_id,
+				key,
+				stream_send_ret));
 		}
 
 		/*
@@ -299,16 +303,10 @@ int lsu::app_channel::send_to_app_per_pid()
 	}
 
 	streams.clear();
-
-error:
-	health_code_update();
-	return ret;
 }
 
-int lsu::app_channel::send_to_app_per_uid(lsu::stream_group& stream_group)
+void lsu::app_channel::send_to_app_per_uid(lsu::stream_group& stream_group)
 {
-	int ret;
-
 	auto& app = session.app();
 
 	DBG("UST app sending stream group channel to ust sock %d", app.command_socket.fd());
@@ -319,20 +317,32 @@ int lsu::app_channel::send_to_app_per_uid(lsu::stream_group& stream_group)
 			auto duplicated_channel = stream_group.duplicate_channel_object();
 			obj = duplicated_channel.release();
 		} catch (const std::exception& ex) {
-			ERR("Failed to duplicate channel object for app pid %d: %s",
-			    app.pid,
-			    ex.what());
-			ret = -ENOMEM;
-			goto error;
+			LTTNG_THROW_ERROR(lttng::format(
+				"Failed to duplicate UST channel object for per-UID send: channel_name=`{}`, "
+				"pid={}, sock={}, session_id={}, channel_key={}, error={}",
+				channel_config.name,
+				app.pid,
+				app.command_socket.fd(),
+				session.recording_session_id,
+				key,
+				ex.what()));
 		}
 
 		handle = obj->header.handle;
 	}
 
 	/* Send channel to the application. */
-	ret = ust_consumer_send_channel_to_ust(&app, &session, this);
-	if (ret < 0) {
-		goto error;
+	const auto channel_send_ret = ust_consumer_send_channel_to_ust(&app, &session, this);
+	if (channel_send_ret < 0) {
+		LTTNG_THROW_ERROR(lttng::format(
+			"Failed to send per-UID UST channel to application: channel_name=`{}`, pid={}, "
+			"sock={}, session_id={}, channel_key={}, status={}",
+			channel_config.name,
+			app.pid,
+			app.command_socket.fd(),
+			session.recording_session_id,
+			key,
+			channel_send_ret));
 	}
 
 	health_code_update();
@@ -345,24 +355,37 @@ int lsu::app_channel::send_to_app_per_uid(lsu::stream_group& stream_group)
 			auto duplicated_stream = stream_ptr->handle.duplicate();
 			tmp_stream.obj = duplicated_stream.release();
 		} catch (const std::exception& ex) {
-			ERR("Failed to duplicate stream object for app pid %d: %s",
-			    app.pid,
-			    ex.what());
-			ret = -ENOMEM;
-			goto error;
+			LTTNG_THROW_ERROR(lttng::format(
+				"Failed to duplicate UST stream object for per-UID send: channel_name=`{}`, "
+				"pid={}, sock={}, session_id={}, channel_key={}, error={}",
+				channel_config.name,
+				app.pid,
+				app.command_socket.fd(),
+				session.recording_session_id,
+				key,
+				ex.what()));
 		}
 
 		tmp_stream.handle = tmp_stream.obj->header.handle;
 
-		ret = ust_consumer_send_stream_to_ust(&app, this, &tmp_stream);
-		if (ret < 0) {
+		const auto stream_send_ret =
+			ust_consumer_send_stream_to_ust(&app, this, &tmp_stream);
+		if (stream_send_ret < 0) {
 			/*
 			 * discard_locally releases the local resources without
 			 * notifying the tracer (the send may have failed).
 			 * The destructor will then be a no-op.
 			 */
 			tmp_stream.discard_locally();
-			goto error;
+			LTTNG_THROW_ERROR(lttng::format(
+				"Failed to send per-UID UST stream to application: channel_name=`{}`, "
+				"pid={}, sock={}, session_id={}, channel_key={}, status={}",
+				channel_config.name,
+				app.pid,
+				app.command_socket.fd(),
+				session.recording_session_id,
+				key,
+				stream_send_ret));
 		}
 
 		/*
@@ -371,9 +394,6 @@ int lsu::app_channel::send_to_app_per_uid(lsu::stream_group& stream_group)
 		 */
 		tmp_stream.discard_locally();
 	}
-
-error:
-	return ret;
 }
 
 /* -- app_stream -- */

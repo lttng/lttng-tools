@@ -15,16 +15,18 @@
 
 namespace lsu = lttng::sessiond::ust;
 
+#define LTTNG_THROW_APP_COMMUNICATION_ERROR(msg) \
+	throw lsu::app_communication_error((msg), LTTNG_SOURCE_LOCATION())
+
 namespace {
 /*
  * Classify the return value of a lttng_ust_ctl_* function and throw an
  * appropriate exception on error.
  *
  * - Success (ret >= 0): returns immediately.
- * - App dead (-EPIPE, -LTTNG_UST_ERR_EXITING): logs at DBG3, throws
- *   app_communication_error.
- * - Timeout (-EAGAIN): logs at WARN, throws app_communication_error.
- * - Other error: logs at ERR, throws lttng::runtime_error.
+ * - App dead (-EPIPE, -LTTNG_UST_ERR_EXITING): throws app_communication_error.
+ * - Timeout (-EAGAIN): throws app_communication_error.
+ * - Other error: throws lttng::runtime_error.
  */
 void throw_on_ust_ctl_error(int ret, const char *operation, pid_t pid, int sock_fd)
 {
@@ -33,35 +35,23 @@ void throw_on_ust_ctl_error(int ret, const char *operation, pid_t pid, int sock_
 	}
 
 	if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-		DBG3("UST app %s failed. Application is dead: pid = %d, sock = %d",
-		     operation,
-		     pid,
-		     sock_fd);
-		throw lsu::app_communication_error(
-			lttng::format("UST app {} failed: application is dead: pid = {}, sock = {}",
+		LTTNG_THROW_APP_COMMUNICATION_ERROR(
+			lttng::format("UST app {} failed: application is dead: pid={}, sock={}",
 				      operation,
 				      pid,
-				      sock_fd),
-			LTTNG_SOURCE_LOCATION());
+				      sock_fd));
 	}
 
 	if (ret == -EAGAIN) {
-		WARN("UST app %s failed. Communication time out: pid = %d, sock = %d",
-		     operation,
-		     pid,
-		     sock_fd);
-		throw lsu::app_communication_error(
-			lttng::format(
-				"UST app {} failed: communication timeout: pid = {}, sock = {}",
-				operation,
-				pid,
-				sock_fd),
-			LTTNG_SOURCE_LOCATION());
+		LTTNG_THROW_APP_COMMUNICATION_ERROR(
+			lttng::format("UST app {} failed: communication timeout: pid={}, sock={}",
+				      operation,
+				      pid,
+				      sock_fd));
 	}
 
-	ERR("UST app %s failed with ret %d: pid = %d, sock = %d", operation, ret, pid, sock_fd);
 	LTTNG_THROW_ERROR(lttng::format(
-		"UST app {} failed with ret {}: pid = {}, sock = {}", operation, ret, pid, sock_fd));
+		"UST app {} failed with ret {}: pid={}, sock={}", operation, ret, pid, sock_fd));
 }
 } /* anonymous namespace */
 

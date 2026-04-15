@@ -98,7 +98,7 @@ public:
 
 	static std::uint64_t next_id();
 
-	int flush();
+	void flush();
 
 	app_channel *find_channel(const char *channel_name) noexcept
 	{
