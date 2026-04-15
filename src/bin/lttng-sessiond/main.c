@@ -1572,11 +1572,29 @@ int main(int argc, char **argv)
 		 * closed, in case we are called with more opened file
 		 * descriptors than the standard ones and the lock file.
 		 */
-		for (i = 3; i < sysconf(_SC_OPEN_MAX); i++) {
-			if (i == lockfile_fd) {
-				continue;
+		int size = 0;
+		int *fd_list = utils_list_open_fds(&size);
+		if (fd_list) {
+			for (int x = 0; x < size; x++) {
+				int fd = fd_list[x];
+				if (fd >= 3 && fd != lockfile_fd) {
+					if (close(fd)) {
+						WARN("Failed to close fd=`%d`", fd);
+					}
+				}
 			}
-			(void) close(i);
+
+			free(fd_list);
+			fd_list = NULL;
+		}
+		else {
+			DBG("Falling back to old fd close method, attempting to close up to %ld fds", sysconf(_SC_OPEN_MAX));
+			for (i = 3; i < sysconf(_SC_OPEN_MAX); i++) {
+				if (i == lockfile_fd) {
+					continue;
+				}
+				(void) close(i);
+			}
 		}
 	}
 

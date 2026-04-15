@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <common/dynamic-array.h>
 #include <common/macros.h>
 #include <common/compat/directory-handle.h>
 
@@ -57,6 +58,7 @@ enum lttng_error_code utils_group_id_from_name(
 enum lttng_error_code utils_get_cpu_count(unsigned int *count);
 enum lttng_error_code utils_check_enough_available_memory(
 		uint64_t num_bytes_requested, uint64_t *num_bytes_available);
+int *utils_list_open_fds(int *size);
 
 /*
  * Parse `str` as an unsigned long long value.

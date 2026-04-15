@@ -1508,9 +1508,27 @@ int run_as_create_worker_no_lock(const char *procname,
 		 * Close all FDs aside from STDIN, STDOUT, STDERR and sockpair[1]
 		 * Sockpair[1] is used as a control channel with the master
 		 */
-		for (i = 3; i < sysconf(_SC_OPEN_MAX); i++) {
-			if (i != worker->sockpair[1]) {
-				(void) close(i);
+		int size = 0;
+		int *fd_list = utils_list_open_fds(&size);
+		if (fd_list) {
+			for (int x = 0; x < size; x++) {
+				int fd = fd_list[x];
+				if (fd >= 3 && fd != worker->sockpair[1]) {
+					if (close(fd)) {
+						WARN("Failed to close fd=`%d`", fd);
+					}
+				}
+			}
+
+			free(fd_list);
+			fd_list = NULL;
+		}
+		else {
+			DBG("Falling back to old fd close method, attempting to close up to %ld fds", sysconf(_SC_OPEN_MAX));
+			for (i = 3; i < sysconf(_SC_OPEN_MAX); i++) {
+				if (i != worker->sockpair[1]) {
+					(void) close(i);
+				}
 			}
 		}
 

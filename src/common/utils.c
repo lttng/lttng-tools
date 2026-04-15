@@ -1444,3 +1444,87 @@ success:
 end:
 	return ret_code;
 }
+
+int *utils_list_open_fds(int *size) {
+	int fd = -1;
+	int dir_fd = -1;
+	int _size = 0;
+	int _capacity = 5;
+	char *end_ptr = NULL;
+ 	struct dirent *entry = NULL;
+	const char *proc_self_fd = "/proc/self/fd";
+	DIR *self_fd_handle = opendir(proc_self_fd);
+	int *fd_list = zmalloc(sizeof(int) * _capacity);
+
+	if (!size) {
+		ERR("Size must not be null");
+		goto error;
+	}
+
+	if (!self_fd_handle) {
+		ERR("Failed to open directory '%s'", proc_self_fd);
+		goto error;
+	}
+
+	dir_fd = dirfd(self_fd_handle);
+	if (dir_fd < 0) {
+		ERR("Failed to get directory file descriptor for path '%s'", proc_self_fd);
+		goto error;
+	}
+
+	if (!fd_list) {
+		ERR("Failed to allocate buffer");
+		goto error;
+	}
+
+	while ((entry = readdir(self_fd_handle)) != NULL) {
+		if (entry->d_name[0] == '.') {
+			continue;
+		}
+
+		errno = 0;
+		end_ptr = NULL;
+		fd = strtol(entry->d_name, &end_ptr, 10);
+		if (errno || (end_ptr != NULL && *end_ptr != '\0')) {
+			errno = errno ? errno : EINVAL;
+			WARN("Failed to convert file name to file descriptor when enumerating open files: file_name=`%s`, end_ptr=`%p`", entry->d_name, (void *) end_ptr);
+			continue;
+		}
+
+		if (fd < 0) {
+			DBG("Skipping entry in `%s` that converted to a negative integer value: file_name=`%s`", proc_self_fd, entry->d_name);
+			continue;
+		}
+
+		if (fd == dir_fd) {
+			continue;
+		}
+
+		if (_size >= _capacity - 1) {
+			fd_list = realloc(fd_list, sizeof(int) * _capacity * 2);
+			if (!fd_list) {
+				PERROR("realloc");
+				goto error;
+			}
+
+			_capacity *= 2;
+		}
+
+		fd_list[_size] = fd;
+		_size++;
+	}
+
+	goto done;
+
+ error:
+	free(fd_list);
+	_size = 0;
+	fd_list = NULL;
+ done:
+	if (!closedir(self_fd_handle)) {
+		WARN("Failed to close directory");
+	}
+
+	*size = _size;
+	return fd_list;
+}
