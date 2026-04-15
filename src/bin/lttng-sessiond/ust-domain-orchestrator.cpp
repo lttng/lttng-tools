@@ -727,14 +727,12 @@ void ls::ust::domain_orchestrator::_create_event_on_apps(
 		/* If the channel is not found, there is a code flow error. */
 		LTTNG_ASSERT(ua_chan);
 
-		const auto ret = app_event::create(*ua_chan, event_rule_config);
-		if (ret < 0) {
-			if (ret != -LTTNG_UST_ERR_EXIST) {
-				LTTNG_THROW_UST_EVENT_ENABLE_FAILURE("Failed to create UST event");
-			}
-
-			DBG2("UST app event already exists on app PID %d", app->pid);
+		try {
+			app_event::create(*ua_chan, event_rule_config);
+		} catch (const ls::ust::app_communication_error&) {
 			continue;
+		} catch (const lttng::runtime_error&) {
+			LTTNG_THROW_UST_EVENT_ENABLE_FAILURE("Failed to create UST event");
 		}
 	}
 }
@@ -775,8 +773,9 @@ void ls::ust::domain_orchestrator::_enable_event_on_apps(
 			continue;
 		}
 
-		const auto ret = ua_event->enable();
-		if (ret < 0) {
+		try {
+			ua_event->enable();
+		} catch (const lttng::runtime_error&) {
 			LTTNG_THROW_UST_EVENT_ENABLE_FAILURE("Failed to enable UST event");
 		}
 	}
@@ -820,8 +819,9 @@ void ls::ust::domain_orchestrator::_disable_event_on_apps(
 			continue;
 		}
 
-		const auto ret = ua_event->disable();
-		if (ret < 0) {
+		try {
+			ua_event->disable();
+		} catch (const lttng::runtime_error&) {
 			LTTNG_THROW_UST_EVENT_DISABLE_FAILURE("Failed to disable UST event");
 		}
 	}
@@ -1617,14 +1617,13 @@ void ls::ust::domain_orchestrator::_synchronize_channel_event(
 {
 	auto *ua_event = app_event::find_by_config(ua_chan->events, event_config);
 	if (!ua_event) {
-		if (app_event::create(*ua_chan, event_config) < 0) {
-			LTTNG_THROW_ERROR("Failed to create synchronized UST event");
-		}
+		app_event::create(*ua_chan, event_config);
 	} else {
 		if (ua_event->enabled != event_config.is_enabled) {
-			if ((event_config.is_enabled ? ua_event->enable() : ua_event->disable()) <
-			    0) {
-				LTTNG_THROW_ERROR("Failed to update synchronized UST event state");
+			if (event_config.is_enabled) {
+				ua_event->enable();
+			} else {
+				ua_event->disable();
 			}
 		}
 	}

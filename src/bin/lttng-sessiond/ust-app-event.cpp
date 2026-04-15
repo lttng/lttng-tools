@@ -17,6 +17,9 @@
 #include <common/bytecode/bytecode.hpp>
 #include <common/common.hpp>
 #include <common/compat/errno.hpp>
+#include <common/exception.hpp>
+#include <common/make-unique.hpp>
+#include <common/scope-exit.hpp>
 #include <common/urcu.hpp>
 
 #include <lttng/event-rule/event-rule-internal.hpp>
@@ -328,14 +331,7 @@ std::unique_ptr<lsu::app_event>
 alloc_ust_app_event(lsu::app_channel& channel,
 		    const lttng::sessiond::config::event_rule_configuration& event_config)
 {
-	std::unique_ptr<lsu::app_event> ua_event;
-
-	try {
-		ua_event.reset(new lsu::app_event(channel, event_config));
-	} catch (const std::bad_alloc&) {
-		PERROR("Failed to allocate app_event structure");
-		goto error;
-	}
+	auto ua_event = lttng::make_unique<lsu::app_event>(channel, event_config);
 
 	ua_event->enabled = true;
 
@@ -343,9 +339,6 @@ alloc_ust_app_event(lsu::app_channel& channel,
 	     get_ust_event_name_from_rule(event_config.event_rule.get()));
 
 	return ua_event;
-
-error:
-	return std::unique_ptr<lsu::app_event>();
 }
 
 /*
@@ -353,12 +346,13 @@ error:
  *
  * Should be called with session mutex held.
  */
-int create_ust_event(lsu::app_event& event)
+void create_ust_event(lsu::app_event& event)
 {
-	int ret = 0;
 	auto& app = event.channel.session.app();
 
 	health_code_update();
+	const auto update_health_code_on_exit =
+		lttng::make_scope_exit([]() noexcept { health_code_update(); });
 
 	/*
 	 * Build the UST ABI event structure from the event rule configuration.
@@ -369,15 +363,7 @@ int create_ust_event(lsu::app_event& event)
 		make_ust_abi_event_from_event_rule(event.event_rule_config.event_rule.get());
 
 	/* Create UST event on tracer. */
-	try {
-		app.command_socket.lock().create_event(
-			&ust_abi_event, event.channel.obj, &event.obj);
-	} catch (const lsu::app_communication_error&) {
-		goto error;
-	} catch (const lttng::runtime_error&) {
-		ret = -1;
-		goto error;
-	}
+	app.command_socket.lock().create_event(&ust_abi_event, event.channel.obj, &event.obj);
 
 	event.handle = event.obj->header.handle;
 
@@ -393,9 +379,9 @@ int create_ust_event(lsu::app_event& event)
 		const auto *filter_bytecode = lttng_event_rule_get_filter_bytecode(
 			event.event_rule_config.event_rule.get());
 		if (filter_bytecode) {
-			ret = set_ust_object_filter(&app, filter_bytecode, event.obj);
+			const auto ret = set_ust_object_filter(&app, filter_bytecode, event.obj);
 			if (ret < 0) {
-				goto error;
+				LTTNG_THROW_ERROR("Failed to set UST event filter");
 			}
 		}
 	}
@@ -407,10 +393,11 @@ int create_ust_event(lsu::app_event& event)
 			event.event_rule_config.event_rule.get(), &exclusion);
 		if (exclusion_status == LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_OK &&
 		    exclusion) {
-			ret = set_ust_object_exclusions(&app, exclusion, event.obj);
-			free(exclusion);
+			const auto free_exclusion_on_exit =
+				lttng::make_scope_exit([exclusion]() noexcept { free(exclusion); });
+			const auto ret = set_ust_object_exclusions(&app, exclusion, event.obj);
 			if (ret < 0) {
-				goto error;
+				LTTNG_THROW_ERROR("Failed to set UST event exclusions");
 			}
 		} else if (exclusion_status != LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_NONE &&
 			   exclusion_status != LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_OK) {
@@ -424,15 +411,8 @@ int create_ust_event(lsu::app_event& event)
 		 * We now need to explicitly enable the event, since it
 		 * is now disabled at creation.
 		 */
-		ret = enable_ust_object(&app, event.obj);
-		if (ret < 0) {
-			goto error;
-		}
+		app.command_socket.lock().enable(event.obj);
 	}
-
-error:
-	health_code_update();
-	return ret;
 }
 
 /*
@@ -462,9 +442,9 @@ void add_unique_ust_app_event(lsu::app_channel& channel, std::unique_ptr<lsu::ap
 }
 } /* anonymous namespace */
 
-int lsu::app_event::create_on_ust()
+void lsu::app_event::create_on_ust()
 {
-	return create_ust_event(*this);
+	create_ust_event(*this);
 }
 
 /*
@@ -484,39 +464,45 @@ lsu::app_event *lsu::app_event::find_by_config(const event_map& events,
  *
  * Called with UST app session lock held.
  */
-int lsu::app_event::enable()
+void lsu::app_event::enable()
 {
-	int ret;
 	auto& app = channel.session.app();
 
-	ret = enable_ust_object(&app, obj);
-	if (ret < 0) {
-		goto error;
+	health_code_update();
+	const auto update_health_code_on_exit =
+		lttng::make_scope_exit([]() noexcept { health_code_update(); });
+
+	try {
+		app.command_socket.lock().enable(obj);
+	} catch (const lsu::app_communication_error&) {
+		return;
 	}
 
 	enabled = true;
 
-error:
-	return ret;
+	DBG2("UST app event %p enabled successfully for app: pid = %d", obj, app.pid);
 }
 
 /*
  * Disable on the tracer side a ust app event for the session and channel.
  */
-int lsu::app_event::disable()
+void lsu::app_event::disable()
 {
-	int ret;
 	auto& app = channel.session.app();
 
-	ret = disable_ust_object(&app, obj);
-	if (ret < 0) {
-		goto error;
+	health_code_update();
+	const auto update_health_code_on_exit =
+		lttng::make_scope_exit([]() noexcept { health_code_update(); });
+
+	try {
+		app.command_socket.lock().disable(obj);
+	} catch (const lsu::app_communication_error&) {
+		return;
 	}
 
 	enabled = false;
 
-error:
-	return ret;
+	DBG2("UST app event %p disabled successfully for app: pid = %d", obj, app.pid);
 }
 
 /*
@@ -526,37 +512,27 @@ error:
  * Must be called with the RCU read side lock held.
  * Called with ust app session mutex held.
  */
-int lsu::app_event::create(lsu::app_channel& channel,
-			   const lttng::sessiond::config::event_rule_configuration& event_config)
+void lsu::app_event::create(lsu::app_channel& ua_chan,
+			    const lttng::sessiond::config::event_rule_configuration& event_config)
 {
-	int ret = 0;
-	auto& app = channel.session.app();
+	auto& app = ua_chan.session.app();
 
 	ASSERT_RCU_READ_LOCKED();
 
-	auto ua_event = alloc_ust_app_event(channel, event_config);
-	if (!ua_event) {
-		/* Only failure mode of alloc_ust_app_event(). */
-		ret = -ENOMEM;
-		goto end;
-	}
+	auto ua_event = alloc_ust_app_event(ua_chan, event_config);
 	shadow_copy_event(*ua_event);
 
 	/* Create it on the tracer side */
-	ret = ua_event->create_on_ust();
-	if (ret < 0) {
-		goto error;
+	try {
+		ua_event->create_on_ust();
+	} catch (...) {
+		/* Release tracer-side resources before letting the unique_ptr destroy the object.
+		 */
+		ua_event->destroy(-1);
+		throw;
 	}
 
-	add_unique_ust_app_event(channel, std::move(ua_event));
+	add_unique_ust_app_event(ua_chan, std::move(ua_event));
 
 	DBG2("UST app create event completed: app = '%s' pid = %d", app.name, app.pid);
-
-end:
-	return ret;
-
-error:
-	/* Valid. Calling here is already in a read side lock */
-	ua_event->destroy(-1);
-	return ret;
 }

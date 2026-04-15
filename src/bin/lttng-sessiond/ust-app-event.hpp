@@ -57,17 +57,17 @@ public:
 	void destroy(int sock);
 
 	/* Enable this event on the UST tracer and update local state. */
-	int enable();
+	void enable();
 
 	/* Disable this event on the UST tracer and update local state. */
-	int disable();
+	void disable();
 
 	/* Create this event on the UST tracer and synchronize local state. */
-	int create_on_ust();
+	void create_on_ust();
 
 	/* Create and register a per-app event in the channel's event map. */
-	static int create(app_channel& channel,
-			  const lttng::sessiond::config::event_rule_configuration& event_config);
+	static void create(app_channel& channel,
+			   const lttng::sessiond::config::event_rule_configuration& event_config);
 
 	/* Find a per-app event by matching its configuration pointer. */
 	static app_event *
