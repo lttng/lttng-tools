@@ -775,6 +775,11 @@ void ls::ust::domain_orchestrator::_enable_event_on_apps(
 
 		try {
 			ua_event->enable();
+		} catch (const ls::ust::app_communication_error& ex) {
+			DBG_FMT("Failed to enable UST event on app: app={}, error='{}'",
+				*app,
+				ex.what());
+			continue;
 		} catch (const lttng::runtime_error&) {
 			LTTNG_THROW_UST_EVENT_ENABLE_FAILURE("Failed to enable UST event");
 		}
@@ -821,6 +826,11 @@ void ls::ust::domain_orchestrator::_disable_event_on_apps(
 
 		try {
 			ua_event->disable();
+		} catch (const ls::ust::app_communication_error& ex) {
+			DBG_FMT("Failed to disable UST event on app: app={}, error='{}'",
+				*app,
+				ex.what());
+			continue;
 		} catch (const lttng::runtime_error&) {
 			LTTNG_THROW_UST_EVENT_DISABLE_FAILURE("Failed to disable UST event");
 		}
@@ -855,8 +865,23 @@ void ls::ust::domain_orchestrator::_add_context_on_apps(
 			continue;
 		}
 
-		auto ust_ctx_attr = _make_ust_context_attr(ctx_config);
-		ua_chan->create_context(ctx_config, &ust_ctx_attr);
+		try {
+			auto ust_ctx_attr = _make_ust_context_attr(ctx_config);
+			ua_chan->create_context(ctx_config, &ust_ctx_attr);
+		} catch (const ls::ust::app_communication_error& ex) {
+			DBG_FMT("Failed to add context on app: channel_name=`{}`, app={}, error='{}'",
+				channel_name.data(),
+				*app,
+				ex.what());
+			continue;
+		} catch (const lttng::runtime_error& ex) {
+			WARN_FMT(
+				"Failed to add context on app: channel_name=`{}`, app={}, error='{}'",
+				channel_name.data(),
+				*app,
+				ex.what());
+			continue;
+		}
 	}
 }
 

@@ -472,11 +472,7 @@ void lsu::app_event::enable()
 	const auto update_health_code_on_exit =
 		lttng::make_scope_exit([]() noexcept { health_code_update(); });
 
-	try {
-		app.command_socket.lock().enable(obj);
-	} catch (const lsu::app_communication_error&) {
-		return;
-	}
+	app.command_socket.lock().enable(obj);
 
 	enabled = true;
 
@@ -494,11 +490,7 @@ void lsu::app_event::disable()
 	const auto update_health_code_on_exit =
 		lttng::make_scope_exit([]() noexcept { health_code_update(); });
 
-	try {
-		app.command_socket.lock().disable(obj);
-	} catch (const lsu::app_communication_error&) {
-		return;
-	}
+	app.command_socket.lock().disable(obj);
 
 	enabled = false;
 
@@ -526,7 +518,8 @@ void lsu::app_event::create(lsu::app_channel& ua_chan,
 	try {
 		ua_event->create_on_ust();
 	} catch (...) {
-		/* Release tracer-side resources before letting the unique_ptr destroy the object.
+		/*
+		 * Release tracer-side resources before letting the unique_ptr destroy the object.
 		 */
 		ua_event->destroy(-1);
 		throw;

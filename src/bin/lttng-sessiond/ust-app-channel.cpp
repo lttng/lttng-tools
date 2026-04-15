@@ -140,11 +140,7 @@ void lsu::app_channel::enable()
 
 	auto& app = session.app();
 
-	try {
-		app.command_socket.lock().enable(obj);
-	} catch (const lsu::app_communication_error&) {
-		return;
-	}
+	app.command_socket.lock().enable(obj);
 
 	enabled = true;
 
@@ -161,11 +157,7 @@ void lsu::app_channel::disable()
 
 	auto& app = session.app();
 
-	try {
-		app.command_socket.lock().disable(obj);
-	} catch (const lsu::app_communication_error&) {
-		return;
-	}
+	app.command_socket.lock().disable(obj);
 
 	enabled = false;
 
@@ -228,11 +220,7 @@ void lsu::app_channel::create_context(const lsc::context_configuration& context_
 	const auto update_health_code_on_exit =
 		lttng::make_scope_exit([]() noexcept { health_code_update(); });
 
-	try {
-		app.command_socket.lock().add_context(&app_context->ctx, obj, &app_context->obj);
-	} catch (const lsu::app_communication_error&) {
-		return;
-	}
+	app.command_socket.lock().add_context(&app_context->ctx, obj, &app_context->obj);
 
 	if (!app_context->obj) {
 		LTTNG_THROW_ERROR(lttng::format(
