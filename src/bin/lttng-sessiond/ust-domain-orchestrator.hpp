@@ -14,6 +14,62 @@
 #include <vendor/optional.hpp>
 
 #include <cstdint>
+#include <string>
+
+namespace lttng {
+namespace sessiond {
+namespace ust {
+namespace exceptions {
+
+class buffer_type_mismatch : public lttng::runtime_error {
+public:
+	explicit buffer_type_mismatch(const lttng::source_location& source_location_) :
+		lttng::runtime_error("Buffer type mismatch", source_location_)
+	{
+	}
+};
+
+class event_enable_failure : public lttng::runtime_error {
+public:
+	explicit event_enable_failure(const std::string& msg,
+				      const lttng::source_location& source_location_) :
+		lttng::runtime_error(msg, source_location_)
+	{
+	}
+};
+
+class event_disable_failure : public lttng::runtime_error {
+public:
+	explicit event_disable_failure(const std::string& msg,
+				       const lttng::source_location& source_location_) :
+		lttng::runtime_error(msg, source_location_)
+	{
+	}
+};
+
+class directory_creation_failure : public lttng::runtime_error {
+public:
+	explicit directory_creation_failure(const std::string& msg,
+					    const lttng::source_location& source_location_) :
+		lttng::runtime_error(msg, source_location_)
+	{
+	}
+};
+
+class metadata_regeneration_unsupported : public lttng::runtime_error {
+public:
+	explicit metadata_regeneration_unsupported(const lttng::source_location& source_location_) :
+		lttng::runtime_error(
+			"Metadata regeneration is not supported for per-PID buffering sessions",
+			source_location_)
+	{
+	}
+};
+
+} /* namespace exceptions */
+} /* namespace ust */
+} /* namespace sessiond */
+} /* namespace lttng */
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
@@ -40,6 +96,19 @@ class context_configuration;
 
 namespace ust {
 struct app;
+
+#define LTTNG_THROW_UST_BUFFER_TYPE_MISMATCH() \
+	throw lttng::sessiond::ust::exceptions::buffer_type_mismatch(LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_UST_EVENT_ENABLE_FAILURE(msg) \
+	throw lttng::sessiond::ust::exceptions::event_enable_failure(msg, LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_UST_EVENT_DISABLE_FAILURE(msg) \
+	throw lttng::sessiond::ust::exceptions::event_disable_failure(msg, LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_UST_DIRECTORY_CREATION_FAILURE(msg)                     \
+	throw lttng::sessiond::ust::exceptions::directory_creation_failure( \
+		msg, LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_UST_METADATA_REGENERATION_UNSUPPORTED()                        \
+	throw lttng::sessiond::ust::exceptions::metadata_regeneration_unsupported( \
+		LTTNG_SOURCE_LOCATION())
 
 /*
  * The UST domain orchestrator manages user space tracing runtime resources on
@@ -414,53 +483,51 @@ private:
 	 */
 	void _enable_channel_on_apps(lttng::c_string_view channel_name);
 	void _disable_channel_on_apps(lttng::c_string_view channel_name);
-	int _create_event_on_apps(lttng::c_string_view channel_name,
-				  const config::event_rule_configuration& event_rule_config);
-	int _enable_event_on_apps(lttng::c_string_view channel_name,
-				  const config::event_rule_configuration& event_rule_config);
-	int _disable_event_on_apps(lttng::c_string_view channel_name,
+	void _create_event_on_apps(lttng::c_string_view channel_name,
 				   const config::event_rule_configuration& event_rule_config);
+	void _enable_event_on_apps(lttng::c_string_view channel_name,
+				   const config::event_rule_configuration& event_rule_config);
+	void _disable_event_on_apps(lttng::c_string_view channel_name,
+				    const config::event_rule_configuration& event_rule_config);
 	void _add_context_on_apps(lttng::c_string_view channel_name,
 				  const config::context_configuration& ctx_config);
 
-	int _start_app_trace(ust::app *app);
-	int _stop_app_trace(ust::app *app);
-	int _flush_app_session(ust::app_session& ua_sess);
-	int _clear_quiescent_app_session(ust::app *app, ust::app_session *ua_sess);
+	void _start_app_trace(ust::app *app);
+	void _stop_app_trace(ust::app *app);
+	void _flush_app_session(ust::app_session& ua_sess);
+	void _clear_quiescent_app_session(ust::app *app, ust::app_session *ua_sess);
 
 	/*
 	 * Look up or create the app session for the given application.
-	 * On success, *ua_sess_ptr is set to the app session. Returns 0
-	 * on success, or a negative errno on failure (-ENOMEM, -ENOTCONN).
+	 * Throws on failure.
 	 */
-	int _find_or_create_app_session(ust::app *app, ust::app_session **ua_sess_ptr);
+	ust::app_session& _find_or_create_app_session(ust::app& app);
 
-	int _allocate_app_channel(ust::app_session& ua_sess,
-				  ust::app_channel **ua_chanp,
-				  const config::recording_channel_configuration& channel_config,
-				  std::uint64_t trace_class_stream_class_handle);
-	int _create_channel_per_uid(ust::app *app,
-				    ust::app_session *ua_sess,
-				    ust::app_channel *ua_chan);
-	int _create_channel_per_pid(ust::app *app,
-				    ust::app_session& ua_sess,
-				    ust::app_channel *ua_chan);
-	int _send_app_channel(ust::app *app, ust::app_session& ua_sess, ust::app_channel *ua_chan);
-	int _create_app_channel(ust::app_session& ua_sess,
-				ust::app *app,
-				ust::app_channel **ua_chanp,
-				const config::recording_channel_configuration& channel_config,
-				std::uint64_t trace_class_stream_class_handle);
-	int
+	ust::app_channel&
+	_allocate_app_channel(ust::app_session& ua_sess,
+			      const config::recording_channel_configuration& channel_config,
+			      std::uint64_t trace_class_stream_class_handle);
+	void _create_channel_per_uid(ust::app *app,
+				     ust::app_session *ua_sess,
+				     ust::app_channel *ua_chan);
+	void _create_channel_per_pid(ust::app *app,
+				     ust::app_session& ua_sess,
+				     ust::app_channel *ua_chan);
+	void _send_app_channel(ust::app *app, ust::app_session& ua_sess, ust::app_channel *ua_chan);
+	ust::app_channel&
+	_create_app_channel(ust::app_session& ua_sess,
+			    ust::app *app,
+			    const config::recording_channel_configuration& channel_config,
+			    std::uint64_t trace_class_stream_class_handle);
+	ust::app_channel&
 	_find_or_create_app_channel(ust::app_session& ua_sess,
 				    ust::app *app,
-				    ust::app_channel **ua_chan,
 				    const config::recording_channel_configuration& channel_config,
 				    std::uint64_t trace_class_stream_class_handle);
-	int _synchronize_channel_event(ust::app_channel *ua_chan,
-				       const config::event_rule_configuration& event_config);
+	void _synchronize_channel_event(ust::app_channel *ua_chan,
+					const config::event_rule_configuration& event_config);
 	void _synchronize_all_channels(ust::app_session& ua_sess, ust::app *app);
-	int _create_app_metadata(ust::app_session& ua_sess, ust::app *app);
+	void _create_app_metadata(ust::app_session& ua_sess, ust::app *app);
 
 	/*
 	 * Iterate all registered applications and call synchronize_app()

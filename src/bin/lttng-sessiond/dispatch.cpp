@@ -17,6 +17,7 @@
 #include "ust-app.hpp"
 #include "ust-domain-orchestrator.hpp"
 
+#include <common/exception.hpp>
 #include <common/futex.hpp>
 #include <common/macros.hpp>
 #include <common/scope-exit.hpp>
@@ -110,7 +111,32 @@ static void update_ust_app(int app_sock)
 				static_cast<lttng::sessiond::ust::domain_orchestrator&>(
 					session->get_ust_orchestrator());
 
-			orchestrator.synchronize_app(*app->get());
+			try {
+				orchestrator.synchronize_app(*app->get());
+			} catch (const lttng::runtime_error& ex) {
+				ERR_FMT("Failed to synchronize UST app with session: session_name=`{}`, "
+					"session_id={}, app_pid={}, app_sock={}: {}",
+					session->name,
+					session->id,
+					app->get()->pid,
+					app->get()->command_socket.fd(),
+					ex.what());
+			} catch (const std::exception& ex) {
+				ERR_FMT("Unexpected exception while synchronizing UST app with session: "
+					"session_name=`{}`, session_id={}, app_pid={}, app_sock={}: {}",
+					session->name,
+					session->id,
+					app->get()->pid,
+					app->get()->command_socket.fd(),
+					ex.what());
+			} catch (...) {
+				ERR_FMT("Unknown exception while synchronizing UST app with session: "
+					"session_name=`{}`, session_id={}, app_pid={}, app_sock={}",
+					session->name,
+					session->id,
+					app->get()->pid,
+					app->get()->command_socket.fd());
+			}
 		}
 	}
 

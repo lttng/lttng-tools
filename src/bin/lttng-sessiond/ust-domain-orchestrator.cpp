@@ -361,9 +361,9 @@ ls::ust::trace_class& ls::ust::domain_orchestrator::_find_or_create_per_uid_trac
 		_session.creation_time));
 	if (!tc) {
 		LTTNG_THROW_ERROR(
-			lttng::format("Failed to create per-UID trace class: uid={}, abi={}",
-				      uid,
-				      static_cast<int>(abi)));
+			fmt::format("Failed to create per-UID trace class: uid={}, abi={}",
+				    uid,
+				    static_cast<int>(abi)));
 	}
 
 	auto& ref = *tc;
@@ -414,7 +414,7 @@ ls::ust::trace_class& ls::ust::domain_orchestrator::_find_or_create_per_pid_trac
 		_session.creation_time));
 	if (!tc) {
 		LTTNG_THROW_ERROR(
-			lttng::format("Failed to create per-PID trace class: pid={}", app.pid));
+			fmt::format("Failed to create per-PID trace class: pid={}", app.pid));
 	}
 
 	auto& ref = *tc;
@@ -489,7 +489,7 @@ ls::ust::stream_group& ls::ust::domain_orchestrator::_get_per_uid_stream_group(
 	const _per_uid_stream_group_key key = { &channel_config, uid, abi };
 	const auto it = _per_uid_stream_groups.find(key);
 	if (it == _per_uid_stream_groups.end()) {
-		LTTNG_THROW_ERROR(lttng::format(
+		LTTNG_THROW_ERROR(fmt::format(
 			"Per-UID stream group not found: channel_name=`{}`, uid={}, abi={}",
 			channel_config.name,
 			uid,
@@ -574,7 +574,7 @@ void ls::ust::domain_orchestrator::create_channel(
 	if (!_locked_buffer_type) {
 		_locked_buffer_type = buffer_type;
 	} else if (*_locked_buffer_type != buffer_type) {
-		LTTNG_THROW_CTL("Buffer type mismatch", LTTNG_ERR_BUFFER_TYPE_MISMATCH);
+		LTTNG_THROW_UST_BUFFER_TYPE_MISMATCH();
 	}
 
 	DBG_FMT("UST domain orchestrator created channel: channel_name=`{}`, trace_class_stream_class_handle={}",
@@ -652,13 +652,14 @@ void ls::ust::domain_orchestrator::_enable_channel_on_apps(lttng::c_string_view 
 			continue;
 		}
 
-		(void) ua_chan->enable();
+		if (ua_chan->enable() < 0) {
+			continue;
+		}
 	}
 }
 
 void ls::ust::domain_orchestrator::_disable_channel_on_apps(lttng::c_string_view channel_name)
 {
-	int ret = 0;
 	const lttng::urcu::read_lock_guard read_lock;
 
 	for (const auto& app_session_pair : _app_sessions) {
@@ -680,18 +681,16 @@ void ls::ust::domain_orchestrator::_disable_channel_on_apps(lttng::c_string_view
 		LTTNG_ASSERT(ua_chan);
 		LTTNG_ASSERT(ua_chan->enabled);
 
-		ret = ua_chan->disable();
-		if (ret < 0) {
+		if (ua_chan->disable() < 0) {
 			continue;
 		}
 	}
 }
 
-int ls::ust::domain_orchestrator::_create_event_on_apps(
+void ls::ust::domain_orchestrator::_create_event_on_apps(
 	lttng::c_string_view channel_name,
 	const config::event_rule_configuration& event_rule_config)
 {
-	int ret = 0;
 	const lttng::urcu::read_lock_guard read_lock;
 
 	for (const auto& app_session_pair : _app_sessions) {
@@ -716,25 +715,22 @@ int ls::ust::domain_orchestrator::_create_event_on_apps(
 		/* If the channel is not found, there is a code flow error. */
 		LTTNG_ASSERT(ua_chan);
 
-		ret = app_event::create(*ua_chan, event_rule_config);
+		const auto ret = app_event::create(*ua_chan, event_rule_config);
 		if (ret < 0) {
 			if (ret != -LTTNG_UST_ERR_EXIST) {
-				break;
+				LTTNG_THROW_UST_EVENT_ENABLE_FAILURE("Failed to create UST event");
 			}
 
 			DBG2("UST app event already exists on app PID %d", app->pid);
 			continue;
 		}
 	}
-
-	return ret;
 }
 
-int ls::ust::domain_orchestrator::_enable_event_on_apps(
+void ls::ust::domain_orchestrator::_enable_event_on_apps(
 	lttng::c_string_view channel_name,
 	const config::event_rule_configuration& event_rule_config)
 {
-	int ret = 0;
 	const lttng::urcu::read_lock_guard read_lock;
 
 	for (const auto& app_session_pair : _app_sessions) {
@@ -767,20 +763,17 @@ int ls::ust::domain_orchestrator::_enable_event_on_apps(
 			continue;
 		}
 
-		ret = ua_event->enable();
+		const auto ret = ua_event->enable();
 		if (ret < 0) {
-			return ret;
+			LTTNG_THROW_UST_EVENT_ENABLE_FAILURE("Failed to enable UST event");
 		}
 	}
-
-	return ret;
 }
 
-int ls::ust::domain_orchestrator::_disable_event_on_apps(
+void ls::ust::domain_orchestrator::_disable_event_on_apps(
 	lttng::c_string_view channel_name,
 	const config::event_rule_configuration& event_rule_config)
 {
-	int ret = 0;
 	const lttng::urcu::read_lock_guard read_lock;
 
 	for (const auto& app_session_pair : _app_sessions) {
@@ -815,13 +808,11 @@ int ls::ust::domain_orchestrator::_disable_event_on_apps(
 			continue;
 		}
 
-		ret = ua_event->disable();
+		const auto ret = ua_event->disable();
 		if (ret < 0) {
-			continue;
+			LTTNG_THROW_UST_EVENT_DISABLE_FAILURE("Failed to disable UST event");
 		}
 	}
-
-	return ret;
 }
 
 void ls::ust::domain_orchestrator::_add_context_on_apps(
@@ -902,10 +893,7 @@ void ls::ust::domain_orchestrator::disable_event(
 		return;
 	}
 
-	const auto ret = _disable_event_on_apps(channel_config.name, event_rule_config);
-	if (ret < 0) {
-		LTTNG_THROW_CTL("Failed to disable UST event", LTTNG_ERR_UST_DISABLE_FAIL);
-	}
+	_disable_event_on_apps(channel_config.name, event_rule_config);
 }
 
 void ls::ust::domain_orchestrator::add_context(
@@ -936,18 +924,11 @@ void ls::ust::domain_orchestrator::enable_event(
 
 	const auto already_created = _created_event_rules.count(&event_rule_config) > 0;
 
-	int ret;
 	if (already_created) {
-		ret = _enable_event_on_apps(channel_config.name, event_rule_config);
+		_enable_event_on_apps(channel_config.name, event_rule_config);
 	} else {
-		ret = _create_event_on_apps(channel_config.name, event_rule_config);
-		if (ret >= 0) {
-			_created_event_rules.insert(&event_rule_config);
-		}
-	}
-
-	if (ret < 0) {
-		LTTNG_THROW_CTL("Failed to enable UST event", LTTNG_ERR_UST_ENABLE_FAIL);
+		_create_event_on_apps(channel_config.name, event_rule_config);
+		_created_event_rules.insert(&event_rule_config);
 	}
 }
 
@@ -1052,26 +1033,21 @@ owned_locked_trace_class get_locked_trace_class(const ls::ust::app_session::iden
 
 } /* anonymous namespace */
 
-int ls::ust::domain_orchestrator::_find_or_create_app_session(ust::app *app,
-							      ust::app_session **ua_sess_ptr)
+ls::ust::app_session& ls::ust::domain_orchestrator::_find_or_create_app_session(ust::app& app)
 {
-	int ret;
-
-	LTTNG_ASSERT(app);
-	LTTNG_ASSERT(ua_sess_ptr);
-
 	health_code_update();
+	const auto update_health_code_on_exit =
+		lttng::make_scope_exit([]() noexcept { health_code_update(); });
 
 	{
-		const auto it = _app_sessions.find(app);
+		const auto it = _app_sessions.find(&app);
 		if (it != _app_sessions.end()) {
-			*ua_sess_ptr = it->second.get();
-			return 0;
+			return *it->second;
 		}
 	}
 
 	DBG2("UST app pid: %d session id %" PRIu64 " not found, creating it",
-	     app->pid,
+	     app.pid,
 	     _session_id());
 
 	/*
@@ -1080,13 +1056,13 @@ int ls::ust::domain_orchestrator::_find_or_create_app_session(ust::app *app,
 	 * per-UID traces use "uid/<uid>/<bits>-bit".
 	 */
 	struct tm timeinfo_buf = {};
-	const auto *timeinfo = localtime_r(&app->registration_time, &timeinfo_buf);
+	const auto *timeinfo = localtime_r(&app.registration_time, &timeinfo_buf);
 	char datetime[16];
 	strftime(datetime, sizeof(datetime), "%Y%m%d-%H%M%S", timeinfo);
 
 	lttng_credentials real_creds = {};
-	LTTNG_OPTIONAL_SET(&real_creds.uid, app->uid);
-	LTTNG_OPTIONAL_SET(&real_creds.gid, app->gid);
+	LTTNG_OPTIONAL_SET(&real_creds.uid, app.uid);
+	LTTNG_OPTIONAL_SET(&real_creds.gid, app.gid);
 
 	lttng_credentials effective_creds = {};
 	LTTNG_OPTIONAL_SET(&effective_creds.uid, _session.uid);
@@ -1097,11 +1073,11 @@ int ls::ust::domain_orchestrator::_find_or_create_app_session(ust::app *app,
 	auto trace_path = [&]() -> std::string {
 		switch (buf_type) {
 		case LTTNG_BUFFER_PER_PID:
-			return fmt::format("pid/{}-{}-{}", app->name, app->pid, datetime);
+			return fmt::format("pid/{}-{}-{}", app.name, app.pid, datetime);
 		case LTTNG_BUFFER_PER_UID:
 			return fmt::format("uid/{}/{}-bit",
 					   lttng_credentials_get_uid(&real_creds),
-					   app->abi.bits_per_long);
+					   app.abi.bits_per_long);
 		default:
 			abort();
 		}
@@ -1112,11 +1088,11 @@ int ls::ust::domain_orchestrator::_find_or_create_app_session(ust::app *app,
 		switch (buf_type) {
 		case LTTNG_BUFFER_PER_PID:
 			session_shm_path +=
-				fmt::format("/pid/{}-{}-{}", app->name, app->pid, datetime);
+				fmt::format("/pid/{}-{}-{}", app.name, app.pid, datetime);
 			break;
 		case LTTNG_BUFFER_PER_UID:
 			session_shm_path +=
-				fmt::format("/uid/{}/{}-bit", app->uid, app->abi.bits_per_long);
+				fmt::format("/uid/{}/{}-bit", app.uid, app.abi.bits_per_long);
 			break;
 		default:
 			abort();
@@ -1127,143 +1103,114 @@ int ls::ust::domain_orchestrator::_find_or_create_app_session(ust::app *app,
 	 * Acquire a consumer output reference for the new session.
 	 * ~app_session() releases it on all error/teardown paths.
 	 */
-	consumer_output_get(get_consumer_output_ptr());
+	auto *const consumer_output = get_consumer_output_ptr();
+	consumer_output_get(consumer_output);
 
-	auto new_session = lttng::make_unique<ust::app_session>(*app,
+	/*
+	 * Release the temporary reference only if app_session construction
+	 * fails before ownership of the reference is transferred.
+	 */
+	auto put_consumer_output_on_constructor_error = lttng::make_scope_exit(
+		[consumer_output]() noexcept { consumer_output_put(consumer_output); });
+
+	auto new_session = lttng::make_unique<ust::app_session>(app,
 								_session_id(),
 								ust::app_session::next_id(),
 								real_creds,
 								effective_creds,
 								buf_type,
-								app->abi.bits_per_long,
+								app.abi.bits_per_long,
 								std::move(trace_path),
 								_root_shm_path,
 								std::move(session_shm_path),
-								get_consumer_output_ptr());
+								consumer_output);
+
+	/* app_session now owns the acquired consumer_output reference. */
+	put_consumer_output_on_constructor_error.disarm();
 
 	switch (buffer_type()) {
 	case LTTNG_BUFFER_PER_PID:
 	{
-		try {
-			_find_or_create_per_pid_trace_class(
-				*app,
-				new_session->app_session_id,
-				app->abi,
-				app->version.major,
-				app->version.minor,
-				new_session->root_shm_path.c_str(),
-				new_session->shm_path.c_str(),
-				lttng_credentials_get_uid(&new_session->effective_credentials),
-				lttng_credentials_get_gid(&new_session->effective_credentials));
-		} catch (const std::exception& ex) {
-			ERR("Failed to create per-PID trace class: %s", ex.what());
-			ret = -1;
-			goto error;
-		}
+		_find_or_create_per_pid_trace_class(
+			app,
+			new_session->app_session_id,
+			app.abi,
+			app.version.major,
+			app.version.minor,
+			new_session->root_shm_path.c_str(),
+			new_session->shm_path.c_str(),
+			lttng_credentials_get_uid(&new_session->effective_credentials),
+			lttng_credentials_get_gid(&new_session->effective_credentials));
 		break;
 	}
 	case LTTNG_BUFFER_PER_UID:
 	{
-		const auto app_abi = app->abi.bits_per_long == 32 ? application_abi::ABI_32 :
-								    application_abi::ABI_64;
+		const auto app_abi = app.abi.bits_per_long == 32 ? application_abi::ABI_32 :
+								   application_abi::ABI_64;
 
-		try {
-			_find_or_create_per_uid_trace_class(app->uid,
-							    app_abi,
-							    app->abi,
-							    app->version.major,
-							    app->version.minor,
-							    new_session->root_shm_path.c_str(),
-							    new_session->shm_path.c_str());
-		} catch (const std::exception& ex) {
-			ERR("Failed to create per-UID trace class: %s", ex.what());
-			ret = -1;
-			goto error;
-		}
+		_find_or_create_per_uid_trace_class(app.uid,
+						    app_abi,
+						    app.abi,
+						    app.version.major,
+						    app.version.minor,
+						    new_session->root_shm_path.c_str(),
+						    new_session->shm_path.c_str());
 		break;
 	}
 	default:
 		abort();
-		ret = -EINVAL;
-		goto error;
 	}
 
 	health_code_update();
 
 	if (new_session->handle == -1) {
-		int handle;
 		try {
-			handle = app->command_socket.lock().create_session();
+			new_session->handle = app.command_socket.lock().create_session();
 		} catch (const ls::ust::app_communication_error&) {
-			ret = -ENOTCONN;
-			goto error;
+			LTTNG_THROW_COMMUNICATION_ERROR("Failed to create UST app session");
 		} catch (const lttng::runtime_error&) {
-			ret = -ENOTCONN;
-			goto error;
+			LTTNG_THROW_ERROR("Failed to create UST app session");
 		}
 
-		new_session->handle = handle;
-
 		/* Register the session's objd in the app's registry. */
-		new_session->objd_token = app->objd_registry.register_session_objd(
+		new_session->objd_token = app.objd_registry.register_session_objd(
 			new_session->handle, new_session->get_identifier());
 
-		DBG2("UST app session created successfully with handle %d", handle);
+		DBG2("UST app session created successfully with handle %d", new_session->handle);
 	}
 
-	{
-		auto *ua_sess = new_session.get();
-		_app_sessions[app] = std::move(new_session);
-		*ua_sess_ptr = ua_sess;
-	}
-
-	ret = 0;
-
-error:
-	health_code_update();
-	return ret;
+	auto *ua_sess = new_session.get();
+	_app_sessions[&app] = std::move(new_session);
+	return *ua_sess;
 }
 
-int ls::ust::domain_orchestrator::_allocate_app_channel(
+ls::ust::app_channel& ls::ust::domain_orchestrator::_allocate_app_channel(
 	ust::app_session& ua_sess,
-	ust::app_channel **ua_chanp,
 	const lsc::recording_channel_configuration& channel_config,
 	std::uint64_t trace_class_stream_class_handle)
 {
-	ust::app_channel *ua_chan;
-
 	ASSERT_RCU_READ_LOCKED();
 
 	/* Lookup channel in the ust app session */
 	{
 		const auto it = ua_sess.channels.find(channel_config.name);
 		if (it != ua_sess.channels.end()) {
-			ua_chan = it->second.get();
-			goto end;
+			return *it->second;
 		}
 	}
 
-	ua_chan = new app_channel(ua_sess, channel_config);
+	auto *ua_chan = new app_channel(ua_sess, channel_config);
 	ua_chan->init_from_config();
 	ua_chan->trace_class_stream_class_handle = trace_class_stream_class_handle;
 	ua_chan->attr.type =
 		allocation_policy_to_ust_channel_type(channel_config.buffer_allocation_policy);
-
-end:
-	if (ua_chanp) {
-		*ua_chanp = ua_chan;
-	}
-
-	return 0;
+	return *ua_chan;
 }
 
-int ls::ust::domain_orchestrator::_create_channel_per_uid(ust::app *app,
-							  ust::app_session *ua_sess,
-							  ust::app_channel *ua_chan)
+void ls::ust::domain_orchestrator::_create_channel_per_uid(ust::app *app,
+							   ust::app_session *ua_sess,
+							   ust::app_channel *ua_chan)
 {
-	int ret;
-	enum lttng_error_code notification_ret;
-
 	LTTNG_ASSERT(app);
 	LTTNG_ASSERT(ua_sess);
 	LTTNG_ASSERT(ua_chan);
@@ -1285,15 +1232,11 @@ int ls::ust::domain_orchestrator::_create_channel_per_uid(ust::app *app,
 	 * channel. If so, the channel has already been created on the
 	 * consumer and we only need to send it to this application.
 	 */
-	if (_has_per_uid_stream_group(recording_config, app->uid, app_abi)) {
-		goto send_channel;
-	}
-
-	/*
-	 * Look up the per-UID trace class. It must exist: it was created
-	 * during app-session setup (find_or_create_ust_app_session).
-	 */
-	{
+	if (!_has_per_uid_stream_group(recording_config, app->uid, app_abi)) {
+		/*
+		 * Look up the per-UID trace class. It must exist: it was created
+		 * during app-session setup (find_or_create_ust_app_session).
+		 */
 		auto trace_class_ptr = the_trace_class_index->find_per_uid(
 			_session_id(), static_cast<std::uint32_t>(app_abi), app->uid);
 		LTTNG_ASSERT(trace_class_ptr);
@@ -1304,28 +1247,29 @@ int ls::ust::domain_orchestrator::_create_channel_per_uid(ust::app *app,
 				ua_chan->trace_class_stream_class_handle,
 				ust_channel_type_to_allocation_policy(ua_chan->attr.type));
 		} catch (const std::exception& ex) {
-			ERR("Failed to add a channel to trace class: %s", ex.what());
-			ret = -1;
-			goto error;
+			LTTNG_THROW_ERROR(fmt::format(
+				"Failed to add UST channel to per-UID trace class: channel_name=`{}`, "
+				"session_id={}, uid={}, abi={}, error={}",
+				ua_chan->channel_config.name,
+				_session_id(),
+				app->uid,
+				static_cast<unsigned int>(app_abi),
+				ex.what()));
 		}
 
 		/*
 		 * Create the buffers on the consumer side. This call populates the
 		 * ust app channel object with all streams and data object.
 		 */
-		ret = do_consumer_create_channel(consumer,
-						 ua_sess,
-						 ua_chan,
-						 app->abi.bits_per_long,
-						 trace_class_ptr.get(),
-						 session.current_trace_chunk,
-						 session.trace_format,
-						 _session.output_traces,
-						 _session.live_timer);
-		if (ret < 0) {
-			ERR("Error creating UST channel \"%s\" on the consumer daemon",
-			    ua_chan->channel_config.name.c_str());
-
+		if (do_consumer_create_channel(consumer,
+					       ua_sess,
+					       ua_chan,
+					       app->abi.bits_per_long,
+					       trace_class_ptr.get(),
+					       session.current_trace_chunk,
+					       session.trace_format,
+					       _session.output_traces,
+					       _session.live_timer) < 0) {
 			auto locked_trace_class = trace_class_ptr->lock();
 			try {
 				locked_trace_class->remove_channel(
@@ -1333,7 +1277,14 @@ int ls::ust::domain_orchestrator::_create_channel_per_uid(ust::app *app,
 			} catch (const std::exception& ex) {
 				DBG("Could not find channel for removal: %s", ex.what());
 			}
-			goto error;
+			LTTNG_THROW_ERROR(fmt::format(
+				"Failed to create UST channel on consumer: channel_name=`{}`, "
+				"session_id={}, uid={}, abi={}, consumer_output_type={}",
+				ua_chan->channel_config.name,
+				_session_id(),
+				app->uid,
+				static_cast<unsigned int>(app_abi),
+				static_cast<int>(_consumer_output->type)));
 		}
 
 		/* Set the consumer key on the stream class. */
@@ -1373,47 +1324,53 @@ int ls::ust::domain_orchestrator::_create_channel_per_uid(ust::app *app,
 				cpu_idx++;
 			}
 		}
+
+		/* Notify the notification subsystem of the channel's creation. */
+		const auto notification_ret = notification_thread_command_add_channel(
+			the_notification_thread_handle,
+			_session.id,
+			ua_chan->channel_config.name.c_str(),
+			ua_chan->key,
+			LTTNG_DOMAIN_UST,
+			ua_chan->attr.subbuf_size * ua_chan->attr.num_subbuf);
+		if (notification_ret != LTTNG_OK) {
+			LTTNG_THROW_ERROR(fmt::format(
+				"Failed to notify UST channel creation: channel_name=`{}`, "
+				"session_id={}, uid={}, abi={}, channel_key={}, notification_ret={}",
+				ua_chan->channel_config.name,
+				_session_id(),
+				app->uid,
+				static_cast<unsigned int>(app_abi),
+				ua_chan->key,
+				static_cast<int>(notification_ret)));
+		}
 	}
 
-	/* Notify the notification subsystem of the channel's creation. */
-	notification_ret = notification_thread_command_add_channel(
-		the_notification_thread_handle,
-		_session.id,
-		ua_chan->channel_config.name.c_str(),
-		ua_chan->key,
-		LTTNG_DOMAIN_UST,
-		ua_chan->attr.subbuf_size * ua_chan->attr.num_subbuf);
-	if (notification_ret != LTTNG_OK) {
-		ret = -(int) notification_ret;
-		ERR("Failed to add channel to notification thread");
-		goto error;
-	}
-
-send_channel:
 	/* Send buffers to the application. */
 	{
 		auto& sg = _get_per_uid_stream_group(recording_config, app->uid, app_abi);
 
-		ret = ua_chan->send_to_app_per_uid(sg);
+		const auto ret = ua_chan->send_to_app_per_uid(sg);
 		if (ret < 0) {
-			if (ret != -ENOTCONN) {
-				ERR("Error sending channel to application");
-			}
-			goto error;
+			LTTNG_THROW_ERROR(fmt::format(
+				"Failed to send per-UID UST channel to application: channel_name=`{}`, "
+				"session_id={}, pid={}, uid={}, abi={}, channel_key={}, status={}",
+				ua_chan->channel_config.name,
+				_session_id(),
+				app->pid,
+				app->uid,
+				static_cast<unsigned int>(app_abi),
+				ua_chan->key,
+				ret));
 		}
 	}
-
-error:
-	return ret;
 }
 
-int ls::ust::domain_orchestrator::_create_channel_per_pid(ust::app *app,
-							  ust::app_session& ua_sess,
-							  ust::app_channel *ua_chan)
+void ls::ust::domain_orchestrator::_create_channel_per_pid(ust::app *app,
+							   ust::app_session& ua_sess,
+							   ust::app_channel *ua_chan)
 {
-	int ret;
-	enum lttng_error_code cmd_ret;
-	uint64_t trace_class_channel_key;
+	bool trace_class_channel_added = false;
 
 	LTTNG_ASSERT(app);
 	LTTNG_ASSERT(ua_chan);
@@ -1436,102 +1393,122 @@ int ls::ust::domain_orchestrator::_create_channel_per_pid(ust::app *app,
 	try {
 		trace_class->add_channel(ua_chan->key,
 					 ust_channel_type_to_allocation_policy(ua_chan->attr.type));
+		trace_class_channel_added = true;
 	} catch (const std::exception& ex) {
-		ERR("Error creating UST stream class for channel \"%s\": %s",
-		    ua_chan->channel_config.name.c_str(),
-		    ex.what());
-		ret = -1;
-		goto error;
+		LTTNG_THROW_ERROR(
+			fmt::format("Failed to create per-PID UST stream class: channel_name=`{}`, "
+				    "session_id={}, pid={}, channel_key={}, error={}",
+				    ua_chan->channel_config.name,
+				    _session_id(),
+				    app->pid,
+				    ua_chan->key,
+				    ex.what()));
 	}
 
 	/* Create and get channel on the consumer side. */
-	ret = do_consumer_create_channel(consumer,
-					 &ua_sess,
-					 ua_chan,
-					 app->abi.bits_per_long,
-					 trace_class.get(),
-					 session.current_trace_chunk,
-					 session.trace_format,
-					 _session.output_traces,
-					 _session.live_timer);
-	if (ret < 0) {
-		ERR("Error creating UST channel \"%s\" on the consumer daemon",
-		    ua_chan->channel_config.name.c_str());
-		goto error_remove_from_trace_class;
-	}
-
-	ret = ua_chan->send_to_app_per_pid();
-	if (ret < 0) {
-		if (ret != -ENOTCONN) {
-			ERR("Error sending channel to application");
+	try {
+		if (do_consumer_create_channel(consumer,
+					       &ua_sess,
+					       ua_chan,
+					       app->abi.bits_per_long,
+					       trace_class.get(),
+					       session.current_trace_chunk,
+					       session.trace_format,
+					       _session.output_traces,
+					       _session.live_timer) < 0) {
+			LTTNG_THROW_ERROR(fmt::format(
+				"Failed to create per-PID UST channel on consumer: channel_name=`{}`, "
+				"session_id={}, pid={}, abi={}, consumer_output_type={}",
+				ua_chan->channel_config.name,
+				_session_id(),
+				app->pid,
+				static_cast<unsigned int>(app->abi.bits_per_long == 32 ?
+								  application_abi::ABI_32 :
+								  application_abi::ABI_64),
+				static_cast<int>(_consumer_output->type)));
 		}
-		goto error_remove_from_trace_class;
-	}
 
-	trace_class_channel_key = ua_chan->key;
-	{
-		auto locked_trace_class = trace_class->lock();
+		const auto send_ret = ua_chan->send_to_app_per_pid();
+		if (send_ret < 0) {
+			LTTNG_THROW_ERROR(fmt::format(
+				"Failed to send per-PID UST channel to application: channel_name=`{}`, "
+				"session_id={}, pid={}, channel_key={}, status={}",
+				ua_chan->channel_config.name,
+				_session_id(),
+				app->pid,
+				ua_chan->key,
+				send_ret));
+		}
 
-		auto& trace_class_channel = locked_trace_class->channel(trace_class_channel_key);
-		trace_class_channel._consumer_key = ua_chan->key;
-	}
-
-	/*
-	 * Populate the orchestrator's per-PID stream group map.
-	 * During the dual-write transition, the per-app channel
-	 * retains the authoritative channel and stream objects. The
-	 * stream group's channel object is null during this period;
-	 * ownership will be transferred when the per-app channel
-	 * objects are managed by the orchestrator.
-	 */
-	{
-		const auto& recording_config =
-			static_cast<const lsc::recording_channel_configuration&>(
-				ua_chan->channel_config);
-		auto& trace_class_ref = *trace_class;
-		auto locked_trace_class = trace_class_ref.lock();
-		auto& stream_class_ref = locked_trace_class->channel(trace_class_channel_key);
-
-		_find_or_create_per_pid_stream_group(recording_config,
-						     *app,
-						     ua_chan->key,
-						     ust::ust_object_data(nullptr),
-						     trace_class_ref,
-						     stream_class_ref);
-	}
-
-	cmd_ret = notification_thread_command_add_channel(the_notification_thread_handle,
-							  _session.id,
-							  ua_chan->channel_config.name.c_str(),
-							  ua_chan->key,
-							  LTTNG_DOMAIN_UST,
-							  ua_chan->attr.subbuf_size *
-								  ua_chan->attr.num_subbuf);
-	if (cmd_ret != LTTNG_OK) {
-		ret = -(int) cmd_ret;
-		ERR("Failed to add channel to notification thread");
-		goto error_remove_from_trace_class;
-	}
-
-error_remove_from_trace_class:
-	if (ret) {
-		try {
+		const auto trace_class_channel_key = ua_chan->key;
+		{
 			auto locked_trace_class = trace_class->lock();
-			locked_trace_class->remove_channel(ua_chan->key, false);
-		} catch (const std::exception& ex) {
-			DBG("Could not find channel for removal: %s", ex.what());
+
+			auto& trace_class_channel =
+				locked_trace_class->channel(trace_class_channel_key);
+			trace_class_channel._consumer_key = ua_chan->key;
 		}
+
+		/*
+		 * Populate the orchestrator's per-PID stream group map.
+		 * During the dual-write transition, the per-app channel
+		 * retains the authoritative channel and stream objects. The
+		 * stream group's channel object is null during this period;
+		 * ownership will be transferred when the per-app channel
+		 * objects are managed by the orchestrator.
+		 */
+		{
+			const auto& recording_config =
+				static_cast<const lsc::recording_channel_configuration&>(
+					ua_chan->channel_config);
+			auto& trace_class_ref = *trace_class;
+			auto locked_trace_class = trace_class_ref.lock();
+			auto& stream_class_ref =
+				locked_trace_class->channel(trace_class_channel_key);
+
+			_find_or_create_per_pid_stream_group(recording_config,
+							     *app,
+							     ua_chan->key,
+							     ust::ust_object_data(nullptr),
+							     trace_class_ref,
+							     stream_class_ref);
+		}
+
+		const auto cmd_ret = notification_thread_command_add_channel(
+			the_notification_thread_handle,
+			_session.id,
+			ua_chan->channel_config.name.c_str(),
+			ua_chan->key,
+			LTTNG_DOMAIN_UST,
+			ua_chan->attr.subbuf_size * ua_chan->attr.num_subbuf);
+		if (cmd_ret != LTTNG_OK) {
+			LTTNG_THROW_ERROR(fmt::format(
+				"Failed to notify per-PID UST channel creation: channel_name=`{}`, "
+				"session_id={}, pid={}, channel_key={}, notification_ret={}",
+				ua_chan->channel_config.name,
+				_session_id(),
+				app->pid,
+				ua_chan->key,
+				static_cast<int>(cmd_ret)));
+		}
+	} catch (...) {
+		if (trace_class_channel_added) {
+			try {
+				auto locked_trace_class = trace_class->lock();
+				locked_trace_class->remove_channel(ua_chan->key, false);
+			} catch (const std::exception& ex) {
+				DBG("Could not find channel for removal: %s", ex.what());
+			}
+		}
+
+		throw;
 	}
-error:
-	return ret;
 }
 
-int ls::ust::domain_orchestrator::_send_app_channel(ust::app *app,
-						    ust::app_session& ua_sess,
-						    ust::app_channel *ua_chan)
+void ls::ust::domain_orchestrator::_send_app_channel(ust::app *app,
+						     ust::app_session& ua_sess,
+						     ust::app_channel *ua_chan)
 {
-	int ret;
-
 	LTTNG_ASSERT(app);
 	LTTNG_ASSERT(ua_chan);
 	ASSERT_RCU_READ_LOCKED();
@@ -1539,25 +1516,13 @@ int ls::ust::domain_orchestrator::_send_app_channel(ust::app *app,
 	/* Handle buffer type before sending the channel to the application. */
 	switch (buffer_type()) {
 	case LTTNG_BUFFER_PER_UID:
-	{
-		ret = _create_channel_per_uid(app, &ua_sess, ua_chan);
-		if (ret < 0) {
-			goto error;
-		}
+		_create_channel_per_uid(app, &ua_sess, ua_chan);
 		break;
-	}
 	case LTTNG_BUFFER_PER_PID:
-	{
-		ret = _create_channel_per_pid(app, ua_sess, ua_chan);
-		if (ret < 0) {
-			goto error;
-		}
+		_create_channel_per_pid(app, ua_sess, ua_chan);
 		break;
-	}
 	default:
 		abort();
-		ret = -EINVAL;
-		goto error;
 	}
 
 	/* Register the channel's objd in the app's registry. */
@@ -1572,62 +1537,48 @@ int ls::ust::domain_orchestrator::_send_app_channel(ust::app *app,
 
 	/* If channel is not enabled, disable it on the tracer */
 	if (!ua_chan->enabled) {
-		ret = ua_chan->disable();
-		if (ret < 0) {
-			goto error;
+		if (ua_chan->disable() < 0) {
+			LTTNG_THROW_ERROR("Failed to disable newly-created UST channel");
 		}
 	}
-
-error:
-	return ret;
 }
 
-int ls::ust::domain_orchestrator::_create_app_channel(
+ls::ust::app_channel& ls::ust::domain_orchestrator::_create_app_channel(
 	ust::app_session& ua_sess,
 	ust::app *app,
-	ust::app_channel **_ua_chan,
 	const lsc::recording_channel_configuration& channel_config,
 	std::uint64_t trace_class_stream_class_handle)
 {
-	int ret = 0;
-	ust::app_channel *ua_chan = nullptr;
+	auto& ua_chan =
+		_allocate_app_channel(ua_sess, channel_config, trace_class_stream_class_handle);
+	bool channel_published = false;
 
-	/*
-	 * Create channel onto application and synchronize its
-	 * configuration.
-	 */
-	ret = _allocate_app_channel(
-		ua_sess, &ua_chan, channel_config, trace_class_stream_class_handle);
-	if (ret < 0) {
-		goto error;
-	}
+	try {
+		/*
+		 * Create channel onto application and synchronize its
+		 * configuration.
+		 */
+		_send_app_channel(app, ua_sess, &ua_chan);
 
-	ret = _send_app_channel(app, ua_sess, ua_chan);
-	if (ret) {
-		goto error;
-	}
+		/* Only publish the channel if successfully created on the tracer/consumer. */
+		ua_sess.channels.emplace(ua_chan.channel_config.name,
+					 std::unique_ptr<app_channel>(&ua_chan));
+		channel_published = true;
 
-	/* Only publish the channel if successfully created on the tracer/consumer. */
-	ua_sess.channels.emplace(ua_chan->channel_config.name,
-				 std::unique_ptr<app_channel>(ua_chan));
+		/* Add contexts. */
+		for (const auto& ctx_uptr : channel_config.get_contexts()) {
+			const auto& ctx_config = *ctx_uptr;
 
-	/* Add contexts. */
-	for (const auto& ctx_uptr : channel_config.get_contexts()) {
-		const auto& ctx_config = *ctx_uptr;
+			if (is_context_redundant(channel_config, ctx_config)) {
+				continue;
+			}
 
-		if (is_context_redundant(channel_config, ctx_config)) {
-			continue;
+			auto ust_ctx_attr = _make_ust_context_attr(ctx_config);
+			if (ua_chan.create_context(ctx_config, &ust_ctx_attr) != 0) {
+				LTTNG_THROW_ERROR("Failed to add context to UST channel");
+			}
 		}
-
-		auto ust_ctx_attr = _make_ust_context_attr(ctx_config);
-		ret = ua_chan->create_context(ctx_config, &ust_ctx_attr);
-		if (ret) {
-			goto error;
-		}
-	}
-
-error:
-	if (ret < 0 && ua_chan) {
+	} catch (...) {
 		/*
 		 * Remove from trace class before destroying. Pass false to
 		 * avoid notifying the consumer on this error path.
@@ -1640,74 +1591,57 @@ error:
 				const auto locked_trace_class = trace_class->lock();
 
 				try {
-					locked_trace_class->remove_channel(ua_chan->key, false);
+					locked_trace_class->remove_channel(ua_chan.key, false);
 				} catch (const std::exception& ex) {
 					DBG("Could not find channel for removal: %s", ex.what());
 				}
 			}
 		}
 
-		if (ua_sess.channels.erase(ua_chan->channel_config.name) == 0) {
-			delete ua_chan;
+		if (channel_published) {
+			ua_sess.channels.erase(ua_chan.channel_config.name);
+		} else {
+			delete &ua_chan;
 		}
-		ua_chan = nullptr;
-	} else if (ret == 0 && _ua_chan) {
-		/*
-		 * Only return the application's channel on success. Note
-		 * that the channel can still be part of the application's
-		 * channel hashtable on error.
-		 */
-		*_ua_chan = ua_chan;
+
+		throw;
 	}
 
-	return ret;
+	return ua_chan;
 }
 
-int ls::ust::domain_orchestrator::_find_or_create_app_channel(
+ls::ust::app_channel& ls::ust::domain_orchestrator::_find_or_create_app_channel(
 	ust::app_session& ua_sess,
 	ust::app *app,
-	ust::app_channel **ua_chan,
 	const lsc::recording_channel_configuration& channel_config,
 	std::uint64_t trace_class_stream_class_handle)
 {
-	int ret = 0;
-
 	{
 		const auto it = ua_sess.channels.find(channel_config.name);
 		if (it != ua_sess.channels.end()) {
-			*ua_chan = it->second.get();
-			goto end;
+			return *it->second;
 		}
 	}
 
-	ret = _create_app_channel(
-		ua_sess, app, ua_chan, channel_config, trace_class_stream_class_handle);
-	if (ret) {
-		goto end;
-	}
-end:
-	return ret;
+	return _create_app_channel(ua_sess, app, channel_config, trace_class_stream_class_handle);
 }
 
-int ls::ust::domain_orchestrator::_synchronize_channel_event(
+void ls::ust::domain_orchestrator::_synchronize_channel_event(
 	ust::app_channel *ua_chan, const lsc::event_rule_configuration& event_config)
 {
-	int ret = 0;
-
 	auto *ua_event = app_event::find_by_config(ua_chan->events, event_config);
 	if (!ua_event) {
-		ret = app_event::create(*ua_chan, event_config);
-		if (ret < 0) {
-			goto end;
+		if (app_event::create(*ua_chan, event_config) < 0) {
+			LTTNG_THROW_ERROR("Failed to create synchronized UST event");
 		}
 	} else {
 		if (ua_event->enabled != event_config.is_enabled) {
-			ret = event_config.is_enabled ? ua_event->enable() : ua_event->disable();
+			if ((event_config.is_enabled ? ua_event->enable() : ua_event->disable()) <
+			    0) {
+				LTTNG_THROW_ERROR("Failed to update synchronized UST event state");
+			}
 		}
 	}
-
-end:
-	return ret;
 }
 
 void ls::ust::domain_orchestrator::_synchronize_all_channels(ust::app_session& ua_sess,
@@ -1719,8 +1653,6 @@ void ls::ust::domain_orchestrator::_synchronize_all_channels(ust::app_session& u
 	const auto& config_domain = _session.user_space_domain;
 
 	for (const auto& chan_config : config_domain.recording_channels()) {
-		ust::app_channel *ua_chan;
-
 		const auto handle = _trace_class_stream_class_handle(chan_config);
 
 		/*
@@ -1730,10 +1662,13 @@ void ls::ust::domain_orchestrator::_synchronize_all_channels(ust::app_session& u
 		 * allocated (if necessary) and sent to the application, and
 		 * all enabled contexts will be added to the channel.
 		 */
-		int ret = _find_or_create_app_channel(ua_sess, app, &ua_chan, chan_config, handle);
-		if (ret) {
+		auto *ua_chan = static_cast<ust::app_channel *>(nullptr);
+
+		try {
+			ua_chan = &_find_or_create_app_channel(ua_sess, app, chan_config, handle);
+		} catch (const lttng::runtime_error&) {
 			/* Tracer is probably gone or ENOMEM. */
-			goto end;
+			return;
 		}
 
 		if (!ua_chan) {
@@ -1742,21 +1677,21 @@ void ls::ust::domain_orchestrator::_synchronize_all_channels(ust::app_session& u
 		}
 
 		for (const auto& event_rule_entry : chan_config.event_rules) {
-			ret = _synchronize_channel_event(ua_chan, *event_rule_entry.second);
-			if (ret) {
-				goto end;
+			try {
+				_synchronize_channel_event(ua_chan, *event_rule_entry.second);
+			} catch (const lttng::runtime_error&) {
+				return;
 			}
 		}
 
 		if (ua_chan->enabled != chan_config.is_enabled) {
-			ret = chan_config.is_enabled ? ua_chan->enable() : ua_chan->disable();
-			if (ret) {
-				goto end;
+			const auto ret = chan_config.is_enabled ? ua_chan->enable() :
+								  ua_chan->disable();
+			if (ret != 0) {
+				return;
 			}
 		}
 	}
-end:
-	return;
 }
 
 /*
@@ -1764,9 +1699,8 @@ end:
  *
  * Called with UST app session lock held and RCU read side lock.
  */
-int ls::ust::domain_orchestrator::_create_app_metadata(ust::app_session& ua_sess, ust::app *app)
+void ls::ust::domain_orchestrator::_create_app_metadata(ust::app_session& ua_sess, ust::app *app)
 {
-	int ret = 0;
 	ust::app_channel *metadata;
 	struct consumer_socket *socket;
 
@@ -1785,12 +1719,13 @@ int ls::ust::domain_orchestrator::_create_app_metadata(ust::app_session& ua_sess
 
 	/* Metadata already exists for this trace class or it was closed previously */
 	if (locked_trace_class->_metadata_key || locked_trace_class->_metadata_closed) {
-		ret = 0;
-		goto error;
+		return;
 	}
 
 	/* Allocate UST metadata */
 	metadata = new app_channel(ua_sess, metadata_config);
+	const auto delete_metadata_on_exit =
+		lttng::make_scope_exit([metadata]() noexcept { delete metadata; });
 
 	{
 		const auto default_attr = _default_metadata_channel_attr();
@@ -1798,17 +1733,21 @@ int ls::ust::domain_orchestrator::_create_app_metadata(ust::app_session& ua_sess
 	}
 
 	/* Need one fd for the channel. */
-	ret = lttng_fd_get(LTTNG_FD_APPS, 1);
-	if (ret < 0) {
-		ERR("Exhausted number of available FD upon create metadata");
-		goto error;
+	if (lttng_fd_get(LTTNG_FD_APPS, 1) < 0) {
+		LTTNG_THROW_ERROR(fmt::format(
+			"Failed to allocate metadata file descriptor: session_id={}, pid={}, "
+			"channel_name=`{}`",
+			_session_id(),
+			app->pid,
+			metadata_config.name));
 	}
+	const auto put_fd_on_exit =
+		lttng::make_scope_exit([]() noexcept { lttng_fd_put(LTTNG_FD_APPS, 1); });
 
 	/* Get the right consumer socket for the application. */
 	socket = consumer_find_socket_by_bitness(app->abi.bits_per_long, get_consumer_output_ptr());
 	if (!socket) {
-		ret = -EINVAL;
-		goto error_consumer;
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR("Failed to find consumer socket for metadata");
 	}
 
 	/*
@@ -1825,19 +1764,18 @@ int ls::ust::domain_orchestrator::_create_app_metadata(ust::app_session& ua_sess
 	 * never added or monitored until we do a first push metadata to the
 	 * consumer.
 	 */
-	ret = ust_consumer_ask_channel(&ua_sess,
-				       metadata,
-				       get_consumer_output_ptr(),
-				       socket,
-				       locked_trace_class.locked_ref().get(),
-				       _session.current_trace_chunk,
-				       _session.trace_format,
-				       _session.output_traces,
-				       _session.live_timer);
-	if (ret < 0) {
+	if (ust_consumer_ask_channel(&ua_sess,
+				     metadata,
+				     get_consumer_output_ptr(),
+				     socket,
+				     locked_trace_class.locked_ref().get(),
+				     _session.current_trace_chunk,
+				     _session.trace_format,
+				     _session.output_traces,
+				     _session.live_timer) < 0) {
 		/* Nullify the metadata key so we don't try to close it later on. */
 		locked_trace_class->_metadata_key = 0;
-		goto error_consumer;
+		LTTNG_THROW_ERROR("Failed to create metadata channel on consumer");
 	}
 
 	/*
@@ -1846,20 +1784,13 @@ int ls::ust::domain_orchestrator::_create_app_metadata(ust::app_session& ua_sess
 	 * because after this point, if an error occurs, the only way the stream
 	 * can be deleted is to be monitored in the consumer.
 	 */
-	ret = consumer_setup_metadata(socket, metadata->key);
-	if (ret < 0) {
+	if (consumer_setup_metadata(socket, metadata->key) < 0) {
 		/* Nullify the metadata key so we don't try to close it later on. */
 		locked_trace_class->_metadata_key = 0;
-		goto error_consumer;
+		LTTNG_THROW_ERROR("Failed to setup metadata channel on consumer");
 	}
 
 	DBG2("UST metadata with key %" PRIu64 " created for app pid %d", metadata->key, app->pid);
-
-error_consumer:
-	lttng_fd_put(LTTNG_FD_APPS, 1);
-	delete metadata;
-error:
-	return ret;
 }
 
 void ls::ust::domain_orchestrator::synchronize_app(ust::app& app)
@@ -1878,8 +1809,10 @@ void ls::ust::domain_orchestrator::synchronize_app(ust::app& app)
 	    domain.virtual_group_id_tracker().is_tracked(
 		    lsc::resolved_process_attr_value<gid_t>(app.gid))) {
 		ust::app_session *ua_sess = nullptr;
-		const auto ret = _find_or_create_app_session(&app, &ua_sess);
-		if (ret < 0) {
+
+		try {
+			ua_sess = &_find_or_create_app_session(app);
+		} catch (const lttng::runtime_error&) {
 			/* Tracer is probably gone or ENOMEM. */
 			return;
 		}
@@ -1900,8 +1833,9 @@ void ls::ust::domain_orchestrator::synchronize_app(ust::app& app)
 			 * use this assumption to send the "STREAMS_SENT" message
 			 * to the relay daemon.
 			 */
-			const auto md_ret = _create_app_metadata(*ua_sess, &app);
-			if (md_ret < 0) {
+			try {
+				_create_app_metadata(*ua_sess, &app);
+			} catch (const lttng::runtime_error&) {
 				ERR("Metadata creation failed for app sock %d for session id %" PRIu64,
 				    app.command_socket.fd(),
 				    _session_id());
@@ -1909,7 +1843,11 @@ void ls::ust::domain_orchestrator::synchronize_app(ust::app& app)
 		}
 
 		if (_active) {
-			_start_app_trace(&app);
+			try {
+				_start_app_trace(&app);
+			} catch (const lttng::runtime_error&) {
+				/* The app may have departed; synchronize on next interaction. */
+			}
 		}
 	} else {
 		if (_find_app_session(app)) {
@@ -1940,7 +1878,7 @@ unsigned int ls::ust::domain_orchestrator::on_app_departure(
 	_app_sessions.erase(it);
 
 	if (owned_session->buffer_type == LTTNG_BUFFER_PER_PID) {
-		(void) _flush_app_session(*owned_session);
+		_flush_app_session(*owned_session);
 		_save_per_pid_stats_on_departure(*owned_session);
 	}
 
@@ -1982,7 +1920,7 @@ void ls::ust::domain_orchestrator::_synchronize_all_apps()
 	}
 }
 
-int ls::ust::domain_orchestrator::_start_app_trace(ust::app *app)
+void ls::ust::domain_orchestrator::_start_app_trace(ust::app *app)
 {
 	ust::app_session *ua_sess;
 
@@ -1993,30 +1931,30 @@ int ls::ust::domain_orchestrator::_start_app_trace(ust::app *app)
 		lttng::make_scope_exit([]() noexcept { health_code_update(); });
 
 	if (!app->compatible) {
-		return 0;
+		return;
 	}
 
 	ua_sess = _find_app_session(*app);
 	if (ua_sess == nullptr) {
 		/* The session is in teardown process. Ignore and continue. */
-		return 0;
+		return;
 	}
 
 	if (ua_sess->deleted) {
-		return 0;
+		return;
 	}
 
 	if (ua_sess->enabled) {
-		return 0;
+		return;
 	}
 
 	/* This starts the UST tracing */
 	try {
 		app->command_socket.lock().start_session(ua_sess->handle);
 	} catch (const ls::ust::app_communication_error&) {
-		return 0;
+		return;
 	} catch (const lttng::runtime_error&) {
-		return -1;
+		LTTNG_THROW_ERROR("Failed to start UST app trace");
 	}
 
 	/* Indicate that the session has been started once */
@@ -2031,11 +1969,9 @@ int ls::ust::domain_orchestrator::_start_app_trace(ust::app *app)
 	} catch (const ls::ust::app_communication_error&) {
 	} catch (const lttng::runtime_error&) {
 	}
-
-	return 0;
 }
 
-int ls::ust::domain_orchestrator::_stop_app_trace(ust::app *app)
+void ls::ust::domain_orchestrator::_stop_app_trace(ust::app *app)
 {
 	ust::app_session *ua_sess;
 
@@ -2046,16 +1982,16 @@ int ls::ust::domain_orchestrator::_stop_app_trace(ust::app *app)
 		lttng::make_scope_exit([]() noexcept { health_code_update(); });
 
 	if (!app->compatible) {
-		return 0;
+		return;
 	}
 
 	ua_sess = _find_app_session(*app);
 	if (ua_sess == nullptr) {
-		return 0;
+		return;
 	}
 
 	if (ua_sess->deleted) {
-		return 0;
+		return;
 	}
 
 	/*
@@ -2065,7 +2001,7 @@ int ls::ust::domain_orchestrator::_stop_app_trace(ust::app *app)
 	 * indicate that this is a stop error.
 	 */
 	if (!ua_sess->started) {
-		return -1;
+		LTTNG_THROW_ERROR("Failed to stop UST app trace");
 	}
 
 	health_code_update();
@@ -2074,9 +2010,9 @@ int ls::ust::domain_orchestrator::_stop_app_trace(ust::app *app)
 	try {
 		app->command_socket.lock().stop_session(ua_sess->handle);
 	} catch (const ls::ust::app_communication_error&) {
-		return 0;
+		return;
 	} catch (const lttng::runtime_error&) {
-		return -1;
+		LTTNG_THROW_ERROR("Failed to stop UST app trace");
 	}
 
 	health_code_update();
@@ -2103,19 +2039,16 @@ int ls::ust::domain_orchestrator::_stop_app_trace(ust::app *app)
 			}
 		}
 	}
-
-	return 0;
 }
 
-int ls::ust::domain_orchestrator::_flush_app_session(ust::app_session& ua_sess)
+void ls::ust::domain_orchestrator::_flush_app_session(ust::app_session& ua_sess)
 {
-	return ua_sess.flush();
+	(void) ua_sess.flush();
 }
 
-int ls::ust::domain_orchestrator::_clear_quiescent_app_session(ust::app *app,
-							       ust::app_session *ua_sess)
+void ls::ust::domain_orchestrator::_clear_quiescent_app_session(ust::app *app,
+								ust::app_session *ua_sess)
 {
-	int ret = 0;
 	struct consumer_socket *socket;
 
 	DBG("Clearing stream quiescent state for ust app pid %d", app->pid);
@@ -2125,11 +2058,11 @@ int ls::ust::domain_orchestrator::_clear_quiescent_app_session(ust::app *app,
 		lttng::make_scope_exit([]() noexcept { health_code_update(); });
 
 	if (!app->compatible) {
-		return 0;
+		return;
 	}
 
 	if (ua_sess->deleted) {
-		return 0;
+		return;
 	}
 
 	health_code_update();
@@ -2137,7 +2070,7 @@ int ls::ust::domain_orchestrator::_clear_quiescent_app_session(ust::app *app,
 	socket = consumer_find_socket_by_bitness(app->abi.bits_per_long, ua_sess->consumer);
 	if (!socket) {
 		ERR("Failed to find consumer (%" PRIu32 ") socket", app->abi.bits_per_long);
-		return -1;
+		return;
 	}
 
 	/* Clear quiescent state. */
@@ -2145,10 +2078,8 @@ int ls::ust::domain_orchestrator::_clear_quiescent_app_session(ust::app *app,
 	case LTTNG_BUFFER_PER_PID:
 		for (auto& chan_pair : ua_sess->channels) {
 			health_code_update();
-			ret = consumer_clear_quiescent_channel(socket, chan_pair.second->key);
-			if (ret) {
+			if (consumer_clear_quiescent_channel(socket, chan_pair.second->key)) {
 				ERR("Error clearing quiescent state for consumer channel");
-				ret = -1;
 				continue;
 			}
 		}
@@ -2156,11 +2087,8 @@ int ls::ust::domain_orchestrator::_clear_quiescent_app_session(ust::app *app,
 	case LTTNG_BUFFER_PER_UID:
 	default:
 		abort();
-		ret = -1;
 		break;
 	}
-
-	return ret;
 }
 
 void ls::ust::domain_orchestrator::start()
@@ -2200,7 +2128,7 @@ void ls::ust::domain_orchestrator::start()
 			}
 
 			const ust_app_reference app_ref(app);
-			(void) _clear_quiescent_app_session(app, app_session_pair.second.get());
+			_clear_quiescent_app_session(app, app_session_pair.second.get());
 		}
 	}
 
@@ -2237,7 +2165,11 @@ void ls::ust::domain_orchestrator::stop()
 
 			const ust_app_reference app_ref(app);
 
-			(void) _stop_app_trace(app);
+			try {
+				_stop_app_trace(app);
+			} catch (const lttng::runtime_error&) {
+				/* The app may have departed; continue with remaining apps. */
+			}
 		}
 	}
 
@@ -2253,7 +2185,7 @@ void ls::ust::domain_orchestrator::stop()
 				continue;
 			}
 			const ust_app_reference app_ref(app);
-			(void) _flush_app_session(*app_session_pair.second);
+			_flush_app_session(*app_session_pair.second);
 		}
 	}
 
@@ -2325,22 +2257,23 @@ void ls::ust::domain_orchestrator::_clear_quiescent_per_uid_channels() const
 
 void ls::ust::domain_orchestrator::rotate()
 {
-	auto result = LTTNG_OK;
 	auto *consumer = get_consumer_output_ptr();
 
-	_for_each_consumer_stream_group([this, consumer, &result](
-						const _consumer_stream_group_descriptor& desc) {
+	_for_each_consumer_stream_group([this,
+					 consumer](const _consumer_stream_group_descriptor& desc) {
 		const lttng::urcu::read_lock_guard read_lock;
-
-		if (result != LTTNG_OK) {
-			return;
-		}
 
 		const auto socket =
 			consumer_find_socket_by_bitness(static_cast<int>(desc.abi), consumer);
 		if (!socket) {
-			result = LTTNG_ERR_INVALID;
-			return;
+			LTTNG_THROW_ROTATION_FAILURE(fmt::format(
+				"Failed to rotate UST stream group: no consumer socket: session_name=`{}`, session_id={}, "
+				"consumer_key={}, abi={}, is_metadata={}",
+				_session.name,
+				_session.id,
+				desc.consumer_key,
+				static_cast<unsigned int>(desc.abi),
+				desc.is_metadata));
 		}
 
 		if (desc.is_metadata) {
@@ -2350,37 +2283,50 @@ void ls::ust::domain_orchestrator::rotate()
 		const auto rotate_ret = consumer_rotate_channel(
 			socket, desc.consumer_key, consumer, desc.is_metadata);
 		if (rotate_ret < 0) {
-			result = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
+			LTTNG_THROW_ROTATION_FAILURE(fmt::format(
+				"Failed to rotate UST stream group on consumer: session_name=`{}`, "
+				"session_id={}, consumer_key={}, abi={}, is_metadata={}, status={}",
+				_session.name,
+				_session.id,
+				desc.consumer_key,
+				static_cast<unsigned int>(desc.abi),
+				desc.is_metadata,
+				rotate_ret));
 		}
 	});
-
-	if (result != LTTNG_OK) {
-		LTTNG_THROW_CTL("Failed to rotate UST session", result);
-	}
 }
 
 void ls::ust::domain_orchestrator::clear()
 {
 	if (_active) {
-		ERR("Expecting inactive session %s (%" PRIu64 ")", _session.name, _session.id);
-		LTTNG_THROW_CTL("Failed to clear UST session", LTTNG_ERR_FATAL);
+		LTTNG_THROW_CLEAR_FAILURE(fmt::format(
+			"Failed to clear UST session while active: session_name=`{}`, session_id={}",
+			_session.name,
+			_session.id));
 	}
 
 	auto *consumer = get_consumer_output_ptr();
 	const auto buf_type = buffer_type();
-	auto result = LTTNG_OK;
 
-	_for_each_consumer_stream_group([this, consumer, buf_type, &result](
+	_for_each_consumer_stream_group([this, consumer, buf_type](
 						const _consumer_stream_group_descriptor& desc) {
-		if (result != LTTNG_OK) {
-			return;
-		}
-
 		/* Protect looked-up consumer socket. */
 		const lttng::urcu::read_lock_guard read_lock;
 
 		const auto consumer_socket =
 			consumer_find_socket_by_bitness(static_cast<int>(desc.abi), consumer);
+		if (!consumer_socket) {
+			LTTNG_THROW_CLEAR_FAILURE(fmt::format(
+				"Failed to clear UST stream group: no consumer socket: "
+				"session_name=`{}`, session_id={}, consumer_key={}, abi={}, "
+				"is_metadata={}, buffer_type={}",
+				_session.name,
+				_session.id,
+				desc.consumer_key,
+				static_cast<unsigned int>(desc.abi),
+				desc.is_metadata,
+				static_cast<int>(buf_type)));
+		}
 
 		if (desc.is_metadata) {
 			_push_metadata(desc.trace_class.lock());
@@ -2394,17 +2340,29 @@ void ls::ust::domain_orchestrator::clear()
 			}
 
 			if (clean_ret == -LTTCOMM_CONSUMERD_RELAYD_CLEAR_DISALLOWED) {
-				result = LTTNG_ERR_CLEAR_RELAY_DISALLOWED;
-				return;
+				LTTNG_THROW_CLEAR_RELAY_DISALLOWED(fmt::format(
+					"Failed to clear UST stream group: relayd clear disallowed: "
+					"session_name=`{}`, session_id={}, consumer_key={}, abi={}, "
+					"is_metadata={}, status={}",
+					_session.name,
+					_session.id,
+					desc.consumer_key,
+					static_cast<unsigned int>(desc.abi),
+					desc.is_metadata,
+					clean_ret));
 			}
 
-			result = LTTNG_ERR_CLEAR_FAIL_CONSUMER;
+			LTTNG_THROW_CLEAR_FAILURE(fmt::format(
+				"Failed to clear UST stream group on consumer: session_name=`{}`, "
+				"session_id={}, consumer_key={}, abi={}, is_metadata={}, status={}",
+				_session.name,
+				_session.id,
+				desc.consumer_key,
+				static_cast<unsigned int>(desc.abi),
+				desc.is_metadata,
+				clean_ret));
 		}
 	});
-
-	if (result != LTTNG_OK) {
-		LTTNG_THROW_CTL("Failed to clear UST session", result);
-	}
 }
 
 /*
@@ -2420,11 +2378,10 @@ void ls::ust::domain_orchestrator::open_packets()
 {
 	auto *consumer = get_consumer_output_ptr();
 	const auto buf_type = buffer_type();
-	auto result = LTTNG_OK;
 
-	_for_each_consumer_stream_group([consumer, buf_type, &result](
+	_for_each_consumer_stream_group([this, consumer, buf_type](
 						const _consumer_stream_group_descriptor& desc) {
-		if (result != LTTNG_OK || desc.is_metadata) {
+		if (desc.is_metadata) {
 			return;
 		}
 
@@ -2433,6 +2390,17 @@ void ls::ust::domain_orchestrator::open_packets()
 
 		const auto socket =
 			consumer_find_socket_by_bitness(static_cast<int>(desc.abi), consumer);
+		if (!socket) {
+			LTTNG_THROW_OPEN_PACKETS_FAILURE(fmt::format(
+				"Failed to open packets for UST stream group: no consumer socket: "
+				"session_name=`{}`, session_id={}, consumer_key={}, abi={}, "
+				"buffer_type={}",
+				_session.name,
+				_session.id,
+				desc.consumer_key,
+				static_cast<unsigned int>(desc.abi),
+				static_cast<int>(buf_type)));
+		}
 
 		const auto open_ret = consumer_open_channel_packets(socket, desc.consumer_key);
 		if (open_ret < 0) {
@@ -2442,13 +2410,17 @@ void ls::ust::domain_orchestrator::open_packets()
 				return;
 			}
 
-			result = LTTNG_ERR_UNK;
+			LTTNG_THROW_OPEN_PACKETS_FAILURE(fmt::format(
+				"Failed to open packets for UST stream group on consumer: "
+				"session_name=`{}`, session_id={}, consumer_key={}, abi={}, "
+				"status={}",
+				_session.name,
+				_session.id,
+				desc.consumer_key,
+				static_cast<unsigned int>(desc.abi),
+				open_ret));
 		}
 	});
-
-	if (result != LTTNG_OK) {
-		LTTNG_THROW_CTL("Failed to open UST packets", result);
-	}
 }
 
 void ls::ust::domain_orchestrator::_close_per_uid_metadata_on_consumer() const
@@ -2500,19 +2472,19 @@ void ls::ust::domain_orchestrator::_record_snapshot_per_uid(
 		auto *socket = consumer_find_socket_by_bitness(static_cast<int>(tc_key.abi),
 							       _consumer_output.get());
 		if (!socket) {
-			LTTNG_THROW_CTL("Failed to find consumer socket for snapshot",
-					LTTNG_ERR_INVALID);
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+				"Failed to find consumer socket for snapshot");
 		}
 
-		const auto uid_path = lttng::format(
+		const auto uid_path = fmt::format(
 			"uid/{}/{}-bit", tc_key.uid, static_cast<unsigned int>(tc_key.abi));
 
 		std::size_t consumer_path_offset = 0;
 		const auto trace_path_raw = setup_channel_trace_path(
 			_consumer_output.get(), uid_path.c_str(), &consumer_path_offset);
 		if (!trace_path_raw) {
-			LTTNG_THROW_CTL("Failed to setup channel trace path for snapshot",
-					LTTNG_ERR_INVALID);
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+				"Failed to setup channel trace path for snapshot");
 		}
 
 		const auto free_trace_path = lttng::make_scope_exit(
@@ -2577,8 +2549,8 @@ void ls::ust::domain_orchestrator::_record_snapshot_per_pid(
 		auto *socket = consumer_find_socket_by_bitness(
 			static_cast<int>(app->abi.bits_per_long), _consumer_output.get());
 		if (!socket) {
-			LTTNG_THROW_CTL("Failed to find consumer socket for snapshot",
-					LTTNG_ERR_INVALID);
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+				"Failed to find consumer socket for snapshot");
 		}
 
 		/* Build per-PID trace path: pid/<name>-<pid>-<datetime>. */
@@ -2593,8 +2565,8 @@ void ls::ust::domain_orchestrator::_record_snapshot_per_pid(
 		const auto trace_path_raw = setup_channel_trace_path(
 			_consumer_output.get(), pid_path.c_str(), &consumer_path_offset);
 		if (!trace_path_raw) {
-			LTTNG_THROW_CTL("Failed to setup channel trace path for snapshot",
-					LTTNG_ERR_INVALID);
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+				"Failed to setup channel trace path for snapshot");
 		}
 
 		const auto free_trace_path = lttng::make_scope_exit(
@@ -2643,9 +2615,7 @@ void ls::ust::domain_orchestrator::_record_snapshot_per_pid(
 void ls::ust::domain_orchestrator::regenerate_metadata()
 {
 	if (buffer_type() == LTTNG_BUFFER_PER_PID) {
-		LTTNG_THROW_CTL(
-			"Metadata regeneration is not supported for per-PID buffering sessions",
-			LTTNG_ERR_PER_PID_SESSION);
+		LTTNG_THROW_UST_METADATA_REGENERATION_UNSUPPORTED();
 	}
 
 	for (const auto& tc_entry : _per_uid_trace_classes) {
@@ -2694,16 +2664,16 @@ void ls::ust::domain_orchestrator::create_channel_subdirectories(
 			const auto uid = tc_entry.first.uid;
 			const auto bits_per_long = static_cast<unsigned int>(tc_entry.first.abi);
 
-			const auto pathname = lttng::format(DEFAULT_UST_TRACE_DIR
-							    "/uid/{}/{}-bit/" DEFAULT_INDEX_DIR,
-							    uid,
-							    bits_per_long);
+			const auto pathname = fmt::format(DEFAULT_UST_TRACE_DIR
+							  "/uid/{}/{}-bit/" DEFAULT_INDEX_DIR,
+							  uid,
+							  bits_per_long);
 
 			const auto chunk_status = lttng_trace_chunk_create_subdirectory(
 				&trace_chunk, pathname.c_str());
 			if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
-				LTTNG_THROW_CTL("Failed to create UST channel subdirectory",
-						LTTNG_ERR_CREATE_DIR_FAIL);
+				LTTNG_THROW_UST_DIRECTORY_CREATION_FAILURE(
+					"Failed to create UST channel subdirectory");
 			}
 		}
 	} else {
@@ -2713,8 +2683,8 @@ void ls::ust::domain_orchestrator::create_channel_subdirectories(
 		auto chunk_status =
 			lttng_trace_chunk_create_subdirectory(&trace_chunk, DEFAULT_UST_TRACE_DIR);
 		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
-			LTTNG_THROW_CTL("Failed to create UST trace directory",
-					LTTNG_ERR_CREATE_DIR_FAIL);
+			LTTNG_THROW_UST_DIRECTORY_CREATION_FAILURE(
+				"Failed to create UST trace directory");
 		}
 
 		/*
@@ -2735,14 +2705,14 @@ void ls::ust::domain_orchestrator::create_channel_subdirectories(
 				continue;
 			}
 
-			const auto pathname = lttng::format(
+			const auto pathname = fmt::format(
 				DEFAULT_UST_TRACE_DIR "/{}/" DEFAULT_INDEX_DIR, ua_sess->path);
 
 			chunk_status = lttng_trace_chunk_create_subdirectory(&trace_chunk,
 									     pathname.c_str());
 			if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
-				LTTNG_THROW_CTL("Failed to create UST channel subdirectory",
-						LTTNG_ERR_CREATE_DIR_FAIL);
+				LTTNG_THROW_UST_DIRECTORY_CREATION_FAILURE(
+					"Failed to create UST channel subdirectory");
 			}
 		}
 	}
@@ -3159,31 +3129,29 @@ ls::ust::domain_orchestrator::get_recording_channel_runtime_stats(
 			}
 		}
 
-		if (!found) {
-			/* Channel not yet created on the consumer side. */
-			goto add_closed_app_stats;
-		}
-
-		if (is_overwrite) {
-			const auto ret_lost = consumer_get_lost_packets(_session.id,
-									consumer_chan_key,
-									_consumer_output.get(),
-									&stats.lost_packets);
-			if (ret_lost < 0) {
-				LTTNG_THROW_ERROR(lttng::format(
-					"Failed to get lost packets from consumer: channel_name=`{}`",
-					channel_config.name));
-			}
-		} else {
-			const auto ret_disc =
-				consumer_get_discarded_events(_session.id,
-							      consumer_chan_key,
-							      _consumer_output.get(),
-							      &stats.discarded_events);
-			if (ret_disc < 0) {
-				LTTNG_THROW_ERROR(lttng::format(
-					"Failed to get discarded events from consumer: channel_name=`{}`",
-					channel_config.name));
+		if (found) {
+			if (is_overwrite) {
+				const auto ret_lost =
+					consumer_get_lost_packets(_session.id,
+								  consumer_chan_key,
+								  _consumer_output.get(),
+								  &stats.lost_packets);
+				if (ret_lost < 0) {
+					LTTNG_THROW_ERROR(fmt::format(
+						"Failed to get lost packets from consumer: channel_name=`{}`",
+						channel_config.name));
+				}
+			} else {
+				const auto ret_disc =
+					consumer_get_discarded_events(_session.id,
+								      consumer_chan_key,
+								      _consumer_output.get(),
+								      &stats.discarded_events);
+				if (ret_disc < 0) {
+					LTTNG_THROW_ERROR(fmt::format(
+						"Failed to get discarded events from consumer: channel_name=`{}`",
+						channel_config.name));
+				}
 			}
 		}
 	} else {
@@ -3207,7 +3175,9 @@ ls::ust::domain_orchestrator::get_recording_channel_runtime_stats(
 									   _consumer_output.get(),
 									   &lost);
 				if (ret < 0) {
-					break;
+					LTTNG_THROW_ERROR(fmt::format(
+						"Failed to get per-PID lost packets from consumer: channel_name=`{}`",
+						channel_config.name));
 				}
 
 				stats.lost_packets += lost;
@@ -3220,15 +3190,15 @@ ls::ust::domain_orchestrator::get_recording_channel_runtime_stats(
 								      _consumer_output.get(),
 								      &discarded);
 				if (ret < 0) {
-					break;
+					LTTNG_THROW_ERROR(fmt::format(
+						"Failed to get per-PID discarded events from consumer: channel_name=`{}`",
+						channel_config.name));
 				}
 
 				stats.discarded_events += discarded;
 			}
 		}
 	}
-
-add_closed_app_stats:
 	/* Add accumulated stats from applications that have already exited. */
 	{
 		const auto closed_it = _per_pid_closed_app_stats.find(&channel_config);

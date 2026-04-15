@@ -2818,6 +2818,22 @@ void *thread_manage_clients(void *data)
 		} catch (const lttng::sessiond::exceptions::regenerate_statedump_failure& ex) {
 			log_nested_exceptions(ex);
 			ret = LTTNG_ERR_REGEN_STATEDUMP_FAIL;
+		} catch (const lttng::sessiond::ust::exceptions::buffer_type_mismatch& ex) {
+			log_nested_exceptions(ex);
+			ret = LTTNG_ERR_BUFFER_TYPE_MISMATCH;
+		} catch (const lttng::sessiond::ust::exceptions::event_enable_failure& ex) {
+			log_nested_exceptions(ex);
+			ret = LTTNG_ERR_UST_ENABLE_FAIL;
+		} catch (const lttng::sessiond::ust::exceptions::event_disable_failure& ex) {
+			log_nested_exceptions(ex);
+			ret = LTTNG_ERR_UST_DISABLE_FAIL;
+		} catch (const lttng::sessiond::ust::exceptions::directory_creation_failure& ex) {
+			log_nested_exceptions(ex);
+			ret = LTTNG_ERR_CREATE_DIR_FAIL;
+		} catch (const lttng::sessiond::ust::exceptions::metadata_regeneration_unsupported&
+				 ex) {
+			log_nested_exceptions(ex);
+			ret = LTTNG_ERR_PER_PID_SESSION;
 		} catch (const lttng::ctl::error& ex) {
 			log_nested_exceptions(ex);
 			ret = ex.code();
