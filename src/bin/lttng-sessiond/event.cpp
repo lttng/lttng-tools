@@ -32,6 +32,7 @@
 #include <lttng/event-rule/event-rule.h>
 #include <lttng/lttng.h>
 
+#include <exception>
 #include <string.h>
 #include <urcu/list.h>
 
@@ -448,7 +449,19 @@ static int event_agent_disable_one(lttng::sessiond::ust::domain_orchestrator& or
 						     .get_channel(ust_channel_name);
 
 		orchestrator.disable_event(channel_config, *aevent->ust_event_rule_config);
-	} catch (const lttng::ctl::error&) {
+	} catch (const lttng::ctl::error& ex) {
+		ERR_FMT("Failed to disable agent event on UST orchestrator: event_name=`{}`, session_id={}, error_code={}, error='{}'",
+			aevent->name,
+			orchestrator.recording_session().id,
+			static_cast<int>(ex.code()),
+			ex.what());
+		ret = LTTNG_ERR_UST_DISABLE_FAIL;
+		goto error;
+	} catch (const std::exception& ex) {
+		ERR_FMT("Failed to disable agent event on UST orchestrator: event_name=`{}`, session_id={}, error='{}'",
+			aevent->name,
+			orchestrator.recording_session().id,
+			ex.what());
 		ret = LTTNG_ERR_UST_DISABLE_FAIL;
 		goto error;
 	}

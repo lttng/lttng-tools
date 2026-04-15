@@ -49,6 +49,7 @@
 #include <lttng/trigger/trigger-internal.hpp>
 
 #include <errno.h>
+#include <exception>
 #include <fcntl.h>
 #include <inttypes.h>
 #include <mutex>
@@ -1470,8 +1471,16 @@ static void ust_app_unregister(lsu::app& app)
 			auto& orchestrator = static_cast<lsu::domain_orchestrator&>(
 				session_ref->get_ust_orchestrator());
 
-			total_pending_reclamations += orchestrator.on_app_departure(
-				app, nonstd::optional<uint32_t>(app.owner_id_n.key));
+			try {
+				total_pending_reclamations += orchestrator.on_app_departure(
+					app, nonstd::optional<uint32_t>(app.owner_id_n.key));
+			} catch (const std::exception& ex) {
+				ERR_FMT("Failed to process app departure in UST orchestrator: session_name=`{}`, session_id={}, app={}, error='{}'",
+					session_ref->name,
+					session_ref->id,
+					app,
+					ex.what());
+			}
 		}
 
 		session_unlock(&*session_ref);
