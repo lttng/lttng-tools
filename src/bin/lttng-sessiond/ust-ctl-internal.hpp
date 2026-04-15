@@ -547,6 +547,8 @@ enum lttng_ust_ctl_abstract_types {
 	lttng_ust_ctl_atype_sequence_nestable,
 	lttng_ust_ctl_atype_struct_nestable,
 	lttng_ust_ctl_atype_variant_nestable,
+	lttng_ust_ctl_atype_fixed_length_blob,
+	lttng_ust_ctl_atype_variable_length_blob,
 	NR_LTTNG_UST_CTL_ABSTRACT_TYPES,
 };
 
@@ -601,7 +603,7 @@ struct lttng_ust_ctl_enum_entry {
 } LTTNG_PACKED;
 
 /* legacy */
-#define LTTNG_UST_CTL_UST_BASIC_TYPE_PADDING 296
+#define LTTNG_UST_CTL_UST_BASIC_TYPE_PADDING 312
 union _lttng_ust_ctl_basic_type {
 	struct lttng_ust_ctl_integer_type integer;
 	struct {
@@ -663,6 +665,14 @@ struct lttng_ust_ctl_type {
 			uint32_t alignment;
 			/* Followed by nr_choices struct lttng_ust_ctl_field. */
 		} variant_nestable;
+		struct {
+			uint32_t length;
+			char media_type[LTTNG_UST_ABI_SYM_NAME_LEN];
+		} fixed_length_blob;
+		struct {
+			char length_name[LTTNG_UST_ABI_SYM_NAME_LEN];
+			char media_type[LTTNG_UST_ABI_SYM_NAME_LEN];
+		} variable_length_blob;
 
 		/* Legacy ABI */
 		union {
