@@ -119,7 +119,8 @@ public:
 	 * configuration pointer is stable for the lifetime of the recording
 	 * session.
 	 */
-	std::unordered_map<const lttng::sessiond::config::event_rule_configuration *, app_event *>
+	std::unordered_map<const lttng::sessiond::config::event_rule_configuration *,
+			   std::unique_ptr<app_event>>
 		events;
 	/*
 	 * RAII token: registers this channel's UST tracer-side handle

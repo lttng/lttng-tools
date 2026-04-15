@@ -90,7 +90,6 @@ lsu::app_channel::~app_channel()
 
 		for (auto& event_pair : events) {
 			event_pair.second->destroy(sock);
-			delete event_pair.second;
 		}
 		events.clear();
 	}

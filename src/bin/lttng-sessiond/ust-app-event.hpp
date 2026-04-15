@@ -11,6 +11,7 @@
 
 #include "lttng-ust-ctl.hpp"
 
+#include <memory>
 #include <unordered_map>
 
 struct lttng_bytecode;
@@ -37,7 +38,7 @@ class app_event {
 public:
 	using event_map =
 		std::unordered_map<const lttng::sessiond::config::event_rule_configuration *,
-				   app_event *>;
+				   std::unique_ptr<app_event>>;
 
 	explicit app_event(
 		app_channel& channel_,

@@ -324,14 +324,14 @@ struct lttng_ust_abi_event make_ust_abi_event_from_event_rule(const struct lttng
 /*
  * Alloc new UST app event from its event rule configuration.
  */
-lsu::app_event *
+std::unique_ptr<lsu::app_event>
 alloc_ust_app_event(lsu::app_channel& channel,
 		    const lttng::sessiond::config::event_rule_configuration& event_config)
 {
-	lsu::app_event *ua_event;
+	std::unique_ptr<lsu::app_event> ua_event;
 
 	try {
-		ua_event = new lsu::app_event(channel, event_config);
+		ua_event.reset(new lsu::app_event(channel, event_config));
 	} catch (const std::bad_alloc&) {
 		PERROR("Failed to allocate app_event structure");
 		goto error;
@@ -345,7 +345,7 @@ alloc_ust_app_event(lsu::app_channel& channel,
 	return ua_event;
 
 error:
-	return nullptr;
+	return std::unique_ptr<lsu::app_event>();
 }
 
 /*
@@ -444,21 +444,20 @@ error:
  * `alloc_ust_app_event`, so this function only needs to copy the
  * enabled state.
  */
-void shadow_copy_event(lsu::app_event *ua_event)
+void shadow_copy_event(lsu::app_event& ua_event)
 {
-	ua_event->enabled = ua_event->event_rule_config.is_enabled;
+	ua_event.enabled = ua_event.event_rule_config.is_enabled;
 }
 
 /*
  * Add a per-app event to its channel's event map. The event must not already
  * exist (keyed by its event rule configuration pointer).
  */
-void add_unique_ust_app_event(lsu::app_channel *ua_chan, lsu::app_event *event)
+void add_unique_ust_app_event(lsu::app_channel& channel, std::unique_ptr<lsu::app_event> event)
 {
-	LTTNG_ASSERT(ua_chan);
 	LTTNG_ASSERT(event);
 
-	const auto result = ua_chan->events.emplace(&event->event_rule_config, event);
+	const auto result = channel.events.emplace(&event->event_rule_config, std::move(event));
 	LTTNG_ASSERT(result.second);
 }
 } /* anonymous namespace */
@@ -477,7 +476,7 @@ lsu::app_event *lsu::app_event::find_by_config(const event_map& events,
 					       const lsc::event_rule_configuration& event_config)
 {
 	const auto it = events.find(&event_config);
-	return it != events.end() ? it->second : nullptr;
+	return it != events.end() ? it->second.get() : nullptr;
 }
 
 /*
@@ -532,17 +531,16 @@ int lsu::app_event::create(lsu::app_channel& channel,
 {
 	int ret = 0;
 	auto& app = channel.session.app();
-	lsu::app_event *ua_event;
 
 	ASSERT_RCU_READ_LOCKED();
 
-	ua_event = alloc_ust_app_event(channel, event_config);
-	if (ua_event == nullptr) {
+	auto ua_event = alloc_ust_app_event(channel, event_config);
+	if (!ua_event) {
 		/* Only failure mode of alloc_ust_app_event(). */
 		ret = -ENOMEM;
 		goto end;
 	}
-	shadow_copy_event(ua_event);
+	shadow_copy_event(*ua_event);
 
 	/* Create it on the tracer side */
 	ret = ua_event->create_on_ust();
@@ -550,7 +548,7 @@ int lsu::app_event::create(lsu::app_channel& channel,
 		goto error;
 	}
 
-	add_unique_ust_app_event(&channel, ua_event);
+	add_unique_ust_app_event(channel, std::move(ua_event));
 
 	DBG2("UST app create event completed: app = '%s' pid = %d", app.name, app.pid);
 
@@ -560,6 +558,5 @@ end:
 error:
 	/* Valid. Calling here is already in a read side lock */
 	ua_event->destroy(-1);
-	delete ua_event;
 	return ret;
 }
