@@ -397,8 +397,6 @@ private:
 		ust::trace_class& trace_class,
 		ust::stream_class& stream_class);
 
-	static struct lttng_ust_abi_channel_attr _default_metadata_channel_attr() noexcept;
-
 	/*
 	 * Descriptor yielded to the for_each_consumer_stream_group() callback.
 	 *

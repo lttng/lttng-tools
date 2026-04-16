@@ -186,21 +186,6 @@ ls::ust::domain_orchestrator::domain_orchestrator(
 		_shm_path);
 }
 
-struct lttng_ust_abi_channel_attr
-ls::ust::domain_orchestrator::_default_metadata_channel_attr() noexcept
-{
-	struct lttng_ust_abi_channel_attr attr = {};
-
-	attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
-	attr.subbuf_size = default_get_metadata_subbuf_size();
-	attr.num_subbuf = DEFAULT_METADATA_SUBBUF_NUM;
-	attr.switch_timer_interval = DEFAULT_METADATA_SWITCH_TIMER;
-	attr.read_timer_interval = DEFAULT_METADATA_READ_TIMER;
-	attr.output = LTTNG_UST_ABI_MMAP;
-	attr.type = LTTNG_UST_ABI_CHAN_METADATA;
-	return attr;
-}
-
 bool ls::ust::domain_orchestrator::supports_madv_remove() const noexcept
 {
 	return lttng::utils::fs_supports_madv_remove(!_shm_path.empty() ? _shm_path.c_str() :
@@ -1117,19 +1102,6 @@ void ls::ust::domain_orchestrator::untrack_process_attribute(
 
 namespace {
 
-void copy_channel_attr_to_ustctl(struct lttng_ust_ctl_consumer_channel_attr *attr,
-				 const struct lttng_ust_abi_channel_attr *uattr)
-{
-	attr->subbuf_size = uattr->subbuf_size;
-	attr->num_subbuf = uattr->num_subbuf;
-	attr->overwrite = uattr->overwrite;
-	attr->switch_timer_interval = uattr->switch_timer_interval;
-	attr->read_timer_interval = uattr->read_timer_interval;
-	attr->output = static_cast<lttng_ust_abi_output>(uattr->output);
-	attr->blocking_timeout = uattr->blocking_timeout;
-	attr->type = static_cast<enum lttng_ust_abi_chan_type>(uattr->type);
-}
-
 /*
  * Wrapper that acquires shared ownership of a trace class and locks it.
  * The lock is released when the wrapper is destroyed.
@@ -1363,10 +1335,7 @@ ls::ust::app_channel& ls::ust::domain_orchestrator::_allocate_app_channel(
 	}
 
 	auto *ua_chan = new app_channel(ua_sess, channel_config);
-	ua_chan->init_from_config();
 	ua_chan->trace_class_stream_class_handle = trace_class_stream_class_handle;
-	ua_chan->attr.type =
-		allocation_policy_to_ust_channel_type(channel_config.buffer_allocation_policy);
 	return *ua_chan;
 }
 
@@ -1411,9 +1380,8 @@ void ls::ust::domain_orchestrator::_create_channel_per_uid(ust::app *app,
 
 		/* Register the stream class (CTF channel) in the trace class. */
 		try {
-			trace_class_ptr->add_channel(
-				ua_chan->trace_class_stream_class_handle,
-				ust_channel_type_to_allocation_policy(ua_chan->attr.type));
+			trace_class_ptr->add_channel(ua_chan->trace_class_stream_class_handle,
+						     recording_config.buffer_allocation_policy);
 		} catch (const std::exception& ex) {
 			LTTNG_THROW_ERROR(fmt::format(
 				"Failed to add UST channel to per-UID trace class: channel_name=`{}`, "
@@ -1500,7 +1468,8 @@ void ls::ust::domain_orchestrator::_create_channel_per_uid(ust::app *app,
 			ua_chan->channel_config.name.c_str(),
 			ua_chan->key,
 			LTTNG_DOMAIN_UST,
-			ua_chan->attr.subbuf_size * ua_chan->attr.num_subbuf);
+			ua_chan->channel_config.subbuffer_size_bytes *
+				ua_chan->channel_config.subbuffer_count);
 		if (notification_ret != LTTNG_OK) {
 			LTTNG_THROW_ERROR(fmt::format(
 				"Failed to notify UST channel creation: channel_name=`{}`, "
@@ -1552,8 +1521,12 @@ void ls::ust::domain_orchestrator::_create_channel_per_pid(ust::app *app,
 
 	/* Create and add a new stream class to the trace class. */
 	try {
+		const auto& per_pid_recording_config =
+			static_cast<const lsc::recording_channel_configuration&>(
+				ua_chan->channel_config);
+
 		trace_class->add_channel(ua_chan->key,
-					 ust_channel_type_to_allocation_policy(ua_chan->attr.type));
+					 per_pid_recording_config.buffer_allocation_policy);
 		trace_class_channel_added = true;
 	} catch (const std::exception& ex) {
 		LTTNG_THROW_ERROR(fmt::format(
@@ -1629,7 +1602,8 @@ void ls::ust::domain_orchestrator::_create_channel_per_pid(ust::app *app,
 			ua_chan->channel_config.name.c_str(),
 			ua_chan->key,
 			LTTNG_DOMAIN_UST,
-			ua_chan->attr.subbuf_size * ua_chan->attr.num_subbuf);
+			ua_chan->channel_config.subbuffer_size_bytes *
+				ua_chan->channel_config.subbuffer_count);
 		if (cmd_ret != LTTNG_OK) {
 			LTTNG_THROW_ERROR(fmt::format(
 				"Failed to notify per-PID UST channel creation: channel_name=`{}`, "
@@ -1875,11 +1849,6 @@ void ls::ust::domain_orchestrator::_create_app_metadata(ust::app_session& ua_ses
 	metadata = new app_channel(ua_sess, metadata_config);
 	const auto delete_metadata_on_exit =
 		lttng::make_scope_exit([metadata]() noexcept { delete metadata; });
-
-	{
-		const auto default_attr = _default_metadata_channel_attr();
-		copy_channel_attr_to_ustctl(&metadata->attr, &default_attr);
-	}
 
 	/* Need one fd for the channel. */
 	if (lttng_fd_get(LTTNG_FD_APPS, 1) < 0) {
@@ -3352,13 +3321,19 @@ void ls::ust::domain_orchestrator::_save_per_pid_stats_on_departure(const ust::a
 		const auto *ua_chan = chan_pair.second.get();
 
 		/* Metadata channels do not have discarded/lost counters. */
-		if (ua_chan->attr.type == LTTNG_UST_ABI_CHAN_METADATA) {
+		if (ua_chan->channel_config.channel_type() ==
+		    lsc::channel_configuration::channel_type_t::METADATA) {
 			continue;
 		}
 
+		const auto& recording_config =
+			static_cast<const lsc::recording_channel_configuration&>(
+				ua_chan->channel_config);
+
 		std::uint64_t discarded = 0, lost = 0;
 
-		if (ua_chan->attr.overwrite) {
+		if (recording_config.buffer_full_policy ==
+		    lsc::channel_configuration::buffer_full_policy_t::OVERWRITE_OLDEST_PACKET) {
 			consumer_get_lost_packets(ua_sess.recording_session_id,
 						  ua_chan->key,
 						  get_consumer_output_ptr(),
@@ -3369,10 +3344,6 @@ void ls::ust::domain_orchestrator::_save_per_pid_stats_on_departure(const ust::a
 						      get_consumer_output_ptr(),
 						      &discarded);
 		}
-
-		const auto& recording_config =
-			static_cast<const lsc::recording_channel_configuration&>(
-				ua_chan->channel_config);
 
 		_accumulate_per_pid_closed_app_stats(recording_config, discarded, lost);
 	}

@@ -11,10 +11,8 @@
 #include "consumer.hpp"
 #include "fd-limit.hpp"
 #include "health-sessiond.hpp"
-#include "lttng-ust-ctl.hpp"
 #include "lttng-ust-error.hpp"
 #include "recording-channel-configuration.hpp"
-#include "session.hpp"
 #include "ust-app-channel.hpp"
 #include "ust-app-ctx.hpp"
 #include "ust-app-event.hpp"
@@ -59,15 +57,15 @@ uint64_t get_next_channel_key()
 
 lsu::app_channel::app_channel(lsu::app_session& session_,
 			      const lsc::channel_configuration& channel_config_) :
-	enabled(true),
+	enabled(channel_config_.channel_type() == lsc::channel_configuration::channel_type_t::DATA ?
+			static_cast<const lsc::recording_channel_configuration&>(channel_config_)
+				.is_enabled :
+			true),
 	handle(-1),
 	key(get_next_channel_key()),
 	session(session_),
 	channel_config(channel_config_)
 {
-	/* By default, the channel is a per cpu channel. */
-	attr.type = LTTNG_UST_ABI_CHAN_PER_CPU;
-
 	DBG3("UST app channel %s allocated", channel_config.name.c_str());
 }
 
@@ -156,44 +154,6 @@ void lsu::app_channel::disable()
 	DBG2("UST app channel %s disabled successfully for app: pid = %d",
 	     channel_config.name.c_str(),
 	     app.pid);
-}
-
-void lsu::app_channel::init_from_config()
-{
-	const auto& config =
-		static_cast<const lsc::recording_channel_configuration&>(channel_config);
-
-	DBG2("UST app initializing channel %s from config", channel_config.name.c_str());
-
-	attr.subbuf_size = config.subbuffer_size_bytes;
-	attr.num_subbuf = config.subbuffer_count;
-	attr.overwrite = config.buffer_full_policy ==
-			lsc::channel_configuration::buffer_full_policy_t::OVERWRITE_OLDEST_PACKET ?
-		1 :
-		0;
-	attr.switch_timer_interval = config.switch_timer_period_us.value_or(0);
-	attr.read_timer_interval = config.read_timer_period_us.value_or(0);
-
-	attr.output = config.buffer_consumption_backend ==
-			lsc::channel_configuration::buffer_consumption_backend_t::MMAP ?
-		LTTNG_UST_ABI_MMAP :
-		static_cast<lttng_ust_abi_output>(-1);
-
-	switch (config.consumption_blocking_policy_.mode_) {
-	case lsc::recording_channel_configuration::consumption_blocking_policy::mode::NONE:
-		attr.blocking_timeout = 0;
-		break;
-	case lsc::recording_channel_configuration::consumption_blocking_policy::mode::UNBOUNDED:
-		attr.blocking_timeout = -1;
-		break;
-	case lsc::recording_channel_configuration::consumption_blocking_policy::mode::TIMED:
-		attr.blocking_timeout = *config.consumption_blocking_policy_.timeout_us;
-		break;
-	}
-
-	enabled = config.is_enabled;
-
-	DBG3("UST app channel %s initialized from config", channel_config.name.c_str());
 }
 
 void lsu::app_channel::create_context(const lsc::context_configuration& context_config,

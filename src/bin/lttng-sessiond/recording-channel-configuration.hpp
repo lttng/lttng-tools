@@ -128,6 +128,11 @@ public:
 	recording_channel_configuration& operator=(const recording_channel_configuration&) = delete;
 	recording_channel_configuration& operator=(recording_channel_configuration&&) = delete;
 
+	channel_type_t channel_type() const noexcept override
+	{
+		return channel_type_t::DATA;
+	}
+
 	void enable() noexcept
 	{
 		set_enabled(true);

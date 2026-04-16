@@ -9,7 +9,6 @@
 #ifndef LTTNG_SESSIOND_UST_APP_CHANNEL_HPP
 #define LTTNG_SESSIOND_UST_APP_CHANNEL_HPP
 
-#include "lttng-ust-ctl.hpp"
 #include "ust-app.hpp"
 #include "ust-stream-group.hpp"
 #include "ust-trace-class.hpp"
@@ -57,13 +56,6 @@ public:
 	void disable();
 
 	/*
-	 * Initialize per-app channel attributes from its
-	 * recording_channel_configuration. The trace_class_stream_class_handle
-	 * and channel type are set by the caller.
-	 */
-	void init_from_config();
-
-	/*
 	 * Create a context on the UST tracer for this channel and register it in
 	 * the local context map.
 	 */
@@ -101,7 +93,6 @@ public:
 	/* Number of stream that this channel is expected to receive. */
 	unsigned int expected_stream_count = 0;
 	struct lttng_ust_abi_object_data *obj = nullptr;
-	struct lttng_ust_ctl_consumer_channel_attr attr = {};
 	/* Owned streams. Order matters (matches CPU index). */
 	std::vector<std::unique_ptr<lttng::sessiond::ust::app_stream>> streams;
 	/* Session that owns this channel. */

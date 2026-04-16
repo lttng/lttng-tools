@@ -99,7 +99,10 @@ static int ask_channel_creation(lsu::app_session *ua_sess,
 		trace_class_channel_key = ua_chan->key;
 	}
 
-	if (ua_chan->attr.type == LTTNG_UST_ABI_CHAN_METADATA) {
+	const auto is_metadata = ua_chan->channel_config.channel_type() ==
+		lsc::channel_configuration::channel_type_t::METADATA;
+
+	if (is_metadata) {
 		chan_id = -1U;
 		/*
 		 * Metadata channels shm_path (buffers) are handled within
@@ -125,8 +128,8 @@ static int ask_channel_creation(lsu::app_session *ua_sess,
 		root_shm_path[sizeof(root_shm_path) - 1] = '\0';
 	}
 
-	switch (ua_chan->attr.output) {
-	case LTTNG_UST_ABI_MMAP:
+	switch (ua_chan->channel_config.buffer_consumption_backend) {
+	case lsc::channel_configuration::buffer_consumption_backend_t::MMAP:
 	default:
 		output = LTTNG_EVENT_MMAP;
 		break;
@@ -136,7 +139,7 @@ static int ask_channel_creation(lsu::app_session *ua_sess,
 	 * Recording channel configuration fields are only meaningful for data
 	 * channels. Metadata channels use default values (zero/unset).
 	 */
-	const auto *recording_config = ua_chan->attr.type != LTTNG_UST_ABI_CHAN_METADATA ?
+	const auto *recording_config = !is_metadata ?
 		&static_cast<const lsc::recording_channel_configuration&>(ua_chan->channel_config) :
 		nullptr;
 
@@ -174,19 +177,49 @@ static int ask_channel_creation(lsu::app_session *ua_sess,
 		recording_config->buffer_preallocation_policy :
 		lsc::recording_channel_configuration::buffer_preallocation_policy_t::PREALLOCATE;
 
+	const auto& chan_config = ua_chan->channel_config;
+
+	const auto overwrite = chan_config.buffer_full_policy ==
+		lsc::channel_configuration::buffer_full_policy_t::OVERWRITE_OLDEST_PACKET;
+
+	int channel_type;
+	if (is_metadata) {
+		channel_type = LTTNG_UST_ABI_CHAN_METADATA;
+	} else {
+		channel_type = static_cast<int>(allocation_policy_to_ust_channel_type(
+			recording_config->buffer_allocation_policy));
+	}
+
+	int64_t blocking_timeout = 0;
+	if (recording_config) {
+		switch (recording_config->consumption_blocking_policy_.mode_) {
+		case lsc::recording_channel_configuration::consumption_blocking_policy::mode::NONE:
+			blocking_timeout = 0;
+			break;
+		case lsc::recording_channel_configuration::consumption_blocking_policy::mode::
+			UNBOUNDED:
+			blocking_timeout = -1;
+			break;
+		case lsc::recording_channel_configuration::consumption_blocking_policy::mode::TIMED:
+			blocking_timeout =
+				*recording_config->consumption_blocking_policy_.timeout_us;
+			break;
+		}
+	}
+
 	consumer_init_ask_channel_comm_msg(&msg,
-					   ua_chan->attr.subbuf_size,
-					   ua_chan->attr.num_subbuf,
-					   ua_chan->attr.overwrite,
-					   ua_chan->attr.switch_timer_interval,
-					   ua_chan->attr.read_timer_interval,
+					   chan_config.subbuffer_size_bytes,
+					   chan_config.subbuffer_count,
+					   overwrite ? 1 : 0,
+					   chan_config.switch_timer_period_us.value_or(0),
+					   chan_config.read_timer_period_us.value_or(0),
 					   live_timer_interval,
 					   live_timer_interval != 0,
 					   continuously_reclaimed,
 					   monitor_timer_interval,
 					   watchdog_timer_interval,
 					   output,
-					   (int) ua_chan->attr.type,
+					   channel_type,
 					   ua_sess->recording_session_id,
 					   &(pathname.c_str()[consumer_path_offset]),
 					   ua_chan->channel_config.name.c_str(),
@@ -199,7 +232,7 @@ static int ask_channel_creation(lsu::app_session *ua_sess,
 					   ua_sess->app_session_id,
 					   output_traces,
 					   lttng_credentials_get_uid(&ua_sess->real_credentials),
-					   ua_chan->attr.blocking_timeout,
+					   blocking_timeout,
 					   preallocation_policy,
 					   automatic_memory_reclamation_maximal_age,
 					   root_shm_path,

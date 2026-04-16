@@ -28,6 +28,11 @@ class channel_configuration {
 public:
 	using timer_period_us = std::uint64_t;
 
+	enum class channel_type_t {
+		DATA,
+		METADATA,
+	};
+
 	enum class buffer_full_policy_t {
 		DISCARD_EVENT,
 		OVERWRITE_OLDEST_PACKET,
@@ -59,6 +64,8 @@ public:
 	channel_configuration(channel_configuration&&) = default;
 	channel_configuration& operator=(const channel_configuration&) = delete;
 	channel_configuration& operator=(channel_configuration&&) = delete;
+
+	virtual channel_type_t channel_type() const noexcept = 0;
 
 	const std::string name;
 	const buffer_full_policy_t buffer_full_policy;
@@ -105,6 +112,11 @@ public:
 	metadata_channel_configuration(metadata_channel_configuration&&) = default;
 	metadata_channel_configuration& operator=(const metadata_channel_configuration&) = delete;
 	metadata_channel_configuration& operator=(metadata_channel_configuration&&) = delete;
+
+	channel_type_t channel_type() const noexcept override
+	{
+		return channel_type_t::METADATA;
+	}
 };
 
 } /* namespace config */
