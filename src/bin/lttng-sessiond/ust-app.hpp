@@ -30,14 +30,12 @@
 #include <vendor/optional.hpp>
 
 #include <stdint.h>
+#include <string>
 #include <unordered_map>
 #include <urcu/list.h>
 #include <vector>
 
 #define UST_APP_EVENT_LIST_SIZE 32
-
-/* Process name (short). */
-#define UST_APP_PROCNAME_LEN 16
 
 struct lttng_bytecode;
 struct lttng_ust_filter_bytecode;
@@ -106,7 +104,7 @@ struct ust_register_msg {
 	uint32_t uint64_t_alignment;
 	uint32_t long_alignment;
 	int byte_order; /* BIG_ENDIAN or LITTLE_ENDIAN */
-	char name[LTTNG_UST_ABI_PROCNAME_LEN];
+	std::string name;
 };
 
 /*
@@ -185,8 +183,7 @@ struct app {
 	lttng_ust_abi_tracer_version version = {};
 	uint32_t v_major = static_cast<uint32_t>(-1); /* Version major number */
 	uint32_t v_minor = static_cast<uint32_t>(-1); /* Version minor number */
-	/* Extra for the NULL byte. */
-	char name[UST_APP_PROCNAME_LEN + 1] = {};
+	std::string name;
 
 	lttng_ht_node_ulong pid_n = {};
 	lttng_ht_node_ulong sock_n = {};

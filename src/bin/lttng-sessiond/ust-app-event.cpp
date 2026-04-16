@@ -510,5 +510,5 @@ void lsu::app_event::create(lsu::app_channel& ua_chan,
 
 	add_unique_ust_app_event(ua_chan, std::move(ua_event));
 
-	DBG2("UST app create event completed: app = '%s' pid = %d", app.name, app.pid);
+	DBG2("UST app create event completed: app = '%s' pid = %d", app.name.c_str(), app.pid);
 }

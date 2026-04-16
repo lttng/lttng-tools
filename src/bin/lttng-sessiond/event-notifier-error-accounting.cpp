@@ -361,7 +361,7 @@ ust_error_accounting_entry_create(const lttng::sessiond::ust::app *app)
 
 	if (!ust_app_supports_counters(app)) {
 		DBG("Refusing to create accounting entry for application (unsupported feature): app name = '%s', app ppid = %d",
-		    app->name,
+		    app->name.c_str(),
 		    (int) app->ppid);
 		goto error;
 	}
@@ -380,7 +380,7 @@ ust_error_accounting_entry_create(const lttng::sessiond::ust::app *app)
 	if (!cpu_counter_fds) {
 		PERROR("Failed to allocate event notifier error counter file descriptors array: application uid = %d, application name = '%s', pid = %d, allocation size = %zu",
 		       (int) app->uid,
-		       app->name,
+		       app->name.c_str(),
 		       (int) app->pid,
 		       entry->nr_counter_cpu_fds * sizeof(*cpu_counter_fds));
 		goto error_counter_cpu_fds_alloc;
@@ -395,7 +395,7 @@ ust_error_accounting_entry_create(const lttng::sessiond::ust::app *app)
 	if (!cpu_counters) {
 		PERROR("Failed to allocate event notifier error counter lttng_ust_abi_object_data array: application uid = %d, application name = '%s', pid = %d, allocation size = %zu",
 		       (int) app->uid,
-		       app->name,
+		       app->name.c_str(),
 		       (int) app->pid,
 		       entry->nr_counter_cpu_fds * sizeof(struct lttng_ust_abi_object_data *));
 		goto error_counter_cpus_alloc;
@@ -407,7 +407,7 @@ ust_error_accounting_entry_create(const lttng::sessiond::ust::app *app)
 			ERR("Failed to create event notifier error accounting shared memory for application user: application uid = %d, pid = %d, application name = '%s'",
 			    (int) app->uid,
 			    (int) app->pid,
-			    app->name);
+			    app->name.c_str());
 			goto error_shm_alloc;
 		}
 	}
@@ -434,7 +434,7 @@ ust_error_accounting_entry_create(const lttng::sessiond::ust::app *app)
 		ERR("Failed to create userspace tracer counter data for application user: uid = %d, pid = %d, application name = '%s'",
 		    (int) app->uid,
 		    (int) app->pid,
-		    app->name);
+		    app->name.c_str());
 		goto error_create_counter_data;
 	}
 
@@ -444,7 +444,7 @@ ust_error_accounting_entry_create(const lttng::sessiond::ust::app *app)
 			ERR("Failed to create userspace tracer counter cpu data for application user: uid = %d, pid = %d, application name = '%s'",
 			    (int) app->uid,
 			    (int) app->pid,
-			    app->name);
+			    app->name.c_str());
 			goto error_create_counter_cpu_data;
 		}
 	}
@@ -596,7 +596,7 @@ event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app)
 		ERR("Failed to duplicate event notifier error accounting counter for application user: application uid = %d, pid = %d, application name = '%s'",
 		    (int) app->uid,
 		    (int) app->pid,
-		    app->name);
+		    app->name.c_str());
 		status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
 		goto error_duplicate_counter;
 	}
@@ -611,7 +611,7 @@ event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app)
 		    error_accounting_status_str(status),
 		    (int) app->uid,
 		    (int) app->pid,
-		    app->name);
+		    app->name.c_str());
 		status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
 		goto error_send_counter_data;
 	}
@@ -620,7 +620,7 @@ event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app)
 	if (!cpu_counters) {
 		PERROR("Failed to allocate event notifier error counter lttng_ust_abi_object_data array: application uid = %d, application name = '%s', pid = %d, allocation size = %zu",
 		       (int) app->uid,
-		       app->name,
+		       app->name.c_str(),
 		       (int) app->pid,
 		       entry->nr_counter_cpu_fds * sizeof(**cpu_counters));
 		status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_NOMEM;
@@ -636,7 +636,7 @@ event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app)
 			ERR("Failed to duplicate userspace tracer counter cpu data for application user: uid = %d, pid = %d, application name = '%s'",
 			    (int) app->uid,
 			    (int) app->pid,
-			    app->name);
+			    app->name.c_str());
 			status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_NOMEM;
 			goto error_duplicate_cpu_counter;
 		}
@@ -653,7 +653,7 @@ event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app)
 			    error_accounting_status_str(status),
 			    (int) app->uid,
 			    (int) app->pid,
-			    app->name);
+			    app->name.c_str());
 			status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
 			lttng_ust_ctl_release_object(-1, new_counter_cpu);
 			goto error_send_cpu_counter_data;
@@ -716,7 +716,7 @@ event_notifier_error_accounting_unregister_app(lttng::sessiond::ust::app *app)
 	if (entry == nullptr) {
 		ERR("Failed to find event notitifier error accounting entry on application teardown: pid = %d, application name = '%s'",
 		    app->pid,
-		    app->name);
+		    app->name.c_str());
 		status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
 		goto end;
 	} else {

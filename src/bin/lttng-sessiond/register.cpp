@@ -264,9 +264,9 @@ static void *thread_application_registration(void *data)
 				(void) utils_set_fd_cloexec(sock);
 
 				/* Create UST registration command for enqueuing */
-				ust_cmd = zmalloc<ust_command>();
+				ust_cmd = new (std::nothrow) ust_command{};
 				if (ust_cmd == nullptr) {
-					PERROR("ust command zmalloc");
+					PERROR("ust command allocation");
 					ret = close(sock);
 					if (ret) {
 						PERROR("close");
@@ -282,7 +282,7 @@ static void *thread_application_registration(void *data)
 				ret = lttng_fd_get(LTTNG_FD_APPS, 1);
 				if (ret < 0) {
 					ERR("Exhausted file descriptors allowed for applications.");
-					free(ust_cmd);
+					delete ust_cmd;
 					ret = close(sock);
 					if (ret) {
 						PERROR("close");
@@ -294,7 +294,7 @@ static void *thread_application_registration(void *data)
 				health_code_update();
 				ret = ust_app_recv_registration(sock, &ust_cmd->reg_msg);
 				if (ret < 0) {
-					free(ust_cmd);
+					delete ust_cmd;
 					/* Close socket of the application. */
 					ret = close(sock);
 					if (ret) {
@@ -316,7 +316,7 @@ static void *thread_application_registration(void *data)
 				    ust_cmd->reg_msg.uid,
 				    ust_cmd->reg_msg.gid,
 				    ust_cmd->sock,
-				    ust_cmd->reg_msg.name,
+				    ust_cmd->reg_msg.name.c_str(),
 				    ust_cmd->reg_msg.major,
 				    ust_cmd->reg_msg.minor);
 

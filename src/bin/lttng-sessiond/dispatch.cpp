@@ -351,7 +351,7 @@ static void *thread_dispatch_ust_registration(void *data)
 			    ust_cmd->reg_msg.uid,
 			    ust_cmd->reg_msg.gid,
 			    ust_cmd->sock,
-			    ust_cmd->reg_msg.name,
+			    ust_cmd->reg_msg.name.c_str(),
 			    ust_cmd->reg_msg.major,
 			    ust_cmd->reg_msg.minor);
 
@@ -364,7 +364,7 @@ static void *thread_dispatch_ust_registration(void *data)
 						PERROR("close ust sock dispatch %d", ust_cmd->sock);
 					}
 					lttng_fd_put(LTTNG_FD_APPS, 1);
-					free(ust_cmd);
+					delete ust_cmd;
 					ust_cmd = nullptr;
 					goto error;
 				}
@@ -380,7 +380,7 @@ static void *thread_dispatch_ust_registration(void *data)
 					lttng_fd_put(LTTNG_FD_APPS, 1);
 					free(wait_node);
 					wait_node = nullptr;
-					free(ust_cmd);
+					delete ust_cmd;
 					ust_cmd = nullptr;
 					continue;
 				}
@@ -391,7 +391,7 @@ static void *thread_dispatch_ust_registration(void *data)
 				cds_list_add(&wait_node->head, &wait_queue.head);
 				wait_queue.count++;
 
-				free(ust_cmd);
+				delete ust_cmd;
 				ust_cmd = nullptr;
 				/*
 				 * We have to continue here since we don't have the notify
@@ -435,7 +435,7 @@ static void *thread_dispatch_ust_registration(void *data)
 					}
 					lttng_fd_put(LTTNG_FD_APPS, 1);
 				}
-				free(ust_cmd);
+				delete ust_cmd;
 				ust_cmd = nullptr;
 			}
 
@@ -548,7 +548,7 @@ error:
 			PERROR("close ust sock exit dispatch %d", ust_cmd->sock);
 		}
 		lttng_fd_put(LTTNG_FD_APPS, 1);
-		free(ust_cmd);
+		delete ust_cmd;
 	}
 
 error_testpoint:

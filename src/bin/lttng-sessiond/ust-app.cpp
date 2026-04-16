@@ -976,7 +976,7 @@ static int create_ust_event_notifier(lsu::app *app,
 
 	DBG2("UST app event notifier %s created successfully: app = '%s': pid = %d, object = %p",
 	     event_notifier.name,
-	     app->name,
+	     app->name.c_str(),
 	     app->pid,
 	     ua_event_notifier_rule->obj);
 
@@ -1076,7 +1076,7 @@ static int create_ust_app_event_notifier_rule(struct lttng_trigger *trigger, lsu
 				&ua_event_notifier_rule->node);
 
 	DBG2("UST app create token event rule completed: app = '%s', pid = %d, token = %" PRIu64,
-	     app->name,
+	     app->name.c_str(),
 	     app->pid,
 	     lttng_trigger_get_tracer_token(trigger));
 
@@ -1134,7 +1134,7 @@ lsu::app *ust_app_create(struct ust_register_msg *msg, int sock)
 	    (msg->bits_per_long == 32 && (uatomic_read(&the_ust_consumerd32_fd) == -EINVAL))) {
 		ERR("Registration failed: application \"%s\" (pid: %d) has "
 		    "%d-bit long, but no consumerd for this size is available.\n",
-		    msg->name,
+		    msg->name.c_str(),
 		    msg->pid,
 		    msg->bits_per_long);
 		goto error;
@@ -1148,7 +1148,7 @@ lsu::app *ust_app_create(struct ust_register_msg *msg, int sock)
 	ret = lttng_fd_get(LTTNG_FD_APPS, 2);
 	if (ret) {
 		ERR("Failed to reserve two file descriptors for the event source pipe while creating a new application instance: app = '%s', pid = %d",
-		    msg->name,
+		    msg->name.c_str(),
 		    (int) msg->pid);
 		goto error;
 	}
@@ -1156,7 +1156,7 @@ lsu::app *ust_app_create(struct ust_register_msg *msg, int sock)
 	event_notifier_event_source_pipe = lttng_pipe_open(FD_CLOEXEC);
 	if (!event_notifier_event_source_pipe) {
 		PERROR("Failed to open application event source pipe: '%s' (pid = %d)",
-		       msg->name,
+		       msg->name.c_str(),
 		       msg->pid);
 		goto error;
 	}
@@ -1196,9 +1196,7 @@ lsu::app *ust_app_create(struct ust_register_msg *msg, int sock)
 	lta->notify_sock = -1;
 	lta->token_to_event_notifier_rule_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 
-	/* Copy name and make sure it's NULL terminated. */
-	strncpy(lta->name, msg->name, sizeof(lta->name));
-	lta->name[UST_APP_PROCNAME_LEN] = '\0';
+	lta->name = msg->name;
 
 	/*
 	 * Before this can be called, when receiving the registration information,
@@ -1267,7 +1265,7 @@ void ust_app_add(lsu::app *app)
 	    app->uid,
 	    app->gid,
 	    app->command_socket.fd(),
-	    app->name,
+	    app->name.c_str(),
 	    app->notify_sock,
 	    app->v_major,
 	    app->v_minor);
@@ -1348,7 +1346,7 @@ int ust_app_setup_event_notifier_group(lsu::app *app)
 	ret = lttng_pipe_write_close(app->event_notifier_group.event_pipe);
 	if (ret) {
 		ERR("Failed to close write end of the application's event source pipe: app = '%s' (pid = %d)",
-		    app->name,
+		    app->name.c_str(),
 		    app->pid);
 		goto error;
 	}
@@ -1379,14 +1377,14 @@ int ust_app_setup_event_notifier_group(lsu::app *app)
 	case EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_UNSUPPORTED:
 		DBG3("Failed to setup event notifier error accounting (application does not support notifier error accounting): app socket fd = %d, app name = '%s', app pid = %d",
 		     app->command_socket.fd(),
-		     app->name,
+		     app->name.c_str(),
 		     (int) app->pid);
 		ret = 0;
 		goto error_accounting;
 	case EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_APP_DEAD:
 		DBG3("Failed to setup event notifier error accounting (application is dead): app socket fd = %d, app name = '%s', app pid = %d",
 		     app->command_socket.fd(),
-		     app->name,
+		     app->name.c_str(),
 		     (int) app->pid);
 		ret = 0;
 		goto error_accounting;
@@ -2095,7 +2093,7 @@ void ust_app_global_update_event_notifier_rules(lsu::app *app)
 	ASSERT_RCU_READ_LOCKED();
 
 	DBG2("UST application global event notifier rules update: app = '%s', pid = %d",
-	     app->name,
+	     app->name.c_str(),
 	     app->pid);
 
 	if (!app->compatible || !ust_app_supports_notifiers(app)) {
@@ -2104,7 +2102,7 @@ void ust_app_global_update_event_notifier_rules(lsu::app *app)
 
 	if (app->event_notifier_group.object == nullptr) {
 		WARN("UST app global update of event notifiers for app skipped since communication handle is null: app = '%s', pid = %d",
-		     app->name,
+		     app->name.c_str(),
 		     app->pid);
 		return;
 	}
@@ -2140,8 +2138,16 @@ int ust_app_recv_registration(int sock, struct ust_register_msg *msg)
 	int ret;
 	uint32_t pid, ppid, uid, gid;
 	enum lttng_ust_ctl_socket_type raw_socket_type;
+	std::string name;
 
 	LTTNG_ASSERT(msg);
+
+	/*
+	 * Size the buffer so the receive function can populate up to
+	 * LTTNG_UST_ABI_PROCNAME_LEN bytes; any embedded NULL terminator
+	 * is preserved and trimmed away after reception.
+	 */
+	name.resize(LTTNG_UST_ABI_PROCNAME_LEN);
 
 	ret = lttng_ust_ctl_recv_reg_msg(sock,
 					 &raw_socket_type,
@@ -2158,7 +2164,7 @@ int ust_app_recv_registration(int sock, struct ust_register_msg *msg)
 					 &msg->uint64_t_alignment,
 					 &msg->long_alignment,
 					 &msg->byte_order,
-					 msg->name);
+					 &name[0]);
 	if (ret < 0) {
 		switch (-ret) {
 		case EPIPE:
@@ -2198,6 +2204,10 @@ int ust_app_recv_registration(int sock, struct ust_register_msg *msg)
 	msg->ppid = (pid_t) ppid;
 	msg->uid = (uid_t) uid;
 	msg->gid = (gid_t) gid;
+
+	/* Trim the reception buffer down to the actual string length. */
+	name.resize(strlen(name.c_str()));
+	msg->name = std::move(name);
 
 error:
 	return ret;
