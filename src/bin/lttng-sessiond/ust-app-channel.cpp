@@ -157,7 +157,7 @@ void lsu::app_channel::disable()
 }
 
 void lsu::app_channel::create_context(const lsc::context_configuration& context_config,
-				      const lttng_ust_context_attr *uctx)
+				      lttng_ust_context_attr *uctx)
 {
 	DBG2("UST app adding context to channel %s", channel_config.name.c_str());
 
@@ -165,14 +165,14 @@ void lsu::app_channel::create_context(const lsc::context_configuration& context_
 		return;
 	}
 
-	auto app_context = lttng::make_unique<lsu::app_context>(*this, context_config, uctx);
+	auto app_context = lttng::make_unique<lsu::app_context>(*this, context_config);
 	auto& app = session.app();
 
 	health_code_update();
 	const auto update_health_code_on_exit =
 		lttng::make_scope_exit([]() noexcept { health_code_update(); });
 
-	app.command_socket.lock().add_context(&app_context->ctx, obj, &app_context->obj);
+	app.command_socket.lock().add_context(uctx, obj, &app_context->obj);
 
 	if (!app_context->obj) {
 		LTTNG_THROW_ERROR(lttng::format(

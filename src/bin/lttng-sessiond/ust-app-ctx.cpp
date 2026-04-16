@@ -18,33 +18,13 @@
 #include <common/common.hpp>
 #include <common/compat/errno.hpp>
 
-#include <cstring>
-
 namespace lsu = lttng::sessiond::ust;
 namespace lsc = lttng::sessiond::config;
 
 lsu::app_context::app_context(lsu::app_channel& channel,
-			      const lsc::context_configuration& context_config_,
-			      const lttng_ust_context_attr *uctx) :
+			      const lsc::context_configuration& context_config_) :
 	context_config(context_config_), _channel(channel)
 {
-	if (uctx) {
-		memcpy(&ctx, uctx, sizeof(ctx));
-		if (uctx->ctx == LTTNG_UST_ABI_CONTEXT_APP_CONTEXT) {
-			auto *provider_name = strdup(uctx->u.app_ctx.provider_name);
-			auto *ctx_name = strdup(uctx->u.app_ctx.ctx_name);
-			if (!provider_name || !ctx_name) {
-				free(provider_name);
-				free(ctx_name);
-				throw std::bad_alloc();
-			}
-
-			ctx.u.app_ctx.provider_name = provider_name;
-			ctx.u.app_ctx.ctx_name = ctx_name;
-		}
-	}
-
-	DBG3("UST app context %d allocated", ctx.ctx);
 }
 
 lsu::app_context::~app_context()
@@ -77,11 +57,6 @@ lsu::app_context::~app_context()
 		}
 
 		free(obj);
-	}
-
-	if (ctx.ctx == LTTNG_UST_ABI_CONTEXT_APP_CONTEXT) {
-		free(ctx.u.app_ctx.provider_name);
-		free(ctx.u.app_ctx.ctx_name);
 	}
 }
 

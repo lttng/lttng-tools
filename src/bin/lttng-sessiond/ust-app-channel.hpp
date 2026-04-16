@@ -60,7 +60,7 @@ public:
 	 * the local context map.
 	 */
 	void create_context(const lttng::sessiond::config::context_configuration& context_config,
-			    const lttng_ust_context_attr *uctx = nullptr);
+			    lttng_ust_context_attr *uctx);
 
 	/*
 	 * Send channel and stream buffers to the application (per-PID mode).

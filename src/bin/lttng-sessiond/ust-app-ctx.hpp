@@ -9,7 +9,7 @@
 #ifndef LTTNG_SESSIOND_UST_APP_CTX_HPP
 #define LTTNG_SESSIOND_UST_APP_CTX_HPP
 
-#include "lttng-ust-ctl.hpp"
+struct lttng_ust_abi_object_data;
 
 namespace lttng {
 namespace sessiond {
@@ -31,8 +31,7 @@ namespace ust {
 class app_context {
 public:
 	explicit app_context(app_channel& channel,
-			     const lttng::sessiond::config::context_configuration& context_config_,
-			     const lttng_ust_context_attr *uctx = nullptr);
+			     const lttng::sessiond::config::context_configuration& context_config_);
 	~app_context();
 	app_context(const app_context&) = delete;
 	app_context(app_context&&) = delete;
@@ -40,7 +39,6 @@ public:
 	app_context& operator=(app_context&&) = delete;
 
 	int handle = 0;
-	struct lttng_ust_context_attr ctx = {};
 	struct lttng_ust_abi_object_data *obj = nullptr;
 	const lttng::sessiond::config::context_configuration& context_config;
 
