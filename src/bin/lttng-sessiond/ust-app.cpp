@@ -1191,8 +1191,8 @@ lsu::app *ust_app_create(struct ust_register_msg *msg, int sock)
 			lttng::sessiond::trace::byte_order::BIG_ENDIAN_,
 	};
 
-	lta->v_major = msg->major;
-	lta->v_minor = msg->minor;
+	lta->abi_major = msg->major;
+	lta->abi_minor = msg->minor;
 	lta->notify_sock = -1;
 	lta->token_to_event_notifier_rule_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 
@@ -1267,8 +1267,8 @@ void ust_app_add(lsu::app *app)
 	    app->command_socket.fd(),
 	    app->name.c_str(),
 	    app->notify_sock,
-	    app->v_major,
-	    app->v_minor);
+	    app->abi_major,
+	    app->abi_minor);
 }
 
 /*
@@ -1314,12 +1314,12 @@ int ust_app_version(lsu::app *app)
 
 bool ust_app_supports_notifiers(const lsu::app *app)
 {
-	return app->v_major >= 9;
+	return app->abi_major >= 9;
 }
 
 bool ust_app_supports_counters(const lsu::app *app)
 {
-	return app->v_major >= 9;
+	return app->abi_major >= 9;
 }
 
 void ust_app_notify_reclaimed_owner_ids(const std::vector<uint32_t>& owners)
@@ -2885,8 +2885,8 @@ lsu::ctl_field_quirks lsu::app::ctl_field_quirks() const
 	 * From ABI version >= 10.x, the variant fields and tag mapping names
 	 * correctly match, making this quirk unnecessary.
 	 */
-	return v_major <= 9 ? lsu::ctl_field_quirks::UNDERSCORE_PREFIXED_VARIANT_TAG_MAPPINGS :
-			      lsu::ctl_field_quirks::NONE;
+	return abi_major <= 9 ? lsu::ctl_field_quirks::UNDERSCORE_PREFIXED_VARIANT_TAG_MAPPINGS :
+				lsu::ctl_field_quirks::NONE;
 }
 
 static void ust_app_release(urcu_ref *ref)

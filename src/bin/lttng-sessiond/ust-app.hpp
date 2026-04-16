@@ -192,8 +192,15 @@ struct app {
 					   supported version of the session daemon, this flag is
 					   set to 0 (NOT compatible) else 1. */
 	tracer_version version = {};
-	uint32_t v_major = static_cast<uint32_t>(-1); /* Version major number */
-	uint32_t v_minor = static_cast<uint32_t>(-1); /* Version minor number */
+	/*
+	 * UST ABI version reported by the application in its registration
+	 * message. Compared against LTTNG_UST_ABI_MAJOR_VERSION /
+	 * LTTNG_UST_ABI_MINOR_VERSION to determine compatibility and to
+	 * gate ABI-dependent features (for example, event notifier and
+	 * counter support require abi_major >= 9).
+	 */
+	uint32_t abi_major = static_cast<uint32_t>(-1);
+	uint32_t abi_minor = static_cast<uint32_t>(-1);
 	std::string name;
 
 	lttng_ht_node_ulong pid_n = {};
@@ -268,8 +275,8 @@ struct formatter<lttng::sessiond::ust::app> : formatter<std::string> {
 			app.pid,
 			app.uid,
 			app.gid,
-			app.v_major,
-			app.v_minor,
+			app.abi_major,
+			app.abi_minor,
 			lttng::utils::time_to_iso8601_str(app.registration_time));
 	}
 };
