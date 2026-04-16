@@ -12,6 +12,8 @@
 #include "ust-field-quirks.hpp"
 #include "ust-trace-class.hpp"
 
+#include <lttng/ust-ctl.h>
+
 #include <cstddef>
 #include <vector>
 

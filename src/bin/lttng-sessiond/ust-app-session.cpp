@@ -11,8 +11,6 @@
 #include "consumer.hpp"
 #include "health-sessiond.hpp"
 #include "lttng-sessiond.hpp"
-#include "lttng-ust-ctl.hpp"
-#include "lttng-ust-error.hpp"
 #include "session.hpp"
 #include "ust-app-channel.hpp"
 #include "ust-app-session.hpp"
@@ -25,6 +23,9 @@
 #include <common/exception.hpp>
 #include <common/scope-exit.hpp>
 #include <common/urcu.hpp>
+
+#include <lttng/ust-ctl.h>
+#include <lttng/ust-error.h>
 
 #include <inttypes.h>
 #include <mutex>

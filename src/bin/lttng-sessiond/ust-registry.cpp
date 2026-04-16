@@ -8,7 +8,6 @@
 #define _LGPL_SOURCE
 
 #include "lttng-sessiond.hpp"
-#include "lttng-ust-ctl.hpp"
 #include "notification-thread-commands.hpp"
 #include "ust-app.hpp"
 #include "ust-registry.hpp"
@@ -23,6 +22,7 @@
 #include <common/make-unique-wrapper.hpp>
 
 #include <lttng/lttng.h>
+#include <lttng/ust-ctl.h>
 
 #include <inttypes.h>
 #include <string>

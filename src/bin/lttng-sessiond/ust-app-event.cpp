@@ -8,8 +8,6 @@
 
 #include "event.hpp"
 #include "health-sessiond.hpp"
-#include "lttng-ust-ctl.hpp"
-#include "lttng-ust-error.hpp"
 #include "ust-app-channel.hpp"
 #include "ust-app-event.hpp"
 #include "ust-app.hpp"
@@ -25,6 +23,8 @@
 #include <lttng/event-rule/event-rule-internal.hpp>
 #include <lttng/event-rule/event-rule.h>
 #include <lttng/event-rule/user-tracepoint.h>
+#include <lttng/ust-ctl.h>
+#include <lttng/ust-error.h>
 
 #include <inttypes.h>
 

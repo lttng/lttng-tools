@@ -14,8 +14,6 @@
 #include "field.hpp"
 #include "health-sessiond.hpp"
 #include "lttng-sessiond.hpp"
-#include "lttng-ust-ctl.hpp"
-#include "lttng-ust-error.hpp"
 #include "manage-apps.hpp"
 #include "notification-thread-commands.hpp"
 #include "session.hpp"
@@ -47,6 +45,8 @@
 #include <lttng/event-rule/event-rule.h>
 #include <lttng/event-rule/user-tracepoint.h>
 #include <lttng/trigger/trigger-internal.hpp>
+#include <lttng/ust-ctl.h>
+#include <lttng/ust-error.h>
 
 #include <errno.h>
 #include <exception>

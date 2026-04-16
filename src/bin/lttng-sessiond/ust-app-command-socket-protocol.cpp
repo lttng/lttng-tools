@@ -5,13 +5,14 @@
  *
  */
 
-#include "lttng-ust-ctl.hpp"
-#include "lttng-ust-error.hpp"
 #include "ust-app-command-socket.hpp"
 
 #include <common/common.hpp>
 #include <common/compat/errno.hpp>
 #include <common/format.hpp>
+
+#include <lttng/ust-ctl.h>
+#include <lttng/ust-error.h>
 
 namespace lsu = lttng::sessiond::ust;
 

@@ -8,8 +8,6 @@
 
 #include "context-configuration.hpp"
 #include "health-sessiond.hpp"
-#include "lttng-ust-ctl.hpp"
-#include "lttng-ust-error.hpp"
 #include "recording-channel-configuration.hpp"
 #include "ust-app-channel.hpp"
 #include "ust-app-ctx.hpp"
@@ -17,6 +15,9 @@
 
 #include <common/common.hpp>
 #include <common/compat/errno.hpp>
+
+#include <lttng/ust-ctl.h>
+#include <lttng/ust-error.h>
 
 namespace lsu = lttng::sessiond::ust;
 namespace lsc = lttng::sessiond::config;

@@ -7,7 +7,6 @@
 
 #include "event-notifier-error-accounting-ust.hpp"
 #include "event-notifier-error-accounting-utils.hpp"
-#include "lttng-ust-ctl.hpp"
 #include "ust-app.hpp"
 
 #include <common/error.hpp>
@@ -16,6 +15,7 @@
 #include <common/urcu.hpp>
 
 #include <lttng/trigger/trigger-internal.hpp>
+#include <lttng/ust-ctl.h>
 
 #include <pthread.h>
 #include <sys/types.h>

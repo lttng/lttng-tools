@@ -18,8 +18,6 @@ liblttng_sessiond_common_la_SOURCES = utils.cpp utils.hpp \
                        trace-kernel.cpp trace-kernel.hpp \
                        kernel.cpp kernel.hpp \
                        ust-app.hpp ust-app-channel.hpp ust-sigbus.hpp trace-ust.hpp notify-apps.hpp \
-                       lttng-ust-ctl.hpp lttng-ust-abi.hpp lttng-ust-error.hpp \
-                       ust-ctl-internal.hpp ust-abi-internal.hpp ust-error-internal.hpp \
                        ust-abi-filenames.hpp \
                        ust-event-notifier-notification.hpp \
                        event-notifier-error-accounting-utils.hpp \

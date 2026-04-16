@@ -11,7 +11,6 @@
 #include "channel.hpp"
 #include "event.hpp"
 #include "lttng-sessiond.hpp"
-#include "lttng-ust-error.hpp"
 #include "session.hpp"
 #include "trace-ust.hpp"
 #include "ust-domain-orchestrator.hpp"

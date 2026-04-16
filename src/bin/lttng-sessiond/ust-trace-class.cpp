@@ -8,7 +8,6 @@
 #include "ctf2-trace-class-visitor.hpp"
 #include "field.hpp"
 #include "lttng-sessiond.hpp"
-#include "lttng-ust-ctl.hpp"
 #include "notification-thread-commands.hpp"
 #include "session.hpp"
 #include "trace-class.hpp"
@@ -33,6 +32,8 @@
 #include <common/time.hpp>
 #include <common/urcu.hpp>
 #include <common/utils.hpp>
+
+#include <lttng/ust-ctl.h>
 
 #include <fcntl.h>
 #include <functional>

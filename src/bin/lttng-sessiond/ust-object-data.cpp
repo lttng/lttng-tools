@@ -5,13 +5,14 @@
  *
  */
 
-#include "lttng-ust-ctl.hpp"
-#include "lttng-ust-error.hpp"
 #include "ust-app.hpp"
 #include "ust-object-data.hpp"
 
 #include <common/error.hpp>
 #include <common/exception.hpp>
+
+#include <lttng/ust-ctl.h>
+#include <lttng/ust-error.h>
 
 #include <cstdlib>
 

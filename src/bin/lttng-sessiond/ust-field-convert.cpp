@@ -6,7 +6,6 @@
  */
 
 #include "field.hpp"
-#include "lttng-ust-ctl.hpp"
 #include "ust-app.hpp"
 #include "ust-field-convert.hpp"
 #include "ust-field-quirks.hpp"
@@ -15,6 +14,8 @@
 
 #include <common/exception.hpp>
 #include <common/make-unique.hpp>
+
+#include <lttng/ust-ctl.h>
 
 #include <unordered_map>
 #include <utility>

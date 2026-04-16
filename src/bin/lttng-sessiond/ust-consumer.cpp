@@ -9,8 +9,6 @@
 #include "consumer.hpp"
 #include "health-sessiond.hpp"
 #include "lttng-sessiond.hpp"
-#include "lttng-ust-ctl.hpp"
-#include "lttng-ust-error.hpp"
 #include "recording-channel-configuration.hpp"
 #include "session.hpp"
 #include "ust-app-channel.hpp"
@@ -23,6 +21,9 @@
 #include <common/defaults.hpp>
 #include <common/make-unique-wrapper.hpp>
 #include <common/make-unique.hpp>
+
+#include <lttng/ust-ctl.h>
+#include <lttng/ust-error.h>
 
 #include <inttypes.h>
 #include <stdio.h>

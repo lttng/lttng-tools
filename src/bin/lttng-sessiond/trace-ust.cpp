@@ -7,10 +7,11 @@
  */
 
 #define _LGPL_SOURCE
-#include "lttng-ust-ctl.hpp"
 #include "trace-ust.hpp"
 
 #include <common/error.hpp>
+
+#include <lttng/ust-ctl.h>
 
 bool trace_ust_runtime_ctl_version_matches_build_version()
 {

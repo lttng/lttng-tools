@@ -9,7 +9,7 @@
 #ifndef LTTNG_SESSIOND_UST_APP_EVENT_HPP
 #define LTTNG_SESSIOND_UST_APP_EVENT_HPP
 
-#include "lttng-ust-ctl.hpp"
+#include <lttng/ust-ctl.h>
 
 #include <memory>
 #include <unordered_map>

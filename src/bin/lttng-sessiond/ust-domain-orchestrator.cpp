@@ -12,8 +12,6 @@
 #include "fd-limit.hpp"
 #include "health-sessiond.hpp"
 #include "lttng-sessiond.hpp"
-#include "lttng-ust-ctl.hpp"
-#include "lttng-ust-error.hpp"
 #include "notification-thread-commands.hpp"
 #include "pending-memory-reclamation-request.hpp"
 #include "recording-channel-configuration.hpp"
@@ -42,6 +40,8 @@
 #include <lttng/event-rule/event-rule-internal.hpp>
 #include <lttng/event-rule/event-rule.h>
 #include <lttng/event-rule/user-tracepoint.h>
+#include <lttng/ust-ctl.h>
+#include <lttng/ust-error.h>
 
 #include <cstring>
 #include <functional>
