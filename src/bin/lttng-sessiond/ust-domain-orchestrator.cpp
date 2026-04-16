@@ -363,7 +363,7 @@ ls::ust::trace_class& ls::ust::domain_orchestrator::_find_or_create_per_uid_trac
 		return *it->second;
 	}
 
-	std::shared_ptr<ust::trace_class> tc(ust_trace_class_per_uid_create(
+	const std::shared_ptr<ust::trace_class> tc(ust_trace_class_per_uid_create(
 		_session.trace_format,
 		tracer_abi,
 		tracer_major,
@@ -416,7 +416,7 @@ ls::ust::trace_class& ls::ust::domain_orchestrator::_find_or_create_per_pid_trac
 		return *it->second;
 	}
 
-	std::shared_ptr<ust::trace_class> tc(ust_trace_class_per_pid_create(
+	const std::shared_ptr<ust::trace_class> tc(ust_trace_class_per_pid_create(
 		&app,
 		_session.trace_format,
 		tracer_abi,
@@ -2719,7 +2719,7 @@ void ls::ust::domain_orchestrator::_record_snapshot_per_uid(
 			continue;
 		}
 
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 		auto *socket = consumer_find_socket_by_bitness(static_cast<int>(tc_key.abi),
 							       _consumer_output.get());
 		if (!socket) {
@@ -2796,7 +2796,7 @@ void ls::ust::domain_orchestrator::_record_snapshot_per_pid(
 			}
 		}
 
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 		auto *socket = consumer_find_socket_by_bitness(
 			static_cast<int>(app->abi.bits_per_long), _consumer_output.get());
 		if (!socket) {
