@@ -5,8 +5,8 @@
  *
  */
 
-#include "lttng-ust-ctl.hpp"
 #include "sessiond-config.hpp"
+#include "ust-abi-filenames.hpp"
 #include "version.hpp"
 
 #include <common/compat/errno.hpp>
@@ -182,7 +182,10 @@ static int config_set_ust_ctl_paths(struct sessiond_config *config,
 	char *str;
 	int ret;
 
-	ret = asprintf(&str, "%s/%s", lttng_ust_ctl_path_override, LTTNG_UST_SOCK_FILENAME);
+	ret = asprintf(&str,
+		       "%s/%s",
+		       lttng_ust_ctl_path_override,
+		       lttng::sessiond::ust::app_sock_filename().data());
 	if (ret < 0) {
 		ERR("Failed to set default ust_ctl unix socket path");
 		return ret;
@@ -190,7 +193,10 @@ static int config_set_ust_ctl_paths(struct sessiond_config *config,
 
 	config_string_set(&config->apps_unix_sock_path, str);
 	str = nullptr;
-	ret = asprintf(&str, "%s/%s", lttng_ust_ctl_path_override, LTTNG_UST_WAIT_FILENAME);
+	ret = asprintf(&str,
+		       "%s/%s",
+		       lttng_ust_ctl_path_override,
+		       lttng::sessiond::ust::app_wait_shm_filename().data());
 	if (ret < 0) {
 		ERR("Failed to set default ust_ctl wait shm path");
 		return ret;
@@ -223,8 +229,10 @@ static int config_set_paths(struct sessiond_config *config)
 	{
 		char *app_sock_path;
 
-		const auto fmt_ret =
-			asprintf(&app_sock_path, DEFAULT_APPS_UNIX_SOCK, config->rundir.value);
+		const auto fmt_ret = asprintf(&app_sock_path,
+					      "%s/%s",
+					      config->rundir.value,
+					      lttng::sessiond::ust::app_sock_filename().data());
 		if (fmt_ret < 0) {
 			ERR("Failed to format apps unix socket path");
 			return -1;
@@ -236,12 +244,25 @@ static int config_set_paths(struct sessiond_config *config)
 
 	const auto current_uid = getuid();
 	if (current_uid == 0) {
-		config_string_set_static(&config->wait_shm.path, DEFAULT_GLOBAL_APPS_WAIT_SHM_PATH);
+		char *global_apps_wait_shm_path;
+
+		const auto fmt_ret = asprintf(&global_apps_wait_shm_path,
+					      "/%s",
+					      lttng::sessiond::ust::app_wait_shm_filename().data());
+		if (fmt_ret < 0) {
+			ERR("Failed to format global apps wait shm path");
+			return -1;
+		}
+
+		/* Ownership of global_apps_wait_shm_path transfered to config. */
+		config_string_set(&config->wait_shm.path, global_apps_wait_shm_path);
 	} else {
 		char *home_apps_wait_shm_path;
 
-		const auto fmt_ret = asprintf(
-			&home_apps_wait_shm_path, DEFAULT_HOME_APPS_WAIT_SHM_PATH, current_uid);
+		const auto fmt_ret = asprintf(&home_apps_wait_shm_path,
+					      "/%s-%d",
+					      lttng::sessiond::ust::app_wait_shm_filename().data(),
+					      (int) current_uid);
 		if (fmt_ret < 0) {
 			ERR("Failed to set default home apps wait shm path");
 			return -1;

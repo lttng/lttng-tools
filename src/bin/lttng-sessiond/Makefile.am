@@ -20,6 +20,7 @@ liblttng_sessiond_common_la_SOURCES = utils.cpp utils.hpp \
                        ust-app.hpp ust-app-channel.hpp ust-sigbus.hpp trace-ust.hpp notify-apps.hpp \
                        lttng-ust-ctl.hpp lttng-ust-abi.hpp lttng-ust-error.hpp \
                        ust-ctl-internal.hpp ust-abi-internal.hpp ust-error-internal.hpp \
+                       ust-abi-filenames.hpp \
                        ust-registry.hpp \
                        condition-internal.cpp condition-internal.hpp \
                        context.cpp context.hpp \
@@ -88,6 +89,7 @@ liblttng_sessiond_common_la_SOURCES = utils.cpp utils.hpp \
 
 if HAVE_LIBLTTNG_UST_CTL
 liblttng_sessiond_common_la_SOURCES += trace-ust.cpp ust-registry.cpp ust-app.cpp \
+			ust-abi-filenames.cpp \
 			ust-app-channel.cpp \
 			ust-app-command-socket-protocol.cpp \
 			ust-app-ctx.hpp ust-app-ctx.cpp \
