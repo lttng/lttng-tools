@@ -355,7 +355,7 @@ static void *thread_dispatch_ust_registration(void *data)
 			    ust_cmd->reg_msg.major,
 			    ust_cmd->reg_msg.minor);
 
-			if (ust_cmd->reg_msg.type == LTTNG_UST_CTL_SOCKET_CMD) {
+			if (ust_cmd->reg_msg.type == ust_register_msg::socket_type::CMD) {
 				wait_node = zmalloc<ust_reg_wait_node>();
 				if (!wait_node) {
 					PERROR("zmalloc wait_node dispatch");

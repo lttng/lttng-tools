@@ -2139,11 +2139,12 @@ int ust_app_recv_registration(int sock, struct ust_register_msg *msg)
 {
 	int ret;
 	uint32_t pid, ppid, uid, gid;
+	enum lttng_ust_ctl_socket_type raw_socket_type;
 
 	LTTNG_ASSERT(msg);
 
 	ret = lttng_ust_ctl_recv_reg_msg(sock,
-					 &msg->type,
+					 &raw_socket_type,
 					 &msg->major,
 					 &msg->minor,
 					 &pid,
@@ -2178,6 +2179,21 @@ int ust_app_recv_registration(int sock, struct ust_register_msg *msg)
 		}
 		goto error;
 	}
+
+	switch (raw_socket_type) {
+	case LTTNG_UST_CTL_SOCKET_CMD:
+		msg->type = ust_register_msg::socket_type::CMD;
+		break;
+	case LTTNG_UST_CTL_SOCKET_NOTIFY:
+		msg->type = ust_register_msg::socket_type::NOTIFY;
+		break;
+	default:
+		ERR("UST app recv reg message returned an unknown socket type: raw_socket_type = %d",
+		    raw_socket_type);
+		ret = -EINVAL;
+		goto error;
+	}
+
 	msg->pid = (pid_t) pid;
 	msg->ppid = (pid_t) ppid;
 	msg->uid = (uid_t) uid;

@@ -69,7 +69,19 @@ struct ust_app_notify_sock_obj {
  * Application registration data structure.
  */
 struct ust_register_msg {
-	enum lttng_ust_ctl_socket_type type;
+	/*
+	 * Session-daemon-native type used to distinguish the two sockets an
+	 * application opens for communication during registration. Conversion
+	 * from the corresponding lttng-ust-ctl enumeration happens at the
+	 * boundary where the registration message is received, keeping users
+	 * of ust_register_msg free of any direct lttng-ust-ctl dependency.
+	 */
+	enum class socket_type {
+		CMD,
+		NOTIFY,
+	};
+
+	socket_type type;
 	uint32_t major;
 	uint32_t minor;
 	uint32_t abi_major;
