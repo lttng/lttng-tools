@@ -12,6 +12,7 @@
 #include "event-notifier-error-accounting.hpp"
 #include "kernel.hpp"
 #include "lttng-sessiond.hpp"
+#include "lttng-ust-ctl.hpp"
 #include "notification-thread-commands.hpp"
 #include "notification-thread-events.hpp"
 #include "notification-thread.hpp"

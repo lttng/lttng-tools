@@ -6,6 +6,7 @@
  */
 
 #include "event-notifier-error-accounting.hpp"
+#include "lttng-ust-ctl.hpp"
 #include "lttng-ust-error.hpp"
 #include "ust-app.hpp"
 

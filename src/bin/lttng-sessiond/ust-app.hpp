@@ -11,7 +11,6 @@
 
 #include "consumer.hpp"
 #include "domain.hpp"
-#include "lttng-ust-ctl.hpp"
 #include "trace-class.hpp"
 #include "ust-app-command-socket.hpp"
 #include "ust-app-objd-registry.hpp"

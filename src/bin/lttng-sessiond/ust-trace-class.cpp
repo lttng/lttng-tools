@@ -8,6 +8,7 @@
 #include "ctf2-trace-class-visitor.hpp"
 #include "field.hpp"
 #include "lttng-sessiond.hpp"
+#include "lttng-ust-ctl.hpp"
 #include "notification-thread-commands.hpp"
 #include "session.hpp"
 #include "trace-class.hpp"

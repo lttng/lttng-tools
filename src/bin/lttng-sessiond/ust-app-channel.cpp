@@ -11,6 +11,7 @@
 #include "consumer.hpp"
 #include "fd-limit.hpp"
 #include "health-sessiond.hpp"
+#include "lttng-ust-ctl.hpp"
 #include "lttng-ust-error.hpp"
 #include "recording-channel-configuration.hpp"
 #include "ust-app-channel.hpp"
