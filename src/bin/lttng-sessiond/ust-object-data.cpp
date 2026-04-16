@@ -73,7 +73,7 @@ void lsu::ust_object_data::_cleanup() noexcept
 		return;
 	}
 
-	const auto ret = ust_app_release_object(nullptr, _obj);
+	const auto ret = lttng_ust_ctl_release_object(-1, _obj);
 	if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
 		ERR_FMT("Failed to release UST object data: handle={}, ret={}",
 			static_cast<void *>(_obj),

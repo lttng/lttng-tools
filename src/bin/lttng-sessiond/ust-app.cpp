@@ -398,19 +398,6 @@ int ust_app_register_done(lsu::app *app)
 	return 0;
 }
 
-int ust_app_release_object(lsu::app *app, struct lttng_ust_abi_object_data *data)
-{
-	int ret;
-
-	if (app) {
-		const auto protocol = app->command_socket.lock();
-		ret = lttng_ust_ctl_release_object(protocol.fd(), data);
-	} else {
-		ret = lttng_ust_ctl_release_object(-1, data);
-	}
-	return ret;
-}
-
 /*
  * Push metadata to consumer socket.
  *
@@ -2885,9 +2872,4 @@ void ust_app_put(lsu::app *app)
 	}
 
 	urcu_ref_put(&app->ref, ust_app_release);
-}
-
-lttng_ht *ust_app_get_all()
-{
-	return ust_app_ht;
 }
