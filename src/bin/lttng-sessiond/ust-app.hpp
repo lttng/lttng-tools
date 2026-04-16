@@ -43,6 +43,15 @@ struct lttng_bytecode;
 struct lttng_ust_filter_bytecode;
 struct lttng_pipe;
 
+/*
+ * The daemon holds lttng_ust_abi_object_data only by pointer from the
+ * structures defined in this header. Forward-declare the type so that
+ * consumers of these structures do not need the full definition, which
+ * is supplied by <lttng/ust-ctl.h> to translation units that actually
+ * manipulate object data instances.
+ */
+struct lttng_ust_abi_object_data;
+
 namespace lttng {
 namespace sessiond {
 namespace ust {
