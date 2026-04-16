@@ -229,12 +229,16 @@ if __name__ == "__main__":
         },
     }
 
+    # Exclude staged deletions: the subsequent checks open each path to
+    # parse or otherwise inspect it, so a commit that removes a file
+    # would crash them on a missing path.
     git = subprocess.Popen(
         [
             "git",
             "diff",
             "--name-only",
             "--cached",
+            "--diff-filter=d",
         ],
         stdout=subprocess.PIPE,
     )
