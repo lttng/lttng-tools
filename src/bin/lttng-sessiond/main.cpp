@@ -23,7 +23,6 @@
 #include "hotplug-handler.hpp"
 #include "kernel.hpp"
 #include "lttng-sessiond.hpp"
-#include "lttng-ust-ctl.hpp"
 #include "manage-apps.hpp"
 #include "modprobe.hpp"
 #include "notification-thread-commands.hpp"
