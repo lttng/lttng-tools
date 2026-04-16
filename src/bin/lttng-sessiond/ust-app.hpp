@@ -150,6 +150,18 @@ namespace sessiond {
 namespace ust {
 
 /*
+ * Version reported by an application's tracer library during
+ * registration. Session-daemon-native counterpart to
+ * lttng_ust_abi_tracer_version; conversion happens at the call site
+ * that receives it over the control socket.
+ */
+struct tracer_version {
+	uint8_t major;
+	uint8_t minor;
+	uint8_t patchlevel;
+};
+
+/*
  * Registered traceable applications. Libust registers to the session daemon
  * and a linked list is kept of all running traceable app.
  */
@@ -180,7 +192,7 @@ struct app {
 	int compatible = 0; /* If the lttng-ust tracer version does not match the
 					   supported version of the session daemon, this flag is
 					   set to 0 (NOT compatible) else 1. */
-	lttng_ust_abi_tracer_version version = {};
+	tracer_version version = {};
 	uint32_t v_major = static_cast<uint32_t>(-1); /* Version major number */
 	uint32_t v_minor = static_cast<uint32_t>(-1); /* Version minor number */
 	std::string name;

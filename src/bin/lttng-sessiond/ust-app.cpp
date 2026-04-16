@@ -1281,14 +1281,34 @@ int ust_app_version(lsu::app *app)
 {
 	LTTNG_ASSERT(app);
 
+	lttng_ust_abi_tracer_version raw_version = {};
+
 	try {
-		app->command_socket.lock().tracer_version(&app->version);
+		app->command_socket.lock().tracer_version(&raw_version);
 	} catch (const lsu::app_communication_error&) {
 		return -1;
 	} catch (const lttng::runtime_error&) {
 		return -1;
 	}
 
+	const auto major = raw_version.major;
+	const auto minor = raw_version.minor;
+	const auto patchlevel = raw_version.patchlevel;
+
+	if (major > std::numeric_limits<uint8_t>::max() ||
+	    minor > std::numeric_limits<uint8_t>::max() ||
+	    patchlevel > std::numeric_limits<uint8_t>::max()) {
+		WARN_FMT(
+			"UST tracer version values exceed uint8_t range: major={}, minor={}, patchlevel={}",
+			major,
+			minor,
+			patchlevel);
+		return -EINVAL;
+	}
+
+	app->version = { static_cast<uint8_t>(major),
+			 static_cast<uint8_t>(minor),
+			 static_cast<uint8_t>(patchlevel) };
 	return 0;
 }
 
