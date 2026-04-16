@@ -22,6 +22,8 @@ liblttng_sessiond_common_la_SOURCES = utils.cpp utils.hpp \
                        ust-ctl-internal.hpp ust-abi-internal.hpp ust-error-internal.hpp \
                        ust-abi-filenames.hpp \
                        ust-event-notifier-notification.hpp \
+                       event-notifier-error-accounting-utils.hpp \
+                       event-notifier-error-accounting-ust.hpp \
                        ust-registry.hpp \
                        condition-internal.cpp condition-internal.hpp \
                        context.cpp context.hpp \
@@ -92,6 +94,7 @@ if HAVE_LIBLTTNG_UST_CTL
 liblttng_sessiond_common_la_SOURCES += trace-ust.cpp ust-registry.cpp ust-app.cpp \
 			ust-abi-filenames.cpp \
 			ust-event-notifier-notification.cpp \
+			event-notifier-error-accounting-ust.cpp \
 			ust-app-channel.cpp \
 			ust-app-command-socket-protocol.cpp \
 			ust-app-ctx.hpp ust-app-ctx.cpp \
