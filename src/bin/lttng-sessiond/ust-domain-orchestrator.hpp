@@ -317,7 +317,7 @@ private:
 	 * Return a non-owning pointer to the app_session for the given
 	 * application, or nullptr if none exists.
 	 */
-	ust::app_session *_find_app_session(const ust::app& app) const noexcept
+	ust::app_session *_find_app_session(ust::app& app) const noexcept
 	{
 		const auto it = _app_sessions.find(&app);
 		if (it == _app_sessions.end()) {
@@ -367,8 +367,8 @@ private:
 							      uid_t euid,
 							      gid_t egid);
 
-	void _release_per_pid_trace_class(const ust::app& app);
-	void _release_per_pid_stream_groups(const ust::app& app);
+	void _release_per_pid_trace_class(ust::app& app);
+	void _release_per_pid_stream_groups(ust::app& app);
 
 	ust::stream_group& _find_or_create_per_uid_stream_group(
 		const config::recording_channel_configuration& channel_config,
@@ -391,7 +391,7 @@ private:
 
 	ust::stream_group& _find_or_create_per_pid_stream_group(
 		const config::recording_channel_configuration& channel_config,
-		const ust::app& app,
+		ust::app& app,
 		std::uint64_t consumer_key,
 		ust_object_data channel_object,
 		ust::trace_class& trace_class,
@@ -629,7 +629,7 @@ private:
 
 	struct _per_pid_stream_group_key {
 		const config::recording_channel_configuration *channel_config;
-		const ust::app *app;
+		ust::app *app;
 
 		bool operator==(const _per_pid_stream_group_key& other) const noexcept;
 		std::size_t hash() const noexcept;
@@ -676,8 +676,7 @@ private:
 	 * Per-PID trace classes are keyed by app pointer. Each app gets
 	 * its own trace_class.
 	 */
-	std::unordered_map<const ust::app *, std::shared_ptr<ust::trace_class>>
-		_per_pid_trace_classes;
+	std::unordered_map<ust::app *, std::shared_ptr<ust::trace_class>> _per_pid_trace_classes;
 
 	/*
 	 * Maps app pointers to the app_session::app_session_id used
@@ -685,7 +684,7 @@ private:
 	 * so that release_per_pid_trace_class() can unregister from the
 	 * index without the caller providing the app_session_id.
 	 */
-	std::unordered_map<const ust::app *, std::uint64_t> _per_pid_app_session_ids;
+	std::unordered_map<ust::app *, std::uint64_t> _per_pid_app_session_ids;
 
 	/* (app, recording channel configuration) -> stream group */
 	std::unordered_map<_per_pid_stream_group_key,
@@ -701,7 +700,7 @@ private:
 	 *
 	 * Protected by the recording session lock.
 	 */
-	std::unordered_map<const ust::app *, std::unique_ptr<ust::app_session>> _app_sessions;
+	std::unordered_map<ust::app *, std::unique_ptr<ust::app_session>> _app_sessions;
 };
 
 } /* namespace ust */

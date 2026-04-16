@@ -96,9 +96,11 @@ lttng_ust_context_attr ls::ust::domain_orchestrator::_make_ust_context_attr(
 		 * are non-owning. The caller must ensure the
 		 * context_configuration outlives the returned struct.
 		 */
+		/* NOLINTBEGIN(cppcoreguidelines-pro-type-const-cast): UST ABI uses char *. */
 		ust_ctx.u.app_ctx.provider_name =
 			const_cast<char *>(app_config.provider_name.c_str());
 		ust_ctx.u.app_ctx.ctx_name = const_cast<char *>(app_config.context_name.c_str());
+		/* NOLINTEND(cppcoreguidelines-pro-type-const-cast) */
 		break;
 	}
 	case lsc::context_configuration::type::CPU_ID:
@@ -241,7 +243,7 @@ ls::ust::domain_orchestrator::~domain_orchestrator()
 		const lttng::urcu::read_lock_guard read_lock;
 
 		while (!_app_sessions.empty()) {
-			auto *app = const_cast<ust::app *>(_app_sessions.begin()->first);
+			auto *app = _app_sessions.begin()->first;
 
 			if (!ust_app_get(*app)) {
 				/*
@@ -444,7 +446,7 @@ ls::ust::trace_class& ls::ust::domain_orchestrator::_find_or_create_per_pid_trac
 	return ref;
 }
 
-void ls::ust::domain_orchestrator::_release_per_pid_trace_class(const ls::ust::app& app)
+void ls::ust::domain_orchestrator::_release_per_pid_trace_class(ls::ust::app& app)
 {
 	const auto it = _per_pid_trace_classes.find(&app);
 	if (it == _per_pid_trace_classes.end()) {
@@ -528,7 +530,7 @@ bool ls::ust::domain_orchestrator::_has_per_uid_stream_group(
 
 ls::ust::stream_group& ls::ust::domain_orchestrator::_find_or_create_per_pid_stream_group(
 	const config::recording_channel_configuration& channel_config,
-	const ls::ust::app& app,
+	ls::ust::app& app,
 	std::uint64_t consumer_key,
 	ust::ust_object_data channel_object,
 	ust::trace_class& trace_class,
@@ -558,7 +560,7 @@ ls::ust::stream_group& ls::ust::domain_orchestrator::_find_or_create_per_pid_str
 	return ref;
 }
 
-void ls::ust::domain_orchestrator::_release_per_pid_stream_groups(const ls::ust::app& app)
+void ls::ust::domain_orchestrator::_release_per_pid_stream_groups(ls::ust::app& app)
 {
 	auto it = _per_pid_stream_groups.begin();
 	while (it != _per_pid_stream_groups.end()) {
@@ -652,7 +654,7 @@ void ls::ust::domain_orchestrator::_enable_channel_on_apps(lttng::c_string_view 
 	const lttng::urcu::read_lock_guard read_lock;
 
 	for (const auto& app_session_pair : _app_sessions) {
-		auto *app = const_cast<ust::app *>(app_session_pair.first);
+		auto *app = app_session_pair.first;
 		auto *ua_sess = app_session_pair.second.get();
 
 		if (!ust_app_get(*app)) {
@@ -692,7 +694,7 @@ void ls::ust::domain_orchestrator::_disable_channel_on_apps(lttng::c_string_view
 	const lttng::urcu::read_lock_guard read_lock;
 
 	for (const auto& app_session_pair : _app_sessions) {
-		auto *app = const_cast<ust::app *>(app_session_pair.first);
+		auto *app = app_session_pair.first;
 		auto *ua_sess = app_session_pair.second.get();
 
 		if (!ust_app_get(*app)) {
@@ -729,7 +731,7 @@ void ls::ust::domain_orchestrator::_create_event_on_apps(
 	const lttng::urcu::read_lock_guard read_lock;
 
 	for (const auto& app_session_pair : _app_sessions) {
-		auto *app = const_cast<ust::app *>(app_session_pair.first);
+		auto *app = app_session_pair.first;
 		auto *ua_sess = app_session_pair.second.get();
 
 		if (!ust_app_get(*app)) {
@@ -767,7 +769,7 @@ void ls::ust::domain_orchestrator::_enable_event_on_apps(
 	const lttng::urcu::read_lock_guard read_lock;
 
 	for (const auto& app_session_pair : _app_sessions) {
-		auto *app = const_cast<ust::app *>(app_session_pair.first);
+		auto *app = app_session_pair.first;
 		auto *ua_sess = app_session_pair.second.get();
 
 		if (!ust_app_get(*app)) {
@@ -819,7 +821,7 @@ void ls::ust::domain_orchestrator::_disable_event_on_apps(
 	const lttng::urcu::read_lock_guard read_lock;
 
 	for (const auto& app_session_pair : _app_sessions) {
-		auto *app = const_cast<ust::app *>(app_session_pair.first);
+		auto *app = app_session_pair.first;
 		auto *ua_sess = app_session_pair.second.get();
 
 		if (!ust_app_get(*app)) {
@@ -871,7 +873,7 @@ void ls::ust::domain_orchestrator::_add_context_on_apps(
 	const lttng::urcu::read_lock_guard read_lock;
 
 	for (const auto& app_session_pair : _app_sessions) {
-		auto *app = const_cast<ust::app *>(app_session_pair.first);
+		auto *app = app_session_pair.first;
 		auto *ua_sess = app_session_pair.second.get();
 
 		if (!ust_app_get(*app)) {
@@ -1362,6 +1364,7 @@ void ls::ust::domain_orchestrator::_create_channel_per_uid(ust::app *app,
 	ASSERT_RCU_READ_LOCKED();
 
 	auto *consumer = get_consumer_output_ptr();
+	/* NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast) */
 	auto& session = const_cast<ltt_session&>(_session);
 
 	DBG_FMT("UST domain orchestrator creating channel with per-UID buffers: "
@@ -1513,6 +1516,7 @@ void ls::ust::domain_orchestrator::_create_channel_per_pid(ust::app *app,
 	LTTNG_ASSERT(ua_chan);
 
 	auto *consumer = get_consumer_output_ptr();
+	/* NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast) */
 	auto& session = const_cast<ltt_session&>(_session);
 
 	DBG_FMT("UST domain orchestrator creating channel with per-PID buffers: "
@@ -2331,7 +2335,7 @@ void ls::ust::domain_orchestrator::start()
 		const lttng::urcu::read_lock_guard read_lock;
 
 		for (const auto& app_session_pair : _app_sessions) {
-			auto *app = const_cast<ust::app *>(app_session_pair.first);
+			auto *app = app_session_pair.first;
 
 			if (!ust_app_get(*app)) {
 				continue;
@@ -2378,7 +2382,7 @@ void ls::ust::domain_orchestrator::stop()
 		const lttng::urcu::read_lock_guard read_lock;
 
 		for (const auto& app_session_pair : _app_sessions) {
-			auto *app = const_cast<ust::app *>(app_session_pair.first);
+			auto *app = app_session_pair.first;
 
 			if (!ust_app_get(*app)) {
 				continue;
@@ -2401,7 +2405,7 @@ void ls::ust::domain_orchestrator::stop()
 	if (buffer_type() == LTTNG_BUFFER_PER_PID) {
 		const lttng::urcu::read_lock_guard read_lock;
 		for (const auto& app_session_pair : _app_sessions) {
-			auto *app = const_cast<ust::app *>(app_session_pair.first);
+			auto *app = app_session_pair.first;
 			if (!ust_app_get(*app)) {
 				continue;
 			}
@@ -2887,7 +2891,7 @@ void ls::ust::domain_orchestrator::regenerate_statedump()
 	const lttng::urcu::read_lock_guard read_lock;
 
 	for (const auto& app_session_pair : _app_sessions) {
-		auto *app = const_cast<ust::app *>(app_session_pair.first);
+		auto *app = app_session_pair.first;
 		auto *ua_sess = app_session_pair.second.get();
 
 		if (!ust_app_get(*app)) {
@@ -3156,12 +3160,14 @@ ls::commands::reclaim_channel_memory_result ls::ust::domain_orchestrator::reclai
 	 */
 	DBG_FMT("Creating completion tracking request: consumer_count={}", consumer_count);
 
-	const auto token = ls::the_pending_memory_reclamation_registry.create_request(
-		const_cast<ltt_session&>(_session),
-		target_channel.name,
-		consumer_count,
-		std::move(on_complete),
-		std::move(on_cancel));
+	/* NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast) */
+	auto& mutable_session = const_cast<ltt_session&>(_session);
+	const auto token =
+		ls::the_pending_memory_reclamation_registry.create_request(mutable_session,
+									   target_channel.name,
+									   consumer_count,
+									   std::move(on_complete),
+									   std::move(on_cancel));
 
 	std::vector<ls::commands::stream_memory_reclamation_result_group> result;
 
