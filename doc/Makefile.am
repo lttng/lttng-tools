@@ -10,7 +10,7 @@
 # at the parent level.
 SUBDIRS = man
 
-dist_doc_DATA =
+dist_doc_DATA = \
 	live-reading-howto.md \
 	live-reading-protocol.md \
 	python-howto.md \
