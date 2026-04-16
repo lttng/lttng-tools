@@ -12,10 +12,10 @@
 #include "event-notifier-error-accounting.hpp"
 #include "kernel.hpp"
 #include "lttng-sessiond.hpp"
-#include "lttng-ust-ctl.hpp"
 #include "notification-thread-commands.hpp"
 #include "notification-thread-events.hpp"
 #include "notification-thread.hpp"
+#include "ust-event-notifier-notification.hpp"
 
 #include <common/defaults.hpp>
 #include <common/dynamic-buffer.hpp>
@@ -4537,49 +4537,42 @@ recv_one_event_notifier_notification(int notification_pipe_read_fd, enum lttng_d
 	struct lttng_event_notifier_notification *notification = nullptr;
 	char *capture_buffer = nullptr;
 	size_t capture_buffer_size;
-	void *reception_buffer;
-	size_t reception_size;
-
-	struct lttng_ust_abi_event_notifier_notification ust_notification;
-	struct lttng_kernel_abi_event_notifier_notification kernel_notification;
-
-	/* Init lttng_event_notifier_notification */
-	switch (domain) {
-	case LTTNG_DOMAIN_UST:
-		reception_buffer = (void *) &ust_notification;
-		reception_size = sizeof(ust_notification);
-		break;
-	case LTTNG_DOMAIN_KERNEL:
-		reception_buffer = (void *) &kernel_notification;
-		reception_size = sizeof(kernel_notification);
-		break;
-	default:
-		abort();
-	}
-
-	/*
-	 * The monitoring pipe only holds messages smaller than PIPE_BUF,
-	 * ensuring that read/write of tracer notifications are atomic.
-	 */
-	ret = lttng_read(notification_pipe_read_fd, reception_buffer, reception_size);
-	if (ret != reception_size) {
-		PERROR("Failed to read from event source notification pipe: fd = %d, size to read = %zu, ret = %d",
-		       notification_pipe_read_fd,
-		       reception_size,
-		       ret);
-		ret = -1;
-		goto end;
-	}
 
 	switch (domain) {
 	case LTTNG_DOMAIN_UST:
-		token = ust_notification.token;
-		capture_buffer_size = ust_notification.capture_buf_size;
+	{
+		const auto ust_header =
+			lttng::sessiond::ust::read_event_notifier_notification_header(
+				notification_pipe_read_fd);
+		if (!ust_header) {
+			goto end;
+		}
+		token = ust_header->token;
+		capture_buffer_size = ust_header->capture_buf_size;
 		break;
+	}
 	case LTTNG_DOMAIN_KERNEL:
+	{
+		struct lttng_kernel_abi_event_notifier_notification kernel_notification;
+
+		/*
+		 * The monitoring pipe only holds messages smaller than PIPE_BUF,
+		 * ensuring that read/write of tracer notifications are atomic.
+		 */
+		ret = lttng_read(notification_pipe_read_fd,
+				 &kernel_notification,
+				 sizeof(kernel_notification));
+		if (ret != sizeof(kernel_notification)) {
+			PERROR("Failed to read from event source notification pipe: fd = %d, size to read = %zu, ret = %d",
+			       notification_pipe_read_fd,
+			       sizeof(kernel_notification),
+			       ret);
+			goto end;
+		}
 		token = kernel_notification.token;
 		capture_buffer_size = kernel_notification.capture_buf_size;
 		break;
+	}
 	default:
 		abort();
 	}
