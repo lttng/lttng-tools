@@ -220,6 +220,7 @@ lttng_buffer_type ls::ust::domain_orchestrator::buffer_type() const noexcept
 		LTTNG_BUFFER_PER_PID;
 }
 
+/* NOLINTNEXTLINE(bugprone-exception-escape) */
 ls::ust::domain_orchestrator::~domain_orchestrator()
 {
 	DBG_FMT("UST domain orchestrator destroying: session_name=`{}`, session_id={}, "
@@ -258,7 +259,16 @@ ls::ust::domain_orchestrator::~domain_orchestrator()
 			const ust_app_reference app_ref(app);
 
 			health_code_update();
-			on_app_departure(*app);
+
+			try {
+				on_app_departure(*app);
+			} catch (const std::exception& ex) {
+				ERR_FMT("Failed to tear down app session during orchestrator destruction: session_name=`{}`, app={}, error='{}'",
+					_session.name,
+					*app,
+					ex.what());
+			}
+
 			health_code_update();
 
 			try {
@@ -275,7 +285,13 @@ ls::ust::domain_orchestrator::~domain_orchestrator()
 	 * each application disconnects; per-UID metadata outlives the
 	 * applications and must be closed explicitly.
 	 */
-	_close_per_uid_metadata_on_consumer();
+	try {
+		_close_per_uid_metadata_on_consumer();
+	} catch (const std::exception& ex) {
+		ERR_FMT("Failed to close per-UID metadata on consumer during orchestrator destruction: session_name=`{}`, error='{}'",
+			_session.name,
+			ex.what());
+	}
 
 	/* Unregister all per-UID trace classes from the global index. */
 	for (const auto& entry : _per_uid_trace_classes) {
