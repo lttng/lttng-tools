@@ -14,12 +14,22 @@
 #include <sys/timerfd.h>
 #include <time.h>
 
+#if defined(HAVE_MUSL_LIBC) && !defined(LTTNG_MUSL_TFD_CLOEXEC_REPLACEMENT)
+constexpr int LTTNG_MUSL_TFD_CLOEXEC_REPLACEMENT = TFD_CLOEXEC;
+#endif
+
 namespace lttng {
 
 class timerfd : public stream_descriptor {
 public:
 	/* Throws a posix_error exception on failure to create the underlying resource. */
-	explicit timerfd(int flags = ::TFD_CLOEXEC);
+	explicit timerfd(int flags =
+#if defined(HAVE_MUSL_LIBC)
+		LTTNG_MUSL_TFD_CLOEXEC_REPLACEMENT
+#else
+		::TFD_CLOEXEC
+#endif
+	);
 	timerfd(const timerfd&) = delete;
 	timerfd& operator=(const timerfd&) = delete;
 	timerfd(timerfd&&) = delete;

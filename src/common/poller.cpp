@@ -7,6 +7,10 @@
 #include <common/error.hpp>
 #include <common/poller.hpp>
 
+#if defined(HAVE_MUSL_LIBC) && !defined(LTTNG_MUSL_EPOLL_CLOEXEC_REPLACEMENT)
+constexpr int LTTNG_MUSL_EPOLL_CLOEXEC_REPLACEMENT = EPOLL_CLOEXEC;
+#endif
+
 namespace {
 
 std::uint32_t to_epoll_events(lttng::poller::event_type events)
@@ -58,7 +62,11 @@ lttng::poller::event_type from_epoll_events(std::uint32_t epoll_events)
 
 lttng::poller::poller() :
 	_epoll_fd([]() {
+#if defined(HAVE_MUSL_LIBC)
+		const auto epoll_fd = ::epoll_create1(LTTNG_MUSL_EPOLL_CLOEXEC_REPLACEMENT);
+#else
 		const auto epoll_fd = ::epoll_create1(::EPOLL_CLOEXEC);
+#endif
 
 		if (epoll_fd < 0) {
 			LTTNG_THROW_POSIX("Failed to create epoll fd", errno);

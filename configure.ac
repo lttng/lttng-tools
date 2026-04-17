@@ -181,6 +181,13 @@ AM_CONDITIONAL([HAVE_SHELLCHECK], [test "x$SHELLCHECK" != "x"])
 AS_IF([test -f "$srcdir/bootstrap"], [in_git_repo=yes], [in_git_repo=no])
 AM_CONDITIONAL([IN_GIT_REPO], [test "x$in_git_repo" = "xyes"])
 
+# Check for musl libc:
+case "${host_cpu}-${host_os}-${LIBC}" in
+  *-musl*)
+    AC_DEFINE([HAVE_MUSL_LIBC], [1], [Define to 1 if building against musl libc.])
+    ;;
+esac
+
 # check for bison
 AC_PROG_YACC
 BISON=$YACC
