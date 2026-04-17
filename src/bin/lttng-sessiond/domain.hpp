@@ -9,6 +9,7 @@
 #define LTTNG_SESSIOND_DOMAIN_HPP
 
 #include "channel-configuration.hpp"
+#include "map-channel-configuration.hpp"
 #include "process-attribute-tracker.hpp"
 #include "recording-channel-configuration.hpp"
 
@@ -36,6 +37,10 @@ namespace config {
 	throw lttng::sessiond::config::exceptions::channel_not_found_error( \
 		channel_name, LTTNG_SOURCE_LOCATION())
 
+#define LTTNG_THROW_MAP_CHANNEL_NOT_FOUND_BY_NAME_ERROR(channel_name)           \
+	throw lttng::sessiond::config::exceptions::map_channel_not_found_error( \
+		channel_name, LTTNG_SOURCE_LOCATION())
+
 namespace exceptions {
 /*
  * @class channel_not_found_error
@@ -46,6 +51,19 @@ class channel_not_found_error : public lttng::runtime_error {
 public:
 	explicit channel_not_found_error(std::string channel_name,
 					 const lttng::source_location& source_location);
+
+	const std::string channel_name;
+};
+
+/*
+ * @class map_channel_not_found_error
+ * @brief Represents a map-channel-not-found error and provides the name of the map channel
+ * looked-up for use by error-reporting code.
+ */
+class map_channel_not_found_error : public lttng::runtime_error {
+public:
+	explicit map_channel_not_found_error(std::string channel_name,
+					     const lttng::source_location& source_location);
 
 	const std::string channel_name;
 };
@@ -113,6 +131,7 @@ public:
 		domain_class_(other.domain_class_),
 		_metadata_channel(other._metadata_channel),
 		_channels(std::move(other._channels)),
+		_map_channels(std::move(other._map_channels)),
 		_process_id_tracker(std::move(other._process_id_tracker)),
 		_virtual_process_id_tracker(std::move(other._virtual_process_id_tracker)),
 		_user_id_tracker(std::move(other._user_id_tracker)),
@@ -153,7 +172,7 @@ public:
 	}
 
 	/* Lookup by name. */
-	recording_channel_configuration& get_channel(const lttng::c_string_view& name)
+	recording_channel_configuration& get_channel(lttng::c_string_view name)
 	{
 		const auto it = _channels.find(name.data());
 		if (it == _channels.end()) {
@@ -163,7 +182,7 @@ public:
 		return *(it->second);
 	}
 
-	const recording_channel_configuration& get_channel(const lttng::c_string_view& name) const
+	const recording_channel_configuration& get_channel(lttng::c_string_view name) const
 	{
 		/* NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast) */
 		return const_cast<domain *>(this)->get_channel(name);
@@ -213,6 +232,74 @@ public:
 		}
 
 		_channels.erase(it);
+	}
+
+	/* Add a map channel to the domain by constructing it in place. */
+	template <typename... Args>
+	map_channel_configuration& add_map_channel(Args&&...args)
+	{
+		auto new_map_channel =
+			lttng::make_unique<map_channel_configuration>(std::forward<Args>(args)...);
+
+		const auto& name = new_map_channel->name;
+		auto result = _map_channels.emplace(name, std::move(new_map_channel));
+		if (!result.second) {
+			LTTNG_THROW_ERROR(lttng::format(
+				"Failed to add map channel to domain, name already in use: map_channel_name=`{}`",
+				name));
+		}
+
+		return *(result.first->second);
+	}
+
+	/* Lookup by name. */
+	map_channel_configuration& get_map_channel(lttng::c_string_view name)
+	{
+		const auto it = _map_channels.find(name.data());
+		if (it == _map_channels.end()) {
+			LTTNG_THROW_MAP_CHANNEL_NOT_FOUND_BY_NAME_ERROR(name);
+		}
+
+		return *(it->second);
+	}
+
+	const map_channel_configuration& get_map_channel(lttng::c_string_view name) const
+	{
+		/* NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast) */
+		return const_cast<domain *>(this)->get_map_channel(name);
+	}
+
+	using map_channels_view = lttng::utils::dereferenced_mapped_values_view<
+		std::unordered_map<std::string, map_channel_configuration::uptr>,
+		map_channel_configuration>;
+	using const_map_channels_view = lttng::utils::dereferenced_mapped_values_view<
+		const std::unordered_map<std::string, map_channel_configuration::uptr>,
+		const map_channel_configuration>;
+
+	map_channels_view map_channels() noexcept
+	{
+		return map_channels_view(_map_channels);
+	}
+
+	const_map_channels_view map_channels() const noexcept
+	{
+		return const_map_channels_view(_map_channels);
+	}
+
+	std::size_t map_channel_count() const noexcept
+	{
+		return _map_channels.size();
+	}
+
+	/* Intended for rollback on orchestrator failure. */
+	void remove_map_channel(const std::string& name)
+	{
+		const auto it = _map_channels.find(name);
+		if (it == _map_channels.end()) {
+			LTTNG_THROW_MAP_CHANNEL_NOT_FOUND_BY_NAME_ERROR(name);
+		}
+
+		_map_channels.erase(it);
 	}
 
 	/*
@@ -340,6 +427,7 @@ private:
 
 	const metadata_channel_configuration _metadata_channel;
 	std::unordered_map<std::string, recording_channel_configuration::uptr> _channels;
+	std::unordered_map<std::string, map_channel_configuration::uptr> _map_channels;
 
 	/* Process attribute trackers (populated based on domain_class_). */
 	nonstd::optional<process_id_tracker_t> _process_id_tracker;

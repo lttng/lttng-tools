@@ -102,6 +102,7 @@ enum lttcomm_sessiond_command {
 	LTTCOMM_SESSIOND_COMMAND_KERNEL_TRACER_STATUS,
 	LTTCOMM_SESSIOND_COMMAND_RECLAIM_CHANNEL_MEMORY,
 	LTTCOMM_SESSIOND_COMMAND_GET_CHANNEL_DATA_STREAM_INFO_SETS,
+	LTTCOMM_SESSIOND_COMMAND_ADD_MAP_CHANNEL,
 	LTTCOMM_SESSIOND_COMMAND_MAX,
 };
 
@@ -203,6 +204,8 @@ static inline const char *lttcomm_sessiond_command_str(enum lttcomm_sessiond_com
 		return "RECLAIM_CHANNEL_MEMORY";
 	case LTTCOMM_SESSIOND_COMMAND_GET_CHANNEL_DATA_STREAM_INFO_SETS:
 		return "GET_CHANNEL_DATA_STREAM_INFO_SETS";
+	case LTTCOMM_SESSIOND_COMMAND_ADD_MAP_CHANNEL:
+		return "ADD_MAP_CHANNEL";
 	default:
 		abort();
 	}
@@ -851,6 +854,17 @@ struct lttcomm_session_msg {
 		struct {
 			char channel_name[LTTNG_SYMBOL_NAME_LEN];
 		} LTTNG_PACKED get_channel_data_stream_info_sets;
+		struct {
+			char name[LTTNG_SYMBOL_NAME_LEN];
+			/* enum lttng_map_key_type */
+			int32_t key_type;
+			/* enum lttng_map_value_type */
+			int32_t value_type;
+			uint64_t max_entry_count;
+			uint8_t coalesce_hits;
+			/* 0 = PER_PID, 1 = PER_UID; ignored for the kernel domain. */
+			int8_t buffer_ownership;
+		} LTTNG_PACKED add_map_channel;
 	} u;
 	/* Count of fds sent. */
 	uint32_t fd_count;

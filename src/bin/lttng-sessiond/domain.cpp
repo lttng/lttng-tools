@@ -36,3 +36,13 @@ lttng::sessiond::config::exceptions::channel_not_found_error::channel_not_found_
 	channel_name{ std::move(channel_name_) }
 {
 }
+
+lttng::sessiond::config::exceptions::map_channel_not_found_error::map_channel_not_found_error(
+	std::string channel_name_, const lttng::source_location& source_location_) :
+	lttng::runtime_error(
+		fmt::format("No map channel with the given name in domain: channel_name=`{}`",
+			    channel_name_),
+		source_location_),
+	channel_name{ std::move(channel_name_) }
+{
+}

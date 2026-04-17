@@ -25,6 +25,7 @@
 #include "lttng-channel-from-config.hpp"
 #include "lttng-sessiond.hpp"
 #include "lttng-syscall.hpp"
+#include "map-channel-configuration.hpp"
 #include "notification-thread-commands.hpp"
 #include "notification-thread.hpp"
 #include "pending-memory-reclamation-request.hpp"
@@ -1421,6 +1422,64 @@ int cmd_enable_channel(command_ctx *cmd_ctx, ltt_session::locked_ref& session, i
 	}
 
 	return LTTNG_OK;
+}
+
+/*
+ * Command LTTNG_ADD_MAP_CHANNEL processed by the client thread.
+ */
+void cmd_add_map_channel(const ltt_session::locked_ref& session,
+			 const struct lttcomm_session_msg& lsm)
+{
+	const auto& payload = lsm.u.add_map_channel;
+	const auto domain_type = static_cast<enum lttng_domain_type>(lsm.domain.type);
+
+	if (domain_type == LTTNG_DOMAIN_NONE) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+			"Rejecting ADD_MAP_CHANNEL command: no domain specified");
+	}
+
+	if (domain_type != LTTNG_DOMAIN_KERNEL && domain_type != LTTNG_DOMAIN_UST) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			"Rejecting ADD_MAP_CHANNEL command: unsupported domain specified: domain={}",
+			lttng::get_domain_class_from_lttng_domain_type(domain_type)));
+	}
+
+	if (lttng_strnlen(payload.name, sizeof(payload.name)) == sizeof(payload.name)) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+			"Rejecting ADD_MAP_CHANNEL command: map channel name is not null-terminated");
+	}
+
+	const auto key_type =
+		static_cast<lsc::map_channel_configuration::key_type_t>(payload.key_type);
+	const auto value_type =
+		static_cast<lsc::map_channel_configuration::value_type_t>(payload.value_type);
+	const auto buffer_ownership = payload.buffer_ownership == 1 ?
+		lsc::ownership_model_t::PER_UID :
+		lsc::ownership_model_t::PER_PID;
+
+	DBG_FMT("Received ADD_MAP_CHANNEL command: session_name=`{}`, domain={}, map_channel_name=`{}`, key_type={}, value_type={}, max_entry_count={}, buffer_ownership={}",
+		session->name,
+		lttng::get_domain_class_from_lttng_domain_type(domain_type),
+		payload.name,
+		key_type,
+		value_type,
+		payload.max_entry_count,
+		buffer_ownership);
+
+	auto& target_domain =
+		session->get_domain(lttng::get_domain_class_from_lttng_domain_type(domain_type));
+
+	const auto& added = target_domain.add_map_channel(std::string(payload.name),
+							  key_type,
+							  value_type,
+							  payload.coalesce_hits,
+							  payload.max_entry_count,
+							  buffer_ownership);
+
+	DBG_FMT("Added map channel to session: session_name=`{}`, domain={}, map_channel={}",
+		session->name,
+		domain_type,
+		added);
 }
 
 namespace {

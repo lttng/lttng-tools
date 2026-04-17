@@ -23,6 +23,7 @@
 
 struct notification_thread_handle;
 struct lttng_dynamic_buffer;
+struct lttcomm_session_msg;
 
 /*
  * A callback (and associated user data) that should be run after a command
@@ -55,6 +56,10 @@ int cmd_disable_channel(const ltt_session::locked_ref& session,
 			enum lttng_domain_type domain,
 			char *channel_name);
 int cmd_enable_channel(struct command_ctx *cmd_ctx, ltt_session::locked_ref& session, int sock);
+
+/* Map channel commands */
+void cmd_add_map_channel(const ltt_session::locked_ref& session,
+			 const struct lttcomm_session_msg& lsm);
 
 /* Process attribute tracker commands */
 enum lttng_tracking_policy

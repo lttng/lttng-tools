@@ -1590,6 +1590,12 @@ skip_domain:
 		ret = cmd_enable_channel(cmd_ctx, *target_session, *sock);
 		break;
 	}
+	case LTTCOMM_SESSIOND_COMMAND_ADD_MAP_CHANNEL:
+	{
+		cmd_add_map_channel(*target_session, cmd_ctx->lsm);
+		ret = LTTNG_OK;
+		break;
+	}
 	case LTTCOMM_SESSIOND_COMMAND_PROCESS_ATTR_TRACKER_ADD_INCLUDE_VALUE:
 	case LTTCOMM_SESSIOND_COMMAND_PROCESS_ATTR_TRACKER_REMOVE_INCLUDE_VALUE:
 	{
