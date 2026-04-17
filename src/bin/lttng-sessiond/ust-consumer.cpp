@@ -44,14 +44,14 @@ static int ask_channel_creation(lsu::app_session *ua_sess,
 				struct consumer_output *consumer,
 				struct consumer_socket *socket,
 				lsu::trace_class *trace_class,
+				std::uint32_t chan_id,
 				struct lttng_trace_chunk *trace_chunk,
 				enum lttng_trace_format trace_format,
 				unsigned int output_traces,
 				unsigned int live_timer_interval)
 {
 	int ret, output;
-	uint32_t chan_id;
-	uint64_t key, trace_class_channel_key;
+	uint64_t key;
 	struct lttcomm_consumer_msg msg;
 	char shm_path[PATH_MAX] = "";
 	char root_shm_path[PATH_MAX] = "";
@@ -94,31 +94,10 @@ static int ask_channel_creation(lsu::app_session *ua_sess,
 		}
 	}
 
-	/* Depending on the buffer type, a different channel key is used. */
-	if (ua_sess->buffer_type == LTTNG_BUFFER_PER_UID) {
-		trace_class_channel_key = ua_chan->trace_class_stream_class_handle;
-	} else {
-		trace_class_channel_key = ua_chan->key;
-	}
-
 	const auto is_metadata = ua_chan->channel_config.channel_type() ==
 		lsc::channel_configuration::channel_type_t::METADATA;
 
-	if (is_metadata) {
-		chan_id = -1U;
-		/*
-		 * Metadata channels shm_path (buffers) are handled within
-		 * session daemon. Consumer daemon should not try to create
-		 * those buffer files.
-		 */
-	} else {
-		{
-			auto locked_trace_class = trace_class->lock();
-			auto& trace_class_channel = trace_class->channel(trace_class_channel_key);
-
-			chan_id = trace_class_channel.id;
-		}
-
+	if (!is_metadata) {
 		if (!ua_sess->shm_path.empty()) {
 			const auto shm_path_str =
 				ua_sess->shm_path + "/" + ua_chan->channel_config.name + "_";
@@ -302,12 +281,40 @@ int ust_consumer_ask_channel(lsu::app_session *ua_sess,
 		goto error;
 	}
 
+	/*
+	 * Extract the channel id from the trace class before acquiring
+	 * the consumer socket lock to follow the established convention
+	 * (see the circular-dependency note in ust_app_push_metadata()):
+	 * the trace class lock must never be acquired while a consumer
+	 * socket lock is held.
+	 */
+	std::uint32_t chan_id;
+	{
+		const auto is_metadata = ua_chan->channel_config.channel_type() ==
+			lsc::channel_configuration::channel_type_t::METADATA;
+
+		if (is_metadata) {
+			chan_id = -1U;
+		} else {
+			const auto trace_class_channel_key = ua_sess->buffer_type ==
+					LTTNG_BUFFER_PER_UID ?
+				ua_chan->trace_class_stream_class_handle :
+				ua_chan->key;
+			auto locked_trace_class = trace_class->lock();
+			auto& trace_class_channel =
+				locked_trace_class->channel(trace_class_channel_key);
+
+			chan_id = trace_class_channel.id;
+		}
+	}
+
 	pthread_mutex_lock(socket->lock);
 	ret = ask_channel_creation(ua_sess,
 				   ua_chan,
 				   consumer,
 				   socket,
 				   trace_class,
+				   chan_id,
 				   trace_chunk,
 				   trace_format,
 				   output_traces,
