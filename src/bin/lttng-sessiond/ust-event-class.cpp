@@ -32,7 +32,8 @@ lsu::event_class::event_class(unsigned int in_id,
 	session_objd{ in_session_objd },
 	channel_objd{ in_channel_objd },
 	signature{ std::move(in_signature) },
-	_metadata_dumped{ false }
+	_metadata_dumped{ false },
+	_node{}
 {
 	cds_lfht_node_init(&_node);
 	_head = {};
