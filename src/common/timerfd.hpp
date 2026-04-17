@@ -19,7 +19,7 @@ namespace lttng {
 class timerfd : public stream_descriptor {
 public:
 	/* Throws a posix_error exception on failure to create the underlying resource. */
-	explicit timerfd(int flags = ::TFD_CLOEXEC);
+	explicit timerfd(int flags = TFD_CLOEXEC);
 	timerfd(const timerfd&) = delete;
 	timerfd& operator=(const timerfd&) = delete;
 	timerfd(timerfd&&) = delete;

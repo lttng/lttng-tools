@@ -58,7 +58,7 @@ lttng::poller::event_type from_epoll_events(std::uint32_t epoll_events)
 
 lttng::poller::poller() :
 	_epoll_fd([]() {
-		const auto epoll_fd = ::epoll_create1(::EPOLL_CLOEXEC);
+		const auto epoll_fd = ::epoll_create1(EPOLL_CLOEXEC);
 
 		if (epoll_fd < 0) {
 			LTTNG_THROW_POSIX("Failed to create epoll fd", errno);
