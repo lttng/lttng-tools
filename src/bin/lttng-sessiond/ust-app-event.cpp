@@ -308,7 +308,12 @@ struct lttng_ust_abi_event make_ust_abi_event_from_event_rule(const struct lttng
 	}
 
 	ust_event.instrumentation = LTTNG_UST_ABI_TRACEPOINT;
-	lttng_strncpy(ust_event.name, pattern, sizeof(ust_event.name));
+	if (lttng_strncpy(ust_event.name, pattern, sizeof(ust_event.name)) < 0) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+			fmt::format("Event name too long: name_length={}, max_length={}",
+				    std::strlen(pattern),
+				    sizeof(ust_event.name) - 1));
+	}
 	ust_event.loglevel_type = ust_loglevel_type;
 	ust_event.loglevel = loglevel;
 
