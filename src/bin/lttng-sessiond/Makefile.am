@@ -74,6 +74,7 @@ liblttng_sessiond_common_la_SOURCES = utils.cpp utils.hpp \
                        channel-configuration.hpp \
                        channel-memory-types.hpp \
                        recording-channel-configuration.hpp recording-channel-configuration.cpp \
+                       map-channel-configuration.hpp \
                        context-configuration.hpp context-configuration.cpp \
                        event-rule-configuration.hpp event-rule-configuration.cpp \
                        domain.hpp domain.cpp \

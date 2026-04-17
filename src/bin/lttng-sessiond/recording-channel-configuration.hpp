@@ -81,10 +81,7 @@ public:
 		ON_DEMAND,
 	};
 
-	enum class ownership_model_t {
-		PER_PID,
-		PER_UID,
-	};
+	using ownership_model_t = lttng::sessiond::config::ownership_model_t;
 
 	struct consumption_blocking_policy {
 		enum class mode {
@@ -327,30 +324,6 @@ struct formatter<lttng::sessiond::config::recording_channel_configuration>
 			channel.trace_file_count_limit,
 			channel.consumption_blocking_policy_.mode_,
 			channel.event_rules.size());
-	}
-};
-template <>
-struct formatter<lttng::sessiond::config::recording_channel_configuration::ownership_model_t>
-	: formatter<std::string> {
-	template <typename FormatContextType>
-	typename FormatContextType::iterator
-	format(lttng::sessiond::config::recording_channel_configuration::ownership_model_t model,
-	       FormatContextType& ctx) const
-	{
-		auto name = "unknown";
-
-		switch (model) {
-		case lttng::sessiond::config::recording_channel_configuration::ownership_model_t::
-			PER_PID:
-			name = "per-pid";
-			break;
-		case lttng::sessiond::config::recording_channel_configuration::ownership_model_t::
-			PER_UID:
-			name = "per-uid";
-			break;
-		}
-
-		return format_to(ctx.out(), name);
 	}
 };
 } /* namespace fmt */

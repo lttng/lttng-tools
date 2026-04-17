@@ -20,6 +20,15 @@ namespace sessiond {
 namespace config {
 
 /*
+ * Ownership model for a channel's buffers. Shared across channel kinds
+ * (recording, map) that can be owned per-process or per-user.
+ */
+enum class ownership_model_t {
+	PER_PID,
+	PER_UID,
+};
+
+/*
  * Base class for channel configurations. Holds the buffer parameters common to
  * both metadata and event recording channels — the fields needed to create a
  * channel against the tracer (kernel or user space) and the consumer daemon.
@@ -173,6 +182,27 @@ struct formatter<lttng::sessiond::config::channel_configuration::buffer_consumpt
 		case lttng::sessiond::config::channel_configuration::buffer_consumption_backend_t::
 			SPLICE:
 			name = "SPLICE";
+			break;
+		}
+
+		return format_to(ctx.out(), name);
+	}
+};
+
+template <>
+struct formatter<lttng::sessiond::config::ownership_model_t> : formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator
+	format(lttng::sessiond::config::ownership_model_t model, FormatContextType& ctx) const
+	{
+		auto name = "unknown";
+
+		switch (model) {
+		case lttng::sessiond::config::ownership_model_t::PER_PID:
+			name = "per-pid";
+			break;
+		case lttng::sessiond::config::ownership_model_t::PER_UID:
+			name = "per-uid";
 			break;
 		}
 
