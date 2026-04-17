@@ -60,7 +60,7 @@ Main components:
   - `lib/lttng-ctl/`: liblttng-ctl.
   - `common/`: Common code and utilities.
     - `error.hpp`: Error management API. Use the `*_FMT()` macros in new code.
-    - `format.hpp`: Offers `lttng::format()` which works like `std::format()`, but for C++11. Always use `lttng::format()` to format strings in new code.
+    - `format.hpp`: Offers fmtlib utils, which works like `std::format()`, but for C++11. Always use `fmt::format()` to format strings in new code. Use lttng::format() when string formatting must not throw.
     - `make-unique.hpp`: Offers `lttng::make_unique()` which works like `std::make_unique`, but for C++11. Always use `lttng::make_unique()` to create unique pointers in new code.
     - `scope-exit.hpp`: Offers `lttng::scope_exit` which works like `std::experimental::scope_exit`.
   - `vendor`: Third-party vendored code. Do _not_ edit those or add anything here.
@@ -119,7 +119,7 @@ Do _not_ use C++14 or later: always use C++11.
 
 Consider the following alternatives:
 
-- Instead of `std::format()`, use `lttng::format()` from `<common/format.hpp>`.
+- Instead of `std::format()`, use `fmt::format()` from `<common/format.hpp>`.
 - Instead of `std::optional`, use `nonstd::optional` from `<vendor/optional.hpp>`.
 - Instead of `std::make_unique()`, use `lttng::make_unique()` from `<common/make-unique.hpp>`.
 - Instead of `std::experimental::scope_exit`, use `lttng::scope_exit` from `<common/scope-exit.hpp>`.
