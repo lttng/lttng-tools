@@ -80,9 +80,16 @@ void process_commands(lttng::command_queue<lhh::command>& queue,
 						tracked_stream_group.session_id);
 
 					try {
-						auto list_lock = ls::lock_session_list();
-						auto session = ltt_session::find_locked_session(
-							tracked_stream_group.session_id);
+						auto session = [&]() {
+							/*
+							 * The session list lock isn't needed beyond
+							 * the look-up.
+							 */
+							auto list_lock = ls::lock_session_list();
+
+							return ltt_session::find_locked_session(
+								tracked_stream_group.session_id);
+						}();
 
 						session->get_kernel_orchestrator()
 							.handle_stream_group_hotplug(
