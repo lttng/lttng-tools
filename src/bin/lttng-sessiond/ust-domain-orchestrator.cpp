@@ -1185,6 +1185,8 @@ owned_locked_trace_class get_locked_trace_class(const ls::ust::app_session::iden
 
 ls::ust::app_session& ls::ust::domain_orchestrator::_find_or_create_app_session(ust::app& app)
 {
+	ASSERT_LOCKED(_session._lock);
+
 	health_code_update();
 	const auto update_health_code_on_exit =
 		lttng::make_scope_exit([]() noexcept { health_code_update(); });
