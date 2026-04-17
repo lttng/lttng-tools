@@ -2109,6 +2109,8 @@ void ls::ust::domain_orchestrator::_start_app_trace(ust::app *app)
 {
 	ust::app_session *ua_sess;
 
+	ASSERT_LOCKED(_session._lock);
+
 	DBG_FMT("UST domain orchestrator starting app trace: session_name=`{}`, session_id={}, app={}",
 		_session.name,
 		_session.id,
@@ -2169,6 +2171,8 @@ void ls::ust::domain_orchestrator::_start_app_trace(ust::app *app)
 void ls::ust::domain_orchestrator::_stop_app_trace(ust::app *app)
 {
 	ust::app_session *ua_sess;
+
+	ASSERT_LOCKED(_session._lock);
 
 	DBG_FMT("UST domain orchestrator stopping app trace: session_name=`{}`, session_id={}, app={}",
 		_session.name,
