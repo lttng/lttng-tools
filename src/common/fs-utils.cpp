@@ -80,7 +80,7 @@ bool fd_supports_madv_remove(int fd)
  * the file-system at `shm_path` location is unmounted and mounted with another
  * type that handles the `MADV_REMOVE` advice differently.
  */
-bool lttng::utils::fs_supports_madv_remove(const char *shm_path)
+bool lttng::utils::fs_supports_madv_remove(const char *shm_path) noexcept
 {
 	static std::unordered_map<std::string, bool> cache = {};
 	static nonstd::optional<bool> default_cache;

@@ -10,7 +10,7 @@
 namespace lttng {
 namespace utils {
 
-bool fs_supports_madv_remove(const char *shm_path = nullptr);
+bool fs_supports_madv_remove(const char *shm_path = nullptr) noexcept;
 
 } /* namespace utils */
 } /* namespace lttng */
