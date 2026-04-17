@@ -291,16 +291,16 @@ Example:
 ```
 Fix: relayd: missing thingy in the doodad folder on error
 
-Observed issue
-==============
+OBSERVED ISSUE
+━━━━━━━━━━━━━━
 After a communication error, the relay daemon will not produce
 a thingy in the doodad folder. This results in the knickknack
 baring the foo.
 
 Steps to reproduce (list of commands or narrative description).
 
-Cause
-=====
+CAUSE
+━━━━━
 The thingy_do_the_doodad() callback is only invoked when
 the thread responsible for receiving messages and dispatching
 them to the correct actors encounters an emoji.
@@ -308,14 +308,14 @@ them to the correct actors encounters an emoji.
 However, an emoji is not guaranteed to be present in the ELF
 section header [1].
 
-Solution
-========
+SOLUTION
+━━━━━━━━
 Flushing the doodad on every reception of a thingo ensures that
 the thingy is present in the doodad folder even if a communication
 error occurs.
 
-Known drawbacks
-===============
+KNOWN DRAWBACKS
+━━━━━━━━━━━━━━━
 Flushing the doodad too often may spam the widget and result in
 degradation of the gizmo. This doesn't matter right now since
 it happens exactly once per blue moon.
@@ -323,7 +323,7 @@ it happens exactly once per blue moon.
 If this becomes a serious issue, we could machine learn the MVP
 through the big O terminal.
 
-References
-==========
+REFERENCES
+━━━━━━━━━━
 [1] https://www.thedocs.com/elf/proving-my-point-unambiguously.aspx
 ```
