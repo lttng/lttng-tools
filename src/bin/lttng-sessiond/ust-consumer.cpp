@@ -347,6 +347,22 @@ int ust_consumer_get_channel(struct consumer_socket *socket, lsu::app_channel *u
 	msg.cmd_type = LTTNG_CONSUMER_GET_CHANNEL;
 	msg.u.get_channel.key = ua_chan->key;
 
+	/*
+	 * Pre-allocate the streams vector so push_back() below is
+	 * effectively noexcept (std::unique_ptr move is noexcept). This
+	 * must happen outside the consumer socket lock: the only way an
+	 * app_stream destructor could run while that lock is held is if
+	 * push_back() reallocated and threw, and ~app_stream acquires
+	 * the app's command socket lock. That would reverse the lock
+	 * order used in other places (see the circular-dependency note in
+	 * ust_app_push_metadata()).
+	 */
+	try {
+		ua_chan->streams.reserve(ua_chan->expected_stream_count);
+	} catch (const std::bad_alloc&) {
+		return -ENOMEM;
+	}
+
 	pthread_mutex_lock(socket->lock);
 	health_code_update();
 
@@ -376,6 +392,15 @@ int ust_consumer_get_channel(struct consumer_socket *socket, lsu::app_channel *u
 		/* Stream object is populated by this call if successful. */
 		ret = lttng_ust_ctl_recv_stream_from_consumer(*socket->fd_ptr, &stream->obj);
 		if (ret < 0) {
+			/*
+			 * lttng_ust_ctl_recv_stream_from_consumer() only
+			 * populates ->obj on success, but defensively clear
+			 * it so that ~app_stream remains a no-op in error
+			 * paths -- acquiring the app command socket lock
+			 * while socket->lock is held would reverse the
+			 * lock order used elsewhere.
+			 */
+			stream->obj = nullptr;
 			if (ret == -LTTNG_UST_ERR_NOENT) {
 				DBG3("UST app consumer has no more stream available");
 				break;
@@ -390,7 +415,6 @@ int ust_consumer_get_channel(struct consumer_socket *socket, lsu::app_channel *u
 			goto error;
 		}
 
-		/* Order matters: push_back preserves the CPU index ordering. */
 		ua_chan->streams.push_back(std::move(stream));
 
 		DBG2("UST app stream %zu received successfully", ua_chan->streams.size());
