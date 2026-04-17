@@ -192,7 +192,15 @@ agent_enable(struct agent *agt,
 
 	/* If the event was created prior to the enable, add it to the domain. */
 	if (created) {
-		agent_add_event(aevent, agt);
+		try {
+			agent_add_event(aevent, agt);
+		} catch (const std::exception& ex) {
+			ERR_FMT("Failed to add agent event to domain, destroying it: event_name=`{}`, error={}",
+				event->name,
+				ex.what());
+			agent_destroy_event(aevent);
+			throw;
+		}
 	}
 
 	ret = LTTNG_OK;
