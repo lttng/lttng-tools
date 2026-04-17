@@ -280,29 +280,52 @@ ls::ust::domain_orchestrator::~domain_orchestrator()
 
 	/* Unregister all per-UID trace classes from the global index. */
 	for (const auto& entry : _per_uid_trace_classes) {
-		the_trace_class_index->remove_per_uid(
-			_session.id, static_cast<std::uint32_t>(entry.first.abi), entry.first.uid);
+		try {
+			the_trace_class_index->remove_per_uid(
+				_session.id,
+				static_cast<std::uint32_t>(entry.first.abi),
+				entry.first.uid);
+		} catch (const std::exception& ex) {
+			ERR_FMT("Failed to remove per-UID trace class from the global index during orchestrator destruction: session_name=`{}`, uid={}, error='{}'",
+				_session.name,
+				entry.first.uid,
+				ex.what());
+		}
 	}
 
 	/* Unregister any remaining per-PID trace classes from the global index. */
 	for (const auto& entry : _per_pid_app_session_ids) {
-		the_trace_class_index->remove_per_pid(entry.second);
+		try {
+			the_trace_class_index->remove_per_pid(entry.second);
+		} catch (const std::exception& ex) {
+			ERR_FMT("Failed to remove per-PID trace class from the global index during orchestrator destruction: session_name=`{}`, app_session_id={}, error='{}'",
+				_session.name,
+				entry.second,
+				ex.what());
+		}
 	}
 
 	/* Destroy all agents. */
 	if (_agents) {
-		const lttng::urcu::read_lock_guard read_lock;
+		try {
+			const lttng::urcu::read_lock_guard read_lock;
 
-		for (auto *agt :
-		     lttng::urcu::lfht_iteration_adapter<agent, decltype(agent::node), &agent::node>(
-			     *_agents->ht)) {
-			const int ret = cds_lfht_del(_agents->ht, &agt->node.node);
+			for (auto *agt :
+			     lttng::urcu::lfht_iteration_adapter<agent,
+								 decltype(agent::node),
+								 &agent::node>(*_agents->ht)) {
+				const int ret = cds_lfht_del(_agents->ht, &agt->node.node);
 
-			LTTNG_ASSERT(!ret);
-			agent_destroy(agt);
+				LTTNG_ASSERT(!ret);
+				agent_destroy(agt);
+			}
+
+			lttng_ht_destroy(_agents);
+		} catch (const std::exception& ex) {
+			ERR_FMT("Unexpected exception while destroying agents during orchestrator destruction: session_name=`{}`, error='{}'",
+				_session.name,
+				ex.what());
 		}
-
-		lttng_ht_destroy(_agents);
 	}
 }
 
