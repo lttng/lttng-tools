@@ -2,79 +2,65 @@
 #
 ## SPDX-License-Identifier: GPL-2.0-only
 ##
-## This target generates an include file that contains the git version
-## string of the current branch, it must be continuously updated when
-## we build in the git repo and shipped in dist tarballs to reflect the
-## status of the tree when it was generated. If the tree is clean and
-## the current commit is tag a starting with "v", consider this a
-## release version and set an empty git version.
+## These targets generate two include files:
 ##
-## Here is what the inline script does:
+##   - "version-git.i" holds the GIT_VERSION define ("git describe
+##     --tags --dirty" output) which flips every time the working tree
+##     becomes dirty or clean. Only "version-git.cpp" includes this file
+##     so that a single translation unit recompiles on change.
 ##
-## First, delete any stale "version.i.tmp" file.
+##   - "version.i" holds the EXTRA_VERSION_* defines which rarely
+##     change. It is included by "version.hpp" and consumed wherever
+##     the extra version info is needed.
 ##
-## If "bootstrap" and ".git" exists in the top source directory and the git
-## executable is available, get the current git version string in the form:
+## Both files are regenerated on every make (via .PHONY) but the final
+## "mv" only happens when their content actually changes, so dependent
+## TUs aren't invalidated unless the value they embed has moved.
 ##
-##  "latest_tag"(-"number_of_commits_on_top")(-g"latest_commit_hash")(-dirty)
-##
-## And store it in "version.i.tmp", if the current commit is tagged, the tag
-## starts with "v" and the tree is clean, consider this a release version and
-## overwrite the git version with an empty string in "version.i.tmp".
-##
-## If we don't have a "version.i.tmp" nor a "version.i", generate an empty
-## string as a failover. If a "version.i" is present, for example when building
-## from a distribution tarball, get the git_version using grep.
-##
-## Fetch the EXTRA_VERSION_NAME define from "version/extra_version_name" and output it
-## to "version.i.tmp".
-##
-## Fetch the EXTRA_VERSION_DESCRIPTION define from "version/extra_version_description",
-## sanitize and format it with a sed script to replace all non-alpha-numeric values
-## with "-" and join all lines by replacing "\n" with litteral string c-style "\n\t" and
-## output it to "version.i.tmp".
-##
-## Repeat the same logic for the "version/extra_patches" directory.
-## Data fetched from "version/extra_patches" must be sanitized and
-## formatted.
-## The data is fetched using "ls" with an ignore pattern for the README file.
-## The sanitize step uses sed with a script to replace all
-## non-alpha-numeric values, except " " (space), to "-".
-## The formatting step uses sed with a script to join all lines
-## by replacing "\n" with litteral string c-style "\n\t".
-##
-## If we don't have a "version.i" or we have both files (version.i, version.i.tmp)
-## and they are different, copy "version.i.tmp" over "version.i".
-## This way the dependent targets are only rebuilt when the git version
-## string or either one of extra version string change.
+## Both files are shipped in the dist tarball so that release builds
+## without a ".git" directory still have valid values. The inline
+## scripts fall back to parsing the shipped file when git isn't
+## available.
 ##
 version_verbose = $(version_verbose_@AM_V@)
 version_verbose_ = $(version_verbose_@AM_DEFAULT_V@)
 version_verbose_0 = @echo "  GEN       " $@;
+
+version-git.i:
+	$(version_verbose)rm -f version-git.i.tmp; \
+	if (test ! -f version-git.i && test -f "$(top_srcdir)/include/version-git.i"); then \
+		cp "$(top_srcdir)/include/version-git.i" version-git.i; \
+	fi; \
+	if (test -r "$(top_srcdir)/bootstrap" && test -r "$(top_srcdir)/.git") && \
+			test -x "`which git 2>&1;true`"; then \
+		GIT_VERSION_STR="`cd "$(top_srcdir)" && git describe --tags --dirty`"; \
+		GIT_CURRENT_TAG="`cd "$(top_srcdir)" && git describe --tags --exact-match --match="v[0-9]*" HEAD 2> /dev/null`"; \
+		echo "#define GIT_VERSION \"$$GIT_VERSION_STR\"" > version-git.i.tmp; \
+		if ! $(GREP) -- "-dirty" version-git.i.tmp > /dev/null && \
+				test "x$$GIT_CURRENT_TAG" != "x"; then \
+			echo "#define GIT_VERSION \"\"" > version-git.i.tmp; \
+		fi; \
+	fi; \
+	if test ! -f version-git.i.tmp; then \
+		if test -f version-git.i; then \
+			$(GREP) "^#define \bGIT_VERSION\b.*" version-git.i > version-git.i.tmp; \
+		else \
+			echo '#define GIT_VERSION ""' > version-git.i.tmp; \
+		fi; \
+	fi; \
+	if test ! -f version-git.i || \
+			test x"`cat version-git.i.tmp`" != x"`cat version-git.i`"; then \
+		mv version-git.i.tmp version-git.i; \
+	fi; \
+	rm -f version-git.i.tmp; \
+	true
 
 version.i:
 	$(version_verbose)rm -f version.i.tmp; \
 	if (test ! -f version.i && test -f "$(top_srcdir)/include/version.i"); then \
 		cp "$(top_srcdir)/include/version.i" version.i; \
 	fi; \
-	if (test -r "$(top_srcdir)/bootstrap" && test -r "$(top_srcdir)/.git") && \
-			test -x "`which git 2>&1;true`"; then \
-		GIT_VERSION_STR="`cd "$(top_srcdir)" && git describe --tags --dirty`"; \
-		GIT_CURRENT_TAG="`cd "$(top_srcdir)" && git describe --tags --exact-match --match="v[0-9]*" HEAD 2> /dev/null`"; \
-		echo "#define GIT_VERSION \"$$GIT_VERSION_STR\"" > version.i.tmp; \
-		if ! $(GREP) -- "-dirty" version.i.tmp > /dev/null && \
-				test "x$$GIT_CURRENT_TAG" != "x"; then \
-			echo "#define GIT_VERSION \"\"" > version.i.tmp; \
-		fi; \
-	fi; \
-	if test ! -f version.i.tmp; then \
-		if test -f version.i; then \
-			$(GREP) "^#define \bGIT_VERSION\b.*" version.i > version.i.tmp; \
-		else \
-			echo '#define GIT_VERSION ""' > version.i.tmp; \
-		fi; \
-	fi; \
-	echo "#define EXTRA_VERSION_NAME \"`$(SED) -n '1p' "$(top_srcdir)/version/extra_version_name" 2> /dev/null`\"" >> version.i.tmp; \
+	echo "#define EXTRA_VERSION_NAME \"`$(SED) -n '1p' "$(top_srcdir)/version/extra_version_name" 2> /dev/null`\"" > version.i.tmp; \
 	echo "#define EXTRA_VERSION_DESCRIPTION \"`$(SED) -E ':a ; N ; $$!ba ; s/[^a-zA-Z0-9 \n\t\.,]/-/g ; s/\r{0,1}\n/\\\n\\\t/g' "$(top_srcdir)/version/extra_version_description" 2> /dev/null`\"" >> version.i.tmp; \
 	echo "#define EXTRA_VERSION_PATCHES \"`ls -1 "$(top_srcdir)/version/extra_patches" | $(GREP) -v '^README' | $(SED) -E ':a ; N ; $$!ba ; s/[^a-zA-Z0-9 \n\t\.]/-/g ; s/\r{0,1}\n/\\\n\\\t/g' 2> /dev/null`\"" >> version.i.tmp; \
 	if test ! -f version.i || \
@@ -85,18 +71,18 @@ version.i:
 	true
 
 ##
-## version.i is defined as a .PHONY target even if it's a real file,
-## we want the target to be re-run on every make.
+## version.i and version-git.i are defined as .PHONY targets even if
+## they are real files: we want the targets to be re-run on every make.
 ##
-.PHONY: version.i
+.PHONY: version.i version-git.i
 
-CLEANFILES = version.i.tmp
+CLEANFILES = version.i.tmp version-git.i.tmp
 
 ##
-## Only clean "version.i" on dist-clean, we need to keep it on regular
-## clean when it's part of a dist tarball.
+## Only clean the generated files on dist-clean; we need to keep them on
+## regular clean when they are part of a dist tarball.
 ##
-DISTCLEANFILES = version.i
+DISTCLEANFILES = version.i version-git.i
 
 lttnginclude_HEADERS = \
 	lttng/channel.h \
@@ -218,4 +204,6 @@ noinst_HEADERS = \
 	lttng/trigger/trigger-internal.hpp \
 	lttng/userspace-probe-internal.hpp \
 	version.hpp \
-	version.i
+	version.i \
+	version-git.hpp \
+	version-git.i

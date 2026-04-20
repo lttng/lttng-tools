@@ -7,6 +7,7 @@
 
 #include "sessiond-config.hpp"
 #include "ust-abi-filenames.hpp"
+#include "version-git.hpp"
 #include "version.hpp"
 
 #include <common/compat/errno.hpp>
@@ -537,10 +538,12 @@ int sessiond_config_resolve_paths(struct sessiond_config *config)
 
 void sessiond_config_log(struct sessiond_config *config)
 {
+	const char *const git_version = lttng::get_git_version();
+
 	DBG_NO_LOC("[sessiond configuration]");
 	DBG_NO_LOC("\tversion                        %s", VERSION);
-	if (GIT_VERSION[0] != '\0') {
-		DBG_NO_LOC("\tgit version                    %s", GIT_VERSION);
+	if (git_version[0] != '\0') {
+		DBG_NO_LOC("\tgit version                    %s", git_version);
 	}
 	if (EXTRA_VERSION_NAME[0] != '\0') {
 		DBG_NO_LOC("\textra version name             %s", EXTRA_VERSION_NAME);

@@ -42,7 +42,8 @@ lttng_relayd_LDADD = $(URCU_LIBS) \
 		$(top_builddir)/src/common/libhealth.la \
 		$(top_builddir)/src/common/libsystemd-utils.la \
 		$(top_builddir)/src/common/libtestpoint.la \
-		$(top_builddir)/src/common/libtracepoints.la
+		$(top_builddir)/src/common/libtracepoints.la \
+		$(top_builddir)/src/common/libversion-git.la
 
 if INSTRUMENT_LTTNG_RELAYD
 lttng_relayd_LDFLAGS = $(AM_LDFLAGS) $(DL_LIBS)

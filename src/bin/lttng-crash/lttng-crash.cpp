@@ -28,6 +28,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <version-git.hpp>
 #include <version.hpp>
 
 #define COPY_BUFLEN	      4096
@@ -256,10 +257,13 @@ static void usage()
 
 static void version(FILE *ofp)
 {
+	const char *const git_version = lttng::get_git_version();
+
 	fprintf(ofp,
-		"%s (LTTng Crash Trace Viewer) " VERSION " - " VERSION_NAME "%s%s\n",
+		"%s (LTTng Crash Trace Viewer) " VERSION " - " VERSION_NAME "%s%s%s\n",
 		progname,
-		GIT_VERSION[0] == '\0' ? "" : " - " GIT_VERSION,
+		git_version[0] == '\0' ? "" : " - ",
+		git_version,
 		EXTRA_VERSION_NAME[0] == '\0' ? "" : " - " EXTRA_VERSION_NAME);
 }
 

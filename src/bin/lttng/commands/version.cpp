@@ -7,6 +7,7 @@
 
 #define _LGPL_SOURCE
 #include "../command.hpp"
+#include "version-git.hpp"
 #include "version.hpp"
 
 #include <common/mi-lttng.hpp>
@@ -143,7 +144,7 @@ static void create_version(struct mi_lttng_version_data *version)
 	version->version_major = VERSION_MAJOR;
 	version->version_minor = VERSION_MINOR;
 	version->version_patchlevel = VERSION_PATCHLEVEL;
-	strncpy(version->version_commit, GIT_VERSION, NAME_MAX);
+	strncpy(version->version_commit, lttng::get_git_version(), NAME_MAX);
 	strncpy(version->version_name, VERSION_NAME, NAME_MAX);
 	strncpy(version->package_url, PACKAGE_URL, NAME_MAX);
 }
@@ -238,10 +239,12 @@ int cmd_version(int argc, const char **argv)
 	if (lttng_opt_mi) {
 		ret = print_mi();
 	} else {
+		const char *const git_version = lttng::get_git_version();
+
 		lttng::mint_print("lttng version [!]{}[/] - [*b!]{}[/]", VERSION, VERSION_NAME);
 
-		if (GIT_VERSION[0] != '\0') {
-			lttng::mint_print(" - [*y]{}[/]", GIT_VERSION);
+		if (git_version[0] != '\0') {
+			lttng::mint_print(" - [*y]{}[/]", git_version);
 		}
 
 		const auto wrapped_description = wrap_text(VERSION_DESCRIPTION, get_wrap_width());

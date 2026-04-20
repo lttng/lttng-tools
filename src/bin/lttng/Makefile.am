@@ -59,6 +59,7 @@ lttng_LDADD = $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
 			$(top_builddir)/src/common/libfilter.la \
 			$(top_builddir)/src/common/libargpar-utils.la \
 			$(top_builddir)/src/common/libtracepoints.la \
+			$(top_builddir)/src/common/libversion-git.la \
 			$(top_builddir)/src/vendor/argpar/libargpar.la \
 			$(POPT_LIBS)
 

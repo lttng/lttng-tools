@@ -145,7 +145,8 @@ lttng_sessiond_SOURCES = lttng-sessiond.hpp main.cpp
 
 lttng_sessiond_LDFLAGS = -rdynamic
 
-lttng_sessiond_LDADD = liblttng-sessiond-common.la
+lttng_sessiond_LDADD = liblttng-sessiond-common.la \
+		$(top_builddir)/src/common/libversion-git.la
 
 if INSTRUMENT_LTTNG_SESSIOND
 lttng_sessiond_LDFLAGS += $(AM_LDFLAGS) $(DL_LIBS)

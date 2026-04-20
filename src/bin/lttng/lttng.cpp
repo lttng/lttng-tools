@@ -17,6 +17,7 @@
 
 #define _LGPL_SOURCE
 #include "command.hpp"
+#include "version-git.hpp"
 #include "version.hpp"
 
 #include <common/compat/getenv.hpp>
@@ -130,10 +131,13 @@ static struct cmd_struct commands[] = {
 
 static void version(FILE *ofp)
 {
+	const char *const git_version = lttng::get_git_version();
+
 	fprintf(ofp,
-		"%s (LTTng Trace Control) " VERSION " - " VERSION_NAME "%s%s\n",
+		"%s (LTTng Trace Control) " VERSION " - " VERSION_NAME "%s%s%s\n",
 		progname,
-		GIT_VERSION[0] == '\0' ? "" : " - " GIT_VERSION,
+		git_version[0] == '\0' ? "" : " - ",
+		git_version,
 		EXTRA_VERSION_NAME[0] == '\0' ? "" : " - " EXTRA_VERSION_NAME);
 }
 

@@ -213,6 +213,8 @@ compile_commands.json
 
 /include/version.i
 /include/version.i.tmp
+/include/version-git.i
+/include/version-git.i.tmp
 
 /version
 

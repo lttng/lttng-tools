@@ -502,6 +502,13 @@ libsystemd_utils_la_SOURCES = \
 	systemd-utils.cpp \
 	systemd-utils.hpp
 
+# libversion-git: isolates the GIT_VERSION string so that only this
+# single translation unit (and the binaries that link it) are rebuilt
+# when the working tree's dirty state flips.
+noinst_LTLIBRARIES += libversion-git.la
+libversion_git_la_SOURCES = \
+	version-git.cpp
+
 noinst_PROGRAMS = filter-grammar-test
 filter_grammar_test_SOURCES = filter-grammar-test.cpp
 filter_grammar_test_LDADD = libcommon-gpl.la

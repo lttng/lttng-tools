@@ -24,6 +24,7 @@
 #include "testpoint.hpp"
 #include "tracefile-array.hpp"
 #include "utils.hpp"
+#include "version-git.hpp"
 #include "version.hpp"
 #include "viewer-session.hpp"
 #include "viewer-stream.hpp"
@@ -315,8 +316,11 @@ static void print_version()
 
 static void relayd_config_log()
 {
-	DBG("LTTng-relayd " VERSION " - " VERSION_NAME "%s%s",
-	    GIT_VERSION[0] == '\0' ? "" : " - " GIT_VERSION,
+	const char *const git_version = lttng::get_git_version();
+
+	DBG("LTTng-relayd " VERSION " - " VERSION_NAME "%s%s%s",
+	    git_version[0] == '\0' ? "" : " - ",
+	    git_version,
 	    EXTRA_VERSION_NAME[0] == '\0' ? "" : " - " EXTRA_VERSION_NAME);
 	if (EXTRA_VERSION_DESCRIPTION[0] != '\0') {
 		DBG("LTTng-relayd extra version description:\n\t" EXTRA_VERSION_DESCRIPTION "\n");
