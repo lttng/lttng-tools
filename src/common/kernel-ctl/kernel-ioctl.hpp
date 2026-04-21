@@ -173,7 +173,7 @@
 #define LTTNG_KERNEL_ABI_CAPTURE _IO(0xF6, 0xB8)
 
 /* Counter file descriptor ioctl */
-#define LTTNG_KERNEL_ABI_COUNTER_READ IOWR(0xF6, 0xC0, struct lttng_kernel_abi_counter_read)
+#define LTTNG_KERNEL_ABI_COUNTER_READ _IOWR(0xF6, 0xC0, struct lttng_kernel_abi_counter_read)
 #define LTTNG_KERNEL_ABI_COUNTER_AGGREGATE \
 	_IOWR(0xF6, 0xC1, struct lttng_kernel_abi_counter_aggregate)
 #define LTTNG_KERNEL_ABI_COUNTER_CLEAR		    _IOW(0xF6, 0xC2, struct lttng_kernel_abi_counter_clear)
