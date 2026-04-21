@@ -82,6 +82,8 @@ liblttng_sessiond_common_la_SOURCES = utils.cpp utils.hpp \
                        process-attribute-tracker.hpp \
                        domain-orchestrator.hpp \
                        stream-group.hpp \
+                       map-group.hpp \
+                       modules-map-group.hpp \
                        lttng-channel-from-config.hpp lttng-channel-from-config.cpp \
                        modules-domain-orchestrator.hpp modules-domain-orchestrator.cpp \
                        commands/get-channel-memory-usage.cpp commands/get-channel-memory-usage.hpp \
@@ -106,6 +108,7 @@ liblttng_sessiond_common_la_SOURCES += trace-ust.cpp ust-registry.cpp ust-app.cp
 			ust-domain-orchestrator.hpp ust-domain-orchestrator.cpp \
 			ust-object-data.hpp ust-object-data.cpp \
 			ust-stream-group.hpp ust-stream-group.cpp \
+			ust-map-group.hpp \
 			ust-trace-class-index.hpp ust-trace-class-index.cpp \
 			ust-clock-class.hpp ust-clock-class.cpp \
 			agent-thread.cpp agent-thread.hpp \
