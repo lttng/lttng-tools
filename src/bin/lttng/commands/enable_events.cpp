@@ -1071,7 +1071,9 @@ int cmd_enable_events(int argc, const char **argv)
 		case OPT_EXCLUDE:
 			break;
 		default:
-			return CMD_UNDEFINED;
+			/* Handle popt option parsing errors. */
+			ERR("Option \'%s\': %s", poptBadOption(pc.get(), 0), poptStrerror(opt));
+			return CMD_ERROR;
 		}
 
 		/* Validate event type. Multiple event type are not supported. */
