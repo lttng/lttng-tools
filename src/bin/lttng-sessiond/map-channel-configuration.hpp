@@ -29,7 +29,24 @@ public:
 	using uptr = std::unique_ptr<map_channel_configuration>;
 
 	enum class key_type_t {
+		/*
+		 * String keys assembled by the tracer at enabler-sync time from a per-rule token
+		 * template (literal / event name / provider name) and reported back to the
+		 * sessiond. Used by map channels populated through counter-event rules.
+		 */
 		STRING,
+		/*
+		 * Externally-managed integer keys: sessiond picks a flat index from its own pool
+		 * and binds it to whatever identifier it cares about (e.g. a trigger's tracer
+		 * token), then tells the tracer which index to use for element mutations.
+		 *
+		 * No token template is rendered and no string is ever reported back from the
+		 * tracer; the dimension size is the pool size.
+		 *
+		 * Used today by event-notifier error accounting which allocates one slot per
+		 * registered trigger.
+		 */
+		INDEX,
 	};
 
 	enum class value_type_t {
@@ -89,6 +106,9 @@ struct formatter<lttng::sessiond::config::map_channel_configuration::key_type_t>
 		switch (key_type) {
 		case lttng::sessiond::config::map_channel_configuration::key_type_t::STRING:
 			name = "STRING";
+			break;
+		case lttng::sessiond::config::map_channel_configuration::key_type_t::INDEX:
+			name = "INDEX";
 			break;
 		}
 
