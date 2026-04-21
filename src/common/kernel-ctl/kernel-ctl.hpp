@@ -38,6 +38,7 @@ int kernctl_create_event_notifier_group_error_counter(
 int kernctl_create_event_notifier(int fd,
 				  const struct lttng_kernel_abi_event_notifier *event_notifier);
 
+int kernctl_counter_read(int counter_fd, struct lttng_kernel_abi_counter_read *counter_read);
 int kernctl_counter_get_aggregate_value(int counter_fd,
 					struct lttng_kernel_abi_counter_aggregate *value);
 int kernctl_counter_clear(int counter_fd, struct lttng_kernel_abi_counter_clear *clear);

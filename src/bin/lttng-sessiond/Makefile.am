@@ -83,7 +83,7 @@ liblttng_sessiond_common_la_SOURCES = utils.cpp utils.hpp \
                        domain-orchestrator.hpp \
                        stream-group.hpp \
                        map-group.hpp \
-                       modules-map-group.hpp \
+                       modules-map-group.hpp modules-map-group.cpp \
                        lttng-channel-from-config.hpp lttng-channel-from-config.cpp \
                        modules-domain-orchestrator.hpp modules-domain-orchestrator.cpp \
                        commands/get-channel-memory-usage.cpp commands/get-channel-memory-usage.hpp \
