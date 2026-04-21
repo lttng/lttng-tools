@@ -199,7 +199,9 @@ int cmd_metadata(int argc, const char **argv)
 			goto end;
 		default:
 			SHOW_HELP();
-			ret = CMD_UNDEFINED;
+			/* Handle popt option parsing errors. */
+			ERR("Option \'%s\': %s", poptBadOption(pc, 0), poptStrerror(opt));
+			ret = CMD_ERROR;
 			goto end;
 		}
 	}

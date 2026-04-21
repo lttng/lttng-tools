@@ -177,7 +177,9 @@ int cmd_load(int argc, const char **argv)
 			the_opt_force = 1;
 			break;
 		default:
-			ret = CMD_UNDEFINED;
+			/* Handle popt option parsing errors. */
+			ERR("Option \'%s\': %s", poptBadOption(pc, 0), poptStrerror(opt));
+			ret = CMD_ERROR;
 			goto end;
 		}
 	}

@@ -253,7 +253,9 @@ int cmd_stop(int argc, const char **argv)
 			session_spec.type_ = lttng::cli::session_spec::type::ALL;
 			break;
 		default:
-			command_ret = CMD_UNDEFINED;
+			/* Handle popt option parsing errors. */
+			ERR("Option \'%s\': %s", poptBadOption(pc, 0), poptStrerror(opt));
+			command_ret = CMD_ERROR;
 			goto end;
 		}
 	}

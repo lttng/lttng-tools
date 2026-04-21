@@ -587,7 +587,9 @@ int cmd_track_untrack(enum cmd_type cmd_type,
 			opt_all = true;
 			break;
 		default:
-			command_ret = CMD_UNDEFINED;
+			/* Handle popt option parsing errors. */
+			ERR("Option \'%s\': %s", poptBadOption(pc, 0), poptStrerror(opt));
+			command_ret = CMD_ERROR;
 			goto end;
 		}
 	}

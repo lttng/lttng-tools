@@ -640,7 +640,9 @@ int cmd_snapshot(int argc, const char **argv)
 			break;
 		}
 		default:
-			cmd_ret = CMD_UNDEFINED;
+			/* Handle popt option parsing errors. */
+			ERR("Option \'%s\': %s", poptBadOption(pc, 0), poptStrerror(opt));
+			cmd_ret = CMD_ERROR;
 			goto end;
 		}
 	}

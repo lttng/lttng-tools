@@ -183,7 +183,9 @@ int cmd_rotate(int argc, const char **argv)
 			list_cmd_options(stdout, long_options);
 			goto end;
 		default:
-			cmd_ret = CMD_UNDEFINED;
+			/* Handle popt option parsing errors. */
+			ERR("Option \'%s\': %s", poptBadOption(pc, 0), poptStrerror(opt));
+			cmd_ret = CMD_ERROR;
 			goto end;
 		}
 	}

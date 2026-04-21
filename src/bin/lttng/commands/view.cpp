@@ -218,7 +218,9 @@ int cmd_view(int argc, const char **argv)
 			list_cmd_options(stdout, long_options);
 			goto end;
 		default:
-			ret = CMD_UNDEFINED;
+			/* Handle popt option parsing errors. */
+			ERR("Option \'%s\': %s", poptBadOption(pc, 0), poptStrerror(opt));
+			ret = CMD_ERROR;
 			goto end;
 		}
 	}

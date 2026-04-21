@@ -176,7 +176,9 @@ int cmd_clear(int argc, const char **argv)
 			list_cmd_options(stdout, long_options);
 			break;
 		default:
-			ret = CMD_UNDEFINED;
+			/* Handle popt option parsing errors. */
+			ERR("Option \'%s\': %s", poptBadOption(pc, 0), poptStrerror(opt));
+			ret = CMD_ERROR;
 			break;
 		}
 		goto end;
