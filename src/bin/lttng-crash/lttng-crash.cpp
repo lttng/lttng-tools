@@ -50,13 +50,15 @@
 			0x7B ^ 0xFF, 0xF1 ^ 0xFF, 0x77 ^ 0xFF, 0xBF ^ 0xFF, 0x17 ^ 0xFF,      \
 	}
 
-static const char *help_msg =
+namespace {
+const char *help_msg =
 #ifdef LTTNG_EMBED_HELP
 #include <lttng-crash.1.h>
 #else
 	nullptr
 #endif
 	;
+} /* namespace */
 
 /*
  * Non-static to ensure the compiler does not optimize away the xor.
@@ -224,11 +226,13 @@ struct lttng_crash_layout {
 } /* namespace */
 
 /* Variables */
-static const char *progname;
-static char *opt_viewer_path = nullptr;
-static char *opt_output_path = nullptr;
+namespace {
+const char *progname;
+char *opt_viewer_path = nullptr;
+char *opt_output_path = nullptr;
 
-static char *the_input_path;
+char *the_input_path;
+} /* namespace */
 
 int lttng_opt_quiet, lttng_opt_verbose, lttng_opt_mi;
 bool lttng_opt_is_tui = true;
@@ -237,15 +241,16 @@ enum {
 	OPT_DUMP_OPTIONS,
 };
 
+namespace {
 /* Getopt options. No first level command. */
-static struct option long_options[] = {
+struct option long_options[] = {
 	{ "version", 0, nullptr, 'V' }, { "help", 0, nullptr, 'h' },
 	{ "verbose", 0, nullptr, 'v' }, { "viewer", 1, nullptr, 'e' },
 	{ "extract", 1, nullptr, 'x' }, { "list-options", 0, nullptr, OPT_DUMP_OPTIONS },
 	{ nullptr, 0, nullptr, 0 },
 };
 
-static void usage()
+void usage()
 {
 	const int ret = utils_show_help(1, "lttng-crash", help_msg);
 
@@ -255,7 +260,7 @@ static void usage()
 	}
 }
 
-static void version(FILE *ofp)
+void version(FILE *ofp)
 {
 	const char *const git_version = lttng::get_git_version();
 
@@ -273,7 +278,7 @@ static void version(FILE *ofp)
  *  List options line by line. This is mostly for bash auto completion and to
  *  avoid difficult parsing.
  */
-static void list_options(FILE *ofp)
+void list_options(FILE *ofp)
 {
 	int i = 0;
 	struct option *option = nullptr;
@@ -296,7 +301,7 @@ static void list_options(FILE *ofp)
  *
  * Return 0 if OK, else -1
  */
-static int parse_args(int argc, char **argv)
+int parse_args(int argc, char **argv)
 {
 	int opt, ret = 0;
 
@@ -353,7 +358,7 @@ error:
 	return -1;
 }
 
-static int copy_file(const char *file_dest, const char *file_src)
+int copy_file(const char *file_dest, const char *file_src)
 {
 	int fd_src = -1, fd_dest = -1;
 	ssize_t readlen, writelen;
@@ -409,8 +414,7 @@ error:
 	return ret;
 }
 
-static uint64_t
-_crash_get_field(const struct lttng_crash_layout *layout, const char *ptr, size_t size)
+uint64_t _crash_get_field(const struct lttng_crash_layout *layout, const char *ptr, size_t size)
 {
 	switch (size) {
 	case 1:
@@ -460,7 +464,7 @@ _crash_get_field(const struct lttng_crash_layout *layout, const char *ptr, size_
 		DBG("layout.%s = %" PRIu64, #name, (uint64_t) (layout)->name); \
 	} while (0)
 
-static int get_crash_layout_0_0(struct lttng_crash_layout *layout, char *map)
+int get_crash_layout_0_0(struct lttng_crash_layout *layout, char *map)
 {
 	const struct crash_abi_0_0 *abi = (const struct crash_abi_0_0 *) map;
 
@@ -499,7 +503,7 @@ static int get_crash_layout_0_0(struct lttng_crash_layout *layout, char *map)
 	return 0;
 }
 
-static int get_crash_layout_1_0(struct lttng_crash_layout *layout, char *map)
+int get_crash_layout_1_0(struct lttng_crash_layout *layout, char *map)
 {
 	const struct crash_abi_1_0 *abi = (const struct crash_abi_1_0 *) map;
 
@@ -538,7 +542,7 @@ static int get_crash_layout_1_0(struct lttng_crash_layout *layout, char *map)
 	return 0;
 }
 
-static void print_dbg_magic(const uint8_t *magic)
+void print_dbg_magic(const uint8_t *magic)
 {
 	DBG("magic: 0x%X%X%X%X%X%X%X%X%X%X%X%X%X%X%X%X",
 	    magic[0],
@@ -559,7 +563,7 @@ static void print_dbg_magic(const uint8_t *magic)
 	    magic[15]);
 }
 
-static int check_magic(const uint8_t *magic)
+int check_magic(const uint8_t *magic)
 {
 	int i;
 
@@ -571,7 +575,7 @@ static int check_magic(const uint8_t *magic)
 	return 0;
 }
 
-static int get_crash_layout(struct lttng_crash_layout *layout, int fd, const char *input_file)
+int get_crash_layout(struct lttng_crash_layout *layout, int fd, const char *input_file)
 {
 	char *map;
 	int ret = 0, unmapret;
@@ -688,37 +692,36 @@ end:
 }
 
 /* buf_trunc mask selects only the buffer number. */
-static inline uint64_t buf_trunc(uint64_t offset, uint64_t buf_size)
+inline uint64_t buf_trunc(uint64_t offset, uint64_t buf_size)
 {
 	return offset & ~(buf_size - 1);
 }
 
 /* subbuf_trunc mask selects the subbuffer number. */
-static inline uint64_t subbuf_trunc(uint64_t offset, uint64_t subbuf_size)
+inline uint64_t subbuf_trunc(uint64_t offset, uint64_t subbuf_size)
 {
 	return offset & ~(subbuf_size - 1);
 }
 
 /* buf_offset mask selects only the offset within the current buffer. */
-static inline uint64_t buf_offset(uint64_t offset, uint64_t buf_size)
+inline uint64_t buf_offset(uint64_t offset, uint64_t buf_size)
 {
 	return offset & (buf_size - 1);
 }
 
 /* subbuf_offset mask selects the offset within the current subbuffer. */
-static inline uint64_t subbuf_offset(uint64_t offset, uint64_t subbuf_size)
+inline uint64_t subbuf_offset(uint64_t offset, uint64_t subbuf_size)
 {
 	return offset & (subbuf_size - 1);
 }
 
 /* subbuf_index returns the index of the current subbuffer within the buffer. */
-static inline uint64_t subbuf_index(uint64_t offset, uint64_t buf_size, uint64_t subbuf_size)
+inline uint64_t subbuf_index(uint64_t offset, uint64_t buf_size, uint64_t subbuf_size)
 {
 	return buf_offset(offset, buf_size) / subbuf_size;
 }
 
-static inline uint64_t
-subbuffer_id_get_index(uint32_t extra_reader_subbuf, uint64_t id, unsigned int wl)
+inline uint64_t subbuffer_id_get_index(uint32_t extra_reader_subbuf, uint64_t id, unsigned int wl)
 {
 	if (extra_reader_subbuf)
 		return id & SB_ID_INDEX_MASK(wl);
@@ -726,8 +729,10 @@ subbuffer_id_get_index(uint32_t extra_reader_subbuf, uint64_t id, unsigned int w
 		return id;
 }
 
-static int
-copy_crash_subbuf(const struct lttng_crash_layout *layout, int fd_dest, char *buf, uint64_t offset)
+int copy_crash_subbuf(const struct lttng_crash_layout *layout,
+		      int fd_dest,
+		      char *buf,
+		      uint64_t offset)
 {
 	uint64_t buf_size, subbuf_size, num_subbuf, sbidx, id, sb_bindex, rpages_offset, p_offset,
 		seq_cc, committed, commit_count_mask, consumed_cur, packet_size;
@@ -855,7 +860,7 @@ nodata:
 	return -ENODATA;
 }
 
-static int copy_crash_data(const struct lttng_crash_layout *layout, int fd_dest, int fd_src)
+int copy_crash_data(const struct lttng_crash_layout *layout, int fd_dest, int fd_src)
 {
 	char *buf;
 	int ret = 0, has_data = 0;
@@ -908,8 +913,10 @@ end:
 	}
 }
 
-static int
-extract_file(int output_dir_fd, const char *output_file, int input_dir_fd, const char *input_file)
+int extract_file(int output_dir_fd,
+		 const char *output_file,
+		 int input_dir_fd,
+		 const char *input_file)
 {
 	int fd_dest, fd_src, ret = 0, closeret;
 	struct lttng_crash_layout layout;
@@ -965,7 +972,7 @@ end:
 	return ret;
 }
 
-static int extract_all_files(const char *output_path, const char *input_path)
+int extract_all_files(const char *output_path, const char *input_path)
 {
 	DIR *input_dir, *output_dir;
 	int input_dir_fd, output_dir_fd, ret = 0, closeret;
@@ -1022,7 +1029,7 @@ static int extract_all_files(const char *output_path, const char *input_path)
 	return ret;
 }
 
-static int extract_one_trace(const char *output_path, const char *input_path)
+int extract_one_trace(const char *output_path, const char *input_path)
 {
 	char dest[PATH_MAX], src[PATH_MAX];
 	int ret;
@@ -1047,7 +1054,7 @@ static int extract_one_trace(const char *output_path, const char *input_path)
 	return extract_all_files(output_path, input_path);
 }
 
-static int extract_trace_recursive(const char *output_path, const char *input_path)
+int extract_trace_recursive(const char *output_path, const char *input_path)
 {
 	DIR *dir;
 	int dir_fd, ret = 0, closeret;
@@ -1152,7 +1159,7 @@ end:
 	return has_warning;
 }
 
-static int delete_dir_recursive(const char *path)
+int delete_dir_recursive(const char *path)
 {
 	DIR *dir;
 	int dir_fd, ret = 0, closeret;
@@ -1248,7 +1255,7 @@ end_no_closedir:
 	return ret;
 }
 
-static int view_trace(const char *trace_path, char *viewer_path)
+int view_trace(const char *trace_path, char *viewer_path)
 {
 	pid_t pid;
 
@@ -1278,6 +1285,7 @@ static int view_trace(const char *trace_path, char *viewer_path)
 	}
 	return 0;
 }
+} /* namespace */
 
 /*
  *  main
