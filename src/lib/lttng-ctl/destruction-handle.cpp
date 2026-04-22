@@ -66,7 +66,8 @@ void lttng_destruction_handle_destroy(struct lttng_destruction_handle *handle)
 	free(handle);
 }
 
-static struct lttng_destruction_handle *lttng_destruction_handle_create(int sessiond_socket)
+namespace {
+struct lttng_destruction_handle *lttng_destruction_handle_create(int sessiond_socket)
 {
 	int ret;
 	struct lttng_destruction_handle *handle = zmalloc<lttng_destruction_handle>();
@@ -95,7 +96,7 @@ error:
 	return nullptr;
 }
 
-static int handle_state_transition(struct lttng_destruction_handle *handle)
+int handle_state_transition(struct lttng_destruction_handle *handle)
 {
 	int ret = 0;
 
@@ -183,7 +184,7 @@ static int handle_state_transition(struct lttng_destruction_handle *handle)
 	return ret;
 }
 
-static int handle_incoming_data(struct lttng_destruction_handle *handle)
+int handle_incoming_data(struct lttng_destruction_handle *handle)
 {
 	int ret;
 	ssize_t comm_ret;
@@ -215,6 +216,7 @@ static int handle_incoming_data(struct lttng_destruction_handle *handle)
 end:
 	return ret;
 }
+} /* namespace */
 
 enum lttng_destruction_handle_status
 lttng_destruction_handle_wait_for_completion(struct lttng_destruction_handle *handle,

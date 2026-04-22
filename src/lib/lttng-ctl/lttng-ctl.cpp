@@ -69,12 +69,14 @@
 	} while (0)
 
 /* Socket to session daemon for communication */
-static int sessiond_socket = -1;
-static char sessiond_sock_path[PATH_MAX];
+namespace {
+int sessiond_socket = -1;
+char sessiond_sock_path[PATH_MAX];
 
 /* Variables */
-static char *tracing_group;
-static int connected;
+char *tracing_group;
+int connected;
+} /* namespace */
 
 /* Global */
 
@@ -118,7 +120,8 @@ void lttng_ctl_copy_lttng_domain(struct lttng_domain *dst, const struct lttng_do
  * On success, returns the number of bytes sent (>=0)
  * On error, returns -1
  */
-static int send_session_msg(struct lttcomm_session_msg *lsm)
+namespace {
+int send_session_msg(struct lttcomm_session_msg *lsm)
 {
 	int ret;
 
@@ -147,7 +150,7 @@ end:
  * On success, returns the number of bytes sent (>=0)
  * On error, returns -1
  */
-static int send_session_varlen(const void *data, size_t len)
+int send_session_varlen(const void *data, size_t len)
 {
 	int ret;
 
@@ -176,7 +179,7 @@ end:
  * On success, returns the number of bytes sent (>=0)
  * On error, returns -1
  */
-static int send_session_fds(const int *fds, size_t nb_fd)
+int send_session_fds(const int *fds, size_t nb_fd)
 {
 	int ret;
 
@@ -205,7 +208,7 @@ end:
  * On success, returns the number of bytes received (>=0)
  * On error, returns a negative lttng_error_code.
  */
-static int recv_data_sessiond(void *buf, size_t len)
+int recv_data_sessiond(void *buf, size_t len)
 {
 	int ret;
 
@@ -233,7 +236,7 @@ end:
  * On success, returns the number of bytes received (>=0)
  * On error, returns a negative lttng_error_code.
  */
-static int recv_payload_sessiond(struct lttng_payload *payload, size_t len)
+int recv_payload_sessiond(struct lttng_payload *payload, size_t len)
 {
 	int ret;
 	const size_t original_payload_size = payload->buffer.size;
@@ -248,6 +251,7 @@ static int recv_payload_sessiond(struct lttng_payload *payload, size_t len)
 end:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Check if we are in the specified group.
@@ -305,7 +309,8 @@ end:
  *
  * Return 0 on success, else -1
  */
-static int try_connect_sessiond(const char *sock_path)
+namespace {
+int try_connect_sessiond(const char *sock_path)
 {
 	int ret;
 
@@ -340,7 +345,7 @@ error:
  * Returns 0 on success, negative value on failure (the sessiond socket path
  * is somehow too long or ENOMEM).
  */
-static int set_session_daemon_path()
+int set_session_daemon_path()
 {
 	bool in_tracing_group = false;
 	uid_t uid;
@@ -407,6 +412,7 @@ end:
 error:
 	return -1;
 }
+} /* namespace */
 
 /*
  * Connect to the LTTng session daemon.
@@ -434,7 +440,8 @@ error:
 	return -1;
 }
 
-static void reset_global_sessiond_connection_state()
+namespace {
+void reset_global_sessiond_connection_state()
 {
 	sessiond_socket = -1;
 	connected = 0;
@@ -445,7 +452,7 @@ static void reset_global_sessiond_connection_state()
  *
  *  On success, return 0. On error, return -1.
  */
-static int disconnect_sessiond()
+int disconnect_sessiond()
 {
 	int ret = 0;
 
@@ -457,7 +464,7 @@ static int disconnect_sessiond()
 	return ret;
 }
 
-static int recv_sessiond_optional_data(size_t len, void **user_buf, size_t *user_len)
+int recv_sessiond_optional_data(size_t len, void **user_buf, size_t *user_len)
 {
 	int ret = 0;
 	char *buf = nullptr;
@@ -503,6 +510,7 @@ end:
 	free(buf);
 	return ret;
 }
+} /* namespace */
 
 /*
  * Ask the session daemon a specific command and put the data into buf.
@@ -764,7 +772,8 @@ end:
 /*
  * Stop tracing for all traces of the session.
  */
-static int _lttng_stop_tracing(const char *session_name, int wait)
+namespace {
+int _lttng_stop_tracing(const char *session_name, int wait)
 {
 	int ret, data_ret;
 	struct lttcomm_session_msg lsm;
@@ -814,6 +823,7 @@ end:
 error:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Stop tracing and wait for data availability.
@@ -948,9 +958,10 @@ int lttng_enable_event_with_filter(struct lttng_handle *handle,
  *
  * An event with NO loglevel and the name is * will return an empty string.
  */
-static std::string build_agent_filter_expression(const char *original_filter_expression,
-						 const lttng_event& ev,
-						 const lttng_domain& domain)
+namespace {
+std::string build_agent_filter_expression(const char *original_filter_expression,
+					  const lttng_event& ev,
+					  const lttng_domain& domain)
 {
 	std::string agent_filter;
 
@@ -1012,6 +1023,7 @@ static std::string build_agent_filter_expression(const char *original_filter_exp
 
 	return agent_filter;
 }
+} /* namespace */
 
 /*
  * Enable event(s) for a channel, possibly with exclusions and a filter.
@@ -3163,8 +3175,8 @@ end:
 	return ret;
 }
 
-static int
-_lttng_register_trigger(struct lttng_trigger *trigger, const char *name, bool generate_name)
+namespace {
+int _lttng_register_trigger(struct lttng_trigger *trigger, const char *name, bool generate_name)
 {
 	int ret;
 	struct lttcomm_session_msg lsm = {
@@ -3308,6 +3320,7 @@ end:
 	lttng_trigger_destroy(reply_trigger);
 	return ret;
 }
+} /* namespace */
 
 int lttng_register_trigger(struct lttng_trigger *trigger)
 {
@@ -3640,7 +3653,8 @@ end:
 /*
  * lib constructor.
  */
-static void __attribute__((constructor)) init()
+namespace {
+void __attribute__((constructor)) init()
 {
 	/* Set default session group */
 	lttng_set_tracing_group(DEFAULT_TRACING_GROUP);
@@ -3649,7 +3663,8 @@ static void __attribute__((constructor)) init()
 /*
  * lib destructor.
  */
-static void __attribute__((destructor)) lttng_ctl_exit()
+void __attribute__((destructor)) lttng_ctl_exit()
 {
 	free(tracing_group);
 }
+} /* namespace */

@@ -503,7 +503,8 @@ DEFINE_LTTNG_PROCESS_ATTR_VALUES_GETTER(gid, gid_t, GID);
 DEFINE_LTTNG_PROCESS_ATTR_VALUES_GETTER(user_name, const char *, USER_NAME);
 DEFINE_LTTNG_PROCESS_ATTR_VALUES_GETTER(group_name, const char *, GROUP_NAME);
 
-static enum lttng_error_code
+namespace {
+enum lttng_error_code
 handle_status_to_error_code(enum lttng_process_attr_tracker_handle_status handle_status)
 {
 	switch (handle_status) {
@@ -525,6 +526,7 @@ handle_status_to_error_code(enum lttng_process_attr_tracker_handle_status handle
 		return LTTNG_ERR_UNK;
 	}
 }
+} /* namespace */
 
 /*
  * Add PID to session tracker.

@@ -24,13 +24,14 @@
 
 #include <vector>
 
-static int handshake(struct lttng_notification_channel *channel);
+namespace {
+int handshake(struct lttng_notification_channel *channel);
 
 /*
  * Populates the reception buffer with the next complete message.
  * The caller must acquire the channel's lock.
  */
-static int receive_message(struct lttng_notification_channel *channel)
+int receive_message(struct lttng_notification_channel *channel)
 {
 	ssize_t ret;
 	struct lttng_notification_channel_message msg;
@@ -91,7 +92,7 @@ error:
 	goto end;
 }
 
-static enum lttng_notification_channel_message_type
+enum lttng_notification_channel_message_type
 get_current_message_type(struct lttng_notification_channel *channel)
 {
 	struct lttng_notification_channel_message *msg;
@@ -102,7 +103,7 @@ get_current_message_type(struct lttng_notification_channel *channel)
 	return (enum lttng_notification_channel_message_type) msg->type;
 }
 
-static struct lttng_notification *
+struct lttng_notification *
 create_notification_from_current_message(struct lttng_notification_channel *channel)
 {
 	ssize_t ret;
@@ -132,6 +133,7 @@ create_notification_from_current_message(struct lttng_notification_channel *chan
 end:
 	return notification;
 }
+} /* namespace */
 
 struct lttng_notification_channel *
 lttng_notification_channel_create(struct lttng_endpoint *endpoint)
@@ -307,7 +309,8 @@ end:
 	return status;
 }
 
-static int enqueue_dropped_notification(struct lttng_notification_channel *channel)
+namespace {
+int enqueue_dropped_notification(struct lttng_notification_channel *channel)
 {
 	int ret = 0;
 	struct pending_notification *pending_notification;
@@ -346,7 +349,7 @@ end:
 	return ret;
 }
 
-static int enqueue_notification_from_current_message(struct lttng_notification_channel *channel)
+int enqueue_notification_from_current_message(struct lttng_notification_channel *channel)
 {
 	int ret = 0;
 	struct lttng_notification *notification;
@@ -380,6 +383,7 @@ error:
 	free(pending_notification);
 	goto end;
 }
+} /* namespace */
 
 enum lttng_notification_channel_status
 lttng_notification_channel_has_pending_notification(struct lttng_notification_channel *channel,
@@ -479,8 +483,9 @@ end:
 	return status;
 }
 
-static int receive_command_reply(struct lttng_notification_channel *channel,
-				 enum lttng_notification_channel_status *status)
+namespace {
+int receive_command_reply(struct lttng_notification_channel *channel,
+			  enum lttng_notification_channel_status *status)
 {
 	int ret;
 	struct lttng_notification_channel_command_reply *reply;
@@ -543,7 +548,7 @@ end:
 	return ret;
 }
 
-static int handshake(struct lttng_notification_channel *channel)
+int handshake(struct lttng_notification_channel *channel)
 {
 	ssize_t ret;
 	enum lttng_notification_channel_status status = LTTNG_NOTIFICATION_CHANNEL_STATUS_OK;
@@ -589,7 +594,7 @@ end_unlock:
 	return ret;
 }
 
-static enum lttng_notification_channel_status
+enum lttng_notification_channel_status
 send_condition_command(struct lttng_notification_channel *channel,
 		       enum lttng_notification_channel_message_type type,
 		       const struct lttng_condition *condition)
@@ -673,6 +678,7 @@ end:
 	lttng_payload_reset(&payload);
 	return status;
 }
+} /* namespace */
 
 enum lttng_notification_channel_status
 lttng_notification_channel_subscribe(struct lttng_notification_channel *channel,

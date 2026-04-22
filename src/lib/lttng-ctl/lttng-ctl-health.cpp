@@ -52,7 +52,8 @@ struct lttng_health {
 	struct lttng_health_thread thread[LTTNG_FLEXIBLE_ARRAY_MEMBER_LENGTH];
 };
 
-static const char *get_sessiond_thread_name(health_type_sessiond type)
+namespace {
+const char *get_sessiond_thread_name(health_type_sessiond type)
 {
 	switch (type) {
 	case HEALTH_SESSIOND_TYPE_CMD:
@@ -84,7 +85,7 @@ static const char *get_sessiond_thread_name(health_type_sessiond type)
 	abort();
 };
 
-static const char *get_consumerd_thread_name(health_type_consumerd type)
+const char *get_consumerd_thread_name(health_type_consumerd type)
 {
 	switch (type) {
 	case HEALTH_CONSUMERD_TYPE_CHANNEL:
@@ -102,7 +103,7 @@ static const char *get_consumerd_thread_name(health_type_consumerd type)
 	abort();
 };
 
-static const char *get_relayd_thread_name(health_type_relayd type)
+const char *get_relayd_thread_name(health_type_relayd type)
 {
 	switch (type) {
 	case HEALTH_RELAYD_TYPE_DISPATCHER:
@@ -124,7 +125,7 @@ static const char *get_relayd_thread_name(health_type_relayd type)
 	abort();
 }
 
-static const char *get_thread_name(int comp, int nr)
+const char *get_thread_name(int comp, int nr)
 {
 	switch (comp) {
 	case HEALTH_COMPONENT_SESSIOND:
@@ -145,7 +146,7 @@ static const char *get_thread_name(int comp, int nr)
  *
  * Returns 0 on success or a negative errno.
  */
-static int set_health_socket_path(struct lttng_health *lh, int in_tracing_group)
+int set_health_socket_path(struct lttng_health *lh, int in_tracing_group)
 {
 	int ret;
 	const char *health_unix_sock_fmt_string;
@@ -206,7 +207,7 @@ static int set_health_socket_path(struct lttng_health *lh, int in_tracing_group)
 	return 0;
 }
 
-static struct lttng_health *lttng_health_create(enum health_component hc, unsigned int nr_threads)
+struct lttng_health *lttng_health_create(enum health_component hc, unsigned int nr_threads)
 {
 	struct lttng_health *lh;
 	int i;
@@ -224,6 +225,7 @@ static struct lttng_health *lttng_health_create(enum health_component hc, unsign
 	}
 	return lh;
 }
+} /* namespace */
 
 struct lttng_health *lttng_health_create_sessiond(void)
 {

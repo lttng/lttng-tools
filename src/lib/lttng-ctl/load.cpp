@@ -26,7 +26,8 @@ struct lttng_load_session_attr *lttng_load_session_attr_create(void)
 	return zmalloc<lttng_load_session_attr>();
 }
 
-static void reset_load_session_attr_urls(struct lttng_load_session_attr *attr)
+namespace {
+void reset_load_session_attr_urls(struct lttng_load_session_attr *attr)
 {
 	free(attr->raw_override_url);
 	free(attr->raw_override_path_url);
@@ -39,6 +40,7 @@ static void reset_load_session_attr_urls(struct lttng_load_session_attr *attr)
 		free(attr->override_attr->session_name);
 	}
 }
+} /* namespace */
 
 void lttng_load_session_attr_destroy(struct lttng_load_session_attr *attr)
 {
@@ -49,7 +51,8 @@ void lttng_load_session_attr_destroy(struct lttng_load_session_attr *attr)
 	}
 }
 
-static int validate_attr(const struct lttng_load_session_attr *attr)
+namespace {
+int validate_attr(const struct lttng_load_session_attr *attr)
 {
 	int ret = 0;
 
@@ -73,6 +76,7 @@ static int validate_attr(const struct lttng_load_session_attr *attr)
 end:
 	return ret;
 }
+} /* namespace */
 
 const char *lttng_load_session_attr_get_session_name(struct lttng_load_session_attr *attr)
 {

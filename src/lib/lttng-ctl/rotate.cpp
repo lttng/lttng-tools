@@ -18,8 +18,9 @@
 
 #include <string.h>
 
-static enum lttng_rotation_status ask_rotation_info(struct lttng_rotation_handle *rotation_handle,
-						    struct lttng_rotation_get_info_return **info)
+namespace {
+enum lttng_rotation_status ask_rotation_info(struct lttng_rotation_handle *rotation_handle,
+					     struct lttng_rotation_get_info_return **info)
 {
 	/* lsm.get_rotation_state.rotation_id */
 	struct lttcomm_session_msg lsm;
@@ -51,7 +52,7 @@ end:
 	return status;
 }
 
-static struct lttng_trace_archive_location *
+struct lttng_trace_archive_location *
 create_trace_archive_location_from_get_info(const struct lttng_rotation_get_info_return *info)
 {
 	struct lttng_trace_archive_location *location;
@@ -76,6 +77,7 @@ create_trace_archive_location_from_get_info(const struct lttng_rotation_get_info
 	}
 	return location;
 }
+} /* namespace */
 
 enum lttng_rotation_status
 lttng_rotation_handle_get_state(struct lttng_rotation_handle *rotation_handle,
@@ -164,9 +166,10 @@ void lttng_rotation_handle_destroy(struct lttng_rotation_handle *rotation_handle
 	free(rotation_handle);
 }
 
-static int init_rotation_handle(struct lttng_rotation_handle *rotation_handle,
-				const char *session_name,
-				struct lttng_rotate_session_return *rotate_return)
+namespace {
+int init_rotation_handle(struct lttng_rotation_handle *rotation_handle,
+			 const char *session_name,
+			 struct lttng_rotate_session_return *rotate_return)
 {
 	int ret;
 
@@ -180,6 +183,7 @@ static int init_rotation_handle(struct lttng_rotation_handle *rotation_handle,
 end:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Rotate the output folder of the session.
@@ -253,7 +257,8 @@ end:
  * just its type) must be passed so that the session daemon can
  * validate that is exists before clearing it.
  */
-static enum lttng_rotation_status lttng_rotation_update_schedule(
+namespace {
+enum lttng_rotation_status lttng_rotation_update_schedule(
 	const char *session_name, const struct lttng_rotation_schedule *schedule, bool add)
 {
 	struct lttcomm_session_msg lsm;
@@ -332,18 +337,18 @@ end:
 	return status;
 }
 
-static struct lttng_rotation_schedules *lttng_rotation_schedules_create()
+struct lttng_rotation_schedules *lttng_rotation_schedules_create()
 {
 	return zmalloc<lttng_rotation_schedules>();
 }
 
-static void lttng_schedules_add(struct lttng_rotation_schedules *schedules,
-				struct lttng_rotation_schedule *schedule)
+void lttng_schedules_add(struct lttng_rotation_schedules *schedules,
+			 struct lttng_rotation_schedule *schedule)
 {
 	schedules->schedules[schedules->count++] = schedule;
 }
 
-static int get_schedules(const char *session_name, struct lttng_rotation_schedules **_schedules)
+int get_schedules(const char *session_name, struct lttng_rotation_schedules **_schedules)
 {
 	int ret;
 	struct lttcomm_session_msg lsm;
@@ -431,6 +436,7 @@ end:
 	*_schedules = schedules;
 	return ret;
 }
+} /* namespace */
 
 enum lttng_rotation_schedule_type
 lttng_rotation_schedule_get_type(const struct lttng_rotation_schedule *schedule)
