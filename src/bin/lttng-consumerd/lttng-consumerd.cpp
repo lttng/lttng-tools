@@ -135,7 +135,8 @@ int set_signal_handler()
 	struct sigaction sa;
 	sigset_t sigset;
 
-	if ((ret = sigemptyset(&sigset)) < 0) {
+	ret = sigemptyset(&sigset);
+	if (ret < 0) {
 		PERROR("sigemptyset");
 		return ret;
 	}
@@ -144,24 +145,28 @@ int set_signal_handler()
 	sa.sa_flags = SA_SIGINFO;
 
 	sa.sa_sigaction = sighandler;
-	if ((ret = sigaction(SIGTERM, &sa, nullptr)) < 0) {
+	ret = sigaction(SIGTERM, &sa, nullptr);
+	if (ret < 0) {
 		PERROR("sigaction");
 		return ret;
 	}
 
-	if ((ret = sigaction(SIGINT, &sa, nullptr)) < 0) {
+	ret = sigaction(SIGINT, &sa, nullptr);
+	if (ret < 0) {
 		PERROR("sigaction");
 		return ret;
 	}
 
-	if ((ret = sigaction(SIGBUS, &sa, nullptr)) < 0) {
+	ret = sigaction(SIGBUS, &sa, nullptr);
+	if (ret < 0) {
 		PERROR("sigaction");
 		return ret;
 	}
 
 	sa.sa_flags = 0;
 	sa.sa_handler = SIG_IGN;
-	if ((ret = sigaction(SIGPIPE, &sa, nullptr)) < 0) {
+	ret = sigaction(SIGPIPE, &sa, nullptr);
+	if (ret < 0) {
 		PERROR("sigaction");
 		return ret;
 	}
