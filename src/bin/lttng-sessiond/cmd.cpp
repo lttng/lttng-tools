@@ -3243,31 +3243,31 @@ lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_session,
 			return static_cast<lttng_error_code>(ret);
 		}
 
+		/*
+		 * Scope the agent-domain config update to this case so it is
+		 * lexically clear that event_rule is still live here; the
+		 * kernel and UST cases move it into a channel_config.
+		 */
+		{
+			const auto domain_class =
+				lttng::get_domain_class_from_lttng_domain_type(domain->type);
+			auto& agent_dom = session.get_agent_domain(domain_class);
+
+			try {
+				agent_dom.get_event_rule_configuration(*event_rule).enable();
+			} catch (const lttng::sessiond::config::exceptions::
+					 event_rule_configuration_not_found_error& ex) {
+				DBG_FMT("Failed to find event rule configuration: event_rule={}: {}",
+					*event_rule,
+					ex.what());
+				agent_dom.add_event_rule_configuration(true, std::move(event_rule));
+			}
+		}
+
 		break;
 	}
 	default:
 		return LTTNG_ERR_UND;
-	}
-
-	/*
-	 * Update the event rule configuration for agent domains.
-	 * The kernel and UST paths handle config updates inside their
-	 * switch cases above.
-	 */
-	if (lttng::is_agent_domain(lttng::get_domain_class_from_lttng_domain_type(domain->type))) {
-		const auto domain_class =
-			lttng::get_domain_class_from_lttng_domain_type(domain->type);
-		auto& agent_dom = session.get_agent_domain(domain_class);
-
-		try {
-			agent_dom.get_event_rule_configuration(*event_rule).enable();
-		} catch (const lttng::sessiond::config::exceptions::
-				 event_rule_configuration_not_found_error& ex) {
-			DBG_FMT("Failed to find event rule configuration: event_rule={}: {}",
-				*event_rule,
-				ex.what());
-			agent_dom.add_event_rule_configuration(true, std::move(event_rule));
-		}
 	}
 
 	return LTTNG_OK;
