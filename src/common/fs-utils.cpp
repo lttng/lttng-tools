@@ -88,76 +88,83 @@ bool lttng::utils::fs_supports_madv_remove(const char *shm_path) noexcept
 
 	const char test_path[] = DEFAULT_MADV_REMOVE_TEST_FILENAME;
 
-	if (shm_path) {
+	try {
+		if (shm_path) {
+			{
+				const std::lock_guard<std::mutex> lock(cache_mutex);
+				if (cache.find(shm_path) != cache.end()) {
+					return cache.at(shm_path);
+				}
+			}
+
+			bool supported = false;
+			struct lttng_directory_handle *dir_handle =
+				lttng_directory_handle_create(shm_path);
+
+			if (dir_handle) {
+				/* Offset to 1 to skip '/' character. */
+				const int fd = lttng_directory_handle_open_file(
+					dir_handle,
+					&test_path[1],
+					O_RDWR | O_CREAT,
+					S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+
+				if (fd >= 0) {
+					supported = fd_supports_madv_remove(fd);
+
+					std::ignore = close(fd);
+				} else {
+					PWARN_FMT("Failed on openat(): dirpath=`{}`, path=`{}`",
+						  shm_path,
+						  test_path);
+				}
+
+				lttng_directory_handle_put(dir_handle);
+			} else {
+				PWARN_FMT("Failed to open() directory: path=`{}`", shm_path);
+			}
+
+			try {
+				const std::lock_guard<std::mutex> lock(cache_mutex);
+				cache[shm_path] = supported;
+			} catch (const std::bad_alloc&) {
+				ERR("Failed to add filesystem MADV_REMOVE support entry to the cache due to an allocation failure.");
+			}
+			return supported;
+		}
+
 		{
 			const std::lock_guard<std::mutex> lock(cache_mutex);
-			if (cache.find(shm_path) != cache.end()) {
-				return cache.at(shm_path);
+			if (default_cache) {
+				return default_cache.value();
 			}
 		}
 
 		bool supported = false;
-		struct lttng_directory_handle *dir_handle = lttng_directory_handle_create(shm_path);
 
-		if (dir_handle) {
-			/* Offset to 1 to skip '/' character. */
-			const int fd = lttng_directory_handle_open_file(dir_handle,
-									&test_path[1],
-									O_RDWR | O_CREAT,
-									S_IRUSR | S_IWUSR |
-										S_IRGRP | S_IWGRP);
+		const int fd = shm_open(
+			test_path, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 
-			if (fd >= 0) {
-				supported = fd_supports_madv_remove(fd);
+		if (fd >= 0) {
+			std::ignore = shm_unlink(test_path);
 
-				std::ignore = close(fd);
-			} else {
-				PWARN_FMT("Failed on openat(): dirpath=`{}`, path=`{}`",
-					  shm_path,
-					  test_path);
-			}
+			supported = fd_supports_madv_remove(fd);
 
-			lttng_directory_handle_put(dir_handle);
+			std::ignore = close(fd);
 		} else {
-			PWARN_FMT("Failed to open() directory: path=`{}`", shm_path);
+			PWARN_FMT("Failed to shm_open(): path=`{}`", test_path);
 		}
 
-		try {
+		{
 			const std::lock_guard<std::mutex> lock(cache_mutex);
-			cache[shm_path] = supported;
-		} catch (const std::bad_alloc&) {
-			ERR("Failed to add filesystem MADV_REMOVE support entry to the cache due to an allocation failure.");
+			default_cache = supported;
 		}
+
 		return supported;
+	} catch (const std::exception& ex) {
+		ERR_FMT("Failed to determine MADV_REMOVE support: {}", ex.what());
+		return false;
 	}
-
-	{
-		const std::lock_guard<std::mutex> lock(cache_mutex);
-		if (default_cache) {
-			return default_cache.value();
-		}
-	}
-
-	bool supported = false;
-
-	const int fd = shm_open(test_path, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
-
-	if (fd >= 0) {
-		std::ignore = shm_unlink(test_path);
-
-		supported = fd_supports_madv_remove(fd);
-
-		std::ignore = close(fd);
-	} else {
-		PWARN_FMT("Failed to shm_open(): path=`{}`", test_path);
-	}
-
-	{
-		const std::lock_guard<std::mutex> lock(cache_mutex);
-		default_cache = supported;
-	}
-
-	return supported;
 }
 #else
 /*

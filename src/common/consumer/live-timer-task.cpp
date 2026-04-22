@@ -60,19 +60,23 @@ end:
 void lttng::consumer::live_timer_task::_run(lttng::scheduling::absolute_time current_time
 					    [[maybe_unused]]) noexcept
 {
-	const lttng::pthread::lock_guard consumer_data_lock(the_consumer_data.lock);
-	const lttng::pthread::lock_guard channel_lock(_channel.lock);
+	try {
+		const lttng::pthread::lock_guard consumer_data_lock(the_consumer_data.lock);
+		const lttng::pthread::lock_guard channel_lock(_channel.lock);
 
-	LTTNG_ASSERT(!_channel.is_deleted);
+		LTTNG_ASSERT(!_channel.is_deleted);
 
-	if (_channel.switch_timer_error) {
-		return;
-	}
-
-	for (auto& stream : _channel.get_streams()) {
-		const auto ret = check_stream(stream);
-		if (ret < 0) {
+		if (_channel.switch_timer_error) {
 			return;
 		}
+
+		for (auto& stream : _channel.get_streams()) {
+			const auto ret = check_stream(stream);
+			if (ret < 0) {
+				return;
+			}
+		}
+	} catch (const std::exception& ex) {
+		ERR_FMT("Live timer tick failed: {}", ex.what());
 	}
 }
