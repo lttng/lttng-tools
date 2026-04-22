@@ -1879,7 +1879,7 @@ lsc::get_channels_memory_usage(consumer_socket& socket,
 
 	health_code_update();
 
-	const lttng::pthread::lock_guard socket_lock(*socket.lock);
+	const lttng::pthread::lock_guard socket_lock(socket.lock);
 
 	std::vector<std::uint8_t> request_payload;
 	request_payload.reserve(sizeof(header) + channel_keys.size() * sizeof(uint64_t));
@@ -1981,7 +1981,7 @@ std::vector<lsc::stream_memory_reclamation_result_group> lsc::reclaim_channels_m
 
 	health_code_update();
 
-	const lttng::pthread::lock_guard socket_lock(*socket.lock);
+	const lttng::pthread::lock_guard socket_lock(socket.lock);
 
 	std::vector<std::uint8_t> request_payload;
 	request_payload.reserve(sizeof(header) + channel_keys.size() * sizeof(uint64_t));

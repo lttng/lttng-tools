@@ -155,7 +155,7 @@ ls::modules::domain_orchestrator::~domain_orchestrator()
 		try {
 			const lttng::urcu::read_lock_guard read_lock;
 			auto& socket = _get_consumer_socket();
-			const lttng::pthread::lock_guard socket_lock(*socket.lock);
+			const lttng::pthread::lock_guard socket_lock(socket.lock);
 
 			for (const auto& entry : _stream_groups) {
 				const auto& group = *entry.second;
@@ -1124,8 +1124,7 @@ void ls::modules::domain_orchestrator::start()
 	{
 		const lttng::urcu::read_lock_guard read_lock;
 		auto& kconsumer_socket = _get_consumer_socket();
-		/* NOLINTNEXTLINE */
-		const lttng::pthread::lock_guard socket_lock(*kconsumer_socket.lock);
+		const lttng::pthread::lock_guard socket_lock(kconsumer_socket.lock);
 
 		_send_stream_groups_to_consumer(kconsumer_socket);
 	}
@@ -1325,14 +1324,14 @@ void ls::modules::domain_orchestrator::record_snapshot(
 	const auto snapshot_metadata_key = _metadata_stream_group->consumer_key();
 
 	{
-		const lttng::pthread::lock_guard socket_lock(*kconsumer_socket.lock);
+		const lttng::pthread::lock_guard socket_lock(kconsumer_socket.lock);
 
 		/* This stream must not be monitored by the consumer. */
 		_send_metadata_to_consumer(kconsumer_socket, snapshot_consumer, false);
 	}
 
 	const auto destroy_consumer_metadata_on_exit = lttng::make_scope_exit([&]() noexcept {
-		const lttng::pthread::lock_guard socket_lock(*kconsumer_socket.lock);
+		const lttng::pthread::lock_guard socket_lock(kconsumer_socket.lock);
 		_destroy_consumer_stream_group(_get_consumer_socket(), snapshot_metadata_key);
 	});
 
@@ -1463,7 +1462,7 @@ void ls::modules::domain_orchestrator::handle_stream_group_hotplug(stream_group&
 	/* Send only the newly-opened (unsent) streams to the consumer daemon. */
 	const lttng::urcu::read_lock_guard read_lock;
 	auto& kconsumer_socket = _get_consumer_socket();
-	const lttng::pthread::lock_guard socket_lock(*kconsumer_socket.lock);
+	const lttng::pthread::lock_guard socket_lock(kconsumer_socket.lock);
 	const auto& channel_config = stream_group.configuration();
 
 	for (const auto& stream : stream_group.streams()) {

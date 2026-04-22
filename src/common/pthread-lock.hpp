@@ -84,6 +84,17 @@ public:
 	{
 	}
 
+	/*
+	 * Accept a pthread_mutex_t pointer for callers that hold the mutex
+	 * by pointer (e.g. a borrowed mutex shared between consumer sockets
+	 * and their parent consumer_data).
+	 */
+	/* NOLINTNEXTLINE(misc-non-copyable-objects) */
+	explicit lock_guard(pthread_mutex_t *mutex) : lock_guard(*mutex)
+	{
+		LTTNG_ASSERT(mutex);
+	}
+
 	~lock_guard() = default;
 
 	lock_guard(const lock_guard&) = delete;
