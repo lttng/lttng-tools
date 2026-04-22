@@ -731,7 +731,7 @@ int relayd_add_stream(struct lttcomm_relayd_sock *rsock,
 		chunk_status = lttng_trace_chunk_get_id(trace_chunk, &chunk_id);
 		LTTNG_ASSERT(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
 
-		/* From 2.11 to ...*/
+		/* From 2.11 to ... */
 		ret = relayd_add_stream_2_11(
 			rsock, channel_name, pathname, tracefile_size, tracefile_count, chunk_id);
 	}

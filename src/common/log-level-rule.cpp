@@ -186,12 +186,12 @@ bool lttng_log_level_rule_is_equal(const struct lttng_log_level_rule *a,
 	}
 
 	if (a == nullptr || b == nullptr) {
-		/* One is NULL.*/
+		/* One is NULL. */
 		goto end;
 	}
 
 	if (a == b) {
-		/* Same object.*/
+		/* Same object. */
 		is_equal = true;
 		goto end;
 	}

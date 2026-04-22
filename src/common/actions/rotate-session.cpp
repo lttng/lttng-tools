@@ -389,7 +389,7 @@ lttng_action_rotate_session_set_rate_policy(struct lttng_action *action,
 
 	rotate_session_action = action_rotate_session_from_action(action);
 
-	/* Free the previous rate policy .*/
+	/* Free the previous rate policy. */
 	lttng_rate_policy_destroy(rotate_session_action->policy);
 
 	/* Assign the policy. */

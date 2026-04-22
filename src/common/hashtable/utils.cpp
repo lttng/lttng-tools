@@ -192,7 +192,7 @@ static uint32_t __attribute__((unused)) hashword(const uint32_t *k, size_t lengt
 	/* Set up the internal state */
 	a = b = c = 0xdeadbeef + (((uint32_t) length) << 2) + initval;
 
-	/*----------------------------------------- handle most of the key */
+	/* handle most of the key */
 	while (length > 3) {
 		a += k[0];
 		b += k[1];
@@ -202,7 +202,7 @@ static uint32_t __attribute__((unused)) hashword(const uint32_t *k, size_t lengt
 		k += 3;
 	}
 
-	/*----------------------------------- handle the last 3 uint32_t's */
+	/* handle the last 3 uint32_t's */
 	switch (length) { /* all the case statements fall through */
 	case 3:
 		c += k[2]; /* fall through */
@@ -214,7 +214,7 @@ static uint32_t __attribute__((unused)) hashword(const uint32_t *k, size_t lengt
 	case 0: /* case 0: nothing left to add */
 		break;
 	}
-	/*---------------------------------------------- report the result */
+	/* report the result */
 	return c;
 }
 
@@ -301,7 +301,7 @@ __attribute__((unused)) static uint32_t hashlittle(const void *key, size_t lengt
 	if (HASH_LITTLE_ENDIAN && ((u.i & 0x3) == 0)) {
 		const uint32_t *k = (const uint32_t *) key; /* read 32-bit chunks */
 
-		/*------ all but last block: aligned reads and affect 32 bits of (a,b,c) */
+		/* all but last block: aligned reads and affect 32 bits of (a,b,c) */
 		while (length > 12) {
 			a += k[0];
 			b += k[1];
@@ -418,7 +418,7 @@ __attribute__((unused)) static uint32_t hashlittle(const void *key, size_t lengt
 		const uint16_t *k = (const uint16_t *) key; /* read 16-bit chunks */
 		const uint8_t *k8;
 
-		/*--------------- all but last block: aligned reads and different mixing */
+		/* all but last block: aligned reads and different mixing */
 		while (length > 12) {
 			a += k[0] + (((uint32_t) k[1]) << 16);
 			b += k[2] + (((uint32_t) k[3]) << 16);

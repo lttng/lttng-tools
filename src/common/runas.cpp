@@ -1588,7 +1588,7 @@ static int run_as_restart_worker(run_as_worker_data *worker)
 	/* Close socket to run_as worker process and clean up the zombie process */
 	run_as_destroy_worker_no_lock();
 
-	/* Create a new run_as worker process*/
+	/* Create a new run_as worker process. */
 	ret = run_as_create_worker_no_lock(procname, nullptr, nullptr);
 	if (ret < 0) {
 		ERR("Restarting the worker process failed");

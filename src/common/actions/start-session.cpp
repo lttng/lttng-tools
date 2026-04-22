@@ -392,7 +392,7 @@ lttng_action_start_session_set_rate_policy(struct lttng_action *action,
 
 	start_session_action = action_start_session_from_action(action);
 
-	/* Release the previous rate policy .*/
+	/* Release the previous rate policy. */
 	lttng_rate_policy_destroy(start_session_action->policy);
 
 	/* Assign the policy. */

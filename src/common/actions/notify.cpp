@@ -213,7 +213,7 @@ enum lttng_action_status lttng_action_notify_set_rate_policy(struct lttng_action
 
 	notify_action = action_notify_from_action(action);
 
-	/* Free the previous rate policy .*/
+	/* Free the previous rate policy. */
 	lttng_rate_policy_destroy(notify_action->policy);
 
 	/* Assign the policy. */

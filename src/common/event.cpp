@@ -1302,7 +1302,7 @@ ssize_t lttng_event_field_create_from_payload(struct lttng_payload_view *view,
 		}
 
 		if (comm->name_len > LTTNG_SYMBOL_NAME_LEN - 1) {
-			/* Name is too long.*/
+			/* Name is too long. */
 			ret = -1;
 			goto end;
 		}
