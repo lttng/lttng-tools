@@ -2183,7 +2183,7 @@ namespace {
 void lttng_ustconsumer_reclaim_channels_memory(
 	int socket,
 	std::uint64_t channel_count,
-	nonstd::optional<std::chrono::microseconds> age_limit,
+	const nonstd::optional<std::chrono::microseconds>& age_limit,
 	bool require_consumed,
 	const nonstd::optional<std::uint64_t>& memory_reclaim_request_token)
 {

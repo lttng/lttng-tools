@@ -1072,7 +1072,8 @@ struct lttng_consumer_channel *consumer_allocate_channel(
 	channel->live_timer_interval = live_timer_interval;
 	channel->is_live = is_in_live_session;
 	channel->continuously_reclaimed = continuously_reclaimed;
-	channel->automatic_memory_reclamation_max_age = automatic_memory_reclamation_max_age;
+	channel->automatic_memory_reclamation_max_age =
+		std::move(automatic_memory_reclamation_max_age);
 	pthread_mutex_init(&channel->lock, nullptr);
 	pthread_mutex_init(&channel->timer_lock, nullptr);
 
