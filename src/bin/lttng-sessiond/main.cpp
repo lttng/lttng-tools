@@ -918,7 +918,8 @@ namespace {
 int set_options(int argc, char **argv)
 {
 	int ret = 0, c = 0, option_index = 0;
-	int orig_optopt = optopt, orig_optind = optind;
+	const int orig_optopt = optopt;
+	const int orig_optind = optind;
 	char *optstring;
 	char *config_path = nullptr;
 

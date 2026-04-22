@@ -942,7 +942,8 @@ void ls::modules::domain_orchestrator::_send_stream_group_to_consumer(consumer_s
 	}
 
 	if (is_local_trace && _session.current_trace_chunk) {
-		std::string pathname_index = fmt::format("{}" DEFAULT_INDEX_DIR, pathname.get());
+		const std::string pathname_index =
+			fmt::format("{}" DEFAULT_INDEX_DIR, pathname.get());
 
 		/*
 		 * Create the index subdirectory which will take care

@@ -1428,7 +1428,7 @@ enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref& sessi
 						  const struct lttng_domain *domain,
 						  const struct lttng_channel& channel_attr)
 {
-	enum lttng_error_code ret_code = LTTNG_OK;
+	const enum lttng_error_code ret_code = LTTNG_OK;
 	size_t len;
 
 	LTTNG_ASSERT(domain);
@@ -2137,7 +2137,7 @@ cmd_process_attr_tracker_inclusion_set_add_value(const ltt_session::locked_ref& 
 						 enum lttng_process_attr process_attr,
 						 const struct process_attr_value *value)
 {
-	enum lttng_error_code ret_code = LTTNG_OK;
+	const enum lttng_error_code ret_code = LTTNG_OK;
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
@@ -2202,7 +2202,7 @@ cmd_process_attr_tracker_inclusion_set_remove_value(const ltt_session::locked_re
 						    enum lttng_process_attr process_attr,
 						    const struct process_attr_value *value)
 {
-	enum lttng_error_code ret_code = LTTNG_OK;
+	const enum lttng_error_code ret_code = LTTNG_OK;
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
