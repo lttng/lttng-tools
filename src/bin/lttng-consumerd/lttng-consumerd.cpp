@@ -53,10 +53,12 @@
 
 /* threads (channel handling, poll, metadata, sessiond) */
 
-static pthread_t channel_thread, data_thread, metadata_thread, sessiond_thread, health_thread;
+namespace {
+pthread_t channel_thread, data_thread, metadata_thread, sessiond_thread, health_thread;
 
 /* to count the number of times the user pressed ctrl+c */
-static int sigintcount = 0;
+int sigintcount = 0;
+} /* namespace */
 
 /* Argument variables */
 int lttng_opt_quiet; /* not static in error.h */
@@ -64,14 +66,16 @@ int lttng_opt_verbose; /* not static in error.h */
 int lttng_opt_mi; /* not static in error.h */
 bool lttng_opt_is_tui; /* not static in error.hpp */
 
-static int opt_daemon;
-static const char *progname;
-static char command_sock_path[PATH_MAX]; /* Global command socket path */
-static char error_sock_path[PATH_MAX]; /* Global error path */
-static enum lttng_consumer_type opt_type = LTTNG_CONSUMER_KERNEL;
+namespace {
+int opt_daemon;
+const char *progname;
+char command_sock_path[PATH_MAX]; /* Global command socket path */
+char error_sock_path[PATH_MAX]; /* Global error path */
+enum lttng_consumer_type opt_type = LTTNG_CONSUMER_KERNEL;
 
 /* the liblttngconsumerd context */
-static struct lttng_consumer_local_data *the_consumer_context;
+struct lttng_consumer_local_data *the_consumer_context;
+} /* namespace */
 
 /* Consumerd health monitoring */
 struct health_app *health_consumerd;
@@ -88,10 +92,11 @@ enum lttng_consumer_type lttng_consumer_get_type(void)
 	return the_consumer_context->type;
 }
 
+namespace {
 /*
  * Signal handler for the daemon
  */
-static void sighandler(int sig, siginfo_t *siginfo, void *arg __attribute__((unused)))
+void sighandler(int sig, siginfo_t *siginfo, void *arg __attribute__((unused)))
 {
 	if (sig == SIGINT && sigintcount++ == 0) {
 		DBG("ignoring first SIGINT");
@@ -124,7 +129,7 @@ static void sighandler(int sig, siginfo_t *siginfo, void *arg __attribute__((unu
  * Setup signal handler for :
  *      SIGINT, SIGTERM, SIGPIPE, SIGBUS
  */
-static int set_signal_handler()
+int set_signal_handler()
 {
 	int ret = 0;
 	struct sigaction sa;
@@ -167,7 +172,7 @@ static int set_signal_handler()
 /*
  * Usage function on stream file.
  */
-static void usage(FILE *fp)
+void usage(FILE *fp)
 {
 	fprintf(fp, "Usage: %s OPTIONS\n\nOptions:\n", progname);
 	fprintf(fp,
@@ -211,7 +216,7 @@ static void usage(FILE *fp)
 /*
  * daemon argument parsing
  */
-static int parse_args(int argc, char **argv)
+int parse_args(int argc, char **argv)
 {
 	int c, ret = 0;
 
@@ -317,7 +322,7 @@ end:
  * Set open files limit to unlimited. This daemon can open a large number of
  * file descriptors in order to consumer multiple kernel traces.
  */
-static void set_ulimit()
+void set_ulimit()
 {
 	int ret;
 	struct rlimit lim;
@@ -332,7 +337,6 @@ static void set_ulimit()
 	}
 }
 
-namespace {
 auto tpp_common = static_cast<std::unique_ptr<
 	void,
 	lttng::memory::create_deleter_class<void, lttng::tracepoints::details::tracepoints_unload>::
@@ -380,7 +384,7 @@ __attribute__((format(printf, 1, 2))) std::string format_printf_string(const cha
 }
 
 /* Returns the path of the PID file. */
-static std::string create_pid_file(lttng_consumer_type consumer_type)
+std::string create_pid_file(lttng_consumer_type consumer_type)
 {
 	const auto rundir_path =
 		lttng::make_unique_wrapper<char, lttng::memory::free>(utils_get_rundir(0));
