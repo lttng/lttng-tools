@@ -3178,7 +3178,6 @@ void teardown_tracer_notifier(struct notification_thread_state *state,
 		event_notifier_error_accounting_unregister_event_notifier(
 			trigger_tokens_ht_element->trigger);
 
-		/* TODO talk to all app and remove it */
 		DBG("Removed trigger from tokens_ht");
 		cds_lfht_del(state->trigger_tokens_ht, &trigger_tokens_ht_element->node);
 
