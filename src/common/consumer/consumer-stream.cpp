@@ -72,7 +72,7 @@ struct metadata_packet_header {
 };
 
 namespace {
-size_t metadata_length(void)
+size_t metadata_length()
 {
 	return offsetof(struct metadata_packet_header, header_end);
 }
