@@ -334,9 +334,33 @@ int uri_to_str_url(struct lttng_uri *uri, char *dst, size_t size)
  *
  * Return 0 if equal else 1.
  */
-int uri_compare(struct lttng_uri *uri1, struct lttng_uri *uri2)
+int uri_compare(const struct lttng_uri *uri1, const struct lttng_uri *uri2)
 {
-	return memcmp(uri1, uri2, sizeof(struct lttng_uri));
+	/*
+	 * Fields are compared one-by-one rather than using memcmp() since
+	 * protocol-dependant union fields have different sizes and may
+	 * contain uninitialized padding that should not be considered.
+	 */
+	if (uri1->dtype != uri2->dtype || uri1->utype != uri2->utype ||
+	    uri1->stype != uri2->stype || uri1->proto != uri2->proto || uri1->port != uri2->port) {
+		return 1;
+	}
+
+	if (strncmp(uri1->subdir, uri2->subdir, sizeof(uri1->subdir)) != 0) {
+		return 1;
+	}
+
+	switch (uri1->dtype) {
+	case LTTNG_DST_IPV4:
+		return strncmp(uri1->dst.ipv4, uri2->dst.ipv4, sizeof(uri1->dst.ipv4)) != 0;
+	case LTTNG_DST_IPV6:
+		return strncmp(uri1->dst.ipv6, uri2->dst.ipv6, sizeof(uri1->dst.ipv6)) != 0;
+	case LTTNG_DST_PATH:
+		return strncmp(uri1->dst.path, uri2->dst.path, sizeof(uri1->dst.path)) != 0;
+	}
+
+	/* Unknown destination type: treat as not equal. */
+	return 1;
 }
 
 /*
