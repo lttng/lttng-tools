@@ -47,7 +47,8 @@ int lttcomm_create_inet6_sock(struct lttcomm_sock *sock, int type, int proto)
 	unsigned long timeout;
 
 	/* Create server socket */
-	if ((sock->fd = socket(PF_INET6, type, proto)) < 0) {
+	sock->fd = socket(PF_INET6, type, proto);
+	if (sock->fd < 0) {
 		PERROR("socket inet6");
 		goto error;
 	}

@@ -747,21 +747,22 @@ int send_fds_to_worker(const run_as_worker_data *worker, const struct run_as_dat
 {
 	int ret = 0;
 	unsigned int i;
+	int *in_fds;
 
 	if (COMMAND_USE_CWD_FD(data) || COMMAND_IN_FD_COUNT(data) == 0) {
 		goto end;
 	}
 
+	in_fds = COMMAND_IN_FDS(data);
 	for (i = 0; i < COMMAND_IN_FD_COUNT(data); i++) {
-		if (COMMAND_IN_FDS(data)[i] < 0) {
-			ERR("Refusing to send invalid fd to worker (fd = %i)",
-			    COMMAND_IN_FDS(data)[i]);
+		if (in_fds[i] < 0) {
+			ERR("Refusing to send invalid fd to worker (fd = %i)", in_fds[i]);
 			ret = -1;
 			goto end;
 		}
 	}
 
-	ret = do_send_fds(worker->sockpair[0], COMMAND_IN_FDS(data), COMMAND_IN_FD_COUNT(data));
+	ret = do_send_fds(worker->sockpair[0], in_fds, COMMAND_IN_FD_COUNT(data));
 	if (ret < 0) {
 		PERROR("Failed to send file descriptor to run-as worker");
 		ret = -1;
@@ -852,12 +853,13 @@ end:
 int cleanup_received_fds(struct run_as_data *data)
 {
 	int ret = 0, i;
+	int *const in_fds = COMMAND_IN_FDS(data);
 
 	for (i = 0; i < COMMAND_IN_FD_COUNT(data); i++) {
-		if (COMMAND_IN_FDS(data)[i] == -1) {
+		if (in_fds[i] == -1) {
 			continue;
 		}
-		ret = close(COMMAND_IN_FDS(data)[i]);
+		ret = close(in_fds[i]);
 		if (ret) {
 			PERROR("Failed to close file descriptor received fd in run-as worker");
 			goto end;
@@ -1364,7 +1366,8 @@ int set_worker_sighandlers()
 	sigset_t sigset;
 	struct sigaction sa;
 
-	if ((ret = sigemptyset(&sigset)) < 0) {
+	ret = sigemptyset(&sigset);
+	if (ret < 0) {
 		PERROR("sigemptyset");
 		goto end;
 	}
@@ -1372,12 +1375,14 @@ int set_worker_sighandlers()
 	sa.sa_handler = worker_sighandler;
 	sa.sa_mask = sigset;
 	sa.sa_flags = 0;
-	if ((ret = sigaction(SIGINT, &sa, nullptr)) < 0) {
+	ret = sigaction(SIGINT, &sa, nullptr);
+	if (ret < 0) {
 		PERROR("sigaction SIGINT");
 		goto end;
 	}
 
-	if ((ret = sigaction(SIGTERM, &sa, nullptr)) < 0) {
+	ret = sigaction(SIGTERM, &sa, nullptr);
+	if (ret < 0) {
 		PERROR("sigaction SIGTERM");
 		goto end;
 	}

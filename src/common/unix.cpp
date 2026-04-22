@@ -121,7 +121,8 @@ int lttcomm_create_unix_sock(const char *pathname)
 	}
 
 	/* Create server socket */
-	if ((fd = socket(PF_UNIX, SOCK_STREAM, 0)) < 0) {
+	fd = socket(PF_UNIX, SOCK_STREAM, 0);
+	if (fd < 0) {
 		PERROR("socket");
 		goto error;
 	}
