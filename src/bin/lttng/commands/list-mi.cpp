@@ -37,12 +37,12 @@ const list_cmd_config *the_config;
 
 int mi_write_event(const lttng_event& event, bool is_open, lttng_domain_type domain_type)
 {
-	return mi_lttng_event(the_writer, const_cast<lttng_event *>(&event), is_open, domain_type);
+	return mi_lttng_event(the_writer, &event, is_open, domain_type);
 }
 
 int mi_write_domain(const lttng_domain& domain, bool is_open)
 {
-	return mi_lttng_domain(the_writer, const_cast<lttng_domain *>(&domain), is_open);
+	return mi_lttng_domain(the_writer, &domain, is_open);
 }
 
 int mi_lttng_pseudo_domain(lttng_domain_type type, bool is_open)
@@ -196,8 +196,7 @@ void list_ust_event_fields(const lttng::cli::ust_tracepoint_set& tracepoints)
 
 		/* Write all fields for this event */
 		for (const auto& field : tracepoint.fields()) {
-			if (mi_lttng_event_field(the_writer,
-						 const_cast<lttng_event_field *>(&field.lib()))) {
+			if (mi_lttng_event_field(the_writer, &field.lib())) {
 				LTTNG_THROW_ERROR("Failed to write XML event field");
 			}
 		}
@@ -318,8 +317,7 @@ void list_channels(const lttng::cli::channel_set<lttng::cli::channel>& channels)
 		}
 
 		/* Write channel element  and leave it open */
-		if (mi_lttng_channel(
-			    the_writer, const_cast<lttng_channel *>(&channel.lib()), true)) {
+		if (mi_lttng_channel(the_writer, &channel.lib(), true)) {
 			LTTNG_THROW_ERROR("Failed to write XML channel element");
 		}
 

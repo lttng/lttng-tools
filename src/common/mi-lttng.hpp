@@ -603,7 +603,7 @@ int mi_lttng_domains_open(struct mi_writer *writer);
  * Returns zero if the element's value could be written.
  * Negative values indicate an error.
  */
-int mi_lttng_domain(struct mi_writer *writer, struct lttng_domain *domain, int is_open);
+int mi_lttng_domain(struct mi_writer *writer, const struct lttng_domain *domain, int is_open);
 
 /*
  * Machine interface: open a channels element.
@@ -630,7 +630,7 @@ int mi_lttng_channels_open(struct mi_writer *writer);
  * Returns zero if the element's value could be written.
  * Negative values indicate an error.
  */
-int mi_lttng_channel(struct mi_writer *writer, struct lttng_channel *channel, int is_open);
+int mi_lttng_channel(struct mi_writer *writer, const struct lttng_channel *channel, int is_open);
 
 /*
  * Machine interface of struct channel_attr.
@@ -641,7 +641,7 @@ int mi_lttng_channel(struct mi_writer *writer, struct lttng_channel *channel, in
  * Returns zero if the element's value could be written.
  * Negative values indicate an error.
  */
-int mi_lttng_channel_attr(struct mi_writer *writer, struct lttng_channel_attr *attr);
+int mi_lttng_channel_attr(struct mi_writer *writer, const struct lttng_channel_attr *attr);
 
 /*
  * Machine interface for channel memory usage data stream info sets.
@@ -673,7 +673,7 @@ int mi_lttng_data_stream_info_sets(struct mi_writer *writer,
  * Returns zero if the element's value could be written.
  * Negative values indicate an error.
  */
-int mi_lttng_event_common_attributes(struct mi_writer *writer, struct lttng_event *event);
+int mi_lttng_event_common_attributes(struct mi_writer *writer, const struct lttng_event *event);
 
 /*
  * Machine interface for kernel tracepoint event with a loglevel.
@@ -686,7 +686,7 @@ int mi_lttng_event_common_attributes(struct mi_writer *writer, struct lttng_even
  * Negative values indicate an error.
  */
 int mi_lttng_event_tracepoint_loglevel(struct mi_writer *writer,
-				       struct lttng_event *event,
+				       const struct lttng_event *event,
 				       enum lttng_domain_type domain);
 
 /*
@@ -698,7 +698,8 @@ int mi_lttng_event_tracepoint_loglevel(struct mi_writer *writer,
  * Returns zero if the element's value could be written.
  * Negative values indicate an error.
  */
-int mi_lttng_event_tracepoint_no_loglevel(struct mi_writer *writer, struct lttng_event *event);
+int mi_lttng_event_tracepoint_no_loglevel(struct mi_writer *writer,
+					  const struct lttng_event *event);
 
 /*
  * Machine interface for kernel function and probe event.
@@ -709,7 +710,7 @@ int mi_lttng_event_tracepoint_no_loglevel(struct mi_writer *writer, struct lttng
  * Returns zero if the element's value could be written.
  * Negative values indicate an error.
  */
-int mi_lttng_event_function_probe(struct mi_writer *writer, struct lttng_event *event);
+int mi_lttng_event_function_probe(struct mi_writer *writer, const struct lttng_event *event);
 
 /*
  * Machine interface for kernel function entry event.
@@ -720,7 +721,7 @@ int mi_lttng_event_function_probe(struct mi_writer *writer, struct lttng_event *
  * Returns zero if the element's value could be written.
  * Negative values indicate an error.
  */
-int mi_lttng_event_function_entry(struct mi_writer *writer, struct lttng_event *event);
+int mi_lttng_event_function_entry(struct mi_writer *writer, const struct lttng_event *event);
 
 /*
  * Machine interface: open an events element.
@@ -753,7 +754,7 @@ int mi_lttng_events_open(struct mi_writer *writer);
  * Negative values indicate an error.
  */
 int mi_lttng_event(struct mi_writer *writer,
-		   struct lttng_event *event,
+		   const struct lttng_event *event,
 		   int is_open,
 		   enum lttng_domain_type domain);
 
@@ -766,7 +767,7 @@ int mi_lttng_event(struct mi_writer *writer,
  * Returns zero if the element's value could be written.
  * Negative values indicate an error.
  */
-int mi_lttng_event_field(struct mi_writer *writer, struct lttng_event_field *field);
+int mi_lttng_event_field(struct mi_writer *writer, const struct lttng_event_field *field);
 
 /*
  * Machine interface: open a event_fields element.

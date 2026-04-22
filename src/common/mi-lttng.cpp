@@ -1056,7 +1056,7 @@ int mi_lttng_domains_open(struct mi_writer *writer)
 	return mi_lttng_writer_open_element(writer, config_element_domains);
 }
 
-int mi_lttng_domain(struct mi_writer *writer, struct lttng_domain *domain, int is_open)
+int mi_lttng_domain(struct mi_writer *writer, const struct lttng_domain *domain, int is_open)
 {
 	int ret = 0;
 	const char *str_domain;
@@ -1104,7 +1104,7 @@ int mi_lttng_channels_open(struct mi_writer *writer)
 	return mi_lttng_writer_open_element(writer, config_element_channels);
 }
 
-int mi_lttng_channel(struct mi_writer *writer, struct lttng_channel *channel, int is_open)
+int mi_lttng_channel(struct mi_writer *writer, const struct lttng_channel *channel, int is_open)
 {
 	int ret = 0;
 
@@ -1218,10 +1218,10 @@ int mi_emit_channel_reclamation_policy(const nonstd::optional<uint64_t>& memory_
 }
 } /* namespace */
 
-int mi_lttng_channel_attr(struct mi_writer *writer, struct lttng_channel_attr *attr)
+int mi_lttng_channel_attr(struct mi_writer *writer, const struct lttng_channel_attr *attr)
 {
 	int ret = 0;
-	struct lttng_channel *chan = caa_container_of(attr, struct lttng_channel, attr);
+	const struct lttng_channel *chan = caa_container_of(attr, struct lttng_channel, attr);
 	uint64_t discarded_events, lost_packets, monitor_timer_interval, watchdog_timer_interval;
 	int64_t blocking_timeout;
 	enum lttng_channel_allocation_policy allocation_policy;
@@ -1672,7 +1672,7 @@ int mi_lttng_data_stream_info_sets(struct mi_writer *writer,
 	return 0;
 }
 
-int mi_lttng_event_common_attributes(struct mi_writer *writer, struct lttng_event *event)
+int mi_lttng_event_common_attributes(struct mi_writer *writer, const struct lttng_event *event)
 {
 	int ret;
 	const char *filter_expression;
@@ -1721,7 +1721,7 @@ end:
 }
 
 namespace {
-int write_event_exclusions(struct mi_writer *writer, struct lttng_event *event)
+int write_event_exclusions(struct mi_writer *writer, const struct lttng_event *event)
 {
 	int i;
 	int ret;
@@ -1766,7 +1766,7 @@ end:
 } /* namespace */
 
 int mi_lttng_event_tracepoint_loglevel(struct mi_writer *writer,
-				       struct lttng_event *event,
+				       const struct lttng_event *event,
 				       enum lttng_domain_type domain)
 {
 	int ret;
@@ -1794,13 +1794,13 @@ end:
 	return ret;
 }
 
-int mi_lttng_event_tracepoint_no_loglevel(struct mi_writer *writer, struct lttng_event *event)
+int mi_lttng_event_tracepoint_no_loglevel(struct mi_writer *writer, const struct lttng_event *event)
 {
 	/* event exclusion filter */
 	return write_event_exclusions(writer, event);
 }
 
-int mi_lttng_event_function_probe(struct mi_writer *writer, struct lttng_event *event)
+int mi_lttng_event_function_probe(struct mi_writer *writer, const struct lttng_event *event)
 {
 	int ret;
 
@@ -1844,7 +1844,7 @@ end:
 }
 
 namespace {
-int mi_lttng_event_userspace_probe(struct mi_writer *writer, struct lttng_event *event)
+int mi_lttng_event_userspace_probe(struct mi_writer *writer, const struct lttng_event *event)
 {
 	int ret;
 	const struct lttng_userspace_probe_location *location;
@@ -1985,7 +1985,7 @@ end:
 }
 } /* namespace */
 
-int mi_lttng_event_function_entry(struct mi_writer *writer, struct lttng_event *event)
+int mi_lttng_event_function_entry(struct mi_writer *writer, const struct lttng_event *event)
 {
 	int ret;
 
@@ -2018,7 +2018,7 @@ int mi_lttng_events_open(struct mi_writer *writer)
 }
 
 int mi_lttng_event(struct mi_writer *writer,
-		   struct lttng_event *event,
+		   const struct lttng_event *event,
 		   int is_open,
 		   enum lttng_domain_type domain)
 {
@@ -2319,7 +2319,7 @@ int mi_lttng_event_fields_open(struct mi_writer *writer)
 	return mi_lttng_writer_open_element(writer, mi_lttng_element_event_fields);
 }
 
-int mi_lttng_event_field(struct mi_writer *writer, struct lttng_event_field *field)
+int mi_lttng_event_field(struct mi_writer *writer, const struct lttng_event_field *field)
 {
 	int ret;
 
