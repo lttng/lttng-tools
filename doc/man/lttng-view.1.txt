@@ -4,7 +4,7 @@
 
 lttng-view(1)
 =============
-:revdate: 14 June 2021
+:revdate: 22 April 2026
 
 
 NAME
@@ -24,7 +24,7 @@ DESCRIPTION
 The `lttng view` command launches an external trace reader to read the
 current traces of:
 
-With the option:--session='SESSION' option::
+With the 'SESSION' argument::
     The recording session named 'SESSION'.
 
 With the option:--trace-path='DIR' option::
@@ -34,7 +34,7 @@ Otherwise::
     The current recording session (see man:concepts(1) to learn more
     about the current recording session).
 
-With the option:--session option or without the option:--trace-path
+With the 'SESSION' argument or without the option:--trace-path
 option, the mode of the selected recording session may :not: be network
 streaming or live.
 
