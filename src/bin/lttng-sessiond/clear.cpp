@@ -25,7 +25,8 @@ struct cmd_clear_session_reply_context {
 };
 } /* namespace */
 
-static void cmd_clear_session_reply(const ltt_session::locked_ref& session, void *_reply_context)
+namespace {
+void cmd_clear_session_reply(const ltt_session::locked_ref& session, void *_reply_context)
 {
 	int ret;
 	ssize_t comm_ret;
@@ -50,6 +51,7 @@ static void cmd_clear_session_reply(const ltt_session::locked_ref& session, void
 	}
 	free(_reply_context);
 }
+} /* namespace */
 
 int cmd_clear_session(const ltt_session::locked_ref& session, int *sock_fd)
 {

@@ -39,16 +39,17 @@ namespace lsu = lttng::sessiond::ust;
  *
  * Consumer socket lock MUST be acquired before calling this.
  */
-static int ask_channel_creation(lsu::app_session *ua_sess,
-				lsu::app_channel *ua_chan,
-				struct consumer_output *consumer,
-				struct consumer_socket *socket,
-				lsu::trace_class *trace_class,
-				std::uint32_t chan_id,
-				struct lttng_trace_chunk *trace_chunk,
-				enum lttng_trace_format trace_format,
-				unsigned int output_traces,
-				unsigned int live_timer_interval)
+namespace {
+int ask_channel_creation(lsu::app_session *ua_sess,
+			 lsu::app_channel *ua_chan,
+			 struct consumer_output *consumer,
+			 struct consumer_socket *socket,
+			 lsu::trace_class *trace_class,
+			 std::uint32_t chan_id,
+			 struct lttng_trace_chunk *trace_chunk,
+			 enum lttng_trace_format trace_format,
+			 unsigned int output_traces,
+			 unsigned int live_timer_interval)
 {
 	int ret, output;
 	uint64_t key;
@@ -249,6 +250,7 @@ static int ask_channel_creation(lsu::app_session *ua_sess,
 
 	return ret;
 }
+} /* namespace */
 
 /*
  * Ask consumer to create a channel for a given session.

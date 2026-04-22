@@ -39,7 +39,8 @@ struct thread_state {
 /*
  * Creates the application socket.
  */
-static int create_application_socket()
+namespace {
+int create_application_socket()
 {
 	int ret = 0;
 	int apps_sock;
@@ -81,11 +82,13 @@ error_close_socket:
 	ret = -1;
 	goto end;
 }
+} /* namespace */
 
 /*
  * Notify UST applications using the shm mmap futex.
  */
-static int notify_ust_apps(int active, bool is_root)
+namespace {
+int notify_ust_apps(int active, bool is_root)
 {
 	char *wait_shm_mmap;
 
@@ -107,8 +110,10 @@ static int notify_ust_apps(int active, bool is_root)
 error:
 	return -1;
 }
+} /* namespace */
 
-static void cleanup_application_registration_thread(void *data)
+namespace {
+void cleanup_application_registration_thread(void *data)
 {
 	struct thread_state *thread_state = (struct thread_state *) data;
 
@@ -119,15 +124,19 @@ static void cleanup_application_registration_thread(void *data)
 	lttng_pipe_destroy(thread_state->quit_pipe);
 	free(thread_state);
 }
+} /* namespace */
 
-static void set_thread_status(struct thread_state *thread_state, bool running)
+namespace {
+void set_thread_status(struct thread_state *thread_state, bool running)
 {
 	DBG("Marking application registration thread's state as %s", running ? "running" : "error");
 	thread_state->running = running;
 	sem_post(&thread_state->ready);
 }
+} /* namespace */
 
-static bool wait_thread_status(struct thread_state *thread_state)
+namespace {
+bool wait_thread_status(struct thread_state *thread_state)
 {
 	DBG("Waiting for application registration thread to be ready");
 	sem_wait(&thread_state->ready);
@@ -139,18 +148,22 @@ static bool wait_thread_status(struct thread_state *thread_state)
 
 	return thread_state->running;
 }
+} /* namespace */
 
-static void thread_init_cleanup(void *data)
+namespace {
+void thread_init_cleanup(void *data)
 {
 	struct thread_state *thread_state = (struct thread_state *) data;
 
 	set_thread_status(thread_state, false);
 }
+} /* namespace */
 
 /*
  * This thread manage application registration.
  */
-static void *thread_application_registration(void *data)
+namespace {
+void *thread_application_registration(void *data)
 {
 	int sock = -1, i, ret, err = -1;
 	uint32_t nb_fd;
@@ -374,14 +387,17 @@ error_create_poll:
 	health_unregister(the_health_sessiond);
 	return nullptr;
 }
+} /* namespace */
 
-static bool shutdown_application_registration_thread(void *data)
+namespace {
+bool shutdown_application_registration_thread(void *data)
 {
 	struct thread_state *thread_state = (struct thread_state *) data;
 	const int write_fd = lttng_pipe_get_writefd(thread_state->quit_pipe);
 
 	return notify_thread_pipe(write_fd) == 1;
 }
+} /* namespace */
 
 struct lttng_thread *launch_application_registration_thread(struct ust_cmd_queue *cmd_queue)
 {

@@ -141,25 +141,29 @@ end:
  * The caller MUST acquire the session list lock before.
  * Returns the unique identifier for the session.
  */
-static uint64_t add_session_list(struct ltt_session *ls)
+namespace {
+uint64_t add_session_list(struct ltt_session *ls)
 {
 	LTTNG_ASSERT(ls);
 
 	cds_list_add(&ls->list, &the_session_list.head);
 	return the_session_list.next_uuid++;
 }
+} /* namespace */
 
 /*
  * Delete a ltt_session structure to the global list.
  *
  * The caller MUST acquire the session list lock before.
  */
-static void del_session_list(struct ltt_session *ls)
+namespace {
+void del_session_list(struct ltt_session *ls)
 {
 	LTTNG_ASSERT(ls);
 
 	cds_list_del(&ls->list);
 }
+} /* namespace */
 
 /*
  * Return a pointer to the session list.
@@ -291,7 +295,8 @@ end:
  *
  * The session list lock must be held.
  */
-static int ltt_sessions_ht_alloc()
+namespace {
+int ltt_sessions_ht_alloc()
 {
 	int ret = 0;
 
@@ -314,13 +319,15 @@ static int ltt_sessions_ht_alloc()
 end:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Destroy the ltt_sessions_ht_by_id HT.
  *
  * The session list lock must be held.
  */
-static void ltt_sessions_ht_destroy()
+namespace {
+void ltt_sessions_ht_destroy()
 {
 	if (ltt_sessions_ht_by_id) {
 		lttng_ht_destroy(ltt_sessions_ht_by_id);
@@ -334,13 +341,15 @@ static void ltt_sessions_ht_destroy()
 
 	return;
 }
+} /* namespace */
 
 /*
  * Add a ltt_session to the ltt_sessions_ht_by_id and ltt_sessions_ht_by_name.
  * If unallocated, the ltt_sessions_ht_by_id and ltt_sessions_ht_by_name. HTs
  * are allocated. The session list lock must be held.
  */
-static void add_session_ht(struct ltt_session *ls)
+namespace {
+void add_session_ht(struct ltt_session *ls)
 {
 	int ret;
 
@@ -366,13 +375,15 @@ static void add_session_ht(struct ltt_session *ls)
 end:
 	return;
 }
+} /* namespace */
 
 /*
  * Test if ltt_sessions_ht_by_id/name are empty.
  * Return `false` if hash table objects are null.
  * The session list lock must be held.
  */
-static bool ltt_sessions_ht_empty()
+namespace {
+bool ltt_sessions_ht_empty()
 {
 	bool empty = false;
 
@@ -409,13 +420,15 @@ static bool ltt_sessions_ht_empty()
 end:
 	return empty;
 }
+} /* namespace */
 
 /*
  * Remove a ltt_session from the ltt_sessions_ht_by_id.
  * If empty, the ltt_sessions_ht_by_id/name HTs are freed.
  * The session list lock must be held.
  */
-static void del_session_ht(struct ltt_session *ls)
+namespace {
+void del_session_ht(struct ltt_session *ls)
 {
 	struct lttng_ht_iter iter;
 	int ret;
@@ -433,6 +446,7 @@ static void del_session_ht(struct ltt_session *ls)
 		ltt_sessions_ht_destroy();
 	}
 }
+} /* namespace */
 
 /*
  * Acquire session lock
@@ -515,9 +529,10 @@ void ltt_session::_const_session_unlock(const ltt_session& session)
 	pthread_mutex_unlock(&session._lock);
 }
 
-static int _session_set_trace_chunk_no_lock_check(const ltt_session::locked_ref& session,
-						  struct lttng_trace_chunk *new_trace_chunk,
-						  struct lttng_trace_chunk **_current_trace_chunk)
+namespace {
+int _session_set_trace_chunk_no_lock_check(const ltt_session::locked_ref& session,
+					   struct lttng_trace_chunk *new_trace_chunk,
+					   struct lttng_trace_chunk **_current_trace_chunk)
 {
 	int ret = 0;
 	unsigned int i, refs_to_acquire = 0, refs_acquired = 0, refs_to_release = 0;
@@ -644,6 +659,7 @@ error:
 	ret = -1;
 	goto end_no_move;
 }
+} /* namespace */
 
 struct lttng_trace_chunk *
 session_create_new_trace_chunk(const ltt_session::locked_ref& session,
@@ -922,7 +938,8 @@ int session_set_trace_chunk(const ltt_session::locked_ref& session,
 		session, new_trace_chunk, current_trace_chunk);
 }
 
-static void session_notify_destruction(const ltt_session::locked_ref& session)
+namespace {
+void session_notify_destruction(const ltt_session::locked_ref& session)
 {
 	size_t i;
 	const auto count = lttng_dynamic_array_get_count(&session->destroy_notifiers);
@@ -935,6 +952,7 @@ static void session_notify_destruction(const ltt_session::locked_ref& session)
 		element->notifier(session, element->user_data);
 	}
 }
+} /* namespace */
 
 /*
  * Fire each clear notifier once, and remove them from the array.
@@ -954,7 +972,8 @@ void session_notify_clear(const ltt_session::locked_ref& session)
 	lttng_dynamic_array_clear(&session->clear_notifiers);
 }
 
-static void session_release(struct urcu_ref *ref)
+namespace {
+void session_release(struct urcu_ref *ref)
 {
 	struct ltt_session *session = lttng::utils::container_of(ref, &ltt_session::ref_count);
 	const bool session_published = session->published;
@@ -1040,6 +1059,7 @@ static void session_release(struct urcu_ref *ref)
 		the_session_list.removal_cond.notify_all();
 	}
 }
+} /* namespace */
 
 /*
  * Acquire a reference to a session.

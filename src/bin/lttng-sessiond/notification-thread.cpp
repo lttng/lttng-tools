@@ -154,7 +154,8 @@ error:
 	return nullptr;
 }
 
-static char *get_notification_channel_sock_path()
+namespace {
+char *get_notification_channel_sock_path()
 {
 	auto sock_path = lttng::make_unique_wrapper<char, lttng::memory::free>(
 		zmalloc<char>(LTTNG_PATH_MAX));
@@ -180,8 +181,10 @@ static char *get_notification_channel_sock_path()
 
 	return sock_path.release();
 }
+} /* namespace */
 
-static void notification_channel_socket_destroy(int fd)
+namespace {
+void notification_channel_socket_destroy(int fd)
 {
 	int ret;
 	char *sock_path = get_notification_channel_sock_path();
@@ -201,8 +204,10 @@ static void notification_channel_socket_destroy(int fd)
 		PERROR("close notification channel socket");
 	}
 }
+} /* namespace */
 
-static int notification_channel_socket_create()
+namespace {
+int notification_channel_socket_create()
 {
 	int fd = -1, ret;
 	char *sock_path = get_notification_channel_sock_path();
@@ -250,10 +255,12 @@ error:
 	free(sock_path);
 	return ret;
 }
+} /* namespace */
 
-static int init_poll_set(struct lttng_poll_event *poll_set,
-			 struct notification_thread_handle *handle,
-			 int notification_channel_socket)
+namespace {
+int init_poll_set(struct lttng_poll_event *poll_set,
+		  struct notification_thread_handle *handle,
+		  int notification_channel_socket)
 {
 	int ret;
 
@@ -304,8 +311,10 @@ error:
 	lttng_poll_clean(poll_set);
 	return ret;
 }
+} /* namespace */
 
-static void fini_thread_state(struct notification_thread_state *state)
+namespace {
+void fini_thread_state(struct notification_thread_state *state)
 {
 	int ret;
 
@@ -372,22 +381,28 @@ static void fini_thread_state(struct notification_thread_state *state)
 	}
 	lttng_poll_clean(&state->events);
 }
+} /* namespace */
 
-static void mark_thread_as_ready(struct notification_thread_handle *handle)
+namespace {
+void mark_thread_as_ready(struct notification_thread_handle *handle)
 {
 	DBG("Marking notification thread as ready");
 	sem_post(&handle->ready);
 }
+} /* namespace */
 
-static void wait_until_thread_is_ready(struct notification_thread_handle *handle)
+namespace {
+void wait_until_thread_is_ready(struct notification_thread_handle *handle)
 {
 	DBG("Waiting for notification thread to be ready");
 	sem_wait(&handle->ready);
 	DBG("Notification thread is ready");
 }
+} /* namespace */
 
-static int init_thread_state(struct notification_thread_handle *handle,
-			     struct notification_thread_state *state)
+namespace {
+int init_thread_state(struct notification_thread_handle *handle,
+		      struct notification_thread_state *state)
 {
 	int ret;
 
@@ -493,11 +508,13 @@ error:
 	fini_thread_state(state);
 	return -1;
 }
+} /* namespace */
 
-static int handle_channel_monitoring_pipe(int fd,
-					  uint32_t revents,
-					  struct notification_thread_handle *handle,
-					  struct notification_thread_state *state)
+namespace {
+int handle_channel_monitoring_pipe(int fd,
+				   uint32_t revents,
+				   struct notification_thread_handle *handle,
+				   struct notification_thread_state *state)
 {
 	int ret = 0;
 	enum lttng_domain_type domain;
@@ -528,11 +545,13 @@ static int handle_channel_monitoring_pipe(int fd,
 end:
 	return ret;
 }
+} /* namespace */
 
-static int handle_event_notification_pipe(int event_source_fd,
-					  enum lttng_domain_type domain,
-					  uint32_t revents,
-					  struct notification_thread_state *state)
+namespace {
+int handle_event_notification_pipe(int event_source_fd,
+				   enum lttng_domain_type domain,
+				   uint32_t revents,
+				   struct notification_thread_state *state)
 {
 	int ret = 0;
 
@@ -566,13 +585,15 @@ static int handle_event_notification_pipe(int event_source_fd,
 end:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Return the event source domain type via parameter.
  */
-static bool fd_is_event_notification_source(const struct notification_thread_state *state,
-					    int fd,
-					    enum lttng_domain_type *domain)
+namespace {
+bool fd_is_event_notification_source(const struct notification_thread_state *state,
+				     int fd,
+				     enum lttng_domain_type *domain)
 {
 	struct notification_event_tracer_event_source_element *source_element;
 
@@ -589,12 +610,14 @@ static bool fd_is_event_notification_source(const struct notification_thread_sta
 
 	return false;
 }
+} /* namespace */
 
 /*
  * This thread services notification channel clients and commands received
  * from various lttng-sessiond components over a command queue.
  */
-static void *thread_notification(void *data)
+namespace {
+void *thread_notification(void *data)
 {
 	int ret;
 	struct notification_thread_handle *handle = (notification_thread_handle *) data;
@@ -743,14 +766,17 @@ end:
 	health_unregister(the_health_sessiond);
 	return nullptr;
 }
+} /* namespace */
 
-static bool shutdown_notification_thread(void *thread_data)
+namespace {
+bool shutdown_notification_thread(void *thread_data)
 {
 	struct notification_thread_handle *handle = (notification_thread_handle *) thread_data;
 
 	notification_thread_command_quit(handle);
 	return true;
 }
+} /* namespace */
 
 struct lttng_thread *launch_notification_thread(struct notification_thread_handle *handle)
 {

@@ -27,20 +27,25 @@ struct thread_notifiers {
 };
 } /* namespace */
 
-static void mark_thread_as_ready(struct thread_notifiers *notifiers)
+namespace {
+void mark_thread_as_ready(struct thread_notifiers *notifiers)
 {
 	DBG("Marking health management thread as ready");
 	sem_post(&notifiers->ready);
 }
+} /* namespace */
 
-static void wait_until_thread_is_ready(struct thread_notifiers *notifiers)
+namespace {
+void wait_until_thread_is_ready(struct thread_notifiers *notifiers)
 {
 	DBG("Waiting for health management thread to be ready");
 	sem_wait(&notifiers->ready);
 	DBG("Health management thread is ready");
 }
+} /* namespace */
 
-static void cleanup_health_management_thread(void *data)
+namespace {
+void cleanup_health_management_thread(void *data)
 {
 	struct thread_notifiers *notifiers = (thread_notifiers *) data;
 
@@ -48,11 +53,13 @@ static void cleanup_health_management_thread(void *data)
 	sem_destroy(&notifiers->ready);
 	free(notifiers);
 }
+} /* namespace */
 
 /*
  * Thread managing health check socket.
  */
-static void *thread_manage_health(void *data)
+namespace {
+void *thread_manage_health(void *data)
 {
 	const bool is_root = (getuid() == 0);
 	int sock = -1, new_sock = -1, ret, i, err = -1;
@@ -244,14 +251,17 @@ error:
 	rcu_unregister_thread();
 	return nullptr;
 }
+} /* namespace */
 
-static bool shutdown_health_management_thread(void *data)
+namespace {
+bool shutdown_health_management_thread(void *data)
 {
 	struct thread_notifiers *notifiers = (thread_notifiers *) data;
 	const int write_fd = lttng_pipe_get_writefd(notifiers->quit_pipe);
 
 	return notify_thread_pipe(write_fd) == 1;
 }
+} /* namespace */
 
 bool launch_health_management_thread()
 {

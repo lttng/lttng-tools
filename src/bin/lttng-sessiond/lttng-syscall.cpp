@@ -106,7 +106,8 @@ error_ioctl:
  * This empty the hash table and destroys it after. After this, the pointer is
  * unsuable. RCU read side lock MUST NOT be acquired before calling this.
  */
-static void destroy_syscall_ht(struct lttng_ht *ht)
+namespace {
+void destroy_syscall_ht(struct lttng_ht *ht)
 {
 	DBG3("Destroying syscall hash table.");
 
@@ -124,13 +125,15 @@ static void destroy_syscall_ht(struct lttng_ht *ht)
 
 	lttng_ht_destroy(ht);
 }
+} /* namespace */
 
 /*
  * Allocate the given hashtable pointer.
  *
  * Return 0 on success else a negative LTTNG error value.
  */
-static int init_syscall_ht(struct lttng_ht **ht)
+namespace {
+int init_syscall_ht(struct lttng_ht **ht)
 {
 	int ret;
 
@@ -143,6 +146,7 @@ static int init_syscall_ht(struct lttng_ht **ht)
 
 	return ret;
 }
+} /* namespace */
 
 /*
  * Lookup a syscall in the given hash table by name.
@@ -151,7 +155,8 @@ static int init_syscall_ht(struct lttng_ht **ht)
  *
  * Return syscall object if found or else NULL.
  */
-static struct syscall *lookup_syscall(struct lttng_ht *ht, const char *name)
+namespace {
+struct syscall *lookup_syscall(struct lttng_ht *ht, const char *name)
 {
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
@@ -168,14 +173,16 @@ static struct syscall *lookup_syscall(struct lttng_ht *ht, const char *name)
 
 	return ksyscall;
 }
+} /* namespace */
 
 /*
  * Using the given syscall object in the events array with the bitness of the
  * syscall at index in the syscall table.
  */
-static void update_event_syscall_bitness(struct lttng_event *events,
-					 unsigned int index,
-					 unsigned int syscall_index)
+namespace {
+void update_event_syscall_bitness(struct lttng_event *events,
+				  unsigned int index,
+				  unsigned int syscall_index)
 {
 	LTTNG_ASSERT(events);
 
@@ -187,13 +194,15 @@ static void update_event_syscall_bitness(struct lttng_event *events,
 								  LTTNG_EVENT_FLAG_SYSCALL_64);
 	}
 }
+} /* namespace */
 
 /*
  * Allocate and initialize syscall object and add it to the given hashtable.
  *
  * Return 0 on success else -LTTNG_ERR_NOMEM.
  */
-static int add_syscall_to_ht(struct lttng_ht *ht, unsigned int index, unsigned int syscall_index)
+namespace {
+int add_syscall_to_ht(struct lttng_ht *ht, unsigned int index, unsigned int syscall_index)
 {
 	int ret;
 	struct syscall *ksyscall;
@@ -216,6 +225,7 @@ static int add_syscall_to_ht(struct lttng_ht *ht, unsigned int index, unsigned i
 error:
 	return ret;
 }
+} /* namespace */
 
 /*
  * List syscalls present in the kernel syscall global array, allocate and

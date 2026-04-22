@@ -324,9 +324,15 @@ struct kern_modules_param kern_modules_probes_default[] = {
 };
 
 /* dynamic probe modules list */
-static struct kern_modules_param *probes;
-static int nr_probes;
-static int probes_capacity;
+namespace {
+struct kern_modules_param *probes;
+} /* namespace */
+namespace {
+int nr_probes;
+} /* namespace */
+namespace {
+int probes_capacity;
+} /* namespace */
 
 #ifdef HAVE_KMOD
 #include <libkmod.h>
@@ -542,7 +548,8 @@ error:
 
 #else /* HAVE_KMOD */
 
-static int modprobe_lttng(struct kern_modules_param *modules, int entries)
+namespace {
+int modprobe_lttng(struct kern_modules_param *modules, int entries)
 {
 	int ret = 0, i;
 	char modprobe[256];
@@ -594,8 +601,10 @@ static int modprobe_lttng(struct kern_modules_param *modules, int entries)
 error:
 	return ret;
 }
+} /* namespace */
 
-static void modprobe_remove_lttng(const struct kern_modules_param *modules, int entries)
+namespace {
+void modprobe_remove_lttng(const struct kern_modules_param *modules, int entries)
 {
 	int ret = 0, i;
 	char modprobe[256];
@@ -631,6 +640,7 @@ static void modprobe_remove_lttng(const struct kern_modules_param *modules, int 
 		}
 	}
 }
+} /* namespace */
 
 #endif /* HAVE_KMOD */
 
@@ -642,7 +652,8 @@ void modprobe_remove_lttng_control()
 	modprobe_remove_lttng(kern_modules_control_core, ARRAY_SIZE(kern_modules_control_core));
 }
 
-static void free_probes()
+namespace {
+void free_probes()
 {
 	int i;
 
@@ -656,6 +667,7 @@ static void free_probes()
 	probes = nullptr;
 	nr_probes = 0;
 }
+} /* namespace */
 
 /*
  * Remove data kernel modules in reverse load order.
@@ -691,7 +703,8 @@ int modprobe_lttng_control()
  * Grow global list of probes (double capacity or set it to 1 if
  * currently 0 and copy existing data).
  */
-static int grow_probes()
+namespace {
+int grow_probes()
 {
 	int i;
 	struct kern_modules_param *tmp_probes;
@@ -728,12 +741,14 @@ static int grow_probes()
 
 	return 0;
 }
+} /* namespace */
 
 /*
  * Appends a comma-separated list of probes to the global list
  * of probes.
  */
-static int append_list_to_probes(const char *list)
+namespace {
+int append_list_to_probes(const char *list)
 {
 	char *next;
 	int ret;
@@ -800,6 +815,7 @@ error:
 	free_probes();
 	return ret;
 }
+} /* namespace */
 
 /*
  * Load data kernel module(s).

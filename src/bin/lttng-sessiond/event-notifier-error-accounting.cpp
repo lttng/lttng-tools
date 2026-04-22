@@ -82,7 +82,8 @@ const char *error_accounting_status_str(enum event_notifier_error_accounting_sta
 	}
 }
 
-static enum event_notifier_error_accounting_status
+namespace {
+enum event_notifier_error_accounting_status
 init_error_accounting_state(struct error_accounting_state *state, uint64_t index_count)
 {
 	enum event_notifier_error_accounting_status status;
@@ -114,8 +115,10 @@ error_indices_ht:
 end:
 	return status;
 }
+} /* namespace */
 
-static void fini_error_accounting_state(struct error_accounting_state *state)
+namespace {
+void fini_error_accounting_state(struct error_accounting_state *state)
 {
 	LTTNG_ASSERT(state);
 
@@ -126,6 +129,7 @@ static void fini_error_accounting_state(struct error_accounting_state *state)
 	lttng_ht_destroy(state->indices_ht);
 	lttng_index_allocator_destroy(state->index_allocator);
 }
+} /* namespace */
 
 enum event_notifier_error_accounting_status
 event_notifier_error_accounting_init(uint64_t buffer_size_kernel, uint64_t buffer_size_ust)
@@ -184,7 +188,8 @@ enum event_notifier_error_accounting_status get_error_counter_index_for_token(
 	return status;
 }
 
-static enum event_notifier_error_accounting_status
+namespace {
+enum event_notifier_error_accounting_status
 event_notifier_error_accounting_kernel_clear(const struct lttng_trigger *trigger)
 {
 	int ret;
@@ -228,6 +233,7 @@ event_notifier_error_accounting_kernel_clear(const struct lttng_trigger *trigger
 end:
 	return status;
 }
+} /* namespace */
 
 enum event_notifier_error_accounting_status
 event_notifier_error_accounting_register_kernel(int kernel_event_notifier_group_fd)
@@ -278,7 +284,8 @@ error:
 	return status;
 }
 
-static enum event_notifier_error_accounting_status create_error_counter_index_for_token(
+namespace {
+enum event_notifier_error_accounting_status create_error_counter_index_for_token(
 	struct error_accounting_state *state, uint64_t tracer_token, uint64_t *error_counter_index)
 {
 	struct index_ht_entry *index_entry;
@@ -325,6 +332,7 @@ static enum event_notifier_error_accounting_status create_error_counter_index_fo
 end:
 	return status;
 }
+} /* namespace */
 
 enum event_notifier_error_accounting_status
 event_notifier_error_accounting_register_event_notifier(const struct lttng_trigger *trigger,
@@ -403,7 +411,8 @@ end:
 	return status;
 }
 
-static enum event_notifier_error_accounting_status
+namespace {
+enum event_notifier_error_accounting_status
 event_notifier_error_accounting_kernel_get_count(const struct lttng_trigger *trigger,
 						 uint64_t *count)
 {
@@ -458,6 +467,7 @@ event_notifier_error_accounting_kernel_get_count(const struct lttng_trigger *tri
 end:
 	return status;
 }
+} /* namespace */
 
 enum event_notifier_error_accounting_status
 event_notifier_error_accounting_get_count(const struct lttng_trigger *trigger, uint64_t *count)
@@ -477,7 +487,8 @@ event_notifier_error_accounting_get_count(const struct lttng_trigger *trigger, u
 	}
 }
 
-static enum event_notifier_error_accounting_status
+namespace {
+enum event_notifier_error_accounting_status
 event_notifier_error_accounting_clear(const struct lttng_trigger *trigger)
 {
 	switch (lttng_trigger_get_underlying_domain_type_restriction(trigger)) {
@@ -494,13 +505,16 @@ event_notifier_error_accounting_clear(const struct lttng_trigger *trigger)
 		abort();
 	}
 }
+} /* namespace */
 
-static void free_index_ht_entry(struct rcu_head *head)
+namespace {
+void free_index_ht_entry(struct rcu_head *head)
 {
 	auto *entry = lttng::utils::container_of(head, &index_ht_entry::rcu_head);
 
 	free(entry);
 }
+} /* namespace */
 
 void event_notifier_error_accounting_unregister_event_notifier(const struct lttng_trigger *trigger)
 {

@@ -42,13 +42,15 @@ struct process_attr_tracker_value_node {
 };
 } /* namespace */
 
-static void process_attr_tracker_value_node_rcu_free(struct rcu_head *rcu_head)
+namespace {
+void process_attr_tracker_value_node_rcu_free(struct rcu_head *rcu_head)
 {
 	struct process_attr_tracker_value_node *node =
 		lttng::utils::container_of(rcu_head, &process_attr_tracker_value_node::rcu_head);
 
 	free(node);
 }
+} /* namespace */
 
 struct process_attr_tracker *process_attr_tracker_create()
 {
@@ -73,16 +75,18 @@ error:
 	return nullptr;
 }
 
-static void
-process_attr_tracker_remove_value_node(struct process_attr_tracker *tracker,
-				       struct process_attr_tracker_value_node *value_node)
+namespace {
+void process_attr_tracker_remove_value_node(struct process_attr_tracker *tracker,
+					    struct process_attr_tracker_value_node *value_node)
 {
 	cds_lfht_del(tracker->inclusion_set_ht, &value_node->inclusion_set_ht_node);
 	process_attr_value_destroy(value_node->value);
 	call_rcu(&value_node->rcu_head, process_attr_tracker_value_node_rcu_free);
 }
+} /* namespace */
 
-static void process_attr_tracker_clear_inclusion_set(struct process_attr_tracker *tracker)
+namespace {
+void process_attr_tracker_clear_inclusion_set(struct process_attr_tracker *tracker)
 {
 	if (!tracker->inclusion_set_ht) {
 		return;
@@ -100,14 +104,17 @@ static void process_attr_tracker_clear_inclusion_set(struct process_attr_tracker
 	LTTNG_ASSERT(ret == 0);
 	tracker->inclusion_set_ht = nullptr;
 }
+} /* namespace */
 
-static int process_attr_tracker_create_inclusion_set(struct process_attr_tracker *tracker)
+namespace {
+int process_attr_tracker_create_inclusion_set(struct process_attr_tracker *tracker)
 {
 	LTTNG_ASSERT(!tracker->inclusion_set_ht);
 	tracker->inclusion_set_ht = cds_lfht_new(
 		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, nullptr);
 	return tracker->inclusion_set_ht ? 0 : -1;
 }
+} /* namespace */
 
 void process_attr_tracker_destroy(struct process_attr_tracker *tracker)
 {
@@ -144,7 +151,8 @@ end:
 	return ret;
 }
 
-static int match_inclusion_set_value(struct cds_lfht_node *node, const void *key)
+namespace {
+int match_inclusion_set_value(struct cds_lfht_node *node, const void *key)
 {
 	const struct process_attr_value *value_key = (process_attr_value *) key;
 	const struct process_attr_tracker_value_node *value_node = caa_container_of(
@@ -152,8 +160,10 @@ static int match_inclusion_set_value(struct cds_lfht_node *node, const void *key
 
 	return process_attr_tracker_value_equal(value_node->value, value_key);
 }
+} /* namespace */
 
-static struct process_attr_tracker_value_node *
+namespace {
+struct process_attr_tracker_value_node *
 process_attr_tracker_lookup(const struct process_attr_tracker *tracker,
 			    const struct process_attr_value *value)
 {
@@ -174,6 +184,7 @@ process_attr_tracker_lookup(const struct process_attr_tracker *tracker,
 			      node, &process_attr_tracker_value_node::inclusion_set_ht_node) :
 		      nullptr;
 }
+} /* namespace */
 
 /* Protected by session mutex held by caller. */
 enum process_attr_tracker_status

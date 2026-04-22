@@ -17,16 +17,22 @@
 #include <urcu/uatomic.h>
 
 /* total count of fd. */
-static long fd_count;
+namespace {
+long fd_count;
+} /* namespace */
 
 /*
  * threshold in % of number of fd allowed.
  */
-static long fd_threshold[LTTNG_FD_NR_TYPES] = {
+namespace {
+long fd_threshold[LTTNG_FD_NR_TYPES] = {
 	75, /* LTTNG_FD_APPS */
 };
+} /* namespace */
 
-static rlim_t max_nr_fd;
+namespace {
+rlim_t max_nr_fd;
+} /* namespace */
 
 int lttng_fd_get(enum lttng_fd_type type, unsigned int nr)
 {

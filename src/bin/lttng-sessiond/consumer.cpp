@@ -530,7 +530,8 @@ void consumer_del_socket(struct consumer_socket *sock, struct consumer_output *c
 /*
  * RCU destroy call function.
  */
-static void destroy_socket_rcu(struct rcu_head *head)
+namespace {
+void destroy_socket_rcu(struct rcu_head *head)
 {
 	struct lttng_ht_node_ulong *node =
 		lttng::utils::container_of(head, &lttng_ht_node_ulong::head);
@@ -538,6 +539,7 @@ static void destroy_socket_rcu(struct rcu_head *head)
 
 	free(socket);
 }
+} /* namespace */
 
 /*
  * Destroy and free socket pointer in a call RCU. The call must either:
@@ -612,7 +614,8 @@ void consumer_destroy_output_sockets(struct consumer_output *obj)
 /*
  * Delete the consumer_output object from the list and free the ptr.
  */
-static void consumer_release_output(struct urcu_ref *ref)
+namespace {
+void consumer_release_output(struct urcu_ref *ref)
 {
 	struct consumer_output *obj = lttng::utils::container_of(ref, &consumer_output::ref);
 
@@ -625,6 +628,7 @@ static void consumer_release_output(struct urcu_ref *ref)
 
 	free(obj);
 }
+} /* namespace */
 
 /*
  * Get the consumer_output object.
@@ -1286,8 +1290,10 @@ error:
 	return ret;
 }
 
-static int
-consumer_send_pipe(struct consumer_socket *consumer_sock, enum lttng_consumer_command cmd, int pipe)
+namespace {
+int consumer_send_pipe(struct consumer_socket *consumer_sock,
+		       enum lttng_consumer_command cmd,
+		       int pipe)
 {
 	int ret;
 	struct lttcomm_consumer_msg msg;
@@ -1327,6 +1333,7 @@ error:
 	pthread_mutex_unlock(consumer_sock->lock);
 	return ret;
 }
+} /* namespace */
 
 int consumer_send_channel_monitor_pipe(struct consumer_socket *consumer_sock, int pipe)
 {
@@ -2446,10 +2453,11 @@ error:
  * Called with the consumer socket lock held.
  * Returns 0 on success, or a negative value on error.
  */
-static int do_consumer_reclaim_session_owner_id(struct consumer_data& consumer,
-						uint64_t session_id,
-						uint32_t owner_id,
-						uint32_t *pending_reclamations)
+namespace {
+int do_consumer_reclaim_session_owner_id(struct consumer_data& consumer,
+					 uint64_t session_id,
+					 uint32_t owner_id,
+					 uint32_t *pending_reclamations)
 {
 	if (consumer.cmd_sock < 0) {
 		return -1;
@@ -2499,6 +2507,7 @@ static int do_consumer_reclaim_session_owner_id(struct consumer_data& consumer,
 
 	return 0;
 }
+} /* namespace */
 
 /*
  * Notification the consumer-daemon about channels with keys in

@@ -45,7 +45,8 @@ struct thread_notifiers {
  * the lock, then configures the app per-session under individual
  * session locks.
  */
-static void update_ust_app(int app_sock)
+namespace {
+void update_ust_app(int app_sock)
 {
 	const struct ltt_session_list *session_list = session_get_list();
 
@@ -146,13 +147,15 @@ static void update_ust_app(int app_sock)
 		sessions_snapshot.clear();
 	}
 }
+} /* namespace */
 
 /*
  * Sanitize the wait queue of the dispatch registration thread meaning removing
  * invalid nodes from it. This is to avoid memory leaks for the case the UST
  * notify socket is never received.
  */
-static void sanitize_wait_queue(struct ust_reg_wait_queue *wait_queue)
+namespace {
+void sanitize_wait_queue(struct ust_reg_wait_queue *wait_queue)
 {
 	int ret, nb_fd = 0, i;
 	unsigned int fd_added = 0;
@@ -237,6 +240,7 @@ error_create:
 	ERR("Unable to sanitize wait queue");
 	return;
 }
+} /* namespace */
 
 /*
  * Send a socket to a thread This is called from the dispatch UST registration
@@ -248,7 +252,8 @@ error_create:
  * On success, return 0 else a negative value being the errno message of the
  * write().
  */
-static int send_socket_to_thread(int fd, int sock)
+namespace {
+int send_socket_to_thread(int fd, int sock)
 {
 	ssize_t ret;
 
@@ -275,17 +280,21 @@ static int send_socket_to_thread(int fd, int sock)
 error:
 	return (int) ret;
 }
+} /* namespace */
 
-static void cleanup_ust_dispatch_thread(void *data)
+namespace {
+void cleanup_ust_dispatch_thread(void *data)
 {
 	free(data);
 }
+} /* namespace */
 
 /*
  * Dispatch request from the registration threads to the application
  * communication thread.
  */
-static void *thread_dispatch_ust_registration(void *data)
+namespace {
+void *thread_dispatch_ust_registration(void *data)
 {
 	int ret, err = -1;
 	struct cds_wfcq_node *node;
@@ -561,8 +570,10 @@ error_testpoint:
 	rcu_unregister_thread();
 	return nullptr;
 }
+} /* namespace */
 
-static bool shutdown_ust_dispatch_thread(void *data)
+namespace {
+bool shutdown_ust_dispatch_thread(void *data)
 {
 	struct thread_notifiers *notifiers = (thread_notifiers *) data;
 
@@ -570,6 +581,7 @@ static bool shutdown_ust_dispatch_thread(void *data)
 	futex_nto1_wake(&notifiers->ust_cmd_queue->futex);
 	return true;
 }
+} /* namespace */
 
 bool launch_ust_dispatch_thread(struct ust_cmd_queue *cmd_queue,
 				int apps_cmd_pipe_write_fd,

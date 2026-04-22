@@ -58,7 +58,8 @@ const char *default_reg_uri = "tcp://" DEFAULT_NETWORK_VIEWER_BIND_ADDRESS;
  * caller.
  * The caller must hold the session list lock.
  */
-static void update_agent_app(const struct agent_app *app)
+namespace {
+void update_agent_app(const struct agent_app *app)
 {
 	struct ltt_session_list *list;
 
@@ -96,11 +97,13 @@ static void update_agent_app(const struct agent_app *app)
 		agent_update(trigger_agent, app);
 	}
 }
+} /* namespace */
 
 /*
  * Create and init socket from uri.
  */
-static struct lttcomm_sock *init_tcp_socket()
+namespace {
+struct lttcomm_sock *init_tcp_socket()
 {
 	int ret;
 	struct lttng_uri *uri = nullptr;
@@ -181,11 +184,13 @@ error:
 	}
 	return nullptr;
 }
+} /* namespace */
 
 /*
  * Close and destroy the given TCP socket.
  */
-static void destroy_tcp_socket(struct lttcomm_sock *sock)
+namespace {
+void destroy_tcp_socket(struct lttcomm_sock *sock)
 {
 	int ret;
 	uint16_t port;
@@ -204,8 +209,10 @@ static void destroy_tcp_socket(struct lttcomm_sock *sock)
 	sock->ops->close(sock);
 	lttcomm_destroy_sock(sock);
 }
+} /* namespace */
 
-static const char *domain_type_str(enum lttng_domain_type domain_type)
+namespace {
+const char *domain_type_str(enum lttng_domain_type domain_type)
 {
 	switch (domain_type) {
 	case LTTNG_DOMAIN_NONE:
@@ -226,8 +233,10 @@ static const char *domain_type_str(enum lttng_domain_type domain_type)
 		return "unknown";
 	}
 }
+} /* namespace */
 
-static bool is_agent_protocol_version_supported(const struct agent_protocol_version *version)
+namespace {
+bool is_agent_protocol_version_supported(const struct agent_protocol_version *version)
 {
 	const bool is_supported = version->major == AGENT_MAJOR_VERSION &&
 		version->minor == AGENT_MINOR_VERSION;
@@ -242,6 +251,7 @@ static bool is_agent_protocol_version_supported(const struct agent_protocol_vers
 
 	return is_supported;
 }
+} /* namespace */
 
 /*
  * Handle a new agent connection on the registration socket.
@@ -250,9 +260,10 @@ static bool is_agent_protocol_version_supported(const struct agent_protocol_vers
  * On success, the resulting socket is returned through `agent_app_socket`
  * and the application's reported id is updated through `agent_app_id`.
  */
-static int accept_agent_connection(struct lttcomm_sock *reg_sock,
-				   struct agent_app_id *agent_app_id,
-				   struct lttcomm_sock **agent_app_socket)
+namespace {
+int accept_agent_connection(struct lttcomm_sock *reg_sock,
+			    struct agent_app_id *agent_app_id,
+			    struct lttcomm_sock **agent_app_socket)
 {
 	int ret;
 	struct agent_protocol_version agent_version;
@@ -315,6 +326,7 @@ error_close_socket:
 end:
 	return ret;
 }
+} /* namespace */
 
 bool agent_tracing_is_enabled()
 {
@@ -328,28 +340,35 @@ bool agent_tracing_is_enabled()
 /*
  * Write agent TCP port using the rundir.
  */
-static int write_agent_port(uint16_t port)
+namespace {
+int write_agent_port(uint16_t port)
 {
 	return utils_create_pid_file((pid_t) port, the_config.agent_port_file_path.value);
 }
+} /* namespace */
 
-static void mark_thread_as_ready(struct thread_notifiers *notifiers)
+namespace {
+void mark_thread_as_ready(struct thread_notifiers *notifiers)
 {
 	DBG("Marking agent management thread as ready");
 	sem_post(&notifiers->ready);
 }
+} /* namespace */
 
-static void wait_until_thread_is_ready(struct thread_notifiers *notifiers)
+namespace {
+void wait_until_thread_is_ready(struct thread_notifiers *notifiers)
 {
 	DBG("Waiting for agent management thread to be ready");
 	sem_wait(&notifiers->ready);
 	DBG("Agent management thread is ready");
 }
+} /* namespace */
 
 /*
  * This thread manage application notify communication.
  */
-static void *thread_agent_management(void *data)
+namespace {
+void *thread_agent_management(void *data)
 {
 	int i, ret;
 	uint32_t nb_fd;
@@ -534,16 +553,20 @@ error_poll_create:
 	rcu_unregister_thread();
 	return nullptr;
 }
+} /* namespace */
 
-static bool shutdown_agent_management_thread(void *data)
+namespace {
+bool shutdown_agent_management_thread(void *data)
 {
 	struct thread_notifiers *notifiers = (thread_notifiers *) data;
 	const int write_fd = lttng_pipe_get_writefd(notifiers->quit_pipe);
 
 	return notify_thread_pipe(write_fd) == 1;
 }
+} /* namespace */
 
-static void cleanup_agent_management_thread(void *data)
+namespace {
+void cleanup_agent_management_thread(void *data)
 {
 	struct thread_notifiers *notifiers = (thread_notifiers *) data;
 
@@ -551,6 +574,7 @@ static void cleanup_agent_management_thread(void *data)
 	sem_destroy(&notifiers->ready);
 	free(notifiers);
 }
+} /* namespace */
 
 bool launch_agent_management_thread()
 {

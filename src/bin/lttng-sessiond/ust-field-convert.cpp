@@ -27,7 +27,7 @@ namespace lsu = lttng::sessiond::ust;
  * fmtlib helper that must be under the same namespace as lttng_ust_ctl_abstract_types
  * (global).
  */
-static int format_as(lttng_ust_ctl_abstract_types type)
+static int format_as(lttng_ust_ctl_abstract_types type) /* NOLINT(misc-use-anonymous-namespace) */
 {
 	return fmt::underlying(type);
 }

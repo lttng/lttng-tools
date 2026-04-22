@@ -116,7 +116,8 @@ template class lsu::registry_typed_enum<uint64_t>;
 /*
  * Destroy event function call of the call RCU.
  */
-static void ust_event_class_destroy_rcu(struct rcu_head *head)
+namespace {
+void ust_event_class_destroy_rcu(struct rcu_head *head)
 {
 	DIAGNOSTIC_PUSH
 	DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
@@ -126,6 +127,7 @@ static void ust_event_class_destroy_rcu(struct rcu_head *head)
 
 	lttng::sessiond::ust::event_class_destroy(event);
 }
+} /* namespace */
 
 /*
  * For a given event in a trace class, delete the entry and destroy the event.

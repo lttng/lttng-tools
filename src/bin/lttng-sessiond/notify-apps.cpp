@@ -30,7 +30,8 @@ struct thread_notifiers {
 /*
  * This thread manage application notify communication.
  */
-static void *thread_application_notification(void *data)
+namespace {
+void *thread_application_notification(void *data)
 {
 	int i, ret, err = -1;
 	ssize_t size_ret;
@@ -201,22 +202,27 @@ error_testpoint:
 	rcu_unregister_thread();
 	return nullptr;
 }
+} /* namespace */
 
-static bool shutdown_application_notification_thread(void *data)
+namespace {
+bool shutdown_application_notification_thread(void *data)
 {
 	struct thread_notifiers *notifiers = (thread_notifiers *) data;
 	const int write_fd = lttng_pipe_get_writefd(notifiers->quit_pipe);
 
 	return notify_thread_pipe(write_fd) == 1;
 }
+} /* namespace */
 
-static void cleanup_application_notification_thread(void *data)
+namespace {
+void cleanup_application_notification_thread(void *data)
 {
 	struct thread_notifiers *notifiers = (thread_notifiers *) data;
 
 	lttng_pipe_destroy(notifiers->quit_pipe);
 	free(notifiers);
 }
+} /* namespace */
 
 bool launch_application_notification_thread(int apps_cmd_notify_pipe_read_fd)
 {

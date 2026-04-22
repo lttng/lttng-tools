@@ -20,7 +20,8 @@
 #include <ctype.h>
 #include <limits.h>
 
-static struct sessiond_config sessiond_config_build_defaults = {
+namespace {
+struct sessiond_config sessiond_config_build_defaults = {
 	.verbose = 0,
 	.verbose_consumer = 0,
 	.agent_tcp_port = { .begin = DEFAULT_AGENT_TCP_PORT_RANGE_BEGIN,
@@ -73,17 +74,22 @@ static struct sessiond_config sessiond_config_build_defaults = {
 	.kconsumerd_err_unix_sock_path = { nullptr, false },
 	.kconsumerd_cmd_unix_sock_path = { nullptr, false },
 };
+} /* namespace */
 
-static void config_string_fini(struct config_string *str)
+namespace {
+void config_string_fini(struct config_string *str)
 {
 	config_string_set(str, nullptr);
 }
+} /* namespace */
 
-static void config_string_set_static(struct config_string *config_str, const char *value)
+namespace {
+void config_string_set_static(struct config_string *config_str, const char *value)
 {
 	config_string_set(config_str, (char *) value);
 	config_str->should_free = false;
 }
+} /* namespace */
 
 /* Only use for dynamically-allocated strings. */
 void config_string_set(struct config_string *config_str, char *value)
@@ -177,8 +183,9 @@ end:
 	return ret;
 }
 
-static int config_set_ust_ctl_paths(struct sessiond_config *config,
-				    const char *lttng_ust_ctl_path_override)
+namespace {
+int config_set_ust_ctl_paths(struct sessiond_config *config,
+			     const char *lttng_ust_ctl_path_override)
 {
 	char *str;
 	int ret;
@@ -218,8 +225,10 @@ static int config_set_ust_ctl_paths(struct sessiond_config *config,
 	str = nullptr;
 	return 0;
 }
+} /* namespace */
 
-static int config_set_paths(struct sessiond_config *config)
+namespace {
+int config_set_paths(struct sessiond_config *config)
 {
 	config_string_set(&config->rundir, utils_get_rundir(0));
 	if (!config->rundir.value) {
@@ -301,6 +310,7 @@ static int config_set_paths(struct sessiond_config *config)
 
 	return 0;
 }
+} /* namespace */
 
 int sessiond_config_init(struct sessiond_config *config)
 {
@@ -485,7 +495,8 @@ void sessiond_config_fini(struct sessiond_config *config)
 	config_string_fini(&config->kconsumerd_cmd_unix_sock_path);
 }
 
-static int resolve_path(struct config_string *path)
+namespace {
+int resolve_path(struct config_string *path)
 {
 	int ret = 0;
 	char *absolute_path;
@@ -504,6 +515,7 @@ static int resolve_path(struct config_string *path)
 end:
 	return ret;
 }
+} /* namespace */
 
 #define RESOLVE_CHECK(path_config_str)     \
 	if (resolve_path(path_config_str)) \

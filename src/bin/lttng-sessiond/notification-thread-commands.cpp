@@ -25,8 +25,9 @@ notification_thread_command::notification_thread_command()
 	::memset(&reply, 0, sizeof(reply));
 }
 
-static int run_command_wait(struct notification_thread_handle *handle,
-			    struct notification_thread_command *cmd)
+namespace {
+int run_command_wait(struct notification_thread_handle *handle,
+		     struct notification_thread_command *cmd)
 {
 	int ret;
 	uint64_t notification_counter = 1;
@@ -58,8 +59,10 @@ error_unlock_queue:
 	pthread_mutex_unlock(&handle->cmd_queue.lock);
 	return -1;
 }
+} /* namespace */
 
-static struct notification_thread_command *
+namespace {
+struct notification_thread_command *
 notification_thread_command_copy(const struct notification_thread_command *original_cmd)
 {
 	struct notification_thread_command *new_cmd;
@@ -74,9 +77,11 @@ notification_thread_command_copy(const struct notification_thread_command *origi
 	*new_cmd = *original_cmd;
 	return new_cmd;
 }
+} /* namespace */
 
-static int run_command_no_wait(struct notification_thread_handle *handle,
-			       const struct notification_thread_command *in_cmd)
+namespace {
+int run_command_no_wait(struct notification_thread_handle *handle,
+			const struct notification_thread_command *in_cmd)
 {
 	int ret;
 	uint64_t notification_counter = 1;
@@ -112,6 +117,7 @@ error_unlock_queue:
 error:
 	return -1;
 }
+} /* namespace */
 
 enum lttng_error_code
 notification_thread_command_register_trigger(struct notification_thread_handle *handle,

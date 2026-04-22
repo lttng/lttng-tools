@@ -93,13 +93,15 @@
 #include <lib/tpp/sessiond.hpp>
 #endif
 
-static const char *help_msg =
+namespace {
+const char *help_msg =
 #ifdef LTTNG_EMBED_HELP
 #include <lttng-sessiond.8.h>
 #else
 	nullptr
 #endif
 	;
+} /* namespace */
 
 #define EVENT_NOTIFIER_ERROR_COUNTER_NUMBER_OF_BUCKET_MAX 65535
 #define EVENT_NOTIFIER_ERROR_BUFFER_SIZE_BASE_OPTION_STR  "event-notifier-error-buffer-size"
@@ -109,14 +111,21 @@ static const char *help_msg =
 	EVENT_NOTIFIER_ERROR_BUFFER_SIZE_BASE_OPTION_STR "-userspace"
 
 const char *progname;
-static int lockfile_fd = -1;
-static int opt_print_version;
+namespace {
+int lockfile_fd = -1;
+} /* namespace */
+namespace {
+int opt_print_version;
+} /* namespace */
 
 /* Set to 1 when a SIGUSR1 signal is received. */
-static int recv_child_signal;
+namespace {
+int recv_child_signal;
+} /* namespace */
 
 /* Command line options */
-static const struct option long_options[] = {
+namespace {
+const struct option long_options[] = {
 	{ "client-sock", required_argument, nullptr, 'c' },
 	{ "apps-sock", required_argument, nullptr, 'a' },
 	{ "kconsumerd-cmd-sock", required_argument, nullptr, '\0' },
@@ -151,16 +160,23 @@ static const struct option long_options[] = {
 	{ "default-trace-format", required_argument, nullptr, '\0' },
 	{ nullptr, 0, nullptr, 0 }
 };
+} /* namespace */
 
 /* Command line options to ignore from configuration file */
-static const char *config_ignore_options[] = { "help", "version", "config" };
+namespace {
+const char *config_ignore_options[] = { "help", "version", "config" };
+} /* namespace */
 
 /*
  * This pipe is used to inform the thread managing application communication
  * that a command is queued and ready to be processed.
  */
-static int apps_cmd_pipe[2] = { -1, -1 };
-static int apps_cmd_notify_pipe[2] = { -1, -1 };
+namespace {
+int apps_cmd_pipe[2] = { -1, -1 };
+} /* namespace */
+namespace {
+int apps_cmd_notify_pipe[2] = { -1, -1 };
+} /* namespace */
 
 /*
  * UST registration command queue. This queue is tied with a futex and uses a N
@@ -171,21 +187,28 @@ static int apps_cmd_notify_pipe[2] = { -1, -1 };
  * the line new application socket and monitors it for any I/O error or clean
  * close that triggers an unregistration of the application.
  */
-static struct ust_cmd_queue ust_cmd_queue;
+namespace {
+struct ust_cmd_queue ust_cmd_queue;
+} /* namespace */
 
 /*
  * Section name to look for in the daemon configuration file.
  */
-static const char *const config_section_name = "sessiond";
+namespace {
+const char *const config_section_name = "sessiond";
+} /* namespace */
 
 /* Am I root or not. Set to 1 if the daemon is running as root */
-static int is_root;
+namespace {
+int is_root;
+} /* namespace */
 
 /*
  * Notify the main thread to initiate the teardown of the worker threads by
  * writing to the main quit pipe.
  */
-static void notify_main_quit_pipe()
+namespace {
+void notify_main_quit_pipe()
 {
 	int ret;
 
@@ -196,11 +219,13 @@ static void notify_main_quit_pipe()
 		ERR("write error on main quit pipe");
 	}
 }
+} /* namespace */
 
 /*
  * Close every consumer sockets.
  */
-static void close_consumer_sockets()
+namespace {
+void close_consumer_sockets()
 {
 	int ret;
 
@@ -259,6 +284,7 @@ static void close_consumer_sockets()
 		}
 	}
 }
+} /* namespace */
 
 /*
  * Wait on consumer process termination.
@@ -266,7 +292,8 @@ static void close_consumer_sockets()
  * Need to be called with the consumer data lock held or from a context
  * ensuring no concurrent access to data (e.g: cleanup).
  */
-static void wait_consumer(struct consumer_data *consumer_data)
+namespace {
+void wait_consumer(struct consumer_data *consumer_data)
 {
 	if (consumer_data->pid <= 0) {
 		return;
@@ -297,11 +324,13 @@ static void wait_consumer(struct consumer_data *consumer_data)
 
 	consumer_data->pid = 0;
 }
+} /* namespace */
 
 /*
  * Cleanup the session daemon's data structures.
  */
-static void sessiond_cleanup()
+namespace {
+void sessiond_cleanup()
 {
 	int ret;
 
@@ -379,11 +408,13 @@ static void sessiond_cleanup()
 	 * parallel with this teardown.
 	 */
 }
+} /* namespace */
 
 /*
  * Cleanup the daemon's option data structures.
  */
-static void sessiond_cleanup_options()
+namespace {
+void sessiond_cleanup_options()
 {
 	DBG("Cleaning up options");
 
@@ -391,11 +422,14 @@ static void sessiond_cleanup_options()
 
 	run_as_destroy_worker();
 }
+} /* namespace */
 
-static int string_match(const char *str1, const char *str2)
+namespace {
+int string_match(const char *str1, const char *str2)
 {
 	return (str1 && str2) && !strcmp(str1, str2);
 }
+} /* namespace */
 
 /*
  * Take an option from the getopt output and set it in the right variable to be
@@ -403,7 +437,8 @@ static int string_match(const char *str1, const char *str2)
  *
  * Return 0 on success else a negative value.
  */
-static int set_option(int opt, const char *arg, const char *optname)
+namespace {
+int set_option(int opt, const char *arg, const char *optname)
 {
 	int ret = 0;
 
@@ -810,14 +845,15 @@ end:
 
 	return ret;
 }
+} /* namespace */
 
 /*
  * config_entry_handler_cb used to handle options read from a config file.
  * See config_entry_handler_cb comment in common/config/session-config.h for the
  * return value conventions.
  */
-static int config_entry_handler(const struct config_entry *entry,
-				void *unused __attribute__((unused)))
+namespace {
+int config_entry_handler(const struct config_entry *entry, void *unused __attribute__((unused)))
 {
 	int ret = 0, i;
 
@@ -866,16 +902,20 @@ static int config_entry_handler(const struct config_entry *entry,
 end:
 	return ret;
 }
+} /* namespace */
 
-static void print_version()
+namespace {
+void print_version()
 {
 	fprintf(stdout, "%s\n", VERSION);
 }
+} /* namespace */
 
 /*
  * daemon configuration loading and argument parsing
  */
-static int set_options(int argc, char **argv)
+namespace {
+int set_options(int argc, char **argv)
 {
 	int ret = 0, c = 0, option_index = 0;
 	int orig_optopt = optopt, orig_optind = optind;
@@ -951,14 +991,17 @@ end:
 	free(optstring);
 	return ret;
 }
+} /* namespace */
 
 /*
  * Create lockfile using the rundir and return its fd.
  */
-static int create_lockfile()
+namespace {
+int create_lockfile()
 {
 	return utils_create_lock_file(the_config.lock_file_path.value);
 }
+} /* namespace */
 
 /*
  * Check if the global socket is available, and if a daemon is answering at the
@@ -966,7 +1009,8 @@ static int create_lockfile()
  *
  * Also attempts to create and hold the lock file.
  */
-static int check_existing_daemon()
+namespace {
+int check_existing_daemon()
 {
 	int ret = 0;
 
@@ -984,6 +1028,7 @@ static int check_existing_daemon()
 end:
 	return ret;
 }
+} /* namespace */
 
 namespace {
 auto tpp_common = static_cast<std::unique_ptr<
@@ -1092,7 +1137,8 @@ void check_trace_self_blocking()
 }
 } /* namespace */
 
-static void sessiond_cleanup_lock_file()
+namespace {
+void sessiond_cleanup_lock_file()
 {
 	int ret;
 
@@ -1111,6 +1157,7 @@ static void sessiond_cleanup_lock_file()
 		}
 	}
 }
+} /* namespace */
 
 /*
  * Set the tracing group gid onto the client socket.
@@ -1118,7 +1165,8 @@ static void sessiond_cleanup_lock_file()
  * Race window between mkdir and chown is OK because we are going from more
  * permissive (root.root) to less permissive (root.tracing).
  */
-static int set_permissions(char *rundir)
+namespace {
+int set_permissions(char *rundir)
 {
 	int ret;
 	gid_t gid;
@@ -1179,11 +1227,13 @@ static int set_permissions(char *rundir)
 
 	return ret;
 }
+} /* namespace */
 
 /*
  * Create the lttng run directory needed for all global sockets and pipe.
  */
-static int create_lttng_rundir()
+namespace {
+int create_lttng_rundir()
 {
 	int ret;
 
@@ -1202,12 +1252,14 @@ static int create_lttng_rundir()
 error:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Setup sockets and directory needed by the consumerds' communication with the
  * session daemon.
  */
-static int set_consumer_sockets(struct consumer_data *consumer_data)
+namespace {
+int set_consumer_sockets(struct consumer_data *consumer_data)
 {
 	int ret;
 	char *path = nullptr;
@@ -1283,6 +1335,7 @@ static int set_consumer_sockets(struct consumer_data *consumer_data)
 error:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Signal handler for the daemon
@@ -1290,7 +1343,8 @@ error:
  * Simply stop all worker threads, leaving main() return gracefully after
  * joining all threads and calling cleanup().
  */
-static void sighandler(int sig, siginfo_t *siginfo, void *arg __attribute__((unused)))
+namespace {
+void sighandler(int sig, siginfo_t *siginfo, void *arg __attribute__((unused)))
 {
 	switch (sig) {
 	case SIGINT:
@@ -1325,12 +1379,14 @@ static void sighandler(int sig, siginfo_t *siginfo, void *arg __attribute__((unu
 		break;
 	}
 }
+} /* namespace */
 
 /*
  * Setup signal handler for :
  *		SIGINT, SIGTERM, SIGPIPE
  */
-static int set_signal_handler()
+namespace {
+int set_signal_handler()
 {
 	int ret = 0;
 	struct sigaction sa;
@@ -1376,12 +1432,14 @@ static int set_signal_handler()
 
 	return ret;
 }
+} /* namespace */
 
 /*
  * Set open files limit to unlimited. This daemon can open a large number of
  * file descriptors in order to consume multiple kernel traces.
  */
-static void set_ulimit()
+namespace {
+void set_ulimit()
 {
 	int ret;
 	struct rlimit lim;
@@ -1395,13 +1453,17 @@ static void set_ulimit()
 		PERROR("failed to set open files limit");
 	}
 }
+} /* namespace */
 
-static int write_pidfile()
+namespace {
+int write_pidfile()
 {
 	return utils_create_pid_file(getpid(), the_config.pid_file_path.value);
 }
+} /* namespace */
 
-static int set_clock_plugin_env()
+namespace {
+int set_clock_plugin_env()
 {
 	int ret = 0;
 	char *env_value = nullptr;
@@ -1429,8 +1491,10 @@ static int set_clock_plugin_env()
 end:
 	return ret;
 }
+} /* namespace */
 
-static void destroy_all_sessions_and_wait()
+namespace {
+void destroy_all_sessions_and_wait()
 {
 	struct ltt_session_list *session_list;
 
@@ -1466,8 +1530,10 @@ static void destroy_all_sessions_and_wait()
 	session_list_wait_empty(std::move(list_lock));
 	DBG("Destruction of all sessions completed");
 }
+} /* namespace */
 
-static void unregister_all_triggers()
+namespace {
+void unregister_all_triggers()
 {
 	enum lttng_error_code ret_code;
 	enum lttng_trigger_status trigger_status;
@@ -1523,16 +1589,20 @@ static void unregister_all_triggers()
 end:
 	lttng_triggers_destroy(triggers);
 }
+} /* namespace */
 
-static int run_as_worker_post_fork_cleanup(void *data)
+namespace {
+int run_as_worker_post_fork_cleanup(void *data)
 {
 	struct sessiond_config *sessiond_config = (struct sessiond_config *) data;
 
 	sessiond_config_fini(sessiond_config);
 	return 0;
 }
+} /* namespace */
 
-static int launch_run_as_worker(const char *procname)
+namespace {
+int launch_run_as_worker(const char *procname)
 {
 	/*
 	 * Clean-up before forking the run-as worker. Any dynamically
@@ -1542,19 +1612,23 @@ static int launch_run_as_worker(const char *procname)
 	 */
 	return run_as_create_worker(procname, run_as_worker_post_fork_cleanup, &the_config);
 }
+} /* namespace */
 
-static void sessiond_uuid_log()
+namespace {
+void sessiond_uuid_log()
 {
 	char uuid_str[LTTNG_UUID_STR_LEN];
 
 	lttng_uuid_to_str(the_sessiond_uuid, uuid_str);
 	DBG("Starting lttng-sessiond {%s}", uuid_str);
 }
+} /* namespace */
 
 /*
  * main
  */
-static int _main(int argc, char **argv)
+namespace {
+int _main(int argc, char **argv)
 {
 	int ret = 0, retval = 0;
 	const char *env_app_timeout;
@@ -2225,6 +2299,7 @@ exit_set_signal_handler:
 		return EXIT_FAILURE;
 	}
 }
+} /* namespace */
 
 int main(int argc, char **argv)
 {

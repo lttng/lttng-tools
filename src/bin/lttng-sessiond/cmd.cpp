@@ -105,7 +105,9 @@ namespace ls = lttng::sessiond;
 namespace lsc = lttng::sessiond::config;
 namespace lsu = lttng::sessiond::ust;
 
-static enum lttng_error_code wait_on_path(void *path);
+namespace {
+enum lttng_error_code wait_on_path(void *path);
+} /* namespace */
 
 namespace {
 struct cmd_destroy_session_reply_context {
@@ -646,26 +648,34 @@ std::uint64_t resolve_process_attr_value_to_integral(enum lttng_process_attr pro
 }
 } /* namespace */
 
-static struct cmd_completion_handler *current_completion_handler;
-static int validate_ust_event_name(const char *);
-static int cmd_enable_event_internal(ltt_session::locked_ref& session,
-				     const struct lttng_domain *domain,
-				     char *channel_name,
-				     struct lttng_event *event,
-				     char *filter_expression,
-				     struct lttng_bytecode *filter,
-				     struct lttng_event_exclusion *exclusion,
-				     lttng::ctl::event_rule_uptr event_rule);
-static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref& session,
-							 const struct lttng_domain *domain,
-							 const struct lttng_channel& channel_attr);
+namespace {
+struct cmd_completion_handler *current_completion_handler;
+} /* namespace */
+namespace {
+int validate_ust_event_name(const char *);
+} /* namespace */
+namespace {
+int cmd_enable_event_internal(ltt_session::locked_ref& session,
+			      const struct lttng_domain *domain,
+			      char *channel_name,
+			      struct lttng_event *event,
+			      char *filter_expression,
+			      struct lttng_bytecode *filter,
+			      struct lttng_event_exclusion *exclusion,
+			      lttng::ctl::event_rule_uptr event_rule);
+} /* namespace */
+namespace {
+enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref& session,
+						  const struct lttng_domain *domain,
+						  const struct lttng_channel& channel_attr);
+} /* namespace */
 
 /*
  * Create a session path used by list_lttng_sessions for the case that the
  * session consumer is on the network.
  */
-static int
-build_network_session_path(char *dst, size_t size, const ltt_session::locked_ref& session)
+namespace {
+int build_network_session_path(char *dst, size_t size, const ltt_session::locked_ref& session)
 {
 	int ret, kdata_port, udata_port;
 	struct lttng_uri *kuri = nullptr, *uuri = nullptr, *uri = nullptr;
@@ -745,6 +755,7 @@ build_network_session_path(char *dst, size_t size, const ltt_session::locked_ref
 error:
 	return ret;
 }
+} /* namespace */
 
 namespace {
 /*
@@ -847,10 +858,11 @@ unsigned int list_events_from_agent_domain(const lsc::agent_domain& agent_domain
  * Add URI so the consumer output object. Set the correct path depending on the
  * domain adding the default trace directory.
  */
-static enum lttng_error_code add_uri_to_consumer(const ltt_session::locked_ref& session,
-						 struct consumer_output *consumer,
-						 struct lttng_uri *uri,
-						 enum lttng_domain_type domain)
+namespace {
+enum lttng_error_code add_uri_to_consumer(const ltt_session::locked_ref& session,
+					  struct consumer_output *consumer,
+					  struct lttng_uri *uri,
+					  enum lttng_domain_type domain)
 {
 	int ret;
 	enum lttng_error_code ret_code = LTTNG_OK;
@@ -942,6 +954,7 @@ static enum lttng_error_code add_uri_to_consumer(const ltt_session::locked_ref& 
 error:
 	return ret_code;
 }
+} /* namespace */
 
 /*
  * Create a socket to the relayd using the URI.
@@ -949,9 +962,10 @@ error:
  * On success, the relayd_sock pointer is set to the created socket.
  * Else, it remains untouched and an LTTng error code is returned.
  */
-static enum lttng_error_code create_connect_relayd(struct lttng_uri *uri,
-						   struct lttcomm_relayd_sock **relayd_sock,
-						   struct consumer_output *consumer)
+namespace {
+enum lttng_error_code create_connect_relayd(struct lttng_uri *uri,
+					    struct lttcomm_relayd_sock **relayd_sock,
+					    struct consumer_output *consumer)
 {
 	int ret;
 	enum lttng_error_code status = LTTNG_OK;
@@ -1026,6 +1040,7 @@ free_sock:
 error:
 	return status;
 }
+} /* namespace */
 
 /*
  * Connect to the relayd using URI and send the socket to the right consumer.
@@ -1034,18 +1049,19 @@ error:
  *
  * Returns LTTNG_OK on success or an LTTng error code on failure.
  */
-static enum lttng_error_code send_consumer_relayd_socket(unsigned int session_id,
-							 struct lttng_uri *relayd_uri,
-							 struct consumer_output *consumer,
-							 struct consumer_socket *consumer_sock,
-							 const char *session_name,
-							 const char *hostname,
-							 const char *base_path,
-							 int session_live_timer,
-							 const uint64_t *current_chunk_id,
-							 time_t session_creation_time,
-							 bool session_name_contains_creation_time,
-							 enum lttng_trace_format trace_format)
+namespace {
+enum lttng_error_code send_consumer_relayd_socket(unsigned int session_id,
+						  struct lttng_uri *relayd_uri,
+						  struct consumer_output *consumer,
+						  struct consumer_socket *consumer_sock,
+						  const char *session_name,
+						  const char *hostname,
+						  const char *base_path,
+						  int session_live_timer,
+						  const uint64_t *current_chunk_id,
+						  time_t session_creation_time,
+						  bool session_name_contains_creation_time,
+						  enum lttng_trace_format trace_format)
 {
 	int ret;
 	struct lttcomm_relayd_sock *rsock = nullptr;
@@ -1116,6 +1132,7 @@ close_sock:
 relayd_comm_error:
 	return status;
 }
+} /* namespace */
 
 /*
  * Send both relayd sockets to a specific consumer and domain.  This is a
@@ -1126,17 +1143,18 @@ relayd_comm_error:
  *
  * Returns LTTNG_OK, or an LTTng error code on failure.
  */
-static enum lttng_error_code send_consumer_relayd_sockets(unsigned int session_id,
-							  struct consumer_output *consumer,
-							  struct consumer_socket *sock,
-							  const char *session_name,
-							  const char *hostname,
-							  const char *base_path,
-							  int session_live_timer,
-							  const uint64_t *current_chunk_id,
-							  time_t session_creation_time,
-							  bool session_name_contains_creation_time,
-							  enum lttng_trace_format trace_format)
+namespace {
+enum lttng_error_code send_consumer_relayd_sockets(unsigned int session_id,
+						   struct consumer_output *consumer,
+						   struct consumer_socket *sock,
+						   const char *session_name,
+						   const char *hostname,
+						   const char *base_path,
+						   int session_live_timer,
+						   const uint64_t *current_chunk_id,
+						   time_t session_creation_time,
+						   bool session_name_contains_creation_time,
+						   enum lttng_trace_format trace_format)
 {
 	enum lttng_error_code status = LTTNG_OK;
 
@@ -1184,6 +1202,7 @@ static enum lttng_error_code send_consumer_relayd_sockets(unsigned int session_i
 error:
 	return status;
 }
+} /* namespace */
 
 /*
  * Setup relayd connections for a tracing session. First creates the socket to
@@ -1404,9 +1423,10 @@ int cmd_enable_channel(command_ctx *cmd_ctx, ltt_session::locked_ref& session, i
 	return LTTNG_OK;
 }
 
-static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref& session,
-							 const struct lttng_domain *domain,
-							 const struct lttng_channel& channel_attr)
+namespace {
+enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref& session,
+						  const struct lttng_domain *domain,
+						  const struct lttng_channel& channel_attr)
 {
 	enum lttng_error_code ret_code = LTTNG_OK;
 	size_t len;
@@ -2027,6 +2047,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 
 	return LTTNG_OK;
 }
+} /* namespace */
 
 lttng_tracking_policy
 cmd_process_attr_tracker_get_tracking_policy(const ltt_session::locked_ref& session,
@@ -2757,15 +2778,18 @@ end:
 	return ret;
 }
 
-static inline bool name_starts_with(const char *name, const char *prefix)
+namespace {
+inline bool name_starts_with(const char *name, const char *prefix)
 {
 	const size_t max_cmp_len = std::min(strlen(prefix), (size_t) LTTNG_SYMBOL_NAME_LEN);
 
 	return !strncmp(name, prefix, max_cmp_len);
 }
+} /* namespace */
 
 /* Perform userspace-specific event name validation */
-static int validate_ust_event_name(const char *name)
+namespace {
+int validate_ust_event_name(const char *name)
 {
 	int ret = 0;
 
@@ -2788,6 +2812,7 @@ static int validate_ust_event_name(const char *name)
 end:
 	return ret;
 }
+} /* namespace */
 
 namespace {
 lttng::ctl::event_rule_uptr create_agent_internal_event_rule(lttng_domain_type agent_domain,
@@ -2828,15 +2853,16 @@ lttng::ctl::event_rule_uptr create_agent_internal_event_rule(lttng_domain_type a
  * be hidden from clients. Such events are used in the agent implementation to
  * enable the events through which all "agent" events are funeled.
  */
-static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_session,
-					  const struct lttng_domain *domain,
-					  char *channel_name,
-					  struct lttng_event *event,
-					  char *raw_filter_expression,
-					  struct lttng_bytecode *raw_bytecode,
-					  struct lttng_event_exclusion *raw_exclusion,
-					  bool internal_event,
-					  lttng::ctl::event_rule_uptr event_rule)
+namespace {
+lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_session,
+				   const struct lttng_domain *domain,
+				   char *channel_name,
+				   struct lttng_event *event,
+				   char *raw_filter_expression,
+				   struct lttng_bytecode *raw_bytecode,
+				   struct lttng_event_exclusion *raw_exclusion,
+				   bool internal_event,
+				   lttng::ctl::event_rule_uptr event_rule)
 {
 	auto filter_expression =
 		lttng::make_unique_wrapper<char, lttng::memory::free>(raw_filter_expression);
@@ -3246,6 +3272,7 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 
 	return LTTNG_OK;
 }
+} /* namespace */
 
 /*
  * Command LTTNG_ENABLE_EVENT processed by the client thread.
@@ -3293,14 +3320,15 @@ int cmd_enable_event(struct command_ctx *cmd_ctx,
  * never be made visible to clients and are immune to checks such as
  * reserved names.
  */
-static int cmd_enable_event_internal(ltt_session::locked_ref& locked_session,
-				     const struct lttng_domain *domain,
-				     char *channel_name,
-				     struct lttng_event *event,
-				     char *filter_expression,
-				     struct lttng_bytecode *filter,
-				     struct lttng_event_exclusion *exclusion,
-				     lttng::ctl::event_rule_uptr event_rule)
+namespace {
+int cmd_enable_event_internal(ltt_session::locked_ref& locked_session,
+			      const struct lttng_domain *domain,
+			      char *channel_name,
+			      struct lttng_event *event,
+			      char *filter_expression,
+			      struct lttng_bytecode *filter,
+			      struct lttng_event_exclusion *exclusion,
+			      lttng::ctl::event_rule_uptr event_rule)
 {
 	return _cmd_enable_event(locked_session,
 				 domain,
@@ -3312,6 +3340,7 @@ static int cmd_enable_event_internal(ltt_session::locked_ref& locked_session,
 				 true,
 				 std::move(event_rule));
 }
+} /* namespace */
 
 /*
  * Command LTTNG_LIST_TRACEPOINTS processed by the client thread.
@@ -3724,9 +3753,10 @@ error:
  * Set the base_path of the session only if subdir of a control uris is set.
  * Return LTTNG_OK on success, otherwise LTTNG_ERR_*.
  */
-static int set_session_base_path_from_uris(const ltt_session::locked_ref& session,
-					   size_t nb_uri,
-					   struct lttng_uri *uris)
+namespace {
+int set_session_base_path_from_uris(const ltt_session::locked_ref& session,
+				    size_t nb_uri,
+				    struct lttng_uri *uris)
 {
 	int ret;
 	size_t i;
@@ -3759,6 +3789,7 @@ static int set_session_base_path_from_uris(const ltt_session::locked_ref& sessio
 error:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Command LTTNG_SET_CONSUMER_URI processed by the client thread.
@@ -3839,7 +3870,8 @@ error:
 	return ret;
 }
 
-static enum lttng_error_code
+namespace {
+enum lttng_error_code
 set_session_output_from_descriptor(const ltt_session::locked_ref& session,
 				   const struct lttng_session_descriptor *descriptor)
 {
@@ -3908,8 +3940,10 @@ set_session_output_from_descriptor(const ltt_session::locked_ref& session,
 end:
 	return ret_code;
 }
+} /* namespace */
 
-static enum lttng_error_code
+namespace {
+enum lttng_error_code
 cmd_create_session_from_descriptor(struct lttng_session_descriptor *descriptor,
 				   const lttng_sock_cred *creds,
 				   const char *home_path)
@@ -4040,6 +4074,7 @@ end:
 
 	return ret_code;
 }
+} /* namespace */
 
 enum lttng_error_code cmd_create_session(struct command_ctx *cmd_ctx,
 					 int sock,
@@ -4127,7 +4162,8 @@ error:
 	return ret_code;
 }
 
-static void cmd_destroy_session_reply(const ltt_session::locked_ref& session, void *_reply_context)
+namespace {
+void cmd_destroy_session_reply(const ltt_session::locked_ref& session, void *_reply_context)
 {
 	int ret;
 	ssize_t comm_ret;
@@ -4205,6 +4241,7 @@ error:
 	lttng_dynamic_buffer_reset(&payload);
 	free(_reply_context);
 }
+} /* namespace */
 
 /*
  * Command LTTNG_DESTROY_SESSION processed by the client thread.
@@ -5032,7 +5069,8 @@ end:
  * Check if we can regenerate the metadata for this session.
  * Only kernel, UST per-uid and non-live sessions are supported.
  */
-static void check_regenerate_metadata_support(const ltt_session::locked_ref& session)
+namespace {
+void check_regenerate_metadata_support(const ltt_session::locked_ref& session)
 {
 	if (session->live_timer != 0) {
 		LTTNG_THROW_CTL("Metadata regeneration is not supported for live sessions",
@@ -5048,6 +5086,7 @@ static void check_regenerate_metadata_support(const ltt_session::locked_ref& ses
 				LTTNG_ERR_RELAYD_VERSION_FAIL);
 	}
 }
+} /* namespace */
 
 /*
  * Command LTTNG_REGENERATE_METADATA from the lttng-ctl library.
@@ -5094,7 +5133,8 @@ void cmd_regenerate_statedump(const ltt_session::locked_ref& session)
 	DBG("Cmd regenerate statedump for session %s", session->name);
 }
 
-static enum lttng_error_code
+namespace {
+enum lttng_error_code
 synchronize_tracer_notifier_register(struct notification_thread_handle *notification_thread,
 				     struct lttng_trigger *trigger,
 				     const struct lttng_credentials *cmd_creds)
@@ -5177,6 +5217,7 @@ synchronize_tracer_notifier_register(struct notification_thread_handle *notifica
 
 	return LTTNG_OK;
 }
+} /* namespace */
 
 lttng::ctl::trigger cmd_register_trigger(const struct lttng_credentials *cmd_creds,
 					 struct lttng_trigger *trigger,
@@ -5277,8 +5318,8 @@ lttng::ctl::trigger cmd_register_trigger(const struct lttng_credentials *cmd_cre
 	return lttng::ctl::trigger(trigger);
 }
 
-static enum lttng_error_code
-synchronize_tracer_notifier_unregister(const struct lttng_trigger *trigger)
+namespace {
+enum lttng_error_code synchronize_tracer_notifier_unregister(const struct lttng_trigger *trigger)
 {
 	enum lttng_error_code ret_code;
 	const struct lttng_condition *condition = lttng_trigger_get_const_condition(trigger);
@@ -5328,6 +5369,7 @@ synchronize_tracer_notifier_unregister(const struct lttng_trigger *trigger)
 
 	return LTTNG_OK;
 }
+} /* namespace */
 
 enum lttng_error_code cmd_unregister_trigger(const struct lttng_credentials *cmd_creds,
 					     const struct lttng_trigger *trigger,
@@ -5589,8 +5631,9 @@ end:
  *
  * Return LTTNG_OK on success or a LTTNG_ERR code.
  */
-static enum lttng_error_code set_relayd_for_snapshot(struct consumer_output *output,
-						     const ltt_session::locked_ref& session)
+namespace {
+enum lttng_error_code set_relayd_for_snapshot(struct consumer_output *output,
+					      const ltt_session::locked_ref& session)
 {
 	enum lttng_error_code status = LTTNG_OK;
 	LTTNG_OPTIONAL(uint64_t) current_chunk_id = {};
@@ -5667,9 +5710,11 @@ static enum lttng_error_code set_relayd_for_snapshot(struct consumer_output *out
 error:
 	return status;
 }
+} /* namespace */
 
-static uint64_t get_session_size_one_more_packet_per_stream(const ltt_session::locked_ref& session,
-							    uint64_t cur_nr_packets)
+namespace {
+uint64_t get_session_size_one_more_packet_per_stream(const ltt_session::locked_ref& session,
+						     uint64_t cur_nr_packets)
 {
 	uint64_t tot_size = 0;
 
@@ -5701,6 +5746,7 @@ static uint64_t get_session_size_one_more_packet_per_stream(const ltt_session::l
 
 	return tot_size;
 }
+} /* namespace */
 
 /*
  * Calculate the number of packets we can grab from each stream that
@@ -5722,8 +5768,8 @@ static uint64_t get_session_size_one_more_packet_per_stream(const ltt_session::l
  * an approximation: for instance, applications could appear/disappear
  * in between this call and actually grabbing data.
  */
-static int64_t get_session_nb_packets_per_stream(const ltt_session::locked_ref& session,
-						 uint64_t max_size)
+namespace {
+int64_t get_session_nb_packets_per_stream(const ltt_session::locked_ref& session, uint64_t max_size)
 {
 	int64_t size_left;
 	uint64_t cur_nb_packets = 0;
@@ -5754,9 +5800,11 @@ static int64_t get_session_nb_packets_per_stream(const ltt_session::locked_ref& 
 	}
 	return cur_nb_packets;
 }
+} /* namespace */
 
-static enum lttng_error_code snapshot_record(const ltt_session::locked_ref& session,
-					     const struct snapshot_output *snapshot_output)
+namespace {
+enum lttng_error_code snapshot_record(const ltt_session::locked_ref& session,
+				      const struct snapshot_output *snapshot_output)
 {
 	int64_t nb_packets_per_stream;
 	char snapshot_chunk_name[LTTNG_NAME_MAX];
@@ -5952,6 +6000,7 @@ error:
 
 	return ret_code;
 }
+} /* namespace */
 
 /*
  * Command LTTNG_SNAPSHOT_RECORD from lib lttng ctl.
@@ -6590,7 +6639,8 @@ end:
 }
 
 /* Wait for a given path to be removed before continuing. */
-static enum lttng_error_code wait_on_path(void *path_data)
+namespace {
+enum lttng_error_code wait_on_path(void *path_data)
 {
 	const char *shm_path = (const char *) path_data;
 
@@ -6619,6 +6669,7 @@ static enum lttng_error_code wait_on_path(void *path_data)
 	}
 	return LTTNG_OK;
 }
+} /* namespace */
 
 /*
  * Send response to client for memory reclaim command. When ret_code is LTTNG_OK and
@@ -6626,10 +6677,11 @@ static enum lttng_error_code wait_on_path(void *path_data)
  * The header and payload (when applicable) are merged into a single
  * buffer and sent in one shot.
  */
-static void send_reclaim_channel_memory_response(int client_socket,
-						 enum lttng_error_code ret_code,
-						 std::uint64_t reclaimed,
-						 std::uint64_t pending)
+namespace {
+void send_reclaim_channel_memory_response(int client_socket,
+					  enum lttng_error_code ret_code,
+					  std::uint64_t reclaimed,
+					  std::uint64_t pending)
 {
 	const bool has_payload = ret_code == LTTNG_OK;
 
@@ -6671,6 +6723,7 @@ static void send_reclaim_channel_memory_response(int client_socket,
 			errno);
 	}
 }
+} /* namespace */
 
 /*
  * Reclaim channel memory for the given session and channel.

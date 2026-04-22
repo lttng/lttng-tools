@@ -208,12 +208,15 @@ private:
 	std::mutex _pending_owner_ids_mutex;
 };
 
-static pending_owner_id_reclamations owner_id_reclamations;
+namespace {
+pending_owner_id_reclamations owner_id_reclamations;
+} /* namespace */
 
 /*
  * Return true if `owner_id` can be used for a new owner.
  */
-static bool is_legal_owner_id(uint32_t owner_id)
+namespace {
+bool is_legal_owner_id(uint32_t owner_id)
 {
 	/*
 	 * LTTng-UST's ABI defines two values that can never be used by
@@ -236,6 +239,7 @@ static bool is_legal_owner_id(uint32_t owner_id)
 
 	return !owner_id_reclamations.is_owner_id_pending_reclamation(owner_id);
 }
+} /* namespace */
 
 /*
  * Allocate the owner id for `app`.
@@ -243,7 +247,8 @@ static bool is_legal_owner_id(uint32_t owner_id)
  * For guaranteeing forward progress, there is a maximum of UINT32_MAX attempts,
  * which is enough to scan the whole possible value for a owner id.
  */
-static enum owner_id_allocation_status ust_app_allocate_owner_id(lsu::app& app)
+namespace {
+enum owner_id_allocation_status ust_app_allocate_owner_id(lsu::app& app)
 {
 	uint64_t attempt_count = 0;
 
@@ -297,22 +302,26 @@ static enum owner_id_allocation_status ust_app_allocate_owner_id(lsu::app& app)
 
 	return OWNER_ID_ALLOCATION_STATUS_OK;
 }
+} /* namespace */
 
 /*
  * Release the owner-id of `app`. This only removes the ID from the global
  * owner-id table, but the ID could still be in the garbage table and not usable
  * yet.
  */
-static void ust_app_release_owner_id(lsu::app& app)
+namespace {
+void ust_app_release_owner_id(lsu::app& app)
 {
 	cds_lfht_del(ust_app_ht_by_owner_id->ht, &app.owner_id_n.node);
 }
+} /* namespace */
 
 /*
  * Close the notify socket from the given RCU head object. This MUST be called
  * through a call_rcu().
  */
-static void close_notify_sock_rcu(struct rcu_head *head)
+namespace {
+void close_notify_sock_rcu(struct rcu_head *head)
 {
 	int ret;
 	struct ust_app_notify_sock_obj *obj =
@@ -329,24 +338,29 @@ static void close_notify_sock_rcu(struct rcu_head *head)
 
 	free(obj);
 }
+} /* namespace */
 
 /*
  * Delayed reclaim of a ust_app_event_notifier_rule object. This MUST be called
  * through a call_rcu().
  */
-static void free_ust_app_event_notifier_rule_rcu(struct rcu_head *head)
+namespace {
+void free_ust_app_event_notifier_rule_rcu(struct rcu_head *head)
 {
 	struct ust_app_event_notifier_rule *obj =
 		lttng::utils::container_of(head, &ust_app_event_notifier_rule::rcu_head);
 
 	free(obj);
 }
+} /* namespace */
 
 /*
  * Delete ust app event notifier rule safely.
  */
-static void delete_ust_app_event_notifier_rule(
-	int sock, struct ust_app_event_notifier_rule *ua_event_notifier_rule, lsu::app *app)
+namespace {
+void delete_ust_app_event_notifier_rule(int sock,
+					struct ust_app_event_notifier_rule *ua_event_notifier_rule,
+					lsu::app *app)
 {
 	int ret;
 
@@ -384,6 +398,7 @@ static void delete_ust_app_event_notifier_rule(
 	lttng_trigger_put(ua_event_notifier_rule->trigger);
 	call_rcu(&ua_event_notifier_rule->rcu_head, free_ust_app_event_notifier_rule_rcu);
 }
+} /* namespace */
 
 int ust_app_register_done(lsu::app *app)
 {
@@ -541,7 +556,8 @@ error_push:
  * Delete a traceable application structure from the global list. Never call
  * this function outside of a call_rcu call.
  */
-static void delete_ust_app(lsu::app *app)
+namespace {
+void delete_ust_app(lsu::app *app)
 {
 	int ret, sock;
 	bool event_notifier_write_fd_is_open;
@@ -628,11 +644,13 @@ static void delete_ust_app(lsu::app *app)
 	DBG2("UST app pid %d deleted", app->pid);
 	delete app;
 }
+} /* namespace */
 
 /*
  * URCU intermediate call to delete an UST app.
  */
-static void delete_ust_app_rcu(struct rcu_head *head)
+namespace {
+void delete_ust_app_rcu(struct rcu_head *head)
 {
 	struct lttng_ht_node_ulong *node =
 		lttng::utils::container_of(head, &lttng_ht_node_ulong::head);
@@ -641,12 +659,13 @@ static void delete_ust_app_rcu(struct rcu_head *head)
 	DBG3("Call RCU deleting app PID %d", app->pid);
 	delete_ust_app(app);
 }
+} /* namespace */
 
 /*
  * Allocate a new UST app event notifier rule.
  */
-static struct ust_app_event_notifier_rule *
-alloc_ust_app_event_notifier_rule(struct lttng_trigger *trigger)
+namespace {
+struct ust_app_event_notifier_rule *alloc_ust_app_event_notifier_rule(struct lttng_trigger *trigger)
 {
 	enum lttng_event_rule_generate_exclusions_status generate_exclusion_status;
 	enum lttng_condition_status cond_status;
@@ -703,13 +722,15 @@ error:
 	free(ua_event_notifier_rule);
 	return nullptr;
 }
+} /* namespace */
 
 /*
  * Create a liblttng-ust capture bytecode from given bytecode.
  *
  * Return allocated filter or NULL on error.
  */
-static struct lttng_ust_abi_capture_bytecode *
+namespace {
+struct lttng_ust_abi_capture_bytecode *
 create_ust_capture_bytecode_from_bytecode(const struct lttng_bytecode *orig_f)
 {
 	struct lttng_ust_abi_capture_bytecode *capture = nullptr;
@@ -729,6 +750,7 @@ create_ust_capture_bytecode_from_bytecode(const struct lttng_bytecode *orig_f)
 error:
 	return capture;
 }
+} /* namespace */
 
 /*
  * Find an lsu::app using the sock and return it. RCU read side lock must be
@@ -757,7 +779,8 @@ nonstd::optional<ust_app_reference> ust_app_find_by_sock(int sock)
  * Find an lsu::app using the notify sock and return it. RCU read side lock must
  * be held before calling this helper function.
  */
-static nonstd::optional<ust_app_reference> find_app_by_notify_sock(int sock)
+namespace {
+nonstd::optional<ust_app_reference> find_app_by_notify_sock(int sock)
 {
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
@@ -774,6 +797,7 @@ static nonstd::optional<ust_app_reference> find_app_by_notify_sock(int sock)
 	auto app = lttng::utils::container_of(node, &lsu::app::notify_sock_n);
 	return ust_app_get(*app) ? nonstd::make_optional<ust_app_reference>(app) : nonstd::nullopt;
 }
+} /* namespace */
 
 /*
  * Look-up an event notifier rule based on its token id.
@@ -781,8 +805,9 @@ static nonstd::optional<ust_app_reference> find_app_by_notify_sock(int sock)
  * Must be called with the RCU read lock held.
  * Return an ust_app_event_notifier_rule object or NULL on error.
  */
-static struct ust_app_event_notifier_rule *find_ust_app_event_notifier_rule(struct lttng_ht *ht,
-									    uint64_t token)
+namespace {
+struct ust_app_event_notifier_rule *find_ust_app_event_notifier_rule(struct lttng_ht *ht,
+								     uint64_t token)
 {
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_u64 *node;
@@ -802,16 +827,18 @@ static struct ust_app_event_notifier_rule *find_ust_app_event_notifier_rule(stru
 end:
 	return event_notifier_rule;
 }
+} /* namespace */
 
 /*
  * Set a capture bytecode for the passed object.
  * The sequence number enforces the ordering at runtime and on reception of
  * the captured payloads.
  */
-static int set_ust_capture(lsu::app *app,
-			   const struct lttng_bytecode *bytecode,
-			   unsigned int capture_seqnum,
-			   struct lttng_ust_abi_object_data *ust_object)
+namespace {
+int set_ust_capture(lsu::app *app,
+		    const struct lttng_bytecode *bytecode,
+		    unsigned int capture_seqnum,
+		    struct lttng_ust_abi_object_data *ust_object)
 {
 	int ret = 0;
 	struct lttng_ust_abi_capture_bytecode *ust_bytecode = nullptr;
@@ -845,10 +872,11 @@ error:
 	free(ust_bytecode);
 	return ret;
 }
+} /* namespace */
 
-static int
-init_ust_event_notifier_from_event_rule(const struct lttng_event_rule *rule,
-					struct lttng_ust_abi_event_notifier *event_notifier)
+namespace {
+int init_ust_event_notifier_from_event_rule(const struct lttng_event_rule *rule,
+					    struct lttng_ust_abi_event_notifier *event_notifier)
 {
 	enum lttng_event_rule_status status;
 	enum lttng_ust_abi_loglevel_type ust_loglevel_type = LTTNG_UST_ABI_LOGLEVEL_ALL;
@@ -919,13 +947,15 @@ init_ust_event_notifier_from_event_rule(const struct lttng_event_rule *rule,
 end:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Create the specified event notifier against the user space tracer of a
  * given application.
  */
-static int create_ust_event_notifier(lsu::app *app,
-				     struct ust_app_event_notifier_rule *ua_event_notifier_rule)
+namespace {
+int create_ust_event_notifier(lsu::app *app,
+			      struct ust_app_event_notifier_rule *ua_event_notifier_rule)
 {
 	int ret = 0;
 	enum lttng_condition_status condition_status;
@@ -1031,6 +1061,7 @@ error:
 	health_code_update();
 	return ret;
 }
+} /* namespace */
 
 /*
  * Create UST app event notifier rule and create it on the tracer side.
@@ -1038,7 +1069,8 @@ error:
  * Must be called with the RCU read side lock held.
  * Called with ust app session mutex held.
  */
-static int create_ust_app_event_notifier_rule(struct lttng_trigger *trigger, lsu::app *app)
+namespace {
+int create_ust_app_event_notifier_rule(struct lttng_trigger *trigger, lsu::app *app)
 {
 	int ret = 0;
 	struct ust_app_event_notifier_rule *ua_event_notifier_rule;
@@ -1088,6 +1120,7 @@ error:
 end:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Return ust app pointer or nullopt if not found. RCU read side lock MUST be
@@ -1431,7 +1464,8 @@ error:
 	return ret;
 }
 
-static void ust_app_unregister(lsu::app& app)
+namespace {
+void ust_app_unregister(lsu::app& app)
 {
 	const lttng::urcu::read_lock_guard read_lock;
 
@@ -1524,6 +1558,7 @@ static void ust_app_unregister(lsu::app& app)
 		DBG3("Unregister app by PID %d failed. This can happen on pid reuse", app.pid);
 	}
 }
+} /* namespace */
 
 /*
  * Unregister app by removing it from the global traceable app list and freeing
@@ -1961,7 +1996,8 @@ int ust_app_ht_alloc()
 }
 
 /* Called with RCU read-side lock held. */
-static void ust_app_synchronize_event_notifier_rules(lsu::app *app)
+namespace {
+void ust_app_synchronize_event_notifier_rules(lsu::app *app)
 {
 	int ret = 0;
 	enum lttng_error_code ret_code;
@@ -2101,6 +2137,7 @@ end:
 	lttng_triggers_destroy(triggers);
 	return;
 }
+} /* namespace */
 
 /*
  * Add all event notifiers to an application.
@@ -2241,10 +2278,11 @@ error:
  *
  * On success 0 is returned else a negative value.
  */
-static int handle_app_register_channel_notification(int sock,
-						    int cobjd,
-						    struct lttng_ust_ctl_field *raw_context_fields,
-						    size_t context_field_count)
+namespace {
+int handle_app_register_channel_notification(int sock,
+					     int cobjd,
+					     struct lttng_ust_ctl_field *raw_context_fields,
+					     size_t context_field_count)
 {
 	int ret, ret_code = 0;
 	uint32_t chan_id;
@@ -2377,6 +2415,7 @@ reply:
 
 	return ret;
 }
+} /* namespace */
 
 /*
  * Add event to the trace class. When the event is added to the
@@ -2387,15 +2426,16 @@ reply:
  *
  * On success 0 is returned else a negative value.
  */
-static int add_event_to_trace_class(int sock,
-				    int sobjd,
-				    int cobjd,
-				    const char *name,
-				    char *raw_signature,
-				    size_t nr_fields,
-				    struct lttng_ust_ctl_field *raw_fields,
-				    int loglevel_value,
-				    char *raw_model_emf_uri)
+namespace {
+int add_event_to_trace_class(int sock,
+			     int sobjd,
+			     int cobjd,
+			     const char *name,
+			     char *raw_signature,
+			     size_t nr_fields,
+			     struct lttng_ust_ctl_field *raw_fields,
+			     int loglevel_value,
+			     char *raw_model_emf_uri)
 {
 	int ret, ret_code;
 	lsu::event_id event_id = 0;
@@ -2500,6 +2540,7 @@ static int add_event_to_trace_class(int sock,
 	DBG_FMT("UST trace class event successfully added: name={}, id={}", name, event_id);
 	return ret;
 }
+} /* namespace */
 
 /*
  * Add enum to the trace class. Once done, this replies to the
@@ -2509,11 +2550,12 @@ static int add_event_to_trace_class(int sock,
  *
  * On success 0 is returned else a negative value.
  */
-static int add_enum_to_trace_class(int sock,
-				   int sobjd,
-				   const char *name,
-				   struct lttng_ust_ctl_enum_entry *raw_entries,
-				   size_t nr_entries)
+namespace {
+int add_enum_to_trace_class(int sock,
+			    int sobjd,
+			    const char *name,
+			    struct lttng_ust_ctl_enum_entry *raw_entries,
+			    size_t nr_entries)
 {
 	int ret = 0;
 	uint64_t enum_id = -1ULL;
@@ -2595,6 +2637,7 @@ static int add_enum_to_trace_class(int sock,
 	DBG3("UST trace class enum %s added successfully or already found", name);
 	return 0;
 }
+} /* namespace */
 
 /*
  * Handle application notification through the given notify socket.
@@ -2856,11 +2899,13 @@ close_socket:
 /*
  * Destroy a ust app data structure and free its memory.
  */
-static void ust_app_destroy(lsu::app& app)
+namespace {
+void ust_app_destroy(lsu::app& app)
 {
 	ust_app_release_owner_id(app);
 	call_rcu(&app.pid_n.head, delete_ust_app_rcu);
 }
+} /* namespace */
 
 lsu::ctl_field_quirks lsu::app::ctl_field_quirks() const
 {
@@ -2889,7 +2934,8 @@ lsu::ctl_field_quirks lsu::app::ctl_field_quirks() const
 				lsu::ctl_field_quirks::NONE;
 }
 
-static void ust_app_release(urcu_ref *ref)
+namespace {
+void ust_app_release(urcu_ref *ref)
 {
 	namespace lam = lttng::sessiond::app_management;
 
@@ -2898,6 +2944,7 @@ static void ust_app_release(urcu_ref *ref)
 	the_app_unregistration_queue->send(
 		lam::command(lam::command_type::UNREGISTER_AND_DESTROY_APP, app));
 }
+} /* namespace */
 
 void ust_app_unregister_and_destroy(lsu::app& app)
 {

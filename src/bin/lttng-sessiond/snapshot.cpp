@@ -22,24 +22,27 @@
 /*
  * Return the atomically incremented value of next_output_id.
  */
-static inline unsigned long get_next_output_id(struct snapshot *snapshot)
+namespace {
+inline unsigned long get_next_output_id(struct snapshot *snapshot)
 {
 	return uatomic_add_return(&snapshot->next_output_id, 1);
 }
+} /* namespace */
 
 /*
  * Initialized snapshot output with the given values.
  *
  * Return 0 on success or else a negative value.
  */
-static int output_init(const ltt_session::locked_ref& session,
-		       uint64_t max_size,
-		       const char *name,
-		       struct lttng_uri *uris,
-		       size_t nb_uri,
-		       struct consumer_output *consumer,
-		       struct snapshot_output *output,
-		       struct snapshot *snapshot)
+namespace {
+int output_init(const ltt_session::locked_ref& session,
+		uint64_t max_size,
+		const char *name,
+		struct lttng_uri *uris,
+		size_t nb_uri,
+		struct consumer_output *consumer,
+		struct snapshot_output *output,
+		struct snapshot *snapshot)
 {
 	int ret = 0, i;
 
@@ -124,6 +127,7 @@ error:
 end:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Initialize a snapshot output object using the given parameters and URI(s).

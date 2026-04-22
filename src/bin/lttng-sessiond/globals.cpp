@@ -55,10 +55,12 @@ consumer_data the_ustconsumer32_data(LTTNG_CONSUMER32_UST);
 enum consumerd_state the_ust_consumerd_state;
 enum consumerd_state the_kernel_consumerd_state;
 
-static void __attribute__((constructor)) init_sessiond_uuid()
+namespace {
+void __attribute__((constructor)) init_sessiond_uuid()
 {
 	if (lttng_uuid_generate(the_sessiond_uuid)) {
 		ERR("Failed to generate a session daemon UUID");
 		abort();
 	}
 }
+} /* namespace */

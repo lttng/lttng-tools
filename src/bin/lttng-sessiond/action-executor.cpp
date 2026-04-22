@@ -121,49 +121,71 @@ using action_executor_handler = int (*)(struct action_executor *,
 					const struct action_work_item *,
 					struct action_work_subitem *);
 
-static int action_executor_notify_handler(struct action_executor *executor,
+namespace {
+int action_executor_notify_handler(struct action_executor *executor,
+				   const struct action_work_item *,
+				   struct action_work_subitem *);
+} /* namespace */
+namespace {
+int action_executor_start_session_handler(struct action_executor *executor,
 					  const struct action_work_item *,
 					  struct action_work_subitem *);
-static int action_executor_start_session_handler(struct action_executor *executor,
-						 const struct action_work_item *,
-						 struct action_work_subitem *);
-static int action_executor_stop_session_handler(struct action_executor *executor,
-						const struct action_work_item *,
-						struct action_work_subitem *);
-static int action_executor_rotate_session_handler(struct action_executor *executor,
-						  const struct action_work_item *,
-						  struct action_work_subitem *);
-static int action_executor_snapshot_session_handler(struct action_executor *executor,
-						    const struct action_work_item *,
-						    struct action_work_subitem *);
-static int action_executor_list_handler(struct action_executor *executor,
-					const struct action_work_item *,
-					struct action_work_subitem *);
-static int action_executor_generic_handler(struct action_executor *executor,
+} /* namespace */
+namespace {
+int action_executor_stop_session_handler(struct action_executor *executor,
+					 const struct action_work_item *,
+					 struct action_work_subitem *);
+} /* namespace */
+namespace {
+int action_executor_rotate_session_handler(struct action_executor *executor,
 					   const struct action_work_item *,
 					   struct action_work_subitem *);
+} /* namespace */
+namespace {
+int action_executor_snapshot_session_handler(struct action_executor *executor,
+					     const struct action_work_item *,
+					     struct action_work_subitem *);
+} /* namespace */
+namespace {
+int action_executor_list_handler(struct action_executor *executor,
+				 const struct action_work_item *,
+				 struct action_work_subitem *);
+} /* namespace */
+namespace {
+int action_executor_generic_handler(struct action_executor *executor,
+				    const struct action_work_item *,
+				    struct action_work_subitem *);
+} /* namespace */
 
-static const action_executor_handler action_executors[] = {
+namespace {
+const action_executor_handler action_executors[] = {
 	action_executor_notify_handler,		  action_executor_start_session_handler,
 	action_executor_stop_session_handler,	  action_executor_rotate_session_handler,
 	action_executor_snapshot_session_handler, action_executor_list_handler,
 };
+} /* namespace */
 
 /* Forward declaration */
-static int add_action_to_subitem_array(struct lttng_action *action,
-				       struct lttng_dynamic_array *subitems);
+namespace {
+int add_action_to_subitem_array(struct lttng_action *action, struct lttng_dynamic_array *subitems);
+} /* namespace */
 
-static int populate_subitem_array_from_trigger(struct lttng_trigger *trigger,
-					       struct lttng_dynamic_array *subitems);
+namespace {
+int populate_subitem_array_from_trigger(struct lttng_trigger *trigger,
+					struct lttng_dynamic_array *subitems);
+} /* namespace */
 
-static void action_work_subitem_destructor(void *element)
+namespace {
+void action_work_subitem_destructor(void *element)
 {
 	struct action_work_subitem *subitem = (action_work_subitem *) element;
 
 	lttng_action_put(subitem->action);
 }
+} /* namespace */
 
-static const char *get_action_name(const struct lttng_action *action)
+namespace {
+const char *get_action_name(const struct lttng_action *action)
 {
 	const enum lttng_action_type action_type = lttng_action_get_type(action);
 
@@ -171,10 +193,12 @@ static const char *get_action_name(const struct lttng_action *action)
 
 	return lttng_action_type_string(action_type);
 }
+} /* namespace */
 
 /* Check if this trigger allowed to interect with a given session. */
-static bool is_trigger_allowed_for_session(const struct lttng_trigger *trigger,
-					   const ltt_session::locked_ref& session)
+namespace {
+bool is_trigger_allowed_for_session(const struct lttng_trigger *trigger,
+				    const ltt_session::locked_ref& session)
 {
 	bool is_allowed = false;
 	const struct lttng_credentials session_creds = {
@@ -196,8 +220,10 @@ static bool is_trigger_allowed_for_session(const struct lttng_trigger *trigger,
 
 	return is_allowed;
 }
+} /* namespace */
 
-static const char *get_trigger_name(const struct lttng_trigger *trigger)
+namespace {
+const char *get_trigger_name(const struct lttng_trigger *trigger)
 {
 	const char *trigger_name;
 	enum lttng_trigger_status trigger_status;
@@ -216,10 +242,12 @@ static const char *get_trigger_name(const struct lttng_trigger *trigger)
 
 	return trigger_name;
 }
+} /* namespace */
 
-static int client_handle_transmission_status(struct notification_client *client,
-					     enum client_transmission_status status,
-					     void *user_data)
+namespace {
+int client_handle_transmission_status(struct notification_client *client,
+				      enum client_transmission_status status,
+				      void *user_data)
 {
 	int ret = 0;
 	struct action_executor *executor = (action_executor *) user_data;
@@ -265,10 +293,12 @@ static int client_handle_transmission_status(struct notification_client *client,
 end:
 	return ret;
 }
+} /* namespace */
 
-static int action_executor_notify_handler(struct action_executor *executor,
-					  const struct action_work_item *work_item,
-					  struct action_work_subitem *item __attribute__((unused)))
+namespace {
+int action_executor_notify_handler(struct action_executor *executor,
+				   const struct action_work_item *work_item,
+				   struct action_work_subitem *item __attribute__((unused)))
 {
 	return notification_client_list_send_evaluation(
 		work_item->client_list,
@@ -278,11 +308,12 @@ static int action_executor_notify_handler(struct action_executor *executor,
 		client_handle_transmission_status,
 		executor);
 }
+} /* namespace */
 
-static int action_executor_start_session_handler(struct action_executor *executor
-						 __attribute__((unused)),
-						 const struct action_work_item *work_item,
-						 struct action_work_subitem *item)
+namespace {
+int action_executor_start_session_handler(struct action_executor *executor __attribute__((unused)),
+					  const struct action_work_item *work_item,
+					  struct action_work_subitem *item)
 {
 	const char *session_name;
 	enum lttng_action_status action_status;
@@ -368,11 +399,12 @@ static int action_executor_start_session_handler(struct action_executor *executo
 
 	return 0;
 }
+} /* namespace */
 
-static int action_executor_stop_session_handler(struct action_executor *executor
-						__attribute__((unused)),
-						const struct action_work_item *work_item,
-						struct action_work_subitem *item)
+namespace {
+int action_executor_stop_session_handler(struct action_executor *executor __attribute__((unused)),
+					 const struct action_work_item *work_item,
+					 struct action_work_subitem *item)
 {
 	const char *session_name;
 	enum lttng_action_status action_status;
@@ -459,11 +491,12 @@ static int action_executor_stop_session_handler(struct action_executor *executor
 
 	return 0;
 }
+} /* namespace */
 
-static int action_executor_rotate_session_handler(struct action_executor *executor
-						  __attribute__((unused)),
-						  const struct action_work_item *work_item,
-						  struct action_work_subitem *item)
+namespace {
+int action_executor_rotate_session_handler(struct action_executor *executor __attribute__((unused)),
+					   const struct action_work_item *work_item,
+					   struct action_work_subitem *item)
 {
 	const char *session_name;
 	enum lttng_action_status action_status;
@@ -557,11 +590,13 @@ static int action_executor_rotate_session_handler(struct action_executor *execut
 
 	return 0;
 }
+} /* namespace */
 
-static int action_executor_snapshot_session_handler(struct action_executor *executor
-						    __attribute__((unused)),
-						    const struct action_work_item *work_item,
-						    struct action_work_subitem *item)
+namespace {
+int action_executor_snapshot_session_handler(struct action_executor *executor
+					     __attribute__((unused)),
+					     const struct action_work_item *work_item,
+					     struct action_work_subitem *item)
 {
 	const char *session_name;
 	enum lttng_action_status action_status;
@@ -652,19 +687,22 @@ static int action_executor_snapshot_session_handler(struct action_executor *exec
 
 	return 0;
 }
+} /* namespace */
 
-static int action_executor_list_handler(struct action_executor *executor __attribute__((unused)),
-					const struct action_work_item *work_item
-					__attribute__((unused)),
-					struct action_work_subitem *item __attribute__((unused)))
+namespace {
+int action_executor_list_handler(struct action_executor *executor __attribute__((unused)),
+				 const struct action_work_item *work_item __attribute__((unused)),
+				 struct action_work_subitem *item __attribute__((unused)))
 {
 	ERR("Execution of a list action by the action executor should never occur");
 	abort();
 }
+} /* namespace */
 
-static int action_executor_generic_handler(struct action_executor *executor,
-					   const struct action_work_item *work_item,
-					   struct action_work_subitem *item)
+namespace {
+int action_executor_generic_handler(struct action_executor *executor,
+				    const struct action_work_item *work_item,
+				    struct action_work_subitem *item)
 {
 	int ret;
 	struct lttng_action *action = item->action;
@@ -691,9 +729,10 @@ static int action_executor_generic_handler(struct action_executor *executor,
 end:
 	return ret;
 }
+} /* namespace */
 
-static int action_work_item_execute(struct action_executor *executor,
-				    struct action_work_item *work_item)
+namespace {
+int action_work_item_execute(struct action_executor *executor, struct action_work_item *work_item)
 {
 	int ret = 0;
 	size_t count, i;
@@ -719,8 +758,10 @@ end:
 	    get_trigger_name(work_item->trigger));
 	return ret;
 }
+} /* namespace */
 
-static void action_work_item_destroy(struct action_work_item *work_item)
+namespace {
+void action_work_item_destroy(struct action_work_item *work_item)
 {
 	lttng_trigger_put(work_item->trigger);
 	lttng_evaluation_destroy(work_item->evaluation);
@@ -728,8 +769,10 @@ static void action_work_item_destroy(struct action_work_item *work_item)
 	lttng_dynamic_array_reset(&work_item->subitems);
 	free(work_item);
 }
+} /* namespace */
 
-static void *action_executor_thread(void *_data)
+namespace {
+void *action_executor_thread(void *_data)
 {
 	struct action_executor *executor = (action_executor *) _data;
 
@@ -817,8 +860,10 @@ static void *action_executor_thread(void *_data)
 
 	return nullptr;
 }
+} /* namespace */
 
-static bool shutdown_action_executor_thread(void *_data)
+namespace {
+bool shutdown_action_executor_thread(void *_data)
 {
 	struct action_executor *executor = (action_executor *) _data;
 
@@ -828,8 +873,10 @@ static bool shutdown_action_executor_thread(void *_data)
 	pthread_mutex_unlock(&executor->work.lock);
 	return true;
 }
+} /* namespace */
 
-static void clean_up_action_executor_thread(void *_data)
+namespace {
+void clean_up_action_executor_thread(void *_data)
 {
 	struct action_executor *executor = (action_executor *) _data;
 
@@ -839,6 +886,7 @@ static void clean_up_action_executor_thread(void *_data)
 	pthread_cond_destroy(&executor->work.cond);
 	free(executor);
 }
+} /* namespace */
 
 struct action_executor *action_executor_create(struct notification_thread_handle *handle)
 {
@@ -975,8 +1023,8 @@ error_unlock:
 	return executor_status;
 }
 
-static int add_action_to_subitem_array(struct lttng_action *action,
-				       struct lttng_dynamic_array *subitems)
+namespace {
+int add_action_to_subitem_array(struct lttng_action *action, struct lttng_dynamic_array *subitems)
 {
 	int ret = 0;
 	const lttng_action_type type = lttng_action_get_type(action);
@@ -1081,9 +1129,11 @@ static int add_action_to_subitem_array(struct lttng_action *action,
 end:
 	return ret;
 }
+} /* namespace */
 
-static int populate_subitem_array_from_trigger(struct lttng_trigger *trigger,
-					       struct lttng_dynamic_array *subitems)
+namespace {
+int populate_subitem_array_from_trigger(struct lttng_trigger *trigger,
+					struct lttng_dynamic_array *subitems)
 {
 	struct lttng_action *action;
 
@@ -1092,3 +1142,4 @@ static int populate_subitem_array_from_trigger(struct lttng_trigger *trigger,
 
 	return add_action_to_subitem_array(action, subitems);
 }
+} /* namespace */

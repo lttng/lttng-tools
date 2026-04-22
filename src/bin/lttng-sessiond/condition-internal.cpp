@@ -19,7 +19,8 @@
 #include <lttng/condition/session-rotation-internal.hpp>
 #include <lttng/event-rule/event-rule-internal.hpp>
 
-static unsigned long lttng_condition_buffer_usage_hash(const struct lttng_condition *_condition)
+namespace {
+unsigned long lttng_condition_buffer_usage_hash(const struct lttng_condition *_condition)
 {
 	unsigned long hash;
 	unsigned long condition_type;
@@ -48,9 +49,10 @@ static unsigned long lttng_condition_buffer_usage_hash(const struct lttng_condit
 	}
 	return hash;
 }
+} /* namespace */
 
-static unsigned long
-lttng_condition_session_consumed_size_hash(const struct lttng_condition *_condition)
+namespace {
+unsigned long lttng_condition_session_consumed_size_hash(const struct lttng_condition *_condition)
 {
 	unsigned long hash;
 	const unsigned long condition_type =
@@ -69,8 +71,10 @@ lttng_condition_session_consumed_size_hash(const struct lttng_condition *_condit
 	hash ^= hash_key_u64(&val, lttng_ht_seed);
 	return hash;
 }
+} /* namespace */
 
-static unsigned long lttng_condition_session_rotation_hash(const struct lttng_condition *_condition)
+namespace {
+unsigned long lttng_condition_session_rotation_hash(const struct lttng_condition *_condition)
 {
 	unsigned long hash, condition_type;
 	struct lttng_condition_session_rotation *condition;
@@ -83,9 +87,10 @@ static unsigned long lttng_condition_session_rotation_hash(const struct lttng_co
 	hash ^= hash_key_str(condition->session_name, lttng_ht_seed);
 	return hash;
 }
+} /* namespace */
 
-static unsigned long
-lttng_condition_event_rule_matches_hash(const struct lttng_condition *condition)
+namespace {
+unsigned long lttng_condition_event_rule_matches_hash(const struct lttng_condition *condition)
 {
 	unsigned long hash, condition_type;
 	enum lttng_condition_status condition_status;
@@ -98,6 +103,7 @@ lttng_condition_event_rule_matches_hash(const struct lttng_condition *condition)
 	hash = hash_key_ulong((void *) condition_type, lttng_ht_seed);
 	return hash ^ lttng_event_rule_hash(event_rule);
 }
+} /* namespace */
 
 /*
  * The lttng_condition hashing code is kept in this file (rather than

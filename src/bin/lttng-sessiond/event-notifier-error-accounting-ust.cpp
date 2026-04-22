@@ -50,7 +50,8 @@ struct event_notifier_counter the_event_notifier_counter;
 struct lttng_ht *error_counter_uid_ht;
 } /* namespace */
 
-static void free_ust_error_accounting_entry(struct rcu_head *head)
+namespace {
+void free_ust_error_accounting_entry(struct rcu_head *head)
 {
 	int i;
 	struct ust_error_accounting_entry *entry =
@@ -70,13 +71,17 @@ static void free_ust_error_accounting_entry(struct rcu_head *head)
 
 	free(entry);
 }
+} /* namespace */
 
-static bool ust_error_accounting_entry_get(struct ust_error_accounting_entry *entry)
+namespace {
+bool ust_error_accounting_entry_get(struct ust_error_accounting_entry *entry)
 {
 	return urcu_ref_get_unless_zero(&entry->ref);
 }
+} /* namespace */
 
-static void ust_error_accounting_entry_release(struct urcu_ref *entry_ref)
+namespace {
+void ust_error_accounting_entry_release(struct urcu_ref *entry_ref)
 {
 	struct ust_error_accounting_entry *entry =
 		lttng::utils::container_of(entry_ref, &ust_error_accounting_entry::ref);
@@ -85,8 +90,10 @@ static void ust_error_accounting_entry_release(struct urcu_ref *entry_ref)
 	cds_lfht_del(error_counter_uid_ht->ht, &entry->node.node);
 	call_rcu(&entry->rcu_head, free_ust_error_accounting_entry);
 }
+} /* namespace */
 
-static void ust_error_accounting_entry_put(struct ust_error_accounting_entry *entry)
+namespace {
+void ust_error_accounting_entry_put(struct ust_error_accounting_entry *entry)
 {
 	if (!entry) {
 		return;
@@ -94,11 +101,13 @@ static void ust_error_accounting_entry_put(struct ust_error_accounting_entry *en
 
 	urcu_ref_put(&entry->ref, ust_error_accounting_entry_release);
 }
+} /* namespace */
 
 /*
  * Put one reference to every UID entries.
  */
-static void put_ref_all_ust_error_accounting_entry()
+namespace {
+void put_ref_all_ust_error_accounting_entry()
 {
 	ASSERT_LOCKED(the_event_notifier_counter.lock);
 
@@ -110,11 +119,13 @@ static void put_ref_all_ust_error_accounting_entry()
 		ust_error_accounting_entry_put(uid_entry);
 	}
 }
+} /* namespace */
 
 /*
  * Get one reference to every UID entries.
  */
-static void get_ref_all_ust_error_accounting_entry()
+namespace {
+void get_ref_all_ust_error_accounting_entry()
 {
 	ASSERT_LOCKED(the_event_notifier_counter.lock);
 
@@ -126,12 +137,14 @@ static void get_ref_all_ust_error_accounting_entry()
 		ust_error_accounting_entry_get(uid_entry);
 	}
 }
+} /* namespace */
 
 /*
  * Find the entry for this app's UID, the caller acquires a reference if the
  * entry is found.
  */
-static struct ust_error_accounting_entry *
+namespace {
+struct ust_error_accounting_entry *
 ust_error_accounting_entry_find(struct lttng_ht *uid_ht, const lttng::sessiond::ust::app *app)
 {
 	struct ust_error_accounting_entry *entry;
@@ -156,12 +169,14 @@ ust_error_accounting_entry_find(struct lttng_ht *uid_ht, const lttng::sessiond::
 
 	return entry;
 }
+} /* namespace */
 
 /*
  * Create the entry for this app's UID, the caller acquires a reference to the
  * entry,
  */
-static struct ust_error_accounting_entry *
+namespace {
+struct ust_error_accounting_entry *
 ust_error_accounting_entry_create(const lttng::sessiond::ust::app *app)
 {
 	int i, ret, *cpu_counter_fds = nullptr;
@@ -323,8 +338,10 @@ end:
 	free(cpu_counter_fds);
 	return entry;
 }
+} /* namespace */
 
-static enum event_notifier_error_accounting_status
+namespace {
+enum event_notifier_error_accounting_status
 send_counter_data_to_ust(lttng::sessiond::ust::app *app,
 			 struct lttng_ust_abi_object_data *new_counter)
 {
@@ -340,8 +357,10 @@ send_counter_data_to_ust(lttng::sessiond::ust::app *app,
 
 	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 }
+} /* namespace */
 
-static enum event_notifier_error_accounting_status
+namespace {
+enum event_notifier_error_accounting_status
 send_counter_cpu_data_to_ust(lttng::sessiond::ust::app *app,
 			     struct lttng_ust_abi_object_data *counter,
 			     struct lttng_ust_abi_object_data *counter_cpu)
@@ -356,6 +375,7 @@ send_counter_cpu_data_to_ust(lttng::sessiond::ust::app *app,
 
 	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 }
+} /* namespace */
 
 enum event_notifier_error_accounting_status
 event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app)

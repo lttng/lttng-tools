@@ -49,7 +49,8 @@ struct timer_signal_data {
 /*
  * Set custom signal mask to current thread.
  */
-static void setmask(sigset_t *mask)
+namespace {
+void setmask(sigset_t *mask)
 {
 	int ret;
 
@@ -74,13 +75,15 @@ static void setmask(sigset_t *mask)
 		PERROR("sigaddset scheduled rotation");
 	}
 }
+} /* namespace */
 
 /*
  * This is the same function as timer_signal_thread_qs, when it
  * returns, it means that no timer signr is currently pending or being handled
  * by the timer thread. This cannot be called from the timer thread.
  */
-static void timer_signal_thread_qs(unsigned int signr)
+namespace {
+void timer_signal_thread_qs(unsigned int signr)
 {
 	sigset_t pending_set;
 	int ret;
@@ -129,6 +132,7 @@ static void timer_signal_thread_qs(unsigned int signr)
 
 	pthread_mutex_unlock(&timer_signal.lock);
 }
+} /* namespace */
 
 /*
  * Start a timer on a session that will fire at a given interval
@@ -137,11 +141,12 @@ static void timer_signal_thread_qs(unsigned int signr)
  * Returns a negative value on error, 0 if a timer was created, and
  * a positive value if no timer was created (not an error).
  */
-static int timer_start(timer_t *timer_id,
-		       struct ltt_session *session,
-		       unsigned int timer_interval_us,
-		       int signal,
-		       bool one_shot)
+namespace {
+int timer_start(timer_t *timer_id,
+		struct ltt_session *session,
+		unsigned int timer_interval_us,
+		int signal,
+		bool one_shot)
 {
 	int ret = 0, delete_ret;
 	struct sigevent sev = {};
@@ -182,8 +187,10 @@ error_destroy_timer:
 end:
 	return ret;
 }
+} /* namespace */
 
-static int timer_stop(timer_t *timer_id, int signal)
+namespace {
+int timer_stop(timer_t *timer_id, int signal)
 {
 	int ret = 0;
 
@@ -198,6 +205,7 @@ static int timer_stop(timer_t *timer_id, int signal)
 end:
 	return ret;
 }
+} /* namespace */
 
 int timer_session_rotation_pending_check_start(const ltt_session::locked_ref& session,
 					       unsigned int interval_us)
@@ -334,7 +342,8 @@ int timer_signal_init()
 /*
  * This thread is the sighandler for the timer signals.
  */
-static void *thread_timer(void *data)
+namespace {
+void *thread_timer(void *data)
 {
 	int signr;
 	sigset_t mask;
@@ -405,11 +414,14 @@ end:
 	rcu_unregister_thread();
 	return nullptr;
 }
+} /* namespace */
 
-static bool shutdown_timer_thread(void *data __attribute__((unused)))
+namespace {
+bool shutdown_timer_thread(void *data __attribute__((unused)))
 {
 	return kill(getpid(), LTTNG_SESSIOND_SIG_EXIT) == 0;
 }
+} /* namespace */
 
 bool launch_timer_thread(struct timer_thread_parameters *timer_thread_parameters)
 {

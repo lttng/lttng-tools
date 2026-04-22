@@ -44,20 +44,25 @@ struct lttng_thread {
 	void *data;
 };
 
-static void lttng_thread_destroy(struct lttng_thread *thread)
+namespace {
+void lttng_thread_destroy(struct lttng_thread *thread)
 {
 	if (thread->cleanup) {
 		thread->cleanup(thread->data);
 	}
 	free(thread);
 }
+} /* namespace */
 
-static void lttng_thread_release(struct urcu_ref *ref)
+namespace {
+void lttng_thread_release(struct urcu_ref *ref)
 {
 	lttng_thread_destroy(lttng::utils::container_of(ref, &lttng_thread::ref));
 }
+} /* namespace */
 
-static void *launch_thread(void *data)
+namespace {
+void *launch_thread(void *data)
 {
 	void *ret;
 	struct lttng_thread *thread = (struct lttng_thread *) data;
@@ -68,6 +73,7 @@ static void *launch_thread(void *data)
 	DBG("Thread entry point has returned");
 	return ret;
 }
+} /* namespace */
 
 struct lttng_thread *lttng_thread_create(const char *name,
 					 lttng_thread_entry_point entry,
@@ -143,7 +149,8 @@ const char *lttng_thread_get_name(const struct lttng_thread *thread)
 	return thread->name;
 }
 
-static bool _lttng_thread_shutdown(struct lttng_thread *thread)
+namespace {
+bool _lttng_thread_shutdown(struct lttng_thread *thread)
 {
 	int ret;
 	void *status;
@@ -168,6 +175,7 @@ static bool _lttng_thread_shutdown(struct lttng_thread *thread)
 end:
 	return result;
 }
+} /* namespace */
 
 bool lttng_thread_shutdown(struct lttng_thread *thread)
 {

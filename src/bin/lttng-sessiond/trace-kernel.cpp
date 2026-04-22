@@ -89,13 +89,15 @@ error:
 /*
  * Cleanup kernel event structure.
  */
-static void free_token_event_rule_rcu(struct rcu_head *rcu_node)
+namespace {
+void free_token_event_rule_rcu(struct rcu_head *rcu_node)
 {
 	struct ltt_kernel_event_notifier_rule *rule =
 		caa_container_of(rcu_node, struct ltt_kernel_event_notifier_rule, rcu_node);
 
 	free(rule);
 }
+} /* namespace */
 
 void trace_kernel_destroy_event_notifier_rule(struct ltt_kernel_event_notifier_rule *event)
 {

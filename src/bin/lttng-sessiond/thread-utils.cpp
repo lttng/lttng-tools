@@ -20,7 +20,9 @@
  * shutdown sequence of the main thread which will tear down the other threads
  * in the appropriate order.
  */
-static int main_quit_pipe[2] = { -1, -1 };
+namespace {
+int main_quit_pipe[2] = { -1, -1 };
+} /* namespace */
 
 /*
  * Init main quit pipe.

@@ -342,7 +342,8 @@ int kernel_tracer_fd_value()
  * Create a kernel event notifier group, register it to the kernel tracer and
  * add it to the kernel session.
  */
-static int kernel_create_event_notifier_group(int *event_notifier_group_fd)
+namespace {
+int kernel_create_event_notifier_group(int *event_notifier_group_fd)
 {
 	int ret;
 	int local_fd = -1;
@@ -382,6 +383,7 @@ error:
 
 	return ret;
 }
+} /* namespace */
 
 /*
  * Compute the offset of the instrumentation byte in the binary based on the
@@ -391,7 +393,8 @@ error:
  * elf symbol
  * Returns -1 on error
  */
-static int extract_userspace_probe_offset_function_elf(
+namespace {
+int extract_userspace_probe_offset_function_elf(
 	const struct lttng_userspace_probe_location *probe_location,
 	uid_t uid,
 	gid_t gid,
@@ -441,6 +444,7 @@ static int extract_userspace_probe_offset_function_elf(
 end:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Compute the offsets of the instrumentation bytes in the binary based on the
@@ -451,7 +455,8 @@ end:
  * SDT tracepoint.
  * Returns -1 on error.
  */
-static int extract_userspace_probe_offset_tracepoint_sdt(
+namespace {
+int extract_userspace_probe_offset_tracepoint_sdt(
 	const struct lttng_userspace_probe_location *probe_location,
 	uid_t uid,
 	gid_t gid,
@@ -521,11 +526,13 @@ static int extract_userspace_probe_offset_tracepoint_sdt(
 end:
 	return ret;
 }
+} /* namespace */
 
-static int userspace_probe_add_callsite(const struct lttng_userspace_probe_location *location,
-					uid_t uid,
-					gid_t gid,
-					int fd)
+namespace {
+int userspace_probe_add_callsite(const struct lttng_userspace_probe_location *location,
+				 uid_t uid,
+				 gid_t gid,
+				 int fd)
 {
 	const struct lttng_userspace_probe_location_lookup_method *lookup_method = nullptr;
 	enum lttng_userspace_probe_location_lookup_method_type type;
@@ -596,6 +603,7 @@ static int userspace_probe_add_callsite(const struct lttng_userspace_probe_locat
 end:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Extract the offsets of the instrumentation point for the different look-up
@@ -635,7 +643,8 @@ end:
 /*
  * Disable a kernel event notifier.
  */
-static int kernel_disable_event_notifier_rule(struct ltt_kernel_event_notifier_rule *event)
+namespace {
+int kernel_disable_event_notifier_rule(struct ltt_kernel_event_notifier_rule *event)
 {
 	int ret;
 
@@ -658,6 +667,7 @@ static int kernel_disable_event_notifier_rule(struct ltt_kernel_event_notifier_r
 error:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Make a kernel wait to make sure in-flight probe have completed.
@@ -856,7 +866,8 @@ int kernel_syscall_mask(int chan_fd, char **syscall_mask, uint32_t *nr_bits)
 	return kernctl_syscall_mask(chan_fd, syscall_mask, nr_bits);
 }
 
-static int kernel_tracer_abi_greater_or_equal(unsigned int major, unsigned int minor)
+namespace {
+int kernel_tracer_abi_greater_or_equal(unsigned int major, unsigned int minor)
 {
 	int ret;
 	struct lttng_kernel_abi_tracer_abi_version abi;
@@ -871,6 +882,7 @@ static int kernel_tracer_abi_greater_or_equal(unsigned int major, unsigned int m
 error:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Check for the support of the RING_BUFFER_SNAPSHOT_SAMPLE_POSITIONS via abi
@@ -1267,14 +1279,17 @@ kernel_destroy_event_notifier_group_notification_fd(int event_notifier_group_not
 	return ret_code;
 }
 
-static unsigned long hash_trigger(const struct lttng_trigger *trigger)
+namespace {
+unsigned long hash_trigger(const struct lttng_trigger *trigger)
 {
 	const struct lttng_condition *condition = lttng_trigger_get_const_condition(trigger);
 
 	return lttng_condition_hash(condition);
 }
+} /* namespace */
 
-static int match_trigger(struct cds_lfht_node *node, const void *key)
+namespace {
+int match_trigger(struct cds_lfht_node *node, const void *key)
 {
 	const struct ltt_kernel_event_notifier_rule *event_notifier_rule;
 	const struct lttng_trigger *trigger = (lttng_trigger *) key;
@@ -1284,9 +1299,12 @@ static int match_trigger(struct cds_lfht_node *node, const void *key)
 
 	return lttng_trigger_is_equal(trigger, event_notifier_rule->trigger);
 }
+} /* namespace */
 
-static enum lttng_error_code kernel_create_event_notifier_rule(
-	struct lttng_trigger *trigger, const struct lttng_credentials *creds, uint64_t token)
+namespace {
+enum lttng_error_code kernel_create_event_notifier_rule(struct lttng_trigger *trigger,
+							const struct lttng_credentials *creds,
+							uint64_t token)
 {
 	int err, fd, ret = 0;
 	enum lttng_error_code error_code_ret;
@@ -1469,6 +1487,7 @@ free_event:
 error:
 	return error_code_ret;
 }
+} /* namespace */
 
 enum lttng_error_code kernel_register_event_notifier(struct lttng_trigger *trigger,
 						     const struct lttng_credentials *cmd_creds)

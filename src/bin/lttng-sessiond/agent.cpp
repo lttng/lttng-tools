@@ -55,7 +55,8 @@ struct agent_app_ctx {
 /*
  * Human readable agent return code.
  */
-static const char *lttcomm_agent_ret_code_str(lttcomm_agent_ret_code code)
+namespace {
+const char *lttcomm_agent_ret_code_str(lttcomm_agent_ret_code code)
 {
 	switch (code) {
 	case AGENT_RET_CODE_SUCCESS:
@@ -68,8 +69,10 @@ static const char *lttcomm_agent_ret_code_str(lttcomm_agent_ret_code code)
 		return "Unknown code";
 	}
 };
+} /* namespace */
 
-static void log_reply_code(uint32_t in_reply_ret_code)
+namespace {
+void log_reply_code(uint32_t in_reply_ret_code)
 {
 	int level = PRINT_DBG3;
 	/*
@@ -89,11 +92,13 @@ static void log_reply_code(uint32_t in_reply_ret_code)
 	    lttcomm_agent_ret_code_str((lttcomm_agent_ret_code) reply_ret_code),
 	    in_reply_ret_code);
 }
+} /* namespace */
 
 /*
  * Match function for the events hash table lookup by name.
  */
-static int ht_match_event_by_name(struct cds_lfht_node *node, const void *_key)
+namespace {
+int ht_match_event_by_name(struct cds_lfht_node *node, const void *_key)
 {
 	LTTNG_ASSERT(node);
 	LTTNG_ASSERT(_key);
@@ -113,12 +118,14 @@ static int ht_match_event_by_name(struct cds_lfht_node *node, const void *_key)
 no_match:
 	return 0;
 }
+} /* namespace */
 
 /*
  * Match function for the events hash table lookup by name, log level and
  * filter expression.
  */
-static int ht_match_event(struct cds_lfht_node *node, const void *_key)
+namespace {
+int ht_match_event(struct cds_lfht_node *node, const void *_key)
 {
 	LTTNG_ASSERT(node);
 	LTTNG_ASSERT(_key);
@@ -164,11 +171,13 @@ static int ht_match_event(struct cds_lfht_node *node, const void *_key)
 no_match:
 	return 0;
 }
+} /* namespace */
 
 /*
  * Add unique agent event based on the event name and loglevel.
  */
-static void add_unique_agent_event(struct lttng_ht *ht, struct agent_event *event)
+namespace {
+void add_unique_agent_event(struct lttng_ht *ht, struct agent_event *event)
 {
 	struct cds_lfht_node *node_ptr;
 	struct agent_ht_key key;
@@ -189,22 +198,26 @@ static void add_unique_agent_event(struct lttng_ht *ht, struct agent_event *even
 				       &event->node.node);
 	LTTNG_ASSERT(node_ptr == &event->node.node);
 }
+} /* namespace */
 
 /*
  * URCU delayed agent event reclaim.
  */
-static void destroy_event_agent_rcu(struct rcu_head *head)
+namespace {
+void destroy_event_agent_rcu(struct rcu_head *head)
 {
 	struct lttng_ht_node_str *node = lttng::utils::container_of(head, &lttng_ht_node_str::head);
 	struct agent_event *event = lttng::utils::container_of(node, &agent_event::node);
 
 	agent_destroy_event(event);
 }
+} /* namespace */
 
 /*
  * URCU delayed agent app reclaim.
  */
-static void destroy_app_agent_rcu(struct rcu_head *head)
+namespace {
+void destroy_app_agent_rcu(struct rcu_head *head)
 {
 	struct lttng_ht_node_ulong *node =
 		lttng::utils::container_of(head, &lttng_ht_node_ulong::head);
@@ -212,6 +225,7 @@ static void destroy_app_agent_rcu(struct rcu_head *head)
 
 	free(app);
 }
+} /* namespace */
 
 /*
  * Communication with the agent. Send the message header to the given socket in
@@ -219,8 +233,8 @@ static void destroy_app_agent_rcu(struct rcu_head *head)
  *
  * Return 0 on success or else a negative errno message of sendmsg() op.
  */
-static int
-send_header(struct lttcomm_sock *sock, uint64_t data_size, uint32_t cmd, uint32_t cmd_version)
+namespace {
+int send_header(struct lttcomm_sock *sock, uint64_t data_size, uint32_t cmd, uint32_t cmd_version)
 {
 	int ret;
 	ssize_t size;
@@ -243,6 +257,7 @@ send_header(struct lttcomm_sock *sock, uint64_t data_size, uint32_t cmd, uint32_
 error:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Communication call with the agent. Send the payload to the given socket. The
@@ -250,7 +265,8 @@ error:
  *
  * Return 0 on success or else a negative errno value of sendmsg() op.
  */
-static int send_payload(struct lttcomm_sock *sock, const void *data, size_t size)
+namespace {
+int send_payload(struct lttcomm_sock *sock, const void *data, size_t size)
 {
 	int ret;
 	ssize_t len;
@@ -268,6 +284,7 @@ static int send_payload(struct lttcomm_sock *sock, const void *data, size_t size
 error:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Communication call with the agent. Receive reply from the agent using the
@@ -275,7 +292,8 @@ error:
  *
  * Return 0 on success or else a negative errno value from recvmsg() op.
  */
-static int recv_reply(struct lttcomm_sock *sock, void *buf, size_t size)
+namespace {
+int recv_reply(struct lttcomm_sock *sock, void *buf, size_t size)
 {
 	int ret;
 	ssize_t len;
@@ -293,6 +311,7 @@ static int recv_reply(struct lttcomm_sock *sock, void *buf, size_t size)
 error:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Internal event listing for a given app. Populate events.
@@ -301,7 +320,8 @@ error:
  * On success, the caller is responsible for freeing the memory
  * allocated for "events".
  */
-static ssize_t list_events(struct agent_app *app, struct lttng_event **events)
+namespace {
+ssize_t list_events(struct agent_app *app, struct lttng_event **events)
 {
 	int ret, i, len = 0, offset = 0;
 	uint32_t nb_event;
@@ -383,6 +403,7 @@ error:
 	free(tmp_events);
 	return -ret;
 }
+} /* namespace */
 
 /*
  * Internal enable agent event on a agent application. This function
@@ -390,7 +411,8 @@ error:
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-static int enable_event(const struct agent_app *app, struct agent_event *event)
+namespace {
+int enable_event(const struct agent_app *app, struct agent_event *event)
 {
 	int ret;
 	char *bytes_to_send;
@@ -478,11 +500,13 @@ error_io:
 error:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Send Pascal-style string. Size is sent as a 32-bit big endian integer.
  */
-static int send_pstring(struct lttcomm_sock *sock, const char *str, uint32_t len)
+namespace {
+int send_pstring(struct lttcomm_sock *sock, const char *str, uint32_t len)
 {
 	int ret;
 	uint32_t len_be;
@@ -500,6 +524,7 @@ static int send_pstring(struct lttcomm_sock *sock, const char *str, uint32_t len
 end:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Internal enable application context on an agent application. This function
@@ -507,9 +532,10 @@ end:
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-static int app_context_op(const struct agent_app *app,
-			  const struct agent_app_ctx *ctx,
-			  enum lttcomm_agent_command cmd)
+namespace {
+int app_context_op(const struct agent_app *app,
+		   const struct agent_app_ctx *ctx,
+		   enum lttcomm_agent_command cmd)
 {
 	int ret;
 	uint32_t reply_ret_code;
@@ -582,6 +608,7 @@ error_io:
 error:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Internal disable agent event call on a agent application. This function
@@ -589,7 +616,8 @@ error:
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-static int disable_event(struct agent_app *app, struct agent_event *event)
+namespace {
+int disable_event(struct agent_app *app, struct agent_event *event)
 {
 	int ret;
 	uint64_t data_size;
@@ -648,6 +676,7 @@ error_io:
 error:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Send back the registration DONE command to a given agent application.
@@ -697,14 +726,17 @@ error:
 	return ret;
 }
 
-static void destroy_app_ctx(struct agent_app_ctx *ctx)
+namespace {
+void destroy_app_ctx(struct agent_app_ctx *ctx)
 {
 	free(ctx->provider_name);
 	free(ctx->ctx_name);
 	free(ctx);
 }
+} /* namespace */
 
-static struct agent_app_ctx *create_app_ctx(const struct lttng_event_context *ctx)
+namespace {
+struct agent_app_ctx *create_app_ctx(const struct lttng_event_context *ctx)
 {
 	struct agent_app_ctx *agent_ctx = nullptr;
 
@@ -727,6 +759,7 @@ static struct agent_app_ctx *create_app_ctx(const struct lttng_event_context *ct
 end:
 	return agent_ctx;
 }
+} /* namespace */
 
 /*
  * Enable agent context on every agent applications registered with the session
@@ -827,7 +860,8 @@ end:
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-static int disable_context(struct agent_app_ctx *ctx, enum lttng_domain_type domain)
+namespace {
+int disable_context(struct agent_app_ctx *ctx, enum lttng_domain_type domain)
 {
 	int ret = LTTNG_OK;
 
@@ -849,6 +883,7 @@ static int disable_context(struct agent_app_ctx *ctx, enum lttng_domain_type dom
 end:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Ask every agent for the list of possible event. Events is allocated with the
@@ -1377,12 +1412,14 @@ void agent_destroy_event(struct agent_event *event)
 	free(event);
 }
 
-static void destroy_app_ctx_rcu(struct rcu_head *head)
+namespace {
+void destroy_app_ctx_rcu(struct rcu_head *head)
 {
 	struct agent_app_ctx *ctx = lttng::utils::container_of(head, &agent_app_ctx::rcu_node);
 
 	destroy_app_ctx(ctx);
 }
+} /* namespace */
 
 /*
  * Destroy an agent completely.
