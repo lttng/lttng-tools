@@ -38,7 +38,8 @@ struct lttng_trigger {
 	/*
 	 * Internal use only.
 	 * The unique token passed to the tracer to identify an event-rule
-	 * notification.
+	 * notification. This is functionally a unique ID for a trigger.
+	 * It is, however, not transmitted outside of the session daemon.
 	 */
 	LTTNG_OPTIONAL(uint64_t) tracer_token;
 
