@@ -1331,8 +1331,13 @@ void ls::modules::domain_orchestrator::record_snapshot(
 	}
 
 	const auto destroy_consumer_metadata_on_exit = lttng::make_scope_exit([&]() noexcept {
-		const lttng::pthread::lock_guard socket_lock(kconsumer_socket.lock);
-		_destroy_consumer_stream_group(_get_consumer_socket(), snapshot_metadata_key);
+		try {
+			const lttng::pthread::lock_guard socket_lock(kconsumer_socket.lock);
+			_destroy_consumer_stream_group(_get_consumer_socket(),
+						       snapshot_metadata_key);
+		} catch (const std::exception& ex) {
+			ERR_FMT("Failed to destroy snapshot metadata on scope exit: {}", ex.what());
+		}
 	});
 
 	/* For each stream group, ask the consumer to snapshot it. */
