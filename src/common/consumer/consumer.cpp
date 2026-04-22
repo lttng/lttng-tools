@@ -2744,7 +2744,7 @@ void *consumer_thread_data_poll(void *data)
 				PERROR("Consumer data wakeup pipe");
 			}
 			/* We've been awakened to handle stream(s). */
-			ctx->has_wakeup = 0;
+			ctx->has_wakeup = false;
 		}
 
 		/* Take care of high priority channels first. */

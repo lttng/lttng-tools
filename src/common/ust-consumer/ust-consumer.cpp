@@ -3963,7 +3963,7 @@ int notify_if_more_data(struct lttng_consumer_stream *stream, struct lttng_consu
 		}
 
 		/* The wake up pipe has been notified. */
-		ctx->has_wakeup = 1;
+		ctx->has_wakeup = true;
 	}
 	ret = 0;
 
