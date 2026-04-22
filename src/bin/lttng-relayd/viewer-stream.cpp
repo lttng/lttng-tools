@@ -22,7 +22,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-static void viewer_stream_release_composite_objects(struct relay_viewer_stream *vstream)
+namespace {
+void viewer_stream_release_composite_objects(struct relay_viewer_stream *vstream)
 {
 	if (vstream->stream_file.handle) {
 		fs_handle_close(vstream->stream_file.handle);
@@ -40,20 +41,21 @@ static void viewer_stream_release_composite_objects(struct relay_viewer_stream *
 	vstream->stream_file.trace_chunk = nullptr;
 }
 
-static void viewer_stream_destroy(struct relay_viewer_stream *vstream)
+void viewer_stream_destroy(struct relay_viewer_stream *vstream)
 {
 	free(vstream->path_name);
 	free(vstream->channel_name);
 	free(vstream);
 }
 
-static void viewer_stream_destroy_rcu(struct rcu_head *head)
+void viewer_stream_destroy_rcu(struct rcu_head *head)
 {
 	struct relay_viewer_stream *vstream =
 		lttng::utils::container_of(head, &relay_viewer_stream::rcu_node);
 
 	viewer_stream_destroy(vstream);
 }
+} /* namespace */
 
 /* Relay stream's lock must be held by the caller. */
 struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
@@ -221,7 +223,8 @@ error:
 	return nullptr;
 }
 
-static void viewer_stream_unpublish(struct relay_viewer_stream *vstream)
+namespace {
+void viewer_stream_unpublish(struct relay_viewer_stream *vstream)
 {
 	int ret;
 	struct lttng_ht_iter iter;
@@ -231,7 +234,7 @@ static void viewer_stream_unpublish(struct relay_viewer_stream *vstream)
 	LTTNG_ASSERT(!ret);
 }
 
-static void viewer_stream_release(struct urcu_ref *ref)
+void viewer_stream_release(struct urcu_ref *ref)
 {
 	auto *vstream = lttng::utils::container_of(ref, &relay_viewer_stream::ref);
 
@@ -242,6 +245,7 @@ static void viewer_stream_release(struct urcu_ref *ref)
 	viewer_stream_release_composite_objects(vstream);
 	call_rcu(&vstream->rcu_node, viewer_stream_destroy_rcu);
 }
+} /* namespace */
 
 /* Must be called with RCU read-side lock held. */
 bool viewer_stream_get(struct relay_viewer_stream *vstream)

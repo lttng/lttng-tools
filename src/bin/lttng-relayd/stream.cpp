@@ -63,7 +63,8 @@ end:
 	return stream;
 }
 
-static void stream_complete_rotation(struct relay_stream *stream)
+namespace {
+void stream_complete_rotation(struct relay_stream *stream)
 {
 	DBG("Rotation completed for stream %" PRIu64, stream->stream_handle);
 	if (stream->ongoing_rotation.value.next_trace_chunk) {
@@ -78,10 +79,10 @@ static void stream_complete_rotation(struct relay_stream *stream)
 	stream->completed_rotation_count++;
 }
 
-static int stream_create_data_output_file_from_trace_chunk(struct relay_stream *stream,
-							   struct lttng_trace_chunk *trace_chunk,
-							   bool force_unlink,
-							   struct fs_handle **out_file)
+int stream_create_data_output_file_from_trace_chunk(struct relay_stream *stream,
+						    struct lttng_trace_chunk *trace_chunk,
+						    bool force_unlink,
+						    struct fs_handle **out_file)
 {
 	int ret;
 	char stream_path[LTTNG_PATH_MAX];
@@ -137,7 +138,7 @@ end:
 	return ret;
 }
 
-static int stream_rotate_data_file(struct relay_stream *stream)
+int stream_rotate_data_file(struct relay_stream *stream)
 {
 	int ret = 0;
 
@@ -199,7 +200,7 @@ end:
  * in a situation where too much data has been received on the data connection
  * before the rotation command on the control connection arrives.
  */
-static int rotate_truncate_stream(struct relay_stream *stream)
+int rotate_truncate_stream(struct relay_stream *stream)
 {
 	int ret;
 	off_t lseek_ret, previous_stream_copy_origin;
@@ -351,7 +352,7 @@ end:
  *
  * Return 0 on success, a negative value on error.
  */
-static int try_rotate_stream_data(struct relay_stream *stream)
+int try_rotate_stream_data(struct relay_stream *stream)
 {
 	int ret = 0;
 
@@ -415,7 +416,7 @@ end:
  *
  * Return 0 on success, -1 on error.
  */
-static int create_index_file(struct relay_stream *stream, struct lttng_trace_chunk *chunk)
+int create_index_file(struct relay_stream *stream, struct lttng_trace_chunk *chunk)
 {
 	int ret;
 	uint32_t major, minor;
@@ -473,7 +474,7 @@ end:
  *
  * Return 0 on success, a negative value on error.
  */
-static int try_rotate_stream_index(struct relay_stream *stream)
+int try_rotate_stream_index(struct relay_stream *stream)
 {
 	const int ret = 0;
 
@@ -539,7 +540,7 @@ end:
 	return ret;
 }
 
-static int stream_set_trace_chunk(struct relay_stream *stream, struct lttng_trace_chunk *chunk)
+int stream_set_trace_chunk(struct relay_stream *stream, struct lttng_trace_chunk *chunk)
 {
 	int ret = 0;
 	enum lttng_trace_chunk_status status;
@@ -564,6 +565,7 @@ static int stream_set_trace_chunk(struct relay_stream *stream, struct lttng_trac
 end:
 	return ret;
 }
+} /* namespace */
 
 /*
  * We keep ownership of path_name and channel_name.
@@ -721,7 +723,8 @@ unlock:
  * Stream must be protected by holding the stream lock or by virtue of being
  * called from stream_destroy.
  */
-static void stream_unpublish(struct relay_stream *stream)
+namespace {
+void stream_unpublish(struct relay_stream *stream)
 {
 	if (stream->in_stream_ht) {
 		struct lttng_ht_iter iter;
@@ -740,7 +743,7 @@ static void stream_unpublish(struct relay_stream *stream)
 	}
 }
 
-static void stream_destroy(struct relay_stream *stream)
+void stream_destroy(struct relay_stream *stream)
 {
 	if (stream->indexes_ht) {
 		/*
@@ -758,7 +761,7 @@ static void stream_destroy(struct relay_stream *stream)
 	free(stream);
 }
 
-static void stream_destroy_rcu(struct rcu_head *rcu_head)
+void stream_destroy_rcu(struct rcu_head *rcu_head)
 {
 	struct relay_stream *stream = lttng::utils::container_of(rcu_head, &relay_stream::rcu_node);
 
@@ -769,7 +772,7 @@ static void stream_destroy_rcu(struct rcu_head *rcu_head)
  * No need to take stream->lock since this is only called on the final
  * stream_put which ensures that a single thread may act on the stream.
  */
-static void stream_release(struct urcu_ref *ref)
+void stream_release(struct urcu_ref *ref)
 {
 	struct relay_stream *stream = lttng::utils::container_of(ref, &relay_stream::ref);
 	struct relay_session *session;
@@ -806,6 +809,7 @@ static void stream_release(struct urcu_ref *ref)
 
 	call_rcu(&stream->rcu_node, stream_destroy_rcu);
 }
+} /* namespace */
 
 void stream_put(struct relay_stream *stream)
 {
@@ -1310,7 +1314,8 @@ end:
 	return ret;
 }
 
-static void print_stream_indexes(struct relay_stream *stream)
+namespace {
+void print_stream_indexes(struct relay_stream *stream)
 {
 	for (auto *index :
 	     lttng::urcu::lfht_iteration_adapter<relay_index,
@@ -1326,6 +1331,7 @@ static void print_stream_indexes(struct relay_stream *stream)
 		    index->stream->trace->session->id);
 	}
 }
+} /* namespace */
 
 int stream_reset_file(struct relay_stream *stream)
 {

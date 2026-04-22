@@ -102,7 +102,8 @@ end:
 	return conn;
 }
 
-static void rcu_free_connection(struct rcu_head *head)
+namespace {
+void rcu_free_connection(struct rcu_head *head)
 {
 	struct relay_connection *conn =
 		lttng::utils::container_of(head, &relay_connection::rcu_node);
@@ -118,12 +119,12 @@ static void rcu_free_connection(struct rcu_head *head)
 	free(conn);
 }
 
-static void destroy_connection(struct relay_connection *conn)
+void destroy_connection(struct relay_connection *conn)
 {
 	call_rcu(&conn->rcu_node, rcu_free_connection);
 }
 
-static void connection_release(struct urcu_ref *ref)
+void connection_release(struct urcu_ref *ref)
 {
 	struct relay_connection *conn = lttng::utils::container_of(ref, &relay_connection::ref);
 
@@ -147,6 +148,7 @@ static void connection_release(struct urcu_ref *ref)
 	}
 	destroy_connection(conn);
 }
+} /* namespace */
 
 void connection_put(struct relay_connection *conn)
 {

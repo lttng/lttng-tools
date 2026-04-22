@@ -17,12 +17,13 @@
  * Quit pipe for all threads. This permits a single cancellation point
  * for all threads when receiving an event on the pipe.
  */
-static int thread_quit_pipe[2] = { -1, -1 };
+namespace {
+int thread_quit_pipe[2] = { -1, -1 };
 
 /*
  * Write to writable pipe used to notify a thread.
  */
-static int notify_thread_pipe(int wpipe)
+int notify_thread_pipe(int wpipe)
 {
 	const auto ret = lttng_write(wpipe, "!", 1);
 
@@ -33,6 +34,7 @@ static int notify_thread_pipe(int wpipe)
 
 	return 0;
 }
+} /* namespace */
 
 /*
  * Initialize the thread quit pipe.

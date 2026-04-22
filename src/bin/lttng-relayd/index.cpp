@@ -27,7 +27,8 @@
  * Called with stream mutex held.
  * Return allocated object or else NULL on error.
  */
-static struct relay_index *relay_index_create(struct relay_stream *stream, uint64_t net_seq_num)
+namespace {
+struct relay_index *relay_index_create(struct relay_stream *stream, uint64_t net_seq_num)
 {
 	struct relay_index *index;
 
@@ -62,8 +63,7 @@ end:
  *
  * RCU read side lock MUST be acquired.
  */
-static struct relay_index *relay_index_add_unique(struct relay_stream *stream,
-						  struct relay_index *index)
+struct relay_index *relay_index_add_unique(struct relay_stream *stream, struct relay_index *index)
 {
 	struct cds_lfht_node *node_ptr;
 	struct relay_index *_index;
@@ -91,7 +91,7 @@ static struct relay_index *relay_index_add_unique(struct relay_stream *stream,
 /*
  * Should be called with RCU read-side lock held.
  */
-static bool relay_index_get(struct relay_index *index)
+bool relay_index_get(struct relay_index *index)
 {
 	ASSERT_RCU_READ_LOCKED();
 
@@ -102,6 +102,7 @@ static bool relay_index_get(struct relay_index *index)
 
 	return urcu_ref_get_unless_zero(&index->ref);
 }
+} /* namespace */
 
 /*
  * Get a relayd index in within the given stream, or create it if not
@@ -198,12 +199,13 @@ end:
 	return ret;
 }
 
-static void index_destroy(struct relay_index *index)
+namespace {
+void index_destroy(struct relay_index *index)
 {
 	free(index);
 }
 
-static void index_destroy_rcu(struct rcu_head *rcu_head)
+void index_destroy_rcu(struct rcu_head *rcu_head)
 {
 	struct relay_index *index = lttng::utils::container_of(rcu_head, &relay_index::rcu_node);
 
@@ -211,7 +213,7 @@ static void index_destroy_rcu(struct rcu_head *rcu_head)
 }
 
 /* Stream lock must be held by the caller. */
-static void index_release(struct urcu_ref *ref)
+void index_release(struct urcu_ref *ref)
 {
 	struct relay_index *index = lttng::utils::container_of(ref, &relay_index::ref);
 	struct relay_stream *stream = index->stream;
@@ -235,6 +237,7 @@ static void index_release(struct urcu_ref *ref)
 
 	call_rcu(&index->rcu_node, index_destroy_rcu);
 }
+} /* namespace */
 
 /*
  * Called with stream mutex held.
@@ -350,9 +353,10 @@ uint64_t relay_index_find_last(struct relay_stream *stream)
  * Update the index file of an already existing relay_index.
  * Offsets by 'removed_data_count' the offset field of an index.
  */
-static int relay_index_switch_file(struct relay_index *index,
-				   struct lttng_index_file *new_index_file,
-				   uint64_t removed_data_count)
+namespace {
+int relay_index_switch_file(struct relay_index *index,
+			    struct lttng_index_file *new_index_file,
+			    uint64_t removed_data_count)
 {
 	int ret = 0;
 	uint64_t offset;
@@ -374,6 +378,7 @@ end:
 	pthread_mutex_unlock(&index->lock);
 	return ret;
 }
+} /* namespace */
 
 /*
  * Switch the index file of all pending indexes for a stream and update the

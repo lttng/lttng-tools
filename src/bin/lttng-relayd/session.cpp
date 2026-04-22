@@ -28,10 +28,11 @@
 #include <urcu/rculist.h>
 
 /* Global session id used in the session creation. */
-static uint64_t last_relay_session_id;
-static pthread_mutex_t last_relay_session_id_lock = PTHREAD_MUTEX_INITIALIZER;
+namespace {
+uint64_t last_relay_session_id;
+pthread_mutex_t last_relay_session_id_lock = PTHREAD_MUTEX_INITIALIZER;
 
-static int init_session_output_path_group_by_host(struct relay_session *session)
+int init_session_output_path_group_by_host(struct relay_session *session)
 {
 	/*
 	 * session_directory:
@@ -99,7 +100,7 @@ end:
 	return ret;
 }
 
-static int init_session_output_path_group_by_session(struct relay_session *session)
+int init_session_output_path_group_by_session(struct relay_session *session)
 {
 	/*
 	 * session_directory:
@@ -154,7 +155,7 @@ end:
 	return ret;
 }
 
-static int init_session_output_path(struct relay_session *session)
+int init_session_output_path(struct relay_session *session)
 {
 	int ret;
 
@@ -174,8 +175,7 @@ static int init_session_output_path(struct relay_session *session)
 	return ret;
 }
 
-static struct lttng_directory_handle *
-session_create_output_directory_handle(struct relay_session *session)
+struct lttng_directory_handle *session_create_output_directory_handle(struct relay_session *session)
 {
 	int ret;
 	/*
@@ -204,7 +204,7 @@ end:
 	return handle;
 }
 
-static int session_set_anonymous_chunk(struct relay_session *session)
+int session_set_anonymous_chunk(struct relay_session *session)
 {
 	int ret = 0;
 	struct lttng_trace_chunk *chunk = nullptr;
@@ -250,7 +250,7 @@ end:
  *   - Does not start with a '.' (hidden file/folder),
  *   - Is not empty.
  */
-static bool is_name_path_safe(const char *name)
+bool is_name_path_safe(const char *name)
 {
 	const size_t name_len = strlen(name);
 
@@ -274,6 +274,7 @@ static bool is_name_path_safe(const char *name)
 
 	return true;
 }
+} /* namespace */
 
 /*
  * Create a new session by assigning a new session ID.
@@ -554,7 +555,8 @@ end:
 	return ongoing_rotation;
 }
 
-static void rcu_destroy_session(struct rcu_head *rcu_head)
+namespace {
+void rcu_destroy_session(struct rcu_head *rcu_head)
 {
 	auto *session = lttng::utils::container_of(rcu_head, &relay_session::rcu_node);
 	/*
@@ -573,7 +575,7 @@ static void rcu_destroy_session(struct rcu_head *rcu_head)
  *
  * Return lttng ht del error code being 0 on success and 1 on failure.
  */
-static int session_delete(struct relay_session *session)
+int session_delete(struct relay_session *session)
 {
 	struct lttng_ht_iter iter;
 
@@ -581,7 +583,7 @@ static int session_delete(struct relay_session *session)
 	return lttng_ht_del(sessions_ht, &iter);
 }
 
-static void destroy_session(struct relay_session *session)
+void destroy_session(struct relay_session *session)
 {
 	int ret;
 
@@ -599,12 +601,13 @@ static void destroy_session(struct relay_session *session)
 	call_rcu(&session->rcu_node, rcu_destroy_session);
 }
 
-static void session_release(struct urcu_ref *ref)
+void session_release(struct urcu_ref *ref)
 {
 	struct relay_session *session = lttng::utils::container_of(ref, &relay_session::ref);
 
 	destroy_session(session);
 }
+} /* namespace */
 
 void session_put(struct relay_session *session)
 {

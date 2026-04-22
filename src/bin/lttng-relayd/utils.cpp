@@ -20,7 +20,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-static char *create_output_path_auto(const char *path_name)
+namespace {
+char *create_output_path_auto(const char *path_name)
 {
 	int ret;
 	char *traces_path = nullptr;
@@ -41,7 +42,7 @@ exit:
 	return traces_path;
 }
 
-static char *create_output_path_noauto(const char *path_name)
+char *create_output_path_noauto(const char *path_name)
 {
 	int ret;
 	char *traces_path = nullptr;
@@ -61,6 +62,7 @@ exit:
 	free(full_path);
 	return traces_path;
 }
+} /* namespace */
 
 /*
  * Create the output trace directory path name string.

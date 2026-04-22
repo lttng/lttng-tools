@@ -22,8 +22,10 @@
 #include <urcu/rculist.h>
 
 /* Global session id used in the session creation. */
-static uint64_t last_viewer_session_id;
-static pthread_mutex_t last_viewer_session_id_lock = PTHREAD_MUTEX_INITIALIZER;
+namespace {
+uint64_t last_viewer_session_id;
+pthread_mutex_t last_viewer_session_id_lock = PTHREAD_MUTEX_INITIALIZER;
+} /* namespace */
 
 struct relay_viewer_session *viewer_session_create()
 {
@@ -152,8 +154,8 @@ end:
 }
 
 /* The existence of session must be guaranteed by the caller. */
-static int viewer_session_detach(struct relay_viewer_session *vsession,
-				 struct relay_session *session)
+namespace {
+int viewer_session_detach(struct relay_viewer_session *vsession, struct relay_session *session)
 {
 	int ret = 0;
 
@@ -176,6 +178,7 @@ static int viewer_session_detach(struct relay_viewer_session *vsession,
 	pthread_mutex_unlock(&session->lock);
 	return ret;
 }
+} /* namespace */
 
 void viewer_session_destroy(struct relay_viewer_session *vsession)
 {

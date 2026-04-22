@@ -76,7 +76,8 @@ struct trace_chunk_registry_ht_element {
 };
 } /* namespace */
 
-static unsigned long trace_chunk_registry_ht_key_hash(const struct trace_chunk_registry_ht_key *key)
+namespace {
+unsigned long trace_chunk_registry_ht_key_hash(const struct trace_chunk_registry_ht_key *key)
 {
 	const uint64_t uuid_h1 = reinterpret_cast<const uint64_t *>(key->sessiond_uuid.data())[0];
 	const uint64_t uuid_h2 = reinterpret_cast<const uint64_t *>(key->sessiond_uuid.data())[1];
@@ -85,7 +86,7 @@ static unsigned long trace_chunk_registry_ht_key_hash(const struct trace_chunk_r
 }
 
 /* cds_lfht match function */
-static int trace_chunk_registry_ht_key_match(struct cds_lfht_node *node, const void *_key)
+int trace_chunk_registry_ht_key_match(struct cds_lfht_node *node, const void *_key)
 {
 	const struct trace_chunk_registry_ht_key *key = (struct trace_chunk_registry_ht_key *) _key;
 	struct trace_chunk_registry_ht_element *registry;
@@ -94,7 +95,7 @@ static int trace_chunk_registry_ht_key_match(struct cds_lfht_node *node, const v
 	return key->sessiond_uuid == registry->key.sessiond_uuid;
 }
 
-static void trace_chunk_registry_ht_element_free(struct rcu_head *node)
+void trace_chunk_registry_ht_element_free(struct rcu_head *node)
 {
 	struct trace_chunk_registry_ht_element *element =
 		lttng::utils::container_of(node, &trace_chunk_registry_ht_element::rcu_node);
@@ -102,7 +103,7 @@ static void trace_chunk_registry_ht_element_free(struct rcu_head *node)
 	free(element);
 }
 
-static void trace_chunk_registry_ht_element_release(struct urcu_ref *ref)
+void trace_chunk_registry_ht_element_release(struct urcu_ref *ref)
 {
 	struct trace_chunk_registry_ht_element *element =
 		lttng::utils::container_of(ref, &trace_chunk_registry_ht_element::ref);
@@ -123,12 +124,12 @@ static void trace_chunk_registry_ht_element_release(struct urcu_ref *ref)
 	call_rcu(&element->rcu_node, trace_chunk_registry_ht_element_free);
 }
 
-static bool trace_chunk_registry_ht_element_get(struct trace_chunk_registry_ht_element *element)
+bool trace_chunk_registry_ht_element_get(struct trace_chunk_registry_ht_element *element)
 {
 	return urcu_ref_get_unless_zero(&element->ref);
 }
 
-static void trace_chunk_registry_ht_element_put(struct trace_chunk_registry_ht_element *element)
+void trace_chunk_registry_ht_element_put(struct trace_chunk_registry_ht_element *element)
 {
 	if (!element) {
 		return;
@@ -138,7 +139,7 @@ static void trace_chunk_registry_ht_element_put(struct trace_chunk_registry_ht_e
 }
 
 /* Acquires a reference to the returned element on behalf of the caller. */
-static struct trace_chunk_registry_ht_element *
+struct trace_chunk_registry_ht_element *
 trace_chunk_registry_ht_element_find(struct sessiond_trace_chunk_registry *sessiond_registry,
 				     const struct trace_chunk_registry_ht_key *key)
 {
@@ -167,9 +168,8 @@ trace_chunk_registry_ht_element_find(struct sessiond_trace_chunk_registry *sessi
 	return element;
 }
 
-static int
-trace_chunk_registry_ht_element_create(struct sessiond_trace_chunk_registry *sessiond_registry,
-				       const struct trace_chunk_registry_ht_key *key)
+int trace_chunk_registry_ht_element_create(struct sessiond_trace_chunk_registry *sessiond_registry,
+					   const struct trace_chunk_registry_ht_key *key)
 {
 	int ret = 0;
 	struct trace_chunk_registry_ht_element *new_element;
@@ -249,6 +249,7 @@ end:
 	lttng_trace_chunk_registry_destroy(trace_chunk_registry);
 	return ret;
 }
+} /* namespace */
 
 struct sessiond_trace_chunk_registry *sessiond_trace_chunk_registry_create()
 {

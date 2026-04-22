@@ -71,20 +71,21 @@
 
 #define SESSION_BUF_DEFAULT_COUNT 16
 
-static struct lttng_uri *live_uri;
+namespace {
+struct lttng_uri *live_uri;
 
 /*
  * This pipe is used to inform the worker thread that a command is queued and
  * ready to be processed.
  */
-static int live_conn_pipe[2] = { -1, -1 };
+int live_conn_pipe[2] = { -1, -1 };
 
 /* Shared between threads */
-static int live_dispatch_thread_exit;
+int live_dispatch_thread_exit;
 
-static pthread_t live_listener_thread;
-static pthread_t live_dispatcher_thread;
-static pthread_t live_worker_thread;
+pthread_t live_listener_thread;
+pthread_t live_dispatcher_thread;
+pthread_t live_worker_thread;
 
 /*
  * Relay command queue.
@@ -92,12 +93,12 @@ static pthread_t live_worker_thread;
  * The live_thread_listener and live_thread_dispatcher communicate with this
  * queue.
  */
-static struct relay_conn_queue viewer_conn_queue;
+struct relay_conn_queue viewer_conn_queue;
 
-static uint64_t last_relay_viewer_session_id;
-static pthread_mutex_t last_relay_viewer_session_id_lock = PTHREAD_MUTEX_INITIALIZER;
+uint64_t last_relay_viewer_session_id;
+pthread_mutex_t last_relay_viewer_session_id_lock = PTHREAD_MUTEX_INITIALIZER;
 
-static const char *lttng_viewer_command_str(lttng_viewer_command cmd)
+const char *lttng_viewer_command_str(lttng_viewer_command cmd)
 {
 	switch (cmd) {
 	case LTTNG_VIEWER_CONNECT:
@@ -123,8 +124,7 @@ static const char *lttng_viewer_command_str(lttng_viewer_command cmd)
 	}
 }
 
-static const char *
-lttng_viewer_next_index_return_code_str(enum lttng_viewer_next_index_return_code code)
+const char *lttng_viewer_next_index_return_code_str(enum lttng_viewer_next_index_return_code code)
 {
 	switch (code) {
 	case LTTNG_VIEWER_INDEX_OK:
@@ -144,7 +144,7 @@ lttng_viewer_next_index_return_code_str(enum lttng_viewer_next_index_return_code
 	}
 }
 
-static lttng_live_trace_format trace_format_to_live_format(const lttng_trace_format format)
+lttng_live_trace_format trace_format_to_live_format(const lttng_trace_format format)
 {
 	switch (format) {
 	case LTTNG_TRACE_FORMAT_CTF_1_8:
@@ -156,7 +156,7 @@ static lttng_live_trace_format trace_format_to_live_format(const lttng_trace_for
 	}
 }
 
-static const char *lttng_viewer_attach_return_code_str(enum lttng_viewer_attach_return_code code)
+const char *lttng_viewer_attach_return_code_str(enum lttng_viewer_attach_return_code code)
 {
 	switch (code) {
 	case LTTNG_VIEWER_ATTACH_OK:
@@ -176,8 +176,7 @@ static const char *lttng_viewer_attach_return_code_str(enum lttng_viewer_attach_
 	}
 };
 
-static const char *
-lttng_viewer_get_packet_return_code_str(enum lttng_viewer_get_packet_return_code code)
+const char *lttng_viewer_get_packet_return_code_str(enum lttng_viewer_get_packet_return_code code)
 {
 	switch (code) {
 	case LTTNG_VIEWER_GET_PACKET_OK:
@@ -196,7 +195,7 @@ lttng_viewer_get_packet_return_code_str(enum lttng_viewer_get_packet_return_code
 /*
  * Cleanup the daemon
  */
-static void cleanup_relayd_live()
+void cleanup_relayd_live()
 {
 	DBG("Cleaning up");
 
@@ -210,7 +209,7 @@ static void cleanup_relayd_live()
  * Return the size of the received message or else a negative value on error
  * with errno being set by recvmsg() syscall.
  */
-static ssize_t recv_request(struct lttcomm_sock *sock, void *buf, size_t size)
+ssize_t recv_request(struct lttcomm_sock *sock, void *buf, size_t size)
 {
 	ssize_t ret;
 
@@ -235,7 +234,7 @@ static ssize_t recv_request(struct lttcomm_sock *sock, void *buf, size_t size)
  * Return the size of the sent message or else a negative value on error with
  * errno being set by sendmsg() syscall.
  */
-static ssize_t send_response(struct lttcomm_sock *sock, void *buf, size_t size)
+ssize_t send_response(struct lttcomm_sock *sock, void *buf, size_t size)
 {
 	ssize_t ret;
 
@@ -254,7 +253,7 @@ static ssize_t send_response(struct lttcomm_sock *sock, void *buf, size_t size)
  * Returns 1 if new streams got added, 0 if nothing changed, a negative value
  * on error.
  */
-static int check_new_streams(struct relay_connection *conn)
+int check_new_streams(struct relay_connection *conn)
 {
 	int ret = 0;
 
@@ -291,8 +290,7 @@ end:
  *
  * Return 0 on success, or else a negative value.
  */
-static ssize_t send_one_viewer_stream(struct lttcomm_sock *sock,
-				      struct relay_viewer_stream *vstream)
+ssize_t send_one_viewer_stream(struct lttcomm_sock *sock, struct relay_viewer_stream *vstream)
 {
 	struct ctf_trace *ctf_trace;
 	struct lttng_viewer_stream send_stream = {};
@@ -336,10 +334,10 @@ end:
  *
  * Return 0 on success or else a negative value.
  */
-static ssize_t send_viewer_streams(struct lttcomm_sock *sock,
-				   uint64_t session_id,
-				   unsigned int ignore_sent_flag,
-				   struct relay_viewer_session *viewer_session)
+ssize_t send_viewer_streams(struct lttcomm_sock *sock,
+			    uint64_t session_id,
+			    unsigned int ignore_sent_flag,
+			    struct relay_viewer_session *viewer_session)
 {
 	ssize_t ret;
 
@@ -416,6 +414,7 @@ static ssize_t send_viewer_streams(struct lttcomm_sock *sock,
 end:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Create every viewer stream possible for the given session with the seek
@@ -709,7 +708,8 @@ int relayd_live_stop()
 	return 0;
 }
 
-static int create_sock(void *data, int *out_fd)
+namespace {
+int create_sock(void *data, int *out_fd)
 {
 	int ret;
 	struct lttcomm_sock *sock = (lttcomm_sock *) data;
@@ -724,14 +724,14 @@ end:
 	return ret;
 }
 
-static int close_sock(void *data, int *in_fd __attribute__((unused)))
+int close_sock(void *data, int *in_fd __attribute__((unused)))
 {
 	struct lttcomm_sock *sock = (lttcomm_sock *) data;
 
 	return sock->ops->close(sock);
 }
 
-static int accept_sock(void *data, int *out_fd)
+int accept_sock(void *data, int *out_fd)
 {
 	int ret = 0;
 	/* Socks is an array of in_sock, out_sock. */
@@ -748,7 +748,7 @@ end:
 	return ret;
 }
 
-static struct lttcomm_sock *accept_live_sock(struct lttcomm_sock *listening_sock, const char *name)
+struct lttcomm_sock *accept_live_sock(struct lttcomm_sock *listening_sock, const char *name)
 {
 	int out_fd, ret;
 	struct lttcomm_sock *socks[2] = { listening_sock, nullptr };
@@ -768,7 +768,7 @@ end:
 /*
  * Create and init socket from uri.
  */
-static struct lttcomm_sock *init_socket(struct lttng_uri *uri, const char *name)
+struct lttcomm_sock *init_socket(struct lttng_uri *uri, const char *name)
 {
 	int ret, sock_fd;
 	char uri_str[LTTNG_PATH_MAX];
@@ -877,7 +877,7 @@ static struct lttcomm_sock *init_socket(struct lttng_uri *uri, const char *name)
 /*
  * This thread manages the listening for new connections on the network
  */
-static void *thread_listener(void *data __attribute__((unused)))
+void *thread_listener(void *data __attribute__((unused)))
 {
 	int i, ret, err = -1;
 	uint32_t nb_fd;
@@ -1039,7 +1039,7 @@ error_sock_control:
 /*
  * This thread manages the dispatching of the requests to worker threads
  */
-static void *thread_dispatcher(void *data __attribute__((unused)))
+void *thread_dispatcher(void *data __attribute__((unused)))
 {
 	int err = -1;
 	ssize_t ret;
@@ -1125,7 +1125,7 @@ error_testpoint:
  *
  * Return 0 on success or else negative value.
  */
-static int viewer_connect(struct relay_connection *conn)
+int viewer_connect(struct relay_connection *conn)
 {
 	int ret;
 	struct lttng_viewer_connect reply, msg;
@@ -1203,8 +1203,8 @@ end:
 }
 
 /* Serialize a single session entry for protocol 2.4 (fixed-size strings). */
-static int serialize_viewer_session_2_4(const struct relay_session *session,
-					struct lttng_dynamic_buffer *out)
+int serialize_viewer_session_2_4(const struct relay_session *session,
+				 struct lttng_dynamic_buffer *out)
 {
 	struct lttng_viewer_session_2_4 s = {};
 
@@ -1225,8 +1225,8 @@ static int serialize_viewer_session_2_4(const struct relay_session *session,
 }
 
 /* Serialize a single session entry for protocol 2.15 (variable-length strings). */
-static int serialize_viewer_session_2_15(const struct relay_session *session,
-					 struct lttng_dynamic_buffer *out)
+int serialize_viewer_session_2_15(const struct relay_session *session,
+				  struct lttng_dynamic_buffer *out)
 {
 	int ret;
 	struct lttng_viewer_session_2_15 s = {};
@@ -1268,7 +1268,7 @@ static int serialize_viewer_session_2_15(const struct relay_session *session,
  *
  * Return 0 on success or else a negative value.
  */
-static int viewer_list_sessions(struct relay_connection *conn)
+int viewer_list_sessions(struct relay_connection *conn)
 {
 	int ret = 0;
 	struct lttng_viewer_list_sessions session_list;
@@ -1340,7 +1340,7 @@ end:
 /*
  * Send the viewer the list of current streams.
  */
-static int viewer_get_new_streams(struct relay_connection *conn)
+int viewer_get_new_streams(struct relay_connection *conn)
 {
 	int ret, send_streams = 0;
 	unsigned int nb_created = 0, nb_unsent = 0, nb_streams = 0, nb_total = 0;
@@ -1472,7 +1472,7 @@ error:
 /*
  * Send the viewer the list of current sessions.
  */
-static int viewer_attach_session(struct relay_connection *conn)
+int viewer_attach_session(struct relay_connection *conn)
 {
 	int send_streams = 0;
 	ssize_t ret;
@@ -1645,7 +1645,7 @@ error:
  *
  * Called with rstream lock held.
  */
-static int try_open_index(struct relay_viewer_stream *vstream, struct relay_stream *rstream)
+int try_open_index(struct relay_viewer_stream *vstream, struct relay_stream *rstream)
 {
 	int ret = 0;
 	const uint32_t connection_major = rstream->trace->session->major;
@@ -1697,10 +1697,10 @@ end:
  *
  * Called with rstream lock held.
  */
-static int check_index_status(struct relay_viewer_stream *vstream,
-			      struct relay_stream *rstream,
-			      struct ctf_trace *trace,
-			      struct lttng_viewer_index *index)
+int check_index_status(struct relay_viewer_stream *vstream,
+		       struct relay_stream *rstream,
+		       struct ctf_trace *trace,
+		       struct lttng_viewer_index *index)
 {
 	int ret;
 
@@ -1834,8 +1834,8 @@ index_ready:
 	return 1;
 }
 
-static void viewer_stream_rotate_to_trace_chunk(struct relay_viewer_stream *vstream,
-						struct lttng_trace_chunk *new_trace_chunk)
+void viewer_stream_rotate_to_trace_chunk(struct relay_viewer_stream *vstream,
+					 struct lttng_trace_chunk *new_trace_chunk)
 {
 	lttng_trace_chunk_put(vstream->stream_file.trace_chunk);
 
@@ -1855,7 +1855,7 @@ static void viewer_stream_rotate_to_trace_chunk(struct relay_viewer_stream *vstr
  *
  * Return 0 on success or else a negative value.
  */
-static int viewer_get_next_index(struct relay_connection *conn)
+int viewer_get_next_index(struct relay_connection *conn)
 {
 	int ret;
 	struct lttng_viewer_get_next_index request_index;
@@ -2266,7 +2266,7 @@ error_put:
  *
  * Return 0 on success or else a negative value.
  */
-static int viewer_get_packet(struct relay_connection *conn)
+int viewer_get_packet(struct relay_connection *conn)
 {
 	int ret;
 	off_t lseek_ret;
@@ -2383,7 +2383,7 @@ end:
  *
  * Return 0 on success else a negative value.
  */
-static int viewer_get_metadata(struct relay_connection *conn)
+int viewer_get_metadata(struct relay_connection *conn)
 {
 	int ret = 0;
 	int fd = -1;
@@ -2673,7 +2673,7 @@ end:
  *
  * Return 0 on success or else a negative value.
  */
-static int viewer_create_session(struct relay_connection *conn)
+int viewer_create_session(struct relay_connection *conn)
 {
 	int ret;
 	struct lttng_viewer_create_session_response resp;
@@ -2705,7 +2705,7 @@ end:
  *
  * Return 0 on success or else a negative value.
  */
-static int viewer_detach_session(struct relay_connection *conn)
+int viewer_detach_session(struct relay_connection *conn)
 {
 	int ret;
 	struct lttng_viewer_detach_session_response response;
@@ -2772,7 +2772,7 @@ end:
 /*
  * live_relay_unknown_command: send -1 if received unknown command
  */
-static void live_relay_unknown_command(struct relay_connection *conn)
+void live_relay_unknown_command(struct relay_connection *conn)
 {
 	struct lttcomm_relayd_generic_reply reply;
 
@@ -2784,7 +2784,7 @@ static void live_relay_unknown_command(struct relay_connection *conn)
 /*
  * Process the commands received on the control socket
  */
-static int process_control(struct lttng_viewer_cmd *recv_hdr, struct relay_connection *conn)
+int process_control(struct lttng_viewer_cmd *recv_hdr, struct relay_connection *conn)
 {
 	int ret = 0;
 	const lttng_viewer_command cmd = (lttng_viewer_command) be32toh(recv_hdr->cmd);
@@ -2844,7 +2844,7 @@ end:
 	return ret;
 }
 
-static void cleanup_connection_pollfd(struct lttng_poll_event *events, int pollfd)
+void cleanup_connection_pollfd(struct lttng_poll_event *events, int pollfd)
 {
 	int ret;
 
@@ -2860,7 +2860,7 @@ static void cleanup_connection_pollfd(struct lttng_poll_event *events, int pollf
 /*
  * This thread does the actual work
  */
-static void *thread_worker(void *data __attribute__((unused)))
+void *thread_worker(void *data __attribute__((unused)))
 {
 	int ret, err = -1;
 	uint32_t nb_fd;
@@ -3053,11 +3053,12 @@ error_testpoint:
  * Create the relay command pipe to wake thread_manage_apps.
  * Closed in cleanup().
  */
-static int create_conn_pipe()
+int create_conn_pipe()
 {
 	return fd_tracker_util_pipe_open_cloexec(
 		the_fd_tracker, "Live connection pipe", live_conn_pipe);
 }
+} /* namespace */
 
 int relayd_live_join()
 {

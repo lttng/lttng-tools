@@ -125,7 +125,8 @@ struct tcp_keep_alive_support the_support = { .supported = false,
  *
  * Returns -2 on invalid value.
  */
-static int get_env_int(const char *env_var, const char *value)
+namespace {
+int get_env_int(const char *env_var, const char *value)
 {
 	int ret;
 	long tmp;
@@ -161,6 +162,7 @@ static int get_env_int(const char *env_var, const char *value)
 end:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Per-platform implementation of tcp_keep_alive_idle_time_modifier.
@@ -220,17 +222,20 @@ end:
 
 #else /* ! defined(__sun__) */
 
-static int convert_idle_time(int value)
+namespace {
+int convert_idle_time(int value)
 {
 	return value;
 }
+} /* namespace */
 
 #endif /* ! defined(__sun__) */
 
 /* Per-platform support of tcp_keep_alive functionality. */
 #if defined(__linux__)
 
-static void tcp_keep_alive_init_support(struct tcp_keep_alive_support *support)
+namespace {
+void tcp_keep_alive_init_support(struct tcp_keep_alive_support *support)
 {
 	support->supported = true;
 	support->idle_time_supported = true;
@@ -239,6 +244,7 @@ static void tcp_keep_alive_init_support(struct tcp_keep_alive_support *support)
 	/* Solaris specific */
 	support->abort_threshold_supported = false;
 }
+} /* namespace */
 
 #elif defined(__sun__) /* ! defined (__linux__) */
 
@@ -286,13 +292,14 @@ static void tcp_keep_alive_init_support(struct tcp_keep_alive_support *support)
 
 #endif /* ! defined(__sun__) && ! defined(__linux__) */
 
+namespace {
 #ifdef __sun__
 
 /*
  * Solaris specific modifier for abort threshold.
  * Return -2 on error.
  */
-static int convert_abort_threshold(int value)
+int convert_abort_threshold(int value)
 {
 	int ret;
 	unsigned int tmp_ms;
@@ -349,7 +356,7 @@ end:
 
 #else
 
-static int convert_abort_threshold(int value)
+int convert_abort_threshold(int value)
 {
 	return value;
 }
@@ -360,8 +367,8 @@ static int convert_abort_threshold(int value)
  * Retrieve settings from environment variables and warn for settings not
  * supported by the platform.
  */
-static int tcp_keep_alive_init_config(struct tcp_keep_alive_support *support,
-				      struct tcp_keep_alive_config *config)
+int tcp_keep_alive_init_config(struct tcp_keep_alive_support *support,
+			       struct tcp_keep_alive_config *config)
 {
 	int ret;
 	const char *value;
@@ -493,11 +500,12 @@ error:
 }
 
 /* Initialize the TCP keep-alive configuration. */
-__attribute__((constructor)) static void tcp_keep_alive_init()
+__attribute__((constructor)) void tcp_keep_alive_init()
 {
 	tcp_keep_alive_init_support(&the_support);
 	(void) tcp_keep_alive_init_config(&the_support, &the_config);
 }
+} /* namespace */
 
 /*
  * Set the socket options regarding TCP keep-alive.

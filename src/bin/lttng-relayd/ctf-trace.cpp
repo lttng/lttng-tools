@@ -19,10 +19,11 @@
 
 #include <urcu/rculist.h>
 
-static uint64_t last_relay_ctf_trace_id;
-static pthread_mutex_t last_relay_ctf_trace_id_lock = PTHREAD_MUTEX_INITIALIZER;
+namespace {
+uint64_t last_relay_ctf_trace_id;
+pthread_mutex_t last_relay_ctf_trace_id_lock = PTHREAD_MUTEX_INITIALIZER;
 
-static void rcu_destroy_ctf_trace(struct rcu_head *rcu_head)
+void rcu_destroy_ctf_trace(struct rcu_head *rcu_head)
 {
 	struct ctf_trace *trace = lttng::utils::container_of(rcu_head, &ctf_trace::rcu_node);
 
@@ -34,7 +35,7 @@ static void rcu_destroy_ctf_trace(struct rcu_head *rcu_head)
  *
  * MUST be called with the RCU read side lock.
  */
-static void ctf_trace_destroy(struct ctf_trace *trace)
+void ctf_trace_destroy(struct ctf_trace *trace)
 {
 	/*
 	 * Getting to this point, every stream referenced by that trace
@@ -51,7 +52,7 @@ static void ctf_trace_destroy(struct ctf_trace *trace)
 	call_rcu(&trace->rcu_node, rcu_destroy_ctf_trace);
 }
 
-static void ctf_trace_release(struct urcu_ref *ref)
+void ctf_trace_release(struct urcu_ref *ref)
 {
 	struct ctf_trace *trace = lttng::utils::container_of(ref, &ctf_trace::ref);
 	int ret;
@@ -62,6 +63,7 @@ static void ctf_trace_release(struct urcu_ref *ref)
 	LTTNG_ASSERT(!ret);
 	ctf_trace_destroy(trace);
 }
+} /* namespace */
 
 /*
  * The caller must either:
@@ -92,7 +94,8 @@ bool ctf_trace_get(struct ctf_trace *trace)
  * create and refcounting. Whenever all the streams belonging to a trace
  * put their reference, its refcount drops to 0.
  */
-static struct ctf_trace *ctf_trace_create(struct relay_session *session, const char *subpath)
+namespace {
+struct ctf_trace *ctf_trace_create(struct relay_session *session, const char *subpath)
 {
 	struct ctf_trace *trace;
 
@@ -137,6 +140,7 @@ error:
 	ctf_trace_put(trace);
 	return nullptr;
 }
+} /* namespace */
 
 /*
  * Return a ctf_trace if found by id in the given hash table else NULL.
