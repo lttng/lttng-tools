@@ -7,6 +7,7 @@
 
 #include <common/compat/getenv.hpp>
 #include <common/defaults.hpp>
+#include <common/format.hpp>
 #include <common/make-unique-wrapper.hpp>
 #include <common/make-unique.hpp>
 
@@ -86,7 +87,7 @@ std::vector<std::string> tracepoints_find_all(const std::string& basename)
 	for (const auto& path : search_paths) {
 		DBG_FMT("Checking for tracepoint library='{}', path='{}'", basename, path);
 		struct stat statbuf = {};
-		auto file = path + "/" + basename;
+		auto file = fmt::format("{}/{}", path, basename);
 		if (stat(file.c_str(), &statbuf) != 0) {
 			DBG_FMT("Stat '{}' failed: {} ({})", file, strerror(errno), errno);
 		} else if (statbuf.st_mode & S_IFREG) {
