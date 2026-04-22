@@ -137,9 +137,9 @@ int lttng_dynamic_pointer_array_remove_pointer(struct lttng_dynamic_pointer_arra
 void lttng_dynamic_pointer_array_reset(struct lttng_dynamic_pointer_array *array)
 {
 	if (array->array.destructor) {
-		size_t i, count = lttng_dynamic_pointer_array_get_count(array);
+		const size_t count = lttng_dynamic_pointer_array_get_count(array);
 
-		for (i = 0; i < count; i++) {
+		for (size_t i = 0; i < count; i++) {
 			void *ptr = lttng_dynamic_pointer_array_get_pointer(array, i);
 			array->array.destructor(ptr);
 		}
@@ -162,9 +162,9 @@ void lttng_dynamic_pointer_array_clear(struct lttng_dynamic_pointer_array *array
 	 */
 	array->array.destructor = nullptr;
 	if (destructor) {
-		size_t i, count = lttng_dynamic_pointer_array_get_count(array);
+		const size_t count = lttng_dynamic_pointer_array_get_count(array);
 
-		for (i = 0; i < count; i++) {
+		for (size_t i = 0; i < count; i++) {
 			void *ptr = lttng_dynamic_pointer_array_get_pointer(array, i);
 			destructor(ptr);
 		}

@@ -2745,12 +2745,13 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			}
 
 			if (msg.u.ask_channel.watchdog_timer_interval.is_set) {
-				int stall_watchdog_start_ret = consumer_timer_stall_watchdog_start(
-					channel,
-					ctx->consumer_error_socket,
-					LTTNG_OPTIONAL_GET(
-						msg.u.ask_channel.watchdog_timer_interval),
-					ctx->timer_task_scheduler);
+				const int stall_watchdog_start_ret =
+					consumer_timer_stall_watchdog_start(
+						channel,
+						ctx->consumer_error_socket,
+						LTTNG_OPTIONAL_GET(
+							msg.u.ask_channel.watchdog_timer_interval),
+						ctx->timer_task_scheduler);
 
 				if (stall_watchdog_start_ret < 0) {
 					ERR("Failed to start buffer-stall watchdog timer of channel: "
@@ -4027,7 +4028,7 @@ int extract_metadata_subbuffer_info(struct lttng_consumer_stream *stream,
 		return info_result;
 	}
 
-	lttng::pthread::lock_guard lock(stream->chan->metadata_cache->lock);
+	const lttng::pthread::lock_guard lock(stream->chan->metadata_cache->lock);
 	subbuf->info.metadata.version = stream->chan->metadata_cache->version;
 
 	return 0;
@@ -4588,7 +4589,7 @@ int lttng_ustconsumer_request_metadata(lttng_consumer_channel& channel,
 	    request.uid,
 	    request.key);
 
-	lttng::pthread::lock_guard metadata_socket_lock(sessiond_metadata_socket.lock);
+	const lttng::pthread::lock_guard metadata_socket_lock(sessiond_metadata_socket.lock);
 
 	health_code_update();
 
@@ -4886,7 +4887,7 @@ int take_channel_stall_snapshot(struct lttng_consumer_channel *channel,
 			continue;
 		}
 
-		int err = take_stream_stall_snapshot(*stream, observed_owner_ids);
+		const int err = take_stream_stall_snapshot(*stream, observed_owner_ids);
 
 		if (err != 0) {
 			return err;
@@ -4986,7 +4987,7 @@ int fixup_stalled_channel(struct lttng_consumer_channel *channel, std::set<uint3
 			continue;
 		}
 
-		int err = fixup_stalled_stream(*stream, stalled);
+		const int err = fixup_stalled_stream(*stream, stalled);
 
 		if (err != 0) {
 			success = false;

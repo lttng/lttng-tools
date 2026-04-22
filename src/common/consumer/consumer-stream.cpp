@@ -659,7 +659,7 @@ void strip_packet_header_from_subbuffer(struct stream_subbuffer *buffer)
 	/*
 	 * Change the view and hide the packer header and padding from the view
 	 */
-	size_t new_subbuf_size = buffer->info.metadata.subbuf_size - metadata_length();
+	const size_t new_subbuf_size = buffer->info.metadata.subbuf_size - metadata_length();
 
 	buffer->buffer.buffer = lttng_buffer_view_from_view(
 		&buffer->buffer.buffer, metadata_length(), new_subbuf_size);

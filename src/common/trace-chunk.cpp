@@ -800,9 +800,8 @@ enum lttng_trace_chunk_status lttng_trace_chunk_rename_path_no_lock(struct lttng
 		chunk->chunk_directory = rename_directory;
 		rename_directory = nullptr;
 	} else if (old_path && old_path[0] == '\0') {
-		size_t i,
-			count = lttng_dynamic_pointer_array_get_count(
-				&chunk->top_level_directories);
+		const size_t count =
+			lttng_dynamic_pointer_array_get_count(&chunk->top_level_directories);
 
 		ret = lttng_directory_handle_create_subdirectory_as_user(
 			chunk->session_output_directory,
@@ -826,7 +825,7 @@ enum lttng_trace_chunk_status lttng_trace_chunk_rename_path_no_lock(struct lttng
 		}
 
 		/* Move toplevel directories. */
-		for (i = 0; i < count; i++) {
+		for (size_t i = 0; i < count; i++) {
 			const char *top_level_name =
 				(const char *) lttng_dynamic_pointer_array_get_pointer(
 					&chunk->top_level_directories, i);
@@ -855,9 +854,8 @@ enum lttng_trace_chunk_status lttng_trace_chunk_rename_path_no_lock(struct lttng
 		chunk->chunk_directory = rename_directory;
 		rename_directory = nullptr;
 	} else if (old_path) {
-		size_t i,
-			count = lttng_dynamic_pointer_array_get_count(
-				&chunk->top_level_directories);
+		const size_t count =
+			lttng_dynamic_pointer_array_get_count(&chunk->top_level_directories);
 		const bool reference_acquired =
 			lttng_directory_handle_get(chunk->session_output_directory);
 
@@ -865,7 +863,7 @@ enum lttng_trace_chunk_status lttng_trace_chunk_rename_path_no_lock(struct lttng
 		rename_directory = chunk->session_output_directory;
 
 		/* Move toplevel directories. */
-		for (i = 0; i < count; i++) {
+		for (size_t i = 0; i < count; i++) {
 			const char *top_level_name =
 				(const char *) lttng_dynamic_pointer_array_get_pointer(
 					&chunk->top_level_directories, i);
@@ -1137,12 +1135,12 @@ int add_top_level_directory_unique(struct lttng_trace_chunk *chunk, const char *
 {
 	int ret = 0;
 	bool found = false;
-	size_t i, count = lttng_dynamic_pointer_array_get_count(&chunk->top_level_directories);
+	const size_t count = lttng_dynamic_pointer_array_get_count(&chunk->top_level_directories);
 	const char *new_path_separator_pos = strchr(new_path, '/');
 	const ptrdiff_t new_path_top_level_len =
 		new_path_separator_pos ? new_path_separator_pos - new_path : strlen(new_path);
 
-	for (i = 0; i < count; i++) {
+	for (size_t i = 0; i < count; i++) {
 		const char *path = (const char *) lttng_dynamic_pointer_array_get_pointer(
 			&chunk->top_level_directories, i);
 		const ptrdiff_t path_top_level_len = strlen(path);

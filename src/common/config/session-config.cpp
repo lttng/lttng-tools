@@ -3869,7 +3869,8 @@ end:
  */
 int validate_path_creds(const char *path)
 {
-	int ret, uid = getuid();
+	int ret;
+	const int uid = getuid();
 	struct stat buf;
 
 	LTTNG_ASSERT(path);
