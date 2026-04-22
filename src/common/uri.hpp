@@ -68,7 +68,7 @@ struct lttng_uri {
 	} dst;
 } LTTNG_PACKED;
 
-int uri_compare(struct lttng_uri *uri1, struct lttng_uri *uri2);
+int uri_compare(const struct lttng_uri *uri1, const struct lttng_uri *uri2);
 void uri_free(struct lttng_uri *uri);
 ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris);
 ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url, struct lttng_uri **uris);
