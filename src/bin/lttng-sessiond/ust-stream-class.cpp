@@ -470,20 +470,18 @@ void lsu::stream_class::add_event(int session_objd,
 				*event));
 		}
 	} else {
-		const auto& event_ref = *event;
-
 		/* Ownership transferred to _events hash table. */
-		(void) event.release();
+		const auto *const event_ptr = event.release();
 
 		/* Request next event id if the node was successfully added. */
-		event_id = event_ref.id;
+		event_id = event_ptr->id;
 
 		/*
 		 * Only increment the next id here since we don't want to waste an ID when the event
 		 * matches an existing one.
 		 */
 		_next_event_id++;
-		_event_added_listener(*this, event_ref);
+		_event_added_listener(*this, *event_ptr);
 	}
 
 	out_event_id = event_id;
