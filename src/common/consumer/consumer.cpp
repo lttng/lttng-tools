@@ -2804,14 +2804,14 @@ void *consumer_thread_data_poll(void *data)
 		 * to lock-ups when the consumerd is woken up (via the `wakeup_fd`), and there
 		 * is data to be consumed for a stream.
 		 */
-		for (size_t i = 0; i < local_streams.size(); i++) {
+		for (auto& local_stream : local_streams) {
 			health_code_update();
 
-			if (local_streams[i] == nullptr) {
+			if (local_stream == nullptr) {
 				continue;
 			}
 
-			const auto fd = local_streams[i]->wait_fd;
+			const auto fd = local_stream->wait_fd;
 			if (fd == data_fd || fd == wakeup_fd) {
 				continue;
 			}
@@ -2820,14 +2820,14 @@ void *consumer_thread_data_poll(void *data)
 			const auto has_revent = revents_it != ready_revents.end();
 			const auto revent = has_revent ? revents_it->second : 0;
 
-			if ((has_revent && (revent & LPOLLIN)) ||
-			    local_streams[i]->hangup_flush_done || local_streams[i]->has_data) {
+			if ((has_revent && (revent & LPOLLIN)) || local_stream->hangup_flush_done ||
+			    local_stream->has_data) {
 				DBG_FMT("Normal read on fd={}, revents={}, has_data={}, hangup_flush_done={}",
 					fd,
 					revent,
-					(int) local_streams[i]->has_data,
-					local_streams[i]->hangup_flush_done);
-				len = ctx->on_buffer_ready(local_streams[i], ctx, false);
+					(int) local_stream->has_data,
+					local_stream->hangup_flush_done);
+				len = ctx->on_buffer_ready(local_stream, ctx, false);
 
 				if (len == 0 || len == -ENODATA || len == -EAGAIN) {
 					cool_down.insert(fd);
@@ -2836,11 +2836,10 @@ void *consumer_thread_data_poll(void *data)
 				/* it's ok to have an unavailable sub-buffer */
 				if (len < 0 && len != -EAGAIN && len != -ENODATA) {
 					/* Clean the stream and free it. */
-					consumer_del_stream(local_streams[i], data_ht);
-					local_streams[i] = nullptr;
+					consumer_del_stream(local_stream, data_ht);
+					local_stream = nullptr;
 				} else if (len > 0) {
-					local_streams[i]->has_data_left_to_be_read_before_teardown =
-						1;
+					local_stream->has_data_left_to_be_read_before_teardown = 1;
 				}
 			}
 		}
@@ -2851,14 +2850,14 @@ void *consumer_thread_data_poll(void *data)
 		 * Iterate over all local streams, and not just those with activity,
 		 * in order to reset `has_data_left_to_be_read_before_teardown`.
 		 */
-		for (size_t i = 0; i < local_streams.size(); i++) {
+		for (auto& local_stream : local_streams) {
 			health_code_update();
 
-			if (local_streams[i] == nullptr) {
+			if (local_stream == nullptr) {
 				continue;
 			}
 
-			const auto fd = local_streams[i]->wait_fd;
+			const auto fd = local_stream->wait_fd;
 			if (fd == data_fd || fd == wakeup_fd) {
 				continue;
 			}
@@ -2867,14 +2866,14 @@ void *consumer_thread_data_poll(void *data)
 			const auto has_revent = revents_it != ready_revents.end();
 			const auto revent = has_revent ? revents_it->second : 0;
 
-			if (!local_streams[i]->hangup_flush_done &&
+			if (!local_stream->hangup_flush_done &&
 			    (has_revent && (revent & (LPOLLHUP | LPOLLERR))) &&
 			    (the_consumer_data.type == LTTNG_CONSUMER32_UST ||
 			     the_consumer_data.type == LTTNG_CONSUMER64_UST)) {
 				DBG_FMT("fd={} is hup|err. Attempting flush and read.", fd);
-				lttng_ustconsumer_on_stream_hangup(local_streams[i]);
+				lttng_ustconsumer_on_stream_hangup(local_stream);
 				/* Attempt read again, for the data we just flushed. */
-				local_streams[i]->has_data_left_to_be_read_before_teardown = 1;
+				local_stream->has_data_left_to_be_read_before_teardown = 1;
 			}
 
 			/*
@@ -2892,20 +2891,20 @@ void *consumer_thread_data_poll(void *data)
 			 */
 			if (has_revent && (revent & LPOLLHUP)) {
 				DBG_FMT("Polling fd={} tells it has hung up.", fd);
-				if (!local_streams[i]->has_data_left_to_be_read_before_teardown) {
-					consumer_del_stream(local_streams[i], data_ht);
-					local_streams[i] = nullptr;
+				if (!local_stream->has_data_left_to_be_read_before_teardown) {
+					consumer_del_stream(local_stream, data_ht);
+					local_stream = nullptr;
 				}
 			} else if (has_revent && (revent & LPOLLERR)) {
 				ERR_FMT("Error returned in polling fd={}", fd);
-				if (!local_streams[i]->has_data_left_to_be_read_before_teardown) {
-					consumer_del_stream(local_streams[i], data_ht);
-					local_streams[i] = nullptr;
+				if (!local_stream->has_data_left_to_be_read_before_teardown) {
+					consumer_del_stream(local_stream, data_ht);
+					local_stream = nullptr;
 				}
 			}
 
-			if (local_streams[i] != nullptr) {
-				local_streams[i]->has_data_left_to_be_read_before_teardown = 0;
+			if (local_stream != nullptr) {
+				local_stream->has_data_left_to_be_read_before_teardown = 0;
 			}
 		}
 	}
