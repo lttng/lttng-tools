@@ -96,7 +96,7 @@ std::vector<std::uint8_t> consumer_request(consumer_socket& socket,
  * The caller can safely free(3) the returned value. On error, NULL is
  * returned.
  */
-char *setup_channel_trace_path(struct consumer_output *consumer,
+char *setup_channel_trace_path(const struct consumer_output *consumer,
 			       const char *session_path,
 			       size_t *consumer_path_offset)
 {

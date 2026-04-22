@@ -484,7 +484,13 @@ int event_agent_disable_one(lttng::sessiond::ust::domain_orchestrator& orchestra
 	 * Disable the event rule in the UST domain's channel configuration so
 	 * that the per-app event synchronization path, which reads the enabled
 	 * state from the configuration, sees the event as disabled.
+	 *
+	 * agent_event stores the configuration as a const non-owning pointer
+	 * because the agent side only reads it; disable() here writes state
+	 * owned by the UST-domain configuration, which is the authoritative
+	 * copy.
 	 */
+	/* NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast) */
 	const_cast<lttng::sessiond::config::event_rule_configuration *>(
 		aevent->ust_event_rule_config)
 		->disable();

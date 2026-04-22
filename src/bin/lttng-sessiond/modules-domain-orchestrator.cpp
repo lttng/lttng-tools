@@ -1314,11 +1314,8 @@ void ls::modules::domain_orchestrator::record_snapshot(
 		lttng::make_scope_exit([&]() noexcept { _metadata_stream_group.reset(); });
 
 	std::size_t consumer_path_offset;
-	/* const_cast: setup_channel_trace_path only reads from the consumer. */
 	auto trace_path = lttng::make_unique_wrapper<char, lttng::memory::free>(
-		setup_channel_trace_path(const_cast<struct consumer_output *>(&snapshot_consumer),
-					 "",
-					 &consumer_path_offset));
+		setup_channel_trace_path(&snapshot_consumer, "", &consumer_path_offset));
 	if (!trace_path) {
 		LTTNG_THROW_ALLOCATION_FAILURE_ERROR("Failed to allocate trace path");
 	}

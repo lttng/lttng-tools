@@ -362,7 +362,7 @@ int consumer_open_channel_packets(struct consumer_socket *socket, uint64_t key);
 unsigned int consumer_reclaim_session_owner_id(const lttng::sessiond::ust::app_session& ua_sess,
 					       uint32_t owner_id);
 
-char *setup_channel_trace_path(struct consumer_output *consumer,
+char *setup_channel_trace_path(const struct consumer_output *consumer,
 			       const char *session_path,
 			       size_t *consumer_path_offset);
 
