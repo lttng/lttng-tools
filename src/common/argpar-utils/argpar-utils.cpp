@@ -25,11 +25,13 @@
  *
  * The returned string must be freed by the caller.
  */
-static ATTR_FORMAT_PRINTF(4, 0) char *format_arg_error_v(const struct argpar_error *error,
-							 int argc_offset,
-							 const char **argv,
-							 const char *context_fmt,
-							 va_list args)
+namespace {
+ATTR_FORMAT_PRINTF(4, 0)
+char *format_arg_error_v(const struct argpar_error *error,
+			 int argc_offset,
+			 const char **argv,
+			 const char *context_fmt,
+			 va_list args)
 {
 	char *str = nullptr;
 	char *str_ret = nullptr;
@@ -127,6 +129,7 @@ end:
 	free(str);
 	return str_ret;
 }
+} /* namespace */
 
 enum parse_next_item_status parse_next_item(struct argpar_iter *iter,
 					    const struct argpar_item **item,

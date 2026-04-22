@@ -93,7 +93,8 @@ void logger_set_thread_name(const char *name, bool set_pthread_name)
 /*
  * Human readable error message.
  */
-static const char *lttng_error_code_str(lttng_error_code code)
+namespace {
+const char *lttng_error_code_str(lttng_error_code code)
 {
 	switch (code) {
 	case LTTNG_OK:
@@ -422,6 +423,7 @@ static const char *lttng_error_code_str(lttng_error_code code)
 
 	abort();
 };
+} /* namespace */
 
 /*
  * Return ptr to string representing a human readable error code from the

@@ -13,7 +13,8 @@
 
 #define INIT_ALLOC_SIZE 4
 
-static inline int get_count_order(unsigned int count)
+namespace {
+inline int get_count_order(unsigned int count)
 {
 	int order;
 
@@ -22,6 +23,7 @@ static inline int get_count_order(unsigned int count)
 		order++;
 	return order;
 }
+} /* namespace */
 
 int bytecode_init(struct lttng_bytecode_alloc **fb)
 {
@@ -37,7 +39,8 @@ int bytecode_init(struct lttng_bytecode_alloc **fb)
 	}
 }
 
-static int32_t bytecode_reserve(struct lttng_bytecode_alloc **fb, uint32_t align, uint32_t len)
+namespace {
+int32_t bytecode_reserve(struct lttng_bytecode_alloc **fb, uint32_t align, uint32_t len)
 {
 	int32_t ret;
 	const uint32_t padding = lttng_offset_align((*fb)->b.len, align);
@@ -65,6 +68,7 @@ static int32_t bytecode_reserve(struct lttng_bytecode_alloc **fb, uint32_t align
 	(*fb)->b.len += len;
 	return ret;
 }
+} /* namespace */
 
 int bytecode_push(struct lttng_bytecode_alloc **fb, const void *data, uint32_t align, uint32_t len)
 {

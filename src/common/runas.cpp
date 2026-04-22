@@ -344,13 +344,14 @@ run_as_worker_data *global_worker;
 pthread_mutex_t worker_lock = PTHREAD_MUTEX_INITIALIZER;
 } /* namespace */
 
+namespace {
 #ifdef VALGRIND
-static int use_clone(void)
+int use_clone(void)
 {
 	return 0;
 }
 #else
-static int use_clone()
+int use_clone()
 {
 	return !lttng_secure_getenv("LTTNG_DEBUG_NOCLONE");
 }
@@ -359,7 +360,7 @@ static int use_clone()
 /*
  * Create recursively directory using the FULL path.
  */
-static int _mkdirat_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
+int _mkdirat_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	const char *path;
 	mode_t mode;
@@ -386,7 +387,7 @@ end:
 	return ret_value->u.ret;
 }
 
-static int _mkdirat(struct run_as_data *data, struct run_as_ret *ret_value)
+int _mkdirat(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	const char *path;
 	mode_t mode;
@@ -413,7 +414,7 @@ end:
 	return ret_value->u.ret;
 }
 
-static int _open(struct run_as_data *data, struct run_as_ret *ret_value)
+int _open(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	int fd;
 	struct lttng_directory_handle *handle;
@@ -445,7 +446,7 @@ end:
 	return ret_value->u.ret;
 }
 
-static int _unlink(struct run_as_data *data, struct run_as_ret *ret_value)
+int _unlink(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	struct lttng_directory_handle *handle;
 
@@ -468,7 +469,7 @@ end:
 	return ret_value->u.ret;
 }
 
-static int _rmdir(struct run_as_data *data, struct run_as_ret *ret_value)
+int _rmdir(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	struct lttng_directory_handle *handle;
 
@@ -491,7 +492,7 @@ end:
 	return ret_value->u.ret;
 }
 
-static int _rmdir_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
+int _rmdir_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	struct lttng_directory_handle *handle;
 
@@ -515,7 +516,7 @@ end:
 	return ret_value->u.ret;
 }
 
-static int _rename(struct run_as_data *data, struct run_as_ret *ret_value)
+int _rename(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	const char *old_path, *new_path;
 	struct lttng_directory_handle *old_handle = nullptr, *new_handle = nullptr;
@@ -549,7 +550,7 @@ end:
 }
 
 #ifdef HAVE_ELF_H
-static int _extract_elf_symbol_offset(struct run_as_data *data, struct run_as_ret *ret_value)
+int _extract_elf_symbol_offset(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	int ret = 0;
 	uint64_t offset;
@@ -567,7 +568,7 @@ static int _extract_elf_symbol_offset(struct run_as_data *data, struct run_as_re
 	return ret;
 }
 
-static int _extract_sdt_probe_offsets(struct run_as_data *data, struct run_as_ret *ret_value)
+int _extract_sdt_probe_offsets(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	int ret = 0;
 	uint64_t *offsets = nullptr;
@@ -608,22 +609,22 @@ end:
 	return ret;
 }
 #else
-static int _extract_elf_symbol_offset(struct run_as_data *data __attribute__((unused)),
-				      struct run_as_ret *ret_value __attribute__((unused)))
+int _extract_elf_symbol_offset(struct run_as_data *data __attribute__((unused)),
+			       struct run_as_ret *ret_value __attribute__((unused)))
 {
 	ERR("Unimplemented runas command RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET");
 	return -1;
 }
 
-static int _extract_sdt_probe_offsets(struct run_as_data *data __attribute__((unused)),
-				      struct run_as_ret *ret_value __attribute__((unused)))
+int _extract_sdt_probe_offsets(struct run_as_data *data __attribute__((unused)),
+			       struct run_as_ret *ret_value __attribute__((unused)))
 {
 	ERR("Unimplemented runas command RUN_AS_EXTRACT_SDT_PROBE_OFFSETS");
 	return -1;
 }
 #endif
 
-static int _generate_filter_bytecode(struct run_as_data *data, struct run_as_ret *ret_value)
+int _generate_filter_bytecode(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	int ret = 0;
 	const char *filter_expression = nullptr;
@@ -663,7 +664,7 @@ end:
 
 	return ret;
 }
-static run_as_fct run_as_enum_to_fct(enum run_as_cmd cmd)
+run_as_fct run_as_enum_to_fct(enum run_as_cmd cmd)
 {
 	switch (cmd) {
 	case RUN_AS_MKDIR:
@@ -699,7 +700,7 @@ static run_as_fct run_as_enum_to_fct(enum run_as_cmd cmd)
 	}
 }
 
-static int do_send_fds(int sock, const int *fds, unsigned int fd_count)
+int do_send_fds(int sock, const int *fds, unsigned int fd_count)
 {
 	ssize_t len;
 	unsigned int i;
@@ -716,7 +717,7 @@ static int do_send_fds(int sock, const int *fds, unsigned int fd_count)
 	return len < 0 ? -1 : 0;
 }
 
-static int do_recv_fds(int sock, int *fds, unsigned int fd_count)
+int do_recv_fds(int sock, int *fds, unsigned int fd_count)
 {
 	int ret = 0;
 	unsigned int i;
@@ -742,7 +743,7 @@ end:
 	return ret;
 }
 
-static int send_fds_to_worker(const run_as_worker_data *worker, const struct run_as_data *data)
+int send_fds_to_worker(const run_as_worker_data *worker, const struct run_as_data *data)
 {
 	int ret = 0;
 	unsigned int i;
@@ -770,8 +771,9 @@ end:
 	return ret;
 }
 
-static int
-send_fds_to_master(run_as_worker_data *worker, enum run_as_cmd cmd, struct run_as_ret *run_as_ret)
+int send_fds_to_master(run_as_worker_data *worker,
+		       enum run_as_cmd cmd,
+		       struct run_as_ret *run_as_ret)
 {
 	int ret = 0;
 	unsigned int i;
@@ -801,9 +803,9 @@ end:
 	return ret;
 }
 
-static int recv_fds_from_worker(const run_as_worker_data *worker,
-				enum run_as_cmd cmd,
-				struct run_as_ret *run_as_ret)
+int recv_fds_from_worker(const run_as_worker_data *worker,
+			 enum run_as_cmd cmd,
+			 struct run_as_ret *run_as_ret)
 {
 	int ret = 0;
 
@@ -821,7 +823,7 @@ end:
 	return ret;
 }
 
-static int recv_fds_from_master(run_as_worker_data *worker, struct run_as_data *data)
+int recv_fds_from_master(run_as_worker_data *worker, struct run_as_data *data)
 {
 	int ret = 0;
 
@@ -847,7 +849,7 @@ end:
 	return ret;
 }
 
-static int cleanup_received_fds(struct run_as_data *data)
+int cleanup_received_fds(struct run_as_data *data)
 {
 	int ret = 0, i;
 
@@ -865,7 +867,7 @@ end:
 	return ret;
 }
 
-static int get_user_infos_from_uid(uid_t uid, char **username, gid_t *primary_gid)
+int get_user_infos_from_uid(uid_t uid, char **username, gid_t *primary_gid)
 {
 	int ret;
 	char *buf = nullptr;
@@ -927,7 +929,7 @@ error:
 	goto end;
 }
 
-static int demote_creds(uid_t prev_uid, gid_t prev_gid, uid_t new_uid, gid_t new_gid)
+int demote_creds(uid_t prev_uid, gid_t prev_gid, uid_t new_uid, gid_t new_gid)
 {
 	int ret = 0;
 	gid_t primary_gid;
@@ -994,7 +996,7 @@ end:
 	return ret;
 }
 
-static int promote_creds(uid_t prev_uid, gid_t prev_gid, uid_t new_uid, gid_t new_gid)
+int promote_creds(uid_t prev_uid, gid_t prev_gid, uid_t new_uid, gid_t new_gid)
 {
 	int ret = 0;
 	gid_t primary_gid;
@@ -1052,7 +1054,7 @@ end:
 /*
  * Return < 0 on error, 0 if OK, 1 on hangup.
  */
-static int handle_one_cmd(run_as_worker_data *worker)
+int handle_one_cmd(run_as_worker_data *worker)
 {
 	int ret = 0, promote_ret;
 	struct run_as_data data = {};
@@ -1154,7 +1156,7 @@ end:
 	return ret;
 }
 
-static int run_as_worker(run_as_worker_data *worker)
+int run_as_worker(run_as_worker_data *worker)
 {
 	int ret;
 	ssize_t writelen;
@@ -1199,12 +1201,12 @@ end:
 	return ret;
 }
 
-static int run_as_cmd(run_as_worker_data *worker,
-		      enum run_as_cmd cmd,
-		      struct run_as_data *data,
-		      struct run_as_ret *ret_value,
-		      uid_t uid,
-		      gid_t gid)
+int run_as_cmd(run_as_worker_data *worker,
+	       enum run_as_cmd cmd,
+	       struct run_as_data *data,
+	       struct run_as_ret *ret_value,
+	       uid_t uid,
+	       gid_t gid)
 {
 	int ret = 0;
 	ssize_t readlen, writelen;
@@ -1292,11 +1294,11 @@ end:
 /*
  * This is for debugging ONLY and should not be considered secure.
  */
-static int run_as_noworker(enum run_as_cmd cmd,
-			   struct run_as_data *data,
-			   struct run_as_ret *ret_value,
-			   uid_t uid __attribute__((unused)),
-			   gid_t gid __attribute__((unused)))
+int run_as_noworker(enum run_as_cmd cmd,
+		    struct run_as_data *data,
+		    struct run_as_ret *ret_value,
+		    uid_t uid __attribute__((unused)),
+		    gid_t gid __attribute__((unused)))
 {
 	int ret, saved_errno;
 	mode_t old_mask;
@@ -1317,7 +1319,7 @@ end:
 	return ret;
 }
 
-static int reset_sighandler()
+int reset_sighandler()
 {
 	int sig;
 
@@ -1328,7 +1330,7 @@ static int reset_sighandler()
 	return 0;
 }
 
-static void worker_sighandler(int sig)
+void worker_sighandler(int sig)
 {
 	const char *signame;
 
@@ -1356,7 +1358,7 @@ static void worker_sighandler(int sig)
 	}
 }
 
-static int set_worker_sighandlers()
+int set_worker_sighandlers()
 {
 	int ret = 0;
 	sigset_t sigset;
@@ -1385,9 +1387,9 @@ end:
 	return ret;
 }
 
-static int run_as_create_worker_no_lock(const char *procname,
-					post_fork_cleanup_cb clean_up_func,
-					void *clean_up_user_data)
+int run_as_create_worker_no_lock(const char *procname,
+				 post_fork_cleanup_cb clean_up_func,
+				 void *clean_up_user_data)
 {
 	pid_t pid;
 	int i, ret = 0;
@@ -1534,7 +1536,7 @@ error_procname_alloc:
 	return ret;
 }
 
-static void run_as_destroy_worker_no_lock()
+void run_as_destroy_worker_no_lock()
 {
 	run_as_worker_data *worker = global_worker;
 
@@ -1578,7 +1580,7 @@ static void run_as_destroy_worker_no_lock()
 	global_worker = nullptr;
 }
 
-static int run_as_restart_worker(run_as_worker_data *worker)
+int run_as_restart_worker(run_as_worker_data *worker)
 {
 	int ret = 0;
 	char *procname = nullptr;
@@ -1599,11 +1601,11 @@ err:
 	return ret;
 }
 
-static int run_as(enum run_as_cmd cmd,
-		  struct run_as_data *data,
-		  struct run_as_ret *ret_value,
-		  uid_t uid,
-		  gid_t gid)
+int run_as(enum run_as_cmd cmd,
+	   struct run_as_data *data,
+	   struct run_as_ret *ret_value,
+	   uid_t uid,
+	   gid_t gid)
 {
 	int ret, saved_errno;
 
@@ -1637,6 +1639,7 @@ err:
 	pthread_mutex_unlock(&worker_lock);
 	return ret;
 }
+} /* namespace */
 
 int run_as_mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 {

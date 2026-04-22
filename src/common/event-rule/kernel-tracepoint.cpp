@@ -24,7 +24,8 @@
 #define IS_KERNEL_TRACEPOINT_EVENT_RULE(rule) \
 	(lttng_event_rule_get_type(rule) == LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT)
 
-static void lttng_event_rule_kernel_tracepoint_destroy(struct lttng_event_rule *rule)
+namespace {
+void lttng_event_rule_kernel_tracepoint_destroy(struct lttng_event_rule *rule)
 {
 	struct lttng_event_rule_kernel_tracepoint *tracepoint;
 
@@ -40,7 +41,7 @@ static void lttng_event_rule_kernel_tracepoint_destroy(struct lttng_event_rule *
 	free(tracepoint);
 }
 
-static bool lttng_event_rule_kernel_tracepoint_validate(const struct lttng_event_rule *rule)
+bool lttng_event_rule_kernel_tracepoint_validate(const struct lttng_event_rule *rule)
 {
 	bool valid = false;
 	struct lttng_event_rule_kernel_tracepoint *tracepoint;
@@ -62,8 +63,8 @@ end:
 	return valid;
 }
 
-static int lttng_event_rule_kernel_tracepoint_serialize(const struct lttng_event_rule *rule,
-							struct lttng_payload *payload)
+int lttng_event_rule_kernel_tracepoint_serialize(const struct lttng_event_rule *rule,
+						 struct lttng_payload *payload)
 {
 	int ret;
 	size_t pattern_len, filter_expression_len;
@@ -110,8 +111,8 @@ end:
 	return ret;
 }
 
-static bool lttng_event_rule_kernel_tracepoint_is_equal(const struct lttng_event_rule *_a,
-							const struct lttng_event_rule *_b)
+bool lttng_event_rule_kernel_tracepoint_is_equal(const struct lttng_event_rule *_a,
+						 const struct lttng_event_rule *_b)
 {
 	bool is_equal = false;
 	struct lttng_event_rule_kernel_tracepoint *a, *b;
@@ -144,7 +145,7 @@ end:
 	return is_equal;
 }
 
-static enum lttng_error_code
+enum lttng_error_code
 lttng_event_rule_kernel_tracepoint_generate_filter_bytecode(struct lttng_event_rule *rule,
 							    const struct lttng_credentials *creds)
 {
@@ -193,7 +194,7 @@ end:
 	return ret_code;
 }
 
-static const char *
+const char *
 lttng_event_rule_kernel_tracepoint_get_filter_expression(const struct lttng_event_rule *rule)
 {
 	struct lttng_event_rule_kernel_tracepoint *tracepoint;
@@ -203,7 +204,7 @@ lttng_event_rule_kernel_tracepoint_get_filter_expression(const struct lttng_even
 	return tracepoint->filter_expression;
 }
 
-static const struct lttng_bytecode *
+const struct lttng_bytecode *
 lttng_event_rule_kernel_tracepoint_get_internal_filter_bytecode(const struct lttng_event_rule *rule)
 {
 	struct lttng_event_rule_kernel_tracepoint *tracepoint;
@@ -213,7 +214,7 @@ lttng_event_rule_kernel_tracepoint_get_internal_filter_bytecode(const struct ltt
 	return tracepoint->internal_filter.bytecode;
 }
 
-static enum lttng_event_rule_generate_exclusions_status
+enum lttng_event_rule_generate_exclusions_status
 lttng_event_rule_kernel_tracepoint_generate_exclusions(const struct lttng_event_rule *rule
 						       __attribute__((unused)),
 						       struct lttng_event_exclusion **_exclusions)
@@ -223,7 +224,7 @@ lttng_event_rule_kernel_tracepoint_generate_exclusions(const struct lttng_event_
 	return LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_NONE;
 }
 
-static unsigned long lttng_event_rule_kernel_tracepoint_hash(const struct lttng_event_rule *rule)
+unsigned long lttng_event_rule_kernel_tracepoint_hash(const struct lttng_event_rule *rule)
 {
 	unsigned long hash;
 	struct lttng_event_rule_kernel_tracepoint *tp_rule =
@@ -239,7 +240,7 @@ static unsigned long lttng_event_rule_kernel_tracepoint_hash(const struct lttng_
 	return hash;
 }
 
-static enum lttng_error_code
+enum lttng_error_code
 lttng_event_rule_kernel_tracepoint_mi_serialize(const struct lttng_event_rule *rule,
 						struct mi_writer *writer)
 {
@@ -298,7 +299,7 @@ end:
 	return ret_code;
 }
 
-static struct lttng_event *
+struct lttng_event *
 lttng_event_rule_kernel_tracepoint_generate_lttng_event(const struct lttng_event_rule *rule)
 {
 	const auto *tracepoint =
@@ -320,6 +321,7 @@ lttng_event_rule_kernel_tracepoint_generate_lttng_event(const struct lttng_event
 
 	return local_event.release();
 }
+} /* namespace */
 
 struct lttng_event_rule *lttng_event_rule_kernel_tracepoint_create(void)
 {

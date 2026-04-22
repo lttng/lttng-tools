@@ -104,14 +104,15 @@ int lttcomm_bind_inet_sock(struct lttcomm_sock *sock)
 	return ret;
 }
 
-static int connect_no_timeout(struct lttcomm_sock *sock)
+namespace {
+int connect_no_timeout(struct lttcomm_sock *sock)
 {
 	struct sockaddr_in sockaddr = sock->sockaddr.addr.sin;
 
 	return connect(sock->fd, (struct sockaddr *) &sockaddr, sizeof(sockaddr));
 }
 
-static int connect_with_timeout(struct lttcomm_sock *sock)
+int connect_with_timeout(struct lttcomm_sock *sock)
 {
 	const unsigned long timeout = lttcomm_get_network_timeout();
 	int ret, flags, connect_ret;
@@ -217,6 +218,7 @@ success:
 error:
 	return connect_ret;
 }
+} /* namespace */
 
 /*
  * Connect PF_INET socket.
@@ -466,7 +468,8 @@ int lttcomm_close_inet_sock(struct lttcomm_sock *sock)
 /*
  * Return value read from /proc or else 0 if value is not found.
  */
-static unsigned long read_proc_value(const char *path)
+namespace {
+unsigned long read_proc_value(const char *path)
 {
 	int ret, fd;
 	ssize_t size_ret;
@@ -509,6 +512,7 @@ error_close:
 error:
 	return val;
 }
+} /* namespace */
 
 void lttcomm_inet_init()
 {

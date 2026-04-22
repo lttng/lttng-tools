@@ -15,7 +15,9 @@
 #include <string.h> /* for strncmp */
 
 /* Environment variable used to enable the testpoints facilities. */
-static const char *lttng_testpoint_env_var = "LTTNG_TESTPOINT_ENABLE";
+namespace {
+const char *lttng_testpoint_env_var = "LTTNG_TESTPOINT_ENABLE";
+} /* namespace */
 
 /* Testpoint toggle flag */
 int lttng_testpoint_activated;
@@ -23,7 +25,8 @@ int lttng_testpoint_activated;
 /*
  * Toggle the support for testpoints on the application startup.
  */
-static void __attribute__((constructor)) lttng_testpoint_check()
+namespace {
+void __attribute__((constructor)) lttng_testpoint_check()
 {
 	char *testpoint_env_val = nullptr;
 
@@ -32,6 +35,7 @@ static void __attribute__((constructor)) lttng_testpoint_check()
 		lttng_testpoint_activated = 1;
 	}
 }
+} /* namespace */
 
 /*
  * Lookup a symbol by name.

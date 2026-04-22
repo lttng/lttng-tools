@@ -17,7 +17,8 @@ struct create_args {
 };
 } /* namespace */
 
-static int open_epoll(void *data, int *out_fd)
+namespace {
+int open_epoll(void *data, int *out_fd)
 {
 	int ret;
 	struct create_args *args = (create_args *) data;
@@ -32,12 +33,13 @@ end:
 	return ret;
 }
 
-static int close_epoll(void *data, int *in_fd __attribute__((unused)))
+int close_epoll(void *data, int *in_fd __attribute__((unused)))
 {
 	/* Will close the epfd. */
 	lttng_poll_clean((struct lttng_poll_event *) data);
 	return 0;
 }
+} /* namespace */
 
 /*
  * The epoll variant of the poll compat layer creates an unsuspendable fd which

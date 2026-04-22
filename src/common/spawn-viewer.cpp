@@ -50,7 +50,8 @@ const struct viewer {
 };
 } /* namespace */
 
-static const struct viewer *parse_viewer_option(const char *opt_viewer)
+namespace {
+const struct viewer *parse_viewer_option(const char *opt_viewer)
 {
 	if (opt_viewer == nullptr) {
 		/* Default is babeltrace2 */
@@ -66,7 +67,7 @@ static const struct viewer *parse_viewer_option(const char *opt_viewer)
  *
  * The returning pointer is ready to be passed to execvp().
  */
-static char **alloc_argv_from_user_opts(char *opts, const char *trace_path)
+char **alloc_argv_from_user_opts(char *opts, const char *trace_path)
 {
 	int i = 0, ignore_space = 0;
 	unsigned int num_opts = 1;
@@ -124,10 +125,10 @@ error:
  *
  * The returning pointer is ready to be passed to execvp().
  */
-static char **alloc_argv_from_local_opts(const char **opts,
-					 size_t opts_len,
-					 const char *trace_path,
-					 bool opt_live_mode)
+char **alloc_argv_from_local_opts(const char **opts,
+				  size_t opts_len,
+				  const char *trace_path,
+				  bool opt_live_mode)
 {
 	char **argv;
 	size_t mem_len;
@@ -162,6 +163,7 @@ static char **alloc_argv_from_local_opts(const char **opts,
 error:
 	return argv;
 }
+} /* namespace */
 
 /*
  * Spawn viewer with the trace directory path.

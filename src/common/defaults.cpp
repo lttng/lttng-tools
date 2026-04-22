@@ -17,10 +17,11 @@
 #include <sys/resource.h>
 #include <unistd.h>
 
-static int pthread_attr_init_done;
-static pthread_attr_t tattr;
+namespace {
+int pthread_attr_init_done;
+pthread_attr_t tattr;
 
-static size_t get_page_size()
+size_t get_page_size()
 {
 	const long ret = sysconf(_SC_PAGE_SIZE);
 
@@ -34,6 +35,7 @@ static size_t get_page_size()
 
 	return (size_t) ret;
 }
+} /* namespace */
 
 size_t default_get_channel_subbuf_size()
 {
@@ -70,7 +72,8 @@ pthread_attr_t *default_pthread_attr()
 	return nullptr;
 }
 
-static void __attribute__((constructor)) init_default_pthread_attr()
+namespace {
+void __attribute__((constructor)) init_default_pthread_attr()
 {
 	int ret;
 	struct rlimit rlim;
@@ -138,7 +141,7 @@ error_destroy:
 	}
 }
 
-static void __attribute__((destructor)) fini_default_pthread_attr()
+void __attribute__((destructor)) fini_default_pthread_attr()
 {
 	int ret;
 
@@ -152,3 +155,4 @@ static void __attribute__((destructor)) fini_default_pthread_attr()
 		PERROR("pthread_attr_destroy");
 	}
 }
+} /* namespace */

@@ -32,7 +32,8 @@
 
 #define NETWORK_TIMEOUT_ENV "LTTNG_NETWORK_SOCKET_TIMEOUT"
 
-static struct lttcomm_net_family net_families[] = {
+namespace {
+struct lttcomm_net_family net_families[] = {
 	{ LTTCOMM_INET, lttcomm_create_inet_sock },
 	{ LTTCOMM_INET6, lttcomm_create_inet6_sock },
 };
@@ -40,7 +41,7 @@ static struct lttcomm_net_family net_families[] = {
 /*
  * Human readable error message.
  */
-static const char *lttcomm_return_code_str(lttcomm_return_code code)
+const char *lttcomm_return_code_str(lttcomm_return_code code)
 {
 	switch (code) {
 	case LTTCOMM_CONSUMERD_SUCCESS:
@@ -114,7 +115,8 @@ static const char *lttcomm_return_code_str(lttcomm_return_code code)
 	abort();
 };
 
-static unsigned long network_timeout;
+unsigned long network_timeout;
+} /* namespace */
 
 /*
  * Return ptr to string representing a human readable error code from the

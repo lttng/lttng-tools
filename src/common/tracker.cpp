@@ -46,18 +46,20 @@ struct process_attr_tracker_value_comm {
 		(comm_value)->u._unsigned = (typeof((comm_value)->u._unsigned)) (val); \
 	}
 
-static inline bool is_virtual_process_attr(enum lttng_process_attr process_attr)
+namespace {
+inline bool is_virtual_process_attr(enum lttng_process_attr process_attr)
 {
 	return process_attr == LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID ||
 		process_attr == LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID ||
 		process_attr == LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID;
 }
 
-static inline bool is_value_type_name(enum lttng_process_attr_value_type value_type)
+inline bool is_value_type_name(enum lttng_process_attr_value_type value_type)
 {
 	return value_type == LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME ||
 		value_type == LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME;
 }
+} /* namespace */
 
 enum lttng_error_code
 process_attr_value_from_comm(enum lttng_domain_type domain,
@@ -197,12 +199,14 @@ const char *lttng_process_attr_to_string(enum lttng_process_attr process_attr)
 	}
 }
 
-static void process_attr_tracker_value_destructor(void *ptr)
+namespace {
+void process_attr_tracker_value_destructor(void *ptr)
 {
 	struct process_attr_value *value = (typeof(value)) ptr;
 
 	process_attr_value_destroy(value);
 }
+} /* namespace */
 
 struct lttng_process_attr_values *lttng_process_attr_values_create()
 {
@@ -230,8 +234,9 @@ lttng_process_attr_tracker_values_get_at_index(const struct lttng_process_attr_v
 									      index);
 }
 
-static int process_attr_tracker_value_serialize(const struct process_attr_value *value,
-						struct lttng_dynamic_buffer *buffer)
+namespace {
+int process_attr_tracker_value_serialize(const struct process_attr_value *value,
+					 struct lttng_dynamic_buffer *buffer)
 {
 	int ret;
 	struct process_attr_tracker_value_comm value_comm = {
@@ -275,6 +280,7 @@ static int process_attr_tracker_value_serialize(const struct process_attr_value 
 end:
 	return ret;
 }
+} /* namespace */
 
 int lttng_process_attr_values_serialize(const struct lttng_process_attr_values *values,
 					struct lttng_dynamic_buffer *buffer)

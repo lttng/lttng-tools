@@ -16,16 +16,18 @@
 
 #include <stdbool.h>
 
-static bool lttng_condition_session_rotation_validate(const struct lttng_condition *condition);
-static int lttng_condition_session_rotation_serialize(const struct lttng_condition *condition,
-						      struct lttng_payload *payload);
-static bool lttng_condition_session_rotation_is_equal(const struct lttng_condition *_a,
-						      const struct lttng_condition *_b);
-static void lttng_condition_session_rotation_destroy(struct lttng_condition *condition);
+namespace {
+bool lttng_condition_session_rotation_validate(const struct lttng_condition *condition);
+int lttng_condition_session_rotation_serialize(const struct lttng_condition *condition,
+					       struct lttng_payload *payload);
+bool lttng_condition_session_rotation_is_equal(const struct lttng_condition *_a,
+					       const struct lttng_condition *_b);
+void lttng_condition_session_rotation_destroy(struct lttng_condition *condition);
 
-static enum lttng_error_code
+enum lttng_error_code
 lttng_condition_session_rotation_mi_serialize(const struct lttng_condition *condition,
 					      struct mi_writer *writer);
+} /* namespace */
 
 static const struct lttng_condition rotation_condition_template = {
 	{},
@@ -37,9 +39,11 @@ static const struct lttng_condition rotation_condition_template = {
 	lttng_condition_session_rotation_mi_serialize,
 };
 
-static int lttng_evaluation_session_rotation_serialize(const struct lttng_evaluation *evaluation,
-						       struct lttng_payload *payload);
-static void lttng_evaluation_session_rotation_destroy(struct lttng_evaluation *evaluation);
+namespace {
+int lttng_evaluation_session_rotation_serialize(const struct lttng_evaluation *evaluation,
+						struct lttng_payload *payload);
+void lttng_evaluation_session_rotation_destroy(struct lttng_evaluation *evaluation);
+} /* namespace */
 
 static const struct lttng_evaluation rotation_evaluation_template = {
 	LTTNG_CONDITION_TYPE_UNKNOWN, /* type unset, shall be set on creation. */
@@ -47,7 +51,8 @@ static const struct lttng_evaluation rotation_evaluation_template = {
 	lttng_evaluation_session_rotation_destroy,
 };
 
-static bool is_rotation_condition(const struct lttng_condition *condition)
+namespace {
+bool is_rotation_condition(const struct lttng_condition *condition)
 {
 	const lttng_condition_type type = lttng_condition_get_type(condition);
 
@@ -55,7 +60,7 @@ static bool is_rotation_condition(const struct lttng_condition *condition)
 		type == LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED;
 }
 
-static bool is_rotation_evaluation(const struct lttng_evaluation *evaluation)
+bool is_rotation_evaluation(const struct lttng_evaluation *evaluation)
 {
 	const lttng_condition_type type = lttng_evaluation_get_type(evaluation);
 
@@ -63,7 +68,7 @@ static bool is_rotation_evaluation(const struct lttng_evaluation *evaluation)
 		type == LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED;
 }
 
-static bool lttng_condition_session_rotation_validate(const struct lttng_condition *condition)
+bool lttng_condition_session_rotation_validate(const struct lttng_condition *condition)
 {
 	bool valid = false;
 	struct lttng_condition_session_rotation *rotation;
@@ -88,8 +93,8 @@ end:
 	return valid;
 }
 
-static int lttng_condition_session_rotation_serialize(const struct lttng_condition *condition,
-						      struct lttng_payload *payload)
+int lttng_condition_session_rotation_serialize(const struct lttng_condition *condition,
+					       struct lttng_payload *payload)
 {
 	int ret;
 	size_t session_name_len;
@@ -124,8 +129,8 @@ end:
 	return ret;
 }
 
-static bool lttng_condition_session_rotation_is_equal(const struct lttng_condition *_a,
-						      const struct lttng_condition *_b)
+bool lttng_condition_session_rotation_is_equal(const struct lttng_condition *_a,
+					       const struct lttng_condition *_b)
 {
 	bool is_equal = false;
 	struct lttng_condition_session_rotation *a, *b;
@@ -148,7 +153,7 @@ end:
 	return is_equal;
 }
 
-static void lttng_condition_session_rotation_destroy(struct lttng_condition *condition)
+void lttng_condition_session_rotation_destroy(struct lttng_condition *condition)
 {
 	struct lttng_condition_session_rotation *rotation;
 
@@ -158,8 +163,7 @@ static void lttng_condition_session_rotation_destroy(struct lttng_condition *con
 	free(rotation);
 }
 
-static struct lttng_condition *
-lttng_condition_session_rotation_create(enum lttng_condition_type type)
+struct lttng_condition *lttng_condition_session_rotation_create(enum lttng_condition_type type)
 {
 	struct lttng_condition_session_rotation *condition;
 
@@ -172,6 +176,7 @@ lttng_condition_session_rotation_create(enum lttng_condition_type type)
 	lttng_condition_init(&condition->parent, type);
 	return &condition->parent;
 }
+} /* namespace */
 
 struct lttng_condition *lttng_condition_session_rotation_ongoing_create(void)
 {
@@ -185,8 +190,9 @@ struct lttng_condition *lttng_condition_session_rotation_completed_create(void)
 		LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED);
 }
 
-static ssize_t init_condition_from_payload(struct lttng_condition *condition,
-					   struct lttng_payload_view *src_view)
+namespace {
+ssize_t init_condition_from_payload(struct lttng_condition *condition,
+				    struct lttng_payload_view *src_view)
 {
 	ssize_t ret, condition_size;
 	enum lttng_condition_status status;
@@ -243,10 +249,9 @@ end:
 	return ret;
 }
 
-static ssize_t
-lttng_condition_session_rotation_create_from_payload(struct lttng_payload_view *view,
-						     struct lttng_condition **_condition,
-						     enum lttng_condition_type type)
+ssize_t lttng_condition_session_rotation_create_from_payload(struct lttng_payload_view *view,
+							     struct lttng_condition **_condition,
+							     enum lttng_condition_type type)
 {
 	ssize_t ret;
 	struct lttng_condition *condition = nullptr;
@@ -279,6 +284,7 @@ error:
 	lttng_condition_destroy(condition);
 	return ret;
 }
+} /* namespace */
 
 ssize_t
 lttng_condition_session_rotation_ongoing_create_from_payload(struct lttng_payload_view *view,
@@ -296,7 +302,8 @@ lttng_condition_session_rotation_completed_create_from_payload(struct lttng_payl
 		view, condition, LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED);
 }
 
-static struct lttng_evaluation *lttng_evaluation_session_rotation_create(
+namespace {
+struct lttng_evaluation *lttng_evaluation_session_rotation_create(
 	enum lttng_condition_type type, uint64_t id, struct lttng_trace_archive_location *location)
 {
 	struct lttng_evaluation_session_rotation *evaluation;
@@ -316,9 +323,9 @@ static struct lttng_evaluation *lttng_evaluation_session_rotation_create(
 	return &evaluation->parent;
 }
 
-static ssize_t create_evaluation_from_payload(enum lttng_condition_type type,
-					      struct lttng_payload_view *view,
-					      struct lttng_evaluation **_evaluation)
+ssize_t create_evaluation_from_payload(enum lttng_condition_type type,
+				       struct lttng_payload_view *view,
+				       struct lttng_evaluation **_evaluation)
 {
 	ssize_t ret, size;
 	struct lttng_evaluation *evaluation = nullptr;
@@ -362,10 +369,9 @@ error:
 	return -1;
 }
 
-static ssize_t
-lttng_evaluation_session_rotation_create_from_payload(enum lttng_condition_type type,
-						      struct lttng_payload_view *view,
-						      struct lttng_evaluation **_evaluation)
+ssize_t lttng_evaluation_session_rotation_create_from_payload(enum lttng_condition_type type,
+							      struct lttng_payload_view *view,
+							      struct lttng_evaluation **_evaluation)
 {
 	ssize_t ret;
 	struct lttng_evaluation *evaluation = nullptr;
@@ -386,6 +392,7 @@ error:
 	lttng_evaluation_destroy(evaluation);
 	return ret;
 }
+} /* namespace */
 
 ssize_t
 lttng_evaluation_session_rotation_ongoing_create_from_payload(struct lttng_payload_view *view,
@@ -465,8 +472,9 @@ end:
 	return status;
 }
 
-static int lttng_evaluation_session_rotation_serialize(const struct lttng_evaluation *evaluation,
-						       struct lttng_payload *payload)
+namespace {
+int lttng_evaluation_session_rotation_serialize(const struct lttng_evaluation *evaluation,
+						struct lttng_payload *payload)
 {
 	int ret;
 	struct lttng_evaluation_session_rotation *rotation;
@@ -488,7 +496,7 @@ end:
 	return ret;
 }
 
-static void lttng_evaluation_session_rotation_destroy(struct lttng_evaluation *evaluation)
+void lttng_evaluation_session_rotation_destroy(struct lttng_evaluation *evaluation)
 {
 	struct lttng_evaluation_session_rotation *rotation;
 
@@ -497,6 +505,7 @@ static void lttng_evaluation_session_rotation_destroy(struct lttng_evaluation *e
 	lttng_trace_archive_location_put(rotation->location);
 	free(rotation);
 }
+} /* namespace */
 
 enum lttng_evaluation_status
 lttng_evaluation_session_rotation_get_id(const struct lttng_evaluation *evaluation, uint64_t *id)
@@ -542,7 +551,8 @@ end:
 	return status;
 }
 
-static enum lttng_error_code
+namespace {
+enum lttng_error_code
 lttng_condition_session_rotation_mi_serialize(const struct lttng_condition *condition,
 					      struct mi_writer *writer)
 {
@@ -599,3 +609,4 @@ mi_error:
 end:
 	return ret_code;
 }
+} /* namespace */

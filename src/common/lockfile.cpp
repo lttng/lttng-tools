@@ -16,7 +16,8 @@
 
 #include <sys/file.h>
 
-static int lock_file(const char *filepath, int fd)
+namespace {
+int lock_file(const char *filepath, int fd)
 {
 	int ret;
 
@@ -35,6 +36,7 @@ static int lock_file(const char *filepath, int fd)
 
 	return ret;
 }
+} /* namespace */
 
 #else /* HAVE_FLOCK */
 

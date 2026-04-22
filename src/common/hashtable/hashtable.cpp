@@ -18,11 +18,12 @@
 #include <urcu/compiler.h>
 
 /* seed_lock protects both seed_init and lttng_ht_seed. */
-static pthread_mutex_t seed_lock = PTHREAD_MUTEX_INITIALIZER;
-static bool seed_init;
+namespace {
+pthread_mutex_t seed_lock = PTHREAD_MUTEX_INITIALIZER;
+bool seed_init;
 
-static unsigned long min_hash_alloc_size = 1;
-static unsigned long max_hash_buckets_size = 0;
+unsigned long min_hash_alloc_size = 1;
+unsigned long max_hash_buckets_size = 0;
 
 /*
  * Getter/lookup functions need to be called with RCU read-side lock
@@ -34,7 +35,7 @@ static unsigned long max_hash_buckets_size = 0;
 /*
  * Match function for string node.
  */
-static int match_str(struct cds_lfht_node *node, const void *key)
+int match_str(struct cds_lfht_node *node, const void *key)
 {
 	auto *match_node = reinterpret_cast<lttng_ht_node_str *>(
 		lttng::utils::container_of(node, &lttng_ht_node_str::node));
@@ -45,7 +46,7 @@ static int match_str(struct cds_lfht_node *node, const void *key)
 /*
  * Match function for ulong node.
  */
-static int match_ulong(struct cds_lfht_node *node, const void *key)
+int match_ulong(struct cds_lfht_node *node, const void *key)
 {
 	auto *match_node = reinterpret_cast<lttng_ht_node_ulong *>(
 		lttng::utils::container_of(node, &lttng_ht_node_ulong::node));
@@ -56,7 +57,7 @@ static int match_ulong(struct cds_lfht_node *node, const void *key)
 /*
  * Match function for u64 node.
  */
-static int match_u64(struct cds_lfht_node *node, const void *key)
+int match_u64(struct cds_lfht_node *node, const void *key)
 {
 	auto *match_node = reinterpret_cast<lttng_ht_node_u64 *>(
 		lttng::utils::container_of(node, &lttng_ht_node_u64::node));
@@ -67,7 +68,7 @@ static int match_u64(struct cds_lfht_node *node, const void *key)
 /*
  * Match function for two uint64_t node.
  */
-static int match_two_u64(struct cds_lfht_node *node, const void *key)
+int match_two_u64(struct cds_lfht_node *node, const void *key)
 {
 	auto *match_node = reinterpret_cast<lttng_ht_node_two_u64 *>(
 		lttng::utils::container_of(node, &lttng_ht_node_two_u64::node));
@@ -75,7 +76,7 @@ static int match_two_u64(struct cds_lfht_node *node, const void *key)
 	return hash_match_key_two_u64((void *) &match_node->key, (void *) key);
 }
 
-static inline const char *lttng_ht_type_str(enum lttng_ht_type type)
+inline const char *lttng_ht_type_str(enum lttng_ht_type type)
 {
 	switch (type) {
 	case LTTNG_HT_TYPE_STRING:
@@ -91,6 +92,7 @@ static inline const char *lttng_ht_type_str(enum lttng_ht_type type)
 		abort();
 	}
 }
+} /* namespace */
 
 /*
  * Return an allocated lttng hashtable.

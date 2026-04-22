@@ -15,17 +15,19 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-static int open_pipe_cloexec(void *data __attribute__((unused)), int *fds)
+namespace {
+int open_pipe_cloexec(void *data __attribute__((unused)), int *fds)
 {
 	return utils_create_pipe_cloexec(fds);
 }
 
-static int close_pipe(void *data __attribute__((unused)), int *pipe)
+int close_pipe(void *data __attribute__((unused)), int *pipe)
 {
 	utils_close_pipe(pipe);
 	pipe[0] = pipe[1] = -1;
 	return 0;
 }
+} /* namespace */
 
 int fd_tracker_util_close_fd(void *unused __attribute__((unused)), int *fd)
 {
@@ -69,7 +71,8 @@ struct open_directory_handle_args {
 };
 } /* namespace */
 
-static int open_directory_handle(void *_args, int *out_fds)
+namespace {
+int open_directory_handle(void *_args, int *out_fds)
 {
 	int ret = 0;
 	struct open_directory_handle_args *args = (open_directory_handle_args *) _args;
@@ -107,7 +110,7 @@ end:
 }
 
 #ifdef HAVE_DIRFD
-static int fd_close(void *unused __attribute__((unused)), int *in_fds)
+int fd_close(void *unused __attribute__((unused)), int *in_fds)
 {
 	const int ret = close(in_fds[0]);
 
@@ -115,7 +118,7 @@ static int fd_close(void *unused __attribute__((unused)), int *in_fds)
 	return ret;
 }
 
-static void directory_handle_destroy(struct lttng_directory_handle *handle, void *data)
+void directory_handle_destroy(struct lttng_directory_handle *handle, void *data)
 {
 	struct fd_tracker *tracker = (fd_tracker *) data;
 	const int ret =
@@ -126,6 +129,7 @@ static void directory_handle_destroy(struct lttng_directory_handle *handle, void
 	}
 }
 #endif
+} /* namespace */
 
 struct lttng_directory_handle *fd_tracker_create_directory_handle(struct fd_tracker *tracker,
 								  const char *path)

@@ -30,12 +30,14 @@ void lttng_condition_destroy(struct lttng_condition *condition)
 	lttng_condition_put(condition);
 }
 
-static void condition_destroy_ref(struct urcu_ref *ref)
+namespace {
+void condition_destroy_ref(struct urcu_ref *ref)
 {
 	struct lttng_condition *condition = lttng::utils::container_of(ref, &lttng_condition::ref);
 
 	condition->destroy(condition);
 }
+} /* namespace */
 
 void lttng_condition_get(struct lttng_condition *condition)
 {

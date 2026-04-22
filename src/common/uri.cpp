@@ -86,7 +86,8 @@ const struct uri_proto proto_uri[] = { { .name = "file",
  * Return pointer to the character in s matching one of the characters in
  * accept. If nothing is found, return pointer to the end of string (eos).
  */
-static inline const char *strpbrk_or_eos(const char *s, const char *accept)
+namespace {
+inline const char *strpbrk_or_eos(const char *s, const char *accept)
 {
 	char *p = (char *) strpbrk(s, accept);
 	if (p == nullptr) {
@@ -99,7 +100,7 @@ static inline const char *strpbrk_or_eos(const char *s, const char *accept)
 /*
  * Validate if proto is a supported protocol from proto_uri array.
  */
-static const struct uri_proto *get_uri_proto(const char *uri_str)
+const struct uri_proto *get_uri_proto(const char *uri_str)
 {
 	const struct uri_proto *supported = nullptr;
 
@@ -134,7 +135,7 @@ end:
  *
  * Returns 0 on success.
  */
-static int set_ip_address(lttng::c_string_view addr, int af, char *dst, size_t dst_size)
+int set_ip_address(lttng::c_string_view addr, int af, char *dst, size_t dst_size)
 {
 	LTTNG_ASSERT(addr);
 	LTTNG_ASSERT(dst);
@@ -253,7 +254,7 @@ static int set_ip_address(lttng::c_string_view addr, int af, char *dst, size_t d
  * Set default URI attribute which is basically the given stream type and the
  * default port if none is set in the URI.
  */
-static void set_default_uri_attr(struct lttng_uri *uri, enum lttng_stream_type stype)
+void set_default_uri_attr(struct lttng_uri *uri, enum lttng_stream_type stype)
 {
 	uri->stype = stype;
 	if (uri->dtype != LTTNG_DST_PATH && uri->port == 0) {
@@ -267,7 +268,7 @@ static void set_default_uri_attr(struct lttng_uri *uri, enum lttng_stream_type s
  *
  * Return 0 is equal else is not equal.
  */
-static int compare_destination(struct lttng_uri *ctrl, struct lttng_uri *data)
+int compare_destination(struct lttng_uri *ctrl, struct lttng_uri *data)
 {
 	int ret;
 
@@ -288,6 +289,7 @@ static int compare_destination(struct lttng_uri *ctrl, struct lttng_uri *data)
 
 	return ret;
 }
+} /* namespace */
 
 /*
  * Build a string URL from a lttng_uri object.

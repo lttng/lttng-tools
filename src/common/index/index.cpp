@@ -24,7 +24,8 @@
 #define WRITE_FILE_FLAGS     (O_WRONLY | O_CREAT | O_TRUNC)
 #define READ_ONLY_FILE_FLAGS O_RDONLY
 
-static enum lttng_trace_chunk_status
+namespace {
+enum lttng_trace_chunk_status
 _lttng_index_file_create_from_trace_chunk(struct lttng_trace_chunk *chunk,
 					  const char *channel_path,
 					  const char *stream_name,
@@ -174,6 +175,7 @@ error:
 	free(index_file);
 	return chunk_status;
 }
+} /* namespace */
 
 enum lttng_trace_chunk_status
 lttng_index_file_create_from_trace_chunk(struct lttng_trace_chunk *chunk,
@@ -290,7 +292,8 @@ void lttng_index_file_get(struct lttng_index_file *index_file)
 	urcu_ref_get(&index_file->ref);
 }
 
-static void lttng_index_file_release(struct urcu_ref *ref)
+namespace {
+void lttng_index_file_release(struct urcu_ref *ref)
 {
 	struct lttng_index_file *index_file = caa_container_of(ref, struct lttng_index_file, ref);
 
@@ -300,6 +303,7 @@ static void lttng_index_file_release(struct urcu_ref *ref)
 	lttng_trace_chunk_put(index_file->trace_chunk);
 	free(index_file);
 }
+} /* namespace */
 
 void lttng_index_file_put(struct lttng_index_file *index_file)
 {

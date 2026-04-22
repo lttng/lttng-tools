@@ -24,13 +24,15 @@ enum star_glob_pattern_type_flags {
 	STAR_GLOB_PATTERN_TYPE_FLAG_END_ONLY = 2,
 };
 
-static star_glob_pattern_type_flags& operator|=(star_glob_pattern_type_flags& l,
-						star_glob_pattern_type_flags r)
+namespace {
+star_glob_pattern_type_flags& operator|=(star_glob_pattern_type_flags& l,
+					 star_glob_pattern_type_flags r)
 {
 	using T = std::underlying_type<star_glob_pattern_type_flags>::type;
 	l = static_cast<star_glob_pattern_type_flags>(static_cast<T>(l) | static_cast<T>(r));
 	return l;
 }
+} /* namespace */
 
 /*
  * Normalizes the star-only globbing pattern `pattern`, that is, crushes
@@ -79,7 +81,8 @@ end:
 	*np = '\0';
 }
 
-static enum star_glob_pattern_type_flags strutils_test_glob_pattern(const char *pattern)
+namespace {
+enum star_glob_pattern_type_flags strutils_test_glob_pattern(const char *pattern)
 {
 	enum star_glob_pattern_type_flags ret = STAR_GLOB_PATTERN_TYPE_FLAG_NONE;
 	const char *p;
@@ -111,6 +114,7 @@ static enum star_glob_pattern_type_flags strutils_test_glob_pattern(const char *
 end:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Returns true if `pattern` is a star-only globbing pattern, that is,

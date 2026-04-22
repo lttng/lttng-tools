@@ -101,13 +101,14 @@ int lttcomm_bind_inet6_sock(struct lttcomm_sock *sock)
 	return ret;
 }
 
-static int connect_no_timeout(struct lttcomm_sock *sock)
+namespace {
+int connect_no_timeout(struct lttcomm_sock *sock)
 {
 	struct sockaddr_in6 sockaddr = sock->sockaddr.addr.sin6;
 	return connect(sock->fd, (struct sockaddr *) &sockaddr, sizeof(sockaddr));
 }
 
-static int connect_with_timeout(struct lttcomm_sock *sock)
+int connect_with_timeout(struct lttcomm_sock *sock)
 {
 	const unsigned long timeout = lttcomm_get_network_timeout();
 	int ret, flags, connect_ret;
@@ -214,6 +215,7 @@ success:
 error:
 	return connect_ret;
 }
+} /* namespace */
 
 /*
  * Connect PF_INET socket.

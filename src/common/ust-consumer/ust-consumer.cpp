@@ -71,8 +71,8 @@ LTTNG_EXPORT DEFINE_LTTNG_UST_SIGBUS_STATE();
  *
  * Returns 0 on success or else a negative value.
  */
-static int add_channel(struct lttng_consumer_channel *channel,
-		       struct lttng_consumer_local_data *ctx)
+namespace {
+int add_channel(struct lttng_consumer_channel *channel, struct lttng_consumer_local_data *ctx)
 {
 	int ret = 0;
 
@@ -106,11 +106,11 @@ error:
  *
  * Return NULL on error else the newly allocated stream object.
  */
-static struct lttng_consumer_stream *allocate_stream(int cpu,
-						     int key,
-						     struct lttng_consumer_channel *channel,
-						     struct lttng_consumer_local_data *ctx,
-						     int *_alloc_ret)
+struct lttng_consumer_stream *allocate_stream(int cpu,
+					      int key,
+					      struct lttng_consumer_channel *channel,
+					      struct lttng_consumer_local_data *ctx,
+					      int *_alloc_ret)
 {
 	int alloc_ret;
 	struct lttng_consumer_stream *stream = nullptr;
@@ -167,8 +167,8 @@ error:
  *
  * Returns 0 on success else a negative value.
  */
-static int send_stream_to_thread(struct lttng_consumer_stream *stream,
-				 struct lttng_consumer_local_data *ctx)
+int send_stream_to_thread(struct lttng_consumer_stream *stream,
+			  struct lttng_consumer_local_data *ctx)
 {
 	int ret;
 	struct lttng_pipe *stream_pipe;
@@ -210,7 +210,7 @@ error:
 	return ret;
 }
 
-static int get_stream_shm_path(char *stream_shm_path, const char *shm_path, int cpu)
+int get_stream_shm_path(char *stream_shm_path, const char *shm_path, int cpu)
 {
 	char cpu_nr[INT_MAX_STR_LEN]; /* int max len */
 	int ret;
@@ -234,8 +234,8 @@ end:
  *
  * Return 0 on success else a negative value.
  */
-static int create_ust_streams(struct lttng_consumer_channel *channel,
-			      struct lttng_consumer_local_data *ctx)
+int create_ust_streams(struct lttng_consumer_channel *channel,
+		       struct lttng_consumer_local_data *ctx)
 {
 	int ret, cpu = 0;
 	struct lttng_ust_ctl_consumer_stream *ustream;
@@ -342,9 +342,9 @@ error_alloc:
 	return ret;
 }
 
-static int open_ust_stream_fd(struct lttng_consumer_channel *channel,
-			      int cpu,
-			      const struct lttng_credentials *session_credentials)
+int open_ust_stream_fd(struct lttng_consumer_channel *channel,
+		       int cpu,
+		       const struct lttng_credentials *session_credentials)
 {
 	char shm_path[PATH_MAX];
 	int ret;
@@ -372,9 +372,9 @@ error_shm_path:
  *
  * Return 0 on success or else a negative value.
  */
-static int create_ust_channel(struct lttng_consumer_channel *channel,
-			      struct lttng_ust_ctl_consumer_channel_attr *attr,
-			      struct lttng_ust_ctl_consumer_channel **ust_chanp)
+int create_ust_channel(struct lttng_consumer_channel *channel,
+		       struct lttng_ust_ctl_consumer_channel_attr *attr,
+		       struct lttng_ust_ctl_consumer_channel **ust_chanp)
 {
 	int ret, nr_stream_fds, i, j;
 	int *stream_fds;
@@ -482,7 +482,7 @@ error_channel_type:
  *
  * Return 0 on success else a negative value.
  */
-static int send_sessiond_stream(int sock, struct lttng_consumer_stream *stream)
+int send_sessiond_stream(int sock, struct lttng_consumer_stream *stream)
 {
 	int ret;
 
@@ -506,10 +506,10 @@ error:
  *
  * Return 0 on success or else a negative value.
  */
-static int send_channel_to_sessiond_and_relayd(int sock,
-					       struct lttng_consumer_channel *channel,
-					       struct lttng_consumer_local_data *ctx,
-					       int *relayd_error)
+int send_channel_to_sessiond_and_relayd(int sock,
+					struct lttng_consumer_channel *channel,
+					struct lttng_consumer_local_data *ctx,
+					int *relayd_error)
 {
 	int ret, ret_code = LTTCOMM_CONSUMERD_SUCCESS;
 	uint64_t net_seq_idx = -1ULL;
@@ -603,9 +603,9 @@ error:
  * Return 0 on success or else, a negative value is returned and the channel
  * MUST be destroyed by consumer_del_channel().
  */
-static int ask_channel(struct lttng_consumer_local_data *ctx,
-		       struct lttng_consumer_channel *channel,
-		       struct lttng_ust_ctl_consumer_channel_attr *attr)
+int ask_channel(struct lttng_consumer_local_data *ctx,
+		struct lttng_consumer_channel *channel,
+		struct lttng_ust_ctl_consumer_channel_attr *attr)
 {
 	int ret;
 
@@ -663,8 +663,8 @@ end:
  *
  * On error, return a negative value else 0 on success.
  */
-static int send_streams_to_thread(struct lttng_consumer_channel *channel,
-				  struct lttng_consumer_local_data *ctx)
+int send_streams_to_thread(struct lttng_consumer_channel *channel,
+			   struct lttng_consumer_local_data *ctx)
 {
 	int ret = 0;
 
@@ -699,7 +699,7 @@ error:
  *
  * Return 0 on success else an LTTng error code.
  */
-static int flush_channel(struct lttng_consumer_local_data& ctx, uint64_t chan_key)
+int flush_channel(struct lttng_consumer_local_data& ctx, uint64_t chan_key)
 {
 	int ret = 0;
 
@@ -767,7 +767,7 @@ static int flush_channel(struct lttng_consumer_local_data& ctx, uint64_t chan_ke
  *
  * Return 0 on success else an LTTng error code.
  */
-static int clear_quiescent_channel(uint64_t chan_key)
+int clear_quiescent_channel(uint64_t chan_key)
 {
 	DBG("UST consumer clear quiescent channel key %" PRIu64, chan_key);
 
@@ -797,7 +797,7 @@ static int clear_quiescent_channel(uint64_t chan_key)
  *
  * Return 0 on success else an LTTng error code.
  */
-static int close_metadata(uint64_t chan_key)
+int close_metadata(uint64_t chan_key)
 {
 	int ret = 0;
 	struct lttng_consumer_channel *channel;
@@ -874,7 +874,7 @@ error:
  *
  * Return 0 on success else an LTTng error code.
  */
-static int setup_metadata(struct lttng_consumer_local_data *ctx, uint64_t key)
+int setup_metadata(struct lttng_consumer_local_data *ctx, uint64_t key)
 {
 	int ret;
 	struct lttng_consumer_channel *metadata;
@@ -973,11 +973,11 @@ end:
  *
  * Returns 0 on success, < 0 on error
  */
-static int snapshot_metadata(struct lttng_consumer_channel *metadata_channel,
-			     uint64_t key,
-			     char *path,
-			     uint64_t relayd_id,
-			     struct lttng_consumer_local_data *ctx)
+int snapshot_metadata(struct lttng_consumer_channel *metadata_channel,
+		      uint64_t key,
+		      char *path,
+		      uint64_t relayd_id,
+		      struct lttng_consumer_local_data *ctx)
 {
 	int ret = 0;
 	struct lttng_consumer_stream *metadata_stream;
@@ -1051,7 +1051,7 @@ error:
 	return ret;
 }
 
-static int get_current_subbuf_addr(struct lttng_consumer_stream *stream, const char **addr)
+int get_current_subbuf_addr(struct lttng_consumer_stream *stream, const char **addr)
 {
 	int ret;
 	unsigned long mmap_offset;
@@ -1082,12 +1082,12 @@ error:
  *
  * Returns 0 on success, < 0 on error
  */
-static int snapshot_channel(struct lttng_consumer_channel *channel,
-			    uint64_t key,
-			    char *path,
-			    uint64_t relayd_id,
-			    uint64_t nb_packets_per_stream,
-			    struct lttng_consumer_local_data *ctx)
+int snapshot_channel(struct lttng_consumer_channel *channel,
+		     uint64_t key,
+		     char *path,
+		     uint64_t relayd_id,
+		     uint64_t nb_packets_per_stream,
+		     struct lttng_consumer_local_data *ctx)
 {
 	/* Allocate a terminal packet for the snapshot process. */
 	auto terminal_packet = []() {
@@ -1349,7 +1349,7 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 	return 0;
 }
 
-static void metadata_stream_reset_cache_consumed_position(struct lttng_consumer_stream *stream)
+void metadata_stream_reset_cache_consumed_position(struct lttng_consumer_stream *stream)
 {
 	ASSERT_LOCKED(stream->lock);
 
@@ -1357,7 +1357,7 @@ static void metadata_stream_reset_cache_consumed_position(struct lttng_consumer_
 	stream->ust_metadata_cache_consumed = 0;
 }
 
-static int stream_send_live_beacon(lttng_consumer_stream& stream)
+int stream_send_live_beacon(lttng_consumer_stream& stream)
 {
 	uint64_t ts, stream_id;
 	int ret;
@@ -1404,10 +1404,12 @@ static int stream_send_live_beacon(lttng_consumer_stream& stream)
 end:
 	return ret;
 }
+} /* namespace */
 
+namespace {
 template <typename ReportFn>
-static void report_channel_memory_usage_by_streams_fstat(const lttng_consumer_channel& channel,
-							 ReportFn&& report)
+void report_channel_memory_usage_by_streams_fstat(const lttng_consumer_channel& channel,
+						  ReportFn&& report)
 {
 	for (std::size_t stream_idx = 0; stream_idx < channel.nr_stream_fds; stream_idx++) {
 		const auto stream_fd = channel.stream_fds[stream_idx];
@@ -1429,11 +1431,13 @@ static void report_channel_memory_usage_by_streams_fstat(const lttng_consumer_ch
 		report(logical_size, physical_size);
 	}
 }
+} /* namespace */
 
 #ifdef __linux__
+namespace {
 template <typename ReportFn>
-static void report_channel_memory_usage_by_streams_mincore(lttng_consumer_channel& channel,
-							   ReportFn&& report)
+void report_channel_memory_usage_by_streams_mincore(lttng_consumer_channel& channel,
+						    ReportFn&& report)
 {
 	const long maybe_page_size = sysconf(_SC_PAGESIZE);
 
@@ -1529,7 +1533,7 @@ static void report_channel_memory_usage_by_streams_mincore(lttng_consumer_channe
  *
  * This result is memoized.
  */
-static bool system_supports_mincore()
+bool system_supports_mincore()
 {
 	/* IIFE used to memoize the result in a thread-safe manner. */
 	static const bool supported = []() {
@@ -1564,9 +1568,11 @@ static bool system_supports_mincore()
 
 	return supported;
 }
+} /* namespace */
 
+namespace {
 template <typename ReportFn>
-static void report_channel_memory_usage(lttng_consumer_channel& channel, ReportFn&& report)
+void report_channel_memory_usage(lttng_consumer_channel& channel, ReportFn&& report)
 {
 	if (system_supports_mincore()) {
 		report_channel_memory_usage_by_streams_mincore(channel, report);
@@ -1574,6 +1580,7 @@ static void report_channel_memory_usage(lttng_consumer_channel& channel, ReportF
 		report_channel_memory_usage_by_streams_fstat(channel, report);
 	}
 }
+} /* namespace */
 #else
 template <typename ReportFn>
 static void report_channel_memory_usage(lttng_consumer_channel& channel, ReportFn&& report)
@@ -1582,7 +1589,8 @@ static void report_channel_memory_usage(lttng_consumer_channel& channel, ReportF
 }
 #endif /* __linux__ */
 
-static void lttng_ustconsumer_get_channels_memory_usage(int socket, std::uint64_t channel_count)
+namespace {
+void lttng_ustconsumer_get_channels_memory_usage(int socket, std::uint64_t channel_count)
 {
 	std::vector<std::uint64_t> channel_keys;
 
@@ -1682,7 +1690,7 @@ static void lttng_ustconsumer_get_channels_memory_usage(int socket, std::uint64_
 	}
 }
 
-static void destroy_subbuf_iter(lttng_ust_ctl_subbuf_iter *it)
+void destroy_subbuf_iter(lttng_ust_ctl_subbuf_iter *it)
 {
 	if (!it) {
 		return;
@@ -1692,7 +1700,7 @@ static void destroy_subbuf_iter(lttng_ust_ctl_subbuf_iter *it)
 	LTTNG_ASSERT(ret == 0);
 }
 
-static unsigned long get_current_consumed_position(lttng_consumer_stream& stream)
+unsigned long get_current_consumed_position(lttng_consumer_stream& stream)
 {
 	unsigned long consumed_pos = 0;
 	const auto snapshot_ret = lttng_consumer_sample_snapshot_positions(&stream);
@@ -1717,7 +1725,7 @@ static unsigned long get_current_consumed_position(lttng_consumer_stream& stream
 	return consumed_pos;
 }
 
-static unsigned long get_current_produced_position(lttng_consumer_stream& stream)
+unsigned long get_current_produced_position(lttng_consumer_stream& stream)
 {
 	unsigned long produced_pos = 0;
 	const auto snapshot_ret = lttng_consumer_sample_snapshot_positions(&stream);
@@ -1741,6 +1749,7 @@ static unsigned long get_current_produced_position(lttng_consumer_stream& stream
 
 	return produced_pos;
 }
+} /* namespace */
 
 lttng::consumer::memory_reclaim_result lttng_ustconsumer_reclaim_stream_memory(
 	lttng_consumer_stream& stream,
@@ -2170,7 +2179,8 @@ lttng::consumer::memory_reclaim_result lttng_ustconsumer_reclaim_stream_memory(
 	return result;
 }
 
-static void lttng_ustconsumer_reclaim_channels_memory(
+namespace {
+void lttng_ustconsumer_reclaim_channels_memory(
 	int socket,
 	std::uint64_t channel_count,
 	nonstd::optional<std::chrono::microseconds> age_limit,
@@ -2352,6 +2362,7 @@ static void lttng_ustconsumer_reclaim_channels_memory(
 			.complete_if_no_pending_streams(*memory_reclaim_request_token);
 	}
 }
+} /* namespace */
 
 /*
  * Receive the metadata updates from the sessiond. Supports receiving
@@ -3791,7 +3802,8 @@ int lttng_ustconsumer_close_wakeup_fd(struct lttng_consumer_stream *stream)
  * Returns the number of bytes pushed from the cache into the ring buffer, or a
  * negative value on error.
  */
-static int commit_one_metadata_packet(struct lttng_consumer_stream *stream)
+namespace {
+int commit_one_metadata_packet(struct lttng_consumer_stream *stream)
 {
 	ssize_t write_len;
 	int ret;
@@ -3837,6 +3849,7 @@ end:
 	pthread_mutex_unlock(&stream->chan->metadata_cache->lock);
 	return ret;
 }
+} /* namespace */
 
 /*
  * Sync metadata meaning request them to the session daemon and snapshot to the
@@ -3910,8 +3923,8 @@ end:
 /*
  * Return 0 on success else a negative value.
  */
-static int notify_if_more_data(struct lttng_consumer_stream *stream,
-			       struct lttng_consumer_local_data *ctx)
+namespace {
+int notify_if_more_data(struct lttng_consumer_stream *stream, struct lttng_consumer_local_data *ctx)
 {
 	int ret;
 	struct lttng_ust_ctl_consumer_stream *ustream;
@@ -3958,7 +3971,7 @@ end:
 	return ret;
 }
 
-static int consumer_stream_ust_on_wake_up(struct lttng_consumer_stream *stream)
+int consumer_stream_ust_on_wake_up(struct lttng_consumer_stream *stream)
 {
 	int ret = 0;
 
@@ -3986,8 +3999,8 @@ static int consumer_stream_ust_on_wake_up(struct lttng_consumer_stream *stream)
 	return ret;
 }
 
-static int extract_common_subbuffer_info(struct lttng_consumer_stream *stream,
-					 struct stream_subbuffer *subbuf)
+int extract_common_subbuffer_info(struct lttng_consumer_stream *stream,
+				  struct stream_subbuffer *subbuf)
 {
 	int ret;
 
@@ -4006,8 +4019,8 @@ end:
 	return ret;
 }
 
-static int extract_metadata_subbuffer_info(struct lttng_consumer_stream *stream,
-					   struct stream_subbuffer *subbuf)
+int extract_metadata_subbuffer_info(struct lttng_consumer_stream *stream,
+				    struct stream_subbuffer *subbuf)
 {
 	const auto info_result = extract_common_subbuffer_info(stream, subbuf);
 	if (info_result) {
@@ -4020,8 +4033,8 @@ static int extract_metadata_subbuffer_info(struct lttng_consumer_stream *stream,
 	return 0;
 }
 
-static int extract_data_subbuffer_info(struct lttng_consumer_stream *stream,
-				       struct stream_subbuffer *subbuf)
+int extract_data_subbuffer_info(struct lttng_consumer_stream *stream,
+				struct stream_subbuffer *subbuf)
 {
 	int ret;
 
@@ -4095,8 +4108,8 @@ end:
 	return ret;
 }
 
-static int get_next_subbuffer_common(struct lttng_consumer_stream *stream,
-				     struct stream_subbuffer *subbuffer)
+int get_next_subbuffer_common(struct lttng_consumer_stream *stream,
+			      struct stream_subbuffer *subbuffer)
 {
 	int ret;
 	const char *addr;
@@ -4118,8 +4131,8 @@ end:
 	return ret;
 }
 
-static enum get_next_subbuffer_status get_next_subbuffer(struct lttng_consumer_stream *stream,
-							 struct stream_subbuffer *subbuffer)
+enum get_next_subbuffer_status get_next_subbuffer(struct lttng_consumer_stream *stream,
+						  struct stream_subbuffer *subbuffer)
 {
 	int ret;
 	enum get_next_subbuffer_status status;
@@ -4154,9 +4167,8 @@ end:
 	return status;
 }
 
-static enum get_next_subbuffer_status
-get_next_subbuffer_metadata(struct lttng_consumer_stream *stream,
-			    struct stream_subbuffer *subbuffer)
+enum get_next_subbuffer_status get_next_subbuffer_metadata(struct lttng_consumer_stream *stream,
+							   struct stream_subbuffer *subbuffer)
 {
 	int ret;
 	bool cache_empty;
@@ -4257,8 +4269,8 @@ end:
 	return status;
 }
 
-static int put_next_subbuffer(struct lttng_consumer_stream *stream,
-			      struct stream_subbuffer *subbuffer __attribute__((unused)))
+int put_next_subbuffer(struct lttng_consumer_stream *stream,
+		       struct stream_subbuffer *subbuffer __attribute__((unused)))
 {
 	const int ret = lttng_ust_ctl_put_next_subbuf(stream->ustream);
 
@@ -4266,25 +4278,25 @@ static int put_next_subbuffer(struct lttng_consumer_stream *stream,
 	return ret;
 }
 
-static int signal_metadata(struct lttng_consumer_stream *stream,
-			   struct lttng_consumer_local_data *ctx __attribute__((unused)))
+int signal_metadata(struct lttng_consumer_stream *stream,
+		    struct lttng_consumer_local_data *ctx __attribute__((unused)))
 {
 	ASSERT_LOCKED(stream->metadata_rdv_lock);
 	return pthread_cond_broadcast(&stream->metadata_rdv) ? -errno : 0;
 }
 
-static int post_consume_metadata_update_consumed_position(lttng_consumer_stream& stream,
-							  const struct stream_subbuffer *subbuffer
-							  [[maybe_unused]],
-							  struct lttng_consumer_local_data *ctx
-							  [[maybe_unused]])
+int post_consume_metadata_update_consumed_position(lttng_consumer_stream& stream,
+						   const struct stream_subbuffer *subbuffer
+						   [[maybe_unused]],
+						   struct lttng_consumer_local_data *ctx
+						   [[maybe_unused]])
 {
 	stream.ust_metadata_cache_consumed += stream.ust_metadata_cache_last_push_size;
 	stream.chan->metadata_consumed_wait_queue.wake_all();
 	return 0;
 }
 
-static int lttng_ustconsumer_set_stream_ops(struct lttng_consumer_stream *stream)
+int lttng_ustconsumer_set_stream_ops(struct lttng_consumer_stream *stream)
 {
 	int ret = 0;
 
@@ -4324,6 +4336,7 @@ static int lttng_ustconsumer_set_stream_ops(struct lttng_consumer_stream *stream
 end:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Called when a stream is created.
@@ -4709,8 +4722,9 @@ uint32_t lttng_ustconsumer_reclaim_session_owner_id(uint64_t session_id, uint32_
 	return pending_reclamations;
 }
 
-static bool is_subbuf_state_stalled(const struct stream_subbuffer_transaction_state& old_state,
-				    const struct stream_subbuffer_transaction_state& new_state)
+namespace {
+bool is_subbuf_state_stalled(const struct stream_subbuffer_transaction_state& old_state,
+			     const struct stream_subbuffer_transaction_state& new_state)
 {
 	if (old_state.owner_id != new_state.owner_id) {
 		return false;
@@ -4727,8 +4741,8 @@ static bool is_subbuf_state_stalled(const struct stream_subbuffer_transaction_st
 	return true;
 }
 
-static int take_stream_stall_snapshot(struct lttng_consumer_stream& stream,
-				      std::set<uint32_t>& observed_owner_ids)
+int take_stream_stall_snapshot(struct lttng_consumer_stream& stream,
+			       std::set<uint32_t>& observed_owner_ids)
 {
 	/* The iterator is initially invalid; call [...]_next() before accessing its value. */
 	auto subbuf_iter = lttng::make_unique_wrapper<lttng_ust_ctl_subbuf_iter,
@@ -4848,8 +4862,8 @@ static int take_stream_stall_snapshot(struct lttng_consumer_stream& stream,
 	return 0;
 }
 
-static int take_channel_stall_snapshot(struct lttng_consumer_channel *channel,
-				       std::set<uint32_t>& observed_owner_ids)
+int take_channel_stall_snapshot(struct lttng_consumer_channel *channel,
+				std::set<uint32_t>& observed_owner_ids)
 {
 	const struct lttng_ht *ht = the_consumer_data.stream_per_chan_id_ht;
 
@@ -4882,7 +4896,7 @@ static int take_channel_stall_snapshot(struct lttng_consumer_channel *channel,
 	return 0;
 }
 
-static int fixup_stalled_stream(struct lttng_consumer_stream& stream, std::set<uint32_t>& stalled)
+int fixup_stalled_stream(struct lttng_consumer_stream& stream, std::set<uint32_t>& stalled)
 {
 	LTTNG_ASSERT(!stream.metadata_flag);
 
@@ -4949,8 +4963,7 @@ static int fixup_stalled_stream(struct lttng_consumer_stream& stream, std::set<u
 	return 0;
 }
 
-static int fixup_stalled_channel(struct lttng_consumer_channel *channel,
-				 std::set<uint32_t>& stalled)
+int fixup_stalled_channel(struct lttng_consumer_channel *channel, std::set<uint32_t>& stalled)
 {
 	const struct lttng_ht *ht = the_consumer_data.stream_per_chan_id_ht;
 	bool success = true;
@@ -4982,6 +4995,7 @@ static int fixup_stalled_channel(struct lttng_consumer_channel *channel,
 
 	return success;
 }
+} /* namespace */
 
 int lttng_ustconsumer_fixup_stalled_channel(struct lttng_consumer_channel *channel,
 					    std::set<uint32_t>& reclaimed_owner_ids,
@@ -5172,9 +5186,10 @@ void lttng_ustconsumer_quiescent_stalled_channel(struct lttng_consumer_local_dat
 	}
 }
 
-static bool subbuffer_too_old(lttng_consumer_stream& stream,
-			      const stream_subbuffer& subbuffer,
-			      std::chrono::microseconds max_age)
+namespace {
+bool subbuffer_too_old(lttng_consumer_stream& stream,
+		       const stream_subbuffer& subbuffer,
+		       std::chrono::microseconds max_age)
 {
 	std::uint64_t current_tracer_time;
 	const auto current_time_ret =
@@ -5206,6 +5221,7 @@ static bool subbuffer_too_old(lttng_consumer_stream& stream,
 	 */
 	return subbuffer.info.data.timestamp_end <= expiry_limit;
 }
+} /* namespace */
 
 void lttng_ustconsumer_try_reclaim_current_subbuffer(lttng_consumer_stream& stream,
 						     const stream_subbuffer& subbuffer)

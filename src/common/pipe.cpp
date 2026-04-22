@@ -18,7 +18,8 @@
 /*
  * Lock read side of a pipe.
  */
-static void lock_read_side(struct lttng_pipe *pipe)
+namespace {
+void lock_read_side(struct lttng_pipe *pipe)
 {
 	pthread_mutex_lock(&pipe->read_mutex);
 }
@@ -26,7 +27,7 @@ static void lock_read_side(struct lttng_pipe *pipe)
 /*
  * Unlock read side of a pipe.
  */
-static void unlock_read_side(struct lttng_pipe *pipe)
+void unlock_read_side(struct lttng_pipe *pipe)
 {
 	pthread_mutex_unlock(&pipe->read_mutex);
 }
@@ -34,7 +35,7 @@ static void unlock_read_side(struct lttng_pipe *pipe)
 /*
  * Lock write side of a pipe.
  */
-static void lock_write_side(struct lttng_pipe *pipe)
+void lock_write_side(struct lttng_pipe *pipe)
 {
 	pthread_mutex_lock(&pipe->write_mutex);
 }
@@ -42,7 +43,7 @@ static void lock_write_side(struct lttng_pipe *pipe)
 /*
  * Unlock write side of a pipe.
  */
-static void unlock_write_side(struct lttng_pipe *pipe)
+void unlock_write_side(struct lttng_pipe *pipe)
 {
 	pthread_mutex_unlock(&pipe->write_mutex);
 }
@@ -52,7 +53,7 @@ static void unlock_write_side(struct lttng_pipe *pipe)
  *
  * Return 0 on success else a negative errno from close(2).
  */
-static int _pipe_read_close(struct lttng_pipe *pipe)
+int _pipe_read_close(struct lttng_pipe *pipe)
 {
 	int ret, ret_val = 0;
 
@@ -80,7 +81,7 @@ end:
  *
  * Return 0 on success else a negative errno from close(2).
  */
-static int _pipe_write_close(struct lttng_pipe *pipe)
+int _pipe_write_close(struct lttng_pipe *pipe)
 {
 	int ret, ret_val = 0;
 
@@ -103,7 +104,7 @@ end:
 	return ret_val;
 }
 
-static struct lttng_pipe *_pipe_create()
+struct lttng_pipe *_pipe_create()
 {
 	int ret;
 	struct lttng_pipe *p;
@@ -134,7 +135,7 @@ error_destroy:
 	return nullptr;
 }
 
-static int _pipe_set_flags(struct lttng_pipe *pipe, int flags)
+int _pipe_set_flags(struct lttng_pipe *pipe, int flags)
 {
 	int i, ret = 0;
 
@@ -171,6 +172,7 @@ static int _pipe_set_flags(struct lttng_pipe *pipe, int flags)
 end:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Open a new lttng pipe and set flags using fcntl().

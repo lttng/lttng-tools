@@ -25,7 +25,8 @@
 #define IS_LOG4J2_LOGGING_EVENT_RULE(rule) \
 	(lttng_event_rule_get_type(rule) == LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING)
 
-static void lttng_event_rule_log4j2_logging_destroy(struct lttng_event_rule *rule)
+namespace {
+void lttng_event_rule_log4j2_logging_destroy(struct lttng_event_rule *rule)
 {
 	struct lttng_event_rule_log4j2_logging *log4j2_logging;
 
@@ -43,7 +44,7 @@ static void lttng_event_rule_log4j2_logging_destroy(struct lttng_event_rule *rul
 	free(log4j2_logging);
 }
 
-static bool lttng_event_rule_log4j2_logging_validate(const struct lttng_event_rule *rule)
+bool lttng_event_rule_log4j2_logging_validate(const struct lttng_event_rule *rule)
 {
 	bool valid = false;
 	struct lttng_event_rule_log4j2_logging *log4j2_logging;
@@ -65,8 +66,8 @@ end:
 	return valid;
 }
 
-static int lttng_event_rule_log4j2_logging_serialize(const struct lttng_event_rule *rule,
-						     struct lttng_payload *payload)
+int lttng_event_rule_log4j2_logging_serialize(const struct lttng_event_rule *rule,
+					      struct lttng_payload *payload)
 {
 	int ret;
 	size_t pattern_len, filter_expression_len, header_offset;
@@ -127,8 +128,8 @@ end:
 	return ret;
 }
 
-static bool lttng_event_rule_log4j2_logging_is_equal(const struct lttng_event_rule *_a,
-						     const struct lttng_event_rule *_b)
+bool lttng_event_rule_log4j2_logging_is_equal(const struct lttng_event_rule *_a,
+					      const struct lttng_event_rule *_b)
 {
 	bool is_equal = false;
 	struct lttng_event_rule_log4j2_logging *a, *b;
@@ -174,7 +175,7 @@ end:
  *
  * An event with NO loglevel and the name is * will return NULL.
  */
-static int generate_agent_filter(const struct lttng_event_rule *rule, char **_agent_filter)
+int generate_agent_filter(const struct lttng_event_rule *rule, char **_agent_filter)
 {
 	int err;
 	int ret = 0;
@@ -273,7 +274,7 @@ end:
 	return ret;
 }
 
-static enum lttng_error_code
+enum lttng_error_code
 lttng_event_rule_log4j2_logging_generate_filter_bytecode(struct lttng_event_rule *rule,
 							 const struct lttng_credentials *creds)
 {
@@ -332,8 +333,7 @@ end:
 	return ret_code;
 }
 
-static const char *
-lttng_event_rule_log4j2_logging_get_internal_filter(const struct lttng_event_rule *rule)
+const char *lttng_event_rule_log4j2_logging_get_internal_filter(const struct lttng_event_rule *rule)
 {
 	struct lttng_event_rule_log4j2_logging *log4j2_logging;
 
@@ -342,7 +342,7 @@ lttng_event_rule_log4j2_logging_get_internal_filter(const struct lttng_event_rul
 	return log4j2_logging->internal_filter.filter;
 }
 
-static const char *
+const char *
 lttng_event_rule_log4j2_logging_get_filter_expression(const struct lttng_event_rule *rule)
 {
 	struct lttng_event_rule_log4j2_logging *log4j2_logging;
@@ -352,7 +352,7 @@ lttng_event_rule_log4j2_logging_get_filter_expression(const struct lttng_event_r
 	return log4j2_logging->filter_expression;
 }
 
-static const struct lttng_bytecode *
+const struct lttng_bytecode *
 lttng_event_rule_log4j2_logging_get_internal_filter_bytecode(const struct lttng_event_rule *rule)
 {
 	struct lttng_event_rule_log4j2_logging *log4j2_logging;
@@ -362,7 +362,7 @@ lttng_event_rule_log4j2_logging_get_internal_filter_bytecode(const struct lttng_
 	return log4j2_logging->internal_filter.bytecode;
 }
 
-static enum lttng_event_rule_generate_exclusions_status
+enum lttng_event_rule_generate_exclusions_status
 lttng_event_rule_log4j2_logging_generate_exclusions(const struct lttng_event_rule *rule
 						    __attribute__((unused)),
 						    struct lttng_event_exclusion **_exclusions)
@@ -372,7 +372,7 @@ lttng_event_rule_log4j2_logging_generate_exclusions(const struct lttng_event_rul
 	return LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_NONE;
 }
 
-static unsigned long lttng_event_rule_log4j2_logging_hash(const struct lttng_event_rule *rule)
+unsigned long lttng_event_rule_log4j2_logging_hash(const struct lttng_event_rule *rule)
 {
 	unsigned long hash;
 	struct lttng_event_rule_log4j2_logging *tp_rule =
@@ -392,7 +392,7 @@ static unsigned long lttng_event_rule_log4j2_logging_hash(const struct lttng_eve
 	return hash;
 }
 
-static struct lttng_event *
+struct lttng_event *
 lttng_event_rule_log4j2_logging_generate_lttng_event(const struct lttng_event_rule *rule)
 {
 	int ret;
@@ -455,7 +455,7 @@ lttng_event_rule_log4j2_logging_generate_lttng_event(const struct lttng_event_ru
 	return local_event.release();
 }
 
-static enum lttng_error_code
+enum lttng_error_code
 lttng_event_rule_log4j2_logging_mi_serialize(const struct lttng_event_rule *rule,
 					     struct mi_writer *writer)
 {
@@ -526,6 +526,7 @@ mi_error:
 end:
 	return ret_code;
 }
+} /* namespace */
 
 struct lttng_event_rule *lttng_event_rule_log4j2_logging_create(void)
 {
@@ -814,7 +815,8 @@ end:
 	return status;
 }
 
-static bool log_level_rule_valid(const struct lttng_log_level_rule *rule)
+namespace {
+bool log_level_rule_valid(const struct lttng_log_level_rule *rule)
 {
 	/*
 	 * LOG4J2 custom log levels are possible and can range from 0 to
@@ -822,6 +824,7 @@ static bool log_level_rule_valid(const struct lttng_log_level_rule *rule)
 	 */
 	return (rule->level >= 0);
 }
+} /* namespace */
 
 enum lttng_event_rule_status lttng_event_rule_log4j2_logging_set_log_level_rule(
 	struct lttng_event_rule *rule, const struct lttng_log_level_rule *log_level_rule)

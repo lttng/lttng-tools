@@ -36,29 +36,29 @@ struct lttng_action_list_comm {
 } LTTNG_PACKED;
 } /* namespace */
 
-static void destroy_lttng_action_list_element(void *ptr)
+namespace {
+void destroy_lttng_action_list_element(void *ptr)
 {
 	struct lttng_action *element = (struct lttng_action *) ptr;
 
 	lttng_action_destroy(element);
 }
 
-static struct lttng_action_list *action_list_from_action(const struct lttng_action *action)
+struct lttng_action_list *action_list_from_action(const struct lttng_action *action)
 {
 	LTTNG_ASSERT(action);
 
 	return lttng::utils::container_of(action, &lttng_action_list::parent);
 }
 
-static const struct lttng_action_list *
-action_list_from_action_const(const struct lttng_action *action)
+const struct lttng_action_list *action_list_from_action_const(const struct lttng_action *action)
 {
 	LTTNG_ASSERT(action);
 
 	return lttng::utils::container_of(action, &lttng_action_list::parent);
 }
 
-static bool lttng_action_list_validate(struct lttng_action *action)
+bool lttng_action_list_validate(struct lttng_action *action)
 {
 	unsigned int i, count;
 	struct lttng_action_list *action_list;
@@ -89,7 +89,7 @@ end:
 	return valid;
 }
 
-static bool lttng_action_list_is_equal(const struct lttng_action *_a, const struct lttng_action *_b)
+bool lttng_action_list_is_equal(const struct lttng_action *_a, const struct lttng_action *_b)
 {
 	bool is_equal = false;
 	unsigned int i;
@@ -124,7 +124,7 @@ end:
 	return is_equal;
 }
 
-static int lttng_action_list_serialize(struct lttng_action *action, struct lttng_payload *payload)
+int lttng_action_list_serialize(struct lttng_action *action, struct lttng_payload *payload)
 {
 	struct lttng_action_list *action_list;
 	struct lttng_action_list_comm comm;
@@ -168,7 +168,7 @@ end:
 	return ret;
 }
 
-static void lttng_action_list_destroy(struct lttng_action *action)
+void lttng_action_list_destroy(struct lttng_action *action)
 {
 	struct lttng_action_list *action_list;
 
@@ -183,6 +183,7 @@ static void lttng_action_list_destroy(struct lttng_action *action)
 end:
 	return;
 }
+} /* namespace */
 
 ssize_t lttng_action_list_create_from_payload(struct lttng_payload_view *view,
 					      struct lttng_action **p_action)
@@ -241,7 +242,8 @@ end:
 	return consumed_len;
 }
 
-static enum lttng_action_status
+namespace {
+enum lttng_action_status
 lttng_action_list_add_error_query_results(const struct lttng_action *action,
 					  struct lttng_error_query_results *results)
 {
@@ -265,6 +267,7 @@ lttng_action_list_add_error_query_results(const struct lttng_action *action,
 end:
 	return action_status;
 }
+} /* namespace */
 
 enum lttng_error_code
 lttng_action_list_mi_serialize(const struct lttng_trigger *trigger,

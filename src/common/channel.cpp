@@ -18,20 +18,22 @@
 #include <lttng/constant.h>
 #include <lttng/userspace-probe-internal.hpp>
 
-static enum lttng_error_code flatten_lttng_channels(struct lttng_dynamic_pointer_array *channels,
-						    struct lttng_channel **flattened_channels);
+namespace {
+enum lttng_error_code flatten_lttng_channels(struct lttng_dynamic_pointer_array *channels,
+					     struct lttng_channel **flattened_channels);
 
-static enum lttng_error_code
+enum lttng_error_code
 channel_list_create_from_buffer(const struct lttng_buffer_view *buffer,
 				uint32_t count,
 				struct lttng_dynamic_pointer_array *channel_list);
 
-static void channel_list_destructor(void *ptr)
+void channel_list_destructor(void *ptr)
 {
 	struct lttng_channel *element = (struct lttng_channel *) ptr;
 
 	lttng_channel_destroy(element);
 }
+} /* namespace */
 
 struct lttng_channel *lttng_channel_copy(const struct lttng_channel *src)
 {
@@ -312,7 +314,8 @@ void lttng_channel_set_default_extended_attr(struct lttng_domain *domain,
 	}
 }
 
-static enum lttng_error_code
+namespace {
+enum lttng_error_code
 channel_list_create_from_buffer(const struct lttng_buffer_view *view,
 				unsigned int count,
 				struct lttng_dynamic_pointer_array *channel_list)
@@ -357,8 +360,8 @@ end:
 	return ret_code;
 }
 
-static enum lttng_error_code flatten_lttng_channels(struct lttng_dynamic_pointer_array *channels,
-						    struct lttng_channel **flattened_channels)
+enum lttng_error_code flatten_lttng_channels(struct lttng_dynamic_pointer_array *channels,
+					     struct lttng_channel **flattened_channels)
 {
 	enum lttng_error_code ret_code;
 	int ret, i;
@@ -451,6 +454,7 @@ end:
 	lttng_dynamic_buffer_reset(&local_flattened_channels);
 	return ret_code;
 }
+} /* namespace */
 
 enum lttng_error_code lttng_channels_create_and_flatten_from_buffer(
 	const struct lttng_buffer_view *view, uint32_t count, struct lttng_channel **channels)

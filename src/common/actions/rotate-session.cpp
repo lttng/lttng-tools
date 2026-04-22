@@ -41,18 +41,18 @@ struct lttng_action_rotate_session_comm {
 } LTTNG_PACKED;
 } /* namespace */
 
-static const struct lttng_rate_policy *
+namespace {
+const struct lttng_rate_policy *
 lttng_action_rotate_session_internal_get_rate_policy(const struct lttng_action *action);
 
-static struct lttng_action_rotate_session *
-action_rotate_session_from_action(struct lttng_action *action)
+struct lttng_action_rotate_session *action_rotate_session_from_action(struct lttng_action *action)
 {
 	LTTNG_ASSERT(action);
 
 	return lttng::utils::container_of(action, &lttng_action_rotate_session::parent);
 }
 
-static const struct lttng_action_rotate_session *
+const struct lttng_action_rotate_session *
 action_rotate_session_from_action_const(const struct lttng_action *action)
 {
 	LTTNG_ASSERT(action);
@@ -60,7 +60,7 @@ action_rotate_session_from_action_const(const struct lttng_action *action)
 	return lttng::utils::container_of(action, &lttng_action_rotate_session::parent);
 }
 
-static bool lttng_action_rotate_session_validate(struct lttng_action *action)
+bool lttng_action_rotate_session_validate(struct lttng_action *action)
 {
 	bool valid;
 	struct lttng_action_rotate_session *action_rotate_session;
@@ -84,8 +84,8 @@ end:
 	return valid;
 }
 
-static bool lttng_action_rotate_session_is_equal(const struct lttng_action *_a,
-						 const struct lttng_action *_b)
+bool lttng_action_rotate_session_is_equal(const struct lttng_action *_a,
+					  const struct lttng_action *_b)
 {
 	bool is_equal = false;
 	const struct lttng_action_rotate_session *a, *b;
@@ -104,8 +104,8 @@ static bool lttng_action_rotate_session_is_equal(const struct lttng_action *_a,
 end:
 	return is_equal;
 }
-static int lttng_action_rotate_session_serialize(struct lttng_action *action,
-						 struct lttng_payload *payload)
+int lttng_action_rotate_session_serialize(struct lttng_action *action,
+					  struct lttng_payload *payload)
 {
 	struct lttng_action_rotate_session *action_rotate_session;
 	struct lttng_action_rotate_session_comm comm;
@@ -147,7 +147,7 @@ end:
 	return ret;
 }
 
-static void lttng_action_rotate_session_destroy(struct lttng_action *action)
+void lttng_action_rotate_session_destroy(struct lttng_action *action)
 {
 	struct lttng_action_rotate_session *action_rotate_session;
 
@@ -164,6 +164,7 @@ static void lttng_action_rotate_session_destroy(struct lttng_action *action)
 end:
 	return;
 }
+} /* namespace */
 
 ssize_t lttng_action_rotate_session_create_from_payload(struct lttng_payload_view *view,
 							struct lttng_action **p_action)
@@ -226,9 +227,9 @@ end:
 	return consumed_len;
 }
 
-static enum lttng_error_code
-lttng_action_rotate_session_mi_serialize(const struct lttng_action *action,
-					 struct mi_writer *writer)
+namespace {
+enum lttng_error_code lttng_action_rotate_session_mi_serialize(const struct lttng_action *action,
+							       struct mi_writer *writer)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -280,6 +281,7 @@ mi_error:
 end:
 	return ret_code;
 }
+} /* namespace */
 
 struct lttng_action *lttng_action_rotate_session_create(void)
 {
@@ -422,7 +424,8 @@ end:
 	return status;
 }
 
-static const struct lttng_rate_policy *
+namespace {
+const struct lttng_rate_policy *
 lttng_action_rotate_session_internal_get_rate_policy(const struct lttng_action *action)
 {
 	const struct lttng_action_rotate_session *_action;
@@ -430,3 +433,4 @@ lttng_action_rotate_session_internal_get_rate_policy(const struct lttng_action *
 
 	return _action->policy;
 }
+} /* namespace */

@@ -203,18 +203,18 @@ struct lttng_elf {
 	struct lttng_elf_ehdr *ehdr;
 };
 
-static inline int is_elf_32_bit(struct lttng_elf *elf)
+namespace {
+inline int is_elf_32_bit(struct lttng_elf *elf)
 {
 	return elf->bitness == ELFCLASS32;
 }
 
-static inline int is_elf_native_endian(struct lttng_elf *elf)
+inline int is_elf_native_endian(struct lttng_elf *elf)
 {
 	return elf->endianness == NATIVE_ELF_ENDIANNESS;
 }
 
-static int
-populate_section_header(struct lttng_elf *elf, struct lttng_elf_shdr *shdr, uint32_t index)
+int populate_section_header(struct lttng_elf *elf, struct lttng_elf_shdr *shdr, uint32_t index)
 {
 	int ret = 0;
 	off_t offset;
@@ -258,7 +258,7 @@ error:
 	return ret;
 }
 
-static int populate_elf_header(struct lttng_elf *elf)
+int populate_elf_header(struct lttng_elf *elf)
 {
 	int ret = 0;
 
@@ -309,8 +309,9 @@ error:
  *
  * 0 is returned on succes, -1 on failure.
  */
-static int
-lttng_elf_get_section_hdr(struct lttng_elf *elf, uint16_t index, struct lttng_elf_shdr *out_header)
+int lttng_elf_get_section_hdr(struct lttng_elf *elf,
+			      uint16_t index,
+			      struct lttng_elf_shdr *out_header)
 {
 	int ret = 0;
 
@@ -341,7 +342,7 @@ error:
  *
  * If no name is found, NULL is returned.
  */
-static char *lttng_elf_get_section_name(struct lttng_elf *elf, off_t offset)
+char *lttng_elf_get_section_name(struct lttng_elf *elf, off_t offset)
 {
 	char *name = nullptr;
 	size_t name_length = 0, to_read; /* name_length does not include \0 */
@@ -410,7 +411,7 @@ error:
 	return nullptr;
 }
 
-static int lttng_elf_validate_and_populate(struct lttng_elf *elf)
+int lttng_elf_validate_and_populate(struct lttng_elf *elf)
 {
 	uint8_t version;
 	uint8_t e_ident[EI_NIDENT];
@@ -520,7 +521,7 @@ end:
  *
  * Return a pointer to the instance on success, NULL on failure.
  */
-static struct lttng_elf *lttng_elf_create(int fd)
+struct lttng_elf *lttng_elf_create(int fd)
 {
 	struct lttng_elf_shdr section_names_shdr;
 	struct lttng_elf *elf = nullptr;
@@ -587,7 +588,7 @@ error:
 /*
  * Destroy the given lttng_elf instance.
  */
-static void lttng_elf_destroy(struct lttng_elf *elf)
+void lttng_elf_destroy(struct lttng_elf *elf)
 {
 	if (!elf) {
 		return;
@@ -601,9 +602,9 @@ static void lttng_elf_destroy(struct lttng_elf *elf)
 	free(elf);
 }
 
-static int lttng_elf_get_section_hdr_by_name(struct lttng_elf *elf,
-					     const char *section_name,
-					     struct lttng_elf_shdr *section_hdr)
+int lttng_elf_get_section_hdr_by_name(struct lttng_elf *elf,
+				      const char *section_name,
+				      struct lttng_elf_shdr *section_hdr)
 {
 	int i;
 	char *curr_section_name;
@@ -628,7 +629,7 @@ static int lttng_elf_get_section_hdr_by_name(struct lttng_elf *elf,
 	return LTTNG_ERR_ELF_PARSING;
 }
 
-static char *lttng_elf_get_section_data(struct lttng_elf *elf, struct lttng_elf_shdr *shdr)
+char *lttng_elf_get_section_data(struct lttng_elf *elf, struct lttng_elf_shdr *shdr)
 {
 	int ret;
 	off_t section_offset;
@@ -677,9 +678,9 @@ error:
  *
  * Returns the offset on success or non-zero in case of failure.
  */
-static int lttng_elf_convert_addr_in_text_to_offset(struct lttng_elf *elf_handle,
-						    size_t addr,
-						    uint64_t *offset)
+int lttng_elf_convert_addr_in_text_to_offset(struct lttng_elf *elf_handle,
+					     size_t addr,
+					     uint64_t *offset)
 {
 	int ret = 0;
 	off_t text_section_offset;
@@ -730,6 +731,7 @@ static int lttng_elf_convert_addr_in_text_to_offset(struct lttng_elf *elf_handle
 error:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Compute the offset of a symbol from the begining of the ELF binary.

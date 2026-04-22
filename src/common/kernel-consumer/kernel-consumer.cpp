@@ -119,7 +119,8 @@ int lttng_kconsumer_get_consumed_snapshot(struct lttng_consumer_stream *stream,
 	return ret;
 }
 
-static int get_current_subbuf_addr(struct lttng_consumer_stream *stream, const char **addr)
+namespace {
+int get_current_subbuf_addr(struct lttng_consumer_stream *stream, const char **addr)
 {
 	int ret;
 	unsigned long mmap_offset;
@@ -143,11 +144,11 @@ error:
  *
  * Returns 0 on success, < 0 on error
  */
-static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *channel,
-					    uint64_t key,
-					    char *path,
-					    uint64_t relayd_id,
-					    uint64_t nb_packets_per_stream)
+int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *channel,
+				     uint64_t key,
+				     char *path,
+				     uint64_t relayd_id,
+				     uint64_t nb_packets_per_stream)
 {
 	int ret;
 	std::vector<uint8_t> packet_buffer;
@@ -407,11 +408,11 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
  *
  * Returns 0 on success, < 0 on error
  */
-static int lttng_kconsumer_snapshot_metadata(struct lttng_consumer_channel *metadata_channel,
-					     uint64_t key,
-					     char *path,
-					     uint64_t relayd_id,
-					     struct lttng_consumer_local_data *ctx)
+int lttng_kconsumer_snapshot_metadata(struct lttng_consumer_channel *metadata_channel,
+				      uint64_t key,
+				      char *path,
+				      uint64_t relayd_id,
+				      struct lttng_consumer_local_data *ctx)
 {
 	int ret, use_relayd = 0;
 	ssize_t ret_read;
@@ -484,6 +485,7 @@ error_snapshot:
 	metadata_channel->metadata_stream = nullptr;
 	return ret;
 }
+} /* namespace */
 
 /*
  * Receive command from session daemon and process it.
@@ -1517,8 +1519,9 @@ end:
 	return status;
 }
 
-static int extract_common_subbuffer_info(struct lttng_consumer_stream *stream,
-					 struct stream_subbuffer *subbuf)
+namespace {
+int extract_common_subbuffer_info(struct lttng_consumer_stream *stream,
+				  struct stream_subbuffer *subbuf)
 {
 	int ret;
 
@@ -1537,8 +1540,8 @@ end:
 	return ret;
 }
 
-static int extract_metadata_subbuffer_info(struct lttng_consumer_stream *stream,
-					   struct stream_subbuffer *subbuf)
+int extract_metadata_subbuffer_info(struct lttng_consumer_stream *stream,
+				    struct stream_subbuffer *subbuf)
 {
 	int ret;
 
@@ -1556,8 +1559,8 @@ end:
 	return ret;
 }
 
-static int extract_data_subbuffer_info(struct lttng_consumer_stream *stream,
-				       struct stream_subbuffer *subbuf)
+int extract_data_subbuffer_info(struct lttng_consumer_stream *stream,
+				struct stream_subbuffer *subbuf)
 {
 	int ret;
 
@@ -1628,8 +1631,8 @@ end:
 	return ret;
 }
 
-static enum get_next_subbuffer_status get_subbuffer_common(struct lttng_consumer_stream *stream,
-							   struct stream_subbuffer *subbuffer)
+enum get_next_subbuffer_status get_subbuffer_common(struct lttng_consumer_stream *stream,
+						    struct stream_subbuffer *subbuffer)
 {
 	int ret;
 	enum get_next_subbuffer_status status;
@@ -1663,8 +1666,8 @@ end:
 	return status;
 }
 
-static enum get_next_subbuffer_status
-get_next_subbuffer_splice(struct lttng_consumer_stream *stream, struct stream_subbuffer *subbuffer)
+enum get_next_subbuffer_status get_next_subbuffer_splice(struct lttng_consumer_stream *stream,
+							 struct stream_subbuffer *subbuffer)
 {
 	const enum get_next_subbuffer_status status = get_subbuffer_common(stream, subbuffer);
 
@@ -1677,8 +1680,8 @@ end:
 	return status;
 }
 
-static enum get_next_subbuffer_status get_next_subbuffer_mmap(struct lttng_consumer_stream *stream,
-							      struct stream_subbuffer *subbuffer)
+enum get_next_subbuffer_status get_next_subbuffer_mmap(struct lttng_consumer_stream *stream,
+						       struct stream_subbuffer *subbuffer)
 {
 	int ret;
 	enum get_next_subbuffer_status status;
@@ -1701,7 +1704,7 @@ end:
 	return status;
 }
 
-static enum get_next_subbuffer_status
+enum get_next_subbuffer_status
 get_next_subbuffer_metadata_check(struct lttng_consumer_stream *stream,
 				  struct stream_subbuffer *subbuffer)
 {
@@ -1762,8 +1765,8 @@ end:
 	return status;
 }
 
-static int put_next_subbuffer(struct lttng_consumer_stream *stream,
-			      struct stream_subbuffer *subbuffer __attribute__((unused)))
+int put_next_subbuffer(struct lttng_consumer_stream *stream,
+		       struct stream_subbuffer *subbuffer __attribute__((unused)))
 {
 	const int ret = kernctl_put_next_subbuf(stream->wait_fd);
 
@@ -1779,7 +1782,7 @@ static int put_next_subbuffer(struct lttng_consumer_stream *stream,
 	return ret;
 }
 
-static bool is_get_next_check_metadata_available(int tracer_fd)
+bool is_get_next_check_metadata_available(int tracer_fd)
 {
 	bool unused;
 	const int ret = kernctl_get_next_subbuf_metadata_check(tracer_fd, &unused);
@@ -1793,14 +1796,14 @@ static bool is_get_next_check_metadata_available(int tracer_fd)
 	return available;
 }
 
-static int signal_metadata(struct lttng_consumer_stream *stream,
-			   struct lttng_consumer_local_data *ctx __attribute__((unused)))
+int signal_metadata(struct lttng_consumer_stream *stream,
+		    struct lttng_consumer_local_data *ctx __attribute__((unused)))
 {
 	ASSERT_LOCKED(stream->metadata_rdv_lock);
 	return pthread_cond_broadcast(&stream->metadata_rdv) ? -errno : 0;
 }
 
-static int stream_send_live_beacon(lttng_consumer_stream& stream)
+int stream_send_live_beacon(lttng_consumer_stream& stream)
 {
 	uint64_t ts, stream_id;
 	int ret;
@@ -1838,7 +1841,7 @@ end:
 	return ret;
 }
 
-static int lttng_kconsumer_set_stream_ops(struct lttng_consumer_stream *stream)
+int lttng_kconsumer_set_stream_ops(struct lttng_consumer_stream *stream)
 {
 	int ret = 0;
 
@@ -1892,6 +1895,7 @@ static int lttng_kconsumer_set_stream_ops(struct lttng_consumer_stream *stream)
 end:
 	return ret;
 }
+} /* namespace */
 
 int lttng_kconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 {

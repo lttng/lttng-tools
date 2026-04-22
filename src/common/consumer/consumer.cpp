@@ -97,7 +97,8 @@ lttng::consumerd::exceptions::channel_not_found_error::channel_not_found_error(
 {
 }
 
-static const char *get_consumer_domain()
+namespace {
+const char *get_consumer_domain()
 {
 	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
@@ -116,7 +117,7 @@ static const char *get_consumer_domain()
  * global state has changed so we just send back the thread in a poll wait
  * call.
  */
-static void notify_thread_lttng_pipe(struct lttng_pipe *pipe)
+void notify_thread_lttng_pipe(struct lttng_pipe *pipe)
 {
 	struct lttng_consumer_stream *null_stream = nullptr;
 
@@ -126,7 +127,7 @@ static void notify_thread_lttng_pipe(struct lttng_pipe *pipe)
 									     pointer. */
 }
 
-static void notify_health_quit_pipe(int *pipe)
+void notify_health_quit_pipe(int *pipe)
 {
 	ssize_t ret;
 
@@ -136,10 +137,10 @@ static void notify_health_quit_pipe(int *pipe)
 	}
 }
 
-static void notify_channel_pipe(struct lttng_consumer_local_data *ctx,
-				struct lttng_consumer_channel *chan,
-				uint64_t key,
-				enum consumer_channel_action action)
+void notify_channel_pipe(struct lttng_consumer_local_data *ctx,
+			 struct lttng_consumer_channel *chan,
+			 uint64_t key,
+			 enum consumer_channel_action action)
 {
 	struct consumer_channel_msg msg;
 	ssize_t ret;
@@ -154,16 +155,18 @@ static void notify_channel_pipe(struct lttng_consumer_local_data *ctx,
 		PERROR("notify_channel_pipe write error");
 	}
 }
+} /* namespace */
 
 void notify_thread_del_channel(struct lttng_consumer_local_data *ctx, uint64_t key)
 {
 	notify_channel_pipe(ctx, nullptr, key, CONSUMER_CHANNEL_DEL);
 }
 
-static int read_channel_pipe(struct lttng_consumer_local_data *ctx,
-			     struct lttng_consumer_channel **chan,
-			     uint64_t *key,
-			     enum consumer_channel_action *action)
+namespace {
+int read_channel_pipe(struct lttng_consumer_local_data *ctx,
+		      struct lttng_consumer_channel **chan,
+		      uint64_t *key,
+		      enum consumer_channel_action *action)
 {
 	struct consumer_channel_msg msg;
 	ssize_t ret;
@@ -184,7 +187,7 @@ error:
  * Cleanup the stream list of a channel. Those streams are not yet globally
  * visible
  */
-static void clean_channel_stream_list(struct lttng_consumer_channel *channel)
+void clean_channel_stream_list(struct lttng_consumer_channel *channel)
 {
 	LTTNG_ASSERT(channel);
 
@@ -201,7 +204,7 @@ static void clean_channel_stream_list(struct lttng_consumer_channel *channel)
  * Find a stream. The consumer_data.lock must be locked during this
  * call.
  */
-static struct lttng_consumer_stream *find_stream(uint64_t key, struct lttng_ht *ht)
+struct lttng_consumer_stream *find_stream(uint64_t key, struct lttng_ht *ht)
 {
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_u64 *node;
@@ -225,7 +228,7 @@ static struct lttng_consumer_stream *find_stream(uint64_t key, struct lttng_ht *
 	return stream;
 }
 
-static void steal_stream_key(uint64_t key, struct lttng_ht *ht)
+void steal_stream_key(uint64_t key, struct lttng_ht *ht)
 {
 	struct lttng_consumer_stream *stream;
 
@@ -241,6 +244,7 @@ static void steal_stream_key(uint64_t key, struct lttng_ht *ht)
 		stream->node.key = (uint64_t) -1ULL;
 	}
 }
+} /* namespace */
 
 /*
  * Return a channel object for the given key.
@@ -278,7 +282,8 @@ struct lttng_consumer_channel *consumer_find_channel(uint64_t key)
  *
  * This function just nullifies the already existing channel key.
  */
-static void steal_channel_key(uint64_t key)
+namespace {
+void steal_channel_key(uint64_t key)
 {
 	struct lttng_consumer_channel *channel;
 
@@ -295,7 +300,7 @@ static void steal_channel_key(uint64_t key)
 	}
 }
 
-static void free_channel_rcu(struct rcu_head *head)
+void free_channel_rcu(struct rcu_head *head)
 {
 	struct lttng_ht_node_u64 *node = lttng::utils::container_of(head, &lttng_ht_node_u64::head);
 	struct lttng_consumer_channel *channel =
@@ -319,7 +324,7 @@ static void free_channel_rcu(struct rcu_head *head)
 /*
  * RCU protected relayd socket pair free.
  */
-static void free_relayd_rcu(struct rcu_head *head)
+void free_relayd_rcu(struct rcu_head *head)
 {
 	struct lttng_ht_node_u64 *node = lttng::utils::container_of(head, &lttng_ht_node_u64::head);
 	struct consumer_relayd_sock_pair *relayd =
@@ -339,6 +344,7 @@ static void free_relayd_rcu(struct rcu_head *head)
 	pthread_mutex_destroy(&relayd->ctrl_sock_mutex);
 	free(relayd);
 }
+} /* namespace */
 
 /*
  * Destroy and free relayd socket pair object.
@@ -440,7 +446,8 @@ end:
  * Iterate over the relayd hash table and destroy each element. Finally,
  * destroy the whole hash table.
  */
-static void cleanup_relayd_ht()
+namespace {
+void cleanup_relayd_ht()
 {
 	for (auto *relayd :
 	     lttng::urcu::lfht_iteration_adapter<consumer_relayd_sock_pair,
@@ -460,8 +467,7 @@ static void cleanup_relayd_ht()
  * It's atomically set without having the stream mutex locked which is fine
  * because we handle the write/read race with a pipe wakeup for each thread.
  */
-static void update_endpoint_status_by_netidx(uint64_t net_seq_idx,
-					     enum consumer_endpoint_status status)
+void update_endpoint_status_by_netidx(uint64_t net_seq_idx, enum consumer_endpoint_status status)
 {
 	DBG("Consumer set delete flag on stream by idx %" PRIu64, net_seq_idx);
 
@@ -489,6 +495,7 @@ static void update_endpoint_status_by_netidx(uint64_t net_seq_idx,
 		}
 	}
 }
+} /* namespace */
 
 /*
  * Cleanup a relayd object by flagging every associated streams for deletion,
@@ -632,7 +639,8 @@ void consumer_add_data_stream(struct lttng_consumer_stream *stream)
  * Add relayd socket to global consumer data hashtable. RCU read side lock MUST
  * be acquired before calling this.
  */
-static int add_relayd(struct consumer_relayd_sock_pair *relayd)
+namespace {
+int add_relayd(struct consumer_relayd_sock_pair *relayd)
 {
 	const int ret = 0;
 	struct lttng_ht_node_u64 *node;
@@ -655,7 +663,7 @@ end:
 /*
  * Allocate and return a consumer relayd socket.
  */
-static struct consumer_relayd_sock_pair *consumer_allocate_relayd_sock_pair(uint64_t net_seq_idx)
+struct consumer_relayd_sock_pair *consumer_allocate_relayd_sock_pair(uint64_t net_seq_idx)
 {
 	struct consumer_relayd_sock_pair *obj = nullptr;
 
@@ -681,6 +689,7 @@ static struct consumer_relayd_sock_pair *consumer_allocate_relayd_sock_pair(uint
 error:
 	return obj;
 }
+} /* namespace */
 
 /*
  * Find a relayd socket pair in the global consumer data.
@@ -827,10 +836,11 @@ void close_relayd_stream(struct lttng_consumer_stream *stream)
  *
  * Return destination file descriptor or negative value on error.
  */
-static int write_relayd_stream_header(struct lttng_consumer_stream *stream,
-				      size_t data_size,
-				      unsigned long padding,
-				      struct consumer_relayd_sock_pair *relayd)
+namespace {
+int write_relayd_stream_header(struct lttng_consumer_stream *stream,
+			       size_t data_size,
+			       unsigned long padding,
+			       struct consumer_relayd_sock_pair *relayd)
 {
 	int outfd = -1, ret;
 	struct lttcomm_relayd_data_hdr data_hdr;
@@ -881,6 +891,7 @@ static int write_relayd_stream_header(struct lttng_consumer_stream *stream,
 error:
 	return outfd;
 }
+} /* namespace */
 
 /*
  * Write a character on the metadata poll pipe to wake the metadata thread.
@@ -924,7 +935,8 @@ end:
  *
  * The caller must hold the channel and stream locks.
  */
-static int consumer_metadata_stream_dump(struct lttng_consumer_stream *stream)
+namespace {
+int consumer_metadata_stream_dump(struct lttng_consumer_stream *stream)
 {
 	int ret;
 
@@ -961,8 +973,8 @@ static int consumer_metadata_stream_dump(struct lttng_consumer_stream *stream)
 	return ret;
 }
 
-static int lttng_consumer_channel_set_trace_chunk(struct lttng_consumer_channel *channel,
-						  struct lttng_trace_chunk *new_trace_chunk)
+int lttng_consumer_channel_set_trace_chunk(struct lttng_consumer_channel *channel,
+					   struct lttng_trace_chunk *new_trace_chunk)
 {
 	pthread_mutex_lock(&channel->lock);
 	if (channel->is_deleted) {
@@ -993,6 +1005,7 @@ end:
 	pthread_mutex_unlock(&channel->lock);
 	return 0;
 }
+} /* namespace */
 
 /*
  * Allocate and return a new lttng_consumer_channel object using the given key
@@ -1180,15 +1193,16 @@ int consumer_add_channel(struct lttng_consumer_channel *channel,
  *
  * Returns the number of fds in the structures.
  */
-static int update_poll_events(struct lttng_consumer_local_data *ctx,
-			      struct lttng_poll_event *poll_events,
-			      std::vector<struct lttng_consumer_stream *>& streams_to_monitor,
-			      std::unordered_map<int, size_t>& fd_to_stream_index,
-			      struct lttng_ht *ht,
-			      int *nb_inactive_fd,
-			      const std::unordered_set<int>& cool_down,
-			      int *wakeup_fd,
-			      int *data_fd)
+namespace {
+int update_poll_events(struct lttng_consumer_local_data *ctx,
+		       struct lttng_poll_event *poll_events,
+		       std::vector<struct lttng_consumer_stream *>& streams_to_monitor,
+		       std::unordered_map<int, size_t>& fd_to_stream_index,
+		       struct lttng_ht *ht,
+		       int *nb_inactive_fd,
+		       const std::unordered_set<int>& cool_down,
+		       int *wakeup_fd,
+		       int *data_fd)
 {
 	LTTNG_ASSERT(ctx);
 	LTTNG_ASSERT(ht);
@@ -1254,6 +1268,7 @@ static int update_poll_events(struct lttng_consumer_local_data *ctx,
 	*wakeup_fd = _wakeup_fd;
 	return 0;
 }
+} /* namespace */
 
 /*
  * Poll on the should_quit pipe and the command socket return -1 on
@@ -1415,7 +1430,8 @@ void lttng_consumer_should_exit(struct lttng_consumer_local_data *ctx)
 /*
  * Flush pending writes to trace output disk file.
  */
-static void lttng_consumer_sync_trace_file(struct lttng_consumer_stream *stream, off_t orig_offset)
+namespace {
+void lttng_consumer_sync_trace_file(struct lttng_consumer_stream *stream, off_t orig_offset)
 {
 	const int outfd = stream->out_fd;
 
@@ -1431,6 +1447,7 @@ static void lttng_consumer_sync_trace_file(struct lttng_consumer_stream *stream,
 	lttng::io::hint_flush_range_dont_need_sync(
 		outfd, orig_offset - stream->max_sb_size, stream->max_sb_size);
 }
+} /* namespace */
 
 /*
  * Initialise the necessary environnement :
@@ -1526,7 +1543,8 @@ error:
 /*
  * Iterate over all streams of the hashtable and free them properly.
  */
-static void destroy_data_stream_ht(struct lttng_ht *ht)
+namespace {
+void destroy_data_stream_ht(struct lttng_ht *ht)
 {
 	if (ht == nullptr) {
 		return;
@@ -1550,7 +1568,7 @@ static void destroy_data_stream_ht(struct lttng_ht *ht)
  * Iterate over all streams of the metadata hashtable and free them
  * properly.
  */
-static void destroy_metadata_stream_ht(struct lttng_ht *ht)
+void destroy_metadata_stream_ht(struct lttng_ht *ht)
 {
 	if (ht == nullptr) {
 		return;
@@ -1569,6 +1587,7 @@ static void destroy_metadata_stream_ht(struct lttng_ht *ht)
 
 	lttng_ht_destroy(ht);
 }
+} /* namespace */
 
 /*
  * Close all fds associated with the instance and free the context.
@@ -1607,8 +1626,8 @@ void lttng_consumer_destroy(struct lttng_consumer_local_data *ctx)
 /*
  * Write the metadata stream id on the specified file descriptor.
  */
-static int
-write_relayd_metadata_id(int fd, struct lttng_consumer_stream *stream, unsigned long padding)
+namespace {
+int write_relayd_metadata_id(int fd, struct lttng_consumer_stream *stream, unsigned long padding)
 {
 	ssize_t ret;
 	struct lttcomm_relayd_metadata_payload hdr;
@@ -1641,6 +1660,7 @@ write_relayd_metadata_id(int fd, struct lttng_consumer_stream *stream, unsigned 
 end:
 	return (int) ret;
 }
+} /* namespace */
 
 /*
  * Mmap the ring buffer, read it and write the data to the tracefile. This is a
@@ -2092,7 +2112,8 @@ int lttng_consumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 }
 
-static void lttng_consumer_close_all_metadata()
+namespace {
+void lttng_consumer_close_all_metadata()
 {
 	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
@@ -2117,6 +2138,7 @@ static void lttng_consumer_close_all_metadata()
 		abort();
 	}
 }
+} /* namespace */
 
 /*
  * Clean up a metadata stream and free its memory.
@@ -2251,7 +2273,8 @@ void consumer_add_metadata_stream(struct lttng_consumer_stream *stream)
 /*
  * Delete data stream that are flagged for deletion (endpoint_status).
  */
-static void validate_endpoint_status_data_stream()
+namespace {
+void validate_endpoint_status_data_stream()
 {
 	DBG("Consumer delete flagged data stream");
 
@@ -2271,7 +2294,7 @@ static void validate_endpoint_status_data_stream()
 /*
  * Delete metadata stream that are flagged for deletion (endpoint_status).
  */
-static void validate_endpoint_status_metadata_stream(struct lttng_poll_event *pollset)
+void validate_endpoint_status_metadata_stream(struct lttng_poll_event *pollset)
 {
 	DBG("Consumer delete flagged metadata stream");
 
@@ -2295,6 +2318,7 @@ static void validate_endpoint_status_metadata_stream(struct lttng_poll_event *po
 		consumer_del_metadata_stream(stream, metadata_ht);
 	}
 }
+} /* namespace */
 
 /*
  * Thread polls on metadata file descriptor and write them on disk or on the
@@ -2916,7 +2940,8 @@ error_testpoint:
  * allow the poll() on the stream read-side to detect when the
  * write-side (application) finally closes them.
  */
-static void consumer_close_channel_streams(struct lttng_consumer_channel *channel)
+namespace {
+void consumer_close_channel_streams(struct lttng_consumer_channel *channel)
 {
 	const auto ht = the_consumer_data.stream_per_chan_id_ht;
 
@@ -2961,7 +2986,7 @@ static void consumer_close_channel_streams(struct lttng_consumer_channel *channe
 	}
 }
 
-static void destroy_channel_ht(struct lttng_ht *ht)
+void destroy_channel_ht(struct lttng_ht *ht)
 {
 	if (ht == nullptr) {
 		return;
@@ -2977,6 +3002,7 @@ static void destroy_channel_ht(struct lttng_ht *ht)
 
 	lttng_ht_destroy(ht);
 }
+} /* namespace */
 
 /*
  * This thread polls the channel fds to detect when they are being
@@ -3226,9 +3252,10 @@ error_testpoint:
 	return nullptr;
 }
 
-static int set_metadata_socket(struct lttng_consumer_local_data *ctx,
-			       struct pollfd *sockpoll,
-			       int client_socket)
+namespace {
+int set_metadata_socket(struct lttng_consumer_local_data *ctx,
+			struct pollfd *sockpoll,
+			int client_socket)
 {
 	int ret;
 
@@ -3253,6 +3280,7 @@ static int set_metadata_socket(struct lttng_consumer_local_data *ctx,
 error:
 	return ret;
 }
+} /* namespace */
 
 /*
  * This thread listens on the consumerd socket and receives the file
@@ -3433,9 +3461,10 @@ error_testpoint:
 	return nullptr;
 }
 
-static int post_consume(lttng_consumer_stream& stream,
-			const struct stream_subbuffer *subbuffer,
-			struct lttng_consumer_local_data *ctx)
+namespace {
+int post_consume(lttng_consumer_stream& stream,
+		 const struct stream_subbuffer *subbuffer,
+		 struct lttng_consumer_local_data *ctx)
 {
 	size_t i;
 	int ret = 0;
@@ -3454,6 +3483,7 @@ static int post_consume(lttng_consumer_stream& stream,
 end:
 	return ret;
 }
+} /* namespace */
 
 ssize_t lttng_consumer_read_subbuffer(struct lttng_consumer_stream *stream,
 				      struct lttng_consumer_local_data *ctx,
@@ -3806,7 +3836,8 @@ error_nosignal:
  * A rcu read side lock MUST be acquire before calling this function and locked
  * until the relayd object is no longer necessary.
  */
-static struct consumer_relayd_sock_pair *find_relayd_by_session_id(uint64_t id)
+namespace {
+struct consumer_relayd_sock_pair *find_relayd_by_session_id(uint64_t id)
 {
 	/* Iterate over all relayd since they are indexed by net_seq_idx. */
 	for (auto *relayd :
@@ -3826,6 +3857,7 @@ static struct consumer_relayd_sock_pair *find_relayd_by_session_id(uint64_t id)
 
 	return nullptr;
 }
+} /* namespace */
 
 /*
  * Check if for a given session id there is still data needed to be extract
@@ -4004,9 +4036,10 @@ unsigned long consumer_get_consume_start_pos(unsigned long consumed_pos,
 }
 
 /* Stream lock must be held by the caller. */
-static int sample_stream_positions(struct lttng_consumer_stream *stream,
-				   unsigned long *produced,
-				   unsigned long *consumed)
+namespace {
+int sample_stream_positions(struct lttng_consumer_stream *stream,
+			    unsigned long *produced,
+			    unsigned long *consumed)
 {
 	int ret;
 
@@ -4043,9 +4076,9 @@ end:
  *
  * Returns 0 on success, < 0 on error
  */
-static int lttng_consumer_rotate_data_channel(struct lttng_consumer_channel *channel,
-					      uint64_t key,
-					      uint64_t relayd_id)
+int lttng_consumer_rotate_data_channel(struct lttng_consumer_channel *channel,
+				       uint64_t key,
+				       uint64_t relayd_id)
 {
 	int ret;
 	struct lttng_dynamic_array stream_rotation_positions;
@@ -4374,6 +4407,7 @@ end:
 	lttng_dynamic_pointer_array_reset(&streams_packet_to_open);
 	return ret;
 }
+} /* namespace */
 
 /*
  * Announce the rotation of a metadata channel to the relayd. The relay daemon performs the rotation
@@ -4434,9 +4468,10 @@ int lttng_consumer_rotate_metadata_relayd_stream(
  * Otherwise, the consumer marks the stream as pending rotation, and the rotation will be
  * completed once the coherence point is reached.
  */
-static int lttng_consumer_rotate_metadata_channel(struct lttng_consumer_channel *channel,
-						  uint64_t key [[maybe_unused]],
-						  uint64_t relayd_id)
+namespace {
+int lttng_consumer_rotate_metadata_channel(struct lttng_consumer_channel *channel,
+					   uint64_t key [[maybe_unused]],
+					   uint64_t relayd_id)
 {
 	const auto is_userspace_consumer = the_consumer_data.type == LTTNG_CONSUMER32_UST ||
 		the_consumer_data.type == LTTNG_CONSUMER64_UST;
@@ -4530,6 +4565,7 @@ static int lttng_consumer_rotate_metadata_channel(struct lttng_consumer_channel 
 
 	return 0;
 }
+} /* namespace */
 
 int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 				  uint64_t key,
@@ -4544,7 +4580,8 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 	}
 }
 
-static int consumer_clear_buffer(struct lttng_consumer_stream *stream)
+namespace {
+int consumer_clear_buffer(struct lttng_consumer_stream *stream)
 {
 	int ret = 0;
 	unsigned long consumed_pos_before, consumed_pos_after;
@@ -4597,7 +4634,7 @@ end:
 	return ret;
 }
 
-static int consumer_clear_stream(struct lttng_consumer_stream *stream)
+int consumer_clear_stream(struct lttng_consumer_stream *stream)
 {
 	int ret;
 
@@ -4619,6 +4656,7 @@ static int consumer_clear_stream(struct lttng_consumer_stream *stream)
 error:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Check if a stream is ready to be rotated after extracting it.
@@ -4698,7 +4736,8 @@ void lttng_consumer_reset_stream_rotate_state(struct lttng_consumer_stream *stre
 /*
  * Perform the rotation a local stream file.
  */
-static int rotate_local_stream(struct lttng_consumer_stream *stream)
+namespace {
+int rotate_local_stream(struct lttng_consumer_stream *stream)
 {
 	int ret = 0;
 
@@ -4730,6 +4769,7 @@ static int rotate_local_stream(struct lttng_consumer_stream *stream)
 end:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Performs the stream rotation for the rotate session feature if needed.

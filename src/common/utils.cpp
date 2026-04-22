@@ -594,7 +594,8 @@ end:
  * significant bit (from 1 to 32 on 32-bit, from 1 to 64 on 64-bit).
  */
 #if defined(__i386) || defined(__x86_64)
-static inline unsigned int fls_u32(uint32_t x)
+namespace {
+inline unsigned int fls_u32(uint32_t x)
 {
 	int r;
 
@@ -610,7 +611,7 @@ static inline unsigned int fls_u32(uint32_t x)
 #endif
 
 #if defined(__x86_64) && defined(__LP64__)
-static inline unsigned int fls_u64(uint64_t x)
+inline unsigned int fls_u64(uint64_t x)
 {
 	long r;
 
@@ -623,6 +624,10 @@ static inline unsigned int fls_u64(uint64_t x)
 	return r + 1;
 }
 #define HAS_FLS_U64
+#endif
+
+#if defined(__i386) || defined(__x86_64)
+} /* namespace */
 #endif
 
 #ifndef HAS_FLS_U64
@@ -1069,7 +1074,8 @@ end:
 	return ret;
 }
 
-static const char *get_man_bin_path()
+namespace {
+const char *get_man_bin_path()
 {
 	char *env_man_path = lttng_secure_getenv(DEFAULT_MAN_BIN_PATH_ENV);
 
@@ -1080,7 +1086,7 @@ static const char *get_man_bin_path()
 	return DEFAULT_MAN_BIN_PATH;
 }
 
-static const char *get_manpath()
+const char *get_manpath()
 {
 	char *manpath = lttng_secure_getenv(DEFAULT_MANPATH);
 
@@ -1091,6 +1097,7 @@ static const char *get_manpath()
 	/* As defined during configuration. */
 	return MANPATH;
 }
+} /* namespace */
 
 int utils_show_help(int section, const char *page_name, const char *help_msg)
 {
@@ -1121,7 +1128,8 @@ end:
 	return ret;
 }
 
-static int read_proc_meminfo_field(const char *field, uint64_t *value)
+namespace {
+int read_proc_meminfo_field(const char *field, uint64_t *value)
 {
 	int ret;
 	FILE *proc_meminfo;
@@ -1178,6 +1186,7 @@ found:
 fopen_error:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Returns an estimate of the number of bytes of memory available based on the
@@ -1538,12 +1547,14 @@ end:
 	return ret_code;
 }
 
-static void lttng_closedir(DIR *d)
+namespace {
+void lttng_closedir(DIR *d)
 {
 	if (closedir(d)) {
 		PWARN_FMT("Failed to close directory");
 	}
 }
+} /* namespace */
 
 std::vector<int> list_open_fds()
 {

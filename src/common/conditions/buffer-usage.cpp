@@ -21,7 +21,8 @@
 	(lttng_condition_get_type(condition) == LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW || \
 	 lttng_condition_get_type(condition) == LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH)
 
-static bool is_usage_evaluation(const struct lttng_evaluation *evaluation)
+namespace {
+bool is_usage_evaluation(const struct lttng_evaluation *evaluation)
 {
 	const lttng_condition_type type = lttng_evaluation_get_type(evaluation);
 
@@ -29,7 +30,7 @@ static bool is_usage_evaluation(const struct lttng_evaluation *evaluation)
 		type == LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH;
 }
 
-static void lttng_condition_buffer_usage_destroy(struct lttng_condition *condition)
+void lttng_condition_buffer_usage_destroy(struct lttng_condition *condition)
 {
 	struct lttng_condition_buffer_usage *usage;
 
@@ -40,7 +41,7 @@ static void lttng_condition_buffer_usage_destroy(struct lttng_condition *conditi
 	free(usage);
 }
 
-static bool lttng_condition_buffer_usage_validate(const struct lttng_condition *condition)
+bool lttng_condition_buffer_usage_validate(const struct lttng_condition *condition)
 {
 	bool valid = false;
 	struct lttng_condition_buffer_usage *usage;
@@ -80,8 +81,8 @@ end:
 	return valid;
 }
 
-static int lttng_condition_buffer_usage_serialize(const struct lttng_condition *condition,
-						  struct lttng_payload *payload)
+int lttng_condition_buffer_usage_serialize(const struct lttng_condition *condition,
+					   struct lttng_payload *payload)
 {
 	int ret;
 	struct lttng_condition_buffer_usage *usage;
@@ -132,8 +133,8 @@ end:
 	return ret;
 }
 
-static bool lttng_condition_buffer_usage_is_equal(const struct lttng_condition *_a,
-						  const struct lttng_condition *_b)
+bool lttng_condition_buffer_usage_is_equal(const struct lttng_condition *_a,
+					   const struct lttng_condition *_b)
 {
 	bool is_equal = false;
 	struct lttng_condition_buffer_usage *a, *b;
@@ -189,7 +190,7 @@ end:
 	return is_equal;
 }
 
-static enum lttng_error_code
+enum lttng_error_code
 lttng_condition_buffer_usage_mi_serialize(const struct lttng_condition *condition,
 					  struct mi_writer *writer)
 {
@@ -302,7 +303,7 @@ end:
 	return ret_code;
 }
 
-static struct lttng_condition *lttng_condition_buffer_usage_create(enum lttng_condition_type type)
+struct lttng_condition *lttng_condition_buffer_usage_create(enum lttng_condition_type type)
 {
 	struct lttng_condition_buffer_usage *condition;
 
@@ -319,6 +320,7 @@ static struct lttng_condition *lttng_condition_buffer_usage_create(enum lttng_co
 	condition->parent.mi_serialize = lttng_condition_buffer_usage_mi_serialize;
 	return &condition->parent;
 }
+} /* namespace */
 
 struct lttng_condition *lttng_condition_buffer_usage_low_create(void)
 {
@@ -330,8 +332,9 @@ struct lttng_condition *lttng_condition_buffer_usage_high_create(void)
 	return lttng_condition_buffer_usage_create(LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH);
 }
 
-static ssize_t init_condition_from_payload(struct lttng_condition *condition,
-					   struct lttng_payload_view *src_view)
+namespace {
+ssize_t init_condition_from_payload(struct lttng_condition *condition,
+				    struct lttng_payload_view *src_view)
 {
 	ssize_t ret, condition_size;
 	enum lttng_condition_status status;
@@ -435,6 +438,7 @@ static ssize_t init_condition_from_payload(struct lttng_condition *condition,
 end:
 	return ret;
 }
+} /* namespace */
 
 ssize_t lttng_condition_buffer_usage_low_create_from_payload(struct lttng_payload_view *view,
 							     struct lttng_condition **_condition)
@@ -482,8 +486,9 @@ error:
 	return ret;
 }
 
-static struct lttng_evaluation *create_evaluation_from_payload(enum lttng_condition_type type,
-							       struct lttng_payload_view *view)
+namespace {
+struct lttng_evaluation *create_evaluation_from_payload(enum lttng_condition_type type,
+							struct lttng_payload_view *view)
 {
 	const struct lttng_evaluation_buffer_usage_comm *comm = (typeof(comm)) view->buffer.data;
 	struct lttng_evaluation *evaluation = nullptr;
@@ -497,6 +502,7 @@ static struct lttng_evaluation *create_evaluation_from_payload(enum lttng_condit
 end:
 	return evaluation;
 }
+} /* namespace */
 
 ssize_t lttng_evaluation_buffer_usage_low_create_from_payload(struct lttng_payload_view *view,
 							      struct lttng_evaluation **_evaluation)
@@ -778,8 +784,9 @@ end:
 	return status;
 }
 
-static int lttng_evaluation_buffer_usage_serialize(const struct lttng_evaluation *evaluation,
-						   struct lttng_payload *payload)
+namespace {
+int lttng_evaluation_buffer_usage_serialize(const struct lttng_evaluation *evaluation,
+					    struct lttng_payload *payload)
 {
 	struct lttng_evaluation_buffer_usage *usage;
 	struct lttng_evaluation_buffer_usage_comm comm;
@@ -791,13 +798,14 @@ static int lttng_evaluation_buffer_usage_serialize(const struct lttng_evaluation
 	return lttng_dynamic_buffer_append(&payload->buffer, &comm, sizeof(comm));
 }
 
-static void lttng_evaluation_buffer_usage_destroy(struct lttng_evaluation *evaluation)
+void lttng_evaluation_buffer_usage_destroy(struct lttng_evaluation *evaluation)
 {
 	struct lttng_evaluation_buffer_usage *usage;
 
 	usage = lttng::utils::container_of(evaluation, &lttng_evaluation_buffer_usage::parent);
 	free(usage);
 }
+} /* namespace */
 
 struct lttng_evaluation *lttng_evaluation_buffer_usage_create(enum lttng_condition_type type,
 							      uint64_t use,

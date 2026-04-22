@@ -11,12 +11,14 @@
 #include <common/dynamic-buffer.hpp>
 #include <common/error.hpp>
 
-static void release_fd_handle_ref(void *ptr)
+namespace {
+void release_fd_handle_ref(void *ptr)
 {
 	struct fd_handle *fd_handle = (struct fd_handle *) ptr;
 
 	fd_handle_put(fd_handle);
 }
+} /* namespace */
 
 void lttng_payload_init(struct lttng_payload *payload)
 {

@@ -29,21 +29,22 @@
 #define IS_EVENT_RULE_MATCHES_CONDITION(condition) \
 	(lttng_condition_get_type(condition) == LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES)
 
-static bool is_event_rule_matches_evaluation(const struct lttng_evaluation *evaluation)
+namespace {
+bool is_event_rule_matches_evaluation(const struct lttng_evaluation *evaluation)
 {
 	const lttng_condition_type type = lttng_evaluation_get_type(evaluation);
 
 	return type == LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES;
 }
 
-static bool lttng_condition_event_rule_matches_validate(const struct lttng_condition *condition);
-static int lttng_condition_event_rule_matches_serialize(const struct lttng_condition *condition,
-							struct lttng_payload *payload);
-static bool lttng_condition_event_rule_matches_is_equal(const struct lttng_condition *_a,
-							const struct lttng_condition *_b);
-static void lttng_condition_event_rule_matches_destroy(struct lttng_condition *condition);
+bool lttng_condition_event_rule_matches_validate(const struct lttng_condition *condition);
+int lttng_condition_event_rule_matches_serialize(const struct lttng_condition *condition,
+						 struct lttng_payload *payload);
+bool lttng_condition_event_rule_matches_is_equal(const struct lttng_condition *_a,
+						 const struct lttng_condition *_b);
+void lttng_condition_event_rule_matches_destroy(struct lttng_condition *condition);
 
-static bool lttng_condition_event_rule_matches_validate(const struct lttng_condition *condition)
+bool lttng_condition_event_rule_matches_validate(const struct lttng_condition *condition)
 {
 	bool valid = false;
 	struct lttng_condition_event_rule_matches *event_rule;
@@ -64,7 +65,7 @@ end:
 	return valid;
 }
 
-static const char *msgpack_object_type_str(msgpack_object_type type)
+const char *msgpack_object_type_str(msgpack_object_type type)
 {
 	const char *name;
 
@@ -116,7 +117,7 @@ static const char *msgpack_object_type_str(msgpack_object_type type)
  * Encoding is the length of `str` plus one (for the null character),
  * and then the string, including its null terminator.
  */
-static int serialize_cstr(const char *str, struct lttng_dynamic_buffer *buf)
+int serialize_cstr(const char *str, struct lttng_dynamic_buffer *buf)
 {
 	int ret;
 	const uint32_t len = strlen(str) + 1;
@@ -144,7 +145,7 @@ end:
 /*
  * Serializes the event expression `expr` into `buf`.
  */
-static int serialize_event_expr(const struct lttng_event_expr *expr, struct lttng_payload *payload)
+int serialize_event_expr(const struct lttng_event_expr *expr, struct lttng_payload *payload)
 {
 	const uint8_t type = expr->type;
 	int ret;
@@ -233,7 +234,7 @@ end:
 	return ret;
 }
 
-static struct lttng_capture_descriptor *
+struct lttng_capture_descriptor *
 lttng_condition_event_rule_matches_get_internal_capture_descriptor_at_index(
 	const struct lttng_condition *condition, unsigned int index)
 {
@@ -262,8 +263,8 @@ end:
 	return desc;
 }
 
-static int lttng_condition_event_rule_matches_serialize(const struct lttng_condition *condition,
-							struct lttng_payload *payload)
+int lttng_condition_event_rule_matches_serialize(const struct lttng_condition *condition,
+						 struct lttng_payload *payload)
 {
 	int ret;
 	struct lttng_condition_event_rule_matches *event_rule_matches_condition;
@@ -317,8 +318,8 @@ end:
 	return ret;
 }
 
-static bool capture_descriptors_are_equal(const struct lttng_condition *condition_a,
-					  const struct lttng_condition *condition_b)
+bool capture_descriptors_are_equal(const struct lttng_condition *condition_a,
+				   const struct lttng_condition *condition_b)
 {
 	bool is_equal = true;
 	unsigned int capture_descr_count_a;
@@ -364,8 +365,8 @@ end:
 	return is_equal;
 }
 
-static bool lttng_condition_event_rule_matches_is_equal(const struct lttng_condition *_a,
-							const struct lttng_condition *_b)
+bool lttng_condition_event_rule_matches_is_equal(const struct lttng_condition *_a,
+						 const struct lttng_condition *_b)
 {
 	bool is_equal = false;
 	struct lttng_condition_event_rule_matches *a, *b;
@@ -390,7 +391,7 @@ end:
 	return is_equal;
 }
 
-static void lttng_condition_event_rule_matches_destroy(struct lttng_condition *condition)
+void lttng_condition_event_rule_matches_destroy(struct lttng_condition *condition)
 {
 	struct lttng_condition_event_rule_matches *event_rule_matches_condition;
 
@@ -402,7 +403,7 @@ static void lttng_condition_event_rule_matches_destroy(struct lttng_condition *c
 	free(event_rule_matches_condition);
 }
 
-static void destroy_capture_descriptor(void *ptr)
+void destroy_capture_descriptor(void *ptr)
 {
 	struct lttng_capture_descriptor *desc = (struct lttng_capture_descriptor *) ptr;
 
@@ -411,7 +412,7 @@ static void destroy_capture_descriptor(void *ptr)
 	free(desc);
 }
 
-static enum lttng_error_code
+enum lttng_error_code
 lttng_condition_event_rule_matches_mi_serialize(const struct lttng_condition *condition,
 						struct mi_writer *writer)
 {
@@ -483,6 +484,7 @@ mi_error:
 end:
 	return ret_code;
 }
+} /* namespace */
 
 struct lttng_condition *lttng_condition_event_rule_matches_create(struct lttng_event_rule *rule)
 {
@@ -517,7 +519,8 @@ end:
 	return parent;
 }
 
-static uint64_t uint_from_buffer(const struct lttng_buffer_view *view, size_t size, size_t *offset)
+namespace {
+uint64_t uint_from_buffer(const struct lttng_buffer_view *view, size_t size, size_t *offset)
 {
 	uint64_t ret;
 	const struct lttng_buffer_view uint_view = lttng_buffer_view_from_view(view, *offset, size);
@@ -552,7 +555,7 @@ end:
 	return ret;
 }
 
-static const char *str_from_buffer(const struct lttng_buffer_view *view, size_t *offset)
+const char *str_from_buffer(const struct lttng_buffer_view *view, size_t *offset)
 {
 	uint64_t len;
 	const char *ret;
@@ -578,8 +581,7 @@ end:
 	return ret;
 }
 
-static struct lttng_event_expr *event_expr_from_payload(struct lttng_payload_view *view,
-							size_t *offset)
+struct lttng_event_expr *event_expr_from_payload(struct lttng_payload_view *view, size_t *offset)
 {
 	struct lttng_event_expr *expr = nullptr;
 	const char *str;
@@ -665,6 +667,7 @@ error:
 end:
 	return expr;
 }
+} /* namespace */
 
 ssize_t lttng_condition_event_rule_matches_create_from_payload(struct lttng_payload_view *view,
 							       struct lttng_condition **_condition)
@@ -959,8 +962,9 @@ error:
 	return ret;
 }
 
-static int lttng_evaluation_event_rule_matches_serialize(const struct lttng_evaluation *evaluation,
-							 struct lttng_payload *payload)
+namespace {
+int lttng_evaluation_event_rule_matches_serialize(const struct lttng_evaluation *evaluation,
+						  struct lttng_payload *payload)
 {
 	int ret = 0;
 	struct lttng_evaluation_event_rule_matches *hit;
@@ -985,7 +989,7 @@ end:
 	return ret;
 }
 
-static bool msgpack_str_is_equal(const struct msgpack_object *obj, const char *str)
+bool msgpack_str_is_equal(const struct msgpack_object *obj, const char *str)
 {
 	bool is_equal = true;
 
@@ -1005,8 +1009,7 @@ end:
 	return is_equal;
 }
 
-static const msgpack_object *get_msgpack_map_obj(const struct msgpack_object *map_obj,
-						 const char *name)
+const msgpack_object *get_msgpack_map_obj(const struct msgpack_object *map_obj, const char *name)
 {
 	const msgpack_object *ret = nullptr;
 	size_t i;
@@ -1028,7 +1031,7 @@ end:
 	return ret;
 }
 
-static void lttng_evaluation_event_rule_matches_destroy(struct lttng_evaluation *evaluation)
+void lttng_evaluation_event_rule_matches_destroy(struct lttng_evaluation *evaluation)
 {
 	struct lttng_evaluation_event_rule_matches *hit;
 
@@ -1038,8 +1041,8 @@ static void lttng_evaluation_event_rule_matches_destroy(struct lttng_evaluation 
 	free(hit);
 }
 
-static int event_field_value_enum_from_obj(const msgpack_object *obj,
-					   struct lttng_event_field_value **field_val)
+int event_field_value_enum_from_obj(const msgpack_object *obj,
+				    struct lttng_event_field_value **field_val)
 {
 	int ret = 0;
 	const msgpack_object *inner_obj;
@@ -1108,8 +1111,8 @@ end:
 	return ret;
 }
 
-static int event_field_value_blob_from_obj(const msgpack_object *obj,
-					   struct lttng_event_field_value **pfield_val)
+int event_field_value_blob_from_obj(const msgpack_object *obj,
+				    struct lttng_event_field_value **pfield_val)
 {
 	const msgpack_object *media_type_obj;
 	const msgpack_object *total_length_obj;
@@ -1228,8 +1231,8 @@ static int event_field_value_blob_from_obj(const msgpack_object *obj,
 	return 0;
 }
 
-static int event_field_value_from_obj(const msgpack_object *obj,
-				      struct lttng_event_field_value **field_val)
+int event_field_value_from_obj(const msgpack_object *obj,
+			       struct lttng_event_field_value **field_val)
 {
 	int ret = 0;
 
@@ -1358,7 +1361,7 @@ end:
 	return ret;
 }
 
-static struct lttng_event_field_value *
+struct lttng_event_field_value *
 event_field_value_from_capture_payload(const struct lttng_condition_event_rule_matches *condition,
 				       const char *capture_payload,
 				       size_t capture_payload_size)
@@ -1457,6 +1460,7 @@ end:
 	msgpack_unpacked_destroy(&unpacked);
 	return ret;
 }
+} /* namespace */
 
 struct lttng_evaluation *lttng_evaluation_event_rule_matches_create(
 	const struct lttng_condition_event_rule_matches *condition,

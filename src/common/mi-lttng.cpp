@@ -536,7 +536,8 @@ const char *mi_lttng_logleveltype_string(enum lttng_loglevel_type value)
 	}
 }
 
-static const char *mi_lttng_eventtype_string(enum lttng_event_type value)
+namespace {
+const char *mi_lttng_eventtype_string(enum lttng_event_type value)
 {
 	switch (value) {
 	case LTTNG_EVENT_ALL:
@@ -560,7 +561,7 @@ static const char *mi_lttng_eventtype_string(enum lttng_event_type value)
 	}
 }
 
-static const char *mi_lttng_event_contexttype_string(enum lttng_event_context_type val)
+const char *mi_lttng_event_contexttype_string(enum lttng_event_context_type val)
 {
 	switch (val) {
 	case LTTNG_EVENT_CONTEXT_PID:
@@ -645,6 +646,7 @@ static const char *mi_lttng_event_contexttype_string(enum lttng_event_context_ty
 		return nullptr;
 	}
 }
+} /* namespace */
 
 const char *mi_lttng_eventfieldtype_string(enum lttng_event_field_type val)
 {
@@ -1143,7 +1145,8 @@ end:
 	return ret;
 }
 
-static const char *allocation_policy_to_string(enum lttng_channel_allocation_policy policy)
+namespace {
+const char *allocation_policy_to_string(enum lttng_channel_allocation_policy policy)
 {
 	switch (policy) {
 	case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU:
@@ -1155,7 +1158,7 @@ static const char *allocation_policy_to_string(enum lttng_channel_allocation_pol
 	}
 }
 
-static const char *preallocation_policy_to_string(enum lttng_channel_preallocation_policy policy)
+const char *preallocation_policy_to_string(enum lttng_channel_preallocation_policy policy)
 {
 	switch (policy) {
 	case LTTNG_CHANNEL_PREALLOCATION_POLICY_PREALLOCATE:
@@ -1167,9 +1170,8 @@ static const char *preallocation_policy_to_string(enum lttng_channel_preallocati
 	}
 }
 
-static int
-mi_emit_channel_reclamation_policy(const nonstd::optional<uint64_t>& memory_reclamation_policy,
-				   struct mi_writer *writer)
+int mi_emit_channel_reclamation_policy(const nonstd::optional<uint64_t>& memory_reclamation_policy,
+				       struct mi_writer *writer)
 {
 	if (!memory_reclamation_policy) {
 		return 0;
@@ -1214,6 +1216,7 @@ mi_emit_channel_reclamation_policy(const nonstd::optional<uint64_t>& memory_recl
 
 	return mi_lttng_writer_close_element(writer);
 }
+} /* namespace */
 
 int mi_lttng_channel_attr(struct mi_writer *writer, struct lttng_channel_attr *attr)
 {
@@ -1717,7 +1720,8 @@ end:
 	return ret;
 }
 
-static int write_event_exclusions(struct mi_writer *writer, struct lttng_event *event)
+namespace {
+int write_event_exclusions(struct mi_writer *writer, struct lttng_event *event)
 {
 	int i;
 	int ret;
@@ -1759,6 +1763,7 @@ static int write_event_exclusions(struct mi_writer *writer, struct lttng_event *
 end:
 	return ret;
 }
+} /* namespace */
 
 int mi_lttng_event_tracepoint_loglevel(struct mi_writer *writer,
 				       struct lttng_event *event,
@@ -1838,7 +1843,8 @@ end:
 	return ret;
 }
 
-static int mi_lttng_event_userspace_probe(struct mi_writer *writer, struct lttng_event *event)
+namespace {
+int mi_lttng_event_userspace_probe(struct mi_writer *writer, struct lttng_event *event)
 {
 	int ret;
 	const struct lttng_userspace_probe_location *location;
@@ -1977,6 +1983,7 @@ static int mi_lttng_event_userspace_probe(struct mi_writer *writer, struct lttng
 end:
 	return ret;
 }
+} /* namespace */
 
 int mi_lttng_event_function_entry(struct mi_writer *writer, struct lttng_event *event)
 {
@@ -2066,9 +2073,10 @@ int mi_lttng_trackers_open(struct mi_writer *writer)
 	return mi_lttng_writer_open_element(writer, config_element_process_attr_trackers);
 }
 
-static int get_tracker_elements(enum lttng_process_attr process_attr,
-				const char **element_process_attr_tracker,
-				const char **element_process_attr_value)
+namespace {
+int get_tracker_elements(enum lttng_process_attr process_attr,
+			 const char **element_process_attr_tracker,
+			 const char **element_process_attr_value)
 {
 	int ret = 0;
 
@@ -2102,6 +2110,7 @@ static int get_tracker_elements(enum lttng_process_attr process_attr,
 	}
 	return ret;
 }
+} /* namespace */
 
 int mi_lttng_process_attribute_tracker_open(struct mi_writer *writer,
 					    enum lttng_process_attr process_attr)
@@ -2394,8 +2403,8 @@ end:
 	return ret;
 }
 
-static int
-mi_lttng_app_context(struct mi_writer *writer, const char *provider_name, const char *ctx_name)
+namespace {
+int mi_lttng_app_context(struct mi_writer *writer, const char *provider_name, const char *ctx_name)
 {
 	int ret;
 
@@ -2424,6 +2433,7 @@ mi_lttng_app_context(struct mi_writer *writer, const char *provider_name, const 
 end:
 	return ret;
 }
+} /* namespace */
 
 int mi_lttng_context(struct mi_writer *writer, struct lttng_event_context *context, int is_open)
 {
@@ -2802,8 +2812,8 @@ end:
 	return ret;
 }
 
-static int mi_lttng_location(struct mi_writer *writer,
-			     const struct lttng_trace_archive_location *location)
+namespace {
+int mi_lttng_location(struct mi_writer *writer, const struct lttng_trace_archive_location *location)
 {
 	int ret = 0;
 	enum lttng_trace_archive_location_type location_type;
@@ -2938,6 +2948,7 @@ static int mi_lttng_location(struct mi_writer *writer,
 end:
 	return ret;
 }
+} /* namespace */
 
 int mi_lttng_rotate(struct mi_writer *writer,
 		    const char *session_name,

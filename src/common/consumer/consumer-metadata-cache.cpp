@@ -33,7 +33,8 @@ extern struct lttng_consumer_global_data the_consumer_data;
 /*
  * Reset the metadata cache.
  */
-static void metadata_cache_reset(struct consumer_metadata_cache *cache)
+namespace {
+void metadata_cache_reset(struct consumer_metadata_cache *cache)
 {
 	const int ret = lttng_dynamic_buffer_set_size(&cache->contents, 0);
 
@@ -45,7 +46,7 @@ static void metadata_cache_reset(struct consumer_metadata_cache *cache)
  * If it did, reset the metadata cache.
  * The metadata cache lock MUST be held.
  */
-static enum metadata_cache_update_version_status
+enum metadata_cache_update_version_status
 metadata_cache_update_version(struct consumer_metadata_cache *cache, uint64_t version)
 {
 	enum metadata_cache_update_version_status status;
@@ -68,6 +69,7 @@ metadata_cache_update_version(struct consumer_metadata_cache *cache, uint64_t ve
 end:
 	return status;
 }
+} /* namespace */
 
 /*
  * Write metadata to the cache, extend the cache if necessary. We support

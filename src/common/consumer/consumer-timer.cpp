@@ -40,7 +40,9 @@ bool is_userspace_consumer() noexcept
 }
 } /* namespace */
 
-static int the_channel_monitor_pipe = -1;
+namespace {
+int the_channel_monitor_pipe = -1;
+} /* namespace */
 
 /* Start the channel's periodic metadata switching task. */
 void consumer_timer_switch_start(struct lttng_consumer_channel *channel,

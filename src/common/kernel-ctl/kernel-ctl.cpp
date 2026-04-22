@@ -41,7 +41,8 @@
  * kernel is 64-bit. The old ABI is kept here for compatibility but is
  * deprecated and will be removed eventually.
  */
-static int lttng_kernel_abi_use_old_abi = -1;
+namespace {
+int lttng_kernel_abi_use_old_abi = -1;
 
 /*
  * Execute the new or old ioctl depending on the ABI version.
@@ -52,7 +53,7 @@ static int lttng_kernel_abi_use_old_abi = -1;
  * and new request codes.
  * It returns the return value of the ioctl executed.
  */
-static inline int compat_ioctl_no_arg(int fd, unsigned long oldname, unsigned long newname)
+inline int compat_ioctl_no_arg(int fd, unsigned long oldname, unsigned long newname)
 {
 	int ret;
 
@@ -73,6 +74,7 @@ static inline int compat_ioctl_no_arg(int fd, unsigned long oldname, unsigned lo
 end:
 	return ret;
 }
+} /* namespace */
 
 int kernctl_create_session(int fd)
 {

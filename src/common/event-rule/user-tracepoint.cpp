@@ -25,7 +25,8 @@
 #define IS_USER_TRACEPOINT_EVENT_RULE(rule) \
 	(lttng_event_rule_get_type(rule) == LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT)
 
-static void lttng_event_rule_user_tracepoint_destroy(struct lttng_event_rule *rule)
+namespace {
+void lttng_event_rule_user_tracepoint_destroy(struct lttng_event_rule *rule)
 {
 	struct lttng_event_rule_user_tracepoint *tracepoint;
 
@@ -43,7 +44,7 @@ static void lttng_event_rule_user_tracepoint_destroy(struct lttng_event_rule *ru
 	free(tracepoint);
 }
 
-static bool lttng_event_rule_user_tracepoint_validate(const struct lttng_event_rule *rule)
+bool lttng_event_rule_user_tracepoint_validate(const struct lttng_event_rule *rule)
 {
 	bool valid = false;
 	struct lttng_event_rule_user_tracepoint *tracepoint;
@@ -65,8 +66,8 @@ end:
 	return valid;
 }
 
-static int lttng_event_rule_user_tracepoint_serialize(const struct lttng_event_rule *rule,
-						      struct lttng_payload *payload)
+int lttng_event_rule_user_tracepoint_serialize(const struct lttng_event_rule *rule,
+					       struct lttng_payload *payload)
 {
 	int ret, i;
 	size_t pattern_len, filter_expression_len, exclusions_len, header_offset;
@@ -182,8 +183,8 @@ end:
 	return ret;
 }
 
-static bool lttng_event_rule_user_tracepoint_is_equal(const struct lttng_event_rule *_a,
-						      const struct lttng_event_rule *_b)
+bool lttng_event_rule_user_tracepoint_is_equal(const struct lttng_event_rule *_a,
+					       const struct lttng_event_rule *_b)
 {
 	int i;
 	bool is_equal = false;
@@ -247,7 +248,7 @@ end:
 	return is_equal;
 }
 
-static enum lttng_error_code
+enum lttng_error_code
 lttng_event_rule_user_tracepoint_generate_filter_bytecode(struct lttng_event_rule *rule,
 							  const struct lttng_credentials *creds)
 {
@@ -296,7 +297,7 @@ end:
 	return ret_code;
 }
 
-static const char *
+const char *
 lttng_event_rule_user_tracepoint_get_filter_expression(const struct lttng_event_rule *rule)
 {
 	struct lttng_event_rule_user_tracepoint *tracepoint;
@@ -306,7 +307,7 @@ lttng_event_rule_user_tracepoint_get_filter_expression(const struct lttng_event_
 	return tracepoint->filter_expression;
 }
 
-static const struct lttng_bytecode *
+const struct lttng_bytecode *
 lttng_event_rule_user_tracepoint_get_internal_filter_bytecode(const struct lttng_event_rule *rule)
 {
 	struct lttng_event_rule_user_tracepoint *tracepoint;
@@ -316,7 +317,7 @@ lttng_event_rule_user_tracepoint_get_internal_filter_bytecode(const struct lttng
 	return tracepoint->internal_filter.bytecode;
 }
 
-static enum lttng_event_rule_generate_exclusions_status
+enum lttng_event_rule_generate_exclusions_status
 lttng_event_rule_user_tracepoint_generate_exclusions(const struct lttng_event_rule *rule,
 						     struct lttng_event_exclusion **_exclusions)
 {
@@ -373,12 +374,12 @@ end:
 	return ret_status;
 }
 
-static void destroy_lttng_exclusions_element(void *ptr)
+void destroy_lttng_exclusions_element(void *ptr)
 {
 	free(ptr);
 }
 
-static unsigned long lttng_event_rule_user_tracepoint_hash(const struct lttng_event_rule *rule)
+unsigned long lttng_event_rule_user_tracepoint_hash(const struct lttng_event_rule *rule)
 {
 	unsigned long hash;
 	unsigned int i, exclusion_count;
@@ -413,7 +414,7 @@ static unsigned long lttng_event_rule_user_tracepoint_hash(const struct lttng_ev
 	return hash;
 }
 
-static enum lttng_error_code
+enum lttng_error_code
 lttng_event_rule_user_tracepoint_mi_serialize(const struct lttng_event_rule *rule,
 					      struct mi_writer *writer)
 {
@@ -525,7 +526,7 @@ end:
 	return ret_code;
 }
 
-static struct lttng_event *
+struct lttng_event *
 lttng_event_rule_user_tracepoint_generate_lttng_event(const struct lttng_event_rule *rule)
 {
 	const auto *tracepoint =
@@ -578,6 +579,7 @@ lttng_event_rule_user_tracepoint_generate_lttng_event(const struct lttng_event_r
 
 	return local_event.release();
 }
+} /* namespace */
 
 struct lttng_event_rule *lttng_event_rule_user_tracepoint_create(void)
 {
@@ -914,7 +916,8 @@ end:
 	return status;
 }
 
-static bool log_level_rule_valid(const struct lttng_log_level_rule *rule)
+namespace {
+bool log_level_rule_valid(const struct lttng_log_level_rule *rule)
 {
 	bool valid = false;
 	enum lttng_log_level_rule_status status;
@@ -947,6 +950,7 @@ static bool log_level_rule_valid(const struct lttng_log_level_rule *rule)
 end:
 	return valid;
 }
+} /* namespace */
 
 enum lttng_event_rule_status lttng_event_rule_user_tracepoint_set_log_level_rule(
 	struct lttng_event_rule *rule, const struct lttng_log_level_rule *log_level_rule)

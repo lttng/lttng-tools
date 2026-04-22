@@ -25,7 +25,8 @@
 #include <sys/stat.h>
 #include <vector>
 
-static bool relayd_supports_chunks(const struct lttcomm_relayd_sock *sock)
+namespace {
+bool relayd_supports_chunks(const struct lttcomm_relayd_sock *sock)
 {
 	if (sock->major > 2) {
 		return true;
@@ -35,7 +36,7 @@ static bool relayd_supports_chunks(const struct lttcomm_relayd_sock *sock)
 	return false;
 }
 
-static bool relayd_supports_get_configuration(const struct lttcomm_relayd_sock *sock)
+bool relayd_supports_get_configuration(const struct lttcomm_relayd_sock *sock)
 {
 	if (sock->major > 2) {
 		return true;
@@ -48,11 +49,11 @@ static bool relayd_supports_get_configuration(const struct lttcomm_relayd_sock *
 /*
  * Send command. Fill up the header and append the data.
  */
-static int send_command(lttcomm_relayd_sock& rsock,
-			enum lttcomm_relayd_command cmd,
-			const void *data,
-			size_t size,
-			int flags)
+int send_command(lttcomm_relayd_sock& rsock,
+		 enum lttcomm_relayd_command cmd,
+		 const void *data,
+		 size_t size,
+		 int flags)
 {
 	int ret;
 	struct lttcomm_relayd_hdr header;
@@ -110,7 +111,7 @@ alloc_error:
  * Receive reply data on socket. This MUST be call after send_command or else
  * could result in unexpected behavior(s).
  */
-static int recv_reply(lttcomm_relayd_sock& rsock, void *data, size_t size)
+int recv_reply(lttcomm_relayd_sock& rsock, void *data, size_t size)
 {
 	int ret;
 
@@ -150,7 +151,7 @@ error:
  * Common helper to populate base fields for 2.11+ create session messages.
  * Returns 0 on success, negative value on error.
  */
-static int relayd_create_session_2_11_base_populate(
+int relayd_create_session_2_11_base_populate(
 	struct lttcomm_relayd_create_session_2_11_base *base_header,
 	char *names_buffer,
 	const char *session_name,
@@ -225,19 +226,19 @@ error:
 	return ret;
 }
 
-static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
-				      const char *session_name,
-				      const char *hostname,
-				      const char *base_path,
-				      int session_live_timer,
-				      unsigned int snapshot,
-				      uint64_t sessiond_session_id,
-				      const lttng_uuid& sessiond_uuid,
-				      const uint64_t *current_chunk_id,
-				      time_t creation_time,
-				      bool session_name_contains_creation_time,
-				      struct lttcomm_relayd_create_session_reply_2_11 *reply,
-				      char *output_path)
+int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
+			       const char *session_name,
+			       const char *hostname,
+			       const char *base_path,
+			       int session_live_timer,
+			       unsigned int snapshot,
+			       uint64_t sessiond_session_id,
+			       const lttng_uuid& sessiond_uuid,
+			       const uint64_t *current_chunk_id,
+			       time_t creation_time,
+			       bool session_name_contains_creation_time,
+			       struct lttcomm_relayd_create_session_reply_2_11 *reply,
+			       char *output_path)
 {
 	int ret;
 	struct lttcomm_relayd_create_session_2_11 *msg = nullptr;
@@ -311,20 +312,20 @@ error:
 	return ret;
 }
 
-static int relayd_create_session_2_15(struct lttcomm_relayd_sock *rsock,
-				      lttng::c_string_view session_name,
-				      lttng::c_string_view hostname,
-				      lttng::c_string_view base_path,
-				      int session_live_timer,
-				      unsigned int snapshot,
-				      uint64_t sessiond_session_id,
-				      const lttng_uuid& sessiond_uuid,
-				      const uint64_t *current_chunk_id,
-				      time_t creation_time,
-				      bool session_name_contains_creation_time,
-				      enum lttng_trace_format trace_format,
-				      struct lttcomm_relayd_create_session_reply_2_11 *reply,
-				      char *output_path)
+int relayd_create_session_2_15(struct lttcomm_relayd_sock *rsock,
+			       lttng::c_string_view session_name,
+			       lttng::c_string_view hostname,
+			       lttng::c_string_view base_path,
+			       int session_live_timer,
+			       unsigned int snapshot,
+			       uint64_t sessiond_session_id,
+			       const lttng_uuid& sessiond_uuid,
+			       const uint64_t *current_chunk_id,
+			       time_t creation_time,
+			       bool session_name_contains_creation_time,
+			       enum lttng_trace_format trace_format,
+			       struct lttcomm_relayd_create_session_reply_2_11 *reply,
+			       char *output_path)
 {
 	int ret;
 
@@ -395,12 +396,12 @@ static int relayd_create_session_2_15(struct lttcomm_relayd_sock *rsock,
  * From 2.4 to 2.10, RELAYD_CREATE_SESSION takes additional parameters to
  * support the live reading capability.
  */
-static int relayd_create_session_2_4(struct lttcomm_relayd_sock *rsock,
-				     const char *session_name,
-				     const char *hostname,
-				     int session_live_timer,
-				     unsigned int snapshot,
-				     struct lttcomm_relayd_status_session *reply)
+int relayd_create_session_2_4(struct lttcomm_relayd_sock *rsock,
+			      const char *session_name,
+			      const char *hostname,
+			      int session_live_timer,
+			      unsigned int snapshot,
+			      struct lttcomm_relayd_status_session *reply)
 {
 	int ret;
 	struct lttcomm_relayd_create_session_2_4 msg;
@@ -436,8 +437,8 @@ error:
 /*
  * RELAYD_CREATE_SESSION from 2.1 to 2.3.
  */
-static int relayd_create_session_2_1(struct lttcomm_relayd_sock *rsock,
-				     struct lttcomm_relayd_status_session *reply)
+int relayd_create_session_2_1(struct lttcomm_relayd_sock *rsock,
+			      struct lttcomm_relayd_status_session *reply)
 {
 	int ret;
 
@@ -457,6 +458,7 @@ static int relayd_create_session_2_1(struct lttcomm_relayd_sock *rsock,
 error:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Send a RELAYD_CREATE_SESSION command to the relayd with the given socket and
@@ -548,9 +550,10 @@ error:
 	return ret;
 }
 
-static int relayd_add_stream_2_1(struct lttcomm_relayd_sock *rsock,
-				 const char *channel_name,
-				 const char *pathname)
+namespace {
+int relayd_add_stream_2_1(struct lttcomm_relayd_sock *rsock,
+			  const char *channel_name,
+			  const char *pathname)
 {
 	int ret;
 	struct lttcomm_relayd_add_stream msg;
@@ -577,11 +580,11 @@ error:
 	return ret;
 }
 
-static int relayd_add_stream_2_2(struct lttcomm_relayd_sock *rsock,
-				 const char *channel_name,
-				 const char *pathname,
-				 uint64_t tracefile_size,
-				 uint64_t tracefile_count)
+int relayd_add_stream_2_2(struct lttcomm_relayd_sock *rsock,
+			  const char *channel_name,
+			  const char *pathname,
+			  uint64_t tracefile_size,
+			  uint64_t tracefile_count)
 {
 	int ret;
 	struct lttcomm_relayd_add_stream_2_2 msg;
@@ -609,12 +612,12 @@ error:
 	return ret;
 }
 
-static int relayd_add_stream_2_11(struct lttcomm_relayd_sock *rsock,
-				  const char *channel_name,
-				  const char *pathname,
-				  uint64_t tracefile_size,
-				  uint64_t tracefile_count,
-				  uint64_t trace_archive_id)
+int relayd_add_stream_2_11(struct lttcomm_relayd_sock *rsock,
+			   const char *channel_name,
+			   const char *pathname,
+			   uint64_t tracefile_size,
+			   uint64_t tracefile_count,
+			   uint64_t trace_archive_id)
 {
 	int ret;
 	struct lttcomm_relayd_add_stream_2_11 *msg = nullptr;
@@ -663,6 +666,7 @@ error:
 	free(msg);
 	return ret;
 }
+} /* namespace */
 
 /*
  * Add stream on the relayd and assign stream handle to the stream_id argument.

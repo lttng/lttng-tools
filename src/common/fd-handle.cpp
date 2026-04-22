@@ -17,7 +17,8 @@ struct fd_handle {
 	int fd;
 };
 
-static void fd_handle_release(struct urcu_ref *ref)
+namespace {
+void fd_handle_release(struct urcu_ref *ref)
 {
 	int ret;
 	struct fd_handle *handle = lttng::utils::container_of(ref, &fd_handle::ref);
@@ -31,6 +32,7 @@ static void fd_handle_release(struct urcu_ref *ref)
 
 	free(handle);
 }
+} /* namespace */
 
 struct fd_handle *fd_handle_create(int fd)
 {

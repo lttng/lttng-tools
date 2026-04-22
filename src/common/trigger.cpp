@@ -106,7 +106,8 @@ const struct lttng_action *lttng_trigger_get_const_action(const struct lttng_tri
 	return trigger ? trigger->action : nullptr;
 }
 
-static void trigger_destroy_ref(struct urcu_ref *ref)
+namespace {
+void trigger_destroy_ref(struct urcu_ref *ref)
 {
 	struct lttng_trigger *trigger = lttng::utils::container_of(ref, &lttng_trigger::ref);
 	struct lttng_action *action = lttng_trigger_get_action(trigger);
@@ -124,6 +125,7 @@ static void trigger_destroy_ref(struct urcu_ref *ref)
 	free(trigger->name);
 	free(trigger);
 }
+} /* namespace */
 
 void lttng_trigger_destroy(struct lttng_trigger *trigger)
 {
@@ -479,12 +481,14 @@ void lttng_trigger_put(struct lttng_trigger *trigger)
 	urcu_ref_put(&trigger->ref, trigger_destroy_ref);
 }
 
-static void delete_trigger_array_element(void *ptr)
+namespace {
+void delete_trigger_array_element(void *ptr)
 {
 	struct lttng_trigger *trigger = (lttng_trigger *) ptr;
 
 	lttng_trigger_put(trigger);
 }
+} /* namespace */
 
 struct lttng_triggers *lttng_triggers_create()
 {
@@ -1102,7 +1106,8 @@ end:
 }
 
 /* Used by qsort, which expects the semantics of strcmp(). */
-static int compare_triggers_by_name(const void *a, const void *b)
+namespace {
+int compare_triggers_by_name(const void *a, const void *b)
 {
 	const struct lttng_trigger *trigger_a = *((const struct lttng_trigger **) a);
 	const struct lttng_trigger *trigger_b = *((const struct lttng_trigger **) b);
@@ -1118,6 +1123,7 @@ static int compare_triggers_by_name(const void *a, const void *b)
 
 	return strcmp(name_a, name_b);
 }
+} /* namespace */
 
 enum lttng_error_code
 lttng_triggers_mi_serialize(const struct lttng_triggers *triggers,

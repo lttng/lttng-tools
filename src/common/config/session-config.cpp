@@ -560,9 +560,9 @@ int config_writer_write_element_string(struct config_writer *writer,
 	return std::min(write_ret, 0);
 }
 
-static ATTR_FORMAT_PRINTF(2, 3) void xml_error_handler(void *ctx __attribute__((unused)),
-						       const char *format,
-						       ...)
+namespace {
+ATTR_FORMAT_PRINTF(2, 3)
+void xml_error_handler(void *ctx __attribute__((unused)), const char *format, ...)
 {
 	char *errMsg;
 	va_list args;
@@ -580,7 +580,7 @@ static ATTR_FORMAT_PRINTF(2, 3) void xml_error_handler(void *ctx __attribute__((
 	free(errMsg);
 }
 
-static void fini_session_config_validation_ctx(struct session_config_validation_ctx *ctx)
+void fini_session_config_validation_ctx(struct session_config_validation_ctx *ctx)
 {
 	if (ctx->parser_ctx) {
 		xmlSchemaFreeParserCtxt(ctx->parser_ctx);
@@ -597,7 +597,7 @@ static void fini_session_config_validation_ctx(struct session_config_validation_
 	memset(ctx, 0, sizeof(struct session_config_validation_ctx));
 }
 
-static char *get_session_config_xsd_path()
+char *get_session_config_xsd_path()
 {
 	char *xsd_path;
 	const char *base_path = lttng_secure_getenv(DEFAULT_SESSION_CONFIG_XSD_PATH_ENV);
@@ -625,7 +625,7 @@ end:
 	return xsd_path;
 }
 
-static int init_session_config_validation_ctx(struct session_config_validation_ctx *ctx)
+int init_session_config_validation_ctx(struct session_config_validation_ctx *ctx)
 {
 	int ret;
 	char *xsd_path = get_session_config_xsd_path();
@@ -670,7 +670,7 @@ end:
 	return ret;
 }
 
-static int parse_uint(xmlChar *str, uint64_t *val)
+int parse_uint(xmlChar *str, uint64_t *val)
 {
 	int ret;
 	char *endptr;
@@ -691,7 +691,7 @@ end:
 	return ret;
 }
 
-static int parse_int(xmlChar *str, int64_t *val)
+int parse_int(xmlChar *str, int64_t *val)
 {
 	int ret;
 	char *endptr;
@@ -712,7 +712,7 @@ end:
 	return ret;
 }
 
-static int parse_bool(xmlChar *str, int *val)
+int parse_bool(xmlChar *str, int *val)
 {
 	int ret = 0;
 
@@ -734,7 +734,7 @@ end:
 	return ret;
 }
 
-static int get_domain_type(xmlChar *domain)
+int get_domain_type(xmlChar *domain)
 {
 	int ret;
 
@@ -763,7 +763,7 @@ error:
 	return -1;
 }
 
-static int get_buffer_type(xmlChar *buffer_type)
+int get_buffer_type(xmlChar *buffer_type)
 {
 	int ret;
 
@@ -786,7 +786,7 @@ error:
 	return -1;
 }
 
-static int get_overwrite_mode(xmlChar *overwrite_mode)
+int get_overwrite_mode(xmlChar *overwrite_mode)
 {
 	int ret;
 
@@ -807,7 +807,7 @@ error:
 	return -1;
 }
 
-static int get_output_type(xmlChar *output_type)
+int get_output_type(xmlChar *output_type)
 {
 	int ret;
 
@@ -828,7 +828,7 @@ error:
 	return -1;
 }
 
-static int get_event_type(xmlChar *event_type)
+int get_event_type(xmlChar *event_type)
 {
 	int ret;
 
@@ -861,7 +861,7 @@ error:
 	return -1;
 }
 
-static int get_loglevel_type(xmlChar *loglevel_type)
+int get_loglevel_type(xmlChar *loglevel_type)
 {
 	int ret;
 
@@ -887,7 +887,7 @@ error:
 /*
  * Return the context type or -1 on error.
  */
-static int get_context_type(xmlChar *context_type)
+int get_context_type(xmlChar *context_type)
 {
 	int ret;
 
@@ -982,7 +982,7 @@ error:
 	return -1;
 }
 
-static int init_domain(xmlNodePtr domain_node, struct lttng_domain *domain)
+int init_domain(xmlNodePtr domain_node, struct lttng_domain *domain)
 {
 	int ret;
 	xmlNodePtr node;
@@ -1027,7 +1027,7 @@ end:
 	return ret;
 }
 
-static int get_net_output_uris(xmlNodePtr net_output_node, char **control_uri, char **data_uri)
+int get_net_output_uris(xmlNodePtr net_output_node, char **control_uri, char **data_uri)
 {
 	xmlNodePtr node;
 
@@ -1051,7 +1051,7 @@ static int get_net_output_uris(xmlNodePtr net_output_node, char **control_uri, c
 	return *control_uri || *data_uri ? 0 : -LTTNG_ERR_LOAD_INVALID_CONFIG;
 }
 
-static int process_consumer_output(xmlNodePtr consumer_output_node, struct consumer_output *output)
+int process_consumer_output(xmlNodePtr consumer_output_node, struct consumer_output *output)
 {
 	int ret;
 	xmlNodePtr node;
@@ -1113,10 +1113,10 @@ end:
 	return ret;
 }
 
-static int create_snapshot_session(const char *session_name,
-				   xmlNodePtr output_node,
-				   enum lttng_trace_format trace_format,
-				   const struct config_load_session_override_attr *overrides)
+int create_snapshot_session(const char *session_name,
+			    xmlNodePtr output_node,
+			    enum lttng_trace_format trace_format,
+			    const struct config_load_session_override_attr *overrides)
 {
 	int ret = 0;
 	enum lttng_error_code ret_code;
@@ -1274,11 +1274,11 @@ end:
 	return ret;
 }
 
-static int create_session(const char *name,
-			  xmlNodePtr output_node,
-			  enum lttng_trace_format trace_format,
-			  uint64_t live_timer_interval,
-			  const struct config_load_session_override_attr *overrides)
+int create_session(const char *name,
+		   xmlNodePtr output_node,
+		   enum lttng_trace_format trace_format,
+		   uint64_t live_timer_interval,
+		   const struct config_load_session_override_attr *overrides)
 {
 	int ret = 0;
 	enum lttng_error_code ret_code;
@@ -1389,7 +1389,7 @@ end:
 	return ret;
 }
 
-static struct lttng_userspace_probe_location *
+struct lttng_userspace_probe_location *
 process_userspace_probe_function_attribute_node(xmlNodePtr attribute_node)
 {
 	xmlNodePtr function_attribute_node;
@@ -1469,7 +1469,7 @@ error:
 	return location;
 }
 
-static struct lttng_userspace_probe_location *
+struct lttng_userspace_probe_location *
 process_userspace_probe_tracepoint_attribute_node(xmlNodePtr attribute_node)
 {
 	xmlNodePtr tracepoint_attribute_node;
@@ -1550,8 +1550,8 @@ error:
 	return location;
 }
 
-static int process_probe_attribute_node(xmlNodePtr probe_attribute_node,
-					struct lttng_event_probe_attr *attr)
+int process_probe_attribute_node(xmlNodePtr probe_attribute_node,
+				 struct lttng_event_probe_attr *attr)
 {
 	int ret;
 
@@ -1624,10 +1624,10 @@ end:
 	return ret;
 }
 
-static int process_event_node(xmlNodePtr event_node,
-			      struct lttng_handle *handle,
-			      const char *channel_name,
-			      const enum process_event_node_phase phase)
+int process_event_node(xmlNodePtr event_node,
+		       struct lttng_handle *handle,
+		       const char *channel_name,
+		       const enum process_event_node_phase phase)
 {
 	int ret = 0, i;
 	xmlNodePtr node;
@@ -1945,8 +1945,9 @@ end:
 	return ret;
 }
 
-static int
-process_events_node(xmlNodePtr events_node, struct lttng_handle *handle, const char *channel_name)
+int process_events_node(xmlNodePtr events_node,
+			struct lttng_handle *handle,
+			const char *channel_name)
 {
 	int ret = 0;
 	struct lttng_event event;
@@ -1987,10 +1988,10 @@ end:
 	return ret;
 }
 
-static int process_channel_attr_node(xmlNodePtr attr_node,
-				     struct lttng_channel *channel,
-				     xmlNodePtr *contexts_node,
-				     xmlNodePtr *events_node)
+int process_channel_attr_node(xmlNodePtr attr_node,
+			      struct lttng_channel *channel,
+			      xmlNodePtr *contexts_node,
+			      xmlNodePtr *events_node)
 {
 	int ret;
 
@@ -2416,8 +2417,9 @@ end:
 	return ret;
 }
 
-static int
-process_context_node(xmlNodePtr context_node, struct lttng_handle *handle, const char *channel_name)
+int process_context_node(xmlNodePtr context_node,
+			 struct lttng_handle *handle,
+			 const char *channel_name)
 {
 	int ret;
 	struct lttng_event_context context;
@@ -2579,9 +2581,9 @@ end:
 	return ret;
 }
 
-static int process_contexts_node(xmlNodePtr contexts_node,
-				 struct lttng_handle *handle,
-				 const char *channel_name)
+int process_contexts_node(xmlNodePtr contexts_node,
+			  struct lttng_handle *handle,
+			  const char *channel_name)
 {
 	int ret = 0;
 	xmlNodePtr context_node;
@@ -2597,12 +2599,12 @@ end:
 	return ret;
 }
 
-static int get_tracker_elements(enum lttng_process_attr process_attr,
-				const char **element_id_tracker,
-				const char **element_value_type,
-				const char **element_value,
-				const char **element_value_alias,
-				const char **element_name)
+int get_tracker_elements(enum lttng_process_attr process_attr,
+			 const char **element_id_tracker,
+			 const char **element_value_type,
+			 const char **element_value,
+			 const char **element_value_alias,
+			 const char **element_name)
 {
 	int ret = 0;
 
@@ -2655,7 +2657,7 @@ static int get_tracker_elements(enum lttng_process_attr process_attr,
 	return ret;
 }
 
-static int process_legacy_pid_tracker_node(xmlNodePtr trackers_node, struct lttng_handle *handle)
+int process_legacy_pid_tracker_node(xmlNodePtr trackers_node, struct lttng_handle *handle)
 {
 	int ret = 0, child_count;
 	xmlNodePtr targets_node = nullptr;
@@ -2781,9 +2783,9 @@ end:
 	return ret;
 }
 
-static int process_id_tracker_node(xmlNodePtr id_tracker_node,
-				   struct lttng_handle *handle,
-				   enum lttng_process_attr process_attr)
+int process_id_tracker_node(xmlNodePtr id_tracker_node,
+			    struct lttng_handle *handle,
+			    enum lttng_process_attr process_attr)
 {
 	int ret = 0, child_count;
 	xmlNodePtr values_node = nullptr;
@@ -2964,7 +2966,7 @@ end:
 	return ret;
 }
 
-static int process_domain_node(xmlNodePtr domain_node, const char *session_name)
+int process_domain_node(xmlNodePtr domain_node, const char *session_name)
 {
 	int ret;
 	struct lttng_domain domain {};
@@ -3153,7 +3155,7 @@ end:
 	return ret;
 }
 
-static int add_periodic_rotation(const char *name, uint64_t time_us)
+int add_periodic_rotation(const char *name, uint64_t time_us)
 {
 	int ret;
 	enum lttng_rotation_status status;
@@ -3188,7 +3190,7 @@ error:
 	return ret;
 }
 
-static int add_size_rotation(const char *name, uint64_t size_bytes)
+int add_size_rotation(const char *name, uint64_t size_bytes)
 {
 	int ret;
 	enum lttng_rotation_status status;
@@ -3223,9 +3225,9 @@ error:
 	return ret;
 }
 
-static int process_session_rotation_schedules_node(xmlNodePtr schedules_node,
-						   uint64_t *rotation_timer_interval,
-						   uint64_t *rotation_size)
+int process_session_rotation_schedules_node(xmlNodePtr schedules_node,
+					    uint64_t *rotation_timer_interval,
+					    uint64_t *rotation_size)
 {
 	int ret = 0;
 	xmlNodePtr child;
@@ -3291,10 +3293,10 @@ end:
 	return ret;
 }
 
-static int process_session_node(xmlNodePtr session_node,
-				const char *session_name,
-				int overwrite,
-				const struct config_load_session_override_attr *overrides)
+int process_session_node(xmlNodePtr session_node,
+			 const char *session_name,
+			 int overwrite,
+			 const struct config_load_session_override_attr *overrides)
 {
 	int ret = -1, started = -1, snapshot_mode = -1;
 	uint64_t live_timer_interval = UINT64_MAX, rotation_timer_interval = 0, rotation_size = 0;
@@ -3603,7 +3605,7 @@ error:
  * Return 1 if the given path is readable by the current UID or 0 if not.
  * Return -1 if the path is EPERM.
  */
-static int validate_file_read_creds(const char *path)
+int validate_file_read_creds(const char *path)
 {
 	int ret;
 
@@ -3624,11 +3626,11 @@ valid:
 	return 1;
 }
 
-static int load_session_from_file(const char *path,
-				  const char *session_name,
-				  struct session_config_validation_ctx *validation_ctx,
-				  int overwrite,
-				  const struct config_load_session_override_attr *overrides)
+int load_session_from_file(const char *path,
+			   const char *session_name,
+			   struct session_config_validation_ctx *validation_ctx,
+			   int overwrite,
+			   const struct config_load_session_override_attr *overrides)
 {
 	int ret, session_found = !session_name;
 	xmlDocPtr doc = nullptr;
@@ -3698,11 +3700,11 @@ end:
 	return ret;
 }
 
-static int load_session_from_path(const char *path,
-				  const char *session_name,
-				  struct session_config_validation_ctx *validation_ctx,
-				  int overwrite,
-				  const struct config_load_session_override_attr *overrides)
+int load_session_from_path(const char *path,
+			   const char *session_name,
+			   struct session_config_validation_ctx *validation_ctx,
+			   int overwrite,
+			   const struct config_load_session_override_attr *overrides)
 {
 	int ret = 0, session_found = !session_name;
 	DIR *directory = nullptr;
@@ -3865,7 +3867,7 @@ end:
  * Validate that the given path's credentials and the current process have the
  * same UID. If so, return 1 else return 0 if it does NOT match.
  */
-static int validate_path_creds(const char *path)
+int validate_path_creds(const char *path)
 {
 	int ret, uid = getuid();
 	struct stat buf;
@@ -3893,6 +3895,7 @@ valid:
 invalid:
 	return 0;
 }
+} /* namespace */
 
 int config_load_session(const char *path,
 			const char *session_name,
@@ -4056,7 +4059,9 @@ end:
 	return ret;
 }
 
-static void __attribute__((destructor)) session_config_exit()
+namespace {
+void __attribute__((destructor)) session_config_exit()
 {
 	xmlCleanupParser();
 }
+} /* namespace */

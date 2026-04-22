@@ -77,14 +77,15 @@ struct {
 };
 } /* namespace */
 
-static unsigned long lttng_inode_id_hash(const struct inode_id *id)
+namespace {
+unsigned long lttng_inode_id_hash(const struct inode_id *id)
 {
 	uint64_t device = id->device, inode_no = id->inode;
 
 	return hash_key_u64(&device, seed.value) ^ hash_key_u64(&inode_no, seed.value);
 }
 
-static int lttng_inode_match(struct cds_lfht_node *node, const void *key)
+int lttng_inode_match(struct cds_lfht_node *node, const void *key)
 {
 	const struct inode_id *id = (inode_id *) key;
 	const struct lttng_inode *inode =
@@ -93,15 +94,15 @@ static int lttng_inode_match(struct cds_lfht_node *node, const void *key)
 	return inode->id.device == id->device && inode->id.inode == id->inode;
 }
 
-static void lttng_inode_free(struct rcu_head *head)
+void lttng_inode_free(struct rcu_head *head)
 {
 	struct lttng_inode *inode = lttng::utils::container_of(head, &lttng_inode::rcu_head);
 
 	free(inode);
 }
 
-static int lttng_unlinked_file_pool_add_inode(struct lttng_unlinked_file_pool *pool,
-					      struct lttng_inode *inode)
+int lttng_unlinked_file_pool_add_inode(struct lttng_unlinked_file_pool *pool,
+				       struct lttng_inode *inode)
 {
 	int ret;
 	const unsigned int unlinked_id = pool->next_id++;
@@ -168,8 +169,8 @@ end:
 	return ret;
 }
 
-static int lttng_unlinked_file_pool_remove_inode(struct lttng_unlinked_file_pool *pool,
-						 struct lttng_inode *inode)
+int lttng_unlinked_file_pool_remove_inode(struct lttng_unlinked_file_pool *pool,
+					  struct lttng_inode *inode)
 {
 	int ret;
 
@@ -206,7 +207,7 @@ end:
 	return ret;
 }
 
-static void lttng_inode_destroy(struct lttng_inode *inode)
+void lttng_inode_destroy(struct lttng_inode *inode)
 {
 	if (!inode) {
 		return;
@@ -234,15 +235,16 @@ static void lttng_inode_destroy(struct lttng_inode *inode)
 	call_rcu(&inode->rcu_head, lttng_inode_free);
 }
 
-static void lttng_inode_release(struct urcu_ref *ref)
+void lttng_inode_release(struct urcu_ref *ref)
 {
 	lttng_inode_destroy(lttng::utils::container_of(ref, &lttng_inode::ref));
 }
 
-static void lttng_inode_get(struct lttng_inode *inode)
+void lttng_inode_get(struct lttng_inode *inode)
 {
 	urcu_ref_get(&inode->ref);
 }
+} /* namespace */
 
 struct lttng_unlinked_file_pool *lttng_unlinked_file_pool_create(const char *path)
 {
@@ -406,11 +408,12 @@ end:
 	return ret;
 }
 
-static struct lttng_inode *lttng_inode_create(const struct inode_id *id,
-					      struct cds_lfht *ht,
-					      struct lttng_unlinked_file_pool *unlinked_file_pool,
-					      struct lttng_directory_handle *directory_handle,
-					      const char *path)
+namespace {
+struct lttng_inode *lttng_inode_create(const struct inode_id *id,
+				       struct cds_lfht *ht,
+				       struct lttng_unlinked_file_pool *unlinked_file_pool,
+				       struct lttng_directory_handle *directory_handle,
+				       const char *path)
 {
 	struct lttng_inode *inode = nullptr;
 	char *path_copy;
@@ -442,6 +445,7 @@ end:
 	free(path_copy);
 	return inode;
 }
+} /* namespace */
 
 struct lttng_inode_registry *lttng_inode_registry_create()
 {

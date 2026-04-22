@@ -25,58 +25,60 @@
  * in terms of an internal API. This file contains two implementations
  * of the internal API below.
  */
-static int lttng_directory_handle_mkdir(const struct lttng_directory_handle *handle,
-					const char *path,
-					mode_t mode);
-static int _run_as_mkdir(const struct lttng_directory_handle *handle,
-			 const char *path,
-			 mode_t mode,
-			 uid_t uid,
-			 gid_t gid);
-static int _run_as_mkdir_recursive(const struct lttng_directory_handle *handle,
-				   const char *path,
-				   mode_t mode,
-				   uid_t uid,
-				   gid_t gid);
-static int lttng_directory_handle_open(const struct lttng_directory_handle *handle,
-				       const char *filename,
-				       int flags,
-				       mode_t mode);
-static int _run_as_open(const struct lttng_directory_handle *handle,
-			const char *filename,
-			int flags,
-			mode_t mode,
-			uid_t uid,
-			gid_t gid);
-static int lttng_directory_handle_unlink(const struct lttng_directory_handle *handle,
-					 const char *filename);
-static int _run_as_unlink(const struct lttng_directory_handle *handle,
-			  const char *filename,
-			  uid_t uid,
-			  gid_t gid);
-static int _lttng_directory_handle_rename(const struct lttng_directory_handle *old_handle,
-					  const char *old_name,
-					  const struct lttng_directory_handle *new_handle,
-					  const char *new_name);
-static int _run_as_rename(const struct lttng_directory_handle *old_handle,
-			  const char *old_name,
-			  const struct lttng_directory_handle *new_handle,
-			  const char *new_name,
-			  uid_t uid,
-			  gid_t gid);
-static DIR *lttng_directory_handle_opendir(const struct lttng_directory_handle *handle,
-					   const char *path);
-static int lttng_directory_handle_rmdir(const struct lttng_directory_handle *handle,
-					const char *name);
-static int
-_run_as_rmdir(const struct lttng_directory_handle *handle, const char *name, uid_t uid, gid_t gid);
-static int _run_as_rmdir_recursive(const struct lttng_directory_handle *handle,
-				   const char *name,
-				   uid_t uid,
-				   gid_t gid,
-				   int flags);
-static void lttng_directory_handle_invalidate(struct lttng_directory_handle *handle);
-static void lttng_directory_handle_release(struct urcu_ref *ref);
+namespace {
+int lttng_directory_handle_mkdir(const struct lttng_directory_handle *handle,
+				 const char *path,
+				 mode_t mode);
+int _run_as_mkdir(const struct lttng_directory_handle *handle,
+		  const char *path,
+		  mode_t mode,
+		  uid_t uid,
+		  gid_t gid);
+int _run_as_mkdir_recursive(const struct lttng_directory_handle *handle,
+			    const char *path,
+			    mode_t mode,
+			    uid_t uid,
+			    gid_t gid);
+int lttng_directory_handle_open(const struct lttng_directory_handle *handle,
+				const char *filename,
+				int flags,
+				mode_t mode);
+int _run_as_open(const struct lttng_directory_handle *handle,
+		 const char *filename,
+		 int flags,
+		 mode_t mode,
+		 uid_t uid,
+		 gid_t gid);
+int lttng_directory_handle_unlink(const struct lttng_directory_handle *handle,
+				  const char *filename);
+int _run_as_unlink(const struct lttng_directory_handle *handle,
+		   const char *filename,
+		   uid_t uid,
+		   gid_t gid);
+int _lttng_directory_handle_rename(const struct lttng_directory_handle *old_handle,
+				   const char *old_name,
+				   const struct lttng_directory_handle *new_handle,
+				   const char *new_name);
+int _run_as_rename(const struct lttng_directory_handle *old_handle,
+		   const char *old_name,
+		   const struct lttng_directory_handle *new_handle,
+		   const char *new_name,
+		   uid_t uid,
+		   gid_t gid);
+DIR *lttng_directory_handle_opendir(const struct lttng_directory_handle *handle, const char *path);
+int lttng_directory_handle_rmdir(const struct lttng_directory_handle *handle, const char *name);
+int _run_as_rmdir(const struct lttng_directory_handle *handle,
+		  const char *name,
+		  uid_t uid,
+		  gid_t gid);
+int _run_as_rmdir_recursive(const struct lttng_directory_handle *handle,
+			    const char *name,
+			    uid_t uid,
+			    gid_t gid,
+			    int flags);
+void lttng_directory_handle_invalidate(struct lttng_directory_handle *handle);
+void lttng_directory_handle_release(struct urcu_ref *ref);
+} /* namespace */
 
 #ifdef HAVE_DIRFD
 
@@ -171,7 +173,8 @@ end:
 	return handle;
 }
 
-static void lttng_directory_handle_release(struct urcu_ref *ref)
+namespace {
+void lttng_directory_handle_release(struct urcu_ref *ref)
 {
 	int ret;
 	struct lttng_directory_handle *handle =
@@ -192,6 +195,7 @@ end:
 	lttng_directory_handle_invalidate(handle);
 	free(handle);
 }
+} /* namespace */
 
 struct lttng_directory_handle *
 lttng_directory_handle_copy(const struct lttng_directory_handle *handle)
@@ -222,10 +226,12 @@ bool lttng_directory_handle_equals(const struct lttng_directory_handle *lhs,
 	return lhs->directory_inode == rhs->directory_inode;
 }
 
-static void lttng_directory_handle_invalidate(struct lttng_directory_handle *handle)
+namespace {
+void lttng_directory_handle_invalidate(struct lttng_directory_handle *handle)
 {
 	handle->dirfd = -1;
 }
+} /* namespace */
 
 int lttng_directory_handle_stat(const struct lttng_directory_handle *handle,
 				const char *path,
@@ -239,83 +245,82 @@ bool lttng_directory_handle_uses_fd(const struct lttng_directory_handle *handle)
 	return handle->dirfd != AT_FDCWD;
 }
 
-static int lttng_directory_handle_mkdir(const struct lttng_directory_handle *handle,
-					const char *path,
-					mode_t mode)
+namespace {
+int lttng_directory_handle_mkdir(const struct lttng_directory_handle *handle,
+				 const char *path,
+				 mode_t mode)
 {
 	return mkdirat(handle->dirfd, path, mode);
 }
 
-static int lttng_directory_handle_open(const struct lttng_directory_handle *handle,
-				       const char *filename,
-				       int flags,
-				       mode_t mode)
+int lttng_directory_handle_open(const struct lttng_directory_handle *handle,
+				const char *filename,
+				int flags,
+				mode_t mode)
 {
 	return openat(handle->dirfd, filename, flags, mode);
 }
 
-static int _run_as_open(const struct lttng_directory_handle *handle,
-			const char *filename,
-			int flags,
-			mode_t mode,
-			uid_t uid,
-			gid_t gid)
+int _run_as_open(const struct lttng_directory_handle *handle,
+		 const char *filename,
+		 int flags,
+		 mode_t mode,
+		 uid_t uid,
+		 gid_t gid)
 {
 	return run_as_openat(handle->dirfd, filename, flags, mode, uid, gid);
 }
 
-static int _run_as_unlink(const struct lttng_directory_handle *handle,
-			  const char *filename,
-			  uid_t uid,
-			  gid_t gid)
+int _run_as_unlink(const struct lttng_directory_handle *handle,
+		   const char *filename,
+		   uid_t uid,
+		   gid_t gid)
 {
 	return run_as_unlinkat(handle->dirfd, filename, uid, gid);
 }
 
-static int lttng_directory_handle_unlink(const struct lttng_directory_handle *handle,
-					 const char *filename)
+int lttng_directory_handle_unlink(const struct lttng_directory_handle *handle, const char *filename)
 {
 	return unlinkat(handle->dirfd, filename, 0);
 }
 
-static int _run_as_mkdir(const struct lttng_directory_handle *handle,
-			 const char *path,
-			 mode_t mode,
-			 uid_t uid,
-			 gid_t gid)
+int _run_as_mkdir(const struct lttng_directory_handle *handle,
+		  const char *path,
+		  mode_t mode,
+		  uid_t uid,
+		  gid_t gid)
 {
 	return run_as_mkdirat(handle->dirfd, path, mode, uid, gid);
 }
 
-static int _run_as_mkdir_recursive(const struct lttng_directory_handle *handle,
-				   const char *path,
-				   mode_t mode,
-				   uid_t uid,
-				   gid_t gid)
+int _run_as_mkdir_recursive(const struct lttng_directory_handle *handle,
+			    const char *path,
+			    mode_t mode,
+			    uid_t uid,
+			    gid_t gid)
 {
 	return run_as_mkdirat_recursive(handle->dirfd, path, mode, uid, gid);
 }
 
-static int _lttng_directory_handle_rename(const struct lttng_directory_handle *old_handle,
-					  const char *old_name,
-					  const struct lttng_directory_handle *new_handle,
-					  const char *new_name)
+int _lttng_directory_handle_rename(const struct lttng_directory_handle *old_handle,
+				   const char *old_name,
+				   const struct lttng_directory_handle *new_handle,
+				   const char *new_name)
 {
 	return renameat(old_handle->dirfd, old_name, new_handle->dirfd, new_name);
 }
 
-static int _run_as_rename(const struct lttng_directory_handle *old_handle,
-			  const char *old_name,
-			  const struct lttng_directory_handle *new_handle,
-			  const char *new_name,
-			  uid_t uid,
-			  gid_t gid)
+int _run_as_rename(const struct lttng_directory_handle *old_handle,
+		   const char *old_name,
+		   const struct lttng_directory_handle *new_handle,
+		   const char *new_name,
+		   uid_t uid,
+		   gid_t gid)
 {
 	return run_as_renameat(old_handle->dirfd, old_name, new_handle->dirfd, new_name, uid, gid);
 }
 
-static DIR *lttng_directory_handle_opendir(const struct lttng_directory_handle *handle,
-					   const char *path)
+DIR *lttng_directory_handle_opendir(const struct lttng_directory_handle *handle, const char *path)
 {
 	DIR *dir_stream = nullptr;
 	const int fd = openat(handle->dirfd, path, O_RDONLY);
@@ -340,8 +345,7 @@ end:
 	return dir_stream;
 }
 
-static int lttng_directory_handle_rmdir(const struct lttng_directory_handle *handle,
-					const char *name)
+int lttng_directory_handle_rmdir(const struct lttng_directory_handle *handle, const char *name)
 {
 	const int ret = unlinkat(handle->dirfd, name, AT_REMOVEDIR);
 	if (ret) {
@@ -351,20 +355,23 @@ static int lttng_directory_handle_rmdir(const struct lttng_directory_handle *han
 	return ret;
 }
 
-static int
-_run_as_rmdir(const struct lttng_directory_handle *handle, const char *name, uid_t uid, gid_t gid)
+int _run_as_rmdir(const struct lttng_directory_handle *handle,
+		  const char *name,
+		  uid_t uid,
+		  gid_t gid)
 {
 	return run_as_rmdirat(handle->dirfd, name, uid, gid);
 }
 
-static int _run_as_rmdir_recursive(const struct lttng_directory_handle *handle,
-				   const char *name,
-				   uid_t uid,
-				   gid_t gid,
-				   int flags)
+int _run_as_rmdir_recursive(const struct lttng_directory_handle *handle,
+			    const char *name,
+			    uid_t uid,
+			    gid_t gid,
+			    int flags)
 {
 	return run_as_rmdirat_recursive(handle->dirfd, name, uid, gid, flags);
 }
+} /* namespace */
 
 #else /* HAVE_DIRFD */
 
@@ -880,9 +887,10 @@ end:
  *
  * Checking the path for existence allows us to work around this behaviour.
  */
-static int create_directory_check_exists(const struct lttng_directory_handle *handle,
-					 const char *path,
-					 mode_t mode)
+namespace {
+int create_directory_check_exists(const struct lttng_directory_handle *handle,
+				  const char *path,
+				  mode_t mode)
 {
 	int ret = 0;
 	struct stat st;
@@ -911,9 +919,9 @@ end:
 	return ret;
 }
 
-static int create_directory_recursive(const struct lttng_directory_handle *handle,
-				      const char *path,
-				      mode_t mode)
+int create_directory_recursive(const struct lttng_directory_handle *handle,
+			       const char *path,
+			       mode_t mode)
 {
 	char *p, tmp[LTTNG_PATH_MAX];
 	size_t len;
@@ -963,6 +971,7 @@ static int create_directory_recursive(const struct lttng_directory_handle *handl
 error:
 	return ret;
 }
+} /* namespace */
 
 bool lttng_directory_handle_get(struct lttng_directory_handle *handle)
 {
@@ -1155,7 +1164,8 @@ struct rmdir_frame {
 };
 } /* namespace */
 
-static void rmdir_frame_fini(void *data)
+namespace {
+void rmdir_frame_fini(void *data)
 {
 	int ret;
 	struct rmdir_frame *frame = (rmdir_frame *) data;
@@ -1166,8 +1176,9 @@ static void rmdir_frame_fini(void *data)
 	}
 }
 
-static int
-remove_directory_recursive(const struct lttng_directory_handle *handle, const char *path, int flags)
+int remove_directory_recursive(const struct lttng_directory_handle *handle,
+			       const char *path,
+			       int flags)
 {
 	int ret;
 	struct lttng_dynamic_array frames;
@@ -1337,6 +1348,7 @@ end:
 	lttng_dynamic_buffer_reset(&current_path);
 	return ret;
 }
+} /* namespace */
 
 int lttng_directory_handle_remove_subdirectory_recursive(
 	const struct lttng_directory_handle *handle, const char *name, int flags)

@@ -22,7 +22,8 @@
 #define IS_SYSCALL_EVENT_RULE(rule) \
 	(lttng_event_rule_get_type(rule) == LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL)
 
-static void lttng_event_rule_kernel_syscall_destroy(struct lttng_event_rule *rule)
+namespace {
+void lttng_event_rule_kernel_syscall_destroy(struct lttng_event_rule *rule)
 {
 	struct lttng_event_rule_kernel_syscall *syscall;
 
@@ -38,7 +39,7 @@ static void lttng_event_rule_kernel_syscall_destroy(struct lttng_event_rule *rul
 	free(syscall);
 }
 
-static bool lttng_event_rule_kernel_syscall_validate(const struct lttng_event_rule *rule)
+bool lttng_event_rule_kernel_syscall_validate(const struct lttng_event_rule *rule)
 {
 	bool valid = false;
 	struct lttng_event_rule_kernel_syscall *syscall;
@@ -60,8 +61,8 @@ end:
 	return valid;
 }
 
-static int lttng_event_rule_kernel_syscall_serialize(const struct lttng_event_rule *rule,
-						     struct lttng_payload *payload)
+int lttng_event_rule_kernel_syscall_serialize(const struct lttng_event_rule *rule,
+					      struct lttng_payload *payload)
 {
 	int ret;
 	size_t pattern_len, filter_expression_len;
@@ -104,8 +105,8 @@ end:
 	return ret;
 }
 
-static bool lttng_event_rule_kernel_syscall_is_equal(const struct lttng_event_rule *_a,
-						     const struct lttng_event_rule *_b)
+bool lttng_event_rule_kernel_syscall_is_equal(const struct lttng_event_rule *_a,
+					      const struct lttng_event_rule *_b)
 {
 	bool is_equal = false;
 	struct lttng_event_rule_kernel_syscall *a, *b;
@@ -141,7 +142,7 @@ end:
 	return is_equal;
 }
 
-static enum lttng_error_code
+enum lttng_error_code
 lttng_event_rule_kernel_syscall_generate_filter_bytecode(struct lttng_event_rule *rule,
 							 const struct lttng_credentials *creds)
 {
@@ -189,7 +190,7 @@ end:
 	return ret_code;
 }
 
-static const char *
+const char *
 lttng_event_rule_kernel_syscall_get_filter_expression(const struct lttng_event_rule *rule)
 {
 	struct lttng_event_rule_kernel_syscall *syscall;
@@ -200,7 +201,7 @@ lttng_event_rule_kernel_syscall_get_filter_expression(const struct lttng_event_r
 	return syscall->filter_expression;
 }
 
-static const struct lttng_bytecode *
+const struct lttng_bytecode *
 lttng_event_rule_kernel_syscall_get_internal_filter_bytecode(const struct lttng_event_rule *rule)
 {
 	struct lttng_event_rule_kernel_syscall *syscall;
@@ -211,7 +212,7 @@ lttng_event_rule_kernel_syscall_get_internal_filter_bytecode(const struct lttng_
 	return syscall->internal_filter.bytecode;
 }
 
-static enum lttng_event_rule_generate_exclusions_status
+enum lttng_event_rule_generate_exclusions_status
 lttng_event_rule_kernel_syscall_generate_exclusions(const struct lttng_event_rule *rule
 						    __attribute__((unused)),
 						    struct lttng_event_exclusion **exclusions)
@@ -221,7 +222,7 @@ lttng_event_rule_kernel_syscall_generate_exclusions(const struct lttng_event_rul
 	return LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_NONE;
 }
 
-static unsigned long lttng_event_rule_kernel_syscall_hash(const struct lttng_event_rule *rule)
+unsigned long lttng_event_rule_kernel_syscall_hash(const struct lttng_event_rule *rule)
 {
 	unsigned long hash;
 	struct lttng_event_rule_kernel_syscall *syscall_rule =
@@ -236,7 +237,7 @@ static unsigned long lttng_event_rule_kernel_syscall_hash(const struct lttng_eve
 	return hash;
 }
 
-static enum lttng_error_code
+enum lttng_error_code
 lttng_event_rule_kernel_syscall_mi_serialize(const struct lttng_event_rule *rule,
 					     struct mi_writer *writer)
 {
@@ -322,7 +323,7 @@ end:
 	return ret_code;
 }
 
-static struct lttng_event *
+struct lttng_event *
 lttng_event_rule_kernel_syscall_generate_lttng_event(const struct lttng_event_rule *rule)
 {
 	const auto *syscall =
@@ -344,6 +345,7 @@ lttng_event_rule_kernel_syscall_generate_lttng_event(const struct lttng_event_ru
 
 	return local_event.release();
 }
+} /* namespace */
 
 struct lttng_event_rule *lttng_event_rule_kernel_syscall_create(
 	enum lttng_event_rule_kernel_syscall_emission_site emission_site)

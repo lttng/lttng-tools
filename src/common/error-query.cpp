@@ -90,13 +90,15 @@ struct lttng_error_query_results_comm {
 } LTTNG_PACKED;
 } /* namespace */
 
-static enum lttng_error_code
+namespace {
+enum lttng_error_code
 lttng_error_query_result_mi_serialize(const struct lttng_error_query_result *result,
 				      struct mi_writer *writer);
 
-static enum lttng_error_code
+enum lttng_error_code
 lttng_error_query_result_counter_mi_serialize(const struct lttng_error_query_result *result,
 					      struct mi_writer *writer);
+} /* namespace */
 
 struct lttng_error_query *lttng_error_query_trigger_create(const struct lttng_trigger *trigger)
 {
@@ -158,9 +160,9 @@ end:
 	return query ? &query->parent : nullptr;
 }
 
-static struct lttng_action *
-get_trigger_action_from_path(struct lttng_trigger *trigger,
-			     const struct lttng_action_path *action_path)
+namespace {
+struct lttng_action *get_trigger_action_from_path(struct lttng_trigger *trigger,
+						  const struct lttng_action_path *action_path)
 {
 	size_t index_count, i;
 	enum lttng_action_path_status path_status;
@@ -188,8 +190,8 @@ end:
 	return current_action;
 }
 
-static bool is_valid_action_path(const struct lttng_trigger *trigger,
-				 const struct lttng_action_path *action_path)
+bool is_valid_action_path(const struct lttng_trigger *trigger,
+			  const struct lttng_action_path *action_path)
 {
 	/*
 	 * While 'trigger's constness is casted-away, the trigger and resulting
@@ -197,6 +199,7 @@ static bool is_valid_action_path(const struct lttng_trigger *trigger,
 	 */
 	return !!get_trigger_action_from_path((struct lttng_trigger *) trigger, action_path);
 }
+} /* namespace */
 
 struct lttng_error_query *
 lttng_error_query_action_create(const struct lttng_trigger *trigger,
@@ -278,8 +281,9 @@ void lttng_error_query_destroy(struct lttng_error_query *query)
 	}
 }
 
-static int lttng_error_query_result_counter_serialize(const struct lttng_error_query_result *result,
-						      struct lttng_payload *payload)
+namespace {
+int lttng_error_query_result_counter_serialize(const struct lttng_error_query_result *result,
+					       struct lttng_payload *payload)
 {
 	const struct lttng_error_query_result_counter *counter_result;
 
@@ -294,6 +298,7 @@ static int lttng_error_query_result_counter_serialize(const struct lttng_error_q
 	return lttng_dynamic_buffer_append(
 		&payload->buffer, &comm, sizeof(struct lttng_error_query_result_counter_comm));
 }
+} /* namespace */
 
 int lttng_error_query_result_serialize(const struct lttng_error_query_result *result,
 				       struct lttng_payload *payload)
@@ -344,10 +349,11 @@ end:
 	return ret;
 }
 
-static int lttng_error_query_result_init(struct lttng_error_query_result *result,
-					 enum lttng_error_query_result_type result_type,
-					 const char *name,
-					 const char *description)
+namespace {
+int lttng_error_query_result_init(struct lttng_error_query_result *result,
+				  enum lttng_error_query_result_type result_type,
+				  const char *name,
+				  const char *description)
 {
 	int ret;
 
@@ -374,6 +380,7 @@ static int lttng_error_query_result_init(struct lttng_error_query_result *result
 end:
 	return ret;
 }
+} /* namespace */
 
 void lttng_error_query_result_destroy(struct lttng_error_query_result *counter)
 {
@@ -420,12 +427,14 @@ end:
 	return counter ? &counter->parent : nullptr;
 }
 
-static void destroy_result(void *ptr)
+namespace {
+void destroy_result(void *ptr)
 {
 	struct lttng_error_query_result *result = (typeof(result)) ptr;
 
 	lttng_error_query_result_destroy(result);
 }
+} /* namespace */
 
 struct lttng_error_query_results *lttng_error_query_results_create()
 {
@@ -618,8 +627,9 @@ end:
 	return total_used_size;
 }
 
-static int lttng_error_query_trigger_serialize(const struct lttng_error_query *query,
-					       struct lttng_payload *payload)
+namespace {
+int lttng_error_query_trigger_serialize(const struct lttng_error_query *query,
+					struct lttng_payload *payload)
 {
 	int ret;
 	const struct lttng_error_query_trigger *query_trigger =
@@ -639,8 +649,8 @@ end:
 	return ret;
 }
 
-static int lttng_error_query_condition_serialize(const struct lttng_error_query *query,
-						 struct lttng_payload *payload)
+int lttng_error_query_condition_serialize(const struct lttng_error_query *query,
+					  struct lttng_payload *payload)
 {
 	int ret;
 	const struct lttng_error_query_condition *query_trigger =
@@ -660,8 +670,8 @@ end:
 	return ret;
 }
 
-static int lttng_error_query_action_serialize(const struct lttng_error_query *query,
-					      struct lttng_payload *payload)
+int lttng_error_query_action_serialize(const struct lttng_error_query *query,
+				       struct lttng_payload *payload)
 {
 	int ret;
 	const struct lttng_error_query_action *query_action =
@@ -685,6 +695,7 @@ static int lttng_error_query_action_serialize(const struct lttng_error_query *qu
 end:
 	return ret;
 }
+} /* namespace */
 
 enum lttng_error_query_target_type
 lttng_error_query_get_target_type(const struct lttng_error_query *query)
@@ -1026,7 +1037,8 @@ end:
 	return status;
 }
 
-static enum lttng_error_code
+namespace {
+enum lttng_error_code
 lttng_error_query_result_counter_mi_serialize(const struct lttng_error_query_result *result,
 					      struct mi_writer *writer)
 {
@@ -1069,7 +1081,7 @@ end:
 	return ret_code;
 }
 
-static enum lttng_error_code
+enum lttng_error_code
 lttng_error_query_result_mi_serialize(const struct lttng_error_query_result *result,
 				      struct mi_writer *writer)
 {
@@ -1138,6 +1150,7 @@ mi_error:
 end:
 	return ret_code;
 }
+} /* namespace */
 
 enum lttng_error_code
 lttng_error_query_results_mi_serialize(const struct lttng_error_query_results *results,

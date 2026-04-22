@@ -18,8 +18,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-static struct lttng_event_field_value *
-create_empty_field_val(enum lttng_event_field_value_type type, size_t size)
+namespace {
+struct lttng_event_field_value *create_empty_field_val(enum lttng_event_field_value_type type,
+						       size_t size)
 {
 	struct lttng_event_field_value *field_val;
 
@@ -33,6 +34,7 @@ create_empty_field_val(enum lttng_event_field_value_type type, size_t size)
 end:
 	return field_val;
 }
+} /* namespace */
 
 struct lttng_event_field_value *lttng_event_field_value_uint_create(uint64_t val)
 {
@@ -77,8 +79,9 @@ end:
 	return &field_val->parent;
 }
 
-static struct lttng_event_field_value_enum *
-create_enum_field_val(enum lttng_event_field_value_type type, size_t size)
+namespace {
+struct lttng_event_field_value_enum *create_enum_field_val(enum lttng_event_field_value_type type,
+							   size_t size)
 {
 	struct lttng_event_field_value_enum *field_val;
 
@@ -97,6 +100,7 @@ error:
 end:
 	return field_val;
 }
+} /* namespace */
 
 struct lttng_event_field_value *lttng_event_field_value_enum_uint_create(uint64_t val)
 {
@@ -201,10 +205,12 @@ struct lttng_event_field_value *lttng_event_field_value_string_create(const char
 	return lttng_event_field_value_string_create_with_size(val, strlen(val));
 }
 
-static void destroy_field_val(void *field_val)
+namespace {
+void destroy_field_val(void *field_val)
 {
 	lttng_event_field_value_destroy((lttng_event_field_value *) field_val);
 }
+} /* namespace */
 
 struct lttng_event_field_value *lttng_event_field_value_array_create()
 {
@@ -482,11 +488,13 @@ end:
 	return status;
 }
 
-static bool is_enum_field_val(const struct lttng_event_field_value *field_val)
+namespace {
+bool is_enum_field_val(const struct lttng_event_field_value *field_val)
 {
 	return field_val->type == LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_ENUM ||
 		field_val->type == LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_ENUM;
 }
+} /* namespace */
 
 enum lttng_event_field_value_status
 lttng_event_field_value_enum_get_label_count(const struct lttng_event_field_value *field_val,

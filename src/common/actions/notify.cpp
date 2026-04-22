@@ -16,22 +16,22 @@
 
 #define IS_NOTIFY_ACTION(action) (lttng_action_get_type(action) == LTTNG_ACTION_TYPE_NOTIFY)
 
-static struct lttng_action_notify *action_notify_from_action(struct lttng_action *action)
+namespace {
+struct lttng_action_notify *action_notify_from_action(struct lttng_action *action)
 {
 	LTTNG_ASSERT(action);
 
 	return lttng::utils::container_of(action, &lttng_action_notify::parent);
 }
 
-static const struct lttng_action_notify *
-action_notify_from_action_const(const struct lttng_action *action)
+const struct lttng_action_notify *action_notify_from_action_const(const struct lttng_action *action)
 {
 	LTTNG_ASSERT(action);
 
 	return lttng::utils::container_of(action, &lttng_action_notify::parent);
 }
 
-static void lttng_action_notify_destroy(struct lttng_action *action)
+void lttng_action_notify_destroy(struct lttng_action *action)
 {
 	struct lttng_action_notify *notify_action;
 	notify_action = action_notify_from_action(action);
@@ -39,7 +39,7 @@ static void lttng_action_notify_destroy(struct lttng_action *action)
 	free(notify_action);
 }
 
-static int lttng_action_notify_serialize(struct lttng_action *action, struct lttng_payload *payload)
+int lttng_action_notify_serialize(struct lttng_action *action, struct lttng_payload *payload)
 {
 	int ret;
 	struct lttng_action_notify *notify_action;
@@ -59,7 +59,7 @@ end:
 	return ret;
 }
 
-static bool lttng_action_notify_is_equal(const struct lttng_action *a, const struct lttng_action *b)
+bool lttng_action_notify_is_equal(const struct lttng_action *a, const struct lttng_action *b)
 {
 	const struct lttng_action_notify *_a, *_b;
 
@@ -68,7 +68,7 @@ static bool lttng_action_notify_is_equal(const struct lttng_action *a, const str
 	return lttng_rate_policy_is_equal(_a->policy, _b->policy);
 }
 
-static const struct lttng_rate_policy *
+const struct lttng_rate_policy *
 lttng_action_notify_internal_get_rate_policy(const struct lttng_action *action)
 {
 	const struct lttng_action_notify *_action;
@@ -77,8 +77,8 @@ lttng_action_notify_internal_get_rate_policy(const struct lttng_action *action)
 	return _action->policy;
 }
 
-static enum lttng_error_code lttng_action_notify_mi_serialize(const struct lttng_action *action,
-							      struct mi_writer *writer)
+enum lttng_error_code lttng_action_notify_mi_serialize(const struct lttng_action *action,
+						       struct mi_writer *writer)
 {
 	int ret;
 	enum lttng_action_status status;
@@ -118,6 +118,7 @@ mi_error:
 end:
 	return ret_code;
 }
+} /* namespace */
 
 struct lttng_action *lttng_action_notify_create(void)
 {

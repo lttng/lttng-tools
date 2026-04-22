@@ -171,7 +171,8 @@ error:
 	return nullptr;
 }
 
-static int expand_double_slashes_dot_and_dotdot(char *path)
+namespace {
+int expand_double_slashes_dot_and_dotdot(char *path)
 {
 	size_t expanded_path_len, path_len;
 	const char *curr_char, *path_last_char, *next_slash, *prev_slash;
@@ -281,7 +282,7 @@ error:
  * The returned string was allocated in the function, it is thus of
  * the responsibility of the caller to free this memory.
  */
-static char *_utils_expand_path(const char *path, bool keep_symlink)
+char *_utils_expand_path(const char *path, bool keep_symlink)
 {
 	int ret;
 	char *absolute_path = nullptr;
@@ -379,6 +380,7 @@ error:
 	free(absolute_path);
 	return nullptr;
 }
+} /* namespace */
 char *utils_expand_path(const char *path)
 {
 	return _utils_expand_path(path, true);

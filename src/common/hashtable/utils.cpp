@@ -185,7 +185,8 @@
  * length - the length of the key, in uint32_ts
  * initval - the previous hash, or an arbitrary value
  */
-static uint32_t __attribute__((unused)) hashword(const uint32_t *k, size_t length, uint32_t initval)
+namespace {
+uint32_t __attribute__((unused)) hashword(const uint32_t *k, size_t length, uint32_t initval)
 {
 	uint32_t a, b, c;
 
@@ -224,8 +225,7 @@ static uint32_t __attribute__((unused)) hashword(const uint32_t *k, size_t lengt
  * initialized with seeds.  If you pass in (*pb)==0, the output (*pc) will be
  * the same as the return value from hashword().
  */
-static void __attribute__((unused))
-hashword2(const uint32_t *k, size_t length, uint32_t *pc, uint32_t *pb)
+void __attribute__((unused)) hashword2(const uint32_t *k, size_t length, uint32_t *pc, uint32_t *pb)
 {
 	uint32_t a, b, c;
 
@@ -260,6 +260,7 @@ hashword2(const uint32_t *k, size_t length, uint32_t *pc, uint32_t *pb)
 	*pc = c;
 	*pb = b;
 }
+} /* namespace */
 
 /*
  * hashlittle() -- hash a variable-length key into a 32-bit value
@@ -285,8 +286,9 @@ hashword2(const uint32_t *k, size_t length, uint32_t *pc, uint32_t *pb)
  * Use for hash table lookup, or anything where one collision in 2^^32 is
  * acceptable.  Do NOT use for cryptographic purposes.
  */
+namespace {
 LTTNG_NO_SANITIZE_ADDRESS
-__attribute__((unused)) static uint32_t hashlittle(const void *key, size_t length, uint32_t initval)
+__attribute__((unused)) uint32_t hashlittle(const void *key, size_t length, uint32_t initval)
 {
 	uint32_t a, b, c;
 	union {
@@ -526,6 +528,7 @@ __attribute__((unused)) static uint32_t hashlittle(const void *key, size_t lengt
 	final(a, b, c);
 	return c;
 }
+} /* namespace */
 
 unsigned long hash_key_u64(const void *_key, unsigned long seed)
 {

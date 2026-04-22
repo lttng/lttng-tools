@@ -49,7 +49,8 @@
 #define MAX_NAME    50
 
 /* Strip whitespace chars off end of given string, in place. Return s. */
-static char *rstrip(char *s)
+namespace {
+char *rstrip(char *s)
 {
 	char *p = s + strlen(s);
 
@@ -59,7 +60,7 @@ static char *rstrip(char *s)
 }
 
 /* Return pointer to first non-whitespace char in given string. */
-static char *lskip(const char *s)
+char *lskip(const char *s)
 {
 	while (*s && isspace((unsigned char) (*s)))
 		s++;
@@ -71,7 +72,7 @@ static char *lskip(const char *s)
  * null at end of string if neither found. ';' must be prefixed by a whitespace
  * character to register as a comment.
  */
-static char *find_char_or_comment(const char *s, char c)
+char *find_char_or_comment(const char *s, char c)
 {
 	int was_whitespace = 0;
 
@@ -83,12 +84,13 @@ static char *find_char_or_comment(const char *s, char c)
 }
 
 /* Version of strncpy that ensures dest (size bytes) is null-terminated. */
-static char *strncpy0(char *dest, const char *src, size_t size)
+char *strncpy0(char *dest, const char *src, size_t size)
 {
 	strncpy(dest, src, size - 1);
 	dest[size - 1] = '\0';
 	return dest;
 }
+} /* namespace */
 
 /* See documentation in header file. */
 int ini_parse_file(FILE *file, ini_entry_handler handler, void *user)

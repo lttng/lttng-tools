@@ -36,10 +36,11 @@ struct handler_filter_args {
 };
 } /* namespace */
 
-static int config_entry_handler_filter(struct handler_filter_args *args,
-				       const char *section,
-				       const char *name,
-				       const char *value)
+namespace {
+int config_entry_handler_filter(struct handler_filter_args *args,
+				const char *section,
+				const char *name,
+				const char *value)
 {
 	int ret = 0;
 	const config_entry entry = { section, name, value };
@@ -61,6 +62,7 @@ static int config_entry_handler_filter(struct handler_filter_args *args,
 end:
 	return ret;
 }
+} /* namespace */
 
 int config_get_section_entries(const char *override_path,
 			       const char *section,

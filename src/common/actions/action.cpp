@@ -70,12 +70,14 @@ void lttng_action_init(struct lttng_action *action,
 	action->execution_failure_counter = 0;
 }
 
-static void action_destroy_ref(struct urcu_ref *ref)
+namespace {
+void action_destroy_ref(struct urcu_ref *ref)
 {
 	struct lttng_action *action = lttng::utils::container_of(ref, &lttng_action::ref);
 
 	action->destroy(action);
 }
+} /* namespace */
 
 void lttng_action_get(struct lttng_action *action)
 {

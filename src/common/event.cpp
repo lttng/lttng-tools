@@ -28,7 +28,8 @@ struct event_list_element {
 };
 } /* namespace */
 
-static void event_list_destructor(void *ptr)
+namespace {
+void event_list_destructor(void *ptr)
 {
 	struct event_list_element *element = (struct event_list_element *) ptr;
 
@@ -37,6 +38,7 @@ static void event_list_destructor(void *ptr)
 	lttng_event_destroy(element->event);
 	free(element);
 }
+} /* namespace */
 
 struct lttng_event *lttng_event_copy(const struct lttng_event *event)
 {
@@ -71,8 +73,9 @@ error:
 	goto end;
 }
 
-static int lttng_event_probe_attr_serialize(const struct lttng_event_probe_attr *probe,
-					    struct lttng_payload *payload)
+namespace {
+int lttng_event_probe_attr_serialize(const struct lttng_event_probe_attr *probe,
+				     struct lttng_payload *payload)
 {
 	int ret;
 	size_t symbol_name_len;
@@ -103,8 +106,8 @@ end:
 	return ret;
 }
 
-static int lttng_event_function_attr_serialize(const struct lttng_event_function_attr *function,
-					       struct lttng_payload *payload)
+int lttng_event_function_attr_serialize(const struct lttng_event_function_attr *function,
+					struct lttng_payload *payload)
 {
 	int ret;
 	size_t symbol_name_len;
@@ -135,9 +138,8 @@ end:
 	return ret;
 }
 
-static ssize_t
-lttng_event_probe_attr_create_from_payload(struct lttng_payload_view *view,
-					   struct lttng_event_probe_attr **probe_attr)
+ssize_t lttng_event_probe_attr_create_from_payload(struct lttng_payload_view *view,
+						   struct lttng_event_probe_attr **probe_attr)
 {
 	ssize_t ret, offset = 0;
 	const struct lttng_event_probe_attr_comm *comm;
@@ -197,7 +199,7 @@ end:
 	return ret;
 }
 
-static ssize_t
+ssize_t
 lttng_event_function_attr_create_from_payload(struct lttng_payload_view *view,
 					      struct lttng_event_function_attr **function_attr)
 {
@@ -256,9 +258,9 @@ end:
 	return ret;
 }
 
-static ssize_t lttng_event_exclusions_create_from_payload(struct lttng_payload_view *view,
-							  uint32_t count,
-							  struct lttng_event_exclusion **exclusions)
+ssize_t lttng_event_exclusions_create_from_payload(struct lttng_payload_view *view,
+						   uint32_t count,
+						   struct lttng_event_exclusion **exclusions)
 {
 	ssize_t ret, offset = 0;
 	const size_t size = (count * LTTNG_SYMBOL_NAME_LEN);
@@ -321,6 +323,7 @@ end:
 	free(local_exclusions);
 	return ret;
 }
+} /* namespace */
 
 ssize_t lttng_event_create_from_payload(struct lttng_payload_view *view,
 					struct lttng_event **out_event,
@@ -853,8 +856,9 @@ end:
 	return ret;
 }
 
-static ssize_t lttng_event_context_app_populate_from_payload(const struct lttng_payload_view *view,
-							     struct lttng_event_context *event_ctx)
+namespace {
+ssize_t lttng_event_context_app_populate_from_payload(const struct lttng_payload_view *view,
+						      struct lttng_event_context *event_ctx)
 {
 	ssize_t ret, offset = 0;
 	const struct lttng_event_context_app_comm *comm;
@@ -952,7 +956,7 @@ end:
 	return ret;
 }
 
-static ssize_t
+ssize_t
 lttng_event_context_perf_counter_populate_from_payload(const struct lttng_payload_view *view,
 						       struct lttng_event_context *event_ctx)
 {
@@ -1012,6 +1016,7 @@ lttng_event_context_perf_counter_populate_from_payload(const struct lttng_payloa
 end:
 	return consumed;
 }
+} /* namespace */
 
 ssize_t lttng_event_context_create_from_payload(struct lttng_payload_view *view,
 						struct lttng_event_context **event_ctx)
@@ -1078,8 +1083,9 @@ end:
 	return ret;
 }
 
-static int lttng_event_context_app_serialize(struct lttng_event_context *context,
-					     struct lttng_payload *payload)
+namespace {
+int lttng_event_context_app_serialize(struct lttng_event_context *context,
+				      struct lttng_payload *payload)
 {
 	int ret;
 	struct lttng_event_context_app_comm comm = {};
@@ -1142,8 +1148,8 @@ end:
 	return ret;
 }
 
-static int lttng_event_context_perf_counter_serialize(struct lttng_event_perf_counter_ctx *context,
-						      struct lttng_payload *payload)
+int lttng_event_context_perf_counter_serialize(struct lttng_event_perf_counter_ctx *context,
+					       struct lttng_payload *payload)
 {
 	int ret;
 	struct lttng_event_context_perf_counter_comm comm = {};
@@ -1179,6 +1185,7 @@ static int lttng_event_context_perf_counter_serialize(struct lttng_event_perf_co
 end:
 	return ret;
 }
+} /* namespace */
 
 int lttng_event_context_serialize(struct lttng_event_context *context,
 				  struct lttng_payload *payload)
@@ -1240,14 +1247,16 @@ void lttng_event_context_destroy(struct lttng_event_context *context)
  * the extension field of the lttng_event struct and simply copies what it can
  * to the internal struct lttng_event of a lttng_event_field.
  */
-static void lttng_event_field_populate_lttng_event_from_event(const struct lttng_event *src,
-							      struct lttng_event *destination)
+namespace {
+void lttng_event_field_populate_lttng_event_from_event(const struct lttng_event *src,
+						       struct lttng_event *destination)
 {
 	memcpy(destination, src, sizeof(*destination));
 
 	/* Remove all possible dynamic data from the destination event rule. */
 	destination->extended.ptr = nullptr;
 }
+} /* namespace */
 
 ssize_t lttng_event_field_create_from_payload(struct lttng_payload_view *view,
 					      struct lttng_event_field **field)
@@ -1407,8 +1416,9 @@ end:
 	return ret;
 }
 
-static enum lttng_error_code compute_flattened_size(struct lttng_dynamic_pointer_array *events,
-						    size_t *size)
+namespace {
+enum lttng_error_code compute_flattened_size(struct lttng_dynamic_pointer_array *events,
+					     size_t *size)
 {
 	enum lttng_error_code ret_code;
 	int ret = 0;
@@ -1485,8 +1495,8 @@ end:
  *     - padding to align to 64-bits
  *     - flattened version of userspace_probe_location
  */
-static enum lttng_error_code flatten_lttng_events(struct lttng_dynamic_pointer_array *events,
-						  struct lttng_event **flattened_events)
+enum lttng_error_code flatten_lttng_events(struct lttng_dynamic_pointer_array *events,
+					   struct lttng_event **flattened_events)
 {
 	enum lttng_error_code ret_code;
 	int ret, i;
@@ -1620,10 +1630,9 @@ end:
 	return ret_code;
 }
 
-static enum lttng_error_code
-event_list_create_from_payload(struct lttng_payload_view *view,
-			       unsigned int count,
-			       struct lttng_dynamic_pointer_array *event_list)
+enum lttng_error_code event_list_create_from_payload(struct lttng_payload_view *view,
+						     unsigned int count,
+						     struct lttng_dynamic_pointer_array *event_list)
 {
 	enum lttng_error_code ret_code;
 	int ret;
@@ -1682,6 +1691,7 @@ event_list_create_from_payload(struct lttng_payload_view *view,
 end:
 	return ret_code;
 }
+} /* namespace */
 
 enum lttng_error_code lttng_events_create_and_flatten_from_payload(
 	struct lttng_payload_view *payload, unsigned int count, struct lttng_event **events)
@@ -1712,9 +1722,9 @@ end:
 	return ret;
 }
 
-static enum lttng_error_code
-flatten_lttng_event_fields(struct lttng_dynamic_pointer_array *event_fields,
-			   struct lttng_event_field **flattened_event_fields)
+namespace {
+enum lttng_error_code flatten_lttng_event_fields(struct lttng_dynamic_pointer_array *event_fields,
+						 struct lttng_event_field **flattened_event_fields)
 {
 	int ret, i;
 	enum lttng_error_code ret_code;
@@ -1775,7 +1785,7 @@ end:
 	return ret_code;
 }
 
-static enum lttng_error_code
+enum lttng_error_code
 event_field_list_create_from_payload(struct lttng_payload_view *view,
 				     unsigned int count,
 				     struct lttng_dynamic_pointer_array **event_field_list)
@@ -1836,6 +1846,7 @@ end:
 
 	return ret_code;
 }
+} /* namespace */
 
 enum lttng_error_code lttng_event_fields_create_and_flatten_from_payload(
 	struct lttng_payload_view *view, unsigned int count, struct lttng_event_field **fields)

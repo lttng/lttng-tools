@@ -20,7 +20,8 @@
 #include <unistd.h>
 #include <urcu.h>
 
-static int wait_shm_open(const char *wait_shm_path, int flags, mode_t mode, bool wait_shm_is_file)
+namespace {
+int wait_shm_open(const char *wait_shm_path, int flags, mode_t mode, bool wait_shm_is_file)
 {
 	if (wait_shm_is_file) {
 		return open(wait_shm_path, flags, mode);
@@ -36,7 +37,7 @@ static int wait_shm_open(const char *wait_shm_path, int flags, mode_t mode, bool
  * seconds. For global shm, everybody has rw access to it until the sessiond
  * starts.
  */
-static int get_wait_shm(char *shm_path, bool wait_shm_is_file, size_t mmap_size, int global)
+int get_wait_shm(char *shm_path, bool wait_shm_is_file, size_t mmap_size, int global)
 {
 	int wait_shm_fd, ret;
 	mode_t mode, old_mode;
@@ -166,6 +167,7 @@ error:
 	wait_shm_fd = -1;
 	goto end;
 }
+} /* namespace */
 
 /*
  * Return the wait shm mmap for UST application notification. The global

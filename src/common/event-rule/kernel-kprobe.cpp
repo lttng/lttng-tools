@@ -33,7 +33,8 @@
 #define LTTNG_SYMBOL_NAME_LEN_SCANF_IS_A_BROKEN_API "255"
 #endif
 
-static void lttng_event_rule_kernel_kprobe_destroy(struct lttng_event_rule *rule)
+namespace {
+void lttng_event_rule_kernel_kprobe_destroy(struct lttng_event_rule *rule)
 {
 	struct lttng_event_rule_kernel_kprobe *kprobe;
 
@@ -44,7 +45,7 @@ static void lttng_event_rule_kernel_kprobe_destroy(struct lttng_event_rule *rule
 	free(kprobe);
 }
 
-static bool lttng_event_rule_kernel_kprobe_validate(const struct lttng_event_rule *rule)
+bool lttng_event_rule_kernel_kprobe_validate(const struct lttng_event_rule *rule)
 {
 	bool valid = false;
 	struct lttng_event_rule_kernel_kprobe *kprobe;
@@ -72,8 +73,8 @@ end:
 	return valid;
 }
 
-static int lttng_event_rule_kernel_kprobe_serialize(const struct lttng_event_rule *rule,
-						    struct lttng_payload *payload)
+int lttng_event_rule_kernel_kprobe_serialize(const struct lttng_event_rule *rule,
+					     struct lttng_payload *payload)
 {
 	int ret;
 	size_t name_len, header_offset, size_before_location;
@@ -123,8 +124,8 @@ end:
 	return ret;
 }
 
-static bool lttng_event_rule_kernel_kprobe_is_equal(const struct lttng_event_rule *_a,
-						    const struct lttng_event_rule *_b)
+bool lttng_event_rule_kernel_kprobe_is_equal(const struct lttng_event_rule *_a,
+					     const struct lttng_event_rule *_b)
 {
 	bool is_equal = false;
 	struct lttng_event_rule_kernel_kprobe *a, *b;
@@ -153,7 +154,7 @@ end:
 	return is_equal;
 }
 
-static enum lttng_error_code lttng_event_rule_kernel_kprobe_generate_filter_bytecode(
+enum lttng_error_code lttng_event_rule_kernel_kprobe_generate_filter_bytecode(
 	struct lttng_event_rule *rule __attribute__((unused)),
 	const struct lttng_credentials *creds __attribute__((unused)))
 {
@@ -161,15 +162,14 @@ static enum lttng_error_code lttng_event_rule_kernel_kprobe_generate_filter_byte
 	return LTTNG_OK;
 }
 
-static const char *
-lttng_event_rule_kernel_kprobe_get_filter_expression(const struct lttng_event_rule *rule
-						     __attribute__((unused)))
+const char *lttng_event_rule_kernel_kprobe_get_filter_expression(const struct lttng_event_rule *rule
+								 __attribute__((unused)))
 {
 	/* Not supported. */
 	return nullptr;
 }
 
-static const struct lttng_bytecode *
+const struct lttng_bytecode *
 lttng_event_rule_kernel_kprobe_get_filter_bytecode(const struct lttng_event_rule *rule
 						   __attribute__((unused)))
 {
@@ -177,7 +177,7 @@ lttng_event_rule_kernel_kprobe_get_filter_bytecode(const struct lttng_event_rule
 	return nullptr;
 }
 
-static enum lttng_event_rule_generate_exclusions_status
+enum lttng_event_rule_generate_exclusions_status
 lttng_event_rule_kernel_kprobe_generate_exclusions(const struct lttng_event_rule *rule
 						   __attribute__((unused)),
 						   struct lttng_event_exclusion **exclusions)
@@ -187,7 +187,7 @@ lttng_event_rule_kernel_kprobe_generate_exclusions(const struct lttng_event_rule
 	return LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_NONE;
 }
 
-static unsigned long lttng_event_rule_kernel_kprobe_hash(const struct lttng_event_rule *rule)
+unsigned long lttng_event_rule_kernel_kprobe_hash(const struct lttng_event_rule *rule)
 {
 	unsigned long hash;
 	struct lttng_event_rule_kernel_kprobe *krule =
@@ -201,8 +201,8 @@ static unsigned long lttng_event_rule_kernel_kprobe_hash(const struct lttng_even
 	return hash;
 }
 
-static int kernel_probe_set_location(struct lttng_event_rule_kernel_kprobe *kprobe,
-				     const struct lttng_kernel_probe_location *location)
+int kernel_probe_set_location(struct lttng_event_rule_kernel_kprobe *kprobe,
+			      const struct lttng_kernel_probe_location *location)
 {
 	int ret;
 	struct lttng_kernel_probe_location *location_copy = nullptr;
@@ -226,7 +226,7 @@ end:
 	return ret;
 }
 
-static enum lttng_error_code
+enum lttng_error_code
 lttng_event_rule_kernel_kprobe_mi_serialize(const struct lttng_event_rule *rule,
 					    struct mi_writer *writer)
 {
@@ -281,6 +281,7 @@ mi_error:
 end:
 	return ret_code;
 }
+} /* namespace */
 
 namespace {
 
@@ -316,7 +317,8 @@ void set_event_rule_event_name_from_location(lttng_event_rule& rule,
 
 } /* namespace */
 
-static struct lttng_event *
+namespace {
+struct lttng_event *
 lttng_event_rule_kernel_kprobe_generate_lttng_event(const struct lttng_event_rule *rule)
 {
 	const auto *kprobe =
@@ -365,6 +367,7 @@ lttng_event_rule_kernel_kprobe_generate_lttng_event(const struct lttng_event_rul
 
 	return local_event.release();
 }
+} /* namespace */
 
 struct lttng_event_rule *
 lttng_event_rule_kernel_kprobe_create(const struct lttng_kernel_probe_location *location)

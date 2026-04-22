@@ -473,7 +473,8 @@ ssize_t lttcomm_send_fds_unix_sock(int sock, const int *fds, size_t nb_fd)
  *
  * Returns the size of data sent, or negative error value.
  */
-static ssize_t
+namespace {
+ssize_t
 _lttcomm_send_payload_view_fds_unix_sock(int sock, struct lttng_payload_view *view, bool blocking)
 {
 	int i;
@@ -520,6 +521,7 @@ end:
 	lttng_dynamic_array_reset(&raw_fds);
 	return ret;
 }
+} /* namespace */
 
 ssize_t lttcomm_send_payload_view_fds_unix_sock(int sock, struct lttng_payload_view *view)
 {
@@ -744,7 +746,8 @@ end:
 	return ret;
 }
 
-static void close_raw_fd(void *ptr)
+namespace {
+void close_raw_fd(void *ptr)
 {
 	const int raw_fd = *((const int *) ptr);
 
@@ -757,8 +760,8 @@ static void close_raw_fd(void *ptr)
 	}
 }
 
-static enum lttng_error_code add_fds_to_payload(struct lttng_dynamic_array *raw_fds,
-						struct lttng_payload *payload)
+enum lttng_error_code add_fds_to_payload(struct lttng_dynamic_array *raw_fds,
+					 struct lttng_payload *payload)
 {
 	int i;
 	enum lttng_error_code ret_code = LTTNG_OK;
@@ -792,10 +795,10 @@ end:
 	return ret_code;
 }
 
-static ssize_t _lttcomm_recv_payload_fds_unix_sock(int sock,
-						   size_t nb_fd,
-						   struct lttng_payload *payload,
-						   bool blocking)
+ssize_t _lttcomm_recv_payload_fds_unix_sock(int sock,
+					    size_t nb_fd,
+					    struct lttng_payload *payload,
+					    bool blocking)
 {
 	int i = 0;
 	enum lttng_error_code add_ret;
@@ -837,6 +840,7 @@ end:
 	lttng_dynamic_array_reset(&raw_fds);
 	return ret;
 }
+} /* namespace */
 
 ssize_t lttcomm_recv_payload_fds_unix_sock(int sock, size_t nb_fd, struct lttng_payload *payload)
 {

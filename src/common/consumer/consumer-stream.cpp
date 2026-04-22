@@ -71,7 +71,8 @@ struct metadata_packet_header {
 	uint8_t header_end[0];
 };
 
-static size_t metadata_length(void)
+namespace {
+size_t metadata_length(void)
 {
 	return offsetof(struct metadata_packet_header, header_end);
 }
@@ -79,7 +80,7 @@ static size_t metadata_length(void)
 /*
  * RCU call to free stream. MUST only be used with call_rcu().
  */
-static void free_stream_rcu(struct rcu_head *head)
+void free_stream_rcu(struct rcu_head *head)
 {
 	struct lttng_ht_node_u64 *node = lttng::utils::container_of(head, &lttng_ht_node_u64::head);
 	struct lttng_consumer_stream *stream =
@@ -89,45 +90,45 @@ static void free_stream_rcu(struct rcu_head *head)
 	delete stream;
 }
 
-static void consumer_stream_data_lock_all(struct lttng_consumer_stream *stream)
+void consumer_stream_data_lock_all(struct lttng_consumer_stream *stream)
 {
 	pthread_mutex_lock(&stream->chan->lock);
 	pthread_mutex_lock(&stream->lock);
 }
 
-static void consumer_stream_data_unlock_all(struct lttng_consumer_stream *stream)
+void consumer_stream_data_unlock_all(struct lttng_consumer_stream *stream)
 {
 	pthread_mutex_unlock(&stream->lock);
 	pthread_mutex_unlock(&stream->chan->lock);
 }
 
-static void consumer_stream_data_assert_locked_all(struct lttng_consumer_stream *stream)
+void consumer_stream_data_assert_locked_all(struct lttng_consumer_stream *stream)
 {
 	ASSERT_LOCKED(stream->lock);
 	ASSERT_LOCKED(stream->chan->lock);
 }
 
-static void consumer_stream_metadata_lock_all(struct lttng_consumer_stream *stream)
+void consumer_stream_metadata_lock_all(struct lttng_consumer_stream *stream)
 {
 	consumer_stream_data_lock_all(stream);
 	pthread_mutex_lock(&stream->metadata_rdv_lock);
 }
 
-static void consumer_stream_metadata_unlock_all(struct lttng_consumer_stream *stream)
+void consumer_stream_metadata_unlock_all(struct lttng_consumer_stream *stream)
 {
 	pthread_mutex_unlock(&stream->metadata_rdv_lock);
 	consumer_stream_data_unlock_all(stream);
 }
 
-static void consumer_stream_metadata_assert_locked_all(struct lttng_consumer_stream *stream)
+void consumer_stream_metadata_assert_locked_all(struct lttng_consumer_stream *stream)
 {
 	ASSERT_LOCKED(stream->metadata_rdv_lock);
 	consumer_stream_data_assert_locked_all(stream);
 }
 
-static void aggregate_discarded_events(uint64_t& channel_discarded_events,
-				       uint64_t& stream_previous_discarded_events,
-				       uint64_t stream_current_discarded_events)
+void aggregate_discarded_events(uint64_t& channel_discarded_events,
+				uint64_t& stream_previous_discarded_events,
+				uint64_t stream_current_discarded_events)
 {
 	uint64_t stream_delta = 0;
 
@@ -160,8 +161,8 @@ static void aggregate_discarded_events(uint64_t& channel_discarded_events,
 }
 
 /* Only used for data streams. */
-static int consumer_stream_update_stats(struct lttng_consumer_stream *stream,
-					struct stream_subbuffer *subbuf_)
+int consumer_stream_update_stats(struct lttng_consumer_stream *stream,
+				 struct stream_subbuffer *subbuf_)
 {
 	int ret = 0;
 	uint64_t sequence_number;
@@ -214,9 +215,9 @@ end:
 	return ret;
 }
 
-static void ctf_packet_index_populate(struct ctf_packet_index *index,
-				      off_t offset,
-				      const struct stream_subbuffer *subbuffer)
+void ctf_packet_index_populate(struct ctf_packet_index *index,
+			       off_t offset,
+			       const struct stream_subbuffer *subbuffer)
 {
 	*index = (typeof(*index)){
 		.offset = htobe64(offset),
@@ -236,10 +237,9 @@ static void ctf_packet_index_populate(struct ctf_packet_index *index,
 	};
 }
 
-static ssize_t consumer_stream_consume_mmap(struct lttng_consumer_local_data *ctx
-					    __attribute__((unused)),
-					    struct lttng_consumer_stream *stream,
-					    const struct stream_subbuffer *subbuffer)
+ssize_t consumer_stream_consume_mmap(struct lttng_consumer_local_data *ctx __attribute__((unused)),
+				     struct lttng_consumer_stream *stream,
+				     const struct stream_subbuffer *subbuffer)
 {
 	ssize_t metadata_written_bytes = 0;
 
@@ -315,9 +315,9 @@ static ssize_t consumer_stream_consume_mmap(struct lttng_consumer_local_data *ct
 	return written_bytes + metadata_written_bytes;
 }
 
-static ssize_t consumer_stream_consume_splice(struct lttng_consumer_local_data *ctx,
-					      struct lttng_consumer_stream *stream,
-					      const struct stream_subbuffer *subbuffer)
+ssize_t consumer_stream_consume_splice(struct lttng_consumer_local_data *ctx,
+				       struct lttng_consumer_stream *stream,
+				       const struct stream_subbuffer *subbuffer)
 {
 	const ssize_t written_bytes = lttng_consumer_on_read_subbuffer_splice(
 		ctx, stream, subbuffer->info.data.padded_subbuf_size, 0);
@@ -339,9 +339,9 @@ static ssize_t consumer_stream_consume_splice(struct lttng_consumer_local_data *
 	return written_bytes;
 }
 
-static int consumer_stream_send_index(lttng_consumer_stream& stream,
-				      const struct stream_subbuffer *subbuffer,
-				      struct lttng_consumer_local_data *ctx __attribute__((unused)))
+int consumer_stream_send_index(lttng_consumer_stream& stream,
+			       const struct stream_subbuffer *subbuffer,
+			       struct lttng_consumer_local_data *ctx __attribute__((unused)))
 {
 	off_t packet_offset = 0;
 	struct ctf_packet_index index = {};
@@ -358,9 +358,9 @@ static int consumer_stream_send_index(lttng_consumer_stream& stream,
 	return consumer_stream_write_index(stream, index);
 }
 
-static int try_current_subbuffer_reclamation(lttng_consumer_stream& stream,
-					     const stream_subbuffer *subbuffer [[maybe_unused]],
-					     struct lttng_consumer_local_data *ctx [[maybe_unused]])
+int try_current_subbuffer_reclamation(lttng_consumer_stream& stream,
+				      const stream_subbuffer *subbuffer [[maybe_unused]],
+				      struct lttng_consumer_local_data *ctx [[maybe_unused]])
 {
 	try {
 		consumer_stream_try_reclaim_current_subbuffer(stream, *subbuffer);
@@ -381,8 +381,7 @@ static int try_current_subbuffer_reclamation(lttng_consumer_stream& stream,
  * Return 0 on success else a negative value. ENODATA can be returned also
  * indicating that there is no metadata available for that stream.
  */
-static int do_sync_metadata(struct lttng_consumer_stream *metadata,
-			    struct lttng_consumer_local_data *ctx)
+int do_sync_metadata(struct lttng_consumer_stream *metadata, struct lttng_consumer_local_data *ctx)
 {
 	int ret;
 	enum sync_metadata_status status;
@@ -488,6 +487,7 @@ end_unlock_mutex:
 	pthread_mutex_unlock(&metadata->lock);
 	return ret;
 }
+} /* namespace */
 
 /*
  * Synchronize the metadata using a given session ID. A successful acquisition
@@ -535,9 +535,10 @@ end:
 	return ret;
 }
 
-static int consumer_stream_sync_metadata_index(lttng_consumer_stream& stream,
-					       const struct stream_subbuffer *subbuffer,
-					       struct lttng_consumer_local_data *ctx)
+namespace {
+int consumer_stream_sync_metadata_index(lttng_consumer_stream& stream,
+					const struct stream_subbuffer *subbuffer,
+					struct lttng_consumer_local_data *ctx)
 {
 	bool missed_metadata_flush;
 	int ret;
@@ -588,8 +589,8 @@ end:
  * Check if the local version of the metadata stream matches with the version
  * of the metadata stream in the kernel.
  */
-static int metadata_stream_handle_version_change(struct lttng_consumer_stream *stream,
-						 const struct stream_subbuffer *subbuffer)
+int metadata_stream_handle_version_change(struct lttng_consumer_stream *stream,
+					  const struct stream_subbuffer *subbuffer)
 {
 	if (stream->metadata_version == subbuffer->info.metadata.version) {
 		/* Versions match, no action needed. */
@@ -653,7 +654,7 @@ static int metadata_stream_handle_version_change(struct lttng_consumer_stream *s
 	return 0;
 }
 
-static void strip_packet_header_from_subbuffer(struct stream_subbuffer *buffer)
+void strip_packet_header_from_subbuffer(struct stream_subbuffer *buffer)
 {
 	/*
 	 * Change the view and hide the packer header and padding from the view
@@ -668,8 +669,8 @@ static void strip_packet_header_from_subbuffer(struct stream_subbuffer *buffer)
 	buffer->info.metadata.padded_subbuf_size = new_subbuf_size;
 }
 
-static int metadata_stream_pre_consume(struct lttng_consumer_stream *stream,
-				       struct stream_subbuffer *subbuffer)
+int metadata_stream_pre_consume(struct lttng_consumer_stream *stream,
+				struct stream_subbuffer *subbuffer)
 {
 	const auto version_change_ret = metadata_stream_handle_version_change(stream, subbuffer);
 	if (version_change_ret) {
@@ -680,7 +681,7 @@ static int metadata_stream_pre_consume(struct lttng_consumer_stream *stream,
 	return 0;
 }
 
-static bool stream_is_rotating_to_null_chunk(const struct lttng_consumer_stream& stream)
+bool stream_is_rotating_to_null_chunk(const struct lttng_consumer_stream& stream)
 {
 	bool rotating_to_null_chunk = false;
 
@@ -695,6 +696,7 @@ static bool stream_is_rotating_to_null_chunk(const struct lttng_consumer_stream&
 end:
 	return rotating_to_null_chunk;
 }
+} /* namespace */
 
 enum consumer_stream_open_packet_status consumer_stream_open_packet(lttng_consumer_stream& stream)
 {
@@ -780,11 +782,10 @@ end:
  * ring-buffer. In that case, a second attempt is performed after consuming
  * a packet since that will have freed enough space in the ring-buffer.
  */
-static int post_consume_open_new_packet(lttng_consumer_stream& stream,
-					const struct stream_subbuffer *subbuffer
-					__attribute__((unused)),
-					struct lttng_consumer_local_data *ctx
-					__attribute__((unused)))
+namespace {
+int post_consume_open_new_packet(lttng_consumer_stream& stream,
+				 const struct stream_subbuffer *subbuffer __attribute__((unused)),
+				 struct lttng_consumer_local_data *ctx __attribute__((unused)))
 {
 	int ret = 0;
 
@@ -831,10 +832,10 @@ end:
 	return ret;
 }
 
-static int post_consume_update_metadata_coherent_flag(lttng_consumer_stream& stream,
-						      const struct stream_subbuffer *subbuffer,
-						      struct lttng_consumer_local_data *ctx
-						      __attribute__((unused)))
+int post_consume_update_metadata_coherent_flag(lttng_consumer_stream& stream,
+					       const struct stream_subbuffer *subbuffer,
+					       struct lttng_consumer_local_data *ctx
+					       __attribute__((unused)))
 {
 	const auto original_state = stream.is_metadata_coherent;
 
@@ -853,11 +854,10 @@ static int post_consume_update_metadata_coherent_flag(lttng_consumer_stream& str
 	return 0;
 }
 
-static int post_consume_check_metadata_rotate_ready(lttng_consumer_stream& stream,
-						    const struct stream_subbuffer *subbuffer
-						    [[maybe_unused]],
-						    struct lttng_consumer_local_data *ctx
-						    [[maybe_unused]])
+int post_consume_check_metadata_rotate_ready(lttng_consumer_stream& stream,
+					     const struct stream_subbuffer *subbuffer
+					     [[maybe_unused]],
+					     struct lttng_consumer_local_data *ctx [[maybe_unused]])
 {
 	/*
 	 * Metadata stream has reached coherence while a rotation is pending.
@@ -913,11 +913,11 @@ static int post_consume_check_metadata_rotate_ready(lttng_consumer_stream& strea
 	return 0;
 }
 
-static int post_consume_rotate_metadata_relayd_stream(lttng_consumer_stream& stream,
-						      const struct stream_subbuffer *subbuffer
-						      [[maybe_unused]],
-						      struct lttng_consumer_local_data *ctx
-						      [[maybe_unused]])
+int post_consume_rotate_metadata_relayd_stream(lttng_consumer_stream& stream,
+					       const struct stream_subbuffer *subbuffer
+					       [[maybe_unused]],
+					       struct lttng_consumer_local_data *ctx
+					       [[maybe_unused]])
 {
 	if (stream.rotate_ready) {
 		LTTNG_ASSERT(stream.is_metadata_coherent &&
@@ -928,6 +928,7 @@ static int post_consume_rotate_metadata_relayd_stream(lttng_consumer_stream& str
 
 	return 0;
 }
+} /* namespace */
 
 struct lttng_consumer_stream *consumer_stream_create(struct lttng_consumer_channel *channel,
 						     uint64_t channel_key,
@@ -1324,7 +1325,8 @@ void consumer_stream_destroy_buffers(struct lttng_consumer_stream *stream)
 /*
  * Destroy and close a already created stream.
  */
-static void destroy_close_stream(struct lttng_consumer_stream *stream)
+namespace {
+void destroy_close_stream(struct lttng_consumer_stream *stream)
 {
 	LTTNG_ASSERT(stream);
 
@@ -1340,7 +1342,7 @@ static void destroy_close_stream(struct lttng_consumer_stream *stream)
  * Decrement the stream's channel refcount and if down to 0, return the channel
  * pointer so it can be destroyed by the caller or NULL if not.
  */
-static struct lttng_consumer_channel *unref_channel(struct lttng_consumer_stream *stream)
+struct lttng_consumer_channel *unref_channel(struct lttng_consumer_stream *stream)
 {
 	struct lttng_consumer_channel *free_chan = nullptr;
 
@@ -1355,6 +1357,7 @@ static struct lttng_consumer_channel *unref_channel(struct lttng_consumer_stream
 
 	return free_chan;
 }
+} /* namespace */
 
 /*
  * Destroy a stream completely. This will delete, close and free the stream.
@@ -1568,7 +1571,8 @@ bool consumer_stream_is_deleted(struct lttng_consumer_stream *stream)
 	return cds_lfht_is_node_deleted(&stream->node.node);
 }
 
-static ssize_t metadata_bucket_flush(const struct stream_subbuffer *buffer, void *data)
+namespace {
+ssize_t metadata_bucket_flush(const struct stream_subbuffer *buffer, void *data)
 {
 	ssize_t ret;
 	struct lttng_consumer_stream *stream = (lttng_consumer_stream *) data;
@@ -1581,10 +1585,9 @@ end:
 	return ret;
 }
 
-static ssize_t metadata_bucket_consume(struct lttng_consumer_local_data *unused
-				       __attribute__((unused)),
-				       struct lttng_consumer_stream *stream,
-				       const struct stream_subbuffer *subbuffer)
+ssize_t metadata_bucket_consume(struct lttng_consumer_local_data *unused __attribute__((unused)),
+				struct lttng_consumer_stream *stream,
+				const struct stream_subbuffer *subbuffer)
 {
 	ssize_t ret;
 	enum metadata_bucket_status status;
@@ -1601,6 +1604,7 @@ static ssize_t metadata_bucket_consume(struct lttng_consumer_local_data *unused
 
 	return ret;
 }
+} /* namespace */
 
 int consumer_stream_enable_metadata_bucketization(struct lttng_consumer_stream *stream)
 {

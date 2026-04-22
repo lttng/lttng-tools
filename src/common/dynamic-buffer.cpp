@@ -13,7 +13,8 @@
  * Round to (upper) power of two, val is returned if it already is a power of
  * two.
  */
-static size_t round_to_power_of_2(size_t val)
+namespace {
+size_t round_to_power_of_2(size_t val)
 {
 	size_t rounded;
 	const int order = utils_get_count_order_u64(val);
@@ -24,6 +25,7 @@ static size_t round_to_power_of_2(size_t val)
 
 	return rounded;
 }
+} /* namespace */
 
 void lttng_dynamic_buffer_init(struct lttng_dynamic_buffer *buffer)
 {

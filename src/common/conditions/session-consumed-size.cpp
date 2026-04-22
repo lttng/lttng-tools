@@ -24,7 +24,8 @@
 #define IS_CONSUMED_SIZE_EVALUATION(evaluation) \
 	(lttng_evaluation_get_type(evaluation) == LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE)
 
-static void lttng_condition_session_consumed_size_destroy(struct lttng_condition *condition)
+namespace {
+void lttng_condition_session_consumed_size_destroy(struct lttng_condition *condition)
 {
 	struct lttng_condition_session_consumed_size *consumed_size;
 
@@ -35,7 +36,7 @@ static void lttng_condition_session_consumed_size_destroy(struct lttng_condition
 	free(consumed_size);
 }
 
-static bool lttng_condition_session_consumed_size_validate(const struct lttng_condition *condition)
+bool lttng_condition_session_consumed_size_validate(const struct lttng_condition *condition)
 {
 	bool valid = false;
 	struct lttng_condition_session_consumed_size *consumed;
@@ -66,8 +67,8 @@ end:
 	return valid;
 }
 
-static int lttng_condition_session_consumed_size_serialize(const struct lttng_condition *condition,
-							   struct lttng_payload *payload)
+int lttng_condition_session_consumed_size_serialize(const struct lttng_condition *condition,
+						    struct lttng_payload *payload)
 {
 	int ret;
 	size_t session_name_len;
@@ -106,8 +107,8 @@ end:
 	return ret;
 }
 
-static bool lttng_condition_session_consumed_size_is_equal(const struct lttng_condition *_a,
-							   const struct lttng_condition *_b)
+bool lttng_condition_session_consumed_size_is_equal(const struct lttng_condition *_a,
+						    const struct lttng_condition *_b)
 {
 	bool is_equal = false;
 	struct lttng_condition_session_consumed_size *a, *b;
@@ -136,7 +137,7 @@ end:
 	return is_equal;
 }
 
-static enum lttng_error_code
+enum lttng_error_code
 lttng_condition_session_consumed_size_mi_serialize(const struct lttng_condition *condition,
 						   struct mi_writer *writer)
 {
@@ -192,6 +193,7 @@ mi_error:
 end:
 	return ret_code;
 }
+} /* namespace */
 
 struct lttng_condition *lttng_condition_session_consumed_size_create(void)
 {
@@ -211,8 +213,9 @@ struct lttng_condition *lttng_condition_session_consumed_size_create(void)
 	return &condition->parent;
 }
 
-static ssize_t init_condition_from_payload(struct lttng_condition *condition,
-					   struct lttng_payload_view *src_view)
+namespace {
+ssize_t init_condition_from_payload(struct lttng_condition *condition,
+				    struct lttng_payload_view *src_view)
 {
 	ssize_t ret, condition_size;
 	enum lttng_condition_status status;
@@ -276,6 +279,7 @@ static ssize_t init_condition_from_payload(struct lttng_condition *condition,
 end:
 	return ret;
 }
+} /* namespace */
 
 ssize_t
 lttng_condition_session_consumed_size_create_from_payload(struct lttng_payload_view *view,
@@ -301,8 +305,8 @@ error:
 	return ret;
 }
 
-static struct lttng_evaluation *
-create_evaluation_from_payload(const struct lttng_payload_view *view)
+namespace {
+struct lttng_evaluation *create_evaluation_from_payload(const struct lttng_payload_view *view)
 {
 	const struct lttng_evaluation_session_consumed_size_comm *comm =
 		(typeof(comm)) view->buffer.data;
@@ -316,6 +320,7 @@ create_evaluation_from_payload(const struct lttng_payload_view *view)
 end:
 	return evaluation;
 }
+} /* namespace */
 
 ssize_t
 lttng_evaluation_session_consumed_size_create_from_payload(struct lttng_payload_view *view,
@@ -439,9 +444,9 @@ end:
 	return status;
 }
 
-static int
-lttng_evaluation_session_consumed_size_serialize(const struct lttng_evaluation *evaluation,
-						 struct lttng_payload *payload)
+namespace {
+int lttng_evaluation_session_consumed_size_serialize(const struct lttng_evaluation *evaluation,
+						     struct lttng_payload *payload)
 {
 	struct lttng_evaluation_session_consumed_size *consumed;
 	struct lttng_evaluation_session_consumed_size_comm comm;
@@ -452,7 +457,7 @@ lttng_evaluation_session_consumed_size_serialize(const struct lttng_evaluation *
 	return lttng_dynamic_buffer_append(&payload->buffer, &comm, sizeof(comm));
 }
 
-static void lttng_evaluation_session_consumed_size_destroy(struct lttng_evaluation *evaluation)
+void lttng_evaluation_session_consumed_size_destroy(struct lttng_evaluation *evaluation)
 {
 	struct lttng_evaluation_session_consumed_size *consumed;
 
@@ -460,6 +465,7 @@ static void lttng_evaluation_session_consumed_size_destroy(struct lttng_evaluati
 					      &lttng_evaluation_session_consumed_size::parent);
 	free(consumed);
 }
+} /* namespace */
 
 struct lttng_evaluation *lttng_evaluation_session_consumed_size_create(uint64_t consumed)
 {

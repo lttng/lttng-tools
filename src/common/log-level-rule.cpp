@@ -18,19 +18,21 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-static bool is_log_level_rule_exactly_type(const struct lttng_log_level_rule *rule)
+namespace {
+bool is_log_level_rule_exactly_type(const struct lttng_log_level_rule *rule)
 {
 	const lttng_log_level_rule_type type = lttng_log_level_rule_get_type(rule);
 
 	return type == LTTNG_LOG_LEVEL_RULE_TYPE_EXACTLY;
 }
 
-static bool is_log_level_rule_at_least_as_severe_type(const struct lttng_log_level_rule *rule)
+bool is_log_level_rule_at_least_as_severe_type(const struct lttng_log_level_rule *rule)
 {
 	const lttng_log_level_rule_type type = lttng_log_level_rule_get_type(rule);
 
 	return type == LTTNG_LOG_LEVEL_RULE_TYPE_AT_LEAST_AS_SEVERE_AS;
 }
+} /* namespace */
 
 enum lttng_log_level_rule_type
 lttng_log_level_rule_get_type(const struct lttng_log_level_rule *rule)

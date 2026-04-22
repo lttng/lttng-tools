@@ -49,7 +49,8 @@ thread_local struct health_state health_state;
 /*
  * Initialize health check subsytem.
  */
-static void health_init(struct health_app *ha)
+namespace {
+void health_init(struct health_app *ha)
 {
 	/*
 	 * Get the maximum value between the default delta value and the TCP
@@ -59,6 +60,7 @@ static void health_init(struct health_app *ha)
 		lttcomm_inet_tcp_timeout + DEFAULT_HEALTH_CHECK_DELTA_S, ha->time_delta.tv_sec);
 	DBG("Health check time delta in seconds set to %lu", ha->time_delta.tv_sec);
 }
+} /* namespace */
 
 struct health_app *health_app_create(int nr_types)
 {
@@ -94,7 +96,8 @@ void health_app_destroy(struct health_app *ha)
 /*
  * Lock health state global list mutex.
  */
-static void state_lock(struct health_app *ha)
+namespace {
+void state_lock(struct health_app *ha)
 {
 	pthread_mutex_lock(&ha->lock);
 }
@@ -102,7 +105,7 @@ static void state_lock(struct health_app *ha)
 /*
  * Unlock health state global list mutex.
  */
-static void state_unlock(struct health_app *ha)
+void state_unlock(struct health_app *ha)
 {
 	pthread_mutex_unlock(&ha->lock);
 }
@@ -110,8 +113,7 @@ static void state_unlock(struct health_app *ha)
 /*
  * Set time difference in res from time_a and time_b.
  */
-static void
-time_diff(const struct timespec *time_a, const struct timespec *time_b, struct timespec *res)
+void time_diff(const struct timespec *time_a, const struct timespec *time_b, struct timespec *res)
 {
 	if (time_a->tv_nsec - time_b->tv_nsec < 0) {
 		res->tv_sec = time_a->tv_sec - time_b->tv_sec - 1;
@@ -125,9 +127,9 @@ time_diff(const struct timespec *time_a, const struct timespec *time_b, struct t
 /*
  * Return true if time_a - time_b > diff, else false.
  */
-static int time_diff_gt(const struct timespec *time_a,
-			const struct timespec *time_b,
-			const struct timespec *diff)
+int time_diff_gt(const struct timespec *time_a,
+		 const struct timespec *time_b,
+		 const struct timespec *diff)
 {
 	struct timespec res;
 
@@ -148,7 +150,7 @@ static int time_diff_gt(const struct timespec *time_a,
  *
  * Return 0 if health is bad or else 1.
  */
-static int validate_state(struct health_app *ha, struct health_state *state)
+int validate_state(struct health_app *ha, struct health_state *state)
 {
 	int retval = 1, ret;
 	unsigned long current, last;
@@ -207,6 +209,7 @@ end:
 	DBG("Health state current %lu, last %lu, ret %d", current, last, ret);
 	return retval;
 }
+} /* namespace */
 
 /*
  * Check health of a specific health type. Note that if a thread has not yet

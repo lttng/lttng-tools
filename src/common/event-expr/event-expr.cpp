@@ -34,7 +34,8 @@ end:
 	return type;
 }
 
-static struct lttng_event_expr *create_empty_expr(enum lttng_event_expr_type type, size_t size)
+namespace {
+struct lttng_event_expr *create_empty_expr(enum lttng_event_expr_type type, size_t size)
 {
 	struct lttng_event_expr *expr;
 
@@ -49,8 +50,8 @@ end:
 	return expr;
 }
 
-static struct lttng_event_expr_field *create_field_event_expr(enum lttng_event_expr_type type,
-							      const char *name)
+struct lttng_event_expr_field *create_field_event_expr(enum lttng_event_expr_type type,
+						       const char *name)
 {
 	struct lttng_event_expr_field *expr = lttng::utils::container_of(
 		create_empty_expr(type, sizeof(*expr)), &lttng_event_expr_field::parent);
@@ -76,6 +77,7 @@ error:
 end:
 	return expr;
 }
+} /* namespace */
 
 struct lttng_event_expr *lttng_event_expr_event_payload_field_create(const char *field_name)
 {
@@ -403,9 +405,10 @@ end:
 	return;
 }
 
-static int event_expr_to_bytecode_recursive(const struct lttng_event_expr *expr,
-					    struct lttng_bytecode_alloc **bytecode,
-					    struct lttng_bytecode_alloc **bytecode_reloc)
+namespace {
+int event_expr_to_bytecode_recursive(const struct lttng_event_expr *expr,
+				     struct lttng_bytecode_alloc **bytecode,
+				     struct lttng_bytecode_alloc **bytecode_reloc)
 {
 	int status;
 	enum lttng_event_expr_status event_expr_status;
@@ -550,6 +553,7 @@ static int event_expr_to_bytecode_recursive(const struct lttng_event_expr *expr,
 end:
 	return status;
 }
+} /* namespace */
 
 int lttng_event_expr_to_bytecode(const struct lttng_event_expr *expr,
 				 struct lttng_bytecode **bytecode_out)
@@ -608,7 +612,8 @@ end:
 	return status;
 }
 
-static enum lttng_error_code
+namespace {
+enum lttng_error_code
 lttng_event_expr_event_payload_field_mi_serialize(const struct lttng_event_expr *expression,
 						  struct mi_writer *writer)
 {
@@ -650,7 +655,7 @@ end:
 	return ret_code;
 }
 
-static enum lttng_error_code
+enum lttng_error_code
 lttng_event_expr_channel_context_field_mi_serialize(const struct lttng_event_expr *expression,
 						    struct mi_writer *writer)
 {
@@ -693,7 +698,7 @@ end:
 	return ret_code;
 }
 
-static enum lttng_error_code
+enum lttng_error_code
 lttng_event_expr_app_specific_context_field_mi_serialize(const struct lttng_event_expr *expression,
 							 struct mi_writer *writer)
 {
@@ -748,7 +753,7 @@ end:
 	return ret_code;
 }
 
-static enum lttng_error_code
+enum lttng_error_code
 lttng_event_expr_array_field_element_mi_serialize(const struct lttng_event_expr *expression,
 						  struct mi_writer *writer)
 {
@@ -801,6 +806,7 @@ mi_error:
 end:
 	return ret_code;
 }
+} /* namespace */
 
 enum lttng_error_code lttng_event_expr_mi_serialize(const struct lttng_event_expr *expression,
 						    struct mi_writer *writer)

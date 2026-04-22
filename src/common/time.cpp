@@ -19,7 +19,9 @@
 #include <stdint.h>
 #include <string.h>
 
-static bool utf8_output_supported;
+namespace {
+bool utf8_output_supported;
+} /* namespace */
 
 bool locale_supports_utf8()
 {
@@ -57,7 +59,8 @@ struct timespec timespec_abs_diff(struct timespec t1, struct timespec t2)
 	return res;
 }
 
-static bool contains_utf8(const char *const str)
+namespace {
+bool contains_utf8(const char *const str)
 {
 	if (!str) {
 		return false;
@@ -67,7 +70,7 @@ static bool contains_utf8(const char *const str)
 		std::strstr(str, "UTF-8");
 }
 
-static void __attribute__((constructor)) init_locale_utf8_support()
+void __attribute__((constructor)) init_locale_utf8_support()
 {
 	if (const auto no_utf8_env = getenv("LTTNG_NO_UTF_8")) {
 		if (std::strcmp(no_utf8_env, "1") == 0) {
@@ -81,6 +84,7 @@ static void __attribute__((constructor)) init_locale_utf8_support()
 		utf8_output_supported = true;
 	}
 }
+} /* namespace */
 
 int time_to_iso8601_str(time_t time, char *str, size_t len)
 {

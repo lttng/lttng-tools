@@ -35,14 +35,15 @@
  * is 90 bytes on a 32-bit kernel and 160 bytes on a 64-bit kernel.
  *
  */
-static unsigned int poll_max_size;
+namespace {
+unsigned int poll_max_size;
 
 /*
  * Resize the epoll events structure of the new size.
  *
  * Return 0 on success or else -1 with the current events pointer untouched.
  */
-static int resize_poll_event(struct lttng_poll_event *events, uint32_t new_size)
+int resize_poll_event(struct lttng_poll_event *events, uint32_t new_size)
 {
 	struct epoll_event *ptr;
 
@@ -65,6 +66,7 @@ static int resize_poll_event(struct lttng_poll_event *events, uint32_t new_size)
 error:
 	return -1;
 }
+} /* namespace */
 
 /*
  * Create epoll set and allocate returned events structure.

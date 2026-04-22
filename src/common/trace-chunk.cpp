@@ -54,13 +54,15 @@ enum trace_chunk_mode {
 using chunk_command = int (*)(struct lttng_trace_chunk *);
 
 /* Move a completed trace chunk to the 'completed' trace archive folder. */
-static int lttng_trace_chunk_move_to_completed_post_release(struct lttng_trace_chunk *trace_chunk);
+namespace {
+int lttng_trace_chunk_move_to_completed_post_release(struct lttng_trace_chunk *trace_chunk);
 /* Empty callback. */
-static int lttng_trace_chunk_no_operation(struct lttng_trace_chunk *trace_chunk);
+int lttng_trace_chunk_no_operation(struct lttng_trace_chunk *trace_chunk);
 /* Unlink old chunk files. */
-static int lttng_trace_chunk_delete_post_release(struct lttng_trace_chunk *trace_chunk);
-static enum lttng_trace_chunk_status
-lttng_trace_chunk_rename_path_no_lock(struct lttng_trace_chunk *chunk, const char *path);
+int lttng_trace_chunk_delete_post_release(struct lttng_trace_chunk *trace_chunk);
+enum lttng_trace_chunk_status lttng_trace_chunk_rename_path_no_lock(struct lttng_trace_chunk *chunk,
+								    const char *path);
+} /* namespace */
 
 namespace {
 struct chunk_credentials {
@@ -148,12 +150,13 @@ struct fs_handle_untracked {
 };
 } /* namespace */
 
-static int fs_handle_untracked_get_fd(struct fs_handle *handle);
-static void fs_handle_untracked_put_fd(struct fs_handle *handle);
-static int fs_handle_untracked_unlink(struct fs_handle *handle);
-static int fs_handle_untracked_close(struct fs_handle *handle);
+namespace {
+int fs_handle_untracked_get_fd(struct fs_handle *handle);
+void fs_handle_untracked_put_fd(struct fs_handle *handle);
+int fs_handle_untracked_unlink(struct fs_handle *handle);
+int fs_handle_untracked_close(struct fs_handle *handle);
 
-static const char *lttng_trace_chunk_command_type_str(lttng_trace_chunk_command_type type)
+const char *lttng_trace_chunk_command_type_str(lttng_trace_chunk_command_type type)
 {
 	switch (type) {
 	case LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED:
@@ -169,7 +172,7 @@ static const char *lttng_trace_chunk_command_type_str(lttng_trace_chunk_command_
 	abort();
 };
 
-static chunk_command close_command_get_post_release_func(lttng_trace_chunk_command_type type)
+chunk_command close_command_get_post_release_func(lttng_trace_chunk_command_type type)
 {
 	switch (type) {
 	case LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED:
@@ -185,9 +188,9 @@ static chunk_command close_command_get_post_release_func(lttng_trace_chunk_comma
 	abort();
 };
 
-static struct fs_handle *fs_handle_untracked_create(struct lttng_directory_handle *directory_handle,
-						    const char *path,
-						    int fd)
+struct fs_handle *fs_handle_untracked_create(struct lttng_directory_handle *directory_handle,
+					     const char *path,
+					     int fd)
 {
 	struct fs_handle_untracked *handle = nullptr;
 	bool reference_acquired;
@@ -224,7 +227,7 @@ end:
 	return handle ? &handle->parent : nullptr;
 }
 
-static int fs_handle_untracked_get_fd(struct fs_handle *_handle)
+int fs_handle_untracked_get_fd(struct fs_handle *_handle)
 {
 	struct fs_handle_untracked *handle =
 		lttng::utils::container_of(_handle, &fs_handle_untracked::parent);
@@ -232,12 +235,12 @@ static int fs_handle_untracked_get_fd(struct fs_handle *_handle)
 	return handle->fd;
 }
 
-static void fs_handle_untracked_put_fd(struct fs_handle *_handle __attribute__((unused)))
+void fs_handle_untracked_put_fd(struct fs_handle *_handle __attribute__((unused)))
 {
 	/* no-op. */
 }
 
-static int fs_handle_untracked_unlink(struct fs_handle *_handle)
+int fs_handle_untracked_unlink(struct fs_handle *_handle)
 {
 	struct fs_handle_untracked *handle =
 		lttng::utils::container_of(_handle, &fs_handle_untracked::parent);
@@ -246,14 +249,14 @@ static int fs_handle_untracked_unlink(struct fs_handle *_handle)
 						  handle->location.path);
 }
 
-static void fs_handle_untracked_destroy(struct fs_handle_untracked *handle)
+void fs_handle_untracked_destroy(struct fs_handle_untracked *handle)
 {
 	lttng_directory_handle_put(handle->location.directory_handle);
 	free(handle->location.path);
 	free(handle);
 }
 
-static int fs_handle_untracked_close(struct fs_handle *_handle)
+int fs_handle_untracked_close(struct fs_handle *_handle)
 {
 	struct fs_handle_untracked *handle =
 		lttng::utils::container_of(_handle, &fs_handle_untracked::parent);
@@ -263,9 +266,8 @@ static int fs_handle_untracked_close(struct fs_handle *_handle)
 	return ret;
 }
 
-static bool
-lttng_trace_chunk_registry_element_equals(const struct lttng_trace_chunk_registry_element *a,
-					  const struct lttng_trace_chunk_registry_element *b)
+bool lttng_trace_chunk_registry_element_equals(const struct lttng_trace_chunk_registry_element *a,
+					       const struct lttng_trace_chunk_registry_element *b)
 {
 	if (a->session_id != b->session_id) {
 		goto not_equal;
@@ -281,7 +283,7 @@ not_equal:
 	return false;
 }
 
-static int lttng_trace_chunk_registry_element_match(struct cds_lfht_node *node, const void *key)
+int lttng_trace_chunk_registry_element_match(struct cds_lfht_node *node, const void *key)
 {
 	const struct lttng_trace_chunk_registry_element *element_a, *element_b;
 
@@ -290,7 +292,7 @@ static int lttng_trace_chunk_registry_element_match(struct cds_lfht_node *node, 
 	return lttng_trace_chunk_registry_element_equals(element_a, element_b);
 }
 
-static unsigned long
+unsigned long
 lttng_trace_chunk_registry_element_hash(const struct lttng_trace_chunk_registry_element *element)
 {
 	unsigned long hash = hash_key_u64(&element->session_id, lttng_ht_seed);
@@ -302,7 +304,7 @@ lttng_trace_chunk_registry_element_hash(const struct lttng_trace_chunk_registry_
 	return hash;
 }
 
-static char *
+char *
 generate_chunk_name(uint64_t chunk_id, time_t creation_timestamp, const time_t *close_timestamp)
 {
 	int ret = 0;
@@ -347,7 +349,7 @@ error:
 	return nullptr;
 }
 
-static void lttng_trace_chunk_init(struct lttng_trace_chunk *chunk)
+void lttng_trace_chunk_init(struct lttng_trace_chunk *chunk)
 {
 	urcu_ref_init(&chunk->ref);
 	pthread_mutex_init(&chunk->lock, nullptr);
@@ -355,7 +357,7 @@ static void lttng_trace_chunk_init(struct lttng_trace_chunk *chunk)
 	lttng_dynamic_pointer_array_init(&chunk->files, free);
 }
 
-static void lttng_trace_chunk_fini(struct lttng_trace_chunk *chunk)
+void lttng_trace_chunk_fini(struct lttng_trace_chunk *chunk)
 {
 	if (chunk->session_output_directory) {
 		lttng_directory_handle_put(chunk->session_output_directory);
@@ -374,7 +376,7 @@ static void lttng_trace_chunk_fini(struct lttng_trace_chunk *chunk)
 	pthread_mutex_destroy(&chunk->lock);
 }
 
-static struct lttng_trace_chunk *lttng_trace_chunk_allocate()
+struct lttng_trace_chunk *lttng_trace_chunk_allocate()
 {
 	struct lttng_trace_chunk *chunk = nullptr;
 
@@ -387,6 +389,7 @@ static struct lttng_trace_chunk *lttng_trace_chunk_allocate()
 end:
 	return chunk;
 }
+} /* namespace */
 
 struct lttng_trace_chunk *lttng_trace_chunk_create_anonymous()
 {
@@ -648,7 +651,8 @@ bool lttng_trace_chunk_get_name_overridden(struct lttng_trace_chunk *chunk)
 	return name_overridden;
 }
 
-static bool is_valid_chunk_name(const char *name)
+namespace {
+bool is_valid_chunk_name(const char *name)
 {
 	size_t len;
 
@@ -667,6 +671,7 @@ static bool is_valid_chunk_name(const char *name)
 
 	return true;
 }
+} /* namespace */
 
 enum lttng_trace_chunk_status lttng_trace_chunk_override_name(struct lttng_trace_chunk *chunk,
 							      const char *name)
@@ -715,8 +720,9 @@ end:
 	return status;
 }
 
-static enum lttng_trace_chunk_status
-lttng_trace_chunk_rename_path_no_lock(struct lttng_trace_chunk *chunk, const char *path)
+namespace {
+enum lttng_trace_chunk_status lttng_trace_chunk_rename_path_no_lock(struct lttng_trace_chunk *chunk,
+								    const char *path)
 
 {
 	enum lttng_trace_chunk_status status = LTTNG_TRACE_CHUNK_STATUS_OK;
@@ -914,6 +920,7 @@ end:
 	lttng_directory_handle_put(rename_directory);
 	return status;
 }
+} /* namespace */
 
 enum lttng_trace_chunk_status lttng_trace_chunk_rename_path(struct lttng_trace_chunk *chunk,
 							    const char *path)
@@ -1125,7 +1132,8 @@ end:
 }
 
 /* Add a top-level directory to the trace chunk if it was previously unknown. */
-static int add_top_level_directory_unique(struct lttng_trace_chunk *chunk, const char *new_path)
+namespace {
+int add_top_level_directory_unique(struct lttng_trace_chunk *chunk, const char *new_path)
 {
 	int ret = 0;
 	bool found = false;
@@ -1169,6 +1177,7 @@ static int add_top_level_directory_unique(struct lttng_trace_chunk *chunk, const
 end:
 	return ret;
 }
+} /* namespace */
 
 enum lttng_trace_chunk_status lttng_trace_chunk_create_subdirectory(struct lttng_trace_chunk *chunk,
 								    const char *path)
@@ -1229,8 +1238,8 @@ end:
 /*
  * TODO: Implement O(1) lookup.
  */
-static bool
-lttng_trace_chunk_find_file(struct lttng_trace_chunk *chunk, const char *path, size_t *index)
+namespace {
+bool lttng_trace_chunk_find_file(struct lttng_trace_chunk *chunk, const char *path, size_t *index)
 {
 	size_t i, count;
 
@@ -1248,8 +1257,8 @@ lttng_trace_chunk_find_file(struct lttng_trace_chunk *chunk, const char *path, s
 	return false;
 }
 
-static enum lttng_trace_chunk_status lttng_trace_chunk_add_file(struct lttng_trace_chunk *chunk,
-								const char *path)
+enum lttng_trace_chunk_status lttng_trace_chunk_add_file(struct lttng_trace_chunk *chunk,
+							 const char *path)
 {
 	char *copy;
 	int ret;
@@ -1276,7 +1285,7 @@ end:
 	return status;
 }
 
-static void lttng_trace_chunk_remove_file(struct lttng_trace_chunk *chunk, const char *path)
+void lttng_trace_chunk_remove_file(struct lttng_trace_chunk *chunk, const char *path)
 {
 	size_t index;
 	bool found;
@@ -1290,7 +1299,7 @@ static void lttng_trace_chunk_remove_file(struct lttng_trace_chunk *chunk, const
 	LTTNG_ASSERT(!ret);
 }
 
-static enum lttng_trace_chunk_status
+enum lttng_trace_chunk_status
 _lttng_trace_chunk_open_fs_handle_locked(struct lttng_trace_chunk *chunk,
 					 const char *file_path,
 					 int flags,
@@ -1360,6 +1369,7 @@ _lttng_trace_chunk_open_fs_handle_locked(struct lttng_trace_chunk *chunk,
 end:
 	return status;
 }
+} /* namespace */
 
 enum lttng_trace_chunk_status lttng_trace_chunk_open_fs_handle(struct lttng_trace_chunk *chunk,
 							       const char *file_path,
@@ -1447,8 +1457,9 @@ end:
 	return status;
 }
 
-static int lttng_trace_chunk_remove_subdirectory_recursive(struct lttng_trace_chunk *chunk,
-							   const char *path)
+namespace {
+int lttng_trace_chunk_remove_subdirectory_recursive(struct lttng_trace_chunk *chunk,
+						    const char *path)
 {
 	int ret;
 	enum lttng_trace_chunk_status status = LTTNG_TRACE_CHUNK_STATUS_OK;
@@ -1486,7 +1497,7 @@ end:
 	return status;
 }
 
-static int lttng_trace_chunk_move_to_completed_post_release(struct lttng_trace_chunk *trace_chunk)
+int lttng_trace_chunk_move_to_completed_post_release(struct lttng_trace_chunk *trace_chunk)
 {
 	int ret = 0;
 	char *archived_chunk_name = nullptr;
@@ -1577,13 +1588,12 @@ end:
 	return ret;
 }
 
-static int lttng_trace_chunk_no_operation(struct lttng_trace_chunk *trace_chunk
-					  __attribute__((unused)))
+int lttng_trace_chunk_no_operation(struct lttng_trace_chunk *trace_chunk __attribute__((unused)))
 {
 	return 0;
 }
 
-static int lttng_trace_chunk_delete_post_release_user(struct lttng_trace_chunk *trace_chunk)
+int lttng_trace_chunk_delete_post_release_user(struct lttng_trace_chunk *trace_chunk)
 {
 	int ret = 0;
 
@@ -1610,7 +1620,7 @@ end:
 	return ret;
 }
 
-static int lttng_trace_chunk_delete_post_release_owner(struct lttng_trace_chunk *trace_chunk)
+int lttng_trace_chunk_delete_post_release_owner(struct lttng_trace_chunk *trace_chunk)
 {
 	enum lttng_trace_chunk_status status;
 	size_t i, count;
@@ -1669,7 +1679,7 @@ end:
  * session daemon is the owner of the chunk. Unlink all files owned by each
  * consumer daemon.
  */
-static int lttng_trace_chunk_delete_post_release(struct lttng_trace_chunk *trace_chunk)
+int lttng_trace_chunk_delete_post_release(struct lttng_trace_chunk *trace_chunk)
 {
 	if (!trace_chunk->chunk_directory) {
 		return 0;
@@ -1681,6 +1691,7 @@ static int lttng_trace_chunk_delete_post_release(struct lttng_trace_chunk *trace
 		return lttng_trace_chunk_delete_post_release_user(trace_chunk);
 	}
 }
+} /* namespace */
 
 enum lttng_trace_chunk_status
 lttng_trace_chunk_get_close_command(struct lttng_trace_chunk *chunk,
@@ -1783,7 +1794,8 @@ bool lttng_trace_chunk_get(struct lttng_trace_chunk *chunk)
 	return urcu_ref_get_unless_zero(&chunk->ref);
 }
 
-static void free_lttng_trace_chunk_registry_element(struct rcu_head *node)
+namespace {
+void free_lttng_trace_chunk_registry_element(struct rcu_head *node)
 {
 	struct lttng_trace_chunk_registry_element *element =
 		lttng::utils::container_of(node, &lttng_trace_chunk_registry_element::rcu_node);
@@ -1791,7 +1803,7 @@ static void free_lttng_trace_chunk_registry_element(struct rcu_head *node)
 	free(element);
 }
 
-static void lttng_trace_chunk_release(struct urcu_ref *ref)
+void lttng_trace_chunk_release(struct urcu_ref *ref)
 {
 	struct lttng_trace_chunk *chunk = lttng::utils::container_of(ref, &lttng_trace_chunk::ref);
 
@@ -1842,6 +1854,7 @@ static void lttng_trace_chunk_release(struct urcu_ref *ref)
 		free(chunk);
 	}
 }
+} /* namespace */
 
 void lttng_trace_chunk_put(struct lttng_trace_chunk *chunk)
 {
@@ -1885,7 +1898,8 @@ void lttng_trace_chunk_registry_destroy(struct lttng_trace_chunk_registry *regis
 	free(registry);
 }
 
-static struct lttng_trace_chunk_registry_element *
+namespace {
+struct lttng_trace_chunk_registry_element *
 lttng_trace_chunk_registry_element_create_from_chunk(struct lttng_trace_chunk *chunk,
 						     uint64_t session_id)
 {
@@ -1921,6 +1935,7 @@ lttng_trace_chunk_registry_element_create_from_chunk(struct lttng_trace_chunk *c
 end:
 	return element;
 }
+} /* namespace */
 
 struct lttng_trace_chunk *
 lttng_trace_chunk_registry_publish_chunk(struct lttng_trace_chunk_registry *registry,
@@ -2020,7 +2035,8 @@ end:
  * IOW, holding a reference guarantees the existence of the object for the
  * caller.
  */
-static struct lttng_trace_chunk *_lttng_trace_chunk_registry_find_chunk(
+namespace {
+struct lttng_trace_chunk *_lttng_trace_chunk_registry_find_chunk(
 	const struct lttng_trace_chunk_registry *registry, uint64_t session_id, uint64_t *chunk_id)
 {
 	lttng_trace_chunk_registry_element target_element{};
@@ -2054,6 +2070,7 @@ static struct lttng_trace_chunk *_lttng_trace_chunk_registry_find_chunk(
 end:
 	return published_chunk;
 }
+} /* namespace */
 
 struct lttng_trace_chunk *lttng_trace_chunk_registry_find_chunk(
 	const struct lttng_trace_chunk_registry *registry, uint64_t session_id, uint64_t chunk_id)

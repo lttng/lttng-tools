@@ -12,7 +12,8 @@
 
 #include <stdlib.h>
 
-static struct lttng_trace_archive_location *
+namespace {
+struct lttng_trace_archive_location *
 lttng_trace_archive_location_create(enum lttng_trace_archive_location_type type)
 {
 	struct lttng_trace_archive_location *location;
@@ -28,7 +29,7 @@ end:
 	return location;
 }
 
-static void trace_archive_location_destroy_ref(struct urcu_ref *ref)
+void trace_archive_location_destroy_ref(struct urcu_ref *ref)
 {
 	struct lttng_trace_archive_location *location =
 		lttng::utils::container_of(ref, &lttng_trace_archive_location::ref);
@@ -47,6 +48,7 @@ static void trace_archive_location_destroy_ref(struct urcu_ref *ref)
 
 	free(location);
 }
+} /* namespace */
 
 void lttng_trace_archive_location_get(struct lttng_trace_archive_location *location)
 {
