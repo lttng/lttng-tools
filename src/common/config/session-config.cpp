@@ -2288,8 +2288,8 @@ int process_channel_attr_node(xmlNodePtr attr_node,
 			   config_element_channel_allocation_policy)) {
 		/* Channel allocation policy */
 
-		const lttng::c_string_view content(
-			reinterpret_cast<const char *>(xmlNodeGetContent(attr_node)));
+		auto *const raw_content = reinterpret_cast<char *>(xmlNodeGetContent(attr_node));
+		const lttng::c_string_view content(raw_content);
 		if (!content) {
 			ret = -LTTNG_ERR_NOMEM;
 			goto end;
@@ -2305,7 +2305,7 @@ int process_channel_attr_node(xmlNodePtr attr_node,
 			ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
 		}
 
-		free(const_cast<char *>(content.data()));
+		free(raw_content);
 
 		if (ret != LTTNG_OK) {
 			goto end;
@@ -2315,8 +2315,8 @@ int process_channel_attr_node(xmlNodePtr attr_node,
 			   config_element_channel_preallocation_policy)) {
 		/* Channel preallocation policy */
 
-		const lttng::c_string_view content(
-			reinterpret_cast<const char *>(xmlNodeGetContent(attr_node)));
+		auto *const raw_content = reinterpret_cast<char *>(xmlNodeGetContent(attr_node));
+		const lttng::c_string_view content(raw_content);
 		if (!content) {
 			ret = -LTTNG_ERR_NOMEM;
 			goto end;
@@ -2332,7 +2332,7 @@ int process_channel_attr_node(xmlNodePtr attr_node,
 			ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
 		}
 
-		free(const_cast<char *>(content.data()));
+		free(raw_content);
 
 		if (ret != LTTNG_OK) {
 			goto end;
