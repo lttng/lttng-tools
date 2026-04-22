@@ -113,7 +113,8 @@ static const struct argpar_opt_descr session_rotation_opt_descriptions[] = {
 	ARGPAR_OPT_DESCR_SENTINEL,
 };
 
-static bool has_syscall_prefix(const char *arg)
+namespace {
+bool has_syscall_prefix(const char *arg)
 {
 	bool matches = false;
 	const char kernel_syscall_type_opt_prefix[] = "kernel:syscall";
@@ -135,7 +136,7 @@ static bool has_syscall_prefix(const char *arg)
 	return matches;
 }
 
-static bool assign_event_rule_type(enum lttng_event_rule_type *dest, const char *arg)
+bool assign_event_rule_type(enum lttng_event_rule_type *dest, const char *arg)
 {
 	bool ret;
 
@@ -192,7 +193,7 @@ end:
 	return ret;
 }
 
-static bool assign_string(char **dest, const char *src, const char *opt_name)
+bool assign_string(char **dest, const char *src, const char *opt_name)
 {
 	bool ret;
 
@@ -217,9 +218,8 @@ end:
 	return ret;
 }
 
-static bool
-parse_syscall_emission_site_from_type(const char *str,
-				      enum lttng_event_rule_kernel_syscall_emission_site *type)
+bool parse_syscall_emission_site_from_type(const char *str,
+					   enum lttng_event_rule_kernel_syscall_emission_site *type)
 {
 	bool ret = false;
 	const char kernel_prefix[] = "kernel:";
@@ -258,10 +258,10 @@ error:
  *
  * Return true if the string was successfully parsed as a log level string.
  */
-static bool parse_log_level_string(const char *str,
-				   enum lttng_event_rule_type event_rule_type,
-				   int *log_level,
-				   bool *log_level_only)
+bool parse_log_level_string(const char *str,
+			    enum lttng_event_rule_type event_rule_type,
+			    int *log_level,
+			    bool *log_level_only)
 {
 	bool ret;
 
@@ -371,8 +371,7 @@ end:
 	return ret;
 }
 
-static int parse_kernel_probe_opts(const char *source,
-				   struct lttng_kernel_probe_location **location)
+int parse_kernel_probe_opts(const char *source, struct lttng_kernel_probe_location **location)
 {
 	int ret = 0;
 	int match;
@@ -456,8 +455,8 @@ end:
 	return ret;
 }
 
-static struct lttng_event_expr *
-ir_op_load_expr_to_event_expr(const struct ir_load_expression *load_expr, const char *capture_str)
+struct lttng_event_expr *ir_op_load_expr_to_event_expr(const struct ir_load_expression *load_expr,
+						       const char *capture_str)
 {
 	char *provider_name = nullptr;
 	struct lttng_event_expr *event_expr = nullptr;
@@ -590,8 +589,7 @@ end:
 	return event_expr;
 }
 
-static struct lttng_event_expr *ir_op_load_to_event_expr(const struct ir_op *ir,
-							 const char *capture_str)
+struct lttng_event_expr *ir_op_load_to_event_expr(const struct ir_op *ir, const char *capture_str)
 {
 	struct lttng_event_expr *event_expr = nullptr;
 
@@ -613,7 +611,7 @@ static struct lttng_event_expr *ir_op_load_to_event_expr(const struct ir_op *ir,
 	return event_expr;
 }
 
-static const char *ir_operator_type_human_str(enum ir_op_type op)
+const char *ir_operator_type_human_str(enum ir_op_type op)
 {
 	const char *name;
 
@@ -634,8 +632,7 @@ static const char *ir_operator_type_human_str(enum ir_op_type op)
 	return name;
 }
 
-static struct lttng_event_expr *ir_op_root_to_event_expr(const struct ir_op *ir,
-							 const char *capture_str)
+struct lttng_event_expr *ir_op_root_to_event_expr(const struct ir_op *ir, const char *capture_str)
 {
 	struct lttng_event_expr *event_expr = nullptr;
 
@@ -661,10 +658,11 @@ static struct lttng_event_expr *ir_op_root_to_event_expr(const struct ir_op *ir,
 	return event_expr;
 }
 
-static void destroy_event_expr(void *ptr)
+void destroy_event_expr(void *ptr)
 {
 	lttng_event_expr_destroy((lttng_event_expr *) ptr);
 }
+} /* namespace */
 
 namespace {
 struct parse_event_rule_res {
@@ -694,7 +692,8 @@ struct parse_session_rotation_res {
 };
 } /* namespace */
 
-static struct parse_buffer_usage_res
+namespace {
+struct parse_buffer_usage_res
 parse_buffer_usage(int *argc, const char ***argv, int argc_offset, const char *condition_cli_name)
 {
 	bool error = false, has_threshold_bytes = false, has_threshold_ratio = false;
@@ -860,12 +859,11 @@ parse_buffer_usage(int *argc, const char ***argv, int argc_offset, const char *c
 	return res;
 }
 
-static struct lttng_condition *
-_handle_condition_buffer_usage(int *argc,
-			       const char ***argv,
-			       int argc_offset,
-			       enum lttng_condition_type condition_type,
-			       const char *condition_cli_name)
+struct lttng_condition *_handle_condition_buffer_usage(int *argc,
+						       const char ***argv,
+						       int argc_offset,
+						       enum lttng_condition_type condition_type,
+						       const char *condition_cli_name)
 {
 	enum lttng_condition_status status;
 	const auto result = parse_buffer_usage(argc, argv, argc_offset, condition_cli_name);
@@ -939,7 +937,7 @@ _handle_condition_buffer_usage(int *argc,
 	return condition.release();
 }
 
-static struct lttng_condition *
+struct lttng_condition *
 handle_condition_buffer_usage_ge(int *argc, const char ***argv, int argc_offset)
 {
 	return _handle_condition_buffer_usage(argc,
@@ -949,7 +947,7 @@ handle_condition_buffer_usage_ge(int *argc, const char ***argv, int argc_offset)
 					      "condition-buffer-usage-ge");
 }
 
-static struct lttng_condition *
+struct lttng_condition *
 handle_condition_buffer_usage_le(int *argc, const char ***argv, int argc_offset)
 {
 	return _handle_condition_buffer_usage(argc,
@@ -959,7 +957,7 @@ handle_condition_buffer_usage_le(int *argc, const char ***argv, int argc_offset)
 					      "condition-buffer-usage-le");
 }
 
-static struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv, int argc_offset)
+struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv, int argc_offset)
 {
 	enum lttng_event_rule_type event_rule_type = LTTNG_EVENT_RULE_TYPE_UNKNOWN;
 	struct argpar_iter *argpar_iter = nullptr;
@@ -1659,8 +1657,7 @@ end:
 	return res;
 }
 
-static struct lttng_condition *
-handle_condition_event(int *argc, const char ***argv, int argc_offset)
+struct lttng_condition *handle_condition_event(int *argc, const char ***argv, int argc_offset)
 {
 	struct parse_event_rule_res res;
 	struct lttng_condition *c;
@@ -1712,7 +1709,7 @@ end:
 	return c;
 }
 
-static struct parse_session_consumed_size_res
+struct parse_session_consumed_size_res
 parse_session_consumed_size(int *argc, const char ***argv, int argc_offset)
 {
 	const char *prefix = "While parsing condition `session-consumed-size-ge`: ";
@@ -1796,7 +1793,7 @@ parse_session_consumed_size(int *argc, const char ***argv, int argc_offset)
 	return res;
 }
 
-static lttng_condition *
+lttng_condition *
 handle_condition_session_consumed_size(int *argc, const char ***argv, int argc_offset)
 {
 	auto condition = []() {
@@ -1839,10 +1836,10 @@ handle_condition_session_consumed_size(int *argc, const char ***argv, int argc_o
 	return condition.release();
 }
 
-static struct parse_session_rotation_res parse_session_rotation(int *argc,
-								const char ***argv,
-								int argc_offset,
-								const char *condition_cli_name)
+struct parse_session_rotation_res parse_session_rotation(int *argc,
+							 const char ***argv,
+							 int argc_offset,
+							 const char *condition_cli_name)
 {
 	parse_session_rotation_res res;
 	bool error = false;
@@ -1926,12 +1923,11 @@ static struct parse_session_rotation_res parse_session_rotation(int *argc,
 	return res;
 }
 
-static struct lttng_condition *
-_handle_condition_session_rotation(int *argc,
-				   const char ***argv,
-				   int argc_offset,
-				   enum lttng_condition_type condition_type,
-				   const char *condition_cli_name)
+struct lttng_condition *_handle_condition_session_rotation(int *argc,
+							   const char ***argv,
+							   int argc_offset,
+							   enum lttng_condition_type condition_type,
+							   const char *condition_cli_name)
 {
 	const auto result = parse_session_rotation(argc, argv, argc_offset, condition_cli_name);
 
@@ -1976,7 +1972,7 @@ _handle_condition_session_rotation(int *argc,
 	return condition.release();
 }
 
-static struct lttng_condition *
+struct lttng_condition *
 handle_condition_session_rotation_starts(int *argc, const char ***argv, int argc_offset)
 {
 	return _handle_condition_session_rotation(argc,
@@ -1986,7 +1982,7 @@ handle_condition_session_rotation_starts(int *argc, const char ***argv, int argc
 						  "session-rotation-starts");
 }
 
-static struct lttng_condition *
+struct lttng_condition *
 handle_condition_session_rotation_finishes(int *argc, const char ***argv, int argc_offset)
 {
 	return _handle_condition_session_rotation(argc,
@@ -1995,6 +1991,7 @@ handle_condition_session_rotation_finishes(int *argc, const char ***argv, int ar
 						  LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED,
 						  "session-rotation-finishes");
 }
+} /* namespace */
 
 namespace {
 struct condition_descr {
@@ -2012,7 +2009,8 @@ static const struct condition_descr condition_descrs[] = {
 	{ "session-rotation-starts", handle_condition_session_rotation_starts },
 };
 
-static void print_valid_condition_names()
+namespace {
+void print_valid_condition_names()
 {
 	unsigned int i;
 
@@ -2023,12 +2021,12 @@ static void print_valid_condition_names()
 	}
 }
 
-static struct lttng_condition *parse_condition(const char *condition_name,
-					       int *argc,
-					       const char ***argv,
-					       int argc_offset,
-					       int orig_arg_index,
-					       const char *orig_arg)
+struct lttng_condition *parse_condition(const char *condition_name,
+					int *argc,
+					const char ***argv,
+					int argc_offset,
+					int orig_arg_index,
+					const char *orig_arg)
 {
 	int i;
 	struct lttng_condition *cond;
@@ -2063,7 +2061,7 @@ end:
 	return cond;
 }
 
-static struct lttng_rate_policy *parse_rate_policy(const char *policy_str)
+struct lttng_rate_policy *parse_rate_policy(const char *policy_str)
 {
 	int ret;
 	size_t num_token = 0;
@@ -2135,12 +2133,14 @@ end:
 	lttng_dynamic_pointer_array_reset(&tokens);
 	return policy;
 }
+} /* namespace */
 
 static const struct argpar_opt_descr notify_action_opt_descrs[] = {
 	{ OPT_RATE_POLICY, '\0', "rate-policy", true }, ARGPAR_OPT_DESCR_SENTINEL
 };
 
-static struct lttng_action *handle_action_notify(int *argc, const char ***argv, int argc_offset)
+namespace {
+struct lttng_action *handle_action_notify(int *argc, const char ***argv, int argc_offset)
 {
 	struct lttng_action *action = nullptr;
 	struct argpar_iter *argpar_iter = nullptr;
@@ -2231,7 +2231,7 @@ end:
  * optional rate policy.
  */
 
-static struct lttng_action *handle_action_simple_session_with_policy(
+struct lttng_action *handle_action_simple_session_with_policy(
 	int *argc,
 	const char ***argv,
 	int argc_offset,
@@ -2355,8 +2355,7 @@ end:
 	return action;
 }
 
-static struct lttng_action *
-handle_action_start_session(int *argc, const char ***argv, int argc_offset)
+struct lttng_action *handle_action_start_session(int *argc, const char ***argv, int argc_offset)
 {
 	return handle_action_simple_session_with_policy(argc,
 							argv,
@@ -2367,8 +2366,7 @@ handle_action_start_session(int *argc, const char ***argv, int argc_offset)
 							"start");
 }
 
-static struct lttng_action *
-handle_action_stop_session(int *argc, const char ***argv, int argc_offset)
+struct lttng_action *handle_action_stop_session(int *argc, const char ***argv, int argc_offset)
 {
 	return handle_action_simple_session_with_policy(argc,
 							argv,
@@ -2379,8 +2377,7 @@ handle_action_stop_session(int *argc, const char ***argv, int argc_offset)
 							"stop");
 }
 
-static struct lttng_action *
-handle_action_rotate_session(int *argc, const char ***argv, int argc_offset)
+struct lttng_action *handle_action_rotate_session(int *argc, const char ***argv, int argc_offset)
 {
 	return handle_action_simple_session_with_policy(
 		argc,
@@ -2391,6 +2388,7 @@ handle_action_rotate_session(int *argc, const char ***argv, int argc_offset)
 		lttng_action_rotate_session_set_rate_policy,
 		"rotate");
 }
+} /* namespace */
 
 static const struct argpar_opt_descr snapshot_action_opt_descrs[] = {
 	{ OPT_NAME, 'n', "name", true },
@@ -2403,8 +2401,8 @@ static const struct argpar_opt_descr snapshot_action_opt_descrs[] = {
 	ARGPAR_OPT_DESCR_SENTINEL
 };
 
-static struct lttng_action *
-handle_action_snapshot_session(int *argc, const char ***argv, int argc_offset)
+namespace {
+struct lttng_action *handle_action_snapshot_session(int *argc, const char ***argv, int argc_offset)
 {
 	struct lttng_action *action = nullptr;
 	struct argpar_iter *argpar_iter = nullptr;
@@ -2699,6 +2697,7 @@ end:
 	argpar_iter_destroy(argpar_iter);
 	return action;
 }
+} /* namespace */
 
 namespace {
 struct action_descr {
@@ -2715,7 +2714,8 @@ static const struct action_descr action_descrs[] = {
 	{ "snapshot-session", handle_action_snapshot_session },
 };
 
-static void print_valid_action_names()
+namespace {
+void print_valid_action_names()
 {
 	unsigned int i;
 
@@ -2726,12 +2726,12 @@ static void print_valid_action_names()
 	}
 }
 
-static struct lttng_action *parse_action(const char *action_name,
-					 int *argc,
-					 const char ***argv,
-					 int argc_offset,
-					 int orig_arg_index,
-					 const char *orig_arg)
+struct lttng_action *parse_action(const char *action_name,
+				  int *argc,
+				  const char ***argv,
+				  int argc_offset,
+				  int orig_arg_index,
+				  const char *orig_arg)
 {
 	int i;
 	struct lttng_action *action;
@@ -2765,6 +2765,7 @@ error:
 end:
 	return action;
 }
+} /* namespace */
 
 static const struct argpar_opt_descr add_trigger_options[] = {
 	{ OPT_HELP, 'h', "help", false },
@@ -2776,12 +2777,14 @@ static const struct argpar_opt_descr add_trigger_options[] = {
 	ARGPAR_OPT_DESCR_SENTINEL,
 };
 
-static void lttng_actions_destructor(void *p)
+namespace {
+void lttng_actions_destructor(void *p)
 {
 	struct lttng_action *action = (lttng_action *) p;
 
 	lttng_action_destroy(action);
 }
+} /* namespace */
 
 int cmd_add_trigger(int argc, const char **argv)
 {

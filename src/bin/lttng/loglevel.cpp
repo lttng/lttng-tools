@@ -132,14 +132,15 @@ static const struct loglevel_name_value loglevel_python_values[] = {
 	{ .name = "PYTHON_NOTSET", .value = LTTNG_LOGLEVEL_PYTHON_NOTSET },
 };
 
-static bool string_equal_insensitive(const char *a, const char *b)
+namespace {
+bool string_equal_insensitive(const char *a, const char *b)
 {
 	return strcasecmp(a, b) == 0;
 }
 
-static int lookup_value_from_name(const struct loglevel_name_value values[],
-				  size_t values_count,
-				  const char *name)
+int lookup_value_from_name(const struct loglevel_name_value values[],
+			   size_t values_count,
+			   const char *name)
 {
 	size_t i;
 	int ret = -1;
@@ -160,12 +161,12 @@ end:
 	return ret;
 }
 
-static bool loglevel_parse_range_string_common(const char *str,
-					       const struct loglevel_name_value *nvs,
-					       size_t nvs_count,
-					       int default_most_severe,
-					       int *least_severe,
-					       int *most_severe)
+bool loglevel_parse_range_string_common(const char *str,
+					const struct loglevel_name_value *nvs,
+					size_t nvs_count,
+					int default_most_severe,
+					int *least_severe,
+					int *most_severe)
 {
 	bool ret;
 	int i;
@@ -257,6 +258,7 @@ error:
 end:
 	return ret;
 }
+} /* namespace */
 
 int loglevel_name_to_value(const char *name, enum lttng_loglevel *loglevel)
 {
@@ -412,7 +414,8 @@ bool loglevel_python_parse_range_string(const char *str,
 	return ret;
 }
 
-static const char *
+namespace {
+const char *
 lookup_name_from_value(const struct loglevel_name_value values[], size_t values_count, int loglevel)
 {
 	size_t i;
@@ -429,6 +432,7 @@ lookup_name_from_value(const struct loglevel_name_value values[], size_t values_
 end:
 	return name;
 }
+} /* namespace */
 
 const char *loglevel_value_to_name(int loglevel)
 {

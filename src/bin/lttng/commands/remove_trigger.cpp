@@ -33,7 +33,8 @@ static const struct argpar_opt_descr remove_trigger_options[] = {
 	ARGPAR_OPT_DESCR_SENTINEL,
 };
 
-static bool assign_string(char **dest, const char *src, const char *opt_name)
+namespace {
+bool assign_string(char **dest, const char *src, const char *opt_name)
 {
 	bool ret;
 
@@ -57,6 +58,7 @@ error:
 end:
 	return ret;
 }
+} /* namespace */
 
 int cmd_remove_trigger(int argc, const char **argv)
 {

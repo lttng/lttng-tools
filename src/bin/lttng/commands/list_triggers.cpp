@@ -52,7 +52,8 @@ static const struct argpar_opt_descr list_trigger_options[] = {
 	ARGPAR_OPT_DESCR_SENTINEL,
 };
 
-static void print_condition_session_consumed_size(const struct lttng_condition *condition)
+namespace {
+void print_condition_session_consumed_size(const struct lttng_condition *condition)
 {
 	enum lttng_condition_status condition_status;
 	const char *session_name;
@@ -69,7 +70,7 @@ static void print_condition_session_consumed_size(const struct lttng_condition *
 	MSG("    threshold: %" PRIu64 " bytes", threshold);
 }
 
-static void print_condition_buffer_usage(const struct lttng_condition *condition)
+void print_condition_buffer_usage(const struct lttng_condition *condition)
 {
 	enum lttng_condition_status condition_status;
 	const char *session_name, *channel_name;
@@ -105,7 +106,7 @@ static void print_condition_buffer_usage(const struct lttng_condition *condition
 	}
 }
 
-static void print_condition_session_rotation(const struct lttng_condition *condition)
+void print_condition_session_rotation(const struct lttng_condition *condition)
 {
 	enum lttng_condition_status condition_status;
 	const char *session_name;
@@ -123,8 +124,7 @@ static void print_condition_session_rotation(const struct lttng_condition *condi
  * values (a value can fall between two labels). In those cases, NULL is
  * returned.
  */
-static const char *get_pretty_loglevel_name(enum lttng_event_rule_type event_rule_type,
-					    int loglevel)
+const char *get_pretty_loglevel_name(enum lttng_event_rule_type event_rule_type, int loglevel)
 {
 	const char *name = nullptr;
 
@@ -151,7 +151,7 @@ static const char *get_pretty_loglevel_name(enum lttng_event_rule_type event_rul
 	return name;
 }
 
-static void print_event_rule_user_tracepoint(const struct lttng_event_rule *event_rule)
+void print_event_rule_user_tracepoint(const struct lttng_event_rule *event_rule)
 {
 	enum lttng_event_rule_status event_rule_status;
 	const char *pattern;
@@ -228,7 +228,7 @@ static void print_event_rule_user_tracepoint(const struct lttng_event_rule *even
 	MSG(")");
 }
 
-static void print_event_rule_kernel_tracepoint(const struct lttng_event_rule *event_rule)
+void print_event_rule_kernel_tracepoint(const struct lttng_event_rule *event_rule)
 {
 	enum lttng_event_rule_status event_rule_status;
 	const char *pattern;
@@ -250,7 +250,7 @@ static void print_event_rule_kernel_tracepoint(const struct lttng_event_rule *ev
 	MSG(")");
 }
 
-static void print_event_rule_logging(const struct lttng_event_rule *event_rule)
+void print_event_rule_logging(const struct lttng_event_rule *event_rule)
 {
 	enum lttng_event_rule_status event_rule_status;
 	const lttng_event_rule_type event_rule_type = lttng_event_rule_get_type(event_rule);
@@ -342,7 +342,7 @@ static void print_event_rule_logging(const struct lttng_event_rule *event_rule)
 	MSG(")");
 }
 
-static void print_kernel_probe_location(const struct lttng_kernel_probe_location *location)
+void print_kernel_probe_location(const struct lttng_kernel_probe_location *location)
 {
 	enum lttng_kernel_probe_location_status status;
 	switch (lttng_kernel_probe_location_get_type(location)) {
@@ -392,7 +392,7 @@ end:
 	return;
 }
 
-static void print_event_rule_kernel_probe(const struct lttng_event_rule *event_rule)
+void print_event_rule_kernel_probe(const struct lttng_event_rule *event_rule)
 {
 	enum lttng_event_rule_status event_rule_status;
 	const char *name;
@@ -422,7 +422,7 @@ end:
 	return;
 }
 
-static void print_event_rule_userspace_probe(const struct lttng_event_rule *event_rule)
+void print_event_rule_userspace_probe(const struct lttng_event_rule *event_rule)
 {
 	enum lttng_event_rule_status event_rule_status;
 	const char *name;
@@ -482,7 +482,7 @@ end:
 	return;
 }
 
-static void print_event_rule_syscall(const struct lttng_event_rule *event_rule)
+void print_event_rule_syscall(const struct lttng_event_rule *event_rule)
 {
 	const char *pattern, *filter;
 	enum lttng_event_rule_status event_rule_status;
@@ -509,7 +509,7 @@ static void print_event_rule_syscall(const struct lttng_event_rule *event_rule)
 	MSG(")");
 }
 
-static void print_event_rule(const struct lttng_event_rule *event_rule)
+void print_event_rule(const struct lttng_event_rule *event_rule)
 {
 	const enum lttng_event_rule_type event_rule_type = lttng_event_rule_get_type(event_rule);
 
@@ -540,7 +540,7 @@ static void print_event_rule(const struct lttng_event_rule *event_rule)
 	}
 }
 
-static void print_one_event_expr(const struct lttng_event_expr *event_expr)
+void print_one_event_expr(const struct lttng_event_expr *event_expr)
 {
 	enum lttng_event_expr_type type;
 
@@ -601,7 +601,7 @@ static void print_one_event_expr(const struct lttng_event_expr *event_expr)
 	}
 }
 
-static void print_indentation(unsigned int indentation_level)
+void print_indentation(unsigned int indentation_level)
 {
 	unsigned int i;
 
@@ -610,8 +610,8 @@ static void print_indentation(unsigned int indentation_level)
 	}
 }
 
-static void print_error_query_results(struct lttng_error_query_results *results,
-				      unsigned int base_indentation_level)
+void print_error_query_results(struct lttng_error_query_results *results,
+			       unsigned int base_indentation_level)
 {
 	unsigned int i, count, printed_errors_count = 0;
 	enum lttng_error_query_results_status results_status;
@@ -669,7 +669,7 @@ static void print_error_query_results(struct lttng_error_query_results *results,
 	}
 }
 
-static void print_condition_event_rule_matches(const struct lttng_condition *condition)
+void print_condition_event_rule_matches(const struct lttng_condition *condition)
 {
 	const struct lttng_event_rule *event_rule;
 	enum lttng_condition_status condition_status;
@@ -699,9 +699,9 @@ static void print_condition_event_rule_matches(const struct lttng_condition *con
 	}
 }
 
-static void print_action_errors(const struct lttng_trigger *trigger,
-				const uint64_t *action_path_indexes,
-				size_t action_path_length)
+void print_action_errors(const struct lttng_trigger *trigger,
+			 const uint64_t *action_path_indexes,
+			 size_t action_path_length)
 {
 	enum lttng_error_code error_query_ret;
 	struct lttng_error_query_results *results = nullptr;
@@ -745,10 +745,10 @@ end:
 	lttng_action_path_destroy(action_path);
 }
 
-static void print_one_action(const struct lttng_trigger *trigger,
-			     const struct lttng_action *action,
-			     const uint64_t *action_path_indexes,
-			     size_t action_path_length)
+void print_one_action(const struct lttng_trigger *trigger,
+		      const struct lttng_action *action,
+		      const uint64_t *action_path_indexes,
+		      size_t action_path_length)
 {
 	enum lttng_action_type action_type;
 	enum lttng_action_status action_status;
@@ -906,7 +906,7 @@ end:
 	return;
 }
 
-static void print_trigger_errors(const struct lttng_trigger *trigger)
+void print_trigger_errors(const struct lttng_trigger *trigger)
 {
 	enum lttng_error_code error_query_ret;
 	struct lttng_error_query_results *results = nullptr;
@@ -943,7 +943,7 @@ end:
 	lttng_error_query_results_destroy(results);
 }
 
-static void print_condition_errors(const struct lttng_trigger *trigger)
+void print_condition_errors(const struct lttng_trigger *trigger)
 {
 	enum lttng_error_code error_query_ret;
 	struct lttng_error_query_results *results = nullptr;
@@ -980,7 +980,7 @@ end:
 	lttng_error_query_results_destroy(results);
 }
 
-static void print_one_trigger(const struct lttng_trigger *trigger)
+void print_one_trigger(const struct lttng_trigger *trigger)
 {
 	const struct lttng_condition *condition;
 	enum lttng_condition_type condition_type;
@@ -1052,7 +1052,7 @@ end:
 	return;
 }
 
-static int compare_triggers_by_name(const void *a, const void *b)
+int compare_triggers_by_name(const void *a, const void *b)
 {
 	const struct lttng_trigger *trigger_a = *((const struct lttng_trigger **) a);
 	const struct lttng_trigger *trigger_b = *((const struct lttng_trigger **) b);
@@ -1069,7 +1069,7 @@ static int compare_triggers_by_name(const void *a, const void *b)
 	return strcmp(name_a, name_b);
 }
 
-static int print_sorted_triggers(const struct lttng_triggers *triggers)
+int print_sorted_triggers(const struct lttng_triggers *triggers)
 {
 	int ret;
 	int i;
@@ -1132,9 +1132,8 @@ end:
 	return ret;
 }
 
-static enum lttng_error_code
-mi_error_query_trigger_callback(const struct lttng_trigger *trigger,
-				struct lttng_error_query_results **results)
+enum lttng_error_code mi_error_query_trigger_callback(const struct lttng_trigger *trigger,
+						      struct lttng_error_query_results **results)
 {
 	enum lttng_error_code ret_code;
 	struct lttng_error_query *query = lttng_error_query_trigger_create(trigger);
@@ -1164,10 +1163,9 @@ mi_error_query_trigger_callback(const struct lttng_trigger *trigger,
 	return ret_code;
 }
 
-static enum lttng_error_code
-mi_error_query_action_callback(const struct lttng_trigger *trigger,
-			       const struct lttng_action_path *action_path,
-			       struct lttng_error_query_results **results)
+enum lttng_error_code mi_error_query_action_callback(const struct lttng_trigger *trigger,
+						     const struct lttng_action_path *action_path,
+						     struct lttng_error_query_results **results)
 {
 	enum lttng_error_code ret_code;
 	struct lttng_error_query *query = lttng_error_query_action_create(trigger, action_path);
@@ -1197,9 +1195,8 @@ mi_error_query_action_callback(const struct lttng_trigger *trigger,
 	return ret_code;
 }
 
-static enum lttng_error_code
-mi_error_query_condition_callback(const struct lttng_trigger *trigger,
-				  struct lttng_error_query_results **results)
+enum lttng_error_code mi_error_query_condition_callback(const struct lttng_trigger *trigger,
+							struct lttng_error_query_results **results)
 {
 	enum lttng_error_code ret_code;
 	struct lttng_error_query *query = lttng_error_query_condition_create(trigger);
@@ -1228,6 +1225,7 @@ mi_error_query_condition_callback(const struct lttng_trigger *trigger,
 	lttng_error_query_destroy(query);
 	return ret_code;
 }
+} /* namespace */
 
 int cmd_list_triggers(int argc, const char **argv)
 {

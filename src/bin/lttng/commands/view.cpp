@@ -18,8 +18,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-static char *opt_viewer;
-static char *opt_trace_path;
+namespace {
+char *opt_viewer;
+char *opt_trace_path;
+} /* namespace */
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
@@ -32,7 +34,8 @@ enum {
 	OPT_LIST_OPTIONS,
 };
 
-static struct poptOption long_options[] = {
+namespace {
+struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
 	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
@@ -42,12 +45,12 @@ static struct poptOption long_options[] = {
 };
 
 /* Is the session we are trying to view is in live mode. */
-static int session_live_mode;
+int session_live_mode;
 
 /*
  * Build the live path we need for the lttng live view.
  */
-static char *build_live_path(char *session_name)
+char *build_live_path(char *session_name)
 {
 	int ret;
 	char *path = nullptr;
@@ -72,7 +75,7 @@ error:
 /*
  * Exec viewer if found and use session name path.
  */
-static int view_trace(const char *arg_session_name)
+int view_trace(const char *arg_session_name)
 {
 	int ret;
 	char *session_name, *trace_path = nullptr;
@@ -187,6 +190,7 @@ free_error:
 error:
 	return ret;
 }
+} /* namespace */
 
 /*
  * The 'view <options>' first level command

@@ -20,9 +20,11 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-static int opt_kernel;
-static char *opt_session_name;
-static int opt_userspace;
+namespace {
+int opt_kernel;
+char *opt_session_name;
+int opt_userspace;
+} /* namespace */
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
@@ -36,10 +38,11 @@ enum {
 	OPT_LIST_OPTIONS,
 };
 
-static struct lttng_handle *handle;
-static struct mi_writer *writer;
+namespace {
+struct lttng_handle *handle;
+struct mi_writer *writer;
 
-static struct poptOption long_options[] = {
+struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
 	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, nullptr, nullptr },
@@ -49,7 +52,7 @@ static struct poptOption long_options[] = {
 	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
-static int mi_partial_channel_print(char *channel_name, unsigned int enabled, int success)
+int mi_partial_channel_print(char *channel_name, unsigned int enabled, int success)
 {
 	int ret;
 
@@ -90,7 +93,7 @@ end:
 /*
  * Disabling channel using the lttng API.
  */
-static int disable_channels(char *session_name, char *channel_list)
+int disable_channels(char *session_name, char *channel_list)
 {
 	int ret = CMD_SUCCESS;
 	/* Normal case for disable channed is enabled = false */
@@ -193,6 +196,7 @@ error:
 
 	return ret;
 }
+} /* namespace */
 
 /*
  *  cmd_disable_channels

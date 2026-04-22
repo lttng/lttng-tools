@@ -23,7 +23,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-static int opt_clear_all;
+namespace {
+int opt_clear_all;
+} /* namespace */
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
@@ -32,14 +34,17 @@ static const char help_msg[] =
 #endif
 
 /* Mi writer */
-static struct mi_writer *writer;
+namespace {
+struct mi_writer *writer;
+} /* namespace */
 
 enum {
 	OPT_HELP = 1,
 	OPT_LIST_OPTIONS,
 };
 
-static struct poptOption long_options[] = {
+namespace {
+struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
 	{ "all", 'a', POPT_ARG_VAL, &opt_clear_all, 1, nullptr, nullptr },
@@ -50,7 +55,7 @@ static struct poptOption long_options[] = {
 /*
  * clear session
  */
-static int clear_session(struct lttng_session *session)
+int clear_session(struct lttng_session *session)
 {
 	enum lttng_clear_handle_status status = LTTNG_CLEAR_HANDLE_STATUS_OK;
 	struct lttng_clear_handle *handle = nullptr;
@@ -122,7 +127,7 @@ error:
  *
  * Call clear_session for each registered sessions
  */
-static int clear_all_sessions(struct lttng_session *sessions, int count)
+int clear_all_sessions(struct lttng_session *sessions, int count)
 {
 	int i, ret = CMD_SUCCESS;
 
@@ -142,6 +147,7 @@ static int clear_all_sessions(struct lttng_session *sessions, int count)
 error:
 	return ret;
 }
+} /* namespace */
 
 /*
  * The 'clear <options>' first level command

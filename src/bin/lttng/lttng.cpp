@@ -39,7 +39,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-static const char *help_msg =
+namespace {
+const char *help_msg =
 #ifdef LTTNG_EMBED_HELP
 #include <lttng.1.h>
 #else
@@ -48,7 +49,8 @@ static const char *help_msg =
 	;
 
 /* Variables */
-static const char *progname;
+const char *progname;
+} /* namespace */
 int opt_no_sessiond;
 char *opt_sessiond_path;
 
@@ -81,21 +83,22 @@ enum {
 };
 
 /* Getopt options. No first level command. */
-static struct option long_options[] = { { "version", 0, nullptr, 'V' },
-					{ "help", 0, nullptr, 'h' },
-					{ "group", 1, nullptr, 'g' },
-					{ "verbose", 0, nullptr, 'v' },
-					{ "quiet", 0, nullptr, 'q' },
-					{ "mi", 1, nullptr, 'm' },
-					{ "no-sessiond", 0, nullptr, 'n' },
-					{ "sessiond-path", 1, nullptr, OPT_SESSION_PATH },
-					{ "relayd-path", 1, nullptr, OPT_RELAYD_PATH },
-					{ "list-options", 0, nullptr, OPT_DUMP_OPTIONS },
-					{ "list-commands", 0, nullptr, OPT_DUMP_COMMANDS },
-					{ nullptr, 0, nullptr, 0 } };
+namespace {
+struct option long_options[] = { { "version", 0, nullptr, 'V' },
+				 { "help", 0, nullptr, 'h' },
+				 { "group", 1, nullptr, 'g' },
+				 { "verbose", 0, nullptr, 'v' },
+				 { "quiet", 0, nullptr, 'q' },
+				 { "mi", 1, nullptr, 'm' },
+				 { "no-sessiond", 0, nullptr, 'n' },
+				 { "sessiond-path", 1, nullptr, OPT_SESSION_PATH },
+				 { "relayd-path", 1, nullptr, OPT_RELAYD_PATH },
+				 { "list-options", 0, nullptr, OPT_DUMP_OPTIONS },
+				 { "list-commands", 0, nullptr, OPT_DUMP_COMMANDS },
+				 { nullptr, 0, nullptr, 0 } };
 
 /* First level command */
-static struct cmd_struct commands[] = {
+struct cmd_struct commands[] = {
 	{ "add-context", cmd_add_context },
 	{ "add-trigger", cmd_add_trigger },
 	{ "create", cmd_create },
@@ -129,7 +132,7 @@ static struct cmd_struct commands[] = {
 	{ nullptr, nullptr } /* Array closure */
 };
 
-static void version(FILE *ofp)
+void version(FILE *ofp)
 {
 	const char *const git_version = lttng::get_git_version();
 
@@ -145,7 +148,7 @@ static void version(FILE *ofp)
  * Find the MI output type enum from a string. This function is for the support
  * of machine interface output.
  */
-static int mi_output_type(const char *output_type)
+int mi_output_type(const char *output_type)
 {
 	int ret = 0;
 
@@ -167,7 +170,7 @@ static int mi_output_type(const char *output_type)
  *  List options line by line. This is mostly for bash auto completion and to
  *  avoid difficult parsing.
  */
-static void list_options(FILE *ofp)
+void list_options(FILE *ofp)
 {
 	int i = 0;
 	struct option *option = nullptr;
@@ -194,7 +197,7 @@ static void list_options(FILE *ofp)
  *  If command not found, return -1
  *  else, return function command error code.
  */
-static int handle_command(int argc, char **argv)
+int handle_command(int argc, char **argv)
 {
 	int i = 0, ret;
 	struct cmd_struct *cmd;
@@ -234,7 +237,7 @@ end:
 	return ret;
 }
 
-static bool command_exists(const char *command)
+bool command_exists(const char *command)
 {
 	const struct cmd_struct *cmd = commands;
 	bool exists = false;
@@ -251,7 +254,7 @@ end:
 	return exists;
 }
 
-static void show_basic_help()
+void show_basic_help()
 {
 	puts("Usage: lttng [--group=GROUP] [--mi=TYPE] [--no-sessiond | --sessiond-path=PATH]");
 	puts("             [--quiet | -v | -vv | -vvv] COMMAND [COMMAND OPTIONS]");
@@ -316,7 +319,7 @@ static void show_basic_help()
  *
  * Return 0 if OK, else -1
  */
-static int parse_args(int argc, char **argv)
+int parse_args(int argc, char **argv)
 {
 	int opt, ret;
 
@@ -448,7 +451,7 @@ error:
 /*
  *  main
  */
-static int _main(int argc, char *argv[])
+int _main(int argc, char *argv[])
 {
 	progname = argv[0] ? argv[0] : "lttng";
 	lttng_opt_is_tui = true;
@@ -462,6 +465,7 @@ static int _main(int argc, char *argv[])
 
 	return parse_args(argc, argv);
 }
+} /* namespace */
 
 int main(int argc, char **argv)
 {

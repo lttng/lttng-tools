@@ -33,16 +33,18 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-static char *opt_output_path;
-static char *opt_url;
-static char *opt_ctrl_url;
-static char *opt_data_url;
-static char *opt_shm_path;
-static char *opt_trace_format;
-static int opt_no_consumer;
-static int opt_no_output;
-static int opt_snapshot;
-static uint32_t opt_live_timer;
+namespace {
+char *opt_output_path;
+char *opt_url;
+char *opt_ctrl_url;
+char *opt_data_url;
+char *opt_shm_path;
+char *opt_trace_format;
+int opt_no_consumer;
+int opt_no_output;
+int opt_snapshot;
+uint32_t opt_live_timer;
+} /* namespace */
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
@@ -63,8 +65,9 @@ enum output_type {
 	OUTPUT_UNSPECIFIED,
 };
 
-static struct mi_writer *writer;
-static struct poptOption long_options[] = {
+namespace {
+struct mi_writer *writer;
+struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
 	{ "output", 'o', POPT_ARG_STRING, &opt_output_path, 0, nullptr, nullptr },
@@ -92,7 +95,7 @@ static struct poptOption long_options[] = {
  * This is currently a summary of what was pretty printed and is subject to
  * enhancements.
  */
-static int mi_created_session(const char *session_name)
+int mi_created_session(const char *session_name)
 {
 	int ret, i, count, found;
 	struct lttng_session *sessions;
@@ -138,7 +141,7 @@ end:
 	return ret;
 }
 
-static struct lttng_session_descriptor *create_session_descriptor(const char *session_name)
+struct lttng_session_descriptor *create_session_descriptor(const char *session_name)
 {
 	ssize_t uri_count;
 	enum output_type output_type;
@@ -297,7 +300,7 @@ end:
  *
  *  Returns one of the CMD_* result constants.
  */
-static int create_session(const char *session_name)
+int create_session(const char *session_name)
 {
 	int ret, i;
 	char shm_path[LTTNG_PATH_MAX] = {};
@@ -527,7 +530,7 @@ error:
  *
  *  Spawn a session daemon by forking and execv.
  */
-static int spawn_sessiond(const char *pathname)
+int spawn_sessiond(const char *pathname)
 {
 	int ret = 0;
 	pid_t pid;
@@ -601,7 +604,7 @@ end:
  *  the liblttngctl API for the check. If not, try to
  *  spawn a daemon.
  */
-static int launch_sessiond()
+int launch_sessiond()
 {
 	int ret;
 	const char *pathname = nullptr;
@@ -650,7 +653,7 @@ end:
 	return ret;
 }
 
-static int validate_url_option_combination()
+int validate_url_option_combination()
 {
 	int ret = 0;
 	int used_count = 0;
@@ -665,6 +668,7 @@ static int validate_url_option_combination()
 
 	return ret;
 }
+} /* namespace */
 
 /*
  *  The 'create <options>' first level command

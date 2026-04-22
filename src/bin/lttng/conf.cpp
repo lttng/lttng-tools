@@ -65,7 +65,8 @@ std::string read_session_name_from_config(const char *path)
  * On success, returns 0;
  * on error, returns -1.
  */
-static int create_config_file(const char *path)
+namespace {
+int create_config_file(const char *path)
 {
 	const auto file_path = get_config_file_path(path);
 
@@ -83,7 +84,7 @@ static int create_config_file(const char *path)
  * On success, returns 0;
  * on error, returns -1.
  */
-static int write_config(const char *file_path, const std::string& data)
+int write_config(const char *file_path, const std::string& data)
 {
 	const auto full_path = get_config_file_path(file_path);
 
@@ -100,6 +101,7 @@ static int write_config(const char *file_path, const std::string& data)
 
 	return 0;
 }
+} /* namespace */
 
 void config_destroy(const char *path)
 {

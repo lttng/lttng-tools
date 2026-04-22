@@ -26,7 +26,8 @@
  * LTTNG_PATH_MAX bytes long.
  * On failure, returns -1;
  */
-static int walk_command_search_path(const char *binary, char *binary_full_path)
+namespace {
+int walk_command_search_path(const char *binary, char *binary_full_path)
 {
 	char *tentative_binary_path = nullptr;
 	char *command_search_path = nullptr;
@@ -140,7 +141,7 @@ end:
  * elf:/path/to/binary:my_symbol+0x323
  * elf:/path/to/binary:my_symbol+43
  */
-static int warn_userspace_probe_syntax(const char *symbol)
+int warn_userspace_probe_syntax(const char *symbol)
 {
 	int ret;
 
@@ -185,6 +186,7 @@ static int warn_userspace_probe_syntax(const char *symbol)
 error:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Parse userspace probe options

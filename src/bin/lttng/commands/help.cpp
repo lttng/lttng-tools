@@ -21,25 +21,29 @@ static const char *help_msg =
 	;
 #endif
 
-static const char *lttng_help_msg =
+namespace {
+const char *lttng_help_msg =
 #ifdef LTTNG_EMBED_HELP
 #include <lttng.1.h>
 #else
 	nullptr
 #endif
 	;
+} /* namespace */
 
 enum {
 	OPT_HELP = 1,
 	OPT_LIST_OPTIONS,
 };
 
-static struct poptOption long_options[] = {
+namespace {
+struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
 	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
 	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
+} /* namespace */
 
 /*
  *  cmd_help

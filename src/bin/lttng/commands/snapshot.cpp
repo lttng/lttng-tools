@@ -22,20 +22,22 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-static const char *opt_session_name;
-static const char *opt_output_name;
-static const char *opt_data_url;
-static const char *opt_ctrl_url;
-static const char *current_session_name;
-static uint64_t opt_max_size;
+namespace {
+const char *opt_session_name;
+const char *opt_output_name;
+const char *opt_data_url;
+const char *opt_ctrl_url;
+const char *current_session_name;
+uint64_t opt_max_size;
 
 /* Stub for the cmd struct actions. */
-static int cmd_add_output(int argc, const char **argv);
-static int cmd_del_output(int argc, const char **argv);
-static int cmd_list_output(int argc, const char **argv);
-static int cmd_record(int argc, const char **argv);
+int cmd_add_output(int argc, const char **argv);
+int cmd_del_output(int argc, const char **argv);
+int cmd_list_output(int argc, const char **argv);
+int cmd_record(int argc, const char **argv);
 
-static const char *indent4 = "    ";
+const char *indent4 = "    ";
+} /* namespace */
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
@@ -50,9 +52,10 @@ enum {
 	OPT_LIST_COMMANDS,
 };
 
-static struct mi_writer *writer;
+namespace {
+struct mi_writer *writer;
 
-static struct poptOption snapshot_opts[] = {
+struct poptOption snapshot_opts[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
 	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, nullptr, nullptr },
@@ -65,7 +68,7 @@ static struct poptOption snapshot_opts[] = {
 	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
-static struct cmd_struct actions[] = {
+struct cmd_struct actions[] = {
 	{ "add-output", cmd_add_output },
 	{ "del-output", cmd_del_output },
 	{ "list-output", cmd_list_output },
@@ -76,7 +79,7 @@ static struct cmd_struct actions[] = {
 /*
  * Count and return the number of arguments in argv.
  */
-static int count_arguments(const char **argv)
+int count_arguments(const char **argv)
 {
 	int i = 0;
 
@@ -94,7 +97,7 @@ static int count_arguments(const char **argv)
  *
  * Return a newly allocated object or NULL on error.
  */
-static struct lttng_snapshot_output *create_output_from_args(const char *url)
+struct lttng_snapshot_output *create_output_from_args(const char *url)
 {
 	int ret = 0;
 	struct lttng_snapshot_output *output = nullptr;
@@ -145,7 +148,7 @@ error_create:
 	return nullptr;
 }
 
-static int list_output()
+int list_output()
 {
 	int ret, output_seen = 0;
 	struct lttng_snapshot_output *s_iter;
@@ -219,7 +222,7 @@ error:
 /*
  * Delete output by ID.
  */
-static int del_output(uint32_t id, const char *name)
+int del_output(uint32_t id, const char *name)
 {
 	int ret;
 	struct lttng_snapshot_output *output = nullptr;
@@ -273,7 +276,7 @@ error:
 /*
  * Add output from the user URL.
  */
-static int add_output(const char *url)
+int add_output(const char *url)
 {
 	int ret;
 	struct lttng_snapshot_output *output = nullptr;
@@ -334,7 +337,7 @@ error:
 	return ret;
 }
 
-static int cmd_add_output(int argc, const char **argv)
+int cmd_add_output(int argc, const char **argv)
 {
 	int ret;
 
@@ -361,7 +364,7 @@ end:
 	return ret;
 }
 
-static int cmd_del_output(int argc, const char **argv)
+int cmd_del_output(int argc, const char **argv)
 {
 	int ret;
 	char *name;
@@ -389,8 +392,7 @@ end:
 	return ret;
 }
 
-static int cmd_list_output(int argc __attribute__((unused)),
-			   const char **argv __attribute__((unused)))
+int cmd_list_output(int argc __attribute__((unused)), const char **argv __attribute__((unused)))
 {
 	int ret;
 
@@ -402,7 +404,7 @@ static int cmd_list_output(int argc __attribute__((unused)),
 /*
  * Do a snapshot record with the URL if one is given.
  */
-static int record(const char *url)
+int record(const char *url)
 {
 	int ret;
 	struct lttng_snapshot_output *output = nullptr;
@@ -441,7 +443,7 @@ error:
 	return ret;
 }
 
-static int cmd_record(int argc, const char **argv)
+int cmd_record(int argc, const char **argv)
 {
 	int ret;
 
@@ -454,7 +456,7 @@ static int cmd_record(int argc, const char **argv)
 	return ret;
 }
 
-static enum cmd_error_code handle_command(const char **argv)
+enum cmd_error_code handle_command(const char **argv)
 {
 	int mi_ret, i = 0, argc;
 	enum cmd_error_code cmd_ret;
@@ -565,6 +567,7 @@ static enum cmd_error_code handle_command(const char **argv)
 end:
 	return cmd_ret;
 }
+} /* namespace */
 /*
  * The 'snapshot <cmd> <options>' first level command
  */

@@ -23,14 +23,16 @@
 #include <unistd.h>
 #include <urcu/list.h>
 
-static char *opt_channel_name;
-static char *opt_session_name;
-static int opt_kernel;
-static int opt_userspace;
-static int opt_jul;
-static int opt_log4j;
-static int opt_log4j2;
-static char *opt_type;
+namespace {
+char *opt_channel_name;
+char *opt_session_name;
+int opt_kernel;
+int opt_userspace;
+int opt_jul;
+int opt_log4j;
+int opt_log4j2;
+char *opt_type;
+} /* namespace */
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
@@ -49,8 +51,10 @@ enum {
 	OPT_LIST,
 };
 
-static struct lttng_handle *handle;
-static struct mi_writer *writer;
+namespace {
+struct lttng_handle *handle;
+struct mi_writer *writer;
+} /* namespace */
 
 /*
  * Taken from the LTTng ABI except for "UNKNOWN".
@@ -169,7 +173,8 @@ enum perf_hw_cache_op_result_id {
 	PERF_COUNT_HW_CACHE_RESULT_MAX, /* non-ABI */
 };
 
-static struct poptOption long_options[] = {
+namespace {
+struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
 	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, nullptr, nullptr },
@@ -184,6 +189,7 @@ static struct poptOption long_options[] = {
 	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
 	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
+} /* namespace */
 
 /*
  * Context options
@@ -492,7 +498,8 @@ struct ctx_type_list {
  *
  * Return -1 if not found.
  */
-static int find_ctx_type_idx(const char *opt)
+namespace {
+int find_ctx_type_idx(const char *opt)
 {
 	int ret, i = 0;
 
@@ -509,7 +516,7 @@ end:
 	return ret;
 }
 
-static enum lttng_domain_type get_domain()
+enum lttng_domain_type get_domain()
 {
 	if (opt_kernel) {
 		return LTTNG_DOMAIN_KERNEL;
@@ -526,7 +533,7 @@ static enum lttng_domain_type get_domain()
 	}
 }
 
-static int mi_open()
+int mi_open()
 {
 	int ret;
 
@@ -566,7 +573,7 @@ end:
 	return ret;
 }
 
-static int mi_close(enum cmd_error_code success)
+int mi_close(enum cmd_error_code success)
 {
 	int ret;
 
@@ -600,7 +607,7 @@ end:
 	return ret;
 }
 
-static void populate_context(struct lttng_event_context *context, const struct ctx_opts *opt)
+void populate_context(struct lttng_event_context *context, const struct ctx_opts *opt)
 {
 	char *ptr;
 
@@ -633,7 +640,7 @@ static void populate_context(struct lttng_event_context *context, const struct c
 /*
  * Pretty print context type.
  */
-static int print_ctx_type()
+int print_ctx_type()
 {
 	FILE *ofp = stdout;
 	int i = 0;
@@ -707,7 +714,7 @@ end:
 /*
  * Add context to channel or event.
  */
-static int add_context(char *session_name)
+int add_context(char *session_name)
 {
 	int ret = CMD_SUCCESS, warn = 0, success = 0;
 	struct lttng_event_context context;
@@ -814,7 +821,7 @@ error:
 	return ret;
 }
 
-static void destroy_ctx_type(struct ctx_type *type)
+void destroy_ctx_type(struct ctx_type *type)
 {
 	if (!type) {
 		return;
@@ -833,7 +840,7 @@ static void destroy_ctx_type(struct ctx_type *type)
 	free(type);
 }
 
-static struct ctx_type *create_ctx_type()
+struct ctx_type *create_ctx_type()
 {
 	struct ctx_type *type = zmalloc<ctx_type>();
 
@@ -853,7 +860,7 @@ end:
 	return type;
 }
 
-static int find_ctx_type_perf_raw(const char *ctx, struct ctx_type *type)
+int find_ctx_type_perf_raw(const char *ctx, struct ctx_type *type)
 {
 	int ret;
 	int field_pos = 0;
@@ -943,7 +950,7 @@ end:
 	return ret;
 }
 
-static struct ctx_type *get_context_type(const char *ctx)
+struct ctx_type *get_context_type(const char *ctx)
 {
 	int opt_index, ret;
 	struct ctx_type *type = nullptr;
@@ -1040,6 +1047,7 @@ not_found:
 	destroy_ctx_type(type);
 	return nullptr;
 }
+} /* namespace */
 
 /*
  * Add context to channel or event.

@@ -18,10 +18,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-static char *opt_output_path;
-static bool opt_force;
-static bool opt_save_all;
-static struct mi_writer *writer;
+namespace {
+char *opt_output_path;
+bool opt_force;
+bool opt_save_all;
+struct mi_writer *writer;
+} /* namespace */
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
@@ -36,7 +38,8 @@ enum {
 	OPT_LIST_OPTIONS,
 };
 
-static struct poptOption save_opts[] = {
+namespace {
+struct poptOption save_opts[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
 	{ "all", 'a', POPT_ARG_NONE, nullptr, OPT_ALL, nullptr, nullptr },
@@ -46,7 +49,7 @@ static struct poptOption save_opts[] = {
 	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
-static int mi_partial_session(const char *session_name)
+int mi_partial_session(const char *session_name)
 {
 	int ret;
 	LTTNG_ASSERT(writer);
@@ -72,7 +75,7 @@ end:
 /*
  * Mi print of save command
  */
-static int mi_save_print(const char *session_name)
+int mi_save_print(const char *session_name)
 {
 	int ret;
 	LTTNG_ASSERT(writer);
@@ -108,6 +111,7 @@ static int mi_save_print(const char *session_name)
 end:
 	return ret;
 }
+} /* namespace */
 
 /*
  * The 'save <options>' first level command

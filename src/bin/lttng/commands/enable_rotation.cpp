@@ -24,8 +24,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-static char *opt_session_name;
-static struct mi_writer *writer;
+namespace {
+char *opt_session_name;
+struct mi_writer *writer;
+} /* namespace */
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
@@ -40,7 +42,8 @@ enum {
 	OPT_SIZE,
 };
 
-static struct poptOption long_options[] = {
+namespace {
+struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
 	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
@@ -50,14 +53,14 @@ static struct poptOption long_options[] = {
 	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
-static const char *schedule_type_str[] = {
+const char *schedule_type_str[] = {
 	"size-based",
 	"periodic",
 };
 
-static enum cmd_error_code add_schedule(const char *session_name,
-					enum lttng_rotation_schedule_type schedule_type,
-					uint64_t value)
+enum cmd_error_code add_schedule(const char *session_name,
+				 enum lttng_rotation_schedule_type schedule_type,
+				 uint64_t value)
 {
 	enum cmd_error_code ret = CMD_SUCCESS;
 	struct lttng_rotation_schedule *schedule = nullptr;
@@ -156,6 +159,7 @@ end:
 	lttng_rotation_schedule_destroy(schedule);
 	return ret;
 }
+} /* namespace */
 
 /*
  *  cmd_enable_rotation

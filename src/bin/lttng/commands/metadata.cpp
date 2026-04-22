@@ -17,10 +17,12 @@
 #include <string.h>
 #include <unistd.h>
 
-static char *opt_session_name;
-static char *session_name = nullptr;
+namespace {
+char *opt_session_name;
+char *session_name = nullptr;
 
-static int metadata_regenerate(int argc, const char **argv);
+int metadata_regenerate(int argc, const char **argv);
+} /* namespace */
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
@@ -34,10 +36,11 @@ enum {
 	OPT_LIST_COMMANDS,
 };
 
-static struct mi_writer *writer;
+namespace {
+struct mi_writer *writer;
 
 /* clang-format off */
-static struct poptOption long_options[] = {
+struct poptOption long_options[] = {
 	/* { longName, shortName, argInfo, argPtr, value, descrip, argDesc, } */
 	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr, },
 	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, nullptr, nullptr },
@@ -47,14 +50,14 @@ static struct poptOption long_options[] = {
 };
 /* clang-format on */
 
-static struct cmd_struct actions[] = {
+struct cmd_struct actions[] = {
 	{ "regenerate", metadata_regenerate }, { nullptr, nullptr } /* Array closure */
 };
 
 /*
  * Count and return the number of arguments in argv.
  */
-static int count_arguments(const char **argv)
+int count_arguments(const char **argv)
 {
 	int i = 0;
 
@@ -67,7 +70,7 @@ static int count_arguments(const char **argv)
 	return i;
 }
 
-static int metadata_regenerate(int argc, const char **argv __attribute__((unused)))
+int metadata_regenerate(int argc, const char **argv __attribute__((unused)))
 {
 	int ret;
 
@@ -86,7 +89,7 @@ end:
 	return ret;
 }
 
-static int handle_command(const char **argv)
+int handle_command(const char **argv)
 {
 	struct cmd_struct *cmd;
 	int ret = CMD_SUCCESS, i = 0, argc, command_ret = CMD_SUCCESS;
@@ -143,6 +146,7 @@ end:
 	ret = command_ret ? command_ret : ret;
 	return ret;
 }
+} /* namespace */
 
 /*
  * Metadata command handling.

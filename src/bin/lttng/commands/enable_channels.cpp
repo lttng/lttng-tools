@@ -28,43 +28,46 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-static struct lttng_channel chan_opts;
-static int opt_kernel;
-static char *opt_session_name;
-static int opt_userspace;
-static char *opt_output;
-static int opt_buffer_type = -1;
-static enum lttng_channel_allocation_policy opt_allocation_policy =
-	DEFAULT_CHANNEL_ALLOCATION_POLICY;
+namespace {
+struct lttng_channel chan_opts;
+int opt_kernel;
+char *opt_session_name;
+int opt_userspace;
+char *opt_output;
+int opt_buffer_type = -1;
+enum lttng_channel_allocation_policy opt_allocation_policy = DEFAULT_CHANNEL_ALLOCATION_POLICY;
 
-static enum lttng_channel_preallocation_policy opt_preallocation_policy =
+enum lttng_channel_preallocation_policy opt_preallocation_policy =
 	DEFAULT_CHANNEL_PREALLOCATION_POLICY;
 
-static struct {
+struct {
 	bool set;
 	uint64_t interval;
 } opt_monitor_timer;
-static struct {
+struct {
 	bool set;
 	uint64_t interval;
 } opt_watchdog_timer;
+} /* namespace */
 enum class auto_reclaim_memory_strategy {
 	OFF,
 	CONSUMED,
 	OLDER_THAN,
 };
 
-static struct {
+namespace {
+struct {
 	bool set;
 	auto_reclaim_memory_strategy strategy;
 	uint64_t older_than_age;
 } opt_auto_reclaim_memory;
-static struct {
+struct {
 	bool set;
 	int64_t value;
 } opt_blocking_timeout;
 
-static struct mi_writer *writer;
+struct mi_writer *writer;
+} /* namespace */
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
@@ -93,13 +96,16 @@ enum {
 	OPT_BUFFER_PREALLOCATION,
 };
 
-static struct lttng_handle *handle;
+namespace {
+struct lttng_handle *handle;
+} /* namespace */
 
 const char *output_mmap = "mmap";
 const char *output_splice = "splice";
 
 /* clang-format off */
-static struct poptOption long_options[] = {
+namespace {
+struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
 	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, nullptr, nullptr },
@@ -133,7 +139,7 @@ static struct poptOption long_options[] = {
  * Set default attributes depending on those already defined from the command
  * line.
  */
-static void set_default_attr(struct lttng_domain *dom)
+void set_default_attr(struct lttng_domain *dom)
 {
 	struct lttng_channel_attr default_attr;
 
@@ -168,16 +174,16 @@ static void set_default_attr(struct lttng_domain *dom)
 	}
 }
 
-static size_t real_subbuff_count(const struct lttng_channel& channel)
+size_t real_subbuff_count(const struct lttng_channel& channel)
 {
 	/* An additional sub-buffer is allocated to support sparse-buffers. */
 	return channel.attr.num_subbuf + 1;
 }
 
-static bool system_has_memory_for_channel_buffers(char *session_name,
-						  struct lttng_channel *channel,
-						  uint64_t *bytes_required,
-						  uint64_t *bytes_available)
+bool system_has_memory_for_channel_buffers(char *session_name,
+					   struct lttng_channel *channel,
+					   uint64_t *bytes_required,
+					   uint64_t *bytes_available)
 {
 	/*
 	 * Verify that the amount of memory required to create the requested
@@ -234,7 +240,7 @@ static bool system_has_memory_for_channel_buffers(char *session_name,
 /*
  * Adding channel using the lttng API.
  */
-static int enable_channel(char *session_name, char *channel_list)
+int enable_channel(char *session_name, char *channel_list)
 {
 	struct lttng_channel *channel = nullptr;
 	int ret = CMD_SUCCESS, warn = 0, error = 0, success = 0;
@@ -575,7 +581,7 @@ error:
 /*
  * Default value for channel configuration.
  */
-static void init_channel_config()
+void init_channel_config()
 {
 	/*
 	 * Put -1 everywhere so we can identify those set by the command line and
@@ -584,6 +590,7 @@ static void init_channel_config()
 	memset(&chan_opts.attr, -1, sizeof(chan_opts.attr));
 	chan_opts.attr.extended.ptr = nullptr;
 }
+} /* namespace */
 
 /*
  * Add channel to trace session

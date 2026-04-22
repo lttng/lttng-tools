@@ -23,8 +23,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-static int opt_no_wait;
-static struct mi_writer *writer;
+namespace {
+int opt_no_wait;
+struct mi_writer *writer;
+} /* namespace */
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
@@ -37,7 +39,8 @@ enum {
 	OPT_LIST_OPTIONS,
 };
 
-static struct poptOption long_options[] = {
+namespace {
+struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
 	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
@@ -45,7 +48,7 @@ static struct poptOption long_options[] = {
 	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
-static int rotate_tracing(char *session_name)
+int rotate_tracing(char *session_name)
 {
 	int ret;
 	enum cmd_error_code cmd_ret = CMD_SUCCESS;
@@ -147,6 +150,7 @@ error:
 	cmd_ret = CMD_ERROR;
 	goto end;
 }
+} /* namespace */
 
 /*
  *  cmd_rotate

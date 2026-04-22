@@ -58,13 +58,14 @@ enum {
 	OPT_ALL,
 };
 
-static char *opt_session_name;
-static int opt_kernel;
-static int opt_userspace;
-static char *opt_str_arg;
+namespace {
+char *opt_session_name;
+int opt_kernel;
+int opt_userspace;
+char *opt_str_arg;
 
 /* clang-format off */
-static struct poptOption long_options[] = {
+struct poptOption long_options[] = {
 	/* { longName, shortName, argInfo, argPtr, value, descrip, argDesc, } */
 	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
 	{ "session", 's', POPT_ARG_STRING, &opt_session_name, OPT_SESSION, nullptr, nullptr },
@@ -82,23 +83,22 @@ static struct poptOption long_options[] = {
 };
 /* clang-format on */
 
-static struct process_attr_command_args
-	process_attr_commands[LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID + 1];
+struct process_attr_command_args process_attr_commands[LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID + 1];
 
-static void process_attr_command_init(struct process_attr_command_args *cmd,
-				      enum lttng_process_attr process_attr)
+void process_attr_command_init(struct process_attr_command_args *cmd,
+			       enum lttng_process_attr process_attr)
 {
 	cmd->process_attr = process_attr;
 	cmd->all = false;
 	lttng_dynamic_pointer_array_init(&cmd->string_args, free);
 }
 
-static void process_attr_command_fini(struct process_attr_command_args *cmd)
+void process_attr_command_fini(struct process_attr_command_args *cmd)
 {
 	lttng_dynamic_pointer_array_reset(&cmd->string_args);
 }
 
-static const char *get_capitalized_process_attr_str(enum lttng_process_attr process_attr)
+const char *get_capitalized_process_attr_str(enum lttng_process_attr process_attr)
 {
 	switch (process_attr) {
 	case LTTNG_PROCESS_ATTR_PROCESS_ID:
@@ -119,7 +119,7 @@ static const char *get_capitalized_process_attr_str(enum lttng_process_attr proc
 	return nullptr;
 }
 
-static bool ust_process_attr_supported(enum lttng_process_attr *process_attr)
+bool ust_process_attr_supported(enum lttng_process_attr *process_attr)
 {
 	bool supported;
 
@@ -141,7 +141,7 @@ static bool ust_process_attr_supported(enum lttng_process_attr *process_attr)
 	return supported;
 }
 
-static const char *get_mi_element_command(enum cmd_type cmd_type)
+const char *get_mi_element_command(enum cmd_type cmd_type)
 {
 	switch (cmd_type) {
 	case CMD_TRACK:
@@ -153,11 +153,11 @@ static const char *get_mi_element_command(enum cmd_type cmd_type)
 	}
 }
 
-static enum cmd_error_code run_command_all(enum cmd_type cmd_type,
-					   const char *session_name,
-					   enum lttng_domain_type domain_type,
-					   enum lttng_process_attr process_attr,
-					   struct mi_writer *writer)
+enum cmd_error_code run_command_all(enum cmd_type cmd_type,
+				    const char *session_name,
+				    enum lttng_domain_type domain_type,
+				    enum lttng_process_attr process_attr,
+				    struct mi_writer *writer)
 {
 	struct lttng_process_attr_tracker_handle *tracker_handle = nullptr;
 	const enum lttng_error_code handle_ret_code = lttng_session_get_tracker_handle(
@@ -219,12 +219,12 @@ end:
 	return cmd_ret;
 }
 
-static enum cmd_error_code run_command_string(enum cmd_type cmd_type,
-					      const char *session_name,
-					      enum lttng_domain_type domain_type,
-					      enum lttng_process_attr process_attr,
-					      const char *_args,
-					      struct mi_writer *writer)
+enum cmd_error_code run_command_string(enum cmd_type cmd_type,
+				       const char *session_name,
+				       enum lttng_domain_type domain_type,
+				       enum lttng_process_attr process_attr,
+				       const char *_args,
+				       struct mi_writer *writer)
 {
 	struct lttng_process_attr_tracker_handle *tracker_handle = nullptr;
 	const enum lttng_error_code handle_ret_code = lttng_session_get_tracker_handle(
@@ -448,10 +448,10 @@ end:
 	return cmd_ret;
 }
 
-static enum cmd_error_code run_command(enum cmd_type cmd_type,
-				       const char *session_name,
-				       const struct process_attr_command_args *command_args,
-				       struct mi_writer *writer)
+enum cmd_error_code run_command(enum cmd_type cmd_type,
+				const char *session_name,
+				const struct process_attr_command_args *command_args,
+				struct mi_writer *writer)
 {
 	const enum lttng_domain_type domain_type = opt_kernel ? LTTNG_DOMAIN_KERNEL :
 								LTTNG_DOMAIN_UST;
@@ -522,10 +522,10 @@ end:
 /*
  * Add/remove tracker to/from session.
  */
-static int cmd_track_untrack(enum cmd_type cmd_type,
-			     int argc,
-			     const char **argv,
-			     const char *help_msg __attribute__((unused)))
+int cmd_track_untrack(enum cmd_type cmd_type,
+		      int argc,
+		      const char **argv,
+		      const char *help_msg __attribute__((unused)))
 {
 	int opt, ret = 0;
 	bool sub_command_failed = false;
@@ -741,6 +741,7 @@ end:
 	poptFreeContext(pc);
 	return (int) command_ret;
 }
+} /* namespace */
 
 int cmd_track(int argc, const char **argv)
 {

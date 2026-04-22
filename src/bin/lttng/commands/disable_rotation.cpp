@@ -23,8 +23,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-static char *opt_session_name;
-static struct mi_writer *writer;
+namespace {
+char *opt_session_name;
+struct mi_writer *writer;
+} /* namespace */
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
@@ -39,7 +41,8 @@ enum {
 	OPT_SIZE,
 };
 
-static struct poptOption long_options[] = {
+namespace {
+struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
 	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
@@ -49,15 +52,14 @@ static struct poptOption long_options[] = {
 	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
-static const char *schedule_type_str[] = {
+const char *schedule_type_str[] = {
 	"periodic",
 	"size-based",
 };
 
-static const struct lttng_rotation_schedule *
-get_schedule(const char *session_name,
-	     const struct lttng_rotation_schedules *schedules,
-	     enum lttng_rotation_schedule_type schedule_type)
+const struct lttng_rotation_schedule *get_schedule(const char *session_name,
+						   const struct lttng_rotation_schedules *schedules,
+						   enum lttng_rotation_schedule_type schedule_type)
 {
 	unsigned int count, i;
 	enum lttng_rotation_status status;
@@ -94,7 +96,7 @@ end:
 	return ret;
 }
 
-static struct lttng_rotation_schedule *create_empty_schedule(enum lttng_rotation_schedule_type type)
+struct lttng_rotation_schedule *create_empty_schedule(enum lttng_rotation_schedule_type type)
 {
 	struct lttng_rotation_schedule *schedule = nullptr;
 
@@ -111,8 +113,8 @@ static struct lttng_rotation_schedule *create_empty_schedule(enum lttng_rotation
 	return schedule;
 }
 
-static enum cmd_error_code remove_schedule(const char *session_name,
-					   enum lttng_rotation_schedule_type schedule_type)
+enum cmd_error_code remove_schedule(const char *session_name,
+				    enum lttng_rotation_schedule_type schedule_type)
 {
 	enum cmd_error_code cmd_ret;
 	int ret;
@@ -192,6 +194,7 @@ error:
 	cmd_ret = CMD_ERROR;
 	goto end;
 }
+} /* namespace */
 
 /*
  *  cmd_disable_rotation

@@ -19,13 +19,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-static char *the_opt_input_path;
-static char *the_opt_override_url;
-static char *the_opt_override_session_name;
-static int the_opt_force;
-static int the_opt_load_all;
+namespace {
+char *the_opt_input_path;
+char *the_opt_override_url;
+char *the_opt_override_session_name;
+int the_opt_force;
+int the_opt_load_all;
 
-static const char *the_session_name;
+const char *the_session_name;
+} /* namespace */
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
@@ -40,9 +42,10 @@ enum {
 	OPT_LIST_OPTIONS,
 };
 
-static struct mi_writer *the_writer;
+namespace {
+struct mi_writer *the_writer;
 
-static struct poptOption the_load_opts[] = {
+struct poptOption the_load_opts[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
 	{ "all", 'a', POPT_ARG_NONE, nullptr, OPT_ALL, nullptr, nullptr },
@@ -54,7 +57,7 @@ static struct poptOption the_load_opts[] = {
 	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
-static int mi_partial_session(const char *session_name)
+int mi_partial_session(const char *session_name)
 {
 	int ret;
 	LTTNG_ASSERT(the_writer);
@@ -80,7 +83,7 @@ end:
 /*
  * Mi print of load command
  */
-static int mi_load_print(const char *session_name)
+int mi_load_print(const char *session_name)
 {
 	int ret;
 	LTTNG_ASSERT(the_writer);
@@ -140,6 +143,7 @@ static int mi_load_print(const char *session_name)
 end:
 	return ret;
 }
+} /* namespace */
 
 /*
  * The 'load <options>' first level command

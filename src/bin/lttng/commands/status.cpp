@@ -23,23 +23,26 @@ static const char help_msg[] =
 	;
 #endif
 
-static int opt_no_truncate;
-static char *opt_mem_usage;
-static char *opt_style;
-static char *opt_channel;
-static int opt_userspace;
-static int opt_kernel;
-static int opt_jul;
-static int opt_log4j;
-static int opt_log4j2;
-static int opt_python;
+namespace {
+int opt_no_truncate;
+char *opt_mem_usage;
+char *opt_style;
+char *opt_channel;
+int opt_userspace;
+int opt_kernel;
+int opt_jul;
+int opt_log4j;
+int opt_log4j2;
+int opt_python;
+} /* namespace */
 
 enum {
 	OPT_HELP = 1,
 	OPT_LIST_OPTIONS,
 };
 
-static struct poptOption long_options[] = {
+namespace {
+struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
 	{ "kernel", 'k', POPT_ARG_VAL, &opt_kernel, 1, nullptr, nullptr },
@@ -56,7 +59,7 @@ static struct poptOption long_options[] = {
 	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
-static int status()
+int status()
 {
 	const auto session_name =
 		lttng::make_unique_wrapper<char, lttng::memory::free>(get_session_name_quiet());
@@ -116,6 +119,7 @@ static int status()
 
 	return cmd_list(argv.size(), argv.data());
 }
+} /* namespace */
 
 /*
  * The 'status <options>' first level command

@@ -29,9 +29,10 @@ enum {
 	OPT_LIST_OPTIONS,
 };
 
-static struct mi_writer *writer;
+namespace {
+struct mi_writer *writer;
 
-static struct poptOption long_options[] = {
+struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
 	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
@@ -41,7 +42,7 @@ static struct poptOption long_options[] = {
 /*
  * Print the necessary mi for a session and name.
  */
-static int mi_print(const char *session_name)
+int mi_print(const char *session_name)
 {
 	int ret;
 
@@ -81,7 +82,7 @@ end:
 /*
  *  set_session
  */
-static int set_session(const char *session_name)
+int set_session(const char *session_name)
 {
 	int ret = CMD_SUCCESS;
 	int count, i;
@@ -137,6 +138,7 @@ error:
 end:
 	return ret;
 }
+} /* namespace */
 
 /*
  *  cmd_set_session

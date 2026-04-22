@@ -30,14 +30,15 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-static const char *str_all = "ALL";
-static const char *str_tracepoint = "Tracepoint";
-static const char *str_syscall = "Syscall";
-static const char *str_probe = "Probe";
-static const char *str_userspace_probe = "Userspace Probe";
-static const char *str_function = "Function";
+namespace {
+const char *str_all = "ALL";
+const char *str_tracepoint = "Tracepoint";
+const char *str_syscall = "Syscall";
+const char *str_probe = "Probe";
+const char *str_userspace_probe = "Userspace Probe";
+const char *str_function = "Function";
 
-static char *_get_session_name(int quiet)
+char *_get_session_name(int quiet)
 {
 	const char *path;
 	char *session_name = nullptr;
@@ -62,6 +63,7 @@ static char *_get_session_name(int quiet)
 error:
 	return nullptr;
 }
+} /* namespace */
 
 /*
  *  get_session_name
@@ -153,7 +155,8 @@ void list_cmd_options_argpar(FILE *ofp, const struct argpar_opt_descr *options)
  * significant bit (from 1 to 32 on 32-bit, from 1 to 64 on 64-bit).
  */
 #if defined(__i386) || defined(__x86_64)
-static inline unsigned int fls_u32(uint32_t x)
+namespace {
+inline unsigned int fls_u32(uint32_t x)
 {
 	int r;
 
@@ -169,7 +172,7 @@ static inline unsigned int fls_u32(uint32_t x)
 #endif
 
 #if defined(__x86_64) && defined(__LP64__)
-static inline unsigned int fls_u64(uint64_t x)
+inline unsigned int fls_u64(uint64_t x)
 {
 	long r;
 
@@ -182,6 +185,10 @@ static inline unsigned int fls_u64(uint64_t x)
 	return r + 1;
 }
 #define HAS_FLS_U64
+#endif
+
+#if defined(__i386) || defined(__x86_64)
+} /* namespace */
 #endif
 
 #ifndef HAS_FLS_U64
@@ -251,7 +258,8 @@ static __attribute__((unused)) unsigned int fls_u32(uint32_t x)
 }
 #endif
 
-static unsigned int fls_ulong(unsigned long x)
+namespace {
+unsigned int fls_ulong(unsigned long x)
 {
 #if (CAA_BITS_PER_LONG == 32)
 	return fls_u32(x);
@@ -259,6 +267,7 @@ static unsigned int fls_ulong(unsigned long x)
 	return fls_u64(x);
 #endif
 }
+} /* namespace */
 
 /*
  * Return the minimum order for which x <= (1UL << order).
