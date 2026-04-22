@@ -338,7 +338,7 @@ std::int64_t get_blocking_timeout_value(const rcc::consumption_blocking_policy& 
 		return -1;
 	case rcc::consumption_blocking_policy::mode::TIMED:
 		return policy.timeout_us.has_value() ?
-			static_cast<std::int64_t>(policy.timeout_us.value()) :
+			static_cast<std::int64_t>(*policy.timeout_us) :
 			0;
 	}
 
