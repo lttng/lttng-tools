@@ -38,10 +38,10 @@ int cmd_create_session_2_11_base_common(
 	struct lttng_buffer_view hostname_view;
 	struct lttng_buffer_view base_path_view;
 	size_t offset;
-	uint32_t session_name_len = be32toh(base_header->session_name_len);
-	uint32_t hostname_len = be32toh(base_header->hostname_len);
-	uint32_t base_path_len = be32toh(base_header->base_path_len);
-	size_t received_names_size = session_name_len + hostname_len + base_path_len;
+	const uint32_t session_name_len = be32toh(base_header->session_name_len);
+	const uint32_t hostname_len = be32toh(base_header->hostname_len);
+	const uint32_t base_path_len = be32toh(base_header->base_path_len);
+	const size_t received_names_size = session_name_len + hostname_len + base_path_len;
 
 	/* Validate received size matches expected size. */
 	if (names_payload->size < received_names_size) {

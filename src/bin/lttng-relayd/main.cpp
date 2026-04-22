@@ -673,7 +673,8 @@ end:
 int set_options(int argc, char **argv)
 {
 	int c, ret = 0, option_index = 0, retval = 0;
-	int orig_optopt = optopt, orig_optind = optind;
+	const int orig_optopt = optopt;
+	const int orig_optind = optind;
 	char *default_address, *optstring;
 	char *config_path = nullptr;
 
