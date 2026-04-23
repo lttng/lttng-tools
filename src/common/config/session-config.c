@@ -429,7 +429,7 @@ static xmlChar *encode_string(const char *in_str)
 		goto end;
 	}
 
-	ret = handler->input(out_str, &out_len, (const xmlChar *) in_str, &in_len);
+	ret = handler->input.func(NULL, out_str, &out_len, (const xmlChar *) in_str, &in_len, 0);
 	if (ret < 0) {
 		xmlFree(out_str);
 		out_str = NULL;
