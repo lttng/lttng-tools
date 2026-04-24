@@ -93,7 +93,6 @@ m4_define([WARN_FLAGS_C_LIST], [ dnl
   -Wmissing-parameter-type dnl
   -Wsuggest-final-types dnl
   -Wsuggest-final-methods dnl
-  -Wsuggest-override dnl
 ])
 
 # Pass -Werror as an extra flag during the test: this is needed to make the
@@ -130,6 +129,7 @@ m4_define([WARN_FLAGS_CXX_LIST], [ dnl
   dnl GCC enables this with -Wall in C++, and that generates a
   dnl lot of warnings that have on average a low value to fix.
   -Wno-sign-compare dnl
+  -Wsuggest-override dnl
 ])
 
 # Pass -Werror as an extra flag during the test: this is needed to make the
