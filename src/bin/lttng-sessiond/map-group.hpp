@@ -79,9 +79,9 @@ public:
 	virtual ~group() = default;
 
 	group(const group&) = delete;
-	group(group&&) = delete;
+	group(group&&) = default;
 	group& operator=(const group&) = delete;
-	group& operator=(group&&) = delete;
+	group& operator=(group&&) = default;
 
 	virtual void add_map(nonstd::optional<unsigned int> cpu_id, MapHandleType handle)
 	{

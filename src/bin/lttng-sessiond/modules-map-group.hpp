@@ -48,7 +48,7 @@ public:
 
 	~map_group() override = default;
 
-	map_group(map_group&&) = delete;
+	map_group(map_group&&) = default;
 	map_group(const map_group&) = delete;
 	map_group& operator=(map_group&&) = delete;
 	map_group& operator=(const map_group&) = delete;

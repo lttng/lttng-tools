@@ -108,7 +108,7 @@ liblttng_sessiond_common_la_SOURCES += trace-ust.cpp ust-registry.cpp ust-app.cp
 			ust-domain-orchestrator.hpp ust-domain-orchestrator.cpp \
 			ust-object-data.hpp ust-object-data.cpp \
 			ust-stream-group.hpp ust-stream-group.cpp \
-			ust-map-group.hpp \
+			ust-map-group.hpp ust-map-group.cpp \
 			ust-trace-class-index.hpp ust-trace-class-index.cpp \
 			ust-clock-class.hpp ust-clock-class.cpp \
 			agent-thread.cpp agent-thread.hpp \
