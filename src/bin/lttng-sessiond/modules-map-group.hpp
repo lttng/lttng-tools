@@ -62,6 +62,25 @@ public:
 	sessiond::map::element_value aggregate_element(std::uint64_t index) const;
 	void clear_element(std::uint64_t index);
 
+	/*
+	 * Create a kernel map group whose counter is attached to an
+	 * event-notifier group fd. Used by event-notifier error
+	 * accounting, which owns one counter per event-notifier group.
+	 *
+	 * Throws on ioctl or fcntl failure.
+	 */
+	static map_group
+	create_for_event_notifier_group(int event_notifier_group_fd,
+					const config::map_channel_configuration& configuration);
+
+	/*
+	 * Create a kernel map group whose counter is attached to a
+	 * recording-session fd. Placeholder for the map-channel work;
+	 * unimplemented for now.
+	 */
+	static map_group create_for_session(int session_fd,
+					    const config::map_channel_configuration& configuration);
+
 private:
 	lttng::file_descriptor _tracer_counter_fd;
 	const config::map_channel_configuration& _configuration;
