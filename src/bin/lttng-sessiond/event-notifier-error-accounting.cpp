@@ -19,8 +19,6 @@
 
 #include <lttng/trigger/trigger-internal.hpp>
 
-#include <urcu/compiler.h>
-
 #define ERROR_COUNTER_INDEX_HT_INITIAL_SIZE 16
 
 namespace {

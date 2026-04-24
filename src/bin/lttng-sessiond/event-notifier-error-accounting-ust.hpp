@@ -46,16 +46,16 @@ void fini();
 
 /*
  * Record that a UST-domain event notifier has been registered. On the
- * first event notifier, takes a reference on every known UID entry so
- * that the entries are kept alive even if all applications of that UID
- * disappear.
+ * first event notifier, marks every known UID entry as having an
+ * event-notifier present so the entries are retained even if all
+ * applications of a UID disappear.
  */
 void on_event_notifier_registered();
 
 /*
  * Record that a UST-domain event notifier has been unregistered. On
- * the last event notifier, drops the reference taken by
- * on_event_notifier_registered() for every UID entry.
+ * the last event notifier, clears the event-notifier-present flag on
+ * every UID entry and drops those that no application references.
  */
 void on_event_notifier_unregistered();
 

@@ -19,7 +19,6 @@
 
 #include <pthread.h>
 #include <sys/types.h>
-#include <urcu/compiler.h>
 
 #include <utility>
 #include <vector>
