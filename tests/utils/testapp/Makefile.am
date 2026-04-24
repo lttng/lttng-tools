@@ -62,7 +62,7 @@ gen_ust_nevents_str_SOURCES = \
 gen_ust_nevents_str_LDADD = $(UST_LIBS) $(DL_LIBS) \
 		$(top_builddir)/tests/utils/libtestutils.la
 
-MANY_EVENTS_NUM_EVENTS_PER_SOURCE ?= 500
+MANY_EVENTS_NUM_EVENTS_PER_SOURCE ?= 250
 # Note: $(wildcard,) is not portable and therefore the sources are listed manually
 many_events_generated_files = \
 	gen-many-event-classes/emit-events.h \

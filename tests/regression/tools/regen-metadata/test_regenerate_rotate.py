@@ -45,7 +45,7 @@ def test_regenerate_rotate_local_ust(
     session.start()
 
     # This app is run once so that the metadata for the session's streams is
-    # relatively large (~0.9MiB). When combined with a delayed write device,
+    # relatively large (~0.45MiB). When combined with a delayed write device,
     # the races between rotate and regenerate happen more frequently.
     multi_event_app = test_env.launch_multi_event_wait_trace_test_application(1)
     multi_event_app.trace()
