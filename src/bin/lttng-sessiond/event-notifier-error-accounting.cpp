@@ -8,17 +8,17 @@
 #include "event-notifier-error-accounting-ust.hpp"
 #include "event-notifier-error-accounting-utils.hpp"
 #include "event-notifier-error-accounting.hpp"
+#include "map-channel-configuration.hpp"
+#include "modules-map-group.hpp"
 
 #include <common/error.hpp>
+#include <common/exception.hpp>
 #include <common/hashtable/hashtable.hpp>
 #include <common/index-allocator.hpp>
-#include <common/kernel-ctl/kernel-ctl.hpp>
 #include <common/urcu.hpp>
 
 #include <lttng/trigger/trigger-internal.hpp>
 
-#include <fcntl.h>
-#include <unistd.h>
 #include <urcu/compiler.h>
 
 #define ERROR_COUNTER_INDEX_HT_INITIAL_SIZE 16
@@ -30,11 +30,8 @@ struct index_ht_entry {
 	struct rcu_head rcu_head;
 };
 
-struct kernel_error_accounting_entry {
-	int error_counter_fd;
-};
-
-struct kernel_error_accounting_entry kernel_error_accounting_entry;
+nonstd::optional<lttng::sessiond::config::map_channel_configuration> default_kernel_config;
+nonstd::optional<lttng::sessiond::modules::map_group> kernel_map_group;
 
 struct error_accounting_state kernel_state;
 } /* namespace */
@@ -143,6 +140,14 @@ event_notifier_error_accounting_init(uint64_t buffer_size_kernel, uint64_t buffe
 		goto end;
 	}
 
+	default_kernel_config.emplace(
+		"event-notifier-error-accounting",
+		lttng::sessiond::config::map_channel_configuration::key_type_t::INDEX,
+		lttng::sessiond::config::map_channel_configuration::value_type_t::SIGNED_INT_MAX,
+		/* coalesce_hits */ false,
+		buffer_size_kernel,
+		lttng::sessiond::config::ownership_model_t::PER_UID);
+
 	status = init_error_accounting_state(&ust_state, buffer_size_ust);
 	if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
 		ERR("Failed to initialize UST event notifier accounting state: status = %s",
@@ -192,10 +197,8 @@ namespace {
 enum event_notifier_error_accounting_status
 event_notifier_error_accounting_kernel_clear(const struct lttng_trigger *trigger)
 {
-	int ret;
 	uint64_t error_counter_index;
 	enum event_notifier_error_accounting_status status;
-	struct lttng_kernel_abi_counter_clear counter_clear = {};
 
 	status = get_error_counter_index_for_token(
 		&kernel_state, lttng_trigger_get_tracer_token(trigger), &error_counter_index);
@@ -209,79 +212,45 @@ event_notifier_error_accounting_kernel_clear(const struct lttng_trigger *trigger
 		    trigger_owner_uid,
 		    trigger_name,
 		    error_accounting_status_str(status));
-		goto end;
+		return status;
 	}
 
-	counter_clear.index.number_dimensions = 1;
-	counter_clear.index.dimension_indexes[0] = error_counter_index;
-
-	ret = kernctl_counter_clear(kernel_error_accounting_entry.error_counter_fd, &counter_clear);
-	if (ret) {
+	try {
+		kernel_map_group->clear_element(error_counter_index);
+	} catch (const std::exception& ex) {
 		uid_t trigger_owner_uid;
 		const char *trigger_name;
 
 		get_trigger_info_for_log(trigger, &trigger_name, &trigger_owner_uid);
 
-		ERR("Failed to clear kernel event notifier error counter: trigger owner uid = %d, trigger name = '%s'",
+		ERR("Failed to clear kernel event notifier error counter: trigger owner uid = %d, trigger name = '%s', error: %s",
 		    trigger_owner_uid,
-		    trigger_name);
-		status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
-		goto end;
+		    trigger_name,
+		    ex.what());
+		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
 	}
 
-	status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
-end:
-	return status;
+	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 }
 } /* namespace */
 
 enum event_notifier_error_accounting_status
 event_notifier_error_accounting_register_kernel(int kernel_event_notifier_group_fd)
 {
-	int error_counter_fd = -1, ret;
-	enum event_notifier_error_accounting_status status;
-	lttng_kernel_abi_counter_conf error_counter_conf = {
-		.arithmetic = LTTNG_KERNEL_ABI_COUNTER_ARITHMETIC_MODULAR,
-		.bitness = sizeof(void *) == sizeof(uint32_t) ?
-			LTTNG_KERNEL_ABI_COUNTER_BITNESS_32 :
-			LTTNG_KERNEL_ABI_COUNTER_BITNESS_64,
-		.number_dimensions = 1,
-		.global_sum_step = 0,
-		.dimensions = {},
-		.coalesce_hits = 0,
-		.padding = {},
-	};
-	error_counter_conf.dimensions[0].size = kernel_state.number_indices;
-	error_counter_conf.dimensions[0].has_underflow = false;
-	error_counter_conf.dimensions[0].has_overflow = false;
-
-	ret = kernctl_create_event_notifier_group_error_counter(kernel_event_notifier_group_fd,
-								&error_counter_conf);
-	if (ret < 0) {
-		PERROR("Failed to create event notifier group error counter through kernel ioctl: kernel_event_notifier_group_fd = %d",
-		       kernel_event_notifier_group_fd);
-		status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
-		goto error;
+	try {
+		kernel_map_group.emplace(
+			lttng::sessiond::modules::map_group::create_for_event_notifier_group(
+				kernel_event_notifier_group_fd, *default_kernel_config));
+	} catch (const std::exception& ex) {
+		ERR("Failed to create kernel event notifier group error counter: kernel_event_notifier_group_fd = %d, error: %s",
+		    kernel_event_notifier_group_fd,
+		    ex.what());
+		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
 	}
 
-	error_counter_fd = ret;
-
-	/* Prevent fd duplication after execlp(). */
-	ret = fcntl(error_counter_fd, F_SETFD, FD_CLOEXEC);
-	if (ret < 0) {
-		PERROR("Failed to set FD_CLOEXEC flag on event notifier error counter file descriptor: error_counter_fd = %d",
-		       error_counter_fd);
-		status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
-		goto error;
-	}
-
-	DBG("Created kernel event notifier group error counter: fd = %d", error_counter_fd);
-
-	kernel_error_accounting_entry.error_counter_fd = error_counter_fd;
-	status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
-
-error:
-	return status;
+	DBG("Created kernel event notifier group error counter: fd = %d",
+	    kernel_map_group->tracer_handle().fd());
+	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 }
 
 namespace {
@@ -416,56 +385,48 @@ enum event_notifier_error_accounting_status
 event_notifier_error_accounting_kernel_get_count(const struct lttng_trigger *trigger,
 						 uint64_t *count)
 {
-	struct lttng_kernel_abi_counter_aggregate counter_aggregate = {};
 	enum event_notifier_error_accounting_status status;
 	uint64_t error_counter_index;
-	int ret;
 
 	status = get_error_counter_index_for_token(
 		&kernel_state, lttng_trigger_get_tracer_token(trigger), &error_counter_index);
 	if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
 		ERR("Error getting index for token: status=%s",
 		    error_accounting_status_str(status));
-		goto end;
+		return status;
 	}
 
-	counter_aggregate.index.number_dimensions = 1;
-	counter_aggregate.index.dimension_indexes[0] = error_counter_index;
-
-	LTTNG_ASSERT(kernel_error_accounting_entry.error_counter_fd);
-
-	ret = kernctl_counter_get_aggregate_value(kernel_error_accounting_entry.error_counter_fd,
-						  &counter_aggregate);
-	if (ret || counter_aggregate.value.value < 0) {
+	lttng::sessiond::map::element_value value;
+	try {
+		value = kernel_map_group->aggregate_element(error_counter_index);
+	} catch (const std::exception& ex) {
 		uid_t trigger_owner_uid;
 		const char *trigger_name;
 
 		get_trigger_info_for_log(trigger, &trigger_name, &trigger_owner_uid);
 
-		if (counter_aggregate.value.value < 0) {
-			ERR("Invalid negative event notifier error counter value: trigger owner = %d, trigger name = '%s', value = %" PRId64,
-			    trigger_owner_uid,
-			    trigger_name,
-			    counter_aggregate.value.value);
-		} else {
-			ERR("Failed to getting event notifier error count: trigger owner = %d, trigger name = '%s', ret = %d",
-			    trigger_owner_uid,
-			    trigger_name,
-			    ret);
-		}
-
-		status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
-		goto end;
+		ERR("Failed to get event notifier error count: trigger owner = %d, trigger name = '%s', error: %s",
+		    trigger_owner_uid,
+		    trigger_name,
+		    ex.what());
+		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
 	}
 
-	/* Error count can't be negative. */
-	LTTNG_ASSERT(counter_aggregate.value.value >= 0);
-	*count = (uint64_t) counter_aggregate.value.value;
+	if (value.value < 0) {
+		uid_t trigger_owner_uid;
+		const char *trigger_name;
 
-	status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
+		get_trigger_info_for_log(trigger, &trigger_name, &trigger_owner_uid);
 
-end:
-	return status;
+		ERR("Invalid negative event notifier error counter value: trigger owner = %d, trigger name = '%s', value = %" PRId64,
+		    trigger_owner_uid,
+		    trigger_name,
+		    value.value);
+		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
+	}
+
+	*count = (uint64_t) value.value;
+	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 }
 } /* namespace */
 
@@ -585,13 +546,8 @@ end:
 
 void event_notifier_error_accounting_fini()
 {
-	if (kernel_error_accounting_entry.error_counter_fd) {
-		const int ret = close(kernel_error_accounting_entry.error_counter_fd);
-
-		if (ret) {
-			PERROR("Failed to close kernel event notifier error counter");
-		}
-	}
+	kernel_map_group.reset();
+	default_kernel_config.reset();
 
 	lttng::sessiond::ust::event_notifier_error_accounting::fini();
 
