@@ -141,13 +141,20 @@ struct poptOption long_options[] = {
  */
 void create_version(struct mi_lttng_version_data *version)
 {
-	strncpy(version->version, VERSION, NAME_MAX);
+	int ret;
+
+	ret = lttng_strncpy(version->version, VERSION, sizeof(version->version));
+	LTTNG_ASSERT(ret == 0);
 	version->version_major = VERSION_MAJOR;
 	version->version_minor = VERSION_MINOR;
 	version->version_patchlevel = VERSION_PATCHLEVEL;
-	strncpy(version->version_commit, lttng::get_git_version(), NAME_MAX);
-	strncpy(version->version_name, VERSION_NAME, NAME_MAX);
-	strncpy(version->package_url, PACKAGE_URL, NAME_MAX);
+	ret = lttng_strncpy(
+		version->version_commit, lttng::get_git_version(), sizeof(version->version_commit));
+	LTTNG_ASSERT(ret == 0);
+	ret = lttng_strncpy(version->version_name, VERSION_NAME, sizeof(version->version_name));
+	LTTNG_ASSERT(ret == 0);
+	ret = lttng_strncpy(version->package_url, PACKAGE_URL, sizeof(version->package_url));
+	LTTNG_ASSERT(ret == 0);
 }
 
 /*
