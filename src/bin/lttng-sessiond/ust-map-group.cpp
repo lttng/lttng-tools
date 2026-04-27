@@ -18,7 +18,6 @@
 
 #include <errno.h>
 #include <unistd.h>
-
 #include <utility>
 #include <vector>
 
@@ -54,8 +53,8 @@ namespace lttng {
 namespace sessiond {
 namespace ust {
 
-void map_group::local_counter_deleter::operator()(lttng_ust_ctl_daemon_counter *counter) const
-	noexcept
+void map_group::local_counter_deleter::operator()(
+	lttng_ust_ctl_daemon_counter *counter) const noexcept
 {
 	if (counter) {
 		lttng_ust_ctl_destroy_counter(counter);
@@ -118,10 +117,9 @@ map::element_value map_group::aggregate_element(std::uint64_t index) const
 		}
 
 		LTTNG_THROW_POSIX(
-			lttng::format(
-				"Failed to aggregate UST map element: map_name=`{}`, index={}",
-				_configuration.name,
-				index),
+			lttng::format("Failed to aggregate UST map element: map_name=`{}`, index={}",
+				      _configuration.name,
+				      index),
 			-ret);
 	}
 
@@ -141,11 +139,11 @@ void map_group::clear_element(std::uint64_t index)
 				index));
 		}
 
-		LTTNG_THROW_POSIX(lttng::format(
-					  "Failed to clear UST map element: map_name=`{}`, index={}",
-					  _configuration.name,
-					  index),
-				  -ret);
+		LTTNG_THROW_POSIX(
+			lttng::format("Failed to clear UST map element: map_name=`{}`, index={}",
+				      _configuration.name,
+				      index),
+			-ret);
 	}
 }
 

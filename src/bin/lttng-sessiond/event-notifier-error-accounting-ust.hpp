@@ -13,6 +13,7 @@
 #include <lttng/trigger/trigger.h>
 
 #include <stdint.h>
+#include <sys/types.h>
 
 /*
  * UST-specific portion of the event notifier error accounting
@@ -63,14 +64,57 @@ void on_event_notifier_unregistered();
  * Sum the error counter values across every UID entry for the given
  * trigger. Stores the aggregated value in *count on success.
  */
-enum event_notifier_error_accounting_status get_trigger_count(const struct lttng_trigger *trigger,
-							      uint64_t *count);
+enum event_notifier_error_accounting_status
+get_trigger_error_count(const struct lttng_trigger *trigger, uint64_t *count);
 
 /*
  * Clear the error counter values for the given trigger across every
  * UID entry.
  */
-enum event_notifier_error_accounting_status clear_trigger(const struct lttng_trigger *trigger);
+enum event_notifier_error_accounting_status
+clear_trigger_error_counter(const struct lttng_trigger *trigger);
+
+namespace details {
+
+/*
+ * Defined in event-notifier-error-accounting-ust.cpp; held by reference
+ * from `uid_entry_reference` so callers do not need the full type.
+ */
+struct ust_uid_map_group_entry;
+
+/*
+ * RAII handle for an app's reference to the UID-keyed entry that owns
+ * per-user error counters.
+ *
+ * Constructing finds (or creates) the entry and bumps its attached_app_count
+ * (effectively a ref count) under the accounting lock.
+ *
+ * The destructor decrements the count and drops the entry if no app and no
+ * event notifier reference it.
+ *
+ * Move/copy are disabled: take the reference by emplacing into
+ * `app->event_notifier_group.accounting_reference`, release it by
+ * resetting that optional.
+ */
+class uid_entry_reference {
+public:
+	explicit uid_entry_reference(uid_t uid);
+
+	uid_entry_reference(const uid_entry_reference&) = delete;
+	uid_entry_reference& operator=(const uid_entry_reference&) = delete;
+	uid_entry_reference(uid_entry_reference&&) = delete;
+	uid_entry_reference& operator=(uid_entry_reference&&) = delete;
+
+	~uid_entry_reference();
+
+	ust_uid_map_group_entry& entry() const noexcept;
+
+private:
+	const uid_t _uid;
+	ust_uid_map_group_entry& _entry;
+};
+
+} /* namespace details */
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 

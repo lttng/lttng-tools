@@ -8,11 +8,17 @@
 #ifndef _EVENT_NOTIFIER_ERROR_ACCOUNTING_H
 #define _EVENT_NOTIFIER_ERROR_ACCOUNTING_H
 
-#include "ust-app.hpp"
-
 #include <lttng/trigger/trigger.h>
 
 #include <stdint.h>
+
+namespace lttng {
+namespace sessiond {
+namespace ust {
+struct app;
+} /* namespace ust */
+} /* namespace sessiond */
+} /* namespace lttng */
 
 enum event_notifier_error_accounting_status {
 	EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK,

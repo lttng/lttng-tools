@@ -11,6 +11,7 @@
 
 #include "consumer.hpp"
 #include "domain.hpp"
+#include "event-notifier-error-accounting-ust.hpp"
 #include "trace-class.hpp"
 #include "ust-app-command-socket.hpp"
 #include "ust-app-objd-registry.hpp"
@@ -242,6 +243,16 @@ struct app {
 		::lttng_ust_abi_object_data *counter = nullptr;
 		::lttng_ust_abi_object_data **counter_cpu = nullptr;
 		int nr_counter_cpu = 0;
+#ifdef HAVE_LIBLTTNG_UST_CTL
+		/*
+		 * Live for the duration of the app's registration with the
+		 * error-accounting subsystem; resetting this optional releases
+		 * the app's reference to the per-user error counters.
+		 */
+		nonstd::optional<lttng::sessiond::ust::event_notifier_error_accounting::details::
+					 uid_entry_reference>
+			accounting_reference;
+#endif
 	} event_notifier_group;
 	/*
 	 * Hashtable indexing the application's event notifier rule's

@@ -12,22 +12,21 @@
 #include "ust-map-group.hpp"
 
 #include <common/error.hpp>
-#include <common/hashtable/hashtable.hpp>
-#include <common/urcu.hpp>
+#include <common/scope-exit.hpp>
 
 #include <lttng/trigger/trigger-internal.hpp>
 
-#include <pthread.h>
+#include <mutex>
 #include <sys/types.h>
-
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
-namespace {
-struct event_notifier_counter {
-	pthread_mutex_t lock;
-	long count;
-};
+namespace lttng {
+namespace sessiond {
+namespace ust {
+namespace event_notifier_error_accounting {
+namespace details {
 
 struct ust_uid_map_group_entry {
 	ust_uid_map_group_entry(uid_t uid_, lttng::sessiond::ust::map_group group_) :
@@ -36,112 +35,110 @@ struct ust_uid_map_group_entry {
 	}
 
 	uid_t uid;
-	struct lttng_ht_node_u64 node = {};
-	struct rcu_head rcu_head = {};
 	lttng::sessiond::ust::map_group group;
 	unsigned int attached_app_count = 0;
-	bool event_notifier_present = false;
 };
 
-struct event_notifier_counter the_event_notifier_counter;
-nonstd::optional<lttng::sessiond::config::map_channel_configuration> default_ust_config;
-struct lttng_ht *uid_map_group_ht;
-} /* namespace */
+} /* namespace details */
+} /* namespace event_notifier_error_accounting */
+} /* namespace ust */
+} /* namespace sessiond */
+} /* namespace lttng */
 
 namespace {
-void free_uid_map_group_entry(struct rcu_head *head)
-{
-	auto *entry = lttng::utils::container_of(head, &ust_uid_map_group_entry::rcu_head);
-
-	delete entry;
-}
-} /* namespace */
+namespace eea_details = lttng::sessiond::ust::event_notifier_error_accounting::details;
 
 /*
- * Remove the entry from the hash table and schedule its destruction
- * via RCU.
+ * Single mutex protecting the UID-keyed entry table and the
+ * event-notifier registration count. Both pieces of state need to
+ * be consulted together when deciding whether a UID entry can be
+ * retired, so a unified mutex keeps the locking discipline simple.
  */
-namespace {
-void retire_uid_map_group_entry(ust_uid_map_group_entry *entry)
-{
-	const lttng::urcu::read_lock_guard read_lock;
+std::mutex accounting_lock;
 
-	cds_lfht_del(uid_map_group_ht->ht, &entry->node.node);
-	call_rcu(&entry->rcu_head, free_uid_map_group_entry);
-}
+std::unordered_map<uid_t, std::unique_ptr<eea_details::ust_uid_map_group_entry>> uid_map_groups;
+
+/*
+ * Number of currently-registered UST event notifiers. While this
+ * is non-zero, every UID entry is retained even if no application
+ * references it: a count query can arrive at any time and must
+ * still aggregate values across known UIDs.
+ */
+unsigned int registered_event_notifier_count;
+
+nonstd::optional<lttng::sessiond::config::map_channel_configuration> default_ust_config;
 } /* namespace */
 
+namespace {
 /*
  * Drop the entry if no application and no event notifier is keeping
- * it alive.
+ * it alive. Must be called with `accounting_lock` held.
  */
-namespace {
-void drop_uid_map_group_entry_if_unused(ust_uid_map_group_entry *entry)
+void drop_uid_map_group_entry_if_unused(uid_t uid)
 {
-	if (entry->attached_app_count == 0 && !entry->event_notifier_present) {
-		retire_uid_map_group_entry(entry);
+	const auto it = uid_map_groups.find(uid);
+	if (it == uid_map_groups.end()) {
+		return;
+	}
+
+	if (it->second->attached_app_count == 0 && registered_event_notifier_count == 0) {
+		uid_map_groups.erase(it);
 	}
 }
-} /* namespace */
 
 /*
- * Find the entry for this app's UID. The caller must hold the RCU
- * read-lock for the duration of its use of the returned pointer.
+ * Find or create the entry for `uid` and bump its attached_app_count.
+ * Paired with the destructor of `uid_entry_reference`, which
+ * decrements the count and drops the entry if it becomes unused.
  */
-namespace {
-ust_uid_map_group_entry *uid_map_group_entry_find(struct lttng_ht *uid_ht,
-						  const lttng::sessiond::ust::app *app)
+eea_details::ust_uid_map_group_entry& acquire_uid_entry(uid_t uid)
 {
-	struct lttng_ht_node_u64 *node;
-	struct lttng_ht_iter iter;
-	uint64_t key = app->uid;
+	const std::lock_guard<std::mutex> guard(accounting_lock);
 
-	lttng_ht_lookup(uid_ht, &key, &iter);
-	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
-	if (!node) {
-		return nullptr;
+	eea_details::ust_uid_map_group_entry *entry;
+	const auto it = uid_map_groups.find(uid);
+	if (it != uid_map_groups.end()) {
+		entry = it->second.get();
+	} else {
+		auto new_entry = lttng::make_unique<eea_details::ust_uid_map_group_entry>(
+			uid,
+			lttng::sessiond::ust::map_group::create_from_config(*default_ust_config));
+		entry = new_entry.get();
+		uid_map_groups.emplace(uid, std::move(new_entry));
 	}
 
-	return lttng::utils::container_of(node, &ust_uid_map_group_entry::node);
+	entry->attached_app_count++;
+	return *entry;
 }
 } /* namespace */
 
-/*
- * Create a new UID entry by constructing a UST map group from the
- * default configuration. The hash table becomes the sole owner of the
- * returned entry; teardown goes through retire_uid_map_group_entry().
- */
-namespace {
-ust_uid_map_group_entry *uid_map_group_entry_create(const lttng::sessiond::ust::app *app)
+namespace lttng {
+namespace sessiond {
+namespace ust {
+namespace event_notifier_error_accounting {
+namespace details {
+
+uid_entry_reference::uid_entry_reference(uid_t uid) : _uid(uid), _entry(acquire_uid_entry(uid))
 {
-	if (!ust_app_supports_counters(app)) {
-		DBG("Refusing to create UID map group entry for application (unsupported feature): app name = '%s', app ppid = %d",
-		    app->name.c_str(),
-		    (int) app->ppid);
-		return nullptr;
-	}
-
-	std::unique_ptr<ust_uid_map_group_entry> entry;
-	try {
-		entry.reset(new ust_uid_map_group_entry(
-			app->uid,
-			lttng::sessiond::ust::map_group::create_from_config(
-				*default_ust_config)));
-	} catch (const std::exception& ex) {
-		ERR("Failed to create UID map group entry: uid=%d, pid=%d, app='%s', error: %s",
-		    (int) app->uid,
-		    (int) app->pid,
-		    app->name.c_str(),
-		    ex.what());
-		return nullptr;
-	}
-
-	lttng_ht_node_init_u64(&entry->node, entry->uid);
-	lttng_ht_add_unique_u64(uid_map_group_ht, &entry->node);
-
-	return entry.release();
 }
-} /* namespace */
+
+uid_entry_reference::~uid_entry_reference()
+{
+	const std::lock_guard<std::mutex> guard(accounting_lock);
+	_entry.attached_app_count--;
+	drop_uid_map_group_entry_if_unused(_uid);
+}
+
+ust_uid_map_group_entry& uid_entry_reference::entry() const noexcept
+{
+	return _entry;
+}
+
+} /* namespace details */
+} /* namespace event_notifier_error_accounting */
+} /* namespace ust */
+} /* namespace sessiond */
+} /* namespace lttng */
 
 namespace {
 enum event_notifier_error_accounting_status
@@ -183,39 +180,35 @@ send_counter_cpu_data_to_ust(lttng::sessiond::ust::app *app,
 enum event_notifier_error_accounting_status
 event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app)
 {
-	enum event_notifier_error_accounting_status status;
-	const lttng::urcu::read_lock_guard read_lock;
-
 	if (!ust_app_supports_counters(app)) {
 		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_UNSUPPORTED;
 	}
 
-	ust_uid_map_group_entry *entry = uid_map_group_entry_find(uid_map_group_ht, app);
-	if (!entry) {
-		/*
-		 * Take the event notifier counter lock before creating
-		 * the new entry so that `event_notifier_present` reflects
-		 * the state at creation time atomically with respect to
-		 * any concurrent (un)registration.
-		 */
-		pthread_mutex_lock(&the_event_notifier_counter.lock);
-
-		entry = uid_map_group_entry_create(app);
-		if (!entry) {
-			pthread_mutex_unlock(&the_event_notifier_counter.lock);
-			return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
-		}
-
-		if (the_event_notifier_counter.count > 0) {
-			entry->event_notifier_present = true;
-		}
-
-		pthread_mutex_unlock(&the_event_notifier_counter.lock);
+	/*
+	 * Take the reference directly into the app's storage so the
+	 * unregister path is just a `.reset()`. A scope_exit drops the
+	 * reference on every early return below; disarming it at the
+	 * bottom keeps it once the tracer handles have been transferred.
+	 */
+	try {
+		app->event_notifier_group.accounting_reference.emplace(app->uid);
+	} catch (const std::exception& ex) {
+		ERR("Failed to create UID map group entry: uid=%d, pid=%d, app='%s', error: %s",
+		    (int) app->uid,
+		    (int) app->pid,
+		    app->name.c_str(),
+		    ex.what());
+		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
 	}
+
+	auto rollback_reference = lttng::make_scope_exit(
+		[app]() noexcept { app->event_notifier_group.accounting_reference.reset(); });
+
+	auto& entry = app->event_notifier_group.accounting_reference->entry();
 
 	lttng::sessiond::ust::ust_object_data new_counter(nullptr);
 	try {
-		new_counter = entry->group.duplicate_counter_object();
+		new_counter = entry.group.duplicate_app_counter_handle();
 	} catch (const std::exception& ex) {
 		ERR("Failed to duplicate UST counter object: uid=%d, pid=%d, app='%s', error: %s",
 		    (int) app->uid,
@@ -225,7 +218,7 @@ event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app)
 		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
 	}
 
-	status = send_counter_data_to_ust(app, new_counter.get());
+	auto status = send_counter_data_to_ust(app, new_counter.get());
 	if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
 		if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_APP_DEAD) {
 			ERR("Failed to send counter data to application tracer: status = %s, uid=%d, pid=%d, app='%s'",
@@ -237,14 +230,14 @@ event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app)
 		return status;
 	}
 
-	const auto nr_counter_cpu = entry->group.map_count();
+	const auto nr_counter_cpu = entry.group.map_count();
 	std::vector<lttng::sessiond::ust::ust_object_data> new_cpu_counters;
 	new_cpu_counters.reserve(nr_counter_cpu);
 
-	for (const auto& m : entry->group.maps()) {
+	for (const auto& m : entry.group.maps()) {
 		lttng::sessiond::ust::ust_object_data new_counter_cpu(nullptr);
 		try {
-			new_counter_cpu = entry->group.duplicate_map_handle(*m->cpu_id);
+			new_counter_cpu = entry.group.duplicate_map_handle(*m->cpu_id);
 		} catch (const std::exception& ex) {
 			ERR("Failed to duplicate UST counter cpu handle: uid=%d, pid=%d, app='%s', cpu=%u, error: %s",
 			    (int) app->uid,
@@ -255,7 +248,8 @@ event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app)
 			return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
 		}
 
-		status = send_counter_cpu_data_to_ust(app, new_counter.get(), new_counter_cpu.get());
+		status =
+			send_counter_cpu_data_to_ust(app, new_counter.get(), new_counter_cpu.get());
 		if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
 			if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_APP_DEAD) {
 				ERR("Failed to send counter cpu data to application tracer: status = %s, uid=%d, pid=%d, app='%s'",
@@ -271,8 +265,8 @@ event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app)
 	}
 
 	/*
-	 * Transfer ownership of the wire-format handles to the app. The
-	 * unregister path releases them through the app socket.
+	 * Transfer ownership of the wire-format handles to the app.
+	 * The unregister path releases them through the app socket.
 	 */
 	auto **cpu_counters_raw = calloc<lttng_ust_abi_object_data *>(nr_counter_cpu);
 	if (!cpu_counters_raw) {
@@ -291,34 +285,21 @@ event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app)
 	app->event_notifier_group.nr_counter_cpu = nr_counter_cpu;
 	app->event_notifier_group.counter_cpu = cpu_counters_raw;
 
-	entry->attached_app_count++;
+	rollback_reference.disarm();
 	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 }
 
 enum event_notifier_error_accounting_status
 event_notifier_error_accounting_unregister_app(lttng::sessiond::ust::app *app)
 {
-	ust_uid_map_group_entry *entry;
-	int i;
-
-	const lttng::urcu::read_lock_guard read_lock;
-
 	/* If an error occurred during app registration no entry was created. */
 	if (!app->event_notifier_group.counter) {
 		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 	}
 
-	entry = uid_map_group_entry_find(uid_map_group_ht, app);
-	if (!entry) {
-		ERR("Failed to find event notifier error accounting entry on application teardown: pid = %d, app = '%s'",
-		    app->pid,
-		    app->name.c_str());
-		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
-	}
-
 	{
 		auto protocol = app->command_socket.lock();
-		for (i = 0; i < app->event_notifier_group.nr_counter_cpu; i++) {
+		for (int i = 0; i < app->event_notifier_group.nr_counter_cpu; i++) {
 			try {
 				protocol.release_object(app->event_notifier_group.counter_cpu[i]);
 			} catch (const lttng::sessiond::ust::app_communication_error&) {
@@ -339,8 +320,7 @@ event_notifier_error_accounting_unregister_app(lttng::sessiond::ust::app *app)
 		free(app->event_notifier_group.counter);
 	}
 
-	entry->attached_app_count--;
-	drop_uid_map_group_entry_if_unused(entry);
+	app->event_notifier_group.accounting_reference.reset();
 
 	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 }
@@ -352,19 +332,12 @@ namespace event_notifier_error_accounting {
 
 enum event_notifier_error_accounting_status init()
 {
-	uid_map_group_ht =
-		lttng_ht_new(16 /* ERROR_COUNTER_INDEX_HT_INITIAL_SIZE */, LTTNG_HT_TYPE_U64);
-	if (!uid_map_group_ht) {
-		ERR("Failed to allocate UID to UST map group hash table");
-		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_NOMEM;
-	}
-
 	default_ust_config.emplace(
 		"event-notifier-error-accounting",
 		lttng::sessiond::config::map_channel_configuration::key_type_t::INDEX,
 		lttng::sessiond::config::map_channel_configuration::value_type_t::SIGNED_INT_32,
 		/* coalesce_hits */ false,
-		ust_state.number_indices,
+		ust_index_table->index_count(),
 		lttng::sessiond::config::ownership_model_t::PER_UID);
 
 	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
@@ -372,86 +345,59 @@ enum event_notifier_error_accounting_status init()
 
 void fini()
 {
-	lttng_ht_destroy(uid_map_group_ht);
-	uid_map_group_ht = nullptr;
+	const std::lock_guard<std::mutex> guard(accounting_lock);
+
+	uid_map_groups.clear();
+	registered_event_notifier_count = 0;
 	default_ust_config.reset();
 }
 
 void on_event_notifier_registered()
 {
-	pthread_mutex_lock(&the_event_notifier_counter.lock);
-	the_event_notifier_counter.count++;
-	if (the_event_notifier_counter.count == 1) {
-		/*
-		 * On the first event notifier, mark every known UID
-		 * entry as having an event-notifier present so the
-		 * entries are retained even if the last app of a UID
-		 * leaves.
-		 */
-		for (auto *uid_entry :
-		     lttng::urcu::lfht_iteration_adapter<ust_uid_map_group_entry,
-							 decltype(ust_uid_map_group_entry::node),
-							 &ust_uid_map_group_entry::node>(
-			     *uid_map_group_ht->ht)) {
-			uid_entry->event_notifier_present = true;
-		}
-	}
-	pthread_mutex_unlock(&the_event_notifier_counter.lock);
+	const std::lock_guard<std::mutex> guard(accounting_lock);
+
+	registered_event_notifier_count++;
 }
 
 void on_event_notifier_unregistered()
 {
-	pthread_mutex_lock(&the_event_notifier_counter.lock);
-	the_event_notifier_counter.count--;
-	if (the_event_notifier_counter.count == 0) {
-		/*
-		 * Clear the event-notifier-present flag on every entry
-		 * and drop those that no application references. The
-		 * "drop" step is deferred until after the iteration to
-		 * avoid mutating the hash table mid-walk.
-		 */
-		std::vector<ust_uid_map_group_entry *> to_drop;
-		for (auto *uid_entry :
-		     lttng::urcu::lfht_iteration_adapter<ust_uid_map_group_entry,
-							 decltype(ust_uid_map_group_entry::node),
-							 &ust_uid_map_group_entry::node>(
-			     *uid_map_group_ht->ht)) {
-			uid_entry->event_notifier_present = false;
-			if (uid_entry->attached_app_count == 0) {
-				to_drop.push_back(uid_entry);
+	const std::lock_guard<std::mutex> guard(accounting_lock);
+
+	LTTNG_ASSERT(registered_event_notifier_count > 0);
+	registered_event_notifier_count--;
+
+	if (registered_event_notifier_count == 0) {
+		for (auto it = uid_map_groups.begin(); it != uid_map_groups.end();) {
+			if (it->second->attached_app_count == 0) {
+				it = uid_map_groups.erase(it);
+			} else {
+				++it;
 			}
 		}
-
-		for (auto *uid_entry : to_drop) {
-			retire_uid_map_group_entry(uid_entry);
-		}
 	}
-	pthread_mutex_unlock(&the_event_notifier_counter.lock);
 }
 
-enum event_notifier_error_accounting_status get_trigger_count(const struct lttng_trigger *trigger,
-							      uint64_t *count)
+enum event_notifier_error_accounting_status
+get_trigger_error_count(const struct lttng_trigger *trigger, uint64_t *count)
 {
-	uint64_t error_counter_index, global_sum = 0;
-	enum event_notifier_error_accounting_status status;
-	const uint64_t tracer_token = lttng_trigger_get_tracer_token(trigger);
+	const auto tracer_token = lttng_trigger_get_tracer_token(trigger);
 	uid_t trigger_owner_uid;
 	const char *trigger_name;
 
-	const lttng::urcu::read_lock_guard read_lock;
-
 	get_trigger_info_for_log(trigger, &trigger_name, &trigger_owner_uid);
 
-	status = get_error_counter_index_for_token(&ust_state, tracer_token, &error_counter_index);
-	if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
+	const auto error_counter_index = ust_index_table->lookup(tracer_token);
+	if (!error_counter_index) {
 		ERR("Failed to retrieve index for tracer token: token = %" PRIu64
-		    ", trigger name = '%s', trigger owner uid = %d, status = %s",
+		    ", trigger name = '%s', trigger owner uid = %d",
 		    tracer_token,
 		    trigger_name,
-		    (int) trigger_owner_uid,
-		    error_accounting_status_str(status));
-		return status;
+		    (int) trigger_owner_uid);
+		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_NOT_FOUND;
 	}
+
+	uint64_t global_sum = 0;
+	const std::lock_guard<std::mutex> guard(accounting_lock);
 
 	/*
 	 * Aggregate across all UID entries regardless of the trigger's
@@ -459,19 +405,16 @@ enum event_notifier_error_accounting_status get_trigger_count(const struct lttng
 	 * sessiond is also allowed to observe errors generated by any of
 	 * the applications the sessiond manages.
 	 */
-	for (auto *uid_entry :
-	     lttng::urcu::lfht_iteration_adapter<ust_uid_map_group_entry,
-						 decltype(ust_uid_map_group_entry::node),
-						 &ust_uid_map_group_entry::node>(
-		     *uid_map_group_ht->ht)) {
+	for (const auto& kv : uid_map_groups) {
 		lttng::sessiond::map::element_value value;
+
 		try {
-			value = uid_entry->group.aggregate_element(error_counter_index);
+			value = kv.second->group.aggregate_element(*error_counter_index);
 		} catch (const std::exception& ex) {
 			ERR("Failed to aggregate event notifier error counter value: trigger name = '%s', trigger owner uid = %d, counter uid = %d, error: %s",
 			    trigger_name,
 			    (int) trigger_owner_uid,
-			    (int) uid_entry->uid,
+			    (int) kv.second->uid,
 			    ex.what());
 			return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
 		}
@@ -480,7 +423,7 @@ enum event_notifier_error_accounting_status get_trigger_count(const struct lttng
 			ERR("Negative event notifier error counter value encountered during aggregation: trigger name = '%s', trigger owner uid = %d, counter uid = %d, value = %" PRId64,
 			    trigger_name,
 			    (int) trigger_owner_uid,
-			    (int) uid_entry->uid,
+			    (int) kv.second->uid,
 			    value.value);
 			return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
 		}
@@ -492,44 +435,38 @@ enum event_notifier_error_accounting_status get_trigger_count(const struct lttng
 	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 }
 
-enum event_notifier_error_accounting_status clear_trigger(const struct lttng_trigger *trigger)
+enum event_notifier_error_accounting_status
+clear_trigger_error_counter(const struct lttng_trigger *trigger)
 {
-	uint64_t error_counter_index;
-	enum event_notifier_error_accounting_status status;
-	const uint64_t tracer_token = lttng_trigger_get_tracer_token(trigger);
+	const auto tracer_token = lttng_trigger_get_tracer_token(trigger);
 
-	const lttng::urcu::read_lock_guard read_lock;
-
-	status = get_error_counter_index_for_token(&ust_state, tracer_token, &error_counter_index);
-	if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
+	const auto error_counter_index = ust_index_table->lookup(tracer_token);
+	if (!error_counter_index) {
 		uid_t trigger_owner_uid;
 		const char *trigger_name;
 
 		get_trigger_info_for_log(trigger, &trigger_name, &trigger_owner_uid);
 
 		ERR("Failed to retrieve index for tracer token: token = %" PRIu64
-		    ", trigger name = '%s', trigger owner uid = %d, status = %s",
+		    ", trigger name = '%s', trigger owner uid = %d",
 		    tracer_token,
 		    trigger_name,
-		    (int) trigger_owner_uid,
-		    error_accounting_status_str(status));
-		return status;
+		    (int) trigger_owner_uid);
+		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_NOT_FOUND;
 	}
 
-	for (auto *uid_entry :
-	     lttng::urcu::lfht_iteration_adapter<ust_uid_map_group_entry,
-						 decltype(ust_uid_map_group_entry::node),
-						 &ust_uid_map_group_entry::node>(
-		     *uid_map_group_ht->ht)) {
+	const std::lock_guard<std::mutex> guard(accounting_lock);
+
+	for (const auto& kv : uid_map_groups) {
 		try {
-			uid_entry->group.clear_element(error_counter_index);
+			kv.second->group.clear_element(*error_counter_index);
 		} catch (const std::exception& ex) {
 			uid_t trigger_owner_uid;
 			const char *trigger_name;
 
 			get_trigger_info_for_log(trigger, &trigger_name, &trigger_owner_uid);
 			ERR("Failed to clear event notifier counter value for trigger: counter uid = %d, trigger name = '%s', trigger owner uid = %d, error: %s",
-			    (int) uid_entry->uid,
+			    (int) kv.second->uid,
 			    trigger_name,
 			    (int) trigger_owner_uid,
 			    ex.what());

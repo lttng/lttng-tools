@@ -15,11 +15,10 @@
 #include <common/lttng-kernel.hpp>
 #include <common/scope-exit.hpp>
 
+#include <cstdint>
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
-
-#include <cstdint>
 #include <utility>
 
 namespace {
@@ -205,8 +204,8 @@ map_group::create_for_event_notifier_group(int event_notifier_group_fd,
 {
 	const auto conf = make_counter_conf(configuration);
 
-	const auto raw_fd = kernctl_create_event_notifier_group_error_counter(
-		event_notifier_group_fd, &conf);
+	const auto raw_fd =
+		kernctl_create_event_notifier_group_error_counter(event_notifier_group_fd, &conf);
 	if (raw_fd < 0) {
 		LTTNG_THROW_POSIX(
 			lttng::format(
