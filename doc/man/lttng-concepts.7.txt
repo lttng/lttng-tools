@@ -1,15 +1,16 @@
-// SPDX-FileCopyrightText: 2021-2025 Philippe Proulx <pproulx@efficios.com>
+// SPDX-FileCopyrightText: 2021-2026 Philippe Proulx <pproulx@efficios.com>
 //
 // SPDX-License-Identifier: CC-BY-SA-4.0
 
 lttng-concepts(7)
 =================
-:revdate: 20 March 2026
+:revdate: 27 April 2026
 :sect-event-rule: INSTRUMENTATION POINT, EVENT RULE, AND EVENT
 :sect-session: RECORDING SESSION
 :sect-domain: TRACING DOMAIN
 :sect-channel: EVENT RECORD CHANNEL AND RING BUFFER
 :sect-recording-event-rule: RECORDING EVENT RULE AND EVENT RECORD
+:sect-map-channel: MAP CHANNEL AND COUNTERS
 
 
 NAME
@@ -33,6 +34,7 @@ The concepts of LTTng{nbsp}{lttng_version} are:
 * Tracing domain
 * Event record channel and ring buffer
 * Recording event rule and event record
+* Map channel and counters
 
 
 [[event-rule]]
@@ -258,6 +260,9 @@ Actions::
   like man:lttng-rotate(1) would do.
 * Take a snapshot of a given recording session, like
   man:lttng-snapshot(1) would do.
+* Increment a counter within a map channel of a given recording
+  session (see the ``<<map-channel,{sect-map-channel}>>'' section
+  below).
 
 A trigger belongs to a session daemon (see man:lttng-sessiond(8)), not
 to a specific recording session. For a given session daemon, each Unix
@@ -300,6 +305,11 @@ happens within a recording session. In particular, a recording session:
 An active recording session is an implicit recording event rule
 condition (see the
 ``<<recording-event-rule,{sect-recording-event-rule}>>'' section below).
++
+Similarly, LTTng only increments the values of the map channels of a
+recording session (see the ``<<map-channel,{sect-map-channel}>>''
+section below) through ``increment map value'' trigger actions (see
+man:lttng-add-trigger(1)) while the recording session is active.
 
 * Has its own mode (local, network streaming, snapshot, or live).
 +
@@ -308,7 +318,12 @@ learn more.
 
 * Has its own event record channels (see the
   ``<<channel,{sect-channel}>>'' section below) to which are attached
-  their own recording event rules.
+  their own recording event rules, which coexist with its own map
+  channels (see the next item).
+
+* Has its own map channels (see the
+  ``<<map-channel,{sect-map-channel}>>'' section below), which coexist
+  with its own event record channels (see the previous item).
 
 * Has its own process attribute inclusion sets (see man:lttng-track(1)).
 
@@ -569,6 +584,9 @@ You can create event record channels (see the
 ``<<channel,{sect-channel}>>'' section below) in the Linux kernel and
 user space tracing domains. The other tracing domains have a single,
 default event record channel.
+
+You can also add Linux kernel and user space map channels (see the
+``<<map-channel,{sect-map-channel}>>'' section below).
 
 
 [[channel]]
@@ -1204,6 +1222,146 @@ command.
 
 As of LTTng{nbsp}{lttng_version}, you cannot remove a recording event
 rule: it exists as long as its recording session exists.
+
+
+[[map-channel]]
+{sect-map-channel}
+------------------
+A _map channel_ is an object which is responsible for a set of per-CPU
+_counters_: named integer values, keyed by strings, which accumulate
+over time. The counters of a map channel are grouped into per-CPU
+key-value stores known as _maps_.
+
+NOTE: As of LTTng{nbsp}{lttng_version}, the only supported map operation
+is to increment a value, which is why this manual frames maps as
+counters. Plural ``counters'' is treated as an informal synonym for ``map'' (and
+singular ``counter'' for ``map value'') where it improves clarity. The CLI
+command and option names always use the term ``map'' because future
+LTTng releases may add other map operations, after which maps would no
+longer always exclusively behave as counters.
+
+A map channel is similar to an event record channel (see the
+``<<channel,{sect-channel}>>'' section above), except that, instead of
+containing ring buffers to record events, it contains counters
+(as of LTTng{nbsp}{lttng_version}).
+
+Map channels and event record channels are independent and
+complementary: a single recording session (see the
+``<<session,{sect-session}>>'' section above) may contain any
+combination of both kinds of channels, including ones of the same type.
+In other words, you don't need a separate recording session to use map
+channels alongside event record channels.
+
+When you add a map channel with the man:lttng-add-map-channel(1)
+command, you set its final attributes, that is:
+
+* Its **buffer ownership model** (for a user space map channel):
+  specifies whether each Unix user or each process has its own counters.
++
+This is the same concept as the buffer ownership model of an event
+record channel (see the ``<<channel-buf-scheme,Buffering scheme>>''
+section above), except that it applies to the backing memory of counters
+instead of ring buffers. As of LTTng{nbsp}{lttng_version}, a map channel
+always allocates one counter map per CPU per owner (equivalent to a
+per-CPU buffer allocation policy).
+
+* Its **value type**: 32-bit signed integer, 64-bit signed integer, or
+  signed integer of the native width of the session daemon (see
+  man:lttng-sessiond(8)).
+
+* Its **maximum key count**: the maximum number of counters in any counter map
+  for this map channel.
++
+When a counter map is full, LTTng silently drops any new key.
+
+* Its **update policy**: controls how LTTng increments counter values
+  when multiple ``event rule matches'' triggers (see the
+  ``<<trigger,TRIGGER>>'' section above) with an ``increment map
+  value'' action which targets the same map channel match the same event
+  and produce the same effective key:
++
+--
+Per event::
+    LTTng increments a single counter per resulting key, regardless
+    of how many of those triggers match.
++
+This is similar to how LTTng writes a single event record to a given
+event record channel when multiple recording event rules of the
+channel match the same event.
+
+Per rule match::
+    LTTng performs one counter increment per matching trigger, even
+    when several matching triggers produce the same key.
+--
++
+The update policy is only meaningful when an ``increment map value''
+action increments a counter because of an ``event rule matches''
+trigger condition, since that's the only condition type which can
+match the same event through more than one trigger at once. For a
+trigger having any other condition type, each firing of the trigger
+causes a single counter increment, regardless of the update policy.
+
+* Its **dead process policy** (for a user space map channel with the
+  per-process buffer ownership model): what LTTng does with the counter
+  values of an instrumented process when this process terminates while
+  the map channel still exists:
++
+--
+Drop::
+    Discard the counters of the terminated process: their values
+    are lost.
+
+Sum into shared::
+    For each counter of the terminated process, add its value to the
+    corresponding shared counter of the map channel (see below).
++
+When the addition would overflow the effective value type, the result
+wraps around (modular arithmetic) and LTTng sets the overflow flag of
+the shared counter.
+--
+
+In addition to the per-owner, per-CPU counters which the buffer
+ownership model dictates, each map channel has a single, channel-wide
+map of _shared counters_: counters with no Unix user or process owner,
+and no per-CPU partitioning. You can consider that the
+LTTng session daemon (see man:lttng-sessiond(8)) itself owns the shared
+counters, as it increments them directly, including the sum of the
+counter values of dead processes when the buffer ownership model of the
+map channel is per-process (see the nloption:--dead-process-policy option
+of man:lttng-add-map-channel(1)).
+The man:lttng-show-maps(1) command can either fold the shared counters
+into its per-channel sum or show them as their own table, depending on
+its selection and aggregation options.
+
+To populate the counters of a map channel, use the
+man:lttng-add-trigger(1) command to add a trigger with an
+``increment map value'' action which targets the channel. The action
+specifies a key template which may
+include the `{event_name}` and `{provider_name}` placeholders, expanded
+each time the trigger fires. For example, pairing an ``event rule
+matches'' condition for all Linux kernel system calls with an
+``increment map value'' action having the key template
+`syscall_count:{event_name}` yields a map of system call counters,
+with one key per observed system call name (`syscall_count:openat`,
+`syscall_count:read`, and so on).
+
+An ``increment map value'' action only increments a counter when its
+target recording session is active (started; see man:lttng-start(1)).
+While the target recording session is inactive (stopped; see
+man:lttng-stop(1)), the action does nothing.
+
+Add a map channel to a recording session with the
+man:lttng-add-map-channel(1) command.
+
+List the map channels of a given recording session with the
+man:lttng-list(1) and man:lttng-status(1) commands.
+
+Show the current counter values of one or more map channels with the
+man:lttng-show-maps(1) command.
+
+Reset all counters of all the map channels of a recording session
+to{nbsp}0, without removing their keys, with the man:lttng-clear(1)
+command.
 
 
 include::common-footer.txt[]
