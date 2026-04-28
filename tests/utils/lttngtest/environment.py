@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 #
 
+import enum
 import multiprocessing
 from types import FrameType
 from typing import Callable, Iterator, Optional, Tuple, List, Generator
@@ -23,6 +24,7 @@ import stat
 import string
 import os
 import queue
+import re
 import tempfile
 from . import logger
 import time
@@ -34,6 +36,10 @@ import bt2
 from . import utils
 
 
+class ConsumerType(enum.Enum):
+    KERNEL = 0
+    UST64 = 1
+    UST32 = 2
 
 
 class TemporaryDirectory:
@@ -1082,6 +1088,72 @@ class _Environment(logger._Logger):
     def allows_destructive():
         # type: () -> bool
         return os.getenv("LTTNG_ENABLE_DESTRUCTIVE_TESTS", "") == "will-break-my-system"
+
+    def lttng_consumerd_get_pid(self, consumerd_type: ConsumerType) -> int:
+        pid = None
+        if consumerd_type == ConsumerType.KERNEL:
+            pid = self.lttng_consumerd_kernel_pid
+        elif consumerd_type == ConsumerType.UST64:
+            pid = self.lttng_consumerd_ust64_pid
+        elif consumerd_type == ConsumerType.UST32:
+            pid = self.lttng_consumerd_ust32_pid
+        else:
+            raise ValueError("Unsupport consumerd_type: {}".format(consumerd_type))
+
+        if pid is None:
+            raise Exception(
+                "No PID available for consumerd type `{}`".format(consumerd_type)
+            )
+
+        return pid
+
+    def lttng_consumerd_is_paused(self, consumerd_type: ConsumerType) -> bool:
+        pid = self.lttng_consumerd_get_pid(consumerd_type)
+        pattern = re.compile(r"^\$1 = (?P<paused>\d+)$")
+        script_commands = [
+            "attach {}".format(pid),
+            "print data_consumption_paused",
+            "detach",
+        ]
+        gdb, script = utils.gdb_script(
+            script_commands, {"stdout": subprocess.PIPE, "stderr": subprocess.STDOUT}
+        )
+        output, _ = gdb.communicate()
+        if gdb.returncode != 0:
+            raise Exception(
+                "GDB returned non-zero exit code: {}".format(gdb.returncode)
+            )
+
+        paused = None
+        for line in output.decode("utf-8").splitlines():
+            m = pattern.match(line)
+            if m:
+                paused = False if m.group("paused") == "0" else True
+                break
+
+        if paused is None:
+            raise Exception(
+                "Couldn't find data_consumption_paused variable in GDB output: {}".format(
+                    output.decode("utf-8")
+                )
+            )
+
+        return paused
+
+    def lttng_consumerd_pause(
+        self, consumerd_type: ConsumerType, paused: bool = True
+    ) -> None:
+        pid = self.lttng_consumerd_get_pid(consumerd_type)
+        script_commands = [
+            "attach {}".format(pid),
+            "set data_consumption_paused = {}".format("1" if paused else "0"),
+        ]
+        gdb, script = utils.gdb_script(script_commands)
+        gdb.wait()
+        if gdb.returncode != 0:
+            raise Exception(
+                "GDB returned non-zero exit code: {}".format(gdb.returncode)
+            )
 
     def create_dummy_user(self):
         # type: () -> (int, str)
