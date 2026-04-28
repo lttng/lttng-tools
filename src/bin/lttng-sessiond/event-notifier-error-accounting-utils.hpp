@@ -10,17 +10,15 @@
 
 #include "event-notifier-error-accounting.hpp"
 
-#include <common/index-allocator.hpp>
-
 #include <lttng/trigger/trigger.h>
 
 #include <vendor/optional.hpp>
 
 #include <cstdint>
-#include <memory>
 #include <mutex>
 #include <sys/types.h>
 #include <unordered_map>
+#include <vector>
 
 namespace lttng {
 namespace sessiond {
@@ -31,12 +29,19 @@ namespace event_notifier_error_accounting {
  * tracer tokens to error-counter indices, and owns the underlying
  * pool of indices.
  *
+ * Indices are drawn from [0, index_count[: a high-water mark grows on
+ * each fresh allocation, and a free-list of released indices is
+ * preferentially reused before bumping the high-water mark again.
+ *
  * All public methods serialize on an internal mutex.
  */
 class tracer_token_index_table {
 public:
-	explicit tracer_token_index_table(std::uint64_t index_count);
-	~tracer_token_index_table() = default;
+	explicit tracer_token_index_table(std::uint64_t index_count) : _index_count(index_count)
+	{
+	}
+
+	~tracer_token_index_table();
 
 	tracer_token_index_table(const tracer_token_index_table&) = delete;
 	tracer_token_index_table& operator=(const tracer_token_index_table&) = delete;
@@ -52,8 +57,6 @@ public:
 	/*
 	 * Allocate and register an index for `tracer_token`. Returns
 	 * nullopt when the index pool is exhausted.
-	 *
-	 * Throws lttng::runtime_error on internal allocator failure.
 	 */
 	nonstd::optional<std::uint64_t> allocate(std::uint64_t tracer_token);
 
@@ -70,20 +73,11 @@ public:
 	}
 
 private:
-	struct index_allocator_deleter {
-		void operator()(lttng_index_allocator *allocator) const noexcept
-		{
-			lttng_index_allocator_destroy(allocator);
-		}
-	};
-
-	using index_allocator_uptr =
-		std::unique_ptr<lttng_index_allocator, index_allocator_deleter>;
-
 	mutable std::mutex _lock;
-	index_allocator_uptr _index_allocator;
 	std::unordered_map<std::uint64_t, std::uint64_t> _token_to_index;
-	std::uint64_t _index_count;
+	std::vector<std::uint64_t> _unused_indices;
+	std::uint64_t _high_water = 0;
+	const std::uint64_t _index_count;
 };
 
 } /* namespace event_notifier_error_accounting */

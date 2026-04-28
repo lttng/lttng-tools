@@ -172,7 +172,6 @@ libcommon_gpl_la_SOURCES = \
 	filter.cpp filter.hpp \
 	fs-handle.cpp fs-handle.hpp fs-handle-internal.hpp \
 	futex.cpp futex.hpp \
-	index-allocator.cpp index-allocator.hpp \
 	optional.hpp \
 	pipe.cpp pipe.hpp \
 	shm.cpp shm.hpp \

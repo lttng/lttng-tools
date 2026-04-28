@@ -30,12 +30,11 @@ namespace lttng {
 namespace sessiond {
 namespace event_notifier_error_accounting {
 
-tracer_token_index_table::tracer_token_index_table(std::uint64_t index_count) :
-	_index_allocator(lttng_index_allocator_create(index_count)), _index_count(index_count)
+tracer_token_index_table::~tracer_token_index_table()
 {
-	if (!_index_allocator) {
-		LTTNG_THROW_ERROR(
-			"Failed to create index allocator for event notifier error accounting");
+	if (!_token_to_index.empty()) {
+		WARN("Destroying tracer token index table with %zu indices still in use",
+		     _token_to_index.size());
 	}
 }
 
@@ -56,15 +55,13 @@ nonstd::optional<std::uint64_t> tracer_token_index_table::allocate(std::uint64_t
 	const std::lock_guard<std::mutex> guard(_lock);
 
 	std::uint64_t index;
-	const auto status = lttng_index_allocator_alloc(_index_allocator.get(), &index);
-	switch (status) {
-	case LTTNG_INDEX_ALLOCATOR_STATUS_EMPTY:
+	if (!_unused_indices.empty()) {
+		index = _unused_indices.back();
+		_unused_indices.pop_back();
+	} else if (_high_water < _index_count) {
+		index = _high_water++;
+	} else {
 		return nonstd::nullopt;
-	case LTTNG_INDEX_ALLOCATOR_STATUS_OK:
-		break;
-	default:
-		LTTNG_THROW_ERROR(
-			"Failed to allocate event notifier error counter index from pool");
 	}
 
 	_token_to_index.emplace(tracer_token, index);
@@ -80,17 +77,8 @@ bool tracer_token_index_table::release(std::uint64_t tracer_token)
 		return false;
 	}
 
-	const auto index = it->second;
+	_unused_indices.push_back(it->second);
 	_token_to_index.erase(it);
-
-	const auto status = lttng_index_allocator_release(_index_allocator.get(), index);
-	if (status != LTTNG_INDEX_ALLOCATOR_STATUS_OK) {
-		ERR("Failed to release event notifier error counter index: index = %" PRIu64
-		    ", tracer token = %" PRIu64,
-		    index,
-		    tracer_token);
-	}
-
 	return true;
 }
 
@@ -142,14 +130,7 @@ const char *error_accounting_status_str(enum event_notifier_error_accounting_sta
 enum event_notifier_error_accounting_status
 event_notifier_error_accounting_init(uint64_t buffer_size_kernel, uint64_t buffer_size_ust)
 {
-	using lttng::sessiond::event_notifier_error_accounting::tracer_token_index_table;
-
-	try {
-		kernel_index_table.emplace(buffer_size_kernel);
-	} catch (const std::exception& ex) {
-		ERR("Failed to initialize kernel event notifier accounting state: %s", ex.what());
-		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_NOMEM;
-	}
+	kernel_index_table.emplace(buffer_size_kernel);
 
 	default_kernel_config.emplace(
 		"event-notifier-error-accounting",
@@ -159,14 +140,7 @@ event_notifier_error_accounting_init(uint64_t buffer_size_kernel, uint64_t buffe
 		buffer_size_kernel,
 		lttng::sessiond::config::ownership_model_t::PER_UID);
 
-	try {
-		ust_index_table.emplace(buffer_size_ust);
-	} catch (const std::exception& ex) {
-		ERR("Failed to initialize UST event notifier accounting state: %s", ex.what());
-		default_kernel_config.reset();
-		kernel_index_table.reset();
-		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_NOMEM;
-	}
+	ust_index_table.emplace(buffer_size_ust);
 
 	const auto ust_status = lttng::sessiond::ust::event_notifier_error_accounting::init();
 	if (ust_status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {

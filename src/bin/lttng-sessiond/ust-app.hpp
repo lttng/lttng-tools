@@ -20,7 +20,6 @@
 #include "ust-field-quirks.hpp"
 
 #include <common/format.hpp>
-#include <common/index-allocator.hpp>
 #include <common/optional.hpp>
 #include <common/reference.hpp>
 #include <common/scope-exit.hpp>
