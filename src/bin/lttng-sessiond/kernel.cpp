@@ -1069,8 +1069,9 @@ int init_kernel_tracer()
 			goto error_modules;
 		}
 
-		error_accounting_status = event_notifier_error_accounting_register_kernel(
-			kernel_tracer_event_notifier_group_fd);
+		error_accounting_status =
+			event_notifier_error_accounting_register_kernel_event_notifier_group(
+				kernel_tracer_event_notifier_group_fd);
 		if (error_accounting_status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
 			ERR("Failed to initialize event notifier error accounting for kernel tracer");
 			error_code_ret = LTTNG_ERR_EVENT_NOTIFIER_ERROR_ACCOUNTING;

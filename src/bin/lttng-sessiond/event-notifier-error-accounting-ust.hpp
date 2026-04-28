@@ -63,8 +63,8 @@ void unregister_event_notifier(const struct lttng_trigger *trigger);
  * Sum the error counter values across every UID entry for the given
  * trigger. Stores the aggregated value in *count on success.
  */
-enum event_notifier_error_accounting_status get_trigger_count(const struct lttng_trigger *trigger,
-							      std::uint64_t *count);
+enum event_notifier_error_accounting_status
+get_event_notifier_error_count(const struct lttng_trigger *trigger, std::uint64_t *count);
 
 namespace details {
 
@@ -132,7 +132,8 @@ inline void unregister_event_notifier(const struct lttng_trigger *trigger __attr
 }
 
 inline enum event_notifier_error_accounting_status
-get_trigger_count(const struct lttng_trigger *trigger __attribute__((unused)), std::uint64_t *count)
+get_event_notifier_error_count(const struct lttng_trigger *trigger __attribute__((unused)),
+			       std::uint64_t *count)
 {
 	*count = 0;
 	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;

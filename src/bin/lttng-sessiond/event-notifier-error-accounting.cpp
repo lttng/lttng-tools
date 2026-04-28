@@ -42,9 +42,10 @@ void event_notifier_error_accounting_fini()
 }
 
 enum event_notifier_error_accounting_status
-event_notifier_error_accounting_register_kernel(int kernel_event_notifier_group_fd)
+event_notifier_error_accounting_register_kernel_event_notifier_group(
+	int kernel_event_notifier_group_fd)
 {
-	return modules_eea::register_kernel(kernel_event_notifier_group_fd);
+	return modules_eea::register_kernel_event_notifier_group(kernel_event_notifier_group_fd);
 }
 
 enum event_notifier_error_accounting_status
@@ -84,17 +85,18 @@ void event_notifier_error_accounting_unregister_event_notifier(const struct lttn
 }
 
 enum event_notifier_error_accounting_status
-event_notifier_error_accounting_get_count(const struct lttng_trigger *trigger, uint64_t *count)
+event_notifier_error_accounting_get_error_count(const struct lttng_trigger *trigger,
+						uint64_t *count)
 {
 	switch (lttng_trigger_get_underlying_domain_type_restriction(trigger)) {
 	case LTTNG_DOMAIN_KERNEL:
-		return modules_eea::get_trigger_count(trigger, count);
+		return modules_eea::get_event_notifier_error_count(trigger, count);
 	case LTTNG_DOMAIN_UST:
 	case LTTNG_DOMAIN_PYTHON:
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
 	case LTTNG_DOMAIN_LOG4J2:
-		return ust_eea::get_trigger_count(trigger, count);
+		return ust_eea::get_event_notifier_error_count(trigger, count);
 	default:
 		abort();
 	}

@@ -41,7 +41,8 @@ void fini();
  * Create the kernel event notifier group's error counter object,
  * attached to the provided fd.
  */
-enum event_notifier_error_accounting_status register_kernel(int kernel_event_notifier_group_fd);
+enum event_notifier_error_accounting_status
+register_kernel_event_notifier_group(int kernel_event_notifier_group_fd);
 
 /*
  * Allocate and register an error counter index for the given trigger,
@@ -58,8 +59,8 @@ void unregister_event_notifier(const struct lttng_trigger *trigger);
 /*
  * Read the trigger's current error counter value into *count.
  */
-enum event_notifier_error_accounting_status get_trigger_count(const struct lttng_trigger *trigger,
-							      uint64_t *count);
+enum event_notifier_error_accounting_status
+get_event_notifier_error_count(const struct lttng_trigger *trigger, uint64_t *count);
 
 } /* namespace event_notifier_error_accounting */
 } /* namespace modules */

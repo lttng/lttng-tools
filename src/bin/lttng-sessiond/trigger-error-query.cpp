@@ -48,7 +48,7 @@ lttng_trigger_condition_add_error_results(const struct lttng_trigger *trigger,
 		goto end;
 	}
 
-	error_accounting_status = event_notifier_error_accounting_get_count(
+	error_accounting_status = event_notifier_error_accounting_get_error_count(
 		trigger, &discarded_tracer_messages_count);
 	if (error_accounting_status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
 		ERR("Failed to retrieve tracer discarded messages count for trigger: trigger name = '%s', trigger owner uid = %d",

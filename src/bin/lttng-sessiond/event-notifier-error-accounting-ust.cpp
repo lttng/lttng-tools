@@ -365,7 +365,8 @@ void on_event_notifier_unregistered()
 	}
 }
 
-enum event_notifier_error_accounting_status clear_trigger(const struct lttng_trigger *trigger)
+enum event_notifier_error_accounting_status
+clear_event_notifier_error_count(const struct lttng_trigger *trigger)
 {
 	const auto tracer_token = lttng_trigger_get_tracer_token(trigger);
 
@@ -484,7 +485,7 @@ register_event_notifier(const struct lttng_trigger *trigger, std::uint64_t *erro
 
 void unregister_event_notifier(const struct lttng_trigger *trigger)
 {
-	const auto status = clear_trigger(trigger);
+	const auto status = clear_event_notifier_error_count(trigger);
 	if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
 		/* Trigger details already logged by callee on error. */
 		ERR("Failed to clear event notifier error counter during unregistration of event notifier: status = '%s'",
@@ -506,8 +507,8 @@ void unregister_event_notifier(const struct lttng_trigger *trigger)
 	}
 }
 
-enum event_notifier_error_accounting_status get_trigger_count(const struct lttng_trigger *trigger,
-							      std::uint64_t *count)
+enum event_notifier_error_accounting_status
+get_event_notifier_error_count(const struct lttng_trigger *trigger, std::uint64_t *count)
 {
 	const auto tracer_token = lttng_trigger_get_tracer_token(trigger);
 	uid_t trigger_owner_uid;

@@ -43,7 +43,8 @@ event_notifier_error_accounting_init(uint64_t buffer_size_kernel, uint64_t buffe
  * This allocates the counter object on the kernel side.
  */
 enum event_notifier_error_accounting_status
-event_notifier_error_accounting_register_kernel(int kernel_event_notifier_group_fd);
+event_notifier_error_accounting_register_kernel_event_notifier_group(
+	int kernel_event_notifier_group_fd);
 
 /*
  * Register a UST application.
@@ -67,7 +68,8 @@ event_notifier_error_accounting_register_event_notifier(const struct lttng_trigg
 							uint64_t *error_counter_index);
 
 enum event_notifier_error_accounting_status
-event_notifier_error_accounting_get_count(const struct lttng_trigger *trigger, uint64_t *count);
+event_notifier_error_accounting_get_error_count(const struct lttng_trigger *trigger,
+						uint64_t *count);
 
 void event_notifier_error_accounting_unregister_event_notifier(const struct lttng_trigger *trigger);
 

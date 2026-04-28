@@ -50,7 +50,8 @@ void fini()
 	index_table.reset();
 }
 
-enum event_notifier_error_accounting_status register_kernel(int kernel_event_notifier_group_fd)
+enum event_notifier_error_accounting_status
+register_kernel_event_notifier_group(int kernel_event_notifier_group_fd)
 {
 	try {
 		kernel_map_group.emplace(
@@ -111,7 +112,8 @@ register_event_notifier(const struct lttng_trigger *trigger, uint64_t *error_cou
 }
 
 namespace {
-enum event_notifier_error_accounting_status clear_trigger(const struct lttng_trigger *trigger)
+enum event_notifier_error_accounting_status
+clear_event_notifier_error_count(const struct lttng_trigger *trigger)
 {
 	const auto error_counter_index =
 		index_table->lookup(lttng_trigger_get_tracer_token(trigger));
@@ -148,7 +150,7 @@ enum event_notifier_error_accounting_status clear_trigger(const struct lttng_tri
 
 void unregister_event_notifier(const struct lttng_trigger *trigger)
 {
-	const auto status = clear_trigger(trigger);
+	const auto status = clear_event_notifier_error_count(trigger);
 	if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
 		/* Trigger details already logged by callee on error. */
 		ERR("Failed to clear event notifier error counter during unregistration of event notifier: status = '%s'",
@@ -168,8 +170,8 @@ void unregister_event_notifier(const struct lttng_trigger *trigger)
 	}
 }
 
-enum event_notifier_error_accounting_status get_trigger_count(const struct lttng_trigger *trigger,
-							      uint64_t *count)
+enum event_notifier_error_accounting_status
+get_event_notifier_error_count(const struct lttng_trigger *trigger, uint64_t *count)
 {
 	const auto error_counter_index =
 		index_table->lookup(lttng_trigger_get_tracer_token(trigger));
