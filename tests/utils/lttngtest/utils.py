@@ -5,6 +5,8 @@
 #
 
 import logging
+import os
+import pathlib
 import shutil
 import subprocess
 import tempfile
@@ -55,3 +57,15 @@ def gdb_script(
 
 def get_logging_format(tap: bool = True) -> str:
     return "{}[%(created)s] - %(levelname)s - %(message)s".format("# " if tap else "")
+
+
+def shutil_ignore_sockets(
+    directory: str, directory_contents: typing.List[str]
+) -> typing.List[str]:
+    ignore = list()
+    for entry in directory_contents:
+        full_path = pathlib.Path(os.path.join(directory, entry))
+        if full_path.is_socket():
+            ignore.append(entry)
+
+    return ignore

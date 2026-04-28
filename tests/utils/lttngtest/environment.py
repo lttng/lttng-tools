@@ -31,15 +31,9 @@ import contextlib
 
 import bt2
 
+from . import utils
 
-def shutil_ignore_sockets(directory, directory_contents):
-    ignore = list()
-    for entry in directory_contents:
-        full_path = pathlib.Path(os.path.join(directory, entry))
-        if full_path.is_socket():
-            ignore.append(entry)
 
-    return ignore
 
 
 class TemporaryDirectory:
@@ -65,7 +59,7 @@ class TemporaryDirectory:
                         os.path.join(
                             destination, os.path.basename(self._directory_path)
                         ),
-                        ignore=shutil_ignore_sockets,
+                        ignore=utils.shutil_ignore_sockets,
                     )
                     shutil.rmtree(self._directory_path, ignore_errors=True)
             else:
