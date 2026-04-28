@@ -21,6 +21,9 @@ liblttng_sessiond_common_la_SOURCES = utils.cpp utils.hpp \
                        ust-abi-filenames.hpp \
                        ust-event-notifier-notification.hpp \
                        event-notifier-error-accounting-utils.hpp \
+                       event-notifier-error-accounting-utils.cpp \
+                       event-notifier-error-accounting-kernel.hpp \
+                       event-notifier-error-accounting-kernel.cpp \
                        event-notifier-error-accounting-ust.hpp \
                        ust-registry.hpp \
                        condition-internal.cpp condition-internal.hpp \

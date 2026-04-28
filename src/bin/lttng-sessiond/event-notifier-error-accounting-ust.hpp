@@ -12,14 +12,14 @@
 
 #include <lttng/trigger/trigger.h>
 
-#include <stdint.h>
+#include <cstdint>
 #include <sys/types.h>
 
 /*
- * UST-specific portion of the event notifier error accounting
+ * UST-domain backend for the event notifier error accounting
  * subsystem. The domain-agnostic dispatcher in
- * event-notifier-error-accounting.cpp calls into this interface for
- * the UST-domain branches; the implementation lives in
+ * event-notifier-error-accounting.cpp forwards UST-domain operations
+ * to this interface; the implementation lives in
  * event-notifier-error-accounting-ust.cpp and is only built when the
  * session daemon is compiled with UST support.
  *
@@ -35,10 +35,10 @@ namespace event_notifier_error_accounting {
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
 /*
- * Initialize the UID-keyed per-user UST counter table. Returns
- * _STATUS_OK on success, _STATUS_NOMEM on allocation failure.
+ * Initialize the UID-keyed per-user UST counter table with a counter
+ * pool of `index_count` elements.
  */
-enum event_notifier_error_accounting_status init();
+enum event_notifier_error_accounting_status init(std::uint64_t index_count);
 
 /*
  * Tear down everything that init() set up.
@@ -46,33 +46,25 @@ enum event_notifier_error_accounting_status init();
 void fini();
 
 /*
- * Record that a UST-domain event notifier has been registered. On the
- * first event notifier, marks every known UID entry as having an
- * event-notifier present so the entries are retained even if all
- * applications of a UID disappear.
+ * Allocate (or look up) an error counter index for the trigger and
+ * record the new event notifier registration. Stores the index in
+ * *error_counter_index on success.
  */
-void on_event_notifier_registered();
+enum event_notifier_error_accounting_status
+register_event_notifier(const struct lttng_trigger *trigger, std::uint64_t *error_counter_index);
 
 /*
- * Record that a UST-domain event notifier has been unregistered. On
- * the last event notifier, clears the event-notifier-present flag on
- * every UID entry and drops those that no application references.
+ * Clear the trigger's counter across every UID entry, drop the
+ * registration, and release the trigger's index.
  */
-void on_event_notifier_unregistered();
+void unregister_event_notifier(const struct lttng_trigger *trigger);
 
 /*
  * Sum the error counter values across every UID entry for the given
  * trigger. Stores the aggregated value in *count on success.
  */
-enum event_notifier_error_accounting_status
-get_trigger_error_count(const struct lttng_trigger *trigger, uint64_t *count);
-
-/*
- * Clear the error counter values for the given trigger across every
- * UID entry.
- */
-enum event_notifier_error_accounting_status
-clear_trigger_error_counter(const struct lttng_trigger *trigger);
+enum event_notifier_error_accounting_status get_trigger_count(const struct lttng_trigger *trigger,
+							      std::uint64_t *count);
 
 namespace details {
 
@@ -118,7 +110,8 @@ private:
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
-inline enum event_notifier_error_accounting_status init()
+inline enum event_notifier_error_accounting_status init(std::uint64_t index_count
+							__attribute__((unused)))
 {
 	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 }
@@ -127,24 +120,21 @@ inline void fini()
 {
 }
 
-inline void on_event_notifier_registered()
+inline enum event_notifier_error_accounting_status
+register_event_notifier(const struct lttng_trigger *trigger __attribute__((unused)),
+			std::uint64_t *error_counter_index __attribute__((unused)))
 {
+	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 }
 
-inline void on_event_notifier_unregistered()
+inline void unregister_event_notifier(const struct lttng_trigger *trigger __attribute__((unused)))
 {
 }
 
 inline enum event_notifier_error_accounting_status
-get_trigger_count(const struct lttng_trigger *trigger __attribute__((unused)), uint64_t *count)
+get_trigger_count(const struct lttng_trigger *trigger __attribute__((unused)), std::uint64_t *count)
 {
 	*count = 0;
-	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
-}
-
-inline enum event_notifier_error_accounting_status clear_trigger(const struct lttng_trigger *trigger
-								 __attribute__((unused)))
-{
 	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 }
 

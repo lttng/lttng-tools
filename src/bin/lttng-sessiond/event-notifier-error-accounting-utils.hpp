@@ -84,14 +84,6 @@ private:
 } /* namespace sessiond */
 } /* namespace lttng */
 
-/*
- * The UST-side of the accounting subsystem accesses the UST index
- * table to look up indices on the count/clear paths. The dispatcher
- * owns the table; this is the shared handle.
- */
-extern nonstd::optional<lttng::sessiond::event_notifier_error_accounting::tracer_token_index_table>
-	ust_index_table;
-
 void get_trigger_info_for_log(const struct lttng_trigger *trigger,
 			      const char **trigger_name,
 			      uid_t *trigger_owner_uid);

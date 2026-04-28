@@ -66,6 +66,9 @@ std::unordered_map<uid_t, std::unique_ptr<eea_details::ust_uid_map_group_entry>>
  */
 unsigned int registered_event_notifier_count;
 
+nonstd::optional<lttng::sessiond::event_notifier_error_accounting::tracer_token_index_table>
+	ust_index_table;
+
 nonstd::optional<lttng::sessiond::config::map_channel_configuration> default_ust_config;
 } /* namespace */
 
@@ -325,33 +328,12 @@ event_notifier_error_accounting_unregister_app(lttng::sessiond::ust::app *app)
 	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 }
 
-namespace lttng {
-namespace sessiond {
-namespace ust {
-namespace event_notifier_error_accounting {
-
-enum event_notifier_error_accounting_status init()
-{
-	default_ust_config.emplace(
-		"event-notifier-error-accounting",
-		lttng::sessiond::config::map_channel_configuration::key_type_t::INDEX,
-		lttng::sessiond::config::map_channel_configuration::value_type_t::SIGNED_INT_32,
-		/* coalesce_hits */ false,
-		ust_index_table->index_count(),
-		lttng::sessiond::config::ownership_model_t::PER_UID);
-
-	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
-}
-
-void fini()
-{
-	const std::lock_guard<std::mutex> guard(accounting_lock);
-
-	uid_map_groups.clear();
-	registered_event_notifier_count = 0;
-	default_ust_config.reset();
-}
-
+namespace {
+/*
+ * Bump the registered-event-notifier count. While this count is
+ * non-zero, every UID entry is retained even if no application
+ * references it.
+ */
 void on_event_notifier_registered()
 {
 	const std::lock_guard<std::mutex> guard(accounting_lock);
@@ -359,6 +341,12 @@ void on_event_notifier_registered()
 	registered_event_notifier_count++;
 }
 
+/*
+ * Drop the count and, on hitting zero, sweep UID entries that are no
+ * longer referenced by any app -- the same predicate the per-app
+ * `uid_entry_reference` destructor would apply, but for every UID at
+ * once.
+ */
 void on_event_notifier_unregistered()
 {
 	const std::lock_guard<std::mutex> guard(accounting_lock);
@@ -377,8 +365,149 @@ void on_event_notifier_unregistered()
 	}
 }
 
+enum event_notifier_error_accounting_status clear_trigger(const struct lttng_trigger *trigger)
+{
+	const auto tracer_token = lttng_trigger_get_tracer_token(trigger);
+
+	const auto error_counter_index = ust_index_table->lookup(tracer_token);
+	if (!error_counter_index) {
+		uid_t trigger_owner_uid;
+		const char *trigger_name;
+
+		get_trigger_info_for_log(trigger, &trigger_name, &trigger_owner_uid);
+
+		ERR("Failed to retrieve index for tracer token: token = %" PRIu64
+		    ", trigger name = '%s', trigger owner uid = %d",
+		    tracer_token,
+		    trigger_name,
+		    (int) trigger_owner_uid);
+		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_NOT_FOUND;
+	}
+
+	const std::lock_guard<std::mutex> guard(accounting_lock);
+
+	for (const auto& kv : uid_map_groups) {
+		try {
+			kv.second->group.clear_element(*error_counter_index);
+		} catch (const std::exception& ex) {
+			uid_t trigger_owner_uid;
+			const char *trigger_name;
+
+			get_trigger_info_for_log(trigger, &trigger_name, &trigger_owner_uid);
+			ERR("Failed to clear event notifier counter value for trigger: counter uid = %d, trigger name = '%s', trigger owner uid = %d, error: %s",
+			    (int) kv.second->uid,
+			    trigger_name,
+			    (int) trigger_owner_uid,
+			    ex.what());
+			return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
+		}
+	}
+
+	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
+}
+} /* namespace */
+
+namespace lttng {
+namespace sessiond {
+namespace ust {
+namespace event_notifier_error_accounting {
+
+enum event_notifier_error_accounting_status init(std::uint64_t index_count)
+{
+	ust_index_table.emplace(index_count);
+
+	default_ust_config.emplace(
+		"event-notifier-error-accounting",
+		lttng::sessiond::config::map_channel_configuration::key_type_t::INDEX,
+		lttng::sessiond::config::map_channel_configuration::value_type_t::SIGNED_INT_32,
+		/* coalesce_hits */ false,
+		index_count,
+		lttng::sessiond::config::ownership_model_t::PER_UID);
+
+	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
+}
+
+void fini()
+{
+	{
+		const std::lock_guard<std::mutex> guard(accounting_lock);
+
+		uid_map_groups.clear();
+		registered_event_notifier_count = 0;
+	}
+	default_ust_config.reset();
+	ust_index_table.reset();
+}
+
 enum event_notifier_error_accounting_status
-get_trigger_error_count(const struct lttng_trigger *trigger, uint64_t *count)
+register_event_notifier(const struct lttng_trigger *trigger, std::uint64_t *error_counter_index)
+{
+	const auto tracer_token = lttng_trigger_get_tracer_token(trigger);
+	auto index = ust_index_table->lookup(tracer_token);
+	if (!index) {
+		uid_t trigger_owner_uid;
+		const char *trigger_name;
+
+		get_trigger_info_for_log(trigger, &trigger_name, &trigger_owner_uid);
+
+		DBG("Event notifier error counter index not found for tracer token (allocating a new one): trigger name = '%s', trigger owner uid = %d, tracer token = %" PRIu64,
+		    trigger_name,
+		    trigger_owner_uid,
+		    tracer_token);
+
+		try {
+			index = ust_index_table->allocate(tracer_token);
+		} catch (const std::exception& ex) {
+			ERR("Failed to allocate event notifier error counter index: trigger name = '%s', trigger owner uid = %d, error: %s",
+			    trigger_name,
+			    trigger_owner_uid,
+			    ex.what());
+			return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
+		}
+
+		if (!index) {
+			DBG("No indices left in the configured event notifier error counter: number-of-indices = %" PRIu64,
+			    ust_index_table->index_count());
+			return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_NO_INDEX_AVAILABLE;
+		}
+
+		DBG("Allocated error counter index for tracer token: tracer token = %" PRIu64
+		    ", index = %" PRIu64,
+		    tracer_token,
+		    *index);
+	}
+
+	*error_counter_index = *index;
+	on_event_notifier_registered();
+	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
+}
+
+void unregister_event_notifier(const struct lttng_trigger *trigger)
+{
+	const auto status = clear_trigger(trigger);
+	if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
+		/* Trigger details already logged by callee on error. */
+		ERR("Failed to clear event notifier error counter during unregistration of event notifier: status = '%s'",
+		    error_accounting_status_str(status));
+		return;
+	}
+
+	on_event_notifier_unregistered();
+
+	if (!ust_index_table->release(lttng_trigger_get_tracer_token(trigger))) {
+		uid_t trigger_owner_uid;
+		const char *trigger_name;
+
+		get_trigger_info_for_log(trigger, &trigger_name, &trigger_owner_uid);
+
+		DBG("No event notifier error counter index registered for trigger during unregistration: trigger name = '%s', trigger owner uid = %d",
+		    trigger_name,
+		    (int) trigger_owner_uid);
+	}
+}
+
+enum event_notifier_error_accounting_status get_trigger_count(const struct lttng_trigger *trigger,
+							      std::uint64_t *count)
 {
 	const auto tracer_token = lttng_trigger_get_tracer_token(trigger);
 	uid_t trigger_owner_uid;
@@ -432,48 +561,6 @@ get_trigger_error_count(const struct lttng_trigger *trigger, uint64_t *count)
 	}
 
 	*count = global_sum;
-	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
-}
-
-enum event_notifier_error_accounting_status
-clear_trigger_error_counter(const struct lttng_trigger *trigger)
-{
-	const auto tracer_token = lttng_trigger_get_tracer_token(trigger);
-
-	const auto error_counter_index = ust_index_table->lookup(tracer_token);
-	if (!error_counter_index) {
-		uid_t trigger_owner_uid;
-		const char *trigger_name;
-
-		get_trigger_info_for_log(trigger, &trigger_name, &trigger_owner_uid);
-
-		ERR("Failed to retrieve index for tracer token: token = %" PRIu64
-		    ", trigger name = '%s', trigger owner uid = %d",
-		    tracer_token,
-		    trigger_name,
-		    (int) trigger_owner_uid);
-		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_NOT_FOUND;
-	}
-
-	const std::lock_guard<std::mutex> guard(accounting_lock);
-
-	for (const auto& kv : uid_map_groups) {
-		try {
-			kv.second->group.clear_element(*error_counter_index);
-		} catch (const std::exception& ex) {
-			uid_t trigger_owner_uid;
-			const char *trigger_name;
-
-			get_trigger_info_for_log(trigger, &trigger_name, &trigger_owner_uid);
-			ERR("Failed to clear event notifier counter value for trigger: counter uid = %d, trigger name = '%s', trigger owner uid = %d, error: %s",
-			    (int) kv.second->uid,
-			    trigger_name,
-			    (int) trigger_owner_uid,
-			    ex.what());
-			return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
-		}
-	}
-
 	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 }
 
