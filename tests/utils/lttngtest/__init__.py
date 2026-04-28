@@ -10,3 +10,5 @@ from .environment import *
 from .environment import _Environment
 from .lttngctl import *
 from .lttng import *
+
+from . import utils

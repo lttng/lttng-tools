@@ -5,7 +5,8 @@ EXTRA_DIST = __init__.py \
 	logger.py \
 	lttngctl.py \
 	lttng.py \
-	tap_generator.py
+	tap_generator.py \
+	utils.py
 
 dist_noinst_SCRIPTS = __init__.py \
 	environment.py \
