@@ -4,13 +4,12 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 import itertools
+import logging
 import mmap
 import os
 import pathlib
-import shutil
 import subprocess
 import sys
-import tempfile
 import time
 import traceback
 
@@ -25,11 +24,6 @@ This test suite validates some properties of sparse buffers.
 
 See individual tests docstring.
 """
-
-
-def gdb_exists():
-    """Return True if GDB can be executed."""
-    return shutil.which("gdb") is not None
 
 
 def get_consumerd_pid(sessiond_pid):
@@ -80,71 +74,45 @@ def wait_for_memory_reclaim_timer(test_env, log, channel_names):
         )
 
     log("Found consumer daemon with PID {}".format(consumerd_pid))
+    gdb_commands = list()
 
-    # Create a temporary directory for the GDB script
-    script_dir = tempfile.mkdtemp(prefix="gdb_sync_")
-    gdb_script_path = os.path.join(script_dir, "gdb_script")
+    # Set debug file directory if specified
+    gdb_debug_directory = os.getenv("GDB_DEBUG_FILE_DIRECTORY")
+    if gdb_debug_directory:
+        gdb_commands.append("set debug-file-directory {}".format(gdb_debug_directory))
 
-    try:
-        gdb_commands = [
-            "set breakpoint pending on",
-            "set pagination off",
-        ]
-
-        # Set debug file directory if specified
-        gdb_debug_directory = os.getenv("GDB_DEBUG_FILE_DIRECTORY")
-        if gdb_debug_directory:
-            gdb_commands.append(
-                "set debug-file-directory {}".format(gdb_debug_directory)
-            )
-
-        gdb_commands.append("attach {}".format(consumerd_pid))
-
-        # For each channel: set breakpoint, continue until hit, finish, delete breakpoint
-        # This ensures we wait for each specific channel's timer to fire exactly once
-        for i, channel_name in enumerate(channel_names, start=1):
-            gdb_commands.append(
-                'break lttng::consumer::memory_reclaim_timer_task::_run if $_streq(this->_channel.name, "{}")'.format(
-                    channel_name
-                )
-            )
-            gdb_commands.extend(["continue", "finish", "delete {}".format(i)])
-
-        gdb_commands.extend(["detach", "quit"])
-
-        with open(gdb_script_path, "w") as f:
-            for cmd in gdb_commands:
-                f.write(cmd + "\n")
-
-        log("GDB script contents:")
-        for cmd in gdb_commands:
-            log("  {}".format(cmd))
-
-        gdb_args = ["gdb", "--nx", "--nw", "--batch", "-x", gdb_script_path]
-
-        log(
-            "Running GDB to wait for memory reclaim timer on channels: {}".format(
-                ", ".join(channel_names)
+    gdb_commands.append("attach {}".format(consumerd_pid))
+    # For each channel: set breakpoint, continue until hit, finish, delete breakpoint
+    # This ensures we wait for each specific channel's timer to fire exactly once
+    for i, channel_name in enumerate(channel_names, start=1):
+        gdb_commands.append(
+            'break lttng::consumer::memory_reclaim_timer_task::_run if $_streq(this->_channel.name, "{}")'.format(
+                channel_name
             )
         )
+        gdb_commands.extend(["continue", "finish", "delete {}".format(i)])
 
-        with subprocess.Popen(
-            gdb_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-        ) as process:
-            output, _ = process.communicate()
+    gdb_commands.extend(["detach", "quit"])
 
-        for line in output.decode("utf-8", errors="ignore").splitlines():
-            log("GDB: {}".format(line))
+    log(
+        "Running GDB to wait for memory reclaim timer on channels: {}".format(
+            ", ".join(channel_names)
+        )
+    )
+    process, gdb_script_file = lttngtest.utils.gdb_script(
+        gdb_commands, {"stdout": subprocess.PIPE, "stderr": subprocess.STDOUT}
+    )
+    output, _ = process.communicate()
 
-        if process.returncode != 0:
-            raise RuntimeError(
-                "GDB exited with non-zero return code: {}".format(process.returncode)
-            )
+    for line in output.decode("utf-8", errors="ignore").splitlines():
+        log("GDB: {}".format(line))
 
-        log("Memory reclaim timer has fired for all channels")
+    if process.returncode != 0:
+        raise RuntimeError(
+            "GDB exited with non-zero return code: {}".format(process.returncode)
+        )
 
-    finally:
-        shutil.rmtree(script_dir, ignore_errors=True)
+    log("Memory reclaim timer has fired for all channels")
 
 
 def channel_preallocation_policy_from_session(client, channel_name, session_name):
@@ -1431,7 +1399,7 @@ def run_test(test, variant):
 
 
 if __name__ == "__main__":
-
+    logging.basicConfig(level=logging.INFO, format=lttngtest.utils.get_logging_format())
     tests = (
         test_memory_reclamation_convergence,
         test_memory_reclamation_convergence_consumed,
@@ -1480,7 +1448,7 @@ if __name__ == "__main__":
 
     tap = lttngtest.TapGenerator(len(variants) * len(tests) + len(tests_no_variants))
 
-    if not gdb_exists():
+    if not lttngtest.utils.gdb_exists():
         tap.missing_platform_requirement("GDB not available")
 
     for variant in variants:
