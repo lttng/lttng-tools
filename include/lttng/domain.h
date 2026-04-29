@@ -52,7 +52,7 @@ enum lttng_domain_type {
 
 /*!
 @brief
-    Buffering ownership model of a channel.
+    Buffering ownership model of an event record channel.
 
 See \ref api-channel-buf-ownership-model "Buffer ownership model"
 to learn more.
@@ -88,7 +88,7 @@ Such a structure is involved:
 - When you list the tracing domains of a recording session with
   lttng_list_domains().
 
-- When you create a \link #lttng_channel channel summary
+- When you create a \link #lttng_channel event record channel summary
   structure\endlink with lttng_channel_create().
 
 You must initialize such a structure to zeros before setting its
@@ -107,7 +107,7 @@ struct lttng_domain {
 	/*!
 	@brief
 	    \ref api-channel-buf-ownership-model "Buffer ownership model"
-	    of all the channels associated to this tracing domain.
+	    of all the event record channels associated to this tracing domain.
 	*/
 	enum lttng_buffer_type buf_type;
 
@@ -125,7 +125,7 @@ struct lttng_domain {
 /*!
 @brief
     Sets \lt_p{*domains} to the summaries of the tracing domains which
-    contain at least one channel within the recording session
+    contain at least one event record channel within the recording session
     named \lt_p{session_name}.
 
 @ingroup api_session

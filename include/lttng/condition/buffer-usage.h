@@ -26,7 +26,7 @@ extern "C" {
 
 /*!
 @brief
-    Creates an initial “channel buffer usage becomes less than”
+    Creates an initial “event record channel buffer usage becomes less than”
     trigger condition to execute
     an action when the ring buffer usage of a given \lt_obj_channel
     becomes less than some configured threshold.
@@ -39,10 +39,10 @@ On success, the returned trigger condition isn't valid yet; you must:
 - Set a target \lt_obj_domain with
   lttng_condition_buffer_usage_set_domain_type().
 
-- Set a target channel name with
+- Set a target event record channel name with
   lttng_condition_buffer_usage_set_channel_name().
 
-- Set a channel buffer usage threshold with
+- Set an event record channel buffer usage threshold with
   lttng_condition_buffer_usage_set_threshold_ratio() or
   lttng_condition_buffer_usage_set_threshold().
 
@@ -60,7 +60,7 @@ LTTNG_EXPORT extern struct lttng_condition *lttng_condition_buffer_usage_low_cre
 
 /*!
 @brief
-    Creates an initial “channel buffer usage becomes greater than”
+    Creates an initial “event record channel buffer usage becomes greater than”
     trigger condition to execute
     an action when the ring buffer usage of a given \lt_obj_channel
     becomes greater than some configured threshold.
@@ -73,10 +73,10 @@ On success, the returned trigger condition isn't valid yet; you must:
 - Set a target \lt_obj_domain with
   lttng_condition_buffer_usage_set_domain_type().
 
-- Set a target channel name with
+- Set a target event record channel name with
   lttng_condition_buffer_usage_set_channel_name().
 
-- Set a channel buffer usage threshold with
+- Set an event record channel buffer usage threshold with
   lttng_condition_buffer_usage_set_threshold_ratio() or
   lttng_condition_buffer_usage_set_threshold().
 
@@ -94,24 +94,24 @@ LTTNG_EXPORT extern struct lttng_condition *lttng_condition_buffer_usage_high_cr
 
 /*!
 @brief
-    Sets \lt_p{*threshold} to the \lt_obj_channel buffer usage ratio
-    threshold of the “channel buffer usage becomes greater/less than”
+    Sets \lt_p{*threshold} to the \lt_obj_event record channel buffer usage ratio
+    threshold of the “event record channel buffer usage becomes greater/less than”
     trigger condition \lt_p{condition}.
 
 @param[in] condition
-    “Channel buffer usage becomes greater/less than”
+    “Event record channel buffer usage becomes greater/less than”
     trigger condition of which to get the
-    channel buffer usage ratio threshold.
+    event record channel buffer usage ratio threshold.
 @param[out] threshold
     <strong>On success</strong>, this function sets \lt_p{*threshold}
-    to the channel buffer usage ratio (between&nbsp;0 and&nbsp;1)
+    to the event record channel buffer usage ratio (between&nbsp;0 and&nbsp;1)
     threshold of \lt_p{condition}.
 
 @retval #LTTNG_CONDITION_STATUS_OK
     Success.
 @retval #LTTNG_CONDITION_STATUS_UNSET
-    \lt_p{condition} has no channel buffer usage ratio threshold,
-    although it may have a channel buffer usage size threshold (see
+    \lt_p{condition} has no event record channel buffer usage ratio threshold,
+    although it may have an event record channel buffer usage size threshold (see
     lttng_condition_buffer_usage_get_threshold()).
 @retval #LTTNG_CONDITION_STATUS_INVALID
     Unsatisfied precondition.
@@ -124,11 +124,11 @@ LTTNG_EXPORT extern struct lttng_condition *lttng_condition_buffer_usage_high_cr
     @lt_pre_not_null{threshold}
 
 @sa lttng_condition_buffer_usage_set_threshold_ratio() --
-    Set the channel buffer usage ratio threshold of a
-    “channel buffer usage becomes greater/less than” trigger condition.
+    Set the event record channel buffer usage ratio threshold of a
+    “event record channel buffer usage becomes greater/less than” trigger condition.
 @sa lttng_condition_buffer_usage_get_threshold() --
-    Get the channel buffer usage size threshold of a
-    “channel buffer usage becomes greater/less than” trigger condition.
+    Get the event record channel buffer usage size threshold of a
+    “event record channel buffer usage becomes greater/less than” trigger condition.
 */
 LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_buffer_usage_get_threshold_ratio(const struct lttng_condition *condition,
@@ -136,18 +136,18 @@ lttng_condition_buffer_usage_get_threshold_ratio(const struct lttng_condition *c
 
 /*!
 @brief
-    Sets the \lt_obj_channel buffer usage ratio threshold of the
-    “channel buffer usage becomes greater/less than”
+    Sets the \lt_obj_event record channel buffer usage ratio threshold of the
+    “event record channel buffer usage becomes greater/less than”
     trigger condition \lt_p{condition} to \lt_p{threshold}.
 
-This function overrides any current channel buffer usage threshold of
+This function overrides any current event record channel buffer usage threshold of
 \lt_p{condition}.
 
 @param[in] condition
-    “Channel buffer usage becomes greater/less than” trigger
-    condition of which to set the channel buffer usage ratio threshold.
+    “Event record channel buffer usage becomes greater/less than” trigger
+    condition of which to set the event record channel buffer usage ratio threshold.
 @param[in] threshold
-    Channel buffer usage ratio (between&nbsp;0 and&nbsp;1) threshold
+    Event record channel buffer usage ratio (between&nbsp;0 and&nbsp;1) threshold
     of \lt_p{condition}.
 
 @retval #LTTNG_CONDITION_STATUS_OK
@@ -162,11 +162,11 @@ This function overrides any current channel buffer usage threshold of
       #LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW.
 
 @sa lttng_condition_buffer_usage_get_threshold_ratio() --
-    Get the channel buffer usage ratio threshold of a
-    “channel buffer usage becomes greater/less than” trigger condition.
+    Get the event record channel buffer usage ratio threshold of a
+    “event record channel buffer usage becomes greater/less than” trigger condition.
 @sa lttng_condition_buffer_usage_set_threshold() --
-    Set the channel buffer usage size threshold of a
-    “channel buffer usage becomes greater/less than” trigger condition.
+    Set the event record channel buffer usage size threshold of a
+    “event record channel buffer usage becomes greater/less than” trigger condition.
 */
 LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_buffer_usage_set_threshold_ratio(struct lttng_condition *condition,
@@ -174,14 +174,14 @@ lttng_condition_buffer_usage_set_threshold_ratio(struct lttng_condition *conditi
 
 /*!
 @brief
-    Sets \lt_p{*threshold} to the channel buffer usage size
+    Sets \lt_p{*threshold} to the event record channel buffer usage size
     (bytes) threshold of the
-    “channel buffer usage becomes greater/less than”
+    “event record channel buffer usage becomes greater/less than”
     trigger condition \lt_p{condition}.
 
 @param[in] condition
-    “Channel buffer usage becomes greater/less than”
-    trigger condition of which to get the channel buffer usage size
+    “Event record channel buffer usage becomes greater/less than”
+    trigger condition of which to get the event record channel buffer usage size
     threshold.
 @param[out] threshold
     <strong>On success</strong>, this function sets \lt_p{*threshold}
@@ -190,8 +190,8 @@ lttng_condition_buffer_usage_set_threshold_ratio(struct lttng_condition *conditi
 @retval #LTTNG_CONDITION_STATUS_OK
     Success.
 @retval #LTTNG_CONDITION_STATUS_UNSET
-    \lt_p{condition} has no channel buffer usage size threshold,
-    although it may have a channel buffer usage ratio threshold (see
+    \lt_p{condition} has no event record channel buffer usage size threshold,
+    although it may have an event record channel buffer usage ratio threshold (see
     lttng_condition_buffer_usage_get_threshold_ratio()).
 @retval #LTTNG_CONDITION_STATUS_INVALID
     Unsatisfied precondition.
@@ -204,11 +204,11 @@ lttng_condition_buffer_usage_set_threshold_ratio(struct lttng_condition *conditi
     @lt_pre_not_null{threshold}
 
 @sa lttng_condition_buffer_usage_set_threshold() --
-    Set the channel buffer usage size threshold of a
-    “channel buffer usage becomes greater/less than” trigger condition.
+    Set the event record channel buffer usage size threshold of a
+    “event record channel buffer usage becomes greater/less than” trigger condition.
 @sa lttng_condition_buffer_usage_get_threshold_ratio() --
-    Get the channel buffer usage ratio threshold of a
-    “channel buffer usage becomes greater/less than” trigger condition.
+    Get the event record channel buffer usage ratio threshold of a
+    “event record channel buffer usage becomes greater/less than” trigger condition.
 */
 LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_buffer_usage_get_threshold(const struct lttng_condition *condition,
@@ -216,18 +216,18 @@ lttng_condition_buffer_usage_get_threshold(const struct lttng_condition *conditi
 
 /*!
 @brief
-    Sets the \lt_obj_channel buffer usage size threshold of the
-    “channel buffer usage becomes greater/less than”
+    Sets the \lt_obj_event record channel buffer usage size threshold of the
+    “event record channel buffer usage becomes greater/less than”
     trigger condition \lt_p{condition} to \lt_p{threshold}.
 
-This function overrides any current channel buffer usage threshold of
+This function overrides any current event record channel buffer usage threshold of
 \lt_p{condition}.
 
 @param[in] condition
-    “Channel buffer usage becomes greater/less than” trigger
-    condition of which to set the channel buffer usage size threshold.
+    “Event record channel buffer usage becomes greater/less than” trigger
+    condition of which to set the event record channel buffer usage size threshold.
 @param[in] threshold
-    Channel buffer usage size (bytes) threshold of \lt_p{condition}.
+    Event record channel buffer usage size (bytes) threshold of \lt_p{condition}.
 
 @retval #LTTNG_CONDITION_STATUS_OK
     Success.
@@ -241,11 +241,11 @@ This function overrides any current channel buffer usage threshold of
       #LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW.
 
 @sa lttng_condition_buffer_usage_get_threshold() --
-    Get the channel buffer usage size threshold of a
-    “channel buffer usage becomes greater/less than” trigger condition.
+    Get the event record channel buffer usage size threshold of a
+    “event record channel buffer usage becomes greater/less than” trigger condition.
 @sa lttng_condition_buffer_usage_set_threshold_ratio() --
-    Set the channel buffer usage ratio threshold of a
-    “channel buffer usage becomes greater/less than” trigger condition.
+    Set the event record channel buffer usage ratio threshold of a
+    “event record channel buffer usage becomes greater/less than” trigger condition.
 */
 LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_buffer_usage_set_threshold(struct lttng_condition *condition, uint64_t threshold);
@@ -253,11 +253,11 @@ lttng_condition_buffer_usage_set_threshold(struct lttng_condition *condition, ui
 /*!
 @brief
     Sets \lt_p{*session_name} to the target \lt_obj_session name of the
-    “channel buffer usage becomes greater/less than” trigger
+    “event record channel buffer usage becomes greater/less than” trigger
     condition \lt_p{condition}.
 
 @param[in] condition
-    “Channel buffer usage becomes greater/less than” trigger
+    “Event record channel buffer usage becomes greater/less than” trigger
     condition of which to get the target recording session name.
 @param[out] session_name
     @parblock
@@ -286,7 +286,7 @@ lttng_condition_buffer_usage_set_threshold(struct lttng_condition *condition, ui
 
 @sa lttng_condition_buffer_usage_set_session_name() --
     Set the target recording session name of a
-    “channel buffer usage becomes greater/less than”
+    “event record channel buffer usage becomes greater/less than”
     trigger condition.
 */
 LTTNG_EXPORT extern enum lttng_condition_status
@@ -296,11 +296,11 @@ lttng_condition_buffer_usage_get_session_name(const struct lttng_condition *cond
 /*!
 @brief
     Sets the target \lt_obj_session name of the
-    “channel buffer usage becomes greater/less than”
+    “event record channel buffer usage becomes greater/less than”
     trigger condition \lt_p{condition} to \lt_p{session_name}.
 
 @param[in] condition
-    “Channel buffer usage becomes greater/less than” trigger
+    “Event record channel buffer usage becomes greater/less than” trigger
     condition of which to set the target recording session name.
 @param[in] session_name
     Target recording session name of \lt_p{condition} (copied).
@@ -319,7 +319,7 @@ lttng_condition_buffer_usage_get_session_name(const struct lttng_condition *cond
 
 @sa lttng_condition_buffer_usage_get_session_name() --
     Get the target recording session name of a
-    “channel buffer usage becomes greater/less than”
+    “event record channel buffer usage becomes greater/less than”
     trigger condition.
 */
 LTTNG_EXPORT extern enum lttng_condition_status
@@ -329,16 +329,16 @@ lttng_condition_buffer_usage_set_session_name(struct lttng_condition *condition,
 /*!
 @brief
     Sets \lt_p{*channel_name} to the target \lt_obj_channel name of the
-    “channel buffer usage becomes greater/less than” trigger
+    “event record channel buffer usage becomes greater/less than” trigger
     condition \lt_p{condition}.
 
 @param[in] condition
-    “Channel buffer usage becomes greater/less than” trigger
-    condition of which to get the target channel name.
+    “Event record channel buffer usage becomes greater/less than” trigger
+    condition of which to get the target event record channel name.
 @param[out] channel_name
     @parblock
     <strong>On success</strong>, this function sets \lt_p{*channel_name}
-    to the target channel name of \lt_p{condition}.
+    to the target event record channel name of \lt_p{condition}.
 
     \lt_p{condition} owns \lt_p{*channel_name}.
 
@@ -349,7 +349,7 @@ lttng_condition_buffer_usage_set_session_name(struct lttng_condition *condition,
 @retval #LTTNG_CONDITION_STATUS_OK
     Success.
 @retval #LTTNG_CONDITION_STATUS_UNSET
-    \lt_p{condition} has no target channel name.
+    \lt_p{condition} has no target event record channel name.
 @retval #LTTNG_CONDITION_STATUS_INVALID
     Unsatisfied precondition.
 
@@ -361,8 +361,8 @@ lttng_condition_buffer_usage_set_session_name(struct lttng_condition *condition,
     @lt_pre_not_null{channel_name}
 
 @sa lttng_condition_buffer_usage_set_channel_name() --
-    Set the target channel name of a
-    “channel buffer usage becomes greater/less than”
+    Set the target event record channel name of a
+    “event record channel buffer usage becomes greater/less than”
     trigger condition.
 */
 LTTNG_EXPORT extern enum lttng_condition_status
@@ -372,14 +372,14 @@ lttng_condition_buffer_usage_get_channel_name(const struct lttng_condition *cond
 /*!
 @brief
     Sets the target \lt_obj_channel name of the
-    “channel buffer usage becomes greater/less than”
+    “event record channel buffer usage becomes greater/less than”
     trigger condition \lt_p{condition} to \lt_p{channel_name}.
 
 @param[in] condition
-    “Channel buffer usage becomes greater/less than” trigger
-    condition of which to set the target channel name.
+    “Event record channel buffer usage becomes greater/less than” trigger
+    condition of which to set the target event record channel name.
 @param[in] channel_name
-    Target channel name of \lt_p{condition} (copied).
+    Target event record channel name of \lt_p{condition} (copied).
 
 @retval #LTTNG_CONDITION_STATUS_OK
     Success.
@@ -394,8 +394,8 @@ lttng_condition_buffer_usage_get_channel_name(const struct lttng_condition *cond
     @lt_pre_not_null{channel_name}
 
 @sa lttng_condition_buffer_usage_get_channel_name() --
-    Get the target channel name of a
-    “channel buffer usage becomes greater/less than”
+    Get the target event record channel name of a
+    “event record channel buffer usage becomes greater/less than”
     trigger condition.
 */
 LTTNG_EXPORT extern enum lttng_condition_status
@@ -405,11 +405,11 @@ lttng_condition_buffer_usage_set_channel_name(struct lttng_condition *condition,
 /*!
 @brief
     Sets \lt_p{*domain} to the target \lt_obj_domain of the
-    “channel buffer usage becomes greater/less than” trigger
+    “event record channel buffer usage becomes greater/less than” trigger
     condition \lt_p{condition}.
 
 @param[in] condition
-    “Channel buffer usage becomes greater/less than” trigger
+    “Event record channel buffer usage becomes greater/less than” trigger
     condition of which to get the target tracing domain.
 @param[out] domain
     @parblock
@@ -437,7 +437,7 @@ lttng_condition_buffer_usage_set_channel_name(struct lttng_condition *condition,
 
 @sa lttng_condition_buffer_usage_set_domain_type() --
     Set the target tracing domain of a
-    “channel buffer usage becomes greater/less than”
+    “event record channel buffer usage becomes greater/less than”
     trigger condition.
 */
 LTTNG_EXPORT extern enum lttng_condition_status
@@ -447,11 +447,11 @@ lttng_condition_buffer_usage_get_domain_type(const struct lttng_condition *condi
 /*!
 @brief
     Sets the target \lt_obj_domain of the
-    “channel buffer usage becomes greater/less than”
+    “event record channel buffer usage becomes greater/less than”
     trigger condition \lt_p{condition} to \lt_p{domain}.
 
 @param[in] condition
-    “Channel buffer usage becomes greater/less than” trigger
+    “Event record channel buffer usage becomes greater/less than” trigger
     condition of which to set the target tracing domain.
 @param[in] domain
     Target tracing domain of \lt_p{condition}.
@@ -470,7 +470,7 @@ lttng_condition_buffer_usage_get_domain_type(const struct lttng_condition *condi
 
 @sa lttng_condition_buffer_usage_get_domain_type() --
     Get the target tracing domain of a
-    “channel buffer usage becomes greater/less than”
+    “event record channel buffer usage becomes greater/less than”
     trigger condition.
 */
 LTTNG_EXPORT extern enum lttng_condition_status
@@ -481,16 +481,16 @@ lttng_condition_buffer_usage_set_domain_type(struct lttng_condition *condition,
 @brief
     Sets \lt_p{*usage} to the captured \lt_obj_channel
     buffer usage ratio of the
-    “channel buffer usage becomes greater/less than” trigger
+    “event record channel buffer usage becomes greater/less than” trigger
     condition evaluation \lt_p{evaluation}.
 
 @param[in] evaluation
-    “Channel buffer usage becomes greater/less than” trigger
-    condition evaluation of which to get the captured channel
+    “Event record channel buffer usage becomes greater/less than” trigger
+    condition evaluation of which to get the captured event record channel
     buffer usage ratio.
 @param[out] usage
     <strong>On success</strong>, this function sets
-    \lt_p{*usage} to the captured channel buffer usage ratio
+    \lt_p{*usage} to the captured event record channel buffer usage ratio
     (between&nbsp;0 and&nbsp;1) of \lt_p{evaluation}.
 
 @retval #LTTNG_EVALUATION_STATUS_OK
@@ -506,8 +506,8 @@ lttng_condition_buffer_usage_set_domain_type(struct lttng_condition *condition,
     @lt_pre_not_null{usage}
 
 @sa lttng_evaluation_buffer_usage_get_usage() --
-    Get the captured channel buffer usage size of a
-    “channel buffer usage becomes greater/less than” trigger
+    Get the captured event record channel buffer usage size of a
+    “event record channel buffer usage becomes greater/less than” trigger
     condition evaluation.
 */
 LTTNG_EXPORT extern enum lttng_evaluation_status
@@ -518,16 +518,16 @@ lttng_evaluation_buffer_usage_get_usage_ratio(const struct lttng_evaluation *eva
 @brief
     Sets \lt_p{*usage} to the captured \lt_obj_channel
     buffer usage size of the
-    “channel buffer usage becomes greater/less than” trigger
+    “event record channel buffer usage becomes greater/less than” trigger
     condition evaluation \lt_p{evaluation}.
 
 @param[in] evaluation
-    “Channel buffer usage becomes greater/less than” trigger
-    condition evaluation of which to get the captured channel
+    “Event record channel buffer usage becomes greater/less than” trigger
+    condition evaluation of which to get the captured event record channel
     buffer usage size.
 @param[out] usage
     <strong>On success</strong>, this function sets
-    \lt_p{*usage} to the captured channel buffer usage size (bytes)
+    \lt_p{*usage} to the captured event record channel buffer usage size (bytes)
     of \lt_p{evaluation}.
 
 @retval #LTTNG_EVALUATION_STATUS_OK
@@ -543,8 +543,8 @@ lttng_evaluation_buffer_usage_get_usage_ratio(const struct lttng_evaluation *eva
     @lt_pre_not_null{usage}
 
 @sa lttng_evaluation_buffer_usage_get_usage_ratio() --
-    Get the captured channel buffer usage ratio of a
-    “channel buffer usage becomes greater/less than” trigger
+    Get the captured event record channel buffer usage ratio of a
+    “event record channel buffer usage becomes greater/less than” trigger
     condition evaluation.
 */
 LTTNG_EXPORT extern enum lttng_evaluation_status

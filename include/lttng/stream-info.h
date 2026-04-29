@@ -66,9 +66,9 @@ enum lttng_data_stream_info_status {
     Sets \lt_p{*cpu_id} to the CPU ID of the data stream info
     \lt_p{stream_info}.
 
-When a channel uses a
+When an event record channel uses a
 \ref api-channel-per-cpu-buf "per-CPU" buffer ownership model,
-each data stream of the channel is bound to a specific CPU and
+each data stream of the event record channel is bound to a specific CPU and
 therefore has a CPU ID. Otherwise, the CPU ID isn't set and this
 function returns #LTTNG_DATA_STREAM_INFO_STATUS_NONE.
 
@@ -387,7 +387,7 @@ enum lttng_channel_get_data_stream_info_sets_status {
 
 /*!
 @brief
-    Retrieves data stream info sets for the channel named
+    Retrieves data stream info sets for the event record channel named
     \lt_p{channel_name} in the recording session named
     \lt_p{session_name} and tracing domain \lt_p{domain}.
 
@@ -397,16 +397,16 @@ Only user space domains are supported. The content and availability of
 memory usage information may vary depending on tracer support.
 
 @param[in] session_name
-    Name of the recording session which contains the targeted channel.
+    Name of the recording session which contains the targeted event record channel.
 @param[in] channel_name
-    Name of the channel for which to get data stream info sets.
+    Name of the event record channel for which to get data stream info sets.
 @param[in] domain
-    Tracing domain of the targeted channel for which to get data stream
+    Tracing domain of the targeted event record channel for which to get data stream
     info sets.
 @param[out] sets
     @parblock
-    <strong>On success</strong>, this function sets \lt_p{*sets} to a
-    the data stream information sets for the targeted channel.
+    <strong>On success</strong>, this function sets \lt_p{*sets} to the
+    data stream information sets for the targeted event record channel.
 
     Destroy \lt_p{*sets} with lttng_data_stream_info_sets_destroy().
     @endparblock

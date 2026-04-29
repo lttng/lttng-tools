@@ -108,7 +108,7 @@ struct lttng_session {
 	/*!
 	@brief
 	    Period (µs) of the \ref api-channel-live-timer "live timers"
-	    of the channels of this recording session, or 0 if this
+	    of the event record channels of this recording session, or 0 if this
 	    recording session wasn't created in
 	    \ref api-session-live-mode "live mode".
 
@@ -313,7 +313,7 @@ LTTNG_EXPORT extern int lttng_create_session_snapshot(const char *session_name,
     @endparblock
 @param[in] live_timer_period
     Period (µs) of the \ref api-channel-live-timer "live timers" of all
-    the channels of the created recording session.
+    the event record channels of the created recording session.
 
 @returns
     <dl>
@@ -555,7 +555,7 @@ lttng_session_get_creation_time(const struct lttng_session *session, uint64_t *c
 /*!
 @brief
     Sets the path of the directory containing the shared memory files
-    holding the channel ring buffers of the recording session named
+    holding the event record channel ring buffers of the recording session named
     \lt_p{session_name} on the local file system to \lt_p{shm_dir}.
 
 Specifying a location on an
@@ -590,7 +590,7 @@ utility.
 
 @sa lttng_get_session_shm_path_override() --
     Returns the path of the custom directory containing the shared
-    memory files holding the channel ring buffers of a recording
+    memory files holding the event record channel ring buffers of a recording
     session.
 */
 LTTNG_EXPORT extern int lttng_set_session_shm_path(const char *session_name, const char *shm_dir);
@@ -599,7 +599,7 @@ LTTNG_EXPORT extern int lttng_set_session_shm_path(const char *session_name, con
 @brief
     Sets \lt_p{*shm_dir} to the path of the custom directory
     on the local file
-    system containing the shared memory files holding the channel
+    system containing the shared memory files holding the event record channel
     ring buffers of the recording session summarized
     by \lt_p{session}.
 
@@ -617,7 +617,7 @@ lttng_set_session_shm_path(); it returns
     <strong>On success</strong>, this function sets
     \lt_p{*shm_dir} to the path of the directory on the
     local file system containing the shared memory files holding
-    the channel ring buffers of \lt_p{session}.
+    the event record channel ring buffers of \lt_p{session}.
 
     \lt_p{*shm_dir} remains valid as long as the recording session
     summary \lt_p{session} exists.
@@ -638,7 +638,7 @@ lttng_set_session_shm_path(); it returns
 
 @sa lttng_set_session_shm_path() --
     Sets the path of the directory containing the shared
-    memory files holding the channel ring buffers of a recording
+    memory files holding the event record channel ring buffers of a recording
     session.
 */
 LTTNG_EXPORT extern enum lttng_get_session_shm_path_status
