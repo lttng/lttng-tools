@@ -9,10 +9,14 @@
 #define LTTNG_TRIGGER_INTERNAL_H
 
 #include <common/credentials.hpp>
+#include <common/ctl/format.hpp>
 #include <common/dynamic-array.hpp>
 #include <common/macros.hpp>
 #include <common/optional.hpp>
 
+#include <lttng/action/action-internal.hpp>
+#include <lttng/condition/condition-internal.hpp>
+#include <lttng/event-rule/event-rule-internal.hpp>
 #include <lttng/lttng.h>
 
 #include <pthread.h>
@@ -271,5 +275,52 @@ lttng_trigger_add_action_error_query_results(struct lttng_trigger *trigger,
  * if invalid parameters are passed.
  */
 enum lttng_trigger_status lttng_trigger_set_name(struct lttng_trigger *trigger, const char *name);
+
+/*
+ * Due to a bug in g++ < 7.1, this specialization must be enclosed in the fmt namespace,
+ * see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480.
+ */
+namespace fmt {
+template <>
+struct formatter<lttng_trigger> : formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator format(const lttng_trigger& trigger,
+						    FormatContextType& ctx) const
+	{
+		const char *name = nullptr;
+		const auto name_status = lttng_trigger_get_name(&trigger, &name);
+		const char *display_name = (name_status == LTTNG_TRIGGER_STATUS_OK) ? name :
+										      "(anonymous)";
+
+		uid_t owner_uid = 0;
+		(void) lttng_trigger_get_owner_uid(&trigger, &owner_uid);
+
+		const auto *condition = lttng_trigger_get_const_condition(&trigger);
+		const auto *action = lttng_trigger_get_const_action(&trigger);
+
+		auto out = format_to(ctx.out(),
+				     "{{name=`{}`, owner_uid={}, hidden={}, registered={}",
+				     display_name,
+				     owner_uid,
+				     trigger.is_hidden,
+				     trigger.registered);
+
+		if (trigger.tracer_token.is_set) {
+			out = format_to(
+				out, ", tracer_token={}", LTTNG_OPTIONAL_GET(trigger.tracer_token));
+		}
+
+		if (condition) {
+			out = format_to(out, ", condition={}", *condition);
+		}
+
+		if (action) {
+			out = format_to(out, ", action={}", *action);
+		}
+
+		return format_to(out, "}}");
+	}
+};
+} /* namespace fmt */
 
 #endif /* LTTNG_TRIGGER_INTERNAL_H */
