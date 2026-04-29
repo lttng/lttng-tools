@@ -104,6 +104,34 @@ struct formatter<lttng_loglevel_type> : formatter<std::string> {
 };
 
 template <>
+struct formatter<lttng_event_rule_kernel_syscall_emission_site> : formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator
+	format(lttng_event_rule_kernel_syscall_emission_site emission_site,
+	       FormatContextType& ctx) const
+	{
+		const char *name;
+
+		switch (emission_site) {
+		case LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_ENTRY_EXIT:
+			name = "ENTRY_EXIT";
+			break;
+		case LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_ENTRY:
+			name = "ENTRY";
+			break;
+		case LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_EXIT:
+			name = "EXIT";
+			break;
+		default:
+			name = "UNKNOWN";
+			break;
+		}
+
+		return format_to(ctx.out(), name);
+	}
+};
+
+template <>
 struct formatter<lttng_log_level_rule_type> : formatter<std::string> {
 	template <typename FormatContextType>
 	typename FormatContextType::iterator format(lttng_log_level_rule_type rule_type,
@@ -126,6 +154,144 @@ struct formatter<lttng_log_level_rule_type> : formatter<std::string> {
 	}
 };
 
+namespace details {
+template <typename FormatContextIteratorType>
+FormatContextIteratorType format_event_expr(const lttng_event_expr *event_expr,
+					    FormatContextIteratorType out)
+{
+	if (!event_expr) {
+		return format_to(out, "(none)");
+	}
+
+	switch (lttng_event_expr_get_type(event_expr)) {
+	case LTTNG_EVENT_EXPR_TYPE_EVENT_PAYLOAD_FIELD:
+		return format_to(
+			out, "{}", lttng_event_expr_event_payload_field_get_name(event_expr));
+	case LTTNG_EVENT_EXPR_TYPE_CHANNEL_CONTEXT_FIELD:
+		return format_to(out,
+				 "$ctx.{}",
+				 lttng_event_expr_channel_context_field_get_name(event_expr));
+	case LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD:
+		return format_to(
+			out,
+			"$app.{}:{}",
+			lttng_event_expr_app_specific_context_field_get_provider_name(event_expr),
+			lttng_event_expr_app_specific_context_field_get_type_name(event_expr));
+	case LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT:
+	{
+		const auto *parent =
+			lttng_event_expr_array_field_element_get_parent_expr(event_expr);
+		unsigned int index = 0;
+		(void) lttng_event_expr_array_field_element_get_index(event_expr, &index);
+
+		out = format_event_expr(parent, out);
+		return format_to(out, "[{}]", index);
+	}
+	default:
+		return format_to(out, "(unknown)");
+	}
+}
+
+template <typename FormatContextIteratorType>
+FormatContextIteratorType format_log_level_rule(const lttng_log_level_rule *rule,
+						FormatContextIteratorType out)
+{
+	if (!rule) {
+		return format_to(out, "(none)");
+	}
+
+	const auto type = lttng_log_level_rule_get_type(rule);
+	int level = 0;
+
+	switch (type) {
+	case LTTNG_LOG_LEVEL_RULE_TYPE_EXACTLY:
+		(void) lttng_log_level_rule_exactly_get_level(rule, &level);
+		return format_to(out, "{{type=EXACTLY, level={}}}", level);
+	case LTTNG_LOG_LEVEL_RULE_TYPE_AT_LEAST_AS_SEVERE_AS:
+		(void) lttng_log_level_rule_at_least_as_severe_as_get_level(rule, &level);
+		return format_to(out, "{{type=AT_LEAST_AS_SEVERE_AS, level={}}}", level);
+	case LTTNG_LOG_LEVEL_RULE_TYPE_UNKNOWN:
+	default:
+		return format_to(out, "{{type=UNKNOWN}}");
+	}
+}
+
+template <typename FormatContextIteratorType>
+FormatContextIteratorType format_kernel_probe_location(const lttng_kernel_probe_location *location,
+						       FormatContextIteratorType out)
+{
+	if (!location) {
+		return format_to(out, "(none)");
+	}
+
+	const auto type = lttng_kernel_probe_location_get_type(location);
+
+	switch (type) {
+	case LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET:
+	{
+		const char *name = lttng_kernel_probe_location_symbol_get_name(location);
+		std::uint64_t offset = 0;
+		(void) lttng_kernel_probe_location_symbol_get_offset(location, &offset);
+		return format_to(out,
+				 "{{type=SYMBOL_OFFSET, symbol=`{}`, offset={}}}",
+				 name ? name : "",
+				 offset);
+	}
+	case LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS:
+	{
+		std::uint64_t address = 0;
+		(void) lttng_kernel_probe_location_address_get_address(location, &address);
+		return format_to(out, "{{type=ADDRESS, address={:#x}}}", address);
+	}
+	default:
+		return format_to(out, "{{type=UNKNOWN}}");
+	}
+}
+
+template <typename FormatContextIteratorType>
+FormatContextIteratorType
+format_userspace_probe_location(const lttng_userspace_probe_location *location,
+				FormatContextIteratorType out)
+{
+	if (!location) {
+		return format_to(out, "(none)");
+	}
+
+	const auto type = lttng_userspace_probe_location_get_type(location);
+
+	switch (type) {
+	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION:
+	{
+		const char *binary_path =
+			lttng_userspace_probe_location_function_get_binary_path(location);
+		const char *function_name =
+			lttng_userspace_probe_location_function_get_function_name(location);
+		return format_to(out,
+				 "{{type=FUNCTION, binary_path=`{}`, function_name=`{}`}}",
+				 binary_path ? binary_path : "",
+				 function_name ? function_name : "");
+	}
+	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT:
+	{
+		const char *binary_path =
+			lttng_userspace_probe_location_tracepoint_get_binary_path(location);
+		const char *provider_name =
+			lttng_userspace_probe_location_tracepoint_get_provider_name(location);
+		const char *probe_name =
+			lttng_userspace_probe_location_tracepoint_get_probe_name(location);
+		return format_to(
+			out,
+			"{{type=TRACEPOINT, binary_path=`{}`, provider_name=`{}`, probe_name=`{}`}}",
+			binary_path ? binary_path : "",
+			provider_name ? provider_name : "",
+			probe_name ? probe_name : "");
+	}
+	default:
+		return format_to(out, "{{type=UNKNOWN}}");
+	}
+}
+} /* namespace details */
+
 template <>
 struct formatter<lttng_event_rule> : formatter<std::string> {
 	template <typename FormatContextType>
@@ -133,44 +299,160 @@ struct formatter<lttng_event_rule> : formatter<std::string> {
 						    FormatContextType& ctx) const
 	{
 		const auto rule_type = lttng_event_rule_get_type(&rule);
-		const char *rule_type_name;
 
 		switch (rule_type) {
-		case LTTNG_EVENT_RULE_TYPE_UNKNOWN:
-			rule_type_name = "UNKNOWN";
-			break;
-		case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
-			rule_type_name = "KERNEL_SYSCALL";
-			break;
-		case LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE:
-			rule_type_name = "KERNEL_KPROBE";
-			break;
 		case LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT:
-			rule_type_name = "KERNEL_TRACEPOINT";
-			break;
-		case LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE:
-			rule_type_name = "KERNEL_UPROBE";
-			break;
-		case LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT:
-			rule_type_name = "USER_TRACEPOINT";
-			break;
-		case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
-			rule_type_name = "JUL_LOGGING";
-			break;
-		case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
-			rule_type_name = "LOG4J_LOGGING";
-			break;
-		case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
-			rule_type_name = "PYTHON_LOGGING";
-			break;
-		case LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING:
-			rule_type_name = "LOG4J2_LOGGING";
-			break;
-		default:
-			std::abort();
-		}
+		{
+			const char *name_pattern = nullptr;
+			const char *filter = nullptr;
 
-		return format_to(ctx.out(), "{{type={}}}", rule_type_name);
+			(void) lttng_event_rule_kernel_tracepoint_get_name_pattern(&rule,
+										   &name_pattern);
+			(void) lttng_event_rule_kernel_tracepoint_get_filter(&rule, &filter);
+
+			return format_to(
+				ctx.out(),
+				"{{type=KERNEL_TRACEPOINT, name_pattern=`{}`, filter=`{}`}}",
+				name_pattern ? name_pattern : "",
+				filter ? filter : "");
+		}
+		case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
+		{
+			const char *name_pattern = nullptr;
+			const char *filter = nullptr;
+
+			(void) lttng_event_rule_kernel_syscall_get_name_pattern(&rule,
+										&name_pattern);
+			(void) lttng_event_rule_kernel_syscall_get_filter(&rule, &filter);
+
+			return format_to(
+				ctx.out(),
+				"{{type=KERNEL_SYSCALL, name_pattern=`{}`, filter=`{}`, emission_site={}}}",
+				name_pattern ? name_pattern : "",
+				filter ? filter : "",
+				lttng_event_rule_kernel_syscall_get_emission_site(&rule));
+		}
+		case LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE:
+		{
+			const char *event_name = nullptr;
+			const lttng_kernel_probe_location *location = nullptr;
+
+			(void) lttng_event_rule_kernel_kprobe_get_event_name(&rule, &event_name);
+			(void) lttng_event_rule_kernel_kprobe_get_location(&rule, &location);
+
+			auto out = format_to(ctx.out(),
+					     "{{type=KERNEL_KPROBE, event_name=`{}`, location=",
+					     event_name ? event_name : "");
+			out = details::format_kernel_probe_location(location, out);
+			return format_to(out, "}}");
+		}
+		case LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE:
+		{
+			const char *event_name = nullptr;
+			const lttng_userspace_probe_location *location = nullptr;
+
+			(void) lttng_event_rule_kernel_uprobe_get_event_name(&rule, &event_name);
+			(void) lttng_event_rule_kernel_uprobe_get_location(&rule, &location);
+
+			auto out = format_to(ctx.out(),
+					     "{{type=KERNEL_UPROBE, event_name=`{}`, location=",
+					     event_name ? event_name : "");
+			out = details::format_userspace_probe_location(location, out);
+			return format_to(out, "}}");
+		}
+		case LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT:
+		{
+			const char *name_pattern = nullptr;
+			const char *filter = nullptr;
+			const lttng_log_level_rule *log_level_rule = nullptr;
+			unsigned int exclusion_count = 0;
+
+			(void) lttng_event_rule_user_tracepoint_get_name_pattern(&rule,
+										 &name_pattern);
+			(void) lttng_event_rule_user_tracepoint_get_filter(&rule, &filter);
+			(void) lttng_event_rule_user_tracepoint_get_log_level_rule(&rule,
+										   &log_level_rule);
+			(void) lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_count(
+				&rule, &exclusion_count);
+
+			auto out = format_to(
+				ctx.out(),
+				"{{type=USER_TRACEPOINT, name_pattern=`{}`, filter=`{}`, log_level_rule=",
+				name_pattern ? name_pattern : "",
+				filter ? filter : "");
+			out = details::format_log_level_rule(log_level_rule, out);
+			out = format_to(out, ", name_pattern_exclusions=[");
+			for (unsigned int i = 0; i < exclusion_count; i++) {
+				const char *exclusion = nullptr;
+				(void) lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_at_index(
+					&rule, i, &exclusion);
+				if (i > 0) {
+					out = format_to(out, ", ");
+				}
+				out = format_to(out, "`{}`", exclusion ? exclusion : "");
+			}
+			return format_to(out, "]}}");
+		}
+		case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
+		case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
+		case LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING:
+		case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
+		{
+			const char *name_pattern = nullptr;
+			const char *filter = nullptr;
+			const lttng_log_level_rule *log_level_rule = nullptr;
+			const char *type_name = "UNKNOWN_LOGGING";
+
+			switch (rule_type) {
+			case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
+				type_name = "JUL_LOGGING";
+				(void) lttng_event_rule_jul_logging_get_name_pattern(&rule,
+										     &name_pattern);
+				(void) lttng_event_rule_jul_logging_get_filter(&rule, &filter);
+				(void) lttng_event_rule_jul_logging_get_log_level_rule(
+					&rule, &log_level_rule);
+				break;
+			case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
+				type_name = "LOG4J_LOGGING";
+				(void) lttng_event_rule_log4j_logging_get_name_pattern(
+					&rule, &name_pattern);
+				(void) lttng_event_rule_log4j_logging_get_filter(&rule, &filter);
+				(void) lttng_event_rule_log4j_logging_get_log_level_rule(
+					&rule, &log_level_rule);
+				break;
+			case LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING:
+				type_name = "LOG4J2_LOGGING";
+				(void) lttng_event_rule_log4j2_logging_get_name_pattern(
+					&rule, &name_pattern);
+				(void) lttng_event_rule_log4j2_logging_get_filter(&rule, &filter);
+				(void) lttng_event_rule_log4j2_logging_get_log_level_rule(
+					&rule, &log_level_rule);
+				break;
+			case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
+				type_name = "PYTHON_LOGGING";
+				(void) lttng_event_rule_python_logging_get_name_pattern(
+					&rule, &name_pattern);
+				(void) lttng_event_rule_python_logging_get_filter(&rule, &filter);
+				(void) lttng_event_rule_python_logging_get_log_level_rule(
+					&rule, &log_level_rule);
+				break;
+			default:
+				break;
+			}
+
+			auto out = format_to(
+				ctx.out(),
+				"{{type={}, name_pattern=`{}`, filter=`{}`, log_level_rule=",
+				type_name,
+				name_pattern ? name_pattern : "",
+				filter ? filter : "");
+			out = details::format_log_level_rule(log_level_rule, out);
+			return format_to(out, "}}");
+		}
+		case LTTNG_EVENT_RULE_TYPE_UNKNOWN:
+		default:
+			return format_to(ctx.out(), "{{type=UNKNOWN}}");
+		}
 	}
 };
 
@@ -406,19 +688,23 @@ struct formatter<lttng_condition> : formatter<std::string> {
 			(void) lttng_condition_event_rule_matches_get_capture_descriptor_count(
 				&condition, &capture_count);
 
+			auto out = format_to(ctx.out(), "{{type={}", type);
 			if (rule) {
-				return format_to(
-					ctx.out(),
-					"{{type={}, rule={}, capture_descriptor_count={}}}",
-					type,
-					*rule,
-					capture_count);
+				out = format_to(out, ", rule={}", *rule);
 			}
-
-			return format_to(ctx.out(),
-					 "{{type={}, capture_descriptor_count={}}}",
-					 type,
-					 capture_count);
+			out = format_to(out, ", capture_descriptors=[");
+			for (unsigned int i = 0; i < capture_count; i++) {
+				const auto *expr =
+					lttng_condition_event_rule_matches_get_capture_descriptor_at_index(
+						&condition, i);
+				if (i > 0) {
+					out = format_to(out, ", ");
+				}
+				out = format_to(out, "`");
+				out = details::format_event_expr(expr, out);
+				out = format_to(out, "`");
+			}
+			return format_to(out, "]}}");
 		}
 		case LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE:
 		{
