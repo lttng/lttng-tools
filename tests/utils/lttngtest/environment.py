@@ -8,7 +8,7 @@
 import enum
 import multiprocessing
 from types import FrameType
-from typing import Callable, Iterator, Optional, Tuple, List, Generator
+from typing import Callable, Dict, Iterator, Optional, Tuple, List, Generator
 import sys
 import pathlib
 import platform
@@ -345,17 +345,10 @@ class _WaitTraceTestApplication:
             )
 
         self._wait_before_last_event_file_path = wait_before_last_event_file_path
-        test_app_env = os.environ.copy()
-        if environment.lttng_home_location is not None:
-            test_app_env["LTTNG_HOME"] = str(environment.lttng_home_location)
-        if environment.lttng_rundir is not None:
-            test_app_env["LTTNG_UST_APP_PATH"] = str(environment.lttng_rundir)
-
-        # Make sure the app is blocked until it is properly registered to
-        # the session daemon.
-        test_app_env["LTTNG_UST_REGISTER_TIMEOUT"] = str(register_timeout_s)
-
-        test_app_env.update(extra_env_vars)
+        test_app_env = environment.get_ust_test_app_env(extra_env_vars)
+        # Make sure the app is blocked until it is properly registered to the session daemon.
+        if "LTTNG_UST_REGISTER_TIMEOUT" not in extra_env_vars:
+            test_app_env["LTTNG_UST_REGISTER_TIMEOUT"] = str(register_timeout_s)
 
         # File that the application will create to indicate it has completed its initialization.
         app_ready_file_path = tempfile.mktemp(
@@ -731,21 +724,17 @@ class _TraceTestApplication:
         self._environment = environment  # type: Environment
         self._has_returned = False
 
-        test_app_env = os.environ.copy()
-        test_app_env["LTTNG_HOME"] = str(environment.lttng_home_location)
-        if environment.lttng_rundir is not None:
-            test_app_env["LTTNG_UST_APP_PATH"] = str(environment.lttng_rundir)
+        test_app_env = environment.get_ust_test_app_env(extra_env_vars)
+        # Make sure the app is blocked until it is properly registered to the session daemon.
+        if "LTTNG_UST_REGISTER_TIMEOUT" not in extra_env_vars:
+            test_app_env["LTTNG_UST_REGISTER_TIMEOUT"] = "-1"
 
-        # Make sure the app is blocked until it is properly registered to
-        # the session daemon.
-        test_app_env["LTTNG_UST_REGISTER_TIMEOUT"] = "-1"
         if type(binary_path) is str:
             test_app_args = [str(binary_path)]
         else:
             # Assume it is a list
             test_app_args = binary_path
 
-        test_app_env.update(extra_env_vars)
         self._process = subprocess.Popen(
             test_app_args, env=test_app_env, **kwargs
         )  # type: subprocess.Popen
@@ -963,6 +952,35 @@ class _Environment(logger._Logger):
     def lttng_client_path(self):
         # type: () -> pathlib.Path
         return self._project_root / "src" / "bin" / "lttng" / "lttng"
+
+    def get_lttng_client_env(
+        self, extra_env_vars: Dict[str, str] = dict()
+    ) -> Dict[str, str]:
+        client_env = os.environ.copy()
+        if self.lttng_home_location is not None:
+            client_env["LTTNG_HOME"] = str(self.lttng_home_location)
+
+        if self.lttng_rundir is not None:
+            client_env["LTTNG_RUNDIR"] = str(self.lttng_rundir)
+
+        client_env.update(self._extra_env_vars)
+        client_env.update(extra_env_vars)
+        return client_env
+
+    def get_ust_test_app_env(
+        self, extra_env_vars: Dict[str, str] = dict()
+    ) -> Dict[str, str]:
+        test_app_env = os.environ.copy()
+        if self.lttng_home_location is not None:
+            test_app_env["LTTNG_HOME"] = str(self.lttng_home_location)
+
+        if self.lttng_rundir is not None:
+            test_app_env["LTTNG_UST_APP_PATH"] = str(self.lttng_rundir)
+
+        test_app_env["LTTNG_UST_REGISTER_TIMEOUT"] = "-1"
+        test_app_env.update(self._extra_env_vars)
+        test_app_env.update(extra_env_vars)
+        return test_app_env
 
     def _relayd_port(self, port_name):
         port_attr = "_relayd_{}_port".format(port_name)

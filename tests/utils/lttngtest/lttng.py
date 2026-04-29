@@ -1268,13 +1268,7 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
 
         self._log("lttng {command_args}".format(command_args=command_args))
 
-        client_env = os.environ.copy()  # type: dict[str, str]
-        if self._environment.lttng_home_location is not None:
-            client_env["LTTNG_HOME"] = str(self._environment.lttng_home_location)
-        if self._environment.lttng_rundir is not None:
-            client_env["LTTNG_RUNDIR"] = str(self._environment.lttng_rundir)
-        client_env.update(self._extra_env_vars)
-
+        client_env = self._environment.get_lttng_client_env(self._extra_env_vars)
         err_output = (
             tempfile.NamedTemporaryFile(
                 prefix="lttng_", dir=self._environment.lttng_log_dir, delete=False
