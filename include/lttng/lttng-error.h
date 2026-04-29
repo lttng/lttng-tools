@@ -125,7 +125,7 @@ enum lttng_error_code {
 	LTTNG_ERR_SESS_NOT_FOUND = 23,
 
 	/*!
-	A \lt_obj_channel within the given \lt_obj_domain already exists
+	An \lt_obj_channel within the given \lt_obj_domain already exists
 	and is configured with another
 	\ref api-channel-buf-ownership-model "buffer ownership model".
 	*/
@@ -331,15 +331,15 @@ enum lttng_error_code {
 	LTTNG_ERR_KERN_EVENT_ENOSYS = 82,
 
 	/*!
-	A \lt_obj_channel name is required because
-	a non-default channel exists within the selected
+	An \lt_obj_channel name is required because
+	a non-default event record channel exists within the selected
 	\lt_obj_session and \lt_obj_domain.
 	*/
 	LTTNG_ERR_NEED_CHANNEL_NAME = 83,
 
 	/*!
 	\lt_obj_c_channel name is required because a
-	non-default channel exists within the \lt_obj_session.
+	non-default event record channel exists within the \lt_obj_session.
 	*/
 	LTTNG_ERR_NO_UST = 84,
 

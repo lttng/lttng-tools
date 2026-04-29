@@ -177,7 +177,7 @@ LTTNG_EXPORT extern int lttng_register_consumer(struct lttng_handle *handle,
 @brief
     Makes the recording session named \lt_p{session_name} active,
     starting all the tracers for its
-    \ref api-channel-channel "channels".
+    \ref api-channel-channel "event record channels".
 
 @ingroup api_session
 
@@ -215,7 +215,7 @@ LTTNG_EXPORT extern int lttng_start_tracing(const char *session_name);
 @brief
     Makes the recording session named \lt_p{session_name} inactive,
     stopping all the tracers for its
-    \ref api-channel-channel "channels", blocking until the operation
+    \ref api-channel-channel "event record channels", blocking until the operation
     completes.
 
 @ingroup api_session
@@ -270,7 +270,7 @@ LTTNG_EXPORT extern int lttng_stop_tracing(const char *session_name);
 @brief
     Makes the recording session named \lt_p{session_name} inactive,
     stopping all the tracers for its
-    \ref api-channel-channel "channels" without waiting for the
+    \ref api-channel-channel "event record channels" without waiting for the
     operation to complete.
 
 @ingroup api_session
@@ -362,10 +362,10 @@ lttng_set_consumer_url(struct lttng_handle *handle, const char *control_url, con
 
 It's not safe to read the traces of a recording session while
 LTTng is still consuming data from the tracers for its
-\ref api-channel-channel "channels".
+\ref api-channel-channel "event record channels".
 
 This function makes it possible to know when LTTng is done consuming
-trace data from tracers for the channels of the recording session
+trace data from tracers for the event record channels of the recording session
 named \lt_p{session_name}.
 
 @param[in] session_name
@@ -506,7 +506,7 @@ See the preconditions of this function which show important limitations.
     @lt_pre_sess_exists{session_name}
     - The recording session named \lt_p{session_name} was \em not
       created in \ref api-session-live-mode "live mode".
-    - All the \ref api-channel-channel "channels" of the
+    - All the \ref api-channel-channel "event record channels" of the
       recording session named \lt_p{session_name} use a
       \ref api-channel-per-user-buf "user buffering ownership model".
 
@@ -531,7 +531,7 @@ append corresponding event records to the
 This is particularly useful if you created the recording session in
 \ref api-session-snapshot-mode "snapshot mode"
 or if LTTng \ref api_session_rotation "rotates" trace files for one of
-its \ref api-channel-channel "channels": in both cases, the state dump
+its \ref api-channel-channel "event record channels": in both cases, the state dump
 information may be lost.
 
 @param[in] session_name

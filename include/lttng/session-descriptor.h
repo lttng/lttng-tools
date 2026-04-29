@@ -615,7 +615,7 @@ The valid combinations of \lt_p{control_url} and \lt_p{data_url} are:
     @endparblock
 @param[in] live_timer_period
     Period (µs) of the \ref api-channel-live-timer "live timers" of all
-    the channels of a recording session which lttng_create_session_ext()
+    the event record channels of a recording session which lttng_create_session_ext()
     creates from the returned descriptor.
 
 @returns

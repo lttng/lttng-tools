@@ -45,16 +45,16 @@ enum lttng_reclaim_channel_memory_status {
 	/// Unsatisfied precondition.
 	LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_INVALID_PARAMETER = -2,
 
-	/// A memory reclamation request is already in progress for this channel.
+	/// A memory reclamation request is already in progress for this event record channel.
 	LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_RECLAMATION_IN_PROGRESS = -3,
 
-	/// Memory reclamation is not supported for this channel.
+	/// Memory reclamation is not supported for this event record channel.
 	LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_NOT_SUPPORTED = -4,
 
 	/// Session not found.
 	LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_SESSION_NOT_FOUND = -5,
 
-	/// Channel not found.
+	/// Event record channel not found.
 	LTTNG_RECLAIM_CHANNEL_MEMORY_STATUS_CHANNEL_NOT_FOUND = -6,
 };
 
@@ -89,20 +89,20 @@ enum lttng_reclaim_handle_status {
     tracing domain \lt_p{domain}.
 
 This function requests LTTng to immediately reclaim memory which the
-buffers of the targeted channel use in order to free space.
+buffers of the targeted event record channel use in order to free space.
 
-This function only works with a user space channel.
+This function only works with a user space event record channel.
 
 Use \lt_p{*handle} to wait for the completion of the memory reclaim
 operation and to fetch its result.
 
 @param[in] session_name
-    Name of the recording session which contains the targeted channel.
+    Name of the recording session which contains the targeted event record channel.
 @param[in] channel_name
-    Name of the targeted channel within \lt_p{session_name} from which
+    Name of the targeted event record channel within \lt_p{session_name} from which
     to reclaim memory.
 @param[in] domain
-    Tracing domain of the targeted channel.
+    Tracing domain of the targeted event record channel.
 @param[in] older_than_us
     @parblock
     Minimum age (µs) of buffered data to consider to reclaim memory.
@@ -147,11 +147,11 @@ lttng_reclaim_channel_memory(const char *session_name,
 
 /*!
 @brief
-    Destroys the channel memory reclaim operation handle \lt_p{handle}.
+    Destroys the event record channel memory reclaim operation handle \lt_p{handle}.
 
 @param[in] handle
     @parblock
-    Channel memory reclaim operation handle to destroy.
+    Event record channel memory reclaim operation handle to destroy.
 
     May be \c NULL.
     @endparblock
@@ -160,7 +160,7 @@ LTTNG_EXPORT extern void lttng_reclaim_handle_destroy(struct lttng_reclaim_handl
 
 /*!
 @brief
-    Waits for the channel memory reclaim operation identified by
+    Waits for the event record channel memory reclaim operation identified by
     \lt_p{handle} to complete.
 
 If this function returns #LTTNG_RECLAIM_HANDLE_STATUS_COMPLETED, then
@@ -170,7 +170,7 @@ use lttng_reclaim_handle_get_reclaimed_subbuffer_count() to get
 the reclaimed count.
 
 @param[in] handle
-    Channel memory reclaim operation handle of which to wait for
+    Event record channel memory reclaim operation handle of which to wait for
     completion.
 @param[in] timeout_ms
     Maximum time (milliseconds) to wait for the completion of the
@@ -201,14 +201,14 @@ lttng_reclaim_handle_wait_for_completion(struct lttng_reclaim_handle *handle, in
 /*!
 @brief
     Sets \lt_p{*count} to the total number of sub-buffers
-    successfully reclaimed by the channel memory reclaim operation
+    successfully reclaimed by the event record channel memory reclaim operation
     identified by \lt_p{handle}.
 
 The reclaimed sub-buffer count is available immediately after
 lttng_reclaim_channel_memory() returns successfully.
 
 @param[in] handle
-    Handle of the channel memory reclaim operation from which to get
+    Handle of the event record channel memory reclaim operation from which to get
     the number of reclaimed sub-buffers.
 @param[out] count
     <strong>On success</strong>, this function sets
@@ -231,7 +231,7 @@ lttng_reclaim_handle_get_reclaimed_subbuffer_count(const struct lttng_reclaim_ha
 /*!
 @brief
     Sets \lt_p{*count} to the total number of sub-buffers
-    pending reclamation from the channel memory reclaim operation
+    pending reclamation from the event record channel memory reclaim operation
     identified by \lt_p{handle}.
 
 Pending sub-buffers are sub-buffers that met the reclamation criteria but
@@ -243,7 +243,7 @@ The pending sub-buffer count is available immediately after
 lttng_reclaim_channel_memory() returns successfully.
 
 @param[in] handle
-    Handle of the channel memory reclaim operation from which to get
+    Handle of the event record channel memory reclaim operation from which to get
     the number of pending sub-buffers.
 @param[out] count
     <strong>On success</strong>, this function sets

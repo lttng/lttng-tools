@@ -34,14 +34,22 @@ struct lttng_condition;
 Get the type of a trigger condition with lttng_condition_get_type().
 */
 enum lttng_condition_type {
-	/// \ref api_trigger_cond_session_consumed_size "Recording session consumed data size
-	/// becomes greater than".
+	/*!
+	\ref api_trigger_cond_session_consumed_size "Recording session consumed
+	data size becomes greater than".
+	*/
 	LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE = 100,
 
-	/// \ref api_trigger_cond_buffer_usage "Channel buffer usage becomes greater than".
+	/*!
+	\ref api_trigger_cond_buffer_usage "Event record channel buffer usage
+	becomes greater than".
+	*/
 	LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH = 101,
 
-	/// \ref api_trigger_cond_buffer_usage "Channel buffer usage becomes less than".
+	/*!
+	\ref api_trigger_cond_buffer_usage "Event record channel buffer usage
+	becomes less than".
+	*/
 	LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW = 102,
 
 	/// \ref api_trigger_cond_rotation "Recording session rotation starts".

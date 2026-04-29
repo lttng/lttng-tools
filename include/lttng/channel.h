@@ -23,7 +23,7 @@ extern "C" {
 /*!
 @brief
     \ref api-channel-buf-alloc-policy "Buffer allocation policy"
-    of a channel.
+    of an event record channel.
 
 @ingroup api_channel
 */
@@ -31,14 +31,14 @@ enum lttng_channel_allocation_policy {
 	/// \ref api-channel-per-cpu-buf "Per-CPU buffering"
 	LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU = 0,
 
-	/// \ref api-channel-per-chan-buf "Per-channel buffering"
+	/// \ref api-channel-per-chan-buf "Per-event-record-channel buffering"
 	LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CHANNEL = 1,
 };
 
 /*!
 @brief
     \ref api-channel-buf-prealloc-policy "Buffer preallocation policy"
-    of a channel.
+    of an event record channel.
 
 @ingroup api_channel
 */
@@ -76,7 +76,7 @@ enum lttng_channel_status {
 
 /*!
 @brief
-    Attributes of a \link #lttng_channel channel summary\endlink.
+    Attributes of an \link #lttng_channel event record channel summary\endlink.
 
 @ingroup api_channel
 
@@ -118,17 +118,17 @@ struct lttng_channel_attr {
 	  <dt>0
 	  <dd>
 	    The \ref api-channel-er-loss-mode "event record loss mode"
-	    of the channel is
+	    of the event record channel is
 	    <em>\ref api-channel-discard-mode "discard"</em>.
 
 	  <dt>1
 	  <dd>
-	    The event record loss mode of the channel is
+	    The event record loss mode of the event record channel is
 	    <em>\ref api-channel-overwrite-mode "overwrite"</em>.
 
 	  <dt>-1
 	  <dd>
-	    The event record loss mode of the channel is the default
+	    The event record loss mode of the event record channel is the default
 	    value of its \lt_obj_session:
 
 	    <dl>
@@ -161,7 +161,7 @@ struct lttng_channel_attr {
 	    if applicable.
 
 	Only available if the \lt_obj_session which
-	owns this channel is \em not in
+	owns this event record channel is \em not in
 	\ref api-session-live-mode "live mode".
 	*/
 	unsigned int switch_timer_interval; /* usec */
@@ -169,7 +169,7 @@ struct lttng_channel_attr {
 	/// \ref api-channel-read-timer "Read timer period" (µs).
 	unsigned int read_timer_interval; /* usec */
 
-	/// Output type (Linux kernel channel).
+	/// Output type (Linux kernel event record channel).
 	enum lttng_event_output output; /* splice, mmap */
 
 	/* LTTng 2.1 padding limit */
@@ -199,10 +199,10 @@ struct lttng_channel_attr {
 	\lt_p{live_timer_period} parameter of
 	lttng_session_descriptor_live_network_create() when you create
 	the descriptor of a \ref api-session-live-mode "live" recording
-	session to contain the channel to create.
+	session to contain the event record channel to create.
 
 	Only available if the \lt_obj_session which
-	owns this channel is in \ref api-session-live-mode "live mode".
+	owns this event record channel is in \ref api-session-live-mode "live mode".
 	*/
 	unsigned int live_timer_interval; /* usec */
 
@@ -229,12 +229,12 @@ struct lttng_channel_attr {
 
 @ingroup api_channel
 
-The purpose of such a structure is to provide information about a
-channel itself, but not about its \lt_obj_rers
+The purpose of such a structure is to provide information about an
+event record channel itself, but not about its \lt_obj_rers
 (use lttng_list_events() for this).
 
 lttng_list_channels() sets a pointer to an array of all the
-channel summaries of a given \lt_obj_session and \lt_obj_domain.
+event record channel summaries of a given \lt_obj_session and \lt_obj_domain.
 
 Most properties are part of the lttng_channel::attr member, but the
 following ones have their own dedicated accessors:
@@ -261,9 +261,9 @@ following ones have their own dedicated accessors:
     - lttng_channel_set_blocking_timeout()
 </dl>
 
-Create a channel summary with lttng_channel_create().
+Create an event record channel summary with lttng_channel_create().
 
-Destroy a channel summary with lttng_channel_destroy().
+Destroy an event record channel summary with lttng_channel_destroy().
 */
 struct lttng_channel {
 	/// Name.
@@ -274,9 +274,9 @@ struct lttng_channel {
 	    1 if this \lt_obj_channel is enabled, or 0 otherwise.
 
 	@sa lttng_enable_channel() --
-	    Creates or enables a channel.
+	    Creates or enables an event record channel.
 	@sa lttng_disable_channel() --
-	    Disables a channel.
+	    Disables an event record channel.
 	*/
 	uint32_t enabled;
 
@@ -288,7 +288,7 @@ struct lttng_channel {
 
 /*!
 @brief
-    Creates and returns a \lt_obj_channel summary,
+    Creates and returns an \lt_obj_channel summary,
     setting the members of its lttng_channel::attr member to default
     values according to the \lt_obj_domain summary \lt_p{domain}.
 
@@ -300,11 +300,11 @@ This function internally calls
 lttng_channel_set_default_attr(domain, &channel->attr);
 @endcode
 
-where \c channel is the returned channel summary.
+where \c channel is the returned event record channel summary.
 
-After you create a channel summary with this function, you can modify
+After you create an event record channel summary with this function, you can modify
 its \ref api-channel-channel-props "properties" and call
-lttng_enable_channel() to create and enable a channel.
+lttng_enable_channel() to create and enable an event record channel.
 
 @param[in] domain
     Tracing domain summary to consider to set the members of the
@@ -313,16 +313,16 @@ lttng_enable_channel() to create and enable a channel.
 
 @returns
     @parblock
-    New channel summary.
+    New event record channel summary.
 
-    Destroy the returned channel summary with lttng_channel_destroy().
+    Destroy the returned event record channel summary with lttng_channel_destroy().
     @endparblock
 
 @pre
     @lt_pre_not_null{domain}
 
 @sa lttng_channel_destroy() --
-    Destroys a channel summary.
+    Destroys an event record channel summary.
 */
 LTTNG_EXPORT extern struct lttng_channel *lttng_channel_create(struct lttng_domain *domain);
 
@@ -334,13 +334,13 @@ LTTNG_EXPORT extern struct lttng_channel *lttng_channel_create(struct lttng_doma
 
 @note
     This function doesn't destroy the \lt_obj_channel
-    which \lt_p{channel} summarizes: the only way to destroy a channel
+    which \lt_p{channel} summarizes: the only way to destroy an event record channel
     is to \link lttng_destroy_session_ext() destroy its recording
     session\endlink.
 
 @param[in] channel
     @parblock
-    Channel summary to destroy.
+    Event record channel summary to destroy.
 
     May be \c NULL.
     @endparblock
@@ -356,12 +356,12 @@ LTTNG_EXPORT extern void lttng_channel_destroy(struct lttng_channel *channel);
 
 @param[in] handle
     Recording session handle which contains the name of the recording
-    session and the summary of the \lt_obj_domain which own the channels
+    session and the summary of the \lt_obj_domain which own the event record channels
     of which to get the summaries.
 @param[out] channels
     @parblock
     <strong>On success</strong>, this function sets \lt_p{*channels} to
-    the summaries of the channels.
+    the summaries of the event record channels.
 
     Free \lt_p{*channels} with <code>free()</code>.
     @endparblock
@@ -384,7 +384,7 @@ LTTNG_EXPORT extern int lttng_list_channels(const struct lttng_handle *handle,
 
 /*!
 @brief
-    Creates or enables a \lt_obj_channel summarized by \lt_p{channel}
+    Creates or enables an \lt_obj_channel summarized by \lt_p{channel}
     within the recording session handle \lt_p{handle}.
 
 @ingroup api_channel
@@ -394,26 +394,26 @@ This function, depending on \lt_p{channel->name}:
 <dl>
   <dt>
     \lt_p{channel-&gt;name} names an existing
-    channel within the \lt_obj_session and
+    event record channel within the \lt_obj_session and
     \lt_obj_domain of \lt_p{handle}
   <dd>
-    Enables the existing channel.
+    Enables the existing event record channel.
 
     In this case, this function only uses \lt_p{channel->name}, ignoring
     all the other properties of \lt_p{channel}.
 
   <dt>Otherwise
   <dd>
-    Creates and enables a new channel, considering all the properties of
+    Creates and enables a new event record channel, considering all the properties of
     \lt_p{channel}.
 </dl>
 
 @param[in] handle
     Recording session handle which contains the name of the
     recording session and the summary of the \lt_obj_domain which own
-    the channel to create or enable.
+    the event record channel to create or enable.
 @param[in] channel
-    Summary of the channel to create or enable.
+    Summary of the event record channel to create or enable.
 
 @returns
     <dl>
@@ -432,20 +432,20 @@ This function, depending on \lt_p{channel->name}:
     - \lt_p{handle->domain} is valid as per the documentation of
       #lttng_domain.
     @lt_pre_not_null{channel}
-    - <strong>If this function must create a new channel</strong>, then
+    - <strong>If this function must create a new event record channel</strong>, then
       \lt_p{channel->attr} is
       \ref api-channel-valid-attr-struct "valid".
-    - <strong>If this function must create a new channel</strong>, then
+    - <strong>If this function must create a new event record channel</strong>, then
       \lt_p{handle->session_name} names a
       \lt_obj_session which never became
       \link lttng_session::enabled active\endlink (started) since its
       creation.
-    - <strong>If this function must create a new channel</strong>, then
-      all the existing channels of \lt_p{handle} have the same
+    - <strong>If this function must create a new event record channel</strong>, then
+      all the existing event record channels of \lt_p{handle} have the same
       \ref api-channel-buf-ownership-model "buffer ownership model".
 
 @sa lttng_disable_channel() --
-    Disables a channel.
+    Disables an event record channel.
 */
 LTTNG_EXPORT extern int lttng_enable_channel(struct lttng_handle *handle,
 					     struct lttng_channel *channel);
@@ -460,9 +460,9 @@ LTTNG_EXPORT extern int lttng_enable_channel(struct lttng_handle *handle,
 @param[in] handle
     Recording session handle which contains the name of the
     recording session and the summary of the \lt_obj_domain which own
-    the channel to disable.
+    the event record channel to disable.
 @param[in] channel_name
-    Name of the channel to disable within \lt_p{handle}.
+    Name of the event record channel to disable within \lt_p{handle}.
 
 @returns
     <dl>
@@ -481,11 +481,11 @@ LTTNG_EXPORT extern int lttng_enable_channel(struct lttng_handle *handle,
     - \lt_p{handle->domain} is valid as per the documentation of
       #lttng_domain.
     @lt_pre_not_null{channel_name}
-    - \lt_p{channel_name} names an existing channel within the recording
+    - \lt_p{channel_name} names an existing event record channel within the recording
       session and tracing domain of \lt_p{handle}.
 
 @sa lttng_enable_channel() --
-    Creates or enables a channel.
+    Creates or enables an event record channel.
 */
 LTTNG_EXPORT extern int lttng_disable_channel(struct lttng_handle *handle,
 					      const char *channel_name);
@@ -523,14 +523,14 @@ In \ref api-channel-discard-mode "discard mode", LTTng discards an event
 record when there's no sub-buffer left to write it.
 
 lttng_list_channels() sets a pointer to an array of all the
-channel summaries of a given \lt_obj_session and \lt_obj_domain.
+event record channel summaries of a given \lt_obj_session and \lt_obj_domain.
 
 @param[in] channel
-    Summary of the channel of which to get the number of discarded
+    Summary of the event record channel of which to get the number of discarded
     event records.
 @param[out] count
     <strong>On success</strong>, this function sets \lt_p{*count} to
-    the number of discarded event records of the channel summarized
+    the number of discarded event records of the event record channel summarized
     by \lt_p{channel}.
 
 @returns
@@ -550,7 +550,7 @@ channel summaries of a given \lt_obj_session and \lt_obj_domain.
     @lt_pre_not_null{count}
 
 @sa lttng_channel_get_lost_packet_count() --
-    Returns the number of discarded packets (sub-buffers) of a channel.
+    Returns the number of discarded packets (sub-buffers) of an event record channel.
 */
 LTTNG_EXPORT extern int lttng_channel_get_discarded_event_count(const struct lttng_channel *channel,
 								uint64_t *count);
@@ -566,14 +566,14 @@ In \ref api-channel-overwrite-mode "overwrite mode", LTTng discards a
 whole sub-buffer when there's no sub-buffer left to record an event.
 
 lttng_list_channels() sets a pointer to an array of all the
-channel summaries of a given \lt_obj_session and \lt_obj_domain.
+event record channel summaries of a given \lt_obj_session and \lt_obj_domain.
 
 @param[in] channel
-    Summary of the channel of which to get the number of discarded
+    Summary of the event record channel of which to get the number of discarded
     packets.
 @param[out] count
     <strong>On success</strong>, this function sets \lt_p{*count} to
-    the number of discarded packets of the channel summarized
+    the number of discarded packets of the event record channel summarized
     by \lt_p{channel}.
 
 @returns
@@ -593,7 +593,7 @@ channel summaries of a given \lt_obj_session and \lt_obj_domain.
     @lt_pre_not_null{count}
 
 @sa lttng_channel_get_discarded_event_count() --
-    Returns the number of discarded event records of a channel.
+    Returns the number of discarded event records of an event record channel.
 */
 LTTNG_EXPORT extern int lttng_channel_get_lost_packet_count(const struct lttng_channel *channel,
 							    uint64_t *count);
@@ -607,7 +607,7 @@ LTTNG_EXPORT extern int lttng_channel_get_lost_packet_count(const struct lttng_c
 @ingroup api_channel
 
 @param[in] channel
-    Summary of the channel of which to get the monitor timer period.
+    Summary of the event record channel of which to get the monitor timer period.
 @param[out] period
     <strong>On success</strong>, this function sets \lt_p{*period} to
     the monitor timer period (µs) property of \lt_p{channel}.
@@ -626,7 +626,7 @@ LTTNG_EXPORT extern int lttng_channel_get_lost_packet_count(const struct lttng_c
     @lt_pre_not_null{period}
 
 @sa lttng_channel_set_monitor_timer_interval() --
-    Sets the monitor timer period property of a channel summary.
+    Sets the monitor timer period property of an event record channel summary.
 */
 LTTNG_EXPORT extern int
 lttng_channel_get_monitor_timer_interval(const struct lttng_channel *channel, uint64_t *period);
@@ -634,13 +634,13 @@ lttng_channel_get_monitor_timer_interval(const struct lttng_channel *channel, ui
 /*!
 @brief
     Sets the \ref api-channel-monitor-timer "monitor timer" period
-    property of the channel summary \lt_p{channel} to
+    property of the event record channel summary \lt_p{channel} to
     \lt_p{period}&nbsp;µs.
 
 @ingroup api_channel
 
 @param[in] channel
-    Channel summary of which to set the monitor timer period
+    Event record channel summary of which to set the monitor timer period
     to \lt_p{period}&nbsp;µs.
 @param[in] period
     Monitor timer period property to set.
@@ -658,7 +658,7 @@ lttng_channel_get_monitor_timer_interval(const struct lttng_channel *channel, ui
     @lt_pre_not_null{channel}
 
 @sa lttng_channel_get_monitor_timer_interval() --
-    Returns the monitor timer period property of a channel summary.
+    Returns the monitor timer period property of an event record channel summary.
 */
 LTTNG_EXPORT extern int lttng_channel_set_monitor_timer_interval(struct lttng_channel *channel,
 								 uint64_t period);
@@ -672,7 +672,7 @@ LTTNG_EXPORT extern int lttng_channel_set_monitor_timer_interval(struct lttng_ch
 @ingroup api_channel
 
 @param[in] channel
-    Summary of the channel of which to get the watchdog timer period.
+    Summary of the event record channel of which to get the watchdog timer period.
 @param[out] period
     <strong>On success</strong>, this function sets \lt_p{*period} to
     the watchdog timer period (µs) property of \lt_p{channel}.
@@ -689,7 +689,7 @@ LTTNG_EXPORT extern int lttng_channel_set_monitor_timer_interval(struct lttng_ch
     @lt_pre_not_null{period}
 
 @sa lttng_channel_get_watchdog_timer_interval() --
-    Returns the watchdog timer period property of a channel summary.
+    Returns the watchdog timer period property of an event record channel summary.
 */
 LTTNG_EXPORT extern enum lttng_channel_status
 lttng_channel_get_watchdog_timer_interval(const struct lttng_channel *channel, uint64_t *period);
@@ -697,13 +697,13 @@ lttng_channel_get_watchdog_timer_interval(const struct lttng_channel *channel, u
 /*!
 @brief
     Sets the \ref api-channel-watchdog-timer "watchdog timer" period
-    property of the channel summary \lt_p{channel} to
+    property of the event record channel summary \lt_p{channel} to
     \lt_p{period}&nbsp;µs.
 
 @ingroup api_channel
 
 @param[in] channel
-    Channel summary of which to set the watchdog timer period
+    Event record channel summary of which to set the watchdog timer period
     to \lt_p{period}&nbsp;µs.
 @param[in] period
     Watchdog timer period property to set.
@@ -720,7 +720,7 @@ lttng_channel_get_watchdog_timer_interval(const struct lttng_channel *channel, u
       of \lt_p{channel} is #LTTNG_BUFFER_PER_UID.
 
 @sa lttng_channel_set_watchdog_timer_interval() --
-    Sets the watchdog timer period property of a channel summary.
+    Sets the watchdog timer period property of an event record channel summary.
 */
 LTTNG_EXPORT extern enum lttng_channel_status
 lttng_channel_set_watchdog_timer_interval(struct lttng_channel *channel, uint64_t period);
@@ -734,10 +734,10 @@ lttng_channel_set_watchdog_timer_interval(struct lttng_channel *channel, uint64_
 @ingroup api_channel
 
 This property only applies to \link #LTTNG_DOMAIN_UST user space\endlink
-channels.
+event record channels.
 
 @param[in] channel
-    Summary of the channel of which to get the blocking timeout.
+    Summary of the event record channel of which to get the blocking timeout.
 @param[out] timeout
     @parblock
     <strong>On success</strong>, this function sets \lt_p{*timeout} to
@@ -774,7 +774,7 @@ channels.
     @lt_pre_not_null{timeout}
 
 @sa lttng_channel_set_blocking_timeout() --
-    Sets the blocking timeout property of a channel summary.
+    Sets the blocking timeout property of an event record channel summary.
 */
 LTTNG_EXPORT extern int lttng_channel_get_blocking_timeout(const struct lttng_channel *channel,
 							   int64_t *timeout);
@@ -782,16 +782,16 @@ LTTNG_EXPORT extern int lttng_channel_get_blocking_timeout(const struct lttng_ch
 /*!
 @brief
     Sets the \ref api-channel-blocking-timeout "blocking timeout"
-    property of the channel summary \lt_p{channel} to
+    property of the event record channel summary \lt_p{channel} to
     \lt_p{timeout}.
 
 @ingroup api_channel
 
 This property only applies to \link #LTTNG_DOMAIN_UST user space\endlink
-channels.
+event record channels.
 
 @param[in] channel
-    Channel summary of which to set the blocking timeout
+    Event record channel summary of which to set the blocking timeout
     to \lt_p{timeout}.
 @param[in] timeout
     @parblock
@@ -828,7 +828,7 @@ channels.
     - \lt_p{timeout}&nbsp;≥&nbsp;-1
 
 @sa lttng_channel_get_blocking_timeout() --
-    Returns the blocking timeout property of a channel summary.
+    Returns the blocking timeout property of an event record channel summary.
 */
 LTTNG_EXPORT extern int lttng_channel_set_blocking_timeout(struct lttng_channel *channel,
 							   int64_t timeout);
@@ -842,10 +842,10 @@ LTTNG_EXPORT extern int lttng_channel_set_blocking_timeout(struct lttng_channel 
 @ingroup api_channel
 
 This property only applies to \link #LTTNG_DOMAIN_UST user space\endlink
-channels.
+event record channels.
 
 @param[in] channel
-    Summary of the channel of which to get the buffer allocation policy.
+    Summary of the event record channel of which to get the buffer allocation policy.
 @param[out] policy
     <strong>On success</strong>, this function sets \lt_p{*policy} to
     the buffer allocation policy of \lt_p{channel}.
@@ -861,7 +861,7 @@ channels.
     @lt_pre_not_null{policy}
 
 @sa lttng_channel_set_allocation_policy() --
-    Sets the buffer allocation policy property of a channel summary.
+    Sets the buffer allocation policy property of an event record channel summary.
 */
 LTTNG_EXPORT extern enum lttng_error_code
 lttng_channel_get_allocation_policy(const struct lttng_channel *channel,
@@ -870,16 +870,16 @@ lttng_channel_get_allocation_policy(const struct lttng_channel *channel,
 /*!
 @brief
     Sets the \ref api-channel-buf-alloc-policy
-    "buffer allocation policy" property of the channel
+    "buffer allocation policy" property of the event record channel
     summary \lt_p{channel} to \lt_p{policy}.
 
 @ingroup api_channel
 
 This property only applies to \link #LTTNG_DOMAIN_UST user space\endlink
-channels.
+event record channels.
 
 @param[in] channel
-    Channel summary of which to set the buffer allocation policy
+    Event record channel summary of which to set the buffer allocation policy
     to \lt_p{policy}.
 @param[in] policy
     Buffer allocation policy to set.
@@ -894,7 +894,7 @@ channels.
     - The \lt_obj_domain type of \lt_p{channel} is #LTTNG_DOMAIN_UST.
 
 @sa lttng_channel_get_allocation_policy() --
-    Returns the buffer allocation policy property of a channel summary.
+    Returns the buffer allocation policy property of an event record channel summary.
 */
 LTTNG_EXPORT extern enum lttng_error_code
 lttng_channel_set_allocation_policy(struct lttng_channel *channel,
@@ -909,10 +909,10 @@ lttng_channel_set_allocation_policy(struct lttng_channel *channel,
 @ingroup api_channel
 
 This property only applies to \link #LTTNG_DOMAIN_UST user space\endlink
-channels.
+event record channels.
 
 @param[in] channel
-    Summary of the channel of which to get the
+    Summary of the event record channel of which to get the
     buffer preallocation policy.
 @param[out] policy
     <strong>On success</strong>, this function sets \lt_p{*policy} to
@@ -936,15 +936,15 @@ lttng_channel_get_preallocation_policy(const struct lttng_channel *channel,
 @brief
     Sets the
     \ref api-channel-buf-prealloc-policy "buffer preallocation policy"
-    property of the channel summary \lt_p{channel} to \lt_p{policy}.
+    property of the event record channel summary \lt_p{channel} to \lt_p{policy}.
 
 @ingroup api_channel
 
 This property only applies to \link #LTTNG_DOMAIN_UST user space\endlink
-channels.
+event record channels.
 
 @param[in] channel
-    Channel summary of which to set the buffer preallocation policy to
+    Event record channel summary of which to set the buffer preallocation policy to
     \lt_p{policy}.
 @param[in] policy
     Buffer preallocation policy to set.
@@ -966,15 +966,15 @@ lttng_channel_set_preallocation_policy(struct lttng_channel *channel,
 @brief
     Sets \lt_p{*older_than_us} to the age threshold (µs) of the
     \ref api-channel-auto-reclaim "automatic memory reclaim"
-    of the channel summary \lt_p{channel}.
+    of the event record channel summary \lt_p{channel}.
 
 @ingroup api_channel
 
 This property only applies to \link #LTTNG_DOMAIN_UST user space\endlink
-channels.
+event record channels.
 
 @param[in] channel
-    Summary of the channel of which to get the automatic memory
+    Summary of the event record channel of which to get the automatic memory
     reclaim maximal age.
 @param[out] older_than_us
     <strong>On success</strong>, this function sets
@@ -1008,10 +1008,10 @@ lttng_channel_get_automatic_memory_reclamation_policy(const struct lttng_channel
 @ingroup api_channel
 
 This property only applies to \link #LTTNG_DOMAIN_UST user space\endlink
-channels.
+event record channels.
 
 @param[in] channel
-    Channel summary of which to set the automatic memory reclaim policy.
+    Event record channel summary of which to set the automatic memory reclaim policy.
 @param[in] older_than_us
     Minimum age (µs) of buffered data to consider to reclaim memory.
 

@@ -377,7 +377,7 @@ enum lttng_loglevel_python {
 
 /*!
 @brief
-    Channel output type.
+    Event record channel output type.
 
 @ingroup api_channel
 */
@@ -1606,11 +1606,11 @@ struct lttng_event_field {
 @param[in] handle
     Recording session handle which contains the name of the
     recording session and the summary
-    of the \lt_obj_domain which own the channel (named
+    of the \lt_obj_domain which own the event record channel (named
     \lt_p{channel_name}) of which to get the recording event rule
     descriptors.
 @param[in] channel_name
-    Name of the channel, within \lt_p{handle}, of which to get all the
+    Name of the event record channel, within \lt_p{handle}, of which to get all the
     recording event rule descriptors.
 @param[out] event_rules
     @parblock
@@ -1632,7 +1632,7 @@ struct lttng_event_field {
      - \lt_p{handle->domain} is valid as per the documentation of
        #lttng_domain.
      @lt_pre_not_null{channel_name}
-     - \lt_p{channel_name} names an existing channel within the recording
+     - \lt_p{channel_name} names an existing event record channel within the recording
        session and tracing domain of \lt_p{handle}.
      @lt_pre_not_null{event_rules}
 */
@@ -2032,8 +2032,8 @@ LTTNG_EXPORT extern int lttng_list_syscalls(struct lttng_event **descrs);
 /*!
 @brief
     Makes the future \ref api_rer "event records" of the
-    \lt_obj_channel named \lt_p{channel_name} (or of a default channel
-    or all the channels if \c NULL) within the
+    \lt_obj_channel named \lt_p{channel_name} (or of a default event record channel
+    or all the event record channels if \c NULL) within the
     \lt_obj_session and \lt_obj_domain of \lt_p{handle}
     have a context field described by \lt_p{context_field_descriptor}.
 
@@ -2042,34 +2042,34 @@ LTTNG_EXPORT extern int lttng_list_syscalls(struct lttng_event **descrs);
 Context values (for example, the ID of the current process, the
 instruction pointer, or the hostname) are always available during
 tracing. This function makes LTTng record a specific context value as a
-field for each future event record of the selected channel(s).
+field for each future event record of the selected event record channel(s).
 
 @param[in] handle
     Recording session handle which contains the name of the recording
     session and the summary of the \lt_obj_domain which own the
-    channel(s) to select.
+    event record channel(s) to select.
 @param[in] context_field_descriptor
     Descriptor of the context field to add to each event record of
-    the selected channel(s).
+    the selected event record channel(s).
 @param[in] event_name
     Unused: must be \c NULL.
 @param[in] channel_name
     @parblock
-    Name of the channel to select.
+    Name of the event record channel to select.
 
     If \c NULL, then:
 
     <dl>
       <dt>
 	If the recording session and tracing domain of
-	\lt_p{handle} have no channels
+	\lt_p{handle} have no event record channels
       <dd>
-	LTTng creates a new, default channel named \c channel0 within
-	\lt_p{handle} which becomes the selected channel.
+	LTTng creates a new, default event record channel named \c channel0 within
+	\lt_p{handle} which becomes the selected event record channel.
 
       <dt>Otherwise
       <dd>
-	LTTng selects all the channels of \lt_p{handle}.
+	LTTng selects all the event record channels of \lt_p{handle}.
     </dl>
     @endparblock
 
@@ -2095,7 +2095,7 @@ field for each future event record of the selected channel(s).
       documentation of #lttng_event_context.
     - \lt_p{event_name} is \c NULL.
     - <strong>If not \c NULL</strong>, \lt_p{channel_name} names an
-      existing channel within the recording session and tracing domain
+      existing event record channel within the recording session and tracing domain
       of \lt_p{handle}.
 */
 LTTNG_EXPORT extern int lttng_add_context(struct lttng_handle *handle,
@@ -2246,7 +2246,7 @@ LTTNG_EXPORT extern int lttng_enable_event_with_filter(struct lttng_handle *hand
     \ref api-rer-conds-event-name "event name" exclusion patterns
     \lt_p{event_name_exclusions}, within
     the \lt_obj_channel named \lt_p{channel_name}
-    (or within a default channel if \c NULL) within the recording
+    (or within a default event record channel if \c NULL) within the recording
     session handle \lt_p{handle}.
 
 @ingroup api_rer
@@ -2260,14 +2260,14 @@ as well as on \lt_p{filter_expr} and \lt_p{event_name_exclusions}:
 <dl>
   <dt>
     The conditions and parameters describe an existing recording event
-    rule within the selected channel
+    rule within the selected event record channel
   <dd>
     Enables the existing recording event rule.
 
   <dt>Otherwise
   <dd>
     Creates and enables a new recording event rule within the
-    selected channel.
+    selected event record channel.
 </dl>
 
 If \lt_p{event_rule->type} is #LTTNG_EVENT_ALL and
@@ -2279,7 +2279,7 @@ type.
 @param[in] handle
     Recording session handle which contains the name of the recording
     session and the summary of the \lt_obj_domain which own the selected
-    channel.
+    event record channel.
 @param[in] event_rule
     @parblock
     Descriptor of the recording event rule to create or enable.
@@ -2295,12 +2295,12 @@ type.
     @endparblock
 @param[in] channel_name
     @parblock
-    Name of the channel, within \lt_p{handle}, to select (that is,
+    Name of the event record channel, within \lt_p{handle}, to select (that is,
     containing the recording event rule to create or enable).
 
-    If \c NULL, then this function uses \c channel0. If no channel named
+    If \c NULL, then this function uses \c channel0. If no event record channel named
     \c channel0 within \lt_p{handle} exists, then LTTng creates a new,
-    default channel named as such and selects it before it creates the
+    default event record channel named as such and selects it before it creates the
     recording event rule described by \lt_p{event_rule}.
     @endparblock
 @param[in] filter_expr
@@ -2359,11 +2359,11 @@ type.
     - <strong>If this function must enable an existing recording event
       rule</strong>, then the recording event rule to enable is disabled.
     - <strong>If not \c NULL</strong>, \lt_p{channel_name} names an
-      existing channel within the recording session and tracing
+      existing event record channel within the recording session and tracing
       domain of \lt_p{handle}.
     - <strong>If \lt_p{channel_name} is \c NULL</strong>, then
-      \lt_p{handle} contains either no channels or a default
-      channel named \c channel0.
+      \lt_p{handle} contains either no event record channels or a default
+      event record channel named \c channel0.
     - <strong>If not \c NULL</strong>, \lt_p{filter_expr} is a valid
       event payload and context filter expression.
     - \lt_p{event_name_exclusion_count}&nbsp;≥&nbsp;0.
@@ -2436,7 +2436,7 @@ LTTNG_EXPORT extern int lttng_disable_event(struct lttng_handle *handle,
     \ref api-rer-conds-inst-pt-type "instrumentation point type" and
     \ref api-rer-conds-event-name "event name" condition within the
     \lt_obj_channel named \lt_p{channel_name}
-    (or within a default channel if \c NULL) within the recording
+    (or within a default event record channel if \c NULL) within the recording
     session handle \lt_p{handle}.
 
 @ingroup api_rer
@@ -2453,7 +2453,7 @@ Depending on \lt_p{event_rule->name}, this function:
       <dd>
 	Disables \em all the recording event rules of which the event
 	name pattern is exactly \lt_p{event_rule->name} within the
-	selected channel.
+	selected event record channel.
 
       <dt>Otherwise
       <dd>
@@ -2461,7 +2461,7 @@ Depending on \lt_p{event_rule->name}, this function:
 	instrumentation point type is
 	\lt_p{event_rule->type} and the event
 	name pattern is exactly \lt_p{event_rule->name} within the
-	selected channel.
+	selected event record channel.
 
 	Only supported when \lt_p{handle->domain.type} is
 	#LTTNG_DOMAIN_KERNEL.
@@ -2475,14 +2475,14 @@ Depending on \lt_p{event_rule->name}, this function:
       <dt>#LTTNG_EVENT_ALL
       <dd>
 	Disables \em all the recording event rules within the selected
-	channel.
+	event record channel.
 
       <dt>Otherwise
       <dd>
 	Disables all the recording event rules of which the
 	instrumentation point type is
 	\lt_p{event_rule->type} within the
-	selected channel.
+	selected event record channel.
 
 	Only supported when \lt_p{handle->domain.type} is
 	#LTTNG_DOMAIN_KERNEL.
@@ -2516,16 +2516,16 @@ event_rule.loglevel = -1;
 @param[in] handle
     Recording session handle which contains the name of the recording
     session and the summary of the \lt_obj_domain which own the selected
-    channel.
+    event record channel.
 @param[in] event_rule
     @parblock
     Recording event rule descriptor which contains the
     instrumentation point type and event name conditions to consider
-    to disable recording event rules within the selected channel.
+    to disable recording event rules within the selected event record channel.
     @endparblock
 @param[in] channel_name
     @parblock
-    Name of the channel, within \lt_p{handle}, to select (that is,
+    Name of the event record channel, within \lt_p{handle}, to select (that is,
     containing the recording event rules to disable).
 
     If \c NULL, then this function uses \c channel0.
@@ -2556,16 +2556,16 @@ event_rule.loglevel = -1;
     - <strong>If not #LTTNG_EVENT_ALL</strong>, then
       \lt_p{event_rule->type} is the instrumentation point type of at
       least one Linux kernel recording event rule within the selected
-      channel.
+      event record channel.
     - <strong>If not empty</strong>, then \lt_p{event_rule->name} is the
       exact event name pattern of at least one recording event rule
-      within the selected channel.
+      within the selected event record channel.
     - The recording event rules to disable are enabled.
     - <strong>If not \c NULL</strong>, then \lt_p{channel_name} names an
-      existing channel within the recording session and tracing
+      existing event record channel within the recording session and tracing
       domain of \lt_p{handle}.
     - <strong>If \lt_p{channel_name} is \c NULL</strong>, then the
-      channel named \c channel0 exists within the recording session and
+      event record channel named \c channel0 exists within the recording session and
       tracing domain of \lt_p{handle}.
 
 @sa lttng_disable_event() --
