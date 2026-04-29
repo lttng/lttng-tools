@@ -18,8 +18,10 @@ namespace event_notifier_error_accounting {
 tracer_token_index_table::~tracer_token_index_table()
 {
 	if (!_token_to_index.empty()) {
-		WARN("Destroying tracer token index table with %zu indices still in use",
-		     _token_to_index.size());
+		WARN_FMT(
+			"Destroying tracer token index table with indices still in use: in_use_count={}, index_count={}",
+			_token_to_index.size(),
+			_index_count);
 	}
 }
 
@@ -71,27 +73,6 @@ bool tracer_token_index_table::release(std::uint64_t tracer_token)
 } /* namespace sessiond */
 } /* namespace lttng */
 
-void get_trigger_info_for_log(const struct lttng_trigger *trigger,
-			      const char **trigger_name,
-			      uid_t *trigger_owner_uid)
-{
-	enum lttng_trigger_status trigger_status;
-
-	trigger_status = lttng_trigger_get_name(trigger, trigger_name);
-	switch (trigger_status) {
-	case LTTNG_TRIGGER_STATUS_OK:
-		break;
-	case LTTNG_TRIGGER_STATUS_UNSET:
-		*trigger_name = "(anonymous)";
-		break;
-	default:
-		abort();
-	}
-
-	trigger_status = lttng_trigger_get_owner_uid(trigger, trigger_owner_uid);
-	LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
-}
-
 const char *error_accounting_status_str(enum event_notifier_error_accounting_status status)
 {
 	switch (status) {
@@ -107,6 +88,8 @@ const char *error_accounting_status_str(enum event_notifier_error_accounting_sta
 		return "NO_INDEX_AVAILABLE";
 	case EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_APP_DEAD:
 		return "APP_DEAD";
+	case EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_UNSUPPORTED:
+		return "UNSUPPORTED";
 	default:
 		abort();
 	}

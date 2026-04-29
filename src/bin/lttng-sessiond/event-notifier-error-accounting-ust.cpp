@@ -85,6 +85,7 @@ void drop_uid_map_group_entry_if_unused(uid_t uid)
 	}
 
 	if (it->second->attached_app_count == 0 && registered_event_notifier_count == 0) {
+		DBG_FMT("Dropping unused UST UID map group entry: uid={}", uid);
 		uid_map_groups.erase(it);
 	}
 }
@@ -102,7 +103,13 @@ eea_details::ust_uid_map_group_entry& acquire_uid_entry(uid_t uid)
 	const auto it = uid_map_groups.find(uid);
 	if (it != uid_map_groups.end()) {
 		entry = it->second.get();
+		DBG_FMT("Reusing existing UST UID map group entry: uid={}, attached_app_count={}",
+			uid,
+			entry->attached_app_count);
 	} else {
+		DBG_FMT("Creating new UST UID map group entry: uid={}, configuration={}",
+			uid,
+			*default_ust_config);
 		auto new_entry = lttng::make_unique<eea_details::ust_uid_map_group_entry>(
 			uid,
 			lttng::sessiond::ust::map_group::create_from_config(*default_ust_config));
@@ -129,6 +136,10 @@ uid_entry_reference::~uid_entry_reference()
 {
 	const std::lock_guard<std::mutex> guard(accounting_lock);
 	_entry.attached_app_count--;
+	DBG_FMT("Releasing UST UID map group entry reference: uid={}, attached_app_count={}, registered_event_notifier_count={}",
+		_uid,
+		_entry.attached_app_count,
+		registered_event_notifier_count);
 	drop_uid_map_group_entry_if_unused(_uid);
 }
 
@@ -184,8 +195,12 @@ enum event_notifier_error_accounting_status
 event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app)
 {
 	if (!ust_app_supports_counters(app)) {
+		DBG_FMT("Skipping event notifier error accounting registration: app does not support counters: app={}",
+			*app);
 		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_UNSUPPORTED;
 	}
+
+	DBG_FMT("Registering app for event notifier error accounting: app={}", *app);
 
 	/*
 	 * Take the reference directly into the app's storage so the
@@ -196,11 +211,9 @@ event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app)
 	try {
 		app->event_notifier_group.accounting_reference.emplace(app->uid);
 	} catch (const std::exception& ex) {
-		ERR("Failed to create UID map group entry: uid=%d, pid=%d, app='%s', error: %s",
-		    (int) app->uid,
-		    (int) app->pid,
-		    app->name.c_str(),
-		    ex.what());
+		ERR_FMT("Failed to create UID map group entry: app={}, error=`{}`",
+			*app,
+			ex.what());
 		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
 	}
 
@@ -213,22 +226,18 @@ event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app)
 	try {
 		new_counter = entry.group.duplicate_app_counter_handle();
 	} catch (const std::exception& ex) {
-		ERR("Failed to duplicate UST counter object: uid=%d, pid=%d, app='%s', error: %s",
-		    (int) app->uid,
-		    (int) app->pid,
-		    app->name.c_str(),
-		    ex.what());
+		ERR_FMT("Failed to duplicate UST counter object: app={}, error=`{}`",
+			*app,
+			ex.what());
 		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
 	}
 
 	auto status = send_counter_data_to_ust(app, new_counter.get());
 	if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
 		if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_APP_DEAD) {
-			ERR("Failed to send counter data to application tracer: status = %s, uid=%d, pid=%d, app='%s'",
-			    error_accounting_status_str(status),
-			    (int) app->uid,
-			    (int) app->pid,
-			    app->name.c_str());
+			ERR_FMT("Failed to send counter data to application tracer: status=`{}`, app={}",
+				status,
+				*app);
 		}
 		return status;
 	}
@@ -242,12 +251,10 @@ event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app)
 		try {
 			new_counter_cpu = entry.group.duplicate_map_handle(*m->cpu_id);
 		} catch (const std::exception& ex) {
-			ERR("Failed to duplicate UST counter cpu handle: uid=%d, pid=%d, app='%s', cpu=%u, error: %s",
-			    (int) app->uid,
-			    (int) app->pid,
-			    app->name.c_str(),
-			    *m->cpu_id,
-			    ex.what());
+			ERR_FMT("Failed to duplicate UST counter cpu handle: app={}, cpu={}, error=`{}`",
+				*app,
+				*m->cpu_id,
+				ex.what());
 			return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
 		}
 
@@ -255,11 +262,10 @@ event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app)
 			send_counter_cpu_data_to_ust(app, new_counter.get(), new_counter_cpu.get());
 		if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
 			if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_APP_DEAD) {
-				ERR("Failed to send counter cpu data to application tracer: status = %s, uid=%d, pid=%d, app='%s'",
-				    error_accounting_status_str(status),
-				    (int) app->uid,
-				    (int) app->pid,
-				    app->name.c_str());
+				ERR_FMT("Failed to send counter cpu data to application tracer: status=`{}`, app={}, cpu={}",
+					status,
+					*app,
+					*m->cpu_id);
 			}
 			return status;
 		}
@@ -273,10 +279,9 @@ event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app)
 	 */
 	auto **cpu_counters_raw = calloc<lttng_ust_abi_object_data *>(nr_counter_cpu);
 	if (!cpu_counters_raw) {
-		PERROR("Failed to allocate event notifier error counter lttng_ust_abi_object_data array: uid=%d, pid=%d, app='%s'",
-		       (int) app->uid,
-		       (int) app->pid,
-		       app->name.c_str());
+		PERROR_FMT(
+			"Failed to allocate event notifier error counter lttng_ust_abi_object_data array: app={}",
+			*app);
 		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_NOMEM;
 	}
 
@@ -288,6 +293,10 @@ event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app)
 	app->event_notifier_group.nr_counter_cpu = nr_counter_cpu;
 	app->event_notifier_group.counter_cpu = cpu_counters_raw;
 
+	DBG_FMT("Registered app for event notifier error accounting: app={}, nr_counter_cpu={}",
+		*app,
+		nr_counter_cpu);
+
 	rollback_reference.disarm();
 	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 }
@@ -297,8 +306,14 @@ event_notifier_error_accounting_unregister_app(lttng::sessiond::ust::app *app)
 {
 	/* If an error occurred during app registration no entry was created. */
 	if (!app->event_notifier_group.counter) {
+		DBG_FMT("Skipping event notifier error accounting unregistration: no counter attached to app: app={}",
+			*app);
 		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 	}
+
+	DBG_FMT("Unregistering app from event notifier error accounting: app={}, nr_counter_cpu={}",
+		*app,
+		app->event_notifier_group.nr_counter_cpu);
 
 	{
 		auto protocol = app->command_socket.lock();
@@ -339,6 +354,8 @@ void on_event_notifier_registered()
 	const std::lock_guard<std::mutex> guard(accounting_lock);
 
 	registered_event_notifier_count++;
+	DBG_FMT("Bumped registered UST event notifier count: registered_event_notifier_count={}",
+		registered_event_notifier_count);
 }
 
 /*
@@ -353,10 +370,14 @@ void on_event_notifier_unregistered()
 
 	LTTNG_ASSERT(registered_event_notifier_count > 0);
 	registered_event_notifier_count--;
+	DBG_FMT("Decremented registered UST event notifier count: registered_event_notifier_count={}",
+		registered_event_notifier_count);
 
 	if (registered_event_notifier_count == 0) {
 		for (auto it = uid_map_groups.begin(); it != uid_map_groups.end();) {
 			if (it->second->attached_app_count == 0) {
+				DBG_FMT("Sweeping unused UST UID map group entry: uid={}",
+					it->second->uid);
 				it = uid_map_groups.erase(it);
 			} else {
 				++it;
@@ -372,34 +393,26 @@ clear_event_notifier_error_count(const struct lttng_trigger *trigger)
 
 	const auto error_counter_index = ust_index_table->lookup(tracer_token);
 	if (!error_counter_index) {
-		uid_t trigger_owner_uid;
-		const char *trigger_name;
-
-		get_trigger_info_for_log(trigger, &trigger_name, &trigger_owner_uid);
-
-		ERR("Failed to retrieve index for tracer token: token = %" PRIu64
-		    ", trigger name = '%s', trigger owner uid = %d",
-		    tracer_token,
-		    trigger_name,
-		    (int) trigger_owner_uid);
+		ERR_FMT("Failed to retrieve index for tracer token: trigger={}", *trigger);
 		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_NOT_FOUND;
 	}
 
 	const std::lock_guard<std::mutex> guard(accounting_lock);
 
+	DBG_FMT("Clearing UST event notifier error counter across all UID entries: trigger={}, index={}, uid_entry_count={}",
+		*trigger,
+		*error_counter_index,
+		uid_map_groups.size());
+
 	for (const auto& kv : uid_map_groups) {
 		try {
 			kv.second->group.clear_element(*error_counter_index);
 		} catch (const std::exception& ex) {
-			uid_t trigger_owner_uid;
-			const char *trigger_name;
-
-			get_trigger_info_for_log(trigger, &trigger_name, &trigger_owner_uid);
-			ERR("Failed to clear event notifier counter value for trigger: counter uid = %d, trigger name = '%s', trigger owner uid = %d, error: %s",
-			    (int) kv.second->uid,
-			    trigger_name,
-			    (int) trigger_owner_uid,
-			    ex.what());
+			ERR_FMT("Failed to clear event notifier counter value for trigger: trigger={}, counter_uid={}, index={}, error=`{}`",
+				*trigger,
+				kv.second->uid,
+				*error_counter_index,
+				ex.what());
 			return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
 		}
 	}
@@ -426,11 +439,14 @@ enum event_notifier_error_accounting_status init(std::uint64_t index_count)
 		lttng::sessiond::config::ownership_model_t::PER_UID,
 		lttng::sessiond::config::map_channel_configuration::dead_group_policy_t::DROP);
 
+	DBG_FMT("Initialized UST event notifier error accounting: configuration={}",
+		*default_ust_config);
 	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 }
 
 void fini()
 {
+	DBG_FMT("Tearing down UST event notifier error accounting");
 	{
 		const std::lock_guard<std::mutex> guard(accounting_lock);
 
@@ -445,38 +461,37 @@ enum event_notifier_error_accounting_status
 register_event_notifier(const struct lttng_trigger *trigger, std::uint64_t *error_counter_index)
 {
 	const auto tracer_token = lttng_trigger_get_tracer_token(trigger);
+
+	DBG_FMT("Registering UST event notifier: trigger={}", *trigger);
+
 	auto index = ust_index_table->lookup(tracer_token);
 	if (!index) {
-		uid_t trigger_owner_uid;
-		const char *trigger_name;
-
-		get_trigger_info_for_log(trigger, &trigger_name, &trigger_owner_uid);
-
-		DBG("Event notifier error counter index not found for tracer token (allocating a new one): trigger name = '%s', trigger owner uid = %d, tracer token = %" PRIu64,
-		    trigger_name,
-		    trigger_owner_uid,
-		    tracer_token);
+		DBG_FMT("Event notifier error counter index not found for tracer token, allocating a new one: trigger={}",
+			*trigger);
 
 		try {
 			index = ust_index_table->allocate(tracer_token);
 		} catch (const std::exception& ex) {
-			ERR("Failed to allocate event notifier error counter index: trigger name = '%s', trigger owner uid = %d, error: %s",
-			    trigger_name,
-			    trigger_owner_uid,
-			    ex.what());
+			ERR_FMT("Failed to allocate event notifier error counter index: trigger={}, error=`{}`",
+				*trigger,
+				ex.what());
 			return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
 		}
 
 		if (!index) {
-			DBG("No indices left in the configured event notifier error counter: number-of-indices = %" PRIu64,
-			    ust_index_table->index_count());
+			DBG_FMT("No indices left in the configured event notifier error counter: trigger={}, index_count={}",
+				*trigger,
+				ust_index_table->index_count());
 			return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_NO_INDEX_AVAILABLE;
 		}
 
-		DBG("Allocated error counter index for tracer token: tracer token = %" PRIu64
-		    ", index = %" PRIu64,
-		    tracer_token,
-		    *index);
+		DBG_FMT("Allocated UST error counter index for tracer token: trigger={}, index={}",
+			*trigger,
+			*index);
+	} else {
+		DBG_FMT("Reusing existing UST error counter index for tracer token: trigger={}, index={}",
+			*trigger,
+			*index);
 	}
 
 	*error_counter_index = *index;
@@ -486,25 +501,21 @@ register_event_notifier(const struct lttng_trigger *trigger, std::uint64_t *erro
 
 void unregister_event_notifier(const struct lttng_trigger *trigger)
 {
+	DBG_FMT("Unregistering UST event notifier: trigger={}", *trigger);
+
 	const auto status = clear_event_notifier_error_count(trigger);
 	if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
 		/* Trigger details already logged by callee on error. */
-		ERR("Failed to clear event notifier error counter during unregistration of event notifier: status = '%s'",
-		    error_accounting_status_str(status));
+		ERR_FMT("Failed to clear event notifier error counter during unregistration of event notifier: status=`{}`",
+			status);
 		return;
 	}
 
 	on_event_notifier_unregistered();
 
 	if (!ust_index_table->release(lttng_trigger_get_tracer_token(trigger))) {
-		uid_t trigger_owner_uid;
-		const char *trigger_name;
-
-		get_trigger_info_for_log(trigger, &trigger_name, &trigger_owner_uid);
-
-		DBG("No event notifier error counter index registered for trigger during unregistration: trigger name = '%s', trigger owner uid = %d",
-		    trigger_name,
-		    (int) trigger_owner_uid);
+		DBG_FMT("No event notifier error counter index registered for trigger during unregistration: trigger={}",
+			*trigger);
 	}
 }
 
@@ -512,23 +523,20 @@ enum event_notifier_error_accounting_status
 get_event_notifier_error_count(const struct lttng_trigger *trigger, std::uint64_t *count)
 {
 	const auto tracer_token = lttng_trigger_get_tracer_token(trigger);
-	uid_t trigger_owner_uid;
-	const char *trigger_name;
-
-	get_trigger_info_for_log(trigger, &trigger_name, &trigger_owner_uid);
 
 	const auto error_counter_index = ust_index_table->lookup(tracer_token);
 	if (!error_counter_index) {
-		ERR("Failed to retrieve index for tracer token: token = %" PRIu64
-		    ", trigger name = '%s', trigger owner uid = %d",
-		    tracer_token,
-		    trigger_name,
-		    (int) trigger_owner_uid);
+		ERR_FMT("Failed to retrieve index for tracer token: trigger={}", *trigger);
 		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_NOT_FOUND;
 	}
 
 	uint64_t global_sum = 0;
 	const std::lock_guard<std::mutex> guard(accounting_lock);
+
+	DBG_FMT("Aggregating UST event notifier error count across all UID entries: trigger={}, index={}, uid_entry_count={}",
+		*trigger,
+		*error_counter_index,
+		uid_map_groups.size());
 
 	/*
 	 * Aggregate across all UID entries regardless of the trigger's
@@ -542,25 +550,30 @@ get_event_notifier_error_count(const struct lttng_trigger *trigger, std::uint64_
 		try {
 			value = kv.second->group.aggregate_element(*error_counter_index);
 		} catch (const std::exception& ex) {
-			ERR("Failed to aggregate event notifier error counter value: trigger name = '%s', trigger owner uid = %d, counter uid = %d, error: %s",
-			    trigger_name,
-			    (int) trigger_owner_uid,
-			    (int) kv.second->uid,
-			    ex.what());
+			ERR_FMT("Failed to aggregate event notifier error counter value: trigger={}, counter_uid={}, index={}, error=`{}`",
+				*trigger,
+				kv.second->uid,
+				*error_counter_index,
+				ex.what());
 			return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
 		}
 
 		if (value.value < 0) {
-			ERR("Negative event notifier error counter value encountered during aggregation: trigger name = '%s', trigger owner uid = %d, counter uid = %d, value = %" PRId64,
-			    trigger_name,
-			    (int) trigger_owner_uid,
-			    (int) kv.second->uid,
-			    value.value);
+			ERR_FMT("Negative event notifier error counter value encountered during aggregation: trigger={}, counter_uid={}, index={}, value={}",
+				*trigger,
+				kv.second->uid,
+				*error_counter_index,
+				value.value);
 			return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
 		}
 
 		global_sum += (uint64_t) value.value;
 	}
+
+	DBG_FMT("Aggregated UST event notifier error count: trigger={}, index={}, count={}",
+		*trigger,
+		*error_counter_index,
+		global_sum);
 
 	*count = global_sum;
 	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;

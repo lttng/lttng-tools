@@ -10,6 +10,8 @@
 
 #include "event-notifier-error-accounting.hpp"
 
+#include <common/format.hpp>
+
 #include <lttng/trigger/trigger.h>
 
 #include <vendor/optional.hpp>
@@ -84,10 +86,22 @@ private:
 } /* namespace sessiond */
 } /* namespace lttng */
 
-void get_trigger_info_for_log(const struct lttng_trigger *trigger,
-			      const char **trigger_name,
-			      uid_t *trigger_owner_uid);
-
 const char *error_accounting_status_str(enum event_notifier_error_accounting_status status);
+
+/*
+ * Due to a bug in g++ < 7.1, this specialization must be enclosed in the fmt namespace,
+ * see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480.
+ */
+namespace fmt {
+template <>
+struct formatter<event_notifier_error_accounting_status> : formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator format(event_notifier_error_accounting_status status,
+						    FormatContextType& ctx) const
+	{
+		return format_to(ctx.out(), error_accounting_status_str(status));
+	}
+};
+} /* namespace fmt */
 
 #endif /* LTTNG_SESSIOND_EVENT_NOTIFIER_ERROR_ACCOUNTING_UTILS_HPP */
