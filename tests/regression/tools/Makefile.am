@@ -203,6 +203,7 @@ noinst_SCRIPTS += \
 	metadata/utils.sh \
 	mi/test_mi \
 	notification/test_notification_kernel_buffer_usage \
+	notification/test_notification_kernel_buffer_usage.py \
 	notification/test_notification_kernel_capture \
 	notification/test_notification_kernel_error \
 	notification/test_notification_kernel_instrumentation \
@@ -211,10 +212,12 @@ noinst_SCRIPTS += \
 	notification/test_notification_multi_app \
 	notification/test_notification_notifier_discarded_count \
 	notification/test_notification_ust_buffer_usage \
+	notification/test_notification_ust_buffer_usage.py \
 	notification/test_notification_ust_capture \
 	notification/test_notification_ust_error \
 	notification/test_notification_ust_event_rule_condition_exclusion \
 	notification/test_rotation \
+	notification/tests.py \
 	notification/util_event_generator.py \
 	regen-metadata/test_ust \
 	regen-metadata/test_kernel \

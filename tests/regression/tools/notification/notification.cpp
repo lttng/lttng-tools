@@ -1319,9 +1319,10 @@ end:
 	return ret;
 }
 
-void test_subscription_twice(const char *session_name,
-			     const char *channel_name,
-			     const enum lttng_domain_type domain_type)
+int test_buffer_usage_subscription_twice(const char *session_name,
+					 const char *channel_name,
+					 const enum lttng_domain_type domain_type,
+					 const enum buffer_usage_type usage_type)
 {
 	int ret = 0;
 	enum lttng_notification_channel_status nc_status;
@@ -1335,43 +1336,62 @@ void test_subscription_twice(const char *session_name,
 	ret = register_buffer_usage_notify_trigger(session_name,
 						   channel_name,
 						   domain_type,
-						   BUFFER_USAGE_TYPE_LOW,
+						   usage_type,
 						   0.99,
 						   &condition,
 						   &action,
 						   &trigger);
+
+	diag("Setup error on trigger registration returns OK (%d), ret=%d in %s()",
+	     0,
+	     ret,
+	     __FUNCTION__);
 	if (ret) {
-		fail("Setup error on trigger registration in %s()", __FUNCTION__);
-		goto end;
+		return 1;
 	}
 
 	/* Begin testing. */
 	notification_channel =
 		lttng_notification_channel_create(lttng_session_daemon_notification_endpoint);
-	ok(notification_channel, "Notification channel object creation");
+	diag("Notification channel object creation is not null, channel=%p",
+	     (void *) notification_channel);
 	if (!notification_channel) {
+		ret = 1;
 		goto end;
 	}
 
 	/* Subscribe a valid condition. */
 	nc_status = lttng_notification_channel_subscribe(notification_channel, condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK, "Subscribe to condition");
+	diag("Subscription to condition is OK (%d), status=%d",
+	     (int) LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
+	     (int) nc_status);
+	if (nc_status != LTTNG_NOTIFICATION_CHANNEL_STATUS_OK) {
+		ret = 1;
+		goto end;
+	}
 
 	/* Subscribing again should fail. */
 	nc_status = lttng_notification_channel_subscribe(notification_channel, condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_ALREADY_SUBSCRIBED,
-	   "Subscribe to a condition for which subscription was already done");
+	diag("Re-subscription to notification channel returns ALREADY_SUBSCRIBED (%d), status=%d",
+	     (int) LTTNG_NOTIFICATION_CHANNEL_STATUS_ALREADY_SUBSCRIBED,
+	     (int) nc_status);
+	if (nc_status != LTTNG_NOTIFICATION_CHANNEL_STATUS_ALREADY_SUBSCRIBED) {
+		ret = 1;
+		goto end;
+	}
 
 end:
-	ret = lttng_unregister_trigger(trigger);
-	if (ret) {
-		fail("Failed to unregister trigger in %s()", __FUNCTION__);
+	int unregister_ret = lttng_unregister_trigger(trigger);
+	diag("Unregistering trigger returns OK (%d), ret=%d", 0, unregister_ret);
+	if (unregister_ret) {
+		ret = 1;
 	}
 
 	lttng_trigger_destroy(trigger);
 	lttng_notification_channel_destroy(notification_channel);
 	lttng_action_destroy(action);
 	lttng_condition_destroy(condition);
+	return ret;
 }
 
 struct notification_reception_result {
@@ -2878,7 +2898,7 @@ int main(int argc, const char *argv[])
 		const char *session_name, *channel_name;
 
 		/* Test cases that need a tracing session enabled. */
-		plan_tests(99);
+		plan_tests(96);
 
 		/*
 		 * Argument 7 and upward are named pipe location for consumerd
@@ -2895,8 +2915,6 @@ int main(int argc, const char *argv[])
 
 		session_name = argv[5];
 		channel_name = argv[6];
-
-		test_subscription_twice(session_name, channel_name, domain_type);
 
 		diag("Test trigger for domain %s with buffer_usage_low condition",
 		     domain_type_string);
@@ -3008,6 +3026,38 @@ int main(int argc, const char *argv[])
 			test_tracepoint_blob_event_rule_notification_capture();
 		}
 
+		break;
+	}
+	case 8:
+	{
+		/* Test double subscription to a buffer usage notification channel. */
+		const char *session_name, *channel_name, *condition_type_str;
+		enum buffer_usage_type usage_type;
+
+		if (argc < 8) {
+			diag("Too few arguments to test scenario 8");
+			diag("Usage:");
+			diag("  %s SCENARIO DOMAIN APP_PID APP_STATE_FILE SESSION_NAME CHANNEL_NAME BUFFER_USAGE_TYPE",
+			     argv[0]);
+			return 1;
+		}
+
+		session_name = argv[5];
+		channel_name = argv[6];
+		condition_type_str = argv[7];
+
+		if (strcmp(condition_type_str, "LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH") == 0) {
+			usage_type = BUFFER_USAGE_TYPE_HIGH;
+		} else if (strcmp(condition_type_str, "LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW") ==
+			   0) {
+			usage_type = BUFFER_USAGE_TYPE_LOW;
+		} else {
+			diag("Unknown buffer usage type '%s'", condition_type_str);
+			return 1;
+		}
+
+		return test_buffer_usage_subscription_twice(
+			session_name, channel_name, domain_type, usage_type);
 		break;
 	}
 
