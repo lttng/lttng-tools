@@ -161,6 +161,21 @@ class EventRecordLossMode(enum.Enum):
         return "<%s.%s>" % (self.__class__.__name__, self.name)
 
 
+@enum.unique
+class ConditionType(enum.Enum):
+    """
+    enum lttng_condition_type
+    """
+
+    SessionConsumedSize = "LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE"
+    BufferUsageHigh = "LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH"
+    BufferUsageLow = "LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW"
+    SessionRotationOngoing = "LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING"
+    SessionRotationCompleted = "LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED"
+    EventRuleMatches = "LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES"
+    Unknown = "LTTNG_CONDITION_TYPE_UNKNOWN"
+
+
 class EventRule(abc.ABC):
     """Event rule base class, see LTTNG-EVENT-RULE(7)."""
 
