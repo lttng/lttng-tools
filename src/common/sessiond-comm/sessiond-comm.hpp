@@ -863,6 +863,11 @@ struct lttcomm_session_msg {
 			uint64_t max_entry_count;
 			/* enum lttng_map_update_policy: 0 = PER_EVENT, 1 = PER_RULE_MATCH. */
 			int32_t update_policy;
+			/*
+			 * enum lttng_map_channel_dead_group_policy:
+			 * 0 = DROP, 1 = SUM_INTO_SHARED.
+			 */
+			int32_t dead_group_policy;
 			/* 0 = PER_PID, 1 = PER_UID; ignored for the kernel domain. */
 			int8_t buffer_ownership;
 		} LTTNG_PACKED add_map_channel;

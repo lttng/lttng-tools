@@ -1455,11 +1455,14 @@ void cmd_add_map_channel(const ltt_session::locked_ref& session,
 		static_cast<lsc::map_channel_configuration::value_type_t>(payload.value_type);
 	const auto update_policy =
 		static_cast<lsc::map_channel_configuration::update_policy_t>(payload.update_policy);
+	const auto dead_group_policy =
+		static_cast<lsc::map_channel_configuration::dead_group_policy_t>(
+			payload.dead_group_policy);
 	const auto buffer_ownership = payload.buffer_ownership == 1 ?
 		lsc::ownership_model_t::PER_UID :
 		lsc::ownership_model_t::PER_PID;
 
-	DBG_FMT("Received ADD_MAP_CHANNEL command: session_name=`{}`, domain={}, map_channel_name=`{}`, key_type={}, value_type={}, update_policy={}, max_entry_count={}, buffer_ownership={}",
+	DBG_FMT("Received ADD_MAP_CHANNEL command: session_name=`{}`, domain={}, map_channel_name=`{}`, key_type={}, value_type={}, update_policy={}, max_entry_count={}, buffer_ownership={}, dead_group_policy={}",
 		session->name,
 		lttng::get_domain_class_from_lttng_domain_type(domain_type),
 		payload.name,
@@ -1467,7 +1470,8 @@ void cmd_add_map_channel(const ltt_session::locked_ref& session,
 		value_type,
 		update_policy,
 		payload.max_entry_count,
-		buffer_ownership);
+		buffer_ownership,
+		dead_group_policy);
 
 	auto& target_domain =
 		session->get_domain(lttng::get_domain_class_from_lttng_domain_type(domain_type));
@@ -1477,7 +1481,8 @@ void cmd_add_map_channel(const ltt_session::locked_ref& session,
 							  value_type,
 							  update_policy,
 							  payload.max_entry_count,
-							  buffer_ownership);
+							  buffer_ownership,
+							  dead_group_policy);
 
 	DBG_FMT("Added map channel to session: session_name=`{}`, domain={}, map_channel={}",
 		session->name,

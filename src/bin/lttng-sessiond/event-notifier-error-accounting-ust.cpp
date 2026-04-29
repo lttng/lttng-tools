@@ -423,7 +423,8 @@ enum event_notifier_error_accounting_status init(std::uint64_t index_count)
 		lttng::sessiond::config::map_channel_configuration::value_type_t::SIGNED_INT_32,
 		lttng::sessiond::config::map_channel_configuration::update_policy_t::PER_RULE_MATCH,
 		index_count,
-		lttng::sessiond::config::ownership_model_t::PER_UID);
+		lttng::sessiond::config::ownership_model_t::PER_UID,
+		lttng::sessiond::config::map_channel_configuration::dead_group_policy_t::DROP);
 
 	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 }

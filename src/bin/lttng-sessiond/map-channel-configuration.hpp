@@ -69,18 +69,40 @@ public:
 		PER_RULE_MATCH,
 	};
 
+	/*
+	 * What to do with the values held by a tracer-backed map_group when
+	 * its owning partition disappears (per-PID UST: app exit). The kernel
+	 * (one group per channel) and UST per-UID (groups live as long as
+	 * the channel) cases never produce a "dead group" event; this field
+	 * is a no-op for them, but exists uniformly across map channels for
+	 * API symmetry and forward compatibility.
+	 *
+	 * DROP: discard the dying group's values.
+	 *
+	 * SUM_INTO_SHARED: merge each (index, value) pair into the channel's
+	 * shared group via integer addition.
+	 *
+	 * Future variants (e.g. PRESERVE_MAX_VALUE) are additive.
+	 */
+	enum class dead_group_policy_t {
+		DROP,
+		SUM_INTO_SHARED,
+	};
+
 	map_channel_configuration(std::string name_,
 				  key_type_t key_type_,
 				  value_type_t value_type_,
 				  update_policy_t update_policy_,
 				  std::uint64_t max_entry_count_,
-				  ownership_model_t buffer_ownership_) :
+				  ownership_model_t buffer_ownership_,
+				  dead_group_policy_t dead_group_policy_) :
 		name(std::move(name_)),
 		key_type(key_type_),
 		value_type(value_type_),
 		update_policy(update_policy_),
 		max_entry_count(max_entry_count_),
-		buffer_ownership(buffer_ownership_)
+		buffer_ownership(buffer_ownership_),
+		dead_group_policy(dead_group_policy_)
 	{
 	}
 
@@ -96,6 +118,7 @@ public:
 	const update_policy_t update_policy;
 	std::uint64_t max_entry_count;
 	const ownership_model_t buffer_ownership;
+	const dead_group_policy_t dead_group_policy;
 };
 
 } /* namespace config */
@@ -181,6 +204,30 @@ struct formatter<lttng::sessiond::config::map_channel_configuration::update_poli
 };
 
 template <>
+struct formatter<lttng::sessiond::config::map_channel_configuration::dead_group_policy_t>
+	: formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator
+	format(lttng::sessiond::config::map_channel_configuration::dead_group_policy_t policy,
+	       FormatContextType& ctx) const
+	{
+		auto name = "UNKNOWN";
+
+		switch (policy) {
+		case lttng::sessiond::config::map_channel_configuration::dead_group_policy_t::DROP:
+			name = "DROP";
+			break;
+		case lttng::sessiond::config::map_channel_configuration::dead_group_policy_t::
+			SUM_INTO_SHARED:
+			name = "SUM_INTO_SHARED";
+			break;
+		}
+
+		return format_to(ctx.out(), name);
+	}
+};
+
+template <>
 struct formatter<lttng::sessiond::config::map_channel_configuration> : formatter<std::string> {
 	template <typename FormatContextType>
 	typename FormatContextType::iterator
@@ -190,13 +237,15 @@ struct formatter<lttng::sessiond::config::map_channel_configuration> : formatter
 		return format_to(ctx.out(),
 				 "`{}` (key_type: {}, value_type: {}, "
 				 "update_policy: {}, "
-				 "max_entry_count: {}, buffer_ownership: {})",
+				 "max_entry_count: {}, buffer_ownership: {}, "
+				 "dead_group_policy: {})",
 				 channel.name,
 				 channel.key_type,
 				 channel.value_type,
 				 channel.update_policy,
 				 channel.max_entry_count,
-				 channel.buffer_ownership);
+				 channel.buffer_ownership,
+				 channel.dead_group_policy);
 	}
 };
 } /* namespace fmt */
