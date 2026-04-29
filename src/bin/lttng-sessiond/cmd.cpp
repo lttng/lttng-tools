@@ -1453,16 +1453,19 @@ void cmd_add_map_channel(const ltt_session::locked_ref& session,
 		static_cast<lsc::map_channel_configuration::key_type_t>(payload.key_type);
 	const auto value_type =
 		static_cast<lsc::map_channel_configuration::value_type_t>(payload.value_type);
+	const auto update_policy =
+		static_cast<lsc::map_channel_configuration::update_policy_t>(payload.update_policy);
 	const auto buffer_ownership = payload.buffer_ownership == 1 ?
 		lsc::ownership_model_t::PER_UID :
 		lsc::ownership_model_t::PER_PID;
 
-	DBG_FMT("Received ADD_MAP_CHANNEL command: session_name=`{}`, domain={}, map_channel_name=`{}`, key_type={}, value_type={}, max_entry_count={}, buffer_ownership={}",
+	DBG_FMT("Received ADD_MAP_CHANNEL command: session_name=`{}`, domain={}, map_channel_name=`{}`, key_type={}, value_type={}, update_policy={}, max_entry_count={}, buffer_ownership={}",
 		session->name,
 		lttng::get_domain_class_from_lttng_domain_type(domain_type),
 		payload.name,
 		key_type,
 		value_type,
+		update_policy,
 		payload.max_entry_count,
 		buffer_ownership);
 
@@ -1472,7 +1475,7 @@ void cmd_add_map_channel(const ltt_session::locked_ref& session,
 	const auto& added = target_domain.add_map_channel(std::string(payload.name),
 							  key_type,
 							  value_type,
-							  payload.coalesce_hits,
+							  update_policy,
 							  payload.max_entry_count,
 							  buffer_ownership);
 

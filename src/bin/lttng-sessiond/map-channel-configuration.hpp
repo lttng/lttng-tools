@@ -55,16 +55,30 @@ public:
 		SIGNED_INT_MAX,
 	};
 
+	/*
+	 * How event-rule matches are accounted for in the map.
+	 *
+	 * PER_EVENT (coalesce:true): a single firing event produces at most one
+         * increment per map regardless of how many event-rules match it.
+	 *
+	 * PER_RULE_MATCH (coalesce:false): every matching event-rule
+	 * produces its own increment.
+	 */
+	enum class update_policy_t {
+		PER_EVENT,
+		PER_RULE_MATCH,
+	};
+
 	map_channel_configuration(std::string name_,
 				  key_type_t key_type_,
 				  value_type_t value_type_,
-				  bool coalesce_hits_,
+				  update_policy_t update_policy_,
 				  std::uint64_t max_entry_count_,
 				  ownership_model_t buffer_ownership_) :
 		name(std::move(name_)),
 		key_type(key_type_),
 		value_type(value_type_),
-		coalesce_hits(coalesce_hits_),
+		update_policy(update_policy_),
 		max_entry_count(max_entry_count_),
 		buffer_ownership(buffer_ownership_)
 	{
@@ -79,7 +93,7 @@ public:
 	const std::string name;
 	const key_type_t key_type;
 	const value_type_t value_type;
-	const bool coalesce_hits;
+	const update_policy_t update_policy;
 	std::uint64_t max_entry_count;
 	const ownership_model_t buffer_ownership;
 };
@@ -143,6 +157,30 @@ struct formatter<lttng::sessiond::config::map_channel_configuration::value_type_
 };
 
 template <>
+struct formatter<lttng::sessiond::config::map_channel_configuration::update_policy_t>
+	: formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator
+	format(lttng::sessiond::config::map_channel_configuration::update_policy_t update_policy,
+	       FormatContextType& ctx) const
+	{
+		auto name = "UNKNOWN";
+
+		switch (update_policy) {
+		case lttng::sessiond::config::map_channel_configuration::update_policy_t::PER_EVENT:
+			name = "PER_EVENT";
+			break;
+		case lttng::sessiond::config::map_channel_configuration::update_policy_t::
+			PER_RULE_MATCH:
+			name = "PER_RULE_MATCH";
+			break;
+		}
+
+		return format_to(ctx.out(), name);
+	}
+};
+
+template <>
 struct formatter<lttng::sessiond::config::map_channel_configuration> : formatter<std::string> {
 	template <typename FormatContextType>
 	typename FormatContextType::iterator
@@ -151,12 +189,12 @@ struct formatter<lttng::sessiond::config::map_channel_configuration> : formatter
 	{
 		return format_to(ctx.out(),
 				 "`{}` (key_type: {}, value_type: {}, "
-				 "coalesce_hits: {}"
+				 "update_policy: {}, "
 				 "max_entry_count: {}, buffer_ownership: {})",
 				 channel.name,
 				 channel.key_type,
 				 channel.value_type,
-				 channel.coalesce_hits,
+				 channel.update_policy,
 				 channel.max_entry_count,
 				 channel.buffer_ownership);
 	}

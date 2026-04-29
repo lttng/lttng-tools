@@ -861,7 +861,8 @@ struct lttcomm_session_msg {
 			/* enum lttng_map_value_type */
 			int32_t value_type;
 			uint64_t max_entry_count;
-			uint8_t coalesce_hits;
+			/* enum lttng_map_update_policy: 0 = PER_EVENT, 1 = PER_RULE_MATCH. */
+			int32_t update_policy;
 			/* 0 = PER_PID, 1 = PER_UID; ignored for the kernel domain. */
 			int8_t buffer_ownership;
 		} LTTNG_PACKED add_map_channel;

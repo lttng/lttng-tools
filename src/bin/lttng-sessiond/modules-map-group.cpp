@@ -59,6 +59,21 @@ lttng_kernel_abi_counter_bitness bitness_from_value_type(
 	abort();
 }
 
+std::uint8_t to_tracer_coalesce_hits(
+	lttng::sessiond::config::map_channel_configuration::update_policy_t update_policy) noexcept
+{
+	using update_policy_t = lttng::sessiond::config::map_channel_configuration::update_policy_t;
+
+	switch (update_policy) {
+	case update_policy_t::PER_EVENT:
+		return 1;
+	case update_policy_t::PER_RULE_MATCH:
+		return 0;
+	}
+
+	abort();
+}
+
 lttng_kernel_abi_counter_conf
 make_counter_conf(const lttng::sessiond::config::map_channel_configuration& configuration) noexcept
 {
@@ -71,7 +86,7 @@ make_counter_conf(const lttng::sessiond::config::map_channel_configuration& conf
 	conf.dimensions[0].size = configuration.max_entry_count;
 	conf.dimensions[0].has_underflow = 0;
 	conf.dimensions[0].has_overflow = 0;
-	conf.coalesce_hits = configuration.coalesce_hits ? 1 : 0;
+	conf.coalesce_hits = to_tracer_coalesce_hits(configuration.update_policy);
 	return conf;
 }
 

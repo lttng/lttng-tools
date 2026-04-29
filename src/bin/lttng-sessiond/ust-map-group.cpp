@@ -42,6 +42,18 @@ bitness_from_value_type(lsc::map_channel_configuration::value_type_t type)
 	abort();
 }
 
+bool to_tracer_coalesce_hits(lsc::map_channel_configuration::update_policy_t update_policy) noexcept
+{
+	switch (update_policy) {
+	case lsc::map_channel_configuration::update_policy_t::PER_EVENT:
+		return true;
+	case lsc::map_channel_configuration::update_policy_t::PER_RULE_MATCH:
+		return false;
+	}
+
+	abort();
+}
+
 lsm::element_value from_counter_value(std::int64_t value, bool overflow, bool underflow) noexcept
 {
 	return lsm::element_value{ value, overflow, underflow };
@@ -192,7 +204,7 @@ map_group map_group::create_from_config(const config::map_channel_configuration&
 					     bitness_from_value_type(configuration.value_type),
 					     LTTNG_UST_CTL_COUNTER_ARITHMETIC_MODULAR,
 					     LTTNG_UST_CTL_COUNTER_ALLOC_PER_CPU,
-					     configuration.coalesce_hits);
+					     to_tracer_coalesce_hits(configuration.update_policy));
 	if (!local_counter_raw) {
 		LTTNG_THROW_ERROR(lttng::format("Failed to create UST local counter: map_name=`{}`",
 						configuration.name));

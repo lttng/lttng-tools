@@ -36,7 +36,7 @@ enum event_notifier_error_accounting_status init(uint64_t index_count)
 		"event-notifier-error-accounting",
 		lttng::sessiond::config::map_channel_configuration::key_type_t::INDEX,
 		lttng::sessiond::config::map_channel_configuration::value_type_t::SIGNED_INT_MAX,
-		/* coalesce_hits */ false,
+		lttng::sessiond::config::map_channel_configuration::update_policy_t::PER_RULE_MATCH,
 		index_count,
 		lttng::sessiond::config::ownership_model_t::PER_UID);
 
