@@ -18,6 +18,7 @@
 #include "ust-app-session.hpp"
 #include "ust-application-abi.hpp"
 #include "ust-field-quirks.hpp"
+#include "ust-map-group.hpp"
 
 #include <common/format.hpp>
 #include <common/optional.hpp>
@@ -239,10 +240,14 @@ struct app {
 		 */
 		::lttng_ust_abi_object_data *object = nullptr;
 		::lttng_pipe *event_pipe = nullptr;
-		::lttng_ust_abi_object_data *counter = nullptr;
-		::lttng_ust_abi_object_data **counter_cpu = nullptr;
-		int nr_counter_cpu = 0;
 #ifdef HAVE_LIBLTTNG_UST_CTL
+		/*
+		 * RAII attachment to the per-UID error counter. Holds the
+		 * duplicated master + per-CPU handles shared with the
+		 * application; resetting the optional releases each via the
+		 * app's command socket.
+		 */
+		nonstd::optional<lttng::sessiond::ust::map_group::app_handle> counter_attachment;
 		/*
 		 * Live for the duration of the app's registration with the
 		 * error-accounting subsystem; resetting this optional releases

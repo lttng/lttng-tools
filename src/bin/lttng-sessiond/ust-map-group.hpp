@@ -11,10 +11,12 @@
 #include "map-group.hpp"
 #include "ust-object-data.hpp"
 
-#include <lttng/ust-ctl.h>
-
 #include <cstdint>
 #include <memory>
+#include <vector>
+
+struct lttng_ust_ctl_daemon_counter;
+struct lttng_ust_abi_object_data;
 
 namespace lttng {
 namespace sessiond {
@@ -25,6 +27,8 @@ class map_channel_configuration;
 
 namespace ust {
 
+struct app;
+
 /*
  * Runtime representation of a UST map group backing one
  * map_channel_configuration for a given uid+abi (per-UID mode) or app
@@ -32,6 +36,34 @@ namespace ust {
  */
 class map_group final : public sessiond::map::group<ust_object_data> {
 public:
+	/*
+	 * RAII handle representing one application's attachment to this
+	 * map group. Holds the duplicated master + per-CPU
+	 * `ust_object_data` handles that were sent to the application.
+	 *
+	 * Constructed exclusively by `map_group::attach_to_app()`.
+	 */
+	class app_handle final {
+	public:
+		app_handle(app_handle&& other) noexcept;
+		app_handle(const app_handle&) = delete;
+		app_handle& operator=(const app_handle&) = delete;
+		app_handle& operator=(app_handle&&) = delete;
+		~app_handle();
+
+	private:
+		friend class map_group;
+
+		app_handle(ust::app& app,
+			   ust_object_data master_handle,
+			   std::vector<ust_object_data> per_cpu_handles) noexcept;
+
+		ust::app& _app;
+		bool _moved_from = false;
+		ust_object_data _master_handle;
+		std::vector<ust_object_data> _per_cpu_handles;
+	};
+
 	struct local_counter_deleter {
 		void operator()(lttng_ust_ctl_daemon_counter *) const noexcept;
 	};
@@ -66,21 +98,38 @@ public:
 	ust_object_data& app_counter_handle() noexcept;
 
 	/*
-	 * Duplicate the "group" app counter handle for sending to a
-	 * newly-registered application.
+	 * Duplicate the master + per-CPU app handles, send them to the
+	 * application using `parent_handle->header.handle` as the app-side
+	 * parent (the event-notifier-group handle for EEA, the session
+	 * handle for a regular map channel) and return an RAII
+	 * `app_handle` that releases everything on destruction.
+	 *
+	 * On a partial failure mid-send the master and any per-CPU
+	 * handles already shared with the application are released so the
+	 * app sees no residual state.
+	 *
+	 * Throws on local allocation failure or on app-side communication
+	 * failure (`app_communication_error`); the caller is responsible
+	 * for translating the latter into a domain-specific status.
 	 */
-	ust_object_data duplicate_app_counter_handle() const;
-
-	/*
-	 * Duplicate the per-CPU app counter handle at `cpu` to send it
-	 * to a newly-registered application.
-	 */
-	ust_object_data duplicate_map_handle(unsigned int cpu) const;
+	app_handle attach_to_app(ust::app& app, lttng_ust_abi_object_data *parent_handle);
 
 	sessiond::map::element_value aggregate_element(std::uint64_t index) const;
 	void clear_element(std::uint64_t index);
 
 private:
+	/*
+	 * Duplicate the "group" app counter handle for sending to a
+	 * newly-registered application.
+	 */
+	ust_object_data _duplicate_app_counter_handle() const;
+
+	/*
+	 * Duplicate the per-CPU app counter handle at `cpu` to send it
+	 * to a newly-registered application.
+	 */
+	ust_object_data _duplicate_map_handle(unsigned int cpu) const;
+
 	const config::map_channel_configuration& _configuration;
 
 	/*

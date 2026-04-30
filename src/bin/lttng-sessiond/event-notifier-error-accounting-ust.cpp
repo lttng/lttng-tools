@@ -154,43 +154,6 @@ ust_uid_map_group_entry& uid_entry_reference::entry() const noexcept
 } /* namespace sessiond */
 } /* namespace lttng */
 
-namespace {
-enum event_notifier_error_accounting_status
-send_counter_data_to_ust(lttng::sessiond::ust::app *app,
-			 struct lttng_ust_abi_object_data *new_counter)
-{
-	/* Attach counter to trigger group. */
-	try {
-		app->command_socket.lock().send_counter_data_to_ust(
-			app->event_notifier_group.object->header.handle, new_counter);
-	} catch (const lttng::sessiond::ust::app_communication_error&) {
-		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_APP_DEAD;
-	} catch (const lttng::runtime_error&) {
-		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
-	}
-
-	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
-}
-} /* namespace */
-
-namespace {
-enum event_notifier_error_accounting_status
-send_counter_cpu_data_to_ust(lttng::sessiond::ust::app *app,
-			     struct lttng_ust_abi_object_data *counter,
-			     struct lttng_ust_abi_object_data *counter_cpu)
-{
-	try {
-		app->command_socket.lock().send_counter_cpu_data_to_ust(counter, counter_cpu);
-	} catch (const lttng::sessiond::ust::app_communication_error&) {
-		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_APP_DEAD;
-	} catch (const lttng::runtime_error&) {
-		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
-	}
-
-	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
-}
-} /* namespace */
-
 enum event_notifier_error_accounting_status
 event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app)
 {
@@ -222,80 +185,22 @@ event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app)
 
 	auto& entry = app->event_notifier_group.accounting_reference->entry();
 
-	lttng::sessiond::ust::ust_object_data new_counter(nullptr);
 	try {
-		new_counter = entry.group.duplicate_app_counter_handle();
+		app->event_notifier_group.counter_attachment.emplace(
+			entry.group.attach_to_app(*app, app->event_notifier_group.object));
+	} catch (const lttng::sessiond::ust::app_communication_error& ex) {
+		DBG_FMT("Application is unreachable while attaching event notifier error counter: app={}, error=`{}`",
+			*app,
+			ex.what());
+		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_APP_DEAD;
 	} catch (const std::exception& ex) {
-		ERR_FMT("Failed to duplicate UST counter object: app={}, error=`{}`",
+		ERR_FMT("Failed to attach event notifier error counter to application: app={}, error=`{}`",
 			*app,
 			ex.what());
 		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
 	}
 
-	auto status = send_counter_data_to_ust(app, new_counter.get());
-	if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
-		if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_APP_DEAD) {
-			ERR_FMT("Failed to send counter data to application tracer: status=`{}`, app={}",
-				status,
-				*app);
-		}
-		return status;
-	}
-
-	const auto nr_counter_cpu = entry.group.map_count();
-	std::vector<lttng::sessiond::ust::ust_object_data> new_cpu_counters;
-	new_cpu_counters.reserve(nr_counter_cpu);
-
-	for (const auto& m : entry.group.maps()) {
-		lttng::sessiond::ust::ust_object_data new_counter_cpu(nullptr);
-		try {
-			new_counter_cpu = entry.group.duplicate_map_handle(*m->cpu_id);
-		} catch (const std::exception& ex) {
-			ERR_FMT("Failed to duplicate UST counter cpu handle: app={}, cpu={}, error=`{}`",
-				*app,
-				*m->cpu_id,
-				ex.what());
-			return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
-		}
-
-		status =
-			send_counter_cpu_data_to_ust(app, new_counter.get(), new_counter_cpu.get());
-		if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
-			if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_APP_DEAD) {
-				ERR_FMT("Failed to send counter cpu data to application tracer: status=`{}`, app={}, cpu={}",
-					status,
-					*app,
-					*m->cpu_id);
-			}
-			return status;
-		}
-
-		new_cpu_counters.emplace_back(std::move(new_counter_cpu));
-	}
-
-	/*
-	 * Transfer ownership of the wire-format handles to the app.
-	 * The unregister path releases them through the app socket.
-	 */
-	auto **cpu_counters_raw = calloc<lttng_ust_abi_object_data *>(nr_counter_cpu);
-	if (!cpu_counters_raw) {
-		PERROR_FMT(
-			"Failed to allocate event notifier error counter lttng_ust_abi_object_data array: app={}",
-			*app);
-		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_NOMEM;
-	}
-
-	for (unsigned int i = 0; i < nr_counter_cpu; i++) {
-		cpu_counters_raw[i] = new_cpu_counters[i].release();
-	}
-
-	app->event_notifier_group.counter = new_counter.release();
-	app->event_notifier_group.nr_counter_cpu = nr_counter_cpu;
-	app->event_notifier_group.counter_cpu = cpu_counters_raw;
-
-	DBG_FMT("Registered app for event notifier error accounting: app={}, nr_counter_cpu={}",
-		*app,
-		nr_counter_cpu);
+	DBG_FMT("Registered app for event notifier error accounting: app={}", *app);
 
 	rollback_reference.disarm();
 	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
@@ -305,39 +210,15 @@ enum event_notifier_error_accounting_status
 event_notifier_error_accounting_unregister_app(lttng::sessiond::ust::app *app)
 {
 	/* If an error occurred during app registration no entry was created. */
-	if (!app->event_notifier_group.counter) {
+	if (!app->event_notifier_group.counter_attachment) {
 		DBG_FMT("Skipping event notifier error accounting unregistration: no counter attached to app: app={}",
 			*app);
 		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 	}
 
-	DBG_FMT("Unregistering app from event notifier error accounting: app={}, nr_counter_cpu={}",
-		*app,
-		app->event_notifier_group.nr_counter_cpu);
+	DBG_FMT("Unregistering app from event notifier error accounting: app={}", *app);
 
-	{
-		auto protocol = app->command_socket.lock();
-		for (int i = 0; i < app->event_notifier_group.nr_counter_cpu; i++) {
-			try {
-				protocol.release_object(app->event_notifier_group.counter_cpu[i]);
-			} catch (const lttng::sessiond::ust::app_communication_error&) {
-			} catch (const lttng::runtime_error&) {
-			}
-
-			free(app->event_notifier_group.counter_cpu[i]);
-		}
-
-		free(app->event_notifier_group.counter_cpu);
-
-		try {
-			protocol.release_object(app->event_notifier_group.counter);
-		} catch (const lttng::sessiond::ust::app_communication_error&) {
-		} catch (const lttng::runtime_error&) {
-		}
-
-		free(app->event_notifier_group.counter);
-	}
-
+	app->event_notifier_group.counter_attachment.reset();
 	app->event_notifier_group.accounting_reference.reset();
 
 	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;

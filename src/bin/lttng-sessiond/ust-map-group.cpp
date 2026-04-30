@@ -6,6 +6,7 @@
  */
 
 #include "map-channel-configuration.hpp"
+#include "ust-app.hpp"
 #include "ust-map-group.hpp"
 
 #include <common/error.hpp>
@@ -97,12 +98,12 @@ ust_object_data& map_group::app_counter_handle() noexcept
 	return _app_counter_handle;
 }
 
-ust_object_data map_group::duplicate_app_counter_handle() const
+ust_object_data map_group::_duplicate_app_counter_handle() const
 {
 	return _app_counter_handle.duplicate();
 }
 
-ust_object_data map_group::duplicate_map_handle(unsigned int cpu) const
+ust_object_data map_group::_duplicate_map_handle(unsigned int cpu) const
 {
 	/*
 	 * The factory inserts one map per CPU in index order, so the
@@ -110,6 +111,156 @@ ust_object_data map_group::duplicate_map_handle(unsigned int cpu) const
 	 */
 	LTTNG_ASSERT(cpu < maps().size());
 	return maps()[cpu]->handle.duplicate();
+}
+
+map_group::app_handle::app_handle(ust::app& app,
+				  ust_object_data master_handle,
+				  std::vector<ust_object_data> per_cpu_handles) noexcept :
+	_app(app),
+	_master_handle(std::move(master_handle)),
+	_per_cpu_handles(std::move(per_cpu_handles))
+{
+}
+
+map_group::app_handle::app_handle(app_handle&& other) noexcept :
+	_app(other._app),
+	_master_handle(std::move(other._master_handle)),
+	_per_cpu_handles(std::move(other._per_cpu_handles))
+{
+	other._moved_from = true;
+}
+
+map_group::app_handle::~app_handle()
+{
+	if (_moved_from) {
+		return;
+	}
+
+	/*
+	 * Release everything on the application side via its command
+	 * socket. Per-CPU handles are released before the master to match
+	 * the ordering required by `lttng_ust_ctl_release_object()` (see
+	 * `ust-ctl.h`). The local `ust_object_data` envelopes are then
+	 * reclaimed by their own destructors.
+	 *
+	 * Communication errors are only logged: by the time a destructor
+	 * runs, the only sensible recovery is local cleanup, and the app
+	 * has likely died.
+	 */
+	try {
+		auto guard = _app.command_socket.lock();
+
+		for (auto& cpu_handle : _per_cpu_handles) {
+			LTTNG_ASSERT(cpu_handle.get());
+
+			try {
+				guard.release_object(cpu_handle.get());
+			} catch (const app_communication_error& ex) {
+				DBG_FMT("Application unreachable while releasing per-CPU UST counter handle: error=`{}`",
+					ex.what());
+			} catch (const lttng::runtime_error& ex) {
+				DBG_FMT("Failed to release per-CPU UST counter handle: error=`{}`",
+					ex.what());
+			}
+		}
+
+		LTTNG_ASSERT(_master_handle.get());
+
+		try {
+			guard.release_object(_master_handle.get());
+		} catch (const app_communication_error& ex) {
+			DBG_FMT("Application unreachable while releasing master UST counter handle: error=`{}`",
+				ex.what());
+		} catch (const lttng::runtime_error& ex) {
+			DBG_FMT("Failed to release master UST counter handle: error=`{}`",
+				ex.what());
+		}
+	} catch (const std::exception& ex) {
+		ERR_FMT("Failed to release UST counter handles via app command socket: error=`{}`",
+			ex.what());
+	}
+}
+
+map_group::app_handle map_group::attach_to_app(ust::app& app,
+					       lttng_ust_abi_object_data *parent_handle)
+{
+	LTTNG_ASSERT(parent_handle);
+
+	/*
+	 * Duplicate the master and each per-partition handle locally to
+	 * hand them off to the app. Nothing has been shared with the
+	 * application yet, so any throw during this phase is cleaned up
+	 * by `ust_object_data`'s destructors (i.e. no app-side rollback
+	 * needed).
+	 */
+	auto master = _duplicate_app_counter_handle();
+
+	std::vector<ust_object_data> per_cpu_local;
+	per_cpu_local.reserve(map_count());
+	for (const auto& m : maps()) {
+		per_cpu_local.emplace_back(_duplicate_map_handle(*m->cpu_id));
+	}
+
+	/*
+	 * Send each duplicate over the command socket. Track how far we
+	 * got so the rollback releases only what the application has
+	 * actually seen, in reverse order (per-CPU first, master last).
+	 */
+	bool master_sent = false;
+	std::size_t per_cpu_sent_count = 0;
+	auto rollback_app_side = lttng::make_scope_exit([&]() noexcept {
+		try {
+			auto guard = app.command_socket.lock();
+
+			for (std::size_t i = per_cpu_sent_count; i > 0; --i) {
+				auto& cpu_handle = per_cpu_local[i - 1];
+				LTTNG_ASSERT(cpu_handle.get());
+
+				try {
+					guard.release_object(cpu_handle.get());
+				} catch (const app_communication_error& ex) {
+					DBG_FMT("Application unreachable while rolling back per-CPU UST counter handle: error=`{}`",
+						ex.what());
+				} catch (const lttng::runtime_error& ex) {
+					DBG_FMT("Failed to release per-CPU UST counter handle during rollback: error=`{}`",
+						ex.what());
+				}
+			}
+
+			if (master_sent) {
+				LTTNG_ASSERT(master.get());
+
+				try {
+					guard.release_object(master.get());
+				} catch (const app_communication_error& ex) {
+					DBG_FMT("Application unreachable while rolling back master UST counter handle: error=`{}`",
+						ex.what());
+				} catch (const lttng::runtime_error& ex) {
+					DBG_FMT("Failed to release master UST counter handle during rollback: error=`{}`",
+						ex.what());
+				}
+			}
+		} catch (const std::exception& ex) {
+			ERR_FMT("Failed to release UST counter handles during attach rollback: error=`{}`",
+				ex.what());
+		}
+	});
+
+	{
+		auto guard = app.command_socket.lock();
+
+		guard.send_counter_data_to_ust(parent_handle->header.handle, master.get());
+		master_sent = true;
+
+		for (auto& cpu_data : per_cpu_local) {
+			guard.send_counter_cpu_data_to_ust(master.get(), cpu_data.get());
+			per_cpu_sent_count++;
+		}
+	}
+
+	rollback_app_side.disarm();
+
+	return app_handle(app, std::move(master), std::move(per_cpu_local));
 }
 
 map::element_value map_group::aggregate_element(std::uint64_t index) const
