@@ -36,6 +36,20 @@ if __name__ == "__main__":
                 "condition_type": lttngtest.lttngctl.ConditionType.BufferUsageHigh,
             },
         },
+        {
+            "function": tests.test_triggers_buffer_usage_condition,
+            "kwargs": {
+                "domain": lttngtest.lttngctl.TracingDomain.Kernel,
+                "condition_type": lttngtest.lttngctl.ConditionType.BufferUsageLow,
+            },
+        },
+        {
+            "function": tests.test_triggers_buffer_usage_condition,
+            "kwargs": {
+                "domain": lttngtest.lttngctl.TracingDomain.Kernel,
+                "condition_type": lttngtest.lttngctl.ConditionType.BufferUsageHigh,
+            },
+        },
     ]
 
     tap = lttngtest.TapGenerator(len(tests))

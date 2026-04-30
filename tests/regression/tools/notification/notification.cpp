@@ -917,10 +917,12 @@ error:
 	return ret;
 }
 
-void test_triggers_buffer_usage_condition(const char *session_name,
-					  const char *channel_name,
-					  enum lttng_condition_type condition_type)
+int test_triggers_buffer_usage_condition(const char *session_name,
+					 const char *channel_name,
+					 enum lttng_domain_type domain_type,
+					 enum lttng_condition_type condition_type)
 {
+	int ret = 0, cmd_ret = 0;
 	unsigned int test_vector_size = 5, i;
 	enum lttng_condition_status condition_status;
 	struct lttng_action *action;
@@ -928,13 +930,19 @@ void test_triggers_buffer_usage_condition(const char *session_name,
 	/* Set-up */
 	action = lttng_action_notify_create();
 	if (!action) {
-		fail("Setup error on action creation");
+		ret = -1;
+		diag("Setup error on action creation");
 		goto end;
 	}
 
 	/* Test lttng_register_trigger with null value */
-	ok(lttng_register_trigger(nullptr) == -LTTNG_ERR_INVALID,
-	   "Registering a NULL trigger fails as expected");
+	cmd_ret = lttng_register_trigger(nullptr);
+	diag("lttng_register_trigger with null value returns ERR_INVALID (%d): ret=%d",
+	     -LTTNG_ERR_INVALID,
+	     cmd_ret);
+	if (cmd_ret != -LTTNG_ERR_INVALID) {
+		ret = -1;
+	}
 
 	/* Test: register a trigger */
 
@@ -1021,7 +1029,7 @@ void test_triggers_buffer_usage_condition(const char *session_name,
 		/* Set domain type */
 		if ((1 << mask_position) & i) {
 			condition_status = lttng_condition_buffer_usage_set_domain_type(
-				condition, LTTNG_DOMAIN_UST);
+				condition, domain_type);
 			if (condition_status != LTTNG_CONDITION_STATUS_OK) {
 				loop_ret = 1;
 				goto loop_end;
@@ -1036,7 +1044,7 @@ void test_triggers_buffer_usage_condition(const char *session_name,
 
 		loop_ret = asprintf(
 			&test_tuple_string,
-			"session name %s, channel name %s, threshold ratio %s, threshold byte %s, domain type %s",
+			"# session name %s, channel name %s, threshold ratio %s, threshold byte %s, domain type %s",
 			session_name_set ? "set" : "unset",
 			channel_name_set ? "set" : "unset",
 			threshold_ratio_set ? "set" : "unset",
@@ -1058,40 +1066,62 @@ void test_triggers_buffer_usage_condition(const char *session_name,
 
 	loop_end:
 		if (loop_ret == 1) {
-			fail("Setup error occurred for tuple: %s", test_tuple_string);
+			diag("Setup error occurred for tuple: %s", test_tuple_string);
+			ret = -1;
 			goto loop_cleanup;
 		}
 
 		/* This combination happens three times */
 		if (session_name_set && channel_name_set &&
 		    (threshold_ratio_set || threshold_byte_set) && domain_type_set) {
-			ok(loop_ret == 0, "Trigger is registered: %s", test_tuple_string);
+			diag("Trigger is registered: %s, ret=%d", test_tuple_string, loop_ret);
+			if (loop_ret != 0) {
+				ret = -1;
+			}
 
 			/*
 			 * Test that a trigger cannot be registered
 			 * multiple time.
 			 */
 			loop_ret = lttng_register_trigger(trigger);
-			ok(loop_ret == -LTTNG_ERR_TRIGGER_EXISTS,
-			   "Re-register trigger fails as expected: %s",
-			   test_tuple_string);
+			diag("Re-register trigger fails as expected wiuth ERR_TRIGGER_EXISTS (%d): %s, ret=%d",
+			     -LTTNG_ERR_TRIGGER_EXISTS,
+			     test_tuple_string,
+			     loop_ret);
+			if (loop_ret != -LTTNG_ERR_TRIGGER_EXISTS) {
+				ret = -1;
+			}
 
 			/* Test that a trigger can be unregistered */
 			loop_ret = lttng_unregister_trigger(trigger);
-			ok(loop_ret == 0, "Unregister trigger: %s", test_tuple_string);
+			diag("Unregister trigger succeeds (%d): %s, ret=%d",
+			     0,
+			     test_tuple_string,
+			     loop_ret);
+			if (loop_ret != 0) {
+				ret = -1;
+			}
 
 			/*
 			 * Test that unregistration of a non-previously
 			 * registered trigger fail.
 			 */
 			loop_ret = lttng_unregister_trigger(trigger);
-			ok(loop_ret == -LTTNG_ERR_TRIGGER_NOT_FOUND,
-			   "Unregister of a non-registered trigger fails as expected: %s",
-			   test_tuple_string);
+			diag("Unregister of a non-registered trigger fails as expected with ERR_TRIGGER_NOT_FOUND (%d): %s, ret=%d",
+			     -LTTNG_ERR_TRIGGER_NOT_FOUND,
+			     test_tuple_string,
+			     loop_ret);
+			if (loop_ret != -LTTNG_ERR_TRIGGER_NOT_FOUND) {
+				ret = -1;
+			}
 		} else {
-			ok(loop_ret == -LTTNG_ERR_INVALID_TRIGGER,
-			   "Trigger is invalid as expected and cannot be registered: %s",
-			   test_tuple_string);
+			diag("Trigger is invalid as expected and cannot be registered with code ERR_INVALID_TRIGGER (%d): %s, ret=%d",
+			     -LTTNG_ERR_INVALID_TRIGGER,
+			     test_tuple_string,
+			     loop_ret);
+			if (loop_ret != -LTTNG_ERR_INVALID_TRIGGER) {
+				ret = -1;
+			}
 		}
 
 	loop_cleanup:
@@ -1102,6 +1132,7 @@ void test_triggers_buffer_usage_condition(const char *session_name,
 
 end:
 	lttng_action_destroy(action);
+	return ret;
 }
 
 void wait_data_pending(const char *session_name)
@@ -2898,7 +2929,7 @@ int main(int argc, const char *argv[])
 		const char *session_name, *channel_name;
 
 		/* Test cases that need a tracing session enabled. */
-		plan_tests(96);
+		plan_tests(12);
 
 		/*
 		 * Argument 7 and upward are named pipe location for consumerd
@@ -2915,16 +2946,6 @@ int main(int argc, const char *argv[])
 
 		session_name = argv[5];
 		channel_name = argv[6];
-
-		diag("Test trigger for domain %s with buffer_usage_low condition",
-		     domain_type_string);
-		test_triggers_buffer_usage_condition(
-			session_name, channel_name, LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW);
-
-		diag("Test trigger for domain %s with buffer_usage_high condition",
-		     domain_type_string);
-		test_triggers_buffer_usage_condition(
-			session_name, channel_name, LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH);
 
 		diag("Test buffer usage notification channel api for domain %s",
 		     domain_type_string);
@@ -3058,6 +3079,38 @@ int main(int argc, const char *argv[])
 
 		return test_buffer_usage_subscription_twice(
 			session_name, channel_name, domain_type, usage_type);
+		break;
+	}
+	case 9:
+	{
+		/* Test various trigger creation and registration states with the buffer usage
+		 * condition. */
+		const char *session_name, *channel_name, *condition_type_str;
+		enum lttng_condition_type condition_type;
+
+		if (argc < 8) {
+			diag("Missing parameters for tests to run scenario 9");
+			diag("Usage:");
+			diag("  %s SCENARIO DOMAIN APP_PID APP_STATE_FILE SESSION_NAME CHANNEL_NAME BUFFER_USAGE_TYPE",
+			     argv[0]);
+			return 1;
+		}
+
+		session_name = argv[5];
+		channel_name = argv[6];
+		condition_type_str = argv[7];
+
+		if (strcmp(condition_type_str, "LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH") == 0) {
+			condition_type = LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH;
+		} else if (strcmp(condition_type_str, "LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW") ==
+			   0) {
+			condition_type = LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW;
+		} else {
+			diag("Unknown buffer usage type '%s'", condition_type_str);
+			return 1;
+		}
+		return test_triggers_buffer_usage_condition(
+			session_name, channel_name, domain_type, condition_type);
 		break;
 	}
 
