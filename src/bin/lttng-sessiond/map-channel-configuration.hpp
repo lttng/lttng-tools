@@ -59,7 +59,7 @@ public:
 	 * How event-rule matches are accounted for in the map.
 	 *
 	 * PER_EVENT (coalesce:true): a single firing event produces at most one
-         * increment per map regardless of how many event-rules match it.
+	 * increment per map regardless of how many event-rules match it.
 	 *
 	 * PER_RULE_MATCH (coalesce:false): every matching event-rule
 	 * produces its own increment.
