@@ -1256,11 +1256,11 @@ def test_reclaim_memory_command_unknown_channel(tap, test_env, client):
     try:
         session.reclaim_memory(channels=["not-a-channel"])
         tap.diagnostic("Expected LTTngClientError but command succeeded")
-        assert not "lttng-reclaim-memory(1) succeeds on non-existing channel"
-    except lttngtest.LTTngClientError as ex:
-        expected_error = (
-            "Failed to reclaim memory: Channel `not-a-channel` does not exist"
+        assert (
+            not "lttng-reclaim-memory(1) succeeds on non-existing event record channel"
         )
+    except lttngtest.LTTngClientError as ex:
+        expected_error = "Failed to reclaim memory: Event record channel `not-a-channel` does not exist"
         tap.diagnostic(
             "error_output contains '{}': {}".format(
                 expected_error, expected_error in ex._error_output
@@ -1294,7 +1294,7 @@ def test_auto_reclaim_memory_consumed_snapshot_mode(tap, test_env, client):
             not "lttng enable-channel --auto-reclaim-memory=consumed succeed on session with snapshot mode"
         )
     except lttngtest.LTTngClientError as ex:
-        expected_error = "Error: Failed to enable channel `{}` under session `{}`: Invalid reclamation policy for this channel".format(
+        expected_error = "Error: Failed to enable event record channel `{}` under session `{}`: Invalid reclamation policy for this event record channel".format(
             channel_name, session_name
         )
         tap.diagnostic(
@@ -1325,7 +1325,7 @@ def test_auto_reclaim_memory_consumed_no_output(tap, test_env, client):
             not "lttng enable-channel --auto-reclaim-memory=consumed succeed on session without output"
         )
     except lttngtest.LTTngClientError as ex:
-        expected_error = "Error: Failed to enable channel `{}` under session `{}`: Invalid reclamation policy for this channel".format(
+        expected_error = "Error: Failed to enable event record channel `{}` under session `{}`: Invalid reclamation policy for this event record channel".format(
             channel_name, session_name
         )
         tap.diagnostic(
