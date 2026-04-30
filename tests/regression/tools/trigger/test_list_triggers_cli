@@ -1586,7 +1586,7 @@ test_buffer_usage_conditions ()
 	  owner uid: ${uid}
 	  condition: buffer usage high
 	    session name: the-session-name
-	    channel name: the-channel-name
+	    event record channel name: the-channel-name
 	    domain: user space
 	    threshold (bytes): 1234
 	    errors: none
@@ -1598,7 +1598,7 @@ test_buffer_usage_conditions ()
 	  owner uid: ${uid}
 	  condition: buffer usage high
 	    session name: the-session-name
-	    channel name: the-channel-name
+	    event record channel name: the-channel-name
 	    domain: user space
 	    threshold (ratio): 0.25
 	    errors: none
@@ -1610,7 +1610,7 @@ test_buffer_usage_conditions ()
 	  owner uid: ${uid}
 	  condition: buffer usage low
 	    session name: the-session-name
-	    channel name: the-channel-name
+	    event record channel name: the-channel-name
 	    domain: user space
 	    threshold (bytes): 2345
 	    errors: none
@@ -1622,7 +1622,7 @@ test_buffer_usage_conditions ()
 	  owner uid: ${uid}
 	  condition: buffer usage low
 	    session name: the-session-name
-	    channel name: the-channel-name
+	    event record channel name: the-channel-name
 	    domain: user space
 	    threshold (ratio): 0.40
 	    errors: none
