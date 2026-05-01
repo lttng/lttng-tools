@@ -10,6 +10,7 @@
 #define LTTNG_SESSIOND_UST_APP_CHANNEL_HPP
 
 #include "ust-app.hpp"
+#include "ust-object-data.hpp"
 #include "ust-stream-group.hpp"
 #include "ust-trace-class.hpp"
 
@@ -92,7 +93,7 @@ public:
 	uint64_t trace_class_stream_class_handle = 0;
 	/* Number of stream that this channel is expected to receive. */
 	unsigned int expected_stream_count = 0;
-	struct lttng_ust_abi_object_data *obj = nullptr;
+	ust_object_data obj;
 	/* Owned streams. Order matters (matches CPU index). */
 	std::vector<std::unique_ptr<lttng::sessiond::ust::app_stream>> streams;
 	/* Session that owns this channel. */
@@ -151,16 +152,16 @@ public:
 	app_stream& operator=(app_stream&&) = delete;
 
 	int handle = -1;
-	::lttng_ust_abi_object_data *obj = nullptr;
+	ust_object_data obj;
 
 	/*
 	 * Transfer ownership of the UST object data to the caller.
 	 * The caller assumes responsibility for the object's lifecycle,
 	 * including releasing it and accounting for file descriptors.
 	 *
-	 * Returns the pointer and nullifies the internal reference.
+	 * Returns the wrapper, leaving the internal one empty.
 	 */
-	::lttng_ust_abi_object_data *release_obj() noexcept;
+	ust_object_data release_obj() noexcept;
 
 	/*
 	 * Release local resources (close local FDs, free object memory,

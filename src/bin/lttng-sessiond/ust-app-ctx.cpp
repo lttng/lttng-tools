@@ -7,17 +7,12 @@
  */
 
 #include "context-configuration.hpp"
-#include "health-sessiond.hpp"
 #include "recording-channel-configuration.hpp"
 #include "ust-app-channel.hpp"
 #include "ust-app-ctx.hpp"
 #include "ust-app.hpp"
 
 #include <common/common.hpp>
-#include <common/compat/errno.hpp>
-
-#include <lttng/ust-ctl.h>
-#include <lttng/ust-error.h>
 
 namespace lsu = lttng::sessiond::ust;
 namespace lsc = lttng::sessiond::config;
@@ -30,35 +25,11 @@ lsu::app_context::app_context(lsu::app_channel& channel,
 
 lsu::app_context::~app_context()
 {
-	if (obj) {
-		auto& app = _channel.session.app();
-		int ret;
-
-		{
-			const auto protocol = app.command_socket.lock();
-			ret = lttng_ust_ctl_release_object(protocol.fd(), obj);
-		}
-
-		if (ret < 0) {
-			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-				DBG3("UST app release ctx failed. Application is dead: pid = %d, sock = %d",
-				     app.pid,
-				     app.command_socket.fd());
-			} else if (ret == -EAGAIN) {
-				WARN("UST app release ctx failed. Communication time out: pid = %d, sock = %d",
-				     app.pid,
-				     app.command_socket.fd());
-			} else {
-				ERR("UST app release ctx obj handle %d failed with ret %d: pid = %d, sock = %d",
-				    obj->header.handle,
-				    ret,
-				    app.pid,
-				    app.command_socket.fd());
-			}
-		}
-
-		free(obj);
+	if (!obj.get()) {
+		return;
 	}
+
+	lsu::release_object_via_app(_channel.session.app(), *obj.get(), "ctx");
 }
 
 /*

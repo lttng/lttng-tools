@@ -87,41 +87,22 @@ lsu::app_channel::~app_channel()
 	/* Wipe events. Destructors release UST tracer-side objects. */
 	events.clear();
 
-	if (obj != nullptr) {
-		auto& app = session.app();
-		int ret;
-
-		/* Deregister objd from the app's registry via RAII token. */
-		objd_token.reset();
-
-		{
-			const auto protocol = app.command_socket.lock();
-			ret = lttng_ust_ctl_release_object(protocol.fd(), obj);
-		}
-
-		if (ret < 0) {
-			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-				DBG3("UST app channel %s release failed. Application is dead: pid = %d, sock = %d",
-				     channel_config.name.c_str(),
-				     app.pid,
-				     app.command_socket.fd());
-			} else if (ret == -EAGAIN) {
-				WARN("UST app channel %s release failed. Communication time out: pid = %d, sock = %d",
-				     channel_config.name.c_str(),
-				     app.pid,
-				     app.command_socket.fd());
-			} else {
-				ERR("UST app channel %s release failed with ret %d: pid = %d, sock = %d",
-				    channel_config.name.c_str(),
-				    ret,
-				    app.pid,
-				    app.command_socket.fd());
-			}
-		}
-
-		lttng_fd_put(LTTNG_FD_APPS, 1);
-		free(obj);
+	if (!obj.get()) {
+		return;
 	}
+
+	/* Deregister objd from the app's registry via RAII token. */
+	objd_token.reset();
+
+	/*
+	 * Notify the tracer; the wrapper destructor handles the local
+	 * cleanup pass (close `wakeup_fd`) and frees the object. The
+	 * channel's `wakeup_fd` was kept open since the SCM_RIGHTS send
+	 * (see `send_to_app_per_pid()`) so this is the moment the
+	 * consumerd's channel-teardown POLLHUP is delivered.
+	 */
+	lsu::release_object_via_app(session.app(), *obj.get(), "channel");
+	lttng_fd_put(LTTNG_FD_APPS, 1);
 }
 
 void lsu::app_channel::enable()
@@ -132,7 +113,7 @@ void lsu::app_channel::enable()
 
 	auto& app = session.app();
 
-	app.command_socket.lock().enable(obj);
+	app.command_socket.lock().enable(obj.get());
 
 	enabled = true;
 
@@ -149,7 +130,7 @@ void lsu::app_channel::disable()
 
 	auto& app = session.app();
 
-	app.command_socket.lock().disable(obj);
+	app.command_socket.lock().disable(obj.get());
 
 	enabled = false;
 
@@ -174,9 +155,13 @@ void lsu::app_channel::create_context(const lsc::context_configuration& context_
 	const auto update_health_code_on_exit =
 		lttng::make_scope_exit([]() noexcept { health_code_update(); });
 
-	app.command_socket.lock().add_context(uctx, obj, &app_context->obj);
+	{
+		lttng_ust_abi_object_data *raw = nullptr;
+		app.command_socket.lock().add_context(uctx, obj.get(), &raw);
+		app_context->obj = lsu::ust_object_data(raw);
+	}
 
-	if (!app_context->obj) {
+	if (!app_context->obj.get()) {
 		LTTNG_THROW_ERROR(lttng::format(
 			"Failed to add UST context: no context object returned: channel_name=`{}`, pid={}, "
 			"sock={}",
@@ -185,7 +170,7 @@ void lsu::app_channel::create_context(const lsc::context_configuration& context_
 			app.command_socket.fd()));
 	}
 
-	app_context->handle = app_context->obj->header.handle;
+	app_context->handle = app_context->obj.get()->header.handle;
 
 	DBG2("UST app context handle %d created successfully for channel %s",
 	     app_context->handle,
@@ -265,8 +250,7 @@ void lsu::app_channel::send_to_app_per_uid(lsu::stream_group& stream_group)
 	/* Duplicate the master channel object for this application. */
 	{
 		try {
-			auto duplicated_channel = stream_group.duplicate_channel_object();
-			obj = duplicated_channel.release();
+			obj = stream_group.duplicate_channel_object();
 		} catch (const std::exception& ex) {
 			LTTNG_THROW_ERROR(lttng::format(
 				"Failed to duplicate UST channel object for per-UID send: channel_name=`{}`, "
@@ -279,7 +263,7 @@ void lsu::app_channel::send_to_app_per_uid(lsu::stream_group& stream_group)
 				ex.what()));
 		}
 
-		handle = obj->header.handle;
+		handle = obj.get()->header.handle;
 	}
 
 	/* Send channel to the application. */
@@ -305,8 +289,7 @@ void lsu::app_channel::send_to_app_per_uid(lsu::stream_group& stream_group)
 		lsu::app_stream tmp_stream(*this);
 
 		try {
-			auto duplicated_stream = stream_ptr->handle.duplicate();
-			tmp_stream.obj = duplicated_stream.release();
+			tmp_stream.obj = stream_ptr->handle.duplicate();
 		} catch (const std::exception& ex) {
 			LTTNG_THROW_ERROR(lttng::format(
 				"Failed to duplicate UST stream object for per-UID send: channel_name=`{}`, "
@@ -319,7 +302,7 @@ void lsu::app_channel::send_to_app_per_uid(lsu::stream_group& stream_group)
 				ex.what()));
 		}
 
-		tmp_stream.handle = tmp_stream.obj->header.handle;
+		tmp_stream.handle = tmp_stream.obj.get()->header.handle;
 
 		const auto stream_send_ret =
 			ust_consumer_send_stream_to_ust(&app, this, &tmp_stream);
@@ -356,70 +339,34 @@ lsu::app_stream::app_stream(lsu::app_channel& channel) : _channel(channel)
 }
 
 lsu::app_stream::app_stream(app_stream&& other) noexcept :
-	handle(other.handle), obj(other.obj), _channel(other._channel)
+	handle(other.handle), obj(std::move(other.obj)), _channel(other._channel)
 {
-	other.obj = nullptr;
 	other.handle = -1;
 }
 
 lsu::app_stream::~app_stream()
 {
-	if (!obj) {
+	if (!obj.get()) {
 		return;
 	}
 
-	auto& app = _channel.session.app();
-	int ret;
-
-	{
-		const auto protocol = app.command_socket.lock();
-		ret = lttng_ust_ctl_release_object(protocol.fd(), obj);
-	}
-
-	if (ret < 0) {
-		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-			DBG3("UST app release stream failed. Application is dead: pid = %d, sock = %d",
-			     app.pid,
-			     app.command_socket.fd());
-		} else if (ret == -EAGAIN) {
-			WARN("UST app release stream failed. Communication time out: pid = %d, sock = %d",
-			     app.pid,
-			     app.command_socket.fd());
-		} else {
-			ERR("UST app release stream obj failed with ret %d: pid = %d, sock = %d",
-			    ret,
-			    app.pid,
-			    app.command_socket.fd());
-		}
-	}
-
+	lsu::release_object_via_app(_channel.session.app(), *obj.get(), "stream");
 	lttng_fd_put(LTTNG_FD_APPS, 2);
-	free(obj);
 }
 
-lttng_ust_abi_object_data *lsu::app_stream::release_obj() noexcept
+lsu::ust_object_data lsu::app_stream::release_obj() noexcept
 {
-	auto *ret = obj;
-	obj = nullptr;
-	return ret;
+	return std::move(obj);
 }
 
 void lsu::app_stream::discard_locally() noexcept
 {
-	if (!obj) {
+	if (!obj.get()) {
 		return;
 	}
 
-	auto& app = _channel.session.app();
-
-	{
-		const auto protocol = app.command_socket.lock();
-		(void) lttng_ust_ctl_release_object(-1, obj);
-	}
-
+	obj = lsu::ust_object_data();
 	lttng_fd_put(LTTNG_FD_APPS, 2);
-	free(obj);
-	obj = nullptr;
 }
 
 /* -- channel allocation/deallocation -- */

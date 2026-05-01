@@ -375,34 +375,37 @@ int ust_consumer_get_channel(struct consumer_socket *socket, lsu::app_channel *u
 	}
 
 	/* First, get the channel from consumer. */
-	ret = lttng_ust_ctl_recv_channel_from_consumer(*socket->fd_ptr, &ua_chan->obj);
-	if (ret < 0) {
-		if (ret != -EPIPE) {
-			ERR("Error recv channel from consumer %d with ret %d",
-			    *socket->fd_ptr,
-			    ret);
-		} else {
-			DBG3("UST app recv channel from consumer. Consumer is dead.");
+	{
+		lttng_ust_abi_object_data *raw = nullptr;
+		ret = lttng_ust_ctl_recv_channel_from_consumer(*socket->fd_ptr, &raw);
+		if (ret < 0) {
+			if (ret != -EPIPE) {
+				ERR("Error recv channel from consumer %d with ret %d",
+				    *socket->fd_ptr,
+				    ret);
+			} else {
+				DBG3("UST app recv channel from consumer. Consumer is dead.");
+			}
+			goto error;
 		}
-		goto error;
+		ua_chan->obj = lsu::ust_object_data(raw);
 	}
 
 	/* Next, get all streams. */
 	while (true) {
 		auto stream = lttng::make_unique<lsu::app_stream>(*ua_chan);
+		lttng_ust_abi_object_data *raw = nullptr;
 
-		/* Stream object is populated by this call if successful. */
-		ret = lttng_ust_ctl_recv_stream_from_consumer(*socket->fd_ptr, &stream->obj);
+		ret = lttng_ust_ctl_recv_stream_from_consumer(*socket->fd_ptr, &raw);
 		if (ret < 0) {
 			/*
 			 * lttng_ust_ctl_recv_stream_from_consumer() only
-			 * populates ->obj on success, but defensively clear
-			 * it so that ~app_stream remains a no-op in error
-			 * paths -- acquiring the app command socket lock
-			 * while socket->lock is held would reverse the
-			 * lock order used elsewhere.
+			 * populates the output on success; in error paths
+			 * `stream->obj` stays empty so that ~app_stream
+			 * remains a no-op (acquiring the app command socket
+			 * lock while socket->lock is held would reverse the
+			 * lock order used elsewhere).
 			 */
-			stream->obj = nullptr;
 			if (ret == -LTTNG_UST_ERR_NOENT) {
 				DBG3("UST app consumer has no more stream available");
 				break;
@@ -417,6 +420,7 @@ int ust_consumer_get_channel(struct consumer_socket *socket, lsu::app_channel *u
 			goto error;
 		}
 
+		stream->obj = lsu::ust_object_data(raw);
 		ua_chan->streams.push_back(std::move(stream));
 
 		DBG2("UST app stream %zu received successfully", ua_chan->streams.size());
@@ -492,7 +496,8 @@ int ust_consumer_send_stream_to_ust(lsu::app *app,
 
 	/* Relay stream to application. */
 	try {
-		app->command_socket.lock().send_stream_to_ust(channel->obj, stream->obj);
+		app->command_socket.lock().send_stream_to_ust(channel->obj.get(),
+							      stream->obj.get());
 	} catch (const lsu::app_communication_error&) {
 		ret = -ENOTCONN;
 		goto error;
@@ -501,7 +506,7 @@ int ust_consumer_send_stream_to_ust(lsu::app *app,
 		goto error;
 	}
 
-	channel->handle = channel->obj->header.handle;
+	channel->handle = channel->obj.get()->header.handle;
 
 error:
 	return ret;
@@ -521,7 +526,7 @@ int ust_consumer_send_channel_to_ust(lsu::app *app,
 	LTTNG_ASSERT(app);
 	LTTNG_ASSERT(ua_sess);
 	LTTNG_ASSERT(channel);
-	LTTNG_ASSERT(channel->obj);
+	LTTNG_ASSERT(channel->obj.get());
 
 	DBG2("UST app send channel to sock %d pid %d (name: %s, key: %" PRIu64 ")",
 	     app->command_socket.fd(),
@@ -533,11 +538,11 @@ int ust_consumer_send_channel_to_ust(lsu::app *app,
 	 * This effectively transmits the owner-id to the application by storing
 	 * it in the channel.
 	 */
-	lttng_ust_ctl_set_channel_owner_id(channel->obj, app->owner_id_n.key);
+	lttng_ust_ctl_set_channel_owner_id(channel->obj.get(), app->owner_id_n.key);
 
 	/* Send channel to application. */
 	try {
-		app->command_socket.lock().send_channel_to_ust(ua_sess->handle, channel->obj);
+		app->command_socket.lock().send_channel_to_ust(ua_sess->handle, channel->obj.get());
 	} catch (const lsu::app_communication_error&) {
 		ret = -ENOTCONN;
 		goto error;

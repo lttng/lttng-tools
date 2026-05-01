@@ -112,7 +112,7 @@ public:
 	 * failure (`app_communication_error`); the caller is responsible
 	 * for translating the latter into a domain-specific status.
 	 */
-	app_handle attach_to_app(ust::app& app, lttng_ust_abi_object_data *parent_handle);
+	app_handle attach_to_app(ust::app& app, lttng_ust_abi_object_data& parent_handle);
 
 	sessiond::map::element_value aggregate_element(std::uint64_t index) const;
 	void clear_element(std::uint64_t index);

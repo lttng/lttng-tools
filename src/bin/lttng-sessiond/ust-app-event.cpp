@@ -81,32 +81,11 @@ end:
 
 lsu::app_event::~app_event()
 {
-	if (obj == nullptr) {
+	if (!obj.get()) {
 		return;
 	}
 
-	auto& app = channel.session.app();
-
-	const auto protocol = app.command_socket.lock();
-	const auto ret = lttng_ust_ctl_release_object(protocol.fd(), obj);
-	if (ret < 0) {
-		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-			DBG3("UST app release event failed. Application is dead: pid = %d, sock = %d",
-			     app.pid,
-			     app.command_socket.fd());
-		} else if (ret == -EAGAIN) {
-			WARN("UST app release event failed. Communication time out: pid = %d, sock = %d",
-			     app.pid,
-			     app.command_socket.fd());
-		} else {
-			ERR("UST app release event obj failed with ret %d: pid = %d, sock = %d",
-			    ret,
-			    app.pid,
-			    app.command_socket.fd());
-		}
-	}
-
-	free(obj);
+	lsu::release_object_via_app(channel.session.app(), *obj.get(), "event");
 }
 
 /*
@@ -359,14 +338,19 @@ void create_ust_event(lsu::app_event& event)
 		make_ust_abi_event_from_event_rule(event.event_rule_config.event_rule.get());
 
 	/* Create UST event on tracer. */
-	app.command_socket.lock().create_event(&ust_abi_event, event.channel.obj, &event.obj);
+	{
+		lttng_ust_abi_object_data *raw = nullptr;
+		app.command_socket.lock().create_event(
+			&ust_abi_event, event.channel.obj.get(), &raw);
+		event.obj = lsu::ust_object_data(raw);
+	}
 
-	event.handle = event.obj->header.handle;
+	event.handle = event.obj.get()->header.handle;
 
 	DBG2("UST app event %s created successfully for pid:%d object = %p",
 	     get_ust_event_name_from_rule(event.event_rule_config.event_rule.get()),
 	     app.pid,
-	     event.obj);
+	     event.obj.get());
 
 	health_code_update();
 
@@ -375,7 +359,8 @@ void create_ust_event(lsu::app_event& event)
 		const auto *filter_bytecode = lttng_event_rule_get_filter_bytecode(
 			event.event_rule_config.event_rule.get());
 		if (filter_bytecode) {
-			const auto ret = set_ust_object_filter(&app, filter_bytecode, event.obj);
+			const auto ret =
+				set_ust_object_filter(&app, filter_bytecode, event.obj.get());
 			if (ret < 0) {
 				LTTNG_THROW_ERROR("Failed to set UST event filter");
 			}
@@ -391,7 +376,8 @@ void create_ust_event(lsu::app_event& event)
 		    exclusion) {
 			const auto free_exclusion_on_exit =
 				lttng::make_scope_exit([exclusion]() noexcept { free(exclusion); });
-			const auto ret = set_ust_object_exclusions(&app, exclusion, event.obj);
+			const auto ret =
+				set_ust_object_exclusions(&app, exclusion, event.obj.get());
 			if (ret < 0) {
 				LTTNG_THROW_ERROR("Failed to set UST event exclusions");
 			}
@@ -407,7 +393,7 @@ void create_ust_event(lsu::app_event& event)
 		 * We now need to explicitly enable the event, since it
 		 * is now disabled at creation.
 		 */
-		app.command_socket.lock().enable(event.obj);
+		app.command_socket.lock().enable(event.obj.get());
 	}
 }
 
@@ -468,11 +454,11 @@ void lsu::app_event::enable()
 	const auto update_health_code_on_exit =
 		lttng::make_scope_exit([]() noexcept { health_code_update(); });
 
-	app.command_socket.lock().enable(obj);
+	app.command_socket.lock().enable(obj.get());
 
 	enabled = true;
 
-	DBG2("UST app event %p enabled successfully for app: pid = %d", obj, app.pid);
+	DBG2("UST app event %p enabled successfully for app: pid = %d", obj.get(), app.pid);
 }
 
 /*
@@ -486,11 +472,11 @@ void lsu::app_event::disable()
 	const auto update_health_code_on_exit =
 		lttng::make_scope_exit([]() noexcept { health_code_update(); });
 
-	app.command_socket.lock().disable(obj);
+	app.command_socket.lock().disable(obj.get());
 
 	enabled = false;
 
-	DBG2("UST app event %p disabled successfully for app: pid = %d", obj, app.pid);
+	DBG2("UST app event %p disabled successfully for app: pid = %d", obj.get(), app.pid);
 }
 
 /*

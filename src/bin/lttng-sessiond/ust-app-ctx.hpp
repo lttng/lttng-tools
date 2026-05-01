@@ -9,7 +9,7 @@
 #ifndef LTTNG_SESSIOND_UST_APP_CTX_HPP
 #define LTTNG_SESSIOND_UST_APP_CTX_HPP
 
-struct lttng_ust_abi_object_data;
+#include "ust-object-data.hpp"
 
 namespace lttng {
 namespace sessiond {
@@ -39,7 +39,7 @@ public:
 	app_context& operator=(app_context&&) = delete;
 
 	int handle = 0;
-	struct lttng_ust_abi_object_data *obj = nullptr;
+	ust_object_data obj;
 	const lttng::sessiond::config::context_configuration& context_config;
 
 private:

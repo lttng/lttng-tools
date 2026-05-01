@@ -9,6 +9,8 @@
 #ifndef LTTNG_SESSIOND_UST_APP_EVENT_HPP
 #define LTTNG_SESSIOND_UST_APP_EVENT_HPP
 
+#include "ust-object-data.hpp"
+
 #include <lttng/ust-ctl.h>
 
 #include <memory>
@@ -73,7 +75,7 @@ public:
 
 	bool enabled = false;
 	int handle = 0;
-	struct lttng_ust_abi_object_data *obj = nullptr;
+	ust_object_data obj;
 	app_channel& channel;
 	const lttng::sessiond::config::event_rule_configuration& event_rule_config;
 };

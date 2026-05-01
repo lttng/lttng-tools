@@ -1466,22 +1466,18 @@ void ls::ust::domain_orchestrator::_create_channel_per_uid(ust::app *app,
 			auto& stream_class_ref = locked_trace_class->channel(
 				ua_chan->trace_class_stream_class_handle);
 
-			ust::ust_object_data channel_obj(ua_chan->obj);
-			ua_chan->obj = nullptr;
-
 			auto& stream_group =
 				_find_or_create_per_uid_stream_group(recording_config,
 								     app->uid,
 								     app_abi,
 								     ua_chan->key,
-								     std::move(channel_obj),
+								     std::move(ua_chan->obj),
 								     *trace_class_ptr,
 								     stream_class_ref);
 
 			unsigned int cpu_idx = 0;
 			for (auto& stream_ptr : ua_chan->streams) {
-				stream_group.add_stream(
-					cpu_idx, ust::ust_object_data(stream_ptr->release_obj()));
+				stream_group.add_stream(cpu_idx, stream_ptr->release_obj());
 				cpu_idx++;
 			}
 		}

@@ -351,7 +351,7 @@ void free_ust_app_event_notifier_rule_rcu(struct rcu_head *head)
 	struct ust_app_event_notifier_rule *obj =
 		lttng::utils::container_of(head, &ust_app_event_notifier_rule::rcu_head);
 
-	free(obj);
+	delete obj;
 }
 } /* namespace */
 
@@ -359,41 +359,19 @@ void free_ust_app_event_notifier_rule_rcu(struct rcu_head *head)
  * Delete ust app event notifier rule safely.
  */
 namespace {
-void delete_ust_app_event_notifier_rule(int sock,
+void delete_ust_app_event_notifier_rule(int sock __attribute__((unused)),
 					struct ust_app_event_notifier_rule *ua_event_notifier_rule,
 					lsu::app *app)
 {
-	int ret;
-
 	LTTNG_ASSERT(ua_event_notifier_rule);
 
 	if (ua_event_notifier_rule->exclusion != nullptr) {
 		free(ua_event_notifier_rule->exclusion);
 	}
 
-	if (ua_event_notifier_rule->obj != nullptr) {
-		{
-			const auto protocol = app->command_socket.lock();
-			ret = lttng_ust_ctl_release_object(sock, ua_event_notifier_rule->obj);
-		}
-		if (ret < 0) {
-			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-				DBG3("UST app release event notifier failed. Application is dead: pid = %d, sock = %d",
-				     app->pid,
-				     app->command_socket.fd());
-			} else if (ret == -EAGAIN) {
-				WARN("UST app release event notifier failed. Communication time out: pid = %d, sock = %d",
-				     app->pid,
-				     app->command_socket.fd());
-			} else {
-				ERR("UST app release event notifier failed with ret %d: pid = %d, sock = %d",
-				    ret,
-				    app->pid,
-				    app->command_socket.fd());
-			}
-		}
-
-		free(ua_event_notifier_rule->obj);
+	if (ua_event_notifier_rule->obj.get() != nullptr) {
+		lsu::release_object_via_app(
+			*app, *ua_event_notifier_rule->obj.get(), "event notifier");
 	}
 
 	lttng_trigger_put(ua_event_notifier_rule->trigger);
@@ -587,10 +565,10 @@ void delete_ust_app(lsu::app *app)
 	lttng_ht_destroy(app->token_to_event_notifier_rule_ht);
 
 	/*
-	 * This could be NULL if the event notifier setup failed (e.g the app
-	 * was killed or the tracer does not support this feature).
+	 * This could be empty if the event notifier setup failed (e.g the
+	 * app was killed or the tracer does not support this feature).
 	 */
-	if (app->event_notifier_group.object) {
+	if (app->event_notifier_group.object.get()) {
 		enum lttng_error_code ret_code;
 		enum event_notifier_error_accounting_status status;
 
@@ -608,8 +586,14 @@ void delete_ust_app(lsu::app *app)
 			ERR("Error unregistering app from event notifier error accounting");
 		}
 
-		lttng_ust_ctl_release_object(sock, app->event_notifier_group.object);
-		free(app->event_notifier_group.object);
+		/*
+		 * The command socket fd was extracted into `sock` above; the
+		 * helper uses `command_socket.fd()` which is now -1, so issue
+		 * the RELEASE directly with the still-valid local fd. The
+		 * subsequent reset triggers the wrapper's local-cleanup pass.
+		 */
+		(void) lttng_ust_ctl_release_object(sock, app->event_notifier_group.object.get());
+		app->event_notifier_group.object = lsu::ust_object_data();
 	}
 
 	event_notifier_write_fd_is_open =
@@ -668,30 +652,29 @@ void delete_ust_app_rcu(struct rcu_head *head)
 namespace {
 struct ust_app_event_notifier_rule *alloc_ust_app_event_notifier_rule(struct lttng_trigger *trigger)
 {
-	enum lttng_event_rule_generate_exclusions_status generate_exclusion_status;
-	enum lttng_condition_status cond_status;
-	struct ust_app_event_notifier_rule *ua_event_notifier_rule;
-	struct lttng_condition *condition = nullptr;
+	struct lttng_condition *condition = lttng_trigger_get_condition(trigger);
 	const struct lttng_event_rule *event_rule = nullptr;
 
-	ua_event_notifier_rule = zmalloc<ust_app_event_notifier_rule>();
-	if (ua_event_notifier_rule == nullptr) {
+	LTTNG_ASSERT(condition);
+	LTTNG_ASSERT(lttng_condition_get_type(condition) ==
+		     LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES);
+
+	const auto cond_status =
+		lttng_condition_event_rule_matches_get_rule(condition, &event_rule);
+	LTTNG_ASSERT(cond_status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(event_rule);
+
+	std::unique_ptr<ust_app_event_notifier_rule> ua_event_notifier_rule;
+	try {
+		ua_event_notifier_rule = lttng::make_unique<ust_app_event_notifier_rule>();
+	} catch (const std::bad_alloc&) {
 		PERROR("Failed to allocate ust_app_event_notifier_rule structure");
-		goto error;
+		return nullptr;
 	}
 
 	ua_event_notifier_rule->enabled = true;
 	ua_event_notifier_rule->token = lttng_trigger_get_tracer_token(trigger);
 	lttng_ht_node_init_u64(&ua_event_notifier_rule->node, ua_event_notifier_rule->token);
-
-	condition = lttng_trigger_get_condition(trigger);
-	LTTNG_ASSERT(condition);
-	LTTNG_ASSERT(lttng_condition_get_type(condition) ==
-		     LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES);
-
-	cond_status = lttng_condition_event_rule_matches_get_rule(condition, &event_rule);
-	LTTNG_ASSERT(cond_status == LTTNG_CONDITION_STATUS_OK);
-	LTTNG_ASSERT(event_rule);
 
 	ua_event_notifier_rule->error_counter_index =
 		lttng_condition_event_rule_matches_get_error_counter_index(condition);
@@ -700,7 +683,7 @@ struct ust_app_event_notifier_rule *alloc_ust_app_event_notifier_rule(struct ltt
 
 	ua_event_notifier_rule->trigger = trigger;
 	ua_event_notifier_rule->filter = lttng_event_rule_get_filter_bytecode(event_rule);
-	generate_exclusion_status = lttng_event_rule_generate_exclusions(
+	const auto generate_exclusion_status = lttng_event_rule_generate_exclusions(
 		event_rule, &ua_event_notifier_rule->exclusion);
 	switch (generate_exclusion_status) {
 	case LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_OK:
@@ -709,19 +692,14 @@ struct ust_app_event_notifier_rule *alloc_ust_app_event_notifier_rule(struct ltt
 	default:
 		/* Error occurred. */
 		ERR("Failed to generate exclusions from trigger while allocating an event notifier rule");
-		goto error_put_trigger;
+		lttng_trigger_put(trigger);
+		return nullptr;
 	}
 
 	DBG3("UST app event notifier rule allocated: token = %" PRIu64,
 	     ua_event_notifier_rule->token);
 
-	return ua_event_notifier_rule;
-
-error_put_trigger:
-	lttng_trigger_put(trigger);
-error:
-	free(ua_event_notifier_rule);
-	return nullptr;
+	return ua_event_notifier_rule.release();
 }
 } /* namespace */
 
@@ -968,7 +946,7 @@ int create_ust_event_notifier(lsu::app *app,
 	enum lttng_event_rule_type event_rule_type;
 
 	health_code_update();
-	LTTNG_ASSERT(app->event_notifier_group.object);
+	LTTNG_ASSERT(app->event_notifier_group.object.get());
 
 	condition = lttng_trigger_get_const_condition(ua_event_notifier_rule->trigger);
 	LTTNG_ASSERT(condition);
@@ -992,31 +970,34 @@ int create_ust_event_notifier(lsu::app *app,
 	event_notifier.error_counter_index = ua_event_notifier_rule->error_counter_index;
 
 	/* Create UST event notifier against the tracer. */
-	try {
-		app->command_socket.lock().create_event_notifier(&event_notifier,
-								 app->event_notifier_group.object,
-								 &ua_event_notifier_rule->obj);
-	} catch (const lsu::app_communication_error&) {
-		goto error;
-	} catch (const lttng::runtime_error&) {
-		ret = -1;
-		goto error;
+	{
+		lttng_ust_abi_object_data *raw = nullptr;
+		try {
+			app->command_socket.lock().create_event_notifier(
+				&event_notifier, app->event_notifier_group.object.get(), &raw);
+		} catch (const lsu::app_communication_error&) {
+			goto error;
+		} catch (const lttng::runtime_error&) {
+			ret = -1;
+			goto error;
+		}
+		ua_event_notifier_rule->obj = lsu::ust_object_data(raw);
 	}
 
-	ua_event_notifier_rule->handle = ua_event_notifier_rule->obj->header.handle;
+	ua_event_notifier_rule->handle = ua_event_notifier_rule->obj.get()->header.handle;
 
 	DBG2("UST app event notifier %s created successfully: app = '%s': pid = %d, object = %p",
 	     event_notifier.name,
 	     app->name.c_str(),
 	     app->pid,
-	     ua_event_notifier_rule->obj);
+	     ua_event_notifier_rule->obj.get());
 
 	health_code_update();
 
 	/* Set filter if one is present. */
 	if (ua_event_notifier_rule->filter) {
 		ret = set_ust_object_filter(
-			app, ua_event_notifier_rule->filter, ua_event_notifier_rule->obj);
+			app, ua_event_notifier_rule->filter, ua_event_notifier_rule->obj.get());
 		if (ret < 0) {
 			goto error;
 		}
@@ -1025,7 +1006,7 @@ int create_ust_event_notifier(lsu::app *app,
 	/* Set exclusions for the event. */
 	if (ua_event_notifier_rule->exclusion) {
 		ret = set_ust_object_exclusions(
-			app, ua_event_notifier_rule->exclusion, ua_event_notifier_rule->obj);
+			app, ua_event_notifier_rule->exclusion, ua_event_notifier_rule->obj.get());
 		if (ret < 0) {
 			goto error;
 		}
@@ -1041,7 +1022,7 @@ int create_ust_event_notifier(lsu::app *app,
 			lttng_condition_event_rule_matches_get_capture_bytecode_at_index(condition,
 											 i);
 
-		ret = set_ust_capture(app, capture_bytecode, i, ua_event_notifier_rule->obj);
+		ret = set_ust_capture(app, capture_bytecode, i, ua_event_notifier_rule->obj.get());
 		if (ret < 0) {
 			goto error;
 		}
@@ -1051,7 +1032,7 @@ int create_ust_event_notifier(lsu::app *app,
 	 * We now need to explicitly enable the event, since it
 	 * is disabled at creation.
 	 */
-	ret = enable_ust_object(app, ua_event_notifier_rule->obj);
+	ret = enable_ust_object(app, ua_event_notifier_rule->obj.get());
 	if (ret < 0) {
 		goto error;
 	}
@@ -1373,7 +1354,8 @@ int ust_app_setup_event_notifier_group(lsu::app *app)
 {
 	int ret = 0;
 	int event_pipe_write_fd;
-	struct lttng_ust_abi_object_data *event_notifier_group = nullptr;
+	lttng_ust_abi_object_data *event_notifier_group_raw = nullptr;
+	lsu::ust_object_data event_notifier_group;
 	enum lttng_error_code lttng_ret;
 	enum event_notifier_error_accounting_status event_notifier_error_accounting_status;
 
@@ -1389,13 +1371,16 @@ int ust_app_setup_event_notifier_group(lsu::app *app)
 
 	try {
 		app->command_socket.lock().create_event_notifier_group(event_pipe_write_fd,
-								       &event_notifier_group);
+								       &event_notifier_group_raw);
 	} catch (const lsu::app_communication_error&) {
 		goto error;
 	} catch (const lttng::runtime_error&) {
 		ret = -1;
 		goto error;
 	}
+
+	/* Take ownership immediately so subsequent failures clean up. */
+	event_notifier_group = lsu::ust_object_data(event_notifier_group_raw);
 
 	ret = lttng_pipe_write_close(app->event_notifier_group.event_pipe);
 	if (ret) {
@@ -1421,8 +1406,8 @@ int ust_app_setup_event_notifier_group(lsu::app *app)
 		goto error;
 	}
 
-	/* Assign handle only when the complete setup is valid. */
-	app->event_notifier_group.object = event_notifier_group;
+	/* Hand ownership to the app once the complete setup is valid. */
+	app->event_notifier_group.object = std::move(event_notifier_group);
 
 	event_notifier_error_accounting_status = event_notifier_error_accounting_register_app(app);
 	switch (event_notifier_error_accounting_status) {
@@ -1458,10 +1443,18 @@ error_accounting:
 		ERR("Failed to remove application tracer event source from notification thread");
 	}
 
+	/*
+	 * Past the ownership transfer above: the wrapper now lives in
+	 * the app, so move it back into the local for cleanup. The local
+	 * destructor then performs the local cleanup pass.
+	 */
+	event_notifier_group = std::move(app->event_notifier_group.object);
+
 error:
-	lttng_ust_ctl_release_object(app->command_socket.fd(), app->event_notifier_group.object);
-	free(app->event_notifier_group.object);
-	app->event_notifier_group.object = nullptr;
+	if (event_notifier_group.get()) {
+		lsu::release_object_via_app(
+			*app, *event_notifier_group.get(), "event notifier group");
+	}
 	return ret;
 }
 
@@ -2129,7 +2122,7 @@ void ust_app_synchronize_event_notifier_rules(lsu::app *app)
 		LTTNG_ASSERT(ret == 0);
 
 		/* Callee logs errors. */
-		(void) disable_ust_object(app, event_notifier_rule->obj);
+		(void) disable_ust_object(app, event_notifier_rule->obj.get());
 		delete_ust_app_event_notifier_rule(
 			app->command_socket.fd(), event_notifier_rule, app);
 	}
@@ -2158,7 +2151,7 @@ void ust_app_global_update_event_notifier_rules(lsu::app *app)
 		return;
 	}
 
-	if (app->event_notifier_group.object == nullptr) {
+	if (app->event_notifier_group.object.get() == nullptr) {
 		WARN("UST app global update of event notifiers for app skipped since communication handle is null: app = '%s', pid = %d",
 		     app->name.c_str(),
 		     app->pid);

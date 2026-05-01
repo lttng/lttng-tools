@@ -14,18 +14,30 @@ namespace lttng {
 namespace sessiond {
 namespace ust {
 
+struct app;
+
 /*
- * RAII wrapper for lttng_ust_abi_object_data pointers obtained from the
- * UST consumer daemon (channel objects, stream objects).
+ * RAII wrapper for lttng_ust_abi_object_data pointers.
  *
- * The wrapped pointer is released via lttng_ust_ctl_release_object()
- * and freed on destruction. The socket fd is always -1 at release time
- * because the stream group outlives the applications: by the time the
- * stream group is destroyed, the app that created the buffers may have
- * already exited.
+ * Used both for objects whose lifetime extends beyond the application
+ * that produced them (per-UID stream/map groups) and for per-app
+ * objects (channel, stream, event, context, event-notifier handles).
+ *
+ * The destructor only performs local cleanup
+ * (`lttng_ust_ctl_release_object(-1, ...)`) and frees the storage.
+ *
+ * When the tracer must additionally be notified to release its handle, the
+ * owning code calls `release_object_via_app()` (or
+ * `protocol_guard::release_object()`) before the wrapper is destroyed.
+ *
+ * Because `lttng_ust_ctl_release_object()` zeroes the per-type local state on
+ * each call, the wrapper's subsequent local-cleanup pass is safe.
  */
 class ust_object_data final {
 public:
+	/* Empty wrapper (`get()` returns `nullptr`). */
+	ust_object_data() noexcept = default;
+
 	/*
 	 * Takes ownership of the raw pointer. The caller must not free
 	 * or release the pointer after this call.
@@ -143,6 +155,20 @@ private:
 
 	lttng_ust_abi_object_data *_obj = nullptr;
 };
+
+/*
+ * Notify the application's tracer to release `obj` via the app's
+ * command socket and log any failure with `kind` as context (e.g.
+ * "channel", "event", "context"). Safe to call on a wrapper whose local
+ * cleanup has already been performed: only the tracer-side notification
+ * is sent in that case.
+ *
+ * Used by per-app `ust_object_data` owners just before the wrapper is
+ * destroyed. The wrapper's own destructor then performs its
+ * local-cleanup pass, which is a no-op once this function has run
+ * because `lttng_ust_ctl_release_object()` zeroes the relevant fields.
+ */
+void release_object_via_app(app& app, lttng_ust_abi_object_data& obj, const char *kind) noexcept;
 
 } /* namespace ust */
 } /* namespace sessiond */

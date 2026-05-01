@@ -19,6 +19,7 @@
 #include "ust-application-abi.hpp"
 #include "ust-field-quirks.hpp"
 #include "ust-map-group.hpp"
+#include "ust-object-data.hpp"
 
 #include <common/format.hpp>
 #include <common/optional.hpp>
@@ -128,21 +129,21 @@ extern struct lttng_ht *ust_app_ht_by_sock;
 extern struct lttng_ht *ust_app_ht_by_notify_sock;
 
 struct ust_app_event_notifier_rule {
-	bool enabled;
-	uint64_t error_counter_index;
-	int handle;
-	struct lttng_ust_abi_object_data *obj;
+	bool enabled = false;
+	uint64_t error_counter_index = 0;
+	int handle = 0;
+	lttng::sessiond::ust::ust_object_data obj;
 	/* Holds a strong reference. */
-	struct lttng_trigger *trigger;
+	struct lttng_trigger *trigger = nullptr;
 	/* Unique ID returned by the tracer to identify this event notifier. */
-	uint64_t token;
-	struct lttng_ht_node_u64 node;
+	uint64_t token = 0;
+	struct lttng_ht_node_u64 node = {};
 	/* The trigger object owns the filter. */
-	const struct lttng_bytecode *filter;
+	const struct lttng_bytecode *filter = nullptr;
 	/* Owned by this. */
-	struct lttng_event_exclusion *exclusion;
+	struct lttng_event_exclusion *exclusion = nullptr;
 	/* For delayed reclaim. */
-	struct rcu_head rcu_head;
+	struct rcu_head rcu_head = {};
 };
 
 namespace lttng {
@@ -236,9 +237,10 @@ struct app {
 	struct {
 		/*
 		 * Handle to the lttng_ust object representing the event
-		 * notifier group.
+		 * notifier group. Empty until ust_app_setup_event_notifier_group()
+		 * succeeds.
 		 */
-		::lttng_ust_abi_object_data *object = nullptr;
+		ust_object_data object;
 		::lttng_pipe *event_pipe = nullptr;
 #ifdef HAVE_LIBLTTNG_UST_CTL
 		/*

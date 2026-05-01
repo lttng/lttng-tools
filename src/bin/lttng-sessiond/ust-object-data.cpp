@@ -100,3 +100,37 @@ void lsu::ust_object_data::_cleanup() noexcept
 	free(_obj);
 	_obj = nullptr;
 }
+
+void lsu::release_object_via_app(lsu::app& app,
+				 lttng_ust_abi_object_data& obj,
+				 const char *kind) noexcept
+{
+	int ret;
+
+	{
+		const auto protocol = app.command_socket.lock();
+		ret = lttng_ust_ctl_release_object(protocol.fd(), &obj);
+	}
+
+	if (ret >= 0) {
+		return;
+	}
+
+	if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+		DBG3("UST app release %s failed. Application is dead: pid = %d, sock = %d",
+		     kind,
+		     app.pid,
+		     app.command_socket.fd());
+	} else if (ret == -EAGAIN) {
+		WARN("UST app release %s failed. Communication time out: pid = %d, sock = %d",
+		     kind,
+		     app.pid,
+		     app.command_socket.fd());
+	} else {
+		ERR("UST app release %s failed with ret %d: pid = %d, sock = %d",
+		    kind,
+		    ret,
+		    app.pid,
+		    app.command_socket.fd());
+	}
+}
