@@ -251,10 +251,18 @@ map_group::app_handle map_group::attach_to_app(ust::app& app,
 
 		guard.send_counter_data_to_ust(parent_handle->header.handle, master.get());
 		master_sent = true;
+		/*
+		 * The counter handles don't need to be held anymore;
+		 * drop the sessiond's local copies as each send succeeds.
+		 * See `ust_object_data::release_local_fds()` for the
+		 * per-type rules.
+		 */
+		master.release_local_fds();
 
 		for (auto& cpu_data : per_cpu_local) {
 			guard.send_counter_cpu_data_to_ust(master.get(), cpu_data.get());
 			per_cpu_sent_count++;
+			cpu_data.release_local_fds();
 		}
 	}
 

@@ -139,12 +139,12 @@ private:
 	 *     in-process counter state, returned by
 	 *     `lttng_ust_ctl_create_counter()`. It owns the per-CPU shm
 	 *     mappings in the sessiond's address space and is the parameter
-	 *     passed to `lttng_ust_ctl_counter_{read,aggregate,clear}()` —
-	 *     those operations execute locally against the mmap and never
-	 *     talk to the application.
+	 *     passed to `lttng_ust_ctl_counter_{read,aggregate,clear}()`.
+	 *     Those operations execute locally against the mmap and never
+	 *     interact with the application(s).
 	 *
-	 *   - the app counter handle (`_app_counter_handle`): a wire-format
-	 *     envelope (`lttng_ust_abi_object_data`) describing the same
+	 *   - the app counter handle (`_app_counter_handle`): a communication
+	 *     handle (`lttng_ust_abi_object_data`) describing the same
 	 *     logical counter, built by `lttng_ust_ctl_create_counter_data()`.
 	 *
 	 *     After being shipped over the app socket via

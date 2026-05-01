@@ -68,19 +68,35 @@ lttng_ust_abi_object_data *lsu::ust_object_data::release() noexcept
 	return data;
 }
 
-void lsu::ust_object_data::_cleanup() noexcept
+void lsu::ust_object_data::release_local_fds() noexcept
 {
 	if (!_obj) {
 		return;
 	}
 
+	/*
+	 * Passing -1 as the socket fd skips the tracer-side notification
+	 * and only performs the per-type local cleanup (close FDs, free
+	 * data blobs). The lttng-ust API zeroes the relevant fields on
+	 * cleanup, so a subsequent call is a no-op for the local part and
+	 * only sends RELEASE if a real fd is provided.
+	 */
 	const auto ret = lttng_ust_ctl_release_object(-1, _obj);
 	if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
 		ERR_FMT("Failed to release UST object data: handle={}, ret={}",
 			static_cast<void *>(_obj),
 			ret);
 	}
+}
 
+void lsu::ust_object_data::_cleanup() noexcept
+{
+	if (!_obj) {
+		/* Was moved from. */
+		return;
+	}
+
+	release_local_fds();
 	free(_obj);
 	_obj = nullptr;
 }

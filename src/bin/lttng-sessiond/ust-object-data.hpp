@@ -58,6 +58,86 @@ public:
 	/* Release ownership, returning the raw pointer. */
 	lttng_ust_abi_object_data *release() noexcept;
 
+	/*
+	 * Close any local file descriptors and free any local buffers held by the
+	 * wrapped object.
+	 *
+	 * After this call, the local cleanup is done; a later release issued through
+	 * a real socket will only send the release notification to the tracer.
+	 *
+	 * This is meant to be used once an object has been sent to an application.
+	 * Every descriptor the object carried has been duplicated into the
+	 * application's process at send time, so the session daemon's copy is
+	 * usually redundant. That is not always true, however; whether it is safe to
+	 * release locally as soon as the send succeeds (rather than wait for the
+	 * wrapping structure to be destroyed) depends on what the object is:
+	 *
+	 *   Channels
+	 *     A channel object carries two things: a wakeup descriptor (the write
+	 *     end of a pipe whose read end the consumer daemon holds) and a small
+	 *     data blob describing the channel's layout, such as subbuffer size,
+	 *     count, transport, and so on.
+	 *
+	 *     The data blob is safe to free early. The wakeup descriptor is not.
+	 *
+	 *     For channels the pipe's role is to signal "liveliness". The consumer
+	 *     daemon polls its read end and watches for the moment every writer has
+	 *     closed its end. That hangup is the cue to start destroying the channel
+	 *     on its side.
+	 *
+	 *     The consumer daemon has already let go of its own write end by the
+	 *     time the session daemon receives the channel: the consumer created
+	 *     the pipe, kept the read end, sent the write end up the stack, and
+	 *     closed its local copy. So the session daemon's copy is the only
+	 *     writer that does not go away when traced applications exit.
+	 *     Releasing it early lets the pipe lose its last writer as soon as the
+	 *     last application dies, racing any later flush, stop, or destroy
+	 *     command keyed on that channel.
+	 *
+	 *     The wakeup descriptor therefore has to stay open until the
+	 *     per-application channel object is destroyed, where its close and the
+	 *     release notification to the tracer happen together.
+	 *
+	 *   Streams
+	 *     A stream object carries two descriptors. The first is a shared-memory
+	 *     descriptor backing the stream's ring buffer: the application writes
+	 *     trace records into it and the consumer daemon reads them out. The
+	 *     second is a wakeup descriptor, the write end of a per-stream pipe
+	 *     that the application writes a byte on to nudge the consumer when
+	 *     fresh packets are available.
+	 *
+	 *     Both are safe to drop early on the per-application reference this
+	 *     method is called on.
+	 *
+	 *     The consumer daemon holds both ends of every stream pipe for the
+	 *     stream's whole lifetime and is the one that drives stream teardown.
+	 *
+	 *     The session daemon's handle on a stream takes one of two shapes. In
+	 *     per-pid mode, the only session-daemon-side reference is the
+	 *     per-application stream object. In per-uid mode, a long-lived master
+	 *     stream held by the recording session is duplicated into a fresh
+	 *     per-application stream object for every newly registered
+	 *     application.
+	 *
+	 *     Either way, the object this method touches at the call site is the
+	 *     per-application one. Dropping its descriptors after a successful
+	 *     send leaves the consumer's writers, the application's own copy, and
+	 *     (in per-uid) the master untouched.
+	 *
+	 *   Counters
+	 *     The master counter handle carries no descriptor at all, only a small
+	 *     configuration blob describing the counter's dimensions. The per-CPU
+	 *     and per-channel counter handles each carry one shared-memory
+	 *     descriptor backing the counter's storage, mapped by both the
+	 *     application and the consumer daemon.
+	 *
+	 *   Events, contexts, event notifiers, event notifier groups, and counter
+	 *   events
+	 *     These objects have no per-type local cleanup. They carry no
+	 *     descriptors and no local buffers, so this method is a no-op for them.
+	 */
+	void release_local_fds() noexcept;
+
 private:
 	void _cleanup() noexcept;
 

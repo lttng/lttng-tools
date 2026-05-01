@@ -218,6 +218,15 @@ void lsu::app_channel::send_to_app_per_pid()
 			channel_send_ret));
 	}
 
+	/*
+	 * The channel's `wakeup_fd` has to outlive this scope: it is the
+	 * sessiond's hold on the consumerd-side channel pipe, and POLLHUP
+	 * triggers the destruction of the channel on the consumerd's end. The
+	 * destructor closes it together with the RELEASE notification.
+	 *
+	 * See `ust_object_data::release_local_fds()` for the per-type rules.
+	 */
+
 	health_code_update();
 
 	/* Send all streams to application. */
@@ -286,6 +295,8 @@ void lsu::app_channel::send_to_app_per_uid(lsu::stream_group& stream_group)
 			key,
 			channel_send_ret));
 	}
+
+	/* See send_to_app_per_pid: the channel's wakeup_fd stays open. */
 
 	health_code_update();
 
