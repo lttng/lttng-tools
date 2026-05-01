@@ -274,12 +274,39 @@ map_group::create_for_event_notifier_group(int event_notifier_group_fd,
 	return map_group(lttng::file_descriptor(raw_fd), configuration);
 }
 
-map_group map_group::create_for_session(int /* session_fd */,
+map_group map_group::create_for_session(int session_fd,
 					const config::map_channel_configuration& configuration)
 {
-	LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
-		"Session-scoped kernel map group creation is not implemented yet: map_name=`{}`",
-		configuration.name));
+	lttng_kernel_abi_counter_dimension dimension;
+	const auto conf = make_counter_conf(configuration, dimension);
+
+	const auto raw_fd = kernctl_create_session_counter(session_fd, &conf);
+	if (raw_fd < 0) {
+		LTTNG_THROW_POSIX(
+			lttng::format(
+				"Failed to create session counter: map_name=`{}`, session_fd={}",
+				configuration.name,
+				session_fd),
+			-raw_fd);
+	}
+
+	auto fd_guard = lttng::make_scope_exit([raw_fd]() noexcept { (void) ::close(raw_fd); });
+
+	/* Prevent fd duplication after execlp(). */
+	if (::fcntl(raw_fd, F_SETFD, FD_CLOEXEC) < 0) {
+		const auto errno_copy = errno;
+
+		LTTNG_THROW_POSIX(
+			lttng::format(
+				"Failed to set FD_CLOEXEC on kernel map group counter fd: map_name=`{}`, fd={}",
+				configuration.name,
+				raw_fd),
+			errno_copy);
+	}
+
+	fd_guard.disarm();
+
+	return map_group(lttng::file_descriptor(raw_fd), configuration);
 }
 
 } /* namespace modules */
