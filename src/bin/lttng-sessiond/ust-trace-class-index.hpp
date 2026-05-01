@@ -8,6 +8,8 @@
 #ifndef LTTNG_SESSIOND_UST_TRACE_CLASS_INDEX_HPP
 #define LTTNG_SESSIOND_UST_TRACE_CLASS_INDEX_HPP
 
+#include <common/hash-combine.hpp>
+
 #include <cstdint>
 #include <memory>
 #include <mutex>
@@ -118,19 +120,10 @@ private:
 	struct _per_uid_key_hasher {
 		std::size_t operator()(const _per_uid_key& key) const noexcept
 		{
-			/*
-			 * Golden-ratio hash combining (boost::hash_combine
-			 * inspired).
-			 */
-			constexpr auto golden_ratio = sizeof(std::size_t) == 8 ?
-				std::size_t(0x9e3779b97f4a7c15) :
-				std::size_t(0x9e3779b9);
-
 			auto seed = std::hash<std::uint64_t>{}(key.recording_session_id);
-			seed ^= std::hash<std::uint32_t>{}(key.abi_bitness) + golden_ratio +
-				(seed << 6) + (seed >> 2);
-			seed ^= std::hash<uid_t>{}(key.app_uid) + golden_ratio + (seed << 6) +
-				(seed >> 2);
+			seed = lttng::utils::hash_combine(
+				seed, std::hash<std::uint32_t>{}(key.abi_bitness));
+			seed = lttng::utils::hash_combine(seed, std::hash<uid_t>{}(key.app_uid));
 			return seed;
 		}
 	};

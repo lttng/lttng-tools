@@ -588,18 +588,6 @@ private:
 	 *     called from delete_ust_app_session).
 	 */
 
-	static std::size_t _hash_combine(std::size_t seed, std::size_t value) noexcept
-	{
-		/*
-		 * Golden-ratio hash combining (boost::hash_combine inspired). Use
-		 * the 64-bit constant when size_t is 8 bytes wide.
-		 */
-		constexpr auto golden_ratio = sizeof(std::size_t) == 8 ?
-			std::size_t(0x9e3779b97f4a7c15) :
-			std::size_t(0x9e3779b9);
-		return seed ^ (value + golden_ratio + (seed << 6) + (seed >> 2));
-	}
-
 	template <typename KeyType>
 	struct _key_hasher {
 		std::size_t operator()(const KeyType& key) const noexcept

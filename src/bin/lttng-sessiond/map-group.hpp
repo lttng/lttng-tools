@@ -8,6 +8,8 @@
 #ifndef LTTNG_SESSIOND_MAP_GROUP_HPP
 #define LTTNG_SESSIOND_MAP_GROUP_HPP
 
+#include "abstract-group.hpp"
+
 #include <common/exception.hpp>
 #include <common/make-unique.hpp>
 
@@ -21,15 +23,6 @@
 namespace lttng {
 namespace sessiond {
 namespace map {
-
-/*
- * The value of a single counter element as reported by the tracer.
- */
-struct element_value {
-	std::int64_t value;
-	bool overflow;
-	bool underflow;
-};
 
 /*
  * A map::group represents the per-CPU counter partition backing a single
@@ -47,7 +40,7 @@ struct element_value {
  * Domain-specific map_groups inherit from this base.
  */
 template <typename MapHandleType>
-class group {
+class group : public abstract_group {
 public:
 	/*
 	 * A single map inside the group.
@@ -76,7 +69,7 @@ public:
 	using uptr = std::unique_ptr<group>;
 
 	group() = default;
-	virtual ~group() = default;
+	~group() override = default;
 
 	group(const group&) = delete;
 	group(group&&) = default;

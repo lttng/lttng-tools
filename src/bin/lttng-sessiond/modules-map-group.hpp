@@ -59,8 +59,8 @@ public:
 	const config::map_channel_configuration& configuration() const noexcept;
 
 	sessiond::map::element_value read_element(std::uint64_t index, int cpu) const;
-	sessiond::map::element_value aggregate_element(std::uint64_t index) const;
-	void clear_element(std::uint64_t index);
+	sessiond::map::element_value aggregate_element(std::uint64_t index) const override;
+	void clear_element(std::uint64_t index) override;
 
 	/*
 	 * Create a kernel map group whose counter is attached to an

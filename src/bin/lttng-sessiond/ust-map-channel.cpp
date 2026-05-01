@@ -1,0 +1,71 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+ *
+ * SPDX-License-Identifier: GPL-2.0-only
+ *
+ */
+
+#include "map-channel-configuration.hpp"
+#include "ust-app.hpp"
+#include "ust-map-channel.hpp"
+
+#include <common/exception.hpp>
+#include <common/format.hpp>
+
+#include <utility>
+
+namespace lttng {
+namespace sessiond {
+namespace ust {
+
+map_channel::map_channel(const config::map_channel_configuration& configuration,
+			 sessiond::map::key_registry::uptr registry) :
+	sessiond::map::map_channel(configuration, std::move(registry))
+{
+}
+
+ust::map_group& map_channel::add_uid_group(uid_t /* uid */, application_abi /* abi */)
+{
+	LTTNG_THROW_UNSUPPORTED_ERROR(
+		lttng::format("ust::map_channel::add_uid_group not yet implemented: map_name=`{}`",
+			      configuration().name));
+}
+
+void map_channel::remove_uid_group(uid_t /* uid */, application_abi /* abi */)
+{
+	LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
+		"ust::map_channel::remove_uid_group not yet implemented: map_name=`{}`",
+		configuration().name));
+}
+
+void map_channel::for_each_uid_group(const uid_group_visitor& /* visitor */) const
+{
+	LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
+		"ust::map_channel::for_each_uid_group not yet implemented: map_name=`{}`",
+		configuration().name));
+}
+
+ust::map_group& map_channel::add_app_group(const ust::app& /* app */)
+{
+	LTTNG_THROW_UNSUPPORTED_ERROR(
+		lttng::format("ust::map_channel::add_app_group not yet implemented: map_name=`{}`",
+			      configuration().name));
+}
+
+void map_channel::remove_app_group(const ust::app& /* app */)
+{
+	LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
+		"ust::map_channel::remove_app_group not yet implemented: map_name=`{}`",
+		configuration().name));
+}
+
+void map_channel::for_each_app_group(const app_group_visitor& /* visitor */) const
+{
+	LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
+		"ust::map_channel::for_each_app_group not yet implemented: map_name=`{}`",
+		configuration().name));
+}
+
+} /* namespace ust */
+} /* namespace sessiond */
+} /* namespace lttng */

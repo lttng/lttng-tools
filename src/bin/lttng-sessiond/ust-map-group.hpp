@@ -114,8 +114,8 @@ public:
 	 */
 	app_handle attach_to_app(ust::app& app, lttng_ust_abi_object_data& parent_handle);
 
-	sessiond::map::element_value aggregate_element(std::uint64_t index) const;
-	void clear_element(std::uint64_t index);
+	sessiond::map::element_value aggregate_element(std::uint64_t index) const override;
+	void clear_element(std::uint64_t index) override;
 
 private:
 	/*

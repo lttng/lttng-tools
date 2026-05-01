@@ -32,6 +32,7 @@
 #include <common/exception.hpp>
 #include <common/format.hpp>
 #include <common/fs-utils.hpp>
+#include <common/hash-combine.hpp>
 #include <common/macros.hpp>
 #include <common/scope-exit.hpp>
 #include <common/trace-chunk.hpp>
@@ -3602,8 +3603,8 @@ bool ls::ust::domain_orchestrator::_per_uid_trace_class_key::operator==(
 
 std::size_t ls::ust::domain_orchestrator::_per_uid_trace_class_key::hash() const noexcept
 {
-	return _hash_combine(std::hash<uid_t>{}(uid),
-			     std::hash<std::uint8_t>{}(static_cast<std::uint8_t>(abi)));
+	return lttng::utils::hash_combine(
+		std::hash<uid_t>{}(uid), std::hash<std::uint8_t>{}(static_cast<std::uint8_t>(abi)));
 }
 
 bool ls::ust::domain_orchestrator::_per_uid_stream_group_key::operator==(
@@ -3615,8 +3616,9 @@ bool ls::ust::domain_orchestrator::_per_uid_stream_group_key::operator==(
 std::size_t ls::ust::domain_orchestrator::_per_uid_stream_group_key::hash() const noexcept
 {
 	auto h = std::hash<const void *>{}(channel_config);
-	h = _hash_combine(h, std::hash<uid_t>{}(uid));
-	h = _hash_combine(h, std::hash<std::uint8_t>{}(static_cast<std::uint8_t>(abi)));
+	h = lttng::utils::hash_combine(h, std::hash<uid_t>{}(uid));
+	h = lttng::utils::hash_combine(h,
+				       std::hash<std::uint8_t>{}(static_cast<std::uint8_t>(abi)));
 	return h;
 }
 
@@ -3628,6 +3630,6 @@ bool ls::ust::domain_orchestrator::_per_pid_stream_group_key::operator==(
 
 std::size_t ls::ust::domain_orchestrator::_per_pid_stream_group_key::hash() const noexcept
 {
-	return _hash_combine(std::hash<const void *>{}(channel_config),
-			     std::hash<const void *>{}(app));
+	return lttng::utils::hash_combine(std::hash<const void *>{}(channel_config),
+					  std::hash<const void *>{}(app));
 }
