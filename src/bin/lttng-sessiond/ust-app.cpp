@@ -359,8 +359,7 @@ void free_ust_app_event_notifier_rule_rcu(struct rcu_head *head)
  * Delete ust app event notifier rule safely.
  */
 namespace {
-void delete_ust_app_event_notifier_rule(int sock __attribute__((unused)),
-					struct ust_app_event_notifier_rule *ua_event_notifier_rule,
+void delete_ust_app_event_notifier_rule(struct ust_app_event_notifier_rule *ua_event_notifier_rule,
 					lsu::app *app)
 {
 	LTTNG_ASSERT(ua_event_notifier_rule);
@@ -538,11 +537,22 @@ error_push:
 namespace {
 void delete_ust_app(lsu::app *app)
 {
-	int ret, sock;
-	bool event_notifier_write_fd_is_open;
-
 	const auto list_lock = lttng::sessiond::lock_session_list();
-	sock = app->command_socket.release_fd();
+
+	/*
+	 * `delete_ust_app` is the call_rcu callback for an application
+	 * whose reference count has reached zero. By the time we get here
+	 * the app has already been removed from every hash table (in
+	 * `ust_app_unregister`), the RCU grace period has elapsed, and no
+	 * `urcu_ref` to it remains: there are no concurrent users of
+	 * `app->command_socket`.
+	 *
+	 * The command socket fd stays open for the duration of this function
+	 * and is closed by `~app_command_socket` when `delete app` runs at the
+	 * end. Since hash-table removal already happened upstream and is
+	 * synchronized by the call_rcu grace period, no observer can confuse
+	 * this socket with a fd reused by another application.
+	 */
 
 	/* Remove the event notifier rules associated with this app. */
 	{
@@ -553,12 +563,11 @@ void delete_ust_app(lsu::app *app)
 							 decltype(ust_app_event_notifier_rule::node),
 							 &ust_app_event_notifier_rule::node>(
 			     *app->token_to_event_notifier_rule_ht->ht)) {
-			ret = cds_lfht_del(app->token_to_event_notifier_rule_ht->ht,
-					   &event_notifier_rule->node.node);
-			LTTNG_ASSERT(!ret);
+			const int del_ret = cds_lfht_del(app->token_to_event_notifier_rule_ht->ht,
+							 &event_notifier_rule->node.node);
+			LTTNG_ASSERT(!del_ret);
 
-			delete_ust_app_event_notifier_rule(
-				app->command_socket.fd(), event_notifier_rule, app);
+			delete_ust_app_event_notifier_rule(event_notifier_rule, app);
 		}
 	}
 
@@ -586,17 +595,12 @@ void delete_ust_app(lsu::app *app)
 			ERR("Error unregistering app from event notifier error accounting");
 		}
 
-		/*
-		 * The command socket fd was extracted into `sock` above; the
-		 * helper uses `command_socket.fd()` which is now -1, so issue
-		 * the RELEASE directly with the still-valid local fd. The
-		 * subsequent reset triggers the wrapper's local-cleanup pass.
-		 */
-		(void) lttng_ust_ctl_release_object(sock, app->event_notifier_group.object.get());
+		lsu::release_object_via_app(
+			*app, *app->event_notifier_group.object.get(), "event notifier group");
 		app->event_notifier_group.object = lsu::ust_object_data();
 	}
 
-	event_notifier_write_fd_is_open =
+	const bool event_notifier_write_fd_is_open =
 		lttng_pipe_is_write_open(app->event_notifier_group.event_pipe);
 	lttng_pipe_destroy(app->event_notifier_group.event_pipe);
 	/*
@@ -607,26 +611,10 @@ void delete_ust_app(lsu::app *app)
 	 */
 	lttng_fd_put(LTTNG_FD_APPS, event_notifier_write_fd_is_open ? 2 : 1);
 
-	/*
-	 * Wait until we have deleted the application from the sock hash table
-	 * before closing this socket, otherwise an application could re-use the
-	 * socket ID and race with the teardown, using the same hash table entry.
-	 *
-	 * It's OK to leave the close in call_rcu. We want it to stay unique for
-	 * all RCU readers that could run concurrently with unregister app,
-	 * therefore we _need_ to only close that socket after a grace period. So
-	 * it should stay in this RCU callback.
-	 *
-	 * This close() is a very important step of the synchronization model so
-	 * every modification to this function must be carefully reviewed.
-	 */
-	ret = close(sock);
-	if (ret) {
-		PERROR("close");
-	}
 	lttng_fd_put(LTTNG_FD_APPS, 1);
 
 	DBG2("UST app pid %d deleted", app->pid);
+	/* The command socket fd is closed by `~app_command_socket`. */
 	delete app;
 }
 } /* namespace */
@@ -1098,7 +1086,7 @@ int create_ust_app_event_notifier_rule(struct lttng_trigger *trigger, lsu::app *
 
 error:
 	/* The RCU read side lock is already being held by the caller. */
-	delete_ust_app_event_notifier_rule(-1, ua_event_notifier_rule, app);
+	delete_ust_app_event_notifier_rule(ua_event_notifier_rule, app);
 end:
 	return ret;
 }
@@ -2123,8 +2111,7 @@ void ust_app_synchronize_event_notifier_rules(lsu::app *app)
 
 		/* Callee logs errors. */
 		(void) disable_ust_object(app, event_notifier_rule->obj.get());
-		delete_ust_app_event_notifier_rule(
-			app->command_socket.fd(), event_notifier_rule, app);
+		delete_ust_app_event_notifier_rule(event_notifier_rule, app);
 	}
 
 end:

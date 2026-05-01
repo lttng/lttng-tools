@@ -60,61 +60,61 @@ void throw_on_ust_ctl_error(int ret, const char *operation, pid_t pid, int sock_
 
 int lsu::app_command_socket::protocol_guard::create_session()
 {
-	const auto ret = lttng_ust_ctl_create_session(_socket->_fd);
+	const auto ret = lttng_ust_ctl_create_session(fd());
 
-	throw_on_ust_ctl_error(ret, "create session", _socket->_pid, _socket->_fd);
+	throw_on_ust_ctl_error(ret, "create session", _socket->_pid, fd());
 	return ret;
 }
 
 void lsu::app_command_socket::protocol_guard::start_session(int handle)
 {
-	const auto ret = lttng_ust_ctl_start_session(_socket->_fd, handle);
+	const auto ret = lttng_ust_ctl_start_session(fd(), handle);
 
-	throw_on_ust_ctl_error(ret, "start session", _socket->_pid, _socket->_fd);
+	throw_on_ust_ctl_error(ret, "start session", _socket->_pid, fd());
 }
 
 void lsu::app_command_socket::protocol_guard::stop_session(int handle)
 {
-	const auto ret = lttng_ust_ctl_stop_session(_socket->_fd, handle);
+	const auto ret = lttng_ust_ctl_stop_session(fd(), handle);
 
-	throw_on_ust_ctl_error(ret, "stop session", _socket->_pid, _socket->_fd);
+	throw_on_ust_ctl_error(ret, "stop session", _socket->_pid, fd());
 }
 
 void lsu::app_command_socket::protocol_guard::wait_quiescent()
 {
-	const auto ret = lttng_ust_ctl_wait_quiescent(_socket->_fd);
+	const auto ret = lttng_ust_ctl_wait_quiescent(fd());
 
-	throw_on_ust_ctl_error(ret, "wait quiescent", _socket->_pid, _socket->_fd);
+	throw_on_ust_ctl_error(ret, "wait quiescent", _socket->_pid, fd());
 }
 
 void lsu::app_command_socket::protocol_guard::register_done()
 {
-	const auto ret = lttng_ust_ctl_register_done(_socket->_fd);
+	const auto ret = lttng_ust_ctl_register_done(fd());
 
-	throw_on_ust_ctl_error(ret, "register done", _socket->_pid, _socket->_fd);
+	throw_on_ust_ctl_error(ret, "register done", _socket->_pid, fd());
 }
 
 void lsu::app_command_socket::protocol_guard::regenerate_statedump(int handle)
 {
-	const auto ret = lttng_ust_ctl_regenerate_statedump(_socket->_fd, handle);
+	const auto ret = lttng_ust_ctl_regenerate_statedump(fd(), handle);
 
-	throw_on_ust_ctl_error(ret, "regenerate statedump", _socket->_pid, _socket->_fd);
+	throw_on_ust_ctl_error(ret, "regenerate statedump", _socket->_pid, fd());
 }
 
 /* Object lifecycle. */
 
 void lsu::app_command_socket::protocol_guard::release_object(lttng_ust_abi_object_data *object)
 {
-	const auto ret = lttng_ust_ctl_release_object(_socket->_fd, object);
+	const auto ret = lttng_ust_ctl_release_object(fd(), object);
 
-	throw_on_ust_ctl_error(ret, "release object", _socket->_pid, _socket->_fd);
+	throw_on_ust_ctl_error(ret, "release object", _socket->_pid, fd());
 }
 
 void lsu::app_command_socket::protocol_guard::release_handle(int handle)
 {
-	const auto ret = lttng_ust_ctl_release_handle(_socket->_fd, handle);
+	const auto ret = lttng_ust_ctl_release_handle(fd(), handle);
 
-	throw_on_ust_ctl_error(ret, "release handle", _socket->_pid, _socket->_fd);
+	throw_on_ust_ctl_error(ret, "release handle", _socket->_pid, fd());
 }
 
 /* Event management. */
@@ -123,39 +123,39 @@ void lsu::app_command_socket::protocol_guard::create_event(lttng_ust_abi_event *
 							   lttng_ust_abi_object_data *channel_data,
 							   lttng_ust_abi_object_data **event_data)
 {
-	const auto ret = lttng_ust_ctl_create_event(_socket->_fd, event, channel_data, event_data);
+	const auto ret = lttng_ust_ctl_create_event(fd(), event, channel_data, event_data);
 
-	throw_on_ust_ctl_error(ret, "create event", _socket->_pid, _socket->_fd);
+	throw_on_ust_ctl_error(ret, "create event", _socket->_pid, fd());
 }
 
 void lsu::app_command_socket::protocol_guard::enable(lttng_ust_abi_object_data *object)
 {
-	const auto ret = lttng_ust_ctl_enable(_socket->_fd, object);
+	const auto ret = lttng_ust_ctl_enable(fd(), object);
 
-	throw_on_ust_ctl_error(ret, "enable", _socket->_pid, _socket->_fd);
+	throw_on_ust_ctl_error(ret, "enable", _socket->_pid, fd());
 }
 
 void lsu::app_command_socket::protocol_guard::disable(lttng_ust_abi_object_data *object)
 {
-	const auto ret = lttng_ust_ctl_disable(_socket->_fd, object);
+	const auto ret = lttng_ust_ctl_disable(fd(), object);
 
-	throw_on_ust_ctl_error(ret, "disable", _socket->_pid, _socket->_fd);
+	throw_on_ust_ctl_error(ret, "disable", _socket->_pid, fd());
 }
 
 void lsu::app_command_socket::protocol_guard::set_filter(lttng_ust_abi_filter_bytecode *bytecode,
 							 lttng_ust_abi_object_data *object)
 {
-	const auto ret = lttng_ust_ctl_set_filter(_socket->_fd, bytecode, object);
+	const auto ret = lttng_ust_ctl_set_filter(fd(), bytecode, object);
 
-	throw_on_ust_ctl_error(ret, "set filter", _socket->_pid, _socket->_fd);
+	throw_on_ust_ctl_error(ret, "set filter", _socket->_pid, fd());
 }
 
 void lsu::app_command_socket::protocol_guard::set_exclusion(
 	lttng_ust_abi_event_exclusion *exclusion, lttng_ust_abi_object_data *object)
 {
-	const auto ret = lttng_ust_ctl_set_exclusion(_socket->_fd, exclusion, object);
+	const auto ret = lttng_ust_ctl_set_exclusion(fd(), exclusion, object);
 
-	throw_on_ust_ctl_error(ret, "set exclusion", _socket->_pid, _socket->_fd);
+	throw_on_ust_ctl_error(ret, "set exclusion", _socket->_pid, fd());
 }
 
 /* Context management. */
@@ -164,9 +164,9 @@ void lsu::app_command_socket::protocol_guard::add_context(lttng_ust_context_attr
 							  lttng_ust_abi_object_data *channel_data,
 							  lttng_ust_abi_object_data **context_data)
 {
-	const auto ret = lttng_ust_ctl_add_context(_socket->_fd, ctx, channel_data, context_data);
+	const auto ret = lttng_ust_ctl_add_context(fd(), ctx, channel_data, context_data);
 
-	throw_on_ust_ctl_error(ret, "add context", _socket->_pid, _socket->_fd);
+	throw_on_ust_ctl_error(ret, "add context", _socket->_pid, fd());
 }
 
 /* Channel and stream transport. */
@@ -174,18 +174,17 @@ void lsu::app_command_socket::protocol_guard::add_context(lttng_ust_context_attr
 void lsu::app_command_socket::protocol_guard::send_channel_to_ust(
 	int session_handle, lttng_ust_abi_object_data *channel_data)
 {
-	const auto ret =
-		lttng_ust_ctl_send_channel_to_ust(_socket->_fd, session_handle, channel_data);
+	const auto ret = lttng_ust_ctl_send_channel_to_ust(fd(), session_handle, channel_data);
 
-	throw_on_ust_ctl_error(ret, "send channel to UST", _socket->_pid, _socket->_fd);
+	throw_on_ust_ctl_error(ret, "send channel to UST", _socket->_pid, fd());
 }
 
 void lsu::app_command_socket::protocol_guard::send_stream_to_ust(
 	lttng_ust_abi_object_data *channel_data, lttng_ust_abi_object_data *stream_data)
 {
-	const auto ret = lttng_ust_ctl_send_stream_to_ust(_socket->_fd, channel_data, stream_data);
+	const auto ret = lttng_ust_ctl_send_stream_to_ust(fd(), channel_data, stream_data);
 
-	throw_on_ust_ctl_error(ret, "send stream to UST", _socket->_pid, _socket->_fd);
+	throw_on_ust_ctl_error(ret, "send stream to UST", _socket->_pid, fd());
 }
 
 /* Event notifier management. */
@@ -193,9 +192,9 @@ void lsu::app_command_socket::protocol_guard::send_stream_to_ust(
 void lsu::app_command_socket::protocol_guard::create_event_notifier_group(
 	int pipe_fd, lttng_ust_abi_object_data **out)
 {
-	const auto ret = lttng_ust_ctl_create_event_notifier_group(_socket->_fd, pipe_fd, out);
+	const auto ret = lttng_ust_ctl_create_event_notifier_group(fd(), pipe_fd, out);
 
-	throw_on_ust_ctl_error(ret, "create event notifier group", _socket->_pid, _socket->_fd);
+	throw_on_ust_ctl_error(ret, "create event notifier group", _socket->_pid, fd());
 }
 
 void lsu::app_command_socket::protocol_guard::create_event_notifier(
@@ -203,17 +202,17 @@ void lsu::app_command_socket::protocol_guard::create_event_notifier(
 	lttng_ust_abi_object_data *group,
 	lttng_ust_abi_object_data **out)
 {
-	const auto ret = lttng_ust_ctl_create_event_notifier(_socket->_fd, notifier, group, out);
+	const auto ret = lttng_ust_ctl_create_event_notifier(fd(), notifier, group, out);
 
-	throw_on_ust_ctl_error(ret, "create event notifier", _socket->_pid, _socket->_fd);
+	throw_on_ust_ctl_error(ret, "create event notifier", _socket->_pid, fd());
 }
 
 void lsu::app_command_socket::protocol_guard::set_capture(lttng_ust_abi_capture_bytecode *bytecode,
 							  lttng_ust_abi_object_data *object)
 {
-	const auto ret = lttng_ust_ctl_set_capture(_socket->_fd, bytecode, object);
+	const auto ret = lttng_ust_ctl_set_capture(fd(), bytecode, object);
 
-	throw_on_ust_ctl_error(ret, "set capture", _socket->_pid, _socket->_fd);
+	throw_on_ust_ctl_error(ret, "set capture", _socket->_pid, fd());
 }
 
 /* Counter management (event notifier error accounting). */
@@ -221,35 +220,34 @@ void lsu::app_command_socket::protocol_guard::set_capture(lttng_ust_abi_capture_
 void lsu::app_command_socket::protocol_guard::send_counter_data_to_ust(
 	int parent_handle, lttng_ust_abi_object_data *counter_data)
 {
-	const auto ret =
-		lttng_ust_ctl_send_counter_data_to_ust(_socket->_fd, parent_handle, counter_data);
+	const auto ret = lttng_ust_ctl_send_counter_data_to_ust(fd(), parent_handle, counter_data);
 
-	throw_on_ust_ctl_error(ret, "send counter data to UST", _socket->_pid, _socket->_fd);
+	throw_on_ust_ctl_error(ret, "send counter data to UST", _socket->_pid, fd());
 }
 
 void lsu::app_command_socket::protocol_guard::send_counter_cpu_data_to_ust(
 	lttng_ust_abi_object_data *counter_data, lttng_ust_abi_object_data *counter_cpu_data)
 {
-	const auto ret = lttng_ust_ctl_send_counter_cpu_data_to_ust(
-		_socket->_fd, counter_data, counter_cpu_data);
+	const auto ret =
+		lttng_ust_ctl_send_counter_cpu_data_to_ust(fd(), counter_data, counter_cpu_data);
 
-	throw_on_ust_ctl_error(ret, "send counter CPU data to UST", _socket->_pid, _socket->_fd);
+	throw_on_ust_ctl_error(ret, "send counter CPU data to UST", _socket->_pid, fd());
 }
 
 /* Tracer introspection. */
 
 void lsu::app_command_socket::protocol_guard::tracer_version(lttng_ust_abi_tracer_version *version)
 {
-	const auto ret = lttng_ust_ctl_tracer_version(_socket->_fd, version);
+	const auto ret = lttng_ust_ctl_tracer_version(fd(), version);
 
-	throw_on_ust_ctl_error(ret, "tracer version", _socket->_pid, _socket->_fd);
+	throw_on_ust_ctl_error(ret, "tracer version", _socket->_pid, fd());
 }
 
 int lsu::app_command_socket::protocol_guard::tracepoint_list()
 {
-	const auto ret = lttng_ust_ctl_tracepoint_list(_socket->_fd);
+	const auto ret = lttng_ust_ctl_tracepoint_list(fd());
 
-	throw_on_ust_ctl_error(ret, "tracepoint list", _socket->_pid, _socket->_fd);
+	throw_on_ust_ctl_error(ret, "tracepoint list", _socket->_pid, fd());
 	return ret;
 }
 
@@ -260,21 +258,21 @@ int lsu::app_command_socket::protocol_guard::tracepoint_list()
 int lsu::app_command_socket::protocol_guard::tracepoint_list_get(
 	int handle, lttng_ust_abi_tracepoint_iter *iter)
 {
-	const auto ret = lttng_ust_ctl_tracepoint_list_get(_socket->_fd, handle, iter);
+	const auto ret = lttng_ust_ctl_tracepoint_list_get(fd(), handle, iter);
 
 	if (ret == -LTTNG_UST_ERR_NOENT) {
 		return ret;
 	}
 
-	throw_on_ust_ctl_error(ret, "tracepoint list get", _socket->_pid, _socket->_fd);
+	throw_on_ust_ctl_error(ret, "tracepoint list get", _socket->_pid, fd());
 	return ret;
 }
 
 int lsu::app_command_socket::protocol_guard::tracepoint_field_list()
 {
-	const auto ret = lttng_ust_ctl_tracepoint_field_list(_socket->_fd);
+	const auto ret = lttng_ust_ctl_tracepoint_field_list(fd());
 
-	throw_on_ust_ctl_error(ret, "tracepoint field list", _socket->_pid, _socket->_fd);
+	throw_on_ust_ctl_error(ret, "tracepoint field list", _socket->_pid, fd());
 	return ret;
 }
 
@@ -285,12 +283,12 @@ int lsu::app_command_socket::protocol_guard::tracepoint_field_list()
 int lsu::app_command_socket::protocol_guard::tracepoint_field_list_get(
 	int handle, lttng_ust_abi_field_iter *iter)
 {
-	const auto ret = lttng_ust_ctl_tracepoint_field_list_get(_socket->_fd, handle, iter);
+	const auto ret = lttng_ust_ctl_tracepoint_field_list_get(fd(), handle, iter);
 
 	if (ret == -LTTNG_UST_ERR_NOENT) {
 		return ret;
 	}
 
-	throw_on_ust_ctl_error(ret, "tracepoint field list get", _socket->_pid, _socket->_fd);
+	throw_on_ust_ctl_error(ret, "tracepoint field list get", _socket->_pid, fd());
 	return ret;
 }

@@ -9,6 +9,9 @@
 #define LTTNG_SESSIOND_UST_APP_COMMAND_SOCKET_HPP
 
 #include <common/exception.hpp>
+#include <common/file-descriptor.hpp>
+
+#include <vendor/optional.hpp>
 
 #include <mutex>
 #include <sys/types.h>
@@ -148,22 +151,17 @@ public:
 
 	/*
 	 * Set the file descriptor and application pid. Called once during
-	 * application registration.
+	 * application registration. Takes ownership of the fd: it is closed
+	 * by the destructor.
 	 */
 	void set_fd(int fd, pid_t pid) noexcept;
 
 	/*
-	 * Returns the socket fd value without acquiring the lock.
-	 * Use for logging, hash table keying, and other non-protocol uses.
+	 * Returns the socket fd value without acquiring the lock, or -1
+	 * when the socket holds no fd. Use for logging, hash table keying,
+	 * and other non-protocol uses.
 	 */
 	int fd() const noexcept;
-
-	/*
-	 * Extracts the file descriptor, setting the internal value to -1.
-	 * Used during application teardown to transfer fd ownership to the
-	 * teardown path.
-	 */
-	int release_fd() noexcept;
 
 	/*
 	 * Acquires the protocol mutex and returns a guard that provides
@@ -172,7 +170,7 @@ public:
 	protocol_guard lock();
 
 private:
-	int _fd = -1;
+	nonstd::optional<lttng::file_descriptor> _fd;
 	pid_t _pid = -1;
 	mutable std::mutex _lock;
 };

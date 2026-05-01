@@ -13,20 +13,13 @@ lsu::app_command_socket::app_command_socket() = default;
 
 void lsu::app_command_socket::set_fd(int fd, pid_t pid) noexcept
 {
-	_fd = fd;
+	_fd.emplace(fd);
 	_pid = pid;
 }
 
 int lsu::app_command_socket::fd() const noexcept
 {
-	return _fd;
-}
-
-int lsu::app_command_socket::release_fd() noexcept
-{
-	const auto fd = _fd;
-	_fd = -1;
-	return fd;
+	return _fd ? _fd->fd() : -1;
 }
 
 lsu::app_command_socket::protocol_guard lsu::app_command_socket::lock()
@@ -46,5 +39,5 @@ lsu::app_command_socket::protocol_guard::protocol_guard(protocol_guard&& other) 
 
 int lsu::app_command_socket::protocol_guard::fd() const noexcept
 {
-	return _socket->_fd;
+	return _socket->fd();
 }
