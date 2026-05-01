@@ -16,6 +16,8 @@
 #include <lttng/lttng.h>
 
 #include <stdbool.h>
+#include <string>
+#include <vector>
 
 int kernctl_create_session(int fd);
 int kernctl_open_metadata(int fd, const struct lttng_kernel_abi_channel& channel_config);
@@ -46,6 +48,38 @@ int kernctl_counter_read(int counter_fd, struct lttng_kernel_abi_counter_read *c
 int kernctl_counter_get_aggregate_value(int counter_fd,
 					struct lttng_kernel_abi_counter_aggregate *value);
 int kernctl_counter_clear(int counter_fd, struct lttng_kernel_abi_counter_clear *clear);
+
+/*
+ * Query the number of dynamically-allocated keys currently registered
+ * in the counter (across all dimensions).
+ *
+ * Returns 0 on success and writes the snapshot to `*nr`. Returns a
+ * negative errno on failure. The value is a snapshot: new keys may be
+ * registered concurrently (e.g. on module load), so callers iterating
+ * over [0, nr) must tolerate races.
+ */
+int kernctl_counter_map_nr_descriptors(int counter_fd, uint64_t *nr);
+
+/*
+ * Pull one descriptor by index. The wrapper handles the -ENOSPC retry
+ * internally: it grows temporary buffers for the key string and the
+ * per-dimension array indexes as needed and returns the populated
+ * descriptor on success.
+ *
+ * On success, returns 0 and writes the scalar fields and the populated
+ * key string / array indexes to the corresponding output pointers.
+ * Any output pointer may be NULL if the caller does not need that
+ * field.
+ *
+ * On failure, returns a negative errno. -EBADMSG is returned if the
+ * retry loop fails resize.
+ */
+int kernctl_counter_map_descriptor(int counter_fd,
+				   uint64_t descriptor_index,
+				   uint32_t *out_dimension,
+				   uint64_t *out_user_token,
+				   std::string *out_key_string,
+				   std::vector<uint64_t> *out_array_indexes);
 
 /* Apply on event file descriptor. */
 int kernctl_filter(int fd, const struct lttng_bytecode *filter);

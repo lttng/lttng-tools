@@ -8,6 +8,7 @@
  */
 
 #include "lttng/tracker.h"
+
 #define _LGPL_SOURCE
 #define __USE_LINUX_IOCTL_DEFS
 #include "kernel-ctl.hpp"
@@ -18,6 +19,8 @@
 #include <common/macros.hpp>
 #include <common/time.hpp>
 
+#include <algorithm>
+#include <cstddef>
 #include <stdarg.h>
 #include <string.h>
 #include <sys/ioctl.h>
@@ -408,6 +411,135 @@ int kernctl_create_session_counter(int session_fd,
 				   const struct lttng_kernel_abi_counter_conf *counter_conf)
 {
 	return LTTNG_IOCTL_NO_CHECK(session_fd, LTTNG_KERNEL_ABI_COUNTER, counter_conf);
+}
+
+int kernctl_counter_map_nr_descriptors(int counter_fd, uint64_t *nr)
+{
+	return LTTNG_IOCTL_NO_CHECK(counter_fd, LTTNG_KERNEL_ABI_COUNTER_MAP_NR_DESCRIPTORS, nr);
+}
+
+int kernctl_counter_map_descriptor(int counter_fd,
+				   uint64_t descriptor_index,
+				   uint32_t *out_dimension,
+				   uint64_t *out_user_token,
+				   std::string *out_key_string,
+				   std::vector<uint64_t> *out_array_indexes)
+{
+	/*
+	 * Initial guesses. The kernel writes back the required size on
+	 * -ENOSPC, so a single retry should be sufficient.
+	 */
+	uint32_t array_indexes_capacity_bytes =
+		sizeof(uint64_t) * LTTNG_KERNEL_ABI_COUNTER_DIMENSION_MAX;
+	uint32_t key_string_capacity = 64;
+
+	std::vector<char> key_string_buffer;
+	std::vector<uint64_t> array_indexes_buffer;
+
+	for (unsigned int attempt = 0; attempt < 2; attempt++) {
+		try {
+			key_string_buffer.assign(key_string_capacity, '\0');
+		} catch (std::bad_alloc& ex) {
+			ERR_FMT("Failed to allocate key string buffer of modules map counter descriptor: counter_fd={}, descriptor_index={}, size={}",
+				counter_fd,
+				descriptor_index,
+				key_string_capacity);
+			return -ENOMEM;
+		}
+
+		try {
+			array_indexes_buffer.assign(array_indexes_capacity_bytes / sizeof(uint64_t),
+						    0);
+		} catch (std::bad_alloc& ex) {
+			ERR_FMT("Failed to allocate array indexes buffer of modules map counter descriptor: counter_fd={}, descriptor_index={}, size_bytes={}",
+				counter_fd,
+				descriptor_index,
+				array_indexes_capacity_bytes);
+			return -ENOMEM;
+		}
+
+		struct lttng_kernel_abi_counter_map_descriptor descriptor {};
+
+		descriptor.len = sizeof(descriptor);
+		descriptor.descriptor_index = descriptor_index;
+		descriptor.key_string = reinterpret_cast<uint64_t>(key_string_buffer.data());
+		descriptor.key_string_len = key_string_capacity;
+		descriptor.array_indexes = reinterpret_cast<uint64_t>(array_indexes_buffer.data());
+		descriptor.array_indexes_len = array_indexes_capacity_bytes;
+
+		const auto ret = LTTNG_IOCTL_NO_CHECK(
+			counter_fd, LTTNG_KERNEL_ABI_COUNTER_MAP_DESCRIPTOR, &descriptor);
+		if (ret == 0) {
+			/* Populate output params. */
+			if (out_dimension) {
+				*out_dimension = descriptor.dimension;
+			}
+
+			if (out_user_token) {
+				*out_user_token = descriptor.user_token;
+			}
+
+			if (out_key_string) {
+				/*
+				 * The kernel guarantees a NUL-terminated
+				 * string within key_string_len bytes.
+				 */
+				*out_key_string = std::string(key_string_buffer.data());
+			}
+
+			if (out_array_indexes) {
+				/*
+				 * Copy only the indexes the kernel reported in
+				 * array_indexes_len, clamped to the scratchpad.
+				 */
+				const auto count = std::min<std::size_t>(
+					descriptor.array_indexes_len, array_indexes_buffer.size());
+
+				out_array_indexes->assign(array_indexes_buffer.begin(),
+							  array_indexes_buffer.begin() + count);
+			}
+
+			return 0;
+		}
+
+		if (ret != -ENOSPC) {
+			ERR_FMT("Failed to get modules map counter descriptor: counter_fd={}, descriptor_index={}, ret={}",
+				counter_fd,
+				descriptor_index,
+				ret);
+			return ret;
+		} else {
+			DBG_FMT("Resizing scratchpad to receive modules map counter descriptor details: counter_fd={}, descriptor_index={}",
+				counter_fd,
+				descriptor_index);
+		}
+
+		/*
+		 * Grow each buffer if the kernel reported a larger required
+		 * size. Make sure forward progress is made on every retry.
+		 */
+		bool grew = false;
+
+		if (descriptor.key_string_len > key_string_capacity) {
+			key_string_capacity = descriptor.key_string_len;
+			grew = true;
+		}
+
+		if (descriptor.array_indexes_len > array_indexes_capacity_bytes) {
+			array_indexes_capacity_bytes = descriptor.array_indexes_len;
+			grew = true;
+		}
+
+		if (!grew) {
+			/*
+			 * The kernel returned -ENOSPC but did not request
+			 * more capacity. Treat as protocol error.
+			 */
+			return -EBADMSG;
+		}
+	}
+
+	return -EBADMSG;
 }
 
 int kernctl_counter_read(int counter_fd, struct lttng_kernel_abi_counter_read *counter_read)

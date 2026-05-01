@@ -264,6 +264,32 @@ struct lttng_kernel_abi_counter_clear {
 	struct lttng_kernel_abi_counter_index index;
 } LTTNG_PACKED;
 
+/*
+ * Descriptor entry exposed by the kernel tracer's counter map allocator,
+ * used for dynamic-key listing.
+ *
+ * Pulled by the COUNTER_MAP_DESCRIPTOR ioctl. The caller picks an index
+ * in [0, COUNTER_MAP_NR_DESCRIPTORS) and supplies user-pointers (cast to
+ * uint64_t) plus capacity for the key string and the per-dimension array
+ * indexes. -ENOSPC indicates the buffers were too small. In that case,
+ * the kernel writes the required sizes into key_string_len / array_indexes_len
+ * so the caller can resize and retry the same descriptor_index.
+ */
+struct lttng_kernel_abi_counter_map_descriptor {
+	uint32_t len; /* in: sizeof(struct) */
+
+	uint64_t descriptor_index; /* in: 0..nr - 1 */
+
+	uint32_t dimension; /* out: dimension this key belongs to */
+	uint64_t user_token; /* out: sessiond-supplied cookie */
+
+	uint64_t key_string; /* in: user pointer; out: filled */
+	uint32_t key_string_len; /* in: buffer size; out (ENOSPC): required */
+
+	uint64_t array_indexes; /* in: user pointer; out: filled uint64_t[] */
+	uint32_t array_indexes_len; /* in: buffer size in bytes; out (ENOSPC): required */
+} LTTNG_PACKED;
+
 #define LTTNG_KERNEL_ABI_EVENT_NOTIFIER_NOTIFICATION_PADDING 32
 struct lttng_kernel_abi_event_notifier_notification {
 	uint64_t token;
