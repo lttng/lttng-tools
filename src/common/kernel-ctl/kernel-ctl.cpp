@@ -404,6 +404,12 @@ int kernctl_create_event_notifier_group_error_counter(
 	return LTTNG_IOCTL_NO_CHECK(group_fd, LTTNG_KERNEL_ABI_COUNTER, error_counter_conf);
 }
 
+int kernctl_create_session_counter(int session_fd,
+				   const struct lttng_kernel_abi_counter_conf *counter_conf)
+{
+	return LTTNG_IOCTL_NO_CHECK(session_fd, LTTNG_KERNEL_ABI_COUNTER, counter_conf);
+}
+
 int kernctl_counter_read(int counter_fd, struct lttng_kernel_abi_counter_read *counter_read)
 {
 	return LTTNG_IOCTL_NO_CHECK(counter_fd, LTTNG_KERNEL_ABI_COUNTER_READ, counter_read);
