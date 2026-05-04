@@ -70,7 +70,7 @@ int utils_create_lock_file(const char *filepath)
 
 	LTTNG_ASSERT(filepath);
 
-	fd = open(filepath, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+	fd = open(filepath, O_CREAT | O_WRONLY | O_CLOEXEC, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 	if (fd < 0) {
 		PERROR("Failed to open lock file `%s`", filepath);
 		fd = -1;
