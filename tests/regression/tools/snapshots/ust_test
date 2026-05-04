@@ -600,7 +600,7 @@ function test_ust_local_snapshot_consecutive_no_new_events_overwrite
 		set -o pipefail
 		COUNTS+=("$($BABELTRACE_BIN "${TRACE_PATH}" | grep -c "${EVENT_NAME}")")
 		ok "${?}" "Babeltrace returned OK"
-		set +o pipeline
+		set +o pipefail
 		rm -rf "${TRACE_PATH:?}/"
 	done
 	for x in $(seq 1 9); do
