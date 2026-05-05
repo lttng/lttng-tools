@@ -245,22 +245,25 @@ function lttng_pgrep ()
 	local pattern=$1
 	local possible_pids
 	local full_command_no_argument
-	local command_basename
 
-	possible_pids=$($PGREP -f "$pattern" -u "${UID}")
+	possible_pids="$($PGREP -f "$pattern" -u "${UID}")"
 	if [ -z "$possible_pids" ]; then
 		return 0
 	fi
 
 	while IFS= read -r pid ; do
 		# /proc/pid/cmdline is null separated.
-		if full_command_no_argument=$( (tr '\0' '\n' < /proc/"$pid"/cmdline) 2>/dev/null | head -n1); then
-			command_basename=$(basename "$full_command_no_argument")
-			if grep -q "$pattern" <<< "$command_basename"; then
+		full_command_no_argument="$( (tr '\0' '\n' < /proc/"$pid"/cmdline) | head -n1)"
+		if [ -n "${full_command_no_argument}" ]; then
+			if grep -q "$pattern" <<< "$(basename "$full_command_no_argument")"; then
 				echo "$pid"
 			fi
+		else
+			echo "WARNING: Unable to determine command for pid $pid, assuming match is pertinent" >&2
+			echo "$pid"
 		fi
 	done <<< "$possible_pids"
+
 	return 0
 }
 
