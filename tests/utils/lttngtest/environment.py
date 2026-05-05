@@ -1647,6 +1647,94 @@ class _Environment(logger._Logger):
             **kwargs,
         )
 
+    def launch_notification_client(
+        self,
+        trigger_name,  # type: str
+        sync=True,  # type: bool
+        timeout_s=None,  # type: Optional[float]
+        count=None,  # type: Optional[int]
+        end_trigger_name=None,  # type: Optional[str]
+    ):
+        # type: (...) -> subprocess.Popen
+        """
+        Launch the notification-client helper and optionally wait for it
+        to register with the session daemon.
+
+        If sync is True (the default), this method blocks until the client
+        has registered for notifications. If timeout_s is None (the default),
+        it waits indefinitely.
+
+        If count is specified, the client will exit after receiving that many
+        notifications for the trigger (default is 1).
+
+        If end_trigger_name is specified, the client will exit only when a
+        notification matching that trigger is received, instead of exiting
+        after count notifications.
+        """
+        notification_client_path = (
+            self._project_root
+            / "tests"
+            / "regression"
+            / "tools"
+            / "trigger"
+            / "utils"
+            / "notification-client"
+        )
+
+        args = [
+            str(notification_client_path),
+            "--trigger",
+            trigger_name,
+        ]
+
+        if count is not None:
+            args.extend(["--count", str(count)])
+
+        if end_trigger_name is not None:
+            args.extend(["--end-trigger", end_trigger_name])
+
+        env = os.environ.copy()
+        if self.lttng_home_location is not None:
+            env["LTTNG_HOME"] = str(self.lttng_home_location)
+        if self.lttng_rundir is not None:
+            env["LTTNG_RUNDIR"] = str(self.lttng_rundir)
+
+        sync_file = None
+        if sync:
+            sync_dir = self.create_temporary_directory("notif-client-sync-")
+            sync_file = sync_dir / "sync"
+            args.extend(["--sync-after-notif-register", str(sync_file)])
+
+        self._log("Launching notification client: '{}'".format(" ".join(args)))
+
+        process = subprocess.Popen(
+            args,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+        if sync:
+            deadline = None if timeout_s is None else time.time() + timeout_s
+            while not os.path.exists(sync_file):
+                if deadline is not None and time.time() > deadline:
+                    process.kill()
+                    raise RuntimeError(
+                        "Timed out waiting for notification client to register"
+                    )
+                if process.poll() is not None:
+                    raise RuntimeError(
+                        "Notification client exited unexpectedly with code {}".format(
+                            process.returncode
+                        )
+                    )
+                time.sleep(0.01)
+            self._log(
+                "Notification client registered for trigger '{}'".format(trigger_name)
+            )
+
+        return process
+
     def _terminate_relayd(self):
         if self._relayd and self._relayd.poll() is None:
             try:

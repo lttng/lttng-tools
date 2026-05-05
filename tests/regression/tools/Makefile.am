@@ -253,8 +253,8 @@ noinst_SCRIPTS += \
 	trigger/hidden/test_hidden_trigger \
 	trigger/name/test_trigger_name_backwards_compat \
 	trigger/rate-policy/test_ust_rate_policy \
-	trigger/start-stop/test_start_stop \
 	trigger/test_add_trigger_cli \
+	trigger/test_trigger_start_stop_actions.py \
 	trigger/test_list_triggers_cli \
 	trigger/test_remove_trigger_cli \
 	wildcard/test_event_wildcard \

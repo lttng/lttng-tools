@@ -70,7 +70,6 @@ SERIAL_TESTS = tools/base-path/test_ust \
 	tools/working-directory/test_relayd_working_directory \
 	tools/clear/test_kernel \
 	tools/tracker/test_event_tracker \
-	tools/trigger/start-stop/test_start_stop \
 	tools/trigger/test_add_trigger_cli \
 	tools/trigger/test_list_triggers_cli \
 	tools/trigger/test_remove_trigger_cli \
@@ -101,6 +100,7 @@ TESTS = tools/clear/test_disallow.py \
 	tools/trace-format/test_sessiond_default_trace_format.py \
 	tools/trace-format/test_trace_format_ust.py \
 	tools/channel/test_channel_watchdog_timer.py \
+	tools/trigger/test_trigger_start_stop_actions.py \
 	tests.serial
 
 # Only build kernel tests on Linux.

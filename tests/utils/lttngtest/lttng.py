@@ -215,6 +215,156 @@ def _get_tracepoint_event_rule_class_from_domain_type(domain_type):
     }[domain_type]
 
 
+def _get_event_rule_type_name(rule):
+    # type: (lttngctl.EventRule) -> str
+    """Map EventRule subclass to --type= CLI option value for add-trigger."""
+    if isinstance(rule, lttngctl.UserTracepointEventRule):
+        return "user:tracepoint"
+    elif isinstance(rule, lttngctl.KernelTracepointEventRule):
+        return "kernel:tracepoint"
+    elif isinstance(rule, lttngctl.KernelSyscallEventRule):
+        return "kernel:syscall"
+    elif isinstance(rule, lttngctl.KernelKprobeEventRule):
+        return "kernel:kprobe"
+    elif isinstance(rule, lttngctl.JULTracepointEventRule):
+        return "jul:logging"
+    elif isinstance(rule, lttngctl.Log4jTracepointEventRule):
+        return "log4j:logging"
+    elif isinstance(rule, lttngctl.Log4j2TracepointEventRule):
+        return "log4j2:logging"
+    elif isinstance(rule, lttngctl.PythonTracepointEventRule):
+        return "python:logging"
+    else:
+        raise Unsupported(
+            "Event rule type `{event_rule_type}` is not supported for triggers".format(
+                event_rule_type=type(rule).__name__
+            )
+        )
+
+
+def _build_event_rule_spec_args(rule):
+    # type: (lttngctl.EventRule) -> List[str]
+    """Build CLI arguments for event rule specification in add-trigger."""
+    args = ["--type={}".format(_get_event_rule_type_name(rule))]
+
+    # Handle name pattern (most rule types)
+    if hasattr(rule, "name_pattern") and rule.name_pattern:
+        args.append("--name={}".format(rule.name_pattern))
+
+    # Handle filter expression
+    if hasattr(rule, "filter_expression") and rule.filter_expression:
+        args.append("--filter={}".format(rule.filter_expression))
+
+    # Handle log level (user tracepoint and logging backends)
+    if hasattr(rule, "log_level_rule") and rule.log_level_rule:
+        level_name = _get_log_level_argument_name(rule.log_level_rule.level)
+        if isinstance(rule.log_level_rule, lttngctl.LogLevelRuleAsSevereAs):
+            args.append("--log-level={}..".format(level_name))
+        elif isinstance(rule.log_level_rule, lttngctl.LogLevelRuleExactly):
+            args.append("--log-level={}".format(level_name))
+
+    # --exclude-name is only valid with --type=user:tracepoint.
+    if (
+        isinstance(rule, lttngctl.UserTracepointEventRule)
+        and rule.name_pattern_exclusions
+    ):
+        for exclusion in rule.name_pattern_exclusions:
+            args.append("--exclude-name={}".format(exclusion))
+
+    # Handle kprobe-specific attributes
+    if isinstance(rule, lttngctl.KernelKprobeEventRule):
+        args.append("--location={}".format(rule.symbol_name))
+        args.append("--event-name={}".format(rule.event_name))
+
+    return args
+
+
+def _build_rate_policy_arg(policy):
+    # type: (lttngctl.RatePolicy) -> str
+    """Build --rate-policy= CLI argument from a RatePolicy object."""
+    if isinstance(policy, lttngctl.EveryNRatePolicy):
+        return "--rate-policy=every:{}".format(policy.interval)
+    elif isinstance(policy, lttngctl.OnceAfterNRatePolicy):
+        return "--rate-policy=once-after:{}".format(policy.count)
+    else:
+        raise Unsupported(
+            "Rate policy type `{}` is not supported".format(type(policy).__name__)
+        )
+
+
+def _build_action_args(action):
+    # type: (lttngctl.TriggerAction) -> List[str]
+    """Build CLI arguments for a trigger action."""
+    args = []  # type: List[str]
+
+    if isinstance(action, lttngctl.NotifyTriggerAction):
+        args.append("--action=notify")
+    elif isinstance(action, lttngctl.StartSessionTriggerAction):
+        args.extend(["--action=start-session", action.session_name])
+    elif isinstance(action, lttngctl.StopSessionTriggerAction):
+        args.extend(["--action=stop-session", action.session_name])
+    elif isinstance(action, lttngctl.RotateSessionTriggerAction):
+        args.extend(["--action=rotate-session", action.session_name])
+    elif isinstance(action, lttngctl.SnapshotSessionTriggerAction):
+        args.extend(["--action=snapshot-session", action.session_name])
+        if action.output_name:
+            args.append("--name={}".format(action.output_name))
+        if action.max_size:
+            args.append("--max-size={}".format(action.max_size))
+        if action.path:
+            args.append("--path={}".format(action.path))
+        elif action.url:
+            args.append("--url={}".format(action.url))
+        elif action.ctrl_url and action.data_url:
+            args.append("--ctrl-url={}".format(action.ctrl_url))
+            args.append("--data-url={}".format(action.data_url))
+    else:
+        raise Unsupported(
+            "Action type `{}` is not supported".format(type(action).__name__)
+        )
+
+    if action.rate_policy:
+        args.append(_build_rate_policy_arg(action.rate_policy))
+
+    return args
+
+
+class _Trigger(lttngctl.Trigger):
+    def __init__(
+        self,
+        client,  # type: LTTngClient
+        name,  # type: Optional[str]
+        owner_uid,  # type: Optional[int]
+        condition,  # type: lttngctl.TriggerCondition
+        actions,  # type: List[lttngctl.TriggerAction]
+    ):
+        self._client = client
+        self._name = name
+        self._owner_uid = owner_uid
+        self._condition = condition
+        self._actions = actions
+
+    @property
+    def name(self):
+        # type: () -> Optional[str]
+        return self._name
+
+    @property
+    def owner_uid(self):
+        # type: () -> Optional[int]
+        return self._owner_uid
+
+    @property
+    def condition(self):
+        # type: () -> lttngctl.TriggerCondition
+        return self._condition
+
+    @property
+    def actions(self):
+        # type: () -> List[lttngctl.TriggerAction]
+        return self._actions
+
+
 class _Channel(lttngctl.Channel):
     def __init__(
         self,
@@ -1334,3 +1484,59 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
             cmd.append("--all")
 
         self._run_cmd(" ".join(cmd))
+
+    def add_trigger(self, condition, actions, name=None, owner_uid=None):
+        # type: (lttngctl.TriggerCondition, List[lttngctl.TriggerAction], Optional[str], Optional[int]) -> lttngctl.Trigger
+        """
+        Add a trigger with the given condition and actions.
+
+        If name is not specified, the session daemon will generate a unique name.
+        If owner_uid is specified, the trigger will be owned by that user (requires root).
+        """
+        args = ["add-trigger"]
+
+        if name:
+            args.extend(["--name", name])
+
+        if owner_uid is not None:
+            args.extend(["--owner-uid", str(owner_uid)])
+
+        # Build condition arguments
+        if isinstance(condition, lttngctl.EventRuleMatchesCondition):
+            args.append("--condition=event-rule-matches")
+            for capture in condition.capture_descriptors:
+                args.extend(["--capture", capture])
+            args.extend(_build_event_rule_spec_args(condition.event_rule))
+        else:
+            raise Unsupported(
+                "Condition type `{condition_type}` is not supported".format(
+                    condition_type=type(condition).__name__
+                )
+            )
+
+        # Build action arguments
+        for action in actions:
+            args.extend(_build_action_args(action))
+
+        command_output_xml, _ = self._run_cmd(" ".join([shlex.quote(x) for x in args]))
+        created_trigger_name = name
+
+        if created_trigger_name is None:
+            root = xml.etree.ElementTree.fromstring(command_output_xml)
+            command_output = self._mi_get_in_element(root, "output")
+            trigger_mi = self._mi_get_in_element(command_output, "trigger")
+            created_trigger_name = self._mi_get_in_element(trigger_mi, "name").text
+
+            if created_trigger_name is None:
+                raise InvalidMI(
+                    "Invalid empty 'name' element in '{}'".format(trigger_mi.tag)
+                )
+
+        return _Trigger(self, created_trigger_name, owner_uid, condition, actions)
+
+    def remove_trigger(self, name):
+        # type: (str) -> None
+        """
+        Remove a trigger by name.
+        """
+        self._run_cmd("remove-trigger {}".format(shlex.quote(name)))

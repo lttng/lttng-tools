@@ -631,6 +631,237 @@ class KernelFunctionEventRule(EventRule):
         return self._enabled
 
 
+# Trigger-related classes
+
+
+class RatePolicy(abc.ABC):
+    """Base class for trigger action rate policies."""
+
+    pass
+
+
+class EveryNRatePolicy(RatePolicy):
+    """Execute action every N times the condition is satisfied."""
+
+    def __init__(self, interval):
+        # type: (int) -> None
+        self._interval = interval
+
+    @property
+    def interval(self):
+        # type: () -> int
+        return self._interval
+
+
+class OnceAfterNRatePolicy(RatePolicy):
+    """Execute action once after N times the condition is satisfied."""
+
+    def __init__(self, count):
+        # type: (int) -> None
+        self._count = count
+
+    @property
+    def count(self):
+        # type: () -> int
+        return self._count
+
+
+class TriggerCondition(abc.ABC):
+    """Base class for trigger conditions."""
+
+    pass
+
+
+class EventRuleMatchesCondition(TriggerCondition):
+    """Condition satisfied when an event matches the specified event rule."""
+
+    def __init__(
+        self,
+        event_rule,  # type: EventRule
+        capture_descriptors=None,  # type: Optional[List[str]]
+    ):
+        self._event_rule = event_rule
+        self._capture_descriptors = capture_descriptors if capture_descriptors else []
+
+    @property
+    def event_rule(self):
+        # type: () -> EventRule
+        return self._event_rule
+
+    @property
+    def capture_descriptors(self):
+        # type: () -> List[str]
+        return self._capture_descriptors
+
+
+class TriggerAction(abc.ABC):
+    """Base class for trigger actions."""
+
+    pass
+
+
+class NotifyTriggerAction(TriggerAction):
+    """Send a notification when the trigger fires."""
+
+    def __init__(self, rate_policy=None):
+        # type: (Optional[RatePolicy]) -> None
+        self._rate_policy = rate_policy
+
+    @property
+    def rate_policy(self):
+        # type: () -> Optional[RatePolicy]
+        return self._rate_policy
+
+
+class StartSessionTriggerAction(TriggerAction):
+    """Start a recording session when the trigger fires."""
+
+    def __init__(self, session_name, rate_policy=None):
+        # type: (str, Optional[RatePolicy]) -> None
+        self._session_name = session_name
+        self._rate_policy = rate_policy
+
+    @property
+    def session_name(self):
+        # type: () -> str
+        return self._session_name
+
+    @property
+    def rate_policy(self):
+        # type: () -> Optional[RatePolicy]
+        return self._rate_policy
+
+
+class StopSessionTriggerAction(TriggerAction):
+    """Stop a recording session when the trigger fires."""
+
+    def __init__(self, session_name, rate_policy=None):
+        # type: (str, Optional[RatePolicy]) -> None
+        self._session_name = session_name
+        self._rate_policy = rate_policy
+
+    @property
+    def session_name(self):
+        # type: () -> str
+        return self._session_name
+
+    @property
+    def rate_policy(self):
+        # type: () -> Optional[RatePolicy]
+        return self._rate_policy
+
+
+class RotateSessionTriggerAction(TriggerAction):
+    """Rotate a recording session when the trigger fires."""
+
+    def __init__(self, session_name, rate_policy=None):
+        # type: (str, Optional[RatePolicy]) -> None
+        self._session_name = session_name
+        self._rate_policy = rate_policy
+
+    @property
+    def session_name(self):
+        # type: () -> str
+        return self._session_name
+
+    @property
+    def rate_policy(self):
+        # type: () -> Optional[RatePolicy]
+        return self._rate_policy
+
+
+class SnapshotSessionTriggerAction(TriggerAction):
+    """Take a snapshot of a recording session when the trigger fires."""
+
+    def __init__(
+        self,
+        session_name,  # type: str
+        output_name=None,  # type: Optional[str]
+        max_size=None,  # type: Optional[int]
+        path=None,  # type: Optional[str]
+        url=None,  # type: Optional[str]
+        ctrl_url=None,  # type: Optional[str]
+        data_url=None,  # type: Optional[str]
+        rate_policy=None,  # type: Optional[RatePolicy]
+    ):
+        self._session_name = session_name
+        self._output_name = output_name
+        self._max_size = max_size
+        self._path = path
+        self._url = url
+        self._ctrl_url = ctrl_url
+        self._data_url = data_url
+        self._rate_policy = rate_policy
+
+    @property
+    def session_name(self):
+        # type: () -> str
+        return self._session_name
+
+    @property
+    def output_name(self):
+        # type: () -> Optional[str]
+        return self._output_name
+
+    @property
+    def max_size(self):
+        # type: () -> Optional[int]
+        return self._max_size
+
+    @property
+    def path(self):
+        # type: () -> Optional[str]
+        return self._path
+
+    @property
+    def url(self):
+        # type: () -> Optional[str]
+        return self._url
+
+    @property
+    def ctrl_url(self):
+        # type: () -> Optional[str]
+        return self._ctrl_url
+
+    @property
+    def data_url(self):
+        # type: () -> Optional[str]
+        return self._data_url
+
+    @property
+    def rate_policy(self):
+        # type: () -> Optional[RatePolicy]
+        return self._rate_policy
+
+
+class Trigger(abc.ABC):
+    """Represents an LTTng trigger."""
+
+    @property
+    @abc.abstractmethod
+    def name(self):
+        # type: () -> Optional[str]
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def owner_uid(self):
+        # type: () -> Optional[int]
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def condition(self):
+        # type: () -> TriggerCondition
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def actions(self):
+        # type: () -> List[TriggerAction]
+        raise NotImplementedError
+
+
 class Channel(abc.ABC):
     """
     A channel is an object which is responsible for a set of ring buffers. It is
@@ -1114,5 +1345,24 @@ class Controller(abc.ABC):
         # type: (str, int) -> None
         """
         Schedule automatic time-based rotations.
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def add_trigger(self, condition, actions, name=None, owner_uid=None):
+        # type: (TriggerCondition, List[TriggerAction], Optional[str], Optional[int]) -> Trigger
+        """
+        Add a trigger with the given condition and actions.
+
+        If name is not specified, the session daemon will generate a unique name.
+        If owner_uid is specified, the trigger will be owned by that user (requires root).
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def remove_trigger(self, name):
+        # type: (str) -> None
+        """
+        Remove a trigger by name.
         """
         raise NotImplementedError
