@@ -201,7 +201,7 @@ function _lttng_client_log_file ()
 		fi
 	elif [[ -n "${LTTNG_TEST_LOG_DIR}" ]]; then
 		if [[ "${LTTNG_TEST_LOG_DIR}" != "-" ]]; then
-			mktemp -p "${LTTNG_TEST_LOG_DIR}" -t "lttng.XXXXXX"
+			mktemp -p "${LTTNG_TEST_LOG_DIR}" "lttng.XXXXXX"
 		fi
 	else
 		echo "/dev/null"
@@ -230,7 +230,7 @@ function lttng_log_file ()
 		return
 	fi
 
-	mktemp -p "${LTTNG_TEST_LOG_DIR}" -t "${app}.logfile.XXXXXX"
+	mktemp -p "${LTTNG_TEST_LOG_DIR}" "${app}.logfile.XXXXXX"
 }
 
 # Due to the renaming of threads we need to use the full command (pgrep -f) to
