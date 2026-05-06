@@ -46,6 +46,9 @@ if __name__ == "__main__":
                 "condition_type": lttngtest.lttngctl.ConditionType.BufferUsageHigh,
             },
         },
+        {
+            "function": tests.test_buffer_usage_notification_channel,
+        },
     ]
 
     tap = lttngtest.TapGenerator(len(tests))

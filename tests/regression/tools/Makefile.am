@@ -116,7 +116,7 @@ notification_base_client_LDADD = $(LIB_LTTNG_CTL)
 notification_notification_SOURCES = notification/notification.cpp
 # Tests the deprecated lttng_register_trigger() interface
 notification_notification_CXXFLAGS = -Wno-deprecated-declarations $(AM_CXXFLAGS)
-notification_notification_LDADD = $(LIB_LTTNG_CTL) $(LIBTAP) -lm
+notification_notification_LDADD = $(LIB_LTTNG_CTL) $(LIBTAP) -lm $(top_builddir)/src/vendor/fmt/libfmt.la
 notification_notification_CPPFLAGS = $(AM_CPPFLAGS) -I$(UTILS_DIR)
 
 notification_rotation_SOURCES = notification/rotation.c
@@ -202,7 +202,6 @@ noinst_SCRIPTS += \
 	metadata/test_ust \
 	metadata/utils.sh \
 	mi/test_mi \
-	notification/test_notification_kernel_buffer_usage \
 	notification/test_notification_kernel_buffer_usage.py \
 	notification/test_notification_kernel_capture \
 	notification/test_notification_kernel_error \
@@ -211,7 +210,6 @@ noinst_SCRIPTS += \
 	notification/test_notification_kernel_userspace_probe \
 	notification/test_notification_multi_app \
 	notification/test_notification_notifier_discarded_count \
-	notification/test_notification_ust_buffer_usage \
 	notification/test_notification_ust_buffer_usage.py \
 	notification/test_notification_ust_capture \
 	notification/test_notification_ust_error \

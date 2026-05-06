@@ -12,6 +12,7 @@
 #include <common/compat/errno.hpp>
 #include <common/ctl/format.hpp>
 #include <common/ctl/memory.hpp>
+#include <common/format.hpp>
 #include <common/macros.hpp>
 
 #include <lttng/lttng.h>
@@ -807,55 +808,20 @@ void wait_on_file(const char *path, bool expect_file_exist)
 	}
 }
 
-int write_pipe(const char *path, uint8_t data)
+int resume_consumer_by_pid(const char *pid)
 {
-	int ret = 0;
-	int fd = 0;
+	const auto command = fmt::format(
+		"gdb --nx --nw --batch -ex 'attach {}' -ex 'set data_consumption_paused = 0'", pid);
 
-	fd = open(path, O_WRONLY | O_NONBLOCK);
-	if (fd < 0) {
-		perror("Could not open consumer control named pipe");
-		goto end;
-	}
-
-	ret = write(fd, &data, sizeof(data));
-	if (ret < 1) {
-		perror("Named pipe write failed");
-		if (close(fd)) {
-			perror("Named pipe close failed");
-		}
-		ret = -1;
-		goto end;
-	}
-
-	ret = close(fd);
-	if (ret < 0) {
-		perror("Name pipe closing failed");
-		ret = -1;
-		goto end;
-	}
-end:
-	return ret;
+	return system(command.c_str());
 }
 
-int stop_consumer(const char **argv)
+int stop_consumer_by_pid(const char *pid)
 {
-	int ret = 0, i;
+	const auto command = fmt::format(
+		"gdb --nx --nw --batch -ex 'attach {}' -ex 'set data_consumption_paused = 1'", pid);
 
-	for (i = named_pipe_args_start; i < nb_args; i++) {
-		ret = write_pipe(argv[i], 49);
-	}
-	return ret;
-}
-
-int resume_consumer(const char **argv)
-{
-	int ret = 0, i;
-
-	for (i = named_pipe_args_start; i < nb_args; i++) {
-		ret = write_pipe(argv[i], 0);
-	}
-	return ret;
+	return system(command.c_str());
 }
 
 int suspend_application()
@@ -1464,10 +1430,10 @@ get_next_notification_skip_type(lttng_notification_channel *notification_channel
 	}
 }
 
-void test_buffer_usage_notification_channel(const char *session_name,
-					    const char *channel_name,
-					    const enum lttng_domain_type domain_type,
-					    const char **argv)
+int test_buffer_usage_notification_channel(const char *session_name,
+					   const char *channel_name,
+					   const enum lttng_domain_type domain_type,
+					   const char *consumerd_pid)
 {
 	int ret = 0;
 	enum lttng_notification_channel_status nc_status;
@@ -1491,7 +1457,7 @@ void test_buffer_usage_notification_channel(const char *session_name,
 						   &low_action,
 						   &low_trigger);
 	if (ret) {
-		fail("Setup error on low trigger registration");
+		diag("Setup error on low trigger registration: ret=%d", ret);
 		goto end;
 	}
 
@@ -1504,30 +1470,42 @@ void test_buffer_usage_notification_channel(const char *session_name,
 						   &high_action,
 						   &high_trigger);
 	if (ret) {
-		fail("Setup error on high trigger registration");
+		diag("Setup error on high trigger registration: ret=%d", ret);
 		goto end;
 	}
 
 	/* Begin testing */
 	notification_channel =
 		lttng_notification_channel_create(lttng_session_daemon_notification_endpoint);
-	ok(notification_channel, "Notification channel object creation");
+	diag("Notification channel object creation returns non-NULL: notification_channel=%p",
+	     notification_channel);
 	if (!notification_channel) {
+		ret = 1;
 		goto end;
 	}
 
 	/* Subscribe a valid low condition */
 	nc_status = lttng_notification_channel_subscribe(notification_channel, low_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK, "Subscribe to low condition");
+	diag("Subscribe to low condition returns NOTIFICATION_CHANNEL_STATUS_OK (%d): ret=%d",
+	     LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
+	     nc_status);
+	if (nc_status != LTTNG_NOTIFICATION_CHANNEL_STATUS_OK) {
+		ret = 1;
+	}
 
 	/* Subscribe a valid high condition */
 	nc_status = lttng_notification_channel_subscribe(notification_channel, high_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK, "Subscribe to high condition");
+	diag("Subscribe to high condition returns NOTIFICATION_CHANNEL_STATUS_OK (%d): ret=%d",
+	     LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
+	     nc_status);
+	if (nc_status != LTTNG_NOTIFICATION_CHANNEL_STATUS_OK) {
+		ret = 1;
+	}
 
 	resume_application();
 
 	/* Wait for notification to happen */
-	stop_consumer(argv);
+	stop_consumer_by_pid(consumerd_pid);
 	lttng_start_tracing(session_name);
 
 	/*
@@ -1538,14 +1516,21 @@ void test_buffer_usage_notification_channel(const char *session_name,
 	notification = get_next_notification_skip_type(notification_channel,
 						       LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW);
 
-	ok(notification &&
-		   lttng_condition_get_type(lttng_notification_get_condition(notification.get())) ==
-			   LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH,
-	   "High notification received after intermediary communication");
+	diag("High notification received after intermediary communication: notification=%p, condition=%d",
+	     (void *) notification.get(),
+	     notification ? lttng_condition_get_type(
+				    lttng_notification_get_condition(notification.get())) :
+			    -1);
+	if (!notification ||
+	    (notification &&
+	     lttng_condition_get_type(lttng_notification_get_condition(notification.get())) !=
+		     LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH)) {
+		ret = 1;
+	}
 
 	suspend_application();
 	lttng_stop_tracing_no_wait(session_name);
-	resume_consumer(argv);
+	resume_consumer_by_pid(consumerd_pid);
 	wait_data_pending(session_name);
 
 	/*
@@ -1562,48 +1547,76 @@ void test_buffer_usage_notification_channel(const char *session_name,
 	 */
 
 	nc_status = lttng_notification_channel_unsubscribe(notification_channel, low_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
-	   "Unsubscribe with pending notification");
+	diag("Unsubscribe with pending notification returns OK (%d): ret=%d",
+	     LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
+	     nc_status);
+	if (nc_status != LTTNG_NOTIFICATION_CHANNEL_STATUS_OK) {
+		ret = 1;
+	}
 
 	nc_status = lttng_notification_channel_subscribe(notification_channel, low_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
-	   "Subscribe with pending notification");
+	diag("Subscribe with pending notification returns OK (%d): ret=%d",
+	     LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
+	     nc_status);
+	if (nc_status != LTTNG_NOTIFICATION_CHANNEL_STATUS_OK) {
+		ret = 1;
+	}
 
 	notification = get_next_notification_skip_type(notification_channel,
 						       LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH);
-
-	ok(notification &&
-		   lttng_condition_get_type(lttng_notification_get_condition(notification.get())) ==
-			   LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW,
-	   "Low notification received after intermediary communication");
+	diag("Low notification received after intermediary communication: notification=%p, condition=%d",
+	     (void *) notification.get(),
+	     notification ? lttng_condition_get_type(
+				    lttng_notification_get_condition(notification.get())) :
+			    -1);
+	if (!notification ||
+	    (notification &&
+	     lttng_condition_get_type(lttng_notification_get_condition(notification.get())) !=
+		     LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW)) {
+		ret = 1;
+	}
 
 	/* Stop consumer to force a high notification */
-	stop_consumer(argv);
+	stop_consumer_by_pid(consumerd_pid);
 	resume_application();
 	lttng_start_tracing(session_name);
 
 	notification = get_next_notification_skip_type(notification_channel,
 						       LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW);
 
-	ok(notification &&
-		   lttng_condition_get_type(lttng_notification_get_condition(notification.get())) ==
-			   LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH,
-	   "High notification received after intermediary communication");
+	diag("High notification received after intermediary communication: notification=%p, condition=%d",
+	     (void *) notification.get(),
+	     notification ? lttng_condition_get_type(
+				    lttng_notification_get_condition(notification.get())) :
+			    -1);
+	if (!notification ||
+	    (notification &&
+	     lttng_condition_get_type(lttng_notification_get_condition(notification.get())) !=
+		     LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH)) {
+		ret = 1;
+	}
 
 	suspend_application();
 	lttng_stop_tracing_no_wait(session_name);
-	resume_consumer(argv);
+	resume_consumer_by_pid(consumerd_pid);
 	wait_data_pending(session_name);
 
 	notification = get_next_notification_skip_type(notification_channel,
 						       LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH);
 
-	ok(notification &&
-		   lttng_condition_get_type(lttng_notification_get_condition(notification.get())) ==
-			   LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW,
-	   "Low notification received after re-subscription");
+	diag("Low notification received after re-subscription: notification=%p, condition=%d",
+	     (void *) notification.get(),
+	     notification ? lttng_condition_get_type(
+				    lttng_notification_get_condition(notification.get())) :
+			    -1);
+	if (!notification ||
+	    (notification &&
+	     lttng_condition_get_type(lttng_notification_get_condition(notification.get())) !=
+		     LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW)) {
+		ret = 1;
+	}
 
-	stop_consumer(argv);
+	stop_consumer_by_pid(consumerd_pid);
 	resume_application();
 	/* Stop consumer to force a high notification */
 	lttng_start_tracing(session_name);
@@ -1611,25 +1624,40 @@ void test_buffer_usage_notification_channel(const char *session_name,
 	notification = get_next_notification_skip_type(notification_channel,
 						       LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW);
 
-	ok(notification &&
-		   lttng_condition_get_type(lttng_notification_get_condition(notification.get())) ==
-			   LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH,
-	   "High notification");
+	diag("High notification received after re-subscription: notification=%p, condition=%d",
+	     (void *) notification.get(),
+	     notification ? lttng_condition_get_type(
+				    lttng_notification_get_condition(notification.get())) :
+			    -1);
+	if (!notification ||
+	    (notification &&
+	     lttng_condition_get_type(lttng_notification_get_condition(notification.get())) !=
+		     LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH)) {
+		ret = 1;
+	}
 
 	suspend_application();
 
 	/* Resume consumer to allow event consumption */
 	lttng_stop_tracing_no_wait(session_name);
-	resume_consumer(argv);
+	resume_consumer_by_pid(consumerd_pid);
 	wait_data_pending(session_name);
 
 	nc_status = lttng_notification_channel_unsubscribe(notification_channel, low_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
-	   "Unsubscribe low condition with pending notification");
+	diag("Unsubscribe low condition with pending notification returns OK (%d): ret=%d",
+	     LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
+	     nc_status);
+	if (nc_status != LTTNG_NOTIFICATION_CHANNEL_STATUS_OK) {
+		ret = 1;
+	}
 
 	nc_status = lttng_notification_channel_unsubscribe(notification_channel, high_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
-	   "Unsubscribe high condition with pending notification");
+	diag("Unsubscribe high condition with pending notification returns OK (%d): ret=%d",
+	     LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
+	     nc_status);
+	if (nc_status != LTTNG_NOTIFICATION_CHANNEL_STATUS_OK) {
+		ret = 1;
+	}
 
 end:
 	lttng_notification_channel_destroy(notification_channel);
@@ -1639,6 +1667,7 @@ end:
 	lttng_action_destroy(high_action);
 	lttng_condition_destroy(low_condition);
 	lttng_condition_destroy(high_condition);
+	return ret;
 }
 
 void create_tracepoint_event_rule_trigger(const char *event_pattern,
@@ -2926,31 +2955,19 @@ int main(int argc, const char *argv[])
 	}
 	case 2:
 	{
-		const char *session_name, *channel_name;
-
-		/* Test cases that need a tracing session enabled. */
-		plan_tests(12);
-
-		/*
-		 * Argument 7 and upward are named pipe location for consumerd
-		 * control.
-		 */
-		named_pipe_args_start = 7;
-
+		const char *session_name, *channel_name, *consumerd_pid;
 		if (argc < 8) {
 			fail("Missing parameter for tests to run %d", argc);
 			goto error;
 		}
 
-		nb_args = argc;
-
 		session_name = argv[5];
 		channel_name = argv[6];
-
+		consumerd_pid = argv[7];
 		diag("Test buffer usage notification channel api for domain %s",
 		     domain_type_string);
-		test_buffer_usage_notification_channel(
-			session_name, channel_name, domain_type, argv);
+		return test_buffer_usage_notification_channel(
+			session_name, channel_name, domain_type, consumerd_pid);
 		break;
 	}
 	case 3:
