@@ -214,6 +214,7 @@ noinst_SCRIPTS += \
 	notification/test_notification_ust_capture \
 	notification/test_notification_ust_error \
 	notification/test_notification_ust_event_rule_condition_exclusion \
+	notification/test_notification_ust_notifier_discarded_count.py \
 	notification/test_rotation \
 	notification/tests.py \
 	notification/util_event_generator.py \
