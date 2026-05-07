@@ -19,6 +19,7 @@
 
 /* Include every LTTng ABI/API available. */
 #include <lttng/action/action.h>
+#include <lttng/action/key-template.h>
 #include <lttng/action/list.h>
 #include <lttng/action/notify.h>
 #include <lttng/action/path.h>

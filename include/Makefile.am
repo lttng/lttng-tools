@@ -118,6 +118,7 @@ lttnginclude_HEADERS = \
 
 lttngactioninclude_HEADERS= \
 	lttng/action/action.h \
+	lttng/action/key-template.h \
 	lttng/action/list.h \
 	lttng/action/notify.h \
 	lttng/action/path.h \
@@ -156,6 +157,7 @@ lttngeventruleinclude_HEADERS= \
 
 noinst_HEADERS = \
 	lttng/action/action-internal.hpp \
+	lttng/action/key-template-internal.hpp \
 	lttng/action/list-internal.hpp \
 	lttng/action/notify-internal.hpp \
 	lttng/action/path-internal.hpp \

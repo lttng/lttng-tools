@@ -18,6 +18,7 @@ EXTRA_DIST =
 TESTS = \
 	ini_config/test_ini_config \
 	test_action \
+	test_action_key_template \
 	test_buffer_view \
 	test_directory_handle \
 	test_event_expr_to_bytecode \
@@ -61,6 +62,7 @@ LIBSCHEDULING=$(top_builddir)/src/common/libscheduling.la
 # Define test programs
 noinst_PROGRAMS = \
 	test_action \
+	test_action_key_template \
 	test_buffer_view \
 	test_condition \
 	test_directory_handle \
@@ -237,6 +239,10 @@ test_log_level_rule_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_CTL) $(DL_LIBS
 # Action api
 test_action_SOURCES = test_action.cpp
 test_action_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_CTL) $(DL_LIBS)
+
+# Key template trigger action utility
+test_action_key_template_SOURCES = test_action_key_template.cpp
+test_action_key_template_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_CTL) $(DL_LIBS)
 
 # Scheduler
 test_scheduler_SOURCES = test_scheduler.cpp

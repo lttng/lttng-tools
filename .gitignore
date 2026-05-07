@@ -106,6 +106,7 @@ compile_commands.json
 /tests/unit/test_event_rule
 /tests/unit/test_condition
 /tests/unit/test_action
+/tests/unit/test_action_key_template
 /tests/unit/test_unix_socket
 /tests/unit/test_string_utils
 /tests/unit/test_buffer_view
