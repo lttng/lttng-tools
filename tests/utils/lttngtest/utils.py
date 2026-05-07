@@ -59,6 +59,17 @@ def get_logging_format(tap: bool = True) -> str:
     return "{}[%(created)s] - %(levelname)s - %(message)s".format("# " if tap else "")
 
 
+def get_pipe_max_size() -> int:
+    try:
+        with open("/proc/sys/fs/pipe-max-size", "r") as f:
+            return int(f.read())
+    except FileNotFoundError:
+        # E.g. FreeBSD
+        # Kernel configuration dependant, but defaults to 64 * 1024
+        # https://github.com/freebsd/freebsd-src/blob/5b0dc991093c82824f6fe566af947f64f5072264/sys/sys/pipe.h#L33
+        return 65536
+
+
 def shutil_ignore_sockets(
     directory: str, directory_contents: typing.List[str]
 ) -> typing.List[str]:
