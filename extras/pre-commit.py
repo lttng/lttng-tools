@@ -117,18 +117,36 @@ def cpp_comment_style(files):
     returncode = 0
     stdout = ""
     for file_name in files:
+        # Public-API headers under "include/" host the project's
+        # Doxygen-rendered C API documentation, so they're allowed to
+        # use Doxygen comment markers (`/*!`, `/**`, `///`) in addition
+        # to plain `/* ... */` block comments. All other files must
+        # stick to plain block comments.
+        norm = os.path.normpath(file_name)
+        is_public_header = norm.startswith("include" + os.sep)
+
         idx = clang.cindex.Index.create()
         unit = idx.parse(file_name)
         for token in unit.get_tokens(extent=unit.cursor.extent):
             if token.kind != clang.cindex.TokenKind.COMMENT:
                 continue
-            if token.spelling:
-                words = token.spelling.split()
-                if words[0] != "/*" or words[-1] != "*/":
-                    stdout += "Wrong comment style at {}\n{}\n".format(
-                        token.extent, token.spelling
-                    )
-                    returncode = 1
+            if not token.spelling:
+                continue
+
+            words = token.spelling.split()
+            first, last = words[0], words[-1]
+
+            valid = first == "/*" and last == "*/"
+            if is_public_header and not valid:
+                valid = (first.startswith("/*") and last == "*/") or first.startswith(
+                    "///"
+                )
+
+            if not valid:
+                stdout += "Wrong comment style at {}\n{}\n".format(
+                    token.extent, token.spelling
+                )
+                returncode = 1
     return stdout, returncode
 
 
