@@ -120,7 +120,10 @@ An `event-rule-matches` condition is considered satisfied when the event
 rule specified with 'ERSPEC' matches an event.
 +
 See man:lttng-event-rule(7) to learn how to specify an event rule
-('ERSPEC' part).
+('ERSPEC' part), including its instrumentation point type
+(nloption:--type), event name (nloption:--name), instrumentation
+point log level (nloption:--log-level), and event payload/context
+filter (nloption:--filter) conditions.
 +
 Capture event record and context fields with one or more
 nloption:--capture options (see the ``<<capture-descr,Capture
