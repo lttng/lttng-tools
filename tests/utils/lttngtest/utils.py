@@ -51,3 +51,7 @@ def gdb_script(
     gdb_args = ["gdb", "--nx", "--nw", "--batch", "-x", script.name]
     p = subprocess.Popen(gdb_args, **subprocess_kwargs)
     return (p, script)
+
+
+def get_logging_format(tap: bool = True) -> str:
+    return "{}[%(created)s] - %(levelname)s - %(message)s".format("# " if tap else "")
