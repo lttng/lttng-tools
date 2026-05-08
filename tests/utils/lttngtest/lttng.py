@@ -1452,6 +1452,12 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
         )
 
     @staticmethod
+    def _mi_findall_in_element(
+        element: xml.etree.ElementTree.Element, sub_element_name: str
+    ) -> List[xml.etree.ElementTree.Element]:
+        return element.findall(LTTngClient._namespaced_mi_element(sub_element_name))
+
+    @staticmethod
     def _mi_find_in_element(element, sub_element_name):
         # type: (xml.etree.ElementTree.Element, str) -> Optional[xml.etree.ElementTree.Element]
         return element.find(LTTngClient._namespaced_mi_element(sub_element_name))
