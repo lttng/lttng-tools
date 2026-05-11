@@ -9,6 +9,7 @@
 #include <common/mi-lttng.hpp>
 
 #include <lttng/action/action-internal.hpp>
+#include <lttng/action/increment-map-value-internal.hpp>
 #include <lttng/action/list-internal.hpp>
 #include <lttng/action/notify-internal.hpp>
 #include <lttng/action/rate-policy-internal.hpp>
@@ -35,6 +36,8 @@ const char *lttng_action_type_string(enum lttng_action_type action_type)
 		return "START_SESSION";
 	case LTTNG_ACTION_TYPE_STOP_SESSION:
 		return "STOP_SESSION";
+	case LTTNG_ACTION_TYPE_INCREMENT_MAP_VALUE:
+		return "INCREMENT_MAP_VALUE";
 	default:
 		return "???";
 	}
@@ -182,6 +185,9 @@ ssize_t lttng_action_create_from_payload(struct lttng_payload_view *view,
 		break;
 	case LTTNG_ACTION_TYPE_LIST:
 		create_from_payload_cb = lttng_action_list_create_from_payload;
+		break;
+	case LTTNG_ACTION_TYPE_INCREMENT_MAP_VALUE:
+		create_from_payload_cb = lttng_action_increment_map_value_create_from_payload;
 		break;
 	default:
 		ERR("Failed to create action from payload, unhandled action type: action-type=%u (%s)",

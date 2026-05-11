@@ -44,6 +44,7 @@ libbytecode_la_SOURCES = \
 noinst_LTLIBRARIES += libcommon-lgpl.la
 libcommon_lgpl_la_SOURCES = \
 	actions/action.cpp \
+	actions/increment-map-value.cpp \
 	actions/key-template.cpp \
 	actions/list.cpp \
 	actions/notify.cpp \

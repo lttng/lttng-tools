@@ -47,6 +47,9 @@ enum lttng_action_type {
 	/// \ref api_trigger_action_list "Trigger action list".
 	LTTNG_ACTION_TYPE_LIST = 5,
 
+	/// \ref api_trigger_action_incr_map_val "Increment map value".
+	LTTNG_ACTION_TYPE_INCREMENT_MAP_VALUE = 6,
+
 	/// Unknown (error).
 	LTTNG_ACTION_TYPE_UNKNOWN = -1,
 };
