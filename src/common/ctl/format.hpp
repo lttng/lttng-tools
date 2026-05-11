@@ -631,6 +631,9 @@ struct formatter<lttng_action_type> : formatter<std::string> {
 		case LTTNG_ACTION_TYPE_LIST:
 			action_type_name = "LIST";
 			break;
+		case LTTNG_ACTION_TYPE_INCREMENT_MAP_VALUE:
+			action_type_name = "INCREMENT_MAP_VALUE";
+			break;
 		default:
 			std::abort();
 		}
@@ -859,6 +862,36 @@ struct formatter<lttng_action> : formatter<std::string> {
 				out = details::format_rate_policy(rate_policy, out);
 			}
 			return format_to(out, "}}");
+		}
+		case LTTNG_ACTION_TYPE_INCREMENT_MAP_VALUE:
+		{
+			const char *session_name =
+				lttng_action_increment_map_value_get_target_session_name(&action);
+			const char *channel_name =
+				lttng_action_increment_map_value_get_target_channel_name(&action);
+			lttng_domain_type domain = LTTNG_DOMAIN_NONE;
+			const auto *key_template =
+				lttng_action_increment_map_value_get_key_template(&action);
+			char *key_template_str = nullptr;
+
+			(void) lttng_action_increment_map_value_get_target_domain(&action, &domain);
+
+			if (key_template) {
+				(void) lttng_key_template_to_string(key_template,
+								    &key_template_str);
+			}
+
+			auto out = format_to(
+				ctx.out(),
+				"{{type={}, domain={}, session_name=`{}`, channel_name=`{}`, key_template=`{}`}}",
+				type,
+				domain,
+				session_name ? session_name : "",
+				channel_name ? channel_name : "",
+				key_template_str ? key_template_str : "");
+
+			free(key_template_str);
+			return out;
 		}
 		default:
 			return format_to(ctx.out(), "{{type={}}}", type);
