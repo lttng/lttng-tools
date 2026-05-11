@@ -12,7 +12,6 @@
 #include "notification-thread-commands.hpp"
 #include "notification-thread-events.hpp"
 #include "notification-thread.hpp"
-#include "testpoint.hpp"
 #include "thread.hpp"
 
 #include <common/align.hpp>
@@ -39,11 +38,9 @@
 #include <urcu/rculfhash.h>
 
 /*
- * Flag used to temporarily pause data consumption from testpoints.
- *
- * This variable is dlsym-ed from a test, so needs to be exported.
+ * Flag used to temporarily pause notification consumption by tests.
  */
-LTTNG_EXPORT int notifier_consumption_paused;
+int notifier_consumption_paused;
 
 /*
  * Destroy the thread data previously created by the init function.
@@ -564,11 +561,6 @@ int handle_event_notification_pipe(int event_source_fd,
 		goto end;
 	}
 
-	if (testpoint(sessiond_handle_notifier_event_pipe)) {
-		ret = 0;
-		goto end;
-	}
-
 	if (caa_unlikely(notifier_consumption_paused)) {
 		DBG("Event notifier notification consumption paused, sleeping...");
 		sleep(1);
@@ -639,10 +631,6 @@ void *thread_notification(void *data)
 
 	ret = init_thread_state(handle, &state);
 	if (ret) {
-		goto end;
-	}
-
-	if (testpoint(sessiond_thread_notification)) {
 		goto end;
 	}
 
