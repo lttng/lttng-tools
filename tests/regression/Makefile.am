@@ -55,10 +55,10 @@ SERIAL_TESTS = tools/base-path/test_ust \
 	tools/notification/test_notification_kernel_buffer_usage.py \
 	tools/notification/test_notification_kernel_capture \
 	tools/notification/test_notification_kernel_instrumentation \
+	tools/notification/test_notification_kernel_multi_app.py \
 	tools/notification/test_notification_kernel_notifier_discarded_count.py \
 	tools/notification/test_notification_kernel_syscall \
 	tools/notification/test_notification_kernel_userspace_probe \
-	tools/notification/test_notification_multi_app \
 	tools/notification/test_rotation \
 	tools/rotation/test_ust \
 	tools/rotation/test_kernel \
@@ -95,6 +95,7 @@ TESTS = tools/clear/test_disallow.py \
 	tools/client/test_warn_on_shm_too_small.py \
 	tools/channel/test_channel_allocation_policy_per_cpu.py \
 	tools/notification/test_notification_ust_buffer_usage.py \
+	tools/notification/test_notification_ust_multi_app.py \
 	tools/notification/test_notification_ust_notifier_discarded_count.py \
 	tools/sparse-buffer/test_sparse_buffer.py \
 	tools/trace-format/test_empty_event_field_name.py \

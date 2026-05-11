@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 #
 
+import logging
 import math
 import pathlib
 import platform
@@ -19,6 +20,211 @@ test_utils_import_path = pathlib.Path(__file__).absolute().parents[3] / "utils"
 sys.path.insert(0, str(test_utils_import_path))
 
 import lttngtest
+
+
+class TestEnvApplication:
+    def __init__(self, test_env: lttngtest._Environment):
+        self._test_env = test_env
+        self._process: typing.Optional[subprocess.Popen] = None
+        self._temp_dir: pathlib.Path = self._test_env.create_temporary_directory()
+
+    @property
+    def pid(self) -> int:
+        return self._process.pid
+
+    def terminate(self) -> None:
+        self._process.terminate()
+
+    def wait_for_exit(self) -> None:
+        if not self._process:
+            raise RuntimeError("No subprocess")
+
+        while self._process.poll() is None:
+            time.sleep(0.1)
+
+        return self._process.poll()
+
+    def __del__(self) -> None:
+        if self._process is not None and self._process.poll() is None:
+            self._process.terminate()
+            try:
+                self._process.wait(self._test_env.teardown_timeout)
+            except subprocess.TimeoutExpired:
+                self._process.kill()
+
+
+class BaseClient(TestEnvApplication):
+    def __init__(self, test_env: lttngtest._Environment):
+        super().__init__(test_env)
+        self._output_file: typing.Optional[pathlib.Path] = None
+
+    @property
+    def output_file(self) -> typing.Optional[pathlib.Path]:
+        return self._output_file
+
+    def start(
+        self,
+        session_name: str,
+        channel_name: str,
+        domain: lttngtest.lttngctl.TracingDomain,
+        buffer_usage_type: str,
+        buffer_usage_threshold_type: str,
+        buffer_usage_threshold: float,
+        expected_notifications: int,
+        use_action_list: bool,
+        extra_env=dict(),
+    ) -> None:
+        if self._process is not None:
+            raise RuntimeError("BaseClient already started")
+
+        self._output_file = self._temp_dir / "output"
+        self._output_file.touch()
+        script = pathlib.Path(__file__).absolute().parents[0] / "base_client"
+        env = self._test_env.get_ust_test_app_env(extra_env)
+        args = [
+            str(script),
+            session_name,
+            channel_name,
+            (
+                "LTTNG_DOMAIN_UST"
+                if domain == lttngtest.lttngctl.TracingDomain.User
+                else "LTTNG_DOMAIN_KERNEL"
+            ),
+            buffer_usage_type,
+            buffer_usage_threshold_type,
+            str(buffer_usage_threshold),
+            str(expected_notifications),
+            "1" if use_action_list else "0",
+        ]
+        logging.debug("Starting BaseClient: {}".format(args))
+        self._process = subprocess.Popen(
+            args, env=env, stdout=open(self._output_file, "w")
+        )
+        logging.debug("BaseClient started with pid: {}".format(self._process.pid))
+
+    def _output_contains(self, message: str) -> bool:
+        with open(self._output_file, "r") as f:
+            content = f.readlines()
+
+        for line in content:
+            if message in line:
+                return True
+
+            if line.startswith("error:"):
+                raise RuntimeError("Error found in BaseClient output: {}".format(line))
+
+        return False
+
+    def errors(self) -> typing.List[str]:
+        e = list()
+        with open(self._output_file, "r") as f:
+            content = f.readlines()
+
+        for line in content:
+            if line.startswith("error:"):
+                e.append(line)
+
+        return e
+
+    def wait_for_message(self, message: str) -> None:
+        while not self._output_contains(message):
+            if self._process is None:
+                raise RuntimeError("BaseClient not started")
+
+            time.sleep(0.1)
+
+    def wait_until_ready(self) -> None:
+        self.wait_for_message("sync: ready")
+
+    def wait_until_high(self, number: int = None) -> None:
+        self.wait_for_message(
+            "notification: high{}".format(
+                "" if number is None else " {}".format(number)
+            )
+        )
+
+    def wait_until_low(self, number: int = None) -> None:
+        self.wait_for_message(
+            "notification: low{}".format("" if number is None else " {}".format(number))
+        )
+
+    def wait_until_exit_message(self) -> None:
+        self.wait_for_message("exit: 0")
+
+
+class EventGenerator(TestEnvApplication):
+    def __init__(self, test_env: lttngtest._Environment):
+        super().__init__(test_env)
+        self._ready_file: typing.Optional[pathlib.Path] = None
+        self._state_file: typing.Optional[pathlib.Path] = None
+
+    def start(
+        self,
+        target: str = "userspace_testapp",
+        extra_env: typing.Dict[str, str] = dict(),
+    ) -> None:
+        if self._process is not None:
+            raise RuntimeError("Generator already started")
+
+        self._ready_file = self._temp_dir / "generator_ready"
+        self._state_file = self._temp_dir / "testapp_state"
+        self._state_file.touch()
+
+        event_generator_script = (
+            pathlib.Path(__file__).absolute().parents[0] / "util_event_generator.py"
+        )
+        event_generator_env = self._test_env.get_ust_test_app_env(extra_env)
+        args = [
+            str(event_generator_script),
+            "--ready-file",
+            str(self._ready_file),
+            "--state-file",
+            str(self._state_file),
+            target,
+        ]
+        logging.debug("Starting event generator script: {}".format(args))
+        self._process = subprocess.Popen(args, env=event_generator_env)
+        logging.info("Event generator started with pid: {}".format(self._process.pid))
+
+    def ready(self) -> bool:
+        if self._process is None:
+            raise RuntimeError("Generator not started")
+
+        return self._ready_file.is_file()
+
+    def toggle(self, wait=True) -> None:
+        if self._process is None:
+            raise RuntimeError("Generator not started")
+
+        self._process.send_signal(signal.SIGUSR1)
+        if not wait:
+            return
+
+        while self._state_file.is_file():
+            if self._process.poll() is not None:
+                raise RuntimeError("Generator died while waiting to toggle state")
+
+            time.sleep(0.1)
+
+    def wait_until_ready(self) -> None:
+        while not self.ready():
+            if self._process.poll() is not None:
+                raise RuntimeError("Generator exited unexpectedly")
+
+            time.sleep(0.1)
+
+    def stop(self) -> None:
+        if not self._process:
+            raise RuntimeError("Generator not started")
+
+        if self._process.poll() is not None:
+            return
+
+        self._process.send_signal(signal.SIGUSR2)
+
+    @property
+    def state_file(self) -> typing.Optional[pathlib.Path]:
+        return self._state_file
 
 
 def test_notification_channel_subscription_twice(
@@ -139,9 +345,6 @@ def test_buffer_usage_notification_channel(
     tap.diagnostic(
         "Running 'test_buffer_usage_notification_channel' with domain={}".format(domain)
     )
-    event_generator_script = (
-        pathlib.Path(__file__).absolute().parents[0] / "util_event_generator.py"
-    )
     notification_app = pathlib.Path(__file__).absolute().parents[0] / "notification"
     output_path = test_env.create_temporary_directory("trace")
 
@@ -159,42 +362,25 @@ def test_buffer_usage_notification_channel(
             lttngtest.lttngctl.KernelTracepointEventRule("lttng_test_filter_event")
         )
 
-    # Spawn test event_generator_script with ready_file, state_file,
-    # and ( 'userspace_testapp' or 'kernel_generate_filter_events')
-    temp_dir = test_env.create_temporary_directory()
-    ready_file_path = temp_dir / "generator_ready"
-    state_file_path = temp_dir / "testapp_state"
-    state_file_path.touch()
-    args = [
-        str(event_generator_script),
-        "--ready-file",
-        str(ready_file_path),
-        "--state-file",
-        str(state_file_path),
-        (
-            "userspace_testapp"
-            if domain == lttngtest.lttngctl.TracingDomain.User
-            else "kernel_generate_filter_events"
-        ),
-    ]
-    event_generator_env = test_env.get_ust_test_app_env()
-    event_generator_env["EVENT_GENERATOR_SCRIPT"] = str(
-        test_env._project_root / "tests" / "utils" / "testapp" / "gen-ust-events"
+    event_generator = EventGenerator(test_env)
+    target = (
+        "userspace_testapp"
+        if domain == lttngtest.lttngctl.TracingDomain.User
+        else "kernel_generate_filter_events"
     )
-    tap.diagnostic("Running event generator script: {}".format(args))
-    event_generator = subprocess.Popen(args, env=event_generator_env)
-
-    # Wait until ready file is present
-    while not ready_file_path.exists():
-        time.sleep(0.1)
-        if event_generator.poll() is not None:
-            # The event_generator has terminated
-            raise Exception(
-                "event_generator has terminated earlier than expected: ret={}".format(
-                    event_generator.poll()
-                )
+    event_generator.start(
+        target,
+        {
+            "EVENT_GENERATOR_SCRIPT": str(
+                test_env._project_root
+                / "tests"
+                / "utils"
+                / "testapp"
+                / "gen-ust-events"
             )
-
+        },
+    )
+    event_generator.wait_until_ready()
     consumerd_type = (
         lttngtest.ConsumerType.KERNEL
         if domain == lttngtest.lttngctl.TracingDomain.Kernel
@@ -213,7 +399,7 @@ def test_buffer_usage_notification_channel(
             else "LTTNG_DOMAIN_KERNEL"
         ),
         str(event_generator.pid),
-        str(state_file_path),
+        str(event_generator.state_file),
         session.name,
         channel.name,
         str(test_env.lttng_consumerd_get_pid(consumerd_type)),
@@ -230,8 +416,8 @@ def test_buffer_usage_notification_channel(
 
     session.stop()
     session.destroy()
-    event_generator.send_signal(signal.SIGUSR2)
-    event_generator.wait()
+    event_generator.stop()
+    event_generator.wait_for_exit()
 
 
 def _get_discarded_messages(
@@ -407,9 +593,11 @@ def test_notifier_discarded_count_max_bucket(
     triggers = list()
     for i in range(max_bucket_size):
         try:
-            trigger = client.add_trigger(
-                lttngtest.lttngctl.EventRuleMatchesCondition(trigger_event_rule),
-                [lttngtest.lttngctl.NotifyTriggerAction()],
+            triggers.append(
+                client.add_trigger(
+                    lttngtest.lttngctl.EventRuleMatchesCondition(trigger_event_rule),
+                    [lttngtest.lttngctl.NotifyTriggerAction()],
+                )
             )
         except Exception as e:
             tap.diagnostic(
@@ -437,6 +625,9 @@ def test_notifier_discarded_count_max_bucket(
                     "Adding trigger failed, but error for an unexpected reason"
                 )
                 test_passed = False
+
+    for trigger in triggers:
+        client.remove_trigger(trigger)
 
     tap.test(test_passed, "Adding triggers beyond bucket size fails as expected")
 
@@ -590,4 +781,286 @@ def test_ust_notifier_discarded_regardless_trigger_owner(
         "Trigger '{}' as no discarded events before traced application is run as another user, and has discarded events afterwards: before={}, after={}".format(
             root_trigger.name, root_discarded_before, root_discarded_after
         ),
+    )
+
+
+def test_multi_app(
+    tap: lttngtest.TapGenerator,
+    test_env: lttngtest._Environment,
+    domain: lttngtest.lttngctl.TracingDomain,
+    notification_client_app_count: int = 50,
+    notification_cycles: int = 5,
+) -> None:
+    tap.diagnostic("Running test_multi_app with domain={}".format(domain))
+    client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
+    consumerd_type = (
+        lttngtest.ConsumerType.KERNEL
+        if domain == lttngtest.lttngctl.TracingDomain.Kernel
+        else (
+            lttngtest.ConsumerType.UST64
+            if platform.architecture()[0] == "64bit"
+            else lttngtest.ConsumerType.UST32
+        )
+    )
+    notification_clients_low = list()
+    notification_clients_high = list()
+    test_passed = True
+
+    # Run generator script
+    event_generator = EventGenerator(test_env)
+    target = (
+        "userspace_testapp"
+        if domain == lttngtest.lttngctl.TracingDomain.User
+        else "kernel_generate_filter_events"
+    )
+    event_generator.start(
+        target,
+        (
+            {
+                "TESTAPP_BIN": str(
+                    test_env._project_root
+                    / "tests"
+                    / "utils"
+                    / "testapp"
+                    / "gen-ust-events"
+                )
+            }
+            if domain == lttngtest.lttngctl.TracingDomain.User
+            else dict()
+        ),
+    )
+
+    event_generator.wait_until_ready()
+
+    output_path = test_env.create_temporary_directory("trace")
+    session = client.create_session(
+        output=lttngtest.LocalSessionOutputLocation(output_path)
+    )
+    channel = session.add_channel(domain, subbuf_size=lttngtest.getconf("PAGE_SIZE"))
+    if domain == lttngtest.lttngctl.TracingDomain.User:
+        channel.add_recording_rule(
+            lttngtest.lttngctl.UserTracepointEventRule("tp:tptest")
+        )
+    else:
+        channel.add_recording_rule(
+            lttngtest.lttngctl.KernelTracepointEventRule("lttng_test_filter_event")
+        )
+
+    for i in range(notification_client_app_count):
+        client_high_args = [
+            session.name,
+            channel.name,
+            domain,
+            "HIGH",
+            "RATIO",
+            0.420,
+            notification_cycles,
+            i % 2 != 0,
+        ]
+        client_low_args = [
+            session.name,
+            channel.name,
+            domain,
+            "LOW",
+            "RATIO",
+            0.0,
+            notification_cycles,
+            i % 2 != 0,
+        ]
+
+        # Start a low
+        client_low = BaseClient(test_env)
+        client_low.start(*client_low_args)
+        client_low.wait_until_ready()
+        tap.diagnostic("Client Low {} ready".format(i + 1))
+        notification_clients_low.append(client_low)
+
+        # Start a high
+        client_high = BaseClient(test_env)
+        client_high.start(*client_high_args)
+        client_high.wait_until_ready()
+        tap.diagnostic("Client High {} ready".format(i + 1))
+        notification_clients_high.append(client_high)
+
+    # Do N cycles
+    for i in range(notification_cycles):
+        tap.diagnostic(
+            "Starting notification cycle {}/{}".format(i + 1, notification_cycles)
+        )
+        # Activate generator
+        event_generator.toggle()
+
+        # Pause consumerd
+        test_env.lttng_consumerd_pause(consumerd_type)
+
+        # Start tracing
+        session.start()
+
+        # Wait for notification high for this cycle
+        for notification_client in notification_clients_high:
+            notification_client.wait_until_high(i)
+
+        # Pause generator
+        event_generator.toggle()
+
+        # Unpause consumerd
+        test_env.lttng_consumerd_pause(consumerd_type, False)
+
+        # Stop session
+        session.stop()
+
+        # Wait for low notification
+        for notification_client in notification_clients_low:
+            notification_client.wait_until_low(i)
+
+    # Wait for exit on all low and high test apps
+    for notification_client in notification_clients_low + notification_clients_high:
+        notification_client.wait_until_exit_message()
+        notification_client.wait_for_exit()
+        if notification_client._process.returncode != 0:
+            test_passed = False
+            tap.diagnostic(
+                "Notification client returned non-zero exit code: ret={}".format(
+                    notification_client._process.returncode
+                )
+            )
+
+        if notification_client.errors():
+            test_passed = False
+            tap.diagnostic(
+                "Notification client has errors: {}".format(
+                    notification_client.errors()
+                )
+            )
+
+    # Clean-up
+    event_generator.stop()
+    event_generator.wait_for_exit()
+    session.destroy()
+    tap.test(test_passed, "All notification clients received expected notifications")
+
+
+def test_on_register_evaluation(
+    tap: lttngtest.TapGenerator,
+    test_env: lttngtest._Environment,
+    domain: lttngtest.lttngctl.TracingDomain,
+) -> None:
+    tap.diagnostic("Running test_on_register_evaluation with domain={}".format(domain))
+    test_passed = True
+    client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
+    consumerd_type = (
+        lttngtest.ConsumerType.KERNEL
+        if domain == lttngtest.lttngctl.TracingDomain.Kernel
+        else (
+            lttngtest.ConsumerType.UST64
+            if platform.architecture()[0] == "64bit"
+            else lttngtest.ConsumerType.UST32
+        )
+    )
+
+    # Run generator script
+    event_generator = EventGenerator(test_env)
+    target = (
+        "userspace_testapp"
+        if domain == lttngtest.lttngctl.TracingDomain.User
+        else "kernel_generate_filter_events"
+    )
+    event_generator.start(
+        target,
+        (
+            {
+                "TESTAPP_BIN": str(
+                    test_env._project_root
+                    / "tests"
+                    / "utils"
+                    / "testapp"
+                    / "gen-ust-events"
+                )
+            }
+            if domain == lttngtest.lttngctl.TracingDomain.User
+            else dict()
+        ),
+    )
+    event_generator.wait_until_ready()
+
+    # Create session
+    output_path = test_env.create_temporary_directory("trace")
+    session = client.create_session(
+        output=lttngtest.LocalSessionOutputLocation(output_path)
+    )
+    channel = session.add_channel(domain, subbuf_size=lttngtest.getconf("PAGE_SIZE"))
+    if domain == lttngtest.lttngctl.TracingDomain.User:
+        channel.add_recording_rule(
+            lttngtest.lttngctl.UserTracepointEventRule("tp:tptest")
+        )
+    else:
+        channel.add_recording_rule(
+            lttngtest.lttngctl.KernelTracepointEventRule("lttng_test_filter_event")
+        )
+
+    # Start  client
+    client_args = [session.name, channel.name, domain, "HIGH", "RATIO", 0.420, 1, False]
+    client = BaseClient(test_env)
+    client.start(*client_args)
+    client.wait_until_ready()
+    tap.diagnostic("Client 1 ready")
+
+    # Start session
+    session.start()
+
+    # Pause consumer
+    test_env.lttng_consumerd_pause(consumerd_type)
+
+    # Set the generator to active mode
+    event_generator.toggle()
+
+    # Wait for high
+    client.wait_until_high()
+    tap.diagnostic("Client 1 received high buffer usage notification")
+
+    # Start 2nd client
+    client2 = BaseClient(test_env)
+    client2.start(*client_args)
+    client2.wait_until_ready()
+    tap.diagnostic("Client 2 ready")
+    # Wait for high on 2nd client
+    client2.wait_until_high()
+    tap.diagnostic("Client 2 received high buffer usage notification")
+
+    # Unpause
+    test_env.lttng_consumerd_pause(consumerd_type, False)
+
+    # Wait for client and client2 exit
+    client.wait_until_exit_message()
+    tap.diagnostic("Client 1 sent exit message")
+    client.wait_for_exit()
+    if client._process.returncode != 0:
+        test_passed = False
+        tap.diagnostic(
+            "Client 1 returned a non-zero exit code: ret={}".format(
+                client._process.returncode
+            )
+        )
+
+    client2.wait_until_exit_message()
+    tap.diagnostic("Client 2 sent exit message")
+    client2.wait_for_exit()
+    if client2._process.returncode != 0:
+        test_passed = False
+        tap.diagnostic(
+            "Client 2 returned a non-zero exit code: ret={}".format(
+                client2._process.returncode
+            )
+        )
+
+    # Destroy session
+    session.destroy()
+
+    # Terminate generator
+    event_generator.stop()
+    event_generator.wait_for_exit()
+
+    tap.test(
+        test_passed,
+        "Notification clients received expected notifications",
     )
