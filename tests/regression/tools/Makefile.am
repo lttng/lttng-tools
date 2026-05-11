@@ -87,29 +87,9 @@ CLEANFILES += \
 
 EXTRA_DIST += \
 	notification/base_client.c \
-	notification/consumer_testpoints.cpp \
-	notification/sessiond_testpoints.cpp \
 	notification/notification.cpp \
 	notification/rotation.c
 else
-# build notification libs
-notification_libpause_consumer_la_SOURCES = notification/consumer_testpoints.cpp
-notification_libpause_consumer_la_LIBADD = \
-	$(top_builddir)/src/common/libsessiond-comm.la \
-	$(LIB_COMMON_GPL) \
-	$(LIB_LTTNG_CTL) \
-	$(DL_LIBS)
-notification_libpause_consumer_la_LDFLAGS = $(FORCE_SHARED_LIB_OPTIONS)
-
-notification_libpause_sessiond_la_SOURCES = notification/sessiond_testpoints.cpp
-notification_libpause_sessiond_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(UTILS_DIR)
-notification_libpause_sessiond_la_LIBADD = \
-	$(LIB_COMMON_GPL) \
-	$(LIB_LTTNG_CTL) \
-	$(DL_LIBS)
-notification_libpause_sessiond_la_LDFLAGS = $(FORCE_SHARED_LIB_OPTIONS)
-noinst_LTLIBRARIES += notification/libpause_sessiond.la notification/libpause_consumer.la
-
 notification_base_client_SOURCES = notification/base_client.c
 notification_base_client_LDADD = $(LIB_LTTNG_CTL)
 
