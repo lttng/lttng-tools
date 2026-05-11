@@ -859,6 +859,37 @@ void print_one_action(const struct lttng_trigger *trigger,
 		}
 		break;
 	}
+	case LTTNG_ACTION_TYPE_INCREMENT_MAP_VALUE:
+	{
+		const char *session_name =
+			lttng_action_increment_map_value_get_target_session_name(action);
+		const char *channel_name =
+			lttng_action_increment_map_value_get_target_channel_name(action);
+		enum lttng_domain_type domain = LTTNG_DOMAIN_NONE;
+		const struct lttng_key_template *key_template =
+			lttng_action_increment_map_value_get_key_template(action);
+		char *key_template_str = nullptr;
+
+		LTTNG_ASSERT(session_name);
+		LTTNG_ASSERT(channel_name);
+		LTTNG_ASSERT(key_template);
+
+		(void) lttng_action_increment_map_value_get_target_domain(action, &domain);
+
+		if (lttng_key_template_to_string(key_template, &key_template_str) !=
+		    LTTNG_KEY_TEMPLATE_STATUS_OK) {
+			ERR("Failed to render key template.");
+			goto end;
+		}
+
+		_MSG("increment value of map `%s` of session `%s` (domain: %s), key template: `%s`",
+		     channel_name,
+		     session_name,
+		     lttng_domain_type_str(domain),
+		     key_template_str);
+		free(key_template_str);
+		break;
+	}
 	default:
 		abort();
 	}
