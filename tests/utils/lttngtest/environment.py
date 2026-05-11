@@ -1173,6 +1173,52 @@ class _Environment(logger._Logger):
                 "GDB returned non-zero exit code: {}".format(gdb.returncode)
             )
 
+    def lttng_sessiond_is_notification_paused(self) -> bool:
+        pid = self._sessiond.pid
+        pattern = re.compile(r"^\$1 = (?P<paused>\d+)$")
+        script_commands = [
+            "attach {}".format(pid),
+            "print notifier_consumption_paused",
+            "detach",
+        ]
+        gdb, script = utils.gdb_script(
+            script_commands, {"stdout": subprocess.PIPE, "stderr": subprocess.STDOUT}
+        )
+        output, _ = gdb.communicate()
+        if gdb.returncode != 0:
+            raise Exception(
+                "GDB returned non-zero exit code: {}".format(gdb.returncode)
+            )
+
+        paused = None
+        for line in output.decode("utf-8").splitlines():
+            m = pattern.match(line)
+            if m:
+                paused = False if m.group("paused") == "0" else True
+                break
+
+        if paused is None:
+            raise Exception(
+                "Couldn't find notifier_consumption_paused variable in GDB output: {}".format(
+                    output.decode("utf-8")
+                )
+            )
+
+        return paused
+
+    def lttng_sessiond_pause_notifications(self, paused=True) -> None:
+        pid = self._sessiond.pid
+        script_commands = [
+            "attach {}".format(pid),
+            "set notifier_consumption_paused = {}".format("1" if paused else "0"),
+        ]
+        gdb, script = utils.gdb_script(script_commands)
+        gdb.wait()
+        if gdb.returncode != 0:
+            raise Exception(
+                "GDB returned non-zero exit code: {}".format(gdb.returncode)
+            )
+
     def create_dummy_user(self):
         # type: () -> (int, str)
         # Create a dummy user. The uid and username will be returned in a tuple.
