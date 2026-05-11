@@ -15,6 +15,8 @@
 
 #include <lttng/action/action-internal.hpp>
 #include <lttng/action/action.h>
+#include <lttng/action/increment-map-value.h>
+#include <lttng/action/key-template.h>
 #include <lttng/action/list-internal.hpp>
 #include <lttng/action/notify.h>
 #include <lttng/action/rate-policy-internal.hpp>
@@ -36,9 +38,10 @@ int lttng_opt_quiet = 1;
 int lttng_opt_verbose;
 int lttng_opt_mi;
 
-#define NUM_TESTS 71
+#define NUM_TESTS 103
 
-static void test_action_notify()
+namespace {
+void test_action_notify()
 {
 	int ret;
 	enum lttng_action_status status;
@@ -101,7 +104,7 @@ static void test_action_notify()
 	lttng_payload_reset(&payload);
 }
 
-static void test_action_list()
+void test_action_list()
 {
 	int ret, action_idx;
 	struct lttng_action *list_action = nullptr, *list_action_from_buffer = nullptr,
@@ -187,7 +190,7 @@ static void test_action_list()
 	lttng_payload_reset(&payload);
 }
 
-static void test_action_rotate_session()
+void test_action_rotate_session()
 {
 	int ret;
 	enum lttng_action_status status;
@@ -276,7 +279,7 @@ static void test_action_rotate_session()
 	lttng_payload_reset(&payload);
 }
 
-static void test_action_start_session()
+void test_action_start_session()
 {
 	int ret;
 	enum lttng_action_status status;
@@ -365,7 +368,7 @@ static void test_action_start_session()
 	lttng_payload_reset(&payload);
 }
 
-static void test_action_stop_session()
+void test_action_stop_session()
 {
 	int ret;
 	enum lttng_action_status status;
@@ -452,7 +455,7 @@ static void test_action_stop_session()
 	lttng_payload_reset(&payload);
 }
 
-static void test_action_snapshot_session()
+void test_action_snapshot_session()
 {
 	int ret;
 	enum lttng_action_status status;
@@ -543,7 +546,168 @@ static void test_action_snapshot_session()
 	lttng_payload_reset(&payload);
 }
 
-static int _main()
+void test_action_increment_map_value()
+{
+	int ret;
+	enum lttng_action_status status;
+	struct lttng_action *action = nullptr, *action_from_buffer = nullptr;
+	struct lttng_payload payload;
+	const char *session_name = "my_session_name";
+	const char *channel_name = "my_map_channel";
+	const char *key_template_str = "hits-{provider_name}:{event_name}";
+	const char *got = nullptr;
+	struct lttng_key_template *key_template = nullptr;
+	const struct lttng_key_template *got_template = nullptr;
+
+	lttng_payload_init(&payload);
+
+	action = lttng_action_increment_map_value_create();
+	ok(action, "Create increment_map_value action");
+	ok(lttng_action_get_type(action) == LTTNG_ACTION_TYPE_INCREMENT_MAP_VALUE,
+	   "Action has type LTTNG_ACTION_TYPE_INCREMENT_MAP_VALUE");
+
+	/* Action without any mandatory field must not validate. */
+	ok(!lttng_action_validate(action),
+	   "increment_map_value action does not validate before mandatory fields are set");
+
+	/* Target session name setter precondition checks. */
+	status = lttng_action_increment_map_value_set_target_session_name(nullptr, nullptr);
+	ok(status == LTTNG_ACTION_STATUS_INVALID,
+	   "Set target session name (NULL,NULL) expect invalid");
+	status = lttng_action_increment_map_value_set_target_session_name(action, nullptr);
+	ok(status == LTTNG_ACTION_STATUS_INVALID,
+	   "Set target session name (object,NULL) expect invalid");
+	status = lttng_action_increment_map_value_set_target_session_name(nullptr, session_name);
+	ok(status == LTTNG_ACTION_STATUS_INVALID,
+	   "Set target session name (NULL,object) expect invalid");
+
+	status = lttng_action_increment_map_value_set_target_session_name(action, session_name);
+	ok(status == LTTNG_ACTION_STATUS_OK, "Set target session name");
+
+	got = lttng_action_increment_map_value_get_target_session_name(action);
+	ok(got && !strcmp(session_name, got),
+	   "Get target session name, expected `%s` got `%s`",
+	   session_name,
+	   got ? got : "(null)");
+
+	/* Target channel name setter precondition checks. */
+	status = lttng_action_increment_map_value_set_target_channel_name(nullptr, nullptr);
+	ok(status == LTTNG_ACTION_STATUS_INVALID,
+	   "Set target channel name (NULL,NULL) expect invalid");
+	status = lttng_action_increment_map_value_set_target_channel_name(action, nullptr);
+	ok(status == LTTNG_ACTION_STATUS_INVALID,
+	   "Set target channel name (object,NULL) expect invalid");
+	status = lttng_action_increment_map_value_set_target_channel_name(nullptr, channel_name);
+	ok(status == LTTNG_ACTION_STATUS_INVALID,
+	   "Set target channel name (NULL,object) expect invalid");
+
+	status = lttng_action_increment_map_value_set_target_channel_name(action, channel_name);
+	ok(status == LTTNG_ACTION_STATUS_OK, "Set target channel name");
+
+	got = lttng_action_increment_map_value_get_target_channel_name(action);
+	ok(got && !strcmp(channel_name, got),
+	   "Get target channel name, expected `%s` got `%s`",
+	   channel_name,
+	   got ? got : "(null)");
+
+	/* The action still misses a key template. */
+	ok(!lttng_action_validate(action),
+	   "increment_map_value action does not validate without a key template");
+
+	/*
+	 * Build the template the action will use. The key template parser and
+	 * renderer are exercised standalone in test_action_key_template.
+	 */
+	key_template = lttng_key_template_create_from_string(key_template_str);
+	ok(key_template, "Parse key template `%s`", key_template_str);
+
+	/* Key template setter precondition checks. */
+	status = lttng_action_increment_map_value_set_key_template(nullptr, nullptr);
+	ok(status == LTTNG_ACTION_STATUS_INVALID, "Set key template (NULL,NULL) expect invalid");
+	status = lttng_action_increment_map_value_set_key_template(action, nullptr);
+	ok(status == LTTNG_ACTION_STATUS_INVALID, "Set key template (object,NULL) expect invalid");
+	status = lttng_action_increment_map_value_set_key_template(nullptr, key_template);
+	ok(status == LTTNG_ACTION_STATUS_INVALID, "Set key template (NULL,object) expect invalid");
+
+	status = lttng_action_increment_map_value_set_key_template(action, key_template);
+	ok(status == LTTNG_ACTION_STATUS_OK, "Set key template");
+
+	/*
+	 * The action holds a copy: destroying the caller's template must not
+	 * affect the action's stored template.
+	 */
+	lttng_key_template_destroy(key_template);
+	key_template = nullptr;
+
+	got_template = lttng_action_increment_map_value_get_key_template(action);
+	ok(got_template != nullptr, "Get key template returns non-null after set");
+
+	{
+		char *got_str = nullptr;
+
+		(void) lttng_key_template_to_string(got_template, &got_str);
+		ok(got_str && strcmp(got_str, key_template_str) == 0,
+		   "Get key template renders back to `%s`, got `%s`",
+		   key_template_str,
+		   got_str ? got_str : "(null)");
+		free(got_str);
+	}
+
+	/*
+	 * Everything but the target domain is set: the action must still
+	 * fail to validate, proving the domain is mandatory.
+	 */
+	ok(!lttng_action_validate(action),
+	   "increment_map_value action does not validate without a target domain");
+
+	{
+		enum lttng_domain_type got_domain = LTTNG_DOMAIN_NONE;
+		ok(lttng_action_increment_map_value_get_target_domain(action, &got_domain) ==
+			   LTTNG_ACTION_STATUS_UNSET,
+		   "Get target domain before set returns UNSET");
+	}
+
+	/* Target domain setter precondition checks. */
+	status = lttng_action_increment_map_value_set_target_domain(nullptr, LTTNG_DOMAIN_KERNEL);
+	ok(status == LTTNG_ACTION_STATUS_INVALID, "Set target domain (NULL) expect invalid");
+	status = lttng_action_increment_map_value_set_target_domain(action, LTTNG_DOMAIN_NONE);
+	ok(status == LTTNG_ACTION_STATUS_INVALID, "Set target domain NONE expect invalid");
+	status = lttng_action_increment_map_value_set_target_domain(action, LTTNG_DOMAIN_JUL);
+	ok(status == LTTNG_ACTION_STATUS_INVALID, "Set agent target domain expect invalid");
+
+	status = lttng_action_increment_map_value_set_target_domain(action, LTTNG_DOMAIN_UST);
+	ok(status == LTTNG_ACTION_STATUS_OK, "Set target domain");
+
+	{
+		enum lttng_domain_type got_domain = LTTNG_DOMAIN_NONE;
+		status = lttng_action_increment_map_value_get_target_domain(action, &got_domain);
+		ok(status == LTTNG_ACTION_STATUS_OK && got_domain == LTTNG_DOMAIN_UST,
+		   "Get target domain returns the domain that was set");
+	}
+
+	/* Validation: all mandatory fields are now set. */
+	ok(lttng_action_validate(action),
+	   "increment_map_value action validates with all mandatory fields set");
+
+	/* Serialize / deserialize / equality round-trip. */
+	ret = lttng_action_serialize(action, &payload);
+	ok(ret == 0, "Action increment_map_value serialized");
+
+	{
+		struct lttng_payload_view view = lttng_payload_view_from_payload(&payload, 0, -1);
+		(void) lttng_action_create_from_payload(&view, &action_from_buffer);
+	}
+	ok(action_from_buffer, "increment_map_value action created from payload is non-null");
+
+	ok(lttng_action_is_equal(action, action_from_buffer),
+	   "Serialized and de-serialized increment_map_value action are equal");
+
+	lttng_action_destroy(action);
+	lttng_action_destroy(action_from_buffer);
+	lttng_payload_reset(&payload);
+}
+
+int _main()
 {
 	plan_tests(NUM_TESTS);
 	test_action_notify();
@@ -552,8 +716,10 @@ static int _main()
 	test_action_start_session();
 	test_action_stop_session();
 	test_action_snapshot_session();
+	test_action_increment_map_value();
 	return exit_status();
 }
+} /* namespace */
 
 int main()
 {
