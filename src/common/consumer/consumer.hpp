@@ -994,13 +994,6 @@ extern int consumer_quit;
  */
 extern int consumer_quit;
 
-/*
- * Flag used to temporarily pause data consumption from testpoints.
- *
- * This variable is dlsym-ed from a test, so needs to be exported.
- */
-LTTNG_EXPORT extern int data_consumption_paused;
-
 /* Return a human-readable consumer type string that is suitable for logging. */
 static inline const char *lttng_consumer_type_str(enum lttng_consumer_type type)
 {

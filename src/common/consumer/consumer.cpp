@@ -77,7 +77,7 @@ struct lttng_ht *metadata_ht;
 struct lttng_ht *data_ht;
 } /* namespace */
 
-/* Flag used to temporarily pause data consumption from testpoints. */
+/* Flag used to temporarily pause data consumption for tests. */
 int data_consumption_paused;
 
 /*
@@ -2636,10 +2636,6 @@ void *consumer_thread_data_poll(void *data)
 		/* poll on the array of fds */
 	restart:
 		DBG_FMT("Polling on {} fds", LTTNG_POLL_GETNB(&poll_events));
-		if (testpoint(consumerd_thread_data_poll)) {
-			goto end;
-		}
-
 		int timeout;
 
 		/*
@@ -2721,10 +2717,6 @@ void *consumer_thread_data_poll(void *data)
 
 			/* Continue to update the local streams and handle prio ones */
 			continue;
-		}
-
-		if (testpoint(consumerd_thread_data_poll)) {
-			goto end;
 		}
 
 		if (caa_unlikely(data_consumption_paused)) {
