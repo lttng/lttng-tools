@@ -547,6 +547,7 @@ _AC_DEFINE_AND_SUBST([DEFAULT_EVENT_NOTIFIER_ERROR_COUNT_MAP_SIZE], [4096])
 
 # Command short descriptions
 _AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_ADD_CONTEXT], [Add context fields to be recorded])
+_AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_ADD_MAP_CHANNEL], [Add a map channel to a recording session])
 _AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_ADD_TRIGGER], [Add a trigger])
 _AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_CLEAR], [Clear a recording session])
 _AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_CREATE], [Create a recording session])

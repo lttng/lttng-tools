@@ -224,6 +224,16 @@ Event record channel
 |===
 
 
+Map channel
+~~~~~~~~~~~
+[options="header"]
+|===
+|Command |Description
+
+|man:lttng-add-map-channel(1) |{cmd_descr_add_map_channel}.
+|===
+
+
 Recording event rule
 ~~~~~~~~~~~~~~~~~~~~
 [options="header"]

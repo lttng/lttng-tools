@@ -45,6 +45,7 @@ lttng_SOURCES = command.hpp conf.cpp conf.hpp commands/start.cpp \
 				commands/list_triggers.cpp \
 				commands/remove_trigger.cpp \
 				commands/reclaim_memory.cpp \
+				commands/add_map_channel.cpp \
 				utils.cpp utils.hpp lttng.cpp \
 				uprobe.cpp uprobe.hpp \
 				exception.hpp exception.cpp

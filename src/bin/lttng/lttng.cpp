@@ -100,6 +100,7 @@ struct option long_options[] = { { "version", 0, nullptr, 'V' },
 /* First level command */
 struct cmd_struct commands[] = {
 	{ "add-context", cmd_add_context },
+	{ "add-map-channel", cmd_add_map_channel },
 	{ "add-trigger", cmd_add_trigger },
 	{ "create", cmd_create },
 	{ "clear", cmd_clear },
@@ -275,6 +276,9 @@ void show_basic_help()
 	puts("  disable-channel   " CONFIG_CMD_DESCR_DISABLE_CHANNEL);
 	puts("  enable-channel    " CONFIG_CMD_DESCR_ENABLE_CHANNEL);
 	puts("  reclaim-memory    " CONFIG_CMD_DESCR_RECLAIM_MEMORY);
+	puts("");
+	puts("Map channels:");
+	puts("  add-map-channel   " CONFIG_CMD_DESCR_ADD_MAP_CHANNEL);
 	puts("");
 	puts("Recording event rules:");
 	puts("  disable-event     " CONFIG_CMD_DESCR_DISABLE_EVENT);
