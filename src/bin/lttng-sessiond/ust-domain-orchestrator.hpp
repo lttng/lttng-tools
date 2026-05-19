@@ -74,6 +74,7 @@ public:
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
 #include "ust-application-abi.hpp"
+#include "ust-map-channel.hpp"
 #include "ust-stream-group.hpp"
 #include "ust-trace-class.hpp"
 
@@ -691,6 +692,18 @@ private:
 	 * Protected by the recording session lock.
 	 */
 	std::unordered_map<ust::app *, std::unique_ptr<ust::app_session>> _app_sessions;
+
+	/*
+	 * Map channels created on this orchestrator, keyed by the
+	 * configuration's pointer identity. Created by
+	 * add_map_channel, destroyed by remove_map_channel or the
+	 * orchestrator's destructor.
+	 *
+	 * Protected by the recording session lock.
+	 */
+	std::unordered_map<const config::map_channel_configuration *,
+			   std::unique_ptr<ust::map_channel>>
+		_map_channels;
 };
 
 } /* namespace ust */

@@ -12,11 +12,17 @@
 #include <vendor/optional.hpp>
 
 #include <cstdint>
+#include <memory>
 #include <mutex>
 #include <unordered_map>
 
 namespace lttng {
 namespace sessiond {
+
+namespace map {
+class key_registry;
+} /* namespace map */
+
 namespace ust {
 
 /*
@@ -73,6 +79,26 @@ public:
 	 */
 	struct session_entry {
 		app_session_identifier session_id;
+	};
+
+	/*
+	 * Information stored for a map-channel master counter objd: a weak
+	 * observer of the channel's key_registry. The notification thread
+	 * looks this up when an application reports a freshly-allocated map
+	 * key, so it can resolve the app-side objd to the registry
+	 * receiving the binding.
+	 *
+	 * Unlike the other entry kinds, this one references an external
+	 * object rather than copying out plain values (see the
+	 * thread-safety note above). It is nonetheless safe to use without
+	 * the recording session lock: the registry is owned by the channel
+	 * through a shared_ptr, and the consumer upgrades this weak_ptr
+	 * with lock() before use. A successful lock() keeps the registry
+	 * alive for the resolution; an empty result means the owning
+	 * channel was torn down concurrently.
+	 */
+	struct map_channel_entry {
+		std::weak_ptr<map::key_registry> registry;
 	};
 
 	/*
@@ -164,6 +190,18 @@ public:
 	}
 
 	/*
+	 * Register a map-channel master counter objd. Called when
+	 * ust::map_channel attaches the channel to an application.
+	 */
+	registration_token register_map_channel_objd(int objd, const map_channel_entry& entry)
+	{
+		const std::lock_guard<std::mutex> guard(_lock);
+
+		_map_channel_entries[objd] = entry;
+		return registration_token(*this, objd);
+	}
+
+	/*
 	 * Look up a session objd. Returns the session entry if found.
 	 * Used by the notification thread for enum registration.
 	 */
@@ -196,23 +234,45 @@ public:
 		return it->second;
 	}
 
+	/*
+	 * Look up a map-channel master counter objd. Returns the
+	 * map-channel entry if found.
+	 */
+	nonstd::optional<map_channel_entry> lookup_map_channel(int objd) const noexcept
+	{
+		const std::lock_guard<std::mutex> guard(_lock);
+
+		const auto it = _map_channel_entries.find(objd);
+		if (it == _map_channel_entries.end()) {
+			return nonstd::nullopt;
+		}
+
+		return it->second;
+	}
+
 private:
 	void _remove(int objd) noexcept
 	{
 		const std::lock_guard<std::mutex> guard(_lock);
 
 		/*
-		 * The objd could be in either map; try both. At most one
-		 * will match.
+		 * The objd could be in any of the three maps; try each.
+		 * At most one will match.
 		 */
-		if (_session_entries.erase(objd) == 0) {
-			_channel_entries.erase(objd);
+		if (_session_entries.erase(objd) != 0) {
+			return;
 		}
+		if (_channel_entries.erase(objd) != 0) {
+			return;
+		}
+
+		_map_channel_entries.erase(objd);
 	}
 
 	mutable std::mutex _lock;
 	std::unordered_map<int, session_entry> _session_entries;
 	std::unordered_map<int, channel_entry> _channel_entries;
+	std::unordered_map<int, map_channel_entry> _map_channel_entries;
 };
 
 } /* namespace ust */

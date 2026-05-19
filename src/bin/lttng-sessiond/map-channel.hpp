@@ -73,6 +73,21 @@ public:
 	key_registry& registry() noexcept;
 	const key_registry& registry() const noexcept;
 
+	/*
+	 * A weak observer of the channel's registry, for consumers that
+	 * run outside the recording session lock and must therefore guard
+	 * against the channel being torn down concurrently. The
+	 * application-notification thread resolves a key-registration
+	 * request to a registry through this observer: it upgrades the
+	 * weak_ptr with `lock()`, which both keeps the registry alive for
+	 * the resolution and reports (by returning empty) that the owning
+	 * channel has been destroyed.
+	 *
+	 * Returns an empty observer for INDEX-keyed channels (no
+	 * registry); see the constructor's note on `has_registry()`.
+	 */
+	std::weak_ptr<key_registry> registry_observer() const noexcept;
+
 	shared_group& shared() noexcept;
 	const shared_group& shared() const noexcept;
 
@@ -89,7 +104,7 @@ public:
 
 private:
 	const config::map_channel_configuration& _configuration;
-	key_registry::uptr _registry;
+	key_registry::sptr _registry;
 	shared_group _shared;
 };
 

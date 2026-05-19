@@ -24,6 +24,8 @@
 #include "ust-app.hpp"
 #include "ust-consumer.hpp"
 #include "ust-domain-orchestrator.hpp"
+#include "ust-key-registry.hpp"
+#include "ust-map-channel.hpp"
 #include "ust-registry.hpp"
 #include "ust-trace-class-index.hpp"
 
@@ -3496,16 +3498,26 @@ ls::ust::domain_orchestrator::get_recording_channel_runtime_stats(
 
 void ls::ust::domain_orchestrator::add_map_channel(const lsc::map_channel_configuration& config)
 {
-	LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
-		"ust::domain_orchestrator::add_map_channel is not yet implemented: map={}",
-		config));
+	DBG_FMT("UST domain orchestrator adding map channel: session_name=`{}`, config={}",
+		_session.name,
+		config);
+
+	if (config.buffer_ownership != lsc::ownership_model_t::PER_UID) {
+		LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
+			"Only per-UID map channels are supported by the UST orchestrator: map={}",
+			config));
+	}
+
+	auto registry = lttng::make_unique<ust::key_registry>(config.max_entry_count);
+	auto channel = lttng::make_unique<ust::map_channel>(config, std::move(registry));
+
+	_map_channels.emplace(&config, std::move(channel));
 }
 
 void ls::ust::domain_orchestrator::remove_map_channel(const lsc::map_channel_configuration& config)
 {
-	LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
-		"ust::domain_orchestrator::remove_map_channel is not yet implemented: map={}",
-		config));
+	const auto erased = _map_channels.erase(&config);
+	LTTNG_ASSERT(erased == 1);
 }
 
 std::uint64_t ls::ust::domain_orchestrator::get_size_one_more_packet_per_stream(

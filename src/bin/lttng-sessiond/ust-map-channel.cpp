@@ -24,25 +24,34 @@ map_channel::map_channel(const config::map_channel_configuration& configuration,
 {
 }
 
-ust::map_group& map_channel::add_uid_group(uid_t /* uid */, application_abi /* abi */)
+ust::map_group& map_channel::add_uid_group(uid_t uid, application_abi abi)
 {
-	LTTNG_THROW_UNSUPPORTED_ERROR(
-		lttng::format("ust::map_channel::add_uid_group not yet implemented: map_name=`{}`",
-			      configuration().name));
+	const uid_abi_key key{ uid, abi };
+
+	const auto existing = _per_uid_groups.find(key);
+	if (existing != _per_uid_groups.end()) {
+		return *existing->second;
+	}
+
+	auto group =
+		lttng::make_unique<ust::map_group>(map_group::create_from_config(configuration()));
+	auto& group_ref = *group;
+	_per_uid_groups.emplace(key, std::move(group));
+
+	return group_ref;
 }
 
-void map_channel::remove_uid_group(uid_t /* uid */, application_abi /* abi */)
+void map_channel::remove_uid_group(uid_t uid, application_abi abi)
 {
-	LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
-		"ust::map_channel::remove_uid_group not yet implemented: map_name=`{}`",
-		configuration().name));
+	const auto erased = _per_uid_groups.erase(uid_abi_key{ uid, abi });
+	LTTNG_ASSERT(erased == 1);
 }
 
-void map_channel::for_each_uid_group(const uid_group_visitor& /* visitor */) const
+void map_channel::for_each_uid_group(const uid_group_visitor& visitor) const
 {
-	LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
-		"ust::map_channel::for_each_uid_group not yet implemented: map_name=`{}`",
-		configuration().name));
+	for (const auto& entry : _per_uid_groups) {
+		visitor(entry.first.first, entry.first.second, *entry.second);
+	}
 }
 
 ust::map_group& map_channel::add_app_group(const ust::app& /* app */)

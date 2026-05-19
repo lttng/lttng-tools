@@ -46,6 +46,12 @@ const key_registry& map_channel::registry() const noexcept
 	return *_registry;
 }
 
+std::weak_ptr<key_registry> map_channel::registry_observer() const noexcept
+{
+	/* Empty for INDEX-keyed channels, which carry no registry. */
+	return _registry;
+}
+
 shared_group& map_channel::shared() noexcept
 {
 	return _shared;

@@ -33,6 +33,15 @@ namespace map {
 class key_registry {
 public:
 	using uptr = std::unique_ptr<key_registry>;
+	/*
+	 * Shared ownership of a registry. A map_channel is the sole strong
+	 * owner of its registry, but the application-notification thread
+	 * needs to upgrade a weak observer to a strong reference for the
+	 * duration of a key resolution (see ust::app_objd_registry's
+	 * map_channel_entry), so the registry must be held through a
+	 * shared_ptr.
+	 */
+	using sptr = std::shared_ptr<key_registry>;
 	using element_visitor = std::function<void(lttng::c_string_view key, std::uint64_t index)>;
 
 	key_registry() = default;
