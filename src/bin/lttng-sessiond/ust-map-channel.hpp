@@ -81,8 +81,6 @@ public:
 	/*
 	 * per-UID API. Creates the (uid, abi) group on first call;
 	 * subsequent calls with the same key return the existing group.
-	 *
-	 * Throws if the channel is not configured for per-UID buffers.
 	 */
 	ust::map_group& add_uid_group(uid_t uid, application_abi abi);
 	void remove_uid_group(uid_t uid, application_abi abi);

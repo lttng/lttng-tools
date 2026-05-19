@@ -99,9 +99,9 @@ public:
 
 	/*
 	 * Duplicate the master + per-CPU app handles, send them to the
-	 * application using `parent_handle->header.handle` as the app-side
-	 * parent (the event-notifier-group handle for EEA, the session
-	 * handle for a regular map channel) and return an RAII
+	 * application using `parent_handle` as the app-side parent (the
+	 * event-notifier-group handle for event notifier error accounting, the
+	 * session handle for a regular map channel) and return an RAII
 	 * `app_handle` that releases everything on destruction.
 	 *
 	 * On a partial failure mid-send the master and any per-CPU
@@ -112,7 +112,7 @@ public:
 	 * failure (`app_communication_error`); the caller is responsible
 	 * for translating the latter into a domain-specific status.
 	 */
-	app_handle attach_to_app(ust::app& app, lttng_ust_abi_object_data& parent_handle);
+	app_handle attach_to_app(ust::app& app, int parent_handle);
 
 	sessiond::map::element_value aggregate_element(std::uint64_t index) const override;
 	void clear_element(std::uint64_t index) override;

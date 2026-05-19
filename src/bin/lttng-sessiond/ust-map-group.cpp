@@ -181,8 +181,7 @@ map_group::app_handle::~app_handle()
 	}
 }
 
-map_group::app_handle map_group::attach_to_app(ust::app& app,
-					       lttng_ust_abi_object_data& parent_handle)
+map_group::app_handle map_group::attach_to_app(ust::app& app, int parent_handle)
 {
 	/*
 	 * Duplicate the master and each per-partition handle locally to
@@ -247,7 +246,7 @@ map_group::app_handle map_group::attach_to_app(ust::app& app,
 	{
 		auto guard = app.command_socket.lock();
 
-		guard.send_counter_data_to_ust(parent_handle.header.handle, master.get());
+		guard.send_counter_data_to_ust(parent_handle, master.get());
 		master_sent = true;
 		/*
 		 * The counter handles don't need to be held anymore;

@@ -5,6 +5,7 @@
  *
  */
 
+#include "bin/lttng-sessiond/channel-configuration.hpp"
 #include "map-channel-configuration.hpp"
 #include "ust-app.hpp"
 #include "ust-map-channel.hpp"
@@ -26,6 +27,8 @@ map_channel::map_channel(const config::map_channel_configuration& configuration,
 
 ust::map_group& map_channel::add_uid_group(uid_t uid, application_abi abi)
 {
+	LTTNG_ASSERT(configuration().buffer_ownership == config::ownership_model_t::PER_UID);
+
 	const uid_abi_key key{ uid, abi };
 
 	const auto existing = _per_uid_groups.find(key);
@@ -43,12 +46,16 @@ ust::map_group& map_channel::add_uid_group(uid_t uid, application_abi abi)
 
 void map_channel::remove_uid_group(uid_t uid, application_abi abi)
 {
+	LTTNG_ASSERT(configuration().buffer_ownership == config::ownership_model_t::PER_UID);
+
 	const auto erased = _per_uid_groups.erase(uid_abi_key{ uid, abi });
 	LTTNG_ASSERT(erased == 1);
 }
 
 void map_channel::for_each_uid_group(const uid_group_visitor& visitor) const
 {
+	LTTNG_ASSERT(configuration().buffer_ownership == config::ownership_model_t::PER_UID);
+
 	for (const auto& entry : _per_uid_groups) {
 		visitor(entry.first.first, entry.first.second, *entry.second);
 	}

@@ -186,8 +186,8 @@ event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app)
 	auto& entry = app->event_notifier_group.accounting_reference->entry();
 
 	try {
-		app->event_notifier_group.counter_attachment.emplace(
-			entry.group.attach_to_app(*app, *app->event_notifier_group.object.get()));
+		app->event_notifier_group.counter_attachment.emplace(entry.group.attach_to_app(
+			*app, app->event_notifier_group.object.get()->header.handle));
 	} catch (const lttng::sessiond::ust::app_communication_error& ex) {
 		DBG_FMT("Application is unreachable while attaching event notifier error counter: app={}, error=`{}`",
 			*app,
