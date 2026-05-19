@@ -1484,6 +1484,37 @@ void cmd_add_map_channel(const ltt_session::locked_ref& session,
 							  buffer_ownership,
 							  dead_group_policy);
 
+	/*
+	 * Roll back the domain entry if the orchestrator throws while
+	 * creating the tracer-side counter, so a failed command leaves
+	 * no half-installed map channel behind. The domain's
+	 * remove_map_channel is intended for exactly this case.
+	 */
+	auto config_rollback = lttng::make_scope_exit([&target_domain, &payload]() noexcept {
+		try {
+			target_domain.remove_map_channel(std::string(payload.name));
+		} catch (const std::exception& ex) {
+			ERR_FMT("Failed to roll back map channel configuration after orchestrator failure: "
+				"map_channel_name=`{}`, error=`{}`",
+				payload.name,
+				ex.what());
+		}
+	});
+
+	switch (domain_type) {
+	case LTTNG_DOMAIN_KERNEL:
+		session->get_kernel_orchestrator().add_map_channel(added);
+		break;
+	case LTTNG_DOMAIN_UST:
+		session->get_ust_orchestrator().add_map_channel(added);
+		break;
+	default:
+		/* Already rejected by the domain-type guard above. */
+		abort();
+	}
+
+	config_rollback.disarm();
+
 	DBG_FMT("Added map channel to session: session_name=`{}`, domain={}, map_channel={}",
 		session->name,
 		domain_type,
