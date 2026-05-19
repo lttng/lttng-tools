@@ -555,7 +555,8 @@ Error:   notify
 Error:   start-session
 Error:   stop-session
 Error:   rotate-session
-Error:   snapshot-session" \
+Error:   snapshot-session
+Error:   incr-map-value" \
 	--condition event-rule-matches --type=user \
 	--action
 
@@ -566,7 +567,8 @@ Error:   notify
 Error:   start-session
 Error:   stop-session
 Error:   rotate-session
-Error:   snapshot-session" \
+Error:   snapshot-session
+Error:   incr-map-value" \
 	--condition event-rule-matches --type=user \
 	--action zoofest
 
@@ -577,7 +579,8 @@ Error:   notify
 Error:   start-session
 Error:   stop-session
 Error:   rotate-session
-Error:   snapshot-session" \
+Error:   snapshot-session
+Error:   incr-map-value" \
 	--condition event-rule-matches --type=user \
 	--action=zoofest
 
