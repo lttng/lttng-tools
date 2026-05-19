@@ -63,7 +63,8 @@ public:
 
 	using per_uid_groups =
 		std::unordered_map<uid_abi_key, std::unique_ptr<ust::map_group>, uid_abi_key_hash>;
-	using per_app_groups = std::unordered_map<pid_t, std::unique_ptr<ust::map_group>>;
+	using per_app_groups =
+		std::unordered_map<const ust::app *, std::unique_ptr<ust::map_group>>;
 
 	using uid_group_visitor =
 		std::function<void(uid_t uid, application_abi abi, const ust::map_group& group)>;

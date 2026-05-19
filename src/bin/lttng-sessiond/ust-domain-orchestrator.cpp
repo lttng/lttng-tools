@@ -2094,6 +2094,40 @@ unsigned int ls::ust::domain_orchestrator::on_app_departure(
 	}
 
 	/*
+	 * Drain any per-PID map groups this app owned, applying each
+	 * channel's dead_group_policy through ust::map_channel::
+	 * remove_app_group. Per-UID map channels share groups across
+	 * apps and remain untouched here; the channel-side method skips
+	 * channels that aren't per-PID-configured. Read the sessiond-
+	 * side counter mmap while the group is still in the channel —
+	 * remove_app_group drains, then erases.
+	 *
+	 * Map-channel buffer ownership is decided independently of the
+	 * session's recording-channel buffer_type, so the loop runs for
+	 * every app departure regardless of `owned_session->buffer_type`.
+	 *
+	 * Per-channel failures are logged and skipped so a single
+	 * channel can't block the rest of departure.
+	 */
+	for (auto& entry : _map_channels) {
+		auto& channel = *entry.second;
+
+		if (channel.configuration().buffer_ownership != lsc::ownership_model_t::PER_PID) {
+			continue;
+		}
+
+		try {
+			channel.remove_app_group(app);
+		} catch (const std::exception& ex) {
+			ERR_FMT("Failed to drain per-PID map group on app departure: "
+				"map_name=`{}`, app={}, error=`{}`",
+				channel.configuration().name,
+				app,
+				ex.what());
+		}
+	}
+
+	/*
 	 * When reclaiming an owner ID, tell the consumer daemon before
 	 * destroying the app session: the consumer needs the channels
 	 * to still exist when processing the reclamation command.
@@ -3531,12 +3565,6 @@ void ls::ust::domain_orchestrator::add_map_channel(const lsc::map_channel_config
 	DBG_FMT("UST domain orchestrator adding map channel: session_name=`{}`, config={}",
 		_session.name,
 		config);
-
-	if (config.buffer_ownership != lsc::ownership_model_t::PER_UID) {
-		LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
-			"Only per-UID map channels are supported by the UST orchestrator: map={}",
-			config));
-	}
 
 	auto registry = lttng::make_unique<ust::key_registry>(config.max_entry_count);
 	auto channel_uptr = lttng::make_unique<ust::map_channel>(config, std::move(registry));
