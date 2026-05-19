@@ -75,6 +75,8 @@ enum {
 	OPT_CHANNEL_NAME,
 	OPT_DOMAIN,
 	OPT_THRESHOLD_RATIO,
+
+	OPT_KEY,
 };
 
 static const struct argpar_opt_descr buffer_usage_opt_descriptions[] = {
@@ -2700,6 +2702,201 @@ end:
 }
 } /* namespace */
 
+static const struct argpar_opt_descr incr_map_value_action_opt_descrs[] = {
+	{ OPT_SESSION_NAME, 's', "session", true },
+	{ OPT_CHANNEL_NAME, 'c', "channel", true },
+	{ OPT_TYPE, 't', "type", true },
+	{ OPT_KEY, 'k', "key", true },
+	ARGPAR_OPT_DESCR_SENTINEL,
+};
+
+namespace {
+struct lttng_action *handle_action_incr_map_value(int *argc, const char ***argv, int argc_offset)
+{
+	struct lttng_action *action = nullptr;
+	struct argpar_iter *argpar_iter = nullptr;
+	const struct argpar_item *argpar_item = nullptr;
+	char *session_name_arg = nullptr;
+	char *channel_name_arg = nullptr;
+	char *type_arg = nullptr;
+	char *key_template_arg = nullptr;
+	enum lttng_map_channel_type channel_type;
+	struct lttng_key_template *key_template = nullptr;
+	enum lttng_action_status action_status;
+
+	argpar_iter = argpar_iter_create(*argc, *argv, incr_map_value_action_opt_descrs);
+	if (!argpar_iter) {
+		ERR("Failed to allocate an argpar iter.");
+		goto error;
+	}
+
+	while (true) {
+		enum parse_next_item_status status;
+
+		status = parse_next_item(argpar_iter,
+					 &argpar_item,
+					 argc_offset,
+					 *argv,
+					 false,
+					 nullptr,
+					 "While parsing `incr-map-value` action:");
+		if (status == PARSE_NEXT_ITEM_STATUS_ERROR ||
+		    status == PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY) {
+			goto error;
+		} else if (status == PARSE_NEXT_ITEM_STATUS_END) {
+			break;
+		}
+
+		LTTNG_ASSERT(status == PARSE_NEXT_ITEM_STATUS_OK);
+
+		if (argpar_item_type(argpar_item) == ARGPAR_ITEM_TYPE_OPT) {
+			const struct argpar_opt_descr *descr = argpar_item_opt_descr(argpar_item);
+			const char *arg = argpar_item_opt_arg(argpar_item);
+
+			switch (descr->id) {
+			case OPT_SESSION_NAME:
+				if (!assign_string(&session_name_arg, arg, "--session/-s")) {
+					goto error;
+				}
+
+				break;
+			case OPT_CHANNEL_NAME:
+				if (!assign_string(&channel_name_arg, arg, "--channel/-c")) {
+					goto error;
+				}
+
+				break;
+			case OPT_TYPE:
+				if (!assign_string(&type_arg, arg, "--type/-t")) {
+					goto error;
+				}
+
+				break;
+			case OPT_KEY:
+				if (!assign_string(&key_template_arg, arg, "--key/-k")) {
+					goto error;
+				}
+
+				break;
+			default:
+				abort();
+			}
+		} else {
+			const char *arg = argpar_item_non_opt_arg(argpar_item);
+
+			ERR("Unexpected argument `%s`.", arg);
+			goto error;
+		}
+	}
+
+	*argc -= argpar_iter_ingested_orig_args(argpar_iter);
+	*argv += argpar_iter_ingested_orig_args(argpar_iter);
+
+	if (!session_name_arg) {
+		ERR("Missing --session option.");
+		goto error;
+	}
+
+	if (strlen(session_name_arg) == 0) {
+		ERR("Session name is empty.");
+		goto error;
+	}
+
+	if (!channel_name_arg) {
+		ERR("Missing --channel option.");
+		goto error;
+	}
+
+	if (strlen(channel_name_arg) == 0) {
+		ERR("Map channel name is empty.");
+		goto error;
+	}
+
+	if (!type_arg) {
+		ERR("Missing --type option.");
+		goto error;
+	}
+
+	if (strcmp(type_arg, "kernel") == 0) {
+		channel_type = LTTNG_MAP_CHANNEL_TYPE_KERNEL;
+	} else if (strcmp(type_arg, "user") == 0) {
+		channel_type = LTTNG_MAP_CHANNEL_TYPE_USER;
+	} else {
+		ERR("Invalid --type option `%s` (expected `kernel` or `user`).", type_arg);
+		goto error;
+	}
+
+	if (!key_template_arg) {
+		ERR("Missing --key option.");
+		goto error;
+	}
+
+	if (strlen(key_template_arg) == 0) {
+		ERR("Key template is empty.");
+		goto error;
+	}
+
+	key_template = lttng_key_template_create_from_string(key_template_arg);
+	if (!key_template) {
+		ERR("Failed to parse key template `%s`.", key_template_arg);
+		goto error;
+	}
+
+	action = lttng_action_increment_map_value_create();
+	if (!action) {
+		ERR("Failed to allocate `incr-map-value` action.");
+		goto error;
+	}
+
+	action_status =
+		lttng_action_increment_map_value_set_target_session_name(action, session_name_arg);
+	if (action_status != LTTNG_ACTION_STATUS_OK) {
+		ERR("Failed to set `incr-map-value` action's target session name to `%s`.",
+		    session_name_arg);
+		goto error;
+	}
+
+	action_status =
+		lttng_action_increment_map_value_set_target_channel_name(action, channel_name_arg);
+	if (action_status != LTTNG_ACTION_STATUS_OK) {
+		ERR("Failed to set `incr-map-value` action's target map channel name to `%s`.",
+		    channel_name_arg);
+		goto error;
+	}
+
+	action_status =
+		lttng_action_increment_map_value_set_target_channel_type(action, channel_type);
+	if (action_status != LTTNG_ACTION_STATUS_OK) {
+		ERR("Failed to set `incr-map-value` action's target map channel type to `%s`.",
+		    type_arg);
+		goto error;
+	}
+
+	action_status = lttng_action_increment_map_value_set_key_template(action, key_template);
+	if (action_status != LTTNG_ACTION_STATUS_OK) {
+		ERR("Failed to set `incr-map-value` action's key template to `%s`.",
+		    key_template_arg);
+		goto error;
+	}
+
+	goto end;
+
+error:
+	lttng_action_destroy(action);
+	action = nullptr;
+
+end:
+	free(session_name_arg);
+	free(channel_name_arg);
+	free(type_arg);
+	free(key_template_arg);
+	lttng_key_template_destroy(key_template);
+	argpar_item_destroy(argpar_item);
+	argpar_iter_destroy(argpar_iter);
+	return action;
+}
+} /* namespace */
+
 namespace {
 struct action_descr {
 	const char *name;
@@ -2713,6 +2910,7 @@ static const struct action_descr action_descrs[] = {
 	{ "stop-session", handle_action_stop_session },
 	{ "rotate-session", handle_action_rotate_session },
 	{ "snapshot-session", handle_action_snapshot_session },
+	{ "incr-map-value", handle_action_incr_map_value },
 };
 
 namespace {

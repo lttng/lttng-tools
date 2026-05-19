@@ -6,7 +6,7 @@
 
 lttng-add-trigger(1)
 ====================
-:revdate: 20 March 2026
+:revdate: 27 April 2026
 
 
 NAME
@@ -253,6 +253,95 @@ or more arguments 'ACTARGS'.
 
 The available action types are:
 
+Increment a map value::
+    Synopsis:
++
+[verse]
+option:--action=**incr-map-value** nloption:--session='SESSION' nloption:--channel='CHANNEL'
+                        nloption:--type=(`kernel` | `user`) nloption:--key='TEMPLATE'
+{nbsp}
++
+Increments a counter within the map channel named 'CHANNEL' (see
+man:lttng-add-map-channel(1)) with the type of nloption:--type
+within the recording session named 'SESSION'.
++
+The effective key of the counter to increment is the result of
+expanding 'TEMPLATE'. Within 'TEMPLATE', LTTng substitutes the following
+placeholders:
++
+--
+`{event_name}`::
+    The effective name of the event which made the trigger fire (see
+    the ``Event name condition'' section of man:lttng-event-rule(7)).
++
+For example, `canadian_tire:money_redeemed` (user space tracepoint),
+`sched_switch` (Linux kernel tracepoint), `openat` (Linux kernel
+system call), or `ca.provigo.checkout.ScannerLogger`
+(Java or Python logger name).
+
+`{provider_name}`::
+    The name of the LTTng tracepoint provider of the event which made
+    the trigger fire.
++
+For example, `canadian_tire`
+(user space tracepoint `canadian_tire:money_redeemed`) or `sched`
+(Linux kernel tracepoint `sched_switch`).
+--
++
+Any other text in 'TEMPLATE' is used as is. To include a literal `{`
+or `}` character in the resulting key, use `{{` or `}}` in 'TEMPLATE'
+(similar to pass:[{fmt}] and Python's f-string syntax).
++
+You may only use the `{event_name}` and `{provider_name}` placeholders
+when the condition of the trigger is an
+<<er-matches-cond-spec,``event rule matches'' condition>>
+(`event-rule-matches`). With any other condition, 'TEMPLATE' must be
+literal text.
++
+Moreover, you may not use the `{event_name}` or `{provider_name}`
+placeholders when the event rule of the ``event rule matches'' condition
+has the `jul:logging`, `log4j:logging`, `log4j2:logging`, or
+`python:logging` instrumentation point type (see the nloption:--type
+option of man:lttng-event-rule(7)): 'TEMPLATE' must be literal text in
+that case.
++
+When the condition of the trigger isn't an
+<<er-matches-cond-spec,``event rule matches'' condition>>
+(`event-rule-matches`), nloption:--type must be `user`: LTTng increments
+a counter within the shared user space map, as there's no kernel
+instrumentation point executor in that case.
++
+The map channel named 'CHANNEL' within the recording session named
+'SESSION' must exist when LTTng is ready to execute the action;
+otherwise, LTTng does nothing.
++
+LTTng only increments the counter when the recording session named
+'SESSION' is active (started; see man:lttng-start(1)). While the
+recording session is inactive (stopped; see man:lttng-stop(1)), the
+action does nothing.
++
+The update policy of 'CHANNEL' (see the nloption:--update-policy
+option of man:lttng-add-map-channel(1)) controls how LTTng increments
+counters when multiple ``increment map value'' actions which target
+'SESSION' and 'CHANNEL' produce the same effective key (for example,
+multiple ``event rule matches'' triggers matching the same event).
++
+Unlike the other action types, the `incr-map-value` action doesn't
+support the nloption:--rate-policy option: its effective rate policy
+is `every:1`.
++
+Unlike the other action types, an `incr-map-value` action may
+execute out of order: when the action list of the trigger contains at
+least one `incr-map-value` action, LTTng doesn't guarantee the execution
+order of the `incr-map-value` action(s) relative to all the actions of
+the list, including other `incr-map-value` actions. In other words,
+the significant action specifier order (see above) only holds amongst
+the non-``incr-map-value`` actions.
++
+The short options nloption:-s, nloption:-c, nloption:-t, and
+nloption:-k are aliases of nloption:--session, nloption:--channel,
+nloption:--type, and nloption:--key.
+
 Notify::
     Synopsis:
 +
@@ -345,7 +434,7 @@ nloption:--url,
 nloption:--ctrl-url/nloption:-C, and
 nloption:--data-url/nloption:-D. The nloption:--path option specifies
 to write the snapshot to the local directory{nbsp}__PATH__.
-
++
 See below for the nloption:--rate-policy option.
 
 Common action options (as of LTTng{nbsp}{lttng_version}):
@@ -378,8 +467,9 @@ In other words, execute{nbsp}__A__ every 'COUNT' execution requests.
 +
 'COUNT' must be an integer greater than{nbsp}0.
 +
-As of LTTng{nbsp}{lttng_version}, you can use this option with any
-action type, but new action types in the future may not support it.
+As of LTTng{nbsp}{lttng_version}, every action type except
+`incr-map-value` supports this option, but new action types in the
+future may also not support it.
 
 
 OPTIONS
@@ -525,6 +615,27 @@ $ lttng add-trigger --condition=event-rule-matches \
 ----
 ====
 
+.Add an ``event rule matches'' trigger of which the action is to increment a counter.
+====
+The `event-rule-matches` trigger condition below specifies an event rule
+which matches all user space tracepoint events.
+
+The `incr-map-value` action increments, for each matching event, a
+counter of the map channel named `my-counters` within the recording
+session named `my-session`, using the name of the event as the
+key suffix.
+
+See man:lttng-add-map-channel(1) to learn how to add a map channel.
+
+[role="term"]
+----
+$ lttng add-trigger --condition=event-rule-matches --type=user \
+                    --action=incr-map-value --type=user \
+                    --session=my-session --channel=my-counters \
+                    --key='count_a_{event_name}'
+----
+====
+
 .Add a ``recording session consumed data size becomes greater than'' trigger of which the action is to rotate the recording session.
 ====
 The `session-consumed-size-ge` trigger condition below is considered
@@ -587,6 +698,7 @@ include::common-footer.txt[]
 SEE ALSO
 --------
 man:lttng(1),
+man:lttng-add-map-channel(1),
 man:lttng-list-triggers(1),
 man:lttng-remove-trigger(1),
 man:lttng-concepts(7)
