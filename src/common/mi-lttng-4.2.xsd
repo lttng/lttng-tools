@@ -1478,6 +1478,7 @@ SPDX-License-Identifier: MIT
 	<xs:simpleType name="command_string_type">
 		<xs:restriction base="xs:string">
 			<xs:enumeration value="add-context" />
+			<xs:enumeration value="add-map-channel" />
 			<xs:enumeration value="add-trigger" />
 			<xs:enumeration value="calibrate" />
 			<xs:enumeration value="clear" />

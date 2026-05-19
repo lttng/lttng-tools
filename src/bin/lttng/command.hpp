@@ -89,6 +89,7 @@ DECL_COMMAND(add_trigger);
 DECL_COMMAND(list_triggers);
 DECL_COMMAND(remove_trigger);
 DECL_COMMAND(reclaim_memory);
+DECL_COMMAND(add_map_channel);
 
 extern int cmd_help(int argc, const char **argv, const struct cmd_struct commands[]);
 
