@@ -12,6 +12,9 @@
 #include "lttng-sessiond.hpp"
 #include "map-channel-configuration.hpp"
 #include "modules-domain-orchestrator.hpp"
+#include "modules-key-registry.hpp"
+#include "modules-map-channel.hpp"
+#include "modules-map-group.hpp"
 #include "notification-thread-commands.hpp"
 #include "process-attribute-tracker.hpp"
 #include "session.hpp"
@@ -1410,17 +1413,40 @@ ls::modules::domain_orchestrator::get_channel_memory_usage(
 
 void ls::modules::domain_orchestrator::add_map_channel(const lsc::map_channel_configuration& config)
 {
-	LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
-		"modules::domain_orchestrator::add_map_channel is not yet implemented: map={}",
-		config));
+	DBG_FMT("Creating kernel map channel from configuration: config={}", config);
+
+	auto kernel_group = modules::map_group::create_for_session(_tracer_session_fd.fd(), config);
+
+	/* The tracer creates the counter channel disabled; its enabled flag gates every hit. */
+	const auto enable_ret = kernctl_enable(kernel_group.tracer_handle().fd());
+	if (enable_ret < 0) {
+		LTTNG_THROW_POSIX(
+			lttng::format("Failed to enable kernel map counter: map_name=`{}`",
+				      config.name),
+			-enable_ret);
+	}
+
+	sessiond::map::key_registry::uptr registry;
+	switch (config.key_type) {
+	case lsc::map_channel_configuration::key_type_t::INDEX:
+		/* INDEX-keyed maps need no string registry. */
+		break;
+	case lsc::map_channel_configuration::key_type_t::STRING:
+		registry = lttng::make_unique<modules::key_registry>(kernel_group.tracer_handle(),
+								     config);
+		break;
+	}
+
+	auto channel = lttng::make_unique<modules::map_channel>(
+		config, std::move(registry), std::move(kernel_group));
+	_map_channels.emplace(&config, std::move(channel));
 }
 
 void ls::modules::domain_orchestrator::remove_map_channel(
 	const lsc::map_channel_configuration& config)
 {
-	LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
-		"modules::domain_orchestrator::remove_map_channel is not yet implemented: map={}",
-		config));
+	const auto erased = _map_channels.erase(&config);
+	LTTNG_ASSERT(erased == 1);
 }
 
 ls::recording_channel_runtime_stats

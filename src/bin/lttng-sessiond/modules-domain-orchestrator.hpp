@@ -14,6 +14,7 @@
 #include "domain.hpp"
 #include "event-rule-configuration.hpp"
 #include "hotplug-handler.hpp"
+#include "modules-map-channel.hpp"
 #include "recording-channel-configuration.hpp"
 #include "stream-group.hpp"
 
@@ -670,6 +671,9 @@ private:
 			   std::unique_ptr<stream_group>>
 		_stream_groups;
 	std::unique_ptr<metadata_stream_group> _metadata_stream_group;
+	std::unordered_map<const config::map_channel_configuration *,
+			   std::unique_ptr<modules::map_channel>>
+		_map_channels;
 	bool _active = false;
 };
 

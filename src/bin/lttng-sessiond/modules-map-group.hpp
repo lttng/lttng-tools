@@ -13,6 +13,7 @@
 #include <common/file-descriptor.hpp>
 
 #include <cstdint>
+#include <memory>
 
 namespace lttng {
 namespace sessiond {
@@ -82,7 +83,11 @@ public:
 					    const config::map_channel_configuration& configuration);
 
 private:
-	lttng::file_descriptor _tracer_counter_fd;
+	/*
+	 * Heap-allocated for a stable address: the registry is built with a
+	 * reference to it before this group is moved into the channel.
+	 */
+	std::unique_ptr<lttng::file_descriptor> _tracer_counter_fd;
 	const config::map_channel_configuration& _configuration;
 };
 

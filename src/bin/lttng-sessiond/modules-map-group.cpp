@@ -13,6 +13,7 @@
 #include <common/format.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>
 #include <common/lttng-kernel.hpp>
+#include <common/make-unique.hpp>
 #include <common/scope-exit.hpp>
 
 #include <cstdint>
@@ -116,18 +117,20 @@ namespace modules {
 
 map_group::map_group(lttng::file_descriptor tracer_counter_fd,
 		     const config::map_channel_configuration& configuration) :
-	_tracer_counter_fd(std::move(tracer_counter_fd)), _configuration(configuration)
+	_tracer_counter_fd(
+		lttng::make_unique<lttng::file_descriptor>(std::move(tracer_counter_fd))),
+	_configuration(configuration)
 {
 }
 
 lttng::file_descriptor& map_group::tracer_handle() noexcept
 {
-	return _tracer_counter_fd;
+	return *_tracer_counter_fd;
 }
 
 const lttng::file_descriptor& map_group::tracer_handle() const noexcept
 {
-	return _tracer_counter_fd;
+	return *_tracer_counter_fd;
 }
 
 const config::map_channel_configuration& map_group::configuration() const noexcept
@@ -144,7 +147,7 @@ map::element_value map_group::read_element(std::uint64_t index, int cpu) const
 	counter_read.index = single_dimension_index(dimension_index);
 	counter_read.cpu = cpu;
 
-	const auto ret = kernctl_counter_read(_tracer_counter_fd.fd(), &counter_read);
+	const auto ret = kernctl_counter_read(_tracer_counter_fd->fd(), &counter_read);
 	if (ret != 0) {
 		switch (-ret) {
 		case EOVERFLOW:
@@ -192,7 +195,7 @@ map::element_value map_group::aggregate_element(std::uint64_t index) const
 	counter_aggregate.index = single_dimension_index(dimension_index);
 
 	const auto ret =
-		kernctl_counter_get_aggregate_value(_tracer_counter_fd.fd(), &counter_aggregate);
+		kernctl_counter_get_aggregate_value(_tracer_counter_fd->fd(), &counter_aggregate);
 	if (ret != 0) {
 		if (-ret == EOVERFLOW) {
 			LTTNG_THROW_MAP_ELEMENT_INDEX_OUT_OF_RANGE(lttng::format(
@@ -220,7 +223,7 @@ void map_group::clear_element(std::uint64_t index)
 	counter_clear.len = sizeof(counter_clear);
 	counter_clear.index = single_dimension_index(dimension_index);
 
-	const auto ret = kernctl_counter_clear(_tracer_counter_fd.fd(), &counter_clear);
+	const auto ret = kernctl_counter_clear(_tracer_counter_fd->fd(), &counter_clear);
 	if (ret != 0) {
 		if (-ret == EOVERFLOW) {
 			LTTNG_THROW_MAP_ELEMENT_INDEX_OUT_OF_RANGE(lttng::format(
