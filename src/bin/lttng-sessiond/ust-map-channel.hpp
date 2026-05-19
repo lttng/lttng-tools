@@ -10,6 +10,7 @@
 
 #include "key-registry.hpp"
 #include "map-channel.hpp"
+#include "ust-app-objd-registry.hpp"
 #include "ust-application-abi.hpp"
 #include "ust-map-group.hpp"
 
@@ -69,6 +70,33 @@ public:
 	using app_group_visitor =
 		std::function<void(const ust::app& app, const ust::map_group& group)>;
 
+	/*
+	 * RAII handle bundling a per-app counter attachment with the
+	 * objd-registry token that lets the notification thread resolve
+	 * the master counter's app-side handle to this channel's key
+	 * registry.
+	 *
+	 * Destruction releases both: the underlying map_group::app_handle
+	 * tears down the duplicated counter handles on the application,
+	 * and the registration_token unregisters the entry from the app's
+	 * objd registry.
+	 */
+	class app_attachment final {
+	public:
+		app_attachment(ust::map_group::app_handle counter_attachment,
+			       app_objd_registry::registration_token objd_token) noexcept;
+
+		app_attachment(app_attachment&&) noexcept = default;
+		app_attachment(const app_attachment&) = delete;
+		app_attachment& operator=(app_attachment&&) = delete;
+		app_attachment& operator=(const app_attachment&) = delete;
+		~app_attachment() = default;
+
+	private:
+		ust::map_group::app_handle _counter_attachment;
+		app_objd_registry::registration_token _objd_token;
+	};
+
 	map_channel(const config::map_channel_configuration& configuration,
 		    sessiond::map::key_registry::uptr registry);
 
@@ -97,6 +125,24 @@ public:
 	ust::map_group& add_app_group(const ust::app& app);
 	void remove_app_group(const ust::app& app);
 	void for_each_app_group(const app_group_visitor& visitor) const;
+
+	/*
+	 * Attach this channel to `app`: for per-UID channels, lazily
+	 * create the (app.uid, app.abi) group, send the master and
+	 * per-CPU counter handles to the app using `session_parent_handle`
+	 * as the app-side parent, and return an RAII attachment bundling
+	 * the resulting counter handle with an objd-registry token. The
+	 * caller stores the attachment; dropping it releases everything.
+	 *
+	 * `session_parent_handle` is the app-side handle for the
+	 * recording session that owns this map channel (the value of
+	 * `ust::app_session::handle`).
+	 *
+	 * Throws on app-side communication failure
+	 * (`ust::app_communication_error`); the caller must translate
+	 * to its own status semantics.
+	 */
+	app_attachment attach_to_app(ust::app& app, int session_parent_handle);
 
 private:
 	per_uid_groups _per_uid_groups;

@@ -11,6 +11,7 @@
 
 #include "ust-app-objd-registry.hpp"
 #include "ust-app-session-id.hpp"
+#include "ust-map-channel.hpp"
 
 #include <common/credentials.hpp>
 #include <common/macros.hpp>
@@ -29,6 +30,7 @@ namespace sessiond {
 namespace ust {
 class app_channel;
 class domain_orchestrator;
+class map_channel;
 class trace_class;
 struct app;
 } /* namespace ust */
@@ -139,6 +141,20 @@ public:
 	 * is created (not at construction time).
 	 */
 	nonstd::optional<app_objd_registry::registration_token> objd_token;
+
+	/*
+	 * Per-app, per-channel attachments for this recording session's
+	 * map channels. Keyed by the orchestrator-owned ust::map_channel
+	 * pointer. Each entry holds the RAII counter handle returned by
+	 * map_channel::attach_to_app along with the objd-registry token
+	 * that surfaces the master counter to the notification thread.
+	 *
+	 * Cleared when this app_session is destroyed (app departure or
+	 * recording session teardown), which releases all per-app
+	 * counter handles via the application's command socket.
+	 */
+	std::unordered_map<const ust::map_channel *, ust::map_channel::app_attachment>
+		map_channel_attachments;
 	/* Starts with 'ust'; no leading slash. */
 	const std::string path;
 	/* UID/GID of the application owning the session */

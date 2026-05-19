@@ -130,6 +130,13 @@ map_group::app_handle::app_handle(app_handle&& other) noexcept :
 	other._moved_from = true;
 }
 
+int map_group::app_handle::master_objd() const noexcept
+{
+	LTTNG_ASSERT(!_moved_from);
+	LTTNG_ASSERT(_master_handle.get());
+	return _master_handle.get()->header.handle;
+}
+
 map_group::app_handle::~app_handle()
 {
 	if (_moved_from) {

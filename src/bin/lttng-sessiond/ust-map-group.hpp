@@ -51,6 +51,14 @@ public:
 		app_handle& operator=(app_handle&&) = delete;
 		~app_handle();
 
+		/*
+		 * App-side handle of the master counter. Used to register
+		 * the channel with the application's objd_registry so the
+		 * notification thread can resolve a map_objd reported by
+		 * the app to the channel that owns it.
+		 */
+		int master_objd() const noexcept;
+
 	private:
 		friend class map_group;
 

@@ -1941,6 +1941,34 @@ void ls::ust::domain_orchestrator::_create_app_metadata(ust::app_session& ua_ses
 		*app);
 }
 
+void ls::ust::domain_orchestrator::_synchronize_app_map_channels(ust::app_session& ua_sess,
+								 ust::app& app)
+{
+	for (auto& entry : _map_channels) {
+		auto& channel = *entry.second;
+
+		if (ua_sess.map_channel_attachments.count(&channel) != 0) {
+			/* Already attached, skip. */
+			continue;
+		}
+
+		try {
+			ua_sess.map_channel_attachments.emplace(
+				&channel, channel.attach_to_app(app, ua_sess.handle));
+		} catch (const ust::app_communication_error& ex) {
+			DBG_FMT("Application unreachable while attaching map channel: app={}, map_name=`{}`, error=`{}`",
+				app,
+				channel.configuration().name,
+				ex.what());
+		} catch (const std::exception& ex) {
+			ERR_FMT("Failed to attach map channel to application: app={}, map_name=`{}`, error=`{}`",
+				app,
+				channel.configuration().name,
+				ex.what());
+		}
+	}
+}
+
 void ls::ust::domain_orchestrator::synchronize_app(ust::app& app)
 {
 	namespace lsc = lttng::sessiond::config;
@@ -2002,6 +2030,8 @@ void ls::ust::domain_orchestrator::synchronize_app(ust::app& app)
 				    app.command_socket.fd(),
 				    _session_id());
 			}
+
+			_synchronize_app_map_channels(*ua_sess, app);
 		}
 
 		if (_active) {
@@ -3509,9 +3539,39 @@ void ls::ust::domain_orchestrator::add_map_channel(const lsc::map_channel_config
 	}
 
 	auto registry = lttng::make_unique<ust::key_registry>(config.max_entry_count);
-	auto channel = lttng::make_unique<ust::map_channel>(config, std::move(registry));
+	auto channel_uptr = lttng::make_unique<ust::map_channel>(config, std::move(registry));
+	auto& channel = *channel_uptr;
 
-	_map_channels.emplace(&config, std::move(channel));
+	_map_channels.emplace(&config, std::move(channel_uptr));
+
+	/*
+	 * Late-arriving channel: attach to every application that has
+	 * already established an app_session for this recording session.
+	 * Apps registered later get the channel via synchronize_app.
+	 */
+	for (auto& app_session_pair : _app_sessions) {
+		auto& app = *app_session_pair.first;
+		auto& ua_sess = *app_session_pair.second;
+
+		if (ua_sess.deleted || ua_sess.handle < 0) {
+			continue;
+		}
+
+		try {
+			ua_sess.map_channel_attachments.emplace(
+				&channel, channel.attach_to_app(app, ua_sess.handle));
+		} catch (const ust::app_communication_error& ex) {
+			DBG_FMT("Application unreachable while attaching map channel: app={}, map_name=`{}`, error=`{}`",
+				app,
+				config.name,
+				ex.what());
+		} catch (const std::exception& ex) {
+			ERR_FMT("Failed to attach map channel to application: app={}, map_name=`{}`, error=`{}`",
+				app,
+				config.name,
+				ex.what());
+		}
+	}
 }
 
 void ls::ust::domain_orchestrator::remove_map_channel(const lsc::map_channel_configuration& config)

@@ -533,6 +533,14 @@ private:
 	void _create_app_metadata(ust::app_session& ua_sess, ust::app *app);
 
 	/*
+	 * Attach every map channel known to this orchestrator to the
+	 * given application: idempotent per (channel, app). Failure on
+	 * one channel is logged and skipped; remaining channels still
+	 * attempt to attach.
+	 */
+	void _synchronize_app_map_channels(ust::app_session& ua_sess, ust::app& app);
+
+	/*
 	 * Iterate all registered applications and call synchronize_app()
 	 * for each one. Used by start() and process attribute tracking
 	 * methods to push the current session configuration to all apps.
