@@ -92,6 +92,7 @@ namespace sessiond {
 namespace config {
 class event_rule_configuration;
 class context_configuration;
+class map_channel_configuration;
 } /* namespace config */
 
 namespace ust {
@@ -276,6 +277,9 @@ public:
 
 	recording_channel_runtime_stats get_recording_channel_runtime_stats(
 		const config::recording_channel_configuration& channel_config) const override;
+
+	void add_map_channel(const config::map_channel_configuration& config) override;
+	void remove_map_channel(const config::map_channel_configuration& config) override;
 
 	/*
 	 * Compute the total size added by one more packet per stream across

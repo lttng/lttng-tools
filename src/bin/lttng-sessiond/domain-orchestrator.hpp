@@ -28,6 +28,7 @@ namespace config {
 class recording_channel_configuration;
 class event_rule_configuration;
 class context_configuration;
+class map_channel_configuration;
 
 enum class process_attribute_type {
 	PID,
@@ -132,6 +133,16 @@ public:
 	 */
 	virtual recording_channel_runtime_stats get_recording_channel_runtime_stats(
 		const config::recording_channel_configuration& channel_config) const = 0;
+
+	/*
+	 * Allocate the tracer-side resources backing a map channel: the
+	 * tracer counter (and, for STRING-keyed maps, any registry needed
+	 * to translate strings to per-CPU indices).
+	 */
+	virtual void add_map_channel(const config::map_channel_configuration& config) = 0;
+
+	/* Release the tracer-side resources (intended for error handling rollback). */
+	virtual void remove_map_channel(const config::map_channel_configuration& config) = 0;
 };
 
 namespace exceptions {

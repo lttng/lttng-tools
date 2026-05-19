@@ -10,6 +10,7 @@
 #include "kernel.hpp"
 #include "lttng-channel-from-config.hpp"
 #include "lttng-sessiond.hpp"
+#include "map-channel-configuration.hpp"
 #include "modules-domain-orchestrator.hpp"
 #include "notification-thread-commands.hpp"
 #include "process-attribute-tracker.hpp"
@@ -1405,6 +1406,21 @@ ls::modules::domain_orchestrator::get_channel_memory_usage(
 {
 	LTTNG_THROW_UNSUPPORTED_ERROR(
 		"Getting channel memory usage is not supported by the lttng-modules tracer");
+}
+
+void ls::modules::domain_orchestrator::add_map_channel(const lsc::map_channel_configuration& config)
+{
+	LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
+		"modules::domain_orchestrator::add_map_channel is not yet implemented: map={}",
+		config));
+}
+
+void ls::modules::domain_orchestrator::remove_map_channel(
+	const lsc::map_channel_configuration& config)
+{
+	LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
+		"modules::domain_orchestrator::remove_map_channel is not yet implemented: map={}",
+		config));
 }
 
 ls::recording_channel_runtime_stats

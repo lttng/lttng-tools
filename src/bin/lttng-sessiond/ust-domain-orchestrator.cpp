@@ -12,6 +12,7 @@
 #include "fd-limit.hpp"
 #include "health-sessiond.hpp"
 #include "lttng-sessiond.hpp"
+#include "map-channel-configuration.hpp"
 #include "notification-thread-commands.hpp"
 #include "pending-memory-reclamation-request.hpp"
 #include "recording-channel-configuration.hpp"
@@ -3491,6 +3492,20 @@ ls::ust::domain_orchestrator::get_recording_channel_runtime_stats(
 	}
 
 	return stats;
+}
+
+void ls::ust::domain_orchestrator::add_map_channel(const lsc::map_channel_configuration& config)
+{
+	LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
+		"ust::domain_orchestrator::add_map_channel is not yet implemented: map={}",
+		config));
+}
+
+void ls::ust::domain_orchestrator::remove_map_channel(const lsc::map_channel_configuration& config)
+{
+	LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
+		"ust::domain_orchestrator::remove_map_channel is not yet implemented: map={}",
+		config));
 }
 
 std::uint64_t ls::ust::domain_orchestrator::get_size_one_more_packet_per_stream(

@@ -562,6 +562,9 @@ public:
 	recording_channel_runtime_stats get_recording_channel_runtime_stats(
 		const config::recording_channel_configuration& channel_config) const override;
 
+	void add_map_channel(const config::map_channel_configuration& config) override;
+	void remove_map_channel(const config::map_channel_configuration& config) override;
+
 	/*
 	 * Return the number of streams opened for a channel.
 	 *
