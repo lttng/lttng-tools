@@ -354,6 +354,14 @@ map_group map_group::create_from_config(const config::map_channel_configuration&
 
 	lttng_ust_ctl_counter_dimension dimension = {};
 	dimension.size = configuration.max_entry_count;
+	/*
+	 * These flags don't request value-overflow tracking; that is always
+	 * reported through the counter's read and aggregate results. They
+	 * instead reserve a catch-all bucket, located at underflow_index or
+	 * overflow_index, which absorbs hits whose key can't be allocated a
+	 * slot of its own, for example once the dimension is full. The
+	 * user space tracer doesn't implement this yet, so leave them off.
+	 */
 	dimension.has_underflow = false;
 	dimension.has_overflow = false;
 
