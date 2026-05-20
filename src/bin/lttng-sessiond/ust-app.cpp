@@ -1093,29 +1093,6 @@ end:
 } /* namespace */
 
 /*
- * Return ust app pointer or nullopt if not found. RCU read side lock MUST be
- * acquired before calling this function.
- */
-nonstd::optional<ust_app_reference> ust_app_find_by_pid(pid_t pid)
-{
-	struct lttng_ht_node_ulong *node;
-	struct lttng_ht_iter iter;
-
-	lttng_ht_lookup(ust_app_ht, (void *) ((unsigned long) pid), &iter);
-	node = lttng_ht_iter_get_node<lttng_ht_node_ulong>(&iter);
-	if (node == nullptr) {
-		DBG2("UST app no found with pid %d", pid);
-		return nonstd::nullopt;
-	}
-
-	DBG2("Found UST app by pid %d", pid);
-
-	auto raw_app = lttng::utils::container_of(node, &lsu::app::pid_n);
-	return ust_app_get(*raw_app) ? nonstd::make_optional(ust_app_reference{ raw_app }) :
-				       nonstd::nullopt;
-}
-
-/*
  * Allocate and init an UST app object using the registration information and
  * the command socket. This is called when the command socket connects to the
  * session daemon.

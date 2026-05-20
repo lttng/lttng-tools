@@ -320,7 +320,6 @@ using ust_app_reference = std::unique_ptr<
 	lttng::sessiond::ust::app,
 	lttng::memory::create_deleter_class<lttng::sessiond::ust::app, ust_app_put>::deleter>;
 
-nonstd::optional<ust_app_reference> ust_app_find_by_pid(pid_t pid);
 int ust_app_recv_registration(int sock, struct ust_register_msg *msg);
 int ust_app_recv_notify(int sock);
 void ust_app_add(lttng::sessiond::ust::app *app);
@@ -455,12 +454,6 @@ using ust_app_reference = std::unique_ptr<
 
 static inline nonstd::optional<ust_app_reference> ust_app_find_by_sock(int sock
 								       __attribute__((unused)))
-{
-	return nonstd::nullopt;
-}
-
-static inline nonstd::optional<ust_app_reference> ust_app_find_by_pid(pid_t pid
-								      __attribute__((unused)))
 {
 	return nonstd::nullopt;
 }
