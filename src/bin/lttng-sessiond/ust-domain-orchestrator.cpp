@@ -2155,9 +2155,10 @@ void ls::ust::domain_orchestrator::_synchronize_all_apps()
 		_session.name,
 		_session.id);
 
-	for (auto *app : lttng::urcu::lfht_iteration_adapter<ust::app,
-							     decltype(ust::app::pid_n),
-							     &ust::app::pid_n>(*ust_app_ht->ht)) {
+	for (auto *app :
+	     lttng::urcu::lfht_iteration_adapter<ust::app,
+						 decltype(ust::app::sock_n),
+						 &ust::app::sock_n>(*ust_app_ht_by_sock->ht)) {
 		if (!ust_app_get(*app)) {
 			DBG_FMT("UST domain orchestrator skipping app being torn down during "
 				"synchronization: session_name=`{}`",

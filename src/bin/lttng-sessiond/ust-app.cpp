@@ -76,7 +76,6 @@ enum owner_id_allocation_status {
 	OWNER_ID_ALLOCATION_STATUS_FAIL,
 };
 
-struct lttng_ht *ust_app_ht;
 struct lttng_ht *ust_app_ht_by_sock;
 struct lttng_ht *ust_app_ht_by_notify_sock;
 struct lttng_ht *ust_app_ht_by_owner_id;
@@ -625,9 +624,7 @@ void delete_ust_app(lsu::app *app)
 namespace {
 void delete_ust_app_rcu(struct rcu_head *head)
 {
-	struct lttng_ht_node_ulong *node =
-		lttng::utils::container_of(head, &lttng_ht_node_ulong::head);
-	lsu::app *app = lttng::utils::container_of(node, &lsu::app::pid_n);
+	auto *app = lttng::utils::container_of(head, &lsu::app::rcu_head);
 
 	DBG3("Call RCU deleting app PID %d", app->pid);
 	delete_ust_app(app);
@@ -1186,7 +1183,6 @@ lsu::app *ust_app_create(struct ust_register_msg *msg, int sock)
 	lta->compatible = 1;
 
 	lta->pid = msg->pid;
-	lttng_ht_node_init_ulong(&lta->pid_n, (unsigned long) lta->pid);
 	lta->command_socket.set_fd(sock, msg->pid);
 	lttng_ht_node_init_ulong(&lta->sock_n, (unsigned long) lta->command_socket.fd());
 
@@ -1220,12 +1216,6 @@ void ust_app_add(lsu::app *app)
 	app->registration_time = time(nullptr);
 
 	const lttng::urcu::read_lock_guard read_lock;
-
-	/*
-	 * On a re-registration, we want to kick out the previous registration of
-	 * that pid
-	 */
-	lttng_ht_add_replace_ulong(ust_app_ht, &app->pid_n);
 
 	/*
 	 * The socket _should_ be unique until _we_ call close. So, a add_unique
@@ -1507,15 +1497,6 @@ void ust_app_unregister(lsu::app& app)
 	 * apps_notify_thread.
 	 */
 	(void) cds_lfht_del(ust_app_ht_by_notify_sock->ht, &app.notify_sock_n.node);
-
-	/*
-	 * Ignore return value since the node might have been removed before by an
-	 * add replace during app registration because the PID can be reassigned by
-	 * the OS.
-	 */
-	if (cds_lfht_del(ust_app_ht->ht, &app.pid_n.node)) {
-		DBG3("Unregister app by PID %d failed. This can happen on pid reuse", app.pid);
-	}
 }
 } /* namespace */
 
@@ -1573,9 +1554,10 @@ int ust_app_list_events(struct lttng_event **events)
 	}
 
 	/* Iterate on all apps. */
-	for (auto *app : lttng::urcu::lfht_iteration_adapter<lsu::app,
-							     decltype(lsu::app::pid_n),
-							     &lsu::app::pid_n>(*ust_app_ht->ht)) {
+	for (auto *app :
+	     lttng::urcu::lfht_iteration_adapter<lsu::app,
+						 decltype(lsu::app::sock_n),
+						 &lsu::app::sock_n>(*ust_app_ht_by_sock->ht)) {
 		struct lttng_ust_abi_tracepoint_iter uiter;
 
 		health_code_update();
@@ -1706,9 +1688,10 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 	}
 
 	/* Iterate on all apps. */
-	for (auto *app : lttng::urcu::lfht_iteration_adapter<lsu::app,
-							     decltype(lsu::app::pid_n),
-							     &lsu::app::pid_n>(*ust_app_ht->ht)) {
+	for (auto *app :
+	     lttng::urcu::lfht_iteration_adapter<lsu::app,
+						 decltype(lsu::app::sock_n),
+						 &lsu::app::sock_n>(*ust_app_ht_by_sock->ht)) {
 		struct lttng_ust_abi_field_iter uiter;
 
 		health_code_update();
@@ -1916,9 +1899,6 @@ void ust_app_clean_list()
 	rcu_barrier();
 
 	/* Destroy is done only when the ht is empty */
-	if (ust_app_ht) {
-		lttng_ht_destroy(ust_app_ht);
-	}
 	if (ust_app_ht_by_sock) {
 		lttng_ht_destroy(ust_app_ht_by_sock);
 	}
@@ -1935,10 +1915,6 @@ void ust_app_clean_list()
  */
 int ust_app_ht_alloc()
 {
-	ust_app_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
-	if (!ust_app_ht) {
-		return -1;
-	}
 	ust_app_ht_by_sock = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 	if (!ust_app_ht_by_sock) {
 		return -1;
@@ -2128,9 +2104,10 @@ void ust_app_global_update_event_notifier_rules(lsu::app *app)
 void ust_app_global_update_all_event_notifier_rules()
 {
 	/* Iterate on all apps. */
-	for (auto *app : lttng::urcu::lfht_iteration_adapter<lsu::app,
-							     decltype(lsu::app::pid_n),
-							     &lsu::app::pid_n>(*ust_app_ht->ht)) {
+	for (auto *app :
+	     lttng::urcu::lfht_iteration_adapter<lsu::app,
+						 decltype(lsu::app::sock_n),
+						 &lsu::app::sock_n>(*ust_app_ht_by_sock->ht)) {
 		if (!ust_app_get(*app)) {
 			/* Application unregistered concurrently, skip it. */
 			DBG("Could not get application reference as it is being torn down; skipping application");
@@ -2861,7 +2838,7 @@ namespace {
 void ust_app_destroy(lsu::app& app)
 {
 	ust_app_release_owner_id(app);
-	call_rcu(&app.pid_n.head, delete_ust_app_rcu);
+	call_rcu(&app.rcu_head, delete_ust_app_rcu);
 }
 } /* namespace */
 

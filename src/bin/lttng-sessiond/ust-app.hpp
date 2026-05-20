@@ -110,15 +110,14 @@ struct ust_register_msg {
 
 /*
  * Global applications HT used by the session daemon. This table is indexed by
- * PID using the pid_n node and pid value of an lttng::sessiond::ust::app.
- */
-extern struct lttng_ht *ust_app_ht;
-
-/*
- * Global applications HT used by the session daemon. This table is indexed by
  * socket using the sock_n node and sock value of an lttng::sessiond::ust::app.
  *
- * The 'sock' in question here is the 'command' socket.
+ * The 'sock' in question here is the 'command' socket. This table is also the
+ * iteration target when sessiond code needs to walk every actively-registered
+ * application: PID can be reused across processes and cannot be a global
+ * identifier (especially with PID namespaces), so the command-socket fd, which
+ * is unique by construction and tied to the application's lifetime as far as
+ * sessiond is concerned, is the natural index.
  */
 extern struct lttng_ht *ust_app_ht_by_sock;
 
@@ -205,10 +204,15 @@ struct app {
 	uint32_t abi_minor = static_cast<uint32_t>(-1);
 	std::string name;
 
-	lttng_ht_node_ulong pid_n = {};
 	lttng_ht_node_ulong sock_n = {};
 	lttng_ht_node_ulong notify_sock_n = {};
 	lttng_ht_node_u64 owner_id_n = {};
+
+	/*
+	 * Used to defer the destruction of the application object past
+	 * the RCU grace period in which the last reference is released.
+	 */
+	struct rcu_head rcu_head = {};
 
 	/*
 	 * Per-app registry mapping UST object descriptors to recording

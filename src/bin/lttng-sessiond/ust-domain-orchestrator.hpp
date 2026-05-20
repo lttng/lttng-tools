@@ -472,8 +472,8 @@ private:
 
 	/*
 	 * Verify that the _app_sessions index is consistent with the
-	 * global ust_app_ht hash table. For every app that has an
-	 * app_session for this recording session, assert that
+	 * global ust_app_ht_by_sock hash table. For every app that has
+	 * an app_session for this recording session, assert that
 	 * _app_sessions contains the same (app, ua_sess) pair, and
 	 * vice versa.
 	 */
