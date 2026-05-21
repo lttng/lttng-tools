@@ -1809,7 +1809,7 @@ int conform_channel_path(char *channel_path)
 {
 	int ret = 0;
 
-	if (strstr("../", channel_path)) {
+	if (utils_path_walks_up_hierarchy(channel_path)) {
 		ERR("Refusing channel path as it walks up the path hierarchy: \"%s\"",
 		    channel_path);
 		ret = -1;
