@@ -2357,6 +2357,16 @@ int viewer_get_packet(struct relay_connection *conn)
 	}
 
 	pthread_mutex_lock(&vstream->stream->lock);
+
+	if (!vstream->stream_file.handle) {
+		get_packet_status = LTTNG_VIEWER_GET_PACKET_ERR;
+		DBG("Client requested packet of stream id %" PRIu64
+		    " which has no open data file, returning status=%s",
+		    stream_id,
+		    lttng_viewer_get_packet_return_code_str(get_packet_status));
+		goto error;
+	}
+
 	lseek_ret = fs_handle_seek(
 		vstream->stream_file.handle, be64toh(get_packet_info.offset), SEEK_SET);
 	if (lseek_ret < 0) {
