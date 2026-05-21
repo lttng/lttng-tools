@@ -366,6 +366,14 @@
 /* Default maximal number of events an agent may report in a listing reply. */
 #define DEFAULT_MAX_AGENT_EVENT_COUNT 131072
 
+/*
+ * Default maximal nesting depth of the filter IR. The IR is walked
+ * recursively, so a deeply-nested expression would otherwise exhaust the
+ * thread stack. Well below the smallest supported stack, far above any real
+ * filter.
+ */
+#define DEFAULT_MAX_FILTER_IR_NESTING_DEPTH 1024
+
 #define DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_ENV		  "LTTNG_RELAYD_TCP_KEEP_ALIVE"
 #define DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_IDLE_TIME_ENV "LTTNG_RELAYD_TCP_KEEP_ALIVE_IDLE_TIME"
 #define DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_MAX_PROBE_COUNT_ENV \

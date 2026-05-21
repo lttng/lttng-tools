@@ -14,6 +14,7 @@
 #include "filter-parser.hpp"
 
 #include <common/compat/errno.hpp>
+#include <common/defaults.hpp>
 #include <common/macros.hpp>
 #include <common/string-utils/string-utils.hpp>
 
@@ -25,6 +26,10 @@
 
 static struct ir_op *
 generate_ir_recursive(struct filter_parser_ctx *ctx, struct filter_node *node, enum ir_side side);
+
+static struct ir_op *generate_ir_recursive_inner(struct filter_parser_ctx *ctx,
+						 struct filter_node *node,
+						 enum ir_side side);
 
 static struct ir_op *make_op_root(struct ir_op *child, enum ir_side side)
 {
@@ -812,8 +817,9 @@ make_unary_op(struct filter_parser_ctx *ctx, struct filter_node *node, enum ir_s
 	return nullptr;
 }
 
-static struct ir_op *
-generate_ir_recursive(struct filter_parser_ctx *ctx, struct filter_node *node, enum ir_side side)
+static struct ir_op *generate_ir_recursive_inner(struct filter_parser_ctx *ctx,
+						 struct filter_node *node,
+						 enum ir_side side)
 {
 	switch (node->type) {
 	case NODE_UNKNOWN:
@@ -845,6 +851,28 @@ generate_ir_recursive(struct filter_parser_ctx *ctx, struct filter_node *node, e
 	return nullptr;
 }
 
+static struct ir_op *
+generate_ir_recursive(struct filter_parser_ctx *ctx, struct filter_node *node, enum ir_side side)
+{
+	struct ir_op *op;
+
+	/*
+	 * Every IR recursion passes through here, so bounding the depth also
+	 * bounds the IR tree and every subsequent visitor. Callers unwind the
+	 * failure like an allocation failure.
+	 */
+	if (ctx->ir_recursion_depth >= DEFAULT_MAX_FILTER_IR_NESTING_DEPTH) {
+		fprintf(stderr, "[error] %s: filter expression nesting is too deep\n", __func__);
+		return nullptr;
+	}
+
+	ctx->ir_recursion_depth++;
+	op = generate_ir_recursive_inner(ctx, node, side);
+	ctx->ir_recursion_depth--;
+
+	return op;
+}
+
 void filter_ir_free(struct filter_parser_ctx *ctx)
 {
 	filter_free_ir_recursive(ctx->ir_root);
@@ -855,6 +883,7 @@ int filter_visitor_ir_generate(struct filter_parser_ctx *ctx)
 {
 	struct ir_op *op;
 
+	ctx->ir_recursion_depth = 0;
 	op = generate_ir_recursive(ctx, &ctx->ast->root, IR_LEFT);
 	if (!op) {
 		return -EINVAL;
