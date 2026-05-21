@@ -19,6 +19,7 @@
 #include <common/compat/path.hpp>
 #include <common/defaults.hpp>
 #include <common/fd-tracker/utils.hpp>
+#include <common/path.hpp>
 #include <common/time.hpp>
 #include <common/urcu.hpp>
 #include <common/utils.hpp>
@@ -310,8 +311,9 @@ struct relay_session *session_create(const char *session_name,
 		ERR("Refusing to create session as the provided hostname is not path-safe");
 		goto error;
 	}
-	if (strstr(base_path, "../")) {
-		ERR("Invalid session base path walks up the path hierarchy: \"%s\"", base_path);
+	if (base_path[0] == '/' || utils_path_walks_up_hierarchy(base_path)) {
+		ERR_FMT("Refusing to create session as the provided base path is not path-safe: `{}`",
+			base_path);
 		goto error;
 	}
 
