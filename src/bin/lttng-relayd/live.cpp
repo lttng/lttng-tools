@@ -2301,6 +2301,18 @@ int viewer_get_packet(struct relay_connection *conn)
 		goto send_reply_nolock;
 	} else {
 		packet_data_len = be32toh(get_packet_info.len);
+
+		/* Ensure the reply size computation cannot overflow. */
+		if (packet_data_len > UINT32_MAX - reply_size) {
+			get_packet_status = LTTNG_VIEWER_GET_PACKET_ERR;
+			ERR("Client requested a packet of invalid length %" PRIu32
+			    " for stream id %" PRIu64 ", returning status=%s",
+			    packet_data_len,
+			    stream_id,
+			    lttng_viewer_get_packet_return_code_str(get_packet_status));
+			goto send_reply_nolock;
+		}
+
 		reply_size += packet_data_len;
 	}
 
