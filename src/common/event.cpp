@@ -8,6 +8,7 @@
 #include <common/align.hpp>
 #include <common/buffer-view.hpp>
 #include <common/compat/string.hpp>
+#include <common/defaults.hpp>
 #include <common/dynamic-array.hpp>
 #include <common/dynamic-buffer.hpp>
 #include <common/error.hpp>
@@ -259,17 +260,37 @@ end:
 }
 
 ssize_t lttng_event_exclusions_create_from_payload(struct lttng_payload_view *view,
-						   uint32_t count,
+						   std::size_t count,
 						   struct lttng_event_exclusion **exclusions)
 {
 	ssize_t ret, offset = 0;
-	const size_t size = (count * LTTNG_SYMBOL_NAME_LEN);
 	uint32_t i;
 	const struct lttng_event_exclusion_comm *comm;
-	struct lttng_event_exclusion *local_exclusions;
+	struct lttng_event_exclusion *local_exclusions = nullptr;
 
-	local_exclusions =
-		zmalloc<lttng_event_exclusion>(sizeof(struct lttng_event_exclusion) + size);
+	if (count > DEFAULT_MAX_EVENT_EXCLUSION_COUNT) {
+		ERR_FMT("Failed to create event exclusions from payload: count exceeds the allowed limit: count={}, max={}",
+			count,
+			DEFAULT_MAX_EVENT_EXCLUSION_COUNT);
+		ret = -1;
+		goto end;
+	}
+
+	/*
+	 * Each serialized exclusion is at least a fixed-size header (struct
+	 * lttng_event_exclusion_comm), so a count larger than the payload means
+	 * it is necessarily invalid.
+	 *
+	 * Rejecting it here discards malformed input and crudely bounds 'count'
+	 * before it is used to size the allocation below.
+	 */
+	if (count > view->buffer.size / sizeof(struct lttng_event_exclusion_comm)) {
+		ret = -1;
+		goto end;
+	}
+
+	local_exclusions = zmalloc<lttng_event_exclusion>(sizeof(struct lttng_event_exclusion) +
+							  count * LTTNG_SYMBOL_NAME_LEN);
 	if (!local_exclusions) {
 		ret = -1;
 		goto end;
@@ -697,8 +718,7 @@ int lttng_event_serialize(const struct lttng_event *event,
 	/* Add null termination. */
 	name_len += 1;
 
-	if (exclusion_count > UINT32_MAX) {
-		/* Possible overflow. */
+	if (exclusion_count > DEFAULT_MAX_EVENT_EXCLUSION_COUNT) {
 		ret = -1;
 		goto end;
 	}

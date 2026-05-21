@@ -369,6 +369,9 @@
 /* Default maximal size of message notification channel message payloads. */
 #define DEFAULT_CLIENT_MAX_QUEUED_NOTIFICATIONS_COUNT 100
 
+/* Default maximal number of exclusions an event rule may specify. */
+#define DEFAULT_MAX_EVENT_EXCLUSION_COUNT 65536
+
 #define DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_ENV		  "LTTNG_RELAYD_TCP_KEEP_ALIVE"
 #define DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_IDLE_TIME_ENV "LTTNG_RELAYD_TCP_KEEP_ALIVE_IDLE_TIME"
 #define DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_MAX_PROBE_COUNT_ENV \

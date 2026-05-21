@@ -6,6 +6,7 @@
  */
 
 #include <common/credentials.hpp>
+#include <common/defaults.hpp>
 #include <common/error.hpp>
 #include <common/hashtable/hashtable.hpp>
 #include <common/hashtable/utils.hpp>
@@ -658,6 +659,14 @@ ssize_t lttng_event_rule_user_tracepoint_create_from_payload(struct lttng_payloa
 	}
 
 	tracepoint_comm = (typeof(tracepoint_comm)) current_buffer_view.data;
+
+	if (tracepoint_comm->exclusions_count > DEFAULT_MAX_EVENT_EXCLUSION_COUNT) {
+		ERR_FMT("Failed to initialize from malformed event rule tracepoint: exclusion count exceeds the allowed limit: count={}, max={}",
+			tracepoint_comm->exclusions_count,
+			DEFAULT_MAX_EVENT_EXCLUSION_COUNT);
+		ret = -1;
+		goto end;
+	}
 
 	rule = lttng_event_rule_user_tracepoint_create();
 	if (!rule) {
