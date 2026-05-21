@@ -538,7 +538,7 @@ static void modprobe_remove_lttng(const struct kern_modules_param *modules, int 
 		}
 
 		ret = rmmod_recurse(mod);
-		if (ret == -EEXIST) {
+		if (ret == -ENOENT) {
 			DBG("Module %s is not in kernel.", modules[i].name);
 		} else if (modules[i].load_policy == KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED &&
 			   ret < 0) {
