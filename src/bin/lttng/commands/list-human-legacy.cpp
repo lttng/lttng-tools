@@ -8,7 +8,7 @@
 
 #include "list-common.hpp"
 #include "list-human-legacy.hpp"
-#include "list-wrappers.hpp"
+#include "view-wrappers.hpp"
 
 #include <common/exception.hpp>
 #include <common/macros.hpp>

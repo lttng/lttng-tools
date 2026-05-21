@@ -4,12 +4,11 @@
  * SPDX-License-Identifier: GPL-2.0-only
  */
 
-#ifndef _LTTNG_LIST_WRAPPERS_HPP
-#define _LTTNG_LIST_WRAPPERS_HPP
-
-#include "list-common.hpp"
+#ifndef LTTNG_CLI_COMMANDS_VIEW_WRAPPERS_HPP
+#define LTTNG_CLI_COMMANDS_VIEW_WRAPPERS_HPP
 
 #include <common/exception.hpp>
+#include <common/format.hpp>
 #include <common/make-unique-wrapper.hpp>
 #include <common/string-utils/c-string-view.hpp>
 
@@ -18,10 +17,13 @@
 #include <vendor/optional.hpp>
 
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
+#include <fstream>
 #include <map>
 #include <set>
 #include <string>
+#include <sys/types.h>
 #include <utility>
 #include <vector>
 
@@ -182,19 +184,26 @@ private:
 namespace internal {
 
 /*
- * Wraps get_cmdline_by_pid().
+ * Returns the command line of the process having the PID `pid`, or
+ * `nonstd::nullopt` if it can't be read (for example because the
+ * process is gone).
+ *
+ * `/proc/PID/cmdline` separates the command-line arguments with null
+ * bytes; this function returns the first one, namely the executable
+ * path, which preserves the historical behaviour of this helper.
  */
-inline nonstd::optional<std::string> pid_cmdline(const pid_t pid)
+inline nonstd::optional<std::string> get_cmdline_by_pid(const pid_t pid)
 {
-	const auto raw = get_cmdline_by_pid(pid);
+	std::ifstream cmdline_file(lttng::format("/proc/{}/cmdline", pid));
 
-	if (raw) {
-		std::string result(raw);
-		std::free(raw);
-		return result;
+	if (!cmdline_file) {
+		return nonstd::nullopt;
 	}
 
-	return nonstd::nullopt;
+	std::string cmdline;
+
+	std::getline(cmdline_file, cmdline, '\0');
+	return cmdline;
 }
 
 } /* namespace internal */
@@ -225,7 +234,7 @@ public:
 
 	nonstd::optional<std::string> cmdline() const
 	{
-		return internal::pid_cmdline(pid());
+		return internal::get_cmdline_by_pid(pid());
 	}
 
 	const tracepoint_field_set& fields() const noexcept
@@ -263,7 +272,7 @@ public:
 
 	nonstd::optional<std::string> cmdline() const
 	{
-		return internal::pid_cmdline(pid());
+		return internal::get_cmdline_by_pid(pid());
 	}
 };
 
@@ -555,7 +564,10 @@ private:
 			auto field_it = field_map.find(key);
 
 			if (field_it != field_map.end()) {
-				/* Safe to move because both maps are temporary */
+				/*
+				 * Safe to move because both maps
+				 * are temporary.
+				 */
 				fields = std::move(field_it->second);
 			}
 
@@ -1135,7 +1147,10 @@ inline bool event_rule::operator<(const event_rule& other) const noexcept
 	}
 	case LTTNG_EVENT_TRACEPOINT:
 	{
-		/* Compare log level types, log levels, and filter expressions */
+		/*
+		 * Compare log level types, log levels,
+		 * and filter expressions.
+		 */
 		const auto lhs = as_ust_tracepoint();
 		const auto rhs = other.as_ust_tracepoint();
 
@@ -1948,8 +1963,8 @@ inline java_python_event_record_channel event_record_channel::as_java_python() c
 }
 
 /*
- * Holds information about event record channels for a specific recording session
- * and domain.
+ * Holds information about event record channels for a specific
+ * recording session and domain.
  *
  * Owns the wrapped library event record channel array pointer.
  */
@@ -2336,8 +2351,8 @@ public:
 	}
 
 	/*
-	 * Returns a snapshot of the available process attribute values for
-	 * this tracker.
+	 * Returns a snapshot of the available process attribute values
+	 * for this tracker.
 	 */
 	nonstd::optional<std::set<process_attr_value>> inclusion_set() const
 	{
@@ -2455,7 +2470,10 @@ public:
 			return lhs < rhs;
 		}
 
-		/* Consider same-type domains equivalent for ordering purposes */
+		/*
+		 * Consider same-type domains equivalent for
+		 * ordering purposes.
+		 */
 		return false;
 	}
 
@@ -2978,8 +2996,8 @@ public:
 	}
 
 	/*
-	 * Returns a snapshot of the available automatic rotation schedules
-	 * of this recording session.
+	 * Returns a snapshot of the available automatic rotation
+	 * schedules of this recording session.
 	 */
 	rotation_schedule_set rotation_schedules() const
 	{
@@ -3030,7 +3048,8 @@ public:
 	 * Returns a snapshot of the default recording session
 	 * snapshot output.
 	 *
-	 * Returns `nonstd::nullopt` if there's no default snapshot output.
+	 * Returns `nonstd::nullopt` if there's no default
+	 * snapshot output.
 	 *
 	 * Only valid when is_snapshot_mode() returns true.
 	 */
@@ -3165,4 +3184,4 @@ private:
 } /* namespace cli */
 } /* namespace lttng */
 
-#endif /* _LTTNG_LIST_WRAPPERS_HPP */
+#endif /* LTTNG_CLI_COMMANDS_VIEW_WRAPPERS_HPP */

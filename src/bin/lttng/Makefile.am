@@ -22,7 +22,7 @@ lttng_SOURCES = command.hpp conf.cpp conf.hpp commands/start.cpp \
 				commands/list-human.cpp commands/list-human.hpp \
 				commands/list-human-legacy.cpp commands/list-human-legacy.hpp \
 				commands/list-common.hpp \
-				commands/list-wrappers.hpp \
+				commands/view-wrappers.hpp \
 				commands/stop.cpp commands/enable_events.cpp \
 				commands/disable_events.cpp commands/enable_channels.cpp \
 				commands/disable_channels.cpp commands/add_context.cpp \

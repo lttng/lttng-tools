@@ -15,8 +15,9 @@
 #include <cstdint>
 #define _LGPL_SOURCE
 #include "../command.hpp"
+#include "list-common.hpp"
 #include "list-mi.hpp"
-#include "list-wrappers.hpp"
+#include "view-wrappers.hpp"
 
 #include <common/mi-lttng.hpp>
 #include <common/time.hpp>

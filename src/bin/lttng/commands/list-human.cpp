@@ -6,10 +6,10 @@
 
 #include "list-common.hpp"
 #include "list-human.hpp"
-#include "list-wrappers.hpp"
 #include "lttng/channel.h"
 #include "lttng/domain.h"
 #include "lttng/stream-info.h"
+#include "view-wrappers.hpp"
 
 #include <common/exception.hpp>
 #include <common/format.hpp>
