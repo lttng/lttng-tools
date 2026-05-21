@@ -650,10 +650,24 @@ int _generate_filter_bytecode(struct run_as_data *data, struct run_as_ret *ret_v
 
 	DBG("Size of bytecode generated: %u bytes.", bytecode_get_len(&ctx->bytecode->b));
 
-	/* Copy the lttng_bytecode_filter object to the return structure. */
-	memcpy(ret_value->u.generate_filter_bytecode.bytecode,
-	       &ctx->bytecode->b,
-	       sizeof(ctx->bytecode->b) + bytecode_get_len(&ctx->bytecode->b));
+	{
+		const auto bytecode_len =
+			sizeof(ctx->bytecode->b) + bytecode_get_len(&ctx->bytecode->b);
+
+		if (bytecode_len > sizeof(ret_value->u.generate_filter_bytecode.bytecode)) {
+			ERR_FMT("Generated filter bytecode exceeds the maximum size: generated_size_bytes={}, max_size_bytes={}",
+				bytecode_len,
+				sizeof(ret_value->u.generate_filter_bytecode.bytecode));
+			ret_value->_error = true;
+			ret = -1;
+			goto end;
+		}
+
+		/* Copy the lttng_bytecode object to the return structure. */
+		memcpy(ret_value->u.generate_filter_bytecode.bytecode,
+		       &ctx->bytecode->b,
+		       bytecode_len);
+	}
 
 end:
 	if (ctx) {
