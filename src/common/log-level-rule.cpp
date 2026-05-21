@@ -137,7 +137,10 @@ ssize_t lttng_log_level_rule_create_from_payload(struct lttng_payload_view *view
 		rule = lttng_log_level_rule_at_least_as_severe_as_create((int) comm->level);
 		break;
 	default:
-		abort();
+		ERR_FMT("Invalid log level rule type encountered while creating log level rule from payload: type_id={}",
+			static_cast<int>(comm->type));
+		ret = -1;
+		goto end;
 	}
 
 	if (!rule) {
