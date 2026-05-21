@@ -1892,6 +1892,24 @@ int viewer_get_next_index(struct relay_connection *conn)
 		goto send_reply;
 	}
 
+	/*
+	 * Refuse to serve an index for a stream belonging to a session this
+	 * viewer has not attached to. This also covers the case where the
+	 * viewer has not created its session yet (NULL viewer session), which
+	 * would otherwise lead to a NULL dereference below. The check is
+	 * performed before acquiring the session lock as
+	 * viewer_session_is_attached() acquires it itself.
+	 */
+	if (!viewer_session_is_attached(conn->viewer_session, vstream->stream->trace->session)) {
+		viewer_index.status = LTTNG_VIEWER_INDEX_ERR;
+		DBG("Client requested index of stream id %" PRIu64
+		    " for a session it is not attached to, returning status=%s",
+		    (uint64_t) be64toh(request_index.stream_id),
+		    lttng_viewer_next_index_return_code_str(
+			    (enum lttng_viewer_next_index_return_code) viewer_index.status));
+		goto send_reply;
+	}
+
 	/* Use back. ref. Protected by refcounts. */
 	rstream = vstream->stream;
 	ctf_trace = rstream->trace;
@@ -2316,6 +2334,20 @@ int viewer_get_packet(struct relay_connection *conn)
 		reply_size += packet_data_len;
 	}
 
+	/*
+	 * Refuse to serve a packet for a stream belonging to a session this
+	 * viewer has not attached to. This also covers the case where the
+	 * viewer has not created its session yet (NULL viewer session).
+	 */
+	if (!viewer_session_is_attached(conn->viewer_session, vstream->stream->trace->session)) {
+		get_packet_status = LTTNG_VIEWER_GET_PACKET_ERR;
+		DBG("Client requested packet of stream id %" PRIu64
+		    " for a session it is not attached to, returning status=%s",
+		    stream_id,
+		    lttng_viewer_get_packet_return_code_str(get_packet_status));
+		goto error;
+	}
+
 	reply = zmalloc<char>(reply_size);
 	if (!reply) {
 		get_packet_status = LTTNG_VIEWER_GET_PACKET_ERR;
@@ -2432,6 +2464,20 @@ int viewer_get_metadata(struct relay_connection *conn)
 		DBG("Client requested metadata of unknown stream id %" PRIu64,
 		    (uint64_t) be64toh(request.stream_id));
 		reply.status = htobe32(LTTNG_VIEWER_METADATA_ERR);
+		goto send_reply_unlock_vstream;
+	}
+
+	/*
+	 * Refuse to serve metadata for a stream belonging to a session this
+	 * viewer has not attached to. This also covers the case where the
+	 * viewer has not created its session yet (NULL viewer session), which
+	 * would otherwise lead to a NULL dereference below.
+	 */
+	if (!viewer_session_is_attached(conn->viewer_session, vstream->stream->trace->session)) {
+		DBG("Client requested metadata of stream id %" PRIu64
+		    " for a session it is not attached to",
+		    (uint64_t) be64toh(request.stream_id));
+		reply.status = htobe32(LTTNG_VIEWER_METADATA_ERR);
 		goto send_reply;
 	}
 
@@ -2454,7 +2500,7 @@ int viewer_get_metadata(struct relay_connection *conn)
 		 * an error.
 		 */
 		dispose_of_stream = vstream->metadata_sent > 0 && vstream->stream->closed;
-		goto send_reply;
+		goto send_reply_unlock_vstream;
 	}
 
 	if (vstream->stream->trace_chunk &&
@@ -2467,7 +2513,7 @@ int viewer_get_metadata(struct relay_connection *conn)
 							  vstream->stream->trace_chunk);
 		if (ret) {
 			reply.status = htobe32(LTTNG_VIEWER_METADATA_ERR);
-			goto send_reply;
+			goto send_reply_unlock_vstream;
 		}
 	}
 
@@ -2506,7 +2552,7 @@ int viewer_get_metadata(struct relay_connection *conn)
 
 		reply.status = htobe32(LTTNG_VIEWER_NO_NEW_METADATA);
 		len = 0;
-		goto send_reply;
+		goto send_reply_unlock_vstream;
 	} else if (vstream->stream_file.trace_chunk && !vstream->stream_file.handle && len > 0) {
 		/*
 		 * Either this is the first time the metadata file is read, or a
@@ -2542,7 +2588,7 @@ int viewer_get_metadata(struct relay_connection *conn)
 				if (vstream->stream->closed) {
 					viewer_stream_put(vstream);
 				}
-				goto send_reply;
+				goto send_reply_unlock_vstream;
 			}
 			PERROR("Failed to open metadata file for viewer stream");
 			goto error;
@@ -2572,7 +2618,7 @@ int viewer_get_metadata(struct relay_connection *conn)
 				PERROR("Failed to seek metadata viewer stream file to `sent` position: pos = %" PRId64,
 				       vstream->metadata_sent);
 				reply.status = htobe32(LTTNG_VIEWER_METADATA_ERR);
-				goto send_reply;
+				goto send_reply_unlock_vstream;
 			}
 		}
 	}
@@ -2625,18 +2671,19 @@ int viewer_get_metadata(struct relay_connection *conn)
 	vstream->metadata_sent += read_len;
 	reply.status = htobe32(LTTNG_VIEWER_METADATA_OK);
 
-	goto send_reply;
+	goto send_reply_unlock_vstream;
 
 error:
 	reply.status = htobe32(LTTNG_VIEWER_METADATA_ERR);
 
-send_reply:
+send_reply_unlock_vstream:
 	health_code_update();
 	if (vstream) {
 		pthread_mutex_unlock(&vstream->stream->lock);
 		pthread_mutex_unlock(&vstream->stream->trace->lock);
 		pthread_mutex_unlock(&vstream->stream->trace->session->lock);
 	}
+send_reply:
 	ret = send_response(conn->sock, &reply, sizeof(reply));
 	if (ret < 0) {
 		goto end_free;
