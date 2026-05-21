@@ -1448,6 +1448,132 @@ SPDX-License-Identifier: MIT
 		</xs:sequence>
 	</xs:complexType>
 
+	<!-- Maps to the channel type (kernel or user) of a map -->
+	<xs:simpleType name="map_channel_type_type">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="kernel" />
+			<xs:enumeration value="user" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!-- Maps to the group type of a map -->
+	<xs:simpleType name="map_group_type_type">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="kernel-global" />
+			<xs:enumeration value="user-per-user" />
+			<xs:enumeration value="user-per-process" />
+			<xs:enumeration value="shared" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!-- Maps to a map group descriptor -->
+	<xs:complexType name="map_group_type">
+		<xs:sequence>
+			<xs:element name="type" type="tns:map_group_type_type" />
+			<xs:element name="effective_value_type" type="tns:map_channel_value_type_type" />
+			<xs:sequence minOccurs="0">
+				<!-- Owner ID: UID or PID -->
+				<xs:element name="owner_id" type="xs:unsignedInt" />
+				<!-- Human-readable owner name (user/command name); may be empty -->
+				<xs:element name="owner_name" type="xs:string" />
+			</xs:sequence>
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Maps to the value of a single map row -->
+	<xs:complexType name="map_row_value_type">
+		<xs:simpleContent>
+			<xs:extension base="xs:integer">
+				<xs:attribute name="has_overflow" type="xs:boolean" use="required" />
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+
+	<!-- Maps to a single map row (key/value pair) -->
+	<xs:complexType name="map_row_type">
+		<xs:all>
+			<xs:element name="key" type="xs:string" />
+			<xs:element name="value" type="tns:map_row_value_type" />
+		</xs:all>
+	</xs:complexType>
+
+	<!-- Maps to the set of rows of a map -->
+	<xs:complexType name="map_rows_type">
+		<xs:sequence>
+			<xs:element name="row" type="tns:map_row_type" minOccurs="0" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Maps to a set of map groups -->
+	<xs:complexType name="map_groups_type">
+		<xs:sequence>
+			<xs:element name="map_group" type="tns:map_group_type" minOccurs="0" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Maps to a set of map channel partition IDs -->
+	<xs:complexType name="map_part_ids_type">
+		<xs:sequence>
+			<xs:element name="part_id" type="xs:unsignedInt" minOccurs="0" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<!--
+		Maps to a `show-maps` table aggregated at the channel level:
+		the map groups and the union of selected partition IDs which
+		contributed to the aggregation.
+	-->
+	<xs:complexType name="per_channel_map_table_type">
+		<xs:sequence>
+			<xs:element name="session_name" type="xs:string" />
+			<xs:element name="channel_name" type="xs:string" />
+			<xs:element name="channel_type" type="tns:map_channel_type_type" />
+			<xs:element name="map_groups" type="tns:map_groups_type" />
+			<xs:element name="part_ids" type="tns:map_part_ids_type" />
+			<xs:element name="rows" type="tns:map_rows_type" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<!--
+		Maps to a `show-maps` table aggregated at the owner level: a
+		single map group and the selected partition IDs which
+		contributed.
+	-->
+	<xs:complexType name="per_owner_map_table_type">
+		<xs:sequence>
+			<xs:element name="session_name" type="xs:string" />
+			<xs:element name="channel_name" type="xs:string" />
+			<xs:element name="channel_type" type="tns:map_channel_type_type" />
+			<xs:element name="map_group" type="tns:map_group_type" />
+			<xs:element name="part_ids" type="tns:map_part_ids_type" />
+			<xs:element name="rows" type="tns:map_rows_type" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<!--
+		Maps to a `show-maps` table aggregated at the partition level: a
+		single partition of a single map group.
+	-->
+	<xs:complexType name="per_part_map_table_type">
+		<xs:sequence>
+			<xs:element name="session_name" type="xs:string" />
+			<xs:element name="channel_name" type="xs:string" />
+			<xs:element name="channel_type" type="tns:map_channel_type_type" />
+			<xs:element name="map_group" type="tns:map_group_type" />
+			<xs:element name="part_id" type="xs:unsignedInt" />
+			<xs:element name="rows" type="tns:map_rows_type" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Maps to the output of the `show-maps` command -->
+	<xs:complexType name="show_maps_type">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="per_channel_map_table" type="tns:per_channel_map_table_type" />
+			<xs:element name="per_owner_map_table" type="tns:per_owner_map_table_type" />
+			<xs:element name="per_part_map_table" type="tns:per_part_map_table_type" />
+		</xs:choice>
+	</xs:complexType>
+
 	<xs:complexType name="output_type">
 		<xs:choice>
 			<xs:element name="calibrate" type="tns:calibrate_type" minOccurs="0" />
@@ -1466,6 +1592,7 @@ SPDX-License-Identifier: MIT
 			<xs:element name="save" type="tns:save_type" minOccurs="0" />
 			<xs:element name="session" type="tns:session_type" minOccurs="0" />
 			<xs:element name="sessions" type="tns:sessions_type" minOccurs="0" />
+			<xs:element name="show-maps" type="tns:show_maps_type" minOccurs="0" />
 			<xs:element name="snapshot" type="tns:snapshot_type" minOccurs="0" />
 			<xs:element name="snapshot_action" type="tns:snapshot_cmd_type" minOccurs="0" />
 			<xs:element name="trigger" type="tns:trigger_type" minOccurs="0" />
@@ -1500,6 +1627,7 @@ SPDX-License-Identifier: MIT
 			<xs:enumeration value="rotate" />
 			<xs:enumeration value="save" />
 			<xs:enumeration value="set-session" />
+			<xs:enumeration value="show-maps" />
 			<xs:enumeration value="snapshot" />
 			<xs:enumeration value="start" />
 			<xs:enumeration value="stop" />

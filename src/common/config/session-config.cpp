@@ -560,6 +560,21 @@ int config_writer_write_element_string(struct config_writer *writer,
 	return std::min(write_ret, 0);
 }
 
+int config_writer_write_string(struct config_writer *writer, const char *value)
+{
+	if (!writer || !writer->writer || !value) {
+		return -1;
+	}
+
+	const auto encoded_value = encode_string(value);
+	if (!encoded_value) {
+		return -1;
+	}
+
+	const auto write_ret = xmlTextWriterWriteString(writer->writer, encoded_value);
+	return std::min(write_ret, 0);
+}
+
 namespace {
 ATTR_FORMAT_PRINTF(2, 3)
 void xml_error_handler(void *ctx __attribute__((unused)), const char *format, ...)

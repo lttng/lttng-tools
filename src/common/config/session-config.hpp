@@ -74,6 +74,21 @@ int config_writer_write_attribute(struct config_writer *writer,
 				  const char *value);
 
 /*
+ * Write a raw text node into the currently open element.
+ *
+ * Use after config_writer_open_element() (and any
+ * config_writer_write_attribute() calls) to populate the element's
+ * text content before config_writer_close_element().
+ *
+ * writer An instance of a configuration writer.
+ *
+ * value Text content to write.
+ *
+ * Returns zero on success; a negative value on error.
+ */
+int config_writer_write_string(struct config_writer *writer, const char *value);
+
+/*
  * Close the current element tag.
  *
  * writer An instance of a configuration writer.

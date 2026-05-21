@@ -840,6 +840,16 @@ int mi_lttng_writer_close_element(struct mi_writer *writer)
 	return config_writer_close_element(writer->writer);
 }
 
+int mi_lttng_writer_write_attribute(struct mi_writer *writer, const char *name, const char *value)
+{
+	return config_writer_write_attribute(writer->writer, name, value);
+}
+
+int mi_lttng_writer_write_string(struct mi_writer *writer, const char *value)
+{
+	return config_writer_write_string(writer->writer, value);
+}
+
 int mi_lttng_close_multi_element(struct mi_writer *writer, unsigned int nb_element)
 {
 	int ret, i;

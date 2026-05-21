@@ -460,6 +460,31 @@ int mi_lttng_writer_open_element(struct mi_writer *writer, const char *element_n
 int mi_lttng_writer_close_element(struct mi_writer *writer);
 
 /*
+ * Write an attribute on the currently open element.
+ *
+ * writer An instance of a machine interface writer.
+ * name Attribute name.
+ * value Attribute value.
+ *
+ * Returns zero on success; a negative value on error.
+ */
+int mi_lttng_writer_write_attribute(struct mi_writer *writer, const char *name, const char *value);
+
+/*
+ * Write a raw text node into the currently open element.
+ *
+ * Useful to populate an element which also carries attributes:
+ * open the element, write its attribute(s), then call this to fill
+ * its text content before closing it.
+ *
+ * writer An instance of a machine interface writer.
+ * value Text content to write.
+ *
+ * Returns zero on success; a negative value on error.
+ */
+int mi_lttng_writer_write_string(struct mi_writer *writer, const char *value);
+
+/*
  * Close multiple element.
  *
  * writer An instance of a machine interface writer.

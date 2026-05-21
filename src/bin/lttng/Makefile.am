@@ -46,6 +46,12 @@ lttng_SOURCES = command.hpp conf.cpp conf.hpp commands/start.cpp \
 				commands/remove_trigger.cpp \
 				commands/reclaim_memory.cpp \
 				commands/add_map_channel.cpp \
+				commands/show-maps.cpp \
+				commands/show-maps-cmd-cfg.hpp \
+				commands/show-maps-output-model.hpp \
+				commands/show-maps-build-output.cpp commands/show-maps-build-output.hpp \
+				commands/show-maps-human.cpp commands/show-maps-human.hpp \
+				commands/show-maps-mi.cpp commands/show-maps-mi.hpp \
 				utils.cpp utils.hpp lttng.cpp \
 				uprobe.cpp uprobe.hpp \
 				exception.hpp exception.cpp
