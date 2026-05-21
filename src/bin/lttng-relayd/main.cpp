@@ -1884,6 +1884,18 @@ int relay_add_stream(const struct lttcomm_relayd_hdr *recv_hdr __attribute__((un
 	}
 
 	/*
+	 * The channel name is used as-is as the trace file name; it must be a
+	 * single path component that cannot be used to walk up the hierarchy or
+	 * to escape the stream's directory.
+	 */
+	if (channel_name[0] == '\0' || strchr(channel_name, '/') ||
+	    utils_path_walks_up_hierarchy(channel_name)) {
+		ERR_FMT("Refusing stream channel name as it is unsafe for use in a path: `{}`",
+			channel_name);
+		goto send_reply;
+	}
+
+	/*
 	 * Backward compatibility for --group-output-by-session.
 	 * Prior to lttng 2.11, the complete path is passed by the stream.
 	 * Starting at 2.11, lttng-relayd uses chunk. When dealing with producer
