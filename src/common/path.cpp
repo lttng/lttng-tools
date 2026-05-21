@@ -12,6 +12,40 @@
 #include <common/macros.hpp>
 #include <common/path.hpp>
 
+#include <algorithm>
+
+/*
+ * Return true if `path` can be used to walk up the directory hierarchy, that
+ * is, if any of its '/'-separated components is exactly "..".
+ *
+ * A plain substring search for ".." is intentionally avoided as it would also
+ * reject legitimate names such as "my..name"; only whole path components are
+ * considered.
+ */
+bool utils_path_walks_up_hierarchy(const lttng::c_string_view path) noexcept
+{
+	if (!path.data()) {
+		return false;
+	}
+
+	const lttng::c_string_view parent_dir = "..";
+	const auto *component_begin = path.begin();
+
+	while (component_begin != path.end()) {
+		const auto *const component_end = std::find(component_begin, path.end(), '/');
+
+		if ((std::size_t)(component_end - component_begin) == parent_dir.len() &&
+		    std::equal(component_begin, component_end, parent_dir.begin())) {
+			return true;
+		}
+
+		/* Move past this component and its trailing separator, if any. */
+		component_begin = component_end == path.end() ? component_end : component_end + 1;
+	}
+
+	return false;
+}
+
 /*
  * Return a partial realpath(3) of the path even if the full path does not
  * exist. For instance, with /tmp/test1/test2/test3, if test2/ does not exist
