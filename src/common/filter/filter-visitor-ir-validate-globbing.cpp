@@ -61,9 +61,9 @@ static int validate_globbing(struct ir_op *node)
 
 		if ((left->op == IR_OP_LOAD && left->data_type == IR_DATA_STRING) ||
 		    (right->op == IR_OP_LOAD && right->data_type == IR_DATA_STRING)) {
-			if ((left->op == IR_OP_LOAD &&
+			if ((left->op == IR_OP_LOAD && left->data_type == IR_DATA_STRING &&
 			     left->u.load.u.string.type == IR_LOAD_STRING_TYPE_GLOB_STAR) ||
-			    (right->op == IR_OP_LOAD &&
+			    (right->op == IR_OP_LOAD && right->data_type == IR_DATA_STRING &&
 			     right->u.load.u.string.type == IR_LOAD_STRING_TYPE_GLOB_STAR)) {
 				/* Test 2. */
 				if (node->u.binary.type != AST_OP_EQ &&
