@@ -365,7 +365,20 @@ ssize_t lttng_action_increment_map_value_create_from_payload(struct lttng_payloa
 	enum lttng_action_status status;
 	size_t offset;
 
-	comm = (typeof(comm)) view->buffer.data;
+	{
+		const struct lttng_payload_view comm_view =
+			lttng_payload_view_from_view(view, 0, sizeof(*comm));
+
+		if (!lttng_payload_view_is_valid(&comm_view)) {
+			ERR_FMT("Failed to create increment-map-value action from payload: buffer is too short to contain the action header: expected_size_bytes={}, payload_size_bytes={}",
+				sizeof(*comm),
+				view->buffer.size);
+			consumed_len = -1;
+			goto end;
+		}
+
+		comm = (typeof(comm)) comm_view.buffer.data;
+	}
 	session_name = (const char *) &comm->data;
 
 	if (!lttng_buffer_view_contains_string(
