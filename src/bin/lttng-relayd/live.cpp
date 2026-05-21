@@ -2638,34 +2638,33 @@ int viewer_get_metadata(struct relay_connection *conn)
 	read_len = lttng_read(fd, data, len);
 	fs_handle_put_fd(vstream->stream_file.handle);
 	fd = -1;
-	if (read_len < len) {
-		if (read_len < 0) {
-			PERROR("Failed to read metadata file");
-			goto error;
-		} else {
-			/*
-			 * A clear has been performed which prevents the relay
-			 * from sending `len` bytes of metadata.
-			 *
-			 * It is important not to send any metadata if we
-			 * couldn't read all the available metadata in one shot:
-			 * sending partial metadata can cause the client to
-			 * attempt to parse an incomplete (incoherent) metadata
-			 * stream, which would result in an error.
-			 */
-			const off_t seek_ret =
-				fs_handle_seek(vstream->stream_file.handle, -read_len, SEEK_CUR);
 
-			DBG("Failed to read metadata: requested = %" PRIu64 ", got = %zd",
-			    len,
-			    read_len);
-			read_len = 0;
-			len = 0;
-			if (seek_ret < 0) {
-				PERROR("Failed to restore metadata file position after partial read");
-				ret = -1;
-				goto error;
-			}
+	if (read_len < 0) {
+		PERROR("Failed to read metadata file");
+		goto error;
+	}
+
+	if (static_cast<uint64_t>(read_len) < len) {
+		/*
+		 * A clear has been performed which prevents the relay
+		 * from sending `len` bytes of metadata.
+		 *
+		 * It is important not to send any metadata if we
+		 * couldn't read all the available metadata in one shot:
+		 * sending partial metadata can cause the client to
+		 * attempt to parse an incomplete (incoherent) metadata
+		 * stream, which would result in an error.
+		 */
+		const off_t seek_ret =
+			fs_handle_seek(vstream->stream_file.handle, -read_len, SEEK_CUR);
+
+		DBG("Failed to read metadata: requested = %" PRIu64 ", got = %zd", len, read_len);
+		read_len = 0;
+		len = 0;
+		if (seek_ret < 0) {
+			PERROR("Failed to restore metadata file position after partial read");
+			ret = -1;
+			goto error;
 		}
 	}
 	vstream->metadata_sent += read_len;
