@@ -20,7 +20,6 @@
 #include <vendor/optional.hpp>
 
 #include <limits.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string>
 #include <sys/types.h>
@@ -82,45 +81,6 @@ struct list_cmd_config final {
 	list_cmd_mem_usage_mode mem_usage = list_cmd_mem_usage_mode::TOTAL;
 	list_cmd_style style = list_cmd_style::BREATHE;
 };
-
-/*
- * Get command line from /proc for a specific pid.
- *
- * On success, return an allocated string pointer to the proc cmdline.
- * On error, return NULL.
- */
-static inline char *get_cmdline_by_pid(pid_t pid)
-{
-	int ret;
-	FILE *fp = nullptr;
-	char *cmdline = nullptr;
-	/* Can't go bigger than /proc/LTTNG_MAX_PID/cmdline */
-	char path[sizeof("/proc//cmdline") + sizeof(LTTNG_MAX_PID_STR) - 1];
-
-	snprintf(path, sizeof(path), "/proc/%d/cmdline", pid);
-	fp = fopen(path, "r");
-	if (fp == nullptr) {
-		goto end;
-	}
-
-	/* Caller must free() *cmdline */
-	cmdline = zmalloc<char>(PATH_MAX);
-	if (!cmdline) {
-		PERROR("malloc cmdline");
-		goto end;
-	}
-
-	ret = fread(cmdline, 1, PATH_MAX, fp);
-	if (ret < 0) {
-		PERROR("fread proc list");
-	}
-
-end:
-	if (fp) {
-		fclose(fp);
-	}
-	return cmdline;
-}
 
 /*
  * Handle the status returned by lttng_process_attr_tracker_handle operations.
