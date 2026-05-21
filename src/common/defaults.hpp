@@ -372,6 +372,9 @@
 /* Default maximal number of exclusions an event rule may specify. */
 #define DEFAULT_MAX_EVENT_EXCLUSION_COUNT 65536
 
+/* Default maximal number of events an agent may report in a listing reply. */
+#define DEFAULT_MAX_AGENT_EVENT_COUNT 131072
+
 #define DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_ENV		  "LTTNG_RELAYD_TCP_KEEP_ALIVE"
 #define DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_IDLE_TIME_ENV "LTTNG_RELAYD_TCP_KEEP_ALIVE_IDLE_TIME"
 #define DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_MAX_PROBE_COUNT_ENV \

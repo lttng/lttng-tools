@@ -14,6 +14,7 @@
 
 #include <common/common.hpp>
 #include <common/compat/endian.hpp>
+#include <common/defaults.hpp>
 #include <common/sessiond-comm/agent.hpp>
 #include <common/urcu.hpp>
 
@@ -295,21 +296,25 @@ error:
 namespace {
 int recv_reply(struct lttcomm_sock *sock, void *buf, size_t size)
 {
-	int ret;
 	ssize_t len;
 
 	LTTNG_ASSERT(sock);
 	LTTNG_ASSERT(buf);
 
 	len = sock->ops->recvmsg(sock, buf, size, 0);
-	if (len < size) {
-		ret = -errno;
-		goto error;
+	if (len < 0) {
+		return -errno;
 	}
-	ret = 0;
 
-error:
-	return ret;
+	if ((size_t) len < size) {
+		WARN_FMT(
+			"Failed to receive complete reply from agent: received_size_bytes={}, expected_size_bytes={}",
+			len,
+			size);
+		return -EIO;
+	}
+
+	return 0;
 }
 } /* namespace */
 
@@ -323,9 +328,9 @@ error:
 namespace {
 ssize_t list_events(struct agent_app *app, struct lttng_event **events)
 {
-	int ret, i, len = 0, offset = 0;
-	uint32_t nb_event;
-	size_t data_size;
+	int ret;
+	uint32_t i, nb_event;
+	size_t data_size, payload_len, offset = 0;
 	uint32_t reply_ret_code;
 	struct lttng_event *tmp_events = nullptr;
 	struct lttcomm_agent_list_reply *reply = nullptr;
@@ -372,6 +377,22 @@ ssize_t list_events(struct agent_app *app, struct lttng_event **events)
 	}
 
 	nb_event = be32toh(reply->nb_event);
+	payload_len = data_size - sizeof(*reply);
+
+	if (nb_event > DEFAULT_MAX_AGENT_EVENT_COUNT) {
+		ERR_FMT("Failed to list agent events: event count exceeds the allowed limit: count={}, max={}",
+			nb_event,
+			DEFAULT_MAX_AGENT_EVENT_COUNT);
+		ret = LTTNG_ERR_INVALID;
+		goto error;
+	}
+
+	/* Crude validation; each event name is at least one-byte long. */
+	if (nb_event > payload_len) {
+		ret = LTTNG_ERR_INVALID;
+		goto error;
+	}
+
 	tmp_events = calloc<lttng_event>(nb_event);
 	if (!tmp_events) {
 		ret = LTTNG_ERR_NOMEM;
@@ -379,16 +400,30 @@ ssize_t list_events(struct agent_app *app, struct lttng_event **events)
 	}
 
 	for (i = 0; i < nb_event; i++) {
-		offset += len;
-		if (lttng_strncpy(tmp_events[i].name,
-				  reply->payload + offset,
-				  sizeof(tmp_events[i].name))) {
+		const char *const name = reply->payload + offset;
+		const char *separator;
+		size_t remaining;
+
+		if (offset >= payload_len) {
 			ret = LTTNG_ERR_INVALID;
 			goto error;
 		}
+
+		remaining = payload_len - offset;
+		separator = static_cast<const char *>(memchr(name, '\0', remaining));
+		if (!separator) {
+			ret = LTTNG_ERR_INVALID;
+			goto error;
+		}
+
+		if (lttng_strncpy(tmp_events[i].name, name, sizeof(tmp_events[i].name))) {
+			ret = LTTNG_ERR_INVALID;
+			goto error;
+		}
+
 		tmp_events[i].pid = app->pid;
 		tmp_events[i].enabled = -1;
-		len = strlen(reply->payload + offset) + 1;
+		offset += (size_t) (separator - name) + 1;
 	}
 
 	*events = tmp_events;
