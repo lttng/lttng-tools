@@ -3945,6 +3945,7 @@ enum relay_connection_status relay_process_data_receive_payload(struct relay_con
 	bool new_stream = false, close_requested = false, index_flushed = false;
 	uint64_t left_to_receive = state->left_to_receive;
 	struct relay_session *session;
+	std::uint64_t total_pkt_size = 0;
 
 	DBG3("Receiving data for stream id %" PRIu64 " seqnum %" PRIu64 ", %" PRIu64
 	     " bytes received, %" PRIu64 " bytes left to receive",
@@ -4041,12 +4042,14 @@ enum relay_connection_status relay_process_data_receive_payload(struct relay_con
 		goto end_stream_unlock;
 	}
 
+	total_pkt_size = static_cast<uint64_t>(state->header.data_size) +
+		static_cast<uint64_t>(state->header.padding_size);
 	if (session_streams_have_index(session)) {
 		ret = stream_update_index(stream,
 					  state->header.net_seq_num,
 					  state->rotate_index,
 					  &index_flushed,
-					  state->header.data_size + state->header.padding_size);
+					  total_pkt_size);
 		if (ret < 0) {
 			ERR("Failed to update index: stream %" PRIu64 " net_seq_num %" PRIu64
 			    " ret %d",
@@ -4062,10 +4065,8 @@ enum relay_connection_status relay_process_data_receive_payload(struct relay_con
 		new_stream = true;
 	}
 
-	ret = stream_complete_packet(stream,
-				     state->header.data_size + state->header.padding_size,
-				     state->header.net_seq_num,
-				     index_flushed);
+	ret = stream_complete_packet(
+		stream, total_pkt_size, state->header.net_seq_num, index_flushed);
 	if (ret) {
 		status = RELAY_CONNECTION_STATUS_ERROR;
 		goto end_stream_unlock;
