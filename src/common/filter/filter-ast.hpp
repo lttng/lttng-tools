@@ -26,9 +26,11 @@
 			fprintf(stdout, "[debug] " fmt, ##args); \
 	} while (0)
 
-// the parameter name (of the reentrant 'yyparse' function)
-// data is a pointer to a 'SParserParam' structure
-// #define YYPARSE_PARAM	parser_ctx
+/*
+ * the parameter name (of the reentrant 'yyparse' function)
+ * data is a pointer to a 'SParserParam' structure
+ * #define YYPARSE_PARAM	parser_ctx
+ */
 
 #ifndef YY_TYPEDEF_YY_SCANNER_T
 #define YY_TYPEDEF_YY_SCANNER_T
@@ -162,6 +164,8 @@ struct filter_parser_ctx {
 	struct filter_ast *ast;
 	struct cds_list_head allocated_strings;
 	struct ir_op *ir_root;
+	/* Depth of the recursive IR walk, to bound nesting. */
+	unsigned int ir_recursion_depth;
 	struct lttng_bytecode_alloc *bytecode;
 	struct lttng_bytecode_alloc *bytecode_reloc;
 };
