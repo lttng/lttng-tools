@@ -842,8 +842,21 @@ ssize_t lttng_triggers_create_from_payload(struct lttng_payload_view *src_view,
 		goto error;
 	}
 
-	/* lttng_trigger_comms header */
-	triggers_comm = (const struct lttng_triggers_comm *) src_view->buffer.data;
+	/* lttng_triggers_comm header */
+	{
+		const struct lttng_payload_view triggers_comm_view =
+			lttng_payload_view_from_view(src_view, 0, sizeof(*triggers_comm));
+
+		if (!lttng_payload_view_is_valid(&triggers_comm_view)) {
+			ERR_FMT("Failed to create triggers from payload: buffer is too short to contain the trigger-list header: expected_size_bytes={}, payload_size_bytes={}",
+				sizeof(*triggers_comm),
+				src_view->buffer.size);
+			ret = -1;
+			goto error;
+		}
+
+		triggers_comm = (const struct lttng_triggers_comm *) triggers_comm_view.buffer.data;
+	}
 	offset += sizeof(*triggers_comm);
 
 	local_triggers = lttng_triggers_create();
