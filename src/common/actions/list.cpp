@@ -201,6 +201,12 @@ ssize_t lttng_action_list_create_from_payload(struct lttng_payload_view *view,
 		goto end;
 	}
 
+	if (view->buffer.size < sizeof(struct lttng_action_list_comm)) {
+		/* Payload not large enough to contain the action-list header. */
+		consumed_len = -1;
+		goto end;
+	}
+
 	comm = (typeof(comm)) view->buffer.data;
 
 	consumed_len = sizeof(struct lttng_action_list_comm);
