@@ -583,6 +583,16 @@ struct relay_stream *stream_create(struct ctf_trace *trace,
 	bool acquired_reference = false;
 	struct lttng_trace_chunk *current_trace_chunk;
 
+	/*
+	 * A tracefile size limit is meaningless without a tracefile count to
+	 * rotate through.
+	 */
+	if (tracefile_size != 0 && tracefile_count == 0) {
+		ERR("Refusing to create stream for channel \"%s\": a tracefile size limit was set with a tracefile count of zero",
+		    channel_name);
+		goto error_no_alloc;
+	}
+
 	stream = zmalloc<relay_stream>();
 	if (stream == nullptr) {
 		PERROR("relay stream zmalloc");
