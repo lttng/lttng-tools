@@ -5,6 +5,7 @@
  *
  */
 
+#include <common/defaults.hpp>
 #include <common/dynamic-buffer.hpp>
 #include <common/error.hpp>
 #include <common/format.hpp>
@@ -405,12 +406,26 @@ ssize_t lttng_key_template::create_from_payload(lttng_payload_view& view,
 
 	memcpy(&comm, comm_view.data, sizeof(comm));
 
+	const auto segment_count = comm.segment_count;
+
+	if (segment_count > DEFAULT_MAX_KEY_TEMPLATE_SEGMENT_COUNT) {
+		ERR_FMT("Failed to create key template from payload: segment count exceeds the allowed limit: count={}, max={}",
+			segment_count,
+			DEFAULT_MAX_KEY_TEMPLATE_SEGMENT_COUNT);
+		return -1;
+	}
+
+	/* Each segment occupies at least one byte; a larger count is necessarily invalid. */
+	if (segment_count > view.buffer.size - sizeof(comm)) {
+		return -1;
+	}
+
 	ssize_t consumed_len = sizeof(comm);
 	auto tmpl = lttng::make_unique<lttng_key_template>();
 
-	tmpl->segments.reserve(comm.segment_count);
+	tmpl->segments.reserve(segment_count);
 
-	for (uint32_t i = 0; i < comm.segment_count; ++i) {
+	for (uint32_t i = 0; i < segment_count; ++i) {
 		const struct lttng_buffer_view segment_view =
 			lttng_buffer_view_from_view(&view.buffer, consumed_len, -1);
 		std::unique_ptr<details::key_template_segment> segment;
