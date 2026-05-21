@@ -122,6 +122,7 @@ struct cmd_struct commands[] = {
 	{ "disable-rotation", cmd_disable_rotation },
 	{ "save", cmd_save },
 	{ "set-session", cmd_set_session },
+	{ "show-maps", cmd_show_maps },
 	{ "snapshot", cmd_snapshot },
 	{ "start", cmd_start },
 	{ "status", cmd_status },

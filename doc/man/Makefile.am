@@ -43,7 +43,8 @@ MAN1_NAMES = \
 	lttng-add-trigger \
 	lttng-remove-trigger \
 	lttng-list-triggers \
-	lttng-reclaim-memory
+	lttng-reclaim-memory \
+	lttng-show-maps
 MAN3_NAMES =
 MAN7_NAMES = lttng-event-rule lttng-concepts
 MAN8_NAMES = lttng-sessiond lttng-relayd

@@ -1,0 +1,678 @@
+// SPDX-FileCopyrightText: 2026 Philippe Proulx <pproulx@efficios.com>
+//
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+lttng-show-maps(1)
+==================
+:revdate: 21 April 2026
+
+
+NAME
+----
+lttng-show-maps - Show counter values of an LTTng recording session
+
+
+SYNOPSIS
+--------
+[verse]
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *show-maps* [option:--session='SESSION']
+      [option:--channel='CHANNEL']... [option:--type=(**user** | **kernel**)]...
+      [option:--per=(**channel** | **owner** | **cpu**)]
+      [option:--uid='USER'... | option:--all-uids] [option:--pid='PID'... | option:--all-pids]
+      [option:--shared] [option:--system] [option:--part-id='ID']... [option:--cpu-id='ID']...
+      [option:--key='KEY']... [option:--key-glob='GLOB']... [option:--non-init-values]
+      [option:--sort-by=(**key** | **value**)] [option:--sort-order=(**asc** | **desc**)]
+      [option:--limit='COUNT']
+
+DESCRIPTION
+-----------
+The `lttng show-maps` command shows the current counter values of
+one or more map channels (see man:lttng-add-map-channel(1)) of:
+
+With the option:--session='SESSION' option::
+    The recording session named 'SESSION'.
+
+Without the option:--session option::
+    The current recording session (see man:lttng-concepts(7) to learn
+    more about the current recording session).
+
+See man:lttng-concepts(7) to learn more about recording sessions, map
+channels, and counters.
+
+For each selected map channel, the command prints one or more tables
+which associate string keys with integral counter values (the only
+existing key and value types as of LTTng{nbsp}{lttng_version}).
+
+The last column of a counter table, named ``Overflow?'', contains a ``✔''
+symbol as an overflow indicator for the corresponding row; this means at
+least one update of the counter wrapped around (modular arithmetic)
+because the result couldn't be represented with the effective value type
+of the map group (see the nloption:--value-type option of
+man:lttng-add-map-channel(1)).
+
+Under the option:--per=++channel++ and option:--per=++owner++
+aggregation levels, the overflow indicator symbol is the logical _OR_ of
+the overflow indicators of the raw, per-CPU or shared counter rows which
+contribute to the aggregated value.
+
+This command shows colored text when the terminal supports it.
+Override the terminal coloring behaviour with the
+`LTTNG_TERM_COLOR` and `NO_COLOR` environment variables.
+
+[IMPORTANT]
+====
+The `lttng show-maps` command does :not: provide an atomic snapshot of
+the counter values: the connected session daemon (see
+man:lttng-sessiond(8)) reads the values one by one, and LTTng tracers
+may concurrently update any of them while the command runs.
+
+Therefore, `lttng show-maps` does :not: guarantee that its output
+reflects the state of the counters at a single instant.
+
+To obtain a consistent view of the counter values, LTTng recommends to
+either:
+
+* Stop the recording session with the man:lttng-stop(1) command before
+  running `lttng show-maps`.
+
+* Disable the recording event rules (see man:lttng-disable-event(1))
+  and/or remove the triggers (see man:lttng-remove-trigger(1)) having
+  an ``increment map value'' action which targets the map channel to
+  inspect.
+====
+
+See the ``<<examples,EXAMPLES>>'' section below for usage examples.
+
+[[aggregation]]
+Aggregation
+~~~~~~~~~~~
+The option:--per option sets the aggregation level of the tables;
+the command only aggregates the counters which the
+<<selection-options,selection options>> select (see the
+``<<selection,Selection>>'' section below):
+
+`channel`::
+    Print one table per map channel, with the value for each key being
+    the sum of the values of this key across:
++
+* All the selected owners: the whole system, Unix users, or process IDs,
+  depending on the type and buffer ownership model of the map channel.
+
+* The shared counters when selected.
+
+* The selected CPUs of the map channel.
+
+`owner`::
+    Print one table per selected owner (the whole system, a Unix user,
+    or a process ID) per map channel, with the value for each key being
+    the sum of the values of this key across all the selected CPUs of
+    the owner.
++
+For the purpose of this command, the owner of the map channel-wide
+_shared counters_ (see man:lttng-concepts(7)) is the LTTng session
+daemon itself (see man:lttng-sessiond(8)), since the session daemon
+increments those counters directly. Therefore, the shared counters, when
+selected, appear as their own additional table for each map channel.
+
+`cpu`::
+`part`::
+    Print one table per CPU per owner per map channel, with the value
+    for each key being the raw, non-aggregated counter.
++
+When selected, the shared counters appear as a single additional table
+per map channel, with no per-CPU breakdown.
++
+`part` stands for ``partition'': as of LTTng{nbsp}{lttng_version}, a
+partition is always a CPU, but a future LTTng release may introduce
+other kinds of partitions.
++
+As of LTTng{nbsp}{lttng_version}, `cpu` is an alias of `part`, but
+this may change if other kinds of partitions become available;
+therefore `part` is the more future-proof form.
+
+[[selection]]
+Selection
+~~~~~~~~~
+Each selection option contributes to a _whitelist_ which controls one
+_axis_ of the output:
+
+[options="header"]
+|====
+|Axis |Selection options
+|Map channel name |option:--channel
+|Map channel type |option:--type
+|Owner |option:--uid, option:--all-uids, option:--pid, option:--all-pids, option:--system, option:--shared
+|CPU ID |option:--part-id (or option:--cpu-id)
+|Key |option:--key, option:--key-glob
+|Value |option:--non-init-values
+|====
+
+The owner axis selects the counters of  which _owners_ the command
+includes. An owner is the whole system (for a Linux kernel map channel),
+a Unix user (user space map channel with the per-user buffer ownership
+model), or a process ID (user space map channel with the per-process
+buffer ownership model); see the nloption:--buffer-ownership option of
+man:lttng-add-map-channel(1).
+
+For the purpose of this command, the owner of the map channel-wide
+_shared counters_ (see man:lttng-concepts(7)) is the LTTng session
+daemon itself (see man:lttng-sessiond(8)), since the session daemon
+increments those counters directly. The option:--shared option
+therefore selects an owner like the other options of this axis.
+
+Considering the above, the options of the owner axis are:
+
+option:--uid='USER' (repeatable)::
+    Select the counters of the Unix user 'USER' (user ID or user name).
++
+Only applies to user space map channels with the per-user buffer
+ownership model.
+
+option:--all-uids::
+    Select the counters of _all_ the Unix users.
++
+The purpose of this option is to exclude system (Linux kernel) and
+shared counters.
++
+Only applies to user space map channels with the per-user buffer
+ownership model.
+
+option:--pid='PID' (repeatable)::
+    Select the counters of the process ID 'PID'.
++
+Only applies to user space map channels with the per-process buffer
+ownership model.
+
+option:--all-pids::
+    Select the counters of _all_ the process IDs.
++
+The purpose of this option is to exclude system (Linux kernel) and
+shared counters.
++
+Only applies to user space map channels with the per-process buffer
+ownership model.
+
+option:--system::
+    Select the counters of the system.
++
+Only applies to Linux kernel map channels.
+
+option:--shared::
+    Select the shared counters.
++
+Applies to any map channel.
+
+The Unix user, process ID, and system owners have one map of counters
+per CPU, therefore the CPU{nbsp}ID selection (see the option:--part-id
+option) subdivides them. On the other hand, the shared counters have no
+CPU, therefore the CPU{nbsp}ID selection doesn't subdivide them.
+
+By default, the whitelist of an axis contains _all_ the entities of that
+axis, so that, without any selection option, the command selects _every_
+counter. As soon as you use a selection option for a given axis, the
+command starts an explicit whitelist for that axis and selects only the
+listed entities.
+
+For the owner axis, this means that as soon as you use any of the
+options above, the command selects only the owners you explicitly list,
+for example:
+
+[options="header"]
+|====
+|Owner axis options |Selected owners
+|None |All the owners, including the shared counters
+|option:--uid=++alice++ |Just the counters of Unix user `alice`
+|option:--uid=++alice++ option:--shared |Just the counters of Unix user `alice` and the shared counters
+|option:--shared |Just the shared counters
+|option:--all-uids |Just the counters of all the Unix users
+|option:--system |Just the Linux kernel counters
+|option:--system option:--shared |Just the Linux kernel and shared counters
+|option:--system option:--all-uids |Just the Linux kernel counters and the counters of all the Unix users
+|====
+
+The command combines the whitelists as such:
+
+Within a single axis::
+    The command takes the logical _OR_ of all the selections.
++
+For example, option:--uid=++1000++ and option:--uid=++1002++ together
+select the counters of the Unix users having the ID{nbsp}1000 _OR_ the
+ID{nbsp}1002. Likewise, option:--shared and option:--uid=++1000++
+together select the shared counters _OR_ the counters of the Unix user
+having the ID{nbsp}1000.
+
+Across axes::
+    The command takes the logical _AND_.
++
+For example, option:--channel=++my-counters++ and option:--uid=++1000++
+together select the counters of the Unix user having the ID{nbsp}1000
+within the map channel named `my-counters`.
++
+That being said:
++
+* option:--part-id and option:--cpu-id have no effect on shared counter
+  selection.
+
+The option:--per aggregation level (see the
+``<<aggregation,Aggregation>>'' section above) determines what the
+command does with the selected counters:
+
+* Counters at the chosen aggregation level appear as their own tables.
+
+* Counters below the chosen aggregation level are summed into the
+  values of the enclosing table.
+
+For example, considering option:--uid=++1000++
+and option:--uid=++1002++:
+
+With option:--per=++channel++::
+    The command prints one table per map channel, summing into it the
+    counter values of both Unix users{nbsp}1000 and{nbsp}1002.
+
+With option:--per=++owner++::
+    The command prints one table for Unix user{nbsp}1000 and another for
+    Unix user{nbsp}1002, for each map channel.
+
+Sorting and display
+~~~~~~~~~~~~~~~~~~~
+Control the ordering of rows within each table with the
+option:--sort-by and option:--sort-order options.
+
+Limit the number of rows of each table to the first 'COUNT' sorted
+entries with the option:--limit='COUNT' option.
+
+
+include::common-lttng-cmd-options-head.txt[]
+
+
+Recording target
+~~~~~~~~~~~~~~~~
+option:-s 'SESSION', option:--session='SESSION'::
+    Show the counter values of the recording session named 'SESSION'
+    instead of the current recording session.
+
+
+Aggregation
+~~~~~~~~~~~
+See the ``<<aggregation,Aggregation>>'' section above.
+
+option:--per='LEVEL'::
+    Set the aggregation level of the printed tables to 'LEVEL'.
++
+'LEVEL' is one of:
++
+--
+`channel` (default)::
+    Print one table per map channel, with the value for each key being
+    the sum of the values of this key across:
++
+* All the selected owners: the whole system, Unix users, or process IDs,
+  depending on the type and buffer ownership model of the map channel.
+
+* The shared counters when selected.
+
+* The selected CPUs of the map channel.
+
+`owner`::
+    Print one table per selected owner
+    per map channel, with the value for each key being the
+    sum of the values of this key across all the selected CPUs of the
+    owner.
++
+For the purpose of this command, the owner of the map channel-wide
+_shared counters_ (see man:lttng-concepts(7)) is the LTTng session
+daemon itself (see man:lttng-sessiond(8)), since the session daemon
+increments those counters directly. Therefore, the shared counters, when
+selected, appear as their own additional table for each map channel.
+
+`cpu`::
+`part`::
+    Print one table per CPU per owner per map channel, with the value
+    for each key being the raw, non-aggregated counter.
++
+When selected, the shared counters appear as a single additional table
+per map channel, with no per-CPU breakdown.
++
+`part` stands for ``partition'': as of LTTng{nbsp}{lttng_version}, a
+partition is always a CPU, but a future LTTng release may introduce
+other kinds of partitions.
++
+As of LTTng{nbsp}{lttng_version}, `cpu` is an alias of `part`, but
+this may change if other kinds of partitions become available;
+therefore `part` is the more future-proof form.
+--
+
+
+[[selection-options]]
+Selection
+~~~~~~~~~
+See the ``<<selection,Selection>>'' section above to learn how the
+command combines repeated and mixed selection options.
+
+option:--all-pids::
+    Select the counters of _all_ the process IDs.
++
+Only applies to user space map channels having the per-process buffer
+ownership model (see the nloption:--buffer-ownership option of
+man:lttng-add-map-channel(1)).
++
+You cannot combine this option with option:--pid.
+
+option:--all-uids::
+    Select the counters of _all_ the Unix users.
++
+Only applies to user space map channels having the per-user buffer
+ownership model (see the nloption:--buffer-ownership option of
+man:lttng-add-map-channel(1)).
++
+You cannot combine this option with option:--uid.
+
+option:-c 'CHANNEL', option:--channel='CHANNEL'::
+    Select the counters of the map channel named 'CHANNEL'.
++
+You can repeat this option.
+
+option:--cpu-id='ID'::
+    As of LTTng{nbsp}{lttng_version}, this option is an alias of
+    option:--part-id, but this may change if other kinds of partitions
+    become available; therefore option:--part-id is the more
+    future-proof form.
++
+No effect on the selection of shared counters.
++
+You can repeat this option.
+
+option:--key='KEY'::
+    Select the counters having the exact key 'KEY'.
++
+You can repeat this option.
+
+option:--key-glob='GLOB'::
+    Select the counters of which the key matches the globbing
+    pattern 'GLOB'.
++
+In 'GLOB', the `*` character means ``match anything''. To match a
+literal `*` character, use :escwc:.
++
+You can repeat this option.
+
+option:--non-init-values::
+    Select the counters of which the value is __not__ zero.
+
+option:--part-id='ID'::
+    Select the counters of the CPU ID 'ID'.
++
+'ID' is a 0-based CPU index.
++
+As of LTTng{nbsp}{lttng_version}, option:--cpu-id is an alias of
+this option, but this may change if other kinds of partitions
+become available; therefore this option is the more future-proof
+form.
++
+No effect on the selection of shared counters.
++
+You can repeat this option.
+
+option:--pid='PID'::
+    Select the counters of the process ID 'PID'.
++
+Only applies to user space map channels having the per-process buffer
+ownership model (see the nloption:--buffer-ownership option of
+man:lttng-add-map-channel(1)).
++
+You cannot combine this option with option:--all-pids.
++
+You can repeat this option.
+
+option:--shared::
+    Select the shared counters (see man:lttng-concepts(7) to
+    learn more).
++
+Applies to any map channel.
+
+option:--system::
+    Select the counters of the system (Linux kernel).
++
+Only applies to Linux kernel map channels.
+
+option:--type='TYPE'::
+    Select the counters of the map channels of which the type is 'TYPE'.
++
+'TYPE' is one of:
++
+--
+`kernel`::
+    Linux kernel map channels (see the option:--type=++kernel++ option
+    of man:lttng-add-map-channel(1)).
+
+`user`::
+    User space map channels (see the option:--type=++user++ option of
+    man:lttng-add-map-channel(1)).
+--
++
+You can repeat this option, for example to select both Linux kernel
+and user space map channels with option:--type=++kernel++
+option:--type=++user++ (equivalent to not using this option at all).
+
+option:--uid='USER'::
+    Select the counters of the Unix user 'USER'.
++
+'USER' is either a user ID or a user name.
++
+The `lttng` command itself performs the user name resolution.
++
+Only applies to user space map channels having the per-user buffer
+ownership model (see the nloption:--buffer-ownership option of
+man:lttng-add-map-channel(1)).
++
+You cannot combine this option with option:--all-uids.
++
+You can repeat this option.
+
+
+Sorting
+~~~~~~~
+option:--sort-by='COLUMN'::
+    Set the column by which the rows of each printed table are sorted
+    to 'COLUMN'.
++
+'COLUMN' is one of:
++
+--
+`key` (default)::
+    Sort the rows by key, as strings.
+
+`value`::
+    Sort the rows by counter value, as integers.
+--
+
+option:--sort-order='ORDER'::
+    Set the order in which the rows of each printed table are sorted
+    to 'ORDER', depending on option:--sort-by.
++
+'ORDER' is one of:
++
+--
+`asc` (default)::
+    Sort the rows in ascending order.
+
+`desc`::
+    Sort the rows in descending order.
+--
+
+
+Display
+~~~~~~~
+option:--limit='COUNT'::
+    Print the first 'COUNT' sorted rows of each table.
++
+By default, the command prints all the rows of each table.
+
+
+include::common-lttng-cmd-help-options.txt[]
+
+
+include::common-lttng-cmd-after-options.txt[]
+
+
+[[examples]]
+EXAMPLES
+--------
+.Show the counters of the map channel named `my-counters` of the current recording session.
+====
+See the option:--channel option.
+
+[role="term"]
+----
+$ lttng show-maps --channel=my-counters
+----
+====
+
+.Show the top 10 ``hottest'' counters of a specific map channel.
+====
+See the option:--sort-by, option:--sort-order, and option:--limit
+options.
+
+[role="term"]
+----
+$ lttng show-maps --channel=my-counters --sort-by=value \
+                  --sort-order=desc --limit=10
+----
+====
+
+.Show the per-CPU breakdown of a specific counter of a specific map channel.
+====
+See the option:--per, option:--channel, and option:--key options.
+
+[role="term"]
+----
+$ lttng show-maps --channel=my-counters --per=cpu \
+                  --key=myapp:my_event
+----
+====
+
+.Show all the counters whose keys start with `sched_`, sorted by descending value.
+====
+See the option:--key-glob, option:--sort-by, and option:--sort-order
+options.
+
+[role="term"]
+----
+$ lttng show-maps --key-glob='sched_*' --sort-by=value \
+                  --sort-order=desc
+----
+====
+
+.Show the per-user totals for two specific Unix users.
+====
+See the option:--per and option:--uid options.
+
+[role="term"]
+----
+$ lttng show-maps --per=owner --uid=1000 --uid=1002
+----
+====
+
+.Show the five least incremented counters of a specific map channel.
+====
+See the option:--sort-by and option:--limit options.
+
+[role="term"]
+----
+$ lttng show-maps --channel=my-counters --sort-by=value --limit=5
+----
+====
+
+.Show only the shared counters of a specific map channel.
+====
+See the option:--shared and option:--channel options.
+
+[role="term"]
+----
+$ lttng show-maps --channel=my-counters --shared
+----
+====
+
+.Show only the system counters of a specific kernel map channel.
+====
+See the option:--system and option:--channel options.
+
+[role="term"]
+----
+$ lttng show-maps --channel=my-counters --system
+----
+====
+
+.Show only the shared counters of the user space map channels.
+====
+See the option:--type option.
+
+[role="term"]
+----
+$ lttng show-maps --type=user --shared
+----
+====
+
+.Show the per-user totals for every Unix user of a map channel.
+====
+See the option:--per and option:--all-uids options.
+
+[role="term"]
+----
+$ lttng show-maps --per=owner --all-uids
+----
+====
+
+.Show the system counters and the shared counters of a kernel map channel, side by side.
+====
+See the option:--per, option:--system, and option:--shared options.
+
+[role="term"]
+----
+$ lttng show-maps --channel=my-counters --per=owner --system \
+                  --shared
+----
+====
+
+.Show a specific Unix user's counters and the shared counters of a map channel, side by side.
+====
+See the option:--per, option:--uid, and option:--shared options.
+
+[role="term"]
+----
+$ lttng show-maps --channel=my-counters --per=owner --uid=meow \
+                  --shared
+----
+====
+
+.Show only the counters of a specific map channel of which the value isn't zero.
+====
+See the option:--non-init-values and option:--channel options.
+
+[role="term"]
+----
+$ lttng show-maps --channel=my-counters --non-init-values
+----
+====
+
+.Show the per-CPU counters of a specific process ID from CPU{nbsp}4 to CPU{nbsp}12.
+====
+See the option:--pid, option:--per, and option:--cpu-id options.
+
+[role="term"]
+----
+$ lttng show-maps --pid=$(pidof my-app) --per=cpu --cpu-id={4..12}
+----
+====
+
+
+include::common-footer.txt[]
+
+
+SEE ALSO
+--------
+man:lttng(1),
+man:lttng-add-map-channel(1),
+man:lttng-add-trigger(1),
+man:lttng-list(1),
+man:lttng-concepts(7)
