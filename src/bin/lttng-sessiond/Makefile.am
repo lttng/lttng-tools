@@ -121,6 +121,7 @@ liblttng_sessiond_common_la_SOURCES += trace-ust.cpp ust-registry.cpp ust-app.cp
 			ust-map-group.hpp ust-map-group.cpp \
 			ust-key-registry.hpp ust-key-registry.cpp \
 			ust-map-channel.hpp ust-map-channel.cpp \
+			ust-counter-event-attachment.hpp ust-counter-event-attachment.cpp \
 			ust-trace-class-index.hpp ust-trace-class-index.cpp \
 			ust-clock-class.hpp ust-clock-class.cpp \
 			agent-thread.cpp agent-thread.hpp \
