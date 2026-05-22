@@ -1963,11 +1963,45 @@ void ls::ust::domain_orchestrator::_synchronize_app_map_channels(ust::app_sessio
 				app,
 				channel.configuration().name,
 				ex.what());
+			continue;
 		} catch (const std::exception& ex) {
 			ERR_FMT("Failed to attach map channel to application: app={}, map_name=`{}`, error=`{}`",
 				app,
 				channel.configuration().name,
 				ex.what());
+			continue;
+		}
+
+		/*
+		 * The channel is now attached to this app: install every rule
+		 * already registered against it, so an app that synchronizes
+		 * after the rules were registered still hosts them.
+		 */
+		for (const auto& rule_entry : channel._rules) {
+			const auto *const rule_event_rule = rule_entry.first.first;
+			const auto *const rule_action = rule_entry.first.second;
+			const auto user_token = rule_entry.second.user_token;
+
+			try {
+				_install_rule_on_app(app,
+						     ua_sess,
+						     channel,
+						     *rule_event_rule,
+						     *rule_action,
+						     user_token);
+			} catch (const ust::app_communication_error& ex) {
+				DBG_FMT("Application unreachable while installing existing map rule on new attachment: "
+					"app={}, map_name=`{}`, error=`{}`",
+					app,
+					channel.configuration().name,
+					ex.what());
+			} catch (const std::exception& ex) {
+				ERR_FMT("Failed to install existing map rule on new app attachment: "
+					"app={}, map_name=`{}`, error=`{}`",
+					app,
+					channel.configuration().name,
+					ex.what());
+			}
 		}
 	}
 }
@@ -3684,22 +3718,88 @@ void ls::ust::domain_orchestrator::remove_map_channel(const lsc::map_channel_con
 
 void ls::ust::domain_orchestrator::add_map_channel_event_rule(
 	const lsc::map_channel_configuration& target_map,
-	const lttng_event_rule& event_rule [[maybe_unused]],
-	const lttng_action& incr_map_value_action [[maybe_unused]])
+	const lttng_event_rule& event_rule,
+	const lttng_action& incr_map_value_action)
 {
-	LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
-		"ust::domain_orchestrator::add_map_channel_event_rule is not yet implemented: map={}",
-		target_map));
+	DBG_FMT("UST orchestrator adding map channel event rule: map={}", target_map);
+
+	const auto channel_it = _map_channels.find(&target_map);
+	LTTNG_ASSERT(channel_it != _map_channels.end());
+	auto& channel = *channel_it->second;
+
+	const auto user_token = channel.allocate_user_token();
+
+	/*
+	 * Record the rule on the channel before fanning out: if installation
+	 * fails on some apps, the rule still exists at the channel level so
+	 * app churn (a late-attaching app picks it up in
+	 * _synchronize_app_map_channels) and rule removal stay consistent.
+	 * Failed apps simply lack the per-app attachment.
+	 */
+	const sessiond::map::event_rule_action_key key{ &event_rule, &incr_map_value_action };
+	const auto inserted =
+		channel._rules.emplace(key, ust::map_channel::rule_record{ user_token });
+	LTTNG_ASSERT(inserted.second);
+
+	for (auto& app_session_entry : _app_sessions) {
+		auto& app = *app_session_entry.first;
+		auto& ua_sess = *app_session_entry.second;
+
+		if (ua_sess.deleted || ua_sess.handle < 0) {
+			continue;
+		}
+
+		/*
+		 * Only apps that received the channel can host a rule against
+		 * it; the channel attachment may have failed for some apps.
+		 */
+		if (ua_sess.map_channel_attachments.count(&channel) == 0) {
+			continue;
+		}
+
+		try {
+			_install_rule_on_app(app,
+					     ua_sess,
+					     channel,
+					     event_rule,
+					     incr_map_value_action,
+					     user_token);
+		} catch (const ust::app_communication_error& ex) {
+			DBG_FMT("Application unreachable while installing map channel event rule: "
+				"app={}, map_name=`{}`, error=`{}`",
+				app,
+				target_map.name,
+				ex.what());
+		} catch (const std::exception& ex) {
+			ERR_FMT("Failed to install map channel event rule on application: "
+				"app={}, map_name=`{}`, error=`{}`",
+				app,
+				target_map.name,
+				ex.what());
+		}
+	}
 }
 
 void ls::ust::domain_orchestrator::remove_map_channel_event_rule(
 	const lsc::map_channel_configuration& target_map,
-	const lttng_event_rule& event_rule [[maybe_unused]],
-	const lttng_action& incr_map_value_action [[maybe_unused]])
+	const lttng_event_rule& event_rule,
+	const lttng_action& incr_map_value_action)
 {
-	LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
-		"ust::domain_orchestrator::remove_map_channel_event_rule is not yet implemented: map={}",
-		target_map));
+	DBG_FMT("UST orchestrator removing map channel event rule: map={}", target_map);
+
+	const auto channel_it = _map_channels.find(&target_map);
+	LTTNG_ASSERT(channel_it != _map_channels.end());
+	auto& channel = *channel_it->second;
+
+	/* Drop every per-app attachment first, then the channel-level record. */
+	for (auto& app_session_entry : _app_sessions) {
+		_uninstall_rule_from_app(
+			*app_session_entry.second, channel, event_rule, incr_map_value_action);
+	}
+
+	const sessiond::map::event_rule_action_key key{ &event_rule, &incr_map_value_action };
+	const auto erased = channel._rules.erase(key);
+	LTTNG_ASSERT(erased == 1);
 }
 
 std::uint64_t ls::ust::domain_orchestrator::get_size_one_more_packet_per_stream(
