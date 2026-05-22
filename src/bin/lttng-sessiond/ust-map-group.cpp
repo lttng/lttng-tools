@@ -137,6 +137,13 @@ int map_group::app_handle::master_objd() const noexcept
 	return _master_handle.get()->header.handle;
 }
 
+lttng_ust_abi_object_data *map_group::app_handle::master_object_data() const noexcept
+{
+	LTTNG_ASSERT(!_moved_from);
+	LTTNG_ASSERT(_master_handle.get());
+	return _master_handle.get();
+}
+
 map_group::app_handle::~app_handle()
 {
 	if (_moved_from) {

@@ -93,6 +93,17 @@ public:
 		app_attachment& operator=(const app_attachment&) = delete;
 		~app_attachment() = default;
 
+		/*
+		 * App-side object data of the master counter backing this
+		 * attachment, used as the `counter_data` when installing a
+		 * counter-event rule on the application. Borrowed; owned by the
+		 * underlying map_group::app_handle.
+		 */
+		lttng_ust_abi_object_data *master_object_data() const noexcept
+		{
+			return _counter_attachment.master_object_data();
+		}
+
 	private:
 		ust::map_group::app_handle _counter_attachment;
 		app_objd_registry::registration_token _objd_token;

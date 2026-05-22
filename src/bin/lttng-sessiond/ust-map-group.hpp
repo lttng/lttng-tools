@@ -59,6 +59,15 @@ public:
 		 */
 		int master_objd() const noexcept;
 
+		/*
+		 * App-side object data of the master counter. This is the
+		 * `counter_data` argument when installing a counter-event rule
+		 * against this application's copy of the counter
+		 * (lttng_ust_ctl_counter_create_event). Borrowed; owned by this
+		 * handle.
+		 */
+		lttng_ust_abi_object_data *master_object_data() const noexcept;
+
 	private:
 		friend class map_group;
 

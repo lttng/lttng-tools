@@ -13,11 +13,13 @@
 
 #include <vendor/optional.hpp>
 
+#include <cstddef>
 #include <mutex>
 #include <sys/types.h>
 
 struct lttng_ust_abi_object_data;
 struct lttng_ust_abi_event;
+struct lttng_ust_abi_counter_event;
 struct lttng_ust_abi_event_notifier;
 struct lttng_ust_abi_event_exclusion;
 struct lttng_ust_abi_filter_bytecode;
@@ -125,6 +127,17 @@ public:
 					      lttng_ust_abi_object_data *counter_data);
 		void send_counter_cpu_data_to_ust(lttng_ust_abi_object_data *counter_data,
 						  lttng_ust_abi_object_data *counter_cpu_data);
+
+		/*
+		 * Install a counter-event rule on the application's copy of the
+		 * counter `counter_data`. `counter_event` / `counter_event_len`
+		 * are the payload built by the counter-event payload builder;
+		 * the per-rule handle is returned through `counter_event_data`.
+		 */
+		void counter_create_event(lttng_ust_abi_counter_event *counter_event,
+					  std::size_t counter_event_len,
+					  lttng_ust_abi_object_data *counter_data,
+					  lttng_ust_abi_object_data **counter_event_data);
 
 		/* Tracer introspection. */
 		void tracer_version(lttng_ust_abi_tracer_version *version);

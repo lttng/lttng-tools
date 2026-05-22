@@ -234,6 +234,18 @@ void lsu::app_command_socket::protocol_guard::send_counter_cpu_data_to_ust(
 	throw_on_ust_ctl_error(ret, "send counter CPU data to UST", _socket->_pid, fd());
 }
 
+void lsu::app_command_socket::protocol_guard::counter_create_event(
+	lttng_ust_abi_counter_event *counter_event,
+	std::size_t counter_event_len,
+	lttng_ust_abi_object_data *counter_data,
+	lttng_ust_abi_object_data **counter_event_data)
+{
+	const auto ret = lttng_ust_ctl_counter_create_event(
+		fd(), counter_event, counter_event_len, counter_data, counter_event_data);
+
+	throw_on_ust_ctl_error(ret, "counter create event", _socket->_pid, fd());
+}
+
 /* Tracer introspection. */
 
 void lsu::app_command_socket::protocol_guard::tracer_version(lttng_ust_abi_tracer_version *version)

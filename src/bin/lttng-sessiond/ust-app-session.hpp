@@ -11,19 +11,26 @@
 
 #include "ust-app-objd-registry.hpp"
 #include "ust-app-session-id.hpp"
+#include "ust-counter-event-attachment.hpp"
 #include "ust-map-channel.hpp"
 
 #include <common/credentials.hpp>
+#include <common/hash-combine.hpp>
 #include <common/macros.hpp>
 
 #include <lttng/domain.h>
 
+#include <cstddef>
+#include <functional>
 #include <memory>
 #include <stdint.h>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 
 struct consumer_output;
+struct lttng_event_rule;
+struct lttng_action;
 
 namespace lttng {
 namespace sessiond {
@@ -40,6 +47,28 @@ struct app;
 namespace lttng {
 namespace sessiond {
 namespace ust {
+
+/*
+ * Identifies one application's installation of one counter-event rule on a
+ * map channel by the (channel, event_rule, action) triple. This is a finer
+ * key than map_channel_attachments (keyed by channel alone) because rule
+ * attachments are created and erased by rule register/unregister,
+ * independently of the channel attachment's app/session lifetime.
+ */
+using counter_event_attachment_key =
+	std::tuple<const ust::map_channel *, const lttng_event_rule *, const lttng_action *>;
+
+struct counter_event_attachment_key_hash {
+	std::size_t operator()(const counter_event_attachment_key& key) const noexcept
+	{
+		auto seed = std::hash<const ust::map_channel *>{}(std::get<0>(key));
+		seed = lttng::utils::hash_combine(
+			seed, std::hash<const lttng_event_rule *>{}(std::get<1>(key)));
+		seed = lttng::utils::hash_combine(
+			seed, std::hash<const lttng_action *>{}(std::get<2>(key)));
+		return seed;
+	}
+};
 
 class app_session {
 public:
@@ -155,6 +184,21 @@ public:
 	 */
 	std::unordered_map<const ust::map_channel *, ust::map_channel::app_attachment>
 		map_channel_attachments;
+
+	/*
+	 * Per-app counter-event rule attachments for this recording session's
+	 * map channels, keyed by (channel, event_rule, action). The UST
+	 * orchestrator populates this when a map-channel rule install fans out
+	 * across apps, and erases entries on rule removal.
+	 *
+	 * Cleared when this app_session is destroyed (app departure or
+	 * recording session teardown), which releases every wrapped UST handle
+	 * via the application's command socket.
+	 */
+	std::unordered_map<counter_event_attachment_key,
+			   ust::counter_event_attachment,
+			   counter_event_attachment_key_hash>
+		counter_event_attachments;
 	/* Starts with 'ust'; no leading slash. */
 	const std::string path;
 	/* UID/GID of the application owning the session */

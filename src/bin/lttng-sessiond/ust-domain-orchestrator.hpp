@@ -548,6 +548,37 @@ private:
 	void _synchronize_app_map_channels(ust::app_session& ua_sess, ust::app& app);
 
 	/*
+	 * Install one counter-event rule on one (app, app_session) pair: build
+	 * the payload, call lttng_ust_ctl_counter_create_event against the
+	 * app's copy of the channel's counter, and store the resulting handle
+	 * in ua_sess.counter_event_attachments. The channel must already be
+	 * attached to the app (its master counter object data is looked up in
+	 * map_channel_attachments). Double-install of the same
+	 * (channel, event_rule, action, app) is a programming error.
+	 *
+	 * Throws on app-side communication failure
+	 * (ust::app_communication_error); the caller decides whether to skip
+	 * the app or propagate.
+	 */
+	void _install_rule_on_app(ust::app& app,
+				  ust::app_session& ua_sess,
+				  const ust::map_channel& channel,
+				  const lttng_event_rule& event_rule,
+				  const lttng_action& incr_map_value_action,
+				  std::uint64_t user_token);
+
+	/*
+	 * Erase the per-app attachment for one rule on one (app, app_session)
+	 * pair. RAII releases the handle. Safe to call on an inexistant
+	 * (event-rule, action): a missing entry is normal when the install
+	 * fails at register time.
+	 */
+	void _uninstall_rule_from_app(ust::app_session& ua_sess,
+				      const ust::map_channel& channel,
+				      const lttng_event_rule& event_rule,
+				      const lttng_action& incr_map_value_action) noexcept;
+
+	/*
 	 * Iterate all registered applications and call synchronize_app()
 	 * for each one. Used by start() and process attribute tracking
 	 * methods to push the current session configuration to all apps.

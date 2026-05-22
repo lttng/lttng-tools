@@ -8,6 +8,7 @@
 #include "agent.hpp"
 #include "consumer.hpp"
 #include "context-configuration.hpp"
+#include "counter-event-payload.hpp"
 #include "event-rule-configuration.hpp"
 #include "fd-limit.hpp"
 #include "health-sessiond.hpp"
@@ -23,6 +24,7 @@
 #include "ust-app-event.hpp"
 #include "ust-app.hpp"
 #include "ust-consumer.hpp"
+#include "ust-counter-event-attachment.hpp"
 #include "ust-domain-orchestrator.hpp"
 #include "ust-key-registry.hpp"
 #include "ust-map-channel.hpp"
@@ -223,8 +225,9 @@ ls::ust::domain_orchestrator::~domain_orchestrator()
 	/*
 	 * Tear down all app sessions owned by this orchestrator. Each
 	 * app session holds UST handles, consumer channel registrations,
-	 * and per-PID stream groups/trace classes that must be released
-	 * while the applications are still reachable.
+	 * counter-event rule attachments, and per-PID stream groups/trace
+	 * classes that must be released while the applications are still
+	 * reachable.
 	 *
 	 * on_app_departure() erases from _app_sessions, so iterate
 	 * until the map is drained.
@@ -1967,6 +1970,76 @@ void ls::ust::domain_orchestrator::_synchronize_app_map_channels(ust::app_sessio
 				ex.what());
 		}
 	}
+}
+
+void ls::ust::domain_orchestrator::_install_rule_on_app(ust::app& app,
+							ust::app_session& ua_sess,
+							const ust::map_channel& channel,
+							const lttng_event_rule& event_rule,
+							const lttng_action& incr_map_value_action,
+							std::uint64_t user_token)
+{
+	/*
+	 * The channel must already be attached to this app: the rule installs
+	 * against the app's copy of the channel's master counter.
+	 */
+	const auto attachment_it = ua_sess.map_channel_attachments.find(&channel);
+	LTTNG_ASSERT(attachment_it != ua_sess.map_channel_attachments.end());
+
+	auto payload = sessiond::map::details::serialize_for_ust(
+		event_rule, incr_map_value_action, user_token);
+
+	lttng_ust_abi_object_data *event_handle = nullptr;
+	{
+		auto guard = app.command_socket.lock();
+		guard.counter_create_event(
+			reinterpret_cast<lttng_ust_abi_counter_event *>(payload.data()),
+			payload.size(),
+			attachment_it->second.master_object_data(),
+			&event_handle);
+	}
+
+	/*
+	 * Take ownership of the returned handle now so it is released if a
+	 * later step throws.
+	 */
+	auto attachment = ust::counter_event_attachment(app, event_handle);
+
+	/*
+	 * The counter-event payload does not carry the filter, so apply it to
+	 * the new handle separately, the way the event-notifier path does.
+	 */
+	const auto *const filter_bytecode = lttng_event_rule_get_filter_bytecode(&event_rule);
+	if (filter_bytecode && set_ust_object_filter(&app, filter_bytecode, event_handle) < 0) {
+		LTTNG_THROW_ERROR(
+			fmt::format("Failed to set filter on map counter-event rule: app={}", app));
+	}
+
+	/*
+	 * The counter-event enabler is created disabled on the tracer side, like
+	 * every event enabler. Enable it now, after the filter is attached, so
+	 * the tracer instantiates the event-counter for each matching probe and
+	 * requests a key index from the session daemon; a disabled enabler never
+	 * reaches that path and the map records nothing.
+	 */
+	app.command_socket.lock().enable(event_handle);
+
+	const counter_event_attachment_key key{ &channel, &event_rule, &incr_map_value_action };
+	const auto insertion =
+		ua_sess.counter_event_attachments.emplace(key, std::move(attachment));
+	LTTNG_ASSERT(insertion.second);
+}
+
+void ls::ust::domain_orchestrator::_uninstall_rule_from_app(
+	ust::app_session& ua_sess,
+	const ust::map_channel& channel,
+	const lttng_event_rule& event_rule,
+	const lttng_action& incr_map_value_action) noexcept
+{
+	const counter_event_attachment_key key{ &channel, &event_rule, &incr_map_value_action };
+
+	/* RAII releases the handle; a missing entry is a normal no-op. */
+	ua_sess.counter_event_attachments.erase(key);
 }
 
 void ls::ust::domain_orchestrator::synchronize_app(ust::app& app)
