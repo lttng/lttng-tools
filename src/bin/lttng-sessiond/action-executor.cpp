@@ -12,6 +12,7 @@
 #include "notification-thread-internal.hpp"
 #include "session.hpp"
 #include "thread.hpp"
+#include "trigger-utils.hpp"
 
 #include <common/dynamic-array.hpp>
 #include <common/macros.hpp>
@@ -195,33 +196,6 @@ const char *get_action_name(const struct lttng_action *action)
 }
 } /* namespace */
 
-/* Check if this trigger allowed to interect with a given session. */
-namespace {
-bool is_trigger_allowed_for_session(const struct lttng_trigger *trigger,
-				    const ltt_session::locked_ref& session)
-{
-	bool is_allowed = false;
-	const struct lttng_credentials session_creds = {
-		.uid = LTTNG_OPTIONAL_INIT_VALUE(session->uid),
-		.gid = LTTNG_OPTIONAL_INIT_VALUE(session->gid),
-	};
-	/* Can never be NULL. */
-	const struct lttng_credentials *trigger_creds = lttng_trigger_get_credentials(trigger);
-
-	is_allowed = (lttng_credentials_is_equal_uid(trigger_creds, &session_creds)) ||
-		(lttng_credentials_get_uid(trigger_creds) == 0);
-	if (!is_allowed) {
-		WARN("Trigger is not allowed to interact with session `%s`: session uid = %ld, session gid = %ld, trigger uid = %ld",
-		     session->name,
-		     (long int) session->uid,
-		     (long int) session->gid,
-		     (long int) lttng_credentials_get_uid(trigger_creds));
-	}
-
-	return is_allowed;
-}
-} /* namespace */
-
 namespace {
 const char *get_trigger_name(const struct lttng_trigger *trigger)
 {
@@ -363,7 +337,7 @@ int action_executor_start_session_handler(struct action_executor *executor __att
 			return 0;
 		}
 
-		if (!is_trigger_allowed_for_session(work_item->trigger, session)) {
+		if (!lttng::sessiond::is_trigger_allowed_for_session(work_item->trigger, session)) {
 			return 0;
 		}
 
@@ -455,7 +429,7 @@ int action_executor_stop_session_handler(struct action_executor *executor __attr
 			return 0;
 		}
 
-		if (!is_trigger_allowed_for_session(work_item->trigger, session)) {
+		if (!lttng::sessiond::is_trigger_allowed_for_session(work_item->trigger, session)) {
 			return 0;
 		}
 
@@ -546,7 +520,7 @@ int action_executor_rotate_session_handler(struct action_executor *executor __at
 			return 0;
 		}
 
-		if (!is_trigger_allowed_for_session(work_item->trigger, session)) {
+		if (!lttng::sessiond::is_trigger_allowed_for_session(work_item->trigger, session)) {
 			return 0;
 		}
 
@@ -655,7 +629,7 @@ int action_executor_snapshot_session_handler(struct action_executor *executor
 			return 0;
 		}
 
-		if (!is_trigger_allowed_for_session(work_item->trigger, session)) {
+		if (!lttng::sessiond::is_trigger_allowed_for_session(work_item->trigger, session)) {
 			return 0;
 		}
 

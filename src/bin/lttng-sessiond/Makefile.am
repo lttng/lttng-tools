@@ -91,6 +91,8 @@ liblttng_sessiond_common_la_SOURCES = utils.cpp utils.hpp \
                        shared-group.hpp shared-group.cpp \
                        map-channel.hpp map-channel.cpp \
                        counter-event-payload.hpp counter-event-payload.cpp \
+                       map-action-register.hpp map-action-register.cpp \
+                       trigger-utils.hpp trigger-utils.cpp \
                        modules-map-group.hpp modules-map-group.cpp \
                        modules-key-registry.hpp modules-key-registry.cpp \
                        modules-map-channel.hpp modules-map-channel.cpp \
