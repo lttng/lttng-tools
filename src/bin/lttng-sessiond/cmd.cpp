@@ -25,6 +25,7 @@
 #include "lttng-channel-from-config.hpp"
 #include "lttng-sessiond.hpp"
 #include "lttng-syscall.hpp"
+#include "map-action-register.hpp"
 #include "map-channel-configuration.hpp"
 #include "notification-thread-commands.hpp"
 #include "notification-thread.hpp"
@@ -61,6 +62,7 @@
 
 #include <lttng/action/action-internal.hpp>
 #include <lttng/action/action.h>
+#include <lttng/action/increment-map-value.h>
 #include <lttng/channel-internal.hpp>
 #include <lttng/channel.h>
 #include <lttng/condition/condition-internal.hpp>
@@ -1519,6 +1521,95 @@ void cmd_add_map_channel(const ltt_session::locked_ref& session,
 		session->name,
 		domain_type,
 		added);
+
+	/*
+	 * Late binding: a trigger may have been registered before its target
+	 * map channel existed, in which case its increment-map-value action was
+	 * left unbound. Now that this channel exists, walk every registered
+	 * trigger and bind any action targeting this exact (domain, session,
+	 * channel).
+	 *
+	 * Enumerate triggers of every owner (uid 0 in the list command): a
+	 * trigger owned by one principal may legitimately target a session
+	 * whose channel is being added under another. Over-binding is prevented
+	 * by the owner-vs-session permission gate inside attempt_register, not
+	 * by scoping the enumeration.
+	 */
+	{
+		struct lttng_triggers *registered_triggers = nullptr;
+		const auto list_ret = notification_thread_command_list_triggers(
+			the_notification_thread_handle, 0, &registered_triggers);
+
+		if (list_ret != LTTNG_OK) {
+			ERR_FMT("Failed to enumerate registered triggers while binding them to a newly-added map channel: map_channel_name=`{}`",
+				payload.name);
+			return;
+		}
+
+		const auto triggers_cleanup =
+			lttng::make_scope_exit([&registered_triggers]() noexcept {
+				lttng_triggers_destroy(registered_triggers);
+			});
+
+		unsigned int trigger_count = 0;
+		const auto count_status =
+			lttng_triggers_get_count(registered_triggers, &trigger_count);
+		LTTNG_ASSERT(count_status == LTTNG_TRIGGER_STATUS_OK);
+
+		for (unsigned int i = 0; i < trigger_count; i++) {
+			const auto *const registered =
+				lttng_triggers_get_at_index(registered_triggers, i);
+			const auto *const condition = lttng_trigger_get_const_condition(registered);
+
+			if (lttng_condition_get_type(condition) !=
+			    LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES) {
+				continue;
+			}
+
+			lttng::sessiond::map::for_each_increment_map_value_action(
+				*registered, [&](const lttng_action& action) {
+					const char *const target_session_name =
+						lttng_action_increment_map_value_get_target_session_name(
+							&action);
+					const char *const target_channel_name =
+						lttng_action_increment_map_value_get_target_channel_name(
+							&action);
+
+					if (!target_session_name || !target_channel_name) {
+						return;
+					}
+
+					/*
+					 * Filter on the action's target domain before
+					 * its channel name: an action targeting the
+					 * same channel name in the *other* domain points
+					 * at a pre-existing channel that may already be
+					 * bound, and re-binding it would trip the
+					 * orchestrator's double-register assertion.
+					 */
+					lttng_domain_type action_target_domain = LTTNG_DOMAIN_NONE;
+					(void) lttng_action_increment_map_value_get_target_domain(
+						&action, &action_target_domain);
+
+					if (action_target_domain != domain_type ||
+					    lttng::c_string_view(session->name) !=
+						    lttng::c_string_view(target_session_name) ||
+					    lttng::c_string_view(payload.name) !=
+						    lttng::c_string_view(target_channel_name)) {
+						return;
+					}
+
+					try {
+						lttng::sessiond::map::attempt_register(
+							*registered, session, action);
+					} catch (const std::exception& ex) {
+						ERR_FMT("Failed to bind incr-map-value action to newly-added map channel: map_channel_name=`{}`, error=`{}`",
+							payload.name,
+							ex.what());
+					}
+				});
+		}
+	}
 }
 
 namespace {
@@ -5420,6 +5511,28 @@ lttng::ctl::trigger cmd_register_trigger(const struct lttng_credentials *cmd_cre
 	}
 
 	/*
+	 * Bind every increment-map-value action of the trigger to its target
+	 * map channel, if that channel currently exists. The notification
+	 * thread holds this very trigger object (it is stored, not copied), so
+	 * the event-rule and action addresses the orchestrator keys its rule
+	 * records on match the object cmd_unregister_trigger later recovers via
+	 * get_trigger. Resolution is best-effort: an action whose target
+	 * session or map channel does not yet exist stays unbound until
+	 * cmd_add_map_channel rebinds it.
+	 */
+	{
+		const auto *const condition = lttng_trigger_get_const_condition(trigger);
+
+		if (lttng_condition_get_type(condition) ==
+		    LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES) {
+			lttng::sessiond::map::for_each_increment_map_value_action(
+				*trigger, [trigger](const lttng_action& action) {
+					lttng::sessiond::map::attempt_register(*trigger, action);
+				});
+		}
+	}
+
+	/*
 	 * Return an updated trigger to the client.
 	 *
 	 * Since a modified version of the same trigger is returned, acquire a
@@ -5532,6 +5645,34 @@ enum lttng_error_code cmd_unregister_trigger(const struct lttng_credentials *cmd
 	}
 
 	LTTNG_ASSERT(sessiond_trigger);
+
+	/*
+	 * Tear down the counter-event rules bound to this trigger's
+	 * increment-map-value actions before the notification thread drops the
+	 * trigger, so the event-rule and action pointers the orchestrators keyed
+	 * their rule records on are still valid. attempt_unregister applies the
+	 * same skip set as attempt_register, so it removes a rule if and only if
+	 * registration installed one. Teardown must not be blocked by a single
+	 * misbehaving orchestrator, so failures are logged and swallowed.
+	 */
+	{
+		const struct lttng_condition *const condition =
+			lttng_trigger_get_const_condition(sessiond_trigger);
+
+		if (lttng_condition_get_type(condition) ==
+		    LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES) {
+			lttng::sessiond::map::for_each_increment_map_value_action(
+				*sessiond_trigger, [sessiond_trigger](const lttng_action& action) {
+					try {
+						lttng::sessiond::map::attempt_unregister(
+							*sessiond_trigger, action);
+					} catch (const std::exception& ex) {
+						ERR_FMT("Failed to unregister incr-map-value action; trigger teardown continues: error=`{}`",
+							ex.what());
+					}
+				});
+		}
+	}
 
 	/*
 	 * From this point on, no matter what, consider the trigger
