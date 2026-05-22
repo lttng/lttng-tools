@@ -5356,6 +5356,21 @@ lttng::ctl::trigger cmd_register_trigger(const struct lttng_credentials *cmd_cre
 	}
 
 	/*
+	 * Reject structurally-invalid triggers before doing any registration
+	 * work. liblttng-ctl already validates on the register path, but a
+	 * non-validating or hostile client must not be able to bypass the rule
+	 * (e.g. an agent-domain incr-map-value trigger with a placeholder key
+	 * template).
+	 */
+	if (!lttng_trigger_validate(trigger)) {
+		LTTNG_THROW_CTL(
+			fmt::format("Invalid trigger: trigger_name=`{}`, trigger_owner_uid={}",
+				    trigger_name,
+				    trigger_owner),
+			LTTNG_ERR_INVALID_TRIGGER);
+	}
+
+	/*
 	 * The bytecode generation also serves as a validation step for the
 	 * bytecode expressions.
 	 */

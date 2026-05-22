@@ -14,6 +14,8 @@
 #include <common/payload.hpp>
 
 #include <lttng/action/action-internal.hpp>
+#include <lttng/action/increment-map-value.h>
+#include <lttng/action/key-template-internal.hpp>
 #include <lttng/action/list-internal.hpp>
 #include <lttng/condition/buffer-usage.h>
 #include <lttng/condition/condition-internal.hpp>
@@ -25,8 +27,93 @@
 #include <lttng/event-rule/event-rule-internal.hpp>
 #include <lttng/trigger/trigger-internal.hpp>
 
+#include <algorithm>
 #include <inttypes.h>
 #include <pthread.h>
+
+namespace {
+/*
+ * Whether `action`'s key template carries at least one placeholder
+ * segment (EVENT_NAME or PROVIDER_NAME), as opposed to being literal-only.
+ *
+ * `action` must be an INCREMENT_MAP_VALUE action.
+ */
+bool incr_map_value_key_template_has_placeholder(const struct lttng_action *action)
+{
+	const auto *key_template = lttng_action_increment_map_value_get_key_template(action);
+
+	if (!key_template) {
+		/*
+		 * A missing template is not a placeholder concern; the generic
+		 * action validation rejects the action on its own.
+		 */
+		return false;
+	}
+
+	for (const auto& segment : key_template->segments) {
+		if (segment->type != lttng::action::details::key_template_segment_type::LITERAL) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/*
+ * Whether `action` (recursing through LIST) contains an INCREMENT_MAP_VALUE
+ * action whose key template carries a placeholder segment.
+ */
+bool action_has_placeholder_keyed_incr_map_value(const struct lttng_action *action)
+{
+	switch (lttng_action_get_type(action)) {
+	case LTTNG_ACTION_TYPE_INCREMENT_MAP_VALUE:
+		return incr_map_value_key_template_has_placeholder(action);
+	case LTTNG_ACTION_TYPE_LIST:
+	{
+		const auto view = lttng::ctl::const_action_list_view(action);
+
+		return std::any_of(
+			view.begin(), view.end(), action_has_placeholder_keyed_incr_map_value);
+	}
+	default:
+		return false;
+	}
+}
+
+/*
+ * Returns false if `trigger` pairs an agent-domain event-rule condition with an
+ * INCREMENT_MAP_VALUE action whose key template contains a placeholder segment
+ * (EVENT_NAME / PROVIDER_NAME).
+ *
+ * Agent-domain instrumentation (JUL, log4j, log4j2, python) funnels every event
+ * through a single synthetic LTTng-UST tracepoint per domain, so a placeholder
+ * resolves to the same domain-wide value for every logger and collapses them
+ * into a single map element; the per-logger identity lives in an event payload
+ * field the key-template grammar cannot reach. A literal-only key template stays
+ * valid because it names a single, well-defined bucket.
+ */
+bool agent_domain_key_template_is_valid(const struct lttng_trigger *trigger)
+{
+	const auto *condition = lttng_trigger_get_const_condition(trigger);
+
+	if (lttng_condition_get_type(condition) != LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES) {
+		return true;
+	}
+
+	const struct lttng_event_rule *event_rule = nullptr;
+	if (lttng_condition_event_rule_matches_get_rule(condition, &event_rule) !=
+	    LTTNG_CONDITION_STATUS_OK) {
+		return true;
+	}
+
+	if (!lttng_event_rule_targets_agent_domain(event_rule)) {
+		return true;
+	}
+
+	return !action_has_placeholder_keyed_incr_map_value(
+		lttng_trigger_get_const_action(trigger));
+}
+} /* namespace */
 
 bool lttng_trigger_validate(const struct lttng_trigger *trigger)
 {
@@ -43,7 +130,8 @@ bool lttng_trigger_validate(const struct lttng_trigger *trigger)
 	}
 
 	valid = lttng_condition_validate(trigger->condition) &&
-		lttng_action_validate(trigger->action);
+		lttng_action_validate(trigger->action) &&
+		agent_domain_key_template_is_valid(trigger);
 end:
 	return valid;
 }
