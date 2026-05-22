@@ -3609,6 +3609,26 @@ void ls::ust::domain_orchestrator::remove_map_channel(const lsc::map_channel_con
 	LTTNG_ASSERT(erased == 1);
 }
 
+void ls::ust::domain_orchestrator::add_map_channel_event_rule(
+	const lsc::map_channel_configuration& target_map,
+	const lttng_event_rule& event_rule [[maybe_unused]],
+	const lttng_action& incr_map_value_action [[maybe_unused]])
+{
+	LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
+		"ust::domain_orchestrator::add_map_channel_event_rule is not yet implemented: map={}",
+		target_map));
+}
+
+void ls::ust::domain_orchestrator::remove_map_channel_event_rule(
+	const lsc::map_channel_configuration& target_map,
+	const lttng_event_rule& event_rule [[maybe_unused]],
+	const lttng_action& incr_map_value_action [[maybe_unused]])
+{
+	LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
+		"ust::domain_orchestrator::remove_map_channel_event_rule is not yet implemented: map={}",
+		target_map));
+}
+
 std::uint64_t ls::ust::domain_orchestrator::get_size_one_more_packet_per_stream(
 	std::uint64_t cur_nr_packets) const
 {

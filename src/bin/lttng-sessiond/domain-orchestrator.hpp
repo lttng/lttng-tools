@@ -20,6 +20,8 @@
 #include <vector>
 
 struct consumer_output;
+struct lttng_event_rule;
+struct lttng_action;
 
 namespace lttng {
 namespace sessiond {
@@ -143,6 +145,24 @@ public:
 
 	/* Release the tracer-side resources (intended for error handling rollback). */
 	virtual void remove_map_channel(const config::map_channel_configuration& config) = 0;
+
+	/*
+	 * Install a counter-event rule on the tracer backing the map channel.
+	 *
+	 * `target_map` is one of the orchestrator's tracked map channels; its
+	 * address is stable for the orchestrator's lifetime (same stability
+	 * guarantee as add_map_channel). `event_rule` and
+	 * `incr_map_value_action` come from the registered trigger; their
+	 * addresses are stable for the trigger's registered lifetime.
+	 */
+	virtual void add_map_channel_event_rule(const config::map_channel_configuration& target_map,
+						const lttng_event_rule& event_rule,
+						const lttng_action& incr_map_value_action) = 0;
+
+	virtual void
+	remove_map_channel_event_rule(const config::map_channel_configuration& target_map,
+				      const lttng_event_rule& event_rule,
+				      const lttng_action& incr_map_value_action) = 0;
 };
 
 namespace exceptions {

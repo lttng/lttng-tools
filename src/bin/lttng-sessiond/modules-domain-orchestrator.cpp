@@ -1449,6 +1449,26 @@ void ls::modules::domain_orchestrator::remove_map_channel(
 	LTTNG_ASSERT(erased == 1);
 }
 
+void ls::modules::domain_orchestrator::add_map_channel_event_rule(
+	const lsc::map_channel_configuration& target_map,
+	const lttng_event_rule& event_rule [[maybe_unused]],
+	const lttng_action& incr_map_value_action [[maybe_unused]])
+{
+	LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
+		"modules::domain_orchestrator::add_map_channel_event_rule is not yet implemented: map={}",
+		target_map));
+}
+
+void ls::modules::domain_orchestrator::remove_map_channel_event_rule(
+	const lsc::map_channel_configuration& target_map,
+	const lttng_event_rule& event_rule [[maybe_unused]],
+	const lttng_action& incr_map_value_action [[maybe_unused]])
+{
+	LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
+		"modules::domain_orchestrator::remove_map_channel_event_rule is not yet implemented: map={}",
+		target_map));
+}
+
 ls::recording_channel_runtime_stats
 ls::modules::domain_orchestrator::get_recording_channel_runtime_stats(
 	const lsc::recording_channel_configuration& channel_config) const

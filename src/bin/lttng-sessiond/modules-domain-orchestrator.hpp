@@ -566,6 +566,13 @@ public:
 	void add_map_channel(const config::map_channel_configuration& config) override;
 	void remove_map_channel(const config::map_channel_configuration& config) override;
 
+	void add_map_channel_event_rule(const config::map_channel_configuration& target_map,
+					const lttng_event_rule& event_rule,
+					const lttng_action& incr_map_value_action) override;
+	void remove_map_channel_event_rule(const config::map_channel_configuration& target_map,
+					   const lttng_event_rule& event_rule,
+					   const lttng_action& incr_map_value_action) override;
+
 	/*
 	 * Return the number of streams opened for a channel.
 	 *
