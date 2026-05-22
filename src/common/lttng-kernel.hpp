@@ -290,6 +290,77 @@ struct lttng_kernel_abi_counter_map_descriptor {
 	uint32_t array_indexes_len; /* in: buffer size in bytes; out (ENOSPC): required */
 } LTTNG_PACKED;
 
+/*
+ * Counter-event ABI: installs a counter-event rule on a counter ("when an
+ * event matching `event` fires, increment the element selected by rendering
+ * the key dimension's tokens"). Issued through the LTTNG_KERNEL_ABI_COUNTER_EVENT
+ * ioctl.
+ */
+enum lttng_kernel_abi_key_token_type {
+	LTTNG_KERNEL_ABI_KEY_TOKEN_STRING = 0, /* arg: string_ptr. */
+	LTTNG_KERNEL_ABI_KEY_TOKEN_EVENT_NAME = 1, /* no arg. */
+	LTTNG_KERNEL_ABI_KEY_TOKEN_PROVIDER_NAME = 2, /* no arg. */
+};
+
+struct lttng_kernel_abi_key_token {
+	uint32_t len; /* length of child structure. */
+	uint32_t type; /* enum lttng_kernel_abi_key_token_type */
+	/*
+	 * The size of this structure is fixed because it is embedded into
+	 * children structures.
+	 */
+} LTTNG_PACKED;
+
+/* Length of this structure excludes the following string. */
+struct lttng_kernel_abi_key_token_string {
+	struct lttng_kernel_abi_key_token parent;
+	uint32_t string_len; /* string length (includes \0) */
+
+	/* Null-terminated string of length @string_len follows this structure. */
+} LTTNG_PACKED;
+
+/*
+ * Dimension indexing: all events should use the same key type to index a
+ * given map dimension.
+ */
+enum lttng_kernel_abi_key_type {
+	LTTNG_KERNEL_ABI_KEY_TYPE_TOKENS = 0, /* Dimension key is a set of tokens. */
+	LTTNG_KERNEL_ABI_KEY_TYPE_INTEGER = 1, /* Dimension key is an integer value. */
+};
+
+struct lttng_kernel_abi_counter_key_dimension {
+	uint32_t len; /* length of child structure */
+	uint32_t key_type; /* enum lttng_kernel_abi_key_type */
+	/*
+	 * The size of this structure is fixed because it is embedded into
+	 * children structures.
+	 */
+} LTTNG_PACKED;
+
+struct lttng_kernel_abi_counter_key_dimension_tokens {
+	struct lttng_kernel_abi_counter_key_dimension parent;
+	uint32_t nr_key_tokens;
+
+	/* Followed by an array of nr_key_tokens struct lttng_kernel_abi_key_token elements. */
+} LTTNG_PACKED;
+
+enum lttng_kernel_abi_counter_action {
+	LTTNG_KERNEL_ABI_COUNTER_ACTION_INCREMENT = 0,
+};
+
+struct lttng_kernel_abi_counter_event {
+	uint32_t len; /* length of this structure */
+	uint32_t action; /* enum lttng_kernel_abi_counter_action */
+
+	struct lttng_kernel_abi_event event;
+	uint32_t number_key_dimensions; /* array of dimensions is an array of var. len. elements. */
+
+	/*
+	 * Followed by additional data specific to the action, and by a
+	 * variable-length array of key dimensions.
+	 */
+} LTTNG_PACKED;
+
 #define LTTNG_KERNEL_ABI_EVENT_NOTIFIER_NOTIFICATION_PADDING 32
 struct lttng_kernel_abi_event_notifier_notification {
 	uint64_t token;
