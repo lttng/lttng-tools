@@ -413,6 +413,11 @@ int kernctl_create_session_counter(int session_fd,
 	return LTTNG_IOCTL_NO_CHECK(session_fd, LTTNG_KERNEL_ABI_COUNTER, counter_conf);
 }
 
+int kernctl_create_counter_event(int counter_fd, const void *counter_event)
+{
+	return LTTNG_IOCTL_NO_CHECK(counter_fd, LTTNG_KERNEL_ABI_COUNTER_EVENT, counter_event);
+}
+
 int kernctl_counter_map_nr_descriptors(int counter_fd, uint64_t *nr)
 {
 	return LTTNG_IOCTL_NO_CHECK(counter_fd, LTTNG_KERNEL_ABI_COUNTER_MAP_NR_DESCRIPTORS, nr);

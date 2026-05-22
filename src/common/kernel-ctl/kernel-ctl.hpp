@@ -44,6 +44,19 @@ int kernctl_create_event_notifier(int fd,
 int kernctl_create_session_counter(int session_fd,
 				   const struct lttng_kernel_abi_counter_conf *counter_conf);
 
+/*
+ * Install one counter-event rule on the counter referenced by `counter_fd`:
+ * "when an event matching the embedded rule fires, increment the element
+ * selected by the trailing key dimension". `counter_event` points at the
+ * lttng_kernel_abi_counter_event-headed payload built by the session daemon's
+ * counter-event payload builder; the kernel walks the trailing key dimensions
+ * using each sub-object's embedded length.
+ *
+ * Returns the counter-event file descriptor on success, a negative errno on
+ * failure.
+ */
+int kernctl_create_counter_event(int counter_fd, const void *counter_event);
+
 int kernctl_counter_read(int counter_fd, struct lttng_kernel_abi_counter_read *counter_read);
 int kernctl_counter_get_aggregate_value(int counter_fd,
 					struct lttng_kernel_abi_counter_aggregate *value);

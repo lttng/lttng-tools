@@ -6,6 +6,7 @@
  */
 
 #include "consumer.hpp"
+#include "counter-event-payload.hpp"
 #include "health-sessiond.hpp"
 #include "kernel.hpp"
 #include "lttng-channel-from-config.hpp"
@@ -1451,22 +1452,89 @@ void ls::modules::domain_orchestrator::remove_map_channel(
 
 void ls::modules::domain_orchestrator::add_map_channel_event_rule(
 	const lsc::map_channel_configuration& target_map,
-	const lttng_event_rule& event_rule [[maybe_unused]],
-	const lttng_action& incr_map_value_action [[maybe_unused]])
+	const lttng_event_rule& event_rule,
+	const lttng_action& incr_map_value_action)
 {
-	LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
-		"modules::domain_orchestrator::add_map_channel_event_rule is not yet implemented: map={}",
-		target_map));
+	DBG_FMT("Modules orchestrator adding map channel event rule: map={}", target_map);
+
+	const auto channel_it = _map_channels.find(&target_map);
+	LTTNG_ASSERT(channel_it != _map_channels.end());
+	auto& channel = *channel_it->second;
+
+	const auto user_token = channel.allocate_user_token();
+	const auto payload = sessiond::map::details::serialize_for_modules(
+		event_rule, incr_map_value_action, user_token);
+
+	const auto raw_event_fd = kernctl_create_counter_event(
+		channel.kernel_group().tracer_handle().fd(), payload.data());
+	if (raw_event_fd < 0) {
+		LTTNG_THROW_POSIX(
+			lttng::format("Failed to install counter-event rule on kernel counter: "
+				      "map_name=`{}`",
+				      target_map.name),
+			-raw_event_fd);
+	}
+
+	/* Own the fd now so it is closed if any later step throws. */
+	lttng::file_descriptor event_fd(raw_event_fd);
+
+	/*
+	 * The counter-event payload does not carry the filter, so apply it to
+	 * the new counter-event fd separately, the way the kernel event path
+	 * does.
+	 */
+	const auto *const filter_bytecode = lttng_event_rule_get_filter_bytecode(&event_rule);
+	if (filter_bytecode) {
+		const auto filter_ret = kernctl_filter(event_fd.fd(), filter_bytecode);
+		if (filter_ret < 0) {
+			switch (-filter_ret) {
+			case ENOMEM:
+				LTTNG_THROW_KERNEL_FILTER_OUT_OF_MEMORY();
+			default:
+				LTTNG_THROW_KERNEL_FILTER_INVALID();
+			}
+		}
+	}
+
+	/*
+	 * The counter-event enabler is created disabled on the tracer side, like
+	 * every event enabler. Enable it now, after the filter is attached, so
+	 * the tracer instantiates the counter-event for each matching probe; a
+	 * disabled enabler never reaches that path and the map records nothing.
+	 */
+	{
+		const auto enable_ret = kernctl_enable(event_fd.fd());
+		if (enable_ret < 0) {
+			LTTNG_THROW_POSIX(
+				lttng::format(
+					"Failed to enable counter-event rule on kernel counter: "
+					"map_name=`{}`",
+					target_map.name),
+				-enable_ret);
+		}
+	}
+
+	const sessiond::map::event_rule_action_key key{ &event_rule, &incr_map_value_action };
+	const auto inserted = channel._rules.emplace(
+		key, modules::map_channel::rule_record{ user_token, std::move(event_fd) });
+	LTTNG_ASSERT(inserted.second);
 }
 
 void ls::modules::domain_orchestrator::remove_map_channel_event_rule(
 	const lsc::map_channel_configuration& target_map,
-	const lttng_event_rule& event_rule [[maybe_unused]],
-	const lttng_action& incr_map_value_action [[maybe_unused]])
+	const lttng_event_rule& event_rule,
+	const lttng_action& incr_map_value_action)
 {
-	LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
-		"modules::domain_orchestrator::remove_map_channel_event_rule is not yet implemented: map={}",
-		target_map));
+	DBG_FMT("Modules orchestrator removing map channel event rule: map={}", target_map);
+
+	const auto channel_it = _map_channels.find(&target_map);
+	LTTNG_ASSERT(channel_it != _map_channels.end());
+	auto& channel = *channel_it->second;
+
+	const sessiond::map::event_rule_action_key key{ &event_rule, &incr_map_value_action };
+	const auto erased = channel._rules.erase(key);
+	LTTNG_ASSERT(erased == 1);
+	/* lttng::file_descriptor's destructor closes the counter-event fd. */
 }
 
 ls::recording_channel_runtime_stats
