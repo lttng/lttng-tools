@@ -14,6 +14,7 @@
 #include <common/payload.hpp>
 
 #include <lttng/action/action-internal.hpp>
+#include <lttng/action/list-internal.hpp>
 #include <lttng/condition/buffer-usage.h>
 #include <lttng/condition/condition-internal.hpp>
 #include <lttng/condition/event-rule-matches-internal.hpp>
@@ -957,27 +958,52 @@ end:
 	return copy;
 }
 
-bool lttng_trigger_needs_tracer_notifier(const struct lttng_trigger *trigger)
+namespace {
+/*
+ * Whether `action`'s effect is produced by the session daemon in response to a
+ * tracer match, and therefore requires the tracer to notify the session daemon
+ * when the associated event rule matches.
+ *
+ * INCREMENT_MAP_VALUE is the sole exception: the tracer performs the increment
+ * itself at event-hit time, so a trigger carrying only such actions needs no
+ * sessiond-side response. LIST is walked recursively so a mixed-shape trigger
+ * is classified by the union of its leaves.
+ */
+bool action_is_sessiond_executed(const struct lttng_action *action)
 {
-	bool needs_tracer_notifier = false;
-	const struct lttng_condition *condition = lttng_trigger_get_const_condition(trigger);
+	switch (lttng_action_get_type(action)) {
+	case LTTNG_ACTION_TYPE_INCREMENT_MAP_VALUE:
+		return false;
+	case LTTNG_ACTION_TYPE_LIST:
+		for (const auto *inner_action : lttng::ctl::const_action_list_view(action)) {
+			if (action_is_sessiond_executed(inner_action)) {
+				return true;
+			}
+		}
 
-	switch (lttng_condition_get_type(condition)) {
-	case LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES:
-		needs_tracer_notifier = true;
-		goto end;
-	case LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE:
-	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH:
-	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW:
-	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
-	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
-		goto end;
-	case LTTNG_CONDITION_TYPE_UNKNOWN:
+		return false;
+	case LTTNG_ACTION_TYPE_NOTIFY:
+	case LTTNG_ACTION_TYPE_START_SESSION:
+	case LTTNG_ACTION_TYPE_STOP_SESSION:
+	case LTTNG_ACTION_TYPE_ROTATE_SESSION:
+	case LTTNG_ACTION_TYPE_SNAPSHOT_SESSION:
+		return true;
+	case LTTNG_ACTION_TYPE_UNKNOWN:
 	default:
 		abort();
 	}
-end:
-	return needs_tracer_notifier;
+}
+} /* namespace */
+
+bool lttng_trigger_needs_tracer_notifier(const struct lttng_trigger *trigger)
+{
+	const struct lttng_condition *condition = lttng_trigger_get_const_condition(trigger);
+
+	if (lttng_condition_get_type(condition) != LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES) {
+		return false;
+	}
+
+	return action_is_sessiond_executed(lttng_trigger_get_const_action(trigger));
 }
 
 void lttng_trigger_set_as_registered(struct lttng_trigger *trigger)

@@ -1997,6 +1997,18 @@ void ust_app_synchronize_event_notifier_rules(lsu::app *app)
 			continue;
 		}
 
+		if (!lttng_trigger_needs_tracer_notifier(trigger)) {
+			/*
+			 * The trigger's actions are all carried out by the tracer
+			 * itself (e.g. increment-map-value), so it needs no event
+			 * notifier on the application: the counter event is installed
+			 * separately by the map channel orchestrator. Such a trigger is
+			 * never assigned an error-counter index, so allocating an event
+			 * notifier rule for it would dereference an unset optional.
+			 */
+			continue;
+		}
+
 		condition_status =
 			lttng_condition_event_rule_matches_get_rule(condition, &event_rule);
 		LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_OK);
