@@ -145,6 +145,27 @@ public:
 	 */
 	app_attachment attach_to_app(ust::app& app, int session_parent_handle);
 
+	struct rule_record {
+		std::uint64_t user_token;
+		/*
+		 * Per-app attachments live on the relevant app_session via
+		 * counter_event_attachments, keyed by (channel, event_rule,
+		 * action); the channel-scoped rule record itself carries only
+		 * the user_token.
+		 */
+	};
+
+	/*
+	 * Records of the counter-event rules registered against this channel,
+	 * keyed by (&event_rule, &incr_map_value_action). Owned by the channel
+	 * for each rule's registered lifetime; populated and cleared by the UST
+	 * orchestrator, the sole accessor.
+	 */
+	std::unordered_map<sessiond::map::event_rule_action_key,
+			   rule_record,
+			   sessiond::map::event_rule_action_key_hash>
+		_rules;
+
 private:
 	per_uid_groups _per_uid_groups;
 	per_app_groups _per_app_groups;

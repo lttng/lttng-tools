@@ -12,6 +12,11 @@
 #include "map-channel.hpp"
 #include "modules-map-group.hpp"
 
+#include <common/file-descriptor.hpp>
+
+#include <cstdint>
+#include <unordered_map>
+
 namespace lttng {
 namespace sessiond {
 
@@ -40,6 +45,23 @@ public:
 
 	modules::map_group& kernel_group() noexcept;
 	const modules::map_group& kernel_group() const noexcept;
+
+	struct rule_record {
+		std::uint64_t user_token;
+		/* The kernel counter-event fd; closed when the record is erased. */
+		lttng::file_descriptor event_fd;
+	};
+
+	/*
+	 * Records of the counter-event rules registered against this channel,
+	 * keyed by (&event_rule, &incr_map_value_action). Owned by the channel
+	 * for each rule's registered lifetime; populated and cleared by the
+	 * modules orchestrator, the sole accessor.
+	 */
+	std::unordered_map<sessiond::map::event_rule_action_key,
+			   rule_record,
+			   sessiond::map::event_rule_action_key_hash>
+		_rules;
 
 private:
 	modules::map_group _kernel_group;

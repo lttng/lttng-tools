@@ -76,6 +76,11 @@ void map_channel::for_each_element_of(const abstract_group& group,
 	});
 }
 
+std::uint64_t map_channel::allocate_user_token() noexcept
+{
+	return _next_user_token++;
+}
+
 } /* namespace map */
 } /* namespace sessiond */
 } /* namespace lttng */

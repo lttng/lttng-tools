@@ -11,10 +11,16 @@
 #include "key-registry.hpp"
 #include "shared-group.hpp"
 
+#include <common/hash-combine.hpp>
+
 #include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
+#include <utility>
+
+struct lttng_event_rule;
+struct lttng_action;
 
 namespace lttng {
 namespace sessiond {
@@ -26,6 +32,24 @@ class map_channel_configuration;
 namespace map {
 
 class abstract_group;
+
+/*
+ * Identifies a counter-event rule registered against a map channel by the
+ * (event_rule, increment-map-value action) pair of the trigger that produced
+ * it. Both pointers are stable for the trigger's registered lifetime, which
+ * matches the window during which the orchestrator holds rule state.
+ */
+using event_rule_action_key = std::pair<const lttng_event_rule *, const lttng_action *>;
+
+struct event_rule_action_key_hash {
+	std::size_t operator()(const event_rule_action_key& key) const noexcept
+	{
+		auto seed = std::hash<const lttng_event_rule *>{}(key.first);
+		seed = lttng::utils::hash_combine(seed,
+						  std::hash<const lttng_action *>{}(key.second));
+		return seed;
+	}
+};
 
 /*
  * Per-channel runtime owned by the domain orchestrator. Aggregates the
@@ -101,6 +125,17 @@ public:
 	 * responsibility in that case.
 	 */
 	void for_each_element_of(const abstract_group& group, const element_visitor& visitor) const;
+
+	/*
+	 * Allocate the next user_token for a rule about to be registered on
+	 * this channel. The token is a monotonic 64-bit counter that is never
+	 * recycled: at 2^64 distinct tokens, recycling on rule removal would
+	 * add complexity without buying anything useful.
+	 */
+	std::uint64_t allocate_user_token() noexcept;
+
+protected:
+	std::uint64_t _next_user_token = 0;
 
 private:
 	const config::map_channel_configuration& _configuration;
