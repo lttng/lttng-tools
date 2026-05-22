@@ -113,6 +113,77 @@ bool agent_domain_key_template_is_valid(const struct lttng_trigger *trigger)
 	return !action_has_placeholder_keyed_incr_map_value(
 		lttng_trigger_get_const_action(trigger));
 }
+
+/*
+ * Whether `action`'s key template carries a PROVIDER_NAME placeholder segment.
+ *
+ * `action` must be an INCREMENT_MAP_VALUE action.
+ */
+bool incr_map_value_key_template_has_provider_name(const struct lttng_action *action)
+{
+	const auto *key_template = lttng_action_increment_map_value_get_key_template(action);
+
+	if (!key_template) {
+		return false;
+	}
+
+	for (const auto& segment : key_template->segments) {
+		if (segment->type ==
+		    lttng::action::details::key_template_segment_type::PROVIDER_NAME) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/*
+ * Whether `action` (recursing through LIST) contains an INCREMENT_MAP_VALUE
+ * action that targets the kernel domain and whose key template carries a
+ * PROVIDER_NAME placeholder.
+ */
+bool action_has_kernel_provider_name_keyed_incr_map_value(const struct lttng_action *action)
+{
+	switch (lttng_action_get_type(action)) {
+	case LTTNG_ACTION_TYPE_INCREMENT_MAP_VALUE:
+	{
+		lttng_domain_type target_domain = LTTNG_DOMAIN_NONE;
+
+		if (lttng_action_increment_map_value_get_target_domain(action, &target_domain) !=
+		    LTTNG_ACTION_STATUS_OK) {
+			return false;
+		}
+
+		return target_domain == LTTNG_DOMAIN_KERNEL &&
+			incr_map_value_key_template_has_provider_name(action);
+	}
+	case LTTNG_ACTION_TYPE_LIST:
+		for (const auto *inner_action : lttng::ctl::const_action_list_view(action)) {
+			if (action_has_kernel_provider_name_keyed_incr_map_value(inner_action)) {
+				return true;
+			}
+		}
+
+		return false;
+	default:
+		return false;
+	}
+}
+
+/*
+ * Returns false if `trigger` carries an INCREMENT_MAP_VALUE action targeting a
+ * kernel map whose key template contains a PROVIDER_NAME placeholder.
+ *
+ * The kernel tracer does not implement provider-name key tokens: a
+ * COUNTER_EVENT carrying one is rejected with -EINVAL. {event_name} and
+ * literal-only templates remain valid for kernel maps. This is a first-release
+ * limitation.
+ */
+bool kernel_map_key_template_is_valid(const struct lttng_trigger *trigger)
+{
+	return !action_has_kernel_provider_name_keyed_incr_map_value(
+		lttng_trigger_get_const_action(trigger));
+}
 } /* namespace */
 
 bool lttng_trigger_validate(const struct lttng_trigger *trigger)
@@ -131,7 +202,8 @@ bool lttng_trigger_validate(const struct lttng_trigger *trigger)
 
 	valid = lttng_condition_validate(trigger->condition) &&
 		lttng_action_validate(trigger->action) &&
-		agent_domain_key_template_is_valid(trigger);
+		agent_domain_key_template_is_valid(trigger) &&
+		kernel_map_key_template_is_valid(trigger);
 end:
 	return valid;
 }
