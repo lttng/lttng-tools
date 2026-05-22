@@ -8,6 +8,7 @@
 #ifndef LTTNG_SESSIOND_KEY_REGISTRY_HPP
 #define LTTNG_SESSIOND_KEY_REGISTRY_HPP
 
+#include <common/exception.hpp>
 #include <common/string-utils/c-string-view.hpp>
 
 #include <vendor/optional.hpp>
@@ -20,6 +21,25 @@
 namespace lttng {
 namespace sessiond {
 namespace map {
+
+/*
+ * Thrown by key_registry::resolve_or_allocate when the dimension has no free
+ * index left. A full map is an expected, recoverable outcome rather than a
+ * fault, so callers reply negative and move on instead of logging it as an
+ * error.
+ */
+class dimension_full_error : public lttng::runtime_error {
+public:
+	explicit dimension_full_error(const std::string& msg,
+				      const lttng::source_location& location) :
+		lttng::runtime_error(msg, location)
+	{
+	}
+};
+
+/* Throw a dimension_full_error stamped with the current source location. */
+#define LTTNG_THROW_MAP_DIMENSION_FULL_ERROR(msg) \
+	throw lttng::sessiond::map::dimension_full_error(msg, LTTNG_SOURCE_LOCATION())
 
 /*
  * Per-channel `string <-> index` mapping. Used by the `map_channel`'s

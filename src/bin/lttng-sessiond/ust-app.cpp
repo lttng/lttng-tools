@@ -13,6 +13,7 @@
 #include "fd-limit.hpp"
 #include "field.hpp"
 #include "health-sessiond.hpp"
+#include "key-registry.hpp"
 #include "lttng-sessiond.hpp"
 #include "manage-apps.hpp"
 #include "notification-thread-commands.hpp"
@@ -35,6 +36,7 @@
 #include <common/hashtable/utils.hpp>
 #include <common/make-unique.hpp>
 #include <common/pthread-lock.hpp>
+#include <common/scope-exit.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/testpoint/testpoint.hpp>
 #include <common/urcu.hpp>
@@ -2489,6 +2491,24 @@ int add_event_to_trace_class(int sock,
 }
 } /* namespace */
 
+namespace {
+/*
+ * Classify and log a failure returned by one of the `lttng_ust_ctl_recv_*`
+ * functions on the notify socket. The (peer hangup, timeout, other)
+ * partition is the same for every recv handler; only the noun differs.
+ */
+void log_ust_recv_failure(const char *what, int sock, int ret) noexcept
+{
+	if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+		DBG_FMT("UST app recv {} failed. Application died: sock={}", what, sock);
+	} else if (ret == -EAGAIN) {
+		WARN_FMT("UST app recv {} failed. Communication time out: sock={}", what, sock);
+	} else {
+		ERR_FMT("UST app recv {} failed: sock={}, ret={}", what, sock, ret);
+	}
+}
+} /* namespace */
+
 /*
  * Add enum to the trace class. Once done, this replies to the
  * application with the appropriate error code.
@@ -2584,6 +2604,106 @@ int add_enum_to_trace_class(int sock,
 	DBG3("UST trace class enum %s added successfully or already found", name);
 	return 0;
 }
+
+int handle_app_register_key_notification(int sock)
+{
+	DBG_FMT("UST app ustctl register key received");
+
+	/*
+	 * `session_objd`, `dimension`, `dimension_indexes` and `user_token`
+	 * are accepted only to honour the ABI; today's map channels are
+	 * single-dimension and we don't consult any of them.
+	 */
+	int session_objd = 0;
+	int map_objd = 0;
+	uint32_t dimension = 0;
+	uint64_t *raw_dimension_indexes = nullptr;
+	char *raw_key_string = nullptr;
+	uint64_t user_token = 0;
+
+	const auto recv_ret = lttng_ust_ctl_recv_register_key(sock,
+							      &session_objd,
+							      &map_objd,
+							      &dimension,
+							      &raw_dimension_indexes,
+							      &raw_key_string,
+							      &user_token);
+	if (recv_ret < 0) {
+		log_ust_recv_failure("key", sock, recv_ret);
+		return recv_ret;
+	}
+
+	const auto dimension_indexes =
+		lttng::make_unique_wrapper<uint64_t, lttng::memory::free>(raw_dimension_indexes);
+	const auto key_string =
+		lttng::make_unique_wrapper<char, lttng::memory::free>(raw_key_string);
+
+	/*
+	 * Send a negative reply unless explicitly disarmed below. Every
+	 * error path past this point wants the same reply, so the disarm
+	 * sits on the single success branch instead.
+	 */
+	auto deny_reply = lttng::make_scope_exit(
+		[sock]() noexcept { (void) lttng_ust_ctl_reply_register_key(sock, 0, -1); });
+
+	const lttng::urcu::read_lock_guard rcu_lock;
+
+	const auto app = find_app_by_notify_sock(sock);
+	if (!app) {
+		DBG_FMT("Application socket {} is being torn down. Abort key notify", sock);
+		return -1;
+	}
+
+	const auto entry = (*app)->objd_registry.lookup_map_channel(map_objd);
+	if (!entry) {
+		DBG_FMT("No map channel registered for objd; replying negative: sock={}, map_objd={}",
+			sock,
+			map_objd);
+		return -1;
+	}
+
+	/*
+	 * Upgrade the weak observer to a strong reference. This both pins the
+	 * registry for the resolution and detects (empty result) that the
+	 * owning channel was torn down concurrently by the command thread. The
+	 * channel itself is never dereferenced here. resolve_or_allocate is
+	 * thread-safe on its own (see key-registry.hpp): the notify thread
+	 * holds no recording session lock.
+	 */
+	const auto registry = entry->registry.lock();
+	if (!registry) {
+		DBG_FMT("Map channel is being torn down; replying negative: sock={}, map_objd={}",
+			sock,
+			map_objd);
+		return -1;
+	}
+
+	std::uint64_t index;
+	try {
+		index = registry->resolve_or_allocate(std::string(key_string.get()));
+	} catch (const lttng::sessiond::map::dimension_full_error&) {
+		DBG_FMT("Map channel dimension full; replying negative: map_objd={}, key=`{}`",
+			map_objd,
+			key_string.get());
+		return -1;
+	} catch (const std::exception& ex) {
+		ERR_FMT("Failed to resolve map key for application: map_objd={}, key=`{}`, error=`{}`",
+			map_objd,
+			key_string.get(),
+			ex.what());
+		return -1;
+	}
+
+	deny_reply.disarm();
+
+	const auto reply_ret = lttng_ust_ctl_reply_register_key(sock, index, 0);
+	if (reply_ret < 0) {
+		ERR_FMT("Failed to reply to register-key: sock={}, ret={}", sock, reply_ret);
+		return -1;
+	}
+
+	return 0;
+}
 } /* namespace */
 
 /*
@@ -2600,13 +2720,7 @@ int ust_app_recv_notify(int sock)
 
 	ret = lttng_ust_ctl_recv_notify(sock, &cmd);
 	if (ret < 0) {
-		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-			DBG3("UST app recv notify failed. Application died: sock = %d", sock);
-		} else if (ret == -EAGAIN) {
-			WARN("UST app recv notify failed. Communication time out: sock = %d", sock);
-		} else {
-			ERR("UST app recv notify failed with ret %d: sock = %d", ret, sock);
-		}
+		log_ust_recv_failure("notify", sock, ret);
 		goto error;
 	}
 
@@ -2632,15 +2746,7 @@ int ust_app_recv_notify(int sock)
 							&model_emf_uri,
 							&tracer_token);
 		if (ret < 0) {
-			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-				DBG3("UST app recv event failed. Application died: sock = %d",
-				     sock);
-			} else if (ret == -EAGAIN) {
-				WARN("UST app recv event failed. Communication time out: sock = %d",
-				     sock);
-			} else {
-				ERR("UST app recv event failed with ret %d: sock = %d", ret, sock);
-			}
+			log_ust_recv_failure("event", sock, ret);
 			goto error;
 		}
 
@@ -2696,17 +2802,7 @@ int ust_app_recv_notify(int sock)
 		ret = lttng_ust_ctl_recv_register_channel(
 			sock, &sobjd, &cobjd, &field_count, &context_fields);
 		if (ret < 0) {
-			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-				DBG3("UST app recv channel failed. Application died: sock = %d",
-				     sock);
-			} else if (ret == -EAGAIN) {
-				WARN("UST app recv channel failed. Communication time out: sock = %d",
-				     sock);
-			} else {
-				ERR("UST app recv channel failed with ret %d: sock = %d",
-				    ret,
-				    sock);
-			}
+			log_ust_recv_failure("channel", sock, ret);
 			goto error;
 		}
 
@@ -2734,14 +2830,7 @@ int ust_app_recv_notify(int sock)
 
 		ret = lttng_ust_ctl_recv_register_enum(sock, &sobjd, name, &entries, &nr_entries);
 		if (ret < 0) {
-			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-				DBG3("UST app recv enum failed. Application died: sock = %d", sock);
-			} else if (ret == -EAGAIN) {
-				WARN("UST app recv enum failed. Communication time out: sock = %d",
-				     sock);
-			} else {
-				ERR("UST app recv enum failed with ret %d: sock = %d", ret, sock);
-			}
+			log_ust_recv_failure("enum", sock, ret);
 			goto error;
 		}
 
@@ -2755,9 +2844,12 @@ int ust_app_recv_notify(int sock)
 	}
 	case LTTNG_UST_CTL_NOTIFY_CMD_KEY:
 	{
-		DBG2("UST app ustctl register key received");
-		ret = -LTTNG_UST_ERR_NOSYS;
-		goto error;
+		ret = handle_app_register_key_notification(sock);
+		if (ret < 0) {
+			goto error;
+		}
+
+		break;
 	}
 	default:
 		/* Should NEVER happen. */

@@ -72,8 +72,8 @@ std::uint64_t key_registry::resolve_or_allocate(const std::string& key)
 	}
 
 	if (_keys_by_index.size() >= _capacity) {
-		LTTNG_THROW_ERROR(lttng::format(
-			"Sessiond-owned key registry capacity exhausted: capacity={}, key=`{}`",
+		LTTNG_THROW_MAP_DIMENSION_FULL_ERROR(lttng::format(
+			"Sessiond-owned key registry dimension full: capacity={}, key=`{}`",
 			_capacity,
 			key));
 	}
