@@ -23,21 +23,29 @@
 
 namespace {
 
-lttng_kernel_abi_counter_index make_single_dimension_index(std::uint64_t index) noexcept
+/*
+ * Build a single-dimension counter index referencing `index_storage`. The
+ * counter ABI reads the dimension indexes through a pointer
+ * (lttng_kernel_abi_counter_index::ptr), so the storage must outlive both the
+ * returned index and the ioctl that consumes it; the caller owns it.
+ */
+lttng_kernel_abi_counter_index single_dimension_index(const std::uint64_t& index_storage) noexcept
 {
 	lttng_kernel_abi_counter_index counter_index{};
 
 	counter_index.number_dimensions = 1;
-	counter_index.dimension_indexes[0] = index;
+	counter_index.ptr = reinterpret_cast<std::uint64_t>(&index_storage);
 	return counter_index;
 }
 
 lttng::sessiond::map::element_value
 from_counter_value(const lttng_kernel_abi_counter_value& value) noexcept
 {
-	return lttng::sessiond::map::element_value{ value.value,
-						    value.overflow != 0,
-						    value.underflow != 0 };
+	return lttng::sessiond::map::element_value{
+		value.value,
+		(value.flags & LTTNG_KERNEL_ABI_COUNTER_VALUE_FLAG_OVERFLOW) != 0,
+		(value.flags & LTTNG_KERNEL_ABI_COUNTER_VALUE_FLAG_UNDERFLOW) != 0
+	};
 }
 
 lttng_kernel_abi_counter_bitness bitness_from_value_type(
@@ -59,14 +67,14 @@ lttng_kernel_abi_counter_bitness bitness_from_value_type(
 	abort();
 }
 
-std::uint8_t to_tracer_coalesce_hits(
+std::uint32_t conf_flags_from_update_policy(
 	lttng::sessiond::config::map_channel_configuration::update_policy_t update_policy) noexcept
 {
 	using update_policy_t = lttng::sessiond::config::map_channel_configuration::update_policy_t;
 
 	switch (update_policy) {
 	case update_policy_t::PER_EVENT:
-		return 1;
+		return LTTNG_KERNEL_ABI_COUNTER_CONF_FLAG_COALESCE_HITS;
 	case update_policy_t::PER_RULE_MATCH:
 		return 0;
 	}
@@ -74,19 +82,29 @@ std::uint8_t to_tracer_coalesce_hits(
 	abort();
 }
 
+/*
+ * Build the counter configuration for `configuration`. The single counter
+ * dimension is returned through `dimension`: the counter ABI references the
+ * dimension array by pointer (dimension_array.ptr), so its storage must
+ * outlive the returned conf and the ioctl that consumes it; the caller owns it.
+ */
 lttng_kernel_abi_counter_conf
-make_counter_conf(const lttng::sessiond::config::map_channel_configuration& configuration) noexcept
+make_counter_conf(const lttng::sessiond::config::map_channel_configuration& configuration,
+		  lttng_kernel_abi_counter_dimension& dimension) noexcept
 {
+	dimension = {};
+	dimension.size = configuration.max_entry_count;
+
 	lttng_kernel_abi_counter_conf conf{};
 
+	conf.len = sizeof(conf);
+	conf.flags = conf_flags_from_update_policy(configuration.update_policy);
 	conf.arithmetic = LTTNG_KERNEL_ABI_COUNTER_ARITHMETIC_MODULAR;
 	conf.bitness = bitness_from_value_type(configuration.value_type);
-	conf.number_dimensions = 1;
 	conf.global_sum_step = 0;
-	conf.dimensions[0].size = configuration.max_entry_count;
-	conf.dimensions[0].has_underflow = 0;
-	conf.dimensions[0].has_overflow = 0;
-	conf.coalesce_hits = to_tracer_coalesce_hits(configuration.update_policy);
+	conf.dimension_array.number_dimensions = 1;
+	conf.dimension_array.elem_len = sizeof(dimension);
+	conf.dimension_array.ptr = reinterpret_cast<std::uint64_t>(&dimension);
 	return conf;
 }
 
@@ -119,9 +137,11 @@ const config::map_channel_configuration& map_group::configuration() const noexce
 
 map::element_value map_group::read_element(std::uint64_t index, int cpu) const
 {
+	const std::uint64_t dimension_index = index;
 	lttng_kernel_abi_counter_read counter_read{};
 
-	counter_read.index = make_single_dimension_index(index);
+	counter_read.len = sizeof(counter_read);
+	counter_read.index = single_dimension_index(dimension_index);
 	counter_read.cpu = cpu;
 
 	const auto ret = kernctl_counter_read(_tracer_counter_fd.fd(), &counter_read);
@@ -165,9 +185,11 @@ map::element_value map_group::read_element(std::uint64_t index, int cpu) const
 
 map::element_value map_group::aggregate_element(std::uint64_t index) const
 {
+	const std::uint64_t dimension_index = index;
 	lttng_kernel_abi_counter_aggregate counter_aggregate{};
 
-	counter_aggregate.index = make_single_dimension_index(index);
+	counter_aggregate.len = sizeof(counter_aggregate);
+	counter_aggregate.index = single_dimension_index(dimension_index);
 
 	const auto ret =
 		kernctl_counter_get_aggregate_value(_tracer_counter_fd.fd(), &counter_aggregate);
@@ -192,9 +214,11 @@ map::element_value map_group::aggregate_element(std::uint64_t index) const
 
 void map_group::clear_element(std::uint64_t index)
 {
+	const std::uint64_t dimension_index = index;
 	lttng_kernel_abi_counter_clear counter_clear{};
 
-	counter_clear.index = make_single_dimension_index(index);
+	counter_clear.len = sizeof(counter_clear);
+	counter_clear.index = single_dimension_index(dimension_index);
 
 	const auto ret = kernctl_counter_clear(_tracer_counter_fd.fd(), &counter_clear);
 	if (ret != 0) {
@@ -217,7 +241,8 @@ map_group
 map_group::create_for_event_notifier_group(int event_notifier_group_fd,
 					   const config::map_channel_configuration& configuration)
 {
-	const auto conf = make_counter_conf(configuration);
+	lttng_kernel_abi_counter_dimension dimension;
+	const auto conf = make_counter_conf(configuration, dimension);
 
 	const auto raw_fd =
 		kernctl_create_event_notifier_group_error_counter(event_notifier_group_fd, &conf);

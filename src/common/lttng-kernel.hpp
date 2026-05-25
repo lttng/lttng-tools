@@ -199,55 +199,69 @@ enum lttng_kernel_abi_counter_bitness {
 	LTTNG_KERNEL_ABI_COUNTER_BITNESS_64 = 1,
 };
 
+enum lttng_kernel_abi_counter_dimension_flags {
+	LTTNG_KERNEL_ABI_COUNTER_DIMENSION_FLAG_UNDERFLOW = (1 << 0),
+	LTTNG_KERNEL_ABI_COUNTER_DIMENSION_FLAG_OVERFLOW = (1 << 1),
+};
+
 struct lttng_kernel_abi_counter_dimension {
-	uint64_t size;
+	uint32_t key_type; /* enum lttng_kernel_abi_key_type */
+	uint32_t flags; /* enum lttng_kernel_abi_counter_dimension_flags */
+	uint64_t size; /* dimension size */
 	uint64_t underflow_index;
 	uint64_t overflow_index;
-	uint8_t has_underflow;
-	uint8_t has_overflow;
 } LTTNG_PACKED;
 
-#define LTTNG_KERNEL_ABI_COUNTER_CONF_PADDING1 67
+struct lttng_kernel_abi_counter_dimension_array {
+	uint32_t number_dimensions;
+	uint32_t elem_len; /* array stride (sizeof(struct lttng_kernel_abi_counter_dimension)) */
+	uint64_t ptr; /* pointer to array of struct lttng_kernel_abi_counter_dimension */
+} LTTNG_PACKED;
+
+enum lttng_kernel_abi_counter_conf_flags {
+	LTTNG_KERNEL_ABI_COUNTER_CONF_FLAG_COALESCE_HITS = (1 << 0),
+};
+
 struct lttng_kernel_abi_counter_conf {
+	uint32_t len; /* length of this structure */
+	uint32_t flags; /* enum lttng_kernel_abi_counter_conf_flags */
 	uint32_t arithmetic; /* enum lttng_kernel_abi_counter_arithmetic */
 	uint32_t bitness; /* enum lttng_kernel_abi_counter_bitness */
-	uint32_t number_dimensions;
 	int64_t global_sum_step;
-	struct lttng_kernel_abi_counter_dimension dimensions[LTTNG_KERNEL_ABI_COUNTER_DIMENSION_MAX];
-	uint8_t coalesce_hits;
-	char padding[LTTNG_KERNEL_ABI_COUNTER_CONF_PADDING1];
+	struct lttng_kernel_abi_counter_dimension_array dimension_array;
 } LTTNG_PACKED;
 
 struct lttng_kernel_abi_counter_index {
 	uint32_t number_dimensions;
-	uint64_t dimension_indexes[LTTNG_KERNEL_ABI_COUNTER_DIMENSION_MAX];
+	uint64_t ptr; /* pointer to dimension indexes (array of uint64_t) */
 } LTTNG_PACKED;
+
+enum lttng_kernel_abi_counter_value_flags {
+	LTTNG_KERNEL_ABI_COUNTER_VALUE_FLAG_UNDERFLOW = (1 << 0),
+	LTTNG_KERNEL_ABI_COUNTER_VALUE_FLAG_OVERFLOW = (1 << 1),
+};
 
 struct lttng_kernel_abi_counter_value {
 	int64_t value;
-	uint8_t underflow;
-	uint8_t overflow;
+	uint32_t flags; /* enum lttng_kernel_abi_counter_value_flags */
 } LTTNG_PACKED;
 
-#define LTTNG_KERNEL_ABI_COUNTER_READ_PADDING 32
 struct lttng_kernel_abi_counter_read {
+	uint32_t len; /* length of this structure */
 	struct lttng_kernel_abi_counter_index index;
 	int32_t cpu; /* -1 for global counter, >= 0 for specific cpu. */
 	struct lttng_kernel_abi_counter_value value; /* output */
-	char padding[LTTNG_KERNEL_ABI_COUNTER_READ_PADDING];
 } LTTNG_PACKED;
 
-#define LTTNG_KERNEL_ABI_COUNTER_AGGREGATE_PADDING 32
 struct lttng_kernel_abi_counter_aggregate {
+	uint32_t len; /* length of this structure */
 	struct lttng_kernel_abi_counter_index index;
 	struct lttng_kernel_abi_counter_value value; /* output */
-	char padding[LTTNG_KERNEL_ABI_COUNTER_AGGREGATE_PADDING];
 } LTTNG_PACKED;
 
-#define LTTNG_KERNEL_ABI_COUNTER_CLEAR_PADDING 32
 struct lttng_kernel_abi_counter_clear {
+	uint32_t len; /* length of this structure */
 	struct lttng_kernel_abi_counter_index index;
-	char padding[LTTNG_KERNEL_ABI_COUNTER_CLEAR_PADDING];
 } LTTNG_PACKED;
 
 #define LTTNG_KERNEL_ABI_EVENT_NOTIFIER_NOTIFICATION_PADDING 32

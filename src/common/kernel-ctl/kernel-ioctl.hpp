@@ -151,8 +151,9 @@
 #define LTTNG_KERNEL_ABI_ENABLE	 _IO(0xF6, 0x82)
 #define LTTNG_KERNEL_ABI_DISABLE _IO(0xF6, 0x83)
 
-/* Event notifier group ioctl */
-#define LTTNG_KERNEL_ABI_COUNTER _IOW(0xF6, 0x84, struct lttng_kernel_abi_counter_conf)
+/* Event notifier group and session ioctl */
+/* (0xF6, 0x84) is reserved for the old counter ABI. */
+#define LTTNG_KERNEL_ABI_COUNTER _IOW(0xF6, 0x85, struct lttng_kernel_abi_counter_conf)
 
 /* Event and event notifier FD ioctl */
 #define LTTNG_KERNEL_ABI_FILTER	      _IO(0xF6, 0x90)
@@ -173,14 +174,15 @@
 #define LTTNG_KERNEL_ABI_CAPTURE _IO(0xF6, 0xB8)
 
 /* Counter file descriptor ioctl */
-#define LTTNG_KERNEL_ABI_COUNTER_READ _IOWR(0xF6, 0xC0, struct lttng_kernel_abi_counter_read)
-#define LTTNG_KERNEL_ABI_COUNTER_AGGREGATE \
-	_IOWR(0xF6, 0xC1, struct lttng_kernel_abi_counter_aggregate)
-#define LTTNG_KERNEL_ABI_COUNTER_CLEAR		    _IOW(0xF6, 0xC2, struct lttng_kernel_abi_counter_clear)
+/* (0xF6, {0xC0, 0xC1, 0xC2}) are reserved for the old counter ABI. */
 #define LTTNG_KERNEL_ABI_COUNTER_MAP_NR_DESCRIPTORS _IOR(0xF6, 0xC3, uint64_t)
 #define LTTNG_KERNEL_ABI_COUNTER_MAP_DESCRIPTOR \
 	_IOWR(0xF6, 0xC4, struct lttng_kernel_abi_counter_map_descriptor)
 #define LTTNG_KERNEL_ABI_COUNTER_EVENT _IOW(0xF6, 0xC5, struct lttng_kernel_abi_counter_event)
+#define LTTNG_KERNEL_ABI_COUNTER_READ  _IOWR(0xF6, 0xC6, struct lttng_kernel_abi_counter_read)
+#define LTTNG_KERNEL_ABI_COUNTER_AGGREGATE \
+	_IOWR(0xF6, 0xC7, struct lttng_kernel_abi_counter_aggregate)
+#define LTTNG_KERNEL_ABI_COUNTER_CLEAR _IOW(0xF6, 0xC8, struct lttng_kernel_abi_counter_clear)
 
 /*
  * Those ioctl numbers use the wrong direction, but are kept for ABI backward
