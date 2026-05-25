@@ -14,3 +14,11 @@ charset = utf-8
 [*.py]
 indent_style = space
 indent_size = 4
+
+[*.{dox,adoc,txt}]
+indent_style = space
+indent_size = 4
+
+[extras/zsh-completion/_*]
+indent_style = space
+indent_size = 2
