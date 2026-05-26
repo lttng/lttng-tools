@@ -676,7 +676,7 @@ public:
 		return *_lib_event;
 	}
 
-	bool operator<(const event_rule& other) const noexcept;
+	bool operator<(const event_rule& other) const;
 
 private:
 	const lttng_event *_lib_event;
@@ -1101,7 +1101,7 @@ inline linux_uprobe_event_rule event_rule::as_linux_uprobe() const noexcept
 	return linux_uprobe_event_rule(*_lib_event);
 }
 
-inline bool event_rule::operator<(const event_rule& other) const noexcept
+inline bool event_rule::operator<(const event_rule& other) const
 {
 	/* Compare types */
 	if (type() != other.type()) {
@@ -1326,7 +1326,7 @@ public:
 		return *_lib_stream_info;
 	}
 
-	bool operator<(const data_stream_info& other) const noexcept
+	bool operator<(const data_stream_info& other) const
 	{
 		return cpu_id() < other.cpu_id();
 	}
@@ -1461,7 +1461,7 @@ public:
 		return *_lib_set;
 	}
 
-	bool operator<(const data_stream_info_set& other) const noexcept
+	bool operator<(const data_stream_info_set& other) const
 	{
 		if (uid() != other.uid()) {
 			return uid() < other.uid();
