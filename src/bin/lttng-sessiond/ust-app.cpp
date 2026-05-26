@@ -1641,7 +1641,9 @@ int ust_app_list_events(struct lttng_event **events)
 					count++;
 				}
 			} catch (const lsu::app_communication_error&) {
-				/* App dead mid-iteration — keep events collected so far. */
+				DBG_FMT("Application communication failed while listing events, keeping events collected so far: app={}, event_count={}",
+					*app,
+					count);
 			} catch (const lttng::runtime_error&) {
 				free(tmp_event);
 				ret = -1;
@@ -1783,7 +1785,9 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 					count++;
 				}
 			} catch (const lsu::app_communication_error&) {
-				/* App dead mid-iteration — keep fields collected so far. */
+				DBG_FMT("Application communication failed while listing event fields, keeping fields collected so far: app={}, field_count={}",
+					*app,
+					count);
 			} catch (const lttng::runtime_error&) {
 				free(tmp_event);
 				ret = -1;
