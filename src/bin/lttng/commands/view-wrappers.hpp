@@ -2947,6 +2947,1096 @@ private:
 	std::set<rotation_schedule> _set;
 };
 
+class string_map_key;
+
+/*
+ * Holds information about a single key of a map channel.
+ *
+ * Get the string-specific wrapper with as_string() when type() is
+ * `LTTNG_MAP_KEY_TYPE_STRING` (the only available key type as of
+ * this writing).
+ *
+ * Doesn't own the wrapped library pointer.
+ */
+class map_key {
+public:
+	explicit map_key(const lttng_map_key& lib_key) : _lib_key(&lib_key)
+	{
+	}
+
+	lttng_map_key_type type() const
+	{
+		lttng_map_key_type lib_type;
+
+		if (lttng_map_key_get_type(_lib_key, &lib_type) != LTTNG_MAP_KEY_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to get map key type");
+		}
+
+		return lib_type;
+	}
+
+	/*
+	 * Index of this key within the entry index space of the owning
+	 * map channel.
+	 *
+	 * Use this index to address the corresponding entry of any map
+	 * of the owning map channel.
+	 */
+	std::uint64_t index() const
+	{
+		std::uint64_t index;
+
+		if (lttng_map_key_get_index(_lib_key, &index) != LTTNG_MAP_KEY_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to get map key index");
+		}
+
+		return index;
+	}
+
+	string_map_key as_string() const;
+
+	const lttng_map_key& lib() const noexcept
+	{
+		return *_lib_key;
+	}
+
+	bool operator<(const map_key& other) const
+	{
+		return index() < other.index();
+	}
+
+protected:
+	const lttng_map_key *_lib_key;
+};
+
+/*
+ * Holds information about a string key of a map channel.
+ *
+ * Doesn't own the wrapped library pointer.
+ */
+class string_map_key final : public map_key {
+public:
+	explicit string_map_key(const lttng_map_key& lib_key) : map_key(lib_key)
+	{
+		LTTNG_ASSERT(type() == LTTNG_MAP_KEY_TYPE_STRING);
+	}
+
+	c_string_view string() const
+	{
+		const char *str = nullptr;
+
+		if (lttng_map_key_string_get_string(_lib_key, &str) != LTTNG_MAP_KEY_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to get map key string");
+		}
+
+		LTTNG_ASSERT(str);
+		return str;
+	}
+};
+
+inline string_map_key map_key::as_string() const
+{
+	return string_map_key(*_lib_key);
+}
+
+/*
+ * Holds information about the keys of a map channel.
+ *
+ * The mapping from key to index lives at the map channel level: every
+ * map of the channel exposes the same entries at the same indices.
+ *
+ * Owns the wrapped library key set pointer.
+ */
+class map_key_set final {
+public:
+	explicit map_key_set(lttng_map_key_set& lib_key_set) : _lib_key_set(&lib_key_set)
+	{
+		std::uint64_t count;
+
+		if (lttng_map_key_set_get_count(_lib_key_set, &count) !=
+		    LTTNG_MAP_KEY_SET_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to get map key set count");
+		}
+
+		for (std::uint64_t i = 0; i < count; ++i) {
+			const lttng_map_key *lib_key = nullptr;
+
+			if (lttng_map_key_set_get_at_index(_lib_key_set, i, &lib_key) !=
+			    LTTNG_MAP_KEY_SET_STATUS_OK) {
+				LTTNG_THROW_ERROR("Failed to get map key at index");
+			}
+
+			LTTNG_ASSERT(lib_key);
+			_set.emplace(*lib_key);
+		}
+	}
+
+	map_key_set(const map_key_set&) = delete;
+	map_key_set& operator=(const map_key_set&) = delete;
+
+	map_key_set(map_key_set&& other) noexcept :
+		_lib_key_set(other._lib_key_set), _set(std::move(other._set))
+	{
+		other._lib_key_set = nullptr;
+	}
+
+	map_key_set& operator=(map_key_set&& other) noexcept
+	{
+		if (this != &other) {
+			lttng_map_key_set_destroy(_lib_key_set);
+			_lib_key_set = other._lib_key_set;
+			_set = std::move(other._set);
+			other._lib_key_set = nullptr;
+		}
+
+		return *this;
+	}
+
+	~map_key_set()
+	{
+		lttng_map_key_set_destroy(_lib_key_set);
+	}
+
+	lttng_map_key_type type() const
+	{
+		lttng_map_key_type lib_type;
+
+		if (lttng_map_key_set_get_type(_lib_key_set, &lib_type) !=
+		    LTTNG_MAP_KEY_SET_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to get map key set type");
+		}
+
+		return lib_type;
+	}
+
+	const std::set<map_key>& set() const noexcept
+	{
+		return _set;
+	}
+
+	std::set<map_key>::const_iterator begin() const noexcept
+	{
+		return _set.begin();
+	}
+
+	std::set<map_key>::const_iterator end() const noexcept
+	{
+		return _set.end();
+	}
+
+	std::size_t size() const noexcept
+	{
+		return _set.size();
+	}
+
+	bool is_empty() const noexcept
+	{
+		return _set.empty();
+	}
+
+	/*
+	 * Only valid when type() is `LTTNG_MAP_KEY_TYPE_STRING`.
+	 */
+	nonstd::optional<string_map_key> find_by_string(const char *const str) const
+	{
+		LTTNG_ASSERT(str);
+
+		const lttng_map_key *lib_key = nullptr;
+		const auto status =
+			lttng_map_key_set_string_get_key_by_string(_lib_key_set, str, &lib_key);
+
+		if (status == LTTNG_MAP_KEY_SET_STATUS_NOT_FOUND) {
+			return nonstd::nullopt;
+		} else if (status != LTTNG_MAP_KEY_SET_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to find map key by string");
+		}
+
+		LTTNG_ASSERT(lib_key);
+		return string_map_key(*lib_key);
+	}
+
+	const lttng_map_key_set& lib() const noexcept
+	{
+		return *_lib_key_set;
+	}
+
+private:
+	lttng_map_key_set *_lib_key_set;
+	std::set<map_key> _set;
+};
+
+class signed_int_map_values;
+
+/*
+ * Holds information about the per-partition values of a map group.
+ *
+ * Query a specific entry through the type-specific wrapper, passing a
+ * key of the owning map channel (see map_channel::keys()).
+ *
+ * Get that wrapper with as_signed_int() when the value type of the
+ * owning map channel is one of the signed integer types (the only
+ * available value types currently).
+ *
+ * Doesn't own the wrapped library pointer.
+ */
+class map_values {
+public:
+	/*
+	 * `is_shared` indicates whether the owning map group is the
+	 * shared map group (type `LTTNG_MAP_GROUP_TYPE_SHARED`); the
+	 * shared map group has no per-partition decomposition, which
+	 * governs partition_id() below.
+	 */
+	explicit map_values(const lttng_map_values& lib_values, bool is_shared) :
+		_lib_values(&lib_values), _is_shared(is_shared)
+	{
+	}
+
+	/*
+	 * Partition ID of the contained values within their group, or
+	 * `nonstd::nullopt` when the owning map group is the shared
+	 * map group.
+	 */
+	nonstd::optional<unsigned int> partition_id() const
+	{
+		/*
+		 * lttng_map_values_get_partition_id() doesn't apply to
+		 * the values of the shared map group, which has no
+		 * per-partition decomposition: don't call it in that
+		 * case (it would be a precondition violation) and
+		 * report the absence of a partition ID instead.
+		 */
+		if (_is_shared) {
+			return nonstd::nullopt;
+		}
+
+		unsigned int partition_id;
+
+		if (lttng_map_values_get_partition_id(_lib_values, &partition_id) !=
+		    LTTNG_MAP_VALUES_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to get map values partition ID");
+		}
+
+		return partition_id;
+	}
+
+	signed_int_map_values as_signed_int() const noexcept;
+
+	const lttng_map_values& lib() const noexcept
+	{
+		return *_lib_values;
+	}
+
+	bool operator<(const map_values& other) const
+	{
+		const auto lhs = partition_id();
+		const auto rhs = other.partition_id();
+
+		/* The shared values (without a partition ID) come first */
+		if (lhs.has_value() != rhs.has_value()) {
+			return !lhs.has_value();
+		}
+
+		if (lhs.has_value()) {
+			return *lhs < *rhs;
+		}
+
+		return false;
+	}
+
+protected:
+	const lttng_map_values *_lib_values;
+	bool _is_shared;
+};
+
+/*
+ * Holds information about the per-partition signed integer values of a
+ * map group.
+ *
+ * Doesn't own the wrapped library pointer.
+ */
+class signed_int_map_values final : public map_values {
+public:
+	explicit signed_int_map_values(const lttng_map_values& lib_values, bool is_shared) :
+		map_values(lib_values, is_shared)
+	{
+	}
+
+	/*
+	 * Value of `key`, a key of the owning map channel
+	 * (see map_channel::keys()).
+	 */
+	std::int64_t value(const map_key& key) const
+	{
+		std::int64_t value;
+
+		if (lttng_map_values_signed_int_get_value_at_index(
+			    _lib_values, key.index(), &value) != LTTNG_MAP_VALUES_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to get map value");
+		}
+
+		return value;
+	}
+
+	/*
+	 * Whether or not at least one arithmetic update of the entry
+	 * for `key` saturated or wrapped because the result couldn't be
+	 * represented in the value type of the owning map channel.
+	 */
+	bool has_overflow(const map_key& key) const
+	{
+		bool has_overflow;
+
+		if (lttng_map_values_signed_int_has_overflow_at_index(
+			    _lib_values, key.index(), &has_overflow) !=
+		    LTTNG_MAP_VALUES_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to get map value overflow indicator");
+		}
+
+		return has_overflow;
+	}
+};
+
+inline signed_int_map_values map_values::as_signed_int() const noexcept
+{
+	return signed_int_map_values(*_lib_values, _is_shared);
+}
+
+/*
+ * Holds information about the per-partition map values of a map group:
+ * one `map_values` object per partition which contributes to the group.
+ *
+ * The map values set of a shared map group always contains a single map
+ * values instance.
+ *
+ * Owns the wrapped library values set pointer.
+ */
+class map_values_set final {
+public:
+	/*
+	 * `is_shared` indicates whether the owning map group is the
+	 * shared map group; it's forwarded to each contained
+	 * `map_values` (see that class).
+	 */
+	explicit map_values_set(lttng_map_values_set& lib_values_set, const bool is_shared) :
+		_lib_values_set(&lib_values_set)
+	{
+		std::uint64_t count;
+
+		if (lttng_map_values_set_get_count(_lib_values_set, &count) !=
+		    LTTNG_MAP_VALUES_SET_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to get map values set count");
+		}
+
+		for (std::uint64_t i = 0; i < count; ++i) {
+			const lttng_map_values *lib_values = nullptr;
+
+			if (lttng_map_values_set_get_at_index(_lib_values_set, i, &lib_values) !=
+			    LTTNG_MAP_VALUES_SET_STATUS_OK) {
+				LTTNG_THROW_ERROR("Failed to get map values at index");
+			}
+
+			LTTNG_ASSERT(lib_values);
+			_set.emplace(*lib_values, is_shared);
+		}
+	}
+
+	map_values_set(const map_values_set&) = delete;
+	map_values_set& operator=(const map_values_set&) = delete;
+
+	map_values_set(map_values_set&& other) noexcept :
+		_lib_values_set(other._lib_values_set), _set(std::move(other._set))
+	{
+		other._lib_values_set = nullptr;
+	}
+
+	map_values_set& operator=(map_values_set&& other) noexcept
+	{
+		if (this != &other) {
+			lttng_map_values_set_destroy(_lib_values_set);
+			_lib_values_set = other._lib_values_set;
+			_set = std::move(other._set);
+			other._lib_values_set = nullptr;
+		}
+
+		return *this;
+	}
+
+	~map_values_set()
+	{
+		lttng_map_values_set_destroy(_lib_values_set);
+	}
+
+	const std::set<map_values>& set() const noexcept
+	{
+		return _set;
+	}
+
+	std::set<map_values>::const_iterator begin() const noexcept
+	{
+		return _set.begin();
+	}
+
+	std::set<map_values>::const_iterator end() const noexcept
+	{
+		return _set.end();
+	}
+
+	std::size_t size() const noexcept
+	{
+		return _set.size();
+	}
+
+	bool is_empty() const noexcept
+	{
+		return _set.empty();
+	}
+
+	const lttng_map_values_set& lib() const noexcept
+	{
+		return *_lib_values_set;
+	}
+
+private:
+	lttng_map_values_set *_lib_values_set;
+	std::set<map_values> _set;
+};
+
+class user_map_group;
+
+/*
+ * Holds information about a map group.
+ *
+ * Get the user space-specific wrapper with as_user() when type() is
+ * `LTTNG_MAP_GROUP_TYPE_USER_PER_USER`
+ * or `LTTNG_MAP_GROUP_TYPE_USER_PER_PROCESS`.
+ *
+ * Doesn't own the wrapped library group pointer.
+ */
+class map_group {
+public:
+	explicit map_group(const lttng_map_group& lib_group) : _lib_group(&lib_group)
+	{
+	}
+
+	lttng_map_group_type type() const
+	{
+		lttng_map_group_type lib_type;
+
+		if (lttng_map_group_get_type(_lib_group, &lib_type) != LTTNG_MAP_GROUP_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to get map group type");
+		}
+
+		return lib_type;
+	}
+
+	lttng_map_value_type effective_value_type() const
+	{
+		lttng_map_value_type lib_value_type;
+
+		if (lttng_map_group_get_effective_value_type(_lib_group, &lib_value_type) !=
+		    LTTNG_MAP_GROUP_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to get map group effective value type");
+		}
+
+		return lib_value_type;
+	}
+
+	/*
+	 * Returns a snapshot of the per-partition values of this map
+	 * group (one `map_values` object per contributing partition).
+	 */
+	map_values_set values() const
+	{
+		lttng_map_values_set *lib_values_set = nullptr;
+
+		if (lttng_map_group_get_values(_lib_group, &lib_values_set) !=
+		    LTTNG_MAP_GROUP_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to get map group values");
+		}
+
+		LTTNG_ASSERT(lib_values_set);
+		return map_values_set(*lib_values_set, type() == LTTNG_MAP_GROUP_TYPE_SHARED);
+	}
+
+	user_map_group as_user() const;
+
+	const lttng_map_group& lib() const noexcept
+	{
+		return *_lib_group;
+	}
+
+	bool operator<(const map_group& other) const;
+
+private:
+	const lttng_map_group *_lib_group;
+};
+
+/*
+ * Holds information about a user space (per-user or per-process)
+ * map group.
+ *
+ * Doesn't own the wrapped library map group pointer.
+ */
+class user_map_group final : public map_group {
+public:
+	explicit user_map_group(const lttng_map_group& lib_group) : map_group(lib_group)
+	{
+		LTTNG_ASSERT(type() == LTTNG_MAP_GROUP_TYPE_USER_PER_USER ||
+			     type() == LTTNG_MAP_GROUP_TYPE_USER_PER_PROCESS);
+	}
+
+	/*
+	 * Owner ID of this user space map group.
+	 *
+	 * This is the Unix user ID of a per-user group or the process
+	 * ID of a per-process group.
+	 */
+	std::uint64_t owner_id() const
+	{
+		std::uint64_t lib_owner_id;
+
+		if (lttng_map_group_user_get_owner_id(&lib(), &lib_owner_id) !=
+		    LTTNG_MAP_GROUP_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to get map group owner ID");
+		}
+
+		return lib_owner_id;
+	}
+
+	/*
+	 * Human-readable owner name of this user space map group.
+	 */
+	std::string owner_name() const
+	{
+		const char *lib_owner_name;
+
+		if (lttng_map_group_user_get_owner_name(&lib(), &lib_owner_name) !=
+		    LTTNG_MAP_GROUP_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to get map group owner name");
+		}
+
+		return lib_owner_name;
+	}
+};
+
+inline user_map_group map_group::as_user() const
+{
+	return user_map_group(*_lib_group);
+}
+
+inline bool map_group::operator<(const map_group& other) const
+{
+	/* Compare types */
+	if (type() != other.type()) {
+		return type() < other.type();
+	}
+
+	/* Compare type-specific properties */
+	switch (type()) {
+	case LTTNG_MAP_GROUP_TYPE_USER_PER_USER:
+	case LTTNG_MAP_GROUP_TYPE_USER_PER_PROCESS:
+	{
+		/* Compare owner IDs and effective value types */
+		const auto lhs = as_user();
+		const auto rhs = other.as_user();
+
+		if (lhs.owner_id() != rhs.owner_id()) {
+			return lhs.owner_id() < rhs.owner_id();
+		}
+
+		return lhs.effective_value_type() < rhs.effective_value_type();
+	}
+	default:
+		break;
+	}
+
+	return false;
+}
+
+/*
+ * Owns a single map group library handle, as returned
+ * by map_channel::shared_group().
+ *
+ * Access the wrapped `map_group` view through operator*()
+ * and operator->().
+ *
+ * Owns the wrapped library map group pointer.
+ */
+class scoped_map_group final {
+public:
+	explicit scoped_map_group(lttng_map_group& lib_group) :
+		_lib_group(&lib_group), _group(lib_group)
+	{
+	}
+
+	scoped_map_group(const scoped_map_group&) = delete;
+	scoped_map_group& operator=(const scoped_map_group&) = delete;
+
+	scoped_map_group(scoped_map_group&& other) noexcept :
+		_lib_group(other._lib_group), _group(other._group)
+	{
+		other._lib_group = nullptr;
+	}
+
+	scoped_map_group& operator=(scoped_map_group&& other) noexcept
+	{
+		if (this != &other) {
+			lttng_map_group_destroy(_lib_group);
+			_lib_group = other._lib_group;
+			_group = other._group;
+			other._lib_group = nullptr;
+		}
+
+		return *this;
+	}
+
+	~scoped_map_group()
+	{
+		lttng_map_group_destroy(_lib_group);
+	}
+
+	const map_group& operator*() const noexcept
+	{
+		return _group;
+	}
+
+	const map_group *operator->() const noexcept
+	{
+		return &_group;
+	}
+
+private:
+	lttng_map_group *_lib_group;
+	map_group _group;
+};
+
+/*
+ * Holds information about the map groups of a map channel.
+ *
+ * The set includes the shared map group.
+ *
+ * Owns the wrapped library map group set pointer.
+ */
+class map_group_set final {
+public:
+	explicit map_group_set(lttng_map_group_set& lib_group_set) : _lib_group_set(&lib_group_set)
+	{
+		std::uint64_t count;
+
+		if (lttng_map_group_set_get_count(_lib_group_set, &count) !=
+		    LTTNG_MAP_GROUP_SET_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to get map group set count");
+		}
+
+		for (std::uint64_t i = 0; i < count; ++i) {
+			const lttng_map_group *lib_group = nullptr;
+
+			if (lttng_map_group_set_get_at_index(_lib_group_set, i, &lib_group) !=
+			    LTTNG_MAP_GROUP_SET_STATUS_OK) {
+				LTTNG_THROW_ERROR("Failed to get map group at index");
+			}
+
+			LTTNG_ASSERT(lib_group);
+			_set.emplace(*lib_group);
+		}
+	}
+
+	map_group_set(const map_group_set&) = delete;
+	map_group_set& operator=(const map_group_set&) = delete;
+
+	map_group_set(map_group_set&& other) noexcept :
+		_lib_group_set(other._lib_group_set), _set(std::move(other._set))
+	{
+		other._lib_group_set = nullptr;
+	}
+
+	map_group_set& operator=(map_group_set&& other) noexcept
+	{
+		if (this != &other) {
+			lttng_map_group_set_destroy(_lib_group_set);
+			_lib_group_set = other._lib_group_set;
+			_set = std::move(other._set);
+			other._lib_group_set = nullptr;
+		}
+
+		return *this;
+	}
+
+	~map_group_set()
+	{
+		lttng_map_group_set_destroy(_lib_group_set);
+	}
+
+	const std::set<map_group>& set() const noexcept
+	{
+		return _set;
+	}
+
+	std::set<map_group>::const_iterator begin() const noexcept
+	{
+		return _set.begin();
+	}
+
+	std::set<map_group>::const_iterator end() const noexcept
+	{
+		return _set.end();
+	}
+
+	std::size_t size() const noexcept
+	{
+		return _set.size();
+	}
+
+	bool is_empty() const noexcept
+	{
+		return _set.empty();
+	}
+
+	const lttng_map_group_set& lib() const noexcept
+	{
+		return *_lib_group_set;
+	}
+
+private:
+	lttng_map_group_set *_lib_group_set;
+	std::set<map_group> _set;
+};
+
+class user_map_channel;
+
+/*
+ * Holds information about a map channel.
+ *
+ * Get the user space-specific wrapper with as_user() when type()
+ * is `LTTNG_MAP_CHANNEL_TYPE_USER`.
+ *
+ * Doesn't own the wrapped library map channel pointer.
+ */
+class map_channel {
+public:
+	explicit map_channel(const lttng_map_channel& lib_channel) : _lib_channel(&lib_channel)
+	{
+	}
+
+	c_string_view name() const
+	{
+		const char *name = nullptr;
+
+		if (lttng_map_channel_get_name(_lib_channel, &name) !=
+		    LTTNG_MAP_CHANNEL_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to get map channel name");
+		}
+
+		LTTNG_ASSERT(name);
+		return c_string_view(name);
+	}
+
+	lttng_map_channel_type type() const
+	{
+		lttng_map_channel_type lib_type;
+
+		if (lttng_map_channel_get_type(_lib_channel, &lib_type) !=
+		    LTTNG_MAP_CHANNEL_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to get map channel type");
+		}
+
+		return lib_type;
+	}
+
+	lttng_map_value_type value_type() const
+	{
+		lttng_map_value_type lib_value_type;
+
+		if (lttng_map_channel_get_value_type(_lib_channel, &lib_value_type) !=
+		    LTTNG_MAP_CHANNEL_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to get map channel value type");
+		}
+
+		return lib_value_type;
+	}
+
+	/*
+	 * Maximum number of distinct keys which this map channel may
+	 * track; also the size of each contained map.
+	 */
+	std::uint64_t max_key_count() const
+	{
+		std::uint64_t count;
+
+		if (lttng_map_channel_get_max_key_count(_lib_channel, &count) !=
+		    LTTNG_MAP_CHANNEL_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to get map channel maximum key count");
+		}
+
+		return count;
+	}
+
+	lttng_map_channel_update_policy update_policy() const
+	{
+		lttng_map_channel_update_policy lib_policy;
+
+		if (lttng_map_channel_get_update_policy(_lib_channel, &lib_policy) !=
+		    LTTNG_MAP_CHANNEL_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to get map channel update policy");
+		}
+
+		return lib_policy;
+	}
+
+	/*
+	 * Returns a snapshot of the keys of this map channel.
+	 */
+	map_key_set keys() const
+	{
+		lttng_map_key_set *lib_keys = nullptr;
+
+		if (lttng_map_channel_get_keys(_lib_channel, &lib_keys) !=
+		    LTTNG_MAP_CHANNEL_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to get map channel keys");
+		}
+
+		LTTNG_ASSERT(lib_keys);
+		return map_key_set(*lib_keys);
+	}
+
+	/*
+	 * Returns a snapshot of the map groups of this map channel,
+	 * including the shared map group.
+	 */
+	map_group_set groups() const
+	{
+		lttng_map_group_set *lib_group_set = nullptr;
+
+		if (lttng_map_channel_get_groups(_lib_channel, &lib_group_set) !=
+		    LTTNG_MAP_CHANNEL_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to get map channel groups");
+		}
+
+		LTTNG_ASSERT(lib_group_set);
+		return map_group_set(*lib_group_set);
+	}
+
+	/*
+	 * Returns the shared map group of this map channel.
+	 */
+	scoped_map_group shared_group() const
+	{
+		lttng_map_group *lib_group = nullptr;
+
+		if (lttng_map_channel_get_shared_group(_lib_channel, &lib_group) !=
+		    LTTNG_MAP_CHANNEL_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to get map channel shared group");
+		}
+
+		LTTNG_ASSERT(lib_group);
+		return scoped_map_group(*lib_group);
+	}
+
+	user_map_channel as_user() const;
+
+	const lttng_map_channel& lib() const noexcept
+	{
+		return *_lib_channel;
+	}
+
+	bool operator<(const map_channel& other) const
+	{
+		return internal::compare_c_string_views(name(), other.name()) < 0;
+	}
+
+protected:
+	const lttng_map_channel *_lib_channel;
+};
+
+/*
+ * Holds information about a user space map channel.
+ *
+ * Doesn't own the wrapped library map channel pointer.
+ */
+class user_map_channel final : public map_channel {
+public:
+	explicit user_map_channel(const lttng_map_channel& lib_channel) : map_channel(lib_channel)
+	{
+		LTTNG_ASSERT(type() == LTTNG_MAP_CHANNEL_TYPE_USER);
+	}
+
+	lttng_map_channel_buffer_ownership buffer_ownership() const
+	{
+		lttng_map_channel_buffer_ownership lib_ownership;
+
+		if (lttng_map_channel_user_get_buffer_ownership(_lib_channel, &lib_ownership) !=
+		    LTTNG_MAP_CHANNEL_STATUS_OK) {
+			LTTNG_THROW_ERROR(
+				"Failed to get user space map channel buffer ownership model");
+		}
+
+		return lib_ownership;
+	}
+
+	/*
+	 * Dead group policy of this user space map channel, or
+	 * `nonstd::nullopt` when its buffer ownership model isn't
+	 * per-process (the only model for which a dead group
+	 * policy applies).
+	 */
+	nonstd::optional<lttng_map_channel_dead_group_policy> dead_group_policy() const
+	{
+		if (buffer_ownership() != LTTNG_MAP_CHANNEL_BUFFER_OWNERSHIP_PER_PID) {
+			return nonstd::nullopt;
+		}
+
+		lttng_map_channel_dead_group_policy lib_policy;
+
+		if (lttng_map_channel_user_get_dead_group_policy(_lib_channel, &lib_policy) !=
+		    LTTNG_MAP_CHANNEL_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to get user space map channel dead group policy");
+		}
+
+		return lib_policy;
+	}
+
+	/*
+	 * Returns the map groups of this user space map channel for the
+	 * identity `id`.
+	 *
+	 * The resulting set contains one map group when the value type
+	 * of this channel is concrete, or up to two map groups (one per
+	 * effective value type) when its value type
+	 * is `LTTNG_MAP_VALUE_TYPE_SIGNED_INT_MAX`.
+	 *
+	 * `id` is either a Unix user ID when the buffer ownership model
+	 * of this channel is per-user, or a process ID when it's
+	 * per-process; this method selects the matching library
+	 * function accordingly.
+	 */
+	map_group_set groups_by_id(const unsigned int id) const
+	{
+		lttng_map_group_set *lib_group_set = nullptr;
+		const auto status = buffer_ownership() ==
+				LTTNG_MAP_CHANNEL_BUFFER_OWNERSHIP_PER_UID ?
+			lttng_map_channel_user_get_group_by_uid(_lib_channel, id, &lib_group_set) :
+			lttng_map_channel_user_get_group_by_pid(_lib_channel, id, &lib_group_set);
+
+		if (status != LTTNG_MAP_CHANNEL_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to get user space map channel groups by ID");
+		}
+
+		LTTNG_ASSERT(lib_group_set);
+		return map_group_set(*lib_group_set);
+	}
+};
+
+inline user_map_channel map_channel::as_user() const
+{
+	return user_map_channel(*_lib_channel);
+}
+
+/*
+ * Holds information about the map channels of a given type of a
+ * recording session.
+ *
+ * Owns the wrapped library map channel set pointer.
+ */
+class map_channel_set final {
+public:
+	explicit map_channel_set(lttng_map_channel_set& lib_channel_set) :
+		_lib_channel_set(&lib_channel_set)
+	{
+		std::uint64_t count;
+
+		if (lttng_map_channel_set_get_count(_lib_channel_set, &count) !=
+		    LTTNG_MAP_CHANNEL_SET_STATUS_OK) {
+			LTTNG_THROW_ERROR("Failed to get map channel set count");
+		}
+
+		for (std::uint64_t i = 0; i < count; ++i) {
+			const lttng_map_channel *lib_channel = nullptr;
+
+			if (lttng_map_channel_set_get_at_index(_lib_channel_set, i, &lib_channel) !=
+			    LTTNG_MAP_CHANNEL_SET_STATUS_OK) {
+				LTTNG_THROW_ERROR("Failed to get map channel at index");
+			}
+
+			LTTNG_ASSERT(lib_channel);
+			_set.emplace(*lib_channel);
+		}
+	}
+
+	map_channel_set(const map_channel_set&) = delete;
+	map_channel_set& operator=(const map_channel_set&) = delete;
+
+	map_channel_set(map_channel_set&& other) noexcept :
+		_lib_channel_set(other._lib_channel_set), _set(std::move(other._set))
+	{
+		other._lib_channel_set = nullptr;
+	}
+
+	map_channel_set& operator=(map_channel_set&& other) noexcept
+	{
+		if (this != &other) {
+			lttng_map_channel_set_destroy(_lib_channel_set);
+			_lib_channel_set = other._lib_channel_set;
+			_set = std::move(other._set);
+			other._lib_channel_set = nullptr;
+		}
+
+		return *this;
+	}
+
+	~map_channel_set()
+	{
+		lttng_map_channel_set_destroy(_lib_channel_set);
+	}
+
+	const std::set<map_channel>& set() const noexcept
+	{
+		return _set;
+	}
+
+	std::set<map_channel>::const_iterator begin() const noexcept
+	{
+		return _set.begin();
+	}
+
+	std::set<map_channel>::const_iterator end() const noexcept
+	{
+		return _set.end();
+	}
+
+	std::size_t size() const noexcept
+	{
+		return _set.size();
+	}
+
+	bool is_empty() const noexcept
+	{
+		return _set.empty();
+	}
+
+	nonstd::optional<map_channel> find_by_name(const char *const name) const
+	{
+		LTTNG_ASSERT(name);
+
+		for (const auto& channel : _set) {
+			if (channel.name() == name) {
+				return channel;
+			}
+		}
+
+		return nonstd::nullopt;
+	}
+
+	const lttng_map_channel_set& lib() const noexcept
+	{
+		return *_lib_channel_set;
+	}
+
+private:
+	lttng_map_channel_set *_lib_channel_set;
+	std::set<map_channel> _set;
+};
+
 /*
  * Holds information about a recording session.
  *
@@ -3037,6 +4127,23 @@ public:
 
 		LTTNG_ASSERT(count == 0 || lib_domains);
 		return domain_set(name(), lib_domains.get(), static_cast<unsigned int>(count));
+	}
+
+	/*
+	 * Returns a snapshot of the map channels of the type `type` of
+	 * this recording session.
+	 */
+	map_channel_set map_channels(const lttng_map_channel_type type) const
+	{
+		lttng_map_channel_set *lib_channel_set = nullptr;
+
+		if (lttng_session_list_map_channels(name().data(), type, &lib_channel_set) !=
+		    LTTNG_OK) {
+			LTTNG_THROW_ERROR("Failed to list recording session map channels");
+		}
+
+		LTTNG_ASSERT(lib_channel_set);
+		return map_channel_set(*lib_channel_set);
 	}
 
 	bool is_snapshot_mode() const noexcept
