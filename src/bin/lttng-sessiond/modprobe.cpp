@@ -112,6 +112,11 @@ struct kern_modules_param kern_modules_control_core[] = {
 /* LTTng kerneltracer probe modules list */
 struct kern_modules_param kern_modules_probes_default[] = {
 	{
+		.name = (char *) "lttng-probe-9p",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
+	},
+	{
 		.name = (char *) "lttng-probe-asoc",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
 		.loaded = false,
@@ -128,6 +133,11 @@ struct kern_modules_param kern_modules_probes_default[] = {
 	},
 	{
 		.name = (char *) "lttng-probe-compaction",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
+	},
+	{
+		.name = (char *) "lttng-probe-dma-fence",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
 		.loaded = false,
 	},
