@@ -183,6 +183,9 @@ map_channel::app_attachment map_channel::attach_to_app(ust::app& app, int sessio
 		group_rollback.disarm();
 		return app_attachment(std::move(counter_attachment), std::move(objd_token));
 	}
+	case ownership_t::SYSTEM:
+		/* SYSTEM is kernel-only; unreachable for a user space channel. */
+		break;
 	}
 
 	abort();

@@ -20,12 +20,15 @@ namespace sessiond {
 namespace config {
 
 /*
- * Ownership model for a channel's buffers. Shared across channel kinds
- * (recording, map) that can be owned per-process or per-user.
+ * Ownership model for a channel's buffers, shared across channel kinds
+ * (recording, map). PER_PID and PER_UID are user-space-only; SYSTEM is the
+ * kernel's single system-wide owner (the public LTTNG_BUFFER_GLOBAL). A
+ * domain accepts one set or the other, never both.
  */
 enum class ownership_model_t {
 	PER_PID,
 	PER_UID,
+	SYSTEM,
 };
 
 /*
@@ -203,6 +206,9 @@ struct formatter<lttng::sessiond::config::ownership_model_t> : formatter<std::st
 			break;
 		case lttng::sessiond::config::ownership_model_t::PER_UID:
 			name = "per-uid";
+			break;
+		case lttng::sessiond::config::ownership_model_t::SYSTEM:
+			name = "system";
 			break;
 		}
 

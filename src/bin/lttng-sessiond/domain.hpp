@@ -241,6 +241,8 @@ public:
 		auto new_map_channel =
 			lttng::make_unique<map_channel_configuration>(std::forward<Args>(args)...);
 
+		_validate_map_channel(*new_map_channel);
+
 		const auto& name = new_map_channel->name;
 		auto result = _map_channels.emplace(name, std::move(new_map_channel));
 		if (!result.second) {
@@ -420,6 +422,26 @@ private:
 			LTTNG_THROW_INVALID_ARGUMENT_ERROR(lttng::format(
 				"Only per-CPU buffer allocation is supported by the kernel tracer: channel_name=`{}`",
 				channel.name));
+		}
+	}
+
+	/*
+	 * The kernel only supports SYSTEM ownership; user space only PER_PID or
+	 * PER_UID. Reject the model that doesn't belong to this domain.
+	 */
+	void _validate_map_channel(const map_channel_configuration& map_channel) const
+	{
+		if (domain_class_ == lttng::domain_class::KERNEL_SPACE) {
+			if (map_channel.buffer_ownership != ownership_model_t::SYSTEM) {
+				LTTNG_THROW_INVALID_ARGUMENT_ERROR(lttng::format(
+					"The kernel tracer only supports the system buffer ownership model: map_channel_name=`{}`, buffer_ownership={}",
+					map_channel.name,
+					map_channel.buffer_ownership));
+			}
+		} else if (map_channel.buffer_ownership == ownership_model_t::SYSTEM) {
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR(lttng::format(
+				"The system buffer ownership model is only supported by the kernel tracer: map_channel_name=`{}`",
+				map_channel.name));
 		}
 	}
 

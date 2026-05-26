@@ -5,7 +5,10 @@
  *
  */
 
+#include "map-channel-configuration.hpp"
 #include "modules-map-channel.hpp"
+
+#include <common/macros.hpp>
 
 #include <utility>
 
@@ -19,6 +22,8 @@ map_channel::map_channel(const config::map_channel_configuration& configuration,
 	sessiond::map::map_channel(configuration, std::move(registry)),
 	_kernel_group(std::move(kernel_group))
 {
+	/* The domain gates ownership; a kernel channel only ever sees SYSTEM. */
+	LTTNG_ASSERT(configuration.buffer_ownership == config::ownership_model_t::SYSTEM);
 }
 
 modules::map_group& map_channel::kernel_group() noexcept
