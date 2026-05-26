@@ -43,11 +43,11 @@ namespace ust {
  * without acquiring any recording session lock or touching the domain
  * orchestrator. The registry's own mutex is the only lock involved.
  *
- * Entries are inserted and removed through RAII registration tokens
- * returned by register_session_objd() and register_channel_objd().
- * The token removes its entry on destruction, so the registry stays
- * consistent with the lifetime of the objects it indexes — without
- * requiring explicit management by the orchestrator.
+ * Entries are managed through RAII registration tokens returned by
+ * register_session_objd() and register_channel_objd(). A token removes
+ * its entry on destruction, keeping the registry consistent with the
+ * lifetime of the objects it indexes without explicit management by the
+ * orchestrator.
  *
  * Thread safety: the registry has its own mutex. Since lookups copy
  * out plain values (no pointers to external objects), no lock ordering

@@ -32,9 +32,9 @@ enum class ownership_model_t {
 };
 
 /*
- * Base class for channel configurations. Holds the buffer parameters common to
- * both metadata and event recording channels — the fields needed to create a
- * channel against the tracer (kernel or user space) and the consumer daemon.
+ * Base class for channel configurations. Holds the buffer parameters that both
+ * metadata and event recording channels need to create a channel against the
+ * tracer (kernel or user space) and the consumer daemon.
  */
 class channel_configuration {
 public:

@@ -35,11 +35,10 @@ lttng::c_string_view app_wait_shm_filename() noexcept;
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
 /*
- * The session daemon cannot serve UST applications in this
- * configuration, so the filenames — whose values come from
- * <lttng/ust-ctl.h> — are returned as empty views. Callers that build
- * on them to create a communication endpoint must handle the
- * empty-view case, or avoid the code path altogether.
+ * Without UST support the session daemon cannot serve UST applications,
+ * and the filename values (defined in <lttng/ust-ctl.h>) are
+ * unavailable, so these functions return empty views. Callers must
+ * handle the empty-view case or avoid the code path altogether.
  */
 inline lttng::c_string_view app_sock_filename() noexcept
 {

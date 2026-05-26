@@ -40,9 +40,9 @@ namespace sessiond {
  *     obtained from the consumer daemon after stream group creation.
  *
  * The tracer-side stream group handle (kernel stream group fd, UST stream group
- * object handle) is NOT part of the stream group — it is owned by the domain
- * orchestrator directly. The stream group is concerned with the consumer-facing
- * view: the streams that the consumer daemon reads from.
+ * object handle) is owned directly by the domain orchestrator, not by the
+ * stream group, which only models the consumer-facing view: the streams that
+ * the consumer daemon reads from.
  *
  * Domain-specific stream groups inherit from this base and may extend the
  * nested stream type with additional housekeeping fields.
