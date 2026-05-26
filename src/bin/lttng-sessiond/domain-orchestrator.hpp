@@ -163,6 +163,21 @@ public:
 	remove_map_channel_event_rule(const config::map_channel_configuration& target_map,
 				      const lttng_event_rule& event_rule,
 				      const lttng_action& incr_map_value_action) = 0;
+
+	/*
+	 * Resolve `key` in `target_map`'s registry (allocating if needed) and apply
+	 * `delta` to the shared-group value, with saturation.
+	 *
+	 * This path is used when the increment-map-value action is executed by the
+	 * session daemon (that is, outside event-rule-matches conditions).
+	 *
+	 * `target_map` must be tracked by this orchestrator. Throws if the backing
+	 * registry cannot allocate from sessiond (for example, kernel-backed
+	 * registries where the tracer owns index allocation).
+	 */
+	virtual void increment_map_value(const config::map_channel_configuration& target_map,
+					 const std::string& key,
+					 std::int64_t delta) = 0;
 };
 
 namespace exceptions {

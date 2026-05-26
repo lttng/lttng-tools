@@ -289,6 +289,10 @@ public:
 					   const lttng_event_rule& event_rule,
 					   const lttng_action& incr_map_value_action) override;
 
+	void increment_map_value(const config::map_channel_configuration& target_map,
+				 const std::string& key,
+				 std::int64_t delta) override;
+
 	/*
 	 * Compute the total size added by one more packet per stream across
 	 * all data channels. Channels whose subbuffer count is at most

@@ -76,6 +76,18 @@ void map_channel::for_each_element_of(const abstract_group& group,
 	});
 }
 
+void map_channel::increment_shared_value(const std::string& key, std::int64_t delta)
+{
+	if (!_registry) {
+		LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
+			"Cannot resolve a string key on an INDEX-keyed map channel: map_name=`{}`",
+			_configuration.name));
+	}
+
+	const auto index = _registry->resolve_or_allocate(key);
+	_shared.increment(index, delta);
+}
+
 std::uint64_t map_channel::allocate_user_token() noexcept
 {
 	return _next_user_token++;

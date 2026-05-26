@@ -3802,6 +3802,22 @@ void ls::ust::domain_orchestrator::remove_map_channel_event_rule(
 	LTTNG_ASSERT(erased == 1);
 }
 
+void ls::ust::domain_orchestrator::increment_map_value(
+	const lsc::map_channel_configuration& target_map,
+	const std::string& key,
+	std::int64_t delta)
+{
+	DBG_FMT("UST orchestrator incrementing shared map value: map={}, key=`{}`, delta={}",
+		target_map,
+		key,
+		delta);
+
+	const auto it = _map_channels.find(&target_map);
+	LTTNG_ASSERT(it != _map_channels.end());
+
+	it->second->increment_shared_value(key, delta);
+}
+
 std::uint64_t ls::ust::domain_orchestrator::get_size_one_more_packet_per_stream(
 	std::uint64_t cur_nr_packets) const
 {

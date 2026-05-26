@@ -573,6 +573,10 @@ public:
 					   const lttng_event_rule& event_rule,
 					   const lttng_action& incr_map_value_action) override;
 
+	void increment_map_value(const config::map_channel_configuration& target_map,
+				 const std::string& key,
+				 std::int64_t delta) override;
+
 	/*
 	 * Return the number of streams opened for a channel.
 	 *

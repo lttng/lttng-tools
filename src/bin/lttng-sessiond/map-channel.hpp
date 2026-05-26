@@ -127,6 +127,18 @@ public:
 	void for_each_element_of(const abstract_group& group, const element_visitor& visitor) const;
 
 	/*
+	 * Resolve `key` in this channel's registry (allocating if needed) and add
+	 * `delta` to the shared group value at that index, with saturation.
+	 *
+	 * Used by the session-daemon execution path for increment-map-value actions
+	 * that are not handled directly by a tracer event hit.
+	 *
+	 * Throws if this channel has no registry (INDEX-keyed) or if its registry
+	 * cannot allocate from sessiond (for example, kernel-backed registries).
+	 */
+	void increment_shared_value(const std::string& key, std::int64_t delta);
+
+	/*
 	 * Allocate the next user_token for a rule about to be registered on
 	 * this channel. The token is a monotonic 64-bit counter that is never
 	 * recycled: at 2^64 distinct tokens, recycling on rule removal would

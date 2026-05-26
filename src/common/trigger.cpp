@@ -184,6 +184,27 @@ bool kernel_map_key_template_is_valid(const struct lttng_trigger *trigger)
 	return !action_has_kernel_provider_name_keyed_incr_map_value(
 		lttng_trigger_get_const_action(trigger));
 }
+
+/*
+ * Returns false if `trigger`'s condition is not event-rule-matches and it
+ * carries an INCREMENT_MAP_VALUE action whose key template contains a
+ * placeholder segment (EVENT_NAME / PROVIDER_NAME).
+ *
+ * Placeholder segments require an event context. For non-event-rule-matches
+ * conditions, the increment is executed by sessiond without a matching event,
+ * so only literal key templates are valid.
+ */
+bool non_event_rule_condition_key_template_is_valid(const struct lttng_trigger *trigger)
+{
+	const auto *condition = lttng_trigger_get_const_condition(trigger);
+
+	if (lttng_condition_get_type(condition) == LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES) {
+		return true;
+	}
+
+	return !action_has_placeholder_keyed_incr_map_value(
+		lttng_trigger_get_const_action(trigger));
+}
 } /* namespace */
 
 bool lttng_trigger_validate(const struct lttng_trigger *trigger)
@@ -203,7 +224,8 @@ bool lttng_trigger_validate(const struct lttng_trigger *trigger)
 	valid = lttng_condition_validate(trigger->condition) &&
 		lttng_action_validate(trigger->action) &&
 		agent_domain_key_template_is_valid(trigger) &&
-		kernel_map_key_template_is_valid(trigger);
+		kernel_map_key_template_is_valid(trigger) &&
+		non_event_rule_condition_key_template_is_valid(trigger);
 end:
 	return valid;
 }

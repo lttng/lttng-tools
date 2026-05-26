@@ -7,19 +7,26 @@
 
 #include "action-executor.hpp"
 #include "cmd.hpp"
+#include "domain-orchestrator.hpp"
+#include "domain.hpp"
 #include "health-sessiond.hpp"
+#include "key-registry.hpp"
 #include "lttng-sessiond.hpp"
 #include "notification-thread-internal.hpp"
 #include "session.hpp"
 #include "thread.hpp"
 #include "trigger-utils.hpp"
 
+#include <common/domain.hpp>
 #include <common/dynamic-array.hpp>
 #include <common/macros.hpp>
 #include <common/optional.hpp>
 #include <common/urcu.hpp>
 
 #include <lttng/action/action-internal.hpp>
+#include <lttng/action/increment-map-value.h>
+#include <lttng/action/key-template-internal.hpp>
+#include <lttng/action/key-template.h>
 #include <lttng/action/list-internal.hpp>
 #include <lttng/action/list.h>
 #include <lttng/action/notify-internal.hpp>
@@ -28,14 +35,17 @@
 #include <lttng/action/snapshot-session.h>
 #include <lttng/action/start-session.h>
 #include <lttng/action/stop-session.h>
+#include <lttng/condition/condition.h>
 #include <lttng/condition/evaluation.h>
 #include <lttng/condition/event-rule-matches-internal.hpp>
+#include <lttng/domain.h>
 #include <lttng/lttng-error.h>
 #include <lttng/trigger/trigger-internal.hpp>
 
 #include <pthread.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <string>
 #include <urcu/list.h>
 
 #define THREAD_NAME	      "Action Executor"
@@ -153,6 +163,11 @@ int action_executor_list_handler(struct action_executor *executor,
 				 struct action_work_subitem *);
 } /* namespace */
 namespace {
+int action_executor_increment_map_value_handler(struct action_executor *executor,
+						const struct action_work_item *,
+						struct action_work_subitem *);
+} /* namespace */
+namespace {
 int action_executor_generic_handler(struct action_executor *executor,
 				    const struct action_work_item *,
 				    struct action_work_subitem *);
@@ -160,9 +175,13 @@ int action_executor_generic_handler(struct action_executor *executor,
 
 namespace {
 const action_executor_handler action_executors[] = {
-	action_executor_notify_handler,		  action_executor_start_session_handler,
-	action_executor_stop_session_handler,	  action_executor_rotate_session_handler,
-	action_executor_snapshot_session_handler, action_executor_list_handler,
+	action_executor_notify_handler,
+	action_executor_start_session_handler,
+	action_executor_stop_session_handler,
+	action_executor_rotate_session_handler,
+	action_executor_snapshot_session_handler,
+	action_executor_list_handler,
+	action_executor_increment_map_value_handler,
 };
 } /* namespace */
 
@@ -674,6 +693,159 @@ int action_executor_list_handler(struct action_executor *executor __attribute__(
 } /* namespace */
 
 namespace {
+/*
+ * For non-event-rule-matches conditions, validation guarantees a literal-only
+ * key template. Render it by concatenating its literal segments.
+ */
+std::string render_literal_key_template(const lttng_key_template& key_template)
+{
+	std::string key;
+
+	for (const auto& segment : key_template.segments) {
+		LTTNG_ASSERT(segment->type ==
+			     lttng::action::details::key_template_segment_type::LITERAL);
+		key += static_cast<const lttng::action::details::key_template_literal_segment&>(
+			       *segment)
+			       .text;
+	}
+
+	return key;
+}
+} /* namespace */
+
+namespace {
+int action_executor_increment_map_value_handler(struct action_executor *executor
+						__attribute__((unused)),
+						const struct action_work_item *work_item,
+						struct action_work_subitem *item)
+{
+	struct lttng_action *action = item->action;
+
+	const lttng::urcu::read_lock_guard read_lock;
+
+	/*
+	 * For event-rule-matches conditions, the tracer already increments at
+	 * event-hit time. The executor can still run for sibling actions (for
+	 * example, notify), so skip here to avoid double-counting.
+	 */
+	const auto *const condition = lttng_trigger_get_const_condition(work_item->trigger);
+	if (lttng_condition_get_type(condition) == LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES) {
+		DBG("Skipping `%s` action of trigger `%s`: the tracer performs the increment for an event-rule-matches condition",
+		    get_action_name(action),
+		    get_trigger_name(work_item->trigger));
+		return 0;
+	}
+
+	const char *const session_name =
+		lttng_action_increment_map_value_get_target_session_name(action);
+	const char *const channel_name =
+		lttng_action_increment_map_value_get_target_channel_name(action);
+	if (!session_name || !channel_name) {
+		ERR("Failed to get target session or channel name from `%s` action of trigger `%s`",
+		    get_action_name(action),
+		    get_trigger_name(work_item->trigger));
+		return -1;
+	}
+
+	lttng_domain_type target_domain = LTTNG_DOMAIN_NONE;
+	if (lttng_action_increment_map_value_get_target_domain(action, &target_domain) !=
+	    LTTNG_ACTION_STATUS_OK) {
+		ERR("Failed to get target domain from `%s` action of trigger `%s`",
+		    get_action_name(action),
+		    get_trigger_name(work_item->trigger));
+		return -1;
+	}
+
+	const auto *const key_template = lttng_action_increment_map_value_get_key_template(action);
+	LTTNG_ASSERT(key_template);
+	const auto key = render_literal_key_template(*key_template);
+
+	/* Skip if the target session did not exist when this work item was queued. */
+	if (!item->context.session_id.is_set) {
+		DBG("Session `%s` was not present at the moment the work item was enqueued for `%s` action of trigger `%s`",
+		    session_name,
+		    get_action_name(action),
+		    get_trigger_name(work_item->trigger));
+		lttng_action_increase_execution_failure_count(action);
+		return 0;
+	}
+
+	/*
+	 * Keep `list_lock` declared before `session` so `session` is released first.
+	 * Releasing the last session reference may unpublish it from the session
+	 * list, which requires the list lock to remain held during that release.
+	 */
+	const auto list_lock = lttng::sessiond::lock_session_list();
+	try {
+		const auto session = ltt_session::find_locked_session(
+			LTTNG_OPTIONAL_GET(item->context.session_id));
+
+		if (session->destroyed) {
+			DBG("Session `%s` with id = %" PRIu64
+			    " is flagged as destroyed. Skipping: action = `%s`, trigger = `%s`",
+			    session->name,
+			    session->id,
+			    get_action_name(action),
+			    get_trigger_name(work_item->trigger));
+			return 0;
+		}
+
+		if (!lttng::sessiond::is_trigger_allowed_for_session(work_item->trigger, session)) {
+			return 0;
+		}
+
+		const auto domain_class =
+			lttng::get_domain_class_from_lttng_domain_type(target_domain);
+		const auto& channel_config =
+			session->get_domain(domain_class).get_map_channel(channel_name);
+
+		if (target_domain == LTTNG_DOMAIN_KERNEL) {
+			session->get_kernel_orchestrator().increment_map_value(
+				channel_config, key, 1);
+		} else {
+			session->get_ust_orchestrator().increment_map_value(channel_config, key, 1);
+		}
+
+		DBG("Incremented map value on behalf of trigger `%s`: session = `%s`, channel = `%s`, key = `%s`",
+		    get_trigger_name(work_item->trigger),
+		    session_name,
+		    channel_name,
+		    key.c_str());
+	} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
+		DBG_FMT("Failed to execute trigger action: {}, action=`{}`, trigger_name=`{}`, location='{}'",
+			ex.what(),
+			get_action_name(action),
+			get_trigger_name(work_item->trigger),
+			ex.source_location);
+		lttng_action_increase_execution_failure_count(action);
+	} catch (const lttng::sessiond::config::exceptions::map_channel_not_found_error&) {
+		DBG("No map channel `%s` on the target domain of session `%s`; skipping `%s` action of trigger `%s`",
+		    channel_name,
+		    session_name,
+		    get_action_name(action),
+		    get_trigger_name(work_item->trigger));
+		lttng_action_increase_execution_failure_count(action);
+	} catch (const lttng::sessiond::map::dimension_full_error&) {
+		DBG("Map channel `%s` of session `%s` is full; skipping `%s` action of trigger `%s`",
+		    channel_name,
+		    session_name,
+		    get_action_name(action),
+		    get_trigger_name(work_item->trigger));
+		lttng_action_increase_execution_failure_count(action);
+	} catch (const std::exception& ex) {
+		WARN("Failed to increment map value on behalf of trigger `%s`: session = `%s`, channel = `%s`, error = %s",
+		     get_trigger_name(work_item->trigger),
+		     session_name,
+		     channel_name,
+		     ex.what());
+		lttng_action_increase_execution_failure_count(action);
+	}
+
+	return 0;
+}
+} /* namespace */
+
+namespace {
 int action_executor_generic_handler(struct action_executor *executor,
 				    const struct action_work_item *work_item,
 				    struct action_work_subitem *item)
@@ -1050,6 +1222,13 @@ int add_action_to_subitem_array(struct lttng_action *action, struct lttng_dynami
 	case LTTNG_ACTION_TYPE_SNAPSHOT_SESSION:
 		status = lttng_action_snapshot_session_get_session_name(action, &session_name);
 		LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
+		break;
+	case LTTNG_ACTION_TYPE_INCREMENT_MAP_VALUE:
+		/*
+		 * Sample the target session like other session-targeting actions.
+		 * Validation guarantees a target session name when this action is set.
+		 */
+		session_name = lttng_action_increment_map_value_get_target_session_name(action);
 		break;
 	case LTTNG_ACTION_TYPE_LIST:
 	case LTTNG_ACTION_TYPE_UNKNOWN:

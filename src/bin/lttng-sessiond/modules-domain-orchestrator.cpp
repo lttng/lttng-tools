@@ -1537,6 +1537,22 @@ void ls::modules::domain_orchestrator::remove_map_channel_event_rule(
 	/* lttng::file_descriptor's destructor closes the counter-event fd. */
 }
 
+void ls::modules::domain_orchestrator::increment_map_value(
+	const lsc::map_channel_configuration& target_map,
+	const std::string& key,
+	std::int64_t delta)
+{
+	DBG_FMT("Modules orchestrator incrementing shared map value: map={}, key=`{}`, delta={}",
+		target_map,
+		key,
+		delta);
+
+	const auto it = _map_channels.find(&target_map);
+	LTTNG_ASSERT(it != _map_channels.end());
+
+	it->second->increment_shared_value(key, delta);
+}
+
 ls::recording_channel_runtime_stats
 ls::modules::domain_orchestrator::get_recording_channel_runtime_stats(
 	const lsc::recording_channel_configuration& channel_config) const
