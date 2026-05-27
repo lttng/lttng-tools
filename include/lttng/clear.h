@@ -55,6 +55,13 @@ named \lt_p{session_name}, the clearing operation attempts to:
     may continue to read said packet completely.
 </dl>
 
+In all modes, the clearing operation also resets to&nbsp;0 the values of
+all the \lt_obj_maps of all the \lt_obj_map_channels of \lt_var{RS}, and
+resets every
+\link lttng_map_values_signed_int_has_overflow_at_index() value overflow flag\endlink
+to false. It does \em not remove keys from maps: it only resets their
+values.
+
 The clearing operation which this function initiates, if successful,
 guarantees that any trace data which LTTng produced \em before you call
 this function won't be part of any trace, except:

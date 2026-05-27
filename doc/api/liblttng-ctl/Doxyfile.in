@@ -57,6 +57,7 @@ ALIASES                += lt_def_net_data_port="@DEFAULT_NETWORK_DATA_PORT@"
 ALIASES                += lt_def_net_ctrl_url="<code>net://127.0.0.1:@DEFAULT_NETWORK_CONTROL_PORT@</code>"
 ALIASES                += lt_def_net_data_url="<code>net://127.0.0.1:@DEFAULT_NETWORK_DATA_PORT@</code>"
 ALIASES                += lt_def_net_url="<code>net://127.0.0.1:@DEFAULT_NETWORK_CONTROL_PORT@:@DEFAULT_NETWORK_DATA_PORT@</code>"
+ALIASES                += lt_def_map_channel_max_key_count="@DEFAULT_MAP_CHANNEL_MAX_KEY_COUNT@"
 
 # Aliases: object names
 ALIASES                += lt_obj_session="\ref api_session \"recording session\""
@@ -75,6 +76,21 @@ ALIASES                += lt_obj_c_rer="\ref api_rer \"Recording event rule\""
 ALIASES                += lt_obj_trigger="\ref api_trigger \"trigger\""
 ALIASES                += lt_obj_triggers="\ref api_trigger \"triggers\""
 ALIASES                += lt_obj_c_trigger="\ref api_trigger \"Trigger\""
+ALIASES                += lt_obj_map="\ref api-map-channel-map \"map\""
+ALIASES                += lt_obj_maps="\ref api-map-channel-map \"maps\""
+ALIASES                += lt_obj_c_map="\ref api-map-channel-map \"Map\""
+ALIASES                += lt_obj_map_channel="\ref api_map_channel \"map channel\""
+ALIASES                += lt_obj_map_channels="\ref api_map_channel \"map channels\""
+ALIASES                += lt_obj_c_map_channel="\ref api_map_channel \"Map channel\""
+ALIASES                += lt_obj_map_group="\ref api_map_group \"map group\""
+ALIASES                += lt_obj_map_groups="\ref api_map_group \"map groups\""
+ALIASES                += lt_obj_c_map_group="\ref api_map_group \"Map group\""
+ALIASES                += lt_obj_map_values="\ref api_map_value \"map values object\""
+ALIASES                += lt_obj_map_values_pl="\ref api_map_value \"map values objects\""
+ALIASES                += lt_obj_c_map_values="\ref api_map_value \"Map values object\""
+ALIASES                += lt_obj_map_key="\ref api_map_key \"map key\""
+ALIASES                += lt_obj_map_keys="\ref api_map_key \"map keys\""
+ALIASES                += lt_obj_c_map_key="\ref api_map_key \"Map key\""
 
 
 OPTIMIZE_OUTPUT_FOR_C   = YES
@@ -178,9 +194,32 @@ INPUT                   = "@srcdir@/dox/groups.dox" \
                           "@top_srcdir@/include/lttng/action/rotate-session.h" \
                           "@top_srcdir@/include/lttng/action/snapshot-session.h" \
                           "@top_srcdir@/include/lttng/action/notify.h" \
+                          "@top_srcdir@/include/lttng/action/increment-map-value.h" \
+                          "@top_srcdir@/include/lttng/action/key-template.h" \
                           "@top_srcdir@/include/lttng/endpoint.h" \
                           "@top_srcdir@/include/lttng/notification/channel.h" \
                           "@top_srcdir@/include/lttng/notification" \
+                          "@top_srcdir@/include/lttng/map" \
+                          "@top_srcdir@/include/lttng/map/channel-buffer-ownership.h" \
+                          "@top_srcdir@/include/lttng/map/channel-descriptor.h" \
+                          "@top_srcdir@/include/lttng/map/channel-descriptor-kernel.h" \
+                          "@top_srcdir@/include/lttng/map/channel-descriptor-user.h" \
+                          "@top_srcdir@/include/lttng/map/channel.h" \
+                          "@top_srcdir@/include/lttng/map/channel-set.h" \
+                          "@top_srcdir@/include/lttng/map/channel-type.h" \
+                          "@top_srcdir@/include/lttng/map/channel-update-policy.h" \
+                          "@top_srcdir@/include/lttng/map/channel-user.h" \
+                          "@top_srcdir@/include/lttng/map/group.h" \
+                          "@top_srcdir@/include/lttng/map/group-set.h" \
+                          "@top_srcdir@/include/lttng/map/key.h" \
+                          "@top_srcdir@/include/lttng/map/key-set.h" \
+                          "@top_srcdir@/include/lttng/map/key-set-string.h" \
+                          "@top_srcdir@/include/lttng/map/key-string.h" \
+                          "@top_srcdir@/include/lttng/map/key-type.h" \
+                          "@top_srcdir@/include/lttng/map/value-type.h" \
+                          "@top_srcdir@/include/lttng/map/values.h" \
+                          "@top_srcdir@/include/lttng/map/values-set.h" \
+                          "@top_srcdir@/include/lttng/map/values-signed-int.h" \
                           "@top_srcdir@/include/lttng/trigger/trigger.h"
 INPUT_ENCODING          = UTF-8
 FILE_PATTERNS           = *.h *.dox

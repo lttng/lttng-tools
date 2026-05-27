@@ -24,6 +24,8 @@ extern "C" {
 */
 
 #include <lttng/constant.h>
+#include <lttng/map/channel-descriptor.h>
+#include <lttng/map/channel-set.h>
 
 struct lttng_handle;
 struct lttng_session_descriptor;
@@ -672,6 +674,170 @@ lttng_get_session_shm_path_override(const struct lttng_session *session, const c
 LTTNG_EXPORT extern enum lttng_get_session_trace_format_status
 lttng_get_session_trace_format(const struct lttng_session *session,
 			       enum lttng_trace_format *format);
+
+/*!
+@brief
+    Adds the \lt_obj_map_channel described by \lt_p{descriptor} to the
+    recording session named \lt_p{session_name}.
+
+@ingroup api_session
+
+The session daemon copies the contents of \lt_p{descriptor}: you may
+destroy it with lttng_map_channel_descriptor_destroy() as soon as this
+function returns.
+
+When the name property of \lt_p{descriptor} isn't set, the session
+daemon automatically generates a name for the resulting map channel.
+The generated name is a property of the map channel itself, not of
+\lt_p{descriptor}: retrieve it through lttng_map_channel_get_name()
+with a map channel obtained with lttng_session_list_map_channels().
+
+Within a recording session, a map channel is uniquely identified by
+the (\ref lttng_map_channel_type "type",&nbsp;name) pair carried by
+\lt_p{descriptor}: two map channels may share the same name
+provided their types differ.
+
+@param[in] session_name
+    Name of the recording session to which to add the map channel.
+@param[in] descriptor
+    Descriptor of the map channel to add to the recording session
+    named \lt_p{session_name}.
+
+@returns
+    #LTTNG_OK on success, or a \em negative #lttng_error_code
+    enumerator otherwise.
+
+@lt_pre_conn
+@lt_pre_not_null{session_name}
+@lt_pre_sess_exists{session_name}
+@lt_pre_not_null{descriptor}
+@pre
+    No map channel of the same
+    \ref lttng_map_channel_type "type" and name as those of
+    \lt_p{descriptor} already exists within the recording session
+    named \lt_p{session_name}.
+
+@sa lttng_session_list_map_channels() --
+    Lists the map channels of a recording session.
+@sa lttng_session_get_map_channel_by_name() --
+    Returns a single map channel of a recording session by name.
+*/
+LTTNG_EXPORT extern enum lttng_error_code
+lttng_session_add_map_channel(const char *session_name,
+			      const struct lttng_map_channel_descriptor *descriptor);
+
+/*!
+@brief
+    Sets \lt_p{*channels} to the \lt_obj_map_channels of the type
+    \lt_p{type} of the recording session named \lt_p{session_name}.
+
+@ingroup api_session
+
+\lt_p{*channels} is a "snapshot" taken at call time: LTTng doesn't
+update it as map channels are added to or removed from the recording
+session afterwards.
+
+If \lt_p{type} is #LTTNG_MAP_CHANNEL_TYPE_KERNEL and the Linux kernel
+tracer is unavailable (the session daemon isn't running as the
+\c root user, or kernel tracing is disabled), then this function sets
+\lt_p{*channels} to an empty set and succeeds: a recording session can't
+have any kernel map channel without an available kernel tracer.
+
+The returned map channel objects are client-side handles on map channel
+objects which live in the session daemon: they don't hold map values
+themselves. Sample the values of the maps of a given
+\lt_obj_map_group with lttng_map_group_get_values(), having reached
+the group through lttng_map_channel_get_groups().
+
+@param[in] session_name
+    Name of the recording session of which to get the map channels.
+@param[in] type
+    Type of the map channels to get.
+@param[out] channels
+    @parblock
+    <strong>On success</strong>, this function sets \lt_p{*channels}
+    to the map channels of the type \lt_p{type} of the recording
+    session named \lt_p{session_name}.
+
+    Destroy \lt_p{*channels} with lttng_map_channel_set_destroy().
+    @endparblock
+
+@returns
+    #LTTNG_OK on success, or a \em negative #lttng_error_code
+    enumerator otherwise.
+
+@lt_pre_conn
+@lt_pre_not_null{session_name}
+@lt_pre_sess_exists{session_name}
+@lt_pre_not_null{channels}
+
+@sa lttng_session_get_map_channel_by_name() --
+    Returns a single map channel of a recording session by name.
+*/
+LTTNG_EXPORT extern enum lttng_error_code
+lttng_session_list_map_channels(const char *session_name,
+				enum lttng_map_channel_type type,
+				struct lttng_map_channel_set **channels);
+
+/*!
+@brief
+    Sets \lt_p{*channel} to the \lt_obj_map_channel of the recording
+    session named \lt_p{session_name} having the type \lt_p{type} and
+    the name \lt_p{name}.
+
+@ingroup api_session
+
+Within a recording session, a map channel is uniquely identified by
+the (\lt_p{type},&nbsp;\lt_p{name}) pair: two map channels may share the
+same name provided their types differ.
+
+\lt_p{*channel} is a "snapshot" taken at call time; LTTng doesn't
+update it as the recording session evolves.
+
+\lt_p{*channel} is a client-side handle on a map channel object
+which lives in the session daemon: it doesn't hold map values
+itself. Sample the values of the maps of a given
+\lt_obj_map_group with lttng_map_group_get_values(), having reached
+the group through lttng_map_channel_get_groups().
+
+@param[in] session_name
+    Name of the recording session in which to look up the map channel.
+@param[in] type
+    Type of the map channel to look up.
+@param[in] name
+    Name of the map channel to look up within the recording session
+    named \lt_p{session_name} and having the type \lt_p{type}.
+@param[out] channel
+    @parblock
+    <strong>On success</strong>, this function sets \lt_p{*channel}
+    to the matching map channel.
+
+    Destroy \lt_p{*channel} with lttng_map_channel_destroy().
+    @endparblock
+
+@returns
+    #LTTNG_OK on success, or a \em negative #lttng_error_code
+    enumerator otherwise.
+
+@lt_pre_conn
+@lt_pre_not_null{session_name}
+@lt_pre_sess_exists{session_name}
+@pre
+    \lt_p{type} is a valid #lttng_map_channel_type enumerator.
+@lt_pre_not_null{name}
+@pre
+    A map channel of the type \lt_p{type} and the name \lt_p{name}
+    exists within the recording session named \lt_p{session_name}.
+@lt_pre_not_null{channel}
+
+@sa lttng_session_list_map_channels() --
+    Lists the map channels of a recording session.
+*/
+LTTNG_EXPORT extern enum lttng_error_code
+lttng_session_get_map_channel_by_name(const char *session_name,
+				      enum lttng_map_channel_type type,
+				      const char *name,
+				      struct lttng_map_channel **channel);
 
 /// @}
 

@@ -15,6 +15,12 @@ liblttng_ctl_la_SOURCES = \
 		event-rule-convert.cpp \
 		event-rule-convert.hpp \
 		load.cpp \
+		map-channel.cpp \
+		map-channel-descriptor.cpp \
+		map-group.cpp \
+		map-internal.hpp \
+		map-key.cpp \
+		map-values.cpp \
 		lttng-ctl.cpp \
 		lttng-ctl-health.cpp \
 		lttng-ctl-helper.hpp \

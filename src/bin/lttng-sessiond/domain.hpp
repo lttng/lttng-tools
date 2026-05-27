@@ -25,6 +25,7 @@
 
 #include <vendor/optional.hpp>
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -305,6 +306,21 @@ public:
 	std::size_t map_channel_count() const noexcept
 	{
 		return _map_channels.size();
+	}
+
+	/*
+	 * Generate a map channel name which isn't currently in use
+	 * within this domain.
+	 */
+	std::string generate_map_channel_name() const
+	{
+		for (std::uint64_t candidate_index = 0;; ++candidate_index) {
+			auto candidate_name = fmt::format("channel{}", candidate_index);
+
+			if (_map_channels.count(candidate_name) == 0) {
+				return candidate_name;
+			}
+		}
 	}
 
 	/* Intended for rollback on orchestrator failure. */

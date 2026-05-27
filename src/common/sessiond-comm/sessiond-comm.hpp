@@ -103,6 +103,11 @@ enum lttcomm_sessiond_command {
 	LTTCOMM_SESSIOND_COMMAND_RECLAIM_CHANNEL_MEMORY,
 	LTTCOMM_SESSIOND_COMMAND_GET_CHANNEL_DATA_STREAM_INFO_SETS,
 	LTTCOMM_SESSIOND_COMMAND_ADD_MAP_CHANNEL,
+	LTTCOMM_SESSIOND_COMMAND_LIST_MAP_CHANNELS,
+	LTTCOMM_SESSIOND_COMMAND_GET_MAP_CHANNEL_BY_NAME,
+	LTTCOMM_SESSIOND_COMMAND_LIST_MAP_GROUPS,
+	LTTCOMM_SESSIOND_COMMAND_SAMPLE_MAP_GROUP,
+	LTTCOMM_SESSIOND_COMMAND_LIST_MAP_KEYS,
 	LTTCOMM_SESSIOND_COMMAND_MAX,
 };
 
@@ -206,6 +211,16 @@ static inline const char *lttcomm_sessiond_command_str(enum lttcomm_sessiond_com
 		return "GET_CHANNEL_DATA_STREAM_INFO_SETS";
 	case LTTCOMM_SESSIOND_COMMAND_ADD_MAP_CHANNEL:
 		return "ADD_MAP_CHANNEL";
+	case LTTCOMM_SESSIOND_COMMAND_LIST_MAP_CHANNELS:
+		return "LIST_MAP_CHANNELS";
+	case LTTCOMM_SESSIOND_COMMAND_GET_MAP_CHANNEL_BY_NAME:
+		return "GET_MAP_CHANNEL_BY_NAME";
+	case LTTCOMM_SESSIOND_COMMAND_LIST_MAP_GROUPS:
+		return "LIST_MAP_GROUPS";
+	case LTTCOMM_SESSIOND_COMMAND_SAMPLE_MAP_GROUP:
+		return "SAMPLE_MAP_GROUP";
+	case LTTCOMM_SESSIOND_COMMAND_LIST_MAP_KEYS:
+		return "LIST_MAP_KEYS";
 	default:
 		abort();
 	}
@@ -733,6 +748,111 @@ struct process_attr_integral_value_comm {
 	} u;
 } LTTNG_PACKED;
 
+struct lttcomm_map_channel_comm {
+	char name[LTTNG_SYMBOL_NAME_LEN];
+	/* enum lttng_map_key_type */
+	int32_t key_type;
+	/* enum lttng_map_value_type */
+	int32_t value_type;
+	uint64_t max_entry_count;
+	/* enum lttng_map_update_policy: 0 = PER_EVENT, 1 = PER_RULE_MATCH. */
+	int32_t update_policy;
+	/* enum lttng_map_channel_dead_group_policy */
+	int32_t dead_group_policy;
+	/* 0 = PER_PID, 1 = PER_UID; ignored for the kernel domain. */
+	int8_t buffer_ownership;
+} LTTNG_PACKED;
+
+struct lttcomm_map_channel_list_header {
+	uint64_t count;
+} LTTNG_PACKED;
+
+/*
+ * Identity of a single map group, exchanged both in the LIST_MAP_GROUPS
+ * reply (one entry per group of a map channel) and, in the request
+ * direction, in the SAMPLE_MAP_GROUP payload to select which group to
+ * sample.
+ *
+ * The (type, owner_id, value_type) triple uniquely addresses a group
+ * within a given map channel:
+ *
+ *   - KERNEL_GLOBAL and SHARED groups: owner_id is unused (zero);
+ *     value_type is the effective value type.
+ *   - USER_PER_USER groups: owner_id is the Unix user ID; value_type is
+ *     the effective value type.
+ *   - USER_PER_PROCESS groups: owner_id is the process ID; value_type
+ *     is the effective value type.
+ *
+ * value_type is the effective (resolved) value type of the group: it's
+ * a concrete enum lttng_map_value_type
+ * (LTTNG_MAP_VALUE_TYPE_SIGNED_INT_32 or
+ * LTTNG_MAP_VALUE_TYPE_SIGNED_INT_64), never
+ * LTTNG_MAP_VALUE_TYPE_SIGNED_INT_MAX.
+ */
+struct lttcomm_map_group_comm {
+	/* enum lttng_map_group_type */
+	int32_t type;
+	/* enum lttng_map_value_type (effective value type; never _MAX). */
+	int32_t value_type;
+	/* Unix user ID or process ID; unused for non-user groups. */
+	uint64_t owner_id;
+	/* Human-readable owner name; unused (empty) for non-user groups. */
+	char owner_name[LTTNG_SYMBOL_NAME_LEN];
+} LTTNG_PACKED;
+
+struct lttcomm_map_group_list_header {
+	uint64_t count;
+} LTTNG_PACKED;
+
+/*
+ * A SAMPLE_MAP_GROUP reply is a sequence of one or more per-partition
+ * value sets. The reply payload starts with this header, followed by
+ * `partition_count` partitions; each partition is a
+ * `lttcomm_map_group_values_partition_comm` header followed by
+ * `element_count` `lttcomm_map_group_value_comm` entries.
+ */
+struct lttcomm_map_group_sample_header {
+	uint64_t partition_count;
+} LTTNG_PACKED;
+
+struct lttcomm_map_group_values_partition_comm {
+	/* 1 if this partition carries a partition ID, 0 otherwise. */
+	uint8_t has_partition_id;
+	uint32_t partition_id;
+	uint64_t element_count;
+} LTTNG_PACKED;
+
+struct lttcomm_map_group_value_comm {
+	int64_t value;
+	uint8_t has_overflow;
+} LTTNG_PACKED;
+
+/*
+ * A LIST_MAP_KEYS reply is this header followed by `count`
+ * `lttcomm_map_key_comm` entries, each immediately followed inline by
+ * its key string.
+ */
+struct lttcomm_map_key_list_header {
+	uint64_t count;
+} LTTNG_PACKED;
+
+/*
+ * One registered key of a map channel.
+ *
+ * The key string follows this header inline as `name_len` bytes (not
+ * null-terminated), since map keys have no fixed maximum length.
+ *
+ * `index` is the element index of the key in the channel registry; it
+ * aligns the key with the dense, index-addressed value rows of a
+ * SAMPLE_MAP_GROUP reply so a reader can join keys to values.
+ */
+struct lttcomm_map_key_comm {
+	uint64_t index;
+	/* enum lttng_map_key_type */
+	int32_t type;
+	uint32_t name_len;
+} LTTNG_PACKED;
+
 /*
  * Data structure received from lttng client to session daemon.
  */
@@ -854,23 +974,33 @@ struct lttcomm_session_msg {
 		struct {
 			char channel_name[LTTNG_SYMBOL_NAME_LEN];
 		} LTTNG_PACKED get_channel_data_stream_info_sets;
+		struct lttcomm_map_channel_comm add_map_channel;
 		struct {
+			/* enum lttng_map_channel_type */
+			int32_t type;
+		} LTTNG_PACKED list_map_channels;
+		struct {
+			/* enum lttng_map_channel_type */
+			int32_t type;
 			char name[LTTNG_SYMBOL_NAME_LEN];
-			/* enum lttng_map_key_type */
-			int32_t key_type;
-			/* enum lttng_map_value_type */
-			int32_t value_type;
-			uint64_t max_entry_count;
-			/* enum lttng_map_update_policy: 0 = PER_EVENT, 1 = PER_RULE_MATCH. */
-			int32_t update_policy;
-			/*
-			 * enum lttng_map_channel_dead_group_policy:
-			 * 0 = DROP, 1 = SUM_INTO_SHARED.
-			 */
-			int32_t dead_group_policy;
-			/* 0 = PER_PID, 1 = PER_UID; ignored for the kernel domain. */
-			int8_t buffer_ownership;
-		} LTTNG_PACKED add_map_channel;
+		} LTTNG_PACKED get_map_channel_by_name;
+		struct {
+			/* enum lttng_map_channel_type */
+			int32_t type;
+			char channel_name[LTTNG_SYMBOL_NAME_LEN];
+		} LTTNG_PACKED list_map_groups;
+		struct {
+			/* enum lttng_map_channel_type */
+			int32_t type;
+			char channel_name[LTTNG_SYMBOL_NAME_LEN];
+			/* Identity of the group to sample. */
+			struct lttcomm_map_group_comm group;
+		} LTTNG_PACKED sample_map_group;
+		struct {
+			/* enum lttng_map_channel_type */
+			int32_t type;
+			char channel_name[LTTNG_SYMBOL_NAME_LEN];
+		} LTTNG_PACKED list_map_keys;
 	} u;
 	/* Count of fds sent. */
 	uint32_t fd_count;

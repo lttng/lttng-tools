@@ -255,6 +255,11 @@ happens within a recording session. In particular, a recording session:
   An active recording session is an implicit
   \lt_obj_rer condition.
 
+  Similarly, LTTng only increments the values of the
+  \lt_obj_map_channels of a recording session through
+  \ref api_trigger_action_incr_map_val "“increment map value” trigger actions"
+  while the recording session is active.
+
 - Has its own \ref api-session-modes "mode"
   (local, network streaming, snapshot, or live).
 
@@ -2424,6 +2429,923 @@ as well as on the \lt_obj_domain which contains&nbsp;\lt_var{ER}:
       \lt_var{ER} with lttng_enable_event_with_exclusions().
 </table>
 
+@defgroup api_map_channel Map channel API
+@ingroup api_session
+
+A <strong><em>map channel</em></strong> is an object which is
+responsible for a set of fixed-size, per-partition key-value stores
+known as \lt_obj_maps.
+
+A map channel is similar to a \lt_obj_channel, except that, instead of
+containing ring buffers to record events, it contains \lt_obj_maps
+which hold integer \ref api_map_value "values" \ref api_map_key "keyed" by
+strings (as of LTTng-tools&nbsp;\lt_version_maj_min).
+
+Unlike a \lt_obj_channel, which lives within a single
+\lt_obj_domain, a map channel only distinguishes
+<strong>Linux kernel</strong> from <strong>user space</strong>
+through its \ref api-map-channel-prop-type "type": the map channel
+API treats every non-kernel tracing domain uniformly as user space.
+
+To populate the \lt_obj_maps of a map channel, add a \lt_obj_trigger
+with
+an \ref api_trigger_action_incr_map_val "“increment map value” action"
+which targets that map channel: each time the trigger fires, LTTng
+expands the
+\ref api_trigger_action_incr_map_val_key_template "key template" of
+the action to obtain an effective key, and then increments the value of
+the corresponding map entry.
+
+@sa The “MAP CHANNEL AND MAP” section of \lt_man{lttng-concepts,7}.
+
+<h1>Map partitioning</h1>
+
+\anchor api-map-channel-map
+A <strong><em>map</em></strong> is the
+<em>per-partition view</em> of the \ref api_map_value "values" which a map
+channel keeps for a given <strong><em>owner</em></strong>, that is:
+
+<dl>
+  <dt>\link #LTTNG_MAP_CHANNEL_TYPE_KERNEL Linux kernel\endlink map channel
+  <dd>The whole system (a single, implicit owner).
+
+  <dt>\link #LTTNG_MAP_CHANNEL_TYPE_USER User space\endlink map channel
+  <dd>
+    A (Unix user or process,
+    \ref api-map-group-prop-effective-value-type "effective value type")
+    pair, depending on the
+    \ref api-map-channel-buf-ownership-model "buffer ownership model"
+    of the map channel.
+</dl>
+
+Each map exposes <strong>one value per key</strong>, and the
+\lt_obj_map_group for the owner is the set of all such per-partition
+views.
+
+As of LTTng-tools&nbsp;\lt_version_maj_min, a map channel always
+allocates one map per&nbsp;CPU per owner (equivalent to
+\link api-channel-per-cpu-buf per-CPU buffering\endlink for a
+\lt_obj_channel): the partitioning is by CPU&nbsp;ID.
+Get the partition ID of a given per-partition \lt_obj_map_values with
+lttng_map_values_get_partition_id().
+
+In addition to the per-owner, per-CPU \lt_obj_maps which the buffer
+ownership model dictates, every user space map channel also carries a single,
+channel-wide \ref api-map-channel-shared-map-group "shared map group".
+
+<h1>\anchor api-map-channel-props Properties</h1>
+
+The properties of a map channel are:
+
+<table>
+  <tr>
+    <th>Property name
+    <th>Description
+    <th>Access
+  <tr>
+    <td>\anchor api-map-channel-prop-name Name
+    <td>
+      Identifies the map channel within its
+      (recording&nbsp;session,&nbsp;\ref api-map-channel-prop-type "type")
+      pair: two map channels may share the same
+      name provided their types differ.
+    <td>
+      Initially unset on a map channel descriptor.
+
+      When unset, the \ref api-gen-sessiond-conn "session daemon"
+      automatically generates a name when you call
+      lttng_session_add_map_channel().
+
+      - lttng_map_channel_descriptor_set_name()
+      - lttng_map_channel_descriptor_get_name()
+      - lttng_map_channel_get_name()
+  <tr>
+    <td>\anchor api-map-channel-prop-type Type
+    <td>
+      Selects which tracing domain family the map channel belongs to
+      (\link #LTTNG_MAP_CHANNEL_TYPE_KERNEL kernel\endlink vs.
+      \link #LTTNG_MAP_CHANNEL_TYPE_USER user space\endlink; see
+      #lttng_map_channel_type) and which type-specific accessors
+      apply (<code>lttng_map_channel_kernel_*()</code> vs.
+      <code>lttng_map_channel_user_*()</code> functions).
+
+      Within a \lt_obj_session, a map channel is uniquely
+      identified by the (type,&nbsp;\ref api-map-channel-prop-name "name")
+      pair: two map channels may share the same name
+      provided their types differ.
+    <td>
+      Determined by the descriptor creation function
+      (\link lttng_map_channel_descriptor_kernel_string_key_scalar_value_create() kernel\endlink
+      vs.
+      \link lttng_map_channel_descriptor_user_string_key_scalar_value_create() user space\endlink).
+
+      - lttng_map_channel_descriptor_get_type()
+      - lttng_map_channel_get_type()
+  <tr>
+    <td>\anchor api-map-channel-prop-key-type Key type
+    <td>
+      Type of the \lt_obj_map_keys of the \lt_obj_maps which the map channel
+      contains; see #lttng_map_key_type.
+
+      As of LTTng-tools&nbsp;\lt_version_maj_min, only string keys
+      are available: every descriptor creation function bakes in
+      #LTTNG_MAP_KEY_TYPE_STRING.
+    <td>
+      Determined by the descriptor creation function (the
+      <code>_string_key_</code> infix in
+      lttng_map_channel_descriptor_kernel_string_key_scalar_value_create()
+      and
+      lttng_map_channel_descriptor_user_string_key_scalar_value_create()).
+
+      - lttng_map_key_set_get_type() on the
+        \link lttng_map_channel_get_keys() key set\endlink of the
+        map channel.
+      - lttng_map_key_get_type() on a single key.
+  <tr>
+    <td>\anchor api-map-channel-prop-value-type Value type
+    <td>
+      Type of the values of the \lt_obj_maps which the map channel
+      contains; see #lttng_map_value_type.
+
+      This property is the <em>configured</em> value type. The
+      <em>effective value type</em>, that is, the value type which LTTng
+      actually creates for a given instrumented application or for the
+      Linux kernel, may differ from it, following two simple rules:
+
+      - A counter can't be wider than whatever hosts it: the
+        \ref api-gen-sessiond-conn "session daemon" for a user space map
+        channel, or the Linux kernel for a kernel map channel.
+        Therefore, requesting a 64-bit counter on a 32-bit host makes
+        the map channel creation fail.
+
+      - The bitness of an instrumented application doesn't affect
+        whether LTTng creates a user space map channel, since LTTng
+        doesn't know it at that time; it only affects access afterwards.
+
+        A 64-bit application can access a counter of any width, whereas
+        a 32-bit application can only access a 32-bit counter.
+
+        This access limit doesn't apply to kernel map channels, of which
+        the session daemon reads the counters directly: a 32-bit session
+        daemon reads a 64-bit kernel counter fine.
+
+      As of LTTng-tools&nbsp;\lt_version_maj_min, only signed integer
+      value types are available:
+
+      <dl>
+        <dt>#LTTNG_MAP_VALUE_TYPE_SIGNED_INT_32
+        <dd>
+          32-bit signed integer values.
+
+          LTTng can always create such a map channel, and any
+          instrumented application can access its counters.
+        <dt>#LTTNG_MAP_VALUE_TYPE_SIGNED_INT_64
+        <dd>
+          64-bit signed integer values.
+
+          For a user space map channel, this requires a 64-bit session
+          daemon (otherwise the map channel creation fails), and
+          instrumented 32-bit applications can't access the counters.
+
+          For a kernel map channel, this requires a 64-bit kernel
+          (otherwise the map channel creation fails).
+        <dt>#LTTNG_MAP_VALUE_TYPE_SIGNED_INT_MAX
+        <dd>
+          The widest signed integer values which keep the counters
+          accessible without making the map channel creation fail.
+
+          For a user space map channel, each instrumented application
+          gets a counter of its own bitness, but never wider than the
+          session daemon: both 32-bit and 64-bit applications can
+          therefore always access such a map channel, and LTTng can
+          always create it.
+
+          For a kernel map channel, this is the bitness of the session
+          daemon, which reads the counters.
+      </dl>
+    <td>
+      Set at descriptor creation time through the
+      \lt_p{value_type} parameter of
+      lttng_map_channel_descriptor_kernel_string_key_scalar_value_create()
+      or
+      lttng_map_channel_descriptor_user_string_key_scalar_value_create().
+
+      - lttng_map_channel_descriptor_get_value_type()
+      - lttng_map_channel_get_value_type()
+  <tr>
+    <td>\anchor api-map-channel-prop-buf-ownership Buffer ownership model (user space map channel)
+    <td>
+      See \ref api-map-channel-buf-ownership-model "Buffer ownership model".
+    <td>
+      Set at descriptor creation time through the
+      \lt_p{ownership_model} parameter of
+      lttng_map_channel_descriptor_user_string_key_scalar_value_create().
+
+      - lttng_map_channel_descriptor_user_get_buffer_ownership()
+      - lttng_map_channel_user_get_buffer_ownership()
+  <tr>
+    <td>\anchor api-map-channel-prop-max-key-count Maximum key count
+    <td>
+      Caps the number of distinct \ref api_map_key "keys" which the
+      map channel may track, and determines the size of each
+      contained \lt_obj_map.
+
+      When a \lt_obj_map is full, LTTng silently drops any new key.
+    <td>
+      - lttng_map_channel_descriptor_set_max_key_count()
+      - lttng_map_channel_descriptor_get_max_key_count()
+      - lttng_map_channel_get_max_key_count()
+  <tr>
+    <td>\anchor api-map-channel-prop-update-policy Update policy
+    <td>
+      See \ref api-map-channel-update-policy "Update policy".
+    <td>
+      - lttng_map_channel_descriptor_set_update_policy()
+      - lttng_map_channel_descriptor_get_update_policy()
+      - lttng_map_channel_get_update_policy()
+  <tr>
+    <td>\anchor api-map-channel-prop-dead-group-policy Dead group policy (user space map channel with per-process buffer ownership)
+    <td>
+      See \ref api-map-channel-dead-group-policy "Dead group policy".
+    <td>
+      - lttng_map_channel_descriptor_user_set_dead_group_policy()
+      - lttng_map_channel_descriptor_user_get_dead_group_policy()
+      - lttng_map_channel_user_get_dead_group_policy()
+</table>
+
+All the properties above are immutable once a map channel exists.
+
+<h2>\anchor api-map-channel-buf-ownership-model Buffer ownership model</h2>
+
+For a user space map channel, the <strong>buffer ownership
+model</strong> (#lttng_map_channel_buffer_ownership enumerator)
+specifies whether each Unix user, or each process, owns its own
+\lt_obj_maps:
+
+<dl>
+  <dt>#LTTNG_MAP_CHANNEL_BUFFER_OWNERSHIP_PER_UID
+  <dd>
+    The \lt_obj_maps which back the channel are shared between all
+    the instrumented applications of a given Unix user.
+
+  <dt>#LTTNG_MAP_CHANNEL_BUFFER_OWNERSHIP_PER_PID
+  <dd>
+    Each instrumented process has its own private \lt_obj_maps.
+</dl>
+
+This is the same concept as the
+\ref api-channel-buf-ownership-model "buffer ownership model" of a
+\lt_obj_channel, except that it applies to the backing memory of
+\lt_obj_maps instead of ring buffers.
+
+A Linux kernel map channel doesn't have a buffer ownership model:
+its \lt_obj_maps are always system-wide.
+
+<h2>\anchor api-map-channel-update-policy Update policy</h2>
+
+The <strong>update policy</strong> of a map channel
+(#lttng_map_channel_update_policy enumerator) controls how LTTng
+increments map values when multiple
+\link api_trigger_cond_er_matches “event rule matches”\endlink
+triggers having an
+\ref api_trigger_action_incr_map_val "“increment map value” action"
+which targets the same map channel match the same event and produce
+the same effective key:
+
+<dl>
+  <dt>#LTTNG_MAP_CHANNEL_UPDATE_POLICY_PER_EVENT
+  <dd>
+    LTTng increments a single map value per resulting key,
+    regardless of how many of those triggers match.
+
+    This is similar to how LTTng writes a single event record to a
+    given \lt_obj_channel when multiple \lt_obj_rers of the map channel
+    match the same event.
+
+  <dt>#LTTNG_MAP_CHANNEL_UPDATE_POLICY_PER_RULE_MATCH
+  <dd>
+    LTTng performs one map value increment per matching trigger,
+    even when several matching triggers produce the same key.
+</dl>
+
+The update policy is only meaningful when an
+\ref api_trigger_action_incr_map_val "“increment map value” action"
+increments a map value because of an
+\link api_trigger_cond_er_matches “event rule matches”\endlink
+trigger condition, since that's the only condition type which can
+match the same event through more than one trigger at once.
+
+For a trigger having any other
+\ref api_trigger_cond "condition" type, each firing of the trigger
+causes a single map value increment, regardless of the update policy.
+
+<h2>\anchor api-map-channel-shared-map-group Shared map group</h2>
+
+A shared map group is a user space map channel concept: a Linux kernel
+map channel never has one.
+
+In addition to the per-owner \lt_obj_map_groups which the
+\ref api-map-channel-buf-ownership-model "buffer ownership model"
+dictates, every user space map channel carries a single, channel-wide
+<strong><em>shared map group</em></strong>: one \lt_obj_map with
+no owner ID (no Unix user, no process) and no per-partition
+decomposition.
+
+In the \lt_obj_map_group API, the shared map group is a \lt_obj_map_group
+of \ref api-map-group-prop-type "type" #LTTNG_MAP_GROUP_TYPE_SHARED.
+Reach it directly with lttng_map_channel_get_shared_group(), or find
+it within the result of lttng_map_channel_get_groups() (it always exists
+for a user space map channel).
+
+The LTTng session daemon (see \lt_man{lttng-sessiond,8}) writes its
+values directly: tracers don't update the shared map group. The session
+daemon writes to it when the
+\ref api-map-channel-prop-dead-group-policy "dead group policy" of
+the map channel is
+#LTTNG_MAP_CHANNEL_DEAD_GROUP_POLICY_SUM_INTO_SHARED and an
+instrumented process terminates: LTTng then accumulates the values of the
+dying per-process \lt_obj_maps into the shared map group of the
+channel.
+
+Because the shared map group has no per-partition decomposition,
+lttng_map_group_get_values() always returns a
+\link lttng_map_values_set map values object set\endlink of size&nbsp;1
+for it, and lttng_map_values_get_partition_id() does \em not apply to
+the contained \lt_obj_map_values.
+
+<h2>\anchor api-map-channel-dead-group-policy Dead group policy</h2>
+
+The <strong>dead group policy</strong> of a user space map channel
+with the
+\link #LTTNG_MAP_CHANNEL_BUFFER_OWNERSHIP_PER_PID per-process buffer ownership model\endlink
+(#lttng_map_channel_dead_group_policy enumerator) controls what LTTng
+does with the values of the \lt_obj_maps of an instrumented process
+when this process terminates while the map channel still exists:
+
+<dl>
+  <dt>#LTTNG_MAP_CHANNEL_DEAD_GROUP_POLICY_DROP
+  <dd>
+    Discard the maps of the terminated process: their values, which
+    the process accumulated since the start of the
+    \lt_obj_session, are lost.
+
+  <dt>#LTTNG_MAP_CHANNEL_DEAD_GROUP_POLICY_SUM_INTO_SHARED
+  <dd>
+    For each \lt_obj_map of the terminated process, add each value to
+    the corresponding key of the
+    \ref api-map-channel-shared-map-group "shared map group" of the
+    map channel.
+
+    When the addition would overflow the
+    \ref api-map-group-prop-effective-value-type "effective value type"
+    of the map group, the result wraps around (modular arithmetic) and
+    LTTng sets the overflow flag of the corresponding shared map value
+    (see lttng_map_values_signed_int_has_overflow_at_index()).
+</dl>
+
+The dead group policy only applies to a user space map channel whose
+\ref api-map-channel-buf-ownership-model "buffer ownership model" is
+#LTTNG_MAP_CHANNEL_BUFFER_OWNERSHIP_PER_PID. A
+\link #LTTNG_MAP_CHANNEL_TYPE_KERNEL kernel\endlink map channel and a
+per-user user space map channel don't have a dead group policy: nothing
+in their data model goes away independently of the recording session
+itself.
+
+<h1>Operations</h1>
+
+The map channel operations are:
+
+<table>
+  <tr>
+    <th>Operation
+    <th>Means
+  <tr>
+    <td>Creation
+    <td>
+      -# Create a \link lttng_map_channel_descriptor map channel
+         descriptor\endlink with
+         lttng_map_channel_descriptor_kernel_string_key_scalar_value_create()
+         or
+         lttng_map_channel_descriptor_user_string_key_scalar_value_create()
+         depending on the target tracing domain.
+
+         These functions set the
+         \ref api-map-channel-props "properties" of the descriptor
+         to initial values, fixing all the immutable ones up front:
+
+         - The
+           \ref api-map-channel-prop-type "type"
+           (\link #LTTNG_MAP_CHANNEL_TYPE_KERNEL kernel\endlink vs.
+           \link #LTTNG_MAP_CHANNEL_TYPE_USER user space\endlink) and
+           the
+           \ref api-map-channel-prop-key-type "key type"
+           (always #LTTNG_MAP_KEY_TYPE_STRING as of
+           LTTng-tools&nbsp;\lt_version_maj_min) follow from the choice
+           of creation function itself.
+
+         - The
+           \ref api-map-channel-prop-value-type "value type" and
+           (for a user space channel) the
+           \ref api-map-channel-prop-buf-ownership "buffer ownership model"
+           come from the parameters of the creation function.
+
+      -# Set the optional properties of the descriptor:
+
+         - \ref api-map-channel-prop-name "Name" with
+           lttng_map_channel_descriptor_set_name().
+
+           When left unset,
+           the \ref api-gen-sessiond-conn "session daemon"
+           automatically generates the name of the resulting map
+           channel; retrieve it with lttng_map_channel_get_name()
+           through lttng_session_list_map_channels().
+
+         - \ref api-map-channel-prop-max-key-count "Maximum key count"
+           with lttng_map_channel_descriptor_set_max_key_count().
+
+         - \ref api-map-channel-prop-update-policy "Update policy"
+           with lttng_map_channel_descriptor_set_update_policy().
+
+         - For a user space descriptor with the per-process
+           \ref api-map-channel-buf-ownership-model "buffer ownership model":
+           \ref api-map-channel-prop-dead-group-policy "dead group policy"
+           with lttng_map_channel_descriptor_user_set_dead_group_policy().
+
+      -# Add the described map channel to a \lt_obj_session with
+         lttng_session_add_map_channel().
+
+      -# Destroy the descriptor with
+         lttng_map_channel_descriptor_destroy().
+
+      @sa \lt_man{lttng-add-map-channel,1}
+  <tr>
+    <td>Listing
+    <td>
+      Use lttng_session_list_map_channels(), passing the
+      \ref lttng_map_channel_type "type" of the map channels of
+      interest.
+
+      Look up a single map channel by
+      (\ref api-map-channel-prop-type "type",&nbsp;\ref api-map-channel-prop-name "name")
+      pair with lttng_session_get_map_channel_by_name().
+
+      @sa \lt_man{lttng-list,1}
+      @sa \lt_man{lttng-status,1}
+  <tr>
+    <td>Property access
+    <td>
+      Use the dedicated <code>lttng_map_channel_get_*()</code> and
+      <code>lttng_map_channel_user_get_*()</code> functions.
+  <tr>
+    <td>\anchor api-map-channel-op-key-access Key access
+    <td>
+      -# Use lttng_map_channel_get_keys() to obtain a "snapshot" of the
+         current \link lttng_map_key_set map key set\endlink of the map
+         channel.
+
+         The connected session daemon returns the keys which the map
+         channel tracks at that moment; LTTng doesn't update the
+         resulting set as keys are added to the channel afterwards.
+
+      -# Use the resulting map key set; see \ref api_map_key for how
+         to iterate, look up, and inspect individual keys.
+
+      -# Destroy the resulting map key set with
+         lttng_map_key_set_destroy().
+  <tr>
+    <td>\anchor api-map-channel-op-group-access Group access
+    <td>
+      -# Reach a \lt_obj_map_group of the map channel:
+
+         <dl>
+           <dt>For all the map groups of the map channel, in one call
+           <dd>
+             Use lttng_map_channel_get_groups() to obtain a
+             "snapshot" of the current
+             \link lttng_map_group_set map group set\endlink.
+
+             For a user space map channel, the resulting set always
+             includes the
+             \ref api-map-channel-shared-map-group "shared map group",
+             which always exists. A Linux kernel map channel has no
+             shared map group.
+
+             The connected session daemon returns the map groups which
+             the channel exposes at that moment; LTTng doesn't update
+             the resulting set as map groups are added to or removed
+             from the channel afterwards.
+
+           <dt>For the map groups of one owner of a user space map channel
+           <dd>
+             Use lttng_map_channel_user_get_group_by_uid() or
+             lttng_map_channel_user_get_group_by_pid(), depending on
+             the
+             \ref api-map-channel-buf-ownership-model "buffer ownership model"
+             of the map channel. The resulting
+             \link lttng_map_group_set map group set\endlink contains one
+             map group per
+             \ref api-map-group-prop-effective-value-type "effective value type"
+             of the owner (one or two,
+             as of LTTng-tools&nbsp;\lt_version_maj_min).
+
+           <dt>
+             For the \ref api-map-channel-shared-map-group "shared map group"
+             of a user space map channel
+           <dd>
+             Use lttng_map_channel_get_shared_group().
+         </dl>
+
+      -# Use the resulting map group(s); see \ref api_map_group.
+
+      -# Destroy the resulting object:
+
+         <dl>
+           <dt>Map group set
+           <dd>
+             lttng_map_group_set_destroy().
+
+             The set owns its map groups: do \em not destroy them
+             individually with lttng_map_group_destroy().
+
+           <dt>Single map group
+           <dd>lttng_map_group_destroy().
+         </dl>
+
+      @sa \lt_man{lttng-show-maps,1}
+  <tr>
+    <td>Value reset
+    <td>
+      Resetting the values of all the \lt_obj_maps of all the
+      map channels of a \lt_obj_session to&nbsp;0, without
+      removing the keys themselves, is part of
+      \ref api_session_clear "recording session clearing".
+
+      @sa \lt_man{lttng-clear,1}
+  <tr>
+    <td>Destruction (client-side handle)
+    <td>
+      Destroy a map channel handle obtained from
+      lttng_session_get_map_channel_by_name() with
+      lttng_map_channel_destroy().
+
+      For map channels owned by a map channel set, call
+      lttng_map_channel_set_destroy() instead.
+
+      As of LTTng-tools&nbsp;\lt_version_maj_min, you can't remove
+      a map channel from a \lt_obj_session: it exists as long as
+      the recording session exists.
+</table>
+
+@defgroup api_map_group Map group API
+@ingroup api_map_channel
+
+A <strong><em>map group</em></strong> is the set of
+\lt_obj_maps which a single owner of a parent
+\lt_obj_map_channel owns (see
+\ref api-map-channel-map "Map partitioning" for what counts as an
+owner).
+
+How a map channel partitions its owners into map groups depends on its
+\ref lttng_map_channel_type "type":
+
+<dl>
+  <dt>\link #LTTNG_MAP_CHANNEL_TYPE_KERNEL Linux kernel\endlink map channel
+  <dd>A single, system-wide map group.
+
+  <dt>\link #LTTNG_MAP_CHANNEL_TYPE_USER User space\endlink map channel
+  <dd>
+    One map group per
+    (owner&nbsp;ID,&nbsp;\ref api-map-group-prop-effective-value-type "effective&nbsp;value&nbsp;type")
+    pair, where the owner is:
+
+    <dl>
+      <dt>\link #LTTNG_MAP_CHANNEL_BUFFER_OWNERSHIP_PER_UID Per-user buffer ownership\endlink
+      <dd>The Unix user running the instrumented applications.
+
+      <dt>\link #LTTNG_MAP_CHANNEL_BUFFER_OWNERSHIP_PER_PID Per-process buffer ownership\endlink
+      <dd>An instrumented process.
+    </dl>
+
+    When the \ref api-map-channel-prop-value-type "value type" of the
+    map channel is #LTTNG_MAP_VALUE_TYPE_SIGNED_INT_MAX, a single owner
+    running applications under multiple ABIs has one map group per
+    effective value type: a 32-bit application contributes to the
+    ##LTTNG_MAP_VALUE_TYPE_SIGNED_INT_32
+    group and a 64-bit application to the
+    #LTTNG_MAP_VALUE_TYPE_SIGNED_INT_64 group.
+
+    When the value type is concrete (#LTTNG_MAP_VALUE_TYPE_SIGNED_INT_32
+    or #LTTNG_MAP_VALUE_TYPE_SIGNED_INT_64), the owner has a single map
+    group to which all its applications contribute, whatever their
+    bitness.
+</dl>
+
+In addition to those, every map channel also exposes a single
+\ref api-map-channel-shared-map-group "shared map group": a
+channel-wide group with no owner ID and no per-partition
+decomposition.
+
+When LTTng executes an
+\ref api_trigger_action_incr_map_val "“increment map value” action",
+it selects the map group based on the owner ID of the executor of
+the \ref api_inst_pt "instrumentation point" which made the
+containing trigger fire.
+
+Obtain the map groups of a \lt_obj_map_channel
+\ref api-map-channel-op-group-access "from the map channel itself".
+
+<h1>\anchor api-map-group-props Properties</h1>
+
+The properties of a map group are:
+
+<table>
+  <tr>
+    <th>Property name
+    <th>Description
+    <th>Access
+  <tr>
+    <td>\anchor api-map-group-prop-type Type
+    <td>
+      Selects which type-specific accessors apply to the map group;
+      see #lttng_map_group_type.
+
+      The four types are:
+
+      <dl>
+        <dt>#LTTNG_MAP_GROUP_TYPE_KERNEL_GLOBAL
+        <dd>
+          The single, system-wide map group of a
+          \link #LTTNG_MAP_CHANNEL_TYPE_KERNEL Linux kernel\endlink
+          map channel.
+
+        <dt>#LTTNG_MAP_GROUP_TYPE_USER_PER_USER
+        <dd>
+          A per-user, per-effective value type map group of a
+          \link #LTTNG_MAP_CHANNEL_TYPE_USER user space\endlink
+          map channel having the
+          \link #LTTNG_MAP_CHANNEL_BUFFER_OWNERSHIP_PER_UID per-user buffer ownership model\endlink.
+
+        <dt>#LTTNG_MAP_GROUP_TYPE_USER_PER_PROCESS
+        <dd>
+          A per-process, per-effective value type map group of a
+          \link #LTTNG_MAP_CHANNEL_TYPE_USER user space\endlink
+          map channel having the
+          \link #LTTNG_MAP_CHANNEL_BUFFER_OWNERSHIP_PER_PID per-process buffer ownership model\endlink.
+
+        <dt>#LTTNG_MAP_GROUP_TYPE_SHARED
+        <dd>
+          The single, channel-wide
+          \ref api-map-channel-shared-map-group "shared map group"
+          of a user space map channel (any
+          \ref api-map-channel-buf-ownership-model "buffer ownership model").
+          A Linux kernel map channel has no shared map group.
+      </dl>
+
+      The <code>lttng_map_group_user_*()</code> accessors only apply
+      to a map group whose type is
+      #LTTNG_MAP_GROUP_TYPE_USER_PER_USER or
+      #LTTNG_MAP_GROUP_TYPE_USER_PER_PROCESS.
+    <td>
+      lttng_map_group_get_type()
+  <tr>
+    <td>\anchor api-map-group-prop-effective-value-type Effective value type
+    <td>
+      The actual value type of the map group, resolved from the
+      \ref api-map-channel-prop-value-type "value type" of the parent
+      map channel; see #lttng_map_value_type.
+
+      Always #LTTNG_MAP_VALUE_TYPE_SIGNED_INT_32 or
+      #LTTNG_MAP_VALUE_TYPE_SIGNED_INT_64, never
+      #LTTNG_MAP_VALUE_TYPE_SIGNED_INT_MAX: the session daemon resolves
+      the value type of the channel to an effective value type when it
+      creates the maps of the group.
+    <td>
+      lttng_map_group_get_effective_value_type()
+</table>
+
+<h1>Operations</h1>
+
+The map group operations are:
+
+<table>
+  <tr>
+    <th>Operation
+    <th>Means
+  <tr>
+    <td>Type access
+    <td>lttng_map_group_get_type()
+  <tr>
+    <td>Effective value type access
+    <td>lttng_map_group_get_effective_value_type()
+  <tr>
+    <td>Owner ID and owner name access (user space map group)
+    <td>
+      Only applies to a map group whose
+      \ref api-map-group-prop-type "type" is
+      #LTTNG_MAP_GROUP_TYPE_USER_PER_USER or
+      #LTTNG_MAP_GROUP_TYPE_USER_PER_PROCESS.
+
+      <dl>
+        <dt>Owner ID (Unix user ID or process ID)
+        <dd>lttng_map_group_user_get_owner_id()
+
+        <dt>Owner name (display/informational only)
+        <dd>lttng_map_group_user_get_owner_name()
+      </dl>
+  <tr>
+    <td>\anchor api-map-group-op-value-sampling Value sampling
+    <td>
+      -# Obtain a
+         \link lttng_map_values_set map values object set\endlink with
+         lttng_map_group_get_values().
+
+         The resulting set contains one
+         \lt_obj_map_values per partition which contributes to the map group
+         (one per CPU, as of LTTng-tools&nbsp;\lt_version_maj_min).
+
+         For a \ref api-map-channel-shared-map-group "shared map group"
+         (\ref api-map-group-prop-type "type"
+         #LTTNG_MAP_GROUP_TYPE_SHARED), the resulting set always
+         contains exactly one \lt_obj_map_values, and
+         lttng_map_values_get_partition_id() does \em not apply to it.
+
+         @important
+             @parblock
+             lttng_map_group_get_values() does \em not provide an atomic
+             snapshot of the map values: the connected session daemon reads
+             the values one by one, and LTTng tracers may concurrently update
+             any of them while the function runs. Therefore, the resulting
+             set doesn't necessarily reflect the state of the maps at a
+             \em single instant.
+
+             To obtain a consistent view of the map values, either:
+
+             - Stop the recording session with lttng_stop_tracing() before
+               calling lttng_map_group_get_values().
+
+             - \link lttng_disable_event() Disable the recording event
+               rules\endlink and/or
+               \link lttng_unregister_trigger() remove the triggers\endlink
+               having an
+               \link api_trigger_action_incr_map_val "increment map value"\endlink
+               action which targets the map channel of the map group.
+             @endparblock
+
+      -# Use the map values set; see \ref api_map_value.
+
+      -# Destroy the map values set with
+         lttng_map_values_set_destroy().
+</table>
+
+@defgroup api_map_key Map key API
+@ingroup api_map_channel
+
+A <strong><em>map key</em></strong> identifies one entry of \em every
+\lt_obj_map of a parent \lt_obj_map_channel:
+the mapping from key to entry index lives at the map channel level,
+and every map (per-partition view) which the channel manages
+exposes the same set of values at the same indices.
+
+Each key has a \ref lttng_map_key_type "type", which selects the
+type-specific accessors which apply to it. As of
+LTTng-tools&nbsp;\lt_version_maj_min, only the
+#LTTNG_MAP_KEY_TYPE_STRING (string key) type exists.
+
+LTTng adds a key to a map channel the first time the
+\ref api_trigger_action_incr_map_val_key_template "key template"
+of an
+\ref api_trigger_action_incr_map_val "“increment map value” action"
+which targets the channel expands to that effective key. The
+\link lttng_map_channel_get_max_key_count() maximum key count\endlink
+of the channel caps the number of distinct keys which it can hold;
+when a map is full, LTTng silently drops any further new key.
+
+Obtain the map keys of a \lt_obj_map_channel
+\ref api-map-channel-op-key-access "from the map channel itself".
+
+<h1>Operations</h1>
+
+The map key operations are:
+
+<table>
+  <tr>
+    <th>Operation
+    <th>Means
+  <tr>
+    <td>Iteration
+    <td>
+      Use lttng_map_key_set_get_count() and
+      lttng_map_key_set_get_at_index().
+  <tr>
+    <td>Lookup
+    <td>
+      For a string key set
+      (lttng_map_key_set_get_type() returns
+      #LTTNG_MAP_KEY_TYPE_STRING), use
+      lttng_map_key_set_string_get_key_by_string().
+  <tr>
+    <td>Type access
+    <td>
+      <dl>
+        <dt>For a single key
+        <dd>lttng_map_key_get_type()
+
+        <dt>For a key set
+        <dd>lttng_map_key_set_get_type()
+      </dl>
+  <tr>
+    <td>String access (string key)
+    <td>
+      Use lttng_map_key_string_get_string().
+  <tr>
+    <td>Index access
+    <td>
+      Use lttng_map_key_get_index() to obtain the entry index of a
+      key.
+
+      Use that index to address the corresponding entry in any
+      \lt_obj_map_values produced by the parent map channel.
+</table>
+
+The parent map channel owns its key set, which remains valid as
+long as the map channel exists.
+
+@defgroup api_map_value Map value API
+@ingroup api_map_channel
+
+A <strong><em>map value</em></strong> is the integer
+(as of LTTng-tools&nbsp;\lt_version_maj_min)
+associated with one (\lt_obj_map,&nbsp;\ref api_map_key "key")
+pair of a \lt_obj_map_channel.
+
+The storage width and signedness of a map value follow the
+\link lttng_map_channel_get_value_type() value type\endlink of the
+parent map channel.
+
+Obtain the map values of a \lt_obj_map_group
+\ref api-map-group-op-value-sampling "by sampling the map group".
+
+<h1>Operations</h1>
+
+The map value operations are:
+
+<table>
+  <tr>
+    <th>Operation
+    <th>Means
+  <tr>
+    <td>Iteration over partitions
+    <td>
+      Use lttng_map_values_set_get_count() and
+      lttng_map_values_set_get_at_index() to walk through the
+      \link lttng_map_values per-partition values objects\endlink
+      of a values set.
+  <tr>
+    <td>Value access (signed integer values)
+    <td>
+      As of LTTng-tools&nbsp;\lt_version_maj_min, the only available
+      \ref api-map-channel-prop-value-type "value types" are signed
+      integers (#LTTNG_MAP_VALUE_TYPE_SIGNED_INT_32,
+      #LTTNG_MAP_VALUE_TYPE_SIGNED_INT_64, and
+      #LTTNG_MAP_VALUE_TYPE_SIGNED_INT_MAX).
+
+      Therefore:
+
+      <dl>
+        <dt>Read the value of an entry
+        <dd>lttng_map_values_signed_int_get_value_at_index().
+
+        <dt>
+          Check whether at least one arithmetic update of an entry
+          wrapped around (modular arithmetic) because the result
+          couldn't be represented with the
+          \ref api-map-group-prop-effective-value-type "effective value type"
+          of the map group
+        <dd>lttng_map_values_signed_int_has_overflow_at_index().
+      </dl>
+
+      Use the \link lttng_map_key_get_index() entry index\endlink
+      of a specific \ref api_map_key "key" to address the corresponding
+      entry.
+  <tr>
+    <td>Reset
+    <td>
+      Resetting the values of all the \lt_obj_maps of all the
+      \lt_obj_map_channels of a \lt_obj_session to&nbsp;0, without
+      removing the keys themselves, is part of
+      \ref api_session_clear "recording session clearing".
+
+      @sa \lt_man{lttng-clear,1}
+  <tr>
+    <td>Destruction
+    <td>
+      Destroy a values set obtained from
+      lttng_map_group_get_values() with
+      lttng_map_values_set_destroy().
+</table>
+
+@sa \lt_man{lttng-show-maps,1}
+
 @defgroup api_proc_filter Process filter API
 @ingroup api_session
 
@@ -4330,6 +5252,10 @@ actions are available:
     <td>\ref api_trigger_action_snapshot "Take recording session snapshot"
     <td>#LTTNG_ACTION_TYPE_SNAPSHOT_SESSION
     <td>lttng_action_snapshot_session_create()
+  <tr>
+    <td>\ref api_trigger_action_incr_map_val "Increment map value"
+    <td>#LTTNG_ACTION_TYPE_INCREMENT_MAP_VALUE
+    <td>lttng_action_increment_map_value_create()
 </table>
 
 LTTng can execute more than one action when a trigger fires: create
@@ -4340,7 +5266,10 @@ Get the type of a trigger condition with lttng_condition_get_type().
 By default, LTTng executes the action of a trigger every time it fires.
 See \ref api_trigger_action_rate_policy to change the rate policy of a
 trigger action (every&nbsp;\lt_var{N} times or
-once after&nbsp;\lt_var{N} times).
+once after&nbsp;\lt_var{N} times). As of LTTng-tools&nbsp;\lt_version_maj_min,
+you cannot change the rate policy of
+an \ref api_trigger_action_incr_map_val "“increment map value” action":
+its effective rate policy is “every time”.
 
 Destroy a trigger condition with lttng_condition_destroy().
 
@@ -4418,6 +5347,11 @@ depending on the action type:
     <td>lttng_action_snapshot_session_set_rate_policy()
 </table>
 
+As of LTTng-tools&nbsp;\lt_version_maj_min,
+you cannot change the rate policy of
+an \ref api_trigger_action_incr_map_val "“increment map value” action":
+its effective rate policy is “every time”.
+
 @defgroup api_trigger_action_list Trigger action list API
 @ingroup api_trigger_action
 
@@ -4432,6 +5366,16 @@ attempts to execute its contained actions, in order. Whether or not
 LTTng executes a contained action depends on its
 \ref api_trigger_action_rate_policy "rate policy". An action list
 doesn't have a rate policy itself.
+
+@note
+    An \ref api_trigger_action_incr_map_val "“increment map value” action"
+    may execute out of order: when an action list contains at least one
+    “increment map value” action,
+    LTTng doesn't guarantee the execution order of the “increment map
+    value” action(s) relative to all the actions of the list, including
+    other “increment map value” actions. In other words, the order
+    of the action list only holds amongst its non-“increment map
+    value” actions.
 
 Create a trigger action list with lttng_action_list_create().
 
@@ -4666,6 +5610,169 @@ Set and get the \ref api_trigger_action_rate_policy "rate policy"
 of a “take recording session snapshot” trigger action with
 lttng_action_snapshot_session_set_rate_policy() and
 lttng_action_snapshot_session_get_rate_policy().
+
+@defgroup api_trigger_action_incr_map_val “Increment map value” trigger action API
+@ingroup api_trigger_action
+
+An <strong><em>“increment map value”</em></strong> trigger action
+adds&nbsp;1 to one specific value, in one specific
+\lt_obj_map of one specific
+\lt_obj_map_group of a target
+\lt_obj_map_channel, when its containing trigger fires.
+
+When the containing trigger's condition isn't an
+\ref api_trigger_cond_er_matches "“event rule matches” condition",
+the target \lt_obj_map_channel type must be
+#LTTNG_MAP_CHANNEL_TYPE_USER (LTTng increments a counter within the shared
+user space map, as there's no Linux kernel
+\ref api_inst_pt "instrumentation point" executor in that case) and the
+\ref api_trigger_action_incr_map_val_key_template "key template" must be
+literal (it must contain no placeholder).
+
+When LTTng executes this action, it selects:
+
+<dl>
+  <dt>A map group (within the target map channel)
+  <dd>
+    Based on the owner ID of the executor of the
+    \ref api_inst_pt "instrumentation point":
+
+    <dl>
+      <dt>\link #LTTNG_MAP_CHANNEL_TYPE_KERNEL Kernel\endlink
+      <dd>The single, system-wide group.
+
+      <dt>\link #LTTNG_MAP_CHANNEL_TYPE_USER User space\endlink
+      <dd>
+        The group matching the
+        \link lttng_map_channel_user_get_buffer_ownership() buffer
+        ownership model\endlink (per user or per process), the Unix
+        user or process ID, and the
+        \ref api-map-group-prop-effective-value-type "effective value type"
+        which the value type of the channel resolves to for the bitness
+        of the executing application.
+    </dl>
+
+  <dt>A map (within the selected map group)
+  <dd>
+    Based on the partitioning of the channel: as of
+    LTTng-tools&nbsp;\lt_version_maj_min, by the ID of the CPU which
+    executes the \ref api_inst_pt "instrumentation point".
+
+  <dt>The entry index, within the selected map
+  <dd>
+    The index which the target map channel associates to the
+    effective \lt_obj_map_key of the action.
+
+    \anchor api_trigger_action_incr_map_val_key_template
+    The effective key is the result of expanding the
+    <strong>key template</strong> of the action.
+
+    A key template is an opaque object which you build from a
+    <em>template string</em> with
+    lttng_key_template_create_from_string(), set with
+    lttng_action_increment_map_value_set_key_template(), and render
+    back to its template string form if needed with
+    lttng_key_template_to_string().
+
+    Within the template string, LTTng substitutes the following
+    placeholders (only available when the condition of the containing trigger
+    is an
+    \ref api_trigger_cond_er_matches "“event rule matches” condition"
+    whose event rule doesn't have the type
+    #LTTNG_EVENT_RULE_TYPE_JUL_LOGGING,
+    #LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING,
+    #LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING, or
+    #LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING):
+
+    <table>
+      <tr>
+        <th>Placeholder
+        <th>Substituted with
+      <tr>
+        <td><code>{event_name}</code>
+        <td>
+          Effective name of the event which made the trigger fire
+          (see the
+          \ref api-rer-conds-event-name "event name condition" of
+          a recording event rule).
+
+          For example, <code>canadian_tire:money_redeemed</code>
+          (user space tracepoint), <code>sched_switch</code>
+          (Linux kernel tracepoint), <code>openat</code>
+          (Linux kernel system call), or
+          <code>ca.provigo.checkout.ScannerLogger</code>
+          (Java or Python logger name).
+      <tr>
+        <td><code>{provider_name}</code>
+        <td>
+          Name of the LTTng tracepoint provider of the event which
+          made the trigger fire.
+
+          For example, <code>canadian_tire</code> (user space
+          tracepoint
+          <code>canadian_tire:money_redeemed</code>) or
+          <code>sched</code> (Linux kernel tracepoint
+          <code>sched_switch</code>).
+    </table>
+
+    LTTng uses any other text in the template string as is. To include
+    a literal <code>{</code> or <code>}</code> character in the
+    effective key, use <code>{{</code> or <code>}}</code> in the
+    template string (similar to <a href="https://fmt.dev/">{fmt}</a> and
+    Python's <a href="https://peps.python.org/pep-0498/">f-string</a>
+    syntax).
+</dl>
+
+The target map channel must exist when LTTng is ready to execute the
+action; otherwise, LTTng does nothing.
+
+LTTng only increments the map value when the target recording session is
+\link lttng_session::enabled active\endlink (started). While the target
+recording session is inactive (stopped), this action does nothing.
+
+The \link lttng_map_channel_get_update_policy() update policy\endlink of
+the target map channel controls how LTTng increments map values when
+multiple “increment map value” actions which target the same recording
+session and map channel produce the same effective key (for example,
+multiple
+\link api_trigger_cond_er_matches “event rule matches”\endlink triggers
+matching the same event).
+
+An “increment map value” trigger action has the type
+#LTTNG_ACTION_TYPE_INCREMENT_MAP_VALUE.
+
+Unlike the other trigger action types, an “increment map value” action
+may execute out of order within its containing
+\ref api_trigger_action_list "action list": when the list contains at
+least one “increment map value” action,
+LTTng doesn't guarantee the execution order of the
+“increment map value” action(s) relative to all the actions of the list,
+including other “increment map value” actions.
+
+To create a valid “increment map value” trigger action:
+
+-# Create the initial trigger action with
+   lttng_action_increment_map_value_create().
+
+-# Set the target recording session name with
+   lttng_action_increment_map_value_set_target_session_name().
+
+-# Set the target map channel name with
+   lttng_action_increment_map_value_set_target_channel_name().
+
+-# Set the target map channel type (#LTTNG_MAP_CHANNEL_TYPE_KERNEL or
+   #LTTNG_MAP_CHANNEL_TYPE_USER) with
+   lttng_action_increment_map_value_set_target_channel_type().
+
+-# Build a key template with
+   lttng_key_template_create_from_string() and set it with
+   lttng_action_increment_map_value_set_key_template().
+
+Get the corresponding properties with
+lttng_action_increment_map_value_get_target_session_name(),
+lttng_action_increment_map_value_get_target_channel_name(),
+lttng_action_increment_map_value_get_target_channel_type(), and
+lttng_action_increment_map_value_get_key_template().
 
 @defgroup api_error Error query API
 

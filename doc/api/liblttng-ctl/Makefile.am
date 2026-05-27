@@ -14,6 +14,8 @@ install-data-local: doxygen-doc
 
 headernames := \
 	action/action.h \
+	action/increment-map-value.h \
+	action/key-template.h \
 	action/list.h \
 	action/notify.h \
 	action/path.h \
@@ -59,6 +61,26 @@ headernames := \
 	lttng-error.h \
 	lttng-export.h \
 	lttng.h \
+	map/channel-buffer-ownership.h \
+	map/channel-descriptor-kernel.h \
+	map/channel-descriptor-user.h \
+	map/channel-descriptor.h \
+	map/channel-set.h \
+	map/channel-type.h \
+	map/channel-update-policy.h \
+	map/channel-user.h \
+	map/channel.h \
+	map/group-set.h \
+	map/group.h \
+	map/key-set-string.h \
+	map/key-set.h \
+	map/key-string.h \
+	map/key-type.h \
+	map/key.h \
+	map/value-type.h \
+	map/values-set.h \
+	map/values-signed-int.h \
+	map/values.h \
 	notification/channel.h \
 	notification/notification.h \
 	rotation.h \
