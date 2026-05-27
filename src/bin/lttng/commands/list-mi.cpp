@@ -11,6 +11,11 @@
 #include "lttng/channel.h"
 #include "lttng/domain.h"
 #include "lttng/event.h"
+#include "lttng/map/channel-buffer-ownership.h"
+#include "lttng/map/channel-dead-group-policy.h"
+#include "lttng/map/channel-type.h"
+#include "lttng/map/channel-update-policy.h"
+#include "lttng/map/value-type.h"
 
 #include <cstdint>
 #define _LGPL_SOURCE
@@ -345,6 +350,143 @@ void list_event_record_channels(
 	}
 }
 
+const char *map_value_type_string(const lttng_map_value_type type)
+{
+	switch (type) {
+	case LTTNG_MAP_VALUE_TYPE_SIGNED_INT_32:
+		return "signed-int-32";
+	case LTTNG_MAP_VALUE_TYPE_SIGNED_INT_64:
+		return "signed-int-64";
+	case LTTNG_MAP_VALUE_TYPE_SIGNED_INT_MAX:
+		return "signed-int-max";
+	}
+
+	std::abort();
+}
+
+const char *map_update_policy_string(const lttng_map_channel_update_policy policy)
+{
+	switch (policy) {
+	case LTTNG_MAP_CHANNEL_UPDATE_POLICY_PER_EVENT:
+		return "per-event";
+	case LTTNG_MAP_CHANNEL_UPDATE_POLICY_PER_RULE_MATCH:
+		return "per-rule-match";
+	}
+
+	std::abort();
+}
+
+const char *map_buffer_ownership_string(const lttng_map_channel_buffer_ownership ownership)
+{
+	switch (ownership) {
+	case LTTNG_MAP_CHANNEL_BUFFER_OWNERSHIP_PER_UID:
+		return "per-uid";
+	case LTTNG_MAP_CHANNEL_BUFFER_OWNERSHIP_PER_PID:
+		return "per-pid";
+	}
+
+	std::abort();
+}
+
+const char *map_dead_group_policy_string(const lttng_map_channel_dead_group_policy policy)
+{
+	switch (policy) {
+	case LTTNG_MAP_CHANNEL_DEAD_GROUP_POLICY_DROP:
+		return "drop";
+	case LTTNG_MAP_CHANNEL_DEAD_GROUP_POLICY_SUM_INTO_SHARED:
+		return "sum-into-shared";
+	}
+
+	std::abort();
+}
+
+/*
+ * Lists the map channels of the type `type` of `session`.
+ *
+ * Only writes the configuration of each map channel, not its current values. A
+ * map channel has no enabled/disabled state, so it's always written as enabled.
+ */
+void list_map_channels(const lttng::cli::session& session, const lttng_map_channel_type type)
+{
+	/* Open map_channels element */
+	if (mi_lttng_writer_open_element(the_writer, "map_channels")) {
+		LTTNG_THROW_ERROR("Failed to open XML map channels element");
+	}
+
+	for (const auto& channel : session.map_channels(type)) {
+		/* Filter by name if needed */
+		if (the_config->map_channel_name &&
+		    channel.name() != *the_config->map_channel_name) {
+			continue;
+		}
+
+		/* Open map_channel element */
+		if (mi_lttng_writer_open_element(the_writer, "map_channel")) {
+			LTTNG_THROW_ERROR("Failed to open XML map channel element");
+		}
+
+		if (mi_lttng_writer_write_element_string(
+			    the_writer, "name", channel.name().data())) {
+			LTTNG_THROW_ERROR("Failed to write XML map channel name");
+		}
+
+		/* A map channel has no enabled state: always enabled */
+		if (mi_lttng_writer_write_element_bool(the_writer, "enabled", 1)) {
+			LTTNG_THROW_ERROR("Failed to write XML map channel enabled state");
+		}
+
+		if (mi_lttng_writer_write_element_string(
+			    the_writer, "value_type", map_value_type_string(channel.value_type()))) {
+			LTTNG_THROW_ERROR("Failed to write XML map channel value type");
+		}
+
+		if (mi_lttng_writer_write_element_unsigned_int(
+			    the_writer, "max_key_count", channel.max_key_count())) {
+			LTTNG_THROW_ERROR("Failed to write XML map channel maximum key count");
+		}
+
+		if (mi_lttng_writer_write_element_string(
+			    the_writer,
+			    "update_policy",
+			    map_update_policy_string(channel.update_policy()))) {
+			LTTNG_THROW_ERROR("Failed to write XML map channel update policy");
+		}
+
+		/* User space-specific properties */
+		if (channel.type() == LTTNG_MAP_CHANNEL_TYPE_USER) {
+			const auto user_channel = channel.as_user();
+
+			if (mi_lttng_writer_write_element_string(
+				    the_writer,
+				    "buffer_ownership",
+				    map_buffer_ownership_string(user_channel.buffer_ownership()))) {
+				LTTNG_THROW_ERROR(
+					"Failed to write XML map channel buffer ownership");
+			}
+
+			if (const auto dead_group_policy = user_channel.dead_group_policy()) {
+				if (mi_lttng_writer_write_element_string(
+					    the_writer,
+					    "dead_group_policy",
+					    map_dead_group_policy_string(*dead_group_policy))) {
+					LTTNG_THROW_ERROR(
+						"Failed to write XML map channel dead group policy");
+				}
+			}
+		}
+
+		/* Close map_channel element */
+		if (mi_lttng_writer_close_element(the_writer)) {
+			LTTNG_THROW_ERROR("Failed to close XML map channel element");
+		}
+	}
+
+	/* Close map_channels element */
+	if (mi_lttng_writer_close_element(the_writer)) {
+		LTTNG_THROW_ERROR("Failed to close XML map channels element");
+	}
+}
+
 void output_empty_tracker(const lttng_process_attr process_attr)
 {
 	if (mi_lttng_process_attribute_tracker_open(the_writer, process_attr)) {
@@ -605,8 +747,22 @@ void list_all_session_domains(const lttng::cli::session& session)
 
 		if (domain.type() == LTTNG_DOMAIN_JUL || domain.type() == LTTNG_DOMAIN_LOG4J ||
 		    domain.type() == LTTNG_DOMAIN_LOG4J2 || domain.type() == LTTNG_DOMAIN_PYTHON) {
-			/* List agent event rules directly (no channels for Java/Python domains) */
-			list_events(domain.as_java_python().event_rules(), domain.type());
+			/*
+			 * List agent event rules directly (no channels for
+			 * Java/Python domains). Suppressed when filtering by
+			 * map channel name.
+			 */
+			if (!the_config->map_channel_name) {
+				list_events(domain.as_java_python().event_rules(), domain.type());
+			}
+
+			/* List user space map channels (unless filtering by channel name) */
+			if (!the_config->channel_name) {
+				if (const auto map_type =
+					    map_channel_type_for_domain(domain.type())) {
+					list_map_channels(session, *map_type);
+				}
+			}
 
 			/* Close domain element and continue */
 			if (mi_lttng_writer_close_element(the_writer)) {
@@ -621,8 +777,17 @@ void list_all_session_domains(const lttng::cli::session& session)
 			write_domain_trackers(domain);
 		}
 
-		/* List event record channels */
-		list_event_record_channels(domain.event_record_channels());
+		/* List event record channels (unless filtering by map channel name) */
+		if (!the_config->map_channel_name) {
+			list_event_record_channels(domain.event_record_channels());
+		}
+
+		/* List map channels (unless filtering by event record channel name) */
+		if (!the_config->channel_name) {
+			if (const auto map_type = map_channel_type_for_domain(domain.type())) {
+				list_map_channels(session, *map_type);
+			}
+		}
 
 		/* Close domain element */
 		if (mi_lttng_writer_close_element(the_writer)) {
@@ -701,8 +866,18 @@ void handle_with_session_name()
 		/* Trackers */
 		write_domain_trackers(*found_domain);
 
-		/* Event record channels */
-		list_event_record_channels(found_domain->event_record_channels());
+		/* Event record channels (unless filtering by map channel name) */
+		if (!the_config->map_channel_name) {
+			list_event_record_channels(found_domain->event_record_channels());
+		}
+
+		/* Map channels (unless filtering by event record channel name) */
+		if (!the_config->channel_name) {
+			if (const auto map_type =
+				    map_channel_type_for_domain(*the_config->domain_type)) {
+				list_map_channels(*found_session, *map_type);
+			}
+		}
 
 		/* Close domain element */
 		if (mi_lttng_writer_close_element(the_writer)) {

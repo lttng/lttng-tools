@@ -15,6 +15,7 @@
 #include <common/utils.hpp>
 
 #include <lttng/lttng.h>
+#include <lttng/map/channel-type.h>
 #include <lttng/tracker.h>
 
 #include <vendor/optional.hpp>
@@ -61,6 +62,9 @@ struct list_cmd_config final {
 
 	/* Channel name to filter by (not set for all channels) */
 	nonstd::optional<std::string> channel_name;
+
+	/* Map channel name to filter by (not set for all map channels) */
+	nonstd::optional<std::string> map_channel_name;
 
 	/* Domain type to filter by */
 	nonstd::optional<lttng_domain_type> domain_type;
@@ -135,6 +139,31 @@ static inline bool is_agent_domain(const lttng_domain_type domain_type)
 static inline bool is_ust_or_agent_domain(const lttng_domain_type domain_type)
 {
 	return domain_type == LTTNG_DOMAIN_UST || is_agent_domain(domain_type);
+}
+
+/*
+ * Returns the type of map channels associated with the tracing domain
+ * `domain_type`, or `nonstd::nullopt` if no map channels apply.
+ *
+ * The Linux kernel domain maps to kernel map channels; the user space
+ * and agent domains (which are all backed by the user space tracer) map
+ * to user space map channels.
+ */
+static inline nonstd::optional<lttng_map_channel_type>
+map_channel_type_for_domain(const lttng_domain_type domain_type)
+{
+	switch (domain_type) {
+	case LTTNG_DOMAIN_KERNEL:
+		return LTTNG_MAP_CHANNEL_TYPE_KERNEL;
+	case LTTNG_DOMAIN_UST:
+	case LTTNG_DOMAIN_JUL:
+	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_LOG4J2:
+	case LTTNG_DOMAIN_PYTHON:
+		return LTTNG_MAP_CHANNEL_TYPE_USER;
+	default:
+		return nonstd::nullopt;
+	}
 }
 
 #endif /* LTTNG_LIST_COMMON_HPP */

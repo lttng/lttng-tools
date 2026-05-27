@@ -40,6 +40,7 @@ int opt_log4j;
 int opt_log4j2;
 int opt_python;
 char *opt_channel;
+char *opt_map_channel;
 int opt_domain;
 int opt_fields;
 int opt_syscall;
@@ -63,6 +64,7 @@ struct poptOption long_options[] = {
 	{ "python", 'p', POPT_ARG_VAL, &opt_python, 1, nullptr, nullptr },
 	{ "userspace", 'u', POPT_ARG_NONE, nullptr, OPT_USERSPACE, nullptr, nullptr },
 	{ "channel", 'c', POPT_ARG_STRING, &opt_channel, 0, nullptr, nullptr },
+	{ "map-channel", 0, POPT_ARG_STRING, &opt_map_channel, 0, nullptr, nullptr },
 	{ "domain", 'd', POPT_ARG_VAL, &opt_domain, 1, nullptr, nullptr },
 	{ "fields", 'f', POPT_ARG_VAL, &opt_fields, 1, nullptr, nullptr },
 	{ "syscall", 'S', POPT_ARG_VAL, &opt_syscall, 1, nullptr, nullptr },
@@ -135,6 +137,10 @@ nonstd::optional<list_cmd_config> make_config(int argc, const char **argv)
 
 	if (opt_channel) {
 		config.channel_name = opt_channel;
+	}
+
+	if (opt_map_channel) {
+		config.map_channel_name = opt_map_channel;
 	}
 
 	if (opt_style) {
