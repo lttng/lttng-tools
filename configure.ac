@@ -728,7 +728,7 @@ AM_CONDITIONAL([PYTHON_BINDING], [test "x$enable_python_binding" = xyes])
 if test "x$enable_python_binding" = xyes; then
   AX_PKG_SWIG($swig_version, [], [ AC_MSG_ERROR([SWIG $swig_version or newer is needed]) ])
   AS_IF([test x$enable_shared = xno], [ AC_MSG_ERROR([Python bindings require shared libraries.]) ])
-  AM_PATH_PYTHON([3.5])
+  AM_PATH_PYTHON([3.6])
 
   AC_ARG_VAR([PYTHON_INCLUDE], [Include flags for python, bypassing python-config])
   AC_ARG_VAR([PYTHON_CONFIG], [Path to python-config])
@@ -1288,15 +1288,15 @@ AS_IF([test "x$build_tests" = "xyes"],
     ])
 
     AS_IF([test "x$PYTHON3_BIN" = "x"], [
-      AC_MSG_ERROR([Python ≥ 3.5 is required to build tests. Use --disable-tests to disable the test suite. See also the PYTHON3 environment variable.])
+      AC_MSG_ERROR([Python ≥ 3.6 is required to build tests. Use --disable-tests to disable the test suite. See also the PYTHON3 environment variable.])
     ])
 
-    AC_MSG_CHECKING([for Python ≥ 3.5])
+    AC_MSG_CHECKING([for Python ≥ 3.6])
     python3_version=`$PYTHON3_BIN -c "import sys; print('{}.{}.{}'.format(*sys.version_info[[:3]]), end='')" 2>/dev/null`
     AC_MSG_RESULT([yes ($python3_version)])
-    AS_IF([$PYTHON3_BIN -c "import sys; sys.exit(0 if sys.version_info >= (3, 5) else 1)" 2>/dev/null], [
+    AS_IF([$PYTHON3_BIN -c "import sys; sys.exit(0 if sys.version_info >= (3, 6) else 1)" 2>/dev/null], [
     ], [
-      AC_MSG_ERROR([Python ≥ 3.5 is required to build tests. Use --disable-tests to disable the test suite. See also the PYTHON3 environment variable.])
+      AC_MSG_ERROR([Python ≥ 3.6 is required to build tests. Use --disable-tests to disable the test suite. See also the PYTHON3 environment variable.])
     ])
   ]
 )
