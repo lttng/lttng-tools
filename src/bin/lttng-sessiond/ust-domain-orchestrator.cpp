@@ -1806,7 +1806,7 @@ void ls::ust::domain_orchestrator::_synchronize_all_channels(ust::app_session& u
 		 * allocated (if necessary) and sent to the application, and
 		 * all enabled contexts will be added to the channel.
 		 */
-		auto *ua_chan = static_cast<ust::app_channel *>(nullptr);
+		ust::app_channel *ua_chan = nullptr;
 
 		try {
 			ua_chan = &_find_or_create_app_channel(ua_sess, app, chan_config, handle);
