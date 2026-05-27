@@ -638,6 +638,7 @@ SPDX-License-Identifier: MIT
 			<xs:element name="buffer_type" type="tns:domain_buffer_type" />
 			<xs:element name="pids" type="tns:pids_type" minOccurs="0" />
 			<xs:element name="channels" type="tns:channels_type" minOccurs="0" />
+			<xs:element name="map_channels" type="tns:map_channels_type" minOccurs="0" />
 			<xs:element name="events" type="tns:event_list_type" minOccurs="0" />
 			<xs:element name="process_attr_trackers" type="tns:process_attr_trackers_type" minOccurs="0" />
 		</xs:all>
@@ -1456,6 +1457,39 @@ SPDX-License-Identifier: MIT
 		</xs:restriction>
 	</xs:simpleType>
 
+	<!-- Maps to the value type of a map channel (enum lttng_map_value_type) -->
+	<xs:simpleType name="map_channel_value_type_type">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="signed-int-32" />
+			<xs:enumeration value="signed-int-64" />
+			<xs:enumeration value="signed-int-max" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!-- Maps to the update policy of a map channel -->
+	<xs:simpleType name="map_channel_update_policy_type">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="per-event" />
+			<xs:enumeration value="per-rule-match" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!-- Maps to the buffer ownership model of a user space map channel -->
+	<xs:simpleType name="map_channel_buffer_ownership_type">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="per-uid" />
+			<xs:enumeration value="per-pid" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!-- Maps to the dead group policy of a user space map channel -->
+	<xs:simpleType name="map_channel_dead_group_policy_type">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="drop" />
+			<xs:enumeration value="sum-into-shared" />
+		</xs:restriction>
+	</xs:simpleType>
+
 	<!-- Maps to the group type of a map -->
 	<xs:simpleType name="map_group_type_type">
 		<xs:restriction base="xs:string">
@@ -1572,6 +1606,33 @@ SPDX-License-Identifier: MIT
 			<xs:element name="per_owner_map_table" type="tns:per_owner_map_table_type" />
 			<xs:element name="per_part_map_table" type="tns:per_part_map_table_type" />
 		</xs:choice>
+	</xs:complexType>
+
+	<!--
+		Maps to the configuration of a single map channel as listed by
+		the `list` command (configuration only; no values).
+	-->
+	<xs:complexType name="map_channel_config_type">
+		<xs:all>
+			<xs:element name="name" type="xs:string" />
+			<xs:element name="enabled" type="xs:boolean" default="true" minOccurs="0" />
+			<xs:element name="value_type" type="tns:map_channel_value_type_type" />
+			<xs:element name="max_key_count" type="tns:uint64_type" />
+			<xs:element name="update_policy" type="tns:map_channel_update_policy_type" />
+
+			<!-- User space map channels only -->
+			<xs:element name="buffer_ownership" type="tns:map_channel_buffer_ownership_type" minOccurs="0" />
+
+			<!-- User space, per-process map channels only -->
+			<xs:element name="dead_group_policy" type="tns:map_channel_dead_group_policy_type" minOccurs="0" />
+		</xs:all>
+	</xs:complexType>
+
+	<!-- Maps to the map channels of a tracing domain as listed by the `list` command -->
+	<xs:complexType name="map_channels_type">
+		<xs:sequence>
+			<xs:element name="map_channel" type="tns:map_channel_config_type" minOccurs="0" maxOccurs="unbounded" />
+		</xs:sequence>
 	</xs:complexType>
 
 	<xs:complexType name="output_type">

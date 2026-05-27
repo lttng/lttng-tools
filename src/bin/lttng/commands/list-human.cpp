@@ -8,6 +8,11 @@
 #include "list-human.hpp"
 #include "lttng/channel.h"
 #include "lttng/domain.h"
+#include "lttng/map/channel-buffer-ownership.h"
+#include "lttng/map/channel-dead-group-policy.h"
+#include "lttng/map/channel-type.h"
+#include "lttng/map/channel-update-policy.h"
+#include "lttng/map/value-type.h"
 #include "lttng/stream-info.h"
 #include "view-wrappers.hpp"
 
@@ -1906,6 +1911,80 @@ node_from_event_record_channel(const lttng::cli::session& session,
 }
 
 /*
+ * Creates a node from the map channel `channel`.
+ *
+ * A map channel has no enabled/disabled state: it's always considered enabled,
+ * hence the use of `group_node::type::ENABLED` (the same symbol as an enabled
+ * event record channel).
+ *
+ * Only the configuration of the map channel is shown, not its current values
+ * (purpose of the `show-maps` command).
+ */
+std::unique_ptr<node> node_from_map_channel(const lttng::cli::map_channel& channel)
+{
+	property_set properties;
+
+	properties.emplace(make_string_property("Key type", "String"));
+
+	properties.emplace(make_string_property("Value type", [&] {
+		switch (channel.value_type()) {
+		case LTTNG_MAP_VALUE_TYPE_SIGNED_INT_32:
+			return "32-bit signed integer";
+		case LTTNG_MAP_VALUE_TYPE_SIGNED_INT_64:
+			return "64-bit signed integer";
+		case LTTNG_MAP_VALUE_TYPE_SIGNED_INT_MAX:
+			return "Widest signed integer";
+		default:
+			std::abort();
+		}
+	}()));
+
+	properties.emplace(make_count_property("Max. key count", channel.max_key_count()));
+
+	properties.emplace(make_string_property(
+		"Update policy",
+		channel.update_policy() == LTTNG_MAP_CHANNEL_UPDATE_POLICY_PER_EVENT ?
+			"Per matching event" :
+			"Per event rule match"));
+
+	/*
+	 * Buffer configuration, using the same coloring as the "Ring
+	 * buffer configuration" property of an event record channel.
+	 */
+	properties.emplace(make_raw_property("Buffer configuration", [&]() -> std::string {
+		std::string config = lttng::mint("One map of counters [!]per CPU[/]");
+
+		/* User space map channels add a per-user or per-process dimension */
+		if (channel.type() == LTTNG_MAP_CHANNEL_TYPE_USER) {
+			config += channel.as_user().buffer_ownership() ==
+					LTTNG_MAP_CHANNEL_BUFFER_OWNERSHIP_PER_UID ?
+				lttng::mint(", [!]per Unix user[/]") :
+				lttng::mint(", [!]per process[/]");
+		}
+
+		return config;
+	}()));
+
+	/* Dead process policy (user space, per-process map channels only) */
+	if (channel.type() == LTTNG_MAP_CHANNEL_TYPE_USER) {
+		if (const auto dead_group_policy = channel.as_user().dead_group_policy()) {
+			properties.emplace(make_string_property(
+				"Dead process policy",
+				*dead_group_policy == LTTNG_MAP_CHANNEL_DEAD_GROUP_POLICY_DROP ?
+					"Discard" :
+					"Sum into shared map group"));
+		}
+	}
+
+	node_list children;
+
+	children.emplace_back(make_property_set_node(std::move(properties)));
+	return make_group_node(lttng::mint_format("[c]Map channel `[!*]{}[/]`[/]", channel.name()),
+			       std::move(children),
+			       group_node::type::ENABLED);
+}
+
+/*
  * Creates a node from the domain `domain` within the recording
  * session `session`.
  */
@@ -1935,6 +2014,35 @@ std::unique_ptr<node> node_from_domain(const lttng::cli::session& session,
 			lttng::mint_format("[y][!]{}[/] {}[/]",
 					   channels.size(),
 					   plural("event record channel", channels.size())));
+	}
+
+	/*
+	 * Map channels are shown under the Linux kernel and user space domain
+	 * nodes, but not under the agent domain nodes (Java/Python).
+	 *
+	 * The agent domains are backed by the same user space tracer as the
+	 * user space domain and therefore share its user space map channels:
+	 * showing them under each such domain node would duplicate them.
+	 *
+	 * They're shown under the user space domain node instead.
+	 */
+	const auto map_channels = [&]() -> nonstd::optional<lttng::cli::map_channel_set> {
+		if (is_agent_domain(domain.type())) {
+			return nonstd::nullopt;
+		}
+
+		if (const auto map_type = map_channel_type_for_domain(domain.type())) {
+			return session.map_channels(*map_type);
+		}
+
+		return nonstd::nullopt;
+	}();
+
+	/* Linux kernel and user space domains: show map channel count */
+	if (map_channels) {
+		tags.emplace_back(lttng::mint_format("[y][!]{}[/] {}[/]",
+						     map_channels->size(),
+						     plural("map channel", map_channels->size())));
 	}
 
 	return make_group_node(
@@ -1967,8 +2075,13 @@ std::unique_ptr<node> node_from_domain(const lttng::cli::session& session,
 					children.emplace_back(std::move(filter_node));
 				}
 
-				/* Event record channel nodes if requested */
-				if (!config.domain) {
+				/*
+				 * Event record channel nodes if requested.
+				 *
+				 * Suppressed when filtering by map channel
+				 * name: the user then only wants map channels.
+				 */
+				if (!config.domain && !config.map_channel_name) {
 					for (const auto& channel : channels) {
 						if (config.channel_name &&
 						    channel.name() != *config.channel_name) {
@@ -1981,15 +2094,35 @@ std::unique_ptr<node> node_from_domain(const lttng::cli::session& session,
 				}
 
 				/*
-				 * Event rules for Java/Python domains (no direct
-				 * event record channels).
+				 * Event rules for Java/Python domains (no
+				 * direct event record channels).
 				 */
-				if (is_agent_domain(domain.type())) {
+				if (is_agent_domain(domain.type()) && !config.map_channel_name) {
 					LTTNG_ASSERT(java_python_event_rules);
 
 					for (const auto& event_rule : *java_python_event_rules) {
 						children.emplace_back(node_from_event_rule(
 							event_rule, domain.type()));
+					}
+				}
+
+				/*
+				 * Map channel nodes.
+				 *
+				 * Suppressed when filtering by event record
+				 * channel name: the user then only wants event
+				 * record channels.
+				 */
+				if (!config.domain && !config.channel_name && map_channels) {
+					for (const auto& map_channel : *map_channels) {
+						if (config.map_channel_name &&
+						    map_channel.name() !=
+							    *config.map_channel_name) {
+							continue;
+						}
+
+						children.emplace_back(
+							node_from_map_channel(map_channel));
 					}
 				}
 			}

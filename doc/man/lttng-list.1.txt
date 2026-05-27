@@ -1,10 +1,10 @@
-// SPDX-FileCopyrightText: 2015-2025 Philippe Proulx <pproulx@efficios.com>
+// SPDX-FileCopyrightText: 2015-2026 Philippe Proulx <pproulx@efficios.com>
 //
 // SPDX-License-Identifier: CC-BY-SA-4.0
 
 lttng-list(1)
 =============
-:revdate: 20 March 2026
+:revdate: 27 April 2026
 
 
 NAME
@@ -24,11 +24,11 @@ List the tracing domains of a recording session:
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* option:--domain 'SESSION'
 
-List the event record channels and recording event rules of a recording
-session:
+List the channels and recording event rules of a recording session:
 
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* [option:--channel='CHANNEL'] 'SESSION'
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* 'SESSION'
+      [option:--channel='CHANNEL'] [option:--map-channel='CHANNEL']
       [option:--kernel] [option:--userspace] [option:--jul] [option:--log4j] [option:--log4j2] [option:--python]
       [option:--style=(**compact** | **breathe**)] [option:--no-truncate]
       [option:--mem-usage=(**total** | **compact** | **full**)]
@@ -69,9 +69,15 @@ With the option:--channel='CHANNEL' option::
     The recording event rules of the event record channel(s) 'CHANNEL'
     of the recording session named 'SESSION'.
 
-Without the option:--channel option::
+With the option:--map-channel='CHANNEL' option::
+    The map channel(s) 'CHANNEL' of the recording session named
+    'SESSION'.
+
+Without the option:--channel and option:--map-channel options::
     The event record channels of the recording session named 'SESSION'
-    and their recording event rules.
+    and their recording event rules, and the map channels of the
+    recording session named 'SESSION' (shown under the Linux kernel and
+    user space tracing domains).
 --
 +
 By default, the command shows the total memory usage of each event
@@ -80,7 +86,7 @@ option:--mem-usage option.
 +
 Use the dedicated tracing domain options (option:--kernel,
 option:--userspace, option:--jul, option:--log4j, option:--log4j2, and
-option:--python) to only show specific event record channels.
+option:--python) to only show specific channels.
 
 Without the 'SESSION' argument and with at least one dedicated tracing domain option::
 +
@@ -102,8 +108,8 @@ With the option:--jul, option:--log4j, option:--log4j2, and/or option:--python o
 --
 
 See man:lttng-concepts(7) to learn more about recording sessions,
-tracing domains, event record channels, recording event rules, and
-instrumentation points.
+tracing domains, event record channels, map channels,
+recording event rules, and instrumentation points.
 
 By default, the command adds empty lines between blocks of related
 information. Remove those empty lines with the
@@ -115,8 +121,8 @@ Override the terminal coloring behaviour with the
 
 See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
-List the event record channels and recording event rules of the current
-recording session (see man:lttng-concepts(7) to learn more) with the
+List the channels and recording event rules of the current recording
+session (see man:lttng-concepts(7) to learn more) with the
 man:lttng-status(1) command.
 
 
@@ -141,8 +147,8 @@ Color semantics:
 
 |Cyan
 |
-Important object nodes: recording sessions, tracing domains, event
-record channels, and event rules.
+Important object nodes: recording sessions, tracing domains, channels,
+and event rules.
 
 Those nodes act as section headers.
 
@@ -182,29 +188,27 @@ option:-j, option:--jul::
     Without the 'SESSION' argument:::
         List the `java.util.logging` logger names.
     With the 'SESSION' argument:::
-        Only list the `java.util.logging` recording
-        event rules.
+        Only list the `java.util.logging` recording event rules.
 
 option:-k, option:--kernel::
     Without the 'SESSION' argument:::
         List the LTTng kernel instrumentation points.
     With the 'SESSION' argument:::
         Only list the Linux kernel event record channels and their
-        recording event rules.
+        recording event rules, as well as the Linux kernel map
+        channels.
 
 option:-l, option:--log4j::
     Without the 'SESSION' argument:::
         List the Apache log4j{nbsp}1.x logger names.
     With the 'SESSION' argument:::
-        Only list the Apache log4j{nbsp}1.x recording
-        event rules.
+        Only list the Apache log4j{nbsp}1.x recording event rules.
 
 option:--log4j2::
     Without the 'SESSION' argument:::
         List the Apache Log4j{nbsp}2 logger names.
     With the 'SESSION' argument:::
-        Only list the Apache Log4j{nbsp}2 recording
-        event rules.
+        Only list the Apache Log4j{nbsp}2 recording event rules.
 
 option:-p, option:--python::
     Without the 'SESSION' argument:::
@@ -217,7 +221,8 @@ option:-u, option:--userspace::
         List the LTTng user space tracepoints.
     With the 'SESSION' argument:::
         Only list the user space event record channels and their
-        recording event rules.
+        recording event rules, as well as the user space map
+        channels.
 
 
 Filtering
@@ -234,6 +239,11 @@ option:-d, option:--domain::
 option:-f, option:--fields::
     When listing user space tracepoints, also show their fields if
     they're available.
+
+option:--map-channel='CHANNEL'::
+    Only list the properties of the map channel(s) named 'CHANNEL'.
++
+Only available with the 'SESSION' argument.
 
 option:--syscall::
     When listing LTTng kernel instrumentation points, only list Linux
@@ -345,6 +355,16 @@ $ lttng list my-session --channel=channel0 --stream-info-details
 ----
 ====
 
+.Show the details of a specific map channel in a specific recording session.
+====
+See the option:--map-channel option.
+
+[role="term"]
+----
+$ lttng list my-session --map-channel=my-counters
+----
+====
+
 
 include::common-footer.txt[]
 
@@ -352,4 +372,6 @@ include::common-footer.txt[]
 SEE ALSO
 --------
 man:lttng(1),
-man:lttng-concepts(7)
+man:lttng-add-map-channel(1),
+man:lttng-concepts(7),
+man:lttng-show-maps(1)
