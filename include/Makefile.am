@@ -157,7 +157,28 @@ lttngeventruleinclude_HEADERS= \
 	lttng/event-rule/user-tracepoint.h
 
 lttngmapinclude_HEADERS= \
-	lttng/map/channel-type.h
+	lttng/map/channel-buffer-ownership.h \
+	lttng/map/channel-dead-group-policy.h \
+	lttng/map/channel-descriptor-kernel.h \
+	lttng/map/channel-descriptor-user.h \
+	lttng/map/channel-descriptor.h \
+	lttng/map/channel-set.h \
+	lttng/map/channel-type.h \
+	lttng/map/channel-update-policy.h \
+	lttng/map/channel-user.h \
+	lttng/map/channel.h \
+	lttng/map/values-set.h \
+	lttng/map/values.h \
+	lttng/map/group-set.h \
+	lttng/map/group-type.h \
+	lttng/map/group.h \
+	lttng/map/key-set-string.h \
+	lttng/map/key-set.h \
+	lttng/map/key-string.h \
+	lttng/map/key-type.h \
+	lttng/map/key.h \
+	lttng/map/value-type.h \
+	lttng/map/values-signed-int.h
 
 noinst_HEADERS = \
 	lttng/action/action-internal.hpp \

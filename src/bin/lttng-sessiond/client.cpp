@@ -1153,6 +1153,12 @@ int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_error)
 	case LTTCOMM_SESSIOND_COMMAND_REGISTER_TRIGGER:
 	case LTTCOMM_SESSIOND_COMMAND_UNREGISTER_TRIGGER:
 	case LTTCOMM_SESSIOND_COMMAND_EXECUTE_ERROR_QUERY:
+	case LTTCOMM_SESSIOND_COMMAND_ADD_MAP_CHANNEL:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_MAP_CHANNELS:
+	case LTTCOMM_SESSIOND_COMMAND_GET_MAP_CHANNEL_BY_NAME:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_MAP_GROUPS:
+	case LTTCOMM_SESSIOND_COMMAND_SAMPLE_MAP_GROUP:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_MAP_KEYS:
 		need_consumerd = false;
 		break;
 	default:
@@ -1594,6 +1600,41 @@ skip_domain:
 	{
 		cmd_add_map_channel(*target_session, cmd_ctx->lsm);
 		ret = LTTNG_OK;
+		break;
+	}
+	case LTTCOMM_SESSIOND_COMMAND_LIST_MAP_CHANNELS: /* Fallthrough */
+	case LTTCOMM_SESSIOND_COMMAND_GET_MAP_CHANNEL_BY_NAME: /* Fallthrough */
+	case LTTCOMM_SESSIOND_COMMAND_LIST_MAP_GROUPS: /* Fallthrough */
+	case LTTCOMM_SESSIOND_COMMAND_LIST_MAP_KEYS: /* Fallthrough */
+	case LTTCOMM_SESSIOND_COMMAND_SAMPLE_MAP_GROUP:
+	{
+		struct lttng_dynamic_buffer reply;
+
+		lttng_dynamic_buffer_init(&reply);
+
+		const auto reset_reply = lttng::make_scope_exit(
+			[&reply]() noexcept { lttng_dynamic_buffer_reset(&reply); });
+
+		switch (cmd_ctx->lsm.cmd_type) {
+		case LTTCOMM_SESSIOND_COMMAND_LIST_MAP_CHANNELS:
+			ret = cmd_list_map_channels(*target_session, cmd_ctx->lsm, &reply);
+			break;
+		case LTTCOMM_SESSIOND_COMMAND_GET_MAP_CHANNEL_BY_NAME:
+			ret = cmd_get_map_channel_by_name(*target_session, cmd_ctx->lsm, &reply);
+			break;
+		case LTTCOMM_SESSIOND_COMMAND_LIST_MAP_GROUPS:
+			ret = cmd_list_map_groups(*target_session, cmd_ctx->lsm, &reply);
+			break;
+		case LTTCOMM_SESSIOND_COMMAND_LIST_MAP_KEYS:
+			ret = cmd_list_map_keys(*target_session, cmd_ctx->lsm, &reply);
+			break;
+		default:
+			ret = cmd_sample_map_group(*target_session, cmd_ctx->lsm, &reply);
+			break;
+		}
+
+		setup_lttng_msg_no_cmd_header(cmd_ctx, reply.data, reply.size);
+
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_PROCESS_ATTR_TRACKER_ADD_INCLUDE_VALUE:
@@ -2860,6 +2901,10 @@ void *thread_manage_clients(void *data)
 				ex) {
 			log_nested_exceptions(ex);
 			ret = LTTNG_ERR_CHAN_EXIST;
+		} catch (
+			const lttng::sessiond::config::exceptions::map_channel_not_found_error& ex) {
+			log_nested_exceptions(ex);
+			ret = LTTNG_ERR_CHAN_NOT_FOUND;
 		} catch (
 			const lttng::sessiond::config::exceptions::process_attribute_already_tracked&
 				ex) {

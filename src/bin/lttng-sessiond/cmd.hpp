@@ -60,6 +60,21 @@ int cmd_enable_channel(struct command_ctx *cmd_ctx, ltt_session::locked_ref& ses
 /* Map channel commands */
 void cmd_add_map_channel(const ltt_session::locked_ref& session,
 			 const struct lttcomm_session_msg& lsm);
+enum lttng_error_code cmd_list_map_channels(const ltt_session::locked_ref& session,
+					    const struct lttcomm_session_msg& lsm,
+					    struct lttng_dynamic_buffer *reply);
+enum lttng_error_code cmd_get_map_channel_by_name(const ltt_session::locked_ref& session,
+						  const struct lttcomm_session_msg& lsm,
+						  struct lttng_dynamic_buffer *reply);
+enum lttng_error_code cmd_list_map_groups(const ltt_session::locked_ref& session,
+					  const struct lttcomm_session_msg& lsm,
+					  struct lttng_dynamic_buffer *reply);
+enum lttng_error_code cmd_sample_map_group(const ltt_session::locked_ref& session,
+					   const struct lttcomm_session_msg& lsm,
+					   struct lttng_dynamic_buffer *reply);
+enum lttng_error_code cmd_list_map_keys(const ltt_session::locked_ref& session,
+					const struct lttcomm_session_msg& lsm,
+					struct lttng_dynamic_buffer *reply);
 
 /* Process attribute tracker commands */
 enum lttng_tracking_policy

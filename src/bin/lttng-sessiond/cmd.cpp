@@ -27,6 +27,9 @@
 #include "lttng-syscall.hpp"
 #include "map-action-register.hpp"
 #include "map-channel-configuration.hpp"
+#include "map-channel.hpp"
+#include "map-group-identity.hpp"
+#include "map-group.hpp"
 #include "notification-thread-commands.hpp"
 #include "notification-thread.hpp"
 #include "pending-memory-reclamation-request.hpp"
@@ -83,6 +86,8 @@
 #include <lttng/kernel.h>
 #include <lttng/location-internal.hpp>
 #include <lttng/lttng-error.h>
+#include <lttng/map/group-type.h>
+#include <lttng/map/value-type.h>
 #include <lttng/reclaim-internal.hpp>
 #include <lttng/rotate-internal.hpp>
 #include <lttng/session-descriptor-internal.hpp>
@@ -95,8 +100,10 @@
 #include <chrono>
 #include <inttypes.h>
 #include <memory>
+#include <pwd.h>
 #include <stdio.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <urcu/list.h>
 #include <urcu/uatomic.h>
 #include <vector>
@@ -106,6 +113,7 @@
 
 namespace ls = lttng::sessiond;
 namespace lsc = lttng::sessiond::config;
+namespace lsm = lttng::sessiond::map;
 namespace lsu = lttng::sessiond::ust;
 
 namespace {
@@ -190,6 +198,286 @@ lttng::domain_class domain_type_to_class(enum lttng_domain_type domain_type)
 			lttng::format("Invalid domain type for tracker operation: domain_type={}",
 				      static_cast<int>(domain_type)));
 	}
+}
+
+bool domain_supports_map(const enum lttng_domain_type domain_type)
+{
+	switch (domain_type) {
+	case LTTNG_DOMAIN_KERNEL: /* fall-through */
+	case LTTNG_DOMAIN_UST:
+		return true;
+	default:
+		return false;
+	}
+}
+
+bool map_channel_key_type_is_valid(const lsc::map_channel_configuration::key_type_t key_type)
+{
+	switch (key_type) {
+	case lsc::map_channel_configuration::key_type_t::STRING:
+		return true;
+	default:
+		return false;
+	}
+}
+
+bool map_channel_value_type_is_valid(const lsc::map_channel_configuration::value_type_t value_type)
+{
+	switch (value_type) {
+	case lsc::map_channel_configuration::value_type_t::SIGNED_INT_32:
+	case lsc::map_channel_configuration::value_type_t::SIGNED_INT_64:
+	case lsc::map_channel_configuration::value_type_t::SIGNED_INT_MAX:
+		return true;
+	default:
+		return false;
+	}
+}
+
+bool map_channel_update_policy_is_valid(
+	const lsc::map_channel_configuration::update_policy_t update_policy)
+{
+	switch (update_policy) {
+	case lsc::map_channel_configuration::update_policy_t::PER_EVENT:
+	case lsc::map_channel_configuration::update_policy_t::PER_RULE_MATCH:
+		return true;
+	default:
+		return false;
+	}
+}
+
+bool map_channel_dead_group_policy_is_valid(
+	const lsc::map_channel_configuration::dead_group_policy_t dead_group_policy)
+{
+	switch (dead_group_policy) {
+	case lsc::map_channel_configuration::dead_group_policy_t::DROP:
+	case lsc::map_channel_configuration::dead_group_policy_t::SUM_INTO_SHARED:
+		return true;
+	default:
+		return false;
+	}
+}
+
+lttcomm_map_channel_comm
+map_channel_configuration_to_comm(const lsc::map_channel_configuration& map_channel)
+{
+	lttcomm_map_channel_comm map_channel_comm = {};
+	const auto copy_ret = lttng_strncpy(
+		map_channel_comm.name, map_channel.name.c_str(), sizeof(map_channel_comm.name));
+
+	if (copy_ret) {
+		LTTNG_THROW_ERROR(lttng::format(
+			"Map channel name exceeds supported protocol size: map_channel_name=`{}`",
+			map_channel.name));
+	}
+
+	map_channel_comm.key_type = static_cast<int32_t>(map_channel.key_type);
+	map_channel_comm.value_type = static_cast<int32_t>(map_channel.value_type);
+	map_channel_comm.max_entry_count = map_channel.max_entry_count;
+	map_channel_comm.update_policy = static_cast<int32_t>(map_channel.update_policy);
+	map_channel_comm.dead_group_policy = static_cast<int32_t>(map_channel.dead_group_policy);
+	map_channel_comm.buffer_ownership =
+		map_channel.buffer_ownership == lsc::ownership_model_t::PER_UID ? 1 : 0;
+	return map_channel_comm;
+}
+
+int32_t map_group_type_to_comm(const lsm::group_type type)
+{
+	switch (type) {
+	case lsm::group_type::KERNEL_GLOBAL:
+		return LTTNG_MAP_GROUP_TYPE_KERNEL_GLOBAL;
+	case lsm::group_type::USER_PER_USER:
+		return LTTNG_MAP_GROUP_TYPE_USER_PER_USER;
+	case lsm::group_type::USER_PER_PROCESS:
+		return LTTNG_MAP_GROUP_TYPE_USER_PER_PROCESS;
+	case lsm::group_type::SHARED:
+		return LTTNG_MAP_GROUP_TYPE_SHARED;
+	}
+
+	abort();
+}
+
+lsm::group_type map_group_type_from_comm(const int32_t type)
+{
+	switch (type) {
+	case LTTNG_MAP_GROUP_TYPE_KERNEL_GLOBAL:
+		return lsm::group_type::KERNEL_GLOBAL;
+	case LTTNG_MAP_GROUP_TYPE_USER_PER_USER:
+		return lsm::group_type::USER_PER_USER;
+	case LTTNG_MAP_GROUP_TYPE_USER_PER_PROCESS:
+		return lsm::group_type::USER_PER_PROCESS;
+	case LTTNG_MAP_GROUP_TYPE_SHARED:
+		return lsm::group_type::SHARED;
+	default:
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+			lttng::format("Invalid map group type in request: type={}", type));
+	}
+}
+
+int32_t map_group_value_type_to_comm(const lsc::map_channel_configuration::value_type_t value_type)
+{
+	using value_type_t = lsc::map_channel_configuration::value_type_t;
+
+	switch (value_type) {
+	case value_type_t::SIGNED_INT_32:
+		return LTTNG_MAP_VALUE_TYPE_SIGNED_INT_32;
+	case value_type_t::SIGNED_INT_64:
+		return LTTNG_MAP_VALUE_TYPE_SIGNED_INT_64;
+	default:
+		/* The effective value type of a group is never SIGNED_INT_MAX. */
+		abort();
+	}
+}
+
+lsc::map_channel_configuration::value_type_t
+map_group_value_type_from_comm(const int32_t value_type)
+{
+	using value_type_t = lsc::map_channel_configuration::value_type_t;
+
+	switch (value_type) {
+	case LTTNG_MAP_VALUE_TYPE_SIGNED_INT_32:
+		return value_type_t::SIGNED_INT_32;
+	case LTTNG_MAP_VALUE_TYPE_SIGNED_INT_64:
+		return value_type_t::SIGNED_INT_64;
+	default:
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(lttng::format(
+			"Invalid effective map value type in request: value_type={}", value_type));
+	}
+}
+
+/*
+ * Resolves a Unix user ID to its name: the channel reports the owner
+ * name of per-process groups (the application name) itself, but leaves
+ * user names to be resolved here.
+ *
+ * Returns an empty optional when the ID has no entry.
+ */
+nonstd::optional<std::string> map_group_owner_name_of(const uid_t uid)
+{
+	passwd pwd;
+	passwd *result = nullptr;
+	std::vector<char> buf(4096);
+
+	while (getpwuid_r(uid, &pwd, buf.data(), buf.size(), &result) == ERANGE) {
+		buf.resize(buf.size() * 2);
+	}
+
+	if (!result) {
+		return nonstd::nullopt;
+	}
+
+	return std::string(result->pw_name);
+}
+
+/*
+ * Serializes the description of a map group (identity plus display-only
+ * attributes) into the wire form shared by the `LIST_MAP_GROUPS` reply.
+ *
+ * The owner name follows the split of the public API: taken from the
+ * description for per-process groups and resolved from the owner ID
+ * here for per-user groups.
+ */
+lttcomm_map_group_comm map_group_descr_to_comm(const lsm::group_description& descr)
+{
+	const auto& iden = descr.identity;
+	lttcomm_map_group_comm group_comm = {};
+
+	group_comm.type = map_group_type_to_comm(iden.type);
+	group_comm.value_type = map_group_value_type_to_comm(iden.value_type);
+	group_comm.owner_id = iden.owner_id ? *iden.owner_id : 0;
+
+	{
+		auto owner_name = descr.owner_name;
+
+		if (!owner_name && iden.type == lsm::group_type::USER_PER_USER && iden.owner_id) {
+			owner_name = map_group_owner_name_of(static_cast<uid_t>(*iden.owner_id));
+		}
+
+		if (owner_name &&
+		    lttng_strncpy(group_comm.owner_name,
+				  owner_name->c_str(),
+				  sizeof(group_comm.owner_name))) {
+			LTTNG_THROW_ERROR(lttng::format(
+				"Map group owner name exceeds supported protocol size: owner_name=`{}`",
+				*owner_name));
+		}
+	}
+
+	return group_comm;
+}
+
+/*
+ * Build the identity that a `SAMPLE_MAP_GROUP` request selects a map
+ * group with.
+ *
+ * The `owner_id` member only addresses user space groups; it stays
+ * unset for the kernel and shared groups so the identity compares equal
+ * to the one the channel reports for those groups.
+ *
+ * The `value_type` member is part of the identity of every group type.
+ */
+lsm::group_identity map_group_iden_from_comm(const lttcomm_map_group_comm& group_comm)
+{
+	lsm::group_identity iden;
+
+	iden.type = map_group_type_from_comm(group_comm.type);
+	iden.value_type = map_group_value_type_from_comm(group_comm.value_type);
+
+	if (iden.type == lsm::group_type::USER_PER_USER ||
+	    iden.type == lsm::group_type::USER_PER_PROCESS) {
+		iden.owner_id = group_comm.owner_id;
+	}
+
+	return iden;
+}
+
+/*
+ * Appends the fixed-size `payload` to the reply buffer `reply` of a
+ * command, throwing on allocation failure.
+ *
+ * `what` names the appended item for the error message.
+ */
+template <typename PayloadType>
+void append_to_reply(lttng_dynamic_buffer& reply,
+		     const PayloadType& payload,
+		     const char *const what)
+{
+	if (lttng_dynamic_buffer_append(&reply, &payload, sizeof(payload))) {
+		LTTNG_THROW_CTL(lttng::format("Failed to append {} to map reply payload", what),
+				LTTNG_ERR_NOMEM);
+	}
+}
+
+/*
+ * Returns the map group of `channel` whose identity is `iden`, or
+ * `nullptr` if the channel has no such group.
+ */
+const lsm::group *find_map_group(const lsm::map_channel& channel, const lsm::group_identity& iden)
+{
+	const lsm::group *match = nullptr;
+
+	channel.for_each_group(
+		[&](const lsm::group_description& description, const lsm::group& group) {
+			if (!match && description.identity == iden) {
+				match = &group;
+			}
+		});
+
+	return match;
+}
+
+/*
+ * Return the domain orchestrator backing `session` for `domain_type`.
+ * Both kernel and user space orchestrators derive from the same base,
+ * so the caller can issue the map-group queries polymorphically.
+ */
+const ls::domain_orchestrator& map_domain_orchestrator(const ltt_session::locked_ref& session,
+						       enum lttng_domain_type domain_type)
+{
+	if (domain_type == LTTNG_DOMAIN_KERNEL) {
+		return session->get_kernel_orchestrator();
+	}
+
+	return session->get_ust_orchestrator();
 }
 
 /*
@@ -1440,7 +1728,7 @@ void cmd_add_map_channel(const ltt_session::locked_ref& session,
 			"Rejecting ADD_MAP_CHANNEL command: no domain specified");
 	}
 
-	if (domain_type != LTTNG_DOMAIN_KERNEL && domain_type != LTTNG_DOMAIN_UST) {
+	if (!domain_supports_map(domain_type)) {
 		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
 			"Rejecting ADD_MAP_CHANNEL command: unsupported domain specified: domain={}",
 			lttng::get_domain_class_from_lttng_domain_type(domain_type)));
@@ -1469,6 +1757,18 @@ void cmd_add_map_channel(const ltt_session::locked_ref& session,
 		(payload.buffer_ownership == 1 ? lsc::ownership_model_t::PER_UID :
 						 lsc::ownership_model_t::PER_PID);
 
+	if (!map_channel_key_type_is_valid(key_type) ||
+	    !map_channel_value_type_is_valid(value_type) ||
+	    !map_channel_update_policy_is_valid(update_policy) ||
+	    !map_channel_dead_group_policy_is_valid(dead_group_policy) ||
+	    (payload.buffer_ownership != 0 && payload.buffer_ownership != 1) ||
+	    payload.max_entry_count == 0) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			"Rejecting ADD_MAP_CHANNEL command: invalid parameters, session_name=`{}`, map_channel_name=`{}`",
+			session->name,
+			payload.name));
+	}
+
 	DBG_FMT("Received ADD_MAP_CHANNEL command: session_name=`{}`, domain={}, map_channel_name=`{}`, key_type={}, value_type={}, update_policy={}, max_entry_count={}, buffer_ownership={}, dead_group_policy={}",
 		session->name,
 		lttng::get_domain_class_from_lttng_domain_type(domain_type),
@@ -1488,10 +1788,45 @@ void cmd_add_map_channel(const ltt_session::locked_ref& session,
 			LTTNG_ERR_TRACE_ALREADY_STARTED);
 	}
 
+	/*
+	 * A counter can't be wider than its host.
+	 *
+	 * For a user space map channel, the host is this very session
+	 * daemon (it allocates the counter through liblttng-ust-ctl),
+	 * therefore a 32-bit session daemon can't honour a 64-bit
+	 * value type.
+	 *
+	 * Reject it upfront here with a clear error rather than letting
+	 * the failure surface later, and indirectly, when the counter
+	 * is actually created for an attaching application.
+	 *
+	 * `SIGNED_INT_MAX` is always satisfiable: it resolves to the
+	 * own bitness of the session daemon. The kernel domain is the
+	 * kernel's host, not ours, therefore it's not checked here.
+	 */
+	if (domain_type == LTTNG_DOMAIN_UST &&
+	    value_type == lsc::map_channel_configuration::value_type_t::SIGNED_INT_64 &&
+	    sizeof(void *) == sizeof(std::uint32_t)) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			"Rejecting ADD_MAP_CHANNEL command: a 64-bit value type requires a 64-bit session daemon: session_name=`{}`, map_channel_name=`{}`, value_type={}",
+			session->name,
+			payload.name,
+			value_type));
+	}
+
 	auto& target_domain =
 		session->get_domain(lttng::get_domain_class_from_lttng_domain_type(domain_type));
 
-	const auto& added = target_domain.add_map_channel(std::string(payload.name),
+	/*
+	 * An empty name signals an unset descriptor name: per the
+	 * public liblttng-ctl contract, the session daemon then
+	 * generates a unique name for the resulting map channel.
+	 */
+	const auto map_channel_name = payload.name[0] != '\0' ?
+		std::string(payload.name) :
+		target_domain.generate_map_channel_name();
+
+	const auto& added = target_domain.add_map_channel(map_channel_name,
 							  key_type,
 							  value_type,
 							  update_policy,
@@ -1505,13 +1840,14 @@ void cmd_add_map_channel(const ltt_session::locked_ref& session,
 	 * no half-installed map channel behind. The domain's
 	 * remove_map_channel is intended for exactly this case.
 	 */
-	auto config_rollback = lttng::make_scope_exit([&target_domain, &payload]() noexcept {
+	auto config_rollback = lttng::make_scope_exit([&target_domain,
+						       &map_channel_name]() noexcept {
 		try {
-			target_domain.remove_map_channel(std::string(payload.name));
+			target_domain.remove_map_channel(map_channel_name);
 		} catch (const std::exception& ex) {
 			ERR_FMT("Failed to roll back map channel configuration after orchestrator failure: "
 				"map_channel_name=`{}`, error=`{}`",
-				payload.name,
+				map_channel_name,
 				ex.what());
 		}
 	});
@@ -1632,6 +1968,363 @@ void cmd_add_map_channel(const ltt_session::locked_ref& session,
 				});
 		}
 	}
+}
+
+enum lttng_error_code cmd_list_map_channels(const ltt_session::locked_ref& session,
+					    const struct lttcomm_session_msg& lsm,
+					    struct lttng_dynamic_buffer *reply)
+{
+	const auto domain_type = static_cast<enum lttng_domain_type>(lsm.domain.type);
+
+	if (!reply) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+			"Rejecting `LIST_MAP_CHANNELS` command: null reply buffer");
+	}
+
+	if (!domain_supports_map(domain_type)) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			"Rejecting `LIST_MAP_CHANNELS` command: unsupported domain={}, session_name=`{}`",
+			domain_type,
+			session->name));
+	}
+
+	const auto domain_class = lttng::get_domain_class_from_lttng_domain_type(domain_type);
+	auto& target_domain = session->get_domain(domain_class);
+	lttcomm_map_channel_list_header header = {};
+	uint64_t map_channel_count;
+	header.count = static_cast<uint64_t>(target_domain.map_channel_count());
+	map_channel_count = header.count;
+
+	append_to_reply(*reply, header, "map channel list header");
+
+	for (auto& map_channel : target_domain.map_channels()) {
+		append_to_reply(
+			*reply, map_channel_configuration_to_comm(map_channel), "map channel");
+	}
+
+	DBG_FMT("Processed `LIST_MAP_CHANNELS` command: session_name=`{}`, domain={}, map_channel_count={}",
+		session->name,
+		domain_class,
+		map_channel_count);
+
+	return LTTNG_OK;
+}
+
+enum lttng_error_code cmd_get_map_channel_by_name(const ltt_session::locked_ref& session,
+						  const struct lttcomm_session_msg& lsm,
+						  struct lttng_dynamic_buffer *reply)
+{
+	const auto domain_type = static_cast<enum lttng_domain_type>(lsm.domain.type);
+	auto& payload = lsm.u.get_map_channel_by_name;
+
+	if (!reply) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+			"Rejecting `GET_MAP_CHANNEL_BY_NAME` command: null reply buffer");
+	}
+
+	if (!domain_supports_map(domain_type)) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			"Rejecting `GET_MAP_CHANNEL_BY_NAME` command: unsupported domain={}, session_name=`{}`",
+			domain_type,
+			session->name));
+	}
+
+	if (lttng_strnlen(payload.name, sizeof(payload.name)) == sizeof(payload.name)) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			"Rejecting `GET_MAP_CHANNEL_BY_NAME` command: name is not null-terminated, session_name=`{}`",
+			session->name));
+	}
+
+	const auto domain_class = lttng::get_domain_class_from_lttng_domain_type(domain_type);
+
+	append_to_reply(*reply,
+			map_channel_configuration_to_comm(
+				session->get_domain(domain_class).get_map_channel(payload.name)),
+			"map channel");
+
+	DBG_FMT("Processed `GET_MAP_CHANNEL_BY_NAME` command: session_name=`{}`, domain={}, map_channel_name=`{}`",
+		session->name,
+		domain_class,
+		payload.name);
+
+	return LTTNG_OK;
+}
+
+enum lttng_error_code cmd_list_map_groups(const ltt_session::locked_ref& session,
+					  const struct lttcomm_session_msg& lsm,
+					  struct lttng_dynamic_buffer *reply)
+{
+	const auto domain_type = static_cast<enum lttng_domain_type>(lsm.domain.type);
+	auto& payload = lsm.u.list_map_groups;
+
+	if (!reply) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+			"Rejecting `LIST_MAP_GROUPS` command: null reply buffer");
+	}
+
+	if (!domain_supports_map(domain_type)) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			"Rejecting `LIST_MAP_GROUPS` command: unsupported domain={}, session_name=`{}`",
+			domain_type,
+			session->name));
+	}
+
+	if (lttng_strnlen(payload.channel_name, sizeof(payload.channel_name)) ==
+	    sizeof(payload.channel_name)) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			"Rejecting `LIST_MAP_GROUPS` command: channel name is not null-terminated, session_name=`{}`",
+			session->name));
+	}
+
+	const auto domain_class = lttng::get_domain_class_from_lttng_domain_type(domain_type);
+	const auto& channel =
+		map_domain_orchestrator(session, domain_type)
+			.map_channel_for(session->get_domain(domain_class)
+						 .get_map_channel(payload.channel_name));
+
+	/*
+	 * The reply leads with a group count that for_each_group() only
+	 * reveals as it visits, so reserve the header now and backpatch the
+	 * count once all groups are serialized.
+	 */
+	const auto header_offset = reply->size;
+
+	append_to_reply(*reply, lttcomm_map_group_list_header{}, "map group list header");
+
+	std::uint64_t group_count = 0;
+
+	channel.for_each_group([&](const lsm::group_description& description, const lsm::group&) {
+		append_to_reply(*reply, map_group_descr_to_comm(description), "map group");
+		++group_count;
+	});
+
+	lttcomm_map_group_list_header header = {};
+	header.count = group_count;
+	memcpy(reply->data + header_offset, &header, sizeof(header));
+
+	DBG_FMT("Processed `LIST_MAP_GROUPS` command: session_name=`{}`, domain={}, map_channel_name=`{}`, group_count={}",
+		session->name,
+		domain_class,
+		payload.channel_name,
+		group_count);
+
+	return LTTNG_OK;
+}
+
+enum lttng_error_code cmd_sample_map_group(const ltt_session::locked_ref& session,
+					   const struct lttcomm_session_msg& lsm,
+					   struct lttng_dynamic_buffer *reply)
+{
+	const auto domain_type = static_cast<enum lttng_domain_type>(lsm.domain.type);
+	auto& payload = lsm.u.sample_map_group;
+
+	if (!reply) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+			"Rejecting `SAMPLE_MAP_GROUP` command: null reply buffer");
+	}
+
+	if (!domain_supports_map(domain_type)) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			"Rejecting `SAMPLE_MAP_GROUP` command: unsupported domain={}, session_name=`{}`",
+			domain_type,
+			session->name));
+	}
+
+	if (lttng_strnlen(payload.channel_name, sizeof(payload.channel_name)) ==
+	    sizeof(payload.channel_name)) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			"Rejecting `SAMPLE_MAP_GROUP` command: channel name is not null-terminated, session_name=`{}`",
+			session->name));
+	}
+
+	const auto domain_class = lttng::get_domain_class_from_lttng_domain_type(domain_type);
+	const auto& channel =
+		map_domain_orchestrator(session, domain_type)
+			.map_channel_for(session->get_domain(domain_class)
+						 .get_map_channel(payload.channel_name));
+
+	/*
+	 * Index-keyed channels keep no string registry; sampling them
+	 * through one would throw.
+	 *
+	 * Reject them here, as a reader of their flat index space would
+	 * enumerate the indices directly instead.
+	 */
+	if (!channel.has_registry()) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			"Rejecting `SAMPLE_MAP_GROUP` command: index-keyed channel has no string registry: session_name=`{}`, map_channel_name=`{}`",
+			session->name,
+			payload.channel_name));
+	}
+
+	const auto group = find_map_group(channel, map_group_iden_from_comm(payload.group));
+
+	if (!group) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			"Rejecting `SAMPLE_MAP_GROUP` command: no such map group in map channel: session_name=`{}`, map_channel_name=`{}`",
+			session->name,
+			payload.channel_name));
+	}
+
+	/*
+	 * Snapshot the key-to-index mapping of the channel once: every
+	 * partition of the group shares it, and the registry may grow
+	 * concurrently from threads that don't hold the recording
+	 * session lock.
+	 *
+	 * Keys registered after this point are simply not part of
+	 * the sample.
+	 *
+	 * `elem_count` covers the largest index seen so the
+	 * per-partition value rows are dense and addressed by element
+	 * index, as on the wire.
+	 */
+	std::vector<std::uint64_t> snapshot_indices;
+	std::uint64_t elem_count = 0;
+
+	channel.registry().for_each(
+		[&snapshot_indices, &elem_count](lttng::c_string_view, std::uint64_t index) {
+			snapshot_indices.push_back(index);
+			elem_count = std::max(elem_count, index + 1);
+		});
+
+	/*
+	 * The reply leads with a partition count that for_each_partition()
+	 * only reveals as it visits, so reserve the header now and backpatch
+	 * the count once all partitions are serialized.
+	 */
+	const auto header_offset = reply->size;
+
+	append_to_reply(*reply, lttcomm_map_group_sample_header{}, "map group sample header");
+
+	std::uint64_t part_count = 0;
+
+	group->for_each_partition([&](const lsm::partition_id& partition) {
+		lttcomm_map_group_values_partition_comm part_comm = {};
+
+		part_comm.has_partition_id = partition ? 1 : 0;
+		part_comm.partition_id = partition ? *partition : 0;
+		part_comm.element_count = elem_count;
+		append_to_reply(*reply, part_comm, "map group partition");
+
+		/* Dense value row addressed by element index; gaps read as zero. */
+		std::vector<lttcomm_map_group_value_comm> row(elem_count,
+							      lttcomm_map_group_value_comm{ 0, 0 });
+
+		for (const auto index : snapshot_indices) {
+			const auto element = group->read_element(index, partition);
+
+			row[index].value = element.value;
+			row[index].has_overflow = element.overflow ? 1 : 0;
+		}
+
+		for (const auto& val_comm : row) {
+			append_to_reply(*reply, val_comm, "map group value");
+		}
+
+		++part_count;
+	});
+
+	lttcomm_map_group_sample_header header = {};
+	header.partition_count = part_count;
+	memcpy(reply->data + header_offset, &header, sizeof(header));
+
+	DBG_FMT("Processed `SAMPLE_MAP_GROUP` command: session_name=`{}`, domain={}, map_channel_name=`{}`, partition_count={}",
+		session->name,
+		domain_class,
+		payload.channel_name,
+		part_count);
+
+	return LTTNG_OK;
+}
+
+enum lttng_error_code cmd_list_map_keys(const ltt_session::locked_ref& session,
+					const struct lttcomm_session_msg& lsm,
+					struct lttng_dynamic_buffer *reply)
+{
+	const auto domain_type = static_cast<enum lttng_domain_type>(lsm.domain.type);
+	auto& payload = lsm.u.list_map_keys;
+
+	if (!reply) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+			"Rejecting `LIST_MAP_KEYS` command: null reply buffer");
+	}
+
+	if (!domain_supports_map(domain_type)) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			"Rejecting `LIST_MAP_KEYS` command: unsupported domain={}, session_name=`{}`",
+			domain_type,
+			session->name));
+	}
+
+	if (lttng_strnlen(payload.channel_name, sizeof(payload.channel_name)) ==
+	    sizeof(payload.channel_name)) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			"Rejecting `LIST_MAP_KEYS` command: channel name is not null-terminated, session_name=`{}`",
+			session->name));
+	}
+
+	const auto domain_class = lttng::get_domain_class_from_lttng_domain_type(domain_type);
+	const auto& channel =
+		map_domain_orchestrator(session, domain_type)
+			.map_channel_for(session->get_domain(domain_class)
+						 .get_map_channel(payload.channel_name));
+
+	/*
+	 * Index-keyed channels keep no string registry; their flat index
+	 * space has no keys to enumerate. Reject them, mirroring
+	 * `cmd_sample_map_group`.
+	 */
+	if (!channel.has_registry()) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			"Rejecting `LIST_MAP_KEYS` command: index-keyed channel has no string registry: session_name=`{}`, map_channel_name=`{}`",
+			session->name,
+			payload.channel_name));
+	}
+
+	/*
+	 * The reply leads with a key count that for_each() only reveals as it
+	 * visits, so reserve the header now and backpatch the count once all
+	 * keys are serialized.
+	 *
+	 * Each key carries its registry index so the reader can join it to
+	 * the index-addressed value rows of a `SAMPLE_MAP_GROUP` reply, taken
+	 * from the same registry.
+	 */
+	const auto header_offset = reply->size;
+
+	append_to_reply(*reply, lttcomm_map_key_list_header{}, "map key list header");
+
+	std::uint64_t key_count = 0;
+
+	channel.registry().for_each([reply, &key_count](lttng::c_string_view key,
+							std::uint64_t index) {
+		lttcomm_map_key_comm key_comm = {};
+
+		key_comm.index = index;
+		key_comm.type = LTTNG_MAP_KEY_TYPE_STRING;
+		key_comm.name_len = static_cast<uint32_t>(key.len());
+		append_to_reply(*reply, key_comm, "map key");
+
+		if (lttng_dynamic_buffer_append(reply, key.data(), key.len())) {
+			LTTNG_THROW_CTL("Failed to append map key string to map reply payload",
+					LTTNG_ERR_NOMEM);
+		}
+
+		++key_count;
+	});
+
+	lttcomm_map_key_list_header header = {};
+	header.count = key_count;
+	memcpy(reply->data + header_offset, &header, sizeof(header));
+
+	DBG_FMT("Processed `LIST_MAP_KEYS` command: session_name=`{}`, domain={}, map_channel_name=`{}`, key_count={}",
+		session->name,
+		domain_class,
+		payload.channel_name,
+		key_count);
+
+	return LTTNG_OK;
 }
 
 namespace {

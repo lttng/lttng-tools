@@ -299,6 +299,9 @@
 #define DEFAULT_EVENT_NOTIFIER_ERROR_COUNT_MAP_SIZE \
 	CONFIG_DEFAULT_EVENT_NOTIFIER_ERROR_COUNT_MAP_SIZE
 
+/* Maximum number of keys a map channel can hold by default. */
+#define DEFAULT_MAP_CHANNEL_MAX_KEY_COUNT CONFIG_DEFAULT_MAP_CHANNEL_MAX_KEY_COUNT
+
 /*
  * If a thread stalls for this amount of time, it will be considered bogus (bad
  * health).
