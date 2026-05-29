@@ -19,6 +19,7 @@ TESTS = \
 	ini_config/test_ini_config \
 	test_action \
 	test_action_key_template \
+	test_bigint \
 	test_buffer_view \
 	test_directory_handle \
 	test_event_expr_to_bytecode \
@@ -64,6 +65,7 @@ LIBSCHEDULING=$(top_builddir)/src/common/libscheduling.la
 noinst_PROGRAMS = \
 	test_action \
 	test_action_key_template \
+	test_bigint \
 	test_buffer_view \
 	test_condition \
 	test_directory_handle \
@@ -213,6 +215,10 @@ test_uuid_LDADD = $(LIBTAP) $(LIBCOMMON_GPL)
 # buffer view unit test
 test_buffer_view_SOURCES = test_buffer_view.cpp
 test_buffer_view_LDADD = $(LIBTAP) $(LIBCOMMON_GPL)
+
+# bigint unit test
+test_bigint_SOURCES = test_bigint.cpp
+test_bigint_LDADD = $(LIBTAP) $(LIBCOMMON_GPL)
 
 # payload unit test
 test_payload_SOURCES = test_payload.cpp

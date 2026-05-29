@@ -54,6 +54,7 @@ libcommon_lgpl_la_SOURCES = \
 	actions/start-session.cpp \
 	actions/stop-session.cpp \
 	actions/rate-policy.cpp \
+	bigint.hpp \
 	binary-view.hpp \
 	buffer-view.hpp buffer-view.cpp \
 	channel.cpp \
