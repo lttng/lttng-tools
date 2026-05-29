@@ -120,6 +120,7 @@ compile_commands.json
 /tests/unit/test_uprobe_event_rule_event_name
 /tests/unit/test_utils_path_walks_up_hierarchy
 /tests/unit/test_bigint
+/tests/unit/test_table_writer
 /tests/regression/ust/multi-session/gen-nevents
 /tests/regression/ust/low-throughput/gen-events
 /tests/regression/ust/high-throughput/gen-events

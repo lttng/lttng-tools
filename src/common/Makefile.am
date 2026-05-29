@@ -125,6 +125,7 @@ libcommon_lgpl_la_SOURCES = \
 	spawn-viewer.cpp spawn-viewer.hpp \
 	stream-descriptor.cpp stream-descriptor.hpp \
 	stream-info.cpp stream-info.hpp \
+	table-writer.cpp table-writer.hpp \
 	term-utils.cpp term-utils.hpp \
 	thread.cpp thread.hpp \
 	time.cpp \
