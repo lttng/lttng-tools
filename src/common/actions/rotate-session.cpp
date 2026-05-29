@@ -244,7 +244,7 @@ enum lttng_error_code lttng_action_rotate_session_mi_serialize(const struct lttn
 	LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
 	LTTNG_ASSERT(session_name != nullptr);
 
-	status = lttng_action_notify_get_rate_policy(action, &policy);
+	status = lttng_action_rotate_session_get_rate_policy(action, &policy);
 	LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
 	LTTNG_ASSERT(policy != nullptr);
 
