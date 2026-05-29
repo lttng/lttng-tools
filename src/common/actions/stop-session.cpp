@@ -249,7 +249,7 @@ lttng_action_stop_session_mi_serialize(const struct lttng_action *action, struct
 	LTTNG_ASSERT(policy != nullptr);
 
 	/* Open action stop session. */
-	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_action_start_session);
+	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_action_stop_session);
 	if (ret) {
 		goto mi_error;
 	}
