@@ -861,20 +861,24 @@ void print_one_action(const struct lttng_trigger *trigger,
 	}
 	case LTTNG_ACTION_TYPE_INCREMENT_MAP_VALUE:
 	{
-		const char *session_name =
-			lttng_action_increment_map_value_get_target_session_name(action);
-		const char *channel_name =
-			lttng_action_increment_map_value_get_target_channel_name(action);
-		enum lttng_domain_type domain = LTTNG_DOMAIN_NONE;
-		const struct lttng_key_template *key_template =
-			lttng_action_increment_map_value_get_key_template(action);
+		const char *session_name = nullptr;
+		const char *channel_name = nullptr;
+		enum lttng_map_channel_type channel_type = LTTNG_MAP_CHANNEL_TYPE_KERNEL;
+		const struct lttng_key_template *key_template = nullptr;
 		char *key_template_str = nullptr;
 
-		LTTNG_ASSERT(session_name);
-		LTTNG_ASSERT(channel_name);
-		LTTNG_ASSERT(key_template);
-
-		(void) lttng_action_increment_map_value_get_target_domain(action, &domain);
+		action_status = lttng_action_increment_map_value_get_target_session_name(
+			action, &session_name);
+		LTTNG_ASSERT(action_status == LTTNG_ACTION_STATUS_OK);
+		action_status = lttng_action_increment_map_value_get_target_channel_name(
+			action, &channel_name);
+		LTTNG_ASSERT(action_status == LTTNG_ACTION_STATUS_OK);
+		action_status = lttng_action_increment_map_value_get_target_channel_type(
+			action, &channel_type);
+		LTTNG_ASSERT(action_status == LTTNG_ACTION_STATUS_OK);
+		action_status =
+			lttng_action_increment_map_value_get_key_template(action, &key_template);
+		LTTNG_ASSERT(action_status == LTTNG_ACTION_STATUS_OK);
 
 		if (lttng_key_template_to_string(key_template, &key_template_str) !=
 		    LTTNG_KEY_TEMPLATE_STATUS_OK) {
@@ -882,10 +886,10 @@ void print_one_action(const struct lttng_trigger *trigger,
 			goto end;
 		}
 
-		_MSG("increment value of map `%s` of session `%s` (domain: %s), key template: `%s`",
+		_MSG("increment value of map `%s` of session `%s` (channel type: %s), key template: `%s`",
 		     channel_name,
 		     session_name,
-		     lttng_domain_type_str(domain),
+		     channel_type == LTTNG_MAP_CHANNEL_TYPE_KERNEL ? "Linux kernel" : "user space",
 		     key_template_str);
 		free(key_template_str);
 		break;

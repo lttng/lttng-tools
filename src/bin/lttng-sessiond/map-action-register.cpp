@@ -69,21 +69,30 @@ void apply_to_locked_session(const lttng_trigger& trigger,
 		return;
 	}
 
-	const char *const channel_name =
-		lttng_action_increment_map_value_get_target_channel_name(&action);
-	if (!channel_name || channel_name[0] == '\0') {
+	const char *channel_name = nullptr;
+	const auto channel_name_status =
+		lttng_action_increment_map_value_get_target_channel_name(&action, &channel_name);
+	if (channel_name_status != LTTNG_ACTION_STATUS_OK || channel_name[0] == '\0') {
 		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
 			"Increment-map-value action target channel name is unset");
 	}
 
-	lttng_domain_type target_domain = LTTNG_DOMAIN_NONE;
-	const auto domain_status =
-		lttng_action_increment_map_value_get_target_domain(&action, &target_domain);
-	if (domain_status != LTTNG_ACTION_STATUS_OK) {
+	enum lttng_map_channel_type channel_type;
+	const auto channel_type_status =
+		lttng_action_increment_map_value_get_target_channel_type(&action, &channel_type);
+	if (channel_type_status != LTTNG_ACTION_STATUS_OK) {
 		LTTNG_THROW_INVALID_ARGUMENT_ERROR(lttng::format(
-			"Increment-map-value action target domain is unset or invalid: status={}",
-			static_cast<int>(domain_status)));
+			"Increment-map-value action target map channel type is unset or invalid: status={}",
+			static_cast<int>(channel_type_status)));
 	}
+
+	/*
+	 * The domain configuration and orchestrators are keyed by tracing
+	 * domain; map the channel type back to the domain which backs it.
+	 */
+	const auto target_domain = channel_type == LTTNG_MAP_CHANNEL_TYPE_KERNEL ?
+		LTTNG_DOMAIN_KERNEL :
+		LTTNG_DOMAIN_UST;
 
 	/* The trigger condition carries the event rule to bind. */
 	const auto *const condition = lttng_trigger_get_const_condition(&trigger);
@@ -133,16 +142,18 @@ void lookup_session_and_apply(const lttng_trigger& trigger,
 			      const lttng_action& action,
 			      binding_operation operation)
 {
-	const char *const session_name =
-		lttng_action_increment_map_value_get_target_session_name(&action);
-	const char *const channel_name =
-		lttng_action_increment_map_value_get_target_channel_name(&action);
-	if (!session_name || session_name[0] == '\0') {
+	const char *session_name = nullptr;
+	const char *channel_name = nullptr;
+	if (lttng_action_increment_map_value_get_target_session_name(&action, &session_name) !=
+		    LTTNG_ACTION_STATUS_OK ||
+	    session_name[0] == '\0') {
 		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
 			"Increment-map-value action target session name is unset");
 	}
 
-	if (!channel_name || channel_name[0] == '\0') {
+	if (lttng_action_increment_map_value_get_target_channel_name(&action, &channel_name) !=
+		    LTTNG_ACTION_STATUS_OK ||
+	    channel_name[0] == '\0') {
 		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
 			"Increment-map-value action target channel name is unset");
 	}
@@ -174,16 +185,18 @@ void lsm::attempt_register(const lttng_trigger& trigger,
 			   const ltt_session::locked_ref& target_session,
 			   const lttng_action& incr_map_value_action)
 {
-	const char *const session_name =
-		lttng_action_increment_map_value_get_target_session_name(&incr_map_value_action);
-	const char *const channel_name =
-		lttng_action_increment_map_value_get_target_channel_name(&incr_map_value_action);
-	if (!session_name || session_name[0] == '\0') {
+	const char *session_name = nullptr;
+	const char *channel_name = nullptr;
+	if (lttng_action_increment_map_value_get_target_session_name(
+		    &incr_map_value_action, &session_name) != LTTNG_ACTION_STATUS_OK ||
+	    session_name[0] == '\0') {
 		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
 			"Increment-map-value action target session name is unset");
 	}
 
-	if (!channel_name || channel_name[0] == '\0') {
+	if (lttng_action_increment_map_value_get_target_channel_name(
+		    &incr_map_value_action, &channel_name) != LTTNG_ACTION_STATUS_OK ||
+	    channel_name[0] == '\0') {
 		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
 			"Increment-map-value action target channel name is unset");
 	}

@@ -865,27 +865,30 @@ struct formatter<lttng_action> : formatter<std::string> {
 		}
 		case LTTNG_ACTION_TYPE_INCREMENT_MAP_VALUE:
 		{
-			const char *session_name =
-				lttng_action_increment_map_value_get_target_session_name(&action);
-			const char *channel_name =
-				lttng_action_increment_map_value_get_target_channel_name(&action);
-			lttng_domain_type domain = LTTNG_DOMAIN_NONE;
-			const auto *key_template =
-				lttng_action_increment_map_value_get_key_template(&action);
+			const char *session_name = nullptr;
+			const char *channel_name = nullptr;
+			enum lttng_map_channel_type channel_type = LTTNG_MAP_CHANNEL_TYPE_KERNEL;
+			const struct lttng_key_template *key_template = nullptr;
 			char *key_template_str = nullptr;
 
-			(void) lttng_action_increment_map_value_get_target_domain(&action, &domain);
+			(void) lttng_action_increment_map_value_get_target_session_name(
+				&action, &session_name);
+			(void) lttng_action_increment_map_value_get_target_channel_name(
+				&action, &channel_name);
+			(void) lttng_action_increment_map_value_get_target_channel_type(
+				&action, &channel_type);
 
-			if (key_template) {
+			if (lttng_action_increment_map_value_get_key_template(
+				    &action, &key_template) == LTTNG_ACTION_STATUS_OK) {
 				(void) lttng_key_template_to_string(key_template,
 								    &key_template_str);
 			}
 
 			auto out = format_to(
 				ctx.out(),
-				"{{type={}, domain={}, session_name=`{}`, channel_name=`{}`, key_template=`{}`}}",
+				"{{type={}, channel_type={}, session_name=`{}`, channel_name=`{}`, key_template=`{}`}}",
 				type,
-				domain,
+				static_cast<int>(channel_type),
 				session_name ? session_name : "",
 				channel_name ? channel_name : "",
 				key_template_str ? key_template_str : "");

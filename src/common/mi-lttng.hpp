@@ -261,7 +261,7 @@ extern const char *const mi_lttng_element_action_rotate_session;
 extern const char *const mi_lttng_element_action_snapshot_session;
 extern const char *const mi_lttng_element_action_snapshot_session_output;
 extern const char *const mi_lttng_element_action_increment_map_value;
-extern const char *const mi_lttng_element_action_increment_map_value_domain;
+extern const char *const mi_lttng_element_action_increment_map_value_channel_type;
 extern const char *const mi_lttng_element_action_increment_map_value_channel_name;
 extern const char *const mi_lttng_element_action_increment_map_value_key_template;
 

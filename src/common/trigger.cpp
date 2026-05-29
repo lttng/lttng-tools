@@ -40,9 +40,10 @@ namespace {
  */
 bool incr_map_value_key_template_has_placeholder(const struct lttng_action *action)
 {
-	const auto *key_template = lttng_action_increment_map_value_get_key_template(action);
+	const struct lttng_key_template *key_template = nullptr;
 
-	if (!key_template) {
+	if (lttng_action_increment_map_value_get_key_template(action, &key_template) !=
+	    LTTNG_ACTION_STATUS_OK) {
 		/*
 		 * A missing template is not a placeholder concern; the generic
 		 * action validation rejects the action on its own.
@@ -121,9 +122,10 @@ bool agent_domain_key_template_is_valid(const struct lttng_trigger *trigger)
  */
 bool incr_map_value_key_template_has_provider_name(const struct lttng_action *action)
 {
-	const auto *key_template = lttng_action_increment_map_value_get_key_template(action);
+	const struct lttng_key_template *key_template = nullptr;
 
-	if (!key_template) {
+	if (lttng_action_increment_map_value_get_key_template(action, &key_template) !=
+	    LTTNG_ACTION_STATUS_OK) {
 		return false;
 	}
 
@@ -147,14 +149,14 @@ bool action_has_kernel_provider_name_keyed_incr_map_value(const struct lttng_act
 	switch (lttng_action_get_type(action)) {
 	case LTTNG_ACTION_TYPE_INCREMENT_MAP_VALUE:
 	{
-		lttng_domain_type target_domain = LTTNG_DOMAIN_NONE;
+		enum lttng_map_channel_type channel_type;
 
-		if (lttng_action_increment_map_value_get_target_domain(action, &target_domain) !=
-		    LTTNG_ACTION_STATUS_OK) {
+		if (lttng_action_increment_map_value_get_target_channel_type(
+			    action, &channel_type) != LTTNG_ACTION_STATUS_OK) {
 			return false;
 		}
 
-		return target_domain == LTTNG_DOMAIN_KERNEL &&
+		return channel_type == LTTNG_MAP_CHANNEL_TYPE_KERNEL &&
 			incr_map_value_key_template_has_provider_name(action);
 	}
 	case LTTNG_ACTION_TYPE_LIST:

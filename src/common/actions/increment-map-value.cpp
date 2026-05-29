@@ -24,8 +24,13 @@ namespace {
 struct lttng_action_increment_map_value {
 	struct lttng_action parent;
 
-	/* Target tracing domain; LTTNG_DOMAIN_NONE until set. */
-	enum lttng_domain_type domain;
+	/*
+	 * Target map channel type. `channel_type` is only meaningful when
+	 * `channel_type_set` is true, since `enum lttng_map_channel_type`
+	 * has no "unset" enumerator.
+	 */
+	enum lttng_map_channel_type channel_type;
+	bool channel_type_set;
 
 	/* Owned by this. */
 	char *session_name;
@@ -34,8 +39,11 @@ struct lttng_action_increment_map_value {
 };
 
 struct lttng_action_increment_map_value_comm {
-	/* enum lttng_domain_type: LTTNG_DOMAIN_KERNEL or LTTNG_DOMAIN_UST. */
-	int8_t domain;
+	/*
+	 * enum lttng_map_channel_type: LTTNG_MAP_CHANNEL_TYPE_KERNEL or
+	 * LTTNG_MAP_CHANNEL_TYPE_USER.
+	 */
+	int8_t channel_type;
 
 	/* String lengths include the trailing \0. */
 	uint32_t session_name_len;
@@ -67,6 +75,18 @@ action_increment_map_value_from_action_const(const struct lttng_action *action)
 	return lttng::utils::container_of(action, &lttng_action_increment_map_value::parent);
 }
 
+const char *map_channel_type_string(enum lttng_map_channel_type type)
+{
+	switch (type) {
+	case LTTNG_MAP_CHANNEL_TYPE_KERNEL:
+		return "kernel";
+	case LTTNG_MAP_CHANNEL_TYPE_USER:
+		return "user";
+	default:
+		abort();
+	}
+}
+
 bool lttng_action_increment_map_value_validate(struct lttng_action *action)
 {
 	bool valid = false;
@@ -91,8 +111,8 @@ bool lttng_action_increment_map_value_validate(struct lttng_action *action)
 		goto end;
 	}
 
-	/* Only the kernel and user space tracers back map channels. */
-	if (action_incr->domain != LTTNG_DOMAIN_KERNEL && action_incr->domain != LTTNG_DOMAIN_UST) {
+	/* The target map channel type is mandatory. */
+	if (!action_incr->channel_type_set) {
 		goto end;
 	}
 
@@ -118,7 +138,7 @@ bool lttng_action_increment_map_value_is_equal(const struct lttng_action *_a,
 	LTTNG_ASSERT(a->key_template);
 	LTTNG_ASSERT(b->key_template);
 
-	if (a->domain != b->domain) {
+	if (a->channel_type != b->channel_type) {
 		goto end;
 	}
 
@@ -156,15 +176,15 @@ int lttng_action_increment_map_value_serialize(struct lttng_action *action,
 	LTTNG_ASSERT(action_incr->channel_name);
 	LTTNG_ASSERT(action_incr->key_template);
 
-	DBG("Serializing increment-map-value action: session-name=`%s`, channel-name=`%s`, domain=%d",
+	DBG("Serializing increment-map-value action: session-name=`%s`, channel-name=`%s`, channel-type=%d",
 	    action_incr->session_name,
 	    action_incr->channel_name,
-	    (int) action_incr->domain);
+	    (int) action_incr->channel_type);
 
 	session_name_len = strlen(action_incr->session_name) + 1;
 	channel_name_len = strlen(action_incr->channel_name) + 1;
 
-	comm.domain = (int8_t) action_incr->domain;
+	comm.channel_type = (int8_t) action_incr->channel_type;
 	comm.session_name_len = session_name_len;
 	comm.channel_name_len = channel_name_len;
 
@@ -226,25 +246,29 @@ lttng_action_increment_map_value_mi_serialize(const struct lttng_action *action,
 	enum lttng_error_code ret_code;
 	const char *session_name = nullptr;
 	const char *channel_name = nullptr;
-	enum lttng_domain_type domain = LTTNG_DOMAIN_NONE;
+	enum lttng_map_channel_type channel_type = LTTNG_MAP_CHANNEL_TYPE_KERNEL;
 	const struct lttng_key_template *key_template = nullptr;
 	char *key_template_str = nullptr;
+	enum lttng_action_status action_status;
 
 	LTTNG_ASSERT(action);
 	LTTNG_ASSERT(IS_INCREMENT_MAP_VALUE_ACTION(action));
 	LTTNG_ASSERT(writer);
 
-	session_name = lttng_action_increment_map_value_get_target_session_name(action);
-	LTTNG_ASSERT(session_name != nullptr);
+	action_status =
+		lttng_action_increment_map_value_get_target_session_name(action, &session_name);
+	LTTNG_ASSERT(action_status == LTTNG_ACTION_STATUS_OK);
 
-	channel_name = lttng_action_increment_map_value_get_target_channel_name(action);
-	LTTNG_ASSERT(channel_name != nullptr);
+	action_status =
+		lttng_action_increment_map_value_get_target_channel_name(action, &channel_name);
+	LTTNG_ASSERT(action_status == LTTNG_ACTION_STATUS_OK);
 
-	(void) lttng_action_increment_map_value_get_target_domain(action, &domain);
-	LTTNG_ASSERT(domain == LTTNG_DOMAIN_KERNEL || domain == LTTNG_DOMAIN_UST);
+	action_status =
+		lttng_action_increment_map_value_get_target_channel_type(action, &channel_type);
+	LTTNG_ASSERT(action_status == LTTNG_ACTION_STATUS_OK);
 
-	key_template = lttng_action_increment_map_value_get_key_template(action);
-	LTTNG_ASSERT(key_template != nullptr);
+	action_status = lttng_action_increment_map_value_get_key_template(action, &key_template);
+	LTTNG_ASSERT(action_status == LTTNG_ACTION_STATUS_OK);
 
 	if (lttng_key_template_to_string(key_template, &key_template_str) !=
 	    LTTNG_KEY_TEMPLATE_STATUS_OK) {
@@ -265,11 +289,11 @@ lttng_action_increment_map_value_mi_serialize(const struct lttng_action *action,
 		goto mi_error;
 	}
 
-	/* Target domain. */
+	/* Target map channel type. */
 	ret = mi_lttng_writer_write_element_string(
 		writer,
-		mi_lttng_element_action_increment_map_value_domain,
-		mi_lttng_domaintype_string(domain));
+		mi_lttng_element_action_increment_map_value_channel_type,
+		map_channel_type_string(channel_type));
 	if (ret) {
 		goto mi_error;
 	}
@@ -378,9 +402,9 @@ ssize_t lttng_action_increment_map_value_create_from_payload(struct lttng_payloa
 		goto end;
 	}
 
-	/* The setter rejects any byte that isn't a supported domain. */
-	status = lttng_action_increment_map_value_set_target_domain(
-		action, (enum lttng_domain_type) comm->domain);
+	/* The setter rejects any byte that isn't a supported map channel type. */
+	status = lttng_action_increment_map_value_set_target_channel_type(
+		action, (enum lttng_map_channel_type) comm->channel_type);
 	if (status != LTTNG_ACTION_STATUS_OK) {
 		consumed_len = -1;
 		goto end;
@@ -454,17 +478,23 @@ lttng_action_increment_map_value_set_target_session_name(struct lttng_action *ac
 		action, session_name, &lttng_action_increment_map_value::session_name);
 }
 
-const char *
-lttng_action_increment_map_value_get_target_session_name(const struct lttng_action *action)
+enum lttng_action_status
+lttng_action_increment_map_value_get_target_session_name(const struct lttng_action *action,
+							 const char **session_name)
 {
 	const struct lttng_action_increment_map_value *action_incr;
 
-	if (!action || !IS_INCREMENT_MAP_VALUE_ACTION(action)) {
-		return nullptr;
+	if (!action || !IS_INCREMENT_MAP_VALUE_ACTION(action) || !session_name) {
+		return LTTNG_ACTION_STATUS_INVALID;
 	}
 
 	action_incr = action_increment_map_value_from_action_const(action);
-	return action_incr->session_name;
+	if (!action_incr->session_name) {
+		return LTTNG_ACTION_STATUS_UNSET;
+	}
+
+	*session_name = action_incr->session_name;
+	return LTTNG_ACTION_STATUS_OK;
 }
 
 enum lttng_action_status
@@ -475,51 +505,58 @@ lttng_action_increment_map_value_set_target_channel_name(struct lttng_action *ac
 		action, channel_name, &lttng_action_increment_map_value::channel_name);
 }
 
-const char *
-lttng_action_increment_map_value_get_target_channel_name(const struct lttng_action *action)
+enum lttng_action_status
+lttng_action_increment_map_value_get_target_channel_name(const struct lttng_action *action,
+							 const char **channel_name)
 {
 	const struct lttng_action_increment_map_value *action_incr;
 
-	if (!action || !IS_INCREMENT_MAP_VALUE_ACTION(action)) {
-		return nullptr;
-	}
-
-	action_incr = action_increment_map_value_from_action_const(action);
-	return action_incr->channel_name;
-}
-
-enum lttng_action_status
-lttng_action_increment_map_value_set_target_domain(struct lttng_action *action,
-						   enum lttng_domain_type domain)
-{
-	struct lttng_action_increment_map_value *action_incr;
-
-	if (!action || !IS_INCREMENT_MAP_VALUE_ACTION(action) ||
-	    (domain != LTTNG_DOMAIN_KERNEL && domain != LTTNG_DOMAIN_UST)) {
+	if (!action || !IS_INCREMENT_MAP_VALUE_ACTION(action) || !channel_name) {
 		return LTTNG_ACTION_STATUS_INVALID;
 	}
 
-	action_incr = action_increment_map_value_from_action(action);
-	action_incr->domain = domain;
+	action_incr = action_increment_map_value_from_action_const(action);
+	if (!action_incr->channel_name) {
+		return LTTNG_ACTION_STATUS_UNSET;
+	}
+
+	*channel_name = action_incr->channel_name;
 	return LTTNG_ACTION_STATUS_OK;
 }
 
 enum lttng_action_status
-lttng_action_increment_map_value_get_target_domain(const struct lttng_action *action,
-						   enum lttng_domain_type *domain)
+lttng_action_increment_map_value_set_target_channel_type(struct lttng_action *action,
+							 enum lttng_map_channel_type type)
+{
+	struct lttng_action_increment_map_value *action_incr;
+
+	if (!action || !IS_INCREMENT_MAP_VALUE_ACTION(action) ||
+	    (type != LTTNG_MAP_CHANNEL_TYPE_KERNEL && type != LTTNG_MAP_CHANNEL_TYPE_USER)) {
+		return LTTNG_ACTION_STATUS_INVALID;
+	}
+
+	action_incr = action_increment_map_value_from_action(action);
+	action_incr->channel_type = type;
+	action_incr->channel_type_set = true;
+	return LTTNG_ACTION_STATUS_OK;
+}
+
+enum lttng_action_status
+lttng_action_increment_map_value_get_target_channel_type(const struct lttng_action *action,
+							 enum lttng_map_channel_type *type)
 {
 	const struct lttng_action_increment_map_value *action_incr;
 
-	if (!action || !IS_INCREMENT_MAP_VALUE_ACTION(action) || !domain) {
+	if (!action || !IS_INCREMENT_MAP_VALUE_ACTION(action) || !type) {
 		return LTTNG_ACTION_STATUS_INVALID;
 	}
 
 	action_incr = action_increment_map_value_from_action_const(action);
-	if (action_incr->domain == LTTNG_DOMAIN_NONE) {
+	if (!action_incr->channel_type_set) {
 		return LTTNG_ACTION_STATUS_UNSET;
 	}
 
-	*domain = action_incr->domain;
+	*type = action_incr->channel_type;
 	return LTTNG_ACTION_STATUS_OK;
 }
 
@@ -547,15 +584,21 @@ lttng_action_increment_map_value_set_key_template(struct lttng_action *action,
 	return LTTNG_ACTION_STATUS_OK;
 }
 
-const struct lttng_key_template *
-lttng_action_increment_map_value_get_key_template(const struct lttng_action *action)
+enum lttng_action_status
+lttng_action_increment_map_value_get_key_template(const struct lttng_action *action,
+						  const struct lttng_key_template **key_template)
 {
 	const struct lttng_action_increment_map_value *action_incr;
 
-	if (!action || !IS_INCREMENT_MAP_VALUE_ACTION(action)) {
-		return nullptr;
+	if (!action || !IS_INCREMENT_MAP_VALUE_ACTION(action) || !key_template) {
+		return LTTNG_ACTION_STATUS_INVALID;
 	}
 
 	action_incr = action_increment_map_value_from_action_const(action);
-	return action_incr->key_template;
+	if (!action_incr->key_template) {
+		return LTTNG_ACTION_STATUS_UNSET;
+	}
+
+	*key_template = action_incr->key_template;
+	return LTTNG_ACTION_STATUS_OK;
 }

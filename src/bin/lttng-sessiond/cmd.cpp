@@ -1581,14 +1581,15 @@ void cmd_add_map_channel(const ltt_session::locked_ref& session,
 
 			lttng::sessiond::map::for_each_increment_map_value_action(
 				*registered, [&](const lttng_action& action) {
-					const char *const target_session_name =
-						lttng_action_increment_map_value_get_target_session_name(
-							&action);
-					const char *const target_channel_name =
-						lttng_action_increment_map_value_get_target_channel_name(
-							&action);
+					const char *target_session_name = nullptr;
+					const char *target_channel_name = nullptr;
 
-					if (!target_session_name || !target_channel_name) {
+					if (lttng_action_increment_map_value_get_target_session_name(
+						    &action, &target_session_name) !=
+						    LTTNG_ACTION_STATUS_OK ||
+					    lttng_action_increment_map_value_get_target_channel_name(
+						    &action, &target_channel_name) !=
+						    LTTNG_ACTION_STATUS_OK) {
 						return;
 					}
 
@@ -1599,10 +1600,18 @@ void cmd_add_map_channel(const ltt_session::locked_ref& session,
 					 * at a pre-existing channel that may already be
 					 * bound, and re-binding it would trip the
 					 * orchestrator's double-register assertion.
+					 *
+					 * The action carries a map channel type; map it
+					 * back to the domain which backs it for the
+					 * comparison.
 					 */
-					lttng_domain_type action_target_domain = LTTNG_DOMAIN_NONE;
-					(void) lttng_action_increment_map_value_get_target_domain(
-						&action, &action_target_domain);
+					enum lttng_map_channel_type action_channel_type;
+					(void) lttng_action_increment_map_value_get_target_channel_type(
+						&action, &action_channel_type);
+					const auto action_target_domain = action_channel_type ==
+							LTTNG_MAP_CHANNEL_TYPE_KERNEL ?
+						LTTNG_DOMAIN_KERNEL :
+						LTTNG_DOMAIN_UST;
 
 					if (action_target_domain != domain_type ||
 					    lttng::c_string_view(session->name) !=

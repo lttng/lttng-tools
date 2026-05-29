@@ -156,6 +156,9 @@ lttngeventruleinclude_HEADERS= \
 	lttng/event-rule/python-logging.h \
 	lttng/event-rule/user-tracepoint.h
 
+lttngmapinclude_HEADERS= \
+	lttng/map/channel-type.h
+
 noinst_HEADERS = \
 	lttng/action/action-internal.hpp \
 	lttng/action/increment-map-value-internal.hpp \

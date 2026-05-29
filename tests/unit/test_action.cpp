@@ -38,7 +38,7 @@ int lttng_opt_quiet = 1;
 int lttng_opt_verbose;
 int lttng_opt_mi;
 
-#define NUM_TESTS 103
+#define NUM_TESTS 102
 
 namespace {
 void test_action_notify()
@@ -584,8 +584,8 @@ void test_action_increment_map_value()
 	status = lttng_action_increment_map_value_set_target_session_name(action, session_name);
 	ok(status == LTTNG_ACTION_STATUS_OK, "Set target session name");
 
-	got = lttng_action_increment_map_value_get_target_session_name(action);
-	ok(got && !strcmp(session_name, got),
+	status = lttng_action_increment_map_value_get_target_session_name(action, &got);
+	ok(status == LTTNG_ACTION_STATUS_OK && got && !strcmp(session_name, got),
 	   "Get target session name, expected `%s` got `%s`",
 	   session_name,
 	   got ? got : "(null)");
@@ -604,8 +604,8 @@ void test_action_increment_map_value()
 	status = lttng_action_increment_map_value_set_target_channel_name(action, channel_name);
 	ok(status == LTTNG_ACTION_STATUS_OK, "Set target channel name");
 
-	got = lttng_action_increment_map_value_get_target_channel_name(action);
-	ok(got && !strcmp(channel_name, got),
+	status = lttng_action_increment_map_value_get_target_channel_name(action, &got);
+	ok(status == LTTNG_ACTION_STATUS_OK && got && !strcmp(channel_name, got),
 	   "Get target channel name, expected `%s` got `%s`",
 	   channel_name,
 	   got ? got : "(null)");
@@ -639,8 +639,9 @@ void test_action_increment_map_value()
 	lttng_key_template_destroy(key_template);
 	key_template = nullptr;
 
-	got_template = lttng_action_increment_map_value_get_key_template(action);
-	ok(got_template != nullptr, "Get key template returns non-null after set");
+	status = lttng_action_increment_map_value_get_key_template(action, &got_template);
+	ok(status == LTTNG_ACTION_STATUS_OK && got_template != nullptr,
+	   "Get key template returns non-null after set");
 
 	{
 		char *got_str = nullptr;
@@ -654,35 +655,38 @@ void test_action_increment_map_value()
 	}
 
 	/*
-	 * Everything but the target domain is set: the action must still
-	 * fail to validate, proving the domain is mandatory.
+	 * Everything but the target map channel type is set: the action must
+	 * still fail to validate, proving the channel type is mandatory.
 	 */
 	ok(!lttng_action_validate(action),
-	   "increment_map_value action does not validate without a target domain");
+	   "increment_map_value action does not validate without a target channel type");
 
 	{
-		enum lttng_domain_type got_domain = LTTNG_DOMAIN_NONE;
-		ok(lttng_action_increment_map_value_get_target_domain(action, &got_domain) ==
+		enum lttng_map_channel_type got_type = LTTNG_MAP_CHANNEL_TYPE_KERNEL;
+		ok(lttng_action_increment_map_value_get_target_channel_type(action, &got_type) ==
 			   LTTNG_ACTION_STATUS_UNSET,
-		   "Get target domain before set returns UNSET");
+		   "Get target channel type before set returns UNSET");
 	}
 
-	/* Target domain setter precondition checks. */
-	status = lttng_action_increment_map_value_set_target_domain(nullptr, LTTNG_DOMAIN_KERNEL);
-	ok(status == LTTNG_ACTION_STATUS_INVALID, "Set target domain (NULL) expect invalid");
-	status = lttng_action_increment_map_value_set_target_domain(action, LTTNG_DOMAIN_NONE);
-	ok(status == LTTNG_ACTION_STATUS_INVALID, "Set target domain NONE expect invalid");
-	status = lttng_action_increment_map_value_set_target_domain(action, LTTNG_DOMAIN_JUL);
-	ok(status == LTTNG_ACTION_STATUS_INVALID, "Set agent target domain expect invalid");
+	/* Target channel type setter precondition checks. */
+	status = lttng_action_increment_map_value_set_target_channel_type(
+		nullptr, LTTNG_MAP_CHANNEL_TYPE_KERNEL);
+	ok(status == LTTNG_ACTION_STATUS_INVALID, "Set target channel type (NULL) expect invalid");
+	status = lttng_action_increment_map_value_set_target_channel_type(
+		action, (enum lttng_map_channel_type) 42);
+	ok(status == LTTNG_ACTION_STATUS_INVALID,
+	   "Set target channel type out of range expect invalid");
 
-	status = lttng_action_increment_map_value_set_target_domain(action, LTTNG_DOMAIN_UST);
-	ok(status == LTTNG_ACTION_STATUS_OK, "Set target domain");
+	status = lttng_action_increment_map_value_set_target_channel_type(
+		action, LTTNG_MAP_CHANNEL_TYPE_USER);
+	ok(status == LTTNG_ACTION_STATUS_OK, "Set target channel type");
 
 	{
-		enum lttng_domain_type got_domain = LTTNG_DOMAIN_NONE;
-		status = lttng_action_increment_map_value_get_target_domain(action, &got_domain);
-		ok(status == LTTNG_ACTION_STATUS_OK && got_domain == LTTNG_DOMAIN_UST,
-		   "Get target domain returns the domain that was set");
+		enum lttng_map_channel_type got_type = LTTNG_MAP_CHANNEL_TYPE_KERNEL;
+		status =
+			lttng_action_increment_map_value_get_target_channel_type(action, &got_type);
+		ok(status == LTTNG_ACTION_STATUS_OK && got_type == LTTNG_MAP_CHANNEL_TYPE_USER,
+		   "Get target channel type returns the type that was set");
 	}
 
 	/* Validation: all mandatory fields are now set. */

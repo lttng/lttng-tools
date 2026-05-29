@@ -736,28 +736,39 @@ int action_executor_increment_map_value_handler(struct action_executor *executor
 		return 0;
 	}
 
-	const char *const session_name =
-		lttng_action_increment_map_value_get_target_session_name(action);
-	const char *const channel_name =
-		lttng_action_increment_map_value_get_target_channel_name(action);
-	if (!session_name || !channel_name) {
+	const char *session_name = nullptr;
+	const char *channel_name = nullptr;
+	if (lttng_action_increment_map_value_get_target_session_name(action, &session_name) !=
+		    LTTNG_ACTION_STATUS_OK ||
+	    lttng_action_increment_map_value_get_target_channel_name(action, &channel_name) !=
+		    LTTNG_ACTION_STATUS_OK) {
 		ERR("Failed to get target session or channel name from `%s` action of trigger `%s`",
 		    get_action_name(action),
 		    get_trigger_name(work_item->trigger));
 		return -1;
 	}
 
-	lttng_domain_type target_domain = LTTNG_DOMAIN_NONE;
-	if (lttng_action_increment_map_value_get_target_domain(action, &target_domain) !=
+	enum lttng_map_channel_type channel_type;
+	if (lttng_action_increment_map_value_get_target_channel_type(action, &channel_type) !=
 	    LTTNG_ACTION_STATUS_OK) {
-		ERR("Failed to get target domain from `%s` action of trigger `%s`",
+		ERR("Failed to get target map channel type from `%s` action of trigger `%s`",
 		    get_action_name(action),
 		    get_trigger_name(work_item->trigger));
 		return -1;
 	}
 
-	const auto *const key_template = lttng_action_increment_map_value_get_key_template(action);
-	LTTNG_ASSERT(key_template);
+	/*
+	 * The orchestrators and domain configuration are keyed by tracing
+	 * domain; map the channel type back to the domain which backs it.
+	 */
+	const auto target_domain = channel_type == LTTNG_MAP_CHANNEL_TYPE_KERNEL ?
+		LTTNG_DOMAIN_KERNEL :
+		LTTNG_DOMAIN_UST;
+
+	const struct lttng_key_template *key_template = nullptr;
+	const auto key_template_status =
+		lttng_action_increment_map_value_get_key_template(action, &key_template);
+	LTTNG_ASSERT(key_template_status == LTTNG_ACTION_STATUS_OK);
 	const auto key = render_literal_key_template(*key_template);
 
 	/* Skip if the target session did not exist when this work item was queued. */
@@ -1228,7 +1239,9 @@ int add_action_to_subitem_array(struct lttng_action *action, struct lttng_dynami
 		 * Sample the target session like other session-targeting actions.
 		 * Validation guarantees a target session name when this action is set.
 		 */
-		session_name = lttng_action_increment_map_value_get_target_session_name(action);
+		status = lttng_action_increment_map_value_get_target_session_name(action,
+										  &session_name);
+		LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
 		break;
 	case LTTNG_ACTION_TYPE_LIST:
 	case LTTNG_ACTION_TYPE_UNKNOWN:
