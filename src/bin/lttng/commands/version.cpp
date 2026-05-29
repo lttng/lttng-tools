@@ -12,14 +12,13 @@
 
 #include <common/mi-lttng.hpp>
 #include <common/mint.hpp>
+#include <common/term-utils.hpp>
 
 #include <algorithm>
-#include <limits>
 #include <popt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -40,13 +39,8 @@ namespace {
 std::size_t get_wrap_width() noexcept
 {
 	constexpr std::size_t default_width = 80;
-	struct winsize ws;
 
-	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0) {
-		return std::min(static_cast<std::size_t>(ws.ws_col), default_width);
-	}
-
-	return default_width;
+	return std::min(lttng::term_columns(), default_width);
 }
 
 /*

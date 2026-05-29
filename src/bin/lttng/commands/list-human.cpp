@@ -17,6 +17,7 @@
 #include <common/make-unique.hpp>
 #include <common/mi-lttng.hpp>
 #include <common/mint.hpp>
+#include <common/term-utils.hpp>
 #include <common/time.hpp>
 #include <common/utils.hpp>
 
@@ -24,35 +25,9 @@
 
 #include <cctype>
 #include <cstdint>
-#include <limits>
-#include <mutex>
-#include <sys/ioctl.h>
-#include <unistd.h>
 #include <vector>
 
 namespace {
-
-/*
- * Returns the terminal width using ioctl(), caching the result.
- *
- * If this function cannot determine the current terminal width, it
- * returns "infinity" (indicating no wrapping).
- */
-std::size_t term_columns() noexcept
-{
-	static std::once_flag init_flag;
-	static std::size_t width = std::numeric_limits<std::size_t>::max();
-
-	std::call_once(init_flag, [] {
-		struct winsize ws;
-
-		if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0) {
-			width = ws.ws_col;
-		}
-	});
-
-	return width;
-}
 
 class node;
 
@@ -513,7 +488,7 @@ private:
 	 */
 	static std::string _truncate_line(const std::string& line)
 	{
-		if (_utf8_string_length(lttng::mint_escape_ansi(line)) <= term_columns()) {
+		if (_utf8_string_length(lttng::mint_escape_ansi(line)) <= lttng::term_columns()) {
 			/* Already fits: return as is */
 			return line;
 		}
@@ -526,7 +501,7 @@ private:
 		std::size_t visible_count = 0;
 		std::size_t byte_pos = 0;
 
-		while (byte_pos < line.length() && visible_count < term_columns() - 1) {
+		while (byte_pos < line.length() && visible_count < lttng::term_columns() - 1) {
 			/* Check if we're at the start of an SGR escape sequence */
 			if (line[byte_pos] == '\033' && line[byte_pos + 1] == '[') {
 				/* Skip until terminating `m` */
@@ -1286,7 +1261,7 @@ format_inclusion_set_lines(const std::set<lttng::cli::process_attr_value>& inclu
 		 */
 		if (!current_line.empty() &&
 		    lttng::mint_escape_ansi(current_line + formatted_value).length() >
-			    term_columns() - 21) {
+			    lttng::term_columns() - 21) {
 			/* Save current line and start a new one */
 			lines.emplace_back(std::move(current_line));
 
@@ -1588,13 +1563,14 @@ std::string draw_memory_usage_line(const std::string& prefix,
 				   const unsigned int indent_level,
 				   const memory_usage_line_type type)
 {
-	if (term_columns() <= 72) {
+	if (lttng::term_columns() <= 72) {
 		return lttng::format("{}: {}", prefix, format_memory_usage(usage, max_usage, type));
 	}
 
 	/* 25 is the fixed length of what format_memory_usage() returns */
-	const auto available_width = std::min(
-		static_cast<unsigned int>(term_columns() - indent_level), 100U - indent_level);
+	const auto available_width =
+		std::min(static_cast<unsigned int>(lttng::term_columns() - indent_level),
+			 100U - indent_level);
 	const auto bar_width = available_width - lttng::mint_escape_ansi(prefix).length() - 3 - 25;
 
 	return lttng::format("{}: {} {}",
