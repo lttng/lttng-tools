@@ -1,10 +1,10 @@
-// SPDX-FileCopyrightText: 2015-2025 Philippe Proulx <pproulx@efficios.com>
+// SPDX-FileCopyrightText: 2015-2026 Philippe Proulx <pproulx@efficios.com>
 //
 // SPDX-License-Identifier: CC-BY-SA-4.0
 
 lttng-status(1)
 ===============
-:revdate: 20 March 2026
+:revdate: 27 April 2026
 
 
 NAME
@@ -15,7 +15,8 @@ lttng-status - Show the status of the current LTTng recording session
 SYNOPSIS
 --------
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *status* [option:--channel='CHANNEL']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *status*
+      [option:--channel='CHANNEL'] [option:--map-channel='CHANNEL']
       [option:--kernel] [option:--userspace] [option:--jul] [option:--log4j] [option:--log4j2] [option:--python]
       [option:--style=(**compact** | **breathe**)] [option:--no-truncate]
       [option:--mem-usage=(**total** | **compact** | **full**)]
@@ -30,7 +31,8 @@ recording session).
 This command is equivalent to:
 
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* 'CURSESSION' [option:--channel='CHANNEL']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* 'CURSESSION'
+      [option:--channel='CHANNEL'] [option:--map-channel='CHANNEL']
       [option:--kernel] [option:--userspace]
       [option:--jul] [option:--log4j] [option:--log4j2] [option:--python]
       [option:--style=(**compact** | **breathe**)] [option:--no-truncate]
@@ -54,13 +56,16 @@ option:-j, option:--jul::
 
 option:-k, option:--kernel::
     Only list the Linux kernel event record channels and their recording
-    event rules.
+    event rules, as well as the Linux kernel map channels.
 
 option:-l, option:--log4j::
     Only list the Apache log4j{nbsp}1.x recording event rules.
 
 option:--log4j2::
     Only list the Apache Log4j{nbsp}2 recording event rules.
+
+option:--map-channel='CHANNEL'::
+    Only list the properties of the map channel(s) named 'CHANNEL'.
 
 option:--mem-usage='MODE'::
     Set the event record channel memory usage display mode to 'MODE'.
@@ -104,7 +109,7 @@ option:--style='STYLE'::
 
 option:-u, option:--userspace::
     Only list the user space event record channels and their recording
-    event rules.
+    event rules, as well as the user space map channels.
 
 
 include::common-lttng-cmd-help-options.txt[]
@@ -119,7 +124,9 @@ include::common-footer.txt[]
 SEE ALSO
 --------
 man:lttng(1),
+man:lttng-add-map-channel(1),
 man:lttng-create(1),
 man:lttng-list(1),
 man:lttng-set-session(1),
+man:lttng-show-maps(1),
 man:lttng-concepts(7)

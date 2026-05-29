@@ -28,6 +28,7 @@ int opt_no_truncate;
 char *opt_mem_usage;
 char *opt_style;
 char *opt_channel;
+char *opt_map_channel;
 int opt_userspace;
 int opt_kernel;
 int opt_jul;
@@ -52,6 +53,7 @@ struct poptOption long_options[] = {
 	{ "python", 'p', POPT_ARG_VAL, &opt_python, 1, nullptr, nullptr },
 	{ "userspace", 'u', POPT_ARG_VAL, &opt_userspace, 1, nullptr, nullptr },
 	{ "channel", 'c', POPT_ARG_STRING, &opt_channel, 0, nullptr, nullptr },
+	{ "map-channel", 0, POPT_ARG_STRING, &opt_map_channel, 0, nullptr, nullptr },
 	{ "no-truncate", 0, POPT_ARG_VAL, &opt_no_truncate, 1, nullptr, nullptr },
 	{ "mem-usage", 0, POPT_ARG_STRING, &opt_mem_usage, 0, nullptr, nullptr },
 	{ "style", 0, POPT_ARG_STRING, &opt_style, 0, nullptr, nullptr },
@@ -101,6 +103,11 @@ int status()
 	if (opt_channel) {
 		argv.push_back("--channel");
 		argv.push_back(opt_channel);
+	}
+
+	if (opt_map_channel) {
+		argv.push_back("--map-channel");
+		argv.push_back(opt_map_channel);
 	}
 
 	if (opt_no_truncate) {
