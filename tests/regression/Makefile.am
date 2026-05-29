@@ -101,6 +101,7 @@ TESTS = tools/clear/test_disallow.py \
 	tools/trace-format/test_trace_format_ust.py \
 	tools/channel/test_channel_watchdog_timer.py \
 	tools/trigger/test_trigger_start_stop_actions.py \
+	tools/trigger/test_trigger_creation.py \
 	tests.serial
 
 # Only build kernel tests on Linux.

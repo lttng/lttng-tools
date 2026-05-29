@@ -255,6 +255,7 @@ noinst_SCRIPTS += \
 	trigger/rate-policy/test_ust_rate_policy \
 	trigger/test_add_trigger_cli \
 	trigger/test_trigger_start_stop_actions.py \
+	trigger/test_trigger_creation.py \
 	trigger/test_list_triggers_cli \
 	trigger/test_remove_trigger_cli \
 	wildcard/test_event_wildcard \

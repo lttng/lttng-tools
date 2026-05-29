@@ -323,10 +323,39 @@ def _build_action_args(action):
             "Action type `{}` is not supported".format(type(action).__name__)
         )
 
-    if action.rate_policy:
+    if isinstance(action, lttngctl._RatePolicyAction) and action.rate_policy:
         args.append(_build_rate_policy_arg(action.rate_policy))
 
     return args
+
+
+def _mi_local_name(element):
+    # type: (xml.etree.ElementTree.Element) -> str
+    """Return the local (namespace-stripped) name of an MI element's tag."""
+    return element.tag.split("}", 1)[-1]
+
+
+# Maps an agent-domain event rule MI element name to its EventRule class and
+# the LogLevel enum to interpret its log level rule with. The MI serializes log
+# levels as their numeric value, so the relevant enum depends on the domain.
+_AGENT_EVENT_RULE_FROM_MI = {
+    "event_rule_jul_logging": (
+        lttngctl.JULTracepointEventRule,
+        lttngctl.JULLogLevel,
+    ),
+    "event_rule_log4j_logging": (
+        lttngctl.Log4jTracepointEventRule,
+        lttngctl.Log4jLogLevel,
+    ),
+    "event_rule_log4j2_logging": (
+        lttngctl.Log4j2TracepointEventRule,
+        lttngctl.Log4j2LogLevel,
+    ),
+    "event_rule_python_logging": (
+        lttngctl.PythonTracepointEventRule,
+        lttngctl.PythonLogLevel,
+    ),
+}
 
 
 class _Trigger(lttngctl.Trigger):
@@ -1534,9 +1563,277 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
 
         return _Trigger(self, created_trigger_name, owner_uid, condition, actions)
 
-    def remove_trigger(self, name):
-        # type: (str) -> None
+    def remove_trigger(self, trigger):
+        # type: (Union[lttngctl.Trigger, str]) -> None
         """
-        Remove a trigger by name.
+        Remove a trigger, either by passing the Trigger object returned by
+        add_trigger()/list_triggers() or its name.
         """
-        self._run_cmd("remove-trigger {}".format(shlex.quote(name)))
+        owner_uid = None  # type: Optional[int]
+        if isinstance(trigger, lttngctl.Trigger):
+            name = trigger.name
+            owner_uid = trigger.owner_uid
+        else:
+            name = trigger
+
+        if name is None:
+            raise ValueError("Cannot remove a trigger without a name")
+
+        # Passing only a name targets the trigger owned by the calling user, so
+        # only the --owner-uid option is added when the trigger belongs to
+        # another user. That option requires root, which is precisely the case
+        # in which a caller can hold (through list_triggers()) a trigger it does
+        # not own.
+        args = ["remove-trigger"]
+        if owner_uid is not None and owner_uid != os.getuid():
+            args.extend(["--owner-uid", str(owner_uid)])
+        args.append(shlex.quote(name))
+
+        self._run_cmd(" ".join(args))
+
+    def list_triggers(self):
+        # type: () -> List[lttngctl.Trigger]
+        command_output_xml, _ = self._run_cmd("list-triggers")
+        root = xml.etree.ElementTree.fromstring(command_output_xml)
+        command_output = self._mi_get_in_element(root, "output")
+
+        triggers = []  # type: List[lttngctl.Trigger]
+        triggers_element = self._mi_find_in_element(command_output, "triggers")
+        if triggers_element is None:
+            return triggers
+
+        for trigger_element in triggers_element:
+            if _mi_local_name(trigger_element) != "trigger":
+                continue
+
+            name = self._mi_get_in_element(trigger_element, "name").text
+            owner_uid_element = self._mi_find_in_element(trigger_element, "owner_uid")
+            owner_uid = (
+                int(owner_uid_element.text)
+                if owner_uid_element is not None and owner_uid_element.text is not None
+                else None
+            )
+
+            condition = self._condition_from_mi(
+                self._mi_get_in_element(trigger_element, "condition")
+            )
+            actions = self._actions_from_mi(
+                self._mi_get_in_element(trigger_element, "action")
+            )
+
+            triggers.append(_Trigger(self, name, owner_uid, condition, actions))
+
+        return triggers
+
+    @staticmethod
+    def _condition_from_mi(condition_element):
+        # type: (xml.etree.ElementTree.Element) -> lttngctl.TriggerCondition
+        # A <condition> wraps a single element naming its type.
+        type_element = list(condition_element)[0]
+        type_name = _mi_local_name(type_element)
+
+        if type_name == "condition_event_rule_matches":
+            event_rule = LTTngClient._event_rule_from_mi(
+                LTTngClient._mi_get_in_element(type_element, "event_rule")
+            )
+
+            captures = []  # type: List[str]
+            captures_element = LTTngClient._mi_find_in_element(
+                type_element, "capture_descriptors"
+            )
+            if captures_element is not None:
+                for event_expr in captures_element:
+                    captures.append(LTTngClient._capture_descriptor_from_mi(event_expr))
+
+            return lttngctl.EventRuleMatchesCondition(
+                event_rule, captures if captures else None
+            )
+
+        raise Unsupported("Condition type `{}` is not supported".format(type_name))
+
+    @staticmethod
+    def _capture_descriptor_from_mi(event_expr_element):
+        # type: (xml.etree.ElementTree.Element) -> str
+        # Best-effort reconstruction of a capture descriptor's textual form.
+        expr = list(event_expr_element)[0]
+        expr_name = _mi_local_name(expr)
+
+        def child_text(element, name):
+            # type: (xml.etree.ElementTree.Element, str) -> str
+            return LTTngClient._mi_get_in_element(element, name).text or ""
+
+        if expr_name == "event_expr_payload_field":
+            return child_text(expr, "name")
+        elif expr_name == "event_expr_channel_context_field":
+            return "$ctx." + child_text(expr, "name")
+        elif expr_name == "event_expr_app_specific_context_field":
+            return "$app.{}:{}".format(
+                child_text(expr, "provider_name"), child_text(expr, "type_name")
+            )
+        elif expr_name == "event_expr_array_field_element":
+            index = child_text(expr, "index")
+            nested = LTTngClient._capture_descriptor_from_mi(
+                LTTngClient._mi_get_in_element(expr, "event_expr")
+            )
+            return "{}[{}]".format(nested, index)
+
+        raise Unsupported(
+            "Capture descriptor expression `{}` is not supported".format(expr_name)
+        )
+
+    @staticmethod
+    def _event_rule_from_mi(event_rule_element):
+        # type: (xml.etree.ElementTree.Element) -> lttngctl.EventRule
+        # An <event_rule> wraps a single element naming its type.
+        rule_element = list(event_rule_element)[0]
+        rule_name = _mi_local_name(rule_element)
+
+        def optional_text(name):
+            # type: (str) -> Optional[str]
+            element = LTTngClient._mi_find_in_element(rule_element, name)
+            return element.text if element is not None else None
+
+        name_pattern = optional_text("name_pattern")
+        filter_expression = optional_text("filter_expression")
+
+        if rule_name == "event_rule_user_tracepoint":
+            exclusions = []  # type: List[str]
+            exclusions_element = LTTngClient._mi_find_in_element(
+                rule_element, "name_pattern_exclusions"
+            )
+            if exclusions_element is not None:
+                for exclusion in exclusions_element:
+                    exclusions.append(exclusion.text)
+
+            return lttngctl.UserTracepointEventRule(
+                name_pattern,
+                filter_expression,
+                LTTngClient._log_level_rule_from_mi(
+                    rule_element, lttngctl.UserLogLevel
+                ),
+                exclusions if exclusions else None,
+            )
+        elif rule_name == "event_rule_kernel_tracepoint":
+            return lttngctl.KernelTracepointEventRule(name_pattern, filter_expression)
+        elif rule_name == "event_rule_kernel_syscall":
+            return lttngctl.KernelSyscallEventRule(name_pattern, filter_expression)
+        elif rule_name == "event_rule_kernel_kprobe":
+            location = LTTngClient._mi_get_in_element(
+                rule_element, "kernel_probe_location"
+            )
+            symbol_offset = LTTngClient._mi_find_in_element(
+                location, "kernel_probe_location_symbol_offset"
+            )
+            symbol_name = (
+                LTTngClient._mi_get_in_element(symbol_offset, "name").text
+                if symbol_offset is not None
+                else None
+            )
+            return lttngctl.KernelKprobeEventRule(
+                event_name=optional_text("event_name"), symbol_name=symbol_name
+            )
+        elif rule_name in _AGENT_EVENT_RULE_FROM_MI:
+            factory, log_level_enum = _AGENT_EVENT_RULE_FROM_MI[rule_name]
+            return factory(
+                name_pattern,
+                filter_expression,
+                LTTngClient._log_level_rule_from_mi(rule_element, log_level_enum),
+                None,
+            )
+
+        raise Unsupported(
+            "Event rule type `{}` is not supported for triggers".format(rule_name)
+        )
+
+    @staticmethod
+    def _log_level_rule_from_mi(rule_element, log_level_enum):
+        # type: (xml.etree.ElementTree.Element, Type[lttngctl.LogLevel]) -> Optional[lttngctl.LogLevelRule]
+        log_level_rule_element = LTTngClient._mi_find_in_element(
+            rule_element, "log_level_rule"
+        )
+        if log_level_rule_element is None:
+            return None
+
+        type_element = list(log_level_rule_element)[0]
+        type_name = _mi_local_name(type_element)
+        level = log_level_enum(
+            int(LTTngClient._mi_get_in_element(type_element, "level").text)
+        )
+
+        if type_name == "log_level_rule_exactly":
+            return lttngctl.LogLevelRuleExactly(level)
+        elif type_name == "log_level_rule_at_least_as_severe_as":
+            return lttngctl.LogLevelRuleAsSevereAs(level)
+
+        raise Unsupported("Log level rule type `{}` is not supported".format(type_name))
+
+    @staticmethod
+    def _actions_from_mi(action_element):
+        # type: (xml.etree.ElementTree.Element) -> List[lttngctl.TriggerAction]
+        # The trigger's top-level <action> is either a single action or an
+        # action-list wrapping the individual actions.
+        type_element = list(action_element)[0]
+        if _mi_local_name(type_element) == "action_list":
+            return [
+                LTTngClient._action_from_mi(sub_action)
+                for sub_action in type_element
+                if _mi_local_name(sub_action) == "action"
+            ]
+
+        return [LTTngClient._action_from_mi(action_element)]
+
+    @staticmethod
+    def _action_from_mi(action_element):
+        # type: (xml.etree.ElementTree.Element) -> lttngctl.TriggerAction
+        type_element = list(action_element)[0]
+        type_name = _mi_local_name(type_element)
+        rate_policy = LTTngClient._rate_policy_from_mi(type_element)
+
+        if type_name == "action_notify":
+            return lttngctl.NotifyTriggerAction(rate_policy)
+
+        session_action_classes = {
+            "action_start_session": lttngctl.StartSessionTriggerAction,
+            "action_stop_session": lttngctl.StopSessionTriggerAction,
+            "action_rotate_session": lttngctl.RotateSessionTriggerAction,
+        }
+        if type_name in session_action_classes:
+            session_name = LTTngClient._mi_get_in_element(
+                type_element, "session_name"
+            ).text
+            return session_action_classes[type_name](session_name, rate_policy)
+
+        if type_name == "action_snapshot_session":
+            session_name = LTTngClient._mi_get_in_element(
+                type_element, "session_name"
+            ).text
+            # The snapshot output details are not reconstructed; only the
+            # session name and rate policy round-trip through this controller.
+            return lttngctl.SnapshotSessionTriggerAction(
+                session_name, rate_policy=rate_policy
+            )
+
+        raise Unsupported("Action type `{}` is not supported".format(type_name))
+
+    @staticmethod
+    def _rate_policy_from_mi(type_element):
+        # type: (xml.etree.ElementTree.Element) -> Optional[lttngctl.RatePolicy]
+        rate_policy_element = LTTngClient._mi_find_in_element(
+            type_element, "rate_policy"
+        )
+        if rate_policy_element is None:
+            return None
+
+        policy_element = list(rate_policy_element)[0]
+        policy_name = _mi_local_name(policy_element)
+
+        if policy_name == "rate_policy_every_n":
+            return lttngctl.EveryNRatePolicy(
+                int(LTTngClient._mi_get_in_element(policy_element, "interval").text)
+            )
+        elif policy_name == "rate_policy_once_after_n":
+            return lttngctl.OnceAfterNRatePolicy(
+                int(LTTngClient._mi_get_in_element(policy_element, "threshold").text)
+            )
+
+        raise Unsupported("Rate policy type `{}` is not supported".format(policy_name))

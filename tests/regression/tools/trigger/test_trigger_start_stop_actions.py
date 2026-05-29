@@ -88,7 +88,9 @@ def test_session_action(tap, test_env, action_type):
         session_action = lttngtest.StopSessionTriggerAction(session.name)
 
     notify_action = lttngtest.NotifyTriggerAction()
-    client.add_trigger(condition, [session_action, notify_action], name=trigger_name)
+    trigger = client.add_trigger(
+        condition, [session_action, notify_action], name=trigger_name
+    )
 
     # Launch notification-client and wait for it to register
     notif_client = test_env.launch_notification_client(trigger_name=trigger_name)
@@ -119,7 +121,7 @@ def test_session_action(tap, test_env, action_type):
 
     # Clean up
     app.wait_for_exit()
-    client.remove_trigger(trigger_name)
+    client.remove_trigger(trigger)
     if session.is_active:
         session.stop()
     session.destroy()

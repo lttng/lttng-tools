@@ -529,6 +529,21 @@ class KernelSyscallEventRule(EventRule):
         self._filter_expression = filter_expression  # type: Optional[str]
         self._enabled = None  # type: Optional[bool]
 
+    def __eq__(self, other):
+        # type: (object) -> bool
+        return (
+            type(self) == type(other)
+            and self._name_pattern == other._name_pattern
+            and self._filter_expression == other._filter_expression
+        )
+
+    def __repr__(self):
+        return (
+            "KernelSyscallEventRule(name_pattern='{}', filter_expression={!r})".format(
+                self._name_pattern, self._filter_expression
+            )
+        )
+
     @property
     def name_pattern(self):
         # type: () -> Optional[str]
@@ -647,6 +662,13 @@ class EveryNRatePolicy(RatePolicy):
         # type: (int) -> None
         self._interval = interval
 
+    def __eq__(self, other):
+        # type: (object) -> bool
+        return type(self) == type(other) and self._interval == other._interval
+
+    def __repr__(self):
+        return "EveryNRatePolicy(interval={})".format(self._interval)
+
     @property
     def interval(self):
         # type: () -> int
@@ -659,6 +681,13 @@ class OnceAfterNRatePolicy(RatePolicy):
     def __init__(self, count):
         # type: (int) -> None
         self._count = count
+
+    def __eq__(self, other):
+        # type: (object) -> bool
+        return type(self) == type(other) and self._count == other._count
+
+    def __repr__(self):
+        return "OnceAfterNRatePolicy(count={})".format(self._count)
 
     @property
     def count(self):
@@ -683,6 +712,19 @@ class EventRuleMatchesCondition(TriggerCondition):
         self._event_rule = event_rule
         self._capture_descriptors = capture_descriptors if capture_descriptors else []
 
+    def __eq__(self, other):
+        # type: (object) -> bool
+        return (
+            type(self) == type(other)
+            and self._event_rule == other._event_rule
+            and self._capture_descriptors == other._capture_descriptors
+        )
+
+    def __repr__(self):
+        return "EventRuleMatchesCondition(event_rule={!r}, capture_descriptors={!r})".format(
+            self._event_rule, self._capture_descriptors
+        )
+
     @property
     def event_rule(self):
         # type: () -> EventRule
@@ -700,77 +742,89 @@ class TriggerAction(abc.ABC):
     pass
 
 
-class NotifyTriggerAction(TriggerAction):
-    """Send a notification when the trigger fires."""
+class _RatePolicyAction(TriggerAction):
+    """
+    Base class for trigger actions that support a rate policy.
+
+    Not every action type supports a rate policy (for example, the
+    increment-map-value action does not), so it is opt-in through this
+    intermediate base rather than being part of TriggerAction itself.
+    """
 
     def __init__(self, rate_policy=None):
         # type: (Optional[RatePolicy]) -> None
         self._rate_policy = rate_policy
 
+    def _effective_rate_policy(self):
+        # type: () -> RatePolicy
+        # When no rate policy is set, the session daemon applies (and reports)
+        # a default of "every 1".
+        return (
+            self._rate_policy if self._rate_policy is not None else EveryNRatePolicy(1)
+        )
+
+    def __eq__(self, other):
+        # type: (object) -> bool
+        return (
+            type(self) == type(other)
+            and self._effective_rate_policy() == other._effective_rate_policy()
+        )
+
     @property
     def rate_policy(self):
         # type: () -> Optional[RatePolicy]
         return self._rate_policy
 
 
-class StartSessionTriggerAction(TriggerAction):
+class NotifyTriggerAction(_RatePolicyAction):
+    """Send a notification when the trigger fires."""
+
+    def __repr__(self):
+        return "NotifyTriggerAction(rate_policy={!r})".format(self._rate_policy)
+
+
+class _SessionTriggerAction(_RatePolicyAction):
+    """Base class for trigger actions that target a recording session."""
+
+    def __init__(self, session_name, rate_policy=None):
+        # type: (str, Optional[RatePolicy]) -> None
+        super().__init__(rate_policy)
+        self._session_name = session_name
+
+    def __eq__(self, other):
+        # type: (object) -> bool
+        return super().__eq__(other) and self._session_name == other._session_name
+
+    def __repr__(self):
+        return "{}(session_name='{}', rate_policy={!r})".format(
+            type(self).__name__, self._session_name, self._rate_policy
+        )
+
+    @property
+    def session_name(self):
+        # type: () -> str
+        return self._session_name
+
+
+class StartSessionTriggerAction(_SessionTriggerAction):
     """Start a recording session when the trigger fires."""
 
-    def __init__(self, session_name, rate_policy=None):
-        # type: (str, Optional[RatePolicy]) -> None
-        self._session_name = session_name
-        self._rate_policy = rate_policy
-
-    @property
-    def session_name(self):
-        # type: () -> str
-        return self._session_name
-
-    @property
-    def rate_policy(self):
-        # type: () -> Optional[RatePolicy]
-        return self._rate_policy
+    pass
 
 
-class StopSessionTriggerAction(TriggerAction):
+class StopSessionTriggerAction(_SessionTriggerAction):
     """Stop a recording session when the trigger fires."""
 
-    def __init__(self, session_name, rate_policy=None):
-        # type: (str, Optional[RatePolicy]) -> None
-        self._session_name = session_name
-        self._rate_policy = rate_policy
-
-    @property
-    def session_name(self):
-        # type: () -> str
-        return self._session_name
-
-    @property
-    def rate_policy(self):
-        # type: () -> Optional[RatePolicy]
-        return self._rate_policy
+    pass
 
 
-class RotateSessionTriggerAction(TriggerAction):
+class RotateSessionTriggerAction(_SessionTriggerAction):
     """Rotate a recording session when the trigger fires."""
 
-    def __init__(self, session_name, rate_policy=None):
-        # type: (str, Optional[RatePolicy]) -> None
-        self._session_name = session_name
-        self._rate_policy = rate_policy
-
-    @property
-    def session_name(self):
-        # type: () -> str
-        return self._session_name
-
-    @property
-    def rate_policy(self):
-        # type: () -> Optional[RatePolicy]
-        return self._rate_policy
+    pass
 
 
-class SnapshotSessionTriggerAction(TriggerAction):
+class SnapshotSessionTriggerAction(_SessionTriggerAction):
     """Take a snapshot of a recording session when the trigger fires."""
 
     def __init__(
@@ -784,19 +838,25 @@ class SnapshotSessionTriggerAction(TriggerAction):
         data_url=None,  # type: Optional[str]
         rate_policy=None,  # type: Optional[RatePolicy]
     ):
-        self._session_name = session_name
+        super().__init__(session_name, rate_policy)
         self._output_name = output_name
         self._max_size = max_size
         self._path = path
         self._url = url
         self._ctrl_url = ctrl_url
         self._data_url = data_url
-        self._rate_policy = rate_policy
 
-    @property
-    def session_name(self):
-        # type: () -> str
-        return self._session_name
+    def __eq__(self, other):
+        # type: (object) -> bool
+        return (
+            super().__eq__(other)
+            and self._output_name == other._output_name
+            and self._max_size == other._max_size
+            and self._path == other._path
+            and self._url == other._url
+            and self._ctrl_url == other._ctrl_url
+            and self._data_url == other._data_url
+        )
 
     @property
     def output_name(self):
@@ -827,11 +887,6 @@ class SnapshotSessionTriggerAction(TriggerAction):
     def data_url(self):
         # type: () -> Optional[str]
         return self._data_url
-
-    @property
-    def rate_policy(self):
-        # type: () -> Optional[RatePolicy]
-        return self._rate_policy
 
 
 class Trigger(abc.ABC):
@@ -1360,9 +1415,18 @@ class Controller(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def remove_trigger(self, name):
-        # type: (str) -> None
+    def remove_trigger(self, trigger):
+        # type: (Union[Trigger, str]) -> None
         """
-        Remove a trigger by name.
+        Remove a trigger, either by passing the Trigger object returned by
+        add_trigger()/list_triggers() or its name.
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def list_triggers(self):
+        # type: () -> List[Trigger]
+        """
+        List the triggers visible to the session daemon.
         """
         raise NotImplementedError
