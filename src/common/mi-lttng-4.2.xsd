@@ -1113,7 +1113,7 @@ SPDX-License-Identifier: MIT
 	<xs:complexType name="action_increment_map_value_type">
 		<xs:all>
 			<xs:element name="session_name" type="xs:string" minOccurs="1" />
-			<xs:element name="domain" type="tns:domain_type_type" minOccurs="1" />
+			<xs:element name="channel_type" type="tns:map_channel_type_type" minOccurs="1" />
 			<xs:element name="channel_name" type="xs:string" minOccurs="1" />
 			<xs:element name="key_template" type="xs:string" minOccurs="1" />
 		</xs:all>

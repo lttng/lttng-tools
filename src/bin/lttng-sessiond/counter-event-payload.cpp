@@ -232,9 +232,10 @@ build_intermediate(const lttng_event_rule& event_rule,
 	intermediate.event_rule = &event_rule;
 	intermediate.user_token = user_token;
 
-	const auto *const key_template =
-		lttng_action_increment_map_value_get_key_template(&incr_map_value_action);
-	LTTNG_ASSERT(key_template);
+	const struct lttng_key_template *key_template = nullptr;
+	const auto key_template_status = lttng_action_increment_map_value_get_key_template(
+		&incr_map_value_action, &key_template);
+	LTTNG_ASSERT(key_template_status == LTTNG_ACTION_STATUS_OK);
 
 	for (const auto& segment : key_template->segments) {
 		switch (segment->type) {

@@ -238,7 +238,7 @@ const char *const mi_lttng_element_action_rotate_session = "action_rotate_sessio
 const char *const mi_lttng_element_action_snapshot_session = "action_snapshot_session";
 const char *const mi_lttng_element_action_snapshot_session_output = "output";
 const char *const mi_lttng_element_action_increment_map_value = "action_increment_map_value";
-const char *const mi_lttng_element_action_increment_map_value_domain = "domain";
+const char *const mi_lttng_element_action_increment_map_value_channel_type = "channel_type";
 const char *const mi_lttng_element_action_increment_map_value_channel_name = "channel_name";
 const char *const mi_lttng_element_action_increment_map_value_key_template = "key_template";
 
