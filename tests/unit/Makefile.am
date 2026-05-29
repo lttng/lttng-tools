@@ -38,6 +38,7 @@ TESTS = \
 	test_session \
 	test_string_utils \
 	test_condition \
+	test_table_writer \
 	test_unix_socket \
 	test_uri \
 	test_utils_compat_poll \
@@ -84,6 +85,7 @@ noinst_PROGRAMS = \
 	test_scheduler \
 	test_session \
 	test_string_utils \
+	test_table_writer \
 	test_unix_socket \
 	test_uri \
 	test_utils_compat_poll \
@@ -219,6 +221,10 @@ test_buffer_view_LDADD = $(LIBTAP) $(LIBCOMMON_GPL)
 # bigint unit test
 test_bigint_SOURCES = test_bigint.cpp
 test_bigint_LDADD = $(LIBTAP) $(LIBCOMMON_GPL)
+
+# table writer unit test
+test_table_writer_SOURCES = test_table_writer.cpp
+test_table_writer_LDADD = $(LIBTAP) $(LIBCOMMON_GPL)
 
 # payload unit test
 test_payload_SOURCES = test_payload.cpp
