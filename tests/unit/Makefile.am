@@ -45,6 +45,7 @@ TESTS = \
 	test_utils_expand_path \
 	test_utils_parse_size_suffix \
 	test_utils_parse_time_suffix \
+	test_utils_path_walks_up_hierarchy \
 	test_uuid
 
 LIBTAP=$(top_builddir)/tests/utils/tap/libtap.la
@@ -89,6 +90,7 @@ noinst_PROGRAMS = \
 	test_utils_expand_path \
 	test_utils_parse_size_suffix \
 	test_utils_parse_time_suffix \
+	test_utils_path_walks_up_hierarchy \
 	test_uuid
 
 if HAVE_LIBLTTNG_UST_CTL
@@ -164,6 +166,10 @@ test_utils_cpu_mask_LDADD = $(LIBTAP) \
 # expand_path unit test
 test_utils_expand_path_SOURCES = test_utils_expand_path.cpp
 test_utils_expand_path_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(DL_LIBS)
+
+# path_walks_up_hierarchy unit test
+test_utils_path_walks_up_hierarchy_SOURCES = test_utils_path_walks_up_hierarchy.cpp
+test_utils_path_walks_up_hierarchy_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(DL_LIBS)
 
 # directory handle unit test
 test_directory_handle_SOURCES = test_directory_handle.cpp
