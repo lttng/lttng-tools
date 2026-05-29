@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-Copyright (C) 2014 EfficiOS Inc.
-Copyright (C) 2016 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+SPDX-FileCopyrightText: 2014 EfficiOS Inc.
+SPDX-FileCopyrightText: 2016 Jérémie Galarneau <jeremie.galarneau@efficios.com>
 
 SPDX-License-Identifier: MIT
 
@@ -1039,8 +1039,8 @@ SPDX-License-Identifier: MIT
 	<xs:element name="action_notify" type="tns:action_notify_type" substitutionGroup="tns:action_sub_type" />
 	<xs:element name="action_rotate_session" type="tns:action_rotate_session_type" substitutionGroup="tns:action_sub_type" />
 	<xs:element name="action_snapshot_session" type="tns:action_snapshot_session_type" substitutionGroup="tns:action_sub_type" />
-	<xs:element name="action_start" type="tns:action_start_session_type" substitutionGroup="tns:action_sub_type" />
-	<xs:element name="action_stop" type="tns:action_stop_session_type" substitutionGroup="tns:action_sub_type" />
+	<xs:element name="action_start_session" type="tns:action_start_session_type" substitutionGroup="tns:action_sub_type" />
+	<xs:element name="action_stop_session" type="tns:action_stop_session_type" substitutionGroup="tns:action_sub_type" />
 
 	<!-- Maps to a lttng_action list -->
 	<xs:complexType name="action_list_type">
