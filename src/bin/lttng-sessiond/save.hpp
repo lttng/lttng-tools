@@ -38,6 +38,10 @@ public:
 } /* namespace sessiond */
 } /* namespace lttng */
 
-int cmd_save_sessions(struct lttng_save_session_attr *attr, lttng_sock_cred *creds);
+struct notification_thread_handle;
+
+int cmd_save_sessions(struct lttng_save_session_attr *attr,
+		      lttng_sock_cred *creds,
+		      struct notification_thread_handle *notification_thread);
 
 #endif /* SAVE_H */
