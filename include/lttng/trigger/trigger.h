@@ -315,6 +315,8 @@ lttng_trigger_get_name(const struct lttng_trigger *trigger, const char **name);
 */
 LTTNG_EXPORT extern void lttng_trigger_destroy(struct lttng_trigger *trigger);
 
+/* clang-format off */
+
 /*!
 @brief
     Registers the trigger \lt_p{trigger} to the session daemon
@@ -354,6 +356,16 @@ owner UID for \lt_p{trigger}.
     - The condition and action of \lt_p{trigger} are valid.
       The documentation of each trigger condition and action creation
       function indicates how to build a valid condition/action.
+    - If the condition of \lt_p{trigger} isn't an
+      \ref api_trigger_cond_er_matches "“event rule matches” condition",
+      then each
+      \ref api_trigger_action_incr_map_val "“increment map value” action"
+      of \lt_p{trigger}:
+      - Targets an #LTTNG_MAP_CHANNEL_TYPE_USER
+        \ref api_map_channel "map channel".
+      - Has a literal
+        \ref api_trigger_action_incr_map_val_key_template "key template"
+        (no placeholders).
     - Your Unix user ID (UID) is either 0 (<code>root</code>) or
       the same as the
       \link lttng_trigger_get_owner_uid() owner UID\endlink of
@@ -408,6 +420,16 @@ owner UID for \lt_p{trigger}.
     - The condition and action of \lt_p{trigger} are valid.
       The documentation of each trigger condition and action creation
       function indicates how to build a valid condition/action.
+    - If the condition of \lt_p{trigger} isn't an
+      \ref api_trigger_cond_er_matches "“event rule matches” condition",
+      then each
+      \ref api_trigger_action_incr_map_val "“increment map value” action"
+      of \lt_p{trigger}:
+      - Targets a #LTTNG_MAP_CHANNEL_TYPE_USER
+        \ref api_map_channel "map channel".
+      - Has a literal
+        \ref api_trigger_action_incr_map_val_key_template "key template"
+        (no placeholder).
     - Your Unix user ID (UID) is either 0 (<code>root</code>) or
       the same as the
       \link lttng_trigger_get_owner_uid() owner UID\endlink of
@@ -420,6 +442,8 @@ owner UID for \lt_p{trigger}.
 */
 LTTNG_EXPORT extern enum lttng_error_code
 lttng_register_trigger_with_automatic_name(struct lttng_trigger *trigger);
+
+/* clang-format on */
 
 /*!
 @brief
