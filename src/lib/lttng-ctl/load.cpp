@@ -629,7 +629,8 @@ int lttng_load_session(struct lttng_load_session_attr *attr)
 	url = attr->input_url[0] != '\0' ? attr->input_url : nullptr;
 	session_name = attr->session_name[0] != '\0' ? attr->session_name : nullptr;
 
-	ret = config_load_session(url, session_name, attr->overwrite, 0, attr->override_attr);
+	ret = config_load_session(
+		url, session_name, attr->overwrite, 0, attr->override_attr, !attr->no_triggers);
 
 end:
 	return ret;
