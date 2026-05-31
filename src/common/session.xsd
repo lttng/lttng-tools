@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-elementFormDefault="qualified" version="2.12">
+elementFormDefault="qualified" version="2.16">
 
 <xs:simpleType name="name_type">
 	<xs:restriction base="xs:string">
@@ -644,10 +644,362 @@ Maps to lttng::sessiond::config::map_channel_configuration::key_type_t.
 	</xs:all>
 </xs:complexType>
 
+<!-- Trigger configuration types -->
+
+<xs:simpleType name="ratio_type">
+	<xs:restriction base="xs:double">
+		<xs:minInclusive value="0" />
+		<xs:maxInclusive value="1" />
+	</xs:restriction>
+</xs:simpleType>
+
+<xs:simpleType name="event_rule_kernel_syscall_emission_site">
+	<xs:restriction base="xs:string">
+		<xs:enumeration value="entry+exit" />
+		<xs:enumeration value="entry" />
+		<xs:enumeration value="exit" />
+	</xs:restriction>
+</xs:simpleType>
+
+<xs:simpleType name="userspace_probe_location_function_instrumentation">
+	<xs:restriction base="xs:string">
+		<xs:enumeration value="ENTRY" />
+	</xs:restriction>
+</xs:simpleType>
+
+<xs:simpleType name="map_channel_type_type">
+	<xs:restriction base="xs:string">
+		<xs:enumeration value="kernel" />
+		<xs:enumeration value="user" />
+	</xs:restriction>
+</xs:simpleType>
+
+<!-- Maps to a lttng_rate_policy -->
+<xs:element name="rate_policy_sub_type" abstract="true"/>
+<xs:element name="rate_policy_every_n" type="rate_policy_every_n_type" substitutionGroup="rate_policy_sub_type" />
+<xs:element name="rate_policy_once_after_n" type="rate_policy_once_after_n_type" substitutionGroup="rate_policy_sub_type" />
+<xs:complexType name="rate_policy_every_n_type">
+	<xs:all>
+		<xs:element name="interval" type="uint64_type" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="rate_policy_once_after_n_type">
+	<xs:all>
+		<xs:element name="threshold" type="uint64_type" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="rate_policy_type">
+	<xs:all>
+		<xs:element ref="rate_policy_sub_type" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+
+<!-- Maps to a lttng_action -->
+<xs:element name="action_sub_type" abstract="true"/>
+<xs:element name="action_list" type="action_list_type" substitutionGroup="action_sub_type" />
+<xs:element name="action_notify" type="action_notify_type" substitutionGroup="action_sub_type" />
+<xs:element name="action_rotate_session" type="action_rotate_session_type" substitutionGroup="action_sub_type" />
+<xs:element name="action_snapshot_session" type="action_snapshot_session_type" substitutionGroup="action_sub_type" />
+<xs:element name="action_start_session" type="action_start_session_type" substitutionGroup="action_sub_type" />
+<xs:element name="action_stop_session" type="action_stop_session_type" substitutionGroup="action_sub_type" />
+<xs:element name="action_increment_map_value" type="action_increment_map_value_type" substitutionGroup="action_sub_type" />
+<xs:complexType name="action_list_type">
+	<xs:sequence>
+		<xs:element name="action" type="action_type" minOccurs="0" maxOccurs="unbounded" />
+	</xs:sequence>
+</xs:complexType>
+<xs:complexType name="action_notify_type">
+	<xs:all>
+		<xs:element name="rate_policy" type="rate_policy_type" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="action_rotate_session_type">
+	<xs:all>
+		<xs:element name="rate_policy" type="rate_policy_type" minOccurs="1" />
+		<xs:element name="session_name" type="xs:string" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="action_snapshot_output_type">
+	<xs:all>
+		<xs:element name="max_size" type="uint64_type" minOccurs="0" />
+		<xs:element name="name" type="name_type" minOccurs="0" />
+		<xs:element name="session_name" type="name_type" minOccurs="0" />
+		<xs:element name="ctrl_url" type="xs:string" minOccurs="0" />
+		<xs:element name="data_url" type="xs:string" minOccurs="0" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="action_snapshot_session_type">
+	<xs:all>
+		<xs:element name="rate_policy" type="rate_policy_type" minOccurs="1" />
+		<xs:element name="session_name" type="xs:string" minOccurs="1" />
+		<xs:element name="output" type="action_snapshot_output_type" minOccurs="0" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="action_start_session_type">
+	<xs:all>
+		<xs:element name="rate_policy" type="rate_policy_type" minOccurs="1" />
+		<xs:element name="session_name" type="xs:string" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="action_stop_session_type">
+	<xs:all>
+		<xs:element name="rate_policy" type="rate_policy_type" minOccurs="1" />
+		<xs:element name="session_name" type="xs:string" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+<!--
+This type intentionally omits the rate_policy element of the MI schema: the
+"increment map value" action MI serialization does not write one.
+-->
+<xs:complexType name="action_increment_map_value_type">
+	<xs:all>
+		<xs:element name="session_name" type="xs:string" minOccurs="1" />
+		<xs:element name="channel_type" type="map_channel_type_type" minOccurs="1" />
+		<xs:element name="channel_name" type="xs:string" minOccurs="1" />
+		<xs:element name="key_template" type="xs:string" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="action_type">
+	<xs:all>
+		<xs:element ref="action_sub_type" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+
+<!-- Maps to a lttng_kernel_probe_location -->
+<xs:element name="kernel_probe_location_sub_type" abstract="true"/>
+<xs:element name="kernel_probe_location_address" type="kernel_probe_location_address_type" substitutionGroup="kernel_probe_location_sub_type" />
+<xs:element name="kernel_probe_location_symbol_offset" type="kernel_probe_location_symbol_offset_type" substitutionGroup="kernel_probe_location_sub_type" />
+<xs:complexType name="kernel_probe_location_address_type">
+	<xs:all>
+		<xs:element name="address" type="uint64_type" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="kernel_probe_location_symbol_offset_type">
+	<xs:all>
+		<xs:element name="name" type="xs:string" minOccurs="1" />
+		<xs:element name="offset" type="uint64_type" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="kernel_probe_location_type">
+	<xs:all>
+		<xs:element ref="kernel_probe_location_sub_type" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+
+<!-- Maps to a lttng_userspace_probe_location -->
+<xs:element name="userspace_probe_location_sub_type" abstract="true"/>
+<xs:element name="userspace_probe_location_function" type="userspace_probe_location_function_type" substitutionGroup="userspace_probe_location_sub_type" />
+<xs:element name="userspace_probe_location_tracepoint" type="userspace_probe_location_tracepoint_type" substitutionGroup="userspace_probe_location_sub_type" />
+<xs:element name="userspace_probe_location_lookup_method_sub_type" abstract="true"/>
+<xs:element name="userspace_probe_location_lookup_method_function_default" substitutionGroup="userspace_probe_location_lookup_method_sub_type"> <xs:complexType/> </xs:element>
+<xs:element name="userspace_probe_location_lookup_method_function_elf" substitutionGroup="userspace_probe_location_lookup_method_sub_type"> <xs:complexType/> </xs:element>
+<xs:element name="userspace_probe_location_lookup_method_tracepoint_sdt" substitutionGroup="userspace_probe_location_lookup_method_sub_type"> <xs:complexType/> </xs:element>
+<xs:complexType name="userspace_probe_location_lookup_method_type">
+	<xs:all>
+		<xs:element ref="userspace_probe_location_lookup_method_sub_type" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="userspace_probe_location_function_type">
+	<xs:all>
+		<xs:element name="name" type="xs:string" minOccurs="1" />
+		<xs:element name="binary_path" type="xs:string" minOccurs="1" />
+		<xs:element name="instrumentation_type" type="userspace_probe_location_function_instrumentation" minOccurs="1" />
+		<xs:element name="userspace_probe_location_lookup_method" type="userspace_probe_location_lookup_method_type" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="userspace_probe_location_tracepoint_type">
+	<xs:all>
+		<xs:element name="probe_name" type="xs:string" minOccurs="1" />
+		<xs:element name="provider_name" type="xs:string" minOccurs="1" />
+		<xs:element name="binary_path" type="xs:string" minOccurs="1" />
+		<xs:element name="userspace_probe_location_lookup_method" type="userspace_probe_location_lookup_method_type" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="userspace_probe_location_type">
+	<xs:all>
+		<xs:element ref="userspace_probe_location_sub_type" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+
+<!-- Maps to a lttng_log_level_rule -->
+<xs:element name="log_level_rule_sub_type" abstract="true"/>
+<xs:element name="log_level_rule_exactly" type="log_level_rule_generic_type" substitutionGroup="log_level_rule_sub_type" />
+<xs:element name="log_level_rule_at_least_as_severe_as" type="log_level_rule_generic_type" substitutionGroup="log_level_rule_sub_type" />
+<xs:complexType name="log_level_rule_generic_type">
+	<xs:all>
+		<xs:element name="level" type="xs:integer" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="log_level_rule_type">
+	<xs:all>
+		<xs:element ref="log_level_rule_sub_type" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+
+<!-- Maps to a lttng_event_rule -->
+<xs:element name="event_rule_sub_type" abstract="true"/>
+<xs:element name="event_rule_jul_logging" type="event_rule_logging_type" substitutionGroup="event_rule_sub_type" />
+<xs:element name="event_rule_kernel_kprobe" type="event_rule_kernel_kprobe_type" substitutionGroup="event_rule_sub_type" />
+<xs:element name="event_rule_kernel_syscall" type="event_rule_kernel_syscall_type" substitutionGroup="event_rule_sub_type" />
+<xs:element name="event_rule_kernel_tracepoint" type="event_rule_kernel_tracepoint_type" substitutionGroup="event_rule_sub_type" />
+<xs:element name="event_rule_kernel_uprobe" type="event_rule_kernel_uprobe_type" substitutionGroup="event_rule_sub_type" />
+<xs:element name="event_rule_log4j_logging" type="event_rule_logging_type" substitutionGroup="event_rule_sub_type" />
+<xs:element name="event_rule_log4j2_logging" type="event_rule_logging_type" substitutionGroup="event_rule_sub_type" />
+<xs:element name="event_rule_python_logging" type="event_rule_logging_type" substitutionGroup="event_rule_sub_type" />
+<xs:element name="event_rule_user_tracepoint" type="event_rule_user_tracepoint_type" substitutionGroup="event_rule_sub_type" />
+<xs:complexType name="event_rule_kernel_kprobe_type">
+	<xs:all>
+		<xs:element name="event_name" type="xs:string" minOccurs="1" />
+		<xs:element name="kernel_probe_location" type="kernel_probe_location_type" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="event_rule_kernel_syscall_type">
+	<xs:all>
+		<xs:element name="emission_site" type="event_rule_kernel_syscall_emission_site" minOccurs="1" />
+		<xs:element name="name_pattern" type="xs:string" minOccurs="1" />
+		<xs:element name="filter_expression" type="xs:string" minOccurs="0" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="event_rule_kernel_tracepoint_type">
+	<xs:all>
+		<xs:element name="name_pattern" type="xs:string" minOccurs="1" />
+		<xs:element name="filter_expression" type="xs:string" minOccurs="0" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="event_rule_kernel_uprobe_type">
+	<xs:all>
+		<xs:element name="event_name" type="xs:string" minOccurs="1" />
+		<xs:element name="userspace_probe_location" type="userspace_probe_location_type" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="event_rule_logging_type">
+	<xs:all>
+		<xs:element name="name_pattern" type="xs:string" minOccurs="1" />
+		<xs:element name="filter_expression" type="xs:string" minOccurs="0" />
+		<xs:element name="log_level_rule" type="log_level_rule_type" minOccurs="0" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="name_pattern_exclusions_type">
+	<xs:sequence>
+		<xs:element name="name_pattern_exclusion" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+	</xs:sequence>
+</xs:complexType>
+<xs:complexType name="event_rule_user_tracepoint_type">
+	<xs:all>
+		<xs:element name="name_pattern" type="xs:string" minOccurs="1" />
+		<xs:element name="filter_expression" type="xs:string" minOccurs="0" />
+		<xs:element name="log_level_rule" type="log_level_rule_type" minOccurs="0" />
+		<xs:element name="name_pattern_exclusions" type="name_pattern_exclusions_type" minOccurs="0" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="event_rule_type">
+	<xs:all>
+		<xs:element ref="event_rule_sub_type" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+
+<!-- Maps to a lttng_condition -->
+<xs:element name="condition_sub_type" abstract="true" />
+<xs:element name="condition_buffer_usage_high" type="condition_buffer_usage_type" substitutionGroup="condition_sub_type" />
+<xs:element name="condition_buffer_usage_low" type="condition_buffer_usage_type" substitutionGroup="condition_sub_type" />
+<xs:element name="condition_event_rule_matches" type="condition_event_rule_matches_type" substitutionGroup="condition_sub_type" />
+<xs:element name="condition_session_consumed_size" type="condition_session_consumed_size_type" substitutionGroup="condition_sub_type" />
+<xs:element name="condition_session_rotation_completed" type="condition_session_rotation_type" substitutionGroup="condition_sub_type" />
+<xs:element name="condition_session_rotation_ongoing" type="condition_session_rotation_type" substitutionGroup="condition_sub_type" />
+<xs:element name="buffer_usage_threshold_sub_type" abstract="true" />
+<xs:element name="threshold_bytes" type="uint64_type" substitutionGroup="buffer_usage_threshold_sub_type" />
+<xs:element name="threshold_ratio" type="ratio_type" substitutionGroup="buffer_usage_threshold_sub_type" />
+<xs:complexType name="condition_buffer_usage_type">
+	<xs:all>
+		<xs:element name="session_name" type="xs:string" minOccurs="1" />
+		<xs:element name="channel_name" type="xs:string" minOccurs="1" />
+		<xs:element name="domain" type="domain_type_type" minOccurs="1" />
+		<xs:element ref="buffer_usage_threshold_sub_type" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+
+<!-- Maps to a lttng_event_expr (capture descriptor) -->
+<xs:element name="event_expr_sub_type" abstract="true" />
+<xs:element name="event_expr_payload_field" type="event_expr_payload_field_type" substitutionGroup="event_expr_sub_type" />
+<xs:element name="event_expr_channel_context_field" type="event_expr_channel_context_field_type" substitutionGroup="event_expr_sub_type" />
+<xs:element name="event_expr_app_specific_context_field" type="event_expr_app_specific_context_field_type" substitutionGroup="event_expr_sub_type" />
+<xs:element name="event_expr_array_field_element" type="event_expr_array_field_element_type" substitutionGroup="event_expr_sub_type" />
+<xs:complexType name="event_expr_payload_field_type">
+	<xs:all>
+		<xs:element name="name" type="xs:string" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="event_expr_channel_context_field_type">
+	<xs:all>
+		<xs:element name="name" type="xs:string" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="event_expr_app_specific_context_field_type">
+	<xs:all>
+		<xs:element name="provider_name" type="xs:string" minOccurs="1" />
+		<xs:element name="type_name" type="xs:string" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="event_expr_array_field_element_type">
+	<xs:all>
+		<xs:element name="index" type="uint64_type" minOccurs="1" />
+		<xs:element name="event_expr" type="event_expr_type" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="event_expr_type">
+	<xs:all>
+		<xs:element ref="event_expr_sub_type" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="capture_descriptors_type">
+	<xs:sequence>
+		<xs:element name="event_expr" type="event_expr_type" minOccurs="0" maxOccurs="unbounded"/>
+	</xs:sequence>
+</xs:complexType>
+<xs:complexType name="condition_event_rule_matches_type">
+	<xs:all>
+		<xs:element name="capture_descriptors" type="capture_descriptors_type" minOccurs="1" />
+		<xs:element name="event_rule" type="event_rule_type" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="condition_session_consumed_size_type">
+	<xs:all>
+		<xs:element name="session_name" type="xs:string" minOccurs="1" />
+		<xs:element name="threshold_bytes" type="uint64_type" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="condition_session_rotation_type">
+	<xs:all>
+		<xs:element name="session_name" type="xs:string" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+<xs:complexType name="condition_type">
+	<xs:all>
+		<xs:element ref="condition_sub_type" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+
+<!-- Maps to an lttng_trigger -->
+<xs:complexType name="trigger_type">
+	<xs:all>
+		<xs:element name="action" type="action_type" minOccurs="1" />
+		<xs:element name="condition" type="condition_type" minOccurs="1" />
+		<xs:element name="name" type="xs:string" minOccurs="1" />
+	</xs:all>
+</xs:complexType>
+
+<!-- Maps to lttng_triggers -->
+<xs:complexType name="triggers_type">
+	<xs:sequence>
+		<xs:element name="trigger" type="trigger_type" minOccurs="0" maxOccurs="unbounded" />
+	</xs:sequence>
+</xs:complexType>
+
 <xs:element name="sessions">
 	<xs:complexType>
 		<xs:sequence>
 			<xs:element name="session" type="session_type" maxOccurs="unbounded"/>
+			<xs:element name="triggers" type="triggers_type" minOccurs="0"/>
 		</xs:sequence>
 	</xs:complexType>
 </xs:element>
