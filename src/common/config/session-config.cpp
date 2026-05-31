@@ -9,6 +9,7 @@
 #define _LGPL_SOURCE
 #include "config-internal.hpp"
 #include "session-config.hpp"
+#include "trigger-config.hpp"
 
 #include <common/compat/getenv.hpp>
 #include <common/defaults.hpp>
@@ -220,6 +221,7 @@ const char *const config_element_type = "type";
 const char *const config_element_buffer_type = "buffer_type";
 const char *const config_element_session = "session";
 const char *const config_element_sessions = "sessions";
+const char *const config_element_triggers = "triggers";
 const char *const config_element_context_perf = "perf";
 const char *const config_element_context_app = "app";
 const char *const config_element_context_app_provider_name = "provider_name";
@@ -3937,7 +3939,8 @@ int load_session_from_file(const char *path,
 			   const char *session_name,
 			   struct session_config_validation_ctx *validation_ctx,
 			   int overwrite,
-			   const struct config_load_session_override_attr *overrides)
+			   const struct config_load_session_override_attr *overrides,
+			   struct trigger_load_state *trigger_state)
 {
 	int ret, session_found = !session_name;
 	xmlDocPtr doc = nullptr;
@@ -3976,8 +3979,36 @@ int load_session_from_file(const char *path,
 		goto end;
 	}
 
+	/*
+	 * Handle the triggers (if any) before creating any session so
+	 * that a same-name trigger conflict aborts the load without
+	 * having created anything.
+	 *
+	 * The triggers themselves are registered later, once all the
+	 * sessions exist, because some actions reference
+	 * session channels.
+	 */
+	if (trigger_state) {
+		for (xmlNodePtr node = xmlFirstElementChild(sessions_node); node;
+		     node = xmlNextElementSibling(node)) {
+			if (strcmp((const char *) node->name, config_element_triggers) != 0) {
+				continue;
+			}
+
+			ret = trigger_load_state_process_node(trigger_state, node);
+			if (ret) {
+				goto end;
+			}
+		}
+	}
+
 	for (session_node = xmlFirstElementChild(sessions_node); session_node;
 	     session_node = xmlNextElementSibling(session_node)) {
+		if (strcmp((const char *) session_node->name, config_element_session) != 0) {
+			/* Skip the `<triggers>` element (handled above) */
+			continue;
+		}
+
 		ret = process_session_node(session_node, session_name, overwrite, overrides);
 		if (!session_name && ret) {
 			/* Loading error occurred. */
@@ -4011,7 +4042,8 @@ int load_session_from_path(const char *path,
 			   const char *session_name,
 			   struct session_config_validation_ctx *validation_ctx,
 			   int overwrite,
-			   const struct config_load_session_override_attr *overrides)
+			   const struct config_load_session_override_attr *overrides,
+			   struct trigger_load_state *trigger_state)
 {
 	int ret = 0, session_found = !session_name;
 	DIR *directory = nullptr;
@@ -4129,8 +4161,12 @@ int load_session_from_path(const char *path,
 				goto end;
 			}
 
-			ret = load_session_from_file(
-				file_path.data, session_name, validation_ctx, overwrite, overrides);
+			ret = load_session_from_file(file_path.data,
+						     session_name,
+						     validation_ctx,
+						     overwrite,
+						     overrides,
+						     trigger_state);
 			if (session_name && (!ret || ret != -LTTNG_ERR_LOAD_SESSION_NOENT)) {
 				session_found = 1;
 				break;
@@ -4150,7 +4186,7 @@ int load_session_from_path(const char *path,
 		}
 	} else {
 		ret = load_session_from_file(
-			path, session_name, validation_ctx, overwrite, overrides);
+			path, session_name, validation_ctx, overwrite, overrides, trigger_state);
 		if (ret) {
 			goto end;
 		}
@@ -4209,7 +4245,8 @@ int config_load_session(const char *path,
 			const char *session_name,
 			int overwrite,
 			unsigned int autoload,
-			const struct config_load_session_override_attr *overrides)
+			const struct config_load_session_override_attr *overrides,
+			bool load_triggers)
 {
 	int ret;
 	bool session_loaded = false;
@@ -4217,10 +4254,19 @@ int config_load_session(const char *path,
 	struct session_config_validation_ctx validation_ctx = {};
 	const char *home_path = nullptr;
 	char path_buf[PATH_MAX];
+	struct trigger_load_state *trigger_state = nullptr;
 
 	ret = init_session_config_validation_ctx(&validation_ctx);
 	if (ret) {
 		goto end;
+	}
+
+	if (load_triggers) {
+		trigger_state = trigger_load_state_create();
+		if (!trigger_state) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
 	}
 
 	if (!path) {
@@ -4269,7 +4315,8 @@ int config_load_session(const char *path,
 							     session_name,
 							     &validation_ctx,
 							     overwrite,
-							     overrides);
+							     overrides,
+							     trigger_state);
 				if (ret && ret != -LTTNG_ERR_LOAD_SESSION_NOENT) {
 					goto end;
 				}
@@ -4320,8 +4367,12 @@ int config_load_session(const char *path,
 		}
 
 		if (path_ptr) {
-			ret = load_session_from_path(
-				path_ptr, session_name, &validation_ctx, overwrite, overrides);
+			ret = load_session_from_path(path_ptr,
+						     session_name,
+						     &validation_ctx,
+						     overwrite,
+						     overrides,
+						     trigger_state);
 			if (!ret) {
 				session_loaded = true;
 			}
@@ -4348,7 +4399,7 @@ int config_load_session(const char *path,
 		}
 
 		ret = load_session_from_path(
-			path, session_name, &validation_ctx, overwrite, overrides);
+			path, session_name, &validation_ctx, overwrite, overrides, trigger_state);
 	}
 end:
 	fini_session_config_validation_ctx(&validation_ctx);
@@ -4364,6 +4415,20 @@ end:
 		/* A matching session was found in one of the search paths. */
 		ret = 0;
 	}
+
+	/*
+	 * Now that every session has been loaded, register the triggers
+	 * that were parsed and conflict-checked along the way.
+	 *
+	 * This is done last because some trigger actions (for example
+	 * "increment map value") reference channels of the
+	 * loaded sessions.
+	 */
+	if (!ret && trigger_state) {
+		ret = trigger_load_state_register(trigger_state);
+	}
+
+	trigger_load_state_destroy(trigger_state);
 	return ret;
 }
 

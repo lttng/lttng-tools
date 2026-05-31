@@ -2168,8 +2168,8 @@ int _main(int argc, char **argv)
 		}
 	}
 
-	/* Load sessions. */
-	ret = config_load_session(the_config.load_session_path.value, nullptr, 1, 1, nullptr);
+	/* Load sessions (and their triggers). */
+	ret = config_load_session(the_config.load_session_path.value, nullptr, 1, 1, nullptr, true);
 	if (ret) {
 		ERR("Session load failed: %s", error_get_str(ret));
 		retval = -1;

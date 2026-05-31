@@ -193,6 +193,8 @@ int config_writer_write_element_double(struct config_writer *writer,
  * overwrite Overwrite current session configuration if it exists.
  * autoload Tell to load the auto session(s).
  * overrides The override attribute structure specifying override parameters.
+ * load_triggers If true, also load and register the triggers contained in
+ * the session configuration file(s).
  *
  * Returns zero if the session could be loaded successfully. Returns
  * a negative LTTNG_ERR code on error.
@@ -201,6 +203,7 @@ int config_load_session(const char *path,
 			const char *session_name,
 			int overwrite,
 			unsigned int autoload,
-			const struct config_load_session_override_attr *overrides);
+			const struct config_load_session_override_attr *overrides,
+			bool load_triggers);
 
 #endif /* _CONFIG_H */
