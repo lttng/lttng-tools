@@ -60,6 +60,13 @@ LTTNG_EXPORT extern int lttng_save_session_attr_get_omit_name(struct lttng_save_
  */
 LTTNG_EXPORT extern int
 lttng_save_session_attr_get_omit_output(struct lttng_save_session_attr *attr);
+/*
+ * Return the no-triggers configuration attribute. This attribute indicates
+ * whether or not the session daemon's triggers should be excluded from the
+ * saved session configuration file(s).
+ */
+LTTNG_EXPORT extern int
+lttng_save_session_attr_get_no_triggers(struct lttng_save_session_attr *attr);
 
 /*
  * Save session attribute setter family functions.
@@ -100,6 +107,12 @@ LTTNG_EXPORT extern int lttng_save_session_attr_set_omit_name(struct lttng_save_
  */
 LTTNG_EXPORT extern int
 lttng_save_session_attr_set_omit_output(struct lttng_save_session_attr *attr, int omit_output);
+/*
+ * Set the no-triggers attribute. If set to true, the session daemon's triggers
+ * are not saved to the resulting session configuration file(s).
+ */
+LTTNG_EXPORT extern int
+lttng_save_session_attr_set_no_triggers(struct lttng_save_session_attr *attr, int no_triggers);
 
 /*
  * Save session configuration(s).

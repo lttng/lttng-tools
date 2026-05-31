@@ -1,10 +1,10 @@
-// SPDX-FileCopyrightText: 2015-2021 Philippe Proulx <pproulx@efficios.com>
+// SPDX-FileCopyrightText: 2015-2026 Philippe Proulx <pproulx@efficios.com>
 //
 // SPDX-License-Identifier: CC-BY-SA-4.0
 
 lttng-save(1)
 =============
-:revdate: 20 March 2026
+:revdate: 27 April 2026
 
 
 NAME
@@ -16,7 +16,7 @@ SYNOPSIS
 --------
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *save* [option:--force] [option:--output-path='DIR']
-      [option:--all | 'SESSION']
+      [option:--no-triggers] [option:--all | 'SESSION']
 
 
 DESCRIPTION
@@ -44,6 +44,23 @@ The `save` command does :not: save tracing data, only the recording
 session parameters, including the event record channel and recording
 event rule configurations.
 
+Each saved recording session configuration file also contains *all* the
+triggers (see man:lttng-add-trigger(1)) of the connected session daemon
+for your Unix user, or for all users if your Unix user is `root`, even
+those triggers which aren't directly related to the targeted recording
+session(s). This is needed because, for example, an ``increment map
+value'' trigger action targets a map channel of a specific recording
+session, but the trigger itself is a session daemon-wide object.
+
+The man:lttng-load(1) command makes the loading Unix user the owner of
+every loaded recording session and trigger, regardless of their original
+owner.
+
+Avoid saving any trigger with the option:--no-triggers option. Note,
+however, that without saved triggers, the man:lttng-load(1) command
+won't restore, amongst other things, the ``increment map value'' actions
+for the loaded recording session(s).
+
 The default output directory path is `$LTTNG_HOME/.lttng/sessions`
 (`$LTTNG_HOME` defaults to `$HOME`). Override the default output
 directory path with the option:--output-path option. Each recording
@@ -70,6 +87,21 @@ option:-a, option:--all::
 option:-f, option:--force::
     Overwrite existing recording session configuration files when
     saving.
+
+option:--no-triggers::
+    Do :not: save any trigger (see man:lttng-add-trigger(1)).
++
+This is the behaviour of LTTng{nbsp}≤{nbsp}2.15.
++
+Without this option, each saved recording session configuration file
+also contains all the triggers of the connected session daemon for your
+Unix user, or for all users if your Unix user is `root`, even those
+triggers which aren't directly related to the targeted recording
+session(s).
++
+With this option, the man:lttng-load(1) command won't restore,
+amongst other things, the ``increment map value'' actions of the loaded
+recording session(s).
 
 option:-o 'DIR', option:--output-path='DIR'::
     Save recording session configuration files to the directory 'DIR'
@@ -114,6 +146,16 @@ $ lttng save --force
 ----
 ====
 
+.Save the configuration of a specific recording session without saving any trigger.
+====
+See the option:--no-triggers option.
+
+[role="term"]
+----
+$ lttng save my-session --no-triggers
+----
+====
+
 
 include::common-footer.txt[]
 
@@ -121,5 +163,6 @@ include::common-footer.txt[]
 SEE ALSO
 --------
 man:lttng(1),
+man:lttng-add-trigger(1),
 man:lttng-load(1),
 man:lttng-concepts(7)

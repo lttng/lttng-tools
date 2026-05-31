@@ -65,6 +65,11 @@ int lttng_save_session_attr_get_omit_output(struct lttng_save_session_attr *attr
 	return attr ? attr->omit_output : -LTTNG_ERR_INVALID;
 }
 
+int lttng_save_session_attr_get_no_triggers(struct lttng_save_session_attr *attr)
+{
+	return attr ? attr->no_triggers : -LTTNG_ERR_INVALID;
+}
+
 int lttng_save_session_attr_set_session_name(struct lttng_save_session_attr *attr,
 					     const char *session_name)
 {
@@ -178,6 +183,20 @@ int lttng_save_session_attr_set_omit_output(struct lttng_save_session_attr *attr
 	}
 
 	attr->omit_output = !!omit_output;
+end:
+	return ret;
+}
+
+int lttng_save_session_attr_set_no_triggers(struct lttng_save_session_attr *attr, int no_triggers)
+{
+	int ret = 0;
+
+	if (!attr) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	attr->no_triggers = !!no_triggers;
 end:
 	return ret;
 }
