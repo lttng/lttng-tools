@@ -2223,7 +2223,9 @@ skip_domain:
 	}
 	case LTTCOMM_SESSIOND_COMMAND_SAVE_SESSION:
 	{
-		ret = cmd_save_sessions(&cmd_ctx->lsm.u.save_session.attr, &cmd_ctx->creds);
+		ret = cmd_save_sessions(&cmd_ctx->lsm.u.save_session.attr,
+					&cmd_ctx->creds,
+					the_notification_thread_handle);
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_SET_SESSION_SHM_PATH:

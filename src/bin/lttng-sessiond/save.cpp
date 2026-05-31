@@ -10,6 +10,7 @@
 #include "context-configuration.hpp"
 #include "domain.hpp"
 #include "map-channel-configuration.hpp"
+#include "notification-thread-commands.hpp"
 #include "recording-channel-configuration.hpp"
 #include "save.hpp"
 #include "session.hpp"
@@ -20,6 +21,7 @@
 #include <common/domain.hpp>
 #include <common/error.hpp>
 #include <common/file-descriptor.hpp>
+#include <common/mi-lttng.hpp>
 #include <common/optional.hpp>
 #include <common/runas.hpp>
 #include <common/urcu.hpp>
@@ -39,6 +41,7 @@
 #include <lttng/kernel-probe.h>
 #include <lttng/log-level-rule.h>
 #include <lttng/save-internal.hpp>
+#include <lttng/trigger/trigger-internal.hpp>
 #include <lttng/userspace-probe.h>
 
 #include <fcntl.h>
@@ -147,6 +150,21 @@ public:
 			LTTNG_THROW_SAVE_ERROR(lttng::format(
 				"Failed to write attribute: name={}, value={}", name, value));
 		}
+	}
+
+	/*
+	 * Return the underlying config writer without
+	 * transferring ownership.
+	 *
+	 * This is needed to reuse the trigger MI serialization
+	 * functions, which write into an MI writer that simply wraps a
+	 * config writer.
+	 *
+	 * The returned pointer must NOT be destroyed by the caller.
+	 */
+	config_writer *raw_config_writer() const noexcept
+	{
+		return _writer;
 	}
 
 private:
@@ -1817,13 +1835,38 @@ void save_session_rotation_schedules(session_config::writer& writer,
 }
 
 /*
+ * Serialize the given trigger set into the currently open
+ * `<sessions>` element.
+ *
+ * We're reusing the trigger MI serialization functions: they write into
+ * an MI writer which is merely a thin wrapper around a config writer.
+ *
+ * We build a non-owning MI writer over the config writer of the save
+ * document so that we emit the `<triggers>` subtree into the same
+ * XML document.
+ *
+ * We never destroy the MI writer (it doesn't own the config writer).
+ */
+void save_triggers(session_config::writer& writer, const struct lttng_triggers& triggers)
+{
+	struct mi_writer trigger_mi_writer = { writer.raw_config_writer(), LTTNG_MI_XML };
+
+	const auto ret_code =
+		lttng_triggers_mi_serialize(&triggers, &trigger_mi_writer, nullptr, false);
+	if (ret_code != LTTNG_OK) {
+		LTTNG_THROW_SAVE_ERROR("Failed to serialize triggers to session configuration");
+	}
+}
+
+/*
  * Save the given session.
  *
  * Return LTTNG_OK on success else a LTTNG_ERR* code.
  */
 int save_session(const ltt_session::locked_ref& session,
 		 lttng_save_session_attr *attr,
-		 lttng_sock_cred *creds)
+		 lttng_sock_cred *creds,
+		 const struct lttng_triggers *triggers)
 {
 	char config_file_path[LTTNG_PATH_MAX];
 	size_t len;
@@ -1965,6 +2008,17 @@ int save_session(const ltt_session::locked_ref& session,
 	/* /session */
 	writer.close_element();
 
+	/*
+	 * Triggers are session daemon-wide objects: the same trigger
+	 * set is written to every saved session configuration file.
+	 *
+	 * A `nullptr` set means that triggers must not be
+	 * saved (`--no-triggers`).
+	 */
+	if (triggers) {
+		save_triggers(writer, *triggers);
+	}
+
 	/* /sessions */
 	writer.close_element();
 
@@ -1976,10 +2030,40 @@ int save_session(const ltt_session::locked_ref& session,
 
 } /* anonymous namespace */
 
-int cmd_save_sessions(lttng_save_session_attr *attr, lttng_sock_cred *creds)
+int cmd_save_sessions(lttng_save_session_attr *attr,
+		      lttng_sock_cred *creds,
+		      struct notification_thread_handle *notification_thread)
 {
 	const auto list_lock = lttng::sessiond::lock_session_list();
 	const auto session_name = lttng_save_session_attr_get_session_name(attr);
+
+	/*
+	 * Unless `--no-triggers` was used, gather the triggers visible
+	 * to the requesting user once, and embed the same set in every
+	 * saved session configuration file.
+	 *
+	 * Triggers are session daemon-wide objects (see lttng-save(1)).
+	 *
+	 * The requesting user's credentials select which triggers are
+	 * visible: a non-root user sees their own triggers while root
+	 * sees every user's triggers (handled by the
+	 * notification thread).
+	 */
+	struct lttng_triggers *triggers = nullptr;
+	const auto triggers_cleanup = lttng::make_scope_exit(
+		[&triggers]() noexcept { lttng_triggers_destroy(triggers); });
+
+	if (!attr->no_triggers) {
+		const auto list_ret = notification_thread_command_list_triggers(
+			notification_thread, LTTNG_SOCK_GET_UID_CRED(creds), &triggers);
+		if (list_ret != LTTNG_OK) {
+			return list_ret;
+		}
+
+		if (lttng_triggers_remove_hidden_triggers(triggers)) {
+			return LTTNG_ERR_UNK;
+		}
+	}
 
 	if (session_name) {
 		/*
@@ -1991,7 +2075,7 @@ int cmd_save_sessions(lttng_save_session_attr *attr, lttng_sock_cred *creds)
 		 */
 		try {
 			const auto session = ltt_session::find_locked_session(session_name);
-			const auto save_ret = save_session(session, attr, creds);
+			const auto save_ret = save_session(session, attr, creds, triggers);
 			if (save_ret != LTTNG_OK) {
 				return save_ret;
 			}
@@ -2010,7 +2094,7 @@ int cmd_save_sessions(lttng_save_session_attr *attr, lttng_sock_cred *creds)
 				raw_session_ptr->lock();
 				return ltt_session::make_locked_ref(*raw_session_ptr);
 			}();
-			const auto save_ret = save_session(session, attr, creds);
+			const auto save_ret = save_session(session, attr, creds, triggers);
 
 			/* Don't abort if we don't have the required permissions. */
 			if (save_ret != LTTNG_OK && save_ret != LTTNG_ERR_EPERM) {
