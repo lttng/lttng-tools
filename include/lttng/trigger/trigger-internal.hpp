@@ -145,7 +145,8 @@ void lttng_trigger_put(struct lttng_trigger *trigger);
 enum lttng_error_code
 lttng_trigger_mi_serialize(const struct lttng_trigger *trigger,
 			   struct mi_writer *writer,
-			   const struct mi_lttng_error_query_callbacks *error_query_callbacks);
+			   const struct mi_lttng_error_query_callbacks *error_query_callbacks,
+			   bool serialize_owner_uid);
 
 /*
  * Allocate a new set of triggers.
@@ -189,13 +190,14 @@ ssize_t lttng_triggers_create_from_payload(struct lttng_payload_view *view,
 					   struct lttng_triggers **triggers);
 
 /*
- * Serialize a trigger set to a mi_writer.
- * Return LTTNG_OK in success, other enum lttng_error_code on error.
+ * Serialize a trigger set to a mi_writer. Return LTTNG_OK in success, other
+ * enum lttng_error_code on error.
  */
 enum lttng_error_code
 lttng_triggers_mi_serialize(const struct lttng_triggers *triggers,
 			    struct mi_writer *writer,
-			    const struct mi_lttng_error_query_callbacks *error_query_callbacks);
+			    const struct mi_lttng_error_query_callbacks *error_query_callbacks,
+			    bool serialize_owner_uid);
 
 const struct lttng_credentials *lttng_trigger_get_credentials(const struct lttng_trigger *trigger);
 
