@@ -29,6 +29,8 @@ struct lttng_save_session_attr {
 	uint8_t omit_name;
 	/* Omit the sessions' output(s). */
 	uint8_t omit_output;
+	/* Do not save any trigger. */
+	uint8_t no_triggers;
 } LTTNG_PACKED;
 
 #endif /* LTTNG_SAVE_INTERNAL_ABI_H */

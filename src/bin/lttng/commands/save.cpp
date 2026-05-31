@@ -22,6 +22,7 @@ namespace {
 char *opt_output_path;
 bool opt_force;
 bool opt_save_all;
+bool opt_no_triggers;
 struct mi_writer *writer;
 } /* namespace */
 
@@ -35,6 +36,7 @@ enum {
 	OPT_HELP = 1,
 	OPT_ALL,
 	OPT_FORCE,
+	OPT_NO_TRIGGERS,
 	OPT_LIST_OPTIONS,
 };
 
@@ -45,6 +47,7 @@ struct poptOption save_opts[] = {
 	{ "all", 'a', POPT_ARG_NONE, nullptr, OPT_ALL, nullptr, nullptr },
 	{ "output-path", 'o', POPT_ARG_STRING, &opt_output_path, 0, nullptr, nullptr },
 	{ "force", 'f', POPT_ARG_NONE, nullptr, OPT_FORCE, nullptr, nullptr },
+	{ "no-triggers", 0, POPT_ARG_NONE, nullptr, OPT_NO_TRIGGERS, nullptr, nullptr },
 	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
 	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
@@ -138,6 +141,9 @@ int cmd_save(int argc, const char **argv)
 		case OPT_FORCE:
 			opt_force = true;
 			break;
+		case OPT_NO_TRIGGERS:
+			opt_no_triggers = true;
+			break;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, save_opts);
 			goto end;
@@ -183,6 +189,11 @@ int cmd_save(int argc, const char **argv)
 	}
 
 	if (lttng_save_session_attr_set_output_url(attr, opt_output_path)) {
+		ret = CMD_ERROR;
+		goto end_destroy;
+	}
+
+	if (lttng_save_session_attr_set_no_triggers(attr, opt_no_triggers)) {
 		ret = CMD_ERROR;
 		goto end_destroy;
 	}
