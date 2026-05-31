@@ -105,6 +105,11 @@ int lttng_load_session_attr_get_overwrite(struct lttng_load_session_attr *attr)
 	return attr ? attr->overwrite : -LTTNG_ERR_INVALID;
 }
 
+int lttng_load_session_attr_get_no_triggers(struct lttng_load_session_attr *attr)
+{
+	return attr ? attr->no_triggers : -LTTNG_ERR_INVALID;
+}
+
 const char *lttng_load_session_attr_get_override_ctrl_url(struct lttng_load_session_attr *attr)
 {
 	const char *ret = nullptr;
@@ -244,6 +249,20 @@ int lttng_load_session_attr_set_overwrite(struct lttng_load_session_attr *attr, 
 	}
 
 	attr->overwrite = !!overwrite;
+end:
+	return ret;
+}
+
+int lttng_load_session_attr_set_no_triggers(struct lttng_load_session_attr *attr, int no_triggers)
+{
+	int ret = 0;
+
+	if (!attr) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	attr->no_triggers = !!no_triggers;
 end:
 	return ret;
 }

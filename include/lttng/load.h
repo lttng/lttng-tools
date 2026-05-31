@@ -55,6 +55,14 @@ lttng_load_session_attr_get_input_url(struct lttng_load_session_attr *attr);
 LTTNG_EXPORT extern int lttng_load_session_attr_get_overwrite(struct lttng_load_session_attr *attr);
 
 /*
+ * Return the no-triggers attribute. This attribute indicates whether or not
+ * the triggers contained in the loaded session configuration file(s) must be
+ * skipped.
+ */
+LTTNG_EXPORT extern int
+lttng_load_session_attr_get_no_triggers(struct lttng_load_session_attr *attr);
+
+/*
  * Return the destination URL configuration override attribute. This attribute
  * indicates a destination URL override to be applied during the loading of the
  * configuration.
@@ -126,6 +134,13 @@ LTTNG_EXPORT extern int lttng_load_session_attr_set_input_url(struct lttng_load_
  */
 LTTNG_EXPORT extern int lttng_load_session_attr_set_overwrite(struct lttng_load_session_attr *attr,
 							      int overwrite);
+
+/*
+ * Set the no-triggers attribute. If set to true, the triggers contained in the
+ * loaded session configuration file(s) are not loaded nor registered.
+ */
+LTTNG_EXPORT extern int
+lttng_load_session_attr_set_no_triggers(struct lttng_load_session_attr *attr, int no_triggers);
 
 /*
  * The following setter are for overriding sessions attributes during the

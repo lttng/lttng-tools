@@ -27,6 +27,8 @@ struct lttng_load_session_attr {
 	char input_url[PATH_MAX];
 	/* Overwrite the session if it exists. */
 	uint32_t overwrite;
+	/* Do not load any trigger. */
+	uint32_t no_triggers;
 	/* The raw override url for getter */
 	char *raw_override_url;
 	/* The raw override path url for getter */

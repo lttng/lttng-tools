@@ -25,6 +25,7 @@ char *the_opt_override_url;
 char *the_opt_override_session_name;
 int the_opt_force;
 int the_opt_load_all;
+int the_opt_no_triggers;
 
 const char *the_session_name;
 } /* namespace */
@@ -39,6 +40,7 @@ enum {
 	OPT_HELP = 1,
 	OPT_ALL,
 	OPT_FORCE,
+	OPT_NO_TRIGGERS,
 	OPT_LIST_OPTIONS,
 };
 
@@ -53,6 +55,7 @@ struct poptOption the_load_opts[] = {
 	{ "force", 'f', POPT_ARG_NONE, nullptr, OPT_FORCE, nullptr, nullptr },
 	{ "override-url", 0, POPT_ARG_STRING, &the_opt_override_url, 0, nullptr, nullptr },
 	{ "override-name", 0, POPT_ARG_STRING, &the_opt_override_session_name, 0, nullptr, nullptr },
+	{ "no-triggers", 0, POPT_ARG_NONE, nullptr, OPT_NO_TRIGGERS, nullptr, nullptr },
 	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
 	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
@@ -150,7 +153,7 @@ end:
  */
 int cmd_load(int argc, const char **argv)
 {
-	int ret, success;
+	int ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success;
 	int opt;
 	poptContext pc;
 	struct lttng_load_session_attr *session_attr = nullptr;
@@ -175,6 +178,9 @@ int cmd_load(int argc, const char **argv)
 			goto end;
 		case OPT_FORCE:
 			the_opt_force = 1;
+			break;
+		case OPT_NO_TRIGGERS:
+			the_opt_no_triggers = 1;
 			break;
 		default:
 			/* Handle popt option parsing errors. */
@@ -278,6 +284,14 @@ int cmd_load(int argc, const char **argv)
 		goto end;
 	}
 
+	/* Set the no-triggers attribute */
+	ret = lttng_load_session_attr_set_no_triggers(session_attr, the_opt_no_triggers);
+	if (ret) {
+		ERR("Failed to set the no-triggers attribute");
+		ret = CMD_ERROR;
+		goto end;
+	}
+
 	/* Set the overrides attributes if any */
 	if (the_opt_override_url) {
 		ret = lttng_load_session_attr_set_override_url(session_attr, the_opt_override_url);
@@ -302,17 +316,17 @@ int cmd_load(int argc, const char **argv)
 		}
 	}
 
-	ret = lttng_load_session(session_attr);
-	if (ret) {
-		ERR("%s", lttng_strerror(ret));
+	command_ret = lttng_load_session(session_attr);
+	if (command_ret) {
+		ERR("%s", lttng_strerror(command_ret));
 		success = 0;
-		ret = CMD_ERROR;
 	} else {
 		if (the_opt_load_all) {
 			MSG("All sessions have been loaded successfully");
 		} else if (the_session_name) {
-			ret = config_init((char *) the_session_name);
-			if (ret < 0) {
+			const int config_init_ret = config_init((char *) the_session_name);
+
+			if (config_init_ret < 0) {
 				WARN("Could not set %s as the default session", the_session_name);
 			}
 			MSG("Session %s has been loaded successfully", the_session_name);
@@ -328,7 +342,6 @@ int cmd_load(int argc, const char **argv)
 			MSG("Session output url overridden with %s", the_opt_override_url);
 		}
 		success = 1;
-		ret = CMD_SUCCESS;
 	}
 
 	/* Mi Printing and closing */
@@ -366,6 +379,13 @@ end:
 	if (the_writer && mi_lttng_writer_destroy(the_writer)) {
 		ERR("Failed to destroy mi lttng writer");
 	}
+
+	/*
+	 * Overwrite ret if the load command itself failed: in MI mode, the
+	 * block above reuses ret for the MI writer's own result, which would
+	 * otherwise mask a load failure and make the command exit successfully.
+	 */
+	ret = command_ret ? -command_ret : ret;
 
 	lttng_load_session_attr_destroy(session_attr);
 	free(input_path);
