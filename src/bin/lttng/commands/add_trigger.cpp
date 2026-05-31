@@ -3231,7 +3231,7 @@ int cmd_add_trigger(int argc, const char **argv)
 	}
 
 	if (lttng_opt_mi) {
-		ret_code = lttng_trigger_mi_serialize(trigger, mi_writer, nullptr);
+		ret_code = lttng_trigger_mi_serialize(trigger, mi_writer, nullptr, true);
 		if (ret_code != LTTNG_OK) {
 			goto error;
 		}

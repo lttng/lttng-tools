@@ -1230,15 +1230,14 @@ void lttng_trigger_unlock(struct lttng_trigger *trigger)
 enum lttng_error_code
 lttng_trigger_mi_serialize(const struct lttng_trigger *trigger,
 			   struct mi_writer *writer,
-			   const struct mi_lttng_error_query_callbacks *error_query_callbacks)
+			   const struct mi_lttng_error_query_callbacks *error_query_callbacks,
+			   bool serialize_owner_uid)
 {
 	int ret;
 	enum lttng_error_code ret_code;
-	enum lttng_trigger_status trigger_status;
 	const struct lttng_condition *condition = nullptr;
 	const struct lttng_action *action = nullptr;
 	struct lttng_dynamic_array action_path_indexes;
-	uid_t owner_uid;
 
 	LTTNG_ASSERT(trigger);
 	LTTNG_ASSERT(writer);
@@ -1251,9 +1250,6 @@ lttng_trigger_mi_serialize(const struct lttng_trigger *trigger,
 		goto mi_error;
 	}
 
-	trigger_status = lttng_trigger_get_owner_uid(trigger, &owner_uid);
-	LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
-
 	/* Name. */
 	ret = mi_lttng_writer_write_element_string(writer, config_element_name, trigger->name);
 	if (ret) {
@@ -1261,10 +1257,18 @@ lttng_trigger_mi_serialize(const struct lttng_trigger *trigger,
 	}
 
 	/* Owner uid. */
-	ret = mi_lttng_writer_write_element_signed_int(
-		writer, mi_lttng_element_trigger_owner_uid, (int64_t) owner_uid);
-	if (ret) {
-		goto mi_error;
+	if (serialize_owner_uid) {
+		uid_t owner_uid;
+		const enum lttng_trigger_status trigger_status =
+			lttng_trigger_get_owner_uid(trigger, &owner_uid);
+
+		LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+
+		ret = mi_lttng_writer_write_element_signed_int(
+			writer, mi_lttng_element_trigger_owner_uid, (int64_t) owner_uid);
+		if (ret) {
+			goto mi_error;
+		}
 	}
 
 	/* Condition. */
@@ -1338,7 +1342,8 @@ int compare_triggers_by_name(const void *a, const void *b)
 enum lttng_error_code
 lttng_triggers_mi_serialize(const struct lttng_triggers *triggers,
 			    struct mi_writer *writer,
-			    const struct mi_lttng_error_query_callbacks *error_query_callbacks)
+			    const struct mi_lttng_error_query_callbacks *error_query_callbacks,
+			    bool serialize_owner_uid)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -1401,7 +1406,8 @@ lttng_triggers_mi_serialize(const struct lttng_triggers *triggers,
 			(const struct lttng_trigger *) lttng_dynamic_pointer_array_get_pointer(
 				&sorted_triggers, i);
 
-		lttng_trigger_mi_serialize(trigger, writer, error_query_callbacks);
+		lttng_trigger_mi_serialize(
+			trigger, writer, error_query_callbacks, serialize_owner_uid);
 	}
 
 	/* Close triggers element. */

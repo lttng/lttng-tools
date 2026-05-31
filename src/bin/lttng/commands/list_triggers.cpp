@@ -1349,7 +1349,7 @@ int cmd_list_triggers(int argc, const char **argv)
 			.action_cb = mi_error_query_action_callback,
 		};
 
-		ret = lttng_triggers_mi_serialize(triggers, mi_writer, &callbacks);
+		ret = lttng_triggers_mi_serialize(triggers, mi_writer, &callbacks, true);
 		if (ret != LTTNG_OK) {
 			ERR("Error printing MI triggers: %s.", lttng_strerror(-ret));
 			goto error;
