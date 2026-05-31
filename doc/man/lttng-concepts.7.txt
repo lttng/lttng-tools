@@ -285,6 +285,16 @@ Unix user is `root`) with the man:lttng-list-triggers(1) command.
 
 Remove a trigger with the man:lttng-remove-trigger(1) command.
 
+Although a trigger isn't tied to a specific recording session, the
+man:lttng-save(1) command saves all the triggers of the connected
+session daemon along with the targeted recording session
+configuration(s), and the man:lttng-load(1) command loads them back,
+making the loading Unix user the owner of each loaded trigger, just as
+it does for each loaded recording session.
+This is currently needed because some trigger actions, such as the
+``increment map value'' action, target a specific recording session
+object (a map channel in this case).
+
 
 [[session]]
 {sect-session}
