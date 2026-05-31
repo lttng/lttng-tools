@@ -227,7 +227,9 @@ libconfig_la_SOURCES = \
 	config/config-internal.hpp \
 	config/config-session-abi.hpp \
 	config/session-config.cpp \
-	config/session-config.hpp
+	config/session-config.hpp \
+	config/trigger-config.cpp \
+	config/trigger-config.hpp
 
 libconfig_la_CPPFLAGS = $(libxml2_CFLAGS) $(AM_CPPFLAGS)
 libconfig_la_LIBADD = ${libxml2_LIBS} \
