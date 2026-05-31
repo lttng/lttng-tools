@@ -1,10 +1,10 @@
-// SPDX-FileCopyrightText: 2015-2021 Philippe Proulx <pproulx@efficios.com>
+// SPDX-FileCopyrightText: 2015-2026 Philippe Proulx <pproulx@efficios.com>
 //
 // SPDX-License-Identifier: CC-BY-SA-4.0
 
 lttng-load(1)
 =============
-:revdate: 20 March 2026
+:revdate: 27 April 2026
 
 
 NAME
@@ -16,7 +16,8 @@ SYNOPSIS
 --------
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *load* [option:--force] [option:--input-path='PATH']
-      [option:--override-url='URL'] [option:--all | 'SESSION' [option:--override-name='NAME']]
+      [option:--override-url='URL'] [option:--no-triggers]
+      [option:--all | 'SESSION' [option:--override-name='NAME']]
 
 
 DESCRIPTION
@@ -34,6 +35,26 @@ the recording activity, and more.
 
 Once LTTng loads one or more recording session configurations, they
 appear exactly as they were saved from the user's point of view.
+
+When the man:lttng-save(1) command writes a recording session
+configuration file, it also writes *all* the triggers (see
+man:lttng-add-trigger(1)) which exist at saving time, even
+those triggers which aren't directly related to the saved recording
+session(s). The `load` command also loads those triggers, unless you use
+the option:--no-triggers option. With this option, the loaded recording
+session(s) lose, amongst other things, their ``increment map value''
+actions.
+
+For each trigger which the `load` command loads, if a trigger with the
+same name already exists, then the loaded trigger must have *exactly*
+the same condition and action as the existing trigger. Otherwise, the
+`load` command fails without loading any recording session configuration
+or any trigger.
+
+The `load` command doesn't restore the original owner of a loaded
+recording session or trigger: the Unix user running the command becomes
+the owner of every loaded recording session and trigger, regardless of
+which user owned them when the man:lttng-save(1) command saved them.
 
 LTTng searches the following directories, non-recursively, in this order
 for recording session configuration files:
@@ -91,6 +112,15 @@ option:-i 'PATH', option:--input-path='PATH'::
     Load recording session configurations from 'PATH', either a
     directory or a file, instead of loading them from the default search
     directories.
+
+option:--no-triggers::
+    Do :not: load any trigger (see man:lttng-add-trigger(1)) from the
+    recording session configuration file(s).
++
+This is the behaviour of LTTng{nbsp}≤{nbsp}2.15.
++
+With this option, the loaded recording session(s) lose, amongst other
+things, their ``increment map value'' actions.
 
 option:--override-name='NAME'::
     Override the name of the loaded recording session configuration,
@@ -162,6 +192,16 @@ $ lttng load my-session --input-path=/path/to/sessions.lttng \
 ----
 ====
 
+.Load all the recording session configurations without loading any trigger.
+====
+See the option:--no-triggers option.
+
+[role="term"]
+----
+$ lttng load --no-triggers
+----
+====
+
 
 include::common-footer.txt[]
 
@@ -169,5 +209,6 @@ include::common-footer.txt[]
 SEE ALSO
 --------
 man:lttng(1),
+man:lttng-add-trigger(1),
 man:lttng-save(1),
 man:lttng-concepts(7)
