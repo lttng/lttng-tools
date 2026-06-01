@@ -314,6 +314,13 @@ __lttng_complete_cmd_name() {
     )
   fi
 
+  # LTTng-tools 2.16+
+  if ((minor_version >= 16)); then
+    cmd_names+=(
+      'add-map-channel:add a map channel to a recording session'
+    )
+  fi
+
   # Add completions
   _describe -t commands command cmd_names
 }
@@ -2467,6 +2474,24 @@ __lttng_complete_trigger_cond_type() {
 
   # Add completions
   _describe 'trigger condition type' types
+}
+
+# Adds completions for the arguments of the `add-map-channel` command.
+__lttng_complete_add_map_channel_cmd() {
+  specs=(
+    $help_opt_specs
+    '(-t --type)'{-t+,--type=}'[set the type of the map channel]: : __lttng_complete_map_channel_type'
+    '(-s --session)'{-s+,--session=}'[select a specific recording session]: : __lttng_complete_session_name all all'
+    '--buffer-ownership=[set the buffer ownership model of the user map channel]:buffer ownership model:(process user)'
+    '--dead-process-policy=[set what to do with the counters of a dead process]:dead process policy:(drop sum-into-shared)'
+    '--max-key-count=[set the maximum number of keys per map]:maximum key count:'
+    '--value-type=[set the value type of the map channel]:value type:(signed-int-32 signed-int-64 signed-int-max)'
+    '--update-policy=[set the update policy of the map channel]:update policy:(per-event per-rule-match)'
+    ':: :_guard "^-*" "new map channel name"'
+  )
+
+  # Add completions
+  _arguments -s -W : $specs
 }
 
 # Adds completions for the arguments of the `add-trigger` command.
