@@ -214,8 +214,8 @@ in which case `lttng-sessiond` ensures the daemon is ready to receive
 client commands before it exits.
 
 option:--spawn-consumers::
-    Start the consumer(s) during lttng-sessiond start-up. By default
-    the consumers are only started on an as-needed basis.
+    Start the consumer daemon(s) at session daemon startup instead of starting
+    them on an as-needed basis.
 
 Linux kernel tracing
 ~~~~~~~~~~~~~~~~~~~~
