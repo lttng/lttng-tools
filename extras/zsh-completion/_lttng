@@ -40,6 +40,17 @@
 # `log-levels` tag:
 #     Log level names.
 #
+# `map-channel` argument and `map-channels` tag:
+#     Map channel names.
+#
+#     The `verbose` style controls whether or not this function adds
+#     completions as a list (with map channel information for each item)
+#     or simple map channel names.
+#
+#     If the verbose style is enabled, then the information part of each
+#     item is either `  [Linux kernel]` or `  [user space]` (note the
+#     two leading spaces), depending on the type of the map channel.
+#
 # `session` argument and `sessions` tag:
 #     Recording session names.
 #
@@ -996,6 +1007,174 @@ __lttng_complete_event_record_channel_name() {
     # Just the event record channel names, no duplicates
     _wanted -C channel channels expl 'event record channel name' \
       compadd "$@" -a channel_names
+  fi
+}
+
+# Usage:
+#
+#     __lttng_complete_map_channel_name SRC
+#
+# Adds completions for a map channel name.
+#
+# This function relies on `opt_args[-t]`/`opt_args[--type]` for the map channel
+# type. Without a known type, it offers map channels of any type.
+#
+# SRC selects the source of the target recording session name (falling back to
+# the current recording session) and is one of:
+#
+# `opt`:
+#     Use `opt_args[-s]` and `opt_args[--session]`.
+#
+# `arg`:
+#     Use `line[1]`.
+#
+# Anything else:
+#     Use the current recording session name.
+__lttng_complete_map_channel_name() {
+  local -r session_name_src=$1
+
+  # Find the recording session name to use
+  local session_name
+
+  if [[ $session_name_src == opt ]]; then
+    if (($+opt_args[-s])); then
+      session_name=$opt_args[-s]
+    elif (($+opt_args[--session])); then
+      session_name=$opt_args[--session]
+    fi
+  elif [[ $session_name_src == arg ]]; then
+    session_name=$line[1]
+  fi
+
+  if [[ -z $session_name ]]; then
+    # Fall back to current recording session
+    if ! __lttng_cur_session_name; then
+      _guard '^-*' 'map channel name'
+      return
+    fi
+
+    session_name=$REPLY
+  fi
+
+  # Find the requested map channel type, if any
+  local req_type
+
+  if (($+opt_args[-t])); then
+    req_type=$opt_args[-t]
+  elif (($+opt_args[--type])); then
+    req_type=$opt_args[--type]
+  fi
+
+  # Get XML document (detailed recording session)
+  if ! __lttng_session_xml 'map channel name' $session_name; then
+    return 0
+  fi
+
+  local session_xml=$REPLY
+
+  # Count map channels
+  local -i channel_count
+
+  channel_count=$(__lttng_xmllint_xpath $session_xml 'count(//*[local-name()="map_channel"])')
+
+  if (($? != 0 || channel_count == 0)); then
+    _guard '^-*' 'map channel name'
+    return
+  fi
+
+  # Append the name and info of one map channel at a time
+  local channel_xml channel_name channel_type channel_info
+  local -a channel_names channel_infos
+  local -i channel_index
+
+  for channel_index in {1..$channel_count}; do
+    # Get map channel XML node
+    if ! channel_xml=$(__lttng_xmllint_xpath $session_xml "//*[local-name()='map_channel'][$channel_index]"); then
+      continue
+    fi
+
+    # Get map channel type
+    if ! channel_type=$(__lttng_immediate_prop_from_xml $channel_xml map_channel type); then
+      continue
+    fi
+
+    if [[ -n $req_type && $channel_type != $req_type ]]; then
+      # Skip map channel of an unexpected type
+      continue
+    fi
+
+    case $channel_type in
+      kernel) channel_info='Linux kernel';;
+      user) channel_info='user space';;
+      *) channel_info=$channel_type;;
+    esac
+
+    # Get map channel name
+    if ! channel_name=$(__lttng_name_prop_from_xml $channel_xml map_channel); then
+      continue
+    fi
+
+    channel_names+=("$channel_name")
+    channel_infos+=("$channel_info")
+  done
+
+  # No map channels: show message
+  if (($#channel_names == 0)); then
+    _guard '^-*' 'map channel name'
+    return
+  fi
+
+  # Compute maximum map channel info length
+  local -i max_info_len=0 len
+
+  for channel_info in $channel_infos; do
+    len=$#channel_info
+
+    if ((len > max_info_len)); then
+      max_info_len=$len
+    fi
+  done
+
+  # Compute maximum map channel name length
+  local -i max_name_len=0
+
+  for channel_name in $channel_names; do
+    len=$#channel_name
+
+    if ((len > max_name_len)); then
+      max_name_len=$len
+    fi
+  done
+
+  # Some room for the longest info string, two spaces, and two brackets
+  local -ir max_possible_name_len=$((COLUMNS - max_info_len - 5))
+
+  if ((max_name_len > max_possible_name_len)); then
+    # Clamp
+    max_name_len=$max_possible_name_len
+  fi
+
+  # Create the display strings (name and type)
+  local -a disps
+
+  for channel_index in {1..${#channel_names}}; do
+    disps+=("${(r:$max_name_len:: :)channel_names[$channel_index]}  [$channel_infos[$channel_index]]")
+  done
+
+  # Add completions
+  expl=
+
+  if __lttng_style_is_verbose map-channel map-channels; then
+    # Verbose mode (list with infos).
+    #
+    # Using `-2` as Linux kernel and user space map channels may have the same
+    # name, but we want to show the different infos.
+    _wanted -C map-channel map-channels expl 'map channel name' \
+      compadd -2 -d disps -l -a channel_names
+  else
+    # Just the map channel names, no duplicates
+    _wanted -C map-channel map-channels expl 'map channel name' \
+      compadd -a channel_names
   fi
 }
 
