@@ -318,6 +318,7 @@ __lttng_complete_cmd_name() {
   if ((minor_version >= 16)); then
     cmd_names+=(
       'add-map-channel:add a map channel to a recording session'
+      'show-maps:show the counter values of one or more map channels'
     )
   fi
 
@@ -3355,6 +3356,33 @@ __lttng_complete_set_session_cmd() {
   specs=(
     $help_opt_specs
     ': : __lttng_complete_session_name all all'
+  )
+
+  # Add completions
+  _arguments -s -W : $specs
+}
+
+# Adds completions for the arguments of the `show-maps` command.
+__lttng_complete_show_maps_cmd() {
+  specs=(
+    $help_opt_specs
+    '(-s --session)'{-s+,--session=}'[select the counters of a recording session]: : __lttng_complete_session_name all all'
+    '*'{-c+,--channel=}'[select the counters of a map channel]: : __lttng_complete_map_channel_name opt'
+    '*--type=[select the counters of a specific map channel type]: : __lttng_complete_map_channel_type'
+    '--per=[set the aggregation level of the printed tables]:aggregation level:(channel owner cpu part)'
+    '(--all-uids)*--uid=[select the counters of a Unix user]: : __lttng_complete_uid'
+    '(--uid --all-uids)--all-uids[select the counters of all the Unix users]'
+    '(--all-pids)*--pid=[select the counters of a process ID]:process ID:_pids'
+    '(--pid --all-pids)--all-pids[select the counters of all the process IDs]'
+    '--shared[select the shared counters]'
+    '--system[select the Linux kernel counters]'
+    '*'{--part-id=,--cpu-id=}'[select the counters of a CPU ID]:CPU ID:'
+    '*--key=[select the counters with an exact key]:key:'
+    '*--key-glob=[select the counters with a key matching a pattern]:key globbing pattern:'
+    '--non-init-values[select the counters of which the value is not zero]'
+    '--sort-by=[set the sorting column of each printed table]:sort column:(key value)'
+    '--sort-order=[set the sorting order of each printed table]:sort order:((asc\:ascending desc\:descending))'
+    '--limit=[print only the first sorted rows of each table]:maximum row count:'
   )
 
   # Add completions
