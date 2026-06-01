@@ -46,7 +46,7 @@ def test(tap, test_env, wait=False):
             root = xml.etree.ElementTree.fromstring(output)
             command_output = lttngtest.LTTngClient._mi_get_in_element(root, "output")
             channels_elem = lttngtest.LTTngClient._mi_get_in_element(
-                command_output, "channels"
+                command_output, "reclaim_channels"
             )
 
             # Look for matching channel with valid reclaimed_subbuffers

@@ -463,8 +463,8 @@ void run_and_print_machine_interface(const reclaim_config& config)
 		const auto command_output_close_guard = lttng::make_scope_exit(
 			[&writer]() noexcept { mi_lttng_writer_close_element(writer.get()); });
 
-		if (mi_lttng_writer_open_element(writer.get(), "channels")) {
-			LTTNG_THROW_ERROR("Failed to open channels element");
+		if (mi_lttng_writer_open_element(writer.get(), "reclaim_channels")) {
+			LTTNG_THROW_ERROR("Failed to open reclaim_channels element");
 		}
 
 		auto channels_close_guard = lttng::make_scope_exit(
