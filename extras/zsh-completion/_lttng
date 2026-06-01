@@ -3229,6 +3229,12 @@ __lttng_complete_load_cmd() {
     )
   fi
 
+  if ((minor_version >= 16)); then
+    specs+=(
+      '--no-triggers[do not load any trigger]'
+    )
+  fi
+
   # Add completions
   _arguments -s -W : $specs
 }
@@ -3308,6 +3314,12 @@ __lttng_complete_save_cmd() {
     '(-a --all 1)'{-a,--all}'[save all recording session configurations]'
     '(-a --all): : __lttng_complete_session_name all all'
   )
+
+  if ((minor_version >= 16)); then
+    specs+=(
+      '--no-triggers[do not save any trigger]'
+    )
+  fi
 
   # Add completions
   _arguments -s -W : $specs
