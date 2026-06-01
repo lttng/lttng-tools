@@ -3441,6 +3441,13 @@ __lttng_complete_status_cmd() {
     )
   fi
 
+  # The forwarded `list --map-channel` option requires LTTng-tools ≥ 2.16
+  if ((minor_version >= 16)); then
+    specs+=(
+      '(--map-channel)--map-channel=[select specific map channel(s)]: : __lttng_complete_map_channel_name cur'
+    )
+  fi
+
   _arguments -s -W : $specs
 }
 
