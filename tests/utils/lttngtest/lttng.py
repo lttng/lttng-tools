@@ -366,12 +366,14 @@ class _Trigger(lttngctl.Trigger):
         owner_uid,  # type: Optional[int]
         condition,  # type: lttngctl.TriggerCondition
         actions,  # type: List[lttngctl.TriggerAction]
+        error_query_results: List[lttngctl.ErrorQueryResult],
     ):
         self._client = client
         self._name = name
         self._owner_uid = owner_uid
         self._condition = condition
         self._actions = actions
+        self._error_query_results = error_query_results
 
     @property
     def name(self):
@@ -392,6 +394,10 @@ class _Trigger(lttngctl.Trigger):
     def actions(self):
         # type: () -> List[lttngctl.TriggerAction]
         return self._actions
+
+    @property
+    def error_query_results(self) -> List[lttngctl.ErrorQueryResult]:
+        return self._error_query_results
 
 
 class _Channel(lttngctl.Channel):
@@ -1618,7 +1624,9 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
                     "Invalid empty 'name' element in '{}'".format(trigger_mi.tag)
                 )
 
-        return _Trigger(self, created_trigger_name, owner_uid, condition, actions)
+        return _Trigger(
+            self, created_trigger_name, owner_uid, condition, actions, list()
+        )
 
     def remove_trigger(self, trigger):
         # type: (Union[lttngctl.Trigger, str]) -> None
@@ -1671,6 +1679,13 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
                 else None
             )
 
+            error_query_results_element = self._mi_get_in_element(
+                trigger_element, "error_query_results"
+            )
+            error_query_results = self._error_query_results_from_mi(
+                error_query_results_element
+            )
+
             condition = self._condition_from_mi(
                 self._mi_get_in_element(trigger_element, "condition")
             )
@@ -1678,9 +1693,31 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
                 self._mi_get_in_element(trigger_element, "action")
             )
 
-            triggers.append(_Trigger(self, name, owner_uid, condition, actions))
+            triggers.append(
+                _Trigger(self, name, owner_uid, condition, actions, error_query_results)
+            )
 
         return triggers
+
+    @staticmethod
+    def _error_query_results_from_mi(error_query_results_element):
+        error_query_results = list()
+        for error_query_element in LTTngClient._mi_findall_in_element(
+            error_query_results_element, "error_query_result"
+        ):
+            counter_element = LTTngClient._mi_get_in_element(
+                error_query_element, "error_query_result_counter"
+            )
+            error_query_results.append(
+                lttngctl.ErrorQueryResult(
+                    LTTngClient._mi_get_in_element(error_query_element, "name").text,
+                    LTTngClient._mi_get_in_element(
+                        error_query_element, "description"
+                    ).text,
+                    int(LTTngClient._mi_get_in_element(counter_element, "value").text),
+                )
+            )
+        return error_query_results
 
     @staticmethod
     def _condition_from_mi(condition_element):
@@ -1688,6 +1725,12 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
         # A <condition> wraps a single element naming its type.
         type_element = list(condition_element)[0]
         type_name = _mi_local_name(type_element)
+        error_query_results_element = LTTngClient._mi_get_in_element(
+            condition_element, "error_query_results"
+        )
+        error_query_results = LTTngClient._error_query_results_from_mi(
+            error_query_results_element
+        )
 
         if type_name == "condition_event_rule_matches":
             event_rule = LTTngClient._event_rule_from_mi(
@@ -1703,7 +1746,9 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
                     captures.append(LTTngClient._capture_descriptor_from_mi(event_expr))
 
             return lttngctl.EventRuleMatchesCondition(
-                event_rule, captures if captures else None
+                event_rule,
+                captures if captures else None,
+                error_query_results,
             )
 
         raise Unsupported("Condition type `{}` is not supported".format(type_name))
@@ -1845,9 +1890,17 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
         type_element = list(action_element)[0]
         type_name = _mi_local_name(type_element)
         rate_policy = LTTngClient._rate_policy_from_mi(type_element)
+        error_query_results_element = LTTngClient._mi_get_in_element(
+            action_element, "error_query_results"
+        )
+        error_query_results = LTTngClient._error_query_results_from_mi(
+            error_query_results_element
+        )
 
         if type_name == "action_notify":
-            return lttngctl.NotifyTriggerAction(rate_policy)
+            return lttngctl.NotifyTriggerAction(
+                rate_policy, error_query_results=error_query_results
+            )
 
         session_action_classes = {
             "action_start_session": lttngctl.StartSessionTriggerAction,
@@ -1858,7 +1911,9 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
             session_name = LTTngClient._mi_get_in_element(
                 type_element, "session_name"
             ).text
-            return session_action_classes[type_name](session_name, rate_policy)
+            return session_action_classes[type_name](
+                session_name, rate_policy, error_query_results=error_query_results
+            )
 
         if type_name == "action_snapshot_session":
             session_name = LTTngClient._mi_get_in_element(
@@ -1867,7 +1922,9 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
             # The snapshot output details are not reconstructed; only the
             # session name and rate policy round-trip through this controller.
             return lttngctl.SnapshotSessionTriggerAction(
-                session_name, rate_policy=rate_policy
+                session_name,
+                rate_policy=rate_policy,
+                error_query_results=error_query_results,
             )
 
         raise Unsupported("Action type `{}` is not supported".format(type_name))

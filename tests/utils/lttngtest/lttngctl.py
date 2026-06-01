@@ -664,6 +664,32 @@ class KernelFunctionEventRule(EventRule):
 # Trigger-related classes
 
 
+class ErrorQueryResult(abc.ABC):
+    """Error query result."""
+
+    def __init__(
+        self,
+        name: str,
+        description: str,
+        value: int = 0,
+    ):
+        self._name: str = name
+        self._description: str = description
+        self._value = value
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def description(self) -> str:
+        return self._description
+
+    @property
+    def value(self) -> int:
+        return self._value
+
+
 class RatePolicy(abc.ABC):
     """Base class for trigger action rate policies."""
 
@@ -713,7 +739,12 @@ class OnceAfterNRatePolicy(RatePolicy):
 class TriggerCondition(abc.ABC):
     """Base class for trigger conditions."""
 
-    pass
+    def __init__(self, error_query_results: List[ErrorQueryResult] = list()):
+        self._error_query_results = error_query_results
+
+    @property
+    def error_query_results(self) -> List[ErrorQueryResult]:
+        return self._error_query_results
 
 
 class EventRuleMatchesCondition(TriggerCondition):
@@ -723,7 +754,9 @@ class EventRuleMatchesCondition(TriggerCondition):
         self,
         event_rule,  # type: EventRule
         capture_descriptors=None,  # type: Optional[List[str]]
+        error_query_results: List[ErrorQueryResult] = list(),
     ):
+        super().__init__(error_query_results)
         self._event_rule = event_rule
         self._capture_descriptors = capture_descriptors if capture_descriptors else []
 
@@ -754,7 +787,12 @@ class EventRuleMatchesCondition(TriggerCondition):
 class TriggerAction(abc.ABC):
     """Base class for trigger actions."""
 
-    pass
+    def __init__(self, error_query_results: List[ErrorQueryResult] = list()):
+        self._error_query_results = error_query_results
+
+    @property
+    def error_query_results(self) -> List[ErrorQueryResult]:
+        return self._error_query_results
 
 
 class _RatePolicyAction(TriggerAction):
@@ -766,8 +804,11 @@ class _RatePolicyAction(TriggerAction):
     intermediate base rather than being part of TriggerAction itself.
     """
 
-    def __init__(self, rate_policy=None):
+    def __init__(
+        self, rate_policy=None, error_query_results: List[ErrorQueryResult] = list()
+    ):
         # type: (Optional[RatePolicy]) -> None
+        super().__init__(error_query_results=error_query_results)
         self._rate_policy = rate_policy
 
     def _effective_rate_policy(self):
@@ -801,9 +842,14 @@ class NotifyTriggerAction(_RatePolicyAction):
 class _SessionTriggerAction(_RatePolicyAction):
     """Base class for trigger actions that target a recording session."""
 
-    def __init__(self, session_name, rate_policy=None):
+    def __init__(
+        self,
+        session_name,
+        rate_policy=None,
+        error_query_results: List[ErrorQueryResult] = list(),
+    ):
         # type: (str, Optional[RatePolicy]) -> None
-        super().__init__(rate_policy)
+        super().__init__(rate_policy, error_query_results)
         self._session_name = session_name
 
     def __eq__(self, other):
@@ -852,8 +898,9 @@ class SnapshotSessionTriggerAction(_SessionTriggerAction):
         ctrl_url=None,  # type: Optional[str]
         data_url=None,  # type: Optional[str]
         rate_policy=None,  # type: Optional[RatePolicy]
+        error_query_results: List[ErrorQueryResult] = list(),
     ):
-        super().__init__(session_name, rate_policy)
+        super().__init__(session_name, rate_policy, error_query_results)
         self._output_name = output_name
         self._max_size = max_size
         self._path = path
@@ -929,6 +976,11 @@ class Trigger(abc.ABC):
     @abc.abstractmethod
     def actions(self):
         # type: () -> List[TriggerAction]
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def error_query_results(self) -> List[ErrorQueryResult]:
         raise NotImplementedError
 
 
