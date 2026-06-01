@@ -3143,6 +3143,7 @@ __lttng_complete_list_cmd() {
     -d --domain
     -f --fields
     -c --channel
+       --map-channel
     -k --kernel
     -u --userspace
     -j --jul
@@ -3192,6 +3193,13 @@ __lttng_complete_list_cmd() {
       '(-f --fields --syscall)--mem-usage=[set event record channel memory usage display mode]:memory usage mode:(compact full)'
       '--style=[set command output style]:output style:(compact)'
       '--no-truncate[do not truncate long output lines]'
+    )
+  fi
+
+  # The map channel option requires LTTng-tools ≥ 2.16.
+  if ((minor_version >= 16)); then
+    specs+=(
+      '(-d --domain -f --fields --syscall --map-channel)--map-channel=[list the properties of specific map channel(s)]: : __lttng_complete_map_channel_name arg'
     )
   fi
 
