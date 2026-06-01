@@ -1204,6 +1204,9 @@ __lttng_complete_trigger_rate_policy() {
 #
 # Uses the `in_opt_val` parameter.
 #
+# Only completes `--rate-policy` when the `supports_rate_policy_opt`
+# parameter is `1`.
+#
 # Sets `opt_completed` to `1` if an option was recognized and completion
 # attempted, or `0` otherwise.
 #
@@ -1212,10 +1215,12 @@ __lttng_complete_trigger_rate_policy() {
 __lttng_try_complete_action_opt() {
   opt_completed=1
 
-  if [[ $in_opt_val == rate-policy ]] || compset -P '--rate-policy=*:'; then
+  if ((supports_rate_policy_opt)) &&
+      { [[ $in_opt_val == rate-policy ]] || compset -P '--rate-policy=*:' }; then
     _message -e descriptions 'execution request count'
     return
-  elif [[ $in_opt_val == rate-policy ]] || compset -P '--rate-policy='; then
+  elif ((supports_rate_policy_opt)) &&
+      { [[ $in_opt_val == rate-policy ]] || compset -P '--rate-policy=' }; then
     __lttng_complete_trigger_rate_policy
     return
   elif [[ $in_opt_val == action ]] || compset -P '--action='; then
@@ -1537,32 +1542,44 @@ __lttng_complete_trigger_action_snapshot_session() {
 __lttng_complete_trigger_action() {
   local -r action_type=$1
   local -i opt_completed
+  local handler
+  local -i supports_rate_policy_opt=1
 
   # Common initial state for all action completion functions
   in_opt_val=
   long_opts=()
   short_opts=()
-  __lttng_add_opts --rate-policy 'set the rate policy'
-  __lttng_add_opts --action 'set the type of the next trigger action'
 
+  # Select the handler (and note any per-action option support) for this
+  # action type.
   case $action_type in
     notify)
-      __lttng_complete_trigger_action_notify
-      return
+      handler=__lttng_complete_trigger_action_notify
       ;;
     (start|stop|rotate)-session)
-      __lttng_complete_trigger_action_session
-      return
+      handler=__lttng_complete_trigger_action_session
       ;;
     snapshot-session)
-      __lttng_complete_trigger_action_snapshot_session
-      return
+      handler=__lttng_complete_trigger_action_snapshot_session
       ;;
     *)
       _message "unknown action type \`$action_type\`"
       return
       ;;
   esac
+
+  # Set the options before the handler runs, as the handler prunes
+  # already-typed options and offers the rest.
+  #
+  # `--action` is common to every action type; `--rate-policy` only to those
+  # which support it.
+  __lttng_add_opts --action 'set the type of the next trigger action'
+
+  if ((supports_rate_policy_opt)); then
+    __lttng_add_opts --rate-policy 'set the rate policy'
+  fi
+
+  $handler
 }
 
 # Adds completions for a trigger action type.
