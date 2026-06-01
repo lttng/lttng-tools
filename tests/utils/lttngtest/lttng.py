@@ -1209,6 +1209,8 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
         HUMAN = 1
 
     _MI_NS = "{https://lttng.org/xml/ns/lttng-mi}"
+    _MI_XSD_MAJOR_VERSION = 4
+    _MI_XSD_MINOR_VERSION = 2
     _timeout_s = None
 
     def __init__(
@@ -1299,8 +1301,61 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
 
         if process.returncode != 0:
             raise LTTngClientError(command_args, out, err)
-        else:
-            return (out, err)
+
+        if output_format == LTTngClient.CommandOutputFormat.MI_XML:
+            self._validate_mi(out)
+
+        return (out, err)
+
+    def _validate_mi(self, mi_xml):
+        # type: (str) -> None
+        """
+        Validate an MI XML document against the MI XSD, raising InvalidMI on
+        failure.
+        """
+        xsd_path = (
+            self._environment._project_root
+            / "src"
+            / "common"
+            / "mi-lttng-{major}.{minor}.xsd".format(
+                major=LTTngClient._MI_XSD_MAJOR_VERSION,
+                minor=LTTngClient._MI_XSD_MINOR_VERSION,
+            )
+        )
+        validate_bin = (
+            self._environment._project_root
+            / "tests"
+            / "utils"
+            / "xml-utils"
+            / "validate_xml"
+        )
+
+        mi_file = tempfile.NamedTemporaryFile(
+            mode="w",
+            prefix="lttng_mi_",
+            suffix=".xml",
+            dir=self._environment.lttng_log_dir,
+            delete=False,
+            encoding="utf-8",
+        )
+        try:
+            mi_file.write(mi_xml)
+            mi_file.close()
+
+            validation = subprocess.run(
+                [str(validate_bin), str(xsd_path), mi_file.name],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+        finally:
+            os.unlink(mi_file.name)
+
+        if validation.returncode != 0:
+            raise InvalidMI(
+                "MI output failed validation against `{xsd}`:\n{error}".format(
+                    xsd=xsd_path, error=validation.stderr.decode("utf-8")
+                )
+            )
 
     def create_session(
         self,
