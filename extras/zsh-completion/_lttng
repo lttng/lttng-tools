@@ -1713,6 +1713,150 @@ __lttng_complete_trigger_action_snapshot_session() {
   _describe -O option long_opts -qS= -- short_opts
 }
 
+# Adds completions for a map channel type.
+__lttng_complete_map_channel_type() {
+  local -r types=(
+    'kernel:Linux kernel map channel'
+    'user:user space map channel'
+  )
+
+  _describe 'map channel type' types
+}
+
+# Adds completions for an `incr-map-value` trigger action.
+__lttng_complete_trigger_action_incr_map_value() {
+  local session_name channel_type
+
+  # Append specific options to `long_opts` and `short_opts`
+  __lttng_add_opts --session -s 'set the target recording session'
+  __lttng_add_opts --channel -c 'set the target map channel'
+  __lttng_add_opts --type -t 'set the type of the target map channel'
+  __lttng_add_opts --key -k 'set the key template of the counter to increment'
+
+  # Check all the next words in order up to (and excluding) the
+  # current one.
+  for word_index in {$word_index..$#words}; do
+    if ((word_index == CURRENT)); then
+      break
+    fi
+
+    word=$words[word_index]
+
+    case $word in
+      --session=*)
+        __lttng_exclude_opts --session -s
+
+        # Save the recording session name
+        session_name=${word#--session=}
+        ;;
+      --session|-s)
+        # Next: value of `--session`/`-s` option
+        in_opt_val=session
+        ;;
+      --channel=*)
+        __lttng_exclude_opts --channel -c
+        ;;
+      --channel|-c)
+        # Next: value of `--channel`/`-c` option
+        in_opt_val=channel
+        ;;
+      --type=*)
+        __lttng_exclude_opts --type -t
+
+        # Save the map channel type
+        channel_type=${word#--type=}
+        ;;
+      --type|-t)
+        # Next: value of `--type`/`-t` option
+        in_opt_val=type
+        ;;
+      --key=*)
+        __lttng_exclude_opts --key -k
+        ;;
+      --key|-k)
+        # Next: value of `--key`/`-k` option
+        in_opt_val=key
+        ;;
+      --action=*)
+        # Defer to action handling dispatch. Action type is what
+        # follows `--action=` here.
+        ((word_index++))
+        __lttng_complete_trigger_action ${word#--action=}
+        return
+        ;;
+      --action)
+        # Next: value of `--action` option
+        in_opt_val=action
+        ;;
+      *)
+        # Anything else: check for option value, or ignore otherwise
+        case $in_opt_val in
+          session)
+            __lttng_exclude_opts --session -s
+
+            # Save the recording session name
+            session_name=$word
+            ;;
+          channel)
+            __lttng_exclude_opts --channel -c
+            ;;
+          type)
+            __lttng_exclude_opts --type -t
+
+            # Save the map channel type
+            channel_type=$word
+            ;;
+          key)
+            __lttng_exclude_opts --key -k
+            ;;
+          action)
+            # Defer to action handling dispatch. Action type is
+            # the whole current word.
+            ((word_index++))
+            __lttng_complete_trigger_action $word
+            return
+            ;;
+        esac
+
+        # Next: not the value of any known option
+        in_opt_val=
+        ;;
+    esac
+  done
+
+  # Try to complete common action options
+  __lttng_try_complete_action_opt
+
+  local -ir ret=$?
+
+  if ((opt_completed)); then
+    return $ret
+  fi
+
+  # Try to offer option-specific completions
+  if [[ $in_opt_val == session ]] || compset -P '--session='; then
+    __lttng_complete_session_name all all
+    return
+  elif [[ $in_opt_val == channel ]] || compset -P '--channel='; then
+    # `__lttng_complete_map_channel_name` relies on `opt_args` for the recording
+    # session name (`-s`/`--session`) and the map channel type (`-t`/`--type`).
+    opt_args=()
+    [[ -n $session_name ]] && opt_args[--session]=$session_name
+    [[ -n $channel_type ]] && opt_args[--type]=$channel_type
+    __lttng_complete_map_channel_name opt
+    return
+  elif [[ $in_opt_val == type ]] || compset -P '--type='; then
+    __lttng_complete_map_channel_type
+    return
+  elif [[ $in_opt_val == key ]] || compset -P '--key='; then
+    _message -e descriptions 'key template'
+    return
+  fi
+
+  # Offer all possible options
+  _describe -O option long_opts -qS= -- short_opts
+}
+
 # Usage:
 #
 #     __lttng_complete_trigger_action ACTIONTYPE
@@ -1741,6 +1885,10 @@ __lttng_complete_trigger_action() {
     snapshot-session)
       handler=__lttng_complete_trigger_action_snapshot_session
       ;;
+    incr-map-value)
+      handler=__lttng_complete_trigger_action_incr_map_value
+      supports_rate_policy_opt=0
+      ;;
     *)
       _message "unknown action type \`$action_type\`"
       return
@@ -1763,13 +1911,18 @@ __lttng_complete_trigger_action() {
 
 # Adds completions for a trigger action type.
 __lttng_complete_trigger_action_type() {
-  local -r types=(
+  local types=(
     'notify:send a notification through the notification mechanism'
     'start-session:start a recording session'
     'stop-session:stop a recording session'
     'rotate-session:archive the current trace chunk of a recording session'
     'snapshot-session:take a recording session snapshot'
   )
+
+  # The `incr-map-value` action requires LTTng-tools ≥ 2.16
+  if ((minor_version >= 16)); then
+    types+=('incr-map-value:increment a map value')
+  fi
 
   # Add completions
   _describe 'trigger action type' types
