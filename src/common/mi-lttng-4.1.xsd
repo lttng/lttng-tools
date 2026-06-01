@@ -816,7 +816,7 @@ SPDX-License-Identifier: MIT
 			<xs:enumeration value="list-output" />
 			<xs:enumeration value="del-output" />
 			<xs:enumeration value="add-output" />
-			<xs:enumeration value="record-output" />
+			<xs:enumeration value="record" />
 		</xs:restriction>
 	</xs:simpleType>
 
