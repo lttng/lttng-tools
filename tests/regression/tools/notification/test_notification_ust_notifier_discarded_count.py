@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 #
 """
-Validate buffer_usage triggers in the UST domain.
+Validate trigger events discards in the UST domain.
 """
 
 import os
@@ -31,10 +31,11 @@ if __name__ == "__main__":
             "sessiond_extra_args": ["--spawn-consumers"],
         },
         {
-            "function": tests.test_ust_notifier_discarded_count_max_bucket,
+            "function": tests.test_notifier_discarded_count_max_bucket,
             "sessiond_extra_args": ["--event-notifier-error-buffer-size-userspace=3"],
             "kwargs": {
                 "max_bucket_size": 3,
+                "domain": lttngtest.lttngctl.TracingDomain.User,
             },
         },
         {

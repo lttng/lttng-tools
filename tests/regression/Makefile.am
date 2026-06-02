@@ -55,8 +55,8 @@ SERIAL_TESTS = tools/base-path/test_ust \
 	tools/notification/test_notification_kernel_buffer_usage.py \
 	tools/notification/test_notification_kernel_capture \
 	tools/notification/test_notification_kernel_instrumentation \
+	tools/notification/test_notification_kernel_notifier_discarded_count.py \
 	tools/notification/test_notification_kernel_syscall \
-	tools/notification/test_notification_notifier_discarded_count \
 	tools/notification/test_notification_kernel_userspace_probe \
 	tools/notification/test_notification_multi_app \
 	tools/notification/test_rotation \

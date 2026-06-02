@@ -388,15 +388,23 @@ def test_notifier_discarded_count(
     )
 
 
-def test_ust_notifier_discarded_count_max_bucket(
-    tap: lttngtest.TapGenerator, test_env: lttngtest._Environment, max_bucket_size: int
+def test_notifier_discarded_count_max_bucket(
+    tap: lttngtest.TapGenerator,
+    test_env: lttngtest._Environment,
+    max_bucket_size: int,
+    domain: lttngtest.lttngctl.TracingDomain = lttngtest.lttngctl.TracingDomain.User,
 ) -> None:
     """
     Validate that adding triggers beyond the max bucket size fails.
     """
     test_passed = True
     client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
-    trigger_event_rule = lttngtest.lttngctl.UserTracepointEventRule("tp:tptest")
+    trigger_event_rule = (
+        lttngtest.lttngctl.KernelTracepointEventRule("lttng_test_filter_event")
+        if domain == lttngtest.lttngctl.TracingDomain.Kernel
+        else lttngtest.lttngctl.UserTracepointEventRule("tp:tptest")
+    )
+    triggers = list()
     for i in range(max_bucket_size):
         try:
             trigger = client.add_trigger(
@@ -417,6 +425,7 @@ def test_ust_notifier_discarded_count_max_bucket(
             )
             tap.diagnostic("Adding trigger succeeded, when it should have failed")
             test_passed = False
+            triggers.append(trigger)
         except Exception as e:
             tap.diagnostic("Adding trigger failed: {}".format(e))
             if (
@@ -546,7 +555,7 @@ def test_ust_notifier_discarded_regardless_trigger_owner(
         client.list_triggers(), root_trigger.name
     )
     tap.diagnostic(
-        "trigger '{}' discarded tracer messages before application run: {}".format(
+        "Trigger '{}' discarded tracer messages before application run: {}".format(
             root_trigger.name, root_discarded_before
         )
     )
@@ -566,7 +575,7 @@ def test_ust_notifier_discarded_regardless_trigger_owner(
         client.list_triggers(), root_trigger.name
     )
     tap.diagnostic(
-        "trigger '{}' discarded tracer messages before application run: {}".format(
+        "Trigger '{}' discarded tracer messages before application run: {}".format(
             root_trigger.name, root_discarded_before
         )
     )
