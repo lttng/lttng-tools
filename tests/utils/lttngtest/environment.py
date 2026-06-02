@@ -6,6 +6,7 @@
 #
 
 import enum
+import json
 import multiprocessing
 from types import FrameType
 from typing import Callable, Dict, Iterator, Optional, Tuple, List, Generator
@@ -265,6 +266,28 @@ class _LiveViewer:
         pass
 
 
+def _prepend_library_dirs(
+    env: Dict[str, str], library_dirs: Optional[List[pathlib.Path]]
+) -> None:
+    # Prepend `library_dirs` to the LD_LIBRARY_PATH of `env`, in place.
+    #
+    # A component of a non-default build profile links against that build's
+    # liblttng-ust and liburcu, which typically live outside the loader's
+    # default search path (for instance under a 32-bit prefix on a 64-bit
+    # host) and are not guaranteed to be reachable through the binary's RPATH.
+    # Its declared library directories must therefore be made available
+    # explicitly; the in-tree build passes no `library_dirs` and keeps relying
+    # on the loader's defaults.
+    if not library_dirs:
+        return
+
+    existing_library_path = env.get("LD_LIBRARY_PATH", "")
+    prepended = ":".join(str(directory) for directory in library_dirs)
+    env["LD_LIBRARY_PATH"] = prepended + (
+        (":" + existing_library_path) if existing_library_path else ""
+    )
+
+
 class _WaitTraceTestApplication:
     """
     Create an application that waits before tracing. This allows a test to
@@ -289,6 +312,7 @@ class _WaitTraceTestApplication:
         emit_event_with_empty_field_name=False,
         emit_blob_events=False,
         register_timeout_s=-1,
+        library_dirs: Optional[List[pathlib.Path]] = None,
     ):
         self._process = None
         self._environment = environment  # type: Environment
@@ -349,6 +373,12 @@ class _WaitTraceTestApplication:
         # Make sure the app is blocked until it is properly registered to the session daemon.
         if "LTTNG_UST_REGISTER_TIMEOUT" not in extra_env_vars:
             test_app_env["LTTNG_UST_REGISTER_TIMEOUT"] = str(register_timeout_s)
+
+        # When the application is built for a non-native ABI (e.g. 32-bit on a
+        # 64-bit host), its libraries (e.g. liblttng-ust) live outside the
+        # loader's default search path; prepend the directories reported by that
+        # build's profile.
+        _prepend_library_dirs(test_app_env, library_dirs)
 
         # File that the application will create to indicate it has completed its initialization.
         app_ready_file_path = tempfile.mktemp(
@@ -718,8 +748,14 @@ class _TraceTestApplication:
     scenarios, it is preferable to use a WaitTraceTestApplication.
     """
 
-    def __init__(self, binary_path, environment, extra_env_vars=dict(), **kwargs):
-        # type: (pathlib.Path, Environment)
+    def __init__(
+        self,
+        binary_path: pathlib.Path,
+        environment: "_Environment",
+        extra_env_vars: dict = dict(),
+        library_dirs: Optional[List[pathlib.Path]] = None,
+        **kwargs,
+    ):
         self._process = None
         self._environment = environment  # type: Environment
         self._has_returned = False
@@ -728,6 +764,9 @@ class _TraceTestApplication:
         # Make sure the app is blocked until it is properly registered to the session daemon.
         if "LTTNG_UST_REGISTER_TIMEOUT" not in extra_env_vars:
             test_app_env["LTTNG_UST_REGISTER_TIMEOUT"] = "-1"
+
+        # See the equivalent handling in `_WaitTraceTestApplication`.
+        _prepend_library_dirs(test_app_env, library_dirs)
 
         if type(binary_path) is str:
             test_app_args = [str(binary_path)]
@@ -813,6 +852,97 @@ class SavingProcessOutputConsumer(ProcessOutputConsumer):
         return self._lines
 
 
+class _BuildProfile:
+    """
+    Describes the artifacts of a single build.
+
+    A profile is loaded from a file generated at build time (see
+    `tests/utils/lttng-build-profile.json.in`) or hand-authored to point the
+    test framework at the artifacts of another build. Beyond a name and a
+    description, it records the build's ABI word size and the paths of its
+    daemons, client and test applications, so that a test can run a given
+    component from a build other than the in-tree one.
+
+    Paths in the profile are resolved relative to the profile file's own
+    directory, unless they are absolute.
+    """
+
+    def __init__(self, profile_path: pathlib.Path) -> None:
+        profile_path = pathlib.Path(profile_path)
+        self._base_dir = profile_path.parent
+        with open(str(profile_path), "r") as profile_file:
+            contents = json.load(profile_file)
+
+        abi = contents["abi"]
+        self._name = abi["name"]
+        self._description = abi["description"]
+        self._word_size_bits = int(abi["word_size_bits"])
+        self._binaries = contents["binaries"]
+        self._testapp_dir = self._resolve(contents["testapp_dir"])
+        # An empty entry is possible when a dependency's library directory is
+        # unknown (e.g. a build configured without LTTng-UST).
+        self._library_dirs = [
+            self._resolve(directory)
+            for directory in contents["library_dirs"]
+            if directory
+        ]
+
+    def __repr__(self) -> str:
+        return "BuildProfile(name={!r}, word_size_bits={})".format(
+            self._name, self._word_size_bits
+        )
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, _BuildProfile):
+            return NotImplemented
+        return self._name == other._name
+
+    def __hash__(self) -> int:
+        return hash(self._name)
+
+    def _resolve(self, path: str) -> pathlib.Path:
+        path = pathlib.Path(path)
+        if not path.is_absolute():
+            path = self._base_dir / path
+        # Collapse any `..` segments so logged paths stay readable.
+        return pathlib.Path(os.path.normpath(str(path)))
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def description(self) -> str:
+        return self._description
+
+    @property
+    def word_size_bits(self) -> int:
+        return self._word_size_bits
+
+    @property
+    def sessiond_path(self) -> pathlib.Path:
+        return self._resolve(self._binaries["sessiond"])
+
+    @property
+    def relayd_path(self) -> pathlib.Path:
+        return self._resolve(self._binaries["relayd"])
+
+    @property
+    def consumerd_path(self) -> pathlib.Path:
+        return self._resolve(self._binaries["consumerd"])
+
+    @property
+    def lttng_client_path(self) -> pathlib.Path:
+        return self._resolve(self._binaries["lttng_client"])
+
+    @property
+    def library_dirs(self) -> List[pathlib.Path]:
+        return self._library_dirs
+
+    def testapp_path(self, *components: str) -> pathlib.Path:
+        return self._testapp_dir.joinpath(*components)
+
+
 # Generate a temporary environment in which to execute a test.
 class _Environment(logger._Logger):
     def __init__(
@@ -825,6 +955,10 @@ class _Environment(logger._Logger):
         enable_kernel_domain=False,  # type: bool
         skip_temporary_lttng_rundir=False,  # type: bool
         sessiond_extra_args=None,  # type: Optional[List[str]]
+        sessiond_profile=None,  # type: Optional[_BuildProfile]
+        relayd_profile=None,  # type: Optional[_BuildProfile]
+        client_profile=None,  # type: Optional[_BuildProfile]
+        consumerd_profiles=None,  # type: Optional[List[_BuildProfile]]
     ):
         super().__init__(log)
         self._processes = []
@@ -841,6 +975,20 @@ class _Environment(logger._Logger):
         self._project_root = (
             pathlib.Path(__file__).absolute().parents[3]
         )  # type: pathlib.Path
+
+        # Build profiles describe the artifacts (daemons, client, test
+        # applications) of a given build; see `_BuildProfile` and `profiles()`.
+        # Any component left without an explicit profile override is taken from
+        # the in-tree build's own profile, so the default behaviour matches a
+        # plain build tree.
+        self._default_profile = type(self).default_profile()
+        self._sessiond_profile = sessiond_profile or self._default_profile
+        self._relayd_profile = relayd_profile or self._default_profile
+        self._client_profile = client_profile or self._default_profile
+
+        if consumerd_profiles is None:
+            consumerd_profiles = [self._default_profile]
+        self._consumerd_profiles = self._validate_consumerd_profiles(consumerd_profiles)
 
         self._extra_env_vars = extra_env_vars
 
@@ -951,7 +1099,116 @@ class _Environment(logger._Logger):
     @property
     def lttng_client_path(self):
         # type: () -> pathlib.Path
-        return self._project_root / "src" / "bin" / "lttng" / "lttng"
+        return self._client_profile.lttng_client_path
+
+    _profiles_cache: Optional[List[_BuildProfile]] = None
+
+    @classmethod
+    def _default_profile_path(cls) -> pathlib.Path:
+        # The in-tree build's own profile is generated next to this module at
+        # build time.
+        return pathlib.Path(__file__).absolute().parents[1] / "lttng-build-profile.json"
+
+    @classmethod
+    def profiles(cls) -> "List[_BuildProfile]":
+        """
+        All build profiles known to the test framework.
+
+        The in-tree build's own profile comes first; any profile found (by
+        `*.json` extension) in the directory named by
+        `LTTNG_TOOLS_BUILD_PROFILE_DIR` follows. Tests that exercise multi-ABI
+        scenarios filter this list (see `profiles_with_word_size_bits()`) and size
+        their TAP plan from the result.
+        """
+        if cls._profiles_cache is not None:
+            return cls._profiles_cache
+
+        profiles = [_BuildProfile(cls._default_profile_path())]
+        names_seen = {profiles[0].name}
+
+        profile_dir = os.environ.get("LTTNG_TOOLS_BUILD_PROFILE_DIR")
+        if profile_dir:
+            for profile_file in sorted(pathlib.Path(profile_dir).glob("*.json")):
+                profile = _BuildProfile(profile_file)
+                if profile.name in names_seen:
+                    raise RuntimeError(
+                        "Duplicate build profile name `{}` (from `{}`)".format(
+                            profile.name, profile_file
+                        )
+                    )
+                names_seen.add(profile.name)
+                profiles.append(profile)
+
+        cls._profiles_cache = profiles
+        return profiles
+
+    @classmethod
+    def profiles_with_word_size_bits(cls, word_size_bits: int) -> "List[_BuildProfile]":
+        """All known build profiles whose ABI has the given word size (32 or 64)."""
+        return [
+            profile
+            for profile in cls.profiles()
+            if profile.word_size_bits == word_size_bits
+        ]
+
+    @classmethod
+    def default_profile(cls) -> "_BuildProfile":
+        """The in-tree build's own profile, used by default for every component."""
+        return cls.profiles()[0]
+
+    @staticmethod
+    def _validate_consumerd_profiles(
+        consumerd_profiles: "List[_BuildProfile]",
+    ) -> "List[_BuildProfile]":
+        # A session daemon has a single consumer daemon slot per word size
+        # (--consumerd32-path and --consumerd64-path), so at most two profiles
+        # may be registered and they must have distinct word sizes.
+        if len(consumerd_profiles) > 2:
+            raise RuntimeError(
+                "At most two consumer daemon profiles may be registered, got {}".format(
+                    len(consumerd_profiles)
+                )
+            )
+        word_sizes_bits = [profile.word_size_bits for profile in consumerd_profiles]
+        if len(set(word_sizes_bits)) != len(word_sizes_bits):
+            raise RuntimeError(
+                "Consumer daemon profiles must have distinct word sizes, got {}".format(
+                    word_sizes_bits
+                )
+            )
+        return list(consumerd_profiles)
+
+    def _library_dirs_for(
+        self, profile: "_BuildProfile"
+    ) -> Optional[List[pathlib.Path]]:
+        # The in-tree build's libraries are found through the loader's usual
+        # mechanisms; only components from another build need their library
+        # directories injected explicitly.
+        if profile == self._default_profile:
+            return None
+        return profile.library_dirs
+
+    def _prepend_profile_library_dirs(
+        self, env: Dict[str, str], profile: "_BuildProfile"
+    ) -> None:
+        # Make a daemon's, client's or application's own library directories
+        # available through LD_LIBRARY_PATH when it comes from a non-default
+        # profile (see `_library_dirs_for` and `_prepend_library_dirs`).
+        _prepend_library_dirs(env, self._library_dirs_for(profile))
+
+    def _assert_consumerd_registered_for(self, profile: "_BuildProfile") -> None:
+        # An application registers to the consumer daemon of its own word size;
+        # fail early with a clear message if none was registered for it.
+        if not any(
+            registered.word_size_bits == profile.word_size_bits
+            for registered in self._consumerd_profiles
+        ):
+            raise RuntimeError(
+                "No {}-bit consumer daemon is registered for application profile "
+                "`{}`; pass it to `test_environment(consumerd_profiles=...)`".format(
+                    profile.word_size_bits, profile.name
+                )
+            )
 
     def get_lttng_client_env(
         self, extra_env_vars: Dict[str, str] = dict()
@@ -965,6 +1222,7 @@ class _Environment(logger._Logger):
 
         client_env.update(self._extra_env_vars)
         client_env.update(extra_env_vars)
+        self._prepend_profile_library_dirs(client_env, self._client_profile)
         return client_env
 
     def get_ust_test_app_env(
@@ -1334,9 +1592,7 @@ class _Environment(logger._Logger):
 
     def _launch_lttng_relayd(self):
         # type: () -> Optional[subprocess.Popen]
-        relayd_path = (
-            self._project_root / "src" / "bin" / "lttng-relayd" / "lttng-relayd"
-        )
+        relayd_path = self._relayd_profile.relayd_path
         if os.environ.get("LTTNG_TEST_NO_RELAYD", "0") == "1":
             # Run without a relay daemon; the user may be running one
             # under gdb, for example.
@@ -1353,6 +1609,8 @@ class _Environment(logger._Logger):
 
         if self.lttng_home_location is not None:
             relayd_env["LTTNG_HOME"] = str(self.lttng_home_location)
+
+        self._prepend_profile_library_dirs(relayd_env, self._relayd_profile)
 
         self._relayd_env_vars = relayd_env
         self._log(
@@ -1458,17 +1716,25 @@ class _Environment(logger._Logger):
 
     def _launch_lttng_sessiond(self, enable_kernel_domain=False):
         # type: () -> Optional[subprocess.Popen]
-        is_64bits_host = sys.maxsize > 2**32
+        sessiond_path = self._sessiond_profile.sessiond_path
 
-        sessiond_path = (
-            self._project_root / "src" / "bin" / "lttng-sessiond" / "lttng-sessiond"
-        )
-        consumerd_path_option_name = "--consumerd{bitness}-path".format(
-            bitness="64" if is_64bits_host else "32"
-        )
-        consumerd_path = (
-            self._project_root / "src" / "bin" / "lttng-consumerd" / "lttng-consumerd"
-        )
+        # Provide the session daemon with a consumer daemon for each registered
+        # build profile (at most one per word size).
+        consumerd_options = []
+        for profile in self._consumerd_profiles:
+            bitness = "64" if profile.word_size_bits == 64 else "32"
+            consumerd_options += [
+                "--consumerd{}-path".format(bitness),
+                str(profile.consumerd_path),
+            ]
+            # A consumer daemon from another build must be told where its
+            # libraries are so that it can be spawned with the right
+            # LD_LIBRARY_PATH; the in-tree one relies on the loader's defaults.
+            if profile != self._default_profile and profile.library_dirs:
+                consumerd_options += [
+                    "--consumerd{}-libdir".format(bitness),
+                    ":".join(str(directory) for directory in profile.library_dirs),
+                ]
 
         no_sessiond_var = os.environ.get("TEST_NO_SESSIOND")
         if no_sessiond_var and no_sessiond_var == "1":
@@ -1494,6 +1760,8 @@ class _Environment(logger._Logger):
         if self.lttng_home_location is not None:
             sessiond_env["LTTNG_HOME"] = str(self.lttng_home_location)
 
+        self._prepend_profile_library_dirs(sessiond_env, self._sessiond_profile)
+
         self.lttng_sessiond_env_vars = sessiond_env
         wait_queue = _SignalWaitQueue()
         with wait_queue.intercept_signal(signal.SIGUSR1):
@@ -1503,12 +1771,9 @@ class _Environment(logger._Logger):
                 )
             )
             verbose = []
-            sessiond_command = [
-                str(sessiond_path),
-                consumerd_path_option_name,
-                str(consumerd_path),
-                "--sig-parent",
-            ]
+            sessiond_command = (
+                [str(sessiond_path)] + consumerd_options + ["--sig-parent"]
+            )
             if os.getenv("LTTNG_TEST_VERBOSE_SESSIOND", "0") != "0":
                 sessiond_command.extend(["-vvv", "--verbose-consumer"])
 
@@ -1693,26 +1958,33 @@ class _Environment(logger._Logger):
 
     def launch_wait_trace_test_application(
         self,
-        event_count,  # type: int
-        wait_time_between_events_us=0,
-        wait_before_exit=False,
-        wait_before_exit_file_path=None,
-        run_as=None,
-        text_size=None,
-        fill_text=False,
-        wait_before_last_event=False,
-        wait_before_last_event_file_path=None,
-        extra_env_vars=dict(),
-        emit_event_with_empty_field_name=False,
-        emit_blob_events=False,
+        event_count: int,
+        wait_time_between_events_us: int = 0,
+        wait_before_exit: bool = False,
+        wait_before_exit_file_path: Optional[pathlib.Path] = None,
+        run_as: Optional[str] = None,
+        text_size: Optional[int] = None,
+        fill_text: bool = False,
+        wait_before_last_event: bool = False,
+        wait_before_last_event_file_path: Optional[pathlib.Path] = None,
+        extra_env_vars: dict = dict(),
+        emit_event_with_empty_field_name: bool = False,
+        emit_blob_events: bool = False,
+        profile: "Optional[_BuildProfile]" = None,
         **kwargs,
-    ):
-        # type: (int, int, bool, Optional[pathlib.Path], Optional[str]) -> _WaitTraceTestApplication
+    ) -> "_WaitTraceTestApplication":
         """
         Launch an application that will wait before tracing `event_count` events.
+
+        `profile` selects the build whose test application is launched; it
+        defaults to the in-tree build. A consumer daemon matching the profile's
+        word size must be registered (see `test_environment`'s
+        `consumerd_profiles`).
         """
+        profile = profile or self._default_profile
+        self._assert_consumerd_registered_for(profile)
         return _WaitTraceTestApplication(
-            self._project_root / "tests" / "utils" / "testapp" / "gen-ust-events",
+            profile.testapp_path("gen-ust-events"),
             event_count,
             self,
             wait_time_between_events_us,
@@ -1726,32 +1998,35 @@ class _Environment(logger._Logger):
             extra_env_vars,
             emit_event_with_empty_field_name,
             emit_blob_events,
+            library_dirs=self._library_dirs_for(profile),
             **kwargs,
         )
 
     def launch_multi_event_wait_trace_test_application(
         self,
-        event_count,  # type: int
-        wait_time_between_events_us=0,
-        wait_before_exit=False,
-        wait_before_exit_file_path=None,
-        run_as=None,
-        wait_before_last_event=False,
-        wait_before_last_event_file_path=None,
-    ):
-        # type: (int, int, bool, Optional[pathlib.Path], Optional[str], bool, Optional[pathlib.Path]) -> _WaitTraceTestApplication
+        event_count: int,
+        wait_time_between_events_us: int = 0,
+        wait_before_exit: bool = False,
+        wait_before_exit_file_path: Optional[pathlib.Path] = None,
+        run_as: Optional[str] = None,
+        wait_before_last_event: bool = False,
+        wait_before_last_event_file_path: Optional[pathlib.Path] = None,
+        profile: "Optional[_BuildProfile]" = None,
+    ) -> "_WaitTraceTestApplication":
         """
         Launch the gen-many-event-classes application that will wait before tracing `event_count` iterations.
         Each iteration emits events from multiple event classes.
         Note: text_size and fill_text parameters are not supported by this application.
+
+        `profile` selects the build whose test application is launched; it
+        defaults to the in-tree build. A consumer daemon matching the profile's
+        word size must be registered (see `test_environment`'s
+        `consumerd_profiles`).
         """
+        profile = profile or self._default_profile
+        self._assert_consumerd_registered_for(profile)
         return _WaitTraceTestApplication(
-            self._project_root
-            / "tests"
-            / "utils"
-            / "testapp"
-            / "gen-many-event-classes"
-            / "gen-many-event-classes",
+            profile.testapp_path("gen-many-event-classes", "gen-many-event-classes"),
             event_count,
             self,
             wait_time_between_events_us,
@@ -1762,18 +2037,31 @@ class _Environment(logger._Logger):
             fill_text=False,
             wait_before_last_event=wait_before_last_event,
             wait_before_last_event_file_path=wait_before_last_event_file_path,
+            library_dirs=self._library_dirs_for(profile),
         )
 
-    def launch_test_application(self, path, extra_env_vars=dict(), **kwargs):
-        # type () -> TraceTestApplication
+    def launch_test_application(
+        self,
+        path: pathlib.Path,
+        extra_env_vars: dict = dict(),
+        profile: "Optional[_BuildProfile]" = None,
+        **kwargs,
+    ) -> "_TraceTestApplication":
         """
         Launch an application with it's environment set for being traced
         by this test environment's session daemon.
+
+        `profile`, when set, selects the build (see `profiles()`) whose library
+        directories are made available to the application; `path` remains
+        caller-provided.
         """
+        profile = profile or self._default_profile
+        self._assert_consumerd_registered_for(profile)
         return _TraceTestApplication(
             path,
             self,
             extra_env_vars,
+            library_dirs=self._library_dirs_for(profile),
             **kwargs,
         )
 
@@ -2206,8 +2494,12 @@ def test_environment(
     enable_kernel_domain=False,
     skip_temporary_lttng_rundir=False,
     sessiond_extra_args=None,
+    sessiond_profile=None,
+    relayd_profile=None,
+    client_profile=None,
+    consumerd_profiles=None,
 ):
-    # type: (bool, Optional[Callable[[str], None]], bool, dict, bool, bool, bool, Optional[List[str]]) -> Iterator[_Environment]
+    # type: (bool, Optional[Callable[[str], None]], bool, dict, bool, bool, bool, Optional[List[str]], Optional[_BuildProfile], Optional[_BuildProfile], Optional[_BuildProfile], Optional[List[_BuildProfile]]) -> Iterator[_Environment]
     env = _Environment(
         with_sessiond,
         log,
@@ -2217,6 +2509,10 @@ def test_environment(
         enable_kernel_domain,
         skip_temporary_lttng_rundir,
         sessiond_extra_args,
+        sessiond_profile,
+        relayd_profile,
+        client_profile,
+        consumerd_profiles,
     )
     try:
         yield env

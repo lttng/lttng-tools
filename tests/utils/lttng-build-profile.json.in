@@ -1,0 +1,18 @@
+{
+	"abi": {
+		"name": "@LTTNG_BUILD_PROFILE_NAME@",
+		"description": "@LTTNG_BUILD_PROFILE_DESCRIPTION@",
+		"word_size_bits": @PTR_BITS@
+	},
+	"binaries": {
+		"sessiond": "../../src/bin/lttng-sessiond/lttng-sessiond",
+		"relayd": "../../src/bin/lttng-relayd/lttng-relayd",
+		"consumerd": "../../src/bin/lttng-consumerd/lttng-consumerd",
+		"lttng_client": "../../src/bin/lttng/lttng"
+	},
+	"testapp_dir": "testapp",
+	"library_dirs": [
+		"@UST_LIBDIR@",
+		"@URCU_LIBDIR@"
+	]
+}

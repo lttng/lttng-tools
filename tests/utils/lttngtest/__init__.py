@@ -8,6 +8,7 @@
 from .tap_generator import *
 from .environment import *
 from .environment import _Environment
+from .environment import _BuildProfile
 from .lttngctl import *
 from .lttng import *
 

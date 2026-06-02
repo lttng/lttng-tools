@@ -6,6 +6,8 @@
 SUBDIRS = . testapp
 
 EXTRA_DIST = \
+	lttng-build-profile.json.in \
+	lttng-build-profile.json.in.license \
 	lttngtest/environment.py \
 	lttngtest/__init__.py \
 	lttngtest/logger.py \
