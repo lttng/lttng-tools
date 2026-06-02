@@ -607,10 +607,28 @@ PKG_CHECK_MODULES([libxml2], [libxml-2.0 >= 2.7.6])
 
 AC_CHECK_FUNC([clock_gettime], [AC_DEFINE_UNQUOTED([LTTNG_HAVE_CLOCK_GETTIME], 1, [Has clock_gettime() support.])])
 
+# The ABI word size (in bits) is recorded in the build profile
+# (see tests/utils/lttng-build-profile.json.in).
+AC_CHECK_SIZEOF([void *])
+PTR_BITS=`expr "$ac_cv_sizeof_void_p" \* 8`
+AC_SUBST([PTR_BITS])
+
+# Name and description of this build's profile. The name must be unique among
+# discovered profiles, so the word size is part of it. A multilib build
+# (e.g. -m32 on x86_64) shares its host triplet with its 64-bit counterpart;
+# this differentiates them.
+AC_SUBST([LTTNG_BUILD_PROFILE_NAME], ["$host-${PTR_BITS}bit"])
+AC_SUBST([LTTNG_BUILD_PROFILE_DESCRIPTION], ["In-tree $host build ($PTR_BITS-bit)"])
+
 # URCU library version needed or newer
 PKG_CHECK_MODULES([URCU], [liburcu >= 0.14])
 PKG_CHECK_MODULES([URCU_CDS], [liburcu-cds >= 0.14])
 AM_CPPFLAGS="$AM_CPPFLAGS $URCU_CFLAGS"
+
+# Library directory of liburcu; recorded in the build profile so the test
+# framework can find the matching libraries for an out-of-tree build.
+URCU_LIBDIR=`$PKG_CONFIG --variable=libdir liburcu`
+AC_SUBST([URCU_LIBDIR])
 
 # Check for libkmod, it will be auto-neabled if found but won't fail if it's not,
 # it can be explicitly disabled with --without-kmod
@@ -659,7 +677,14 @@ AS_IF([test "x$with_lttng_ust" = "xyes"], [
   PKG_CHECK_MODULES([UST_CTL], [lttng-ust-ctl >= $major_version.$minor_version lttng-ust-ctl < $major_version.$(( minor_version + 1))])
 
   AM_CPPFLAGS="$AM_CPPFLAGS $UST_CFLAGS"
+
+  # Library directory of liblttng-ust; recorded in the build profile (see
+  # URCU_LIBDIR above).
+  UST_LIBDIR=`$PKG_CONFIG --variable=libdir lttng-ust`
 ])
+
+# Always substituted (empty without LTTng-UST) so the build profile stays valid.
+AC_SUBST([UST_LIBDIR])
 
 AM_CONDITIONAL([HAVE_LIBLTTNG_UST_CTL], [test "x$with_lttng_ust" = "xyes"])
 
@@ -1469,6 +1494,7 @@ AC_CONFIG_FILES([
 	tests/unit/ini_config/Makefile
 	tests/perf/Makefile
 	tests/utils/Makefile
+	tests/utils/lttng-build-profile.json
 	tests/utils/testapp/Makefile
 	tests/utils/testapp/gen-ust-events-constructor/Makefile
 	tests/vendor/Makefile

@@ -154,6 +154,7 @@ compile_commands.json
 /tests/regression/ust/ust-dl/test_ust-dl
 /tests/regression/ust/multi-lib/exec-with-callsites
 /tests/regression/ust/multi-lib/exec-without-callsites
+/tests/utils/lttng-build-profile.json
 /tests/utils/testapp/gen-data-pending
 /tests/utils/tap/clock
 /tests/utils/testapp/foobar_provider.h

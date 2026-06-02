@@ -147,6 +147,7 @@ TESTS += tools/client/test_reclaim_memory.py \
 	ust/ust-constructor/test_ust_constructor_cpp_dynamic.py \
 	ust/ust-constructor/test_ust_constructor_cpp_static.py \
 	ust/test_no_event_timestamps.py \
+	ust/test_multi_abi.py \
 	tools/lttng-ctl/test_robust_protocol.py
 
 # Stall-buffer tests can in theory be ran in parallel with other tests.
