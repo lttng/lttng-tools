@@ -377,8 +377,10 @@ class _Channel(lttngctl.Channel):
                 filter_expression = filter_expression_element.text
 
             exclusions = []
-            for exclusion in LTTngClient._mi_get_in_element(event, "exclusions"):
-                exclusions.append(exclusion.text)
+            exclusions_element = LTTngClient._mi_find_in_element(event, "exclusions")
+            if exclusions_element is not None:
+                for exclusion in LTTngClient._mi_get_in_element(event, "exclusions"):
+                    exclusions.append(exclusion.text)
 
             exclusions = exclusions if len(exclusions) > 0 else None
 
