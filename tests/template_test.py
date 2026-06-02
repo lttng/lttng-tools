@@ -7,6 +7,7 @@
 Describe what the test is validating.
 """
 
+import logging
 import pathlib
 import sys
 
@@ -19,7 +20,7 @@ import lttngtest
 import bt2
 
 
-def test_example(tap, test_env):
+def test_example(tap: lttngtest.TapGenerator, test_env: lttngtest._Environment) -> None:
     output_path = test_env.create_temporary_directory("trace")
 
     client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
@@ -42,6 +43,7 @@ def test_example(tap, test_env):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format=lttngtest.utils.get_logging_format())
     tests = [
         test_example,
     ]
