@@ -1729,17 +1729,21 @@ int write_event_exclusions(struct mi_writer *writer, const struct lttng_event *e
 {
 	int i;
 	int ret;
-	int exclusion_count;
+	const int exclusion_count = lttng_event_get_exclusion_name_count(event);
+
+	if (exclusion_count < 0) {
+		ret = exclusion_count;
+		goto end;
+	}
+
+	if (exclusion_count == 0) {
+		ret = 0;
+		goto end;
+	}
 
 	/* Open event exclusions */
 	ret = mi_lttng_writer_open_element(writer, config_element_exclusions);
 	if (ret) {
-		goto end;
-	}
-
-	exclusion_count = lttng_event_get_exclusion_name_count(event);
-	if (exclusion_count < 0) {
-		ret = exclusion_count;
 		goto end;
 	}
 

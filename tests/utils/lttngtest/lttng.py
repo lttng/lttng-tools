@@ -1081,8 +1081,10 @@ class _Session(lttngctl.Session):
             )
 
         exclusions = []
-        for exclusion in LTTngClient._mi_get_in_element(event, "exclusions"):
-            exclusions.append(exclusion.text)
+        exclusions_element = LTTngClient._mi_find_in_element(event, "exclusions")
+        if exclusions_element is not None:
+            for exclusion in exclusions_element:
+                exclusions.append(exclusion.text)
 
         exclusions = exclusions if len(exclusions) > 0 else None
 
