@@ -55,7 +55,7 @@ class TemporaryDirectory:
         finally:
             preserve_env = os.getenv("LTTNG_TEST_PRESERVE_TEST_ENV", "0") != "0" or (
                 os.getenv("LTTNG_TEST_PRESERVE_TEST_ENV_ON_FAILURE", "0") != "0"
-                and sys.exception() is not None
+                and sys.exc_info()[1] is not None
             )
             if preserve_env:
                 destination = os.getenv("LTTNG_TEST_PRESERVE_TEST_ENV_DIR", None)
