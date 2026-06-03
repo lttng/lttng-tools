@@ -1575,7 +1575,7 @@ class _Environment(logger._Logger):
         extra_env_vars=dict(),
         emit_event_with_empty_field_name=False,
         emit_blob_events=False,
-        **kwargs
+        **kwargs,
     ):
         # type: (int, int, bool, Optional[pathlib.Path], Optional[str]) -> _WaitTraceTestApplication
         """

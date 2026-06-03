@@ -106,7 +106,9 @@ def _test_session_trace_format_overrides_default():
         with tap.case(
             "`--trace-format=ctf-2` overrides `--default-trace-format=ctf-1.8`"
         ):
-            trace_path = _capture_trace(test_env, tap, trace_format=lttngtest.TraceFormat.CTF_2)
+            trace_path = _capture_trace(
+                test_env, tap, trace_format=lttngtest.TraceFormat.CTF_2
+            )
 
             if not _is_ctf2_trace(trace_path):
                 raise AssertionError(
