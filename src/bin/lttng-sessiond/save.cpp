@@ -9,6 +9,7 @@
 #include "agent-domain.hpp"
 #include "context-configuration.hpp"
 #include "domain.hpp"
+#include "map-channel-configuration.hpp"
 #include "recording-channel-configuration.hpp"
 #include "save.hpp"
 #include "session.hpp"
@@ -49,6 +50,7 @@
 namespace ls = lttng::sessiond;
 namespace lsc = lttng::sessiond::config;
 using rcc = lttng::sessiond::config::recording_channel_configuration;
+using mcc = lttng::sessiond::config::map_channel_configuration;
 
 namespace {
 
@@ -179,6 +181,76 @@ get_buffer_consumption_backend_string(rcc::buffer_consumption_backend_t backend)
 		return config_output_type_mmap;
 	case rcc::buffer_consumption_backend_t::SPLICE:
 		return config_output_type_splice;
+	}
+
+	std::abort();
+}
+
+const char *get_map_channel_key_type_string(const mcc::key_type_t key_type) noexcept
+{
+	switch (key_type) {
+	case mcc::key_type_t::STRING:
+		return config_element_map_channel_key_type_string;
+	case mcc::key_type_t::INDEX:
+		return config_element_map_channel_key_type_index;
+	}
+
+	std::abort();
+}
+
+const char *get_map_channel_value_type_string(const mcc::value_type_t value_type) noexcept
+{
+	switch (value_type) {
+	case mcc::value_type_t::SIGNED_INT_32:
+		return config_element_map_channel_value_type_signed_int_32;
+	case mcc::value_type_t::SIGNED_INT_64:
+		return config_element_map_channel_value_type_signed_int_64;
+	case mcc::value_type_t::SIGNED_INT_MAX:
+		return config_element_map_channel_value_type_signed_int_max;
+	}
+
+	std::abort();
+}
+
+const char *get_map_channel_update_policy_string(const mcc::update_policy_t update_policy) noexcept
+{
+	switch (update_policy) {
+	case mcc::update_policy_t::PER_EVENT:
+		return config_element_map_channel_update_policy_per_event;
+	case mcc::update_policy_t::PER_RULE_MATCH:
+		return config_element_map_channel_update_policy_per_rule_match;
+	}
+
+	std::abort();
+}
+
+const char *get_map_channel_buffer_ownership_string(const lsc::ownership_model_t ownership) noexcept
+{
+	switch (ownership) {
+	case lsc::ownership_model_t::PER_UID:
+		return config_element_map_channel_buffer_ownership_per_uid;
+	case lsc::ownership_model_t::PER_PID:
+		return config_element_map_channel_buffer_ownership_per_pid;
+	case lsc::ownership_model_t::SYSTEM:
+		/*
+		 * `SYSTEM` is the ownership model of the kernel domain;
+		 * user space map channels (the only ones serialized)
+		 * are never `SYSTEM`.
+		 */
+		break;
+	}
+
+	std::abort();
+}
+
+const char *
+get_map_channel_dead_group_policy_string(const mcc::dead_group_policy_t dead_group_policy) noexcept
+{
+	switch (dead_group_policy) {
+	case mcc::dead_group_policy_t::DROP:
+		return config_element_map_channel_dead_group_policy_drop;
+	case mcc::dead_group_policy_t::SUM_INTO_SHARED:
+		return config_element_map_channel_dead_group_policy_sum_into_shared;
 	}
 
 	std::abort();
@@ -1266,6 +1338,71 @@ bool is_internal_channel(const lttng::c_string_view channel_name) noexcept
 }
 
 /*
+ * Save a single map channel.
+ *
+ * The buffer ownership and dead group policy are user space-only
+ * concepts and are therefore only serialized for the user space domain.
+ */
+void save_map_channel_from_config(session_config::writer& writer,
+				  const mcc& map_channel_config,
+				  const lttng::domain_class domain_class)
+{
+	writer.open_element(config_element_map_channel);
+
+	writer.write(config_element_name, map_channel_config.name.c_str());
+	writer.write(config_element_map_channel_key_type,
+		     get_map_channel_key_type_string(map_channel_config.key_type));
+	writer.write(config_element_map_channel_value_type,
+		     get_map_channel_value_type_string(map_channel_config.value_type));
+	writer.write(config_element_map_channel_update_policy,
+		     get_map_channel_update_policy_string(map_channel_config.update_policy));
+	writer.write(config_element_map_channel_max_entry_count,
+		     map_channel_config.max_entry_count);
+
+	if (domain_class == lttng::domain_class::USER_SPACE) {
+		writer.write(config_element_map_channel_buffer_ownership,
+			     get_map_channel_buffer_ownership_string(
+				     map_channel_config.buffer_ownership));
+
+		if (map_channel_config.buffer_ownership == lsc::ownership_model_t::PER_PID) {
+			writer.write(config_element_map_channel_dead_group_policy,
+				     get_map_channel_dead_group_policy_string(
+					     map_channel_config.dead_group_policy));
+		}
+	}
+
+	writer.close_element();
+}
+
+/*
+ * Save the map channels of a domain.
+ *
+ * Only string-keyed map channels are serialized: index-keyed map
+ * channels are internal (for example, event notifier error accounting)
+ * and cannot be recreated through the public map channel API used
+ * on load.
+ */
+void save_map_channels_from_domain(session_config::writer& writer, const lsc::domain& domain)
+{
+	if (domain.map_channel_count() == 0) {
+		return;
+	}
+
+	writer.open_element(config_element_map_channels);
+
+	for (auto& map_channel_config : domain.map_channels()) {
+		if (map_channel_config.key_type != mcc::key_type_t::STRING) {
+			/* Skip internal, index-keyed map channels */
+			continue;
+		}
+
+		save_map_channel_from_config(writer, map_channel_config, domain.domain_class_);
+	}
+
+	writer.close_element();
+}
+
+/*
  * Save a domain from an lttng::sessiond::config::domain using the new configuration types.
  */
 void save_domain_from_config(session_config::writer& writer,
@@ -1307,6 +1444,7 @@ void save_domain_from_config(session_config::writer& writer,
 	/* Close channels element */
 	writer.close_element();
 
+	save_map_channels_from_domain(writer, domain);
 	save_process_attr_trackers_from_domain(writer, domain);
 
 	/* Close domain element */
