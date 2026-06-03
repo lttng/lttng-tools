@@ -118,6 +118,14 @@ lttng_condition_event_rule_matches_get_capture_descriptor_count()
 and
 lttng_condition_event_rule_matches_get_capture_descriptor_at_index()).
 
+@note
+    Because the total serialized size of the captured values of a
+    single evaluation is limited (see
+    lttng_condition_event_rule_matches_append_capture_descriptor()),
+    some elements of the returned array may be unavailable: reading them
+    with lttng_event_field_value_array_get_element_at_index() makes that
+    function return #LTTNG_EVENT_FIELD_VALUE_STATUS_UNAVAILABLE.
+
 @param[in] evaluation
     “Event rule matches” trigger condition evaluation of which to get
     the captured event field values.
@@ -161,6 +169,26 @@ and captures the result. With the
 \link api_trigger_action_notify “notify”\endlink action, a user may read
 the captured values from the condition evaluation with
 lttng_evaluation_event_rule_matches_get_captured_values().
+
+@note
+    @parblock
+    As of LTTng&nbsp;\lt_version_maj_min, the total serialized size of
+    all the captured values of a single
+    evaluation of \lt_p{condition} is limited (512&nbsp;bytes for the
+    Linux kernel tracing domain; a little less than one memory page for
+    the user space one).
+
+    There's therefore no fixed maximum number of capture descriptors,
+    but the more you append, and the larger the captured fields, the
+    more likely it is to reach this limit.
+
+    LTTng captures values in the order of their capture descriptors:
+    when a value doesn't fit, it's \em missing from the evaluation
+    (reading it with
+    lttng_event_field_value_array_get_element_at_index() returns
+    #LTTNG_EVENT_FIELD_VALUE_STATUS_UNAVAILABLE) and LTTng proceeds with
+    the next descriptor.
+    @endparblock
 
 @param[in] condition
     “Event rule matches” trigger condition to which to append
