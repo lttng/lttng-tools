@@ -25,6 +25,8 @@
 #include <lttng/snapshot.h>
 #include <lttng/userspace-probe.h>
 
+#include <vendor/optional.hpp>
+
 #include <ctype.h>
 #include <dirent.h>
 #include <inttypes.h>
@@ -45,6 +47,19 @@
 namespace {
 using xmlBuffer_uptr =
 	std::unique_ptr<xmlBuffer, lttng::memory::create_deleter_class<xmlBuffer, xmlBufferFree>>;
+
+/*
+ * xmlFree() is a function pointer variable, not a function, so it can't
+ * be used directly as a deleter template argument.
+ */
+void xml_char_free(xmlChar *const str)
+{
+	xmlFree(str);
+}
+
+using xmlChar_uptr =
+	std::unique_ptr<xmlChar,
+			lttng::memory::create_deleter_class<xmlChar, xml_char_free>::deleter>;
 
 class encoded_string {
 public:
@@ -3000,6 +3015,213 @@ end:
 	return ret;
 }
 
+nonstd::optional<lttng_map_value_type>
+map_channel_value_type_from_config_string(const lttng::c_string_view str) noexcept
+{
+	if (str == config_element_map_channel_value_type_signed_int_32) {
+		return LTTNG_MAP_VALUE_TYPE_SIGNED_INT_32;
+	} else if (str == config_element_map_channel_value_type_signed_int_64) {
+		return LTTNG_MAP_VALUE_TYPE_SIGNED_INT_64;
+	} else if (str == config_element_map_channel_value_type_signed_int_max) {
+		return LTTNG_MAP_VALUE_TYPE_SIGNED_INT_MAX;
+	}
+
+	return nonstd::nullopt;
+}
+
+nonstd::optional<lttng_map_channel_update_policy>
+map_channel_update_policy_from_config_string(const lttng::c_string_view str) noexcept
+{
+	if (str == config_element_map_channel_update_policy_per_event) {
+		return LTTNG_MAP_CHANNEL_UPDATE_POLICY_PER_EVENT;
+	} else if (str == config_element_map_channel_update_policy_per_rule_match) {
+		return LTTNG_MAP_CHANNEL_UPDATE_POLICY_PER_RULE_MATCH;
+	}
+
+	return nonstd::nullopt;
+}
+
+nonstd::optional<lttng_map_channel_buffer_ownership>
+map_channel_buffer_ownership_from_config_string(const lttng::c_string_view str) noexcept
+{
+	if (str == config_element_map_channel_buffer_ownership_per_uid) {
+		return LTTNG_MAP_CHANNEL_BUFFER_OWNERSHIP_PER_UID;
+	} else if (str == config_element_map_channel_buffer_ownership_per_pid) {
+		return LTTNG_MAP_CHANNEL_BUFFER_OWNERSHIP_PER_PID;
+	}
+
+	return nonstd::nullopt;
+}
+
+nonstd::optional<lttng_map_channel_dead_group_policy>
+map_channel_dead_group_policy_from_config_string(const lttng::c_string_view str) noexcept
+{
+	if (str == config_element_map_channel_dead_group_policy_drop) {
+		return LTTNG_MAP_CHANNEL_DEAD_GROUP_POLICY_DROP;
+	} else if (str == config_element_map_channel_dead_group_policy_sum_into_shared) {
+		return LTTNG_MAP_CHANNEL_DEAD_GROUP_POLICY_SUM_INTO_SHARED;
+	}
+
+	return nonstd::nullopt;
+}
+
+/*
+ * Recreate a single map channel from its XML node by building a map
+ * channel descriptor and handing it to the public map channel API.
+ *
+ * Only string-keyed map channels are supported: index-keyed map
+ * channels are internal (for example, event notifier error accounting)
+ * and are never serialized, so the public string-key descriptor API is
+ * sufficient here.
+ */
+int process_map_channel_node(const xmlNodePtr map_channel_node,
+			     const struct lttng_domain& domain,
+			     const lttng::c_string_view session_name)
+{
+	LTTNG_ASSERT(map_channel_node);
+	LTTNG_ASSERT(session_name.data());
+
+	nonstd::optional<std::string> name;
+	nonstd::optional<uint64_t> max_entry_count;
+	auto value_type = LTTNG_MAP_VALUE_TYPE_SIGNED_INT_MAX;
+	auto update_policy = LTTNG_MAP_CHANNEL_UPDATE_POLICY_PER_EVENT;
+	auto buffer_ownership = LTTNG_MAP_CHANNEL_BUFFER_OWNERSHIP_PER_UID;
+	auto dead_group_policy = LTTNG_MAP_CHANNEL_DEAD_GROUP_POLICY_SUM_INTO_SHARED;
+
+	for (auto attr_node = xmlFirstElementChild(map_channel_node); attr_node;
+	     attr_node = xmlNextElementSibling(attr_node)) {
+		const xmlChar_uptr content(xmlNodeGetContent(attr_node));
+
+		if (!content) {
+			return -LTTNG_ERR_NOMEM;
+		}
+
+		const lttng::c_string_view attr_name(
+			reinterpret_cast<const char *>(attr_node->name));
+		const lttng::c_string_view content_str(
+			reinterpret_cast<const char *>(content.get()));
+
+		if (attr_name == config_element_name) {
+			if (content_str.len() >= LTTNG_SYMBOL_NAME_LEN) {
+				WARN_FMT(
+					"Map channel `{}`: name length ({}) exceeds the maximal permitted length ({}) in session configuration",
+					content_str,
+					content_str.len(),
+					LTTNG_SYMBOL_NAME_LEN);
+				return -LTTNG_ERR_LOAD_INVALID_CONFIG;
+			}
+
+			name = content_str.str();
+		} else if (attr_name == config_element_map_channel_key_type &&
+			   content_str != config_element_map_channel_key_type_string) {
+			/*
+			 * Only string-keyed map channels can be
+			 * recreated through the public map channel API.
+			 */
+			WARN_FMT("Unsupported map channel key type `{}` in session configuration",
+				 content_str);
+			return -LTTNG_ERR_LOAD_INVALID_CONFIG;
+		} else if (attr_name == config_element_map_channel_value_type) {
+			const auto parsed_value_type =
+				map_channel_value_type_from_config_string(content_str);
+
+			if (!parsed_value_type) {
+				return -LTTNG_ERR_LOAD_INVALID_CONFIG;
+			}
+
+			value_type = *parsed_value_type;
+		} else if (attr_name == config_element_map_channel_update_policy) {
+			const auto parsed_update_policy =
+				map_channel_update_policy_from_config_string(content_str);
+
+			if (!parsed_update_policy) {
+				return -LTTNG_ERR_LOAD_INVALID_CONFIG;
+			}
+
+			update_policy = *parsed_update_policy;
+		} else if (attr_name == config_element_map_channel_max_entry_count) {
+			uint64_t parsed_max_entry_count;
+
+			if (parse_uint(content.get(), &parsed_max_entry_count)) {
+				return -LTTNG_ERR_LOAD_INVALID_CONFIG;
+			}
+
+			max_entry_count = parsed_max_entry_count;
+		} else if (attr_name == config_element_map_channel_buffer_ownership) {
+			const auto parsed_buffer_ownership =
+				map_channel_buffer_ownership_from_config_string(content_str);
+
+			if (!parsed_buffer_ownership) {
+				return -LTTNG_ERR_LOAD_INVALID_CONFIG;
+			}
+
+			buffer_ownership = *parsed_buffer_ownership;
+		} else if (attr_name == config_element_map_channel_dead_group_policy) {
+			const auto parsed_dead_group_policy =
+				map_channel_dead_group_policy_from_config_string(content_str);
+
+			if (!parsed_dead_group_policy) {
+				return -LTTNG_ERR_LOAD_INVALID_CONFIG;
+			}
+
+			dead_group_policy = *parsed_dead_group_policy;
+		}
+	}
+
+	if (!name || !max_entry_count) {
+		ERR_FMT("Missing mandatory map channel property in session configuration");
+		return -LTTNG_ERR_LOAD_INVALID_CONFIG;
+	}
+
+	if (domain.type != LTTNG_DOMAIN_KERNEL && domain.type != LTTNG_DOMAIN_UST) {
+		ERR_FMT("Unsupported domain type for a map channel in session configuration");
+		return -LTTNG_ERR_LOAD_INVALID_CONFIG;
+	}
+
+	const auto descriptor = lttng::make_unique_wrapper<lttng_map_channel_descriptor,
+							   lttng_map_channel_descriptor_destroy>(
+		domain.type == LTTNG_DOMAIN_KERNEL ?
+			lttng_map_channel_descriptor_kernel_string_key_scalar_value_create(
+				value_type) :
+			lttng_map_channel_descriptor_user_string_key_scalar_value_create(
+				value_type, buffer_ownership));
+
+	if (!descriptor) {
+		return -LTTNG_ERR_NOMEM;
+	}
+
+	if (lttng_map_channel_descriptor_set_name(descriptor.get(), name->c_str()) !=
+	    LTTNG_MAP_CHANNEL_DESCRIPTOR_STATUS_OK) {
+		return -LTTNG_ERR_LOAD_INVALID_CONFIG;
+	}
+
+	if (lttng_map_channel_descriptor_set_max_key_count(descriptor.get(), *max_entry_count) !=
+	    LTTNG_MAP_CHANNEL_DESCRIPTOR_STATUS_OK) {
+		return -LTTNG_ERR_LOAD_INVALID_CONFIG;
+	}
+
+	if (lttng_map_channel_descriptor_set_update_policy(descriptor.get(), update_policy) !=
+	    LTTNG_MAP_CHANNEL_DESCRIPTOR_STATUS_OK) {
+		return -LTTNG_ERR_LOAD_INVALID_CONFIG;
+	}
+
+	if (domain.type == LTTNG_DOMAIN_UST &&
+	    buffer_ownership == LTTNG_MAP_CHANNEL_BUFFER_OWNERSHIP_PER_PID &&
+	    lttng_map_channel_descriptor_user_set_dead_group_policy(descriptor.get(),
+								    dead_group_policy) !=
+		    LTTNG_MAP_CHANNEL_DESCRIPTOR_STATUS_OK) {
+		return -LTTNG_ERR_LOAD_INVALID_CONFIG;
+	}
+
+	const auto add_ret = lttng_session_add_map_channel(session_name, descriptor.get());
+
+	if (add_ret != LTTNG_OK) {
+		return -add_ret;
+	}
+
+	return 0;
+}
+
 int process_domain_node(xmlNodePtr domain_node, const char *session_name)
 {
 	int ret;
@@ -3037,12 +3259,9 @@ int process_domain_node(xmlNodePtr domain_node, const char *session_name)
 		}
 	}
 
-	if (!channels_node) {
-		goto end;
-	}
-
 	/* create all channels */
-	for (node = xmlFirstElementChild(channels_node); node; node = xmlNextElementSibling(node)) {
+	for (node = channels_node ? xmlFirstElementChild(channels_node) : nullptr; node;
+	     node = xmlNextElementSibling(node)) {
 		const enum lttng_domain_type original_domain = domain.type;
 		xmlNodePtr contexts_node = nullptr;
 		xmlNodePtr events_node = nullptr;
@@ -3105,6 +3324,26 @@ int process_domain_node(xmlNodePtr domain_node, const char *session_name)
 		lttng_channel_destroy(channel);
 	}
 	channel = nullptr;
+
+	/* process the map channels node, if any */
+	for (node = xmlFirstElementChild(domain_node); node; node = xmlNextElementSibling(node)) {
+		xmlNodePtr map_channel_node;
+
+		if (lttng::c_string_view(reinterpret_cast<const char *>(node->name)) !=
+		    config_element_map_channels) {
+			continue;
+		}
+
+		for (map_channel_node = xmlFirstElementChild(node); map_channel_node;
+		     map_channel_node = xmlNextElementSibling(map_channel_node)) {
+			ret = process_map_channel_node(map_channel_node, domain, session_name);
+			if (ret) {
+				goto end;
+			}
+		}
+
+		break;
+	}
 
 	/* get the trackers node */
 	for (node = xmlFirstElementChild(domain_node); node; node = xmlNextElementSibling(node)) {
