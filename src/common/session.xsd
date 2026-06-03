@@ -310,6 +310,69 @@ by its signed 32-bit representation when converted to msec.
 	</xs:sequence>
 </xs:complexType>
 
+<!--
+Maps to lttng::sessiond::config::map_channel_configuration::key_type_t.
+-->
+<xs:simpleType name="map_channel_key_type_type">
+	<xs:restriction base="xs:string">
+		<xs:enumeration value="STRING" />
+	</xs:restriction>
+</xs:simpleType>
+
+<!-- Maps to lttng::sessiond::config::map_channel_configuration::value_type_t -->
+<xs:simpleType name="map_channel_value_type_type">
+	<xs:restriction base="xs:string">
+		<xs:enumeration value="SIGNED_INT_32" />
+		<xs:enumeration value="SIGNED_INT_64" />
+		<xs:enumeration value="SIGNED_INT_MAX" />
+	</xs:restriction>
+</xs:simpleType>
+
+<!-- Maps to lttng::sessiond::config::map_channel_configuration::update_policy_t -->
+<xs:simpleType name="map_channel_update_policy_type">
+	<xs:restriction base="xs:string">
+		<xs:enumeration value="PER_EVENT" />
+		<xs:enumeration value="PER_RULE_MATCH" />
+	</xs:restriction>
+</xs:simpleType>
+
+<!-- Maps to lttng::sessiond::config::ownership_model_t (user space map channels) -->
+<xs:simpleType name="map_channel_buffer_ownership_type">
+	<xs:restriction base="xs:string">
+		<xs:enumeration value="PER_UID" />
+		<xs:enumeration value="PER_PID" />
+	</xs:restriction>
+</xs:simpleType>
+
+<!-- Maps to lttng::sessiond::config::map_channel_configuration::dead_group_policy_t -->
+<xs:simpleType name="map_channel_dead_group_policy_type">
+	<xs:restriction base="xs:string">
+		<xs:enumeration value="DROP" />
+		<xs:enumeration value="SUM_INTO_SHARED" />
+	</xs:restriction>
+</xs:simpleType>
+
+<!-- Maps to lttng::sessiond::config::map_channel_configuration -->
+<xs:complexType name="map_channel_type">
+	<xs:all>
+		<xs:element name="name" type="name_type"/>
+		<xs:element name="key_type" type="map_channel_key_type_type"/>
+		<xs:element name="value_type" type="map_channel_value_type_type"/>
+		<xs:element name="update_policy" type="map_channel_update_policy_type"/>
+		<xs:element name="max_entry_count" type="uint64_type"/>
+		<!-- User space only -->
+		<xs:element name="buffer_ownership" type="map_channel_buffer_ownership_type" minOccurs="0"/>
+		<!-- User space, per-PID only -->
+		<xs:element name="dead_group_policy" type="map_channel_dead_group_policy_type" minOccurs="0"/>
+	</xs:all>
+</xs:complexType>
+
+<xs:complexType name="map_channel_list_type">
+	<xs:sequence>
+		<xs:element name="map_channel" type="map_channel_type" minOccurs="0" maxOccurs="unbounded" />
+	</xs:sequence>
+</xs:complexType>
+
 <xs:complexType name="pid_value_type">
 	<xs:choice minOccurs="0">
 		<xs:element name="id" type="xs:integer" />
@@ -485,6 +548,7 @@ by its signed 32-bit representation when converted to msec.
 		<xs:element name="type" type="domain_type_type"/>
 		<xs:element name="buffer_type" type="domain_buffer_type"/>
 		<xs:element name="channels" type="channel_list_type" minOccurs="0"/>
+		<xs:element name="map_channels" type="map_channel_list_type" minOccurs="0"/>
 		<xs:element name="process_attr_trackers" type="process_attr_tracker_type" minOccurs="0"/>
 		<!-- Support of legacy tracker specification -->
 		<xs:element name="trackers" type="trackers_type" minOccurs="0"/>
