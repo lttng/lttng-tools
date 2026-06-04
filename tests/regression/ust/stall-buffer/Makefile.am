@@ -8,6 +8,7 @@ noinst_SCRIPTS =					\
 	test_stall_buffer_complex.py			\
 	test_stall_buffer_simple.py			\
 	test_stall_buffer_slow.py			\
+	test_stall_buffer_snapshot.py			\
 	test_stall_buffer_timer.py
 
 EXTRA_DIST =						\
@@ -16,6 +17,7 @@ EXTRA_DIST =						\
 	test_stall_buffer_complex.py			\
 	test_stall_buffer_simple.py			\
 	test_stall_buffer_slow.py			\
+	test_stall_buffer_snapshot.py			\
 	test_stall_buffer_timer.py
 
 all-local:

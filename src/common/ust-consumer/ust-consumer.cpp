@@ -4866,28 +4866,18 @@ int take_stream_stall_snapshot(struct lttng_consumer_stream& stream,
 int take_channel_stall_snapshot(struct lttng_consumer_channel *channel,
 				std::set<uint32_t>& observed_owner_ids)
 {
-	const struct lttng_ht *ht = the_consumer_data.stream_per_chan_id_ht;
+	for (auto& stream : channel->get_streams()) {
+		const lttng::pthread::lock_guard consumer_lock(stream.lock);
 
-	const lttng::urcu::read_lock_guard read_lock;
-	for (auto *stream : lttng::urcu::lfht_filtered_iteration_adapter<
-		     lttng_consumer_stream,
-		     decltype(lttng_consumer_stream::node_channel_id),
-		     &lttng_consumer_stream::node_channel_id,
-		     std::uint64_t>(*ht->ht,
-				    &channel->key,
-				    ht->hash_fct(&channel->key, lttng_ht_seed),
-				    ht->match_fct)) {
-		const lttng::pthread::lock_guard consumer_lock(stream->lock);
-
-		if (cds_lfht_is_node_deleted(&stream->node.node)) {
+		if (cds_lfht_is_node_deleted(&stream.node.node)) {
 			continue;
 		}
 
-		if (stream->metadata_flag) {
+		if (stream.metadata_flag) {
 			continue;
 		}
 
-		const int err = take_stream_stall_snapshot(*stream, observed_owner_ids);
+		const int err = take_stream_stall_snapshot(stream, observed_owner_ids);
 
 		if (err != 0) {
 			return err;
@@ -4964,30 +4954,21 @@ int fixup_stalled_stream(struct lttng_consumer_stream& stream, std::set<uint32_t
 	return 0;
 }
 
-int fixup_stalled_channel(struct lttng_consumer_channel *channel, std::set<uint32_t>& stalled)
+bool fixup_stalled_channel(struct lttng_consumer_channel *channel, std::set<uint32_t>& stalled)
 {
-	const struct lttng_ht *ht = the_consumer_data.stream_per_chan_id_ht;
 	bool success = true;
 
-	const lttng::urcu::read_lock_guard read_lock;
-	for (auto *stream : lttng::urcu::lfht_filtered_iteration_adapter<
-		     lttng_consumer_stream,
-		     decltype(lttng_consumer_stream::node_channel_id),
-		     &lttng_consumer_stream::node_channel_id,
-		     std::uint64_t>(*ht->ht,
-				    &channel->key,
-				    ht->hash_fct(&channel->key, lttng_ht_seed),
-				    ht->match_fct)) {
-		const lttng::pthread::lock_guard consumer_lock(stream->lock);
-		if (cds_lfht_is_node_deleted(&stream->node.node)) {
+	for (auto& stream : channel->get_streams()) {
+		const lttng::pthread::lock_guard consumer_lock(stream.lock);
+		if (cds_lfht_is_node_deleted(&stream.node.node)) {
 			continue;
 		}
 
-		if (stream->metadata_flag) {
+		if (stream.metadata_flag) {
 			continue;
 		}
 
-		const int err = fixup_stalled_stream(*stream, stalled);
+		const int err = fixup_stalled_stream(stream, stalled);
 
 		if (err != 0) {
 			success = false;
@@ -5008,6 +4989,17 @@ int lttng_ustconsumer_fixup_stalled_channel(struct lttng_consumer_channel *chann
 	 * For now, only UID userspace channels need to be fixup.
 	 */
 	LTTNG_ASSERT(channel->subbuffer_count.has_value());
+
+	/*
+	 * Hold the consumer data and channel locks for the duration of the
+	 * fixup: iterating the channel's streams through get_streams() requires
+	 * them, and they keep the stream set stable while the sub-buffers are
+	 * observed and fixed up. The watchdog task is always cancelled before
+	 * these locks are taken on the channel teardown paths, so this cannot
+	 * deadlock against channel destruction.
+	 */
+	const lttng::pthread::lock_guard consumer_data_lock(the_consumer_data.lock);
+	const lttng::pthread::lock_guard channel_state_lock(channel->lock);
 
 	/*
 	 * Copy the pending reclamations. We will remove the copied element
