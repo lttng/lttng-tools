@@ -156,6 +156,7 @@ TESTS += tools/client/test_reclaim_memory.py \
 SERIAL_TESTS += ust/stall-buffer/test_stall_buffer_complex.py \
 		ust/stall-buffer/test_stall_buffer_simple.py \
 		ust/stall-buffer/test_stall_buffer_timer.py \
+		ust/stall-buffer/test_stall_buffer_snapshot.py \
 		ust/stall-buffer/test_stall_buffer_slow.py
 
 
