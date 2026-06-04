@@ -1416,6 +1416,18 @@ void ls::modules::domain_orchestrator::add_map_channel(const lsc::map_channel_co
 {
 	DBG_FMT("Creating kernel map channel from configuration: config={}", config);
 
+	/*
+	 * A 32-bit kernel can't create a 64-bit counter, so reject the
+	 * configuration. The kernel's ABI is guessed by using the session
+	 * daemon's own.
+	 */
+	if (config.value_type == lsc::map_channel_configuration::value_type_t::SIGNED_INT_64 &&
+	    sizeof(void *) == sizeof(std::uint32_t)) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(lttng::format(
+			"A 64-bit map value type requires a 64-bit kernel: map_channel_name=`{}`",
+			config.name));
+	}
+
 	auto kernel_group = modules::map_group::create_for_session(_tracer_session_fd.fd(), config);
 
 	/* The tracer creates the counter channel disabled; its enabled flag gates every hit. */

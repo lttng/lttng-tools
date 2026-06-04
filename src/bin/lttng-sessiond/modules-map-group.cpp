@@ -60,6 +60,11 @@ lttng_kernel_abi_counter_bitness bitness_from_value_type(
 	case value_type_t::SIGNED_INT_64:
 		return LTTNG_KERNEL_ABI_COUNTER_BITNESS_64;
 	case value_type_t::SIGNED_INT_MAX:
+		/*
+		 * Widest bitness the running kernel supports. We guess the
+		 * kernel's ABI by checking the session daemon's own ABI which
+		 * is not strictly correct.
+		 */
 		return sizeof(void *) == sizeof(std::uint32_t) ?
 			LTTNG_KERNEL_ABI_COUNTER_BITNESS_32 :
 			LTTNG_KERNEL_ABI_COUNTER_BITNESS_64;
