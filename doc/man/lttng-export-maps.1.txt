@@ -1,0 +1,399 @@
+// SPDX-FileCopyrightText: 2026 Philippe Proulx <pproulx@efficios.com>
+//
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+lttng-export-maps(1)
+====================
+:revdate: 4 June 2026
+
+
+NAME
+----
+lttng-export-maps - Export the counter values of an LTTng recording session as SQL
+
+
+SYNOPSIS
+--------
+[verse]
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *export-maps* [option:--session='SESSION'] [option:--format=**sqlite**]
+
+
+DESCRIPTION
+-----------
+The `lttng export-maps` command exports the current counter values of _all_
+the map channels (see man:lttng-add-map-channel(1)) of:
+
+With the option:--session='SESSION' option::
+    The recording session named 'SESSION'.
+
+Without the option:--session option::
+    The current recording session (see man:lttng-concepts(7) to learn
+    more about the current recording session).
+
+See man:lttng-concepts(7) to learn more about recording sessions, map channels,
+and counters.
+
+Unlike man:lttng-show-maps(1), which offers a fixed, human-readable
+presentation with built-in filtering and aggregation, `lttng export-maps`
+performs no filtering and no aggregation: it exports every counter of every
+map channel as a self-contained SQL script for SQLite. Slice, filter, and
+aggregate the data afterwards with the full power of SQLite.
+
+The default and only output format as of LTTng{nbsp}{lttng_version} is
+`sqlite` (see the option:--format option): an SQL script for the SQLite
+engine which creates a few tables and a `vmap` convenience view, and
+then inserts every counter within a single transaction. Pipe the script
+into `sqlite3` to query the data, for example using an in-memory
+database:
+
+[role="term"]
+----
+$ { lttng export-maps; echo 'SELECT * FROM vmap;' } | sqlite3 :memory:
+----
+
+See the ``<<sql-schema,SQL SCHEMA>>'' section below for the schema
+details and the ``<<examples,EXAMPLES>>'' section below for a few query
+examples.
+
+[IMPORTANT]
+====
+The `lttng export-maps` command does :not: provide an atomic snapshot of
+the counter values: the connected session daemon (see
+man:lttng-sessiond(8)) reads the values one by one, and LTTng tracers
+may concurrently update any of them while the command runs.
+
+Therefore, `lttng export-maps` does :not: guarantee that its output
+reflects the state of the counters at a single instant.
+
+To obtain a consistent view of the counter values, LTTng recommends to
+either:
+
+* Stop the recording session with the man:lttng-stop(1) command before
+  running `lttng export-maps`.
+
+* Disable the recording event rules (see man:lttng-disable-event(1))
+  and/or remove the triggers (see man:lttng-remove-trigger(1)) having
+  an ``increment map value'' action which targets the map channel to
+  inspect.
+
+Moreover, `lttng export-maps` doesn't guarantee the order in which it
+writes its `INSERT INTO` statements; don't rely on it.
+====
+
+
+[[sql-schema]]
+SQL SCHEMA
+----------
+With option:--format=++sqlite++ (the default), the command writes the
+following schema, followed by one `INSERT INTO` statement per row, all
+wrapped in a single `BEGIN`/`COMMIT` transaction:
+
+[source,sql]
+----
+CREATE TABLE channels (
+  id   INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('kernel', 'user')),
+  UNIQUE (name, type)
+);
+
+CREATE TABLE groups (
+  id          INTEGER PRIMARY KEY,
+  channel_id  INTEGER NOT NULL REFERENCES channels(id),
+  type        TEXT NOT NULL
+              CHECK (type IN ('kernel-global', 'user-per-user',
+                              'user-per-process', 'shared')),
+  owner_id    INTEGER,
+  owner_name  TEXT,
+  value_type  TEXT NOT NULL
+              CHECK (value_type IN ('signed-int-32', 'signed-int-64')),
+  CHECK ((owner_id IS NULL) =
+         (type NOT IN ('user-per-user', 'user-per-process')))
+);
+
+CREATE TABLE keys (
+  id   INTEGER PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE entries (
+  group_id     INTEGER NOT NULL REFERENCES groups(id),
+  part_id      INTEGER,
+  key_id       INTEGER NOT NULL REFERENCES keys(id),
+  value        INTEGER NOT NULL,
+  has_overflow INTEGER NOT NULL CHECK (has_overflow IN (0, 1))
+);
+
+CREATE VIEW vmap AS
+SELECT c.name AS channel_name,
+       c.type AS channel_type,
+       g.type AS group_type,
+       g.owner_id,
+       g.owner_name,
+       g.value_type,
+       e.part_id,
+       k.name AS key,
+       e.value,
+       e.has_overflow
+FROM entries e
+JOIN groups g   ON e.group_id   = g.id
+JOIN channels c ON g.channel_id = c.id
+JOIN keys k     ON e.key_id     = k.id;
+----
+
+The numeric `id` columns are arbitrary surrogate keys which only serve
+to join the tables; don't rely on their specific values nor on the row
+order of the `INSERT INTO` statements.
+
+Most queries only need the `vmap` view, of which the columns are:
+
+`channel_name`::
+    Map channel name.
+
+`channel_type`::
+    Map channel type: `kernel` or `user`.
+
+`group_type`::
+    Counter group type:
++
+--
+`kernel-global`::
+    System-wide Linux kernel counters.
+
+`user-per-user`::
+    User space counters of a single Unix user; `owner_id` is the Unix
+    user ID.
+
+`user-per-process`::
+    User space counters of a single process; `owner_id` is the
+    process ID.
+
+`shared`::
+    Map channel-wide shared counters (see man:lttng-concepts(7)).
+--
+
+`owner_id`::
+    Unix user ID (`user-per-user` group type) or process ID
+    (`user-per-process` group type), or `NULL` for the
+    `kernel-global` and `shared` group types.
+
+`owner_name`::
+    Human-readable name of the owner: a Unix user name
+    (`user-per-user` group type) or a process/command name
+    (`user-per-process` group type).
++
+This column is *informational only*: LTTng makes no guarantee that the
+name is set (it may be `NULL`), that it's unique amongst the groups of a
+map channel, or that it remains stable across versions.
++
+Always use `owner_id` (together with `group_type`) to identify an owner
+reliably.
++
+Always `NULL` for the `kernel-global` and `shared` group types.
+
+`value_type`::
+    Effective value type of the group: `signed-int-32` or
+    `signed-int-64`.
+
+`part_id`::
+    0-based CPU ID, or `NULL` for the `shared` group type
+    (the shared counters have no per-partition decomposition).
+
+`key`::
+    Counter key (a string as of LTTng{nbsp}{lttng_version}).
+
+`value`::
+    Counter value.
+
+`has_overflow`::
+    `1` if at least one update of the counter wrapped around (modular
+    arithmetic) because the result couldn't be represented with the
+    effective value type of the map group (see the nloption:--value-type
+    option of man:lttng-add-map-channel(1)), or `0` otherwise.
+
+[NOTE]
+====
+The schema is stable for a given format name.
+
+Any future incompatible change to the schema would introduce a new
+option:--format value so that existing consumers keep working.
+====
+
+
+include::common-lttng-cmd-options-head.txt[]
+
+
+Recording target
+~~~~~~~~~~~~~~~~
+option:-s 'SESSION', option:--session='SESSION'::
+    Export the counter values of the recording session named 'SESSION'
+    instead of the current recording session.
+
+
+Output
+~~~~~~
+option:-f 'FORMAT', option:--format='FORMAT'::
+    Set the output format to 'FORMAT'.
++
+As of LTTng{nbsp}{lttng_version}, 'FORMAT' must be `sqlite` (the
+default): an SQL script for the SQLite database engine (see the
+``<<sql-schema,SQL SCHEMA>>'' section above).
++
+[IMPORTANT]
+====
+The `sqlite` format targets SQLite specifically: to quote map channel,
+owner, and key names, the script relies on SQLite's string literal
+syntax, where the backslash is an ordinary character and the only way to
+write a single quote is to double it. LTTng therefore only guarantees
+that the script loads correctly with SQLite{nbsp}3.
+
+You may still load the script with another SQL database engine, provided
+that you make that engine treat the backslash as an ordinary character
+within string literals (otherwise a name containing a backslash can
+break the quoting), for example:
+
+PostgreSQL::
+    Loads the script as is when the `standard_conforming_strings`
+    setting is on, which is the default since PostgreSQL{nbsp}9.1.
+
+MySQL and MariaDB::
+    Set the `NO_BACKSLASH_ESCAPES` SQL mode before loading the script,
+    for example with
++
+[source,sql]
+----
+SET sql_mode = 'NO_BACKSLASH_ESCAPES';
+----
+
+Even then, LTTng makes no guarantee: a future format dedicated to
+another engine would use its own 'FORMAT' value.
+====
+
+
+include::common-lttng-cmd-help-options.txt[]
+
+
+include::common-lttng-cmd-after-options.txt[]
+
+
+[[examples]]
+EXAMPLES
+--------
+.Export the maps of the current recording session and open an interactive SQL shell.
+====
+The export becomes the initialization script of `sqlite3`, which then
+drops to its interactive prompt with the data loaded:
+
+[role="term"]
+----
+$ sqlite3 -init <(lttng export-maps) :memory:
+----
+====
+
+.Export the maps of a specific recording session.
+====
+See the option:--session option.
+
+[role="term"]
+----
+$ lttng export-maps --session=my-session > maps.sql
+----
+====
+
+.Show the total count per key across all CPUs of a specific map channel.
+====
+[role="term"]
+----
+$ { lttng export-maps; cat << EOF
+    SELECT key, SUM(value) AS total FROM vmap
+    WHERE channel_name = 'my-counters'
+    GROUP BY key
+    ORDER BY total DESC;
+  EOF
+  } | sqlite3 :memory:
+----
+====
+
+.Show the top 10 ``hottest'' counters of a specific map channel.
+====
+[role="term"]
+----
+$ { lttng export-maps; cat << EOF
+    SELECT key, SUM(value) AS total FROM vmap
+    WHERE channel_name = 'my-counters'
+    GROUP BY key
+    ORDER BY total DESC
+    LIMIT 10;
+  EOF
+  } | sqlite3 :memory:
+----
+====
+
+.Show the per-CPU breakdown of a specific counter of a specific map channel.
+====
+[role="term"]
+----
+$ { lttng export-maps; cat << EOF
+    SELECT part_id, value FROM vmap
+    WHERE channel_name = 'my-counters' AND key = 'myapp:my_event'
+    ORDER BY part_id;
+  EOF
+  } | sqlite3 :memory:
+----
+====
+
+.Show the total count per scheduling event of a specific Linux kernel map channel.
+====
+[role="term"]
+----
+$ { lttng export-maps; cat << EOF
+    SELECT key, SUM(value) AS total FROM vmap
+    WHERE channel_name = 'my-counters'
+      AND group_type = 'kernel-global'
+      AND key GLOB 'sched_*'
+    GROUP BY key;
+  EOF
+  } | sqlite3 :memory:
+----
+====
+
+.Show the top 10 processes by total count, with their command names.
+====
+This groups by `owner_id` (the reliable process identifier) and shows
+the informational `owner_name` for display only.
+
+[role="term"]
+----
+$ { lttng export-maps; cat << EOF
+    SELECT owner_id AS pid, owner_name AS command, SUM(value) AS total
+    FROM vmap
+    WHERE channel_name = 'my-counters' AND group_type = 'user-per-process'
+    GROUP BY owner_id
+    ORDER BY total DESC
+    LIMIT 10;
+  EOF
+  } | sqlite3 :memory:
+----
+====
+
+.Show all the overflowed counters.
+====
+[role="term"]
+----
+$ { lttng export-maps;
+    echo 'SELECT * FROM vmap WHERE has_overflow = 1;'
+  } | sqlite3 :memory:
+----
+====
+
+
+include::common-footer.txt[]
+
+
+SEE ALSO
+--------
+man:lttng(1),
+man:lttng-add-map-channel(1),
+man:lttng-add-trigger(1),
+man:lttng-show-maps(1),
+man:lttng-concepts(7)

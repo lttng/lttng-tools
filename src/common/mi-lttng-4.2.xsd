@@ -1599,6 +1599,16 @@ SPDX-License-Identifier: MIT
 		</xs:sequence>
 	</xs:complexType>
 
+	<!--
+		Maps to the output of the `export-maps` command: the whole SQL
+		script as the text of a single `output` element.
+	-->
+	<xs:complexType name="export_maps_type">
+		<xs:sequence>
+			<xs:element name="output" type="xs:string" />
+		</xs:sequence>
+	</xs:complexType>
+
 	<!-- Maps to the output of the `show-maps` command -->
 	<xs:complexType name="show_maps_type">
 		<xs:choice minOccurs="0" maxOccurs="unbounded">
@@ -1643,6 +1653,7 @@ SPDX-License-Identifier: MIT
 			<xs:element name="contexts" type="tns:contexts_type" minOccurs="0" />
 			<xs:element name="domains" type="tns:domains_type" minOccurs="0" />
 			<xs:element name="events" type="tns:event_list_type" minOccurs="0" />
+			<xs:element name="export-maps" type="tns:export_maps_type" minOccurs="0" />
 			<xs:element name="load" type="tns:load_type" minOccurs="0" />
 			<xs:element name="metadata_action" type="tns:metadata_cmd_type" minOccurs="0" />
 			<xs:element name="process_attr_trackers" type="tns:process_attr_trackers_type" minOccurs="0" />
@@ -1678,6 +1689,7 @@ SPDX-License-Identifier: MIT
 			<xs:enumeration value="enable-channel" />
 			<xs:enumeration value="enable-event" />
 			<xs:enumeration value="enable-rotation" />
+			<xs:enumeration value="export-maps" />
 			<xs:enumeration value="list" />
 			<xs:enumeration value="list-trigger" />
 			<xs:enumeration value="load" />
