@@ -32,32 +32,44 @@ map_channel::map_channel(const config::map_channel_configuration& configuration,
 			 sessiond::map::key_registry::uptr registry) :
 	sessiond::map::map_channel(configuration, std::move(registry))
 {
+	/*
+	 * A 32-bit session daemon can't create, and therefore can't hand
+	 * off, a 64-bit user space counter. Reject the request up front
+	 * rather than silently skipping every application at attach time.
+	 */
+	if (configuration.value_type ==
+		    config::map_channel_configuration::value_type_t::SIGNED_INT_64 &&
+	    running_sessiond_abi() == application_abi::ABI_32) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(lttng::format(
+			"A 64-bit map value type requires a 64-bit session daemon: map_channel_name=`{}`",
+			configuration.name));
+	}
 }
 
-ust::map_group& map_channel::add_uid_group(uid_t uid, application_abi abi)
+ust::map_group& map_channel::add_uid_group(uid_t uid, value_type_t resolved_value_type)
 {
 	LTTNG_ASSERT(configuration().buffer_ownership == config::ownership_model_t::PER_UID);
 
-	const uid_abi_key key{ uid, abi };
+	const uid_value_type_key key{ uid, resolved_value_type };
 
 	const auto existing = _per_uid_groups.find(key);
 	if (existing != _per_uid_groups.end()) {
 		return *existing->second;
 	}
 
-	auto group =
-		lttng::make_unique<ust::map_group>(map_group::create_from_config(configuration()));
+	auto group = lttng::make_unique<ust::map_group>(
+		map_group::create_from_config(configuration(), resolved_value_type));
 	auto& group_ref = *group;
 	_per_uid_groups.emplace(key, std::move(group));
 
 	return group_ref;
 }
 
-void map_channel::remove_uid_group(uid_t uid, application_abi abi)
+void map_channel::remove_uid_group(uid_t uid, value_type_t resolved_value_type)
 {
 	LTTNG_ASSERT(configuration().buffer_ownership == config::ownership_model_t::PER_UID);
 
-	const auto erased = _per_uid_groups.erase(uid_abi_key{ uid, abi });
+	const auto erased = _per_uid_groups.erase(uid_value_type_key{ uid, resolved_value_type });
 	LTTNG_ASSERT(erased == 1);
 }
 
@@ -70,13 +82,13 @@ void map_channel::for_each_uid_group(const uid_group_visitor& visitor) const
 	}
 }
 
-ust::map_group& map_channel::add_app_group(const ust::app& app)
+ust::map_group& map_channel::add_app_group(const ust::app& app, value_type_t resolved_value_type)
 {
 	LTTNG_ASSERT(configuration().buffer_ownership == config::ownership_model_t::PER_PID);
 	LTTNG_ASSERT(_per_app_groups.find(&app) == _per_app_groups.end());
 
-	auto group =
-		lttng::make_unique<ust::map_group>(map_group::create_from_config(configuration()));
+	auto group = lttng::make_unique<ust::map_group>(
+		map_group::create_from_config(configuration(), resolved_value_type));
 	auto& group_ref = *group;
 	_per_app_groups.emplace(&app, std::move(group));
 
@@ -134,16 +146,29 @@ void map_channel::for_each_app_group(const app_group_visitor& visitor) const
 	}
 }
 
-map_channel::app_attachment map_channel::attach_to_app(ust::app& app, int session_parent_handle)
+nonstd::optional<map_channel::app_attachment> map_channel::attach_to_app(ust::app& app,
+									 int session_parent_handle)
 {
 	using ownership_t = config::ownership_model_t;
+
+	const auto app_abi = app.abi();
+	const auto resolved_value_type =
+		resolve_map_value_type(configuration().value_type, app_abi);
+	if (!resolved_value_type) {
+		WARN_FMT(
+			"Skipping map channel for application: its value type can't be served to this application's ABI: "
+			"map_channel_configuration=`{}`, value_type={}, app={}, app_abi={}",
+			configuration(),
+			configuration().value_type,
+			app,
+			app_abi);
+		return nonstd::nullopt;
+	}
 
 	switch (configuration().buffer_ownership) {
 	case ownership_t::PER_UID:
 	{
-		auto& group = add_uid_group(app.uid,
-					    app.abi.bits_per_long == 32 ? application_abi::ABI_32 :
-									  application_abi::ABI_64);
+		auto& group = add_uid_group(app.uid, *resolved_value_type);
 
 		auto counter_attachment = group.attach_to_app(app, session_parent_handle);
 		auto objd_token = app.objd_registry.register_map_channel_objd(
@@ -154,7 +179,7 @@ map_channel::app_attachment map_channel::attach_to_app(ust::app& app, int sessio
 	}
 	case ownership_t::PER_PID:
 	{
-		auto& group = add_app_group(app);
+		auto& group = add_app_group(app, *resolved_value_type);
 		/*
 		 * Per-PID groups are exclusive to their app: roll back the
 		 * insertion if a subsequent step throws so the channel does

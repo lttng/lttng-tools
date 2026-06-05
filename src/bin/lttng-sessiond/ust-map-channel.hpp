@@ -11,10 +11,11 @@
 #include "key-registry.hpp"
 #include "map-channel.hpp"
 #include "ust-app-objd-registry.hpp"
-#include "ust-application-abi.hpp"
 #include "ust-map-group.hpp"
 
 #include <common/hash-combine.hpp>
+
+#include <vendor/optional.hpp>
 
 #include <cstdint>
 #include <functional>
@@ -37,20 +38,27 @@ struct app;
 /*
  * UST-domain map channel. Owns either:
  *
- *   - per-(uid, application_abi) `ust::map_group`s, when the channel's
+ *   - per-(uid, value type) `ust::map_group`s, when the channel's
  *     `buffer_ownership` is PER_UID; or
  *   - per-app `ust::map_group`s, when the channel's
  *     `buffer_ownership` is PER_PID.
+ *
+ * The per-UID groups are keyed by the counter's resolved value type
+ * rather than the application's ABI: a counter of a given value type is
+ * shared by every application that resolves to that value type, so a uid
+ * whose value type yields 32-bit counters keeps a single group for its
+ * 32 and 64-bit applications alike.
  *
  * Exactly one of the two storage maps is populated. The decision is
  * fixed at construction time from the configuration.
  */
 class map_channel final : public sessiond::map::map_channel {
 public:
-	using uid_abi_key = std::pair<uid_t, application_abi>;
+	using value_type_t = config::map_channel_configuration::value_type_t;
+	using uid_value_type_key = std::pair<uid_t, value_type_t>;
 
-	struct uid_abi_key_hash {
-		std::size_t operator()(const uid_abi_key& key) const noexcept
+	struct uid_value_type_key_hash {
+		std::size_t operator()(const uid_value_type_key& key) const noexcept
 		{
 			auto seed =
 				std::hash<std::uint32_t>{}(static_cast<std::uint32_t>(key.first));
@@ -61,13 +69,14 @@ public:
 		}
 	};
 
-	using per_uid_groups =
-		std::unordered_map<uid_abi_key, std::unique_ptr<ust::map_group>, uid_abi_key_hash>;
+	using per_uid_groups = std::unordered_map<uid_value_type_key,
+						  std::unique_ptr<ust::map_group>,
+						  uid_value_type_key_hash>;
 	using per_app_groups =
 		std::unordered_map<const ust::app *, std::unique_ptr<ust::map_group>>;
 
 	using uid_group_visitor =
-		std::function<void(uid_t uid, application_abi abi, const ust::map_group& group)>;
+		std::function<void(uid_t uid, value_type_t value_type, const ust::map_group& group)>;
 	using app_group_visitor =
 		std::function<void(const ust::app& app, const ust::map_group& group)>;
 
@@ -119,11 +128,14 @@ public:
 	map_channel& operator=(map_channel&&) = delete;
 
 	/*
-	 * per-UID API. Creates the (uid, abi) group on first call;
-	 * subsequent calls with the same key return the existing group.
+	 * per-UID API. `resolved_value_type` is the concrete value type of
+	 * the group's counter (see `resolve_map_value_type()`) and also keys
+	 * the group: the counter is created on the first call for a given
+	 * (uid, resolved_value_type) and reused by subsequent calls,
+	 * regardless of the calling applications' own ABIs.
 	 */
-	ust::map_group& add_uid_group(uid_t uid, application_abi abi);
-	void remove_uid_group(uid_t uid, application_abi abi);
+	ust::map_group& add_uid_group(uid_t uid, value_type_t resolved_value_type);
+	void remove_uid_group(uid_t uid, value_type_t resolved_value_type);
 	void for_each_uid_group(const uid_group_visitor& visitor) const;
 
 	/*
@@ -134,14 +146,14 @@ public:
 	 *
 	 * Throws if the channel is not configured for per-PID buffers.
 	 */
-	ust::map_group& add_app_group(const ust::app& app);
+	ust::map_group& add_app_group(const ust::app& app, value_type_t resolved_value_type);
 	void remove_app_group(const ust::app& app);
 	void for_each_app_group(const app_group_visitor& visitor) const;
 
 	/*
 	 * Attach this channel to `app`: for per-UID channels, lazily
-	 * create the (app.uid, app.abi) group, send the master and
-	 * per-CPU counter handles to the app using `session_parent_handle`
+	 * create the (app.uid, resolved value type) group, send the master
+	 * and per-CPU counter handles to the app using `session_parent_handle`
 	 * as the app-side parent, and return an RAII attachment bundling
 	 * the resulting counter handle with an objd-registry token. The
 	 * caller stores the attachment; dropping it releases everything.
@@ -150,11 +162,15 @@ public:
 	 * recording session that owns this map channel (the value of
 	 * `ust::app_session::handle`).
 	 *
+	 * Returns nullopt when the channel's value type can't be served to
+	 * this application (a 64-bit value type met by a 32-bit application);
+	 * the channel is then skipped for that app, which is logged here.
+	 *
 	 * Throws on app-side communication failure
 	 * (`ust::app_communication_error`); the caller must translate
 	 * to its own status semantics.
 	 */
-	app_attachment attach_to_app(ust::app& app, int session_parent_handle);
+	nonstd::optional<app_attachment> attach_to_app(ust::app& app, int session_parent_handle);
 
 	struct rule_record {
 		std::uint64_t user_token;

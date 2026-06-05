@@ -187,7 +187,13 @@ struct app {
 	gid_t gid = static_cast<gid_t>(-1); /* Group ID that owns the apps */
 
 	/* App ABI. */
-	lttng::sessiond::trace::abi abi = {};
+	lttng::sessiond::trace::abi abi_desc = {};
+
+	application_abi abi() const noexcept
+	{
+		return abi_desc.bits_per_long == 32 ? application_abi::ABI_32 :
+						      application_abi::ABI_64;
+	}
 
 	int compatible = 0; /* If the lttng-ust tracer version does not match the
 					   supported version of the session daemon, this flag is

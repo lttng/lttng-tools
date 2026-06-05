@@ -22,6 +22,13 @@ enum class application_abi : std::uint8_t {
 	ABI_64 = 64,
 };
 
+/* ABI of the running session daemon, which caps the maps it can hand off. */
+constexpr application_abi running_sessiond_abi() noexcept
+{
+	return sizeof(void *) == sizeof(std::uint32_t) ? application_abi::ABI_32 :
+							 application_abi::ABI_64;
+}
+
 } /* namespace ust */
 } /* namespace sessiond */
 } /* namespace lttng */

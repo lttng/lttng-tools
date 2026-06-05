@@ -363,7 +363,7 @@ void lsu::app_session::flush()
 	health_code_update();
 
 	/* Flushing buffers */
-	socket = consumer_find_socket_by_bitness(_app.abi.bits_per_long, consumer);
+	socket = consumer_find_socket_by_bitness(_app.abi_desc.bits_per_long, consumer);
 
 	/* Flush buffers and push metadata. */
 	switch (buffer_type) {

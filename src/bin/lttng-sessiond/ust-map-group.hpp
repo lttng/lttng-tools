@@ -8,8 +8,12 @@
 #ifndef LTTNG_SESSIOND_UST_MAP_GROUP_HPP
 #define LTTNG_SESSIOND_UST_MAP_GROUP_HPP
 
+#include "map-channel-configuration.hpp"
 #include "map-group.hpp"
+#include "ust-application-abi.hpp"
 #include "ust-object-data.hpp"
+
+#include <vendor/optional.hpp>
 
 #include <cstdint>
 #include <memory>
@@ -21,13 +25,27 @@ struct lttng_ust_abi_object_data;
 namespace lttng {
 namespace sessiond {
 
-namespace config {
-class map_channel_configuration;
-} /* namespace config */
-
 namespace ust {
 
 struct app;
+
+/*
+ * Resolve the concrete value type of the counter to hand to an
+ * application of `app_abi`, honouring the channel's value type and the
+ * running session daemon's own ABI as a ceiling. The result is never
+ * SIGNED_INT_MAX:
+ *
+ * • SIGNED_INT_32: always SIGNED_INT_32 (fits every application).
+ *
+ * • SIGNED_INT_64: SIGNED_INT_64, but only when both the application and
+ *   the session daemon are 64-bit; nullopt otherwise (can't be served).
+ *
+ * • SIGNED_INT_MAX: SIGNED_INT_64 when both the application and the
+ *   session daemon are 64-bit, SIGNED_INT_32 otherwise.
+ */
+nonstd::optional<config::map_channel_configuration::value_type_t>
+resolve_map_value_type(config::map_channel_configuration::value_type_t value_type,
+		       application_abi app_abi) noexcept;
 
 /*
  * Runtime representation of a UST map group backing one
@@ -105,9 +123,16 @@ public:
 	 * sessiond's local counter, and builds the master + per-CPU
 	 * app handles used to share the counter with applications.
 	 *
+	 * The counter is created with `resolved_value_type`, the concrete
+	 * value type resolved for this group's applications (see
+	 * `resolve_map_value_type()`); it may be narrower than the channel's
+	 * own value type and must never be SIGNED_INT_MAX.
+	 *
 	 * Throws on allocation or ustctl failure.
 	 */
-	static map_group create_from_config(const config::map_channel_configuration& configuration);
+	static map_group
+	create_from_config(const config::map_channel_configuration& configuration,
+			   config::map_channel_configuration::value_type_t resolved_value_type);
 
 	const config::map_channel_configuration& configuration() const noexcept;
 

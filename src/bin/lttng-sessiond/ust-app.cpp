@@ -1158,7 +1158,7 @@ lsu::app *ust_app_create(struct ust_register_msg *msg, int sock)
 	lta->uid = msg->uid;
 	lta->gid = msg->gid;
 
-	lta->abi = {
+	lta->abi_desc = {
 		.bits_per_long = msg->bits_per_long,
 		.long_alignment = msg->long_alignment,
 		.uint8_t_alignment = msg->uint8_t_alignment,

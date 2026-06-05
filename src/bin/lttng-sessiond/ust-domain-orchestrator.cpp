@@ -1239,7 +1239,7 @@ ls::ust::app_session& ls::ust::domain_orchestrator::_find_or_create_app_session(
 		case LTTNG_BUFFER_PER_UID:
 			return fmt::format("uid/{}/{}-bit",
 					   lttng_credentials_get_uid(&real_creds),
-					   app.abi.bits_per_long);
+					   app.abi_desc.bits_per_long);
 		default:
 			abort();
 		}
@@ -1254,7 +1254,7 @@ ls::ust::app_session& ls::ust::domain_orchestrator::_find_or_create_app_session(
 			break;
 		case LTTNG_BUFFER_PER_UID:
 			session_shm_path +=
-				fmt::format("/uid/{}/{}-bit", app.uid, app.abi.bits_per_long);
+				fmt::format("/uid/{}/{}-bit", app.uid, app.abi_desc.bits_per_long);
 			break;
 		default:
 			abort();
@@ -1281,7 +1281,7 @@ ls::ust::app_session& ls::ust::domain_orchestrator::_find_or_create_app_session(
 								real_creds,
 								effective_creds,
 								buf_type,
-								app.abi.bits_per_long,
+								app.abi_desc.bits_per_long,
 								std::move(trace_path),
 								_root_shm_path,
 								std::move(session_shm_path),
@@ -1296,7 +1296,7 @@ ls::ust::app_session& ls::ust::domain_orchestrator::_find_or_create_app_session(
 		_find_or_create_per_pid_trace_class(
 			app,
 			new_session->app_session_id,
-			app.abi,
+			app.abi_desc,
 			app.version.major,
 			app.version.minor,
 			new_session->root_shm_path.c_str(),
@@ -1307,12 +1307,12 @@ ls::ust::app_session& ls::ust::domain_orchestrator::_find_or_create_app_session(
 	}
 	case LTTNG_BUFFER_PER_UID:
 	{
-		const auto app_abi = app.abi.bits_per_long == 32 ? application_abi::ABI_32 :
-								   application_abi::ABI_64;
+		const auto app_abi = app.abi_desc.bits_per_long == 32 ? application_abi::ABI_32 :
+									application_abi::ABI_64;
 
 		_find_or_create_per_uid_trace_class(app.uid,
 						    app_abi,
-						    app.abi,
+						    app.abi_desc,
 						    app.version.major,
 						    app.version.minor,
 						    new_session->root_shm_path.c_str(),
@@ -1393,8 +1393,8 @@ void ls::ust::domain_orchestrator::_create_channel_per_uid(ust::app *app,
 
 	const auto& recording_config =
 		static_cast<const lsc::recording_channel_configuration&>(ua_chan->channel_config);
-	const auto app_abi = app->abi.bits_per_long == 32 ? ust::application_abi::ABI_32 :
-							    ust::application_abi::ABI_64;
+	const auto app_abi = app->abi_desc.bits_per_long == 32 ? ust::application_abi::ABI_32 :
+								 ust::application_abi::ABI_64;
 
 	/*
 	 * Check if the per-UID stream group already exists for this
@@ -1432,7 +1432,7 @@ void ls::ust::domain_orchestrator::_create_channel_per_uid(ust::app *app,
 		if (do_consumer_create_channel(consumer,
 					       ua_sess,
 					       ua_chan,
-					       app->abi.bits_per_long,
+					       app->abi_desc.bits_per_long,
 					       trace_class_ptr.get(),
 					       session.current_trace_chunk,
 					       session.trace_format,
@@ -1573,7 +1573,7 @@ void ls::ust::domain_orchestrator::_create_channel_per_pid(ust::app *app,
 		if (do_consumer_create_channel(consumer,
 					       &ua_sess,
 					       ua_chan,
-					       app->abi.bits_per_long,
+					       app->abi_desc.bits_per_long,
 					       trace_class.get(),
 					       session.current_trace_chunk,
 					       session.trace_format,
@@ -1891,7 +1891,8 @@ void ls::ust::domain_orchestrator::_create_app_metadata(ust::app_session& ua_ses
 		lttng::make_scope_exit([]() noexcept { lttng_fd_put(LTTNG_FD_APPS, 1); });
 
 	/* Get the right consumer socket for the application. */
-	socket = consumer_find_socket_by_bitness(app->abi.bits_per_long, get_consumer_output_ptr());
+	socket = consumer_find_socket_by_bitness(app->abi_desc.bits_per_long,
+						 get_consumer_output_ptr());
 	if (!socket) {
 		LTTNG_THROW_INVALID_ARGUMENT_ERROR("Failed to find consumer socket for metadata");
 	}
@@ -1956,8 +1957,11 @@ void ls::ust::domain_orchestrator::_synchronize_app_map_channels(ust::app_sessio
 		}
 
 		try {
-			ua_sess.map_channel_attachments.emplace(
-				&channel, channel.attach_to_app(app, ua_sess.handle));
+			auto attachment = channel.attach_to_app(app, ua_sess.handle);
+			if (attachment) {
+				ua_sess.map_channel_attachments.emplace(&channel,
+									std::move(*attachment));
+			}
 		} catch (const ust::app_communication_error& ex) {
 			DBG_FMT("Application unreachable while attaching map channel: app={}, map_name=`{}`, error=`{}`",
 				app,
@@ -2456,9 +2460,9 @@ void ls::ust::domain_orchestrator::_clear_quiescent_app_session(ust::app *app,
 
 	health_code_update();
 
-	socket = consumer_find_socket_by_bitness(app->abi.bits_per_long, ua_sess->consumer);
+	socket = consumer_find_socket_by_bitness(app->abi_desc.bits_per_long, ua_sess->consumer);
 	if (!socket) {
-		ERR("Failed to find consumer (%" PRIu32 ") socket", app->abi.bits_per_long);
+		ERR("Failed to find consumer (%" PRIu32 ") socket", app->abi_desc.bits_per_long);
 		return;
 	}
 
@@ -2984,7 +2988,7 @@ void ls::ust::domain_orchestrator::_record_snapshot_per_pid(
 
 		const lttng::urcu::read_lock_guard read_lock;
 		auto *socket = consumer_find_socket_by_bitness(
-			static_cast<int>(app->abi.bits_per_long), _consumer_output.get());
+			static_cast<int>(app->abi_desc.bits_per_long), _consumer_output.get());
 		if (!socket) {
 			LTTNG_THROW_INVALID_ARGUMENT_ERROR(
 				"Failed to find consumer socket for snapshot");
@@ -3694,8 +3698,11 @@ void ls::ust::domain_orchestrator::add_map_channel(const lsc::map_channel_config
 		}
 
 		try {
-			ua_sess.map_channel_attachments.emplace(
-				&channel, channel.attach_to_app(app, ua_sess.handle));
+			auto attachment = channel.attach_to_app(app, ua_sess.handle);
+			if (attachment) {
+				ua_sess.map_channel_attachments.emplace(&channel,
+									std::move(*attachment));
+			}
 		} catch (const ust::app_communication_error& ex) {
 			DBG_FMT("Application unreachable while attaching map channel: app={}, map_name=`{}`, error=`{}`",
 				app,
@@ -3883,7 +3890,7 @@ void ls::ust::domain_orchestrator::_for_each_consumer_stream_group(
 		}
 	} else {
 		for (const auto& sg_entry : _per_pid_stream_groups) {
-			const auto app_abi = sg_entry.first.app->abi.bits_per_long == 32 ?
+			const auto app_abi = sg_entry.first.app->abi_desc.bits_per_long == 32 ?
 				application_abi::ABI_32 :
 				application_abi::ABI_64;
 
@@ -3902,7 +3909,7 @@ void ls::ust::domain_orchestrator::_for_each_consumer_stream_group(
 				continue;
 			}
 
-			const auto app_abi = tc_entry.first->abi.bits_per_long == 32 ?
+			const auto app_abi = tc_entry.first->abi_desc.bits_per_long == 32 ?
 				application_abi::ABI_32 :
 				application_abi::ABI_64;
 

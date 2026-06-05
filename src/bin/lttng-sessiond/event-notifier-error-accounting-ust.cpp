@@ -110,9 +110,17 @@ eea_details::ust_uid_map_group_entry& acquire_uid_entry(uid_t uid)
 		DBG_FMT("Creating new UST UID map group entry: uid={}, configuration={}",
 			uid,
 			*default_ust_config);
+		/*
+		 * The error-accounting map is fixed at SIGNED_INT_32, whose
+		 * 32-bit counter is served to applications of any ABI, so this
+		 * single per-uid group covers both 32 and 64-bit apps.
+		 */
 		auto new_entry = lttng::make_unique<eea_details::ust_uid_map_group_entry>(
 			uid,
-			lttng::sessiond::ust::map_group::create_from_config(*default_ust_config));
+			lttng::sessiond::ust::map_group::create_from_config(
+				*default_ust_config,
+				lttng::sessiond::config::map_channel_configuration::value_type_t::
+					SIGNED_INT_32));
 		entry = new_entry.get();
 		uid_map_groups.emplace(uid, std::move(new_entry));
 	}

@@ -28,16 +28,16 @@ namespace lsm = lttng::sessiond::map;
 namespace {
 
 lttng_ust_ctl_counter_bitness
-bitness_from_value_type(lsc::map_channel_configuration::value_type_t type)
+bitness_from_value_type(lsc::map_channel_configuration::value_type_t value_type)
 {
-	switch (type) {
+	switch (value_type) {
 	case lsc::map_channel_configuration::value_type_t::SIGNED_INT_32:
 		return LTTNG_UST_CTL_COUNTER_BITNESS_32;
 	case lsc::map_channel_configuration::value_type_t::SIGNED_INT_64:
 		return LTTNG_UST_CTL_COUNTER_BITNESS_64;
 	case lsc::map_channel_configuration::value_type_t::SIGNED_INT_MAX:
-		return sizeof(void *) == sizeof(std::uint32_t) ? LTTNG_UST_CTL_COUNTER_BITNESS_32 :
-								 LTTNG_UST_CTL_COUNTER_BITNESS_64;
+		/* Resolved to a concrete width by resolve_map_value_type(). */
+		break;
 	}
 
 	abort();
@@ -65,6 +65,28 @@ lsm::element_value from_counter_value(std::int64_t value, bool overflow, bool un
 namespace lttng {
 namespace sessiond {
 namespace ust {
+
+nonstd::optional<config::map_channel_configuration::value_type_t>
+resolve_map_value_type(config::map_channel_configuration::value_type_t value_type,
+		       application_abi app_abi) noexcept
+{
+	using value_type_t = config::map_channel_configuration::value_type_t;
+
+	const auto both_64_bit = app_abi == application_abi::ABI_64 &&
+		running_sessiond_abi() == application_abi::ABI_64;
+
+	switch (value_type) {
+	case value_type_t::SIGNED_INT_32:
+		return value_type_t::SIGNED_INT_32;
+	case value_type_t::SIGNED_INT_64:
+		return both_64_bit ? nonstd::optional<value_type_t>(value_type_t::SIGNED_INT_64) :
+				     nonstd::nullopt;
+	case value_type_t::SIGNED_INT_MAX:
+		return both_64_bit ? value_type_t::SIGNED_INT_64 : value_type_t::SIGNED_INT_32;
+	}
+
+	std::abort();
+}
 
 void map_group::local_counter_deleter::operator()(
 	lttng_ust_ctl_daemon_counter *counter) const noexcept
@@ -329,8 +351,14 @@ void map_group::clear_element(std::uint64_t index)
 	}
 }
 
-map_group map_group::create_from_config(const config::map_channel_configuration& configuration)
+map_group
+map_group::create_from_config(const config::map_channel_configuration& configuration,
+			      config::map_channel_configuration::value_type_t resolved_value_type)
 {
+	/* The value type must have been resolved to a concrete width. */
+	LTTNG_ASSERT(resolved_value_type !=
+		     config::map_channel_configuration::value_type_t::SIGNED_INT_MAX);
+
 	const auto nr_cpu = static_cast<unsigned int>(lttng_ust_ctl_get_nr_cpu_per_counter());
 
 	/*
@@ -379,7 +407,7 @@ map_group map_group::create_from_config(const config::map_channel_configuration&
 					     -1,
 					     nr_cpu,
 					     cpu_counter_fds.data(),
-					     bitness_from_value_type(configuration.value_type),
+					     bitness_from_value_type(resolved_value_type),
 					     LTTNG_UST_CTL_COUNTER_ARITHMETIC_MODULAR,
 					     LTTNG_UST_CTL_COUNTER_ALLOC_PER_CPU,
 					     to_tracer_coalesce_hits(configuration.update_policy));
