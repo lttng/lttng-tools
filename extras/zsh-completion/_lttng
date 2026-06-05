@@ -318,6 +318,7 @@ __lttng_complete_cmd_name() {
   if ((minor_version >= 16)); then
     cmd_names+=(
       'add-map-channel:add a map channel to a recording session'
+      'export-maps:export the counter values of a recording session as SQL'
       'show-maps:show the counter values of one or more map channels'
     )
   fi
@@ -2971,6 +2972,18 @@ __lttng_complete_auto_reclaim_memory() {
 
   # Add completions
   _describe 'automatic memory reclaim strategy' strategies -- strategies_with_arg -qS:
+}
+
+# Adds completions for the arguments of the `export-maps` command.
+__lttng_complete_export_maps_cmd() {
+  specs=(
+    $help_opt_specs
+    '(-s --session)'{-s+,--session=}'[export the counters of a recording session]: : __lttng_complete_session_name all all'
+    '(-f --format)'{-f+,--format=}'[set the output format]:output format:(sql)'
+  )
+
+  # Add completions
+  _arguments -s -W : $specs
 }
 
 # Adds completions for the arguments of the `enable-channel` command.

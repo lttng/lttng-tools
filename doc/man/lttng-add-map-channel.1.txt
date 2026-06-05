@@ -90,7 +90,8 @@ See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 List the map channels of a given recording session with the
 man:lttng-list(1) command. Show the values of the map channels of a
-given recording session with the man:lttng-show-maps(1) command.
+given recording session with the man:lttng-show-maps(1) command, or
+export them as a SQL script with the man:lttng-export-maps(1) command.
 
 
 include::common-lttng-cmd-options-head.txt[]
@@ -352,6 +353,7 @@ SEE ALSO
 --------
 man:lttng(1),
 man:lttng-add-trigger(1),
+man:lttng-export-maps(1),
 man:lttng-list(1),
 man:lttng-show-maps(1),
 man:lttng-concepts(7)

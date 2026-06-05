@@ -52,6 +52,9 @@ lttng_SOURCES = command.hpp conf.cpp conf.hpp commands/start.cpp \
 				commands/show-maps-build-output.cpp commands/show-maps-build-output.hpp \
 				commands/show-maps-human.cpp commands/show-maps-human.hpp \
 				commands/show-maps-mi.cpp commands/show-maps-mi.hpp \
+				commands/export-maps.cpp \
+				commands/export-maps-sql.cpp commands/export-maps-sql.hpp \
+				commands/export-maps-mi.cpp commands/export-maps-mi.hpp \
 				utils.cpp utils.hpp lttng.cpp \
 				uprobe.cpp uprobe.hpp \
 				exception.hpp exception.cpp

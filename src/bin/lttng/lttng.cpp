@@ -107,6 +107,7 @@ struct cmd_struct commands[] = {
 	{ "destroy", cmd_destroy },
 	{ "disable-channel", cmd_disable_channels },
 	{ "disable-event", cmd_disable_events },
+	{ "export-maps", cmd_export_maps },
 	{ "enable-channel", cmd_enable_channels },
 	{ "enable-event", cmd_enable_events },
 	{ "help", nullptr },
@@ -280,6 +281,8 @@ void show_basic_help()
 	puts("");
 	puts("Map channels:");
 	puts("  add-map-channel   " CONFIG_CMD_DESCR_ADD_MAP_CHANNEL);
+	puts("  export-maps       " CONFIG_CMD_DESCR_EXPORT_MAPS);
+	puts("  show-maps         " CONFIG_CMD_DESCR_SHOW_MAPS);
 	puts("");
 	puts("Recording event rules:");
 	puts("  disable-event     " CONFIG_CMD_DESCR_DISABLE_EVENT);

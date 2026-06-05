@@ -231,6 +231,7 @@ Map channel
 |Command |Description
 
 |man:lttng-add-map-channel(1) |{cmd_descr_add_map_channel}.
+|man:lttng-export-maps(1) |{cmd_descr_export_maps}.
 |man:lttng-show-maps(1) |{cmd_descr_show_maps}.
 |===
 

@@ -558,6 +558,7 @@ _AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_DISABLE_ROTATION], [Unset a recording ses
 _AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_ENABLE_CHANNEL], [Create or enable an event record channel])
 _AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_ENABLE_EVENT], [Create or enable recording event rules])
 _AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_ENABLE_ROTATION], [Set a recording session rotation schedule])
+_AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_EXPORT_MAPS], [Export the counter values of a recording session as SQL])
 _AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_HELP], [Show the help of a command])
 _AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_LIST], [List recording sessions and instrumentation points])
 _AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_LIST_TRIGGERS], [List triggers])

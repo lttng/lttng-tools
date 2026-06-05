@@ -1369,6 +1369,10 @@ man:lttng-list(1) and man:lttng-status(1) commands.
 Show the current counter values of one or more map channels with the
 man:lttng-show-maps(1) command.
 
+Export the counter values of a recording session as an SQL script, for
+flexible querying and aggregation, with the man:lttng-export-maps(1)
+command.
+
 Reset all counters of all the map channels of a recording session
 to{nbsp}0, without removing their keys, with the man:lttng-clear(1)
 command.
