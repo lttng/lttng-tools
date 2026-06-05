@@ -1,3 +1,53 @@
+2026-06-05 lttng-tools 2.15.1 (National Fish and Chip Day)
+	* Fix: common: enable-event MI emits duplicate exclusions element
+	* Fix: lttng: reclaim-memory MI emits generic "channels" element
+	* Fix: common: MI XSD names snapshot record action "record-output"
+	* Fix: common: MI XSD rejects add-context per-context success element
+	* Fix: common: MI XSD names start/stop-session actions without "_session"
+	* Fix: common: stop-session action serialized as start-session in MI
+	* Fix: common: lttng client abort when serializing rotate-session action
+	* tests: fix: lttng-sessiond abort when using libkmod
+	* Fix: sessiond: default kernel probe list missing 9p and dma-fence
+	* Fix: common: lockfile fd leaks into consumerd via fork+exec
+	* Fix: tests: Do not use both  `-p` and `-t` together for mktemp
+	* Fix: handle failures to find pid cmdline
+	* fix: '-Wsuggest-override' only valid for C++ warnings
+	* lttng: handle popt parsing errors
+	* doc: lttng-view(1): remove non-existent '--session' option
+	* Fix: common: drop :: qualifier on *_CLOEXEC for musl compatibility
+	* Fix: common: uri_compare compares uninitialized union tail
+	* tests: Fix platform uname split when release contains more periods
+	* Fix: tests: serial runner produces empty log files for hanging tests
+	* Fix: tests: consumer pause testpoint FIFO EOF mishandled as error
+	* tests: Check kernel release to determine delay table parameters
+	* consumerd: Fix segfault when starting metadata switch timer
+	* Fix: consumerd: pause testpoint not re-evaluated after poll()
+	* Fix: lttng: vague error reporting in reclaim-memory command
+	* Fix: relayd: live viewer reads wrong chunk after per-PID clear
+	* Fix: tests: undefined CHANNEL_NAME in rotation notification test
+	* Fix: tests: race in rotation notification test
+	* tests: Fix rotation notification test when tmpdir contains symlink
+	* tests: add notification/test_rotation to the regression test list
+	* tests: add test_condition to the unit test list
+	* sessiond: Fix: Deadlock when handling notification overflow
+	* tests: Disable watchdog-timer for blocking tests
+	* common: Escape newlines when printing CPU mask
+	* Fix: common: Improve cpu mask error checking
+	* Fix: parsing CPU mask with no separators
+	* common: Split CPU mask parsing from reading
+	* Fix: lttng: truncated session name when it contains spaces
+	* Fix: relayd: wrong session id used in trace chunk existence check
+	* Fix: tests: swapped allowed value types for process attribute trackers
+	* Fix: tests: missing shell quoting of filter expressions in test harness
+	* Fix: sessiond: abort when loading an agent session configuration
+	* tests: Handle WaitTraceTestApplications that crash early with no stderr
+	* tests: fix preload of liblttng-ust-ctl-fuzz.so with '-Wl,-z,now'
+	* Fix: various typos in license identifiers
+	* build: Fix enable-werror help string indentation
+	* build: Fix api-doc help string indentation
+	* Fix: Include 32-bit kernel trace expect file in dist
+	* Fix: tests: Set mip version for python defined bt graphs explicitly
+
 2026-02-12 lttng-tools 2.15.0
 	* Fix: ust-consumerd: flush hangs on stalled channel without watchdog timer
 	* Fix: consumerd: link failure on 32-bit architectures due to missing libatomic
