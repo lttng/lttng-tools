@@ -18,10 +18,19 @@ import lttngtest
 from common import *
 
 """
-This test suite ensures that the watchdog timer can perform the fixup.
+This test suite validates that a stalled sub-buffer is recovered, both with and
+without the watchdog timer being active.
 
-Unlike other stall buffer test suites where the fixup is done when the session
-is destroyed, here we aim to validate that the watchdog timer performs the fixup.
+A stalled sub-buffer is recovered the same way by the watchdog timer and by the
+quiescent fixup that runs when a session is stopped or rotated. In a
+non-snapshot session the recovered event is therefore present regardless of the
+watchdog timer, because any operation that flushes the trace to a readable state
+also runs the fixup. This suite checks that positive outcome in both
+configurations (active/inactive watchdog).
+
+Telling them apart requires reading the buffers without triggering the fixup,
+which is only possible with a snapshot session. That scenario is tested in
+another test.
 
 The tests proceed as follows:
 
@@ -32,7 +41,7 @@ The tests proceed as follows:
      a) Channels are created with per-channel buffer allocation for better
      reproducibility.
 
-     b) Channels must include a stall watchdog timer.
+     b) The watchdog timer is either enabled or disabled.
 
   3. Enable some events
 
@@ -42,13 +51,14 @@ The tests proceed as follows:
      at test points within UST. The applications will crash once all breakpoints
      have been reached.
 
-  5. The session is rotated, and we wait for this operation to complete.
+  5. The stalled sub-buffer is recovered and the trace brought to a readable,
+     quiescent state.
 
   6. The trace is read and compared against the expected trace.
 
      a) The trace should not contain any errors.
 
-     b) Depending on the test point, some events might be missing.
+     b) The recovered event must be present.
 
   7. The session is destroyed
 """
@@ -96,33 +106,35 @@ def run_scenario(
     # 4.
     scenario(tap.diagnostic, test_env, session)
 
-    # 5. If the watchdog timer is disabled, stop the session to force the
-    # stalled fixup to run. Otherwise, simply do a rotation of the session which will
-    # naturally wait for things to be balanced.
+    # 5. Recover the stalled sub-buffer and bring the trace to a readable,
+    # quiescent state.
     if disable_watchdog:
+        # Without the watchdog timer, stopping the session is what runs the
+        # fixup. The session is then quiescent, so the whole trace lives in the
+        # current chunk.
         session.stop()
+        trace_path = session.output.path
     else:
-        # Wait 10 times the watchdog timer period. If for some reason the test
-        # failed with the watchdog timer enabled, then it probably means that
-        # the load on the system is slowing down the fixup algorithm.
+        # Give the watchdog timer time to perform the fixup: wait 10 times its
+        # period. A failure here with the timer enabled usually means the load
+        # on the system slowed down the fixup algorithm.
         time.sleep(10 * (watchdog_timer_period_us / 1000000))
+        # Rotating flushes the recovered sub-buffer to a complete,
+        # self-contained archived chunk. Reading the live current chunk instead
+        # would race the metadata writer and occasionally find a truncated
+        # metadata stream.
         session.rotate(wait=True)
+        trace_path = session.output.path / "archives"
 
-    stats = TraceStats(str(session.output.path))
+    stats = TraceStats(str(trace_path))
 
     # 6.
     expectation_error = stats.unmet_scenario_expectations(scenario)
-
-    if disable_watchdog:
-        if not expectation_error:
-            tap.diagnostic("Expection an error when disabling watchdog timer")
-            dump_trace_contents(session.output.path, tap)
-            raise Exception("")
-    elif expectation_error:
+    if expectation_error:
         tap.diagnostic(
             "Trace stats did not meet scenario expectations: dumping contents"
         )
-        dump_trace_contents(session.output.path, tap)
+        dump_trace_contents(trace_path, tap)
         raise Exception(expectation_error)
 
     # 7.
@@ -156,11 +168,14 @@ def run_tests(tap, scenarios, **kwargs):
 if __name__ == "__main__":
 
     scenarios = (
+        # The producer stalls a sub-buffer holding a single event. Once the
+        # stall is recovered, that is one event in one packet, just like the
+        # same stall point in test_stall_buffer_simple.py.
         StallScenario(
             testpoints=["lib_ring_buffer_reserve_take_ownership_succeed"],
             expected_events=1,
             expected_discarded_events=0,
-            expected_packets=2,  # Since a rotation is done, we expect two packets.
+            expected_packets=1,
             expected_discarded_packets=0,
         ),
     )
