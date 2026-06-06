@@ -126,4 +126,20 @@ std::pair<double, const char *> utils_value_unit_from_period(std::uint64_t perio
 std::string utils_string_from_period(std::uint64_t period_us);
 std::string utils_format_integer_grouped(std::int64_t value);
 
+/*
+ * Returns the approximate monospace display width, in columns, of the
+ * Unicode codepoint `cp`.
+ *
+ * The result is 2 for East Asian wide/fullwidth characters and for the
+ * emoji ranges, and 1 otherwise.
+ *
+ * This mirrors what {fmt} uses internally to align padded string
+ * fields, so that widths computed here match those that {fmt} would
+ * compute for the same text.
+ *
+ * This is an approximation: this function counts combining marks and
+ * other zero width codepoints as 1, not 0.
+ */
+std::size_t utils_codepoint_width(char32_t cp) noexcept;
+
 #endif /* _COMMON_UTILS_H */
