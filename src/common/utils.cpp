@@ -1734,3 +1734,14 @@ std::size_t utils_codepoint_width(const char32_t cp) noexcept
 
 	return is_wide ? 2 : 1;
 }
+
+std::size_t utils_utf_8_string_width(const tiny_utf8::utf8_string& str) noexcept
+{
+	std::size_t width = 0;
+
+	for (const auto cp : str) {
+		width += utils_codepoint_width(cp);
+	}
+
+	return width;
+}

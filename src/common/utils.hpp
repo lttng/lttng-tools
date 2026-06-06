@@ -12,6 +12,7 @@
 #include <common/error.hpp>
 #include <common/exception.hpp>
 #include <common/string-utils/c-string-view.hpp>
+#include <common/tinyutf8.hpp>
 
 #include <lttng/lttng-error.h>
 
@@ -141,5 +142,14 @@ std::string utils_format_integer_grouped(std::int64_t value);
  * other zero width codepoints as 1, not 0.
  */
 std::size_t utils_codepoint_width(char32_t cp) noexcept;
+
+/*
+ * Returns the approximate monospace display width, in columns, of the
+ * whole UTF-8 string `str`.
+ *
+ * This is the sum of utils_codepoint_width() for each codepoint of
+ * `str`, and therefore inherits the same approximation.
+ */
+std::size_t utils_utf_8_string_width(const tiny_utf8::utf8_string& str) noexcept;
 
 #endif /* _COMMON_UTILS_H */
