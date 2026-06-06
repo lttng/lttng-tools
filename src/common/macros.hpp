@@ -274,6 +274,7 @@ void *memmove(DestinationType *d, const SourceType *s, size_t n) = delete;
 #define DIAGNOSTIC_IGNORE_ADDRESS_OF_PACKED_MEMBER \
 	_Pragma("GCC diagnostic ignored \"-Waddress-of-packed-member\"")
 #define DIAGNOSTIC_IGNORE_MISSING_NORETURN _Pragma("GCC diagnostic ignored \"-Wmissing-noreturn\"")
+#define DIAGNOSTIC_IGNORE_SHADOW	   _Pragma("GCC diagnostic ignored \"-Wshadow\"")
 #else
 /* GCC */
 #define DIAGNOSTIC_IGNORE_SUGGEST_ATTRIBUTE_FORMAT \
@@ -294,6 +295,7 @@ void *memmove(DestinationType *d, const SourceType *s, size_t n) = delete;
 	_Pragma("GCC diagnostic ignored \"-Waddress-of-packed-member\"")
 #define DIAGNOSTIC_IGNORE_MISSING_NORETURN \
 	_Pragma("GCC diagnostic ignored \"-Wsuggest-attribute=noreturn\"")
+#define DIAGNOSTIC_IGNORE_SHADOW _Pragma("GCC diagnostic ignored \"-Wshadow\"")
 #endif
 
 /* Used to make specific C++ functions to C code. */

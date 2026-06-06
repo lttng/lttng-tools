@@ -126,6 +126,7 @@ libcommon_lgpl_la_SOURCES = \
 	stream-info.cpp stream-info.hpp \
 	thread.cpp thread.hpp \
 	time.cpp \
+	tinyutf8.hpp \
 	tracker.cpp tracker.hpp \
 	trigger.cpp \
 	type-traits.hpp \
