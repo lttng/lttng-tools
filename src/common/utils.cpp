@@ -1706,3 +1706,31 @@ std::string utils_format_integer_grouped(const std::int64_t value)
 
 	return result;
 }
+
+std::size_t utils_codepoint_width(const char32_t cp) noexcept
+{
+	/*
+	 * East Asian wide/fullwidth and emoji code points occupy two
+	 * terminal columns.
+	 */
+	const auto is_wide = cp >= 0x1100 &&
+		(cp <= 0x115f || /* Hangul Jamo init. consonants */
+		 cp == 0x2329 || /* Left-pointing angle bracket */
+		 cp == 0x232a || /* Right-pointing angle bracket */
+		 /* CJK ... Yi except ideographic half fill space: */
+		 (cp >= 0x2e80 && cp <= 0xa4cf && cp != 0x303f) ||
+		 (cp >= 0xac00 && cp <= 0xd7a3) || /* Hangul syllables */
+		 (cp >= 0xf900 && cp <= 0xfaff) || /* CJK compatibility ideographs */
+		 (cp >= 0xfe10 && cp <= 0xfe19) || /* Vertical forms */
+		 (cp >= 0xfe30 && cp <= 0xfe6f) || /* CJK compatibility forms */
+		 (cp >= 0xff00 && cp <= 0xff60) || /* Fullwidth forms */
+		 (cp >= 0xffe0 && cp <= 0xffe6) || /* Fullwidth signs */
+		 (cp >= 0x20000 && cp <= 0x2fffd) || /* CJK */
+		 (cp >= 0x30000 && cp <= 0x3fffd) ||
+		 /* Miscellaneous symbols and pictographs + emoticons: */
+		 (cp >= 0x1f300 && cp <= 0x1f64f) ||
+		 /* Supplemental symbols and pictographs: */
+		 (cp >= 0x1f900 && cp <= 0x1f9ff));
+
+	return is_wide ? 2 : 1;
+}
