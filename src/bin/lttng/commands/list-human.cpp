@@ -19,6 +19,7 @@
 #include <common/mint.hpp>
 #include <common/term-utils.hpp>
 #include <common/time.hpp>
+#include <common/tinyutf8.hpp>
 #include <common/utils.hpp>
 
 #include <vendor/optional.hpp>
@@ -464,22 +465,6 @@ private:
 	}
 
 	/*
-	 * Returns the number of UTF-8 codepoints in `str`.
-	 */
-	static std::size_t _utf8_string_length(const std::string& str) noexcept
-	{
-		std::size_t count = 0;
-
-		for (std::size_t i = 0; i < str.length(); ++i) {
-			if ((static_cast<unsigned char>(str[i]) & 0xc0) != 0x80) {
-				++count;
-			}
-		}
-
-		return count;
-	}
-
-	/*
 	 * Returns the truncated version of the line `line` (without
 	 * any newline) if it exceeds the terminal width, adding `…`
 	 * at the end.
@@ -488,7 +473,8 @@ private:
 	 */
 	static std::string _truncate_line(const std::string& line)
 	{
-		if (_utf8_string_length(lttng::mint_escape_ansi(line)) <= lttng::term_columns()) {
+		if (tiny_utf8::utf8_string(lttng::mint_escape_ansi(line)).length() <=
+		    lttng::term_columns()) {
 			/* Already fits: return as is */
 			return line;
 		}
