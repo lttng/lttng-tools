@@ -1475,6 +1475,14 @@ void cmd_add_map_channel(const ltt_session::locked_ref& session,
 		buffer_ownership,
 		dead_group_policy);
 
+	if (session->has_been_started) {
+		LTTNG_THROW_CTL(
+			lttng::format(
+				"Refusing to add a map channel to an already-started session: map_channel_name=`{}`",
+				payload.name),
+			LTTNG_ERR_TRACE_ALREADY_STARTED);
+	}
+
 	auto& target_domain =
 		session->get_domain(lttng::get_domain_class_from_lttng_domain_type(domain_type));
 
