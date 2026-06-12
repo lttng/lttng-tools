@@ -86,6 +86,7 @@ liblttng_sessiond_common_la_SOURCES = utils.cpp utils.hpp \
                        domain-orchestrator.hpp \
                        stream-group.hpp \
                        map-group.hpp \
+                       map-group-identity.hpp \
                        key-registry.hpp \
                        shared-group.hpp shared-group.cpp \
                        map-channel.hpp map-channel.cpp \

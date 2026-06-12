@@ -136,7 +136,6 @@ public:
 	 */
 	ust::map_group& add_uid_group(uid_t uid, value_type_t resolved_value_type);
 	void remove_uid_group(uid_t uid, value_type_t resolved_value_type);
-	void for_each_uid_group(const uid_group_visitor& visitor) const;
 
 	/*
 	 * per-PID API. The orchestrator calls `add_app_group` on first
@@ -148,7 +147,8 @@ public:
 	 */
 	ust::map_group& add_app_group(const ust::app& app, value_type_t resolved_value_type);
 	void remove_app_group(const ust::app& app);
-	void for_each_app_group(const app_group_visitor& visitor) const;
+
+	void for_each_group(const group_visitor& visitor) const override;
 
 	/*
 	 * Attach this channel to `app`: for per-UID channels, lazily

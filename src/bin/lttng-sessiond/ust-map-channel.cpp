@@ -17,6 +17,34 @@
 
 #include <utility>
 
+namespace {
+/*
+ * Bitness under which a group keyed by `resolved_value_type` is reported:
+ * the width of its counter values. The type is resolved at group creation
+ * and is never SIGNED_INT_MAX.
+ */
+lttng::sessiond::map::group_app_bitness group_app_bitness_of(
+	lttng::sessiond::config::map_channel_configuration::value_type_t resolved_value_type)
+{
+	switch (resolved_value_type) {
+	case lttng::sessiond::config::map_channel_configuration::value_type_t::SIGNED_INT_32:
+		return lttng::sessiond::map::group_app_bitness::BITS_32;
+	case lttng::sessiond::config::map_channel_configuration::value_type_t::SIGNED_INT_64:
+		return lttng::sessiond::map::group_app_bitness::BITS_64;
+	default:
+		abort();
+	}
+}
+
+lttng::sessiond::map::group_app_bitness
+group_app_bitness_of(lttng::sessiond::ust::application_abi abi) noexcept
+{
+	return abi == lttng::sessiond::ust::application_abi::ABI_32 ?
+		lttng::sessiond::map::group_app_bitness::BITS_32 :
+		lttng::sessiond::map::group_app_bitness::BITS_64;
+}
+} /* namespace */
+
 namespace lttng {
 namespace sessiond {
 namespace ust {
@@ -71,15 +99,6 @@ void map_channel::remove_uid_group(uid_t uid, value_type_t resolved_value_type)
 
 	const auto erased = _per_uid_groups.erase(uid_value_type_key{ uid, resolved_value_type });
 	LTTNG_ASSERT(erased == 1);
-}
-
-void map_channel::for_each_uid_group(const uid_group_visitor& visitor) const
-{
-	LTTNG_ASSERT(configuration().buffer_ownership == config::ownership_model_t::PER_UID);
-
-	for (const auto& entry : _per_uid_groups) {
-		visitor(entry.first.first, entry.first.second, *entry.second);
-	}
 }
 
 ust::map_group& map_channel::add_app_group(const ust::app& app, value_type_t resolved_value_type)
@@ -137,13 +156,48 @@ void map_channel::remove_app_group(const ust::app& app)
 	_per_app_groups.erase(it);
 }
 
-void map_channel::for_each_app_group(const app_group_visitor& visitor) const
+void map_channel::for_each_group(const group_visitor& visitor) const
 {
-	LTTNG_ASSERT(configuration().buffer_ownership == config::ownership_model_t::PER_PID);
+	namespace lsm = sessiond::map;
 
-	for (const auto& entry : _per_app_groups) {
-		visitor(*entry.first, *entry.second);
+	switch (configuration().buffer_ownership) {
+	case config::ownership_model_t::PER_UID:
+		for (const auto& entry : _per_uid_groups) {
+			visitor(
+				lsm::group_description{
+					lsm::group_identity{
+						lsm::group_type::USER_PER_USER,
+						static_cast<std::uint64_t>(entry.first.first),
+						group_app_bitness_of(entry.first.second) },
+					nonstd::nullopt },
+				*entry.second);
+		}
+
+		break;
+	case config::ownership_model_t::PER_PID:
+		for (const auto& entry : _per_app_groups) {
+			const auto& app = *entry.first;
+
+			visitor(lsm::group_description{ lsm::group_identity{
+								lsm::group_type::USER_PER_PROCESS,
+								static_cast<std::uint64_t>(app.pid),
+								group_app_bitness_of(app.abi()) },
+							app.name },
+				*entry.second);
+		}
+
+		break;
+	case config::ownership_model_t::SYSTEM:
+		/* A user space map channel never uses system buffer ownership. */
+		abort();
 	}
+
+	/* Every user space map channel exposes its shared group. */
+	visitor(lsm::group_description{ lsm::group_identity{ lsm::group_type::SHARED,
+							     nonstd::nullopt,
+							     nonstd::nullopt },
+					nonstd::nullopt },
+		shared());
 }
 
 nonstd::optional<map_channel::app_attachment> map_channel::attach_to_app(ust::app& app,

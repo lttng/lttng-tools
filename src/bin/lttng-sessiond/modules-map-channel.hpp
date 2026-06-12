@@ -46,6 +46,8 @@ public:
 	modules::map_group& kernel_group() noexcept;
 	const modules::map_group& kernel_group() const noexcept;
 
+	void for_each_group(const group_visitor& visitor) const override;
+
 	struct rule_record {
 		std::uint64_t user_token;
 		/* The kernel counter-event fd; closed when the record is erased. */

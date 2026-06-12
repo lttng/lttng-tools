@@ -9,6 +9,7 @@
 #define LTTNG_SESSIOND_MAP_CHANNEL_HPP
 
 #include "key-registry.hpp"
+#include "map-group-identity.hpp"
 #include "shared-group.hpp"
 
 #include <common/hash-combine.hpp>
@@ -75,6 +76,13 @@ public:
 		lttng::c_string_view key, std::uint64_t index, const element_value& value)>;
 
 	/*
+	 * Visitor signature for `for_each_group`. Invoked once per group of
+	 * the channel with its description and the group itself.
+	 */
+	using group_visitor = std::function<void(const group_description& description,
+						 const group& visited_group)>;
+
+	/*
 	 * `registry` may be null for INDEX-keyed channels: those
 	 * channels reference indices directly and do not maintain a
 	 * string registry. Callers that walk a group's elements via
@@ -114,6 +122,16 @@ public:
 
 	shared_group& shared() noexcept;
 	const shared_group& shared() const noexcept;
+
+	/*
+	 * Invoke `visitor` on every group of the channel, whatever the
+	 * domain and buffer-ownership model: the single system-wide group of
+	 * a kernel channel; the per-(user, bitness) or per-process groups of
+	 * a user space channel followed by its shared group. This mirrors,
+	 * group by group, what the public lttng_map_channel_get_groups()
+	 * exposes.
+	 */
+	virtual void for_each_group(const group_visitor& visitor) const = 0;
 
 	/*
 	 * Walk the channel's registry and emit

@@ -36,6 +36,20 @@ const modules::map_group& map_channel::kernel_group() const noexcept
 	return _kernel_group;
 }
 
+void map_channel::for_each_group(const group_visitor& visitor) const
+{
+	/*
+	 * A kernel map channel has a single system-wide group and, following
+	 * the public model, exposes no shared group.
+	 */
+	visitor(sessiond::map::group_description{ sessiond::map::group_identity{
+							  sessiond::map::group_type::KERNEL_GLOBAL,
+							  nonstd::nullopt,
+							  nonstd::nullopt },
+						  nonstd::nullopt },
+		_kernel_group);
+}
+
 } /* namespace modules */
 } /* namespace sessiond */
 } /* namespace lttng */
