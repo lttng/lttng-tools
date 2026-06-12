@@ -8,7 +8,7 @@
 #ifndef LTTNG_SESSIOND_SHARED_GROUP_HPP
 #define LTTNG_SESSIOND_SHARED_GROUP_HPP
 
-#include "abstract-group.hpp"
+#include "map-group.hpp"
 
 #include <cstdint>
 #include <mutex>
@@ -39,7 +39,7 @@ namespace map {
  * Saturation arithmetic uses the channel value-type's bounds and records
  * overflow / underflow as sticky bits on each element.
  */
-class shared_group final : public abstract_group {
+class shared_group final : public group {
 public:
 	explicit shared_group(const config::map_channel_configuration& configuration);
 
@@ -58,7 +58,7 @@ public:
 	 */
 	void increment(std::uint64_t index, std::int64_t delta);
 
-	/* abstract_group interface. */
+	/* group interface. */
 	element_value aggregate_element(std::uint64_t index) const override;
 	void
 	for_each_partition(const std::function<void(const partition_id&)>& visitor) const override;

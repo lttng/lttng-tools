@@ -127,12 +127,8 @@ ust_object_data map_group::_duplicate_app_counter_handle() const
 
 ust_object_data map_group::_duplicate_map_handle(unsigned int cpu) const
 {
-	/*
-	 * The factory inserts one map per CPU in index order, so the
-	 * vector position equals the CPU index.
-	 */
-	LTTNG_ASSERT(cpu < maps().size());
-	return maps()[cpu]->handle.duplicate();
+	LTTNG_ASSERT(cpu < _per_cpu_app_handles.size());
+	return _per_cpu_app_handles[cpu].duplicate();
 }
 
 map_group::app_handle::app_handle(ust::app& app,
@@ -229,9 +225,9 @@ map_group::app_handle map_group::attach_to_app(ust::app& app, int parent_handle)
 	auto master = _duplicate_app_counter_handle();
 
 	std::vector<ust_object_data> per_cpu_local;
-	per_cpu_local.reserve(map_count());
-	for (const auto& m : maps()) {
-		per_cpu_local.emplace_back(_duplicate_map_handle(*m->cpu_id));
+	per_cpu_local.reserve(_per_cpu_app_handles.size());
+	for (unsigned int cpu = 0; cpu < _per_cpu_app_handles.size(); cpu++) {
+		per_cpu_local.emplace_back(_duplicate_map_handle(cpu));
 	}
 
 	/*
@@ -371,13 +367,11 @@ void map_group::for_each_partition(
 	const std::function<void(const lsm::partition_id&)>& visitor) const
 {
 	/*
-	 * A UST counter keeps one per-CPU sub-counter; every entry of maps()
-	 * is a per-CPU map carrying its CPU id, which is the partition
-	 * identifier.
+	 * A UST counter keeps one per-CPU sub-counter; the CPU id is the
+	 * partition identifier.
 	 */
-	for (const auto& partition_map : maps()) {
-		LTTNG_ASSERT(partition_map->cpu_id);
-		visitor(lsm::partition_id(*partition_map->cpu_id));
+	for (unsigned int cpu = 0; cpu < _per_cpu_app_handles.size(); cpu++) {
+		visitor(lsm::partition_id(cpu));
 	}
 }
 
@@ -508,7 +502,7 @@ map_group::create_from_config(const config::map_channel_configuration& configura
 				ret));
 		}
 
-		group.add_map(i, ust_object_data(cpu_obj_raw));
+		group._per_cpu_app_handles.emplace_back(cpu_obj_raw);
 	}
 
 	return group;
