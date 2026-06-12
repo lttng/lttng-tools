@@ -8,7 +8,10 @@
 #ifndef LTTNG_SESSIOND_ABSTRACT_GROUP_HPP
 #define LTTNG_SESSIOND_ABSTRACT_GROUP_HPP
 
+#include <vendor/optional.hpp>
+
 #include <cstdint>
+#include <functional>
 
 namespace lttng {
 namespace sessiond {
@@ -22,6 +25,14 @@ struct element_value {
 	bool overflow;
 	bool underflow;
 };
+
+/*
+ * Identifies one partition (map) of a group: the CPU id for the
+ * tracer-backed groups, which keep one map per CPU. The shared group has
+ * no per-partition decomposition: its single map is identified by an
+ * unset id.
+ */
+using partition_id = nonstd::optional<unsigned int>;
 
 /*
  * Common per-index interface exposed by every group inside a
@@ -42,6 +53,25 @@ public:
 	abstract_group& operator=(const abstract_group&) = delete;
 
 	virtual element_value aggregate_element(std::uint64_t index) const = 0;
+
+	/*
+	 * Invoke `visitor` once per partition (map) of the group, in the
+	 * order the public API serializes them. A group with no
+	 * per-partition fan-out (e.g. the shared group) reports a single
+	 * partition with an unset id.
+	 */
+	virtual void
+	for_each_partition(const std::function<void(const partition_id&)>& visitor) const = 0;
+
+	/*
+	 * Read the element at `index` on the partition identified by
+	 * `partition`, which must come from for_each_partition on this
+	 * group. This is the per-partition counterpart of aggregate_element,
+	 * which collapses every partition into a single total.
+	 */
+	virtual element_value read_element(std::uint64_t index,
+					   const partition_id& partition) const = 0;
+
 	virtual void clear_element(std::uint64_t index) = 0;
 
 protected:

@@ -156,7 +156,13 @@ public:
 	 */
 	app_handle attach_to_app(ust::app& app, int parent_handle);
 
+	sessiond::map::element_value read_element(std::uint64_t index, int cpu) const;
 	sessiond::map::element_value aggregate_element(std::uint64_t index) const override;
+	void for_each_partition(const std::function<void(const sessiond::map::partition_id&)>&
+					visitor) const override;
+	sessiond::map::element_value
+	read_element(std::uint64_t index,
+		     const sessiond::map::partition_id& partition) const override;
 	void clear_element(std::uint64_t index) override;
 
 private:

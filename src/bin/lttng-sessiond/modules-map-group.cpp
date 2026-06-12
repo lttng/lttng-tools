@@ -15,6 +15,7 @@
 #include <common/lttng-kernel.hpp>
 #include <common/make-unique.hpp>
 #include <common/scope-exit.hpp>
+#include <common/utils.hpp>
 
 #include <cstdint>
 #include <errno.h>
@@ -218,6 +219,29 @@ map::element_value map_group::aggregate_element(std::uint64_t index) const
 	}
 
 	return from_counter_value(counter_aggregate.value);
+}
+
+void map_group::for_each_partition(
+	const std::function<void(const sessiond::map::partition_id&)>& visitor) const
+{
+	/*
+	 * A kernel counter is allocated over the possible CPUs; the partition
+	 * identifier is the CPU id. The sessiond keeps no per-CPU handle for
+	 * the kernel (maps() is empty), so the range comes from the system
+	 * topology rather than from the group's maps.
+	 */
+	const auto cpu_count = utils_get_cpu_count();
+
+	for (unsigned int cpu = 0; cpu < cpu_count; cpu++) {
+		visitor(sessiond::map::partition_id(cpu));
+	}
+}
+
+sessiond::map::element_value
+map_group::read_element(std::uint64_t index, const sessiond::map::partition_id& partition) const
+{
+	LTTNG_ASSERT(partition);
+	return read_element(index, static_cast<int>(*partition));
 }
 
 void map_group::clear_element(std::uint64_t index)

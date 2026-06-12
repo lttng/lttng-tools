@@ -10,6 +10,7 @@
 
 #include <common/exception.hpp>
 #include <common/format.hpp>
+#include <common/macros.hpp>
 
 #include <climits>
 #include <cstdint>
@@ -100,6 +101,18 @@ element_value shared_group::aggregate_element(std::uint64_t index) const
 	}
 
 	return element_value{ it->second.value, it->second.overflow, it->second.underflow };
+}
+
+void shared_group::for_each_partition(const std::function<void(const partition_id&)>& visitor) const
+{
+	/* The shared group is a single, partition-less map. */
+	visitor(nonstd::nullopt);
+}
+
+element_value shared_group::read_element(std::uint64_t index, const partition_id& partition) const
+{
+	LTTNG_ASSERT(!partition);
+	return aggregate_element(index);
 }
 
 void shared_group::clear_element(std::uint64_t index)
