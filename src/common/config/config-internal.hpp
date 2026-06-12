@@ -12,6 +12,7 @@
 
 #include <vendor/optional.hpp>
 
+#include <cstdint>
 #include <libxml/xmlwriter.h>
 #include <stdio.h>
 
@@ -28,6 +29,15 @@ namespace config {
  * domain type.
  */
 nonstd::optional<lttng_domain_type> domain_type_from_string(const char *text) noexcept;
+
+/*
+ * Return the value of the decimal configuration string `text` as the
+ * requested type, or `nonstd::nullopt` if `text` isn't a valid value in
+ * range (rejecting trailing garbage).
+ */
+nonstd::optional<std::uint64_t> uint64_from_string(const char *text) noexcept;
+nonstd::optional<std::int64_t> int64_from_string(const char *text) noexcept;
+nonstd::optional<double> double_from_string(const char *text) noexcept;
 
 } /* namespace config */
 } /* namespace lttng */
