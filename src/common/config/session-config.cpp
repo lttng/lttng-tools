@@ -629,6 +629,45 @@ lttng::config::domain_type_from_string(const char *text) noexcept
 	return nonstd::nullopt;
 }
 
+nonstd::optional<std::uint64_t> lttng::config::uint64_from_string(const char *text) noexcept
+{
+	char *endptr = nullptr;
+
+	errno = 0;
+	const auto value = strtoull(text, &endptr, 10);
+	if (errno != 0 || endptr == text || *endptr != '\0') {
+		return nonstd::nullopt;
+	}
+
+	return value;
+}
+
+nonstd::optional<std::int64_t> lttng::config::int64_from_string(const char *text) noexcept
+{
+	char *endptr = nullptr;
+
+	errno = 0;
+	const auto value = strtoll(text, &endptr, 10);
+	if (errno != 0 || endptr == text || *endptr != '\0') {
+		return nonstd::nullopt;
+	}
+
+	return value;
+}
+
+nonstd::optional<double> lttng::config::double_from_string(const char *text) noexcept
+{
+	char *endptr = nullptr;
+
+	errno = 0;
+	const auto value = strtod(text, &endptr);
+	if (errno != 0 || endptr == text || *endptr != '\0') {
+		return nonstd::nullopt;
+	}
+
+	return value;
+}
+
 namespace {
 ATTR_FORMAT_PRINTF(2, 3)
 void xml_error_handler(void *ctx __attribute__((unused)), const char *format, ...)
@@ -741,44 +780,34 @@ end:
 
 int parse_uint(xmlChar *str, uint64_t *val)
 {
-	int ret;
-	char *endptr;
-
 	if (!str || !val) {
-		ret = -1;
-		goto end;
+		return -1;
 	}
 
-	*val = strtoull((const char *) str, &endptr, 10);
-	if (!endptr || *endptr) {
-		ret = -1;
-	} else {
-		ret = 0;
+	const auto value = lttng::config::uint64_from_string(reinterpret_cast<const char *>(str));
+
+	if (!value) {
+		return -1;
 	}
 
-end:
-	return ret;
+	*val = *value;
+	return 0;
 }
 
 int parse_int(xmlChar *str, int64_t *val)
 {
-	int ret;
-	char *endptr;
-
 	if (!str || !val) {
-		ret = -1;
-		goto end;
+		return -1;
 	}
 
-	*val = strtoll((const char *) str, &endptr, 10);
-	if (!endptr || *endptr) {
-		ret = -1;
-	} else {
-		ret = 0;
+	const auto value = lttng::config::int64_from_string(reinterpret_cast<const char *>(str));
+
+	if (!value) {
+		return -1;
 	}
 
-end:
-	return ret;
+	*val = *value;
+	return 0;
 }
 
 int parse_bool(xmlChar *str, int *val)
