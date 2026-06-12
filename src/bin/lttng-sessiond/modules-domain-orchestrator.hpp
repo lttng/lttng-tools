@@ -24,6 +24,7 @@
 #include <vendor/optional.hpp>
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <unordered_map>
 #include <vector>
@@ -576,6 +577,12 @@ public:
 	void increment_map_value(const config::map_channel_configuration& target_map,
 				 const std::string& key,
 				 std::int64_t delta) override;
+
+	void for_each_map_channel(const std::function<void(const sessiond::map::map_channel&)>&
+					  visitor) const override;
+
+	const sessiond::map::map_channel&
+	map_channel_for(const config::map_channel_configuration& config) const override;
 
 	/*
 	 * Return the number of streams opened for a channel.
