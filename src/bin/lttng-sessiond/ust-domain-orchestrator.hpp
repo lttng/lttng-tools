@@ -293,6 +293,12 @@ public:
 				 const std::string& key,
 				 std::int64_t delta) override;
 
+	void for_each_map_channel(const std::function<void(const sessiond::map::map_channel&)>&
+					  visitor) const override;
+
+	const sessiond::map::map_channel&
+	map_channel_for(const config::map_channel_configuration& config) const override;
+
 	/*
 	 * Compute the total size added by one more packet per stream across
 	 * all data channels. Channels whose subbuffer count is at most

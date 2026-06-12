@@ -16,6 +16,7 @@
 #include <bin/lttng-sessiond/channel-memory-types.hpp>
 #include <chrono>
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -44,6 +45,10 @@ enum class process_attribute_type {
 enum class tracking_policy;
 
 } /* namespace config */
+
+namespace map {
+class map_channel;
+} /* namespace map */
 
 /*
  * Runtime statistics for a recording channel, as reported by the consumer
@@ -178,6 +183,22 @@ public:
 	virtual void increment_map_value(const config::map_channel_configuration& target_map,
 					 const std::string& key,
 					 std::int64_t delta) = 0;
+
+	/*
+	 * Invoke `visitor` on every runtime map channel managed by this
+	 * orchestrator. The caller must hold the recording session lock, under
+	 * which the channels' registries and groups can safely be read.
+	 */
+	virtual void
+	for_each_map_channel(const std::function<void(const map::map_channel&)>& visitor) const = 0;
+
+	/*
+	 * Runtime map channel backing `config`, which must be tracked by this
+	 * orchestrator (same contract as increment_map_value). The same locking
+	 * rule as for_each_map_channel applies.
+	 */
+	virtual const map::map_channel&
+	map_channel_for(const config::map_channel_configuration& config) const = 0;
 };
 
 namespace exceptions {

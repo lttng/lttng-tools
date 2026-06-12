@@ -3825,6 +3825,23 @@ void ls::ust::domain_orchestrator::increment_map_value(
 	it->second->increment_shared_value(key, delta);
 }
 
+void ls::ust::domain_orchestrator::for_each_map_channel(
+	const std::function<void(const ls::map::map_channel&)>& visitor) const
+{
+	for (const auto& entry : _map_channels) {
+		visitor(*entry.second);
+	}
+}
+
+const ls::map::map_channel&
+ls::ust::domain_orchestrator::map_channel_for(const lsc::map_channel_configuration& config) const
+{
+	const auto it = _map_channels.find(&config);
+
+	LTTNG_ASSERT(it != _map_channels.end());
+	return *it->second;
+}
+
 std::uint64_t ls::ust::domain_orchestrator::get_size_one_more_packet_per_stream(
 	std::uint64_t cur_nr_packets) const
 {

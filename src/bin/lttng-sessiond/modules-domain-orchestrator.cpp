@@ -1565,6 +1565,23 @@ void ls::modules::domain_orchestrator::increment_map_value(
 	it->second->increment_shared_value(key, delta);
 }
 
+void ls::modules::domain_orchestrator::for_each_map_channel(
+	const std::function<void(const ls::map::map_channel&)>& visitor) const
+{
+	for (const auto& entry : _map_channels) {
+		visitor(*entry.second);
+	}
+}
+
+const ls::map::map_channel& ls::modules::domain_orchestrator::map_channel_for(
+	const lsc::map_channel_configuration& config) const
+{
+	const auto it = _map_channels.find(&config);
+
+	LTTNG_ASSERT(it != _map_channels.end());
+	return *it->second;
+}
+
 ls::recording_channel_runtime_stats
 ls::modules::domain_orchestrator::get_recording_channel_runtime_stats(
 	const lsc::recording_channel_configuration& channel_config) const
