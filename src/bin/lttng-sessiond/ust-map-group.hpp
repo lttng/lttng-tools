@@ -52,7 +52,7 @@ resolve_map_value_type(config::map_channel_configuration::value_type_t value_typ
  * map_channel_configuration for a given uid+abi (per-UID mode) or app
  * (per-PID mode).
  */
-class map_group final : public sessiond::map::group<ust_object_data> {
+class map_group final : public sessiond::map::group {
 public:
 	/*
 	 * RAII handle representing one application's attachment to this
@@ -209,10 +209,17 @@ private:
 	 *
 	 * The same split applies to each per-CPU sub-counter: the per-CPU
 	 * shm mapping lives inside `_local_counter`, while the per-CPU
-	 * app handles are stored in the base group's `maps()` collection.
+	 * app handles are stored in `_per_cpu_app_handles`.
 	 */
 	local_counter_uptr _local_counter;
 	ust_object_data _app_counter_handle;
+
+	/*
+	 * One app communication handle per per-CPU sub-counter; the vector
+	 * position is the CPU id. Populated in CPU order by
+	 * create_from_config().
+	 */
+	std::vector<ust_object_data> _per_cpu_app_handles;
 };
 
 } /* namespace ust */

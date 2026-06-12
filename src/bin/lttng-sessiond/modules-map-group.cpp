@@ -227,8 +227,7 @@ void map_group::for_each_partition(
 	/*
 	 * A kernel counter is allocated over the possible CPUs; the partition
 	 * identifier is the CPU id. The sessiond keeps no per-CPU handle for
-	 * the kernel (maps() is empty), so the range comes from the system
-	 * topology rather than from the group's maps.
+	 * the kernel, so the range comes from the system topology.
 	 */
 	const auto cpu_count = utils_get_cpu_count();
 

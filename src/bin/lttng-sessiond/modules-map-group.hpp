@@ -25,24 +25,19 @@ class map_channel_configuration;
 namespace modules {
 
 /*
- * The kernel tracer exposes no sessiond-visible per-CPU handle for
- * counters.
- *
- * This type exists only to keep the sessiond::map::group<MapHandleType>
- * template shape symmetric with the UST side.
- */
-struct kernel_map_handle {};
-
-/*
  * Runtime representation of a kernel map group managed by the
  * LTTng-modules tracer.
+ *
+ * The kernel tracer exposes no sessiond-visible per-CPU handle for
+ * counters: every per-partition operation goes through the tracer
+ * counter fd.
  *
  * Constructed by the modules orchestrator after it has issued
  * LTTNG_KERNEL_ABI_COUNTER on the parent fd (a session fd for map
  * channels; an event-notifier-group fd for error accounting) using the
  * attributes carried by the supplied map_channel_configuration.
  */
-class map_group final : public sessiond::map::group<kernel_map_handle> {
+class map_group final : public sessiond::map::group {
 public:
 	explicit map_group(lttng::file_descriptor tracer_counter_fd,
 			   const config::map_channel_configuration& configuration);

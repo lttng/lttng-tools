@@ -8,106 +8,82 @@
 #ifndef LTTNG_SESSIOND_MAP_GROUP_HPP
 #define LTTNG_SESSIOND_MAP_GROUP_HPP
 
-#include "abstract-group.hpp"
-
 #include <common/exception.hpp>
-#include <common/make-unique.hpp>
 
 #include <vendor/optional.hpp>
 
 #include <cstdint>
-#include <memory>
+#include <functional>
 #include <string>
-#include <vector>
 
 namespace lttng {
 namespace sessiond {
 namespace map {
 
 /*
- * A map::group represents the per-CPU counter partition backing a single
- * map channel configuration for a given: uid+abi in per-UID UST mode,
- * an app in per-PID UST mode, or the recording session
- * (or event-notifier group) in the kernel.
- *
- * The MapHandleType template parameter carries the domain-specific
- * per-CPU handle (ust_object_data or fd).
- *
- * The tracer-side counter handle (kernel counter fd, UST daemon
- * counter) is not part of the base; it is owned by the domain-
- * specific map_group subclass.
- *
- * Domain-specific map_groups inherit from this base.
+ * The value of a single counter element as reported by a group.
  */
-template <typename MapHandleType>
-class group : public abstract_group {
+struct element_value {
+	std::int64_t value;
+	bool overflow;
+	bool underflow;
+};
+
+/*
+ * Identifies one partition (map) of a group: the CPU id for the
+ * tracer-backed groups, which keep one map per CPU. The shared group has
+ * no per-partition decomposition: its single map is identified by an
+ * unset id.
+ */
+using partition_id = nonstd::optional<unsigned int>;
+
+/*
+ * Common per-index interface exposed by every group inside a
+ * map_channel: the tracer-backed groups (`modules::map_group`,
+ * `ust::map_group`) and the sessiond-only `shared_group`.
+ *
+ * Iteration over elements is intentionally absent here: it only makes
+ * sense in the context of the channel's `key_registry`, which knows
+ * which indices have been allocated. Callers iterate via
+ * `map_channel::for_each_element_of(group, visitor)` instead.
+ */
+class group {
 public:
-	/*
-	 * A single map inside the group.
-	 *
-	 * When `cpu_id` is set, the map represents the counter partition
-	 * for that specific CPU. When unset, the map is shared across
-	 * CPUs (per-channel allocation) and carries no CPU identity.
-	 */
-	struct map {
-		map(const nonstd::optional<unsigned int>& cpu_id_, MapHandleType handle_) :
-			cpu_id(cpu_id_), handle(std::move(handle_))
-		{
-		}
-
-		virtual ~map() = default;
-
-		map(map&&) = default;
-		map& operator=(map&&) = default;
-		map(const map&) = delete;
-		map& operator=(const map&) = delete;
-
-		const nonstd::optional<unsigned int> cpu_id;
-		MapHandleType handle;
-	};
-
-	using uptr = std::unique_ptr<group>;
-
 	group() = default;
-	~group() override = default;
+	virtual ~group() = default;
 
 	group(const group&) = delete;
-	group(group&&) = default;
 	group& operator=(const group&) = delete;
-	group& operator=(group&&) = default;
 
-	virtual void add_map(nonstd::optional<unsigned int> cpu_id, MapHandleType handle)
-	{
-		_maps.emplace_back(lttng::make_unique<map>(cpu_id, std::move(handle)));
-	}
+	virtual element_value aggregate_element(std::uint64_t index) const = 0;
 
-	const std::vector<std::unique_ptr<map>>& maps() const noexcept
-	{
-		return _maps;
-	}
+	/*
+	 * Invoke `visitor` once per partition (map) of the group, in the
+	 * order the public API serializes them. A group with no
+	 * per-partition fan-out (e.g. the shared group) reports a single
+	 * partition with an unset id.
+	 */
+	virtual void
+	for_each_partition(const std::function<void(const partition_id&)>& visitor) const = 0;
 
-	std::vector<std::unique_ptr<map>>& maps() noexcept
-	{
-		return _maps;
-	}
+	/*
+	 * Read the element at `index` on the partition identified by
+	 * `partition`, which must come from for_each_partition on this
+	 * group.
+	 */
+	virtual element_value read_element(std::uint64_t index,
+					   const partition_id& partition) const = 0;
 
-	unsigned int map_count() const noexcept
-	{
-		return _maps.size();
-	}
+	virtual void clear_element(std::uint64_t index) = 0;
 
 protected:
 	/*
-	 * Insert a domain-specific map sub-type. Derived map_group
-	 * classes use this to add extended map objects that carry
-	 * additional per-CPU housekeeping.
+	 * Move construction / assignment are protected and defaulted so that
+	 * derived types can opt into being moveable while callers cannot
+	 * slice an `group` reference.
 	 */
-	void _add_map(std::unique_ptr<map> m)
-	{
-		_maps.emplace_back(std::move(m));
-	}
-
-	std::vector<std::unique_ptr<map>> _maps;
+	group(group&&) noexcept = default;
+	group& operator=(group&&) noexcept = default;
 };
 
 namespace exceptions {

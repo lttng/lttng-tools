@@ -5,9 +5,9 @@
  *
  */
 
-#include "abstract-group.hpp"
 #include "map-channel-configuration.hpp"
 #include "map-channel.hpp"
+#include "map-group.hpp"
 
 #include <common/exception.hpp>
 #include <common/format.hpp>
@@ -62,7 +62,7 @@ const shared_group& map_channel::shared() const noexcept
 	return _shared;
 }
 
-void map_channel::for_each_element_of(const abstract_group& group,
+void map_channel::for_each_element_of(const group& target_group,
 				      const element_visitor& visitor) const
 {
 	if (!_registry) {
@@ -71,9 +71,10 @@ void map_channel::for_each_element_of(const abstract_group& group,
 			_configuration.name));
 	}
 
-	_registry->for_each([&group, &visitor](lttng::c_string_view key, std::uint64_t index) {
-		visitor(key, index, group.aggregate_element(index));
-	});
+	_registry->for_each(
+		[&target_group, &visitor](lttng::c_string_view key, std::uint64_t index) {
+			visitor(key, index, target_group.aggregate_element(index));
+		});
 }
 
 void map_channel::increment_shared_value(const std::string& key, std::int64_t delta)

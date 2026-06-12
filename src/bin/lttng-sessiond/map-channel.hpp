@@ -31,7 +31,7 @@ class map_channel_configuration;
 
 namespace map {
 
-class abstract_group;
+class group;
 
 /*
  * Identifies a counter-event rule registered against a map channel by the
@@ -117,14 +117,14 @@ public:
 
 	/*
 	 * Walk the channel's registry and emit
-	 * `(key, index, group.aggregate_element(index))` for every key
-	 * registered, in registry-determined order.
+	 * `(key, index, target_group.aggregate_element(index))` for every
+	 * key registered, in registry-determined order.
 	 *
 	 * Invoking this on an INDEX-keyed channel (no registry) throws,
 	 * since iteration over flat indices is the caller's
 	 * responsibility in that case.
 	 */
-	void for_each_element_of(const abstract_group& group, const element_visitor& visitor) const;
+	void for_each_element_of(const group& target_group, const element_visitor& visitor) const;
 
 	/*
 	 * Resolve `key` in this channel's registry (allocating if needed) and add
