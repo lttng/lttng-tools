@@ -609,6 +609,26 @@ int config_writer_write_string(struct config_writer *writer, const char *value)
 	return std::min(write_ret, 0);
 }
 
+nonstd::optional<lttng_domain_type>
+lttng::config::domain_type_from_string(const char *text) noexcept
+{
+	if (!strcmp(text, config_domain_type_kernel)) {
+		return LTTNG_DOMAIN_KERNEL;
+	} else if (!strcmp(text, config_domain_type_ust)) {
+		return LTTNG_DOMAIN_UST;
+	} else if (!strcmp(text, config_domain_type_jul)) {
+		return LTTNG_DOMAIN_JUL;
+	} else if (!strcmp(text, config_domain_type_log4j)) {
+		return LTTNG_DOMAIN_LOG4J;
+	} else if (!strcmp(text, config_domain_type_log4j2)) {
+		return LTTNG_DOMAIN_LOG4J2;
+	} else if (!strcmp(text, config_domain_type_python)) {
+		return LTTNG_DOMAIN_PYTHON;
+	}
+
+	return nonstd::nullopt;
+}
+
 namespace {
 ATTR_FORMAT_PRINTF(2, 3)
 void xml_error_handler(void *ctx __attribute__((unused)), const char *format, ...)
@@ -785,30 +805,15 @@ end:
 
 int get_domain_type(xmlChar *domain)
 {
-	int ret;
+	if (domain) {
+		const auto type =
+			lttng::config::domain_type_from_string(reinterpret_cast<char *>(domain));
 
-	if (!domain) {
-		goto error;
+		if (type) {
+			return *type;
+		}
 	}
 
-	if (!strcmp((char *) domain, config_domain_type_kernel)) {
-		ret = LTTNG_DOMAIN_KERNEL;
-	} else if (!strcmp((char *) domain, config_domain_type_ust)) {
-		ret = LTTNG_DOMAIN_UST;
-	} else if (!strcmp((char *) domain, config_domain_type_jul)) {
-		ret = LTTNG_DOMAIN_JUL;
-	} else if (!strcmp((char *) domain, config_domain_type_log4j)) {
-		ret = LTTNG_DOMAIN_LOG4J;
-	} else if (!strcmp((char *) domain, config_domain_type_log4j2)) {
-		ret = LTTNG_DOMAIN_LOG4J2;
-	} else if (!strcmp((char *) domain, config_domain_type_python)) {
-		ret = LTTNG_DOMAIN_PYTHON;
-	} else {
-		goto error;
-	}
-
-	return ret;
-error:
 	return -1;
 }
 
