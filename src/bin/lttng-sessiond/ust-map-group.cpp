@@ -330,6 +330,64 @@ map::element_value map_group::aggregate_element(std::uint64_t index) const
 	return from_counter_value(value, overflow, underflow);
 }
 
+lsm::element_value map_group::read_element(std::uint64_t index, int cpu) const
+{
+	const std::size_t dimension_indexes[1] = { index };
+	std::int64_t value = 0;
+	bool overflow = false, underflow = false;
+
+	const auto ret = lttng_ust_ctl_counter_read(
+		_local_counter.get(), dimension_indexes, cpu, &value, &overflow, &underflow);
+	if (ret) {
+		if (-ret == EOVERFLOW) {
+			LTTNG_THROW_MAP_ELEMENT_INDEX_OUT_OF_RANGE(lttng::format(
+				"Map element index out of range: map_name=`{}`, index={}, cpu={}",
+				_configuration.name,
+				index,
+				cpu));
+		}
+
+		if (-ret == EINVAL) {
+			LTTNG_THROW_MAP_ELEMENT_INVALID_CPU(lttng::format(
+				"Invalid cpu for UST map element read: map_name=`{}`, index={}, cpu={}",
+				_configuration.name,
+				index,
+				cpu));
+		}
+
+		LTTNG_THROW_POSIX(
+			lttng::format(
+				"Failed to read UST map element: map_name=`{}`, index={}, cpu={}",
+				_configuration.name,
+				index,
+				cpu),
+			-ret);
+	}
+
+	return from_counter_value(value, overflow, underflow);
+}
+
+void map_group::for_each_partition(
+	const std::function<void(const lsm::partition_id&)>& visitor) const
+{
+	/*
+	 * A UST counter keeps one per-CPU sub-counter; every entry of maps()
+	 * is a per-CPU map carrying its CPU id, which is the partition
+	 * identifier.
+	 */
+	for (const auto& partition_map : maps()) {
+		LTTNG_ASSERT(partition_map->cpu_id);
+		visitor(lsm::partition_id(*partition_map->cpu_id));
+	}
+}
+
+lsm::element_value map_group::read_element(std::uint64_t index,
+					   const lsm::partition_id& partition) const
+{
+	LTTNG_ASSERT(partition);
+	return read_element(index, static_cast<int>(*partition));
+}
+
 void map_group::clear_element(std::uint64_t index)
 {
 	const std::size_t dimension_indexes[1] = { index };

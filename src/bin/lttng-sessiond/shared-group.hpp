@@ -60,6 +60,10 @@ public:
 
 	/* abstract_group interface. */
 	element_value aggregate_element(std::uint64_t index) const override;
+	void
+	for_each_partition(const std::function<void(const partition_id&)>& visitor) const override;
+	element_value read_element(std::uint64_t index,
+				   const partition_id& partition) const override;
 	void clear_element(std::uint64_t index) override;
 
 	void clear() noexcept;

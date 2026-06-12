@@ -49,6 +49,14 @@ public:
  * Two implementations exist: one where sessiond owns the index pool
  * (`ust::key_registry`, used by UST) and one where the kernel tracer
  * is the allocator and sessiond proxies it (`modules::key_registry`).
+ *
+ * A registry only ever grows, and it can grow at any time: keys are
+ * registered as tracers and applications first use them, including from
+ * threads that don't hold the recording session lock. Two walks may thus
+ * observe different key sets. Consumers of map contents should snapshot
+ * the keys once with for_each() and read values for that snapshot; keys
+ * registered afterwards are simply not part of it, which is acceptable
+ * for a sampling read.
  */
 class key_registry {
 public:
