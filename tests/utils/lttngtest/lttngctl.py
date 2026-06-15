@@ -1013,6 +1013,65 @@ class SnapshotSessionTriggerAction(_SessionTriggerAction):
         return self._data_url
 
 
+class IncrementMapValueTriggerAction(TriggerAction):
+    """Increment a counter of a map channel when the trigger fires."""
+
+    def __init__(
+        self,
+        session_name,  # type: str
+        channel_name,  # type: str
+        channel_type,  # type: Type[MapChannel]
+        key_template,  # type: str
+        error_query_results: List[ErrorQueryResult] = list(),
+    ):
+        super().__init__(error_query_results=error_query_results)
+        self._session_name = session_name
+        self._channel_name = channel_name
+        self._channel_type = channel_type
+        self._key_template = key_template
+
+    def __eq__(self, other):
+        # type: (object) -> bool
+        return (
+            type(self) == type(other)
+            and self._session_name == other._session_name
+            and self._channel_name == other._channel_name
+            and self._channel_type == other._channel_type
+            and self._key_template == other._key_template
+        )
+
+    def __repr__(self):
+        return (
+            "IncrementMapValueTriggerAction(session_name='{}', channel_name='{}', "
+            "channel_type={}, key_template='{}')".format(
+                self._session_name,
+                self._channel_name,
+                self._channel_type.__name__,
+                self._key_template,
+            )
+        )
+
+    @property
+    def session_name(self):
+        # type: () -> str
+        return self._session_name
+
+    @property
+    def channel_name(self):
+        # type: () -> str
+        return self._channel_name
+
+    @property
+    def channel_type(self):
+        # type: () -> Type[MapChannel]
+        return self._channel_type
+
+    @property
+    def key_template(self):
+        # type: () -> str
+        return self._key_template
+
+
 class Trigger(abc.ABC):
     """Represents an LTTng trigger."""
 

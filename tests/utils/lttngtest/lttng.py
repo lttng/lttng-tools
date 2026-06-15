@@ -318,6 +318,16 @@ def _build_action_args(action):
         elif action.ctrl_url and action.data_url:
             args.append("--ctrl-url={}".format(action.ctrl_url))
             args.append("--data-url={}".format(action.data_url))
+    elif isinstance(action, lttngctl.IncrementMapValueTriggerAction):
+        args.extend(
+            [
+                "--action=incr-map-value",
+                "--session={}".format(action.session_name),
+                "--channel={}".format(action.channel_name),
+                "--type={}".format(_MAP_CHANNEL_TYPE_ARGS[action.channel_type]),
+                "--key={}".format(action.key_template),
+            ]
+        )
     else:
         raise Unsupported(
             "Action type `{}` is not supported".format(type(action).__name__)
@@ -595,6 +605,15 @@ _MAP_CHANNEL_TYPE_ARGS = {
     lttngctl.UserMapChannel: "user",
     lttngctl.KernelMapChannel: "kernel",
 }
+
+
+def _get_map_channel_type_from_mi(channel_type):
+    # type: (str) -> Type[lttngctl.MapChannel]
+    """Return the map channel type matching a `channel_type` MI value."""
+    return {
+        "user": lttngctl.UserMapChannel,
+        "kernel": lttngctl.KernelMapChannel,
+    }[channel_type]
 
 
 def _get_map_channel_value_type_from_mi(value_type):
@@ -2263,6 +2282,17 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
             return lttngctl.SnapshotSessionTriggerAction(
                 session_name,
                 rate_policy=rate_policy,
+                error_query_results=error_query_results,
+            )
+
+        if type_name == "action_increment_map_value":
+            return lttngctl.IncrementMapValueTriggerAction(
+                LTTngClient._mi_get_in_element(type_element, "session_name").text,
+                LTTngClient._mi_get_in_element(type_element, "channel_name").text,
+                _get_map_channel_type_from_mi(
+                    LTTngClient._mi_get_in_element(type_element, "channel_type").text
+                ),
+                LTTngClient._mi_get_in_element(type_element, "key_template").text,
                 error_query_results=error_query_results,
             )
 
