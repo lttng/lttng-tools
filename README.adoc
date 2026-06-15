@@ -17,7 +17,7 @@ ifndef::env-github[]
 endif::env-github[]
 
 = {lt}
-2 February 2026
+15 June 2026
 
 [.normal]
 https://ci.lttng.org/job/lttng-tools_master_linuxbuild/[image:https://img.shields.io/jenkins/build.svg?jobUrl=https://ci.lttng.org/job/lttng-tools_master_linuxbuild/[Jenkins, title="Jenkins"]]
@@ -83,10 +83,15 @@ Debian/Ubuntu package: `babeltrace2 libbabeltrace2-dev`
 +
 Debian/Ubuntu package: `liblttng{nbh}ust{nbh}dev`
 
-* **https://www.python.org/[Python]{nbsp}≥{nbsp}3.6**:
-  `make{nbsp}check` and tests.
+* **https://www.python.org/[Python]{nbsp}≥{nbsp}3.6**, including its
+  https://docs.python.org/3/library/sqlite3.html[`sqlite3`] standard
+  library module: `make{nbsp}check` and tests.
 +
-Debian/Ubuntu package: `python3`
+The `sqlite3` module is part of the Python standard library, but some
+distributions ship it separately or only pull in the required SQLite
+library as an optional dependency.
++
+Debian/Ubuntu package: `python3` (includes the `sqlite3` module)
 
 * **http://www.swig.org/[SWIG]{nbsp}≥{nbsp}2.0** and
   **Python{nbsp}3 development headers**: Python bindings

@@ -6,6 +6,7 @@
 
 import abc
 import random
+import sqlite3
 import string
 import pathlib
 import enum
@@ -1476,6 +1477,28 @@ class Session(abc.ABC):
         The returned `KernelMapChannel` reflects the effective
         configuration of the new channel, including the defaults
         resolved for the attributes left as `None`.
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def export_maps(self):
+        # type: () -> sqlite3.Connection
+        """
+        Export the current map channel values of this session as an SQL
+        script (see lttng-export-maps(1)), load the script into a new
+        in-memory SQLite database, and return a connection to that
+        database.
+
+        Query the counters through the `vmap` view, for example:
+
+            conn = session.export_maps()
+
+            for row in conn.execute("SELECT key, value FROM vmap"):
+                ...
+
+        The returned connection has its `row_factory` set to
+        `sqlite3.Row`. The caller owns the connection and is responsible
+        for closing it.
         """
         raise NotImplementedError
 
