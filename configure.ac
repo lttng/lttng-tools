@@ -1327,6 +1327,17 @@ AS_IF([test "x$build_tests" = "xyes"],
     ], [
       AC_MSG_ERROR([Python ≥ 3.6 is required to build tests. Use --disable-tests to disable the test suite. See also the PYTHON3 environment variable.])
     ])
+
+    # The `lttngtest` framework loads the SQL output of `lttng export-maps`
+    # into an in-memory SQLite database through the Python `sqlite3` module
+    # to test the map feature.
+    AC_MSG_CHECKING([for the Python sqlite3 module])
+    AS_IF([$PYTHON3_BIN -c "import sqlite3" 2>/dev/null], [
+      AC_MSG_RESULT([yes])
+    ], [
+      AC_MSG_RESULT([no])
+      AC_MSG_ERROR([The Python sqlite3 module is required to build tests. Use --disable-tests to disable the test suite. See also the PYTHON3 environment variable.])
+    ])
   ]
 )
 

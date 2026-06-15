@@ -10,6 +10,7 @@ from . import lttngctl, logger, environment
 import enum
 import os
 import shlex
+import sqlite3
 import subprocess
 import tempfile
 from typing import Callable, List, Optional, Type, Union, Iterator
@@ -1164,6 +1165,28 @@ class _Session(lttngctl.Session):
                 yield _map_channel_from_mi(
                     self._client, self, cur_type, map_channel_elem
                 )
+
+    def export_maps(self):
+        # type: () -> sqlite3.Connection
+
+        # `export-maps` writes an SQL script (not MI) to its standard
+        # output, so the human-readable output format is used to capture
+        # it verbatim.
+        sql_script, _ = self._client._run_cmd(
+            "export-maps --session={}".format(shlex.quote(self.name)),
+            LTTngClient.CommandOutputFormat.HUMAN,
+        )
+
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+
+        try:
+            conn.executescript(sql_script)
+        except Exception:
+            conn.close()
+            raise
+
+        return conn
 
     def channel(self, domain, channel_name):
         # type: (lttngctl.TracingDomain, str) -> lttngctl.Channel
