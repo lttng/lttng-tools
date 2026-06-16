@@ -590,6 +590,13 @@ _MAP_CHANNEL_TRACING_DOMAINS = {
 }
 
 
+# `--type` option value of the lttng client for each map channel type.
+_MAP_CHANNEL_TYPE_ARGS = {
+    lttngctl.UserMapChannel: "user",
+    lttngctl.KernelMapChannel: "kernel",
+}
+
+
 def _get_map_channel_value_type_from_mi(value_type):
     # type: (str) -> lttngctl.MapChannelValueType
     """Return the value type matching a map channel `value_type` MI value."""
@@ -1026,6 +1033,93 @@ class _Session(lttngctl.Session):
             args.append("--auto-reclaim-memory=consumed")
         self._client._run_cmd(" ".join([shlex.quote(x) for x in args]))
         return _Channel(self._client, channel_name, domain, self)
+
+    def add_user_map_channel(
+        self,
+        channel_name=None,
+        value_type=None,
+        max_key_count=None,
+        update_policy=None,
+        buffer_sharing_policy=None,
+        dead_process_policy=None,
+    ):
+        # type: (Optional[str], Optional[lttngctl.MapChannelValueType], Optional[int], Optional[lttngctl.MapChannelUpdatePolicy], Optional[lttngctl.BufferSharingPolicy], Optional[lttngctl.MapChannelDeadProcessPolicy]) -> lttngctl.UserMapChannel
+        return self._add_map_channel(
+            lttngctl.UserMapChannel,
+            channel_name,
+            value_type,
+            max_key_count,
+            update_policy,
+            buffer_sharing_policy,
+            dead_process_policy,
+        )
+
+    def add_kernel_map_channel(
+        self,
+        channel_name=None,
+        value_type=None,
+        max_key_count=None,
+        update_policy=None,
+    ):
+        # type: (Optional[str], Optional[lttngctl.MapChannelValueType], Optional[int], Optional[lttngctl.MapChannelUpdatePolicy]) -> lttngctl.KernelMapChannel
+        return self._add_map_channel(
+            lttngctl.KernelMapChannel,
+            channel_name,
+            value_type,
+            max_key_count,
+            update_policy,
+        )
+
+    def _add_map_channel(
+        self,
+        type,
+        channel_name=None,
+        value_type=None,
+        max_key_count=None,
+        update_policy=None,
+        buffer_sharing_policy=None,
+        dead_process_policy=None,
+    ):
+        # type: (Type[lttngctl.MapChannel], Optional[str], Optional[lttngctl.MapChannelValueType], Optional[int], Optional[lttngctl.MapChannelUpdatePolicy], Optional[lttngctl.BufferSharingPolicy], Optional[lttngctl.MapChannelDeadProcessPolicy]) -> lttngctl.MapChannel
+        if channel_name is None:
+            channel_name = lttngctl.MapChannel._generate_name()
+
+        args = [
+            "add-map-channel",
+            "--session",
+            self.name,
+            "--type",
+            _MAP_CHANNEL_TYPE_ARGS[type],
+            channel_name,
+        ]
+
+        if value_type is not None:
+            args.append("--value-type={}".format(value_type.as_arg()))
+
+        if max_key_count is not None:
+            args.append("--max-key-count={}".format(max_key_count))
+
+        if update_policy is not None:
+            args.append("--update-policy={}".format(update_policy.as_arg()))
+
+        if buffer_sharing_policy is not None:
+            args.append(
+                "--buffer-ownership={}".format(
+                    "user"
+                    if buffer_sharing_policy == lttngctl.BufferSharingPolicy.PerUID
+                    else "process"
+                )
+            )
+        if dead_process_policy is not None:
+            args.append("--dead-process-policy={}".format(dead_process_policy.as_arg()))
+
+        self._client._run_cmd(" ".join([shlex.quote(x) for x in args]))
+
+        for map_channel in self.map_channels(type):
+            if map_channel.name == channel_name:
+                return map_channel
+
+        raise RuntimeError("Failed to find added map channel `{}`".format(channel_name))
 
     def map_channels(self, type=None):
         # type: (Optional[Type[lttngctl.MapChannel]]) -> Iterator[lttngctl.MapChannel]

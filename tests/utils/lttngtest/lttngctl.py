@@ -1377,6 +1377,50 @@ class Session(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
+    def add_user_map_channel(
+        self,
+        channel_name=None,
+        value_type=None,
+        max_key_count=None,
+        update_policy=None,
+        buffer_sharing_policy=None,
+        dead_process_policy=None,
+    ):
+        # type: (Optional[str], Optional[MapChannelValueType], Optional[int], Optional[MapChannelUpdatePolicy], Optional[BufferSharingPolicy], Optional[MapChannelDeadProcessPolicy]) -> UserMapChannel
+        """
+        Add a user space map channel to the session and return it.
+
+        Any attribute left as `None` keeps the default value of the
+        concrete implementation.
+
+        The returned `UserMapChannel` reflects the effective
+        configuration of the new channel, including the defaults
+        resolved for the attributes left as `None`.
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def add_kernel_map_channel(
+        self,
+        channel_name=None,
+        value_type=None,
+        max_key_count=None,
+        update_policy=None,
+    ):
+        # type: (Optional[str], Optional[MapChannelValueType], Optional[int], Optional[MapChannelUpdatePolicy]) -> KernelMapChannel
+        """
+        Add a Linux kernel map channel to the session and return it.
+
+        Any attribute left as `None` keeps the default value of the
+        concrete implementation.
+
+        The returned `KernelMapChannel` reflects the effective
+        configuration of the new channel, including the defaults
+        resolved for the attributes left as `None`.
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def channel(self, domain, channel_name):
         # type: (TracingDomain, str) -> Channel
         """Get a channel by domain and name."""
