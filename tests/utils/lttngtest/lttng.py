@@ -583,6 +583,226 @@ class _Channel(lttngctl.Channel):
             )
 
 
+# Tracing domain hosting the map channels of each map channel type.
+_MAP_CHANNEL_TRACING_DOMAINS = {
+    lttngctl.UserMapChannel: lttngctl.TracingDomain.User,
+    lttngctl.KernelMapChannel: lttngctl.TracingDomain.Kernel,
+}
+
+
+def _get_map_channel_value_type_from_mi(value_type):
+    # type: (str) -> lttngctl.MapChannelValueType
+    """Return the value type matching a map channel `value_type` MI value."""
+    return {
+        "signed-int-32": lttngctl.MapChannelValueType.SignedInt32,
+        "signed-int-64": lttngctl.MapChannelValueType.SignedInt64,
+        "signed-int-max": lttngctl.MapChannelValueType.SignedIntMax,
+    }[value_type]
+
+
+def _get_map_channel_update_policy_from_mi(update_policy):
+    # type: (str) -> lttngctl.MapChannelUpdatePolicy
+    """Return the update policy matching a map channel `update_policy` MI value."""
+    return {
+        "per-event": lttngctl.MapChannelUpdatePolicy.PerEvent,
+        "per-rule-match": lttngctl.MapChannelUpdatePolicy.PerRuleMatch,
+    }[update_policy]
+
+
+def _get_buffer_sharing_policy_from_mi(buffer_ownership):
+    # type: (str) -> lttngctl.BufferSharingPolicy
+    """
+    Return the buffer sharing policy matching a map channel `buffer_ownership`
+    MI value.
+    """
+    return {
+        "per-uid": lttngctl.BufferSharingPolicy.PerUID,
+        "per-pid": lttngctl.BufferSharingPolicy.PerPID,
+    }[buffer_ownership]
+
+
+def _get_map_channel_dead_process_policy_from_mi(dead_group_policy):
+    # type: (str) -> lttngctl.MapChannelDeadProcessPolicy
+    """
+    Return the dead process policy matching a map channel `dead_group_policy`
+    MI value.
+    """
+    return {
+        "drop": lttngctl.MapChannelDeadProcessPolicy.Drop,
+        "sum-into-shared": lttngctl.MapChannelDeadProcessPolicy.SumIntoShared,
+    }[dead_group_policy]
+
+
+class _MapChannel(lttngctl.MapChannel):
+    # Each concrete subclass defines `_channel_type` (a `Type[MapChannel]`,
+    # either `lttngctl.UserMapChannel` or `lttngctl.KernelMapChannel`) so that
+    # `groups()` can pass the right `--type` to the client; `_MapChannel` is
+    # never instantiated on its own.
+
+    def __init__(
+        self,
+        client,  # type: LTTngClient
+        session,  # type: _Session
+        name,  # type: str
+        is_enabled,  # type: bool
+        value_type,  # type: lttngctl.MapChannelValueType
+        max_key_count,  # type: int
+        update_policy,  # type: lttngctl.MapChannelUpdatePolicy
+    ):
+        self._client = client  # type: LTTngClient
+        self._session = session  # type: _Session
+        self._name = name  # type: str
+        self._is_enabled = is_enabled  # type: bool
+        self._value_type = value_type  # type: lttngctl.MapChannelValueType
+        self._max_key_count = max_key_count  # type: int
+        self._update_policy = update_policy  # type: lttngctl.MapChannelUpdatePolicy
+
+    def groups(self):
+        # type: () -> List[lttngctl.MapGroup]
+
+        # `show-maps --per=owner` produces one `<per_owner_map_table>`
+        # element per group of the channel; restrict the listing to this
+        # channel with `--channel` and `--type`.
+        show_maps_xml, _ = self._client._run_cmd(
+            "show-maps --session={session} --channel={channel} --type={type} --per=owner".format(
+                session=shlex.quote(self._session.name),
+                channel=shlex.quote(self._name),
+                type=_MAP_CHANNEL_TYPE_ARGS[self._channel_type],
+            ),
+            LTTngClient.CommandOutputFormat.MI_XML,
+        )
+        show_maps_elem = LTTngClient._mi_get_in_element(
+            LTTngClient._mi_get_in_element(
+                xml.etree.ElementTree.fromstring(show_maps_xml), "output"
+            ),
+            "show-maps",
+        )
+        groups = []  # type: List[lttngctl.MapGroup]
+
+        for table_elem in show_maps_elem.findall(
+            LTTngClient._namespaced_mi_element("per_owner_map_table")
+        ):
+            groups.append(
+                _map_group_from_mi(
+                    LTTngClient._mi_get_in_element(table_elem, "map_group")
+                )
+            )
+
+        return groups
+
+    @property
+    def name(self):
+        # type: () -> str
+        return self._name
+
+    @property
+    def is_enabled(self):
+        # type: () -> bool
+        return self._is_enabled
+
+    @property
+    def value_type(self):
+        # type: () -> lttngctl.MapChannelValueType
+        return self._value_type
+
+    @property
+    def max_key_count(self):
+        # type: () -> int
+        return self._max_key_count
+
+    @property
+    def update_policy(self):
+        # type: () -> lttngctl.MapChannelUpdatePolicy
+        return self._update_policy
+
+
+class _UserMapChannel(_MapChannel, lttngctl.UserMapChannel):
+    _channel_type = lttngctl.UserMapChannel
+
+    def __init__(
+        self,
+        client,  # type: LTTngClient
+        session,  # type: _Session
+        name,  # type: str
+        is_enabled,  # type: bool
+        value_type,  # type: lttngctl.MapChannelValueType
+        max_key_count,  # type: int
+        update_policy,  # type: lttngctl.MapChannelUpdatePolicy
+        buffer_sharing_policy,  # type: lttngctl.BufferSharingPolicy
+        dead_process_policy,  # type: Optional[lttngctl.MapChannelDeadProcessPolicy]
+    ):
+        super().__init__(
+            client, session, name, is_enabled, value_type, max_key_count, update_policy
+        )
+        self._buffer_sharing_policy = buffer_sharing_policy
+        self._dead_process_policy = dead_process_policy
+
+    @property
+    def buffer_sharing_policy(self):
+        # type: () -> lttngctl.BufferSharingPolicy
+        return self._buffer_sharing_policy
+
+    @property
+    def dead_process_policy(self):
+        # type: () -> Optional[lttngctl.MapChannelDeadProcessPolicy]
+        return self._dead_process_policy
+
+
+class _KernelMapChannel(_MapChannel, lttngctl.KernelMapChannel):
+    _channel_type = lttngctl.KernelMapChannel
+
+
+def _map_channel_from_mi(client, session, type, map_channel_elem):
+    # type: (LTTngClient, _Session, Type[lttngctl.MapChannel], xml.etree.ElementTree.Element) -> _MapChannel
+    """Build a `_MapChannel` of type `type` from a `<map_channel>` MI element."""
+    name = LTTngClient._mi_get_in_element(map_channel_elem, "name").text
+    is_enabled = (
+        LTTngClient._mi_get_in_element(map_channel_elem, "enabled").text == "true"
+    )
+    value_type = _get_map_channel_value_type_from_mi(
+        LTTngClient._mi_get_in_element(map_channel_elem, "value_type").text
+    )
+    max_key_count = int(
+        LTTngClient._mi_get_in_element(map_channel_elem, "max_key_count").text
+    )
+    update_policy = _get_map_channel_update_policy_from_mi(
+        LTTngClient._mi_get_in_element(map_channel_elem, "update_policy").text
+    )
+
+    if type is lttngctl.KernelMapChannel:
+        return _KernelMapChannel(
+            client, session, name, is_enabled, value_type, max_key_count, update_policy
+        )
+
+    # The buffer ownership is always present for a user space map
+    # channel, while the dead group policy is only present for a
+    # per-process one of those, therefore the latter is optional.
+    buffer_sharing_policy = _get_buffer_sharing_policy_from_mi(
+        LTTngClient._mi_get_in_element(map_channel_elem, "buffer_ownership").text
+    )
+
+    dead_group_policy_elem = LTTngClient._mi_find_in_element(
+        map_channel_elem, "dead_group_policy"
+    )
+    dead_process_policy = (
+        _get_map_channel_dead_process_policy_from_mi(dead_group_policy_elem.text)
+        if dead_group_policy_elem is not None
+        else None
+    )
+
+    return _UserMapChannel(
+        client,
+        session,
+        name,
+        is_enabled,
+        value_type,
+        max_key_count,
+        update_policy,
+        buffer_sharing_policy,
+        dead_process_policy,
+    )
+
+
 @enum.unique
 class _ProcessAttribute(enum.Enum):
     PID = "Process ID"
@@ -806,6 +1026,31 @@ class _Session(lttngctl.Session):
             args.append("--auto-reclaim-memory=consumed")
         self._client._run_cmd(" ".join([shlex.quote(x) for x in args]))
         return _Channel(self._client, channel_name, domain, self)
+
+    def map_channels(self, type=None):
+        # type: (Optional[Type[lttngctl.MapChannel]]) -> Iterator[lttngctl.MapChannel]
+        if type is None:
+            types = [lttngctl.UserMapChannel, lttngctl.KernelMapChannel]
+        else:
+            types = [type]
+
+        for cur_type in types:
+            target_domain = self._get_mi_domain(_MAP_CHANNEL_TRACING_DOMAINS[cur_type])
+
+            if target_domain is None:
+                continue
+
+            map_channels_elem = LTTngClient._mi_find_in_element(
+                target_domain, "map_channels"
+            )
+
+            if map_channels_elem is None:
+                continue
+
+            for map_channel_elem in map_channels_elem:
+                yield _map_channel_from_mi(
+                    self._client, self, cur_type, map_channel_elem
+                )
 
     def channel(self, domain, channel_name):
         # type: (lttngctl.TracingDomain, str) -> lttngctl.Channel

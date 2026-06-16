@@ -162,6 +162,68 @@ class EventRecordLossMode(enum.Enum):
 
 
 @enum.unique
+class MapChannelValueType(enum.Enum):
+    """Value type of the counters of a map channel."""
+
+    SignedInt32 = "32-bit signed integer"
+    SignedInt64 = "64-bit signed integer"
+    SignedIntMax = "Widest available signed integer"
+
+    def __repr__(self):
+        return "<%s.%s>" % (self.__class__.__name__, self.name)
+
+    def as_arg(self):
+        # type: () -> str
+        """Return the `--value-type` option value for the lttng client."""
+        return {
+            MapChannelValueType.SignedInt32: "signed-int-32",
+            MapChannelValueType.SignedInt64: "signed-int-64",
+            MapChannelValueType.SignedIntMax: "signed-int-max",
+        }[self]
+
+
+@enum.unique
+class MapChannelUpdatePolicy(enum.Enum):
+    """Counter update policy of a map channel."""
+
+    PerEvent = "Increment a counter once per matching event"
+    PerRuleMatch = "Increment a counter once per matching event rule"
+
+    def __repr__(self):
+        return "<%s.%s>" % (self.__class__.__name__, self.name)
+
+    def as_arg(self):
+        # type: () -> str
+        """Return the `--update-policy` option value for the lttng client."""
+        return {
+            MapChannelUpdatePolicy.PerEvent: "per-event",
+            MapChannelUpdatePolicy.PerRuleMatch: "per-rule-match",
+        }[self]
+
+
+@enum.unique
+class MapChannelDeadProcessPolicy(enum.Enum):
+    """
+    Policy which a user space map channel having a per-process buffer ownership
+    model applies to the counters of a dead process.
+    """
+
+    Drop = "Drop the counters of a dead process"
+    SumIntoShared = "Sum the counters of a dead process into shared counters"
+
+    def __repr__(self):
+        return "<%s.%s>" % (self.__class__.__name__, self.name)
+
+    def as_arg(self):
+        # type: () -> str
+        """Return the `--dead-process-policy` option value for the lttng client."""
+        return {
+            MapChannelDeadProcessPolicy.Drop: "drop",
+            MapChannelDeadProcessPolicy.SumIntoShared: "sum-into-shared",
+        }[self]
+
+
+@enum.unique
 class ConditionType(enum.Enum):
     """
     enum lttng_condition_type
@@ -1036,6 +1098,94 @@ class Channel(abc.ABC):
         raise NotImplementedError
 
 
+class MapChannel(abc.ABC):
+    """
+    A map channel is responsible for a set of per-CPU stores (maps) of
+    named integer counters keyed by strings.
+
+    Unlike a `Channel` (event record channel), a map channel has no
+    recording rules: its counters are incremented by triggers having an
+    "increment map value" action (see `IncrementMapValueTriggerAction`).
+    """
+
+    @staticmethod
+    def _generate_name():
+        # type: () -> str
+        return "map_channel_{random_id}".format(random_id=_generate_random_string(8))
+
+    @property
+    @abc.abstractmethod
+    def name(self):
+        # type: () -> str
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def is_enabled(self):
+        # type: () -> bool
+        """Whether this map channel is enabled (always `True` for now)."""
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def value_type(self):
+        # type: () -> MapChannelValueType
+        """The value type of the counters of this map channel."""
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def max_key_count(self):
+        # type: () -> int
+        """The maximum number of keys (counters) of this map channel."""
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def update_policy(self):
+        # type: () -> MapChannelUpdatePolicy
+        """The counter update policy of this map channel."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def groups(self):
+        # type: () -> List[MapGroup]
+        """
+        The groups of this map channel.
+
+        A map group exists only once its owner (a user or a process) has
+        appeared, therefore an idle channel may have no group at all.
+
+        This only reports the existence and identity of the groups.
+        """
+        raise NotImplementedError
+
+
+class UserMapChannel(MapChannel):
+    """A user space map channel."""
+
+    @property
+    @abc.abstractmethod
+    def buffer_sharing_policy(self):
+        # type: () -> BufferSharingPolicy
+        """The buffer sharing policy of this map channel."""
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def dead_process_policy(self):
+        # type: () -> Optional[MapChannelDeadProcessPolicy]
+        """
+        The policy applied to the counters of a dead process, or `None` unless
+        this map channel has a per-process buffer ownership model.
+        """
+        raise NotImplementedError
+
+
+class KernelMapChannel(MapChannel):
+    """A Linux kernel map channel."""
+
+
 class SessionOutputLocation(abc.ABC):
     pass
 
@@ -1212,6 +1362,18 @@ class Session(abc.ABC):
     ):
         # type: (TracingDomain, Optional[str], BufferSharingPolicy, BufferAllocationPolicy, Optional[int], Optional[int], Optional[int], Optional[int], Optional[EventRecordLossMode], Optional[int]) -> Channel
         """Add a channel with default attributes to the session."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def map_channels(self, type=None):
+        # type: (Optional[Type[MapChannel]]) -> Iterator[MapChannel]
+        """
+        List the map channels of this session.
+
+        If `type` is set (`UserMapChannel` or `KernelMapChannel`), only list the
+        map channels of that type; otherwise, list the map channels of every
+        type.
+        """
         raise NotImplementedError
 
     @abc.abstractmethod
