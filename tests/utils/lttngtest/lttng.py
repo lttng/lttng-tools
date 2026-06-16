@@ -660,6 +660,40 @@ def _get_map_channel_dead_process_policy_from_mi(dead_group_policy):
     }[dead_group_policy]
 
 
+# Maps the `type` MI element text of a `<map_group>` element to
+# its `MapGroupType`.
+_MAP_GROUP_TYPE_FROM_MI = {
+    "kernel-global": lttngctl.MapGroupType.KernelGlobal,
+    "user-per-user": lttngctl.MapGroupType.UserPerUser,
+    "user-per-process": lttngctl.MapGroupType.UserPerProcess,
+    "shared": lttngctl.MapGroupType.Shared,
+}
+
+
+def _map_group_from_mi(map_group_elem):
+    # type: (xml.etree.ElementTree.Element) -> lttngctl.MapGroup
+    group_type = _MAP_GROUP_TYPE_FROM_MI[
+        LTTngClient._mi_get_in_element(map_group_elem, "type").text
+    ]
+    effective_val_type = _get_map_channel_value_type_from_mi(
+        LTTngClient._mi_get_in_element(map_group_elem, "effective_value_type").text
+    )
+
+    # Only the per-user and per-process types carry owner information
+    if group_type in (
+        lttngctl.MapGroupType.UserPerUser,
+        lttngctl.MapGroupType.UserPerProcess,
+    ):
+        return lttngctl.MapGroup(
+            group_type,
+            effective_val_type,
+            int(LTTngClient._mi_get_in_element(map_group_elem, "owner_id").text),
+            LTTngClient._mi_get_in_element(map_group_elem, "owner_name").text,
+        )
+
+    return lttngctl.MapGroup(group_type, effective_val_type)
+
+
 class _MapChannel(lttngctl.MapChannel):
     # Each concrete subclass defines `_channel_type` (a `Type[MapChannel]`,
     # either `lttngctl.UserMapChannel` or `lttngctl.KernelMapChannel`) so that

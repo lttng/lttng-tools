@@ -225,6 +225,69 @@ class MapChannelDeadProcessPolicy(enum.Enum):
 
 
 @enum.unique
+class MapGroupType(enum.Enum):
+    """Type of a map group."""
+
+    KernelGlobal = "Linux kernel, system-wide map group"
+    UserPerUser = "Per-user, user space map group"
+    UserPerProcess = "Per-process, user space map group"
+    Shared = "Channel-wide, owner-less user space map group"
+
+    def __repr__(self):
+        return "<%s.%s>" % (self.__class__.__name__, self.name)
+
+
+class MapGroup:
+    """
+    A map group is the subset of the per-CPU stores (maps) of a map channel
+    which share a common owner.
+
+    Depending on its type, the owner is a user
+    (`MapGroupType.UserPerUser`), a process
+    (`MapGroupType.UserPerProcess`), the whole system
+    (`MapGroupType.KernelGlobal`), or the channel itself
+    (`MapGroupType.Shared`). Only the per-user and per-process types
+    have an owner ID and owner name; the other types leave those
+    properties as `None`.
+    """
+
+    def __init__(
+        self,
+        type,  # type: MapGroupType
+        effective_value_type,  # type: MapChannelValueType
+        owner_id=None,  # type: Optional[int]
+        owner_name=None,  # type: Optional[str]
+    ):
+        self._type = type  # type: MapGroupType
+        self._effective_value_type = effective_value_type  # type: MapChannelValueType
+        self._owner_id = owner_id  # type: Optional[int]
+        self._owner_name = owner_name  # type: Optional[str]
+
+    @property
+    def type(self):
+        # type: () -> MapGroupType
+        return self._type
+
+    @property
+    def effective_value_type(self):
+        # type: () -> MapChannelValueType
+        """Effective value type (resolved counter value width) of the group."""
+        return self._effective_value_type
+
+    @property
+    def owner_id(self):
+        # type: () -> Optional[int]
+        """Owner ID (user or process ID) of a per-user or per-process group; `None` otherwise."""
+        return self._owner_id
+
+    @property
+    def owner_name(self):
+        # type: () -> Optional[str]
+        """Owner name of a per-user or per-process group; `None` otherwise."""
+        return self._owner_name
+
+
+@enum.unique
 class ConditionType(enum.Enum):
     """
     enum lttng_condition_type
