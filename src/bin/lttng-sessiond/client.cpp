@@ -2856,6 +2856,11 @@ void *thread_manage_clients(void *data)
 			log_nested_exceptions(ex);
 			ret = LTTNG_ERR_CHAN_NOT_FOUND;
 		} catch (
+			const lttng::sessiond::config::exceptions::map_channel_already_exists_error&
+				ex) {
+			log_nested_exceptions(ex);
+			ret = LTTNG_ERR_CHAN_EXIST;
+		} catch (
 			const lttng::sessiond::config::exceptions::process_attribute_already_tracked&
 				ex) {
 			log_nested_exceptions(ex);
