@@ -910,6 +910,183 @@ class EventRuleMatchesCondition(TriggerCondition):
         return self._capture_descriptors
 
 
+class SessionConsumedSizeCondition(TriggerCondition):
+    """
+    Condition satisfied when the total size of the trace data consumed
+    for a recording session reaches or exceeds a threshold.
+    """
+
+    def __init__(
+        self,
+        session_name,  # type: str
+        threshold_bytes,  # type: int
+        error_query_results: List[ErrorQueryResult] = list(),
+    ):
+        super().__init__(error_query_results)
+        self._session_name = session_name
+        self._threshold_bytes = threshold_bytes
+
+    def __eq__(self, other):
+        # type: (object) -> bool
+        return (
+            type(self) == type(other)
+            and self._session_name == other._session_name
+            and self._threshold_bytes == other._threshold_bytes
+        )
+
+    def __repr__(self):
+        return "SessionConsumedSizeCondition(session_name='{}', threshold_bytes={})".format(
+            self._session_name, self._threshold_bytes
+        )
+
+    @property
+    def session_name(self):
+        # type: () -> str
+        return self._session_name
+
+    @property
+    def threshold_bytes(self):
+        # type: () -> int
+        return self._threshold_bytes
+
+
+class BufferUsageCondition(TriggerCondition):
+    """
+    Base class for buffer usage conditions.
+
+    The threshold is expressed either in bytes (`threshold_bytes`) or as
+    a ratio of the buffer size in the [0.0, 1.0] range
+    (`threshold_ratio`). Exactly one of the two must be set.
+    """
+
+    def __init__(
+        self,
+        session_name,  # type: str
+        channel_name,  # type: str
+        domain,  # type: TracingDomain
+        threshold_bytes=None,  # type: Optional[int]
+        threshold_ratio=None,  # type: Optional[float]
+        error_query_results: List[ErrorQueryResult] = list(),
+    ):
+        super().__init__(error_query_results)
+        if (threshold_bytes is None) == (threshold_ratio is None):
+            raise ValueError(
+                "Exactly one of `threshold_bytes` or `threshold_ratio` must be set"
+            )
+        self._session_name = session_name
+        self._channel_name = channel_name
+        self._domain = domain
+        self._threshold_bytes = threshold_bytes
+        self._threshold_ratio = threshold_ratio
+
+    def __eq__(self, other):
+        # type: (object) -> bool
+        return (
+            type(self) == type(other)
+            and self._session_name == other._session_name
+            and self._channel_name == other._channel_name
+            and self._domain == other._domain
+            and self._threshold_bytes == other._threshold_bytes
+            and self._threshold_ratio == other._threshold_ratio
+        )
+
+    def __repr__(self):
+        return (
+            "{}(session_name='{}', channel_name='{}', domain={!r}, "
+            "threshold_bytes={}, threshold_ratio={})".format(
+                type(self).__name__,
+                self._session_name,
+                self._channel_name,
+                self._domain,
+                self._threshold_bytes,
+                self._threshold_ratio,
+            )
+        )
+
+    @property
+    def session_name(self):
+        # type: () -> str
+        return self._session_name
+
+    @property
+    def channel_name(self):
+        # type: () -> str
+        return self._channel_name
+
+    @property
+    def domain(self):
+        # type: () -> TracingDomain
+        return self._domain
+
+    @property
+    def threshold_bytes(self):
+        # type: () -> Optional[int]
+        return self._threshold_bytes
+
+    @property
+    def threshold_ratio(self):
+        # type: () -> Optional[float]
+        return self._threshold_ratio
+
+
+class BufferUsageHighCondition(BufferUsageCondition):
+    """
+    Condition satisfied when a channel's buffer usage reaches or exceeds
+    the threshold.
+    """
+
+    pass
+
+
+class BufferUsageLowCondition(BufferUsageCondition):
+    """
+    Condition satisfied when a channel's buffer usage drops to or below
+    the threshold.
+    """
+
+    pass
+
+
+class SessionRotationCondition(TriggerCondition):
+    """Base class for session-rotation conditions."""
+
+    def __init__(
+        self,
+        session_name,  # type: str
+        error_query_results: List[ErrorQueryResult] = list(),
+    ):
+        super().__init__(error_query_results)
+        self._session_name = session_name
+
+    def __eq__(self, other):
+        # type: (object) -> bool
+        return type(self) == type(other) and self._session_name == other._session_name
+
+    def __repr__(self):
+        return "{}(session_name='{}')".format(type(self).__name__, self._session_name)
+
+    @property
+    def session_name(self):
+        # type: () -> str
+        return self._session_name
+
+
+class SessionRotationOngoingCondition(SessionRotationCondition):
+    """
+    Condition satisfied when a recording session rotation starts.
+    """
+
+    pass
+
+
+class SessionRotationCompletedCondition(SessionRotationCondition):
+    """
+    Condition satisfied when a recording session rotation finishes.
+    """
+
+    pass
+
+
 class TriggerAction(abc.ABC):
     """Base class for trigger actions."""
 

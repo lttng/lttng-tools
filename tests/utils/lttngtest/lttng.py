@@ -63,6 +63,31 @@ def _get_domain_xml_mi_name(domain):
     }[domain]
 
 
+def _domain_from_xml_mi_name(name):
+    # type: (str) -> lttngctl.TracingDomain
+    return {
+        "UST": lttngctl.TracingDomain.User,
+        "KERNEL": lttngctl.TracingDomain.Kernel,
+        "LOG4J": lttngctl.TracingDomain.Log4j,
+        "LOG4J2": lttngctl.TracingDomain.Log4j2,
+        "PYTHON": lttngctl.TracingDomain.Python,
+        "JUL": lttngctl.TracingDomain.JUL,
+    }[name]
+
+
+def _get_condition_domain_arg(domain):
+    # type: (lttngctl.TracingDomain) -> str
+
+    return {
+        lttngctl.TracingDomain.User: "user",
+        lttngctl.TracingDomain.Kernel: "kernel",
+        lttngctl.TracingDomain.Log4j: "log4j",
+        lttngctl.TracingDomain.Log4j2: "log4j2",
+        lttngctl.TracingDomain.Python: "python",
+        lttngctl.TracingDomain.JUL: "jul",
+    }[domain]
+
+
 def _get_context_type_name(context):
     # type: (lttngctl.ContextType) -> str
     if isinstance(context, lttngctl.VgidContextType):
@@ -2014,6 +2039,35 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
             for capture in condition.capture_descriptors:
                 args.extend(["--capture", capture])
             args.extend(_build_event_rule_spec_args(condition.event_rule))
+        elif isinstance(condition, lttngctl.SessionConsumedSizeCondition):
+            args.append("--condition=session-consumed-size-ge")
+            args.extend(["--session", condition.session_name])
+            args.extend(["--threshold-size", str(condition.threshold_bytes)])
+        elif isinstance(condition, lttngctl.BufferUsageCondition):
+            if isinstance(condition, lttngctl.BufferUsageHighCondition):
+                args.append("--condition=channel-buffer-usage-ge")
+            elif isinstance(condition, lttngctl.BufferUsageLowCondition):
+                args.append("--condition=channel-buffer-usage-le")
+            else:
+                raise Unsupported(
+                    "Condition type `{condition_type}` is not supported".format(
+                        condition_type=type(condition).__name__
+                    )
+                )
+
+            args.extend(["--session", condition.session_name])
+            args.extend(["--channel", condition.channel_name])
+            args.extend(["--domain", _get_condition_domain_arg(condition.domain)])
+            if condition.threshold_bytes is not None:
+                args.extend(["--threshold-size", str(condition.threshold_bytes)])
+            else:
+                args.extend(["--threshold-ratio", str(condition.threshold_ratio)])
+        elif isinstance(condition, lttngctl.SessionRotationOngoingCondition):
+            args.append("--condition=session-rotation-starts")
+            args.extend(["--session", condition.session_name])
+        elif isinstance(condition, lttngctl.SessionRotationCompletedCondition):
+            args.append("--condition=session-rotation-finishes")
+            args.extend(["--session", condition.session_name])
         else:
             raise Unsupported(
                 "Condition type `{condition_type}` is not supported".format(
@@ -2163,6 +2217,65 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
             return lttngctl.EventRuleMatchesCondition(
                 event_rule,
                 captures if captures else None,
+                error_query_results,
+            )
+
+        if type_name == "condition_session_consumed_size":
+            return lttngctl.SessionConsumedSizeCondition(
+                LTTngClient._mi_get_in_element(type_element, "session_name").text,
+                int(
+                    LTTngClient._mi_get_in_element(type_element, "threshold_bytes").text
+                ),
+                error_query_results,
+            )
+
+        if type_name in ("condition_buffer_usage_high", "condition_buffer_usage_low"):
+            session_name = LTTngClient._mi_get_in_element(
+                type_element, "session_name"
+            ).text
+            channel_name = LTTngClient._mi_get_in_element(
+                type_element, "channel_name"
+            ).text
+            domain = _domain_from_xml_mi_name(
+                LTTngClient._mi_get_in_element(type_element, "domain").text
+            )
+
+            # The condition carries exactly one of the two threshold flavours.
+            threshold_bytes = None  # type: Optional[int]
+            threshold_ratio = None  # type: Optional[float]
+            threshold_bytes_element = LTTngClient._mi_find_in_element(
+                type_element, "threshold_bytes"
+            )
+            if threshold_bytes_element is not None:
+                threshold_bytes = int(threshold_bytes_element.text)
+            else:
+                threshold_ratio = float(
+                    LTTngClient._mi_get_in_element(type_element, "threshold_ratio").text
+                )
+
+            condition_cls = (
+                lttngctl.BufferUsageHighCondition
+                if type_name == "condition_buffer_usage_high"
+                else lttngctl.BufferUsageLowCondition
+            )
+            return condition_cls(
+                session_name,
+                channel_name,
+                domain,
+                threshold_bytes,
+                threshold_ratio,
+                error_query_results,
+            )
+
+        if type_name == "condition_session_rotation_ongoing":
+            return lttngctl.SessionRotationOngoingCondition(
+                LTTngClient._mi_get_in_element(type_element, "session_name").text,
+                error_query_results,
+            )
+
+        if type_name == "condition_session_rotation_completed":
+            return lttngctl.SessionRotationCompletedCondition(
+                LTTngClient._mi_get_in_element(type_element, "session_name").text,
                 error_query_results,
             )
 
