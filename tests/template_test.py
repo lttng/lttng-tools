@@ -54,7 +54,7 @@ if __name__ == "__main__":
     if not has_platform_requirements:
         # This function will exit either with skipping or with a bailout,
         # depending on the the environment configuration.
-        tap.missing_platform_requirements("Need XXX")
+        tap.missing_platform_requirement("Need XXX")
 
     for test in tests:
         with lttngtest.test_environment(
