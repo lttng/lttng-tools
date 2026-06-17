@@ -1460,9 +1460,14 @@ void cmd_add_map_channel(const ltt_session::locked_ref& session,
 	const auto dead_group_policy =
 		static_cast<lsc::map_channel_configuration::dead_group_policy_t>(
 			payload.dead_group_policy);
-	const auto buffer_ownership = payload.buffer_ownership == 1 ?
-		lsc::ownership_model_t::PER_UID :
-		lsc::ownership_model_t::PER_PID;
+	/*
+	 * A kernel map channel is always system-wide. The public API doesn't allow users to specify
+	 * otherwise either, so the value ignored.
+	 */
+	const auto buffer_ownership = domain_type == LTTNG_DOMAIN_KERNEL ?
+		lsc::ownership_model_t::SYSTEM :
+		(payload.buffer_ownership == 1 ? lsc::ownership_model_t::PER_UID :
+						 lsc::ownership_model_t::PER_PID);
 
 	DBG_FMT("Received ADD_MAP_CHANNEL command: session_name=`{}`, domain={}, map_channel_name=`{}`, key_type={}, value_type={}, update_policy={}, max_entry_count={}, buffer_ownership={}, dead_group_policy={}",
 		session->name,
