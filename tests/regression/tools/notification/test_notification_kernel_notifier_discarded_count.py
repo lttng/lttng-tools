@@ -52,7 +52,7 @@ if __name__ == "__main__":
 
     tap = lttngtest.TapGenerator(len(tests))
     if not lttngtest.utils.gdb_exists():
-        tap.missing_platform_requirements("Need gdb")
+        tap.missing_platform_requirement("Need gdb")
         sys.exit(0)
 
     for test in tests:
