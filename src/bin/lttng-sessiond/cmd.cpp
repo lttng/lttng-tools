@@ -3785,13 +3785,17 @@ int cmd_start_trace(const ltt_session::locked_ref& session)
 
 	/*
 	 * Starting a session without channel is useless since after that it's not
-	 * possible to enable channel thus inform the client.
+	 * possible to enable channel thus inform the client. Map channels count
+	 * here too: a session holding only map channels is legitimate since their
+	 * counters are fed by triggers rather than by enabled event rules.
 	 */
 	if (session->ust_orchestrator) {
 		nb_chan += session->user_space_domain.recording_channel_count();
+		nb_chan += session->user_space_domain.map_channel_count();
 	}
 	if (session->kernel_orchestrator) {
 		nb_chan += session->kernel_space_domain.recording_channel_count();
+		nb_chan += session->kernel_space_domain.map_channel_count();
 	}
 	if (!nb_chan) {
 		ret = LTTNG_ERR_NO_CHANNEL;
