@@ -46,3 +46,15 @@ lttng::sessiond::config::exceptions::map_channel_not_found_error::map_channel_no
 	channel_name{ std::move(channel_name_) }
 {
 }
+
+lttng::sessiond::config::exceptions::map_channel_already_exists_error::
+	map_channel_already_exists_error(std::string channel_name_,
+					 const lttng::source_location& source_location_) :
+	lttng::runtime_error(
+		fmt::format(
+			"A map channel with the given name already exists in this domain: channel_name=`{}`",
+			channel_name_),
+		source_location_),
+	channel_name{ std::move(channel_name_) }
+{
+}

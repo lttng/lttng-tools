@@ -41,6 +41,10 @@ namespace config {
 	throw lttng::sessiond::config::exceptions::map_channel_not_found_error( \
 		channel_name, LTTNG_SOURCE_LOCATION())
 
+#define LTTNG_THROW_MAP_CHANNEL_ALREADY_EXISTS_ERROR(channel_name)                   \
+	throw lttng::sessiond::config::exceptions::map_channel_already_exists_error( \
+		channel_name, LTTNG_SOURCE_LOCATION())
+
 namespace exceptions {
 /*
  * @class channel_not_found_error
@@ -64,6 +68,19 @@ class map_channel_not_found_error : public lttng::runtime_error {
 public:
 	explicit map_channel_not_found_error(std::string channel_name,
 					     const lttng::source_location& source_location);
+
+	const std::string channel_name;
+};
+
+/*
+ * @class map_channel_already_exists_error
+ * @brief Represents an attempt to add a map channel whose name is already in use within the
+ * domain, and provides the name of that map channel for use by error-reporting code.
+ */
+class map_channel_already_exists_error : public lttng::runtime_error {
+public:
+	explicit map_channel_already_exists_error(std::string channel_name,
+						  const lttng::source_location& source_location);
 
 	const std::string channel_name;
 };
@@ -245,9 +262,7 @@ public:
 		auto result =
 			_map_channels.emplace(new_map_channel->name, std::move(new_map_channel));
 		if (!result.second) {
-			LTTNG_THROW_ERROR(lttng::format(
-				"Failed to add map channel to domain, name already in use: map_channel_name=`{}`",
-				result.first->first));
+			LTTNG_THROW_MAP_CHANNEL_ALREADY_EXISTS_ERROR(result.first->first);
 		}
 
 		return *(result.first->second);
