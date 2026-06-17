@@ -7,6 +7,7 @@
  *
  */
 
+#include "common/error.hpp"
 #include "common/unix.hpp"
 
 #include <cstdint>
@@ -1091,6 +1092,140 @@ error:
 	return ret;
 }
 
+/* A null consumed_pos skips the sampling and adjustment of the consumed position. */
+int snapshot_ust_stream_positions(struct lttng_consumer_stream *stream,
+				  const struct lttng_consumer_channel *channel,
+				  const uint64_t nb_packets_per_stream,
+				  unsigned long *produced_pos,
+				  unsigned long *consumed_pos,
+				  bool *forced_flush_performed)
+{
+	int ret;
+
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(channel);
+	LTTNG_ASSERT(produced_pos);
+	LTTNG_ASSERT(forced_flush_performed);
+
+	/* Take a snapshot of the stream's positions. */
+	ret = lttng_ustconsumer_take_snapshot(stream);
+	if (ret == -EAGAIN) {
+		DBG_FMT("Stream has no active packet (no activity yet), forcing a flush before snapshot: session_id={}, channel_name=`{}`, channel_key={}, stream_key={}",
+			channel->session_id,
+			channel->name,
+			channel->key,
+			stream->key);
+
+		/*
+		 * No complete packet was readable, force a flush so that the
+		 * snapshot contains a packet, even an empty one, from which
+		 * readers can infer that tracing was underway for that stream.
+		 */
+		ret = consumer_stream_flush_buffer(stream, false);
+		if (ret < 0) {
+			ERR_FMT("Failed to force a flush before snapshot on an empty stream: session_id={}, channel_name=`{}`, channel_key={}, stream_key={}",
+				channel->session_id,
+				channel->name,
+				channel->key,
+				stream->key);
+			return ret;
+		}
+
+		*forced_flush_performed = true;
+		ret = lttng_ustconsumer_take_snapshot(stream);
+		if (ret < 0) {
+			ERR_FMT("Failed to sample positions while taking a snapshot: session_id={}, channel_name=`{}`, channel_key={}, stream_key={}",
+				channel->session_id,
+				channel->name,
+				channel->key,
+				stream->key);
+			return ret;
+		}
+	} else if (ret < 0) {
+		ERR_FMT("Failed to sample positions while taking a snapshot: session_id={}, channel_name=`{}`, channel_key={}, stream_key={}",
+			channel->session_id,
+			channel->name,
+			channel->key,
+			stream->key);
+		return ret;
+	}
+
+	ret = lttng_ustconsumer_get_produced_snapshot(stream, produced_pos);
+	if (ret < 0) {
+		ERR_FMT("Failed to get produced position while taking a snapshot: session_id={}, channel_name=`{}`, channel_key={}, stream_key={}",
+			channel->session_id,
+			channel->name,
+			channel->key,
+			stream->key);
+		return ret;
+	}
+
+	if (!consumed_pos) {
+		return ret;
+	}
+
+	ret = lttng_ustconsumer_get_consumed_snapshot(stream, consumed_pos);
+	if (ret < 0) {
+		ERR_FMT("Failed to get consumed position while taking a snapshot: session_id={}, channel_name=`{}`, channel_key={}, stream_key={}",
+			channel->session_id,
+			channel->name,
+			channel->key,
+			stream->key);
+		return ret;
+	}
+
+	/*
+	 * Adjust the consumed position based on the number of packets to
+	 * snapshot.
+	 */
+	*consumed_pos = consumer_get_consume_start_pos(
+		*consumed_pos, *produced_pos, nb_packets_per_stream, stream->max_sb_size);
+
+	return ret;
+}
+
+int read_ust_snapshot_subbuffer(struct lttng_consumer_stream *stream, const bool use_relayd)
+{
+	int ret;
+	unsigned long len, padded_len;
+	const char *subbuf_addr;
+
+	LTTNG_ASSERT(stream);
+
+	ret = lttng_ust_ctl_get_subbuf_size(stream->ustream, &len);
+	if (ret < 0) {
+		ERR_FMT("Failed to get sub-buffer size: ret={}", ret);
+		return ret;
+	}
+
+	ret = lttng_ust_ctl_get_padded_subbuf_size(stream->ustream, &padded_len);
+	if (ret < 0) {
+		ERR_FMT("Failed to get padded sub-buffer size: ret={}", ret);
+		return ret;
+	}
+
+	ret = get_current_subbuf_addr(stream, &subbuf_addr);
+	if (ret) {
+		return ret;
+	}
+
+	const auto subbuf_view = lttng_buffer_view_init(subbuf_addr, 0, padded_len);
+	const ssize_t read_len =
+		lttng_consumer_on_read_subbuffer_mmap(stream, &subbuf_view, padded_len - len);
+
+	if (use_relayd) {
+		if (read_len != (ssize_t) len) {
+			return -EPERM;
+		}
+	} else {
+		if (read_len != (ssize_t) padded_len) {
+			return -EPERM;
+		}
+	}
+
+	return 0;
+}
+
 /*
  * Take a snapshot of all the streams of a channel.
  * RCU read-side lock and the channel lock must be held by the caller.
@@ -1130,8 +1265,9 @@ int snapshot_channel(struct lttng_consumer_channel *channel,
 	DBG("UST consumer snapshot channel %" PRIu64, key);
 
 	for (auto& stream : channel->get_streams()) {
-		unsigned long consumed_pos, produced_pos;
+		unsigned long consumed_pos, produced_pos, first_acquired_pos = 0;
 		bool terminal_packet_populated = false;
+		bool skip_first_acquired_pos = false;
 
 		health_code_update();
 
@@ -1171,100 +1307,172 @@ int snapshot_channel(struct lttng_consumer_channel *channel,
 		}
 
 		/*
+		 * Set when sampling the positions forced a flush. That flush already
+		 * produced the packet closing the recording interval, making a
+		 * terminal packet redundant.
+		 */
+		bool forced_flush_performed = false;
+
+		/*
 		 * Handle empty or terminal packets:
-		 * - If no events were produced, generate an empty packet to indicate
-		 *   the recording interval.
-		 * - If consecutive snapshots are taken without new events, generate
-		 *   a terminal packet to indicate the recording was still active.
+		 *
+		 * - If no events were produced, generate an empty packet to
+		 *   indicate the recording interval.
+		 *
+		 * - If consecutive snapshots are taken without new events,
+		 *   generate a terminal packet to indicate the recording was
+		 *   still active.
 		 */
 		if (!stream.quiescent) {
+			unsigned long pin_scan_pos;
+			bool first_acquired_owned = false;
+
+			/*
+			 * For active streams, the flush that closes the
+			 * recording interval lets producers recycle the oldest
+			 * sub-buffer before it is read. Snapshot the current
+			 * [consumed, produced) range and keep its first
+			 * readable sub-buffer pinned across the flush to
+			 * prevent that. After the flush, the window is rebuilt
+			 * from the re-sampled produced position: the newest
+			 * `nb_packets_per_stream` packets, bounded below by the
+			 * pinned sub-buffer. The pinned sub-buffer is emitted
+			 * only when the window does not already contain enough
+			 * newer packets.
+			 */
+			ret = snapshot_ust_stream_positions(&stream,
+							    channel,
+							    nb_packets_per_stream,
+							    &produced_pos,
+							    &consumed_pos,
+							    &forced_flush_performed);
+			if (ret < 0) {
+				return ret;
+			}
+
+			for (pin_scan_pos = consumed_pos; (long) (pin_scan_pos - produced_pos) < 0;
+			     pin_scan_pos += stream.max_sb_size) {
+				health_code_update();
+
+				DBG_FMT("Attempting to pin snapshot sub-buffer: channel_name=`{}`, stream_key={}, position={}",
+					channel->name,
+					stream.key,
+					pin_scan_pos);
+
+				ret = lttng_ust_ctl_get_subbuf(stream.ustream, &pin_scan_pos);
+				if (ret < 0) {
+					if (ret != -EAGAIN) {
+						ERR_FMT("Failed to pin sub-buffer: channel_name=`{}`, stream_key={}, position={}, ret={}",
+							channel->name,
+							stream.key,
+							pin_scan_pos,
+							ret);
+						return ret;
+					}
+
+					DBG_FMT("UST consumer failed to pin sub-buffer; skipping it: channel_name=`{}`, stream_key={}, position={}",
+						channel->name,
+						stream.key,
+						pin_scan_pos);
+					stream.chan->lost_packets++;
+					continue;
+				}
+
+				DBG_FMT("Successfully pinned sub-buffer: channel_name=`{}`, stream_key={}, position={}",
+					channel->name,
+					stream.key,
+					pin_scan_pos);
+				first_acquired_pos = pin_scan_pos;
+				first_acquired_owned = true;
+				break;
+			}
+
+			const auto put_first_acquired_subbuf =
+				lttng::make_scope_exit([&stream, &first_acquired_owned]() noexcept {
+					if (first_acquired_owned) {
+						if (lttng_ust_ctl_put_subbuf(stream.ustream) < 0) {
+							ERR("Failed to 'put' first acquired sub-buffer");
+						}
+					}
+				});
+
 			ret = lttng_ustconsumer_flush_buffer_or_populate_packet(
 				&stream, terminal_packet.get(), &terminal_packet_populated, nullptr);
 			if (ret < 0) {
-				ERR("Failed to flush buffer during snapshot of channel: channel key = %" PRIu64
-				    ", channel name='%s', ret=%d",
-				    channel->key,
-				    channel->name,
-				    ret);
+				ERR_FMT("Failed to flush buffer during snapshot of channel: channel_name=`{}`, channel_key={}, stream_key={}, ret={}",
+					channel->name,
+					channel->key,
+					stream.key,
+					ret);
 				return ret;
 			}
-		}
-
-		bool forced_empty_packet = false;
-
-		/* Take a snapshot of the stream's positions. */
-		ret = lttng_ustconsumer_take_snapshot(&stream);
-		if (ret == -EAGAIN) {
-			DBG_FMT("Stream has no active packet (no activity yet), forcing a flush before snapshot: session_id={}, channel_name=`{}`, channel_key={}, stream_key={}",
-				channel->session_id,
-				channel->name,
-				channel->key,
-				stream.key);
 
 			/*
-			 * There was no content in the buffers, produce an empty packet
-			 * so that readers can infer that tracing was underway for that
-			 * stream.
+			 * Re-sample positions after the flush. When a sub-buffer is
+			 * pinned, only refresh the produced position; the consumed
+			 * position is derived from the pinned sub-buffer below.
 			 */
-			ret = consumer_stream_flush_buffer(&stream, false);
+			ret = snapshot_ust_stream_positions(&stream,
+							    channel,
+							    nb_packets_per_stream,
+							    &produced_pos,
+							    first_acquired_owned ? nullptr :
+										   &consumed_pos,
+							    &forced_flush_performed);
 			if (ret < 0) {
-				ERR_FMT("Failed to force a flush before snapshot on an empty stream: session_id={}, channel_name=`{}`, channel_key={}, stream_key={}",
-					channel->session_id,
-					channel->name,
-					channel->key,
-					stream.key);
 				return ret;
 			}
 
-			forced_empty_packet = true;
-			ret = lttng_ustconsumer_take_snapshot(&stream);
+			if (first_acquired_owned) {
+				/*
+				 * Select the newest `nb_packets_per_stream` packets of the
+				 * post-flush window, using the pinned sub-buffer as the
+				 * floor: a packet closed by the flush takes precedence over
+				 * the pinned sub-buffer when the requested count is already
+				 * met.
+				 */
+				consumed_pos = consumer_get_consume_start_pos(first_acquired_pos,
+									      produced_pos,
+									      nb_packets_per_stream,
+									      stream.max_sb_size);
+
+				if (consumed_pos == first_acquired_pos) {
+					/* The pinned sub-buffer is part of the window. */
+					ret = read_ust_snapshot_subbuffer(&stream, use_relayd);
+					if (ret < 0) {
+						return ret;
+					}
+
+					skip_first_acquired_pos = true;
+				}
+
+				/*
+				 * The pinned sub-buffer is released by put_first_acquired_subbuf.
+				 */
+			}
+		} else {
+			ret = snapshot_ust_stream_positions(&stream,
+							    channel,
+							    nb_packets_per_stream,
+							    &produced_pos,
+							    &consumed_pos,
+							    &forced_flush_performed);
 			if (ret < 0) {
-				ERR_FMT("Failed to sample positions while taking a snapshot: session_id={}, channel_name=`{}`, channel_key={}, stream_key={}",
-					channel->session_id,
-					channel->name,
-					channel->key,
-					stream.key);
 				return ret;
 			}
-		} else if (ret < 0) {
-			ERR_FMT("Failed to sample positions while taking a snapshot: session_id={}, channel_name=`{}`, channel_key={}, stream_key={}",
-				channel->session_id,
-				channel->name,
-				channel->key,
-				stream.key);
-			return ret;
 		}
-
-		ret = lttng_ustconsumer_get_produced_snapshot(&stream, &produced_pos);
-		if (ret < 0) {
-			ERR_FMT("Failed to get produced position while taking a snapshot: session_id={}, channel_name=`{}`, channel_key={}, stream_key={}",
-				channel->session_id,
-				channel->name,
-				channel->key,
-				stream.key);
-			return ret;
-		}
-
-		ret = lttng_ustconsumer_get_consumed_snapshot(&stream, &consumed_pos);
-		if (ret < 0) {
-			ERR_FMT("Failed to get consumed position while taking a snapshot: session_id={}, channel_name=`{}`, channel_key={}, stream_key={}",
-				channel->session_id,
-				channel->name,
-				channel->key,
-				stream.key);
-			return ret;
-		}
-
-		/* Adjust the consumed position based on the number of packets to snapshot. */
-		consumed_pos = consumer_get_consume_start_pos(
-			consumed_pos, produced_pos, nb_packets_per_stream, stream.max_sb_size);
 
 		/* Process each available sub-buffer in the stream. */
 		while ((long) (consumed_pos - produced_pos) < 0) {
-			ssize_t read_len;
-			unsigned long len, padded_len;
-			const char *subbuf_addr;
-			struct lttng_buffer_view subbuf_view;
+			/*
+			 * Skip the pre-flush sub-buffer that was already written out so it
+			 * isn't emitted twice.
+			 */
+			if (skip_first_acquired_pos && consumed_pos == first_acquired_pos) {
+				consumed_pos += stream.max_sb_size;
+				skip_first_acquired_pos = false;
+				continue;
+			}
 
 			health_code_update();
 
@@ -1290,41 +1498,16 @@ int snapshot_channel(struct lttng_consumer_channel *channel,
 				}
 			});
 
-			ret = lttng_ust_ctl_get_subbuf_size(stream.ustream, &len);
+			ret = read_ust_snapshot_subbuffer(&stream, use_relayd);
 			if (ret < 0) {
-				ERR("Snapshot lttng_ust_ctl_get_subbuf_size");
 				return ret;
-			}
-
-			ret = lttng_ust_ctl_get_padded_subbuf_size(stream.ustream, &padded_len);
-			if (ret < 0) {
-				ERR("Snapshot lttng_ust_ctl_get_padded_subbuf_size");
-				return ret;
-			}
-
-			ret = get_current_subbuf_addr(&stream, &subbuf_addr);
-			if (ret) {
-				return ret;
-			}
-
-			subbuf_view = lttng_buffer_view_init(subbuf_addr, 0, padded_len);
-			read_len = lttng_consumer_on_read_subbuffer_mmap(
-				&stream, &subbuf_view, padded_len - len);
-			if (use_relayd) {
-				if (read_len != len) {
-					return -EPERM;
-				}
-			} else {
-				if (read_len != padded_len) {
-					return -EPERM;
-				}
 			}
 
 			consumed_pos += stream.max_sb_size;
 		}
 
 		/* Append terminal packet if necessary. */
-		if (terminal_packet_populated && !forced_empty_packet) {
+		if (terminal_packet_populated && !forced_flush_performed) {
 			uint64_t length, packet_length = 0, packet_length_padded = 0;
 			struct lttng_buffer_view subbuf_view;
 			ssize_t read_len;
