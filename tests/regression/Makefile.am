@@ -13,6 +13,7 @@ TEST_EXTENSIONS = .serial
 SERIAL_TESTS = tools/base-path/test_ust \
 	tools/channel/test_channel \
 	tools/channel/test_cli_legacy_channel_buffering_policies.py \
+	tools/map/test_kernel_map_channel_integration.py \
 	tools/client/test_add_trigger.py \
 	tools/filtering/test_invalid_filter \
 	tools/filtering/test_unsupported_op \
@@ -77,7 +78,22 @@ SERIAL_TESTS = tools/base-path/test_ust \
 	tools/channel/test_channel_allocation_policy_per_channel.py \
 	tools/trace-format/test_trace_format_kernel.py
 
-TESTS = tools/clear/test_disallow.py \
+TESTS = tools/map/test_buffer_ownership_models.py \
+	tools/map/test_clear_preserves_keys.py \
+	tools/map/test_dead_process_policies.py \
+	tools/map/test_empty_map_channel.py \
+	tools/map/test_export_maps_schema.py \
+	tools/map/test_incr_on_session_rotation.py \
+	tools/map/test_list_map_channel.py \
+	tools/map/test_list_map_channel_mi.py \
+	tools/map/test_max_key_count.py \
+	tools/map/test_no_update_when_stopped.py \
+	tools/map/test_provider_name_key.py \
+	tools/map/test_show_maps.py \
+	tools/map/test_trigger_late_binding.py \
+	tools/map/test_update_policies.py \
+	tools/map/test_user_map_channel_integration.py \
+	tools/clear/test_disallow.py \
 	tools/clear/test_live_hang.py \
 	tools/clear/test_ust.py \
 	tools/clear/test_ust_multi_user.py \

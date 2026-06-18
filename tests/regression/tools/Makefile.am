@@ -178,6 +178,22 @@ noinst_SCRIPTS += \
 	live/test_ust \
 	live/test_ust_tracefile_count \
 	lttng-ctl/test_liblttng-ctl_abi.py \
+	map/test_buffer_ownership_models.py \
+	map/test_clear_preserves_keys.py \
+	map/test_dead_process_policies.py \
+	map/test_empty_map_channel.py \
+	map/test_export_maps_schema.py \
+	map/test_incr_on_session_rotation.py \
+	map/test_kernel_map_channel_integration.py \
+	map/test_list_map_channel.py \
+	map/test_list_map_channel_mi.py \
+	map/test_max_key_count.py \
+	map/test_no_update_when_stopped.py \
+	map/test_provider_name_key.py \
+	map/test_show_maps.py \
+	map/test_trigger_late_binding.py \
+	map/test_update_policies.py \
+	map/test_user_map_channel_integration.py \
 	metadata/test_kernel \
 	metadata/test_ust \
 	metadata/utils.sh \
@@ -259,6 +275,7 @@ EXTRA_DIST += $(noinst_SCRIPTS) \
 	trace-format/kernel-local-trace-pretty.expect \
 	trace-format/kernel-local-trace-pretty.expect.32 \
 	trace-format/ust-local-trace-pretty.expect \
+	map/common.py \
 	REUSE.toml
 
 # Copy test scripts to the builddir for OOT builds
