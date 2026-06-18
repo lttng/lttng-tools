@@ -50,6 +50,11 @@ void map_channel::for_each_group(const group_visitor& visitor) const
 		_kernel_group);
 }
 
+void map_channel::_clear_tracer_groups()
+{
+	_clear_group_elements(_kernel_group);
+}
+
 } /* namespace modules */
 } /* namespace sessiond */
 } /* namespace lttng */

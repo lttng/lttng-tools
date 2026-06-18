@@ -1249,6 +1249,17 @@ void ls::modules::domain_orchestrator::clear()
 
 	DBG("Clear kernel session started");
 
+	/*
+	 * Reset the counters of every map channel
+	 * (from lttng_clear_session()).
+	 *
+	 * Done before the recording buffer clearing below so that it
+	 * always runs, including on the snapshot session early return.
+	 */
+	for (auto& entry : _map_channels) {
+		entry.second->clear();
+	}
+
 	const lttng::urcu::read_lock_guard read_lock;
 	auto& kconsumer_socket = _get_consumer_socket();
 

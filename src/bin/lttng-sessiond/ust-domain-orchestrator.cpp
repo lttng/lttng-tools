@@ -2738,6 +2738,17 @@ void ls::ust::domain_orchestrator::clear()
 			_session.id));
 	}
 
+	/*
+	 * Reset the counters of every map channel
+	 * (from lttng_clear_session()).
+	 *
+	 * Done before the recording buffer clearing below so that it
+	 * always runs.
+	 */
+	for (auto& entry : _map_channels) {
+		entry.second->clear();
+	}
+
 	auto *consumer = get_consumer_output_ptr();
 	const auto buf_type = buffer_type();
 

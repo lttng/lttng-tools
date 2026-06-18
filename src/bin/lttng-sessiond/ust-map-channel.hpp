@@ -194,6 +194,8 @@ public:
 		_rules;
 
 private:
+	void _clear_tracer_groups() override;
+
 	per_uid_groups _per_uid_groups;
 	per_app_groups _per_app_groups;
 };
