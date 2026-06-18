@@ -1106,8 +1106,11 @@ void ls::modules::domain_orchestrator::start()
 
 	DBG("Starting kernel tracing");
 
-	/* Open kernel metadata if needed. */
-	if (!_metadata_stream_group && _session.output_traces) {
+	/*
+	 * Open kernel metadata only if needed. A "flight-recorder" session, or
+	 * a session that only contains maps doesn't need a metadata channel.
+	 */
+	if (!_metadata_stream_group && _session.output_traces && !_stream_groups.empty()) {
 		_open_metadata();
 	}
 
@@ -1208,6 +1211,11 @@ consumer_socket& ls::modules::domain_orchestrator::_get_consumer_socket()
 void ls::modules::domain_orchestrator::rotate()
 {
 	DBG("Rotate kernel session started");
+
+	/* No recording channels to rotate: nothing to do. */
+	if (_stream_groups.empty()) {
+		return;
+	}
 
 	const lttng::urcu::read_lock_guard read_lock;
 	auto& kconsumer_socket = _get_consumer_socket();
