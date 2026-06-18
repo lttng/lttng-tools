@@ -118,6 +118,7 @@ compile_commands.json
 /tests/unit/test_poller
 /tests/unit/test_kprobe_event_rule_event_name
 /tests/unit/test_uprobe_event_rule_event_name
+/tests/unit/test_utils_path_walks_up_hierarchy
 /tests/regression/ust/multi-session/gen-nevents
 /tests/regression/ust/low-throughput/gen-events
 /tests/regression/ust/high-throughput/gen-events
