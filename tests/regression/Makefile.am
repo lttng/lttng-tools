@@ -153,7 +153,8 @@ SERIAL_TESTS += ust/before-after/test_before_after \
 	tools/config-directory/test_config.py \
 	tools/metadata/test_ust \
 	tools/relayd-grouping/test_ust \
-	tools/trigger/rate-policy/test_ust_rate_policy
+	tools/trigger/rate-policy/test_ust_rate_policy \
+	tools/map/test_map_value_type_multilib_kernel.py
 
 TESTS += tools/client/test_reclaim_memory.py \
 	ust/blob-type/test_blob_type.py \
@@ -164,7 +165,8 @@ TESTS += tools/client/test_reclaim_memory.py \
 	ust/ust-constructor/test_ust_constructor_cpp_static.py \
 	ust/test_no_event_timestamps.py \
 	ust/test_multi_abi.py \
-	tools/lttng-ctl/test_robust_protocol.py
+	tools/lttng-ctl/test_robust_protocol.py \
+	tools/map/test_map_value_type_multilib_ust.py
 
 # Stall-buffer tests can in theory be ran in parallel with other tests.
 #
