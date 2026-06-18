@@ -210,9 +210,22 @@ lttng_ust_abi_event build_ust_embedded_event(const lttng_event_rule& rule, std::
 }
 #endif /* HAVE_LIBLTTNG_UST_CTL */
 
-counter_event_payload_intermediate build_intermediate(const lttng_event_rule& event_rule,
-						      const lttng_action& incr_map_value_action,
-						      std::uint64_t user_token)
+void append_token(std::vector<counter_event_payload_intermediate::token>& key_tokens,
+		  const counter_event_payload_intermediate::token::kind kind,
+		  std::string literal_text = {})
+{
+	counter_event_payload_intermediate::token key_token;
+
+	key_token.type = kind;
+	key_token.literal_text = std::move(literal_text);
+	key_tokens.push_back(std::move(key_token));
+}
+
+counter_event_payload_intermediate
+build_intermediate(const lttng_event_rule& event_rule,
+		   const lttng_action& incr_map_value_action,
+		   std::uint64_t user_token,
+		   const bool qualify_ust_event_name_with_provider)
 {
 	counter_event_payload_intermediate intermediate;
 
@@ -224,28 +237,54 @@ counter_event_payload_intermediate build_intermediate(const lttng_event_rule& ev
 	LTTNG_ASSERT(key_template);
 
 	for (const auto& segment : key_template->segments) {
-		counter_event_payload_intermediate::token key_token;
-
 		switch (segment->type) {
 		case lttng::action::details::key_template_segment_type::LITERAL:
-			key_token.type = counter_event_payload_intermediate::token::kind::LITERAL;
-			key_token.literal_text =
+			append_token(
+				intermediate.key_tokens,
+				counter_event_payload_intermediate::token::kind::LITERAL,
 				static_cast<
 					const lttng::action::details::key_template_literal_segment&>(
 					*segment)
-					.text;
+					.text);
 			break;
 		case lttng::action::details::key_template_segment_type::EVENT_NAME:
-			key_token.type =
-				counter_event_payload_intermediate::token::kind::EVENT_NAME;
+			/*
+			 * For LTTng-UST, the
+			 * `LTTNG_KEY_TOKEN_EVENT_NAME` token only
+			 * expands to the bare tracepoint name, while
+			 * the full event name, as found in a metadata
+			 * stream, is `provider_name:tracepoint_name`.
+			 *
+			 * The `EVENT_NAME` template segment is
+			 * documented as the full event class name,
+			 * therefore expand it to the equivalent
+			 * `LTTNG_KEY_TOKEN_PROVIDER_NAME` +
+			 * `LTTNG_KEY_TOKEN_STRING` (`:`) +
+			 * `LTTNG_KEY_TOKEN_EVENT_NAME` token sequence.
+			 *
+			 * The kernel `LTTNG_KEY_TOKEN_EVENT_NAME` token
+			 * already expands to the full event name, so
+			 * leave it as a single token.
+			 */
+			if (qualify_ust_event_name_with_provider) {
+				append_token(intermediate.key_tokens,
+					     counter_event_payload_intermediate::token::kind::
+						     PROVIDER_NAME);
+				append_token(
+					intermediate.key_tokens,
+					counter_event_payload_intermediate::token::kind::LITERAL,
+					":");
+			}
+
+			append_token(intermediate.key_tokens,
+				     counter_event_payload_intermediate::token::kind::EVENT_NAME);
 			break;
 		case lttng::action::details::key_template_segment_type::PROVIDER_NAME:
-			key_token.type =
-				counter_event_payload_intermediate::token::kind::PROVIDER_NAME;
+			append_token(
+				intermediate.key_tokens,
+				counter_event_payload_intermediate::token::kind::PROVIDER_NAME);
 			break;
 		}
-
-		intermediate.key_tokens.push_back(std::move(key_token));
 	}
 
 	return intermediate;
@@ -257,7 +296,8 @@ std::vector<char> serialize_for_ust(const lttng_event_rule& event_rule,
 				    const lttng_action& incr_map_value_action,
 				    std::uint64_t user_token)
 {
-	const auto intermediate = build_intermediate(event_rule, incr_map_value_action, user_token);
+	const auto intermediate =
+		build_intermediate(event_rule, incr_map_value_action, user_token, true);
 
 	LTTNG_ASSERT(!intermediate.key_tokens.empty());
 
@@ -283,7 +323,8 @@ std::vector<char> serialize_for_modules(const lttng_event_rule& event_rule,
 					const lttng_action& incr_map_value_action,
 					std::uint64_t user_token)
 {
-	const auto intermediate = build_intermediate(event_rule, incr_map_value_action, user_token);
+	const auto intermediate =
+		build_intermediate(event_rule, incr_map_value_action, user_token, false);
 
 	LTTNG_ASSERT(!intermediate.key_tokens.empty());
 
