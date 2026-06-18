@@ -145,6 +145,20 @@ public:
 	void for_each_element_of(const group& target_group, const element_visitor& visitor) const;
 
 	/*
+	 * Reset to 0 every counter of every group of this channel: each
+	 * tracer-backed group followed by the channel-wide
+	 * shared group.
+	 *
+	 * Preserves the keys themselves (doesn't deallocate their
+	 * indices): clearing resets values, it doesn't remove counters
+	 * from the map.
+	 *
+	 * Used by the recording session clear
+	 * path (lttng_clear_session()).
+	 */
+	void clear();
+
+	/*
 	 * Resolve `key` in this channel's registry (allocating if needed) and add
 	 * `delta` to the shared group value at that index, with modular arithmetic.
 	 *
@@ -165,6 +179,26 @@ public:
 	std::uint64_t allocate_user_token() noexcept;
 
 protected:
+	/*
+	 * Reset to 0 every counter of `target_group` registered in the
+	 * key registry of this channel.
+	 *
+	 * A no-op for an index-keyed channel, which has no registry
+	 * to walk.
+	 *
+	 * Helper for subclasses (_clear_tracer_groups()).
+	 */
+	void _clear_group_elements(group& target_group);
+
+	/*
+	 * Reset to 0 the counters of every tracer-backed group of
+	 * this channel.
+	 *
+	 * The base clear() handles the shared group; subclasses only
+	 * deal with their own domain group storage.
+	 */
+	virtual void _clear_tracer_groups() = 0;
+
 	std::uint64_t _next_user_token = 0;
 
 private:

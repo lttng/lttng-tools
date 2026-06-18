@@ -66,6 +66,8 @@ public:
 		_rules;
 
 private:
+	void _clear_tracer_groups() override;
+
 	modules::map_group _kernel_group;
 };
 

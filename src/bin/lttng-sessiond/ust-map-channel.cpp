@@ -174,6 +174,18 @@ void map_channel::for_each_group(const group_visitor& visitor) const
 		shared());
 }
 
+void map_channel::_clear_tracer_groups()
+{
+	/* Exactly one of the two storage maps is populated */
+	for (auto& entry : _per_uid_groups) {
+		_clear_group_elements(*entry.second);
+	}
+
+	for (auto& entry : _per_app_groups) {
+		_clear_group_elements(*entry.second);
+	}
+}
+
 nonstd::optional<map_channel::app_attachment> map_channel::attach_to_app(ust::app& app,
 									 int session_parent_handle)
 {

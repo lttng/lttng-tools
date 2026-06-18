@@ -77,6 +77,34 @@ void map_channel::for_each_element_of(const group& target_group,
 		});
 }
 
+void map_channel::clear()
+{
+	/*
+	 * Reset the channel-wide shared group (which holds the counters
+	 * of non-event rule increments and, depending on the dead
+	 * process policy, the folded-in counters of defunct processes)
+	 * wholesale, then every tracer-backed group of the channel.
+	 */
+	_shared.clear();
+	_clear_tracer_groups();
+}
+
+void map_channel::_clear_group_elements(group& target_group)
+{
+	if (!_registry) {
+		/*
+		 * Index-keyed channels have no key registry to walk;
+		 * their indices are managed by the caller and such
+		 * channels are not exposed to lttng_clear_session().
+		 */
+		return;
+	}
+
+	_registry->for_each([&target_group](lttng::c_string_view, std::uint64_t index) {
+		target_group.clear_element(index);
+	});
+}
+
 void map_channel::increment_shared_value(const std::string& key, std::int64_t delta)
 {
 	if (!_registry) {
