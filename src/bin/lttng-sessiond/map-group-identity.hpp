@@ -8,6 +8,8 @@
 #ifndef LTTNG_SESSIOND_MAP_GROUP_IDENTITY_HPP
 #define LTTNG_SESSIOND_MAP_GROUP_IDENTITY_HPP
 
+#include "map-channel-configuration.hpp"
+
 #include <vendor/optional.hpp>
 
 #include <cstdint>
@@ -26,33 +28,27 @@ enum class group_type : std::uint8_t {
 };
 
 /*
- * Application bitness under which a group is reported, matching the
- * public lttng_app_bitness.
- */
-enum class group_app_bitness : std::uint8_t {
-	BITS_32 = 32,
-	BITS_64 = 64,
-};
-
-/*
  * Uniquely addresses a group within its map channel; this is the identity
  * a client supplies to sample a specific group.
  *
- *   - KERNEL_GLOBAL and SHARED: owner_id and app_bitness are unset.
- *   - USER_PER_USER: owner_id is the Unix user id; app_bitness is the
- *     width of the counter values the owner's applications resolved to.
- *   - USER_PER_PROCESS: owner_id is the process id; app_bitness is the
- *     owning application's bitness.
+ *   - KERNEL_GLOBAL and SHARED: owner_id is unset.
+ *   - USER_PER_USER: owner_id is the Unix user id.
+ *   - USER_PER_PROCESS: owner_id is the process id.
+ *
+ * `value_type` is the group's effective value type (see
+ * `map::group::value_type()`); for USER_PER_USER it is also a discriminator,
+ * as a single owner may host both a 32-bit and a 64-bit group at once. It is
+ * always a concrete width, never SIGNED_INT_MAX.
  */
 struct group_identity {
 	group_type type;
 	nonstd::optional<std::uint64_t> owner_id;
-	nonstd::optional<group_app_bitness> app_bitness;
+	config::map_channel_configuration::value_type_t value_type;
 
 	bool operator==(const group_identity& other) const noexcept
 	{
 		return type == other.type && owner_id == other.owner_id &&
-			app_bitness == other.app_bitness;
+			value_type == other.value_type;
 	}
 
 	bool operator!=(const group_identity& other) const noexcept

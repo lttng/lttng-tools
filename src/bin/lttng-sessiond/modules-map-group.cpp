@@ -50,25 +50,44 @@ from_counter_value(const lttng_kernel_abi_counter_value& value) noexcept
 	};
 }
 
-lttng_kernel_abi_counter_bitness bitness_from_value_type(
+/*
+ * Resolve the channel's value type to the concrete width a kernel counter is
+ * created with. SIGNED_INT_MAX follows the running session daemon's own ABI
+ * (the kernel's ABI is at least as wide as the daemon's), which is the widest
+ * width the daemon can read back.
+ */
+lttng::sessiond::config::map_channel_configuration::value_type_t resolve_kernel_value_type(
 	lttng::sessiond::config::map_channel_configuration::value_type_t vt) noexcept
 {
 	using value_type_t = lttng::sessiond::config::map_channel_configuration::value_type_t;
 
 	switch (vt) {
 	case value_type_t::SIGNED_INT_32:
+		return value_type_t::SIGNED_INT_32;
+	case value_type_t::SIGNED_INT_64:
+		return value_type_t::SIGNED_INT_64;
+	case value_type_t::SIGNED_INT_MAX:
+		return sizeof(void *) == sizeof(std::uint32_t) ? value_type_t::SIGNED_INT_32 :
+								 value_type_t::SIGNED_INT_64;
+	}
+
+	abort();
+}
+
+lttng_kernel_abi_counter_bitness
+bitness_from_value_type(lttng::sessiond::config::map_channel_configuration::value_type_t
+				resolved_value_type) noexcept
+{
+	using value_type_t = lttng::sessiond::config::map_channel_configuration::value_type_t;
+
+	switch (resolved_value_type) {
+	case value_type_t::SIGNED_INT_32:
 		return LTTNG_KERNEL_ABI_COUNTER_BITNESS_32;
 	case value_type_t::SIGNED_INT_64:
 		return LTTNG_KERNEL_ABI_COUNTER_BITNESS_64;
 	case value_type_t::SIGNED_INT_MAX:
-		/*
-		 * Widest bitness the running kernel supports. We guess the
-		 * kernel's ABI by checking the session daemon's own ABI which
-		 * is not strictly correct.
-		 */
-		return sizeof(void *) == sizeof(std::uint32_t) ?
-			LTTNG_KERNEL_ABI_COUNTER_BITNESS_32 :
-			LTTNG_KERNEL_ABI_COUNTER_BITNESS_64;
+		/* Resolved to a concrete width by resolve_kernel_value_type(). */
+		break;
 	}
 
 	abort();
@@ -95,9 +114,10 @@ std::uint32_t conf_flags_from_update_policy(
  * dimension array by pointer (dimension_array.ptr), so its storage must
  * outlive the returned conf and the ioctl that consumes it; the caller owns it.
  */
-lttng_kernel_abi_counter_conf
-make_counter_conf(const lttng::sessiond::config::map_channel_configuration& configuration,
-		  lttng_kernel_abi_counter_dimension& dimension) noexcept
+lttng_kernel_abi_counter_conf make_counter_conf(
+	const lttng::sessiond::config::map_channel_configuration& configuration,
+	lttng::sessiond::config::map_channel_configuration::value_type_t resolved_value_type,
+	lttng_kernel_abi_counter_dimension& dimension) noexcept
 {
 	dimension = {};
 	dimension.size = configuration.max_entry_count;
@@ -107,7 +127,7 @@ make_counter_conf(const lttng::sessiond::config::map_channel_configuration& conf
 	conf.len = sizeof(conf);
 	conf.flags = conf_flags_from_update_policy(configuration.update_policy);
 	conf.arithmetic = LTTNG_KERNEL_ABI_COUNTER_ARITHMETIC_MODULAR;
-	conf.bitness = bitness_from_value_type(configuration.value_type);
+	conf.bitness = bitness_from_value_type(resolved_value_type);
 	conf.global_sum_step = 0;
 	conf.dimension_array.number_dimensions = 1;
 	conf.dimension_array.elem_len = sizeof(dimension);
@@ -122,7 +142,9 @@ namespace sessiond {
 namespace modules {
 
 map_group::map_group(lttng::file_descriptor tracer_counter_fd,
-		     const config::map_channel_configuration& configuration) :
+		     const config::map_channel_configuration& configuration,
+		     config::map_channel_configuration::value_type_t resolved_value_type) :
+	sessiond::map::group(resolved_value_type),
 	_tracer_counter_fd(
 		lttng::make_unique<lttng::file_descriptor>(std::move(tracer_counter_fd))),
 	_configuration(configuration)
@@ -272,8 +294,9 @@ map_group
 map_group::create_for_event_notifier_group(int event_notifier_group_fd,
 					   const config::map_channel_configuration& configuration)
 {
+	const auto resolved_value_type = resolve_kernel_value_type(configuration.value_type);
 	lttng_kernel_abi_counter_dimension dimension;
-	const auto conf = make_counter_conf(configuration, dimension);
+	const auto conf = make_counter_conf(configuration, resolved_value_type, dimension);
 
 	const auto raw_fd =
 		kernctl_create_event_notifier_group_error_counter(event_notifier_group_fd, &conf);
@@ -302,14 +325,15 @@ map_group::create_for_event_notifier_group(int event_notifier_group_fd,
 
 	fd_guard.disarm();
 
-	return map_group(lttng::file_descriptor(raw_fd), configuration);
+	return map_group(lttng::file_descriptor(raw_fd), configuration, resolved_value_type);
 }
 
 map_group map_group::create_for_session(int session_fd,
 					const config::map_channel_configuration& configuration)
 {
+	const auto resolved_value_type = resolve_kernel_value_type(configuration.value_type);
 	lttng_kernel_abi_counter_dimension dimension;
-	const auto conf = make_counter_conf(configuration, dimension);
+	const auto conf = make_counter_conf(configuration, resolved_value_type, dimension);
 
 	const auto raw_fd = kernctl_create_session_counter(session_fd, &conf);
 	if (raw_fd < 0) {
@@ -337,7 +361,7 @@ map_group map_group::create_for_session(int session_fd,
 
 	fd_guard.disarm();
 
-	return map_group(lttng::file_descriptor(raw_fd), configuration);
+	return map_group(lttng::file_descriptor(raw_fd), configuration, resolved_value_type);
 }
 
 } /* namespace modules */

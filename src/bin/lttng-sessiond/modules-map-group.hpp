@@ -40,7 +40,8 @@ namespace modules {
 class map_group final : public sessiond::map::group {
 public:
 	explicit map_group(lttng::file_descriptor tracer_counter_fd,
-			   const config::map_channel_configuration& configuration);
+			   const config::map_channel_configuration& configuration,
+			   config::map_channel_configuration::value_type_t resolved_value_type);
 
 	~map_group() override = default;
 

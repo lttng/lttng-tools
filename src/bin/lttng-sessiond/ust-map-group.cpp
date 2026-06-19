@@ -97,8 +97,10 @@ void map_group::local_counter_deleter::operator()(
 }
 
 map_group::map_group(const config::map_channel_configuration& configuration,
+		     config::map_channel_configuration::value_type_t resolved_value_type,
 		     local_counter_uptr local_counter,
 		     ust_object_data app_counter_handle) :
+	sessiond::map::group(resolved_value_type),
 	_configuration(configuration),
 	_local_counter(std::move(local_counter)),
 	_app_counter_handle(std::move(app_counter_handle))
@@ -487,7 +489,10 @@ map_group::create_from_config(const config::map_channel_configuration& configura
 	}
 
 	ust_object_data app_counter_handle(app_handle_raw);
-	map_group group(configuration, std::move(local_counter), std::move(app_counter_handle));
+	map_group group(configuration,
+			resolved_value_type,
+			std::move(local_counter),
+			std::move(app_counter_handle));
 
 	for (unsigned int i = 0; i < nr_cpu; i++) {
 		lttng_ust_abi_object_data *cpu_obj_raw = nullptr;
