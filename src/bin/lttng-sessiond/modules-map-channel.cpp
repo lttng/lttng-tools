@@ -45,7 +45,7 @@ void map_channel::for_each_group(const group_visitor& visitor) const
 	visitor(sessiond::map::group_description{ sessiond::map::group_identity{
 							  sessiond::map::group_type::KERNEL_GLOBAL,
 							  nonstd::nullopt,
-							  nonstd::nullopt },
+							  _kernel_group.value_type() },
 						  nonstd::nullopt },
 		_kernel_group);
 }

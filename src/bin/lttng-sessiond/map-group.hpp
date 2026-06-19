@@ -8,6 +8,8 @@
 #ifndef LTTNG_SESSIOND_MAP_GROUP_HPP
 #define LTTNG_SESSIOND_MAP_GROUP_HPP
 
+#include "map-channel-configuration.hpp"
+
 #include <common/exception.hpp>
 
 #include <vendor/optional.hpp>
@@ -49,11 +51,26 @@ using partition_id = nonstd::optional<unsigned int>;
  */
 class group {
 public:
-	group() = default;
+	using value_type_t = config::map_channel_configuration::value_type_t;
+
+	/*
+	 * `value_type` is the *effective* width its counter values are
+	 * allocated at.
+	 */
+	explicit group(value_type_t value_type) noexcept : _value_type(value_type)
+	{
+	}
+
 	virtual ~group() = default;
 
 	group(const group&) = delete;
 	group& operator=(const group&) = delete;
+
+	/* Effective value type of this group's counter values. */
+	value_type_t value_type() const noexcept
+	{
+		return _value_type;
+	}
 
 	virtual element_value aggregate_element(std::uint64_t index) const = 0;
 
@@ -84,6 +101,9 @@ protected:
 	 */
 	group(group&&) noexcept = default;
 	group& operator=(group&&) noexcept = default;
+
+private:
+	const value_type_t _value_type;
 };
 
 namespace exceptions {

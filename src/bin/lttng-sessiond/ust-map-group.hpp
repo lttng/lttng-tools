@@ -107,6 +107,7 @@ public:
 		std::unique_ptr<lttng_ust_ctl_daemon_counter, local_counter_deleter>;
 
 	explicit map_group(const config::map_channel_configuration& configuration,
+			   config::map_channel_configuration::value_type_t resolved_value_type,
 			   local_counter_uptr local_counter,
 			   ust_object_data app_counter_handle);
 

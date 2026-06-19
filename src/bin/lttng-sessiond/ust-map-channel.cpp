@@ -17,34 +17,6 @@
 
 #include <utility>
 
-namespace {
-/*
- * Bitness under which a group keyed by `resolved_value_type` is reported:
- * the width of its counter values. The type is resolved at group creation
- * and is never SIGNED_INT_MAX.
- */
-lttng::sessiond::map::group_app_bitness group_app_bitness_of(
-	lttng::sessiond::config::map_channel_configuration::value_type_t resolved_value_type)
-{
-	switch (resolved_value_type) {
-	case lttng::sessiond::config::map_channel_configuration::value_type_t::SIGNED_INT_32:
-		return lttng::sessiond::map::group_app_bitness::BITS_32;
-	case lttng::sessiond::config::map_channel_configuration::value_type_t::SIGNED_INT_64:
-		return lttng::sessiond::map::group_app_bitness::BITS_64;
-	default:
-		abort();
-	}
-}
-
-lttng::sessiond::map::group_app_bitness
-group_app_bitness_of(lttng::sessiond::ust::application_abi abi) noexcept
-{
-	return abi == lttng::sessiond::ust::application_abi::ABI_32 ?
-		lttng::sessiond::map::group_app_bitness::BITS_32 :
-		lttng::sessiond::map::group_app_bitness::BITS_64;
-}
-} /* namespace */
-
 namespace lttng {
 namespace sessiond {
 namespace ust {
@@ -163,27 +135,29 @@ void map_channel::for_each_group(const group_visitor& visitor) const
 	switch (configuration().buffer_ownership) {
 	case config::ownership_model_t::PER_UID:
 		for (const auto& entry : _per_uid_groups) {
-			visitor(
-				lsm::group_description{
-					lsm::group_identity{
-						lsm::group_type::USER_PER_USER,
-						static_cast<std::uint64_t>(entry.first.first),
-						group_app_bitness_of(entry.first.second) },
-					nonstd::nullopt },
-				*entry.second);
+			const auto& group = *entry.second;
+
+			visitor(lsm::group_description{ lsm::group_identity{
+								lsm::group_type::USER_PER_USER,
+								static_cast<std::uint64_t>(
+									entry.first.first),
+								group.value_type() },
+							nonstd::nullopt },
+				group);
 		}
 
 		break;
 	case config::ownership_model_t::PER_PID:
 		for (const auto& entry : _per_app_groups) {
 			const auto& app = *entry.first;
+			const auto& group = *entry.second;
 
 			visitor(lsm::group_description{ lsm::group_identity{
 								lsm::group_type::USER_PER_PROCESS,
 								static_cast<std::uint64_t>(app.pid),
-								group_app_bitness_of(app.abi()) },
+								group.value_type() },
 							app.name },
-				*entry.second);
+				group);
 		}
 
 		break;
@@ -195,7 +169,7 @@ void map_channel::for_each_group(const group_visitor& visitor) const
 	/* Every user space map channel exposes its shared group. */
 	visitor(lsm::group_description{ lsm::group_identity{ lsm::group_type::SHARED,
 							     nonstd::nullopt,
-							     nonstd::nullopt },
+							     shared().value_type() },
 					nonstd::nullopt },
 		shared());
 }

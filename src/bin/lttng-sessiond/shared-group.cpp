@@ -59,6 +59,13 @@ namespace sessiond {
 namespace map {
 
 shared_group::shared_group(const config::map_channel_configuration& configuration) :
+	/*
+	 * The shared group is the sessiond-side aggregator that sums the
+	 * contributions of dead per-PID groups of any width; it is always a
+	 * 64-bit accumulator so that summing narrower groups can't silently
+	 * lose magnitude.
+	 */
+	group(config::map_channel_configuration::value_type_t::SIGNED_INT_64),
 	_configuration(configuration)
 {
 }
@@ -70,7 +77,7 @@ const config::map_channel_configuration& shared_group::configuration() const noe
 
 void shared_group::increment(std::uint64_t index, std::int64_t delta)
 {
-	const auto bounds = bounds_for(_configuration.value_type);
+	const auto bounds = bounds_for(value_type());
 
 	const std::lock_guard<std::mutex> guard(_lock);
 	auto& el = _by_index[index];
