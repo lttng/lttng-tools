@@ -1958,10 +1958,15 @@ void ls::ust::domain_orchestrator::_synchronize_app_map_channels(ust::app_sessio
 
 		try {
 			auto attachment = channel.attach_to_app(app, ua_sess.handle);
-			if (attachment) {
-				ua_sess.map_channel_attachments.emplace(&channel,
-									std::move(*attachment));
+			if (!attachment) {
+				/*
+				 * Not served to this app (e.g. value type doesn't
+				 * fit its ABI): no master counter to host rules.
+				 */
+				continue;
 			}
+
+			ua_sess.map_channel_attachments.emplace(&channel, std::move(*attachment));
 		} catch (const ust::app_communication_error& ex) {
 			DBG_FMT("Application unreachable while attaching map channel: app={}, map_name=`{}`, error=`{}`",
 				app,
