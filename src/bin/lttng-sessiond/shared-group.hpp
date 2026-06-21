@@ -36,8 +36,8 @@ namespace map {
  * Operates on indices, not strings. The map channel's `key_registry`
  * resolves strings up front.
  *
- * Saturation arithmetic uses the channel value-type's bounds and records
- * overflow / underflow as sticky bits on each element.
+ * Arithmetic is modular (wrap-around), matching the tracer counters; a
+ * wrap records overflow / underflow as sticky bits on each element.
  */
 class shared_group final : public group {
 public:
@@ -52,9 +52,9 @@ public:
 	const config::map_channel_configuration& configuration() const noexcept;
 
 	/*
-	 * Add `delta` to the accumulator at `index`, saturating at the
-	 * channel value-type's bounds. Saturation is recorded as a
-	 * sticky overflow / underflow bit on the element.
+	 * Add `delta` to the accumulator at `index` using modular
+	 * (wrap-around) arithmetic, like the tracer counters. A wrap is
+	 * recorded as a sticky overflow / underflow bit on the element.
 	 */
 	void increment(std::uint64_t index, std::int64_t delta);
 
