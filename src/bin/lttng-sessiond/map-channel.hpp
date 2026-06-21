@@ -146,7 +146,7 @@ public:
 
 	/*
 	 * Resolve `key` in this channel's registry (allocating if needed) and add
-	 * `delta` to the shared group value at that index, with saturation.
+	 * `delta` to the shared group value at that index, with modular arithmetic.
 	 *
 	 * Used by the session-daemon execution path for increment-map-value actions
 	 * that are not handled directly by a tracer event hit.

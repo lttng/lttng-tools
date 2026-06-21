@@ -12,47 +12,7 @@
 #include <common/format.hpp>
 #include <common/macros.hpp>
 
-#include <climits>
 #include <cstdint>
-#include <limits>
-
-namespace {
-
-/*
- * Resolve the (min, max) bounds enforced by `value_type` for
- * saturation in `shared_group::increment`.
- */
-struct value_bounds {
-	std::int64_t min;
-	std::int64_t max;
-};
-
-value_bounds
-bounds_for(lttng::sessiond::config::map_channel_configuration::value_type_t value_type) noexcept
-{
-	using value_type_t = lttng::sessiond::config::map_channel_configuration::value_type_t;
-
-	switch (value_type) {
-	case value_type_t::SIGNED_INT_32:
-		return { static_cast<std::int64_t>(std::numeric_limits<std::int32_t>::min()),
-			 static_cast<std::int64_t>(std::numeric_limits<std::int32_t>::max()) };
-	case value_type_t::SIGNED_INT_64:
-		return { std::numeric_limits<std::int64_t>::min(),
-			 std::numeric_limits<std::int64_t>::max() };
-	case value_type_t::SIGNED_INT_MAX:
-		return sizeof(void *) == sizeof(std::uint32_t) ?
-			value_bounds{
-				static_cast<std::int64_t>(std::numeric_limits<std::int32_t>::min()),
-				static_cast<std::int64_t>(std::numeric_limits<std::int32_t>::max())
-			} :
-			value_bounds{ std::numeric_limits<std::int64_t>::min(),
-				      std::numeric_limits<std::int64_t>::max() };
-	}
-
-	abort();
-}
-
-} /* namespace */
 
 namespace lttng {
 namespace sessiond {
@@ -77,25 +37,24 @@ const config::map_channel_configuration& shared_group::configuration() const noe
 
 void shared_group::increment(std::uint64_t index, std::int64_t delta)
 {
-	const auto bounds = bounds_for(value_type());
-
 	const std::lock_guard<std::mutex> guard(_lock);
 	auto& el = _by_index[index];
 
 	/*
-	 * Saturating signed addition. Detect both overflow directions
-	 * before applying the delta, then clamp; any clamp sticks the
-	 * relevant sticky bit.
+	 * Modular (wrap-around) signed addition, matching the kernel and user
+	 * space tracer counters.
 	 */
-	if (delta > 0 && el.value > bounds.max - delta) {
-		el.value = bounds.max;
+	const auto old_value = el.value;
+	const auto new_value = static_cast<std::int64_t>(static_cast<std::uint64_t>(old_value) +
+							 static_cast<std::uint64_t>(delta));
+
+	if (delta > 0 && new_value < old_value) {
 		el.overflow = true;
-	} else if (delta < 0 && el.value < bounds.min - delta) {
-		el.value = bounds.min;
+	} else if (delta < 0 && new_value > old_value) {
 		el.underflow = true;
-	} else {
-		el.value += delta;
 	}
+
+	el.value = new_value;
 }
 
 element_value shared_group::aggregate_element(std::uint64_t index) const

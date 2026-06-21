@@ -171,7 +171,7 @@ public:
 
 	/*
 	 * Resolve `key` in `target_map`'s registry (allocating if needed) and apply
-	 * `delta` to the shared-group value, with saturation.
+	 * `delta` to the shared-group value, with modular arithmetic.
 	 *
 	 * This path is used when the increment-map-value action is executed by the
 	 * session daemon (that is, outside event-rule-matches conditions).
