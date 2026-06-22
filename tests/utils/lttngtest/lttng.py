@@ -1656,7 +1656,7 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
 
     _MI_NS = "{https://lttng.org/xml/ns/lttng-mi}"
     _MI_XSD_MAJOR_VERSION = 4
-    _MI_XSD_MINOR_VERSION = 2
+    _MI_XSD_MINOR_VERSION = 3
     _timeout_s = None
 
     def __init__(
