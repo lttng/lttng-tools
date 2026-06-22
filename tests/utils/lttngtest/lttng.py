@@ -462,7 +462,7 @@ class _Channel(lttngctl.Channel):
         )
 
     def add_recording_rule(self, rule):
-        # type: (Type[lttngctl.EventRule]) -> None
+        # type: (lttngctl.EventRule) -> None
         client_args = (
             "enable-event --session {session_name} --channel {channel_name}".format(
                 session_name=self._session.name, channel_name=self.name
