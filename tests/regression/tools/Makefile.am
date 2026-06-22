@@ -234,6 +234,7 @@ noinst_SCRIPTS += \
 	save-load/test_load \
 	save-load/test_save \
 	save-load/test_save_load.py \
+	save-load/test_save_load_triggers.py \
 	snapshots/test_kernel \
 	snapshots/test_kernel_streaming \
 	snapshots/test_ust_fast \

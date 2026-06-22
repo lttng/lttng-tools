@@ -39,6 +39,7 @@ SERIAL_TESTS = tools/base-path/test_ust \
 	tools/snapshots/test_kernel_streaming \
 	tools/save-load/test_save \
 	tools/save-load/test_save_load.py \
+	tools/save-load/test_save_load_triggers.py \
 	tools/save-load/test_load \
 	tools/save-load/test_autoload \
 	tools/mi/test_mi \
