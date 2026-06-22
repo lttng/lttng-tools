@@ -1376,7 +1376,7 @@ class Channel(abc.ABC):
 
     @abc.abstractmethod
     def add_recording_rule(self, rule) -> None:
-        # type: (Type[EventRule]) -> None
+        # type: (EventRule) -> None
         raise NotImplementedError
 
     @abc.abstractmethod
