@@ -1725,9 +1725,23 @@ class _Environment(logger._Logger):
         sessiond_path = self._sessiond_profile.sessiond_path
 
         # Provide the session daemon with a consumer daemon for each registered
-        # build profile (at most one per word size).
+        # build profile (at most one per word size). A session daemon eagerly
+        # spawns the consumer daemon of its own word size regardless of which
+        # applications register, so add the session daemon's own profile when no
+        # consumer daemon of its word size was registered. Without an explicit
+        # path the session daemon looks for that consumer daemon at its
+        # compiled-in install location (`<prefix>/lib/lttng/libexec`), which
+        # only exists once the build has been installed; pointing it at the
+        # profile's build-tree consumer daemon keeps the test self-contained.
+        launch_consumerd_profiles = list(self._consumerd_profiles)
+        if not any(
+            profile.word_size_bits == self._sessiond_profile.word_size_bits
+            for profile in launch_consumerd_profiles
+        ):
+            launch_consumerd_profiles.append(self._sessiond_profile)
+
         consumerd_options = []
-        for profile in self._consumerd_profiles:
+        for profile in launch_consumerd_profiles:
             bitness = "64" if profile.word_size_bits == 64 else "32"
             consumerd_options += [
                 "--consumerd{}-path".format(bitness),
