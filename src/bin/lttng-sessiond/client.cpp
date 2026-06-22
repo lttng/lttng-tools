@@ -304,7 +304,8 @@ pid_t spawn_consumerd(struct consumer_data *consumer_data)
 {
 	int ret;
 	pid_t pid;
-	const char *consumer_to_use;
+	const char *consumer_to_use = nullptr;
+	const char *consumer_lib_dir = nullptr;
 	const char *verbosity;
 	struct stat st;
 
@@ -392,8 +393,9 @@ pid_t spawn_consumerd(struct consumer_data *consumer_data)
 					goto error;
 				}
 			}
-			DBG("Using 64-bit UST consumer at: %s",
-			    the_config.consumerd64_bin_path.value);
+			consumer_to_use = the_config.consumerd64_bin_path.value;
+			consumer_lib_dir = the_config.consumerd64_lib_dir.value;
+			DBG("Using 64-bit UST consumer at: %s", consumer_to_use);
 			(void) execl(the_config.consumerd64_bin_path.value,
 				     "lttng-consumerd",
 				     verbosity,
@@ -437,8 +439,9 @@ pid_t spawn_consumerd(struct consumer_data *consumer_data)
 					goto error;
 				}
 			}
-			DBG("Using 32-bit UST consumer at: %s",
-			    the_config.consumerd32_bin_path.value);
+			consumer_to_use = the_config.consumerd32_bin_path.value;
+			consumer_lib_dir = the_config.consumerd32_lib_dir.value;
+			DBG("Using 32-bit UST consumer at: %s", consumer_to_use);
 			(void) execl(the_config.consumerd32_bin_path.value,
 				     "lttng-consumerd",
 				     verbosity,
@@ -457,7 +460,12 @@ pid_t spawn_consumerd(struct consumer_data *consumer_data)
 			errno = 0;
 		}
 		if (errno != 0) {
-			PERROR("Consumer execl()");
+			PERROR_FMT(
+				"Failed to exec consumer daemon: consumerd_path=`{}`, consumerd_lib_dir=`{}`, ld_library_path=`{}`, path=`{}`",
+				consumer_to_use ?: "(null)",
+				consumer_lib_dir ?: "",
+				lttng_secure_getenv("LD_LIBRARY_PATH") ?: "",
+				lttng_secure_getenv("PATH") ?: "");
 		}
 		/* Reaching this point, we got a failure on our execl(). */
 		exit(EXIT_FAILURE);
