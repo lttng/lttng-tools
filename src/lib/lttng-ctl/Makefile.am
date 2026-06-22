@@ -32,17 +32,13 @@ liblttng_ctl_la_SOURCES = \
 
 liblttng_ctl_la_LDFLAGS = \
 		$(LT_NO_UNDEFINED) \
-		-export-symbols $(srcdir)/liblttng-ctl.sym \
 		-Wl,--version-script=$(srcdir)/liblttng-ctl.map
-
-EXTRA_liblttng_ctl_la_DEPENDENCIES = liblttng-ctl.sym
 
 EXTRA_DIST = \
 	abi_ref/lttng-ctl.suppr \
 	abi_ref/0.0.0/x86_64-64bit-linux/abi.xml \
 	abi_ref/README.md \
 	liblttng-ctl.map \
-	liblttng-ctl.sym \
 	REUSE.toml
 
 liblttng_ctl_la_LIBADD = \
