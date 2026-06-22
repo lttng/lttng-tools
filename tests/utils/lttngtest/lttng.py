@@ -1969,7 +1969,14 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
             return sessions[0]
         raise InvalidMI("Invalid empty 'sessions element in '{}".format(session_mi.tag))
 
-    def save_sessions(self, session_name=None, force=False, output_path=None):
+    def save_sessions(
+        self,
+        session_name=None,  # type: Optional[str]
+        force=False,  # type: bool
+        output_path=None,  # type: Optional[str]
+        no_triggers=False,  # type: bool
+    ):
+        # type: (...) -> None
 
         cmd = [
             "save",
@@ -1977,6 +1984,9 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
 
         if force:
             cmd.append("--force")
+
+        if no_triggers:
+            cmd.append("--no-triggers")
 
         if output_path:
             cmd.append("--output-path={}".format(output_path))
@@ -1994,12 +2004,22 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
 
         self._run_cmd(" ".join(cmd))
 
-    def load_sessions(self, session_name=None, force=False, input_path=None):
+    def load_sessions(
+        self,
+        session_name=None,  # type: Optional[str]
+        force=False,  # type: bool
+        input_path=None,  # type: Optional[str]
+        no_triggers=False,  # type: bool
+    ):
+        # type: (...) -> None
 
         cmd = ["load"]
 
         if force:
             cmd.append("--force")
+
+        if no_triggers:
+            cmd.append("--no-triggers")
 
         if input_path:
             cmd.append("--input-path={}".format(input_path))
