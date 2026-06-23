@@ -6,7 +6,7 @@ LOG_DRIVER_FLAGS = --merge
 LOG_DRIVER = env PGREP='$(PGREP)' AM_TAP_AWK='$(AWK)' $(SHELL) \
 		$(top_builddir)/tests/utils/tap-driver.sh
 
-TESTS =
+TESTS = test_vermin.py
 
 if HAVE_SHELLCHECK
 TESTS += test_shellcheck
