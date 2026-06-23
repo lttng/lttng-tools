@@ -21,6 +21,8 @@
 #include <common/domain.hpp>
 #include <common/error.hpp>
 #include <common/file-descriptor.hpp>
+#include <common/format.hpp>
+#include <common/make-unique-wrapper.hpp>
 #include <common/mi-lttng.hpp>
 #include <common/optional.hpp>
 #include <common/runas.hpp>
@@ -46,7 +48,6 @@
 
 #include <fcntl.h>
 #include <inttypes.h>
-#include <string.h>
 #include <unistd.h>
 #include <urcu/uatomic.h>
 
@@ -1868,80 +1869,68 @@ int save_session(const ltt_session::locked_ref& session,
 		 lttng_sock_cred *creds,
 		 const struct lttng_triggers *triggers)
 {
-	char config_file_path[LTTNG_PATH_MAX];
-	size_t len;
-	size_t session_name_len;
-	const char *provided_path;
 	int file_open_flags = O_CREAT | O_WRONLY | O_TRUNC;
 
 	LTTNG_ASSERT(attr);
 	LTTNG_ASSERT(creds);
 
-	session_name_len = strlen(session->name);
-	memset(config_file_path, 0, sizeof(config_file_path));
-
 	if (!session_access_ok(session, LTTNG_SOCK_GET_UID_CRED(creds)) || session->destroyed) {
 		return LTTNG_ERR_EPERM;
 	}
 
-	provided_path = lttng_save_session_attr_get_output_url(attr);
+	std::string config_directory;
+	const char *const provided_path = lttng_save_session_attr_get_output_url(attr);
 	if (provided_path) {
 		DBG3("Save session in provided path %s", provided_path);
-		len = strlen(provided_path);
-		if (len >= sizeof(config_file_path)) {
-			return LTTNG_ERR_SET_URL;
-		}
-		strncpy(config_file_path, provided_path, sizeof(config_file_path));
+		config_directory = provided_path;
 	} else {
-		char *home_dir = utils_get_user_home_dir(LTTNG_SOCK_GET_UID_CRED(creds));
+		const auto home_dir = lttng::make_unique_wrapper<char, lttng::memory::free>(
+			utils_get_user_home_dir(LTTNG_SOCK_GET_UID_CRED(creds)));
 		if (!home_dir) {
 			return LTTNG_ERR_SET_URL;
 		}
 
-		const auto ret_len = snprintf(config_file_path,
-					      sizeof(config_file_path),
-					      DEFAULT_SESSION_HOME_CONFIGPATH,
-					      home_dir);
-		free(home_dir);
-		if (ret_len < 0) {
-			PERROR("snprintf save session");
+		/*
+		 * DEFAULT_SESSION_HOME_CONFIGPATH is a printf-style format string
+		 * (it substitutes the home directory through a `%s` token), so it
+		 * can't be passed to fmt::format directly.
+		 *
+		 * Compute the formatted length first to size the destination
+		 * string exactly, then format directly into it.
+		 */
+		const auto directory_len =
+			snprintf(nullptr, 0, DEFAULT_SESSION_HOME_CONFIGPATH, home_dir.get());
+		if (directory_len < 0) {
+			PERROR("Failed to format session configuration directory path");
 			return LTTNG_ERR_SET_URL;
 		}
-		len = ret_len;
+
+		config_directory.resize(directory_len);
+		/* +1 for the NULL terminator snprintf() writes past `directory_len`. */
+		(void) snprintf(&config_directory[0],
+				directory_len + 1,
+				DEFAULT_SESSION_HOME_CONFIGPATH,
+				home_dir.get());
 	}
 
-	/*
-	 * Check the path fits in the config file path dst including the '/'
-	 * followed by trailing .lttng extension and the NULL terminated string.
-	 */
-	if ((len + session_name_len + 2 + sizeof(DEFAULT_SESSION_CONFIG_FILE_EXTENSION)) >
-	    sizeof(config_file_path)) {
+	const auto config_file_path = fmt::format(
+		"{}/{}" DEFAULT_SESSION_CONFIG_FILE_EXTENSION, config_directory, session->name);
+	if (config_file_path.size() >= LTTNG_PATH_MAX) {
 		return LTTNG_ERR_SET_URL;
 	}
 
-	if (run_as_mkdir_recursive(config_file_path,
+	if (run_as_mkdir_recursive(config_directory.c_str(),
 				   S_IRWXU | S_IRWXG,
 				   LTTNG_SOCK_GET_UID_CRED(creds),
 				   LTTNG_SOCK_GET_GID_CRED(creds))) {
 		return LTTNG_ERR_SET_URL;
 	}
 
-	/*
-	 * At this point, we know that everything fits in the buffer. Validation
-	 * was done just above.
-	 */
-	config_file_path[len++] = '/';
-	strncpy(config_file_path + len, session->name, sizeof(config_file_path) - len);
-	len += session_name_len;
-	strcpy(config_file_path + len, DEFAULT_SESSION_CONFIG_FILE_EXTENSION);
-	len += sizeof(DEFAULT_SESSION_CONFIG_FILE_EXTENSION);
-	config_file_path[len] = '\0';
-
 	if (!attr->overwrite) {
 		file_open_flags |= O_EXCL;
 	}
 
-	const int raw_fd = run_as_open(config_file_path,
+	const int raw_fd = run_as_open(config_file_path.c_str(),
 				       file_open_flags,
 				       S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP,
 				       LTTNG_SOCK_GET_UID_CRED(creds),
@@ -1959,8 +1948,8 @@ int save_session(const ltt_session::locked_ref& session,
 	}
 
 	/* Use scope_exit to ensure file cleanup on error. */
-	auto unlink_file_on_error = lttng::make_scope_exit([&config_file_path, raw_fd]() noexcept {
-		if (unlink(config_file_path)) {
+	auto unlink_file_on_error = lttng::make_scope_exit([&config_file_path]() noexcept {
+		if (unlink(config_file_path.c_str())) {
 			PERROR("Unlinking XML session configuration.");
 		}
 	});
