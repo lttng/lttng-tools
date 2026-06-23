@@ -2226,6 +2226,20 @@ void lttng_ustconsumer_reclaim_channels_memory(
 			LTTNG_THROW_CHANNEL_NOT_FOUND_BY_KEY_ERROR(channel_key);
 		}
 
+		/*
+		 * Suspend the reclaim timer task before taking the channel lock; it is
+		 * resumed when the request completes. A scheduled task runs under its
+		 * own mutex and then takes the channel lock, so cancelling (which takes
+		 * that mutex) under the channel lock would invert the order and could
+		 * deadlock with the scheduler thread.
+		 */
+		if (memory_reclaim_request_token && channel->memory_reclaim_timer_task) {
+			DBG_FMT("Suspending memory reclaim timer task for channel: key={}, channel_name=`{}`",
+				channel_key,
+				channel->name);
+			channel->memory_reclaim_timer_task->cancel();
+		}
+
 		const lttng::pthread::lock_guard channel_lock(channel->lock);
 		DBG_FMT("Reclaiming memory channel: key={}, channel_name=`{}`, memory_reclaim_request_token={}",
 			channel_key,
@@ -2233,22 +2247,6 @@ void lttng_ustconsumer_reclaim_channels_memory(
 			memory_reclaim_request_token ?
 				std::to_string(*memory_reclaim_request_token) :
 				"none");
-
-		/*
-		 * Suspend the channel's memory reclaim timer task during the user request.
-		 * It will be resumed when the request completes.
-		 */
-		if (memory_reclaim_request_token && channel->memory_reclaim_timer_task) {
-			/*
-			 * Since only one memory reclamation request can be active per channel at a
-			 * time, cancel any ongoing timer task before proceeding with the user
-			 * request.
-			 */
-			DBG_FMT("Suspending memory reclaim timer task for channel: key={}, channel_name=`{}`",
-				channel_key,
-				channel->name);
-			channel->memory_reclaim_timer_task->cancel();
-		}
 
 		if (channel->monitor) {
 			const lttng::urcu::read_lock_guard read_lock;
