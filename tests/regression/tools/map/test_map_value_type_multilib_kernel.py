@@ -195,62 +195,60 @@ def run_kernel_case(
         return
 
     try:
-        with (
-            lttngtest.kernel_module("lttng-test"),
-            lttngtest.test_environment(
+        with lttngtest.kernel_module("lttng-test"):
+            with lttngtest.test_environment(
                 with_sessiond=True,
                 log=tap.diagnostic,
                 enable_kernel_domain=True,
                 sessiond_profile=sessiond_profile,
                 client_profile=sessiond_profile,
                 consumerd_profiles=[sessiond_profile],
-            ) as test_env,
-        ):
-            client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
-            session = client.create_session(
-                output=lttngtest.LocalSessionOutputLocation(
-                    test_env.create_temporary_directory("trace")
-                )
-            )
-
-            created = True
-            channel = None
-            try:
-                channel = session.add_kernel_map_channel(value_type=case.configured)
-            except lttngtest.LTTngClientError:
-                created = False
-
-            if created != case.created:
-                tap.fail(
-                    "{}: expected created={}, got {}".format(
-                        case.description, case.created, created
+            ) as test_env:
+                client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
+                session = client.create_session(
+                    output=lttngtest.LocalSessionOutputLocation(
+                        test_env.create_temporary_directory("trace")
                     )
                 )
-                return
 
-            if not case.created:
-                tap.ok("{}: rejected at creation as expected".format(case.name))
-                return
+                created = True
+                channel = None
+                try:
+                    channel = session.add_kernel_map_channel(value_type=case.configured)
+                except lttngtest.LTTngClientError:
+                    created = False
 
-            # Reaching here implies a successful creation above.
-            assert channel is not None
-            drive_kernel_counter(client, session, channel)
+                if created != case.created:
+                    tap.fail(
+                        "{}: expected created={}, got {}".format(
+                            case.description, case.created, created
+                        )
+                    )
+                    return
 
-            # The group whose value type equals the effective width must exist
-            # and have counted every event: this confirms the effective type.
-            total, entries = read_counter(
-                session, channel.name, COUNTER_KEY, case.effective
-            )
-            tap.test(
-                entries > 0 and total == EVENT_COUNT,
-                "{}: counter has effective {}-bit value type "
-                "(total={}, expected={})".format(
-                    case.name, case.effective, total, EVENT_COUNT
-                ),
-            )
+                if not case.created:
+                    tap.ok("{}: rejected at creation as expected".format(case.name))
+                    return
 
-            session.stop()
-            session.destroy()
+                # Reaching here implies a successful creation above.
+                assert channel is not None
+                drive_kernel_counter(client, session, channel)
+
+                # The group whose value type equals the effective width must exist
+                # and have counted every event: this confirms the effective type.
+                total, entries = read_counter(
+                    session, channel.name, COUNTER_KEY, case.effective
+                )
+                tap.test(
+                    entries > 0 and total == EVENT_COUNT,
+                    "{}: counter has effective {}-bit value type "
+                    "(total={}, expected={})".format(
+                        case.name, case.effective, total, EVENT_COUNT
+                    ),
+                )
+
+                session.stop()
+                session.destroy()
     except Exception as case_error:
         logging.exception("Unhandled exception during case %s", case.name)
         tap.fail("{}: {}".format(case.description, case_error))
