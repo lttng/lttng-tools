@@ -1943,7 +1943,7 @@ class _Environment(logger._Logger):
             # signal.strsignal is introduced in python 3.8
             self._log(
                 "Killed by {signal_name} signal, cleaning-up".format(
-                    signal_name=signal.strsignal(signal_number)
+                    signal_name=signal.strsignal(signal_number)  # novermin
                 )
             )
         else:

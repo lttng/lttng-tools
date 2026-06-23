@@ -32,13 +32,13 @@ def test(tap, test_env, delay="300ms", command_timeout_seconds=30):
 
     # Start the relayd in ns2
     with open("/run/netns/ns2", "r") as f:
-        os.setns(f, os.CLONE_NEWNET)
+        os.setns(f, os.CLONE_NEWNET)  # novermin
         test_env._relayd = test_env._launch_lttng_relayd()
-    os.unshare(os.CLONE_NEWNET)
+    os.unshare(os.CLONE_NEWNET)  # novermin
 
     # Start the sessiond in ns1
     with open("/run/netns/ns1", "r") as f:
-        os.setns(f, os.CLONE_NEWNET)
+        os.setns(f, os.CLONE_NEWNET)  # novermin
         test_env._sessiond = test_env._launch_lttng_sessiond()
 
     (uid, user) = test_env.create_dummy_user()
