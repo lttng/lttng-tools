@@ -6,3 +6,10 @@
 requires-python = ">= 3.6"
 
 [tool.black]
+
+[vermin]
+quiet = yes
+only_show_violations = yes
+targets = 3.6-
+exclusion_regex = tests/vendor/.*
+
