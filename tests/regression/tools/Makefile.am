@@ -184,8 +184,12 @@ noinst_SCRIPTS += \
 	map/test_buffer_ownership_models.py \
 	map/test_clear_preserves_keys.py \
 	map/test_dead_process_policies.py \
-	map/test_empty_map_channel.py \
-	map/test_export_maps_schema.py \
+	map/empty_map_channel_utils.py \
+	map/test_empty_map_channel_ust.py \
+	map/test_empty_map_channel_kernel.py \
+	map/export_maps_schema_utils.py \
+	map/test_export_maps_schema_ust.py \
+	map/test_export_maps_schema_kernel.py \
 	map/test_incr_on_session_rotation.py \
 	map/test_kernel_map_channel_integration.py \
 	map/test_list_map_channel.py \

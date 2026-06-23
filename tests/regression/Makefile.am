@@ -14,6 +14,8 @@ SERIAL_TESTS = tools/base-path/test_ust \
 	tools/channel/test_channel \
 	tools/channel/test_cli_legacy_channel_buffering_policies.py \
 	tools/map/test_kernel_map_channel_integration.py \
+	tools/map/test_empty_map_channel_kernel.py \
+	tools/map/test_export_maps_schema_kernel.py \
 	tools/client/test_add_trigger.py \
 	tools/filtering/test_invalid_filter \
 	tools/filtering/test_unsupported_op \
@@ -82,8 +84,8 @@ SERIAL_TESTS = tools/base-path/test_ust \
 TESTS = tools/map/test_buffer_ownership_models.py \
 	tools/map/test_clear_preserves_keys.py \
 	tools/map/test_dead_process_policies.py \
-	tools/map/test_empty_map_channel.py \
-	tools/map/test_export_maps_schema.py \
+	tools/map/test_empty_map_channel_ust.py \
+	tools/map/test_export_maps_schema_ust.py \
 	tools/map/test_incr_on_session_rotation.py \
 	tools/map/test_list_map_channel.py \
 	tools/map/test_list_map_channel_mi.py \
