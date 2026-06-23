@@ -409,8 +409,8 @@ userspace_probe_location_uptr parse_userspace_probe_location(xmlNodePtr location
 			binary_path.c_str(), function_name.c_str(), lookup_method.release());
 	} else if (is_element(sub, mi_lttng_element_userspace_probe_location_tracepoint)) {
 		raw = lttng_userspace_probe_location_tracepoint_create(binary_path.c_str(),
-								       probe_name.c_str(),
 								       provider_name.c_str(),
+								       probe_name.c_str(),
 								       lookup_method.release());
 	} else {
 		invalid_config(std::string("Unknown user space probe location: ") +
