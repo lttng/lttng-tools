@@ -266,8 +266,8 @@ AC_DEFINE_UNQUOTED([VERSION_MAJOR], $major_version, [LTTng-Tools major version n
 AC_DEFINE_UNQUOTED([VERSION_MINOR], $minor_version, [LTTng-Tools minor version number])
 AC_DEFINE_UNQUOTED([VERSION_PATCHLEVEL], $patchlevel_version, [LTTng-Tools patchlevel version number])
 
-version_name="Q-Beer"
-version_description="An alcoholic drink made from yeast-fermented malt flavored with hops."
+version_name="Question de Perspective"
+version_description="This release is named after Question de Perspective, a stout brewed by Ayawan in Val-Morin that the team adopted for its name. It is a thoroughly standard stout: dark and roasty, faithful to the expectations of the style, and remarkable mostly for how unremarkably it conforms to them. An std::stout, if you will. Whether that counts for or against it is, fittingly, a question of perspective."
 
 # Use printf '%s' rather than echo or AS_ECHO to prevent interpretation of
 # escape sequences (e.g. '\n'). BSD echo, used on macOS, interprets them while
