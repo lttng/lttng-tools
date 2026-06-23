@@ -572,14 +572,20 @@ class _WaitTraceTestApplication:
         if p.wait() or p.returncode != 0:
             raise RuntimeError("taskset failed, return code: {}".format(p.returncode))
 
-    def taskset_anycpu(self, retry=True):
-        while True:
+    def taskset_anycpu(self):
+        """
+        Pin the application to the first available online CPU and return
+        its number.
+        """
+        last_error = None
+        for cpu in sorted(online_cpus()):
             try:
-                self.taskset(list(online_cpus())[0])
-                break
-            except RuntimeError as e:
-                if retry:
-                    pass
+                self.taskset(cpu)
+                return cpu
+            except RuntimeError as taskset_error:
+                last_error = taskset_error
+
+        raise RuntimeError("No online CPU could be pinned: {}".format(last_error))
 
     def touch_last_event_file(self):
         if self._wait_before_last_event_file_path is None:
