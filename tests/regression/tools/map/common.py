@@ -444,10 +444,8 @@ def run_kernel_test(
 
         return
 
-    with (
-        lttngtest.kernel_module("lttng-test"),
-        lttngtest.test_environment(
+    with lttngtest.kernel_module("lttng-test"):
+        with lttngtest.test_environment(
             with_sessiond=True, log=tap.diagnostic, enable_kernel_domain=True
-        ) as test_env,
-    ):
-        test_func(test_env, tap)
+        ) as test_env:
+            test_func(test_env, tap)
