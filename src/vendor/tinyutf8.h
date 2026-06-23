@@ -2720,14 +2720,15 @@ template<typename V, typename D, typename A>
 std::ostream& operator<<( std::ostream& stream , const tiny_utf8::basic_string<V, D, A>& str ) noexcept(TINY_UTF8_NOEXCEPT) {
 	return stream << str.cpp_str();
 }
-template<typename V, typename D, typename A>
-std::istream& operator>>( std::istream& stream , tiny_utf8::basic_string<V, D, A>& str ) noexcept(TINY_UTF8_NOEXCEPT) {
+template <typename V, typename D, typename A>
+std::istream& operator>>(std::istream& stream,
+			 tiny_utf8::basic_string<V, D, A>& str) noexcept(TINY_UTF8_NOEXCEPT)
+{
 	std::string tmp;
 	stream >> tmp;
-	str = move(tmp);
+	str = std::move(tmp);
 	return stream;
 }
-
 
 // Implementation
 namespace tiny_utf8
