@@ -2391,8 +2391,16 @@ int handle_notification_thread_command_remove_tracer_event_source(
 	struct notification_event_tracer_event_source_element *source_element = nullptr;
 
 	source_element = find_tracer_event_source_element(state, tracer_event_source_fd);
-
-	LTTNG_ASSERT(source_element);
+	if (!source_element) {
+		/*
+		 * The source was never registered, e.g. a tracer whose
+		 * initialization failed after creating the fd but before adding
+		 * it as an event source. Removing an absent source is a no-op.
+		 */
+		WARN("Ignoring removal of unregistered tracer event source: tracer_event_source_fd = %d",
+		     tracer_event_source_fd);
+		goto end;
+	}
 
 	/* Remove the tracer source from the list. */
 	cds_list_del(&source_element->node);
