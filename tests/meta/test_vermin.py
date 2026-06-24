@@ -22,7 +22,7 @@ import lttngtest
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format=lttngtest.utils.get_logging_format())
-    project_root = pathlib.Path(__file__).parents[2]
+    project_root = pathlib.Path(__file__).absolute().parents[2]
     config_path = project_root / "pyproject.toml"
     directories = [
         'tests/'
