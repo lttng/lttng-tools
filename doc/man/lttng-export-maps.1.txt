@@ -169,7 +169,8 @@ Most queries only need the `vmap` view, of which the columns are:
     process ID.
 
 `shared`::
-    Map channel-wide shared counters (see man:lttng-concepts(7)).
+    User space map channel-wide shared counters (see
+    man:lttng-concepts(7)).
 --
 
 `owner_id`::

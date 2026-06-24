@@ -1331,9 +1331,10 @@ the shared counter.
 --
 
 In addition to the per-owner, per-CPU counters which the buffer
-ownership model dictates, each map channel has a single, channel-wide
-map of _shared counters_: counters with no Unix user or process owner,
-and no per-CPU partitioning. You can consider that the
+ownership model dictates, each user space map channel has a single,
+channel-wide map of _shared counters_: counters with no Unix user or
+process owner, and no per-CPU partitioning. A Linux kernel map channel
+has no shared counters. You can consider that the
 LTTng session daemon (see man:lttng-sessiond(8)) itself owns the shared
 counters, as it increments them directly, including the sum of the
 counter values of dead processes when the buffer ownership model of the
