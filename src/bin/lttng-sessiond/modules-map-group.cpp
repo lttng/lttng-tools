@@ -36,7 +36,7 @@ lttng_kernel_abi_counter_index single_dimension_index(const std::uint64_t& index
 	lttng_kernel_abi_counter_index counter_index{};
 
 	counter_index.number_dimensions = 1;
-	counter_index.ptr = reinterpret_cast<std::uint64_t>(&index_storage);
+	counter_index.ptr = reinterpret_cast<std::uintptr_t>(&index_storage);
 	return counter_index;
 }
 
@@ -131,7 +131,7 @@ lttng_kernel_abi_counter_conf make_counter_conf(
 	conf.global_sum_step = 0;
 	conf.dimension_array.number_dimensions = 1;
 	conf.dimension_array.elem_len = sizeof(dimension);
-	conf.dimension_array.ptr = reinterpret_cast<std::uint64_t>(&dimension);
+	conf.dimension_array.ptr = reinterpret_cast<std::uintptr_t>(&dimension);
 	return conf;
 }
 
