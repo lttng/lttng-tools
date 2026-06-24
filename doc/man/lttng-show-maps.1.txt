@@ -204,7 +204,7 @@ Only applies to Linux kernel map channels.
 option:--shared::
     Select the shared counters.
 +
-Applies to any map channel.
+Only applies to user space map channels.
 
 The Unix user, process ID, and system owners have one map of counters
 per CPU, therefore the CPU{nbsp}ID selection (see the option:--part-id
@@ -432,7 +432,7 @@ option:--shared::
     Select the shared counters (see man:lttng-concepts(7) to
     learn more).
 +
-Applies to any map channel.
+Only applies to user space map channels.
 
 option:--system::
     Select the counters of the system (Linux kernel).
@@ -627,14 +627,13 @@ $ lttng show-maps --per=owner --all-uids
 ----
 ====
 
-.Show the system counters and the shared counters of a kernel map channel, side by side.
+.Show the system counters of the Linux kernel map channels and the shared counters of the user space map channels of the current recording session, side by side.
 ====
 See the option:--per, option:--system, and option:--shared options.
 
 [role="term"]
 ----
-$ lttng show-maps --channel=my-counters --per=owner --system \
-                  --shared
+$ lttng show-maps --per=owner --system --shared
 ----
 ====
 
