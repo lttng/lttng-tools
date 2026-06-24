@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <stdarg.h>
 #include <string.h>
 #include <sys/ioctl.h>
@@ -467,9 +468,10 @@ int kernctl_counter_map_descriptor(int counter_fd,
 
 		descriptor.len = sizeof(descriptor);
 		descriptor.descriptor_index = descriptor_index;
-		descriptor.key_string = reinterpret_cast<uint64_t>(key_string_buffer.data());
+		descriptor.key_string = reinterpret_cast<std::uintptr_t>(key_string_buffer.data());
 		descriptor.key_string_len = key_string_capacity;
-		descriptor.array_indexes = reinterpret_cast<uint64_t>(array_indexes_buffer.data());
+		descriptor.array_indexes =
+			reinterpret_cast<std::uintptr_t>(array_indexes_buffer.data());
 		descriptor.array_indexes_len = array_indexes_capacity_bytes;
 
 		const auto ret = LTTNG_IOCTL_NO_CHECK(
