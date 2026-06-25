@@ -16,6 +16,7 @@ EXTRA_DIST = \
 	lttngtest/tap_generator.py \
 	lttngtest/utils.py \
 	extract_ctf_2_prop.py \
+	gdb_helper.py \
 	parse-callstack.py \
 	tap-driver.sh \
 	tap/tap.sh \

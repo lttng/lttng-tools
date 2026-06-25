@@ -8,6 +8,7 @@ import logging
 import mmap
 import os
 import pathlib
+import signal
 import subprocess
 import sys
 import time
@@ -18,6 +19,9 @@ test_utils_import_path = pathlib.Path(__file__).absolute().parents[3] / "utils"
 sys.path.insert(0, str(test_utils_import_path))
 
 import lttngtest
+
+gdb_helper_script_path = test_utils_import_path / "gdb_helper.py"
+_MEMORY_RECLAIM_TESTPOINT_PREFIX = "lttng_tools_testpoint_memory_reclaim_timer"
 
 """
 This test suite validates some properties of sparse buffers.
@@ -54,14 +58,76 @@ def get_consumerd_pid(sessiond_pid):
     return None
 
 
-def wait_for_memory_reclaim_timer(test_env, log, channel_names):
+def _interrupt_and_wait_gdb(process):
     """
-    Wait for the memory reclaim timer to fire for the specified channels.
+    Interrupt a GDB blocked in `continue` and reap it.
 
-    This function attaches GDB to the consumer daemon and sets conditional
-    breakpoints on the memory_reclaim_timer_task::_run method for each channel.
-    It waits for each breakpoint to be hit and the function to return, ensuring
-    that memory reclamation has completed for all specified channels.
+    Only SIGINT/SIGTERM are used so GDB detaches and restores the breakpointed
+    instructions; SIGKILL would leave the breakpoints in place and crash the
+    daemon with SIGTRAP.
+    """
+    process.send_signal(signal.SIGINT)
+    while process.poll() is None:
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.send_signal(signal.SIGTERM)
+
+
+def make_memory_reclaim_timer_gdb_commands(
+    consumerd_pid, channel_names, gdb_debug_directory
+):
+    """
+    Build a GDB command list that waits, in order, for the memory reclaim timer
+    of every channel in `channel_names` to fire and complete a reclaim pass.
+
+    The timer task is observed through a TESTPOINT(). For each channel, a
+    breakpoint conditional on the channel name is armed on that label;
+    `continue` then blocks until the timer fires and `finish` lets the reclaim
+    pass complete before moving on to the next channel. GDB exits once every
+    channel's timer has fired, so a caller only has to wait for its termination.
+    """
+    commands = [
+        "source {}".format(gdb_helper_script_path),
+    ]
+
+    if gdb_debug_directory:
+        commands.append("set debug-file-directory {}".format(gdb_debug_directory))
+
+    commands.append("attach {}".format(consumerd_pid))
+
+    for channel_name in channel_names:
+        commands.extend(
+            [
+                "python",
+                "bps = break_testpoint({!r})".format(_MEMORY_RECLAIM_TESTPOINT_PREFIX),
+                "if not bps:",
+                "    raise gdb.GdbError('No memory reclaim timer testpoint found')",
+                "for bp in bps:",
+                "    bp.condition = '$_streq(this->_channel.name, \"{}\")'".format(
+                    channel_name
+                ),
+                "end",
+                "continue",
+                "finish",
+                "delete",
+            ]
+        )
+
+    commands.extend(["detach", "quit"])
+
+    return commands
+
+
+def _run_memory_reclaim_timer_gdb(test_env, log, channel_names, timeout_s=None):
+    """
+    Attach GDB to the consumer daemon and wait for the memory reclaim timer to
+    fire for every channel in `channel_names`.
+
+    GDB runs a batch script that exits once every channel's timer has fired
+    (see make_memory_reclaim_timer_gdb_commands()), so waiting for the timers
+    amounts to waiting for GDB to terminate. Returns True on success, or False
+    if `timeout_s` is set and expires first; any other GDB failure raises.
     """
     sessiond_pid = test_env._sessiond.pid
     consumerd_pid = get_consumerd_pid(sessiond_pid)
@@ -74,38 +140,37 @@ def wait_for_memory_reclaim_timer(test_env, log, channel_names):
         )
 
     log("Found consumer daemon with PID {}".format(consumerd_pid))
-    gdb_commands = list()
-
-    # Set debug file directory if specified
-    gdb_debug_directory = os.getenv("GDB_DEBUG_FILE_DIRECTORY")
-    if gdb_debug_directory:
-        gdb_commands.append("set debug-file-directory {}".format(gdb_debug_directory))
-
-    gdb_commands.append("attach {}".format(consumerd_pid))
-    # For each channel: set breakpoint, continue until hit, finish, delete breakpoint
-    # This ensures we wait for each specific channel's timer to fire exactly once
-    for i, channel_name in enumerate(channel_names, start=1):
-        gdb_commands.append(
-            'break lttng::consumer::memory_reclaim_timer_task::_run if $_streq(this->_channel.name, "{}")'.format(
-                channel_name
-            )
-        )
-        gdb_commands.extend(["continue", "finish", "delete {}".format(i)])
-
-    gdb_commands.extend(["detach", "quit"])
-
     log(
         "Running GDB to wait for memory reclaim timer on channels: {}".format(
             ", ".join(channel_names)
         )
     )
+
     process, gdb_script_file = lttngtest.utils.gdb_script(
-        gdb_commands, {"stdout": subprocess.PIPE, "stderr": subprocess.STDOUT}
+        make_memory_reclaim_timer_gdb_commands(
+            consumerd_pid, channel_names, os.getenv("GDB_DEBUG_FILE_DIRECTORY")
+        ),
+        {"stdout": subprocess.PIPE, "stderr": subprocess.STDOUT},
     )
-    output, _ = process.communicate()
+
+    timed_out = False
+    try:
+        output, _ = process.communicate(timeout=timeout_s)
+    except subprocess.TimeoutExpired:
+        timed_out = True
+        _interrupt_and_wait_gdb(process)
+        output, _ = process.communicate()
 
     for line in output.decode("utf-8", errors="ignore").splitlines():
         log("GDB: {}".format(line))
+
+    if timed_out:
+        log(
+            "Timed out waiting for the memory reclaim timer to fire on channels: {}".format(
+                ", ".join(channel_names)
+            )
+        )
+        return False
 
     if process.returncode != 0:
         raise RuntimeError(
@@ -113,6 +178,29 @@ def wait_for_memory_reclaim_timer(test_env, log, channel_names):
         )
 
     log("Memory reclaim timer has fired for all channels")
+    return True
+
+
+def wait_for_memory_reclaim_timer(test_env, log, channel_names):
+    """
+    Wait for the memory reclaim timer to fire for the specified channels.
+
+    Blocks until the timer has fired and completed a reclaim pass for every
+    channel.
+    """
+    _run_memory_reclaim_timer_gdb(test_env, log, channel_names)
+
+
+def memory_reclaim_timer_fires(test_env, log, channel_names, timeout_s):
+    """
+    Return True if the memory reclaim timer fires for every channel in
+    `channel_names` within `timeout_s` seconds, False otherwise.
+
+    A timer which never fires (for instance, a periodic reclaim task that was
+    permanently cancelled) shows up as GDB never exiting; the timeout turns that
+    into a negative result.
+    """
+    return _run_memory_reclaim_timer_gdb(test_env, log, channel_names, timeout_s)
 
 
 def channel_preallocation_policy_from_session(client, channel_name, session_name):
@@ -1210,6 +1298,76 @@ def test_reclaim_memory_no_wait(
     assert memory_usages_now < memory_usages_then
 
 
+def test_auto_reclaim_resumes_after_explicit_reclaim(tap, test_env, client):
+    """
+    Ensure that a channel's automatic (periodic) memory reclaim timer keeps
+    firing after an explicit `lttng reclaim-memory` request.
+
+    An explicit memory reclaim request suspends the channel's periodic reclaim
+    timer task while the request is serviced, and is supposed to resume it once
+    the request completes. This test configures a channel with a periodic
+    reclaim policy, confirms that its timer is firing, issues an explicit
+    reclaim request, then verifies that the periodic timer fires again.
+
+    The timer is observed directly through a GDB breakpoint on the reclaim timer
+    task's TESTPOINT() label, so the result does not depend on the amount of
+    reclaimable memory.
+    """
+    max_age_us = 100000
+
+    session = client.create_session(
+        output=lttngtest.LocalSessionOutputLocation(
+            test_env.create_temporary_directory("trace")
+        ),
+    )
+
+    channel = session.add_channel(
+        lttngtest.TracingDomain.User,
+        buffer_preallocation_policy=lttngtest.BufferPreAllocationPolicy.PreAllocate,
+        auto_reclaim_memory_older_than=max_age_us,
+    )
+
+    channel.add_recording_rule(lttngtest.lttngctl.UserTracepointEventRule("tp:tptest"))
+
+    session.start()
+
+    app = test_env.launch_wait_trace_test_application(10000)
+    app.trace()
+    app.wait_for_exit()
+
+    # The periodic timer fires on its own period (a few hundred milliseconds),
+    # so this timeout only needs to cover GDB's attach time plus a handful of
+    # periods.
+    timer_timeout_s = 60
+
+    # The periodic reclaim timer must be running before any explicit request is
+    # issued, otherwise the check below would be meaningless.
+    fired_before = memory_reclaim_timer_fires(
+        test_env, tap.diagnostic, [channel.name], timer_timeout_s
+    )
+    tap.diagnostic(
+        "periodic reclaim timer fired before explicit request={}, expected True".format(
+            fired_before
+        )
+    )
+    assert fired_before
+
+    # Issue an explicit reclaim request. It suspends the periodic timer task and
+    # is meant to resume it on completion.
+    session.reclaim_memory(wait=True, channels=[channel.name])
+
+    # The periodic timer must resume and fire again after the request completed.
+    fired_after = memory_reclaim_timer_fires(
+        test_env, tap.diagnostic, [channel.name], timer_timeout_s
+    )
+    tap.diagnostic(
+        "periodic reclaim timer fired after explicit request={}, expected True".format(
+            fired_after
+        )
+    )
+    assert fired_after
+
+
 def test_reclaim_memory_command_unknown_channel(tap, test_env, client):
     """
     Ensure that reclaiming memory of a channel that does not exist yield an
@@ -1415,6 +1573,7 @@ if __name__ == "__main__":
     )
 
     tests_no_variants = (
+        test_auto_reclaim_resumes_after_explicit_reclaim,
         test_reclaim_memory_command_unknown_channel,
         test_auto_reclaim_memory_consumed_snapshot_mode,
         test_auto_reclaim_memory_consumed_no_output,

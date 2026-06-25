@@ -8,6 +8,7 @@
 #include <common/consumer/consumer-stream.hpp>
 #include <common/consumer/memory-reclaim-timer-task.hpp>
 #include <common/pthread-lock.hpp>
+#include <common/testpoint/testpoint.hpp>
 #include <common/urcu.hpp>
 #include <common/ust-consumer/ust-consumer.hpp>
 
@@ -17,6 +18,8 @@ namespace {
 void lttng::consumer::memory_reclaim_timer_task::_run(lttng::scheduling::absolute_time current_time
 						      [[maybe_unused]]) noexcept
 {
+	TESTPOINT("memory_reclaim_timer");
+
 	try {
 		const lttng::pthread::lock_guard channel_lock(_channel.lock);
 		DBG_FMT("Reclaiming channel memory: key={}, channel_name=`{}`",

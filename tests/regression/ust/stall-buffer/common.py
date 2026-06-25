@@ -11,7 +11,9 @@ import subprocess
 
 import bt2
 
-gdb_helper_script_path = pathlib.Path(__file__).absolute().parents[0] / "gdb_helper.py"
+gdb_helper_script_path = (
+    pathlib.Path(__file__).absolute().parents[3] / "utils" / "gdb_helper.py"
+)
 
 
 def write_gdb_script(path, commands, log=False):

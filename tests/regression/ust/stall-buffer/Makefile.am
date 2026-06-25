@@ -4,7 +4,6 @@
 
 noinst_SCRIPTS =					\
 	common.py					\
-	gdb_helper.py					\
 	test_stall_buffer_complex.py			\
 	test_stall_buffer_simple.py			\
 	test_stall_buffer_slow.py			\
@@ -13,7 +12,6 @@ noinst_SCRIPTS =					\
 
 EXTRA_DIST =						\
 	common.py					\
-	gdb_helper.py					\
 	test_stall_buffer_complex.py			\
 	test_stall_buffer_simple.py			\
 	test_stall_buffer_slow.py			\
