@@ -77,6 +77,10 @@ public:
 	 * Indicate that this task should no longer be scheduled after the current execution.
 	 * When this returns, the caller is guaranteed that the task is not running and that it will
 	 * not be run in the future.
+	 *
+	 * A cancellation is not permanent: scheduling the task again with
+	 * scheduler::schedule() re-arms it (see _set_next_scheduled_time()). This is used to
+	 * temporarily suspend a periodic task and resume it later.
 	 */
 	void cancel() noexcept
 	{
@@ -121,6 +125,13 @@ private:
 	{
 		const std::lock_guard<std::mutex> lock(_mutex);
 
+		/*
+		 * Re-arm the task: scheduling it (the only caller of this method) clears a
+		 * previous cancellation so that a suspended task can be resumed by scheduling
+		 * it again. A task that cancels itself from within _run() is not affected since
+		 * it is not rescheduled (see _must_be_rescheduled()).
+		 */
+		_canceled = false;
 		_next_scheduled_time = next_time;
 	}
 
@@ -218,7 +229,12 @@ public:
 	scheduler& operator=(const scheduler&) = delete;
 	scheduler& operator=(scheduler&&) = delete;
 
-	/* Schedule a "once" or periodic task in the future. */
+	/*
+	 * Schedule a "once" or periodic task in the future.
+	 *
+	 * Scheduling a previously cancelled task re-arms it, which allows a suspended
+	 * periodic task to be resumed.
+	 */
 	void schedule(task::sptr task, absolute_time when_to_run = std::chrono::steady_clock::now())
 	{
 		const std::lock_guard<std::mutex> lock(_mutex);
