@@ -26,6 +26,12 @@ _MEMORY_RECLAIM_TASK_TESTPOINT_PREFIX = "lttng_tools_testpoint_memory_reclaim_ti
 _MEMORY_RECLAIM_DEFERRED_TESTPOINT_PREFIX = (
     "lttng_tools_testpoint_memory_reclaim_request_deferred"
 )
+_MEMORY_RECLAIM_CHANNEL_SUSPENDED_TESTPOINT_PREFIX = (
+    "lttng_tools_testpoint_memory_reclaim_channel_suspended"
+)
+_MEMORY_RECLAIM_STREAM_DEFERRED_TESTPOINT_PREFIX = (
+    "lttng_tools_testpoint_memory_reclaim_stream_deferred"
+)
 
 """
 This test suite validates some properties of sparse buffers.
@@ -126,7 +132,7 @@ def make_memory_reclaim_timer_gdb_commands(
 
 
 def make_memory_reclaim_request_deferred_gdb_commands(
-    consumerd_pid, ready_fifo, gdb_debug_directory
+    consumerd_pid, ready_fifo, gdb_debug_directory, count_setup=False
 ):
     """
     Build a GDB command list that blocks until an explicit reclaim request has
@@ -137,6 +143,13 @@ def make_memory_reclaim_request_deferred_gdb_commands(
     signalled so the caller knows the breakpoint is in place before it issues the
     request, and `continue` then blocks until the testpoint fires. GDB detaches
     and exits once it does, so a caller only has to wait for its termination.
+
+    With `count_setup`, two additional non-stopping breakpoints count how many
+    channel timer suspensions and stream deferrals the request performed before
+    reaching that point. The counts are printed on GDB's output as
+    `RECLAIM_SETUP_SUSPENDED_CHANNELS:` and `RECLAIM_SETUP_DEFERRED_STREAMS:`
+    lines for the caller to parse, letting it assert that the request actually
+    took the asynchronous (deferral) path over every expected channel.
     """
     commands = [
         "source {}".format(gdb_helper_script_path),
@@ -145,9 +158,33 @@ def make_memory_reclaim_request_deferred_gdb_commands(
     if gdb_debug_directory:
         commands.append("set debug-file-directory {}".format(gdb_debug_directory))
 
+    commands.append("attach {}".format(consumerd_pid))
+
+    if count_setup:
+        commands.extend(
+            [
+                "python",
+                "setup_counters = {'suspended': 0, 'deferred': 0}",
+                "def count_suspended(breakpoint):",
+                "    setup_counters['suspended'] += 1",
+                "    return False",
+                "def count_deferred(breakpoint):",
+                "    setup_counters['deferred'] += 1",
+                "    return False",
+                "if not break_testpoint_callback({!r}, count_suspended):".format(
+                    _MEMORY_RECLAIM_CHANNEL_SUSPENDED_TESTPOINT_PREFIX
+                ),
+                "    raise gdb.GdbError('No memory reclaim channel suspended testpoint found')",
+                "if not break_testpoint_callback({!r}, count_deferred):".format(
+                    _MEMORY_RECLAIM_STREAM_DEFERRED_TESTPOINT_PREFIX
+                ),
+                "    raise gdb.GdbError('No memory reclaim stream deferred testpoint found')",
+                "end",
+            ]
+        )
+
     commands.extend(
         [
-            "attach {}".format(consumerd_pid),
             "python",
             "bps = break_testpoint({!r})".format(
                 _MEMORY_RECLAIM_DEFERRED_TESTPOINT_PREFIX
@@ -162,6 +199,21 @@ def make_memory_reclaim_request_deferred_gdb_commands(
             "shell echo . > {} &".format(ready_fifo),
             # Block until the request's deferral is in place.
             "continue",
+        ]
+    )
+
+    if count_setup:
+        commands.extend(
+            [
+                "python",
+                "print('RECLAIM_SETUP_SUSPENDED_CHANNELS: {}'.format(setup_counters['suspended']))",
+                "print('RECLAIM_SETUP_DEFERRED_STREAMS: {}'.format(setup_counters['deferred']))",
+                "end",
+            ]
+        )
+
+    commands.extend(
+        [
             "detach",
             "quit",
         ]
@@ -254,7 +306,7 @@ def memory_reclaim_timer_fires(test_env, log, channel_names, timeout_s):
     return _run_memory_reclaim_timer_gdb(test_env, log, channel_names, timeout_s)
 
 
-def start_wait_for_reclaim_request_deferred(test_env, log):
+def start_wait_for_reclaim_request_deferred(test_env, log, count_setup=False):
     """
     Attach GDB to the consumer daemon and arm a breakpoint on the point where an
     explicit reclaim request has finished deferring its sub-buffers.
@@ -265,6 +317,10 @@ def start_wait_for_reclaim_request_deferred(test_env, log):
     place and this function blocks on that FIFO. The caller then issues the
     reclaim request and waits for the returned subprocess to terminate, which
     happens once the deferral is in place.
+
+    With `count_setup`, the request's channel timer suspensions and stream
+    deferrals are counted and reported on GDB's output (see
+    make_memory_reclaim_request_deferred_gdb_commands()).
     """
     sessiond_pid = test_env._sessiond.pid
     consumerd_pid = get_consumerd_pid(sessiond_pid)
@@ -284,7 +340,10 @@ def start_wait_for_reclaim_request_deferred(test_env, log):
 
     process, gdb_script_file = lttngtest.utils.gdb_script(
         make_memory_reclaim_request_deferred_gdb_commands(
-            consumerd_pid, ready_fifo, os.getenv("GDB_DEBUG_FILE_DIRECTORY")
+            consumerd_pid,
+            ready_fifo,
+            os.getenv("GDB_DEBUG_FILE_DIRECTORY"),
+            count_setup,
         ),
         {"stdout": subprocess.PIPE, "stderr": subprocess.STDOUT},
     )
@@ -297,6 +356,117 @@ def start_wait_for_reclaim_request_deferred(test_env, log):
     log("Breakpoint on the reclaim request deferred testpoint is armed")
 
     return process, gdb_script_file
+
+
+def make_memory_reclaim_timer_keys_gdb_commands(
+    consumerd_pid, channel_name, expected_key_count, gdb_debug_directory
+):
+    """
+    Build a GDB command list that observes the distinct consumer channel keys
+    whose memory reclaim timer fires for the channel named `channel_name`.
+
+    The timer task is observed through a TESTPOINT() (like the other timer
+    helpers). A callback breakpoint records the firing channel's key, printing
+    each new key as a `RECLAIM_TIMER_KEY:` line on GDB's output, and stops GDB
+    once `expected_key_count` distinct keys have been seen. GDB then detaches
+    and exits, so a caller only has to wait for its termination and parse the
+    keys from its output. The channel name is filtered in the callback itself:
+    GDB documents that a stop() method must not be combined with a breakpoint
+    condition.
+    """
+    commands = [
+        "source {}".format(gdb_helper_script_path),
+    ]
+
+    if gdb_debug_directory:
+        commands.append("set debug-file-directory {}".format(gdb_debug_directory))
+
+    commands.extend(
+        [
+            "attach {}".format(consumerd_pid),
+            "python",
+            "seen_keys = set()",
+            "def on_reclaim_timer_fire(breakpoint):",
+            "    if gdb.parse_and_eval('this->_channel.name').string() != {!r}:".format(
+                channel_name
+            ),
+            "        return False",
+            "    key = int(gdb.parse_and_eval('this->_channel.key'))",
+            "    if key not in seen_keys:",
+            "        seen_keys.add(key)",
+            "        print('RECLAIM_TIMER_KEY: {}'.format(key))",
+            "    return len(seen_keys) >= {}".format(expected_key_count),
+            "if not break_testpoint_callback({!r}, on_reclaim_timer_fire):".format(
+                _MEMORY_RECLAIM_TASK_TESTPOINT_PREFIX
+            ),
+            "    raise gdb.GdbError('No memory reclaim timer testpoint found')",
+            "end",
+            # Block until `expected_key_count` distinct keys have fired.
+            "continue",
+            "detach",
+            "quit",
+        ]
+    )
+
+    return commands
+
+
+def memory_reclaim_timer_distinct_channel_keys(
+    test_env, log, channel_name, expected_key_count, timeout_s
+):
+    """
+    Return the set of distinct consumer channel keys whose memory reclaim timer
+    fires for the channel named `channel_name`.
+
+    A single session daemon channel using per-process buffer ownership maps to
+    one consumer channel (with its own reclaim timer task) per traced process.
+    These consumer channels share the same name but have distinct keys.
+
+    GDB exits on its own once `expected_key_count` distinct keys have fired
+    (see make_memory_reclaim_timer_keys_gdb_commands()), so waiting for the
+    timers amounts to waiting for GDB to terminate. If `timeout_s` elapses
+    first (for instance, a timer that never resumes), GDB is interrupted
+    cleanly (SIGINT, so it detaches and restores the breakpointed
+    instructions) and the keys seen so far are returned, letting the caller
+    fail on the count instead of blocking forever.
+    """
+    consumerd_pid = get_consumerd_pid(test_env._sessiond.pid)
+    if consumerd_pid is None:
+        raise RuntimeError(
+            "Could not find consumer daemon (child of sessiond pid {})".format(
+                test_env._sessiond.pid
+            )
+        )
+
+    log(
+        "Observing distinct memory reclaim timer keys (until {} keys or {}s) for channel: {}".format(
+            expected_key_count, timeout_s, channel_name
+        )
+    )
+    process, gdb_script_file = lttngtest.utils.gdb_script(
+        make_memory_reclaim_timer_keys_gdb_commands(
+            consumerd_pid,
+            channel_name,
+            expected_key_count,
+            os.getenv("GDB_DEBUG_FILE_DIRECTORY"),
+        ),
+        {"stdout": subprocess.PIPE, "stderr": subprocess.STDOUT},
+    )
+
+    try:
+        output, _ = process.communicate(timeout=timeout_s)
+    except subprocess.TimeoutExpired:
+        _interrupt_and_wait_gdb(process)
+        output, _ = process.communicate()
+
+    keys = set()
+    for line in output.decode("utf-8", errors="ignore").splitlines():
+        log("GDB: {}".format(line))
+        if line.startswith("RECLAIM_TIMER_KEY:"):
+            keys.add(int(line.split(":", 1)[1]))
+
+    log("Distinct memory reclaim timer keys observed: {}".format(sorted(keys)))
+    return keys
 
 
 def channel_preallocation_policy_from_session(client, channel_name, session_name):
@@ -1464,6 +1634,156 @@ def test_auto_reclaim_resumes_after_explicit_reclaim(tap, test_env, client):
     assert fired_after
 
 
+def test_auto_reclaim_resumes_after_explicit_reclaim_per_process_buffers(
+    tap, test_env, client
+):
+    """
+    Ensure that every per-process consumer channel of a single session daemon
+    channel has its periodic memory reclaim timer resumed after one explicit
+    `lttng reclaim-memory` request.
+
+    A session daemon channel using per-process buffer ownership maps to one
+    consumer channel per traced process, each with its own periodic reclaim
+    timer task. A single request for that channel suspends all of those timers
+    under one completion token and must resume them all when it completes.
+
+    Several applications are traced into a per-process channel, so several
+    consumer channels (distinct keys, same name) exist. The test checks that
+    all of their reclaim timers fire, issues an explicit reclaim, then checks
+    that all of them fire again.
+
+    The request must complete asynchronously for every channel to cover the
+    scenario. Data consumption is paused before the applications trace, so the
+    request finds every sub-buffer unconsumed and defers them all; it can only
+    complete after consumption resumes, which the test does once the request is
+    known (through GDB) to be pending for every channel.
+    """
+    consumerd_type = (
+        lttngtest.ConsumerType.UST64
+        if sys.maxsize > 2**32
+        else lttngtest.ConsumerType.UST32
+    )
+    application_count = 4
+    timer_timeout_s = 15
+
+    session = client.create_session(
+        output=lttngtest.LocalSessionOutputLocation(
+            test_env.create_temporary_directory("trace")
+        ),
+    )
+
+    channel = session.add_channel(
+        lttngtest.TracingDomain.User,
+        buffer_sharing_policy=lttngtest.lttngctl.BufferSharingPolicy.PerPID,
+        buffer_preallocation_policy=lttngtest.BufferPreAllocationPolicy.PreAllocate,
+        auto_reclaim_memory_older_than=100000,
+    )
+    channel.add_recording_rule(lttngtest.lttngctl.UserTracepointEventRule("tp:tptest"))
+
+    session.start()
+
+    # Paused before anything is traced: no sub-buffer is ever consumed, so the
+    # explicit request below can not reclaim anything synchronously and defers
+    # every sub-buffer of every per-process channel.
+    test_env.lttng_consumerd_pause(consumerd_type)
+
+    # One per-process consumer channel (with its own reclaim timer) per
+    # application. The applications wait before exiting so their channels
+    # persist for the whole test; all of their events are written before the
+    # request is issued.
+    apps = lttngtest.WaitTraceTestApplicationGroup(
+        test_env,
+        application_count,
+        event_count=10000,
+        wait_before_exit=True,
+    )
+    apps.trace()
+    apps.wait_for_tracing_done()
+
+    # Every reclaim timer must fire before the request is issued: GDB records
+    # the distinct channel keys reaching the timer testpoint and exits once
+    # `application_count` keys have been seen.
+    keys_before = memory_reclaim_timer_distinct_channel_keys(
+        test_env, tap.diagnostic, channel.name, application_count, timer_timeout_s
+    )
+    tap.diagnostic(
+        "distinct reclaim timer keys before explicit request={}, expected {}".format(
+            sorted(keys_before), application_count
+        )
+    )
+    assert len(keys_before) == application_count
+
+    # Armed before the request is issued: this GDB exits once the request is
+    # fully set up (every timer suspended, every sub-buffer deferred) and
+    # reports the suspension and deferral counts.
+    barrier_gdb, barrier_gdb_script = start_wait_for_reclaim_request_deferred(
+        test_env, tap.diagnostic, count_setup=True
+    )
+
+    suspended_count = None
+    deferred_count = None
+
+    # The blocking request only completes once consumption resumes: issue it
+    # from a worker thread.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        reclaim_future = executor.submit(
+            session.reclaim_memory,
+            wait=True,
+            channels=[channel.name],
+        )
+
+        try:
+            # GDB's exit means the request is set up and, since consumption is
+            # still paused, pending for every channel.
+            barrier_gdb.wait(timeout=60)
+            output = barrier_gdb.stdout.read().decode("utf-8", errors="ignore")
+            assert barrier_gdb.returncode == 0, "GDB did not reach the testpoint"
+            barrier_gdb = None
+
+            for line in output.splitlines():
+                tap.diagnostic("GDB: {}".format(line))
+                if line.startswith("RECLAIM_SETUP_SUSPENDED_CHANNELS:"):
+                    suspended_count = int(line.split(":", 1)[1])
+                elif line.startswith("RECLAIM_SETUP_DEFERRED_STREAMS:"):
+                    deferred_count = int(line.split(":", 1)[1])
+        finally:
+            # Resume consumption even on failure, or waiting on the worker
+            # thread would hang. GDB is reaped first (the resume attaches its
+            # own GDB), and reaped here if the testpoint was never hit.
+            if barrier_gdb is not None:
+                _interrupt_and_wait_gdb(barrier_gdb)
+            test_env.lttng_consumerd_pause(consumerd_type, False)
+
+        # Completing the request (its deferred sub-buffers are reclaimed from
+        # the consumption path) must resume every suspended timer.
+        reclaim_future.result(timeout=60)
+
+    tap.diagnostic(
+        "reclaim setup observed: suspended_channels={}, deferred_streams={}".format(
+            suspended_count, deferred_count
+        )
+    )
+
+    # Every channel is suspended and, having only unconsumed sub-buffers,
+    # defers at least one stream. Anything else means the request did not
+    # complete asynchronously for every channel and the resume under test was
+    # not exercised.
+    assert suspended_count == application_count
+    assert deferred_count >= application_count
+
+    keys_after = memory_reclaim_timer_distinct_channel_keys(
+        test_env, tap.diagnostic, channel.name, application_count, timer_timeout_s
+    )
+    tap.diagnostic(
+        "distinct reclaim timer keys after explicit request={}, expected superset of {}".format(
+            sorted(keys_after), sorted(keys_before)
+        )
+    )
+    assert keys_before.issubset(keys_after)
+
+    apps.exit(wait_for_apps=True)
+
+
 def test_explicit_reclaim_without_age_limit_survives_deferral(tap, test_env, client):
     """
     Ensure that an explicit `lttng reclaim-memory` request issued without an age
@@ -1788,6 +2108,7 @@ if __name__ == "__main__":
 
     tests_no_variants = (
         test_auto_reclaim_resumes_after_explicit_reclaim,
+        test_auto_reclaim_resumes_after_explicit_reclaim_per_process_buffers,
         test_explicit_reclaim_without_age_limit_survives_deferral,
         test_reclaim_memory_command_unknown_channel,
         test_auto_reclaim_memory_consumed_snapshot_mode,

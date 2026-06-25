@@ -726,6 +726,11 @@ class WaitTraceTestApplicationGroup:
         for app in self._apps:
             app.trace()
 
+    def wait_for_tracing_done(self):
+        # type: () -> None
+        for app in self._apps:
+            app.wait_for_tracing_done()
+
     def exit(
         self, wait_for_apps=False  # type: bool
     ):
@@ -736,8 +741,7 @@ class WaitTraceTestApplicationGroup:
 
         # Wait for apps to have produced all of their events so that we can
         # cause the death of all apps to happen within a short time span.
-        for app in self._apps:
-            app.wait_for_tracing_done()
+        self.wait_for_tracing_done()
 
         self._apps[0].touch_exit_file()
 

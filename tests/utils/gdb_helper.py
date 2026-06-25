@@ -42,6 +42,26 @@ def get_testpoints(pid):
     return pid_to_testpoints[pid]
 
 
+class CallbackBreakpoint(gdb.Breakpoint):
+    """
+    Breakpoint whose stop() delegates to a Python callback.
+
+    The callback receives the breakpoint and returns whether GDB must stop:
+    returning False resumes the inferior without any `continue` command,
+    returning True stops it so a batch script proceeds to its next commands.
+
+    Do not set a condition on such a breakpoint: GDB documents that `stop()`
+    and breakpoint conditions must not be combined. Filter in the callback.
+    """
+
+    def __init__(self, spec, callback):
+        super(CallbackBreakpoint, self).__init__(spec)
+        self._callback = callback
+
+    def stop(self):
+        return self._callback(self)
+
+
 def install_breakpoint_commands(breakpoints, commands):
     if isinstance(commands, str):
         commands_text = commands
@@ -60,6 +80,24 @@ def break_testpoint(prefix):
         # TESTPOINT() symbols are emitted as <name>.<unique-id>.
         if testpoint.startswith(prefix):
             bp = gdb.Breakpoint(testpoint)
+            bp.enabled = True
+            breakpoints.append(bp)
+
+    return breakpoints
+
+
+def break_testpoint_callback(prefix, callback):
+    """
+    Like break_testpoint(), but the breakpoints delegate their stop decision
+    to `callback` (see CallbackBreakpoint).
+    """
+    pid = gdb.selected_inferior().pid
+    testpoints = get_testpoints(pid)
+    breakpoints = []
+    for testpoint in testpoints:
+        # TESTPOINT() symbols are emitted as <name>.<unique-id>.
+        if testpoint.startswith(prefix):
+            bp = CallbackBreakpoint(testpoint, callback)
             bp.enabled = True
             breakpoints.append(bp)
 

@@ -11,6 +11,7 @@
 #include <common/error.hpp>
 #include <common/pthread-lock.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/testpoint/testpoint.hpp>
 #include <common/unix.hpp>
 
 #include <algorithm>
@@ -35,6 +36,9 @@ void pending_memory_reclamation_tracker::set_scheduler(
 
 void pending_memory_reclamation_tracker::register_stream(std::uint64_t memory_reclaim_request_token)
 {
+	/* Tests break on this point to observe that a request deferred a stream. */
+	TESTPOINT("memory_reclaim_stream_deferred");
+
 	const std::lock_guard<std::mutex> lock(_lock);
 
 	auto it = _pending_stream_counts.find(memory_reclaim_request_token);
@@ -67,6 +71,9 @@ void pending_memory_reclamation_tracker::begin_request(std::uint64_t memory_recl
 void pending_memory_reclamation_tracker::register_suspended_channel(
 	std::uint64_t memory_reclaim_request_token, lttng_consumer_channel& channel)
 {
+	/* Tests break on this point to count the channels a request suspends. */
+	TESTPOINT("memory_reclaim_channel_suspended");
+
 	const std::lock_guard<std::mutex> lock(_lock);
 
 	_suspended_channels_per_token[memory_reclaim_request_token].emplace_back(channel);
