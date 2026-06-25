@@ -227,6 +227,40 @@ void test_lots_of_tasks_ran_in_order()
 	}
 }
 
+void test_canceled_task_not_ran()
+{
+	lttng::scheduling::scheduler scheduler;
+	bool task_ran = false;
+
+	auto my_task = std::make_shared<task_once>(task_ran);
+
+	scheduler.schedule(my_task, ns_to_time_point(100));
+	my_task->cancel();
+	scheduler.tick(ns_to_time_point(200));
+	ok(task_ran == false, "Canceled task did not run at tick @ 200");
+}
+
+void test_canceled_task_reran_after_reschedule()
+{
+	lttng::scheduling::scheduler scheduler;
+	bool task_ran = false;
+
+	auto my_task = std::make_shared<task_once>(task_ran);
+
+	scheduler.schedule(my_task, ns_to_time_point(100));
+	scheduler.tick(ns_to_time_point(50));
+	my_task->cancel();
+	scheduler.tick(ns_to_time_point(200));
+	ok(task_ran == false, "Canceled task did not run at tick @ 200");
+
+	/* Scheduling the task again re-arms it. */
+	scheduler.schedule(my_task, ns_to_time_point(300));
+	ok(my_task->canceled() == false, "Explicit reschedule cleared the canceled state");
+
+	scheduler.tick(ns_to_time_point(400));
+	ok(task_ran == true, "Re-scheduled task ran after being re-armed");
+}
+
 } /* namespace once_scheduling */
 
 namespace periodic_scheduling {
@@ -401,7 +435,7 @@ void test_task_die()
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
 {
-	plan_tests(46);
+	plan_tests(50);
 
 	once_scheduling::test_task_not_ran_immediately();
 	once_scheduling::test_task_not_ran_before_deadline();
@@ -412,6 +446,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
 	once_scheduling::test_tasks_all_ran_after_deadline();
 	once_scheduling::test_tasks_some_ran_after_tick();
 	once_scheduling::test_lots_of_tasks_ran_in_order();
+	once_scheduling::test_canceled_task_not_ran();
+	once_scheduling::test_canceled_task_reran_after_reschedule();
 
 	periodic_scheduling::test_task_second_run_not_before_deadline();
 	periodic_scheduling::test_task_not_ran_before_deadline();
