@@ -17,6 +17,7 @@
 #include <unordered_map>
 
 struct lttng_consumer_stream;
+struct lttng_consumer_channel;
 struct protected_socket;
 
 namespace lttng {
@@ -69,6 +70,12 @@ public:
 	void stream_completed(const lttng_consumer_stream& stream,
 			      std::uint64_t memory_reclaim_request_token);
 
+	/* Result of complete_if_no_pending_streams(). */
+	enum class request_completion {
+		COMPLETED,
+		STREAMS_PENDING,
+	};
+
 	/*
 	 * Send a completion notification if no streams are pending for the given token.
 	 *
@@ -79,7 +86,14 @@ public:
 	 * If streams are pending for the token, this is a no-op since completion
 	 * will be sent when the last stream completes.
 	 */
-	void complete_if_no_pending_streams(std::uint64_t memory_reclaim_request_token);
+	request_completion
+	complete_if_no_pending_streams(std::uint64_t memory_reclaim_request_token);
+
+	/*
+	 * Resume a channel's memory reclaim timer task that was suspended for the duration
+	 * of a reclamation request.
+	 */
+	void resume_channel_timer(lttng_consumer_channel& channel);
 
 private:
 	void _send_completion_notification(std::uint64_t memory_reclaim_request_token);

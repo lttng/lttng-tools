@@ -77,21 +77,31 @@ void pending_memory_reclamation_tracker::stream_completed(
 
 	if (operation_completed) {
 		_send_completion_notification(memory_reclaim_request_token);
-		auto channel = stream.chan;
-		if (channel->memory_reclaim_timer_task) {
-			DBG_FMT("Resuming memory reclaim timer task for channel: session_id={}, "
-				"channel_name={}, channel_key={}",
-				channel->session_id,
-				channel->name,
-				channel->key);
-			_scheduler->schedule(channel->memory_reclaim_timer_task,
-					     std::chrono::steady_clock::now() +
-						     channel->memory_reclaim_timer_task->period());
-		}
+		resume_channel_timer(*stream.chan);
 	}
 }
 
-void pending_memory_reclamation_tracker::complete_if_no_pending_streams(
+void pending_memory_reclamation_tracker::resume_channel_timer(lttng_consumer_channel& channel)
+{
+	if (!channel.memory_reclaim_timer_task) {
+		return;
+	}
+
+	if (!channel.memory_reclaim_timer_task->canceled()) {
+		return;
+	}
+
+	DBG_FMT("Resuming memory reclaim timer task for channel: session_id={}, channel_name=`{}`, channel_key={}",
+		channel.session_id,
+		channel.name,
+		channel.key);
+	_scheduler->schedule(channel.memory_reclaim_timer_task,
+			     std::chrono::steady_clock::now() +
+				     channel.memory_reclaim_timer_task->period());
+}
+
+pending_memory_reclamation_tracker::request_completion
+pending_memory_reclamation_tracker::complete_if_no_pending_streams(
 	std::uint64_t memory_reclaim_request_token)
 {
 	{
@@ -104,7 +114,7 @@ void pending_memory_reclamation_tracker::complete_if_no_pending_streams(
 				"token={}, pending_count={}",
 				memory_reclaim_request_token,
 				it->second);
-			return;
+			return request_completion::STREAMS_PENDING;
 		}
 	}
 
@@ -112,6 +122,7 @@ void pending_memory_reclamation_tracker::complete_if_no_pending_streams(
 	DBG_FMT("No streams pending for memory reclaim request token, sending immediate completion: token={}",
 		memory_reclaim_request_token);
 	_send_completion_notification(memory_reclaim_request_token);
+	return request_completion::COMPLETED;
 }
 
 void pending_memory_reclamation_tracker::_send_completion_notification(

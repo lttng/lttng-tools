@@ -11,6 +11,7 @@
 
 #include <cstdint>
 #include <exception>
+#include <functional>
 #define _LGPL_SOURCE
 #include "ust-consumer.hpp"
 
@@ -2220,6 +2221,7 @@ void lttng_ustconsumer_reclaim_channels_memory(
 	reply_payload.resize(sizeof(generic_reply_header) + sizeof(command_specific_reply_header));
 
 	std::size_t total_stream_count = 0;
+	std::vector<std::reference_wrapper<lttng_consumer_channel>> suspended_channels;
 	for (const auto channel_key : channel_keys) {
 		auto *channel = consumer_find_channel(channel_key);
 		if (!channel) {
@@ -2238,6 +2240,7 @@ void lttng_ustconsumer_reclaim_channels_memory(
 				channel_key,
 				channel->name);
 			channel->memory_reclaim_timer_task->cancel();
+			suspended_channels.push_back(*channel);
 		}
 
 		const lttng::pthread::lock_guard channel_lock(channel->lock);
@@ -2354,10 +2357,23 @@ void lttng_ustconsumer_reclaim_channels_memory(
 	 * If any streams had pending reclamation, they registered with the tracker
 	 * and completion will be sent when all streams complete. If no streams
 	 * had pending reclamation (immediate completion), send the notification now.
+	 *
+	 * On immediate completion, no stream_completed() will fire to resume the timer
+	 * tasks suspended above, so they are resumed here. When streams are pending, the
+	 * tracker resumes the timer as the streams complete.
 	 */
 	if (memory_reclaim_request_token) {
-		lttng::consumerd::the_pending_memory_reclamation_tracker
-			.complete_if_no_pending_streams(*memory_reclaim_request_token);
+		auto& tracker = lttng::consumerd::the_pending_memory_reclamation_tracker;
+		using request_completion =
+			lttng::consumerd::pending_memory_reclamation_tracker::request_completion;
+
+		const auto completion =
+			tracker.complete_if_no_pending_streams(*memory_reclaim_request_token);
+		if (completion == request_completion::COMPLETED) {
+			for (auto& channel : suspended_channels) {
+				tracker.resume_channel_timer(channel);
+			}
+		}
 	}
 }
 } /* namespace */
