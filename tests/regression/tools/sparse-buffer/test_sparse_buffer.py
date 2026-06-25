@@ -3,6 +3,7 @@
 # SPDX-FileCopyrightText: 2025 Olivier Dion <odion@efficios.com>
 # SPDX-License-Identifier: GPL-2.0-only
 
+import concurrent.futures
 import itertools
 import logging
 import mmap
@@ -21,7 +22,10 @@ sys.path.insert(0, str(test_utils_import_path))
 import lttngtest
 
 gdb_helper_script_path = test_utils_import_path / "gdb_helper.py"
-_MEMORY_RECLAIM_TESTPOINT_PREFIX = "lttng_tools_testpoint_memory_reclaim_timer"
+_MEMORY_RECLAIM_TASK_TESTPOINT_PREFIX = "lttng_tools_testpoint_memory_reclaim_timer"
+_MEMORY_RECLAIM_DEFERRED_TESTPOINT_PREFIX = (
+    "lttng_tools_testpoint_memory_reclaim_request_deferred"
+)
 
 """
 This test suite validates some properties of sparse buffers.
@@ -100,7 +104,9 @@ def make_memory_reclaim_timer_gdb_commands(
         commands.extend(
             [
                 "python",
-                "bps = break_testpoint({!r})".format(_MEMORY_RECLAIM_TESTPOINT_PREFIX),
+                "bps = break_testpoint({!r})".format(
+                    _MEMORY_RECLAIM_TASK_TESTPOINT_PREFIX
+                ),
                 "if not bps:",
                 "    raise gdb.GdbError('No memory reclaim timer testpoint found')",
                 "for bp in bps:",
@@ -115,6 +121,51 @@ def make_memory_reclaim_timer_gdb_commands(
         )
 
     commands.extend(["detach", "quit"])
+
+    return commands
+
+
+def make_memory_reclaim_request_deferred_gdb_commands(
+    consumerd_pid, ready_fifo, gdb_debug_directory
+):
+    """
+    Build a GDB command list that blocks until an explicit reclaim request has
+    deferred its sub-buffers in the consumer daemon.
+
+    The point at which a request's deferral is fully in place is observed through
+    a TESTPOINT(). A breakpoint is armed on that label, the `ready_fifo` is
+    signalled so the caller knows the breakpoint is in place before it issues the
+    request, and `continue` then blocks until the testpoint fires. GDB detaches
+    and exits once it does, so a caller only has to wait for its termination.
+    """
+    commands = [
+        "source {}".format(gdb_helper_script_path),
+    ]
+
+    if gdb_debug_directory:
+        commands.append("set debug-file-directory {}".format(gdb_debug_directory))
+
+    commands.extend(
+        [
+            "attach {}".format(consumerd_pid),
+            "python",
+            "bps = break_testpoint({!r})".format(
+                _MEMORY_RECLAIM_DEFERRED_TESTPOINT_PREFIX
+            ),
+            "if not bps:",
+            "    raise gdb.GdbError('No memory reclaim request deferred testpoint found')",
+            "end",
+            # Notify that the breakpoint is in place; the request can now be
+            # fired. Backgrounded so GDB does not block on opening the FIFO (the
+            # breakpoint is already armed above, so the ordering holds either
+            # way).
+            "shell echo . > {} &".format(ready_fifo),
+            # Block until the request's deferral is in place.
+            "continue",
+            "detach",
+            "quit",
+        ]
+    )
 
     return commands
 
@@ -201,6 +252,51 @@ def memory_reclaim_timer_fires(test_env, log, channel_names, timeout_s):
     into a negative result.
     """
     return _run_memory_reclaim_timer_gdb(test_env, log, channel_names, timeout_s)
+
+
+def start_wait_for_reclaim_request_deferred(test_env, log):
+    """
+    Attach GDB to the consumer daemon and arm a breakpoint on the point where an
+    explicit reclaim request has finished deferring its sub-buffers.
+
+    Returns the (GDB subprocess, GDB script tempfile) pair since the script must
+    remain in place on the FS until GDB completes. The breakpoint is armed
+    before this function returns: GDB writes to an internal FIFO once it is in
+    place and this function blocks on that FIFO. The caller then issues the
+    reclaim request and waits for the returned subprocess to terminate, which
+    happens once the deferral is in place.
+    """
+    sessiond_pid = test_env._sessiond.pid
+    consumerd_pid = get_consumerd_pid(sessiond_pid)
+
+    if consumerd_pid is None:
+        raise RuntimeError(
+            "Could not find consumer daemon (child of sessiond pid {})".format(
+                sessiond_pid
+            )
+        )
+
+    log("Found consumer daemon with PID {}".format(consumerd_pid))
+
+    fifo_directory = test_env.create_temporary_directory("reclaim_deferred_fifo")
+    ready_fifo = os.path.join(str(fifo_directory), "ready")
+    os.mkfifo(ready_fifo)
+
+    process, gdb_script_file = lttngtest.utils.gdb_script(
+        make_memory_reclaim_request_deferred_gdb_commands(
+            consumerd_pid, ready_fifo, os.getenv("GDB_DEBUG_FILE_DIRECTORY")
+        ),
+        {"stdout": subprocess.PIPE, "stderr": subprocess.STDOUT},
+    )
+
+    # Block until GDB has armed the breakpoint so the request issued next can not
+    # be serviced before it is in place.
+    with open(ready_fifo, "r") as fifo:
+        fifo.read(1)
+
+    log("Breakpoint on the reclaim request deferred testpoint is armed")
+
+    return process, gdb_script_file
 
 
 def channel_preallocation_policy_from_session(client, channel_name, session_name):
@@ -1368,6 +1464,124 @@ def test_auto_reclaim_resumes_after_explicit_reclaim(tap, test_env, client):
     assert fired_after
 
 
+def test_explicit_reclaim_without_age_limit_survives_deferral(tap, test_env, client):
+    """
+    Ensure that an explicit `lttng reclaim-memory` request issued without an age
+    limit does not crash the consumer daemon when it defers sub-buffers.
+
+    A request without `--older-than` has no age limit. When such a request can't
+    reclaim a sub-buffer synchronously (it is not consumed yet), the sub-buffer
+    is deferred and reclaimed later in the consumption path. That path must not
+    access an unset age limit while completing the deferred reclamation.
+
+    The bug was only reached when a stream deferred more than one sub-buffer:
+    the completion of the first deferred sub-buffer decrements the stream's
+    pending count to a non-zero value, and only that branch accessed the age
+    limit.
+
+    To make deferral deterministic, data consumption is paused before the
+    application traces. The sub-buffers therefore remain unconsumed when the
+    request is serviced and are all deferred. The explicit request is issued in
+    blocking mode from a separate thread (it completes once consumption
+    resumes).
+
+    Consumption must only resume once the deferral is actually in place,
+    otherwise the buggy path is never exercised. A GDB breakpoint is armed on a
+    testpoint the consumer daemon reaches once the deferred reclaim request has
+    been put in place. The blocking request is then awaited: its return signals
+    that the consumer daemon survived completing the deferred reclamation. A
+    follow-up request then verifies the daemon is still responding.
+    """
+    consumerd_type = (
+        lttngtest.ConsumerType.UST64
+        if sys.maxsize > 2**32
+        else lttngtest.ConsumerType.UST32
+    )
+
+    session = client.create_session(
+        output=lttngtest.LocalSessionOutputLocation(
+            test_env.create_temporary_directory("trace")
+        ),
+    )
+
+    # Small sub-buffers so that a single application fills several of them,
+    # guaranteeing that more than one sub-buffer is deferred per stream.
+    channel = session.add_channel(
+        lttngtest.TracingDomain.User,
+        subbuf_size=mmap.PAGESIZE,
+        subbuf_count=4,
+        buffer_sharing_policy=lttngtest.lttngctl.BufferSharingPolicy.PerPID,
+        buffer_preallocation_policy=lttngtest.BufferPreAllocationPolicy.PreAllocate,
+    )
+    channel.add_recording_rule(lttngtest.lttngctl.UserTracepointEventRule("tp:tptest"))
+
+    session.start()
+
+    # Pause consumption before any event is produced so that no sub-buffer is
+    # consumed: every sub-buffer must be deferred when the request is serviced.
+    test_env.lttng_consumerd_pause(consumerd_type)
+
+    app = test_env.launch_wait_trace_test_application(10000, wait_before_exit=True)
+    app.trace()
+    app.wait_for_tracing_done()
+
+    # Arm a GDB breakpoint on the consumer daemon that is hit once a reclaim
+    # request has finished deferring its sub-buffers, so the request issued below
+    # can not be serviced before the breakpoint is armed.
+    deferred_gdb, deferred_gdb_script = start_wait_for_reclaim_request_deferred(
+        test_env, tap.diagnostic
+    )
+
+    # Consumption is paused, so the sub-buffers can not be reclaimed
+    # synchronously and are deferred. Issue the request in blocking mode from a
+    # worker thread: it can only complete once consumption resumes below, so it
+    # must not block this thread in the meantime.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        reclaim_future = executor.submit(
+            session.reclaim_memory, wait=True, channels=[channel.name]
+        )
+
+        try:
+            # Wait for GDB to hit the testpoint and exit: this deterministically
+            # confirms that the request's deferral is in place before consumption
+            # resumes.
+            deferred_gdb.wait(timeout=60)
+            output = deferred_gdb.stdout.read().decode("utf-8", errors="ignore")
+            for line in output.splitlines():
+                tap.diagnostic("GDB: {}".format(line))
+            assert deferred_gdb.returncode == 0, "GDB did not reach the testpoint"
+            deferred_gdb = None
+        finally:
+            # Reap GDB if it is still attached (for instance if the testpoint
+            # was never hit), then resume consumption unconditionally: the
+            # blocking request must be released even on the failure path,
+            # otherwise waiting on the worker thread (here and when the
+            # executor is shut down) would hang instead of failing. GDB must
+            # detach first, as resuming attaches a GDB of its own.
+            if deferred_gdb is not None:
+                _interrupt_and_wait_gdb(deferred_gdb)
+
+            # On the nominal path, resuming consumption completes the deferred
+            # sub-buffers from the consumption path. On the buggy daemon this
+            # aborts the consumer daemon and the blocking request below never
+            # returns.
+            test_env.lttng_consumerd_pause(consumerd_type, False)
+
+        # Await the blocking request. Its return proves the consumer daemon
+        # survived completing the deferred reclamation; a crash fails it or
+        # fails the test on the timeout.
+        reclaim_future.result(timeout=60)
+
+    # The first request has completed, so the channel no longer has a
+    # reclamation in progress: a follow-up request must succeed, confirming the
+    # daemon is still able to service requests.
+    session.reclaim_memory(wait=True, channels=[channel.name])
+    tap.diagnostic("explicit reclaim without age limit completed without crashing")
+
+    app.touch_exit_file()
+    app.wait_for_exit()
+
+
 def test_reclaim_memory_command_unknown_channel(tap, test_env, client):
     """
     Ensure that reclaiming memory of a channel that does not exist yield an
@@ -1574,6 +1788,7 @@ if __name__ == "__main__":
 
     tests_no_variants = (
         test_auto_reclaim_resumes_after_explicit_reclaim,
+        test_explicit_reclaim_without_age_limit_survives_deferral,
         test_reclaim_memory_command_unknown_channel,
         test_auto_reclaim_memory_consumed_snapshot_mode,
         test_auto_reclaim_memory_consumed_no_output,

@@ -33,6 +33,7 @@
 #include <common/scope-exit.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/shm.hpp>
+#include <common/testpoint/testpoint.hpp>
 #include <common/urcu.hpp>
 #include <common/ust-consumer/ust-consumer.hpp>
 #include <common/utils.hpp>
@@ -2375,6 +2376,16 @@ void lttng_ustconsumer_reclaim_channels_memory(
 			}
 		}
 	}
+
+	/*
+	 * The request has either been fulfilled or it is being tracked for
+	 * completion.
+	 *
+	 * Tests break on this point to resume consumption only once
+	 * the deferral is in place which allows them to reliably observe the
+	 * completion of deferred reclamations from the consumption path.
+	 */
+	TESTPOINT("memory_reclaim_request_deferred");
 }
 } /* namespace */
 
