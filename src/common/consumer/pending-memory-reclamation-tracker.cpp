@@ -13,6 +13,7 @@
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/unix.hpp>
 
+#include <algorithm>
 #include <cstring>
 #include <vector>
 
@@ -49,8 +50,79 @@ void pending_memory_reclamation_tracker::register_stream(std::uint64_t memory_re
 	}
 }
 
-void pending_memory_reclamation_tracker::stream_completed(
-	const lttng_consumer_stream& stream, std::uint64_t memory_reclaim_request_token)
+void pending_memory_reclamation_tracker::begin_request(std::uint64_t memory_reclaim_request_token)
+{
+	const std::lock_guard<std::mutex> lock(_lock);
+
+	/*
+	 * Hold a reference on the request for the duration of its setup. This is
+	 * released by end_request() and ensures the count can not reach zero (which
+	 * would complete the request and resume its suspended timers) while the caller
+	 * is still registering the channels and streams the request touches.
+	 */
+	_pending_stream_counts[memory_reclaim_request_token]++;
+	DBG_FMT("Began memory reclaim request: token={}", memory_reclaim_request_token);
+}
+
+void pending_memory_reclamation_tracker::register_suspended_channel(
+	std::uint64_t memory_reclaim_request_token, lttng_consumer_channel& channel)
+{
+	const std::lock_guard<std::mutex> lock(_lock);
+
+	_suspended_channels_per_token[memory_reclaim_request_token].emplace_back(channel);
+	DBG_FMT("Registered suspended channel for memory reclaim request token: token={}, channel_name=`{}`, channel_key={}",
+		memory_reclaim_request_token,
+		channel.name,
+		channel.key);
+}
+
+void pending_memory_reclamation_tracker::stream_completed(std::uint64_t memory_reclaim_request_token)
+{
+	_decrement_and_maybe_complete(memory_reclaim_request_token);
+}
+
+void pending_memory_reclamation_tracker::end_request(std::uint64_t memory_reclaim_request_token)
+{
+	_decrement_and_maybe_complete(memory_reclaim_request_token);
+}
+
+void pending_memory_reclamation_tracker::abort_request(
+	std::uint64_t memory_reclaim_request_token) noexcept
+{
+	{
+		const std::lock_guard<std::mutex> lock(_lock);
+		_pending_stream_counts.erase(memory_reclaim_request_token);
+	}
+
+	/*
+	 * Resume the suspended timer tasks so automatic reclamation keeps running even
+	 * though the request failed. This is best-effort: swallow any exception to honour
+	 * the noexcept contract expected on this error path.
+	 */
+	try {
+		_resume_suspended_channels(memory_reclaim_request_token);
+	} catch (...) {
+	}
+}
+
+void pending_memory_reclamation_tracker::channel_removed(const lttng_consumer_channel& channel)
+{
+	const std::lock_guard<std::mutex> lock(_lock);
+
+	for (auto& token_channels : _suspended_channels_per_token) {
+		auto& channels = token_channels.second;
+		channels.erase(
+			std::remove_if(channels.begin(),
+				       channels.end(),
+				       [&channel](const lttng_consumer_channel& suspended_channel) {
+					       return &suspended_channel == &channel;
+				       }),
+			channels.end());
+	}
+}
+
+void pending_memory_reclamation_tracker::_decrement_and_maybe_complete(
+	std::uint64_t memory_reclaim_request_token)
 {
 	bool operation_completed = false;
 
@@ -59,13 +131,13 @@ void pending_memory_reclamation_tracker::stream_completed(
 
 		auto it = _pending_stream_counts.find(memory_reclaim_request_token);
 		if (it == _pending_stream_counts.end()) {
-			ERR_FMT("Stream completed for unknown memory reclaim request token: token={}",
+			ERR_FMT("Completion reported for unknown memory reclaim request token: token={}",
 				memory_reclaim_request_token);
 			return;
 		}
 
 		it->second--;
-		DBG_FMT("Stream completed for memory reclaim request token: token={}, remaining_count={}",
+		DBG_FMT("Memory reclaim request token pending count decremented: token={}, remaining_count={}",
 			memory_reclaim_request_token,
 			it->second);
 
@@ -77,16 +149,44 @@ void pending_memory_reclamation_tracker::stream_completed(
 
 	if (operation_completed) {
 		_send_completion_notification(memory_reclaim_request_token);
-		resume_channel_timer(*stream.chan);
+		_resume_suspended_channels(memory_reclaim_request_token);
 	}
 }
 
-void pending_memory_reclamation_tracker::resume_channel_timer(lttng_consumer_channel& channel)
+void pending_memory_reclamation_tracker::_resume_suspended_channels(
+	std::uint64_t memory_reclaim_request_token)
+{
+	/*
+	 * Resume the suspended channels' timer tasks while holding `_lock`, which
+	 * channel_removed() also acquires. consumer_del_channel() drops a channel from the
+	 * set (through channel_removed()) before it stops the channel's reclaim timer task
+	 * and eventually frees the channel, so a channel still in the set here can not be
+	 * torn down concurrently: it is safe to dereference and reschedule under the lock.
+	 */
+	const std::lock_guard<std::mutex> lock(_lock);
+
+	auto it = _suspended_channels_per_token.find(memory_reclaim_request_token);
+	if (it == _suspended_channels_per_token.end()) {
+		return;
+	}
+
+	for (lttng_consumer_channel& channel : it->second) {
+		_resume_channel_timer(channel);
+	}
+
+	_suspended_channels_per_token.erase(it);
+}
+
+void pending_memory_reclamation_tracker::_resume_channel_timer(lttng_consumer_channel& channel)
 {
 	if (!channel.memory_reclaim_timer_task) {
 		return;
 	}
 
+	/*
+	 * Only resume a timer task that was suspended (cancelled). This avoids scheduling
+	 * the same task twice should it already have been resumed.
+	 */
 	if (!channel.memory_reclaim_timer_task->canceled()) {
 		return;
 	}
@@ -98,31 +198,6 @@ void pending_memory_reclamation_tracker::resume_channel_timer(lttng_consumer_cha
 	_scheduler->schedule(channel.memory_reclaim_timer_task,
 			     std::chrono::steady_clock::now() +
 				     channel.memory_reclaim_timer_task->period());
-}
-
-pending_memory_reclamation_tracker::request_completion
-pending_memory_reclamation_tracker::complete_if_no_pending_streams(
-	std::uint64_t memory_reclaim_request_token)
-{
-	{
-		const std::lock_guard<std::mutex> lock(_lock);
-
-		const auto it = _pending_stream_counts.find(memory_reclaim_request_token);
-		if (it != _pending_stream_counts.end()) {
-			/* Streams are pending, completion will be sent when they complete. */
-			DBG_FMT("Streams pending for memory reclaim request token, skipping immediate completion: "
-				"token={}, pending_count={}",
-				memory_reclaim_request_token,
-				it->second);
-			return request_completion::STREAMS_PENDING;
-		}
-	}
-
-	/* No streams pending, send completion immediately. */
-	DBG_FMT("No streams pending for memory reclaim request token, sending immediate completion: token={}",
-		memory_reclaim_request_token);
-	_send_completion_notification(memory_reclaim_request_token);
-	return request_completion::COMPLETED;
 }
 
 void pending_memory_reclamation_tracker::_send_completion_notification(
