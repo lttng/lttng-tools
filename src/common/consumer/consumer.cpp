@@ -19,6 +19,7 @@
 #include <common/consumer/consumer-timer.hpp>
 #include <common/consumer/consumer.hpp>
 #include <common/consumer/memory-reclaim-timer-task.hpp>
+#include <common/consumer/pending-memory-reclamation-tracker.hpp>
 #include <common/dynamic-array.hpp>
 #include <common/index/ctf-index.hpp>
 #include <common/index/index.hpp>
@@ -383,6 +384,16 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 
 	/* Destroy streams that might have been left in the stream list. */
 	clean_channel_stream_list(channel);
+
+	/*
+	 * Drop this channel from any in-flight reclamation request before its reclaim
+	 * timer task is stopped and the channel is eventually freed. channel_removed() and
+	 * the tracker's resume path share a lock, so once this returns no request
+	 * completion can resume, or even dereference, this channel: a resume either ran
+	 * entirely before this call (while the channel was still fully alive) or will not
+	 * see it at all.
+	 */
+	lttng::consumerd::the_pending_memory_reclamation_tracker.channel_removed(*channel);
 
 	if (channel->live_timer_task) {
 		consumer_timer_live_stop(channel);

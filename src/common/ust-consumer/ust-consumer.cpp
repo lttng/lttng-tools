@@ -11,7 +11,6 @@
 
 #include <cstdint>
 #include <exception>
-#include <functional>
 #define _LGPL_SOURCE
 #include "ust-consumer.hpp"
 
@@ -2221,8 +2220,30 @@ void lttng_ustconsumer_reclaim_channels_memory(
 	 */
 	reply_payload.resize(sizeof(generic_reply_header) + sizeof(command_specific_reply_header));
 
+	/*
+	 * Begin tracking the request before any channel timer is suspended or any
+	 * stream is registered, so the request can not be considered complete (and its
+	 * suspended timers resumed) until end_request() is called below.
+	 */
+	if (memory_reclaim_request_token) {
+		lttng::consumerd::the_pending_memory_reclamation_tracker.begin_request(
+			*memory_reclaim_request_token);
+	}
+
+	/*
+	 * Until the request is finalized with end_request() below, ensure it is aborted
+	 * on any early exit (such as a channel not being found), so that the suspended
+	 * timer tasks are resumed and the request's tracking state is not leaked.
+	 */
+	auto abort_request_on_error =
+		lttng::make_scope_exit([&memory_reclaim_request_token]() noexcept {
+			if (memory_reclaim_request_token) {
+				lttng::consumerd::the_pending_memory_reclamation_tracker
+					.abort_request(*memory_reclaim_request_token);
+			}
+		});
+
 	std::size_t total_stream_count = 0;
-	std::vector<std::reference_wrapper<lttng_consumer_channel>> suspended_channels;
 	for (const auto channel_key : channel_keys) {
 		auto *channel = consumer_find_channel(channel_key);
 		if (!channel) {
@@ -2241,7 +2262,9 @@ void lttng_ustconsumer_reclaim_channels_memory(
 				channel_key,
 				channel->name);
 			channel->memory_reclaim_timer_task->cancel();
-			suspended_channels.push_back(*channel);
+			lttng::consumerd::the_pending_memory_reclamation_tracker
+				.register_suspended_channel(*memory_reclaim_request_token,
+							    *channel);
 		}
 
 		const lttng::pthread::lock_guard channel_lock(channel->lock);
@@ -2353,28 +2376,16 @@ void lttng_ustconsumer_reclaim_channels_memory(
 	}
 
 	/*
-	 * If a token was provided, ensure completion is sent.
-	 *
-	 * If any streams had pending reclamation, they registered with the tracker
-	 * and completion will be sent when all streams complete. If no streams
-	 * had pending reclamation (immediate completion), send the notification now.
-	 *
-	 * On immediate completion, no stream_completed() will fire to resume the timer
-	 * tasks suspended above, so they are resumed here. When streams are pending, the
-	 * tracker resumes the timer as the streams complete.
+	 * Finalize the request. If no streams had pending reclamation, the request
+	 * completed synchronously: end_request() sends the completion notification and
+	 * resumes all the timer tasks suspended above. Otherwise, completion (and the
+	 * resume of every suspended timer) happens when the last pending stream
+	 * completes.
 	 */
 	if (memory_reclaim_request_token) {
-		auto& tracker = lttng::consumerd::the_pending_memory_reclamation_tracker;
-		using request_completion =
-			lttng::consumerd::pending_memory_reclamation_tracker::request_completion;
-
-		const auto completion =
-			tracker.complete_if_no_pending_streams(*memory_reclaim_request_token);
-		if (completion == request_completion::COMPLETED) {
-			for (auto& channel : suspended_channels) {
-				tracker.resume_channel_timer(channel);
-			}
-		}
+		lttng::consumerd::the_pending_memory_reclamation_tracker.end_request(
+			*memory_reclaim_request_token);
+		abort_request_on_error.disarm();
 	}
 
 	/*
@@ -5327,7 +5338,7 @@ void lttng_ustconsumer_try_reclaim_current_subbuffer(lttng_consumer_stream& stre
 			/* Notify tracker that this stream has completed. */
 			if (token) {
 				lttng::consumerd::the_pending_memory_reclamation_tracker
-					.stream_completed(stream, *token);
+					.stream_completed(*token);
 			}
 
 			DBG_FMT("Completed pending reclamation operation, reclaimed all pending subbuffers: channel_name=`{}`, stream_key={}",
@@ -5356,7 +5367,7 @@ void lttng_ustconsumer_try_reclaim_current_subbuffer(lttng_consumer_stream& stre
 			if (token) {
 				/* Notify tracker that this stream has completed. */
 				lttng::consumerd::the_pending_memory_reclamation_tracker
-					.stream_completed(stream, *token);
+					.stream_completed(*token);
 			}
 
 			DBG_FMT("Subbuffer was not old enough, clearing pending reclamation operation: channel_name=`{}`, stream_key={}",
