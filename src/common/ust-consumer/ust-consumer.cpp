@@ -5322,10 +5322,22 @@ void lttng_ustconsumer_try_reclaim_current_subbuffer(lttng_consumer_stream& stre
 			DBG_FMT("Completed pending reclamation operation, reclaimed all pending subbuffers: channel_name=`{}`, stream_key={}",
 				stream.chan->name,
 				stream.key);
-		} else if (!subbuffer_too_old(stream,
+		} else if (stream.pending_memory_reclamation->max_age &&
+			   !subbuffer_too_old(stream,
 					      subbuffer,
 					      *stream.pending_memory_reclamation->max_age)) {
-			/* Reclamation is done (all other subbuffers are too recent). */
+			/*
+			 * Reclamation is done (all other subbuffers are too recent).
+			 *
+			 * This early-completion only applies when the request
+			 * has an age limit. A request without an age limit (an
+			 * explicit reclaim with no `--older-than`) has no
+			 * notion of a sub-buffer being "too recent", so its
+			 * `max_age` is unset.
+			 *
+			 * In that case reclamation only completes once
+			 * `subbuffer_count` reaches zero above.
+			 */
 			const auto token =
 				stream.pending_memory_reclamation->memory_reclaim_request_token;
 			stream.pending_memory_reclamation.reset();
