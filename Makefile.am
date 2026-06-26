@@ -26,7 +26,8 @@ dist_noinst_DATA = CodingStyle.md
 TEST_DEPS = \
 	.shellcheckrc
 
-EXTRA_DIST = CLAUDE.md \
+EXTRA_DIST = .vermin \
+	     CLAUDE.md \
 	     extras/lttng-bash_completion \
 	     extras/zsh-completion \
 	     LICENSES/Autoconf-exception-2.0.txt \
