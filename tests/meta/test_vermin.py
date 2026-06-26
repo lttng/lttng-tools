@@ -23,16 +23,14 @@ import lttngtest
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format=lttngtest.utils.get_logging_format())
     project_root = pathlib.Path(__file__).absolute().parents[2]
-    config_path = project_root / "pyproject.toml"
-    directories = [
-        'tests/'
-    ]
+    config_path = project_root / ".vermin"
+    directories = ["tests/"]
     tap = lttngtest.TapGenerator(1)
-    if shutil.which('vermin') is None:
+    if shutil.which("vermin") is None:
         tap.skip("vermin not found in path")
         sys.exit(0)
 
-    args = ['vermin', '-c', str(config_path)] + directories
+    args = ["vermin", "-c", str(config_path)] + directories
     p = subprocess.Popen(args, cwd=str(project_root))
     p.wait()
     tap.test(p.returncode == 0, "Vermin exited without error")
