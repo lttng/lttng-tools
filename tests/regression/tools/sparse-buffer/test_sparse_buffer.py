@@ -40,6 +40,21 @@ See individual tests docstring.
 """
 
 
+def extra_tap_points(count):
+    """
+    Declare the number of tap test points a test publishes itself, on top of
+    the completion point published by run_test(). The declared count is
+    included in the test plan; run_test() publishes the points a test did not
+    reach (failure or skip) as skipped.
+    """
+
+    def annotate(test):
+        test.extra_tap_points = count
+        return test
+
+    return annotate
+
+
 def get_consumerd_pid(sessiond_pid):
     """
     Get the PID of the UST consumer daemon that is a child of the session daemon.
@@ -1902,6 +1917,97 @@ def test_explicit_reclaim_without_age_limit_survives_deferral(tap, test_env, cli
     app.wait_for_exit()
 
 
+@extra_tap_points(4)
+def test_rotation_creates_packet_for_inactive_streams(tap, test_env, client):
+    """
+    Ensure that a rotation produces a packet for every stream of a channel,
+    including streams that never recorded an event.
+
+    The tracer defers the production of a stream's first packet header until
+    the stream is first used (it is then stamped with the stream's creation
+    timestamp). A rotation must materialize that packet so the archived trace
+    chunk records the lifetime of every stream: without it, the chunk is
+    missing stream files and its stream intersection is unusable.
+
+    The application is pinned to a single CPU so the channel's other per-CPU
+    streams never record anything. The session is rotated while active and
+    the archived chunk is checked for one non-empty stream file per possible
+    CPU, since the tracer allocates one stream per possible CPU (not per
+    online CPU).
+    """
+    stream_count = lttngtest.possible_cpus_array_len()
+    if stream_count < 2:
+        raise lttngtest.TestSkipped("at least 2 possible CPUs are required")
+
+    event_count = 10
+    output_path = test_env.create_temporary_directory("trace")
+    session = client.create_session(
+        output=lttngtest.LocalSessionOutputLocation(output_path)
+    )
+    channel = session.add_channel(
+        lttngtest.TracingDomain.User,
+        buffer_allocation_policy=lttngtest.BufferAllocationPolicy.PerCPU,
+    )
+    channel.add_recording_rule(lttngtest.lttngctl.UserTracepointEventRule("tp:tptest"))
+    session.start()
+
+    # Keep the application alive across the rotation so its departure does
+    # not tear down or flush anything before the rotation runs.
+    app = test_env.launch_wait_trace_test_application(
+        event_count, wait_before_exit=True
+    )
+    pinned_cpu = app.taskset_anycpu()
+    tap.diagnostic("Application pinned to CPU {}".format(pinned_cpu))
+    app.trace()
+    app.wait_for_tracing_done()
+
+    session.rotate(wait=True)
+
+    archived_chunks = list(pathlib.Path(str(output_path)).glob("archives/*"))
+    tap.diagnostic(
+        "Archived trace chunks: {}".format([str(chunk) for chunk in archived_chunks])
+    )
+    tap.test(len(archived_chunks) == 1, "Rotation produced a trace chunk archive")
+
+    stream_files = sorted(
+        stream_file
+        for chunk in archived_chunks
+        for stream_file in chunk.rglob("{}_*".format(channel.name))
+        if stream_file.is_file() and stream_file.parent.name != "index"
+    )
+    tap.diagnostic(
+        "Stream files in archived chunk: {}".format(
+            ["{} ({} bytes)".format(f.name, f.stat().st_size) for f in stream_files]
+        )
+    )
+    tap.test(
+        len(stream_files) == stream_count,
+        "Archived chunk contains one stream file per possible CPU",
+    )
+    tap.test(
+        len(stream_files) > 0
+        and all(stream_file.stat().st_size > 0 for stream_file in stream_files),
+        "Every stream file of the archived chunk contains at least one packet",
+    )
+
+    received_event_count, _ = lttngtest.count_events(
+        archived_chunks, ignore_exceptions=True
+    )
+    tap.diagnostic(
+        "Events in archived chunk: {}, expected {}".format(
+            received_event_count, event_count
+        )
+    )
+    tap.test(
+        received_event_count == event_count,
+        "Events recorded before the rotation are readable from the archived chunk",
+    )
+
+    app.touch_exit_file()
+    app.wait_for_exit()
+    session.destroy()
+
+
 def test_reclaim_memory_command_unknown_channel(tap, test_env, client):
     """
     Ensure that reclaiming memory of a channel that does not exist yield an
@@ -2065,11 +2171,25 @@ def test_load_save_reclaim_policy_consumed(tap, test_env, client):
     )
 
 
+def test_plan_size(test):
+    """
+    Number of tap test points a test accounts for in the plan: the points it
+    publishes itself (see extra_tap_points()) plus its completion point.
+    """
+    return getattr(test, "extra_tap_points", 0) + 1
+
+
 def run_test(test, variant):
     test_name = "{}({})".format(
         test.__name__,
         ", ".join(["{}={}".format(key, value) for key, value in variant.items()]),
     )
+    remaining_before_test = tap.remaining_test_cases
+
+    def unpublished_test_points():
+        published = remaining_before_test - tap.remaining_test_cases
+        return test_plan_size(test) - published
+
     try:
         with lttngtest.test_environment(
             with_sessiond=True, log=tap.diagnostic
@@ -2078,16 +2198,18 @@ def run_test(test, variant):
             test(tap, test_env, client, **variant)
             tap.ok(test_name)
     except lttngtest.TestSkipped as skip:
-        tap.skip("{} - {}".format(test_name, str(skip)))
+        tap.skip("{} - {}".format(test_name, str(skip)), unpublished_test_points())
     except AssertionError:
         _, _, bt = sys.exc_info()
         traceback.print_tb(bt)
         top_frame = traceback.extract_tb(bt)[-1]
         filename, line, _, _ = top_frame
         tap.fail("{} - Failed assertion at: {}:{}".format(test_name, filename, line))
+        tap.skip("{} - unreached".format(test_name), unpublished_test_points())
     except Exception as exn:
         tap.fail("{} - Uncaught exception".format(test_name))
         tap.diagnostic("".join(traceback.format_exception(exn)))
+        tap.skip("{} - unreached".format(test_name), unpublished_test_points())
 
 
 if __name__ == "__main__":
@@ -2110,6 +2232,7 @@ if __name__ == "__main__":
         test_auto_reclaim_resumes_after_explicit_reclaim,
         test_auto_reclaim_resumes_after_explicit_reclaim_per_process_buffers,
         test_explicit_reclaim_without_age_limit_survives_deferral,
+        test_rotation_creates_packet_for_inactive_streams,
         test_reclaim_memory_command_unknown_channel,
         test_auto_reclaim_memory_consumed_snapshot_mode,
         test_auto_reclaim_memory_consumed_no_output,
@@ -2141,7 +2264,10 @@ if __name__ == "__main__":
 
     variants = list_variants()
 
-    tap = lttngtest.TapGenerator(len(variants) * len(tests) + len(tests_no_variants))
+    tap = lttngtest.TapGenerator(
+        len(variants) * sum(test_plan_size(test) for test in tests)
+        + sum(test_plan_size(test) for test in tests_no_variants)
+    )
 
     if not lttngtest.utils.gdb_exists():
         tap.missing_platform_requirement("GDB not available")

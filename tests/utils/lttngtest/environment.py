@@ -2493,19 +2493,37 @@ def kernel_module(module_name):
         subprocess.run(["modprobe", "-r", module_name], check=True)
 
 
+def _cpu_mask_to_set(mask):
+    "Return the set of CPU ids described by a sysfs CPU mask string."
+    cpus = set()
+
+    for cpu_range in mask.split(","):
+        if cpu_range.find("-") != -1:
+            start, end = cpu_range.split("-")
+            for cpu in range(int(start), int(end) + 1):
+                cpus.add(cpu)
+        else:
+            cpus.add(int(cpu_range.strip()))
+    return cpus
+
+
 def online_cpus():
     "Return a set of CPU that are currently online."
     with open("/sys/devices/system/cpu/online") as online:
-        cpus = set()
+        return _cpu_mask_to_set(online.readline())
 
-        for cpu_range in online.readline().split(","):
-            if cpu_range.find("-") != -1:
-                start, end = cpu_range.split("-")
-                for cpu in range(int(start), int(end) + 1):
-                    cpus.add(cpu)
-            else:
-                cpus.add(int(cpu_range.strip()))
-        return cpus
+
+def possible_cpus_array_len():
+    """
+    Return the length of an array indexed by possible CPU id (the highest
+    possible CPU id plus one), mirroring how the tracers size per-CPU
+    resources such as the streams of a per-CPU channel.
+
+    In a container, the online mask can be virtualized to a sparse subset of
+    the possible range while the possible mask still reflects the host.
+    """
+    with open("/sys/devices/system/cpu/possible") as possible:
+        return max(_cpu_mask_to_set(possible.readline())) + 1
 
 
 @contextlib.contextmanager
