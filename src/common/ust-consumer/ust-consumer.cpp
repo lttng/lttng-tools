@@ -719,6 +719,20 @@ static int flush_channel(uint64_t chan_key)
 			goto next;
 		}
 
+		/*
+		 * A local stream with no current trace chunk has no
+		 * output to which a packet could be written; an empty
+		 * flush would deliver a packet (even from an empty
+		 * buffer) that could never be consumed. Skip it.
+		 *
+		 * Nothing is lost here: a stream only transitions to a
+		 * null trace chunk when a rotation occurs after a
+		 * 'stop', which itself flushes.
+		 */
+		if (!stream->trace_chunk && !stream->has_network_destination()) {
+			goto next;
+		}
+
 		if (!stream->quiescent) {
 			ret = lttng_ust_ctl_flush_buffer(stream->ustream, 0);
 			if (ret) {
@@ -2464,7 +2478,16 @@ void lttng_ustconsumer_on_stream_hangup(struct lttng_consumer_stream *stream)
 	LTTNG_ASSERT(stream->ustream);
 
 	pthread_mutex_lock(&stream->lock);
-	if (!stream->quiescent) {
+
+	/*
+	 * A local stream with no current trace chunk has no output to which a
+	 * packet could be written; an empty flush would still deliver a packet
+	 * that could never be consumed. Skip it. As explained in
+	 * flush_channel(), nothing is lost: the rotation that detached the
+	 * stream from its chunk already flushed and consumed everything the
+	 * chunk could receive.
+	 */
+	if (!stream->quiescent && (stream->trace_chunk || stream->has_network_destination())) {
 		if (lttng_ust_ctl_flush_buffer(stream->ustream, 0) < 0) {
 			ERR("Failed to flush buffer on stream hang-up");
 		} else {
