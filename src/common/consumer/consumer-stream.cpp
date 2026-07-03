@@ -967,7 +967,14 @@ struct lttng_consumer_stream *consumer_stream_create(struct lttng_consumer_chann
 	stream->index_file = nullptr;
 	stream->last_sequence_number = -1ULL;
 	stream->rotate_position = -1ULL;
-	/* Buffer is created with an open packet. */
+	/*
+	 * The tracer initializes the first chunk's first packet: the kernel
+	 * tracer opens it when the buffer is created, while the user space
+	 * tracer produces it lazily, on first use or flush, with the buffer's
+	 * creation timestamp as its beginning.
+	 *
+	 * See the flag's declaration for more details.
+	 */
 	stream->opened_packet_in_current_trace_chunk = true;
 	pthread_mutex_init(&stream->lock, nullptr);
 	pthread_mutex_init(&stream->metadata_timer_lock, nullptr);

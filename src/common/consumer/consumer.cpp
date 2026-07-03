@@ -4133,11 +4133,28 @@ int lttng_consumer_rotate_data_channel(struct lttng_consumer_channel *channel,
 			bool flush_active;
 
 			/*
-			 * Only flush an empty packet if the "packet open" could not be performed on
-			 * transition to a new trace chunk and no packets were consumed within the
-			 * chunk's lifetime.
+			 * Only flush an empty packet if the "packet open" could
+			 * not be performed on transition to a new trace chunk
+			 * and no packets were consumed within the chunk's
+			 * lifetime.
+			 *
+			 * A stream that never delivered nor consumed a packet
+			 * is a special case: it is rotating away from its first
+			 * chunk, whose first packet (opened at the creation of
+			 * the buffers, see the flag's declaration) may exist
+			 * only in its pending form since the user space tracer
+			 * produces it lazily.
+			 *
+			 * An active flush is a no-op on such an unused buffer
+			 * and would leave the chunk without a packet recording
+			 * the stream's lifetime. The empty flush, on the other
+			 * hand, materializes the pending packet, with the
+			 * buffer's creation timestamp as its beginning, so that
+			 * it can be consumed into the chunk before the rotation
+			 * completes.
 			 */
-			if (stream.opened_packet_in_current_trace_chunk) {
+			if (stream.opened_packet_in_current_trace_chunk &&
+			    stream.last_sequence_number != -1ULL) {
 				flush_active = true;
 			} else {
 				/*

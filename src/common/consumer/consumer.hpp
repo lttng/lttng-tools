@@ -699,7 +699,29 @@ struct lttng_consumer_stream {
 	 */
 	uint64_t rotate_position;
 
-	/* Whether or not a packet was opened during the current trace chunk. */
+	/*
+	 * Whether or not a packet was opened during the current trace chunk.
+	 *
+	 * Every trace chunk is expected to contain, for every stream, at least
+	 * one packet whose "begin" timestamp indicates the beginning of the
+	 * stream's presence in the chunk, even if the stream never saw an
+	 * event. This allows viewers to compute a meaningful trace intersection
+	 * and prevents zero-length stream files.
+	 *
+	 * The first chunk of a stream is special: its anchor packet is
+	 * provided by the tracer and begins at the creation time of the
+	 * buffers. The kernel tracer writes that packet's header when the
+	 * ring buffer is created, while the user space tracer produces it
+	 * lazily, when the buffer is first used or explicitly flushed, and
+	 * stamps it with the buffer's creation timestamp. Streams are thus
+	 * created with this flag set even though, in the user space case,
+	 * the packet may not be materialized yet (see the rotation code for
+	 * how this is handled).
+	 *
+	 * On rotation, the flag is cleared and the consumer daemon becomes
+	 * responsible for opening a packet in the new chunk (see
+	 * consumer_stream_open_packet()).
+	 */
 	bool opened_packet_in_current_trace_chunk;
 
 	/*
