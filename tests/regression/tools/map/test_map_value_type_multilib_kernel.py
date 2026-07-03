@@ -146,7 +146,7 @@ def drive_kernel_counter(
     """
     # The event-rule-matches condition enables the kernel event, so the trigger
     # must exist before the events are emitted.
-    client.add_trigger(
+    trigger = client.add_trigger(
         lttngtest.EventRuleMatchesCondition(
             lttngtest.KernelTracepointEventRule("lttng_test_filter_event")
         ),
@@ -159,6 +159,7 @@ def drive_kernel_counter(
 
     session.start()
     common.fire_kernel_test_events(EVENT_COUNT)
+    client.remove_trigger(trigger)
 
 
 def run_kernel_case(
@@ -195,15 +196,15 @@ def run_kernel_case(
         return
 
     try:
-        with lttngtest.kernel_module("lttng-test"):
-            with lttngtest.test_environment(
-                with_sessiond=True,
-                log=tap.diagnostic,
-                enable_kernel_domain=True,
-                sessiond_profile=sessiond_profile,
-                client_profile=sessiond_profile,
-                consumerd_profiles=[sessiond_profile],
-            ) as test_env:
+        with lttngtest.test_environment(
+            with_sessiond=True,
+            log=tap.diagnostic,
+            enable_kernel_domain=True,
+            sessiond_profile=sessiond_profile,
+            client_profile=sessiond_profile,
+            consumerd_profiles=[sessiond_profile],
+        ) as test_env:
+            with lttngtest.kernel_module("lttng-test"):
                 client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
                 session = client.create_session(
                     output=lttngtest.LocalSessionOutputLocation(
