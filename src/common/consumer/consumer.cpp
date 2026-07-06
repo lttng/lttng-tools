@@ -3543,21 +3543,39 @@ ssize_t lttng_consumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		goto error_put_subbuf;
 	}
 
-	written_bytes = stream->read_subbuffer_ops.consume_subbuffer(ctx, stream, &subbuffer);
-	if (written_bytes <= 0) {
-		ERR("Error consuming subbuffer: (%zd)", written_bytes);
-		ret = (int) written_bytes;
-		goto error_put_subbuf;
-	}
+	if (stream->trace_chunk || stream->has_network_destination()) {
+		written_bytes =
+			stream->read_subbuffer_ops.consume_subbuffer(ctx, stream, &subbuffer);
+		if (written_bytes <= 0) {
+			ERR("Error consuming subbuffer: (%zd)", written_bytes);
+			ret = (int) written_bytes;
+			goto error_put_subbuf;
+		}
 
-	ret = stream->read_subbuffer_ops.put_next_subbuffer(stream, &subbuffer);
-	if (ret) {
-		goto end;
-	}
+		ret = stream->read_subbuffer_ops.put_next_subbuffer(stream, &subbuffer);
+		if (ret) {
+			goto end;
+		}
 
-	ret = post_consume(*stream, &subbuffer, ctx);
-	if (ret) {
-		goto end;
+		ret = post_consume(*stream, &subbuffer, ctx);
+		if (ret) {
+			goto end;
+		}
+	} else {
+		/*
+		 * The stream rotated to the "null" trace chunk: a packet produced
+		 * past the rotation position, by a flush racing with the rotation
+		 * (an application's departure, for instance), has no output to be
+		 * written to. Discard it.
+		 */
+		DBG("Discarding a packet consumed from a stream that has no current trace chunk: stream name = %s, stream key = %" PRIu64,
+		    stream->name,
+		    stream->key);
+		written_bytes = subbuffer.info.data.padded_subbuf_size;
+		ret = stream->read_subbuffer_ops.put_next_subbuffer(stream, &subbuffer);
+		if (ret) {
+			goto end;
+		}
 	}
 
 	/*
