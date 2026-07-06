@@ -2593,28 +2593,16 @@ void ls::ust::domain_orchestrator::stop()
 		}
 	}
 
-	/*
-	 * Flush per-PID application buffers. Per-UID buffers are flushed
-	 * below via _flush_per_uid_buffers().
-	 */
 	if (buffer_type() == LTTNG_BUFFER_PER_PID) {
 		const lttng::urcu::read_lock_guard read_lock;
+
 		for (const auto& app_session_pair : _app_sessions) {
-			auto *app = app_session_pair.first;
-			if (!ust_app_get(*app)) {
-				continue;
-			}
-			const ust_app_reference app_ref(app);
 			_flush_app_session(*app_session_pair.second);
 		}
-	}
-
-	/*
-	 * Flush per-UID consumer buffers and push pending metadata.
-	 * Per-PID buffers were flushed per-application above.
-	 */
-	if (buffer_type() == LTTNG_BUFFER_PER_UID) {
+	} else if (buffer_type() == LTTNG_BUFFER_PER_UID) {
 		_flush_per_uid_buffers();
+	} else {
+		std::abort();
 	}
 }
 
