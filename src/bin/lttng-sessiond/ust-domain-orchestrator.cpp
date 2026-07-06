@@ -2205,7 +2205,14 @@ unsigned int ls::ust::domain_orchestrator::on_app_departure(
 	_app_sessions.erase(it);
 
 	if (owned_session->buffer_type == LTTNG_BUFFER_PER_PID) {
-		_flush_app_session(*owned_session);
+		/*
+		 * A destroyed session's trace chunk is closed: a flush would
+		 * produce packets that have no output.
+		 */
+		if (!_session.destroyed) {
+			_flush_app_session(*owned_session);
+		}
+
 		_save_per_pid_stats_on_departure(*owned_session);
 	}
 
