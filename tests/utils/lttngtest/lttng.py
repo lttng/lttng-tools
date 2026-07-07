@@ -1241,7 +1241,7 @@ class _Session(lttngctl.Session):
 
         try:
             conn.executescript(sql_script)
-        except Exception:
+        except BaseException:
             conn.close()
             raise
 
