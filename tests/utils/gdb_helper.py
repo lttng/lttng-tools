@@ -62,6 +62,28 @@ class CallbackBreakpoint(gdb.Breakpoint):
         return self._callback(self)
 
 
+def parse_and_eval_in_any_frame(expression):
+    """
+    Evaluate `expression` in the innermost frame where it succeeds and return
+    its value, or None if it fails in every frame.
+
+    A TESTPOINT() label can resolve inside an inlined callee (observed on
+    s390x: a reclaim task's lock guard constructor) whose frame does not have
+    the object a caller wants to read in scope, or has it optimized out.
+    Walking out to the frame that owns the expression makes the read reliable
+    without hard-coding a function name.
+    """
+    frame = gdb.newest_frame()
+    while frame is not None:
+        frame.select()
+        try:
+            return gdb.parse_and_eval(expression)
+        except gdb.error:
+            frame = frame.older()
+
+    return None
+
+
 def install_breakpoint_commands(breakpoints, commands):
     if isinstance(commands, str):
         commands_text = commands

@@ -402,14 +402,19 @@ def make_memory_reclaim_timer_keys_gdb_commands(
             "python",
             "seen_keys = set()",
             "def on_reclaim_timer_fire(breakpoint):",
-            "    if gdb.parse_and_eval('this->_channel.name').string() != {!r}:".format(
-                channel_name
-            ),
+            # The testpoint label can resolve inside inlined code (e.g. the
+            # reclaim task's lock guard constructor on s390x) whose frame does
+            # not own `this`. Read the channel from whichever upper frame does.
+            "    fired_name = parse_and_eval_in_any_frame('this->_channel.name')",
+            "    fired_key = parse_and_eval_in_any_frame('this->_channel.key')",
+            "    if fired_name is None or fired_key is None:",
             "        return False",
-            "    key = int(gdb.parse_and_eval('this->_channel.key'))",
-            "    if key not in seen_keys:",
-            "        seen_keys.add(key)",
-            "        print('RECLAIM_TIMER_KEY: {}'.format(key))",
+            "    if fired_name.string() != {!r}:".format(channel_name),
+            "        return False",
+            "    fired_key = int(fired_key)",
+            "    if fired_key not in seen_keys:",
+            "        seen_keys.add(fired_key)",
+            "        print('RECLAIM_TIMER_KEY: {}'.format(fired_key))",
             "    return len(seen_keys) >= {}".format(expected_key_count),
             "if not break_testpoint_callback({!r}, on_reclaim_timer_fire):".format(
                 _MEMORY_RECLAIM_TASK_TESTPOINT_PREFIX
@@ -1702,38 +1707,42 @@ def test_auto_reclaim_resumes_after_explicit_reclaim_per_process_buffers(
     # every sub-buffer of every per-process channel.
     test_env.lttng_consumerd_pause(consumerd_type)
 
-    # One per-process consumer channel (with its own reclaim timer) per
-    # application. The applications wait before exiting so their channels
-    # persist for the whole test; all of their events are written before the
-    # request is issued.
-    apps = lttngtest.WaitTraceTestApplicationGroup(
-        test_env,
-        application_count,
-        event_count=10000,
-        wait_before_exit=True,
-    )
-    apps.trace()
-    apps.wait_for_tracing_done()
-
-    # Every reclaim timer must fire before the request is issued: GDB records
-    # the distinct channel keys reaching the timer testpoint and exits once
-    # `application_count` keys have been seen.
-    keys_before = memory_reclaim_timer_distinct_channel_keys(
-        test_env, tap.diagnostic, channel.name, application_count, timer_timeout_s
-    )
-    tap.diagnostic(
-        "distinct reclaim timer keys before explicit request={}, expected {}".format(
-            sorted(keys_before), application_count
+    try:
+        # One per-process consumer channel (with its own reclaim timer) per
+        # application. The applications wait before exiting so their channels
+        # persist for the whole test; all of their events are written before
+        # the request is issued.
+        apps = lttngtest.WaitTraceTestApplicationGroup(
+            test_env,
+            application_count,
+            event_count=10000,
+            wait_before_exit=True,
         )
-    )
-    assert len(keys_before) == application_count
+        apps.trace()
+        apps.wait_for_tracing_done()
 
-    # Armed before the request is issued: this GDB exits once the request is
-    # fully set up (every timer suspended, every sub-buffer deferred) and
-    # reports the suspension and deferral counts.
-    barrier_gdb, barrier_gdb_script = start_wait_for_reclaim_request_deferred(
-        test_env, tap.diagnostic, count_setup=True
-    )
+        # Every reclaim timer must fire before the request is issued: GDB
+        # records the distinct channel keys reaching the timer testpoint and
+        # exits once `application_count` keys have been seen.
+        keys_before = memory_reclaim_timer_distinct_channel_keys(
+            test_env, tap.diagnostic, channel.name, application_count, timer_timeout_s
+        )
+        tap.diagnostic(
+            "distinct reclaim timer keys before explicit request={}, expected {}".format(
+                sorted(keys_before), application_count
+            )
+        )
+        assert len(keys_before) == application_count
+
+        # Armed before the request is issued: this GDB exits once the request
+        # is fully set up (every timer suspended, every sub-buffer deferred)
+        # and reports the suspension and deferral counts.
+        barrier_gdb, barrier_gdb_script = start_wait_for_reclaim_request_deferred(
+            test_env, tap.diagnostic, count_setup=True
+        )
+    except BaseException:
+        test_env.lttng_consumerd_pause(consumerd_type, False)
+        raise
 
     suspended_count = None
     deferred_count = None
