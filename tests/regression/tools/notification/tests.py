@@ -904,7 +904,7 @@ def test_multi_app(
         event_generator.toggle()
 
         # Unpause consumerd
-        test_env.lttng_consumerd_pause(consumerd_type, False)
+        test_env.lttng_consumerd_resume(consumerd_type)
 
         # Stop session
         session.stop()
@@ -1028,7 +1028,7 @@ def test_on_register_evaluation(
     tap.diagnostic("Client 2 received high buffer usage notification")
 
     # Unpause
-    test_env.lttng_consumerd_pause(consumerd_type, False)
+    test_env.lttng_consumerd_resume(consumerd_type)
 
     # Wait for client and client2 exit
     client.wait_until_exit_message()

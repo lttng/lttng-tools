@@ -1426,8 +1426,8 @@ class _Environment(logger._Logger):
 
         return paused
 
-    def lttng_consumerd_pause(
-        self, consumerd_type: ConsumerType, paused: bool = True
+    def _set_lttng_consumerd_paused(
+        self, consumerd_type: ConsumerType, paused: bool
     ) -> None:
         pid = self.lttng_consumerd_get_pid(consumerd_type)
         script_commands = [
@@ -1440,6 +1440,12 @@ class _Environment(logger._Logger):
             raise Exception(
                 "GDB returned non-zero exit code: {}".format(gdb.returncode)
             )
+
+    def lttng_consumerd_pause(self, consumerd_type: ConsumerType) -> None:
+        self._set_lttng_consumerd_paused(consumerd_type, True)
+
+    def lttng_consumerd_resume(self, consumerd_type: ConsumerType) -> None:
+        self._set_lttng_consumerd_paused(consumerd_type, False)
 
     def lttng_sessiond_is_notification_paused(self) -> bool:
         pid = self._sessiond.pid

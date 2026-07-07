@@ -1741,7 +1741,7 @@ def test_auto_reclaim_resumes_after_explicit_reclaim_per_process_buffers(
             test_env, tap.diagnostic, count_setup=True
         )
     except BaseException:
-        test_env.lttng_consumerd_pause(consumerd_type, False)
+        test_env.lttng_consumerd_resume(consumerd_type)
         raise
 
     suspended_count = None
@@ -1776,7 +1776,7 @@ def test_auto_reclaim_resumes_after_explicit_reclaim_per_process_buffers(
             # own GDB), and reaped here if the testpoint was never hit.
             if barrier_gdb is not None:
                 _interrupt_and_wait_gdb(barrier_gdb)
-            test_env.lttng_consumerd_pause(consumerd_type, False)
+            test_env.lttng_consumerd_resume(consumerd_type)
 
         # Completing the request (its deferred sub-buffers are reclaimed from
         # the consumption path) must resume every suspended timer.
@@ -1909,7 +1909,7 @@ def test_explicit_reclaim_without_age_limit_survives_deferral(tap, test_env, cli
             # sub-buffers from the consumption path. On the buggy daemon this
             # aborts the consumer daemon and the blocking request below never
             # returns.
-            test_env.lttng_consumerd_pause(consumerd_type, False)
+            test_env.lttng_consumerd_resume(consumerd_type)
 
         # Await the blocking request. Its return proves the consumer daemon
         # survived completing the deferred reclamation; a crash fails it or
