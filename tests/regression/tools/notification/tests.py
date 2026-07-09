@@ -157,6 +157,7 @@ class EventGenerator(TestEnvApplication):
         super().__init__(test_env)
         self._ready_file: typing.Optional[pathlib.Path] = None
         self._state_file: typing.Optional[pathlib.Path] = None
+        self._suspended: bool = True
 
     def start(
         self,
@@ -192,19 +193,33 @@ class EventGenerator(TestEnvApplication):
 
         return self._ready_file.is_file()
 
-    def toggle(self, wait=True) -> None:
+    def _set_suspended(self, suspended: bool, wait: bool = True) -> None:
         if self._process is None:
             raise RuntimeError("Generator not started")
 
+        if self._suspended == suspended:
+            return
+
+        # SIGUSR1 toggles the generator's state; _suspended mirrors it so we
+        # know which transition was just requested.
         self._process.send_signal(signal.SIGUSR1)
+        self._suspended = suspended
         if not wait:
             return
 
-        while self._state_file.is_file():
+        # A suspended generator keeps the state file present; a running one
+        # removes it. Wait for the file to reflect the requested state.
+        while self._state_file.is_file() != self._suspended:
             if self._process.poll() is not None:
-                raise RuntimeError("Generator died while waiting to toggle state")
+                raise RuntimeError("Generator died while waiting to change state")
 
             time.sleep(0.1)
+
+    def resume(self, wait: bool = True) -> None:
+        self._set_suspended(False, wait)
+
+    def suspend(self, wait: bool = True) -> None:
+        self._set_suspended(True, wait)
 
     def wait_until_ready(self) -> None:
         while not self.ready():
@@ -888,7 +903,7 @@ def test_multi_app(
             "Starting notification cycle {}/{}".format(i + 1, notification_cycles)
         )
         # Activate generator
-        event_generator.toggle()
+        event_generator.resume()
 
         # Pause consumerd
         test_env.lttng_consumerd_pause(consumerd_type)
@@ -901,7 +916,7 @@ def test_multi_app(
             notification_client.wait_until_high(i)
 
         # Pause generator
-        event_generator.toggle()
+        event_generator.suspend()
 
         # Unpause consumerd
         test_env.lttng_consumerd_resume(consumerd_type)
@@ -1012,7 +1027,7 @@ def test_on_register_evaluation(
     test_env.lttng_consumerd_pause(consumerd_type)
 
     # Set the generator to active mode
-    event_generator.toggle()
+    event_generator.resume()
 
     # Wait for high
     client.wait_until_high()
