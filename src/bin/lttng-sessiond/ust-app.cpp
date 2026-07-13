@@ -2272,6 +2272,12 @@ int handle_app_register_channel_notification(int sock,
 	chan_id = tc_channel.id;
 
 	/*
+	 * The channel's event context is only committed to the trace class once the
+	 * registration completes.
+	 */
+	lst::type::cuptr pending_event_context;
+
+	/*
 	 * The application returns the typing information of the channel's
 	 * context fields. In per-PID buffering mode, this is the first and only
 	 * time we get this information. It is our chance to finalize the
@@ -2293,12 +2299,10 @@ int handle_app_register_channel_notification(int sock,
 			lsu::ctl_field_quirks::UNDERSCORE_PREFIXED_VARIANT_TAG_MAPPINGS);
 
 		if (!tc_channel.is_registered()) {
-			lst::type::cuptr event_context = app_context_fields.size() ?
-				lttng::make_unique<lst::structure_type>(
-					0, std::move(app_context_fields)) :
-				nullptr;
-
-			tc_channel.event_context(std::move(event_context));
+			if (!app_context_fields.empty()) {
+				pending_event_context = lttng::make_unique<lst::structure_type>(
+					0, std::move(app_context_fields));
+			}
 		} else {
 			/*
 			 * Validate that the context fields match between
@@ -2363,9 +2367,13 @@ reply:
 		return ret;
 	}
 
+	/* Commit the context typing provided by the first application to register this channel. */
+	if (pending_event_context) {
+		tc_channel.event_context(std::move(pending_event_context));
+	}
+
 	/* This channel's registration is completed. */
 	tc_channel.set_as_registered();
-
 	return ret;
 }
 } /* namespace */
