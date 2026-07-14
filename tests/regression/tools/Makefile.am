@@ -181,6 +181,7 @@ noinst_SCRIPTS += \
 	map/map_value_type_multilib_utils.py \
 	map/test_map_value_type_multilib_ust.py \
 	map/test_map_value_type_multilib_kernel.py \
+	map/test_agent_map_channel.py \
 	map/test_buffer_ownership_models.py \
 	map/test_clear_preserves_keys.py \
 	map/test_dead_process_policies.py \

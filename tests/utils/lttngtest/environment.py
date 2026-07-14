@@ -6,10 +6,20 @@
 #
 
 import enum
+import importlib.util
 import json
 import multiprocessing
 from types import FrameType
-from typing import Callable, Dict, Iterator, Optional, Tuple, List, Generator
+from typing import (
+    Callable,
+    Dict,
+    Iterator,
+    Optional,
+    Tuple,
+    Union,
+    List,
+    Generator,
+)
 import sys
 import pathlib
 import platform
@@ -34,6 +44,7 @@ import contextlib
 
 import bt2
 
+from . import lttngctl
 from . import utils
 
 
@@ -820,6 +831,180 @@ class _TraceTestApplication:
                 self._process.kill()
 
 
+# Description of one of the agent domain test applications of the test suite
+# (see `tests/regression/ust/java-*/` and
+# `tests/utils/testapp/gen-py-events.py`).
+#
+# Every one of those applications emits, in order:
+#
+# * `event_count` log statements of `info_log_level` on `logger_name`,
+#   optionally interleaved with as many statements of `debug_log_level` on the
+#   same logger.
+#
+# * Optionally, a single `info_log_level` statement on `second_logger_name`.
+#
+# The agents of every domain trace all the log statements of their domain
+# through a single user space event class, `ust_event_name`: the logger name
+# and the log level are payload fields, which an event rule matches with a
+# filter.
+class AgentTestApplicationDescriptor:
+    def __init__(
+        self,
+        domain: lttngctl.TracingDomain,
+        ust_event_name: str,
+        logger_name: str,
+        second_logger_name: str,
+        info_log_level: lttngctl.LogLevel,
+        debug_log_level: lttngctl.LogLevel,
+    ) -> None:
+        self._domain = domain
+        self._ust_event_name = ust_event_name
+        self._logger_name = logger_name
+        self._second_logger_name = second_logger_name
+        self._info_log_level = info_log_level
+        self._debug_log_level = debug_log_level
+
+    @property
+    def domain(self) -> lttngctl.TracingDomain:
+        return self._domain
+
+    @property
+    def ust_event_name(self) -> str:
+        return self._ust_event_name
+
+    @property
+    def logger_name(self) -> str:
+        return self._logger_name
+
+    @property
+    def second_logger_name(self) -> str:
+        return self._second_logger_name
+
+    @property
+    def info_log_level(self) -> lttngctl.LogLevel:
+        return self._info_log_level
+
+    @property
+    def debug_log_level(self) -> lttngctl.LogLevel:
+        return self._debug_log_level
+
+
+# Where the test application of an agent domain lives in a build and how to
+# start it. `launch_agent_test_application()` builds its command line from
+# this, while `AgentTestApplicationDescriptor` describes what the application
+# logs.
+#
+# `directory` is relative to the `tests` directory of a build, `java_class` is
+# the class to launch (`None` for the Python application), and
+# `java_properties` names the extra Java system properties to set, their value
+# being a file name relative to `directory`.
+class _AgentTestApplicationLaunchInfo:
+    def __init__(
+        self,
+        directory: pathlib.Path,
+        java_class: Optional[str],
+        java_properties: Dict[str, str],
+    ) -> None:
+        self._directory = directory
+        self._java_class = java_class
+        self._java_properties = java_properties
+
+    @property
+    def directory(self) -> pathlib.Path:
+        return self._directory
+
+    @property
+    def java_class(self) -> Optional[str]:
+        return self._java_class
+
+    @property
+    def java_properties(self) -> Dict[str, str]:
+        return self._java_properties
+
+
+_AGENT_TEST_APPLICATIONS = {
+    lttngctl.TracingDomain.JUL: AgentTestApplicationDescriptor(
+        domain=lttngctl.TracingDomain.JUL,
+        ust_event_name="lttng_jul:event",
+        logger_name="JTestLTTng",
+        second_logger_name="JTestLTTng2",
+        info_log_level=lttngctl.JULLogLevel.INFO,
+        debug_log_level=lttngctl.JULLogLevel.FINEST,
+    ),
+    lttngctl.TracingDomain.Log4j: AgentTestApplicationDescriptor(
+        domain=lttngctl.TracingDomain.Log4j,
+        ust_event_name="lttng_log4j:event",
+        logger_name="log4j-event",
+        second_logger_name="log4j-event-2",
+        info_log_level=lttngctl.Log4jLogLevel.INFO,
+        debug_log_level=lttngctl.Log4jLogLevel.DEBUG,
+    ),
+    lttngctl.TracingDomain.Log4j2: AgentTestApplicationDescriptor(
+        domain=lttngctl.TracingDomain.Log4j2,
+        ust_event_name="lttng_log4j2:event",
+        logger_name="log4j2-event-1",
+        second_logger_name="log4j2-event-2",
+        info_log_level=lttngctl.Log4j2LogLevel.INFO,
+        debug_log_level=lttngctl.Log4j2LogLevel.DEBUG,
+    ),
+    lttngctl.TracingDomain.Python: AgentTestApplicationDescriptor(
+        domain=lttngctl.TracingDomain.Python,
+        ust_event_name="lttng_python:event",
+        logger_name="python-ev-test1",
+        second_logger_name="python-ev-test2",
+        info_log_level=lttngctl.PythonLogLevel.INFO,
+        debug_log_level=lttngctl.PythonLogLevel.DEBUG,
+    ),
+}
+
+_AGENT_TEST_APPLICATION_LAUNCH_INFO = {
+    lttngctl.TracingDomain.JUL: _AgentTestApplicationLaunchInfo(
+        directory=pathlib.Path("regression") / "ust" / "java-jul",
+        java_class="JTestLTTng",
+        java_properties={},
+    ),
+    lttngctl.TracingDomain.Log4j: _AgentTestApplicationLaunchInfo(
+        directory=pathlib.Path("regression") / "ust" / "java-log4j",
+        java_class="JTestLTTngLog4j",
+        java_properties={},
+    ),
+    lttngctl.TracingDomain.Log4j2: _AgentTestApplicationLaunchInfo(
+        directory=pathlib.Path("regression") / "ust" / "java-log4j2",
+        java_class="JTestLTTngLog4j2",
+        # Selects the Log4j 2.x appender bound to the `log4j2` domain; the same
+        # application logs to the legacy `log4j` domain when configured with
+        # `domain-log4j.xml`.
+        java_properties={"log4j2.configurationFile": "domain-log4j2.xml"},
+    ),
+    lttngctl.TracingDomain.Python: _AgentTestApplicationLaunchInfo(
+        directory=pathlib.Path("utils") / "testapp",
+        java_class=None,
+        java_properties={},
+    ),
+}
+
+
+def agent_test_application_descriptor(
+    domain: lttngctl.TracingDomain,
+) -> AgentTestApplicationDescriptor:
+    """
+    Return the descriptor of the agent test application of `domain`.
+    """
+    try:
+        return _AGENT_TEST_APPLICATIONS[domain]
+    except KeyError:
+        raise ValueError("`{}` is not an agent domain".format(domain))
+
+
+def _agent_test_application_launch_info(
+    domain: lttngctl.TracingDomain,
+) -> _AgentTestApplicationLaunchInfo:
+    try:
+        return _AGENT_TEST_APPLICATION_LAUNCH_INFO[domain]
+    except KeyError:
+        raise ValueError("`{}` is not an agent domain".format(domain))
+
+
 class ProcessOutputConsumer(threading.Thread, logger._Logger):
     def __init__(
         self,
@@ -889,6 +1074,11 @@ class _BuildProfile:
         self._word_size_bits = int(abi["word_size_bits"])
         self._binaries = contents["binaries"]
         self._testapp_dir = self._resolve(contents["testapp_dir"])
+        # Optional: only the test applications which live outside of
+        # `testapp_dir` need those (see `tests_path()` and `java`).
+        tests_dir = contents.get("tests_dir")
+        self._tests_dir = self._resolve(tests_dir) if tests_dir else None
+        self._java = contents.get("java", {})
         # An empty entry is possible when a dependency's library directory is
         # unknown (e.g. a build configured without LTTng-UST).
         self._library_dirs = [
@@ -951,6 +1141,36 @@ class _BuildProfile:
 
     def testapp_path(self, *components: str) -> pathlib.Path:
         return self._testapp_dir.joinpath(*components)
+
+    def tests_path(self, *components: Union[str, pathlib.Path]) -> pathlib.Path:
+        """
+        A path under the `tests` directory of the build, which holds the
+        artifacts of the test applications that are not part of `testapp_dir`
+        (the Java and Python agent applications, for instance).
+        """
+        if self._tests_dir is None:
+            raise RuntimeError(
+                "Build profile `{}` declares no `tests_dir`".format(self._name)
+            )
+
+        return self._tests_dir.joinpath(*components)
+
+    @property
+    def java_binary(self) -> Optional[str]:
+        """
+        The `java` command that compiled the Java test applications of the
+        build, which may not be the one of the `PATH`, or `None` when the build
+        is configured without the Java agent tests.
+        """
+        return self._java.get("binary") or None
+
+    @property
+    def java_classpath(self) -> Optional[str]:
+        """
+        The class path holding the LTTng-UST Java agent jars that the build was
+        configured with, or `None` when it is unknown.
+        """
+        return self._java.get("classpath") or None
 
 
 # Generate a temporary environment in which to execute a test.
@@ -1582,6 +1802,144 @@ class _Environment(logger._Logger):
         # type: () -> bool
         value = os.getenv("LTTNG_TOOLS_RUN_TESTS_LONG_REGRESSION")
         return bool(value and value != "0")
+
+    @staticmethod
+    def _java_class_path(profile: "_BuildProfile") -> Optional[str]:
+        # The agent jars come from the `CLASSPATH` of the environment, like the
+        # shell agent tests use it, and from the build's own configuration when
+        # it is unset.
+        return os.environ.get("CLASSPATH") or profile.java_classpath
+
+    @classmethod
+    def run_agent_domain_tests(
+        cls,
+        domain: lttngctl.TracingDomain,
+        profile: "Optional[_BuildProfile]" = None,
+    ) -> bool:
+        """
+        Whether the test application of the agent domain `domain` of the build
+        `profile` (the in-tree build by default) can run.
+
+        The Java applications are only compiled when the build is configured
+        with the Java agent tests of their domain (`--enable-test-java-agent-*`),
+        which also validates that the agent classes are on the `CLASSPATH`; that
+        class path must still be known when they run. The Python application
+        needs the `lttngust` package of the interpreter that runs the test.
+
+        Pass the same `profile` to `launch_agent_test_application()`.
+        """
+        launch_info = _agent_test_application_launch_info(domain)
+        profile = profile or cls.default_profile()
+
+        if launch_info.java_class is None:
+            # Locating the package is enough: importing it would start an agent
+            # in this process, which then attempts to register with any
+            # reachable session daemon.
+            try:
+                return importlib.util.find_spec("lttngust") is not None
+            except (ImportError, ValueError):
+                return False
+
+        if profile.java_binary is None and shutil.which("java") is None:
+            return False
+
+        if cls._java_class_path(profile) is None:
+            return False
+
+        return profile.tests_path(
+            launch_info.directory, launch_info.java_class + ".class"
+        ).exists()
+
+    def launch_agent_test_application(
+        self,
+        domain: lttngctl.TracingDomain,
+        event_count: int,
+        wait_time_between_events_ms: int = 0,
+        fire_debug_events: bool = False,
+        fire_second_logger_event: bool = False,
+        extra_env_vars: dict = dict(),
+        profile: "Optional[_BuildProfile]" = None,
+    ) -> "_TraceTestApplication":
+        """
+        Launch the test application of the agent domain `domain` of the build
+        `profile` (the in-tree build by default), which emits its log statements
+        as soon as its agent registers with the session daemon.
+
+        Register the triggers and event rules which must count those log
+        statements before launching it: the session daemon sends an agent its
+        configuration before confirming its registration, which the application
+        waits for, but nothing holds back an application which is already
+        running.
+
+        Only launch it when `run_agent_domain_tests()` returns `True` for
+        `domain`; the application is otherwise missing its agent.
+        """
+        launch_info = _agent_test_application_launch_info(domain)
+        profile = profile or self._default_profile
+        directory = profile.tests_path(launch_info.directory)
+
+        if launch_info.java_class is None:
+            # The Python application expresses its inter-event delay in
+            # seconds, unlike the Java ones which use milliseconds.
+            args = [
+                sys.executable,
+                str(directory / "gen-py-events.py"),
+                "--nr-iter",
+                str(event_count),
+                "--wait",
+                str(wait_time_between_events_ms / 1000),
+            ]
+
+            if fire_debug_events:
+                args.append("--fire-debug-event")
+
+            if fire_second_logger_event:
+                args.append("--fire-second-event")
+        else:
+            # The application's own class is in its build directory, the agent
+            # classes are on the class path of the build or of the environment.
+            agent_class_path = self._java_class_path(profile)
+            class_path = os.pathsep.join(
+                [str(directory)] + ([agent_class_path] if agent_class_path else [])
+            )
+            # The JNI libraries of the agents live in the library directories of
+            # the build, which are not necessarily those of the loader nor of
+            # this process's `LD_LIBRARY_PATH`.
+            library_path = os.pathsep.join(
+                [str(library_dir) for library_dir in profile.library_dirs]
+                + (
+                    [os.environ["LD_LIBRARY_PATH"]]
+                    if os.environ.get("LD_LIBRARY_PATH")
+                    else []
+                )
+                + ["/usr/local/lib", "/usr/lib"]
+            )
+            args = [
+                profile.java_binary or "java",
+                "-cp",
+                class_path,
+                "-Djava.library.path=" + library_path,
+            ]
+
+            for name, file_name in launch_info.java_properties.items():
+                args.append("-D{}={}".format(name, directory / file_name))
+
+            args += [
+                launch_info.java_class,
+                str(event_count),
+                str(wait_time_between_events_ms),
+                "1" if fire_debug_events else "0",
+                "1" if fire_second_logger_event else "0",
+            ]
+
+        return self.launch_test_application(
+            args,
+            extra_env_vars=extra_env_vars,
+            profile=profile,
+            # The Log4j 1.x and Log4j 2.x applications log to the standard
+            # output, which is the TAP stream of the test.
+            stdout=subprocess.DEVNULL,
+        )
 
     # Unpack a list of environment variables from a string
     # such as "HELLO=is_it ME='/you/are/looking/for'"
