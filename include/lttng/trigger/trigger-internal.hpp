@@ -234,6 +234,8 @@ struct lttng_trigger *lttng_trigger_copy(const struct lttng_trigger *trigger);
  */
 bool lttng_trigger_needs_tracer_notifier(const struct lttng_trigger *trigger);
 
+bool lttng_trigger_has_tracer_executed_action(const struct lttng_trigger *trigger);
+
 void lttng_trigger_set_as_registered(struct lttng_trigger *trigger);
 
 void lttng_trigger_set_as_unregistered(struct lttng_trigger *trigger);

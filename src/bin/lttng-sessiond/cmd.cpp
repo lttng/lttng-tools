@@ -6042,6 +6042,25 @@ void cmd_regenerate_statedump(const ltt_session::locked_ref& session)
 }
 
 namespace {
+bool trigger_needs_agent_event(const struct lttng_trigger *trigger)
+{
+	const auto *const condition = lttng_trigger_get_const_condition(trigger);
+
+	if (lttng_condition_get_type(condition) != LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES) {
+		return false;
+	}
+
+	const struct lttng_event_rule *event_rule = nullptr;
+
+	if (lttng_condition_event_rule_matches_get_rule(condition, &event_rule) !=
+	    LTTNG_CONDITION_STATUS_OK) {
+		return false;
+	}
+
+	return lttng_event_rule_targets_agent_domain(event_rule) &&
+		lttng_trigger_has_tracer_executed_action(trigger);
+}
+
 enum lttng_error_code
 synchronize_tracer_notifier_register(struct notification_thread_handle *notification_thread,
 				     struct lttng_trigger *trigger,
@@ -6218,10 +6237,7 @@ lttng::ctl::trigger cmd_register_trigger(const struct lttng_credentials *cmd_cre
 	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
 	trigger_name = trigger_status == LTTNG_TRIGGER_STATUS_OK ? trigger_name : "(anonymous)";
 
-	/*
-	 * Synchronize tracers if the trigger adds an event notifier.
-	 */
-	if (lttng_trigger_needs_tracer_notifier(trigger)) {
+	if (lttng_trigger_needs_tracer_notifier(trigger) || trigger_needs_agent_event(trigger)) {
 		ret_code = synchronize_tracer_notifier_register(
 			notification_thread, trigger, cmd_creds);
 		if (ret_code != LTTNG_OK) {
@@ -6415,12 +6431,13 @@ enum lttng_error_code cmd_unregister_trigger(const struct lttng_credentials *cmd
 	}
 
 	/*
-	 * Synchronize tracers if the trigger removes an event notifier.
-	 * Do this even if the trigger unregistration failed to at least stop
-	 * the tracers from producing notifications associated with this
-	 * event notifier.
+	 * Synchronize tracers if the trigger removes an event notifier or an
+	 * agent event. Do this even if the trigger unregistration failed to at
+	 * least stop the tracers from producing notifications associated with
+	 * this event notifier.
 	 */
-	if (lttng_trigger_needs_tracer_notifier(sessiond_trigger)) {
+	if (lttng_trigger_needs_tracer_notifier(sessiond_trigger) ||
+	    trigger_needs_agent_event(sessiond_trigger)) {
 		ret_code = synchronize_tracer_notifier_unregister(sessiond_trigger);
 		if (ret_code != LTTNG_OK) {
 			ERR("Error unregistering trigger to tracer.");
