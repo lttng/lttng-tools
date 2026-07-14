@@ -197,6 +197,7 @@ noinst_SCRIPTS += \
 	map/test_max_key_count.py \
 	map/test_no_update_when_stopped.py \
 	map/test_provider_name_key.py \
+	map/test_rule_filters.py \
 	map/test_show_maps.py \
 	map/test_trigger_late_binding.py \
 	map/test_update_policies.py \

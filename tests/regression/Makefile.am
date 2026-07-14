@@ -92,6 +92,7 @@ TESTS = tools/map/test_buffer_ownership_models.py \
 	tools/map/test_max_key_count.py \
 	tools/map/test_no_update_when_stopped.py \
 	tools/map/test_provider_name_key.py \
+	tools/map/test_rule_filters.py \
 	tools/map/test_show_maps.py \
 	tools/map/test_trigger_late_binding.py \
 	tools/map/test_update_policies.py \
