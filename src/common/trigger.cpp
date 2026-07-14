@@ -1190,6 +1190,31 @@ bool action_is_sessiond_executed(const struct lttng_action *action)
 		abort();
 	}
 }
+
+bool action_is_tracer_executed(const struct lttng_action *action)
+{
+	switch (lttng_action_get_type(action)) {
+	case LTTNG_ACTION_TYPE_INCREMENT_MAP_VALUE:
+		return true;
+	case LTTNG_ACTION_TYPE_LIST:
+		for (const auto *inner_action : lttng::ctl::const_action_list_view(action)) {
+			if (action_is_tracer_executed(inner_action)) {
+				return true;
+			}
+		}
+
+		return false;
+	case LTTNG_ACTION_TYPE_NOTIFY:
+	case LTTNG_ACTION_TYPE_START_SESSION:
+	case LTTNG_ACTION_TYPE_STOP_SESSION:
+	case LTTNG_ACTION_TYPE_ROTATE_SESSION:
+	case LTTNG_ACTION_TYPE_SNAPSHOT_SESSION:
+		return false;
+	case LTTNG_ACTION_TYPE_UNKNOWN:
+	default:
+		abort();
+	}
+}
 } /* namespace */
 
 bool lttng_trigger_needs_tracer_notifier(const struct lttng_trigger *trigger)
@@ -1201,6 +1226,17 @@ bool lttng_trigger_needs_tracer_notifier(const struct lttng_trigger *trigger)
 	}
 
 	return action_is_sessiond_executed(lttng_trigger_get_const_action(trigger));
+}
+
+bool lttng_trigger_has_tracer_executed_action(const struct lttng_trigger *trigger)
+{
+	const struct lttng_condition *condition = lttng_trigger_get_const_condition(trigger);
+
+	if (lttng_condition_get_type(condition) != LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES) {
+		return false;
+	}
+
+	return action_is_tracer_executed(lttng_trigger_get_const_action(trigger));
 }
 
 void lttng_trigger_set_as_registered(struct lttng_trigger *trigger)
