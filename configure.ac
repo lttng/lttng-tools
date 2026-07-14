@@ -811,6 +811,11 @@ if test "x$test_java_agent_jul" = "xyes" || test "x$test_java_agent_log4j" = "xy
 
 	AX_CHECK_CLASSPATH
 
+	# Record the class path of the agent jars in the build profile of the
+	# test suite (see tests/utils/lttng-build-profile.json.in) so that the
+	# Java test applications can run without it being exported.
+	AC_SUBST([CLASSPATH])
+
 	# Check for Java UST agent common class first
 	AX_CHECK_CLASS(org.lttng.ust.agent.AbstractLttngAgent)
 	if test "x$ac_cv_class_org_lttng_ust_agent_AbstractLttngAgent" = "xno"; then

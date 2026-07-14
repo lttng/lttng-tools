@@ -267,6 +267,48 @@ def add_kernel_event_count_trigger(
     )
 
 
+# Event rule class of each agent domain (JUL, Log4j 1.x, Log4j 2.x,
+# and Python).
+_AGENT_EVENT_RULE_CLASSES = {
+    lttngtest.lttngctl.TracingDomain.JUL: lttngtest.lttngctl.JULTracepointEventRule,
+    lttngtest.lttngctl.TracingDomain.Log4j: lttngtest.lttngctl.Log4jTracepointEventRule,
+    lttngtest.lttngctl.TracingDomain.Log4j2: lttngtest.lttngctl.Log4j2TracepointEventRule,
+    lttngtest.lttngctl.TracingDomain.Python: lttngtest.lttngctl.PythonTracepointEventRule,
+}
+
+
+# Registers a trigger that has an "increment map value" action driven by an
+# "event rule matches" condition on the logger name pattern
+# `logger_name_pattern` of the agent domain `domain`, incrementing the counter
+# `key` of the user space map channel named `channel_name` in recording session
+# `session`.
+# `log_level_rule`, when set, restricts the rule to the log levels
+# it names.
+def add_agent_event_count_trigger(
+    client: lttngtest.LTTngClient,
+    session: lttngtest.Session,
+    channel_name: str,
+    domain: lttngtest.lttngctl.TracingDomain,
+    logger_name_pattern: str,
+    key: str,
+    log_level_rule: Optional[lttngtest.lttngctl.LogLevelRule] = None,
+) -> None:
+    event_rule_class = _AGENT_EVENT_RULE_CLASSES[domain]
+
+    _add_increment_map_value_trigger(
+        client,
+        lttngtest.lttngctl.EventRuleMatchesCondition(
+            event_rule_class(
+                name_pattern=logger_name_pattern, log_level_rule=log_level_rule
+            )
+        ),
+        session,
+        channel_name,
+        lttngtest.lttngctl.UserMapChannel,
+        key,
+    )
+
+
 # Registers an "increment map value" trigger driven by a "recording
 # session rotation finishes" condition, incrementing the literal counter
 # `key` of the map channel named `channel_name` (of type `channel_type`)

@@ -159,6 +159,7 @@ SERIAL_TESTS += ust/before-after/test_before_after \
 	tools/metadata/test_ust \
 	tools/relayd-grouping/test_ust \
 	tools/trigger/rate-policy/test_ust_rate_policy \
+	tools/map/test_agent_map_channel.py \
 	tools/map/test_map_value_type_multilib_kernel.py
 
 TESTS += tools/client/test_reclaim_memory.py \

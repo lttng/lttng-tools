@@ -11,6 +11,11 @@
 		"lttng_client": "../../src/bin/lttng/lttng"
 	},
 	"testapp_dir": "testapp",
+	"tests_dir": "..",
+	"java": {
+		"binary": "@JAVA@",
+		"classpath": "@CLASSPATH@"
+	},
 	"library_dirs": [
 		"@UST_LIBDIR@",
 		"@URCU_LIBDIR@"
