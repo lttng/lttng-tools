@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2020 Michael Jeanson <mjeanson@efficios.com>
 #
-# SPDX-License-Identifier: GPL-2.0-or-later WITH LicenseRef-Autoconf-exception-macro
+# SPDX-License-Identifier: GPL-2.0-or-later WITH Autoconf-exception-macro
 #
 # SYNOPSIS
 #
