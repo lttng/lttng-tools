@@ -54,9 +54,9 @@ TEST_CASES: List[TestCaseDescription] = [
 
 
 def test_rule_filters(
-    test_env: "lttngtest._Environment",
-    tap: "lttngtest.TapGenerator",
-    update_policy: "lttngtest.lttngctl.MapChannelUpdatePolicy",
+    test_env: lttngtest._Environment,
+    tap: lttngtest.TapGenerator,
+    update_policy: lttngtest.lttngctl.MapChannelUpdatePolicy,
 ) -> None:
     client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
     session = client.create_session(

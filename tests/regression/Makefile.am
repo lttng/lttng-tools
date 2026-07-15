@@ -16,6 +16,7 @@ SERIAL_TESTS = tools/base-path/test_ust \
 	tools/map/test_kernel_map_channel_integration.py \
 	tools/map/test_empty_map_channel_kernel.py \
 	tools/map/test_export_maps_schema_kernel.py \
+	tools/map/test_rule_filters_kernel.py \
 	tools/client/test_add_trigger.py \
 	tools/filtering/test_invalid_filter \
 	tools/filtering/test_unsupported_op \
@@ -92,7 +93,7 @@ TESTS = tools/map/test_buffer_ownership_models.py \
 	tools/map/test_max_key_count.py \
 	tools/map/test_no_update_when_stopped.py \
 	tools/map/test_provider_name_key.py \
-	tools/map/test_rule_filters.py \
+	tools/map/test_rule_filters_ust.py \
 	tools/map/test_show_maps.py \
 	tools/map/test_trigger_late_binding.py \
 	tools/map/test_update_policies.py \
