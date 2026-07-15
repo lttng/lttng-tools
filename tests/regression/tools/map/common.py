@@ -242,17 +242,23 @@ def add_user_event_count_trigger(
 # matches" condition on the Linux kernel tracepoint
 # `KERNEL_TRACEPOINT_NAME`, incrementing the counter `key` of the kernel
 # map channel named `channel_name` in recording session `session`.
+#
+# `filter_expression`, when set, restricts the rule to the events which
+# satisfy it.
 def add_kernel_event_count_trigger(
     client,  # type: lttngtest.LTTngClient
     session,  # type: lttngtest.Session
     channel_name,  # type: str
     key,  # type: str
+    filter_expression=None,  # type: Optional[str]
 ):
     # type: (...) -> None
     _add_increment_map_value_trigger(
         client,
         lttngtest.lttngctl.EventRuleMatchesCondition(
-            lttngtest.lttngctl.KernelTracepointEventRule(KERNEL_TRACEPOINT_NAME)
+            lttngtest.lttngctl.KernelTracepointEventRule(
+                KERNEL_TRACEPOINT_NAME, filter_expression=filter_expression
+            )
         ),
         session,
         channel_name,
