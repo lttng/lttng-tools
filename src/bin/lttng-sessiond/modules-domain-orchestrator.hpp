@@ -624,6 +624,19 @@ private:
 	consumer_socket& _get_consumer_socket();
 
 	/*
+	 * Whether this session owns anything a consumer daemon deals with.
+	 *
+	 * The counters of a map channel live in the session daemon, so a
+	 * session that only contains map channels never causes a consumer
+	 * daemon to be spawned. `_get_consumer_socket()` has no socket to
+	 * return in that case: check this before reaching for it.
+	 */
+	bool _has_consumer_stream_groups() const noexcept
+	{
+		return !_stream_groups.empty() || _metadata_stream_group != nullptr;
+	}
+
+	/*
 	 * Open the ring buffer streams for a channel via kernctl_create_stream()
 	 * and register them in the stream_group.
 	 *

@@ -156,7 +156,7 @@ ls::modules::domain_orchestrator::~domain_orchestrator()
 	 * explicitly told to destroy them or they will leak. In monitor
 	 * mode, the consumer handles cleanup on its own.
 	 */
-	if (!_session.output_traces) {
+	if (!_session.output_traces && _has_consumer_stream_groups()) {
 		try {
 			const lttng::urcu::read_lock_guard read_lock;
 			auto& socket = _get_consumer_socket();
@@ -1129,7 +1129,7 @@ void ls::modules::domain_orchestrator::start()
 	}
 
 	/* Send session data (metadata, stream groups, streams) to the consumer daemon. */
-	{
+	if (_has_consumer_stream_groups()) {
 		const lttng::urcu::read_lock_guard read_lock;
 		auto& kconsumer_socket = _get_consumer_socket();
 		const lttng::pthread::lock_guard socket_lock(kconsumer_socket.lock);
@@ -1260,6 +1260,11 @@ void ls::modules::domain_orchestrator::clear()
 		entry.second->clear();
 	}
 
+	/* No recording channels to clear: nothing to do. */
+	if (!_has_consumer_stream_groups()) {
+		return;
+	}
+
 	const lttng::urcu::read_lock_guard read_lock;
 	auto& kconsumer_socket = _get_consumer_socket();
 
@@ -1309,6 +1314,11 @@ void ls::modules::domain_orchestrator::clear()
 
 void ls::modules::domain_orchestrator::open_packets()
 {
+	/* No recording channels: no packet to open. */
+	if (!_has_consumer_stream_groups()) {
+		return;
+	}
+
 	const lttng::urcu::read_lock_guard read_lock;
 	auto& kconsumer_socket = _get_consumer_socket();
 
@@ -1329,6 +1339,11 @@ void ls::modules::domain_orchestrator::record_snapshot(
 	const struct consumer_output& snapshot_consumer, std::uint64_t nb_packets_per_stream)
 {
 	DBG("Kernel snapshot record started");
+
+	/* No recording channels to snapshot: nothing to do. */
+	if (_stream_groups.empty()) {
+		return;
+	}
 
 	_open_metadata();
 	_open_metadata_stream();
