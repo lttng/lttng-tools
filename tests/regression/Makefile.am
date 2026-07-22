@@ -16,6 +16,7 @@ SERIAL_TESTS = tools/base-path/test_ust \
 	tools/map/test_kernel_map_channel_integration.py \
 	tools/map/test_empty_map_channel_kernel.py \
 	tools/map/test_export_maps_schema_kernel.py \
+	tools/map/test_map_only_no_consumerd.py \
 	tools/map/test_rule_filters_kernel.py \
 	tools/client/test_add_trigger.py \
 	tools/filtering/test_invalid_filter \

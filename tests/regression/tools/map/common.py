@@ -387,6 +387,56 @@ def populate_user_map_from_events(
     )
 
 
+# Kernel counterpart of populate_user_map_from_events(): creates a
+# recording session with a kernel map channel and an "increment map
+# value" trigger driven by an "event rule matches" condition on
+# `KERNEL_TRACEPOINT_NAME`, then asks the `lttng-test` module to emit
+# `event_count` events, firing the trigger `event_count` times.
+#
+# The trigger uses the `count/{event_name}` key template, therefore the
+# resulting counter key is `count/lttng_test_filter_event`. With the
+# default (per-event) update policy, its expected integral value
+# is `event_count`.
+#
+# Requires the `lttng-test` module to be loaded, which run_kernel_test()
+# arranges.
+#
+# Returns a `PopulatedMap` describing the result. This helper leaves the
+# session started so that a caller can read its counters with
+# `lttng export-maps`.
+def populate_kernel_map_from_events(
+    test_env,  # type: lttngtest._Environment
+    tap,  # type: lttngtest.TapGenerator
+    client=None,  # type: Optional[lttngtest.LTTngClient]
+    val_type=None,  # type: Optional[lttngtest.lttngctl.MapChannelValueType]
+    max_key_count=None,  # type: Optional[int]
+    update_policy=None,  # type: Optional[lttngtest.lttngctl.MapChannelUpdatePolicy]
+    event_count=DEFAULT_EVENT_COUNT,  # type: int
+):
+    # type: (...) -> PopulatedMap
+    client = client or lttngtest.LTTngClient(test_env, log=tap.diagnostic)
+    session = _create_recording_session(test_env, client)
+    channel = session.add_kernel_map_channel(
+        value_type=val_type,
+        max_key_count=max_key_count,
+        update_policy=update_policy,
+    )
+
+    add_kernel_event_count_trigger(client, session, channel.name, "count/{event_name}")
+    session.start()
+
+    fire_kernel_test_events(event_count)
+
+    return PopulatedMap(
+        client,
+        session,
+        channel,
+        lttngtest.lttngctl.KernelMapChannel,
+        "count/{}".format(KERNEL_TRACEPOINT_NAME),
+        event_count,
+    )
+
+
 # Creates a recording session with a map channel of the given type
 # (`lttngtest.lttngctl.UserMapChannel` or
 # `lttngtest.lttngctl.KernelMapChannel`) and an "increment map value"
