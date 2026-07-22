@@ -124,6 +124,17 @@ int push_metadata(const lsu::trace_class::locked_ref& locked_trace_class,
 		goto error;
 	}
 
+	/*
+	 * No metadata channel was ever created for this trace class, so there is
+	 * nothing to push; ust_app_push_metadata() returns early in that case
+	 * anyway. Checking here spares the consumer socket lookup, which a
+	 * session that only contains map channels has no consumer daemon to
+	 * satisfy.
+	 */
+	if (!locked_trace_class->_metadata_key) {
+		return 0;
+	}
+
 	{
 		const lttng::urcu::read_lock_guard read_lock;
 

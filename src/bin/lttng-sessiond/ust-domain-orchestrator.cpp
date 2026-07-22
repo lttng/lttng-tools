@@ -2138,13 +2138,21 @@ void ls::ust::domain_orchestrator::synchronize_app(ust::app& app)
 			 * When interacting with a relay daemon, the consumer will
 			 * use this assumption to send the "STREAMS_SENT" message
 			 * to the relay daemon.
+			 *
+			 * A session that only contains map channels has no ring
+			 * buffer to describe, and no consumer daemon to describe it
+			 * to: it is not spawned for such a session. The metadata is
+			 * created on the first synchronization that follows the
+			 * creation of a recording channel, which does spawn one.
 			 */
-			try {
-				_create_app_metadata(*ua_sess, &app);
-			} catch (const lttng::runtime_error&) {
-				ERR("Metadata creation failed for app sock %d for session id %" PRIu64,
-				    app.command_socket.fd(),
-				    _session_id());
+			if (_session.user_space_domain.recording_channel_count() > 0) {
+				try {
+					_create_app_metadata(*ua_sess, &app);
+				} catch (const lttng::runtime_error&) {
+					ERR("Metadata creation failed for app sock %d for session id %" PRIu64,
+					    app.command_socket.fd(),
+					    _session_id());
+				}
 			}
 
 			_synchronize_app_map_channels(*ua_sess, app);
@@ -2254,9 +2262,13 @@ unsigned int ls::ust::domain_orchestrator::on_app_departure(
 	 * When reclaiming an owner ID, tell the consumer daemon before
 	 * destroying the app session: the consumer needs the channels
 	 * to still exist when processing the reclamation command.
+	 *
+	 * A session that only contains map channels owns no consumer-side
+	 * buffer, and no consumer daemon is spawned for it: it has nothing to
+	 * reclaim and nobody to ask.
 	 */
 	unsigned int pending_reclamations = 0;
-	if (owner_id_to_reclaim) {
+	if (owner_id_to_reclaim && _session.user_space_domain.recording_channel_count() > 0) {
 		pending_reclamations =
 			consumer_reclaim_session_owner_id(*owned_session, *owner_id_to_reclaim);
 	}

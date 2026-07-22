@@ -1167,6 +1167,10 @@ int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_error)
 	case LTTCOMM_SESSIOND_COMMAND_LIST_MAP_GROUPS:
 	case LTTCOMM_SESSIOND_COMMAND_SAMPLE_MAP_GROUP:
 	case LTTCOMM_SESSIOND_COMMAND_LIST_MAP_KEYS:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_CHANNELS:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_EVENTS:
+	case LTTCOMM_SESSIOND_COMMAND_PROCESS_ATTR_TRACKER_GET_POLICY:
+	case LTTCOMM_SESSIOND_COMMAND_PROCESS_ATTR_TRACKER_GET_INCLUSION_SET:
 		need_consumerd = false;
 		break;
 	default:
@@ -1360,6 +1364,10 @@ int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_error)
 				}
 			}
 
+			if (!need_consumerd) {
+				break;
+			}
+
 			/* Start the kernel consumer daemon */
 			pthread_mutex_lock(&the_kconsumer_data.pid_mutex);
 			if (the_kconsumer_data.pid == 0) {
@@ -1417,6 +1425,10 @@ int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_error)
 				if (ret != LTTNG_OK) {
 					goto error;
 				}
+			}
+
+			if (!need_consumerd) {
+				break;
 			}
 
 			/* Start the UST consumer daemons */
