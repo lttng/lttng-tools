@@ -52,6 +52,7 @@
 #include <cstring>
 #include <functional>
 #include <numeric>
+#include <vector>
 
 namespace ls = lttng::sessiond;
 namespace lsc = lttng::sessiond::config;
@@ -1985,11 +1986,17 @@ void ls::ust::domain_orchestrator::_synchronize_app_map_channels(ust::app_sessio
 		 * The channel is now attached to this app: install every rule
 		 * already registered against it, so an app that synchronizes
 		 * after the rules were registered still hosts them.
+		 *
+		 * The rules are keyed by user token, hence installed in
+		 * registration order: the tracer resolves each rule's key in
+		 * the order the rules reach it, so when the channel runs out of
+		 * key slots the denied key is deterministically that of the
+		 * most recently registered rule.
 		 */
 		for (const auto& rule_entry : channel._rules) {
-			const auto *const rule_event_rule = rule_entry.first.first;
-			const auto *const rule_action = rule_entry.first.second;
-			const auto user_token = rule_entry.second.user_token;
+			const auto user_token = rule_entry.first;
+			const auto *const rule_event_rule = rule_entry.second.key.first;
+			const auto *const rule_action = rule_entry.second.key.second;
 
 			try {
 				_install_rule_on_app(app,
@@ -2022,6 +2029,10 @@ void ls::ust::domain_orchestrator::_install_rule_on_app(ust::app& app,
 							const lttng_action& incr_map_value_action,
 							std::uint64_t user_token)
 {
+	DBG_FMT("Installing map channel rule on app: map_name=`{}`, user_token={}",
+		channel.configuration().name,
+		user_token);
+
 	/*
 	 * The channel must already be attached to this app: the rule installs
 	 * against the app's copy of the channel's master counter.
@@ -3768,7 +3779,7 @@ void ls::ust::domain_orchestrator::add_map_channel_event_rule(
 	 */
 	const sessiond::map::event_rule_action_key key{ &event_rule, &incr_map_value_action };
 	const auto inserted =
-		channel._rules.emplace(key, ust::map_channel::rule_record{ user_token });
+		channel._rules.emplace(user_token, ust::map_channel::rule_record{ key });
 	LTTNG_ASSERT(inserted.second);
 
 	for (auto& app_session_entry : _app_sessions) {
@@ -3827,9 +3838,11 @@ void ls::ust::domain_orchestrator::remove_map_channel_event_rule(
 			*app_session_entry.second, channel, event_rule, incr_map_value_action);
 	}
 
-	const sessiond::map::event_rule_action_key key{ &event_rule, &incr_map_value_action };
-	const auto erased = channel._rules.erase(key);
-	LTTNG_ASSERT(erased == 1);
+	const auto rule_it =
+		sessiond::map::find_rule(channel._rules, event_rule, incr_map_value_action);
+
+	LTTNG_ASSERT(rule_it != channel._rules.end());
+	channel._rules.erase(rule_it);
 }
 
 void ls::ust::domain_orchestrator::increment_map_value(

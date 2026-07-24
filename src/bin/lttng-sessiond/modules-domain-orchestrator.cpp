@@ -1562,7 +1562,7 @@ void ls::modules::domain_orchestrator::add_map_channel_event_rule(
 
 	const sessiond::map::event_rule_action_key key{ &event_rule, &incr_map_value_action };
 	const auto inserted = channel._rules.emplace(
-		key, modules::map_channel::rule_record{ user_token, std::move(event_fd) });
+		user_token, modules::map_channel::rule_record{ key, std::move(event_fd) });
 	LTTNG_ASSERT(inserted.second);
 }
 
@@ -1577,9 +1577,11 @@ void ls::modules::domain_orchestrator::remove_map_channel_event_rule(
 	LTTNG_ASSERT(channel_it != _map_channels.end());
 	auto& channel = *channel_it->second;
 
-	const sessiond::map::event_rule_action_key key{ &event_rule, &incr_map_value_action };
-	const auto erased = channel._rules.erase(key);
-	LTTNG_ASSERT(erased == 1);
+	const auto rule_it =
+		sessiond::map::find_rule(channel._rules, event_rule, incr_map_value_action);
+
+	LTTNG_ASSERT(rule_it != channel._rules.end());
+	channel._rules.erase(rule_it);
 	/* lttng::file_descriptor's destructor closes the counter-event fd. */
 }
 

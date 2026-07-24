@@ -12,8 +12,7 @@
 #include "map-group-identity.hpp"
 #include "shared-group.hpp"
 
-#include <common/hash-combine.hpp>
-
+#include <algorithm>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -42,15 +41,29 @@ class group;
  */
 using event_rule_action_key = std::pair<const lttng_event_rule *, const lttng_action *>;
 
-struct event_rule_action_key_hash {
-	std::size_t operator()(const event_rule_action_key& key) const noexcept
-	{
-		auto seed = std::hash<const lttng_event_rule *>{}(key.first);
-		seed = lttng::utils::hash_combine(seed,
-						  std::hash<const lttng_action *>{}(key.second));
-		return seed;
-	}
-};
+/*
+ * Find the record of the rule that `event_rule` and `incr_map_value_action`
+ * identify in a channel's `_rules`, or `rules.end()` when the channel holds no
+ * such rule.
+ *
+ * The rules are keyed by user token to keep them in registration order, so
+ * this looks up by scanning. A channel holds one rule per trigger targeting
+ * it, which is few enough for this to be irrelevant.
+ */
+template <typename RulesType>
+typename RulesType::iterator find_rule(RulesType& rules,
+				       const lttng_event_rule& event_rule,
+				       const lttng_action& incr_map_value_action) noexcept
+{
+	return std::find_if(rules.begin(),
+			    rules.end(),
+			    [&event_rule, &incr_map_value_action](
+				    const typename RulesType::value_type& rule_entry) {
+				    return rule_entry.second.key ==
+					    event_rule_action_key{ &event_rule,
+								   &incr_map_value_action };
+			    });
+}
 
 /*
  * Per-channel runtime owned by the domain orchestrator. Aggregates the

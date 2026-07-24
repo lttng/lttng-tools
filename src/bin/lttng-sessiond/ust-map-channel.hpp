@@ -19,6 +19,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <memory>
 #include <sys/types.h>
 #include <unordered_map>
@@ -173,25 +174,26 @@ public:
 	nonstd::optional<app_attachment> attach_to_app(ust::app& app, int session_parent_handle);
 
 	struct rule_record {
-		std::uint64_t user_token;
 		/*
-		 * Per-app attachments live on the relevant app_session via
-		 * counter_event_attachments, keyed by (channel, event_rule,
-		 * action); the channel-scoped rule record itself carries only
-		 * the user_token.
+		 * The (&event_rule, &incr_map_value_action) pair identifying
+		 * the rule. Per-app attachments live on the relevant
+		 * app_session via counter_event_attachments, keyed by
+		 * (channel, event_rule, action).
 		 */
+		sessiond::map::event_rule_action_key key;
 	};
 
 	/*
 	 * Records of the counter-event rules registered against this channel,
-	 * keyed by (&event_rule, &incr_map_value_action). Owned by the channel
-	 * for each rule's registered lifetime; populated and cleared by the UST
-	 * orchestrator, the sole accessor.
+	 * keyed by user token. Tokens are allocated monotonically by
+	 * `allocate_user_token()`, so an in-order traversal visits the rules in
+	 * registration order, which the UST orchestrator relies on to install
+	 * them on an application in that same order.
+	 *
+	 * Owned by the channel for each rule's registered lifetime; populated
+	 * and cleared by the UST orchestrator, the sole accessor.
 	 */
-	std::unordered_map<sessiond::map::event_rule_action_key,
-			   rule_record,
-			   sessiond::map::event_rule_action_key_hash>
-		_rules;
+	std::map<std::uint64_t, rule_record> _rules;
 
 private:
 	void _clear_tracer_groups() override;

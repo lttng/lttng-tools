@@ -15,7 +15,7 @@
 #include <common/file-descriptor.hpp>
 
 #include <cstdint>
-#include <unordered_map>
+#include <map>
 
 namespace lttng {
 namespace sessiond {
@@ -49,21 +49,22 @@ public:
 	void for_each_group(const group_visitor& visitor) const override;
 
 	struct rule_record {
-		std::uint64_t user_token;
+		/* The (&event_rule, &incr_map_value_action) pair identifying the rule. */
+		sessiond::map::event_rule_action_key key;
 		/* The kernel counter-event fd; closed when the record is erased. */
 		lttng::file_descriptor event_fd;
 	};
 
 	/*
 	 * Records of the counter-event rules registered against this channel,
-	 * keyed by (&event_rule, &incr_map_value_action). Owned by the channel
-	 * for each rule's registered lifetime; populated and cleared by the
-	 * modules orchestrator, the sole accessor.
+	 * keyed by user token. Tokens are allocated monotonically by
+	 * `allocate_user_token()`, so an in-order traversal visits the rules in
+	 * registration order.
+	 *
+	 * Owned by the channel for each rule's registered lifetime; populated
+	 * and cleared by the modules orchestrator, the sole accessor.
 	 */
-	std::unordered_map<sessiond::map::event_rule_action_key,
-			   rule_record,
-			   sessiond::map::event_rule_action_key_hash>
-		_rules;
+	std::map<std::uint64_t, rule_record> _rules;
 
 private:
 	void _clear_tracer_groups() override;
