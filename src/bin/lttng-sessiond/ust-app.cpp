@@ -2708,6 +2708,11 @@ int handle_app_register_key_notification(int sock)
 
 	deny_reply.disarm();
 
+	DBG_FMT("Map key resolved for application: map_objd={}, key=`{}`, index={}",
+		map_objd,
+		key_string.get(),
+		index);
+
 	const auto reply_ret = lttng_ust_ctl_reply_register_key(sock, index, 0);
 	if (reply_ret < 0) {
 		ERR_FMT("Failed to reply to register-key: sock={}, ret={}", sock, reply_ret);
