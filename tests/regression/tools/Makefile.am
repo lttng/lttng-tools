@@ -195,6 +195,9 @@ noinst_SCRIPTS += \
 	map/test_kernel_map_channel_integration.py \
 	map/test_list_map_channel.py \
 	map/test_list_map_channel_mi.py \
+	map/map_key_exhaustion_utils.py \
+	map/test_map_key_exhaustion_kernel.py \
+	map/test_map_key_exhaustion_ust.py \
 	map/test_map_only_no_consumerd.py \
 	map/test_max_key_count.py \
 	map/test_no_update_when_stopped.py \
