@@ -18,6 +18,8 @@
 #include <lttng/domain.h>
 #include <lttng/trigger/trigger.h>
 
+#include <cstdint>
+#include <map>
 #include <pthread.h>
 #include <semaphore.h>
 #include <urcu.h>
@@ -143,10 +145,13 @@ struct notification_thread_handle {
  *             the session_info structure is owned by the session's various
  *             channels through their struct channel_info (ref-counting is used).
  *
- *   - triggers_ht:
- *             associates a trigger to a struct lttng_trigger_ht_element.
- *             The hash table holds the ownership of the
- *             lttng_trigger_ht_elements along with the triggers themselves.
+ *   - triggers_by_token:
+ *             associates a trigger's tracer token to a
+ *             struct lttng_trigger_ht_element, which owns the trigger.
+ *             Tokens are assigned monotonically at registration, so an
+ *             in-order traversal of this map visits the triggers in
+ *             registration order, which the per-session and per-channel
+ *             trigger lists rely on.
  *   - triggers_by_name_uid_ht:
  *             associates a trigger (name, uid) tuple to
  *             a struct lttng_trigger_ht_element.
@@ -204,7 +209,7 @@ struct notification_thread_handle {
  *    - add trigger to channel_triggers_ht (if applicable),
  *    - add trigger to session_triggers_ht (if applicable),
  *    - add trigger to triggers_by_name_uid_ht
- *    - add trigger to triggers_ht
+ *    - add trigger to triggers_by_token
  *    - evaluate the trigger's condition right away to react if that condition
  *      is true from the beginning.
  *
@@ -214,7 +219,7 @@ struct notification_thread_handle {
  *    - remove trigger from channel_triggers_ht (if applicable),
  *    - remove trigger from session_triggers_ht (if applicable),
  *    - remove trigger from triggers_by_name_uid_ht
- *    - remove trigger from triggers_ht
+ *    - remove trigger from triggers_by_token
  *
  * 5) Reception of a channel monitor sample from the consumer daemon
  *    - evaluate the conditions associated with the triggers found in
@@ -259,6 +264,8 @@ struct notification_thread_handle {
  *    - Look-up notification_trigger_clients_ht and remove the client
  *      from the list of clients.
  */
+struct lttng_trigger_ht_element;
+
 struct notification_thread_state {
 	int notification_channel_socket;
 	struct lttng_poll_event events;
@@ -270,7 +277,7 @@ struct notification_thread_state {
 	struct cds_lfht *notification_trigger_clients_ht;
 	struct cds_lfht *channels_ht;
 	struct cds_lfht *sessions_ht;
-	struct cds_lfht *triggers_ht;
+	std::map<std::uint64_t, lttng_trigger_ht_element *> triggers_by_token;
 	struct cds_lfht *triggers_by_name_uid_ht;
 	struct cds_lfht *trigger_tokens_ht;
 	struct {

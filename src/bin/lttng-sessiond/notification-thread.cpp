@@ -325,12 +325,9 @@ void fini_thread_state(struct notification_thread_state *state)
 		ret = cds_lfht_destroy(state->client_id_ht, nullptr);
 		LTTNG_ASSERT(!ret);
 	}
-	if (state->triggers_ht) {
-		ret = handle_notification_thread_trigger_unregister_all(state);
-		LTTNG_ASSERT(!ret);
-		ret = cds_lfht_destroy(state->triggers_ht, nullptr);
-		LTTNG_ASSERT(!ret);
-	}
+	ret = handle_notification_thread_trigger_unregister_all(state);
+	LTTNG_ASSERT(!ret);
+	LTTNG_ASSERT(state->triggers_by_token.empty());
 	if (state->channel_triggers_ht) {
 		ret = cds_lfht_destroy(state->channel_triggers_ht, nullptr);
 		LTTNG_ASSERT(!ret);
@@ -403,7 +400,8 @@ int init_thread_state(struct notification_thread_handle *handle,
 {
 	int ret;
 
-	memset(state, 0, sizeof(*state));
+	/* Value-initialize: `state` has non-trivial members. */
+	*state = {};
 	state->notification_channel_socket = -1;
 	state->trigger_id.next_tracer_token = 1;
 	lttng_poll_init(&state->events);
@@ -470,11 +468,6 @@ int init_thread_state(struct notification_thread_handle *handle,
 	state->sessions_ht = cds_lfht_new(
 		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, nullptr);
 	if (!state->sessions_ht) {
-		goto error;
-	}
-	state->triggers_ht = cds_lfht_new(
-		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, nullptr);
-	if (!state->triggers_ht) {
 		goto error;
 	}
 	state->triggers_by_name_uid_ht = cds_lfht_new(

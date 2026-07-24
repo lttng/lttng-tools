@@ -110,20 +110,19 @@ struct lttng_session_trigger_list {
 	struct rcu_head rcu_node;
 };
 
+struct lttng_trigger_ht_element {
+	struct lttng_trigger *trigger;
+	struct cds_lfht_node node_by_name_uid;
+	struct cds_list_head client_list_trigger_node;
+	/* call_rcu delayed reclaim. */
+	struct rcu_head rcu_node;
+};
+
 namespace {
 struct lttng_trigger_list_element {
 	/* No ownership of the trigger object is assumed. */
 	struct lttng_trigger *trigger;
 	struct cds_list_head node;
-};
-
-struct lttng_trigger_ht_element {
-	struct lttng_trigger *trigger;
-	struct cds_lfht_node node;
-	struct cds_lfht_node node_by_name_uid;
-	struct cds_list_head client_list_trigger_node;
-	/* call_rcu delayed reclaim. */
-	struct rcu_head rcu_node;
 };
 
 struct lttng_condition_list_element {
@@ -294,18 +293,6 @@ int match_channel_info(struct cds_lfht_node *node, const void *key)
 
 	return (channel_key->key == channel_info->key.key) &&
 		(channel_key->domain == channel_info->key.domain);
-}
-} /* namespace */
-
-namespace {
-int match_trigger(struct cds_lfht_node *node, const void *key)
-{
-	struct lttng_trigger *trigger_key = (struct lttng_trigger *) key;
-	struct lttng_trigger_ht_element *trigger_ht_element;
-
-	trigger_ht_element = caa_container_of(node, struct lttng_trigger_ht_element, node);
-
-	return !!lttng_trigger_is_equal(trigger_key, trigger_ht_element->trigger);
 }
 } /* namespace */
 
@@ -1697,7 +1684,8 @@ int lttng_session_trigger_list_add(struct lttng_session_trigger_list *list,
 	}
 	CDS_INIT_LIST_HEAD(&new_element->node);
 	new_element->trigger = trigger;
-	cds_list_add(&new_element->node, &list->list);
+	/* Add at the end to keep the registration order. */
+	cds_list_add_tail(&new_element->node, &list->list);
 end:
 	return ret;
 }
@@ -1745,17 +1733,15 @@ lttng_session_trigger_list_build(const struct notification_thread_state *state,
 	session_trigger_list =
 		lttng_session_trigger_list_create(session_name, state->session_triggers_ht);
 
-	for (auto *trigger_ht_element :
-	     lttng::urcu::lfht_iteration_adapter<lttng_trigger_ht_element,
-						 decltype(lttng_trigger_ht_element::node),
-						 &lttng_trigger_ht_element::node>(
-		     *state->triggers_ht)) {
-		if (!trigger_applies_to_session(trigger_ht_element->trigger, session_name)) {
+	/* The map is keyed by tracer token, hence in registration order. */
+	for (const auto& trigger_entry : state->triggers_by_token) {
+		auto *const trigger = trigger_entry.second->trigger;
+
+		if (!trigger_applies_to_session(trigger, session_name)) {
 			continue;
 		}
 
-		const auto ret = lttng_session_trigger_list_add(session_trigger_list,
-								trigger_ht_element->trigger);
+		const auto ret = lttng_session_trigger_list_add(session_trigger_list, trigger);
 		if (ret) {
 			goto error;
 		}
@@ -1859,25 +1845,25 @@ int handle_notification_thread_command_add_channel(struct notification_thread_st
 		goto error;
 	}
 
-	/* Build a list of all triggers applying to the new channel. */
-	for (auto *trigger_ht_element :
-	     lttng::urcu::lfht_iteration_adapter<lttng_trigger_ht_element,
-						 decltype(lttng_trigger_ht_element::node),
-						 &lttng_trigger_ht_element::node>(
-		     *state->triggers_ht)) {
-		struct lttng_trigger_list_element *new_element;
+	/*
+	 * Build a list of all triggers applying to the new channel. The map is
+	 * keyed by tracer token, hence in registration order.
+	 */
+	for (const auto& trigger_entry : state->triggers_by_token) {
+		auto *const trigger = trigger_entry.second->trigger;
 
-		if (!trigger_applies_to_channel(trigger_ht_element->trigger, new_channel_info)) {
+		if (!trigger_applies_to_channel(trigger, new_channel_info)) {
 			continue;
 		}
 
-		new_element = zmalloc<lttng_trigger_list_element>();
+		auto *const new_element = zmalloc<lttng_trigger_list_element>();
 		if (!new_element) {
 			goto error;
 		}
+
 		CDS_INIT_LIST_HEAD(&new_element->node);
-		new_element->trigger = trigger_ht_element->trigger;
-		cds_list_add(&new_element->node, &trigger_list);
+		new_element->trigger = trigger;
+		cds_list_add_tail(&new_element->node, &trigger_list);
 		trigger_count++;
 	}
 
@@ -2443,11 +2429,9 @@ int handle_notification_thread_command_list_triggers(struct notification_thread_
 		goto end;
 	}
 
-	for (auto *trigger_ht_element :
-	     lttng::urcu::lfht_iteration_adapter<lttng_trigger_ht_element,
-						 decltype(lttng_trigger_ht_element::node),
-						 &lttng_trigger_ht_element::node>(
-		     *state->triggers_ht)) {
+	for (const auto& trigger_entry : state->triggers_by_token) {
+		auto *const trigger_ht_element = trigger_entry.second;
+
 		/*
 		 * Only return the triggers to which the client has access.
 		 * The root user has visibility over all triggers.
@@ -2511,14 +2495,10 @@ int handle_notification_thread_command_get_trigger(struct notification_thread_st
 	const char *trigger_name;
 	uid_t trigger_owner_uid;
 
-	for (auto *trigger_ht_element :
-	     lttng::urcu::lfht_iteration_adapter<lttng_trigger_ht_element,
-						 decltype(lttng_trigger_ht_element::node),
-						 &lttng_trigger_ht_element::node>(
-		     *state->triggers_ht)) {
-		if (lttng_trigger_is_equal(trigger, trigger_ht_element->trigger)) {
+	for (const auto& trigger_entry : state->triggers_by_token) {
+		if (lttng_trigger_is_equal(trigger, trigger_entry.second->trigger)) {
 			/* Take one reference on the return trigger. */
-			*registered_trigger = trigger_ht_element->trigger;
+			*registered_trigger = trigger_entry.second->trigger;
 			lttng_trigger_get(*registered_trigger);
 			ret = 0;
 			cmd_result = LTTNG_OK;
@@ -2670,7 +2650,8 @@ int bind_trigger_to_matching_channels(struct lttng_trigger *trigger,
 		}
 		CDS_INIT_LIST_HEAD(&trigger_list_element->node);
 		trigger_list_element->trigger = trigger;
-		cds_list_add(&trigger_list_element->node, &trigger_list->list);
+		/* Append to keep the list in trigger registration order. */
+		cds_list_add_tail(&trigger_list_element->node, &trigger_list->list);
 		DBG("Newly registered trigger bound to channel \"%s\"", channel->name);
 	}
 end:
@@ -2761,7 +2742,10 @@ notif_thread_state_remove_trigger_ht_elem(struct notification_thread_state *stat
 	LTTNG_ASSERT(state);
 	LTTNG_ASSERT(trigger_ht_element);
 
-	cds_lfht_del(state->triggers_ht, &trigger_ht_element->node);
+	const auto erased = state->triggers_by_token.erase(
+		lttng_trigger_get_tracer_token(trigger_ht_element->trigger));
+
+	LTTNG_ASSERT(erased == 1);
 	cds_lfht_del(state->triggers_by_name_uid_ht, &trigger_ht_element->node_by_name_uid);
 }
 } /* namespace */
@@ -2897,27 +2881,24 @@ int handle_notification_thread_command_register_trigger(struct notification_thre
 		goto error;
 	}
 
+	/* Reject the registration of a duplicate trigger. */
+	for (const auto& trigger_entry : state->triggers_by_token) {
+		if (lttng_trigger_is_equal(trigger, trigger_entry.second->trigger)) {
+			/* Not a fatal error, simply report it to the client. */
+			*cmd_result = LTTNG_ERR_TRIGGER_EXISTS;
+			ret = 0;
+			goto error;
+		}
+	}
+
 	trigger_ht_element = zmalloc<lttng_trigger_ht_element>();
 	if (!trigger_ht_element) {
 		ret = -1;
 		goto error;
 	}
 
-	/* Add trigger to the trigger_ht. */
-	cds_lfht_node_init(&trigger_ht_element->node);
 	cds_lfht_node_init(&trigger_ht_element->node_by_name_uid);
 	trigger_ht_element->trigger = trigger;
-
-	node = cds_lfht_add_unique(state->triggers_ht,
-				   lttng_condition_hash(condition),
-				   match_trigger,
-				   trigger,
-				   &trigger_ht_element->node);
-	if (node != &trigger_ht_element->node) {
-		/* Not a fatal error, simply report it to the client. */
-		*cmd_result = LTTNG_ERR_TRIGGER_EXISTS;
-		goto error_free_ht_element;
-	}
 
 	node = cds_lfht_add_unique(state->triggers_by_name_uid_ht,
 				   hash_trigger_by_name_uid(trigger),
@@ -2925,7 +2906,19 @@ int handle_notification_thread_command_register_trigger(struct notification_thre
 				   trigger,
 				   &trigger_ht_element->node_by_name_uid);
 	if (node != &trigger_ht_element->node_by_name_uid) {
-		/* Internal error: add to triggers_ht should have failed. */
+		/* Internal error: the duplicate check above should have failed. */
+		ret = -1;
+		goto error_free_ht_element;
+	}
+
+	try {
+		state->triggers_by_token.emplace(trigger_tracer_token, trigger_ht_element);
+	} catch (const std::exception& ex) {
+		ERR_FMT("Failed to add trigger to the registered trigger map: trigger name = `{}`, tracer token = {}, error = `{}`",
+			trigger_name,
+			trigger_tracer_token,
+			ex.what());
+		cds_lfht_del(state->triggers_by_name_uid_ht, &trigger_ht_element->node_by_name_uid);
 		ret = -1;
 		goto error_free_ht_element;
 	}
@@ -2990,7 +2983,7 @@ int handle_notification_thread_command_register_trigger(struct notification_thre
 
 	/*
 	 * Ownership of the trigger and of its wrapper was transfered to
-	 * the triggers_ht. Same for token ht element if necessary.
+	 * triggers_by_token. Same for token ht element if necessary.
 	 */
 	trigger_ht_element = nullptr;
 	free_trigger = false;
@@ -3231,8 +3224,6 @@ int handle_notification_thread_command_unregister_trigger(struct notification_th
 							  const struct lttng_trigger *trigger,
 							  enum lttng_error_code *_cmd_reply)
 {
-	struct cds_lfht_iter iter;
-	struct cds_lfht_node *triggers_ht_node;
 	struct notification_client_list *client_list;
 	struct lttng_trigger_ht_element *trigger_ht_element = nullptr;
 	const struct lttng_condition *condition = lttng_trigger_get_const_condition(trigger);
@@ -3240,18 +3231,19 @@ int handle_notification_thread_command_unregister_trigger(struct notification_th
 
 	const lttng::urcu::read_lock_guard read_lock;
 
-	cds_lfht_lookup(
-		state->triggers_ht, lttng_condition_hash(condition), match_trigger, trigger, &iter);
-	triggers_ht_node = cds_lfht_iter_get_node(&iter);
-	if (!triggers_ht_node) {
+	for (const auto& trigger_entry : state->triggers_by_token) {
+		if (lttng_trigger_is_equal(trigger, trigger_entry.second->trigger)) {
+			trigger_ht_element = trigger_entry.second;
+			break;
+		}
+	}
+
+	if (!trigger_ht_element) {
 		cmd_reply = LTTNG_ERR_TRIGGER_NOT_FOUND;
 		goto end;
 	} else {
 		cmd_reply = LTTNG_OK;
 	}
-
-	trigger_ht_element =
-		caa_container_of(triggers_ht_node, struct lttng_trigger_ht_element, node);
 
 	switch (get_condition_binding_object(condition)) {
 	case LTTNG_OBJECT_TYPE_CHANNEL:
@@ -3329,7 +3321,7 @@ int handle_notification_thread_command_unregister_trigger(struct notification_th
 		client_list = nullptr;
 	}
 
-	/* Remove trigger from triggers_ht. */
+	/* Remove trigger from triggers_by_token. */
 	notif_thread_state_remove_trigger_ht_elem(state, trigger_ht_element);
 
 	/* Release the ownership of the trigger. */
@@ -3737,14 +3729,16 @@ int handle_notification_thread_client_disconnect_all(struct notification_thread_
 int handle_notification_thread_trigger_unregister_all(struct notification_thread_state *state)
 {
 	bool error_occurred = false;
+	auto trigger_entry_it = state->triggers_by_token.begin();
 
-	for (auto *trigger_ht_element :
-	     lttng::urcu::lfht_iteration_adapter<lttng_trigger_ht_element,
-						 decltype(lttng_trigger_ht_element::node),
-						 &lttng_trigger_ht_element::node>(
-		     *state->triggers_ht)) {
+	while (trigger_entry_it != state->triggers_by_token.end()) {
+		auto *const trigger = trigger_entry_it->second->trigger;
+
+		/* Advance before unregistering, which erases the current entry. */
+		++trigger_entry_it;
+
 		const int ret = handle_notification_thread_command_unregister_trigger(
-			state, trigger_ht_element->trigger, nullptr);
+			state, trigger, nullptr);
 		if (ret) {
 			error_occurred = true;
 		}
