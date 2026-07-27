@@ -20,8 +20,10 @@
 #include <common/time.hpp>
 
 #include <algorithm>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <stdarg.h>
 #include <string.h>
 #include <sys/ioctl.h>
@@ -402,10 +404,113 @@ int kernctl_create_event_notifier_group_notification_fd(int group_fd)
 				    LTTNG_KERNEL_ABI_EVENT_NOTIFIER_GROUP_NOTIFICATION_FD);
 }
 
+namespace {
+/*
+ * The extensible counter commands are only guaranteed to be available
+ * against a tracer advertising ABI 2.8 or later; older commands are used
+ * otherwise. See kernctl_set_tracer_abi_version()'s documentation.
+ */
+std::atomic<std::uint32_t> registered_tracer_abi_version{ 0 };
+
+constexpr std::uint32_t encoded_tracer_abi_version(std::uint16_t major, std::uint16_t minor)
+{
+	return (static_cast<std::uint32_t>(major) << 16) | minor;
+}
+
+bool use_extensible_counter_commands()
+{
+	const auto version = registered_tracer_abi_version.load();
+
+	/* The tracer ABI version must be registered before issuing counter commands. */
+	LTTNG_ASSERT(version != 0);
+	return version >= encoded_tracer_abi_version(2, 8);
+}
+
+int old_counter_conf_from_counter_conf(const struct lttng_kernel_abi_counter_conf& conf,
+				       struct lttng_kernel_abi_old_counter_conf& old_conf)
+{
+	if (conf.dimension_array.number_dimensions > LTTNG_KERNEL_ABI_OLD_COUNTER_DIMENSION_MAX) {
+		return -EINVAL;
+	}
+
+	old_conf.arithmetic = conf.arithmetic;
+	old_conf.bitness = conf.bitness;
+	old_conf.number_dimensions = conf.dimension_array.number_dimensions;
+	old_conf.global_sum_step = conf.global_sum_step;
+	old_conf.coalesce_hits = !!(conf.flags & LTTNG_KERNEL_ABI_COUNTER_CONF_FLAG_COALESCE_HITS);
+
+	const auto *dimensions_begin =
+		reinterpret_cast<const char *>(static_cast<uintptr_t>(conf.dimension_array.ptr));
+
+	for (uint32_t dimension_index = 0; dimension_index < conf.dimension_array.number_dimensions;
+	     dimension_index++) {
+		const auto& dimension =
+			*reinterpret_cast<const struct lttng_kernel_abi_counter_dimension *>(
+				dimensions_begin +
+				(dimension_index * conf.dimension_array.elem_len));
+
+		/*
+		 * The old ABI has no notion of a dimension key type: its
+		 * dimensions are plain index-keyed arrays. The key_type field
+		 * is simply dropped, which is safe since this fallback only
+		 * serves error counters (a single index-keyed dimension).
+		 */
+		auto& old_dimension = old_conf.dimensions[dimension_index];
+
+		old_dimension.size = dimension.size;
+		old_dimension.underflow_index = dimension.underflow_index;
+		old_dimension.overflow_index = dimension.overflow_index;
+		old_dimension.has_underflow =
+			!!(dimension.flags & LTTNG_KERNEL_ABI_COUNTER_DIMENSION_FLAG_UNDERFLOW);
+		old_dimension.has_overflow =
+			!!(dimension.flags & LTTNG_KERNEL_ABI_COUNTER_DIMENSION_FLAG_OVERFLOW);
+	}
+
+	return 0;
+}
+
+int old_counter_index_from_counter_index(const struct lttng_kernel_abi_counter_index& index,
+					 struct lttng_kernel_abi_old_counter_index& old_index)
+{
+	if (index.number_dimensions > LTTNG_KERNEL_ABI_OLD_COUNTER_DIMENSION_MAX) {
+		return -EINVAL;
+	}
+
+	const auto *dimension_indexes =
+		reinterpret_cast<const uint64_t *>(static_cast<uintptr_t>(index.ptr));
+
+	old_index.number_dimensions = index.number_dimensions;
+	for (uint32_t dimension_index = 0; dimension_index < index.number_dimensions;
+	     dimension_index++) {
+		old_index.dimension_indexes[dimension_index] = dimension_indexes[dimension_index];
+	}
+
+	return 0;
+}
+
+void counter_value_from_old_counter_value(const struct lttng_kernel_abi_old_counter_value& old_value,
+					  struct lttng_kernel_abi_counter_value& value)
+{
+	value.value = old_value.value;
+	value.flags = (old_value.underflow ? LTTNG_KERNEL_ABI_COUNTER_VALUE_FLAG_UNDERFLOW : 0) |
+		(old_value.overflow ? LTTNG_KERNEL_ABI_COUNTER_VALUE_FLAG_OVERFLOW : 0);
+}
+} /* namespace */
+
 int kernctl_create_event_notifier_group_error_counter(
 	int group_fd, const struct lttng_kernel_abi_counter_conf *error_counter_conf)
 {
-	return LTTNG_IOCTL_NO_CHECK(group_fd, LTTNG_KERNEL_ABI_COUNTER, error_counter_conf);
+	if (use_extensible_counter_commands()) {
+		return LTTNG_IOCTL_NO_CHECK(group_fd, LTTNG_KERNEL_ABI_COUNTER, error_counter_conf);
+	}
+
+	struct lttng_kernel_abi_old_counter_conf old_conf = {};
+	const auto ret = old_counter_conf_from_counter_conf(*error_counter_conf, old_conf);
+	if (ret) {
+		return ret;
+	}
+
+	return LTTNG_IOCTL_NO_CHECK(group_fd, LTTNG_KERNEL_ABI_OLD_COUNTER, &old_conf);
 }
 
 int kernctl_create_session_counter(int session_fd,
@@ -551,18 +656,61 @@ int kernctl_counter_map_descriptor(int counter_fd,
 
 int kernctl_counter_read(int counter_fd, struct lttng_kernel_abi_counter_read *counter_read)
 {
-	return LTTNG_IOCTL_NO_CHECK(counter_fd, LTTNG_KERNEL_ABI_COUNTER_READ, counter_read);
+	if (use_extensible_counter_commands()) {
+		return LTTNG_IOCTL_NO_CHECK(
+			counter_fd, LTTNG_KERNEL_ABI_COUNTER_READ, counter_read);
+	}
+
+	struct lttng_kernel_abi_old_counter_read old_read = {};
+	auto ret = old_counter_index_from_counter_index(counter_read->index, old_read.index);
+	if (ret) {
+		return ret;
+	}
+
+	old_read.cpu = counter_read->cpu;
+	ret = LTTNG_IOCTL_NO_CHECK(counter_fd, LTTNG_KERNEL_ABI_OLD_COUNTER_READ, &old_read);
+	if (ret == 0) {
+		counter_value_from_old_counter_value(old_read.value, counter_read->value);
+	}
+
+	return ret;
 }
 
 int kernctl_counter_get_aggregate_value(int counter_fd,
 					struct lttng_kernel_abi_counter_aggregate *value)
 {
-	return LTTNG_IOCTL_NO_CHECK(counter_fd, LTTNG_KERNEL_ABI_COUNTER_AGGREGATE, value);
+	if (use_extensible_counter_commands()) {
+		return LTTNG_IOCTL_NO_CHECK(counter_fd, LTTNG_KERNEL_ABI_COUNTER_AGGREGATE, value);
+	}
+
+	struct lttng_kernel_abi_old_counter_aggregate old_aggregate = {};
+	auto ret = old_counter_index_from_counter_index(value->index, old_aggregate.index);
+	if (ret) {
+		return ret;
+	}
+
+	ret = LTTNG_IOCTL_NO_CHECK(
+		counter_fd, LTTNG_KERNEL_ABI_OLD_COUNTER_AGGREGATE, &old_aggregate);
+	if (ret == 0) {
+		counter_value_from_old_counter_value(old_aggregate.value, value->value);
+	}
+
+	return ret;
 }
 
 int kernctl_counter_clear(int counter_fd, struct lttng_kernel_abi_counter_clear *clear)
 {
-	return LTTNG_IOCTL_NO_CHECK(counter_fd, LTTNG_KERNEL_ABI_COUNTER_CLEAR, clear);
+	if (use_extensible_counter_commands()) {
+		return LTTNG_IOCTL_NO_CHECK(counter_fd, LTTNG_KERNEL_ABI_COUNTER_CLEAR, clear);
+	}
+
+	struct lttng_kernel_abi_old_counter_clear old_clear = {};
+	const auto ret = old_counter_index_from_counter_index(clear->index, old_clear.index);
+	if (ret) {
+		return ret;
+	}
+
+	return LTTNG_IOCTL_NO_CHECK(counter_fd, LTTNG_KERNEL_ABI_OLD_COUNTER_CLEAR, &old_clear);
 }
 
 int kernctl_create_event_notifier(int group_fd,
@@ -662,6 +810,19 @@ end:
 int kernctl_tracer_abi_version(int fd, struct lttng_kernel_abi_tracer_abi_version *v)
 {
 	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_TRACER_ABI_VERSION, v);
+}
+
+void kernctl_set_tracer_abi_version(const struct lttng_kernel_abi_tracer_abi_version& version)
+{
+	DBG_FMT("Registering kernel tracer ABI version: version={}.{}",
+		version.major,
+		version.minor);
+
+	LTTNG_ASSERT(version.major <= std::numeric_limits<std::uint16_t>::max() &&
+		     version.minor <= std::numeric_limits<std::uint16_t>::max());
+	registered_tracer_abi_version.store(
+		encoded_tracer_abi_version(static_cast<std::uint16_t>(version.major),
+					   static_cast<std::uint16_t>(version.minor)));
 }
 
 int kernctl_wait_quiescent(int fd)

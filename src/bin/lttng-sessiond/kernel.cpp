@@ -809,6 +809,8 @@ int kernel_validate_version(struct lttng_kernel_abi_tracer_version *version,
 	     version->minor,
 	     abi_version->major,
 	     abi_version->minor);
+
+	kernctl_set_tracer_abi_version(*abi_version);
 	return 0;
 
 error_version:
