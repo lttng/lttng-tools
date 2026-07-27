@@ -103,6 +103,9 @@ int kernctl_tracepoint_list(int fd);
 int kernctl_syscall_list(int fd);
 int kernctl_tracer_version(int fd, struct lttng_kernel_abi_tracer_version *v);
 int kernctl_tracer_abi_version(int fd, struct lttng_kernel_abi_tracer_abi_version *v);
+
+void kernctl_set_tracer_abi_version(const struct lttng_kernel_abi_tracer_abi_version& version);
+
 int kernctl_wait_quiescent(int fd);
 
 /*

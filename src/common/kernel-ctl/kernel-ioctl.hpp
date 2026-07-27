@@ -10,7 +10,7 @@
 #define _LTT_KERNEL_IOCTL_H
 
 #define LTTNG_KERNEL_ABI_MAJOR_VERSION 2
-#define LTTNG_KERNEL_ABI_MINOR_VERSION 7
+#define LTTNG_KERNEL_ABI_MINOR_VERSION 8
 
 /* Get a snapshot of the current ring buffer producer and consumer positions */
 #define LTTNG_KERNEL_ABI_RING_BUFFER_SNAPSHOT _IO(0xF6, 0x00)
@@ -152,8 +152,14 @@
 #define LTTNG_KERNEL_ABI_DISABLE _IO(0xF6, 0x83)
 
 /* Event notifier group and session ioctl */
-/* (0xF6, 0x84) is reserved for the old counter ABI. */
-#define LTTNG_KERNEL_ABI_COUNTER _IOW(0xF6, 0x85, struct lttng_kernel_abi_counter_conf)
+/*
+ * The 0x84 command belongs to the old (pre-2.14 lttng-modules) counter ABI
+ * and only applies to an event notifier group's error counter. It is used
+ * against tracers advertising an ABI older than 2.8, for which
+ * LTTNG_KERNEL_ABI_COUNTER isn't guaranteed to be available.
+ */
+#define LTTNG_KERNEL_ABI_OLD_COUNTER _IOW(0xF6, 0x84, struct lttng_kernel_abi_old_counter_conf)
+#define LTTNG_KERNEL_ABI_COUNTER     _IOW(0xF6, 0x85, struct lttng_kernel_abi_counter_conf)
 
 /* Event and event notifier FD ioctl */
 #define LTTNG_KERNEL_ABI_FILTER	      _IO(0xF6, 0x90)
@@ -174,7 +180,18 @@
 #define LTTNG_KERNEL_ABI_CAPTURE _IO(0xF6, 0xB8)
 
 /* Counter file descriptor ioctl */
-/* (0xF6, {0xC0, 0xC1, 0xC2}) are reserved for the old counter ABI. */
+
+/*
+ * The {0xC0, 0xC1, 0xC2} commands were introduced in the 2.13 release for event
+ * notifier error reporting. They are used with tracers advertising an ABI older
+ * than 2.8.
+ */
+#define LTTNG_KERNEL_ABI_OLD_COUNTER_READ \
+	_IOWR(0xF6, 0xC0, struct lttng_kernel_abi_old_counter_read)
+#define LTTNG_KERNEL_ABI_OLD_COUNTER_AGGREGATE \
+	_IOWR(0xF6, 0xC1, struct lttng_kernel_abi_old_counter_aggregate)
+#define LTTNG_KERNEL_ABI_OLD_COUNTER_CLEAR \
+	_IOW(0xF6, 0xC2, struct lttng_kernel_abi_old_counter_clear)
 #define LTTNG_KERNEL_ABI_COUNTER_MAP_NR_DESCRIPTORS _IOR(0xF6, 0xC3, uint64_t)
 #define LTTNG_KERNEL_ABI_COUNTER_MAP_DESCRIPTOR \
 	_IOWR(0xF6, 0xC4, struct lttng_kernel_abi_counter_map_descriptor)
