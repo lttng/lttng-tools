@@ -230,6 +230,9 @@ noinst_SCRIPTS += \
 	notification/test_rotation \
 	notification/tests.py \
 	notification/util_event_generator.py \
+	recording-rules/recording_rule_propagation_utils.py \
+	recording-rules/test_recording_rule_propagation_kernel.py \
+	recording-rules/test_recording_rule_propagation_ust.py \
 	regen-metadata/test_ust \
 	regen-metadata/test_kernel \
 	regen-metadata/test_regenerate_rotate.py \
