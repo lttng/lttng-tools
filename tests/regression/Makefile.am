@@ -19,6 +19,7 @@ SERIAL_TESTS = tools/base-path/test_ust \
 	tools/map/test_map_key_exhaustion_kernel.py \
 	tools/map/test_map_only_no_consumerd.py \
 	tools/map/test_rule_filters_kernel.py \
+	tools/recording-rules/test_recording_rule_propagation_kernel.py \
 	tools/client/test_add_trigger.py \
 	tools/filtering/test_invalid_filter \
 	tools/filtering/test_unsupported_op \
@@ -113,6 +114,7 @@ TESTS = tools/map/test_buffer_ownership_models.py \
 	tools/live/test_new_viewer_does_not_see_old_events.py \
 	tools/live/test_per_application_leaks.py \
 	tools/lttng-ctl/test_liblttng-ctl_abi.py \
+	tools/recording-rules/test_recording_rule_propagation_ust.py \
 	tools/context/test_ust.py \
 	tools/client/test_session_commands.py \
 	tools/client/test_event_rule_listing.py \
