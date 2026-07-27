@@ -2,10 +2,14 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-noinst_SCRIPTS = launch_ust_app test_multi_sessions_per_uid_10app \
-				 test_multi_sessions_per_uid_5app_streaming
-EXTRA_DIST = launch_ust_app test_multi_sessions_per_uid_10app \
-             test_multi_sessions_per_uid_5app_streaming
+noinst_SCRIPTS = kill_relayd launch_ust_app \
+				 test_multi_sessions_per_uid_10app \
+				 test_multi_sessions_per_uid_5app_streaming \
+				 test_multi_sessions_per_uid_5app_streaming_kill_relayd
+EXTRA_DIST = kill_relayd launch_ust_app \
+             test_multi_sessions_per_uid_10app \
+             test_multi_sessions_per_uid_5app_streaming \
+             test_multi_sessions_per_uid_5app_streaming_kill_relayd
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
