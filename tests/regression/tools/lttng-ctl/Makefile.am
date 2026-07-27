@@ -8,10 +8,6 @@ if HAVE_LIBLTTNG_UST_CTL
 
 noinst_LTLIBRARIES += liblttng-ust-ctl-fuzz.la
 
-noinst_SCRIPTS += \
-	lttng-ctl/test_liblttng-ctl_abi.py \
-	lttng-ctl/test_robust_protocol.py
-
 liblttng_ust_ctl_fuzz_la_SOURCES = \
 	lttng-ctl/liblttng-ust-ctl-fuzz.cpp
 
