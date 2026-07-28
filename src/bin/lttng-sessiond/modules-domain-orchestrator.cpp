@@ -1450,6 +1450,18 @@ void ls::modules::domain_orchestrator::add_map_channel(const lsc::map_channel_co
 {
 	DBG_FMT("Creating kernel map channel from configuration: config={}", config);
 
+	if (!kernctl_is_extensible_counter_abi_supported()) {
+		/* The ABI version members are copied since they belong to a packed structure. */
+		const std::uint32_t tracer_abi_major = the_kernel_tracer_abi_version.major;
+		const std::uint32_t tracer_abi_minor = the_kernel_tracer_abi_version.minor;
+
+		LTTNG_THROW_UNSUPPORTED_ERROR(fmt::format(
+			"Map channels are not supported by the lttng-modules tracer: map_channel_name=`{}`, tracer_abi_version={}.{}, minimal_tracer_abi_version=2.8",
+			config.name,
+			tracer_abi_major,
+			tracer_abi_minor));
+	}
+
 	/*
 	 * A 32-bit kernel can't create a 64-bit counter, so reject the
 	 * configuration. The kernel's ABI is guessed by using the session
