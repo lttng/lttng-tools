@@ -137,7 +137,8 @@ libcommon_lgpl_la_SOURCES = \
 	uri.cpp uri.hpp \
 	userspace-probe.cpp \
 	urcu.hpp \
-	utils.cpp utils.hpp
+	utils.cpp utils.hpp \
+	value-file.hpp
 
 if IS_LINUX
 libcommon_lgpl_la_SOURCES += \

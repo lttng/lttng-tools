@@ -16,9 +16,7 @@
 
 #include <lttng/lttng-error.h>
 
-#include <fstream>
 #include <getopt.h>
-#include <iostream>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/types.h>
@@ -81,44 +79,6 @@ enum lttng_error_code utils_check_enough_available_memory(uint64_t num_bytes,
  * - `str` contains invalid
  */
 int utils_parse_unsigned_long_long(const char *str, unsigned long long *value);
-
-/*
- * Write a value to the given path and filename.
- *
- * Returns 0 on success and -1 on failure.
- */
-template <typename ValueType>
-int utils_create_value_file(const ValueType value, const lttng::c_string_view filepath)
-{
-	DBG_FMT("Creating value file: path=`{}`, value={}", filepath, value);
-	try {
-		std::ofstream file;
-		const auto tmp_filepath = std::string(filepath.data()) + ".tmp";
-
-		file.exceptions(std::ofstream::failbit | std::ofstream::badbit);
-		/* Open the temporary file with truncation to create or overwrite it. */
-		file.open(tmp_filepath, std::ios::out | std::ios::trunc);
-		file << value << std::endl;
-		file.close();
-
-		/* Rename the temporary file to the final filepath. */
-		if (rename(tmp_filepath.c_str(), filepath.data()) != 0) {
-			ERR_FMT("Failed to rename temporary file: temp_path=`{}`, final_path=`{}`, error=`{}`",
-				tmp_filepath,
-				filepath,
-				strerror(errno));
-			return -1;
-		}
-	} catch (const std::exception& e) {
-		ERR_FMT("Failed to produce value file: path=`{}`, value={}, error=`{}`",
-			filepath,
-			value,
-			e.what());
-		return -1;
-	}
-
-	return 0;
-}
 
 std::vector<int> list_open_fds();
 std::pair<double, const char *> utils_value_unit_from_size(std::uint64_t bytes);
