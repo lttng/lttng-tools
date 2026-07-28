@@ -982,22 +982,6 @@ void setup_lttng_msg_no_cmd_header(struct command_ctx *cmd_ctx,
 }
 
 /*
- * Check if the current kernel tracer supports the session rotation feature.
- * Return 1 if it does, 0 otherwise.
- */
-int check_rotate_compatible()
-{
-	int ret = 1;
-
-	if (the_kernel_tracer_version.major != 2 || the_kernel_tracer_version.minor < 11) {
-		DBG("Kernel tracer version is not compatible with the rotation feature");
-		ret = 0;
-	}
-
-	return ret;
-}
-
-/*
  * Send data on a unix socket using the liblttsessiondcomm API.
  *
  * Return lttcomm error code.
@@ -1988,7 +1972,7 @@ skip_domain:
 		if (!(*target_session)->has_been_started &&
 		    (*target_session)->kernel_orchestrator &&
 		    ((*target_session)->rotate_timer_period || (*target_session)->rotate_size) &&
-		    !check_rotate_compatible()) {
+		    !kernel_tracer_supports_rotation()) {
 			DBG("Kernel tracer version is not compatible with the rotation feature");
 			ret = LTTNG_ERR_ROTATION_WRONG_VERSION;
 			goto error;
@@ -2325,7 +2309,7 @@ skip_domain:
 		DBG("Client rotate session \"%s\"", (*target_session)->name);
 
 		memset(&rotate_return, 0, sizeof(rotate_return));
-		if ((*target_session)->kernel_orchestrator && !check_rotate_compatible()) {
+		if ((*target_session)->kernel_orchestrator && !kernel_tracer_supports_rotation()) {
 			DBG("Kernel tracer version is not compatible with the rotation feature");
 			ret = LTTNG_ERR_ROTATION_WRONG_VERSION;
 			goto error;
@@ -2407,7 +2391,7 @@ skip_domain:
 		enum lttng_rotation_schedule_type schedule_type;
 		uint64_t value;
 
-		if ((*target_session)->kernel_orchestrator && !check_rotate_compatible()) {
+		if ((*target_session)->kernel_orchestrator && !kernel_tracer_supports_rotation()) {
 			DBG("Kernel tracer version does not support session rotations");
 			ret = LTTNG_ERR_ROTATION_WRONG_VERSION;
 			goto error;

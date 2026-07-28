@@ -771,46 +771,58 @@ error:
 	return -1;
 }
 
+bool kernel_tracer_supports_rotation()
+{
+	const auto is_supported = kernctl_registered_tracer_abi_version().minor >= 4;
+
+	if (!is_supported) {
+		DBG("Kernel tracer version is not compatible with the rotation feature");
+	}
+
+	return is_supported;
+}
+
 /*
  * Get kernel version and validate it.
  */
-int kernel_validate_version(struct lttng_kernel_abi_tracer_version *version,
-			    struct lttng_kernel_abi_tracer_abi_version *abi_version)
+int kernel_validate_version()
 {
+	struct lttng_kernel_abi_tracer_version version = {};
+	struct lttng_kernel_abi_tracer_abi_version abi_version = {};
 	int ret;
 
-	ret = kernctl_tracer_version(kernel_tracer_fd, version);
+	ret = kernctl_tracer_version(kernel_tracer_fd, &version);
 	if (ret < 0) {
 		ERR("Failed to retrieve the lttng-modules version");
 		goto error;
 	}
 
 	/* Validate version */
-	if (version->major != VERSION_MAJOR) {
+	if (version.major != VERSION_MAJOR) {
 		ERR("Kernel tracer major version (%d) is not compatible with lttng-tools major version (%d)",
-		    version->major,
+		    version.major,
 		    VERSION_MAJOR);
 		goto error_version;
 	}
-	ret = kernctl_tracer_abi_version(kernel_tracer_fd, abi_version);
+	ret = kernctl_tracer_abi_version(kernel_tracer_fd, &abi_version);
 	if (ret < 0) {
 		ERR("Failed to retrieve lttng-modules ABI version");
 		goto error;
 	}
-	if (abi_version->major != LTTNG_KERNEL_ABI_MAJOR_VERSION) {
+	if (abi_version.major != LTTNG_KERNEL_ABI_MAJOR_VERSION) {
 		ERR("Kernel tracer ABI version (%d.%d) does not match the expected ABI major version (%d.*)",
-		    abi_version->major,
-		    abi_version->minor,
+		    abi_version.major,
+		    abi_version.minor,
 		    LTTNG_KERNEL_ABI_MAJOR_VERSION);
 		goto error;
 	}
 	DBG2("Kernel tracer version validated (%d.%d, ABI %d.%d)",
-	     version->major,
-	     version->minor,
-	     abi_version->major,
-	     abi_version->minor);
+	     version.major,
+	     version.minor,
+	     abi_version.major,
+	     abi_version.minor);
 
-	kernctl_set_tracer_abi_version(*abi_version);
+	kernctl_set_tracer_abi_version(abi_version);
 	return 0;
 
 error_version:
@@ -1024,7 +1036,7 @@ int init_kernel_tracer()
 	}
 
 	/* Validate kernel version */
-	ret = kernel_validate_version(&the_kernel_tracer_version, &the_kernel_tracer_abi_version);
+	ret = kernel_validate_version();
 	if (ret < 0) {
 		kernel_tracer_status = nonstd::optional<enum lttng_kernel_tracer_status>(
 			LTTNG_KERNEL_TRACER_STATUS_ERR_VERSION_MISMATCH);

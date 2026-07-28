@@ -62,10 +62,6 @@ extern lttng_uuid the_sessiond_uuid;
 extern enum consumerd_state the_ust_consumerd_state;
 extern enum consumerd_state the_kernel_consumerd_state;
 
-/* Set in main.c at boot time of the daemon */
-extern struct lttng_kernel_abi_tracer_version the_kernel_tracer_version;
-extern struct lttng_kernel_abi_tracer_abi_version the_kernel_tracer_abi_version;
-
 /* Notification thread handle. */
 extern struct notification_thread_handle *the_notification_thread_handle;
 
