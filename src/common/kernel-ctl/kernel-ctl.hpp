@@ -106,6 +106,8 @@ int kernctl_tracer_abi_version(int fd, struct lttng_kernel_abi_tracer_abi_versio
 
 void kernctl_set_tracer_abi_version(const struct lttng_kernel_abi_tracer_abi_version& version);
 
+lttng_kernel_abi_tracer_abi_version kernctl_registered_tracer_abi_version();
+
 bool kernctl_is_extensible_counter_abi_supported();
 
 int kernctl_wait_quiescent(int fd);

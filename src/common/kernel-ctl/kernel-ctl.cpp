@@ -417,6 +417,16 @@ constexpr std::uint32_t encoded_tracer_abi_version(std::uint16_t major, std::uin
 	return (static_cast<std::uint32_t>(major) << 16) | minor;
 }
 
+lttng_kernel_abi_tracer_abi_version decoded_tracer_abi_version(std::uint32_t encoded_version)
+{
+	lttng_kernel_abi_tracer_abi_version version = {};
+
+	version.major = encoded_version >> 16;
+	version.minor = encoded_version & 0xffff;
+
+	return version;
+}
+
 int old_counter_conf_from_counter_conf(const struct lttng_kernel_abi_counter_conf& conf,
 				       struct lttng_kernel_abi_old_counter_conf& old_conf)
 {
@@ -823,6 +833,11 @@ void kernctl_set_tracer_abi_version(const struct lttng_kernel_abi_tracer_abi_ver
 	registered_tracer_abi_version.store(
 		encoded_tracer_abi_version(static_cast<std::uint16_t>(version.major),
 					   static_cast<std::uint16_t>(version.minor)));
+}
+
+lttng_kernel_abi_tracer_abi_version kernctl_registered_tracer_abi_version()
+{
+	return decoded_tracer_abi_version(registered_tracer_abi_version.load());
 }
 
 int kernctl_wait_quiescent(int fd)
