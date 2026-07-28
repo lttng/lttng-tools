@@ -21,6 +21,7 @@
 #include <common/consumer/memory-reclaim-timer-task.hpp>
 #include <common/consumer/pending-memory-reclamation-tracker.hpp>
 #include <common/dynamic-array.hpp>
+#include <common/format.hpp>
 #include <common/index/ctf-index.hpp>
 #include <common/index/index.hpp>
 #include <common/io-hint.hpp>

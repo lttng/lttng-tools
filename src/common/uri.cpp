@@ -10,6 +10,7 @@
 
 #include <common/common.hpp>
 #include <common/defaults.hpp>
+#include <common/format.hpp>
 #include <common/make-unique-wrapper.hpp>
 #include <common/string-utils/c-string-view.hpp>
 #include <common/utils.hpp>

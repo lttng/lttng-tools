@@ -8,6 +8,7 @@
  */
 
 #include <common/error.hpp>
+#include <common/format.hpp>
 #include <common/make-unique.hpp>
 #include <common/payload-view.hpp>
 #include <common/payload.hpp>

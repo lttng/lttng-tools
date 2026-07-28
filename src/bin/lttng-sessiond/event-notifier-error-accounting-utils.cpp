@@ -8,6 +8,7 @@
 #include "event-notifier-error-accounting-utils.hpp"
 
 #include <common/error.hpp>
+#include <common/format.hpp>
 
 #include <lttng/trigger/trigger-internal.hpp>
 

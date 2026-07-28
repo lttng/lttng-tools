@@ -35,6 +35,7 @@
 #include <common/dynamic-buffer.hpp>
 #include <common/exception.hpp>
 #include <common/fd-handle.hpp>
+#include <common/format.hpp>
 #include <common/payload-view.hpp>
 #include <common/payload.hpp>
 #include <common/pthread-lock.hpp>

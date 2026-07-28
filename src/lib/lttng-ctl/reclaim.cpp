@@ -8,6 +8,7 @@
 #define _LGPL_SOURCE
 #include "lttng-ctl-helper.hpp"
 
+#include <common/format.hpp>
 #include <common/macros.hpp>
 #include <common/make-unique.hpp>
 #include <common/poller.hpp>

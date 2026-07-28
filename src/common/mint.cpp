@@ -5,6 +5,8 @@
 
 #include "mint.hpp"
 
+#include <common/mint.hpp>
+
 #include <vendor/mint.hpp>
 
 #include <cstdlib>

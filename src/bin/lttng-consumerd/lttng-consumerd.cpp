@@ -16,6 +16,7 @@
 #include <common/consumer/consumer-timer.hpp>
 #include <common/consumer/consumer.hpp>
 #include <common/defaults.hpp>
+#include <common/format.hpp>
 #include <common/make-unique.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/tracepoints.hpp>

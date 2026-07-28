@@ -9,6 +9,7 @@
 
 #include <common/consumer/consumer.hpp>
 #include <common/error.hpp>
+#include <common/format.hpp>
 #include <common/pthread-lock.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/testpoint/testpoint.hpp>

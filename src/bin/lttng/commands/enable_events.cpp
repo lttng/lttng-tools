@@ -8,6 +8,7 @@
 #define _LGPL_SOURCE
 #include <common/compat/getenv.hpp>
 #include <common/compat/string.hpp>
+#include <common/format.hpp>
 #include <common/make-unique-wrapper.hpp>
 #include <common/scope-exit.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>

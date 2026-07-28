@@ -8,6 +8,7 @@
 #define LTTNG_BINARY_VIEW_HPP
 
 #include <common/exception.hpp>
+#include <common/format.hpp>
 
 #include <type_traits>
 

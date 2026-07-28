@@ -17,6 +17,7 @@
 #include <common/compat/string.hpp>
 #include <common/defaults.hpp>
 #include <common/filter/filter-ast.hpp>
+#include <common/format.hpp>
 #include <common/lttng-elf.hpp>
 #include <common/lttng-kernel.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>

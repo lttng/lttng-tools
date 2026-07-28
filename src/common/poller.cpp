@@ -5,6 +5,7 @@
  */
 
 #include <common/error.hpp>
+#include <common/format.hpp>
 #include <common/poller.hpp>
 
 namespace {

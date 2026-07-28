@@ -29,6 +29,7 @@
 #include <common/defaults.hpp>
 #include <common/dynamic-buffer.hpp>
 #include <common/fd-tracker/utils.hpp>
+#include <common/format.hpp>
 #include <common/fs-handle.hpp>
 #include <common/futex.hpp>
 #include <common/index/index.hpp>

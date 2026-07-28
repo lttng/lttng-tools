@@ -12,6 +12,7 @@
 #include <common/dynamic-array.hpp>
 #include <common/dynamic-buffer.hpp>
 #include <common/error.hpp>
+#include <common/format.hpp>
 #include <common/macros.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 

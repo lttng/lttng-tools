@@ -11,6 +11,7 @@
 
 #include <common/compat/getenv.hpp>
 #include <common/file-descriptor.hpp>
+#include <common/format.hpp>
 #include <common/string-utils/c-string-view.hpp>
 
 #include <sys/socket.h>

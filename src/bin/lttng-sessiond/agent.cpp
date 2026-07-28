@@ -15,6 +15,7 @@
 #include <common/common.hpp>
 #include <common/compat/endian.hpp>
 #include <common/defaults.hpp>
+#include <common/format.hpp>
 #include <common/sessiond-comm/agent.hpp>
 #include <common/urcu.hpp>
 

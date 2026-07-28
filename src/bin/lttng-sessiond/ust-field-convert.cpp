@@ -13,6 +13,7 @@
 #include "ust-trace-class.hpp"
 
 #include <common/exception.hpp>
+#include <common/format.hpp>
 #include <common/make-unique.hpp>
 
 #include <lttng/ust-ctl.h>

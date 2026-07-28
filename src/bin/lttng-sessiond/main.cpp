@@ -50,6 +50,7 @@
 #include <common/dynamic-buffer.hpp>
 #include <common/error.hpp>
 #include <common/exception.hpp>
+#include <common/format.hpp>
 #include <common/futex.hpp>
 #include <common/ini-config/ini-config.hpp>
 #include <common/lockfile.hpp>

@@ -10,6 +10,7 @@
  */
 
 #include <common/error.hpp>
+#include <common/format.hpp>
 #include <common/payload-view.hpp>
 #include <common/payload.hpp>
 

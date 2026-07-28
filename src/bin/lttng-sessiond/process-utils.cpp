@@ -9,6 +9,8 @@
 
 #include "lttng-sessiond.hpp"
 
+#include <common/format.hpp>
+
 #include <signal.h>
 
 /* Notify parents that we are ready for cmd and health check */

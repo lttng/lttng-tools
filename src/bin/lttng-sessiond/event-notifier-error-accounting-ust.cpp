@@ -12,6 +12,7 @@
 #include "ust-map-group.hpp"
 
 #include <common/error.hpp>
+#include <common/format.hpp>
 #include <common/scope-exit.hpp>
 
 #include <lttng/trigger/trigger-internal.hpp>

@@ -20,6 +20,7 @@
 #include <common/defaults.hpp>
 #include <common/dynamic-buffer.hpp>
 #include <common/error.hpp>
+#include <common/format.hpp>
 #include <common/futex.hpp>
 #include <common/hashtable/utils.hpp>
 #include <common/macros.hpp>

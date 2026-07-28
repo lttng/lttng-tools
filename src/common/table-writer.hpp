@@ -9,6 +9,7 @@
 #define LTTNG_COMMON_TABLE_WRITER_HPP
 
 #include <common/bigint.hpp>
+#include <common/mint.hpp>
 #include <common/tinyutf8.hpp>
 
 #include <cstddef>

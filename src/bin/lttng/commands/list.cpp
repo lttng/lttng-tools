@@ -17,6 +17,7 @@
 #include "list-human.hpp"
 #include "list-mi.hpp"
 
+#include <common/format.hpp>
 #include <common/mi-lttng.hpp>
 #include <common/scope-exit.hpp>
 #include <common/time.hpp>

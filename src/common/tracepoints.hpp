@@ -6,6 +6,7 @@
 #include <common/make-unique-wrapper.hpp>
 
 #include <string>
+#include <vector>
 
 namespace lttng {
 namespace tracepoints {

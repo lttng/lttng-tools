@@ -8,6 +8,7 @@
 #include "utils.h"
 
 #include <common/error.hpp>
+#include <common/format.hpp>
 
 #include <lttng/action/list-internal.hpp>
 #include <lttng/condition/event-rule-matches.h>

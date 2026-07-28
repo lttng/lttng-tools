@@ -15,6 +15,7 @@
 
 #include <lttng/event-field-value-internal.hpp>
 
+#include <algorithm>
 #include <stdbool.h>
 #include <stddef.h>
 

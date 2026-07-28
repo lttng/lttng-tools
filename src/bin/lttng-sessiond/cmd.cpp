@@ -47,6 +47,7 @@
 #include <common/defaults.hpp>
 #include <common/dynamic-buffer.hpp>
 #include <common/exception.hpp>
+#include <common/format.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>
 #include <common/make-unique-wrapper.hpp>
 #include <common/make-unique.hpp>

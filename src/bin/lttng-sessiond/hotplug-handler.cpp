@@ -14,6 +14,7 @@
 #include "thread.hpp"
 
 #include <common/error.hpp>
+#include <common/format.hpp>
 #include <common/poller.hpp>
 
 #include <unordered_map>

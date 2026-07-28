@@ -12,6 +12,7 @@
 #include <common/error.hpp>
 #include <common/fd-tracker/fd-tracker.hpp>
 #include <common/fd-tracker/utils.hpp>
+#include <common/format.hpp>
 #include <common/fs-handle-internal.hpp>
 #include <common/fs-handle.hpp>
 #include <common/hashtable/hashtable.hpp>

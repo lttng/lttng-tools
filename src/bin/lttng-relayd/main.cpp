@@ -41,6 +41,7 @@
 #include <common/dynamic-buffer.hpp>
 #include <common/fd-tracker/fd-tracker.hpp>
 #include <common/fd-tracker/utils.hpp>
+#include <common/format.hpp>
 #include <common/futex.hpp>
 #include <common/ini-config/ini-config.hpp>
 #include <common/make-unique.hpp>

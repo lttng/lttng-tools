@@ -11,6 +11,7 @@
 #include <common/common.hpp>
 #include <common/compat/errno.hpp>
 #include <common/compat/getenv.hpp>
+#include <common/mint.hpp>
 #include <common/thread.hpp>
 
 #include <lttng/lttng-error.h>
@@ -18,8 +19,10 @@
 #include <inttypes.h>
 #include <iostream>
 #include <pthread.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <vector>
 
 namespace {
 /*
@@ -33,6 +36,30 @@ thread_local struct log_time error_log_time;
 } /* namespace */
 
 thread_local const char *logger_thread_name;
+
+void __lttng_print_colorized(enum lttng_error_level type, const char *fmt, ...)
+{
+	va_list format_args;
+
+	va_start(format_args, fmt);
+	const auto message_len = vsnprintf(nullptr, 0, fmt, format_args);
+	va_end(format_args);
+
+	if (message_len < 0) {
+		return;
+	}
+
+	std::vector<char> message_buf(message_len + 1);
+
+	va_start(format_args, fmt);
+	vsnprintf(message_buf.data(), message_buf.size(), fmt, format_args);
+	va_end(format_args);
+
+	const auto colorized_message = lttng::mint_format(
+		type == PRINT_WARN ? "[!*y]{}[/]" : "[!*r]{}[/]", message_buf.data());
+
+	fprintf(stderr, "%s", colorized_message.c_str());
+}
 
 const char *log_add_time()
 {

@@ -16,6 +16,8 @@
 #include "common/utils.hpp"
 #include "vendor/argpar/argpar.h"
 
+#include <common/format.hpp>
+
 #include <lttng/domain-internal.hpp>
 
 #include <ctype.h>

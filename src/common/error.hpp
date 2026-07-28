@@ -10,17 +10,15 @@
 
 #include <common/compat/errno.hpp>
 #include <common/compat/time.hpp>
-#include <common/format.hpp>
 #include <common/macros.hpp>
-#include <common/mint.hpp>
 #include <common/string-utils/format.hpp>
 
+#include <exception>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <urcu/tls-compat.h>
-#include <vector>
 
 #ifndef _GNU_SOURCE
 #error "lttng-tools error.h needs _GNU_SOURCE"
@@ -123,6 +121,13 @@ static inline bool __lttng_print_check_opt(enum lttng_error_level type)
 
 C_LINKAGE void lttng_abort_on_error(void);
 
+/*
+ * Formats, colorizes, and prints a WARN/ERR/BUG message to stderr.
+ * Out of line so that this header doesn't depend on the formatting utils.
+ */
+void __lttng_print_colorized(enum lttng_error_level type, const char *fmt, ...)
+	ATTR_FORMAT_PRINTF(2, 3);
+
 static inline void __lttng_print_check_abort(enum lttng_error_level type)
 {
 	switch (type) {
@@ -151,18 +156,7 @@ static inline void __lttng_print_check_abort(enum lttng_error_level type)
 	do {                                                                                      \
 		if (__lttng_print_check_opt(type)) {                                              \
 			if ((type) == PRINT_WARN || (type) == PRINT_ERR || (type) == PRINT_BUG) { \
-				const auto __lttng_print_msg_len =                                \
-					snprintf(nullptr, 0, fmt, ##args);                        \
-				std::vector<char> __lttng_print_print_buf(__lttng_print_msg_len + \
-									  1);                     \
-				snprintf(__lttng_print_print_buf.data(),                          \
-					 __lttng_print_print_buf.size(),                          \
-					 fmt,                                                     \
-					 ##args);                                                 \
-				const auto __lttng_print_msg = lttng::mint_format(                \
-					(type) == PRINT_WARN ? "[!*y]{}[/]" : "[!*r]{}[/]",       \
-					__lttng_print_print_buf.data());                          \
-				fprintf(stderr, "%s", __lttng_print_msg.c_str());                 \
+				__lttng_print_colorized(type, fmt, ##args);                       \
 			} else {                                                                  \
 				fprintf((type) == PRINT_MSG ? stdout : stderr, fmt, ##args);      \
 			}                                                                         \

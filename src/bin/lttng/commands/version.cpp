@@ -10,6 +10,7 @@
 #include "version-git.hpp"
 #include "version.hpp"
 
+#include <common/format.hpp>
 #include <common/mi-lttng.hpp>
 #include <common/mint.hpp>
 #include <common/term-utils.hpp>

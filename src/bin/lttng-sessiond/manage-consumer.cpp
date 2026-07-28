@@ -15,6 +15,7 @@
 #include "ust-consumer.hpp"
 #include "utils.hpp"
 
+#include <common/format.hpp>
 #include <common/pipe.hpp>
 #include <common/scope-exit.hpp>
 #include <common/utils.hpp>
