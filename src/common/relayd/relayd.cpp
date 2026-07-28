@@ -12,6 +12,7 @@
 #include <common/compat/endian.hpp>
 #include <common/compat/string.hpp>
 #include <common/defaults.hpp>
+#include <common/format.hpp>
 #include <common/index/ctf-index.hpp>
 #include <common/sessiond-comm/relayd.hpp>
 #include <common/string-utils/c-string-view.hpp>

@@ -16,6 +16,7 @@
 #include <common/consumer/consumer.hpp>
 #include <common/consumer/metadata-bucket.hpp>
 #include <common/exception.hpp>
+#include <common/format.hpp>
 #include <common/index/index.hpp>
 #include <common/kernel-consumer/kernel-consumer.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>

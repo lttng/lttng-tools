@@ -8,6 +8,7 @@
 #include "pending-memory-reclamation-request.hpp"
 
 #include <common/error.hpp>
+#include <common/format.hpp>
 
 namespace ls = lttng::sessiond;
 

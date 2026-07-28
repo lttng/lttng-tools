@@ -10,6 +10,7 @@
 
 #include <common/error.hpp>
 #include <common/exception.hpp>
+#include <common/format.hpp>
 
 #include <lttng/ust-ctl.h>
 #include <lttng/ust-error.h>

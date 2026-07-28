@@ -17,6 +17,7 @@
 #include <common/consumer/metadata-switch-timer-task.hpp>
 #include <common/consumer/monitor-timer-task.hpp>
 #include <common/consumer/watchdog-timer-task.hpp>
+#include <common/format.hpp>
 #include <common/kernel-consumer/kernel-consumer.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>
 #include <common/urcu.hpp>

@@ -12,6 +12,7 @@
 
 #include <common/exception.hpp>
 #include <common/file-descriptor.hpp>
+#include <common/format.hpp>
 #include <common/mi-lttng.hpp>
 #include <common/scope-exit.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>

@@ -16,6 +16,7 @@
 
 #include <common/align.hpp>
 #include <common/compat/errno.hpp>
+#include <common/format.hpp>
 #include <common/macros.hpp>
 #include <common/time.hpp>
 

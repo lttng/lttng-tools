@@ -18,6 +18,7 @@
 
 #include <common/dynamic-array.hpp>
 #include <common/exception.hpp>
+#include <common/format.hpp>
 #include <common/hashtable/hashtable.hpp>
 #include <common/macros.hpp>
 #include <common/make-unique-wrapper.hpp>

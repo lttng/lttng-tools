@@ -10,6 +10,7 @@
 #include "trace-ust.hpp"
 
 #include <common/error.hpp>
+#include <common/format.hpp>
 
 #include <lttng/ust-ctl.h>
 

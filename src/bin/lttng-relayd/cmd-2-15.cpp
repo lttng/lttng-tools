@@ -13,6 +13,7 @@
 #include <common/common.hpp>
 #include <common/compat/endian.hpp>
 #include <common/compat/string.hpp>
+#include <common/format.hpp>
 #include <common/sessiond-comm/relayd.hpp>
 
 #include <lttng/constant.h>

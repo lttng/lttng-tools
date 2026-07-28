@@ -19,6 +19,7 @@
 #include <common/compat/path.hpp>
 #include <common/defaults.hpp>
 #include <common/fd-tracker/utils.hpp>
+#include <common/format.hpp>
 #include <common/path.hpp>
 #include <common/time.hpp>
 #include <common/urcu.hpp>

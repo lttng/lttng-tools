@@ -10,6 +10,7 @@
 #include "../exception.hpp"
 
 #include <common/exception.hpp>
+#include <common/format.hpp>
 #include <common/make-unique-wrapper.hpp>
 #include <common/mi-lttng.hpp>
 #include <common/scope-exit.hpp>

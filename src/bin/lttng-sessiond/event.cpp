@@ -21,6 +21,7 @@
 #include <common/context.hpp>
 #include <common/error.hpp>
 #include <common/filter.hpp>
+#include <common/format.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/urcu.hpp>
 

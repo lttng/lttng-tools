@@ -15,6 +15,7 @@
 #include <common/defaults.hpp>
 #include <common/dynamic-buffer.hpp>
 #include <common/error.hpp>
+#include <common/format.hpp>
 #include <common/macros.hpp>
 #include <common/make-unique-wrapper.hpp>
 #include <common/string-utils/c-string-view.hpp>

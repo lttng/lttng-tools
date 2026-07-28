@@ -19,6 +19,7 @@
 
 #include <common/domain.hpp>
 #include <common/dynamic-array.hpp>
+#include <common/format.hpp>
 #include <common/macros.hpp>
 #include <common/optional.hpp>
 #include <common/urcu.hpp>

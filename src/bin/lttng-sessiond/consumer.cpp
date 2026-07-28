@@ -20,6 +20,7 @@
 #include <common/binary-view.hpp>
 #include <common/common.hpp>
 #include <common/defaults.hpp>
+#include <common/format.hpp>
 #include <common/relayd/relayd.hpp>
 #include <common/string-utils/format.hpp>
 #include <common/urcu.hpp>

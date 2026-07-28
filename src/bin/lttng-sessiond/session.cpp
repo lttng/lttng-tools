@@ -19,6 +19,7 @@
 
 #include <common/common.hpp>
 #include <common/ctl/format.hpp>
+#include <common/format.hpp>
 #include <common/session.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/trace-chunk.hpp>

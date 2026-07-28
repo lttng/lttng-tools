@@ -7,6 +7,7 @@
  */
 
 #include <common/error.hpp>
+#include <common/format.hpp>
 #include <common/lockfile.hpp>
 #include <common/macros.hpp>
 

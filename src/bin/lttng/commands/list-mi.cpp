@@ -24,6 +24,7 @@
 #include "list-mi.hpp"
 #include "view-wrappers.hpp"
 
+#include <common/format.hpp>
 #include <common/mi-lttng.hpp>
 #include <common/time.hpp>
 #include <common/tracker.hpp>

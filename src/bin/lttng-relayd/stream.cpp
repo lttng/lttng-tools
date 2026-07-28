@@ -16,6 +16,7 @@
 
 #include <common/common.hpp>
 #include <common/defaults.hpp>
+#include <common/format.hpp>
 #include <common/fs-handle.hpp>
 #include <common/sessiond-comm/relayd.hpp>
 #include <common/urcu.hpp>

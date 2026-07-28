@@ -6,6 +6,7 @@
  */
 
 #include <common/consumer/monitor-timer-task.hpp>
+#include <common/format.hpp>
 #include <common/kernel-consumer/kernel-consumer.hpp>
 #include <common/pthread-lock.hpp>
 #include <common/urcu.hpp>

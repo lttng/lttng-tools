@@ -10,6 +10,7 @@
 #include "../utils.hpp"
 
 #include <common/defaults.hpp>
+#include <common/format.hpp>
 #include <common/lttng-kernel.hpp>
 #include <common/make-unique-wrapper.hpp>
 #include <common/mi-lttng.hpp>

@@ -19,6 +19,7 @@
 #include <common/common.hpp>
 #include <common/compat/errno.hpp>
 #include <common/defaults.hpp>
+#include <common/format.hpp>
 #include <common/make-unique-wrapper.hpp>
 #include <common/make-unique.hpp>
 

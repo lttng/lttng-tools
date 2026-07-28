@@ -6,6 +6,7 @@
  */
 
 #include <common/error.hpp>
+#include <common/format.hpp>
 #include <common/macros.hpp>
 #include <common/mi-lttng.hpp>
 

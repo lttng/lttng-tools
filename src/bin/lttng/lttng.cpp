@@ -22,6 +22,7 @@
 
 #include <common/compat/getenv.hpp>
 #include <common/error.hpp>
+#include <common/format.hpp>
 #include <common/tracepoints.hpp>
 #include <common/utils.hpp>
 

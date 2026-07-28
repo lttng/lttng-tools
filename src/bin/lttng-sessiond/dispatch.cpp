@@ -18,6 +18,7 @@
 #include "ust-domain-orchestrator.hpp"
 
 #include <common/exception.hpp>
+#include <common/format.hpp>
 #include <common/futex.hpp>
 #include <common/macros.hpp>
 #include <common/scope-exit.hpp>

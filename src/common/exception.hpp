@@ -8,6 +8,7 @@
 #ifndef LTTNG_EXCEPTION_H_
 #define LTTNG_EXCEPTION_H_
 
+#include <common/format.hpp>
 #include <common/string-utils/c-string-view.hpp>
 
 #include <lttng/lttng-error.h>

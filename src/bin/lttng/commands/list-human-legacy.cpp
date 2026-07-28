@@ -11,6 +11,7 @@
 #include "view-wrappers.hpp"
 
 #include <common/exception.hpp>
+#include <common/format.hpp>
 #include <common/macros.hpp>
 #include <common/mi-lttng.hpp>
 

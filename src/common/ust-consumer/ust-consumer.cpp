@@ -25,6 +25,7 @@
 #include <common/consumer/consumer.hpp>
 #include <common/consumer/watchdog-timer-task.hpp>
 #include <common/exception.hpp>
+#include <common/format.hpp>
 #include <common/index/index.hpp>
 #include <common/make-unique-wrapper.hpp>
 #include <common/optional.hpp>

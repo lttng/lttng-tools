@@ -11,6 +11,7 @@
 #include "utils.h"
 
 #include <common/exception.hpp>
+#include <common/format.hpp>
 
 #include <vendor/argpar/argpar.hpp>
 #include <vendor/fmt/core.h>

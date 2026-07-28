@@ -25,6 +25,7 @@
 #include <common/dynamic-buffer.hpp>
 #include <common/exception.hpp>
 #include <common/filter/filter-ast.hpp>
+#include <common/format.hpp>
 /* NOLINTNEXTLINE */
 #include <common/filter/filter-parser.hpp>
 #include <common/filter/memstream.hpp>

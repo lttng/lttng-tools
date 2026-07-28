@@ -9,6 +9,7 @@
 #include <common/compat/directory-handle.hpp>
 #include <common/defaults.hpp>
 #include <common/error.hpp>
+#include <common/format.hpp>
 
 #include <vendor/optional.hpp>
 

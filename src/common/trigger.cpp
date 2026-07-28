@@ -8,6 +8,7 @@
 #include <common/credentials.hpp>
 #include <common/dynamic-array.hpp>
 #include <common/error.hpp>
+#include <common/format.hpp>
 #include <common/mi-lttng.hpp>
 #include <common/optional.hpp>
 #include <common/payload-view.hpp>

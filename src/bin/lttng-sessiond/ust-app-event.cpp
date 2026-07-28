@@ -16,6 +16,7 @@
 #include <common/common.hpp>
 #include <common/compat/errno.hpp>
 #include <common/exception.hpp>
+#include <common/format.hpp>
 #include <common/make-unique.hpp>
 #include <common/scope-exit.hpp>
 #include <common/urcu.hpp>

@@ -16,6 +16,7 @@
 #include <common/defaults.hpp>
 #include <common/exception.hpp>
 #include <common/fd-tracker/utils.hpp>
+#include <common/format.hpp>
 #include <common/make-unique-wrapper.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/utils.hpp>

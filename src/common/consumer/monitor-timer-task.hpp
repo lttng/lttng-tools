@@ -9,6 +9,7 @@
 #define LTTNG_CONSUMER_MONITOR_TIMER_TASK_HPP
 
 #include <common/consumer/consumer.hpp>
+#include <common/format.hpp>
 #include <common/scheduler.hpp>
 
 namespace lttng {

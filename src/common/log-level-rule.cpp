@@ -7,6 +7,7 @@
 
 #include <common/dynamic-buffer.hpp>
 #include <common/error.hpp>
+#include <common/format.hpp>
 #include <common/hashtable/hashtable.hpp>
 #include <common/hashtable/utils.hpp>
 #include <common/macros.hpp>

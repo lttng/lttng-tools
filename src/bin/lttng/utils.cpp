@@ -14,6 +14,7 @@
 #include <common/defaults.hpp>
 #include <common/error.hpp>
 #include <common/exception.hpp>
+#include <common/format.hpp>
 #include <common/make-unique-wrapper.hpp>
 #include <common/utils.hpp>
 

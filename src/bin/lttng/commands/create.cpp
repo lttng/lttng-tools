@@ -13,6 +13,7 @@
 #include <common/compat/time.hpp>
 #include <common/defaults.hpp>
 #include <common/error.hpp>
+#include <common/format.hpp>
 #include <common/mi-lttng.hpp>
 #include <common/path.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>

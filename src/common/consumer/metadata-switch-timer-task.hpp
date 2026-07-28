@@ -10,6 +10,7 @@
 #define LTTNG_CONSUMER_METADATA_SWITCH_TIMER_TASK_HPP
 
 #include <common/consumer/consumer.hpp>
+#include <common/format.hpp>
 #include <common/scheduler.hpp>
 
 namespace lttng {

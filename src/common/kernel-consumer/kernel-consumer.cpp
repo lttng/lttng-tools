@@ -17,6 +17,7 @@
 #include <common/consumer/consumer-timer.hpp>
 #include <common/consumer/consumer.hpp>
 #include <common/consumer/metadata-bucket.hpp>
+#include <common/format.hpp>
 #include <common/index/index.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>
 #include <common/optional.hpp>

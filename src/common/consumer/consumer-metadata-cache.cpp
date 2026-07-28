@@ -11,6 +11,7 @@
 
 #include <common/common.hpp>
 #include <common/consumer/consumer.hpp>
+#include <common/format.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/ust-consumer/ust-consumer.hpp>
 #include <common/utils.hpp>

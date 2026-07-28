@@ -11,6 +11,7 @@
 #include "../utils.hpp"
 
 #include <common/exception.hpp>
+#include <common/format.hpp>
 #include <common/mi-lttng.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 

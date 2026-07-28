@@ -9,6 +9,7 @@
 
 #include <common/ctl/format.hpp>
 #include <common/exception.hpp>
+#include <common/format.hpp>
 
 #include <lttng/event-rule/kernel-kprobe-internal.hpp>
 

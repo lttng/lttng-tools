@@ -6,6 +6,7 @@
  */
 
 #include <common/consumer/watchdog-timer-task.hpp>
+#include <common/format.hpp>
 #include <common/pthread-lock.hpp>
 #include <common/urcu.hpp>
 #include <common/ust-consumer/ust-consumer.hpp>

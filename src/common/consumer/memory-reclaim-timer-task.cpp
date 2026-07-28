@@ -7,6 +7,7 @@
 
 #include <common/consumer/consumer-stream.hpp>
 #include <common/consumer/memory-reclaim-timer-task.hpp>
+#include <common/format.hpp>
 #include <common/pthread-lock.hpp>
 #include <common/testpoint/testpoint.hpp>
 #include <common/urcu.hpp>

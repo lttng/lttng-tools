@@ -6,6 +6,7 @@
  */
 
 #include <common/consumer/live-timer-task.hpp>
+#include <common/format.hpp>
 #include <common/pthread-lock.hpp>
 #include <common/urcu.hpp>
 

@@ -14,6 +14,7 @@
 #include <common/compat/getenv.hpp>
 #include <common/defaults.hpp>
 #include <common/error.hpp>
+#include <common/format.hpp>
 #include <common/path.hpp>
 #include <common/utils.hpp>
 

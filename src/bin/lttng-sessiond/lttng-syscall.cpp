@@ -12,6 +12,7 @@
 #include "utils.hpp"
 
 #include <common/common.hpp>
+#include <common/format.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>
 #include <common/urcu.hpp>
 

@@ -13,6 +13,7 @@
 #include <common/common.hpp>
 #include <common/defaults.hpp>
 #include <common/exception.hpp>
+#include <common/format.hpp>
 #include <common/path.hpp>
 #include <common/utils.hpp>
 

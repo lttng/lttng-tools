@@ -9,6 +9,7 @@
 #include "../utils.hpp"
 #include "field_stats.hpp"
 
+#include <common/format.hpp>
 #include <common/make-unique-wrapper.hpp>
 #include <common/make-unique.hpp>
 

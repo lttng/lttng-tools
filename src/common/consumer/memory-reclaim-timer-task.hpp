@@ -9,6 +9,7 @@
 #define LTTNG_CONSUMER_MEMORY_RECLAIM_TIMER_TASK_HPP
 
 #include <common/consumer/consumer.hpp>
+#include <common/format.hpp>
 #include <common/scheduler.hpp>
 
 #include <chrono>
