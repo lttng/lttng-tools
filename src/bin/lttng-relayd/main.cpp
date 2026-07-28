@@ -56,6 +56,7 @@
 #include <common/urcu.hpp>
 #include <common/uri.hpp>
 #include <common/utils.hpp>
+#include <common/value-file.hpp>
 
 #include <lttng/lttng.h>
 
