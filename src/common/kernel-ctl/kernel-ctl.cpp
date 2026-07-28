@@ -417,15 +417,6 @@ constexpr std::uint32_t encoded_tracer_abi_version(std::uint16_t major, std::uin
 	return (static_cast<std::uint32_t>(major) << 16) | minor;
 }
 
-bool use_extensible_counter_commands()
-{
-	const auto version = registered_tracer_abi_version.load();
-
-	/* The tracer ABI version must be registered before issuing counter commands. */
-	LTTNG_ASSERT(version != 0);
-	return version >= encoded_tracer_abi_version(2, 8);
-}
-
 int old_counter_conf_from_counter_conf(const struct lttng_kernel_abi_counter_conf& conf,
 				       struct lttng_kernel_abi_old_counter_conf& old_conf)
 {
@@ -497,10 +488,19 @@ void counter_value_from_old_counter_value(const struct lttng_kernel_abi_old_coun
 }
 } /* namespace */
 
+bool kernctl_is_extensible_counter_abi_supported()
+{
+	const auto version = registered_tracer_abi_version.load();
+
+	/* The tracer ABI version must be registered before issuing counter commands. */
+	LTTNG_ASSERT(version != 0);
+	return version >= encoded_tracer_abi_version(2, 8);
+}
+
 int kernctl_create_event_notifier_group_error_counter(
 	int group_fd, const struct lttng_kernel_abi_counter_conf *error_counter_conf)
 {
-	if (use_extensible_counter_commands()) {
+	if (kernctl_is_extensible_counter_abi_supported()) {
 		return LTTNG_IOCTL_NO_CHECK(group_fd, LTTNG_KERNEL_ABI_COUNTER, error_counter_conf);
 	}
 
@@ -656,7 +656,7 @@ int kernctl_counter_map_descriptor(int counter_fd,
 
 int kernctl_counter_read(int counter_fd, struct lttng_kernel_abi_counter_read *counter_read)
 {
-	if (use_extensible_counter_commands()) {
+	if (kernctl_is_extensible_counter_abi_supported()) {
 		return LTTNG_IOCTL_NO_CHECK(
 			counter_fd, LTTNG_KERNEL_ABI_COUNTER_READ, counter_read);
 	}
@@ -679,7 +679,7 @@ int kernctl_counter_read(int counter_fd, struct lttng_kernel_abi_counter_read *c
 int kernctl_counter_get_aggregate_value(int counter_fd,
 					struct lttng_kernel_abi_counter_aggregate *value)
 {
-	if (use_extensible_counter_commands()) {
+	if (kernctl_is_extensible_counter_abi_supported()) {
 		return LTTNG_IOCTL_NO_CHECK(counter_fd, LTTNG_KERNEL_ABI_COUNTER_AGGREGATE, value);
 	}
 
@@ -700,7 +700,7 @@ int kernctl_counter_get_aggregate_value(int counter_fd,
 
 int kernctl_counter_clear(int counter_fd, struct lttng_kernel_abi_counter_clear *clear)
 {
-	if (use_extensible_counter_commands()) {
+	if (kernctl_is_extensible_counter_abi_supported()) {
 		return LTTNG_IOCTL_NO_CHECK(counter_fd, LTTNG_KERNEL_ABI_COUNTER_CLEAR, clear);
 	}
 
