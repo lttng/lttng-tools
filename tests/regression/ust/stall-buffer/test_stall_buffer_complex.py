@@ -274,7 +274,9 @@ if __name__ == "__main__":
     def handle_error(exn):
         tap.fail("Unknown exception: {}".format(exn))
 
-    pool = multiprocessing.Pool()
+    # Workers spend most of their time waiting on GDB, so run more of them
+    # than there are cores.
+    pool = multiprocessing.Pool(max(8, multiprocessing.cpu_count()))
 
     for variant in variants:
         for testpoints in scenarios:
