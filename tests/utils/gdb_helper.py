@@ -8,6 +8,11 @@ import subprocess
 
 pid_to_testpoints = dict()
 
+# Must match PRODUCER_EXITED_MARKER in stall-buffer/common.py. The marker must
+# not appear in a GDB command: `set trace-commands on` echoes commands to the
+# output where the marker is looked for.
+PRODUCER_EXITED_MARKER = "LTTNG_TEST_PRODUCER_EXITED"
+
 
 def list_testpoints(path):
     """List all lttng testpoint symbols (both UST and tools) from a binary."""
@@ -106,6 +111,21 @@ def break_testpoint(prefix):
             breakpoints.append(bp)
 
     return breakpoints
+
+
+def break_exit():
+    """
+    Break on exit(), announcing the stop with PRODUCER_EXITED_MARKER on GDB's
+    output. This tells a producer that ran out of event records apart from one
+    that reached its testpoint.
+    """
+
+    def announce(bp):
+        gdb.write("\n{}\n".format(PRODUCER_EXITED_MARKER))
+        gdb.flush()
+        return True
+
+    return CallbackBreakpoint("exit", announce)
 
 
 def break_testpoint_callback(prefix, callback):

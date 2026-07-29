@@ -10,10 +10,130 @@ import signal
 import subprocess
 
 import bt2
+import lttngtest
 
 gdb_helper_script_path = (
     pathlib.Path(__file__).absolute().parents[3] / "utils" / "gdb_helper.py"
 )
+
+DEFAULT_SUBBUF_SIZE = mmap.PAGESIZE
+DEFAULT_SUBBUF_COUNT = 8
+
+# Number of times a producer must be able to fill the ring buffer. Producers
+# are killed at their testpoint, so this only has to keep testpoints reachable.
+RING_FILLS_PER_PRODUCER = int(os.getenv("LTTNG_TEST_STALL_RING_FILLS", "8"))
+
+# Written on its own line by the GDB helper when a producer exits before
+# reaching its testpoint. Must match gdb_helper.py.
+PRODUCER_EXITED_MARKER = "LTTNG_TEST_PRODUCER_EXITED"
+
+# Ring buffer capacities in event records, keyed by (subbuf_size, subbuf_count).
+_ring_capacities_cache = {}
+
+
+def _trace_paths(root):
+    return [
+        directory for directory, _, files in os.walk(str(root)) if "metadata" in files
+    ]
+
+
+def measure_ring_capacity(
+    subbuf_size=DEFAULT_SUBBUF_SIZE, subbuf_count=DEFAULT_SUBBUF_COUNT, log=None
+):
+    """
+    Measure and remember how many event records of the test application fit in
+    a `subbuf_count` x `subbuf_size` ring buffer.
+
+    The capacity depends on the application's event record size and on the
+    packet overhead, so it is measured rather than computed. A burst saturates
+    the ring of a snapshot session and the discarded count of the resulting
+    trace allows us to know the effective capacity in count of events.
+    """
+    key = (subbuf_size, subbuf_count)
+
+    if key in _ring_capacities_cache:
+        return _ring_capacities_cache[key]
+
+    log = log or (lambda msg: None)
+
+    # An event record is at least 32 bytes, so this burst saturates the ring.
+    burst_size = (subbuf_size * subbuf_count) // 32
+
+    with lttngtest.test_environment(with_sessiond=True, log=log) as test_env:
+        client = lttngtest.LTTngClient(test_env, log=log)
+
+        session = client.create_session(
+            output=lttngtest.LocalSessionOutputLocation(
+                test_env.create_temporary_directory("capacity_trace")
+            ),
+            snapshot=True,
+        )
+        channel = session.add_channel(
+            lttngtest.TracingDomain.User,
+            buffer_allocation_policy=lttngtest.BufferAllocationPolicy.PerChannel,
+            subbuf_size=subbuf_size,
+            subbuf_count=subbuf_count,
+            event_record_loss_mode=lttngtest.EventRecordLossMode.Discard,
+        )
+        channel.add_recording_rule(
+            lttngtest.UserTracepointEventRule(name_pattern="tp:*")
+        )
+        session.start()
+
+        app = test_env.launch_wait_trace_test_application(burst_size)
+        app.trace()
+        app.wait_for_exit()
+
+        session.record_snapshot()
+        session.stop()
+
+        paths = _trace_paths(session.output.path)
+        if not paths:
+            raise Exception(
+                "No snapshot produced during ring-buffer capacity detection"
+            )
+
+        stats = TraceStats(paths[0])
+        session.destroy()
+
+    capacity = burst_size - stats.discarded_events
+
+    if stats.discarded_events == 0:
+        raise Exception(
+            "Ring buffer capacity probe did not saturate the ring: burst of {} event records was too small".format(
+                burst_size
+            )
+        )
+
+    # Every event record is either kept or discarded.
+    if capacity != stats.events:
+        raise Exception(
+            "Ring buffer capacity probe is inconsistent: {} event records emitted, {} discarded, {} in trace".format(
+                burst_size, stats.discarded_events, stats.events
+            )
+        )
+
+    log(
+        "Ring buffer of {} x {} bytes holds {} event records".format(
+            subbuf_count, subbuf_size, capacity
+        )
+    )
+
+    _ring_capacities_cache[key] = capacity
+
+    return capacity
+
+
+def ring_capacity(subbuf_size, subbuf_count):
+    """Return the capacity measured by `measure_ring_capacity()`."""
+    try:
+        return _ring_capacities_cache[(subbuf_size, subbuf_count)]
+    except KeyError:
+        raise Exception(
+            "Ring buffer capacity of {} x {} bytes was never measured: call measure_ring_capacity() before running scenarios".format(
+                subbuf_count, subbuf_size
+            )
+        )
 
 
 def write_gdb_script(path, commands, log=False):
@@ -47,8 +167,8 @@ class StallScenario:
         expected_discarded_events=None,
         expected_packets=None,
         expected_discarded_packets=None,
-        subbuf_size=mmap.PAGESIZE,
-        subbuf_count=8,
+        subbuf_size=DEFAULT_SUBBUF_SIZE,
+        subbuf_count=DEFAULT_SUBBUF_COUNT,
         might_be_impossible=False,
     ):
         if producers:
@@ -74,6 +194,7 @@ class StallScenario:
         self.subbuf_size = subbuf_size
         self.subbuf_count = subbuf_count
         self.might_be_impossible = might_be_impossible
+        self.producer_exited_before_testpoint = False
 
     # An expectation is a producer accepting a single argument, returning True
     # if that argument pass the expectation.
@@ -93,7 +214,11 @@ class StallScenario:
     @contextlib.contextmanager
     def traced_application(self, test_env):
 
-        app = test_env.launch_wait_trace_test_application(self.buf_size)
+        event_count = RING_FILLS_PER_PRODUCER * ring_capacity(
+            self.subbuf_size, self.subbuf_count
+        )
+
+        app = test_env.launch_wait_trace_test_application(event_count)
 
         yield app
 
@@ -189,7 +314,7 @@ class StallScenario:
 
                 # Handle scenarios that might be impossible
                 if self.might_be_impossible:
-                    gdb_commands.append("break exit")
+                    gdb_commands.append("python break_exit()")
 
                 gdb_commands.extend(
                     [
@@ -234,6 +359,12 @@ class StallScenario:
                     raise
 
             output = output.decode("utf-8")
+
+            # Match whole lines only since `set trace-commands on` echoes the GDB
+            # commands and a substring match will pick the marker out of one.
+            self.producer_exited_before_testpoint = any(
+                line.strip() == PRODUCER_EXITED_MARKER for line in output.splitlines()
+            )
 
             # Just emit the output of GDB with TAP for better error reporting.
             for line in output.splitlines():

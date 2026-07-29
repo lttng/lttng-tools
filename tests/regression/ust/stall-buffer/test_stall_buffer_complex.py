@@ -188,7 +188,13 @@ def run_test(testpoints, event_record_loss_mode=lttngtest.EventRecordLossMode.Di
                     result.fail()
                 else:
                     lttngtest.validate_trace(str(session.output.path))
-                    result.success()
+
+                    # A producer that exhausted its event records never reached
+                    # its testpoint, so the scenario could not be arranged.
+                    if scenario.producer_exited_before_testpoint:
+                        result.skip("Test case impossible")
+                    else:
+                        result.success()
 
         except Exception as exn:
             result.log("Uncaught exception: {}".format(exn))
@@ -250,6 +256,9 @@ if __name__ == "__main__":
     # These tests make use of traps which will produce core files.
     # Disable core dumps to avoid filling disk or tmp space.
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+
+    # Scenarios run in worker processes, which inherit the measurement.
+    measure_ring_capacity(log=tap.diagnostic)
 
     def handle_result(result):
 
