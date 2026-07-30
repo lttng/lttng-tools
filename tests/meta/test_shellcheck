@@ -6,6 +6,7 @@
 
 #    shellcheck --external-sources "$1"
 import logging
+import os
 import pathlib
 import re
 from typing import List, Set
@@ -40,9 +41,10 @@ def identify_shell_files(
 ) -> Set[pathlib.Path]:
     files = set()
     for directory in directories:
-        for _directory, dirnames, filenames in (base_path / directory).walk():
+        # pathlib.Path walk() is Python 3.12+
+        for _directory, dirnames, filenames in os.walk(base_path / directory):
             for filename in filenames:
-                candidate = _directory / filename
+                candidate = pathlib.Path(_directory) / filename
                 if filename.endswith(".in"):
                     logging.debug(
                         "'{}' matches input template pattern, skipping".format(
