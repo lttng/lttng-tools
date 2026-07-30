@@ -1,3 +1,61 @@
+2026-07-30 lttng-tools 2.16.0-rc2 (Friendship Day)
+	* Use the official 'Autoconf-exception-macro' SPDX License ID
+	* common: keep the formatting utilities out of error.hpp
+	* common: move utils_create_value_file() to its own header
+	* sessiond: derive kernel tracer capabilities from its ABI version
+	* Fix: sessiond: unclear error when creating a map against lttng-modules < 2.16
+	* Fix: common: counter commands unknown to lttng-modules < 2.16
+	* tests: Add recording rule propagation tests
+	* Fix: tests: robust protocol test is not distributed in static builds
+	* Fix: tests: stress: kill-relayd scripts are not distributed
+	* tests: map: Add key exhaustion tests
+	* Fix: sessiond: scoped triggers evaluated in unspecified order
+	* Fix: sessiond: map keys exhausted in unspecified order on app sync
+	* tests: map: check that map-only sessions don't spawn a consumer daemon
+	* Fix: sessiond: consumer daemon spawned for map-only sessions
+	* tests: Add map channel tests for the agent domains
+	* tests: map: Add kernel counterpart of the rule filter test
+	* tests: map: Add test for the filters of several rules of a map channel
+	* Fix: sessiond: agent map counters stay at zero
+	* Fix: ust-consumerd: oldest packet lost in snapshot of active channel
+	* tests: Fix `test_vermin` oot builds
+	* reuse: Add missing copyright/license tags
+	* tests: missing name in copyright header
+	* Fix: sessiond: rollback event context when channel notification registration fails
+	* Fix: common: check load data type in filter globbing validation
+	* Fix: common: bound filter IR nesting depth
+	* Fix: sessiond: validate filter bytecode generation length
+	* Fix: common: harden trigger-list header decoding against short payloads
+	* Fix: common: bound key-template segment count from payload
+	* Fix: common: validate action header length before dereferencing
+	* Fix: common: daemon abort on invalid log-level-rule type
+	* Fix: common: validate action list payload length
+	* Fix: sessiond: sanitize agent event-listing reply
+	* Fix: common: sanitize event exclusion count on deserialization
+	* Fix: tests: notification generator toggle hangs on suspend
+	* tests: close export-maps connection on BaseException
+	* tests: add lttng_consumerd_resume helper
+	* Fix: tests: reclaim timer channel keys unreadable on s390x
+	* Fix: sessiond: app departure flushes channels of a destroyed session
+	* Fix: sessiond: departing app's buffers not flushed by stop
+	* Fix: consumerd: crash when consuming a packet with no output
+	* Fix: ust-consumerd: crash when flushing a stream that has no chunk
+	* tests: regression test for rotation of never-active streams
+	* Fix: consumerd: no packet produced for idle streams on rotation
+	* tests: regression test for per-process reclaim timer resume
+	* Fix: ust-consumerd: reclaim timer resumed for a single channel only
+	* tests: regression test for explicit reclaim without an age limit
+	* Fix: ust-consumerd: crash on deferred reclaim without an age limit
+	* tests: regression test for reclaim timer resume after explicit reclaim
+	* tests: Fix kernel module leakage in `test_map_value_type_multilib_kernel.py`
+	* Fix: ust-consumerd: reclaim timer not resumed after explicit reclaim
+	* tests: scheduler unit tests for re-arming a cancelled task
+	* common: re-arm a cancelled scheduler task when it is rescheduled
+	* Fix: ust-consumerd: lock inversion between reclaim request and scheduler
+	* Fix: sessiond: unsafe string copies when building session config path
+	* Fix: common: swapped provider/probe names in SDT uprobe config parsing
+	* misc: Split vermin config out of pyproject.toml
+
 # SPDX-FileCopyrightText: 2026 EfficiOS, Inc
 #
 # SPDX-License-Identifier: CC-BY-SA-4.0
