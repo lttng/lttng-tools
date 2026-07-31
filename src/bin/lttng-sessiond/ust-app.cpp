@@ -5177,12 +5177,22 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_ch
 		/* Get channel */
 		lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
 		ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
-		/* If the session if found for the app, the channel must be there */
-		LTTNG_ASSERT(ua_chan_node);
+		if (!ua_chan_node) {
+			DBG_FMT("UST app channel not found while disabling channel on app, skipping: session_id=`{}`, channel_name=`{}`, app=`{}`",
+				ua_sess->id,
+				uchan->name,
+				app->pid);
+			continue;
+		}
 
 		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
-		/* The channel must not be already disabled */
-		LTTNG_ASSERT(ua_chan->enabled);
+		if (!ua_chan->enabled) {
+			DBG_FMT("UST app channel already disabled on app, skipping: session_id=`{}`, channel_name=`{}`, app=`{}`",
+				ua_sess->id,
+				uchan->name,
+				app->pid);
+			continue;
+		}
 
 		/* Disable channel onto application */
 		ret = disable_ust_app_channel(ua_sess->lock(), ua_chan, app);
@@ -5581,11 +5591,16 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 		/* Lookup channel in the ust app session */
 		lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
 		ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
-		/* If the channel is not found, there is a code flow error */
-		LTTNG_ASSERT(ua_chan_node);
+		if (!ua_chan_node) {
+			DBG_FMT("UST app channel not found while creating event on app, skipping: session_id=`{}`, channel_name=`{}`, app=`{}`, event=`{}`",
+				ua_sess->id,
+				uchan->name,
+				app->pid,
+				uevent->attr.name);
+			continue;
+		}
 
 		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
-
 		ret = create_ust_app_event(ua_chan, uevent, app);
 		if (ret < 0) {
 			if (ret != -LTTNG_UST_ERR_EXIST) {
@@ -7851,11 +7866,18 @@ int ust_app_pid_get_channel_runtime_stats(struct ltt_ust_session *usess,
 		/* Get channel */
 		lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
 		ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
-		/* If the session is found for the app, the channel must be there */
-		LTTNG_ASSERT(ua_chan_node);
+		if (!ua_chan_node) {
+			DBG_FMT("UST app channel not found while getting app runtime stats, skipping: session_id=`{}`, channel_name=`{}`, app=`{}`",
+				ua_sess->id,
+				uchan->name,
+				app->pid);
+			/*
+			 * Event creation could be happening concurrently with an application exit.
+			 */
+			continue;
+		}
 
 		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
-
 		if (overwrite) {
 			uint64_t _lost;
 
