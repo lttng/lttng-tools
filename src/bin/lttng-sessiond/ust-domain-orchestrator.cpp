@@ -740,9 +740,23 @@ void ls::ust::domain_orchestrator::_disable_channel_on_apps(lttng::c_string_view
 		}
 
 		auto *ua_chan = ua_sess->find_channel(channel_name.data());
-		/* If the session exists for the app, the channel must be there. */
-		LTTNG_ASSERT(ua_chan);
-		LTTNG_ASSERT(ua_chan->enabled);
+		if (!ua_chan) {
+			DBG_FMT("UST domain orchestrator channel not found while disabling channel on app, "
+				"skipping: session_name=`{}`, channel_name=`{}`, app={}",
+				_session.name,
+				channel_name.data(),
+				*app);
+			continue;
+		}
+
+		if (!ua_chan->enabled) {
+			DBG_FMT("UST domain orchestrator channel already disabled on app, "
+				"skipping: session_name=`{}`, channel_name=`{}`, app={}",
+				_session.name,
+				channel_name.data(),
+				*app);
+			continue;
+		}
 
 		try {
 			ua_chan->disable();
@@ -781,8 +795,14 @@ void ls::ust::domain_orchestrator::_create_event_on_apps(
 		}
 
 		auto *ua_chan = ua_sess->find_channel(channel_name.data());
-		/* If the channel is not found, there is a code flow error. */
-		LTTNG_ASSERT(ua_chan);
+		if (!ua_chan) {
+			DBG_FMT("UST domain orchestrator channel not found while enabling event on app, "
+				"skipping: session_name=`{}`, channel_name=`{}`, app={}",
+				_session.name,
+				channel_name.data(),
+				*app);
+			continue;
+		}
 
 		try {
 			app_event::create(*ua_chan, event_rule_config);
