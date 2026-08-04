@@ -533,6 +533,18 @@ class Channel(abc.ABC):
         # type: (Type[EventRule]) -> None
         raise NotImplementedError
 
+    @abc.abstractmethod
+    def disable_recording_rules(self, name_pattern):
+        # type: (str) -> None
+        """Disable all recording rules matching the given name pattern."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def disable_all_recording_rules(self):
+        # type: () -> None
+        """Disable all recording rules in this channel."""
+        raise NotImplementedError
+
 
 class SessionOutputLocation(abc.ABC):
     pass
