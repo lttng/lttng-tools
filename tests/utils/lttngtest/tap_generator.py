@@ -168,8 +168,12 @@ class TapGenerator:
         raise BailOut(reason)
 
     def missing_platform_requirement(
-        self, reason, behaviour=MissingPlatformRequirementAction.default
+        self,
+        reason,
+        behaviour=MissingPlatformRequirementAction.default,
+        max_skip=None,
     ):
+        # type: (str, MissingPlatformRequirementAction, Optional[int]) -> None
         # Default behaviour depends on `LTTNG_TEST_ABORT_ON_MISSING_PLATFORM_REQUIREMENTS`
         if behaviour == MissingPlatformRequirementAction.default:
             if os.getenv(
@@ -179,11 +183,23 @@ class TapGenerator:
             else:
                 behaviour = MissingPlatformRequirementAction.skip_and_quit
 
+        # A partial skip only makes sense if the caller keeps running the
+        # remaining test cases: quitting would leave them unreported and
+        # cause a bail out at shutdown.
+        if (
+            max_skip is not None
+            and behaviour == MissingPlatformRequirementAction.skip_and_quit
+        ):
+            behaviour = MissingPlatformRequirementAction.skip
+
         if behaviour == MissingPlatformRequirementAction.skip_and_quit:
             self.skip_all_remaining(reason)
             sys.exit(0)
         elif behaviour == MissingPlatformRequirementAction.skip:
-            self.skip_all_remaining(reason)
+            if max_skip is None:
+                self.skip_all_remaining(reason)
+            else:
+                self.skip(reason, min(max_skip, self.remaining_test_cases))
         elif behaviour == MissingPlatformRequirementAction.bailout:
             self.bail_out(reason)
         else:
