@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 #
 
+import enum
 import multiprocessing
 from types import FrameType
 from typing import Callable, Iterator, Optional, Tuple, List, Generator
@@ -28,6 +29,12 @@ import threading
 import contextlib
 
 import bt2
+
+
+class ConsumerType(enum.Enum):
+    KERNEL = 0
+    UST32 = 1
+    UST64 = 2
 
 
 class TemporaryDirectory:
@@ -744,6 +751,48 @@ class _Environment(logger._Logger):
             self._log("Failed to open port file '{}': {}".format(port_file, str(e)))
             raise e
 
+    def _find_consumerd_pid(self, consumer_type):
+        p = subprocess.Popen(
+            ["pgrep", "-P", str(self._sessiond.pid)], stdout=subprocess.PIPE
+        )
+        p.wait()
+        if p.returncode != 0:
+            raise RuntimeError(
+                "pgrep returned non-zero exit code: ret={}".format(p.returncode)
+            )
+
+        for line in p.stdout.readlines():
+            pid = line.decode("utf-8").strip()
+            with open("/proc/{}/cmdline".format(pid), "r") as f:
+                cmdline = f.read()
+                sock_path = None
+                capture_sock_path = False
+                for arg in cmdline.split("\0"):
+                    if arg == "--consumerd-cmd-sock":
+                        capture_sock_path = True
+                        continue
+
+                    if capture_sock_path:
+                        sock_path = arg
+                        break
+
+                if sock_path is not None and consumer_type in sock_path:
+                    return int(pid)
+
+        return None
+
+    @property
+    def lttng_consumerd_kernel_pid(self):
+        return self._find_consumerd_pid("kconsumerd")
+
+    @property
+    def lttng_consumerd_ust32_pid(self):
+        return self._find_consumerd_pid("ustconsumerd32")
+
+    @property
+    def lttng_consumerd_ust64_pid(self):
+        return self._find_consumerd_pid("ustconsumerd64")
+
     @property
     def lttng_relayd_control_port(self):
         # type: () -> int
@@ -790,6 +839,24 @@ class _Environment(logger._Logger):
     def allows_destructive():
         # type: () -> bool
         return os.getenv("LTTNG_ENABLE_DESTRUCTIVE_TESTS", "") == "will-break-my-system"
+
+    def lttng_consumerd_get_pid(self, consumerd_type: ConsumerType) -> int:
+        pid = None
+        if consumerd_type == ConsumerType.KERNEL:
+            pid = self.lttng_consumerd_kernel_pid
+        elif consumerd_type == ConsumerType.UST64:
+            pid = self.lttng_consumerd_ust64_pid
+        elif consumerd_type == ConsumerType.UST32:
+            pid = self.lttng_consumerd_ust32_pid
+        else:
+            raise ValueError("Unsupport consumerd_type: {}".format(consumerd_type))
+
+        if pid is None:
+            raise Exception(
+                "No PID available for consumerd type `{}`".format(consumerd_type)
+            )
+
+        return pid
 
     def create_dummy_user(self):
         # type: () -> (int, str)
