@@ -195,6 +195,8 @@ noinst_SCRIPTS += \
 	live/test_ust \
 	live/test_ust_tracefile_count \
 	lttng-ctl/test_liblttng-ctl_abi.py \
+	network/test_network.py \
+	network/tests.py \
 	metadata/test_kernel \
 	metadata/test_ust \
 	metadata/utils.sh \
