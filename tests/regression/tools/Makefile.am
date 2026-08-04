@@ -179,6 +179,8 @@ noinst_SCRIPTS += \
 	live/test_ust_tracefile_count \
 	lttng-ctl/test_liblttng-ctl_abi.py \
 	lttng-ctl/test_robust_protocol.py \
+	network/test_network.py \
+	network/tests.py \
 	map/map_value_type_multilib_utils.py \
 	map/test_map_value_type_multilib_ust.py \
 	map/test_map_value_type_multilib_kernel.py \

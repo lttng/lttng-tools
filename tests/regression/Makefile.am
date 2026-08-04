@@ -85,7 +85,8 @@ SERIAL_TESTS = tools/base-path/test_ust \
 	tools/channel/test_channel_allocation_policy_per_channel.py \
 	tools/trace-format/test_trace_format_kernel.py
 
-TESTS = tools/map/test_buffer_ownership_models.py \
+TESTS = tools/network/test_network.py \
+	tools/map/test_buffer_ownership_models.py \
 	tools/map/test_clear_preserves_keys.py \
 	tools/map/test_dead_process_policies.py \
 	tools/map/test_empty_map_channel_ust.py \
