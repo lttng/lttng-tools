@@ -1307,6 +1307,7 @@ AC_CONFIG_FILES([
 	tests/regression/tools/rotation/Makefile
 	tests/regression/tools/base-path/Makefile
 	tests/regression/tools/metadata/Makefile
+	tests/regression/tools/network/Makefile
 	tests/regression/tools/tracker/Makefile
 	tests/regression/tools/working-directory/Makefile
 	tests/regression/tools/relayd-grouping/Makefile

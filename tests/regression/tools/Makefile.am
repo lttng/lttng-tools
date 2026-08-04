@@ -14,6 +14,7 @@ SUBDIRS = base-path \
 	lttng-ctl \
 	metadata \
 	mi \
+	network \
 	notification \
 	regen-metadata \
 	regen-statedump \
