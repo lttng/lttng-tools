@@ -298,6 +298,31 @@ class _Channel(lttngctl.Channel):
 
         self._client._run_cmd(client_args)
 
+    def disable_recording_rules(self, name_pattern):
+        # type: (str) -> None
+        domain_option_name = _get_domain_option_name(self.domain)
+        self._client._run_cmd(
+            "disable-event --session {session_name} --channel {channel_name}"
+            " --{domain_option_name} {name_pattern}".format(
+                session_name=self._session.name,
+                channel_name=self.name,
+                domain_option_name=domain_option_name,
+                name_pattern=name_pattern,
+            )
+        )
+
+    def disable_all_recording_rules(self):
+        # type: () -> None
+        domain_option_name = _get_domain_option_name(self.domain)
+        self._client._run_cmd(
+            "disable-event --session {session_name} --channel {channel_name}"
+            " --{domain_option_name} --all-events".format(
+                session_name=self._session.name,
+                channel_name=self.name,
+                domain_option_name=domain_option_name,
+            )
+        )
+
     @property
     def name(self):
         # type: () -> str
