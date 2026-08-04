@@ -21,6 +21,7 @@ def gdb_script(
     subprocess_kwargs: dict = dict(),
     breakpoint_pending: str = "on",
     pagination: str = "off",
+    debug: bool = False,
 ) -> typing.Tuple[subprocess.Popen, tempfile.NamedTemporaryFile]:
     """
     Runs GDB commands as a batch script in a subprocess.
@@ -33,6 +34,15 @@ def gdb_script(
         "set breakpoint pending {}".format(breakpoint_pending),
         "set pagination {}".format(pagination),
     ]
+    if debug:
+        # echo each command before it runs.
+        echoed = []
+        for command in gdb_commands:
+            echoed.append("echo + {}\\n".format(command))
+            echoed.append(command)
+
+        gdb_commands = echoed
+
     commands = pre + gdb_commands
     script = tempfile.NamedTemporaryFile(
         prefix="gdb_",
