@@ -24,11 +24,6 @@ multiple concurrent processes and threads. Tracing across multiple systems is al
 %}
 
 %{
-#if PY_MAJOR_VERSION >= 3
-// The PyInt and PyLong types were unified as of Python 3
-// This makes the typemap code useable with both Python 2 and 3.
-#define PyInt_AsSsize_t PyLong_AsSsize_t
-#endif
 
 // Avoid -Wmissing-declarations warning.
 PyObject *SWIG_init(void);
@@ -233,17 +228,17 @@ enum lttng_event_context_type {
 //list_sessions
 %typemap(argout) struct lttng_session **sessions{
 
-	int l = PyInt_AsSsize_t($result);
+	ssize_t l = PyLong_AsSsize_t($result);
 	if (l >= 0)
 	{
 		PyObject *sessions = PyList_New(0);
-		int i;
+		ssize_t i;
 		for(i=0; i<l; i++)
 		{
 			PyObject *tmp = PyTuple_New(4);
-			PyObject *name = PyString_FromString((*$1)[i].name);
-			PyObject *path = PyString_FromString((*$1)[i].path);
-			PyObject *enabled = PyInt_FromSize_t((*$1)[i].enabled);
+			PyObject *name = PyUnicode_FromString((*$1)[i].name);
+			PyObject *path = PyUnicode_FromString((*$1)[i].path);
+			PyObject *enabled = PyLong_FromSize_t((*$1)[i].enabled);
 
 			PyTuple_SetItem(tmp, 0, name);
 			PyTuple_SetItem(tmp, 1, path);
@@ -260,20 +255,20 @@ enum lttng_event_context_type {
 //list_domains
 %typemap(argout) struct lttng_domain **domains{
 
-	int l = PyInt_AsSsize_t($result);
+	ssize_t l = PyLong_AsSsize_t($result);
 	if (l >= 0)
 	{
 		PyObject *dom = PyList_New(0);
-		int i;
+		ssize_t i;
 		for(i=0; i<l; i++)
 		{
 			PyObject *tmp = PyTuple_New(6);
-			PyObject *type = PyInt_FromSize_t((*$1)[i].type);
-			PyObject *buf_type = PyInt_FromSize_t((*$1)[i].buf_type);
-			PyObject *execname = PyString_FromString((*$1)[i].attr.exec_name);
-			PyObject *pid = PyInt_FromSize_t((*$1)[i].attr.pid);
-			PyObject *padding = PyString_FromString((*$1)[i].padding);
-			PyObject *attrpadding = PyString_FromString((*$1)[i].attr.padding);
+			PyObject *type = PyLong_FromSize_t((*$1)[i].type);
+			PyObject *buf_type = PyLong_FromSize_t((*$1)[i].buf_type);
+			PyObject *execname = PyUnicode_FromString((*$1)[i].attr.exec_name);
+			PyObject *pid = PyLong_FromSize_t((*$1)[i].attr.pid);
+			PyObject *padding = PyUnicode_FromString((*$1)[i].padding);
+			PyObject *attrpadding = PyUnicode_FromString((*$1)[i].attr.padding);
 
 			PyTuple_SetItem(tmp, 0, type);
 			PyTuple_SetItem(tmp, 1, buf_type);
@@ -293,26 +288,26 @@ enum lttng_event_context_type {
 //list_channels
 %typemap(argout) struct lttng_channel **channels{
 
-	int l = PyInt_AsSsize_t($result);
+	ssize_t l = PyLong_AsSsize_t($result);
 	if (l >= 0)
 	{
 		PyObject *chan = PyList_New(0);
-		int i;
+		ssize_t i;
 		for(i=0; i<l; i++)
 		{
 			PyObject *tmp = PyTuple_New(4);
-			PyObject *name = PyString_FromString((*$1)[i].name);
-			PyObject *enabled = PyInt_FromSize_t((*$1)[i].enabled);
-			PyObject *padding = PyString_FromString((*$1)[i].padding);
+			PyObject *name = PyUnicode_FromString((*$1)[i].name);
+			PyObject *enabled = PyLong_FromSize_t((*$1)[i].enabled);
+			PyObject *padding = PyUnicode_FromString((*$1)[i].padding);
 
 			PyObject *attrtmp = PyTuple_New(7);
-			PyObject *overwrite = PyInt_FromLong((*$1)[i].attr.overwrite);
-			PyObject *subbuf = PyInt_FromSize_t((*$1)[i].attr.subbuf_size);
-			PyObject *num = PyInt_FromSize_t((*$1)[i].attr.num_subbuf);
-			PyObject *switchtimer = PyInt_FromSize_t((*$1)[i].attr.switch_timer_interval);
-			PyObject *readtimer = PyInt_FromSize_t((*$1)[i].attr.read_timer_interval);
-			PyObject *output = PyInt_FromSize_t((*$1)[i].attr.output);
-			PyObject *attrpad = PyString_FromString((*$1)[i].attr.padding);
+			PyObject *overwrite = PyLong_FromLong((*$1)[i].attr.overwrite);
+			PyObject *subbuf = PyLong_FromSize_t((*$1)[i].attr.subbuf_size);
+			PyObject *num = PyLong_FromSize_t((*$1)[i].attr.num_subbuf);
+			PyObject *switchtimer = PyLong_FromSize_t((*$1)[i].attr.switch_timer_interval);
+			PyObject *readtimer = PyLong_FromSize_t((*$1)[i].attr.read_timer_interval);
+			PyObject *output = PyLong_FromSize_t((*$1)[i].attr.output);
+			PyObject *attrpad = PyUnicode_FromString((*$1)[i].attr.padding);
 
 			PyTuple_SetItem(attrtmp, 0, overwrite);
 			PyTuple_SetItem(attrtmp, 1, subbuf);
@@ -338,32 +333,32 @@ enum lttng_event_context_type {
 //list_events & list_tracepoints
 %typemap(argout) struct lttng_event **events{
 
-	int l = PyInt_AsSsize_t($result);
+	ssize_t l = PyLong_AsSsize_t($result);
 	if (l >= 0)
 	{
 		PyObject *events = PyList_New(0);
-		int i;
+		ssize_t i;
 		for(i=0; i<l; i++)
 		{
 			PyObject *tmp = PyTuple_New(10);
-			PyObject *name = PyString_FromString((*$1)[i].name);
-			PyObject *type = PyInt_FromSize_t((*$1)[i].type);
-			PyObject *logleveltype = PyInt_FromSize_t((*$1)[i].loglevel_type);
-			PyObject *loglevel = PyInt_FromLong((*$1)[i].loglevel);
-			PyObject *enabled = PyInt_FromLong((*$1)[i].enabled);
-			PyObject *pid = PyInt_FromSize_t((*$1)[i].pid);
-			PyObject *padding = PyString_FromString((*$1)[i].padding);
-			PyObject *attrpadding = PyString_FromString((*$1)[i].attr.padding);
+			PyObject *name = PyUnicode_FromString((*$1)[i].name);
+			PyObject *type = PyLong_FromSize_t((*$1)[i].type);
+			PyObject *logleveltype = PyLong_FromSize_t((*$1)[i].loglevel_type);
+			PyObject *loglevel = PyLong_FromLong((*$1)[i].loglevel);
+			PyObject *enabled = PyLong_FromLong((*$1)[i].enabled);
+			PyObject *pid = PyLong_FromSize_t((*$1)[i].pid);
+			PyObject *padding = PyUnicode_FromString((*$1)[i].padding);
+			PyObject *attrpadding = PyUnicode_FromString((*$1)[i].attr.padding);
 
 			PyObject *probe = PyTuple_New(4);
-			PyObject *addr = PyInt_FromSize_t((*$1)[i].attr.probe.addr);
-			PyObject *offset = PyInt_FromSize_t((*$1)[i].attr.probe.offset);
-			PyObject *symbolname = PyString_FromString((*$1)[i].attr.probe.symbol_name);
-			PyObject *probepad = PyString_FromString((*$1)[i].attr.probe.padding);
+			PyObject *addr = PyLong_FromSize_t((*$1)[i].attr.probe.addr);
+			PyObject *offset = PyLong_FromSize_t((*$1)[i].attr.probe.offset);
+			PyObject *symbolname = PyUnicode_FromString((*$1)[i].attr.probe.symbol_name);
+			PyObject *probepad = PyUnicode_FromString((*$1)[i].attr.probe.padding);
 
 			PyObject *function = PyTuple_New(2);
-			PyObject *f_symbolname = PyString_FromString((*$1)[i].attr.ftrace.symbol_name);
-			PyObject *f_pad = PyString_FromString((*$1)[i].attr.ftrace.padding);
+			PyObject *f_symbolname = PyUnicode_FromString((*$1)[i].attr.ftrace.symbol_name);
+			PyObject *f_pad = PyUnicode_FromString((*$1)[i].attr.ftrace.padding);
 
 			PyTuple_SetItem(function, 0, f_symbolname);
 			PyTuple_SetItem(function, 1, f_pad);
