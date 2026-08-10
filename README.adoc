@@ -98,7 +98,7 @@ Debian/Ubuntu package: `python3` (includes the `sqlite3` module)
   (enabled at <<configure,build configuration>> time with the
   `{nbh}{nbh}enable{nbh}python{nbh}bindings` option).
 +
-Debian/Ubuntu packages: `swig2.0` and `python3{nbh}dev`
+Debian/Ubuntu packages: `swig` and `python3{nbh}dev`
 
 * **modprobe** and/or
   **https://git.kernel.org/pub/scm/utils/kernel/kmod/kmod.git/[kmod]{nbsp}≥{nbsp}22**:
