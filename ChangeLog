@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 EfficiOS, Inc
+#
+# SPDX-License-Identifier: CC-BY-SA-4.0
+
 2026-07-30 lttng-tools 2.16.0-rc2 (Friendship Day)
 	* Use the official 'Autoconf-exception-macro' SPDX License ID
 	* common: keep the formatting utilities out of error.hpp
@@ -55,10 +59,6 @@
 	* Fix: sessiond: unsafe string copies when building session config path
 	* Fix: common: swapped provider/probe names in SDT uprobe config parsing
 	* misc: Split vermin config out of pyproject.toml
-
-# SPDX-FileCopyrightText: 2026 EfficiOS, Inc
-#
-# SPDX-License-Identifier: CC-BY-SA-4.0
 
 2026-06-24 | lttng-tools 2.16.0-rc1 (La Saint-Jean — Fête Nationale du Québec)
 
