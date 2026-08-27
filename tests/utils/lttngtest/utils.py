@@ -5,6 +5,7 @@
 #
 
 import logging
+import re
 import shutil
 import subprocess
 import tempfile
@@ -14,6 +15,39 @@ import typing
 def gdb_exists() -> bool:
     """Return True if GDB can be executed."""
     return shutil.which("gdb") is not None
+
+
+def gdb_version() -> typing.Optional[typing.Tuple[int, int]]:
+    """
+    Return the (major, minor) version of the GDB found in PATH, or None
+    if it cannot be determined.
+    """
+    try:
+        output = subprocess.check_output(["gdb", "--version"], universal_newlines=True)
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+    match = re.search(r"GNU gdb.*?(\d+)\.(\d+)", output)
+    if match is None:
+        return None
+
+    return (int(match.group(1)), int(match.group(2)))
+
+
+def gdb_set_logging_command(enabled: bool) -> str:
+    """
+    Return the GDB command to enable or disable logging.
+
+    The `set logging enabled on|off` form was introduced in GDB 12; older
+    versions (e.g. GDB 8.2 on EL8) only accept the deprecated
+    `set logging on|off` form.
+    """
+    value = "on" if enabled else "off"
+    version = gdb_version()
+    if version is not None and version < (12, 0):
+        return "set logging {}".format(value)
+
+    return "set logging enabled {}".format(value)
 
 
 def gdb_script(

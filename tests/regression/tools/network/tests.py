@@ -87,7 +87,7 @@ def test_session_creation_with_relayd_interruption(
     )
     script = [
         "set logging file {}".format(str(gdb_log_file)),
-        "set logging enabled",
+        lttngtest.utils.gdb_set_logging_command(True),
         "attach {}".format(consumerd_pid),
         "break relayd_add_stream",
         "shell touch {}".format(str(gdb_attached_file)),
