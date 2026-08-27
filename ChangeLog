@@ -2,6 +2,16 @@
 #
 # SPDX-License-Identifier: CC-BY-SA-4.0
 
+2026-08-27 lttng-tools 2.16.0 (National Tug of War Day)
+	* ChangeLog: move license header to the top of the file
+	* sessiond: Allow missing UST app channel when modifying events
+	* tests: Add regression test for sessiond assert
+	* tests: Add debug option to GDB scripts for automatic print statements
+	* tests: Add option to limit the number of tests skipped for missing requirements
+	* Replace removed Python 2 C API macros for SWIG 4.5.0 compatibility
+	* tests: Use `os.walk()` instead of `Path.walk()` in `test_shellcheck`
+	* tests: Change meta/test_shellcheck to test scripts by default
+
 2026-07-30 lttng-tools 2.16.0-rc2 (Friendship Day)
 	* Use the official 'Autoconf-exception-macro' SPDX License ID
 	* common: keep the formatting utilities out of error.hpp
