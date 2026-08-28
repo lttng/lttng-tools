@@ -16,11 +16,13 @@
 #include <common/macros.hpp>
 
 #include <inttypes.h>
+#include <libgen.h>
 #include <popt.h>
 #include <sched.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -61,7 +63,7 @@
 #define CLONE_NEWTIME 0x00000080
 #endif
 
-const char *cmd_name = nullptr;
+static std::string cmd_name;
 static int nr_iter = 100;
 static char *ns_opt = nullptr;
 static char *after_unshare_touch_file_path = nullptr;
@@ -137,14 +139,14 @@ static int unshare_and_emit_events(int ns_flag, const char *ns_str)
 	if (ret) {
 		fprintf(stderr,
 			"%s: Failed to get ns inode number for namespace %s",
-			cmd_name,
+			cmd_name.c_str(),
 			ns_str);
 		ret = -1;
 		goto end;
 	}
 	fprintf(stderr,
 		"%s: Initial %s ns inode number:      %" PRIuMAX "\n",
-		cmd_name,
+		cmd_name.c_str(),
 		ns_str,
 		(uintmax_t) ns1);
 
@@ -165,14 +167,14 @@ static int unshare_and_emit_events(int ns_flag, const char *ns_str)
 	if (ret) {
 		fprintf(stderr,
 			"%s: Failed to get ns inode number for namespace %s",
-			cmd_name,
+			cmd_name.c_str(),
 			ns_str);
 		ret = -1;
 		goto end;
 	}
 	fprintf(stderr,
 		"%s: Post unshare %s ns inode number: %" PRIuMAX "\n",
-		cmd_name,
+		cmd_name.c_str(),
 		ns_str,
 		(uintmax_t) ns2);
 
@@ -183,7 +185,7 @@ static int unshare_and_emit_events(int ns_flag, const char *ns_str)
 	if (after_unshare_touch_file_path) {
 		fprintf(stderr,
 			"%s: sync-after-unshare-touch: create %s\n",
-			cmd_name,
+			cmd_name.c_str(),
 			after_unshare_touch_file_path);
 		ret = create_file(after_unshare_touch_file_path);
 		if (ret != 0) {
@@ -195,7 +197,7 @@ static int unshare_and_emit_events(int ns_flag, const char *ns_str)
 	if (before_last_event_file_path) {
 		fprintf(stderr,
 			"%s: sync-before-last-event: wait %s\n",
-			cmd_name,
+			cmd_name.c_str(),
 			before_last_event_file_path);
 		ret = wait_on_file(before_last_event_file_path);
 		if (ret != 0) {
@@ -213,7 +215,7 @@ static int unshare_and_emit_events(int ns_flag, const char *ns_str)
 	if (before_exit_touch_file_path) {
 		fprintf(stderr,
 			"%s: sync-before-exit-touch: create %s\n",
-			cmd_name,
+			cmd_name.c_str(),
 			before_exit_touch_file_path);
 		ret = create_file(before_exit_touch_file_path);
 		if (ret != 0) {
@@ -235,7 +237,14 @@ int main(int argc, const char **argv)
 	int ret = EXIT_SUCCESS;
 	poptContext pc;
 
-	cmd_name = (argc > 0) ? basename(argv[0]) : "COMMAND";
+	if (argc > 0) {
+		/* basename's argument isn't const on some libc implementations, copy it. */
+		std::string cmd_path = argv[0];
+
+		cmd_name = basename(&cmd_path[0]);
+	} else {
+		cmd_name = "COMMAND";
+	}
 
 	pc = poptGetContext(nullptr, argc, argv, opts, 0);
 	poptReadDefaultConfig(pc, 0);
@@ -298,7 +307,7 @@ int main(int argc, const char **argv)
 	} else if (strncmp(ns_opt, "uts", 3) == 0) {
 		ret = unshare_and_emit_events(CLONE_NEWUTS, "uts");
 	} else {
-		fprintf(stderr, "%s: invalid ns id\n", cmd_name);
+		fprintf(stderr, "%s: invalid ns id\n", cmd_name.c_str());
 		ret = EXIT_FAILURE;
 		goto end;
 	}
