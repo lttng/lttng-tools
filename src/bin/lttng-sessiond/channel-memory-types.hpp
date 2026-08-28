@@ -16,6 +16,7 @@
 #include <chrono>
 #include <cstdint>
 #include <functional>
+#include <sys/types.h>
 #include <vector>
 
 namespace lttng {
