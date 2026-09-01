@@ -1,3 +1,45 @@
+2026-09-01 lttng-tools 2.15.2 (Ginger Cat Appreciation Day)
+	* tests: Use version-appropriate GDB logging command
+	* sessiond: Allow missing UST app channel when modifying events
+	* tests: Add regression test for sessiond assert
+	* tests: Backport `disable_recording_rule`
+	* tests: Backport `possible_cpus_array_len`
+	* tests: Backport consumerd pid fetching
+	* tests: Add debug option to GDB scripts for automatic print statements
+	* tests: Add option to limit the number of tests skipped for missing requirements
+	* tests: Add helper to fetch logging formatter
+	* tests: Add GDB helpers to lttngtest.utils
+	* Replace removed Python 2 C API macros for SWIG 4.5.0 compatibility
+	* Fix: ust-consumerd: oldest packet lost in snapshot of active channel
+	* Fix: common: check load data type in filter globbing validation
+	* Fix: common: bound filter IR nesting depth
+	* Fix: sessiond: validate filter bytecode generation length
+	* Fix: common: harden trigger-list header decoding against short payloads
+	* Fix: common: validate action header length before dereferencing
+	* Fix: common: daemon abort on invalid log-level-rule type
+	* Fix: common: validate action list payload length
+	* Fix: sessiond: sanitize agent event-listing reply
+	* Fix: common: sanitize event exclusion count on deserialization
+	* Fix: consumerd: crash when consuming a packet with no output
+	* Fix: ust-consumerd: crash when flushing a stream that has no chunk
+	* Fix: consumerd: no packet produced for idle streams on rotation
+	* Fix: ust-consumerd: reclaim timer resumed for a single channel only
+	* Fix: ust-consumerd: crash on deferred reclaim without an age limit
+	* Fix: ust-consumerd: reclaim timer not resumed after explicit reclaim
+	* common: re-arm a cancelled scheduler task when it is rescheduled
+	* Fix: ust-consumerd: lock inversion between reclaim request and scheduler
+	* Fix: tests: lttngtest: taskset_anycpu() retries the same CPU forever
+	* Fix: relayd: 32-bit overflow of packet total size
+	* Fix: relayd: NULL file handle dereference in GET_PACKET
+	* Fix: relayd: live viewer can reach unattached sessions
+	* Fix: relayd: size overflow in the live viewer GET_PACKET command
+	* Fix: relayd: reject zero tracefile count
+	* Fix: tests: stall-buffer timer relies on a packet-count artifact
+	* Fix: ust-consumerd: stall watchdog ignores snapshot channels
+	* Fix: relayd: incomplete session base path validation
+	* Fix: relayd: stream channel name allows path traversal
+	* Fix: relayd: stream path traversal via reversed strstr() check
+
 2026-06-05 lttng-tools 2.15.1 (National Fish and Chip Day)
 	* Fix: common: enable-event MI emits duplicate exclusions element
 	* Fix: lttng: reclaim-memory MI emits generic "channels" element
