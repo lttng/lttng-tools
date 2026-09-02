@@ -5,6 +5,7 @@
 #
 
 import logging
+import os
 import pathlib
 import sys
 
@@ -32,6 +33,15 @@ if __name__ == "__main__":
                 "channel_success_count": 0,
             },
         },
+        # S-2677 no channels have a complete set, across multiple traced UIDs.
+        {
+            "function": tests.test_session_creation_with_relayd_interruption,
+            "kwargs": {
+                "channel_success_count": 0,
+                "traced_uid_count": 2,
+            },
+            "requires_multi_user": True,
+        },
     ]
 
     tap = lttngtest.TapGenerator(len(tests))
@@ -39,8 +49,15 @@ if __name__ == "__main__":
         try:
             test_function = test["function"]
             kwargs = test["kwargs"] if "kwargs" in test else dict()
+            if test.get("requires_multi_user", False) and not (
+                os.getuid() == 0 and lttngtest._Environment.allows_destructive()
+            ):
+                tap.skip(
+                    "Need to run as root with `LTTNG_ENABLE_DESTRUCTIVE_TESTS` set to create dummy users"
+                )
+                continue
             with lttngtest.test_environment(
-                log=tap.diagnostic, with_sessiond=True
+                log=tap.diagnostic, with_sessiond=True, with_relayd=True
             ) as test_env:
                 logging.info(
                     "Starting test: {} with args: {}".format(
