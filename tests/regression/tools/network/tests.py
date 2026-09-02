@@ -35,7 +35,11 @@ def wait_for_file(path, timeout_s=60):
 
 
 def test_session_creation_with_relayd_interruption(
-    tap, test_env, channel_count: int = 2, channel_success_count: int = 1
+    tap,
+    test_env,
+    channel_count: int = 2,
+    channel_success_count: int = 1,
+    traced_uid_count: int = 1,
 ):
     # Note: this test does not exert any post-reconnection functionality
     if not lttngtest.utils.gdb_exists():
@@ -44,7 +48,13 @@ def test_session_creation_with_relayd_interruption(
 
     # Tests that the sessiond doesn't assert when relayd_add_stream fails after N channels worth of streams succeeded.
     assert channel_success_count < channel_count
-    test_env._relayd = test_env._launch_lttng_relayd()
+
+    traced_users = [None]
+    if traced_uid_count > 1:
+        traced_users = [
+            test_env.create_dummy_user()[1] for _ in range(traced_uid_count)
+        ]
+
     client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
     output = lttngtest.NetworkSessionOutputLocation(
         "net://{}:{}:{}/".format(
@@ -63,10 +73,15 @@ def test_session_creation_with_relayd_interruption(
         )
         channels.append(channel)
 
-    # Start an app, but don't exit
-    app = test_env.launch_wait_trace_test_application(100, wait_before_exit=True)
-    app.trace()
-    app.wait_for_tracing_done()
+    # Start an app per traced UID, but don't exit
+    apps = []
+    for user in traced_users:
+        app = test_env.launch_wait_trace_test_application(
+            100, wait_before_exit=True, run_as=user
+        )
+        app.trace()
+        app.wait_for_tracing_done()
+        apps.append(app)
 
     # Connect gdb to the consumerd and prep for the relayd_add_stream failure
     workdir = lttngtest.TemporaryDirectory("lttngtest_gdb")
@@ -151,15 +166,17 @@ def test_session_creation_with_relayd_interruption(
     except subprocess.TimeoutExpired:
         pass
 
-    # Quit still open traced application
-    app.touch_exit_file()
-    app.wait_for_exit()
+    # Quit still open traced applications
+    for app in apps:
+        app.touch_exit_file()
+        app.wait_for_exit()
 
-    # Run another app against the broken session to check nothing crashes
-    app2 = test_env.launch_wait_trace_test_application(100)
-    app2.trace()
-    app2.wait_for_tracing_done()
-    app2.wait_for_exit()
+    # Run another app per traced UID against the broken session to check nothing crashes
+    for user in traced_users:
+        app2 = test_env.launch_wait_trace_test_application(100, run_as=user)
+        app2.trace()
+        app2.wait_for_tracing_done()
+        app2.wait_for_exit()
 
     # Attempt a rotation
     try:
@@ -180,14 +197,15 @@ def test_session_creation_with_relayd_interruption(
         )
 
     session.start()
-    app = test_env.launch_wait_trace_test_application(100)
-    app.trace()
-    app.wait_for_tracing_done()
-    app.wait_for_exit()
+    for user in traced_users:
+        app = test_env.launch_wait_trace_test_application(100, run_as=user)
+        app.trace()
+        app.wait_for_tracing_done()
+        app.wait_for_exit()
     session.stop()
 
     tap.ok(
-        "test_session_creation_with_relayd_interruption with channel_count={}, channel_success_count={}".format(
-            channel_count, channel_success_count
+        "test_session_creation_with_relayd_interruption with channel_count={}, channel_success_count={}, traced_uid_count={}".format(
+            channel_count, channel_success_count, traced_uid_count
         )
     )
