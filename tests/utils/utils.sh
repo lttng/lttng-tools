@@ -519,6 +519,31 @@ function retry_anycpu_taskset()
 	return "${ret}"
 }
 
+# Usage:
+# check_skip_single_cpu [NB_TESTS] [SKIP_MESSAGE]
+# Return 0 if we are running on a single CPU machine.
+# If NB_TESTS is set, call skip() to skip number of tests.
+# If NB_TESTS is empty, just output a reason with diag.
+# An optional message can be added.
+
+function check_skip_single_cpu ()
+{
+	local num_tests="$1"
+	local skip_message="$2"
+
+	# Check if we are on a single CPU machine
+	if [[ $(getconf _NPROCESSORS_ONLN) -lt 2  ]]; then
+		if ! test -z "$num_tests"; then
+			skip 0 "This test requires at least 2 CPU cores.${skip_message+ }${skip_message}" "$num_tests"
+		else
+			diag "This test requires at least 2 CPU cores.${skip_message+ }${skip_message}"
+		fi
+		return 0
+	fi
+
+	return 1
+}
+
 function check_skip_long_regression_tests()
 {
 	local num_tests="${1}"
