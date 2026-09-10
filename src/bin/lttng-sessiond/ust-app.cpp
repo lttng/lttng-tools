@@ -185,6 +185,10 @@ public:
 	 */
 	void mark_owner_id(uint32_t owner_id, uint64_t ref_count)
 	{
+		if (ref_count == 0) {
+			return;
+		}
+
 		std::lock_guard<std::mutex> lock(_pending_owner_ids_mutex);
 		_pending_owner_ids[owner_id] = ref_count;
 	}
@@ -4584,6 +4588,8 @@ static void ust_app_unregister(ust_app& app)
 		app.pid,
 		app.uid);
 
+	uint64_t pending_reclamations = 0;
+
 	/*
 	 * For per-PID buffers, perform "push metadata" and flush all
 	 * application streams before removing app from hash tables,
@@ -4655,20 +4661,20 @@ static void ust_app_unregister(ust_app& app)
 			}
 		}
 
-		const auto pending_reclamations =
+		pending_reclamations +=
 			consumer_reclaim_session_owner_id(*ua_sess, app.owner_id_n.key);
-
-		/*
-		 * Add the UST app owner ID to the set of pending reclamation
-		 * IDs with the number of reclamations sent back from the
-		 * consumer. The ID will be removed later once the consumer can
-		 * confirm that all channels used by the UST app are not stalled
-		 * because of the UST app.
-		 */
-		owner_id_reclamations.mark_owner_id(app.owner_id_n.key, pending_reclamations);
 
 		app.sessions_to_teardown.emplace_back(ua_sess);
 	}
+
+	/*
+	 * Add the UST app owner ID to the set of pending reclamation
+	 * IDs with the number of reclamations sent back from the
+	 * consumer. The ID will be removed later once the consumer can
+	 * confirm that all channels used by the UST app are not stalled
+	 * because of the UST app.
+	 */
+	owner_id_reclamations.mark_owner_id(app.owner_id_n.key, pending_reclamations);
 
 	/*
 	 * Remove application from notify hash table. The thread handling the
