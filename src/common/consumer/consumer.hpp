@@ -36,6 +36,7 @@
 #include <chrono>
 #include <cstdint>
 #include <limits.h>
+#include <memory>
 #include <mutex>
 #include <poll.h>
 #include <set>
@@ -45,6 +46,12 @@
 #include <vector>
 
 struct lttng_consumer_local_data;
+
+namespace lttng {
+namespace consumer {
+class watchdog_timer_task;
+} /* namespace consumer */
+} /* namespace lttng */
 
 enum consumer_endpoint_status {
 	CONSUMER_ENDPOINT_ACTIVE,
@@ -229,7 +236,7 @@ struct lttng_consumer_channel {
 	 * For channel buffer-stall monitoring timer (only used by user space
 	 * channels) when `subbuffer_count` is not zero.
 	 */
-	lttng::scheduling::periodic_task::sptr stall_watchdog_timer_task;
+	std::shared_ptr<lttng::consumer::watchdog_timer_task> stall_watchdog_timer_task;
 
 	/* For periodic channel memory reclamation. */
 	lttng::scheduling::periodic_task::sptr memory_reclaim_timer_task;
@@ -1219,6 +1226,7 @@ enum lttcomm_return_code lttng_consumer_init_command(struct lttng_consumer_local
 int lttng_consumer_clear_channel(struct lttng_consumer_channel *channel);
 enum lttcomm_return_code
 lttng_consumer_open_channel_packets(struct lttng_consumer_channel *channel);
+bool lttng_consumer_channel_is_buffer_stall_recovery_enabled(const lttng_consumer_channel& channel);
 
 namespace lttng {
 namespace consumer {
