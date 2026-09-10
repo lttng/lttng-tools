@@ -203,6 +203,15 @@ public:
 		return _pending_owner_ids.count(owner_id) != 0;
 	}
 
+	~pending_owner_id_reclamations()
+	{
+		for (const auto& item : _pending_owner_ids) {
+			ERR_FMT("Left-over owner-id left in the set of pending owner id reclamations: owner_id={}, ref_count={}",
+				item.first,
+				item.second);
+		}
+	}
+
 private:
 	std::unordered_map<uint32_t, uint64_t> _pending_owner_ids;
 

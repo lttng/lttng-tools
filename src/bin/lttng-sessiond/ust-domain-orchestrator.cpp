@@ -2299,7 +2299,8 @@ unsigned int ls::ust::domain_orchestrator::on_app_departure(
 	 * reclaim and nobody to ask.
 	 */
 	unsigned int pending_reclamations = 0;
-	if (owner_id_to_reclaim && _session.user_space_domain.recording_channel_count() > 0) {
+	if (buffer_type() != LTTNG_BUFFER_PER_PID && owner_id_to_reclaim &&
+	    _session.user_space_domain.recording_channel_count() > 0) {
 		pending_reclamations =
 			consumer_reclaim_session_owner_id(*owned_session, *owner_id_to_reclaim);
 	}
