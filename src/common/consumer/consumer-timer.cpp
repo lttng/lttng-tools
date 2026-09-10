@@ -19,6 +19,7 @@
 #include <common/consumer/watchdog-timer-task.hpp>
 #include <common/kernel-consumer/kernel-consumer.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>
+#include <common/pthread-lock.hpp>
 #include <common/urcu.hpp>
 #include <common/ust-consumer/ust-consumer.hpp>
 
@@ -240,7 +241,14 @@ int consumer_timer_stall_watchdog_stop(struct lttng_consumer_channel *channel)
 
 	/* Cancel the watchdog timer task if it is scheduled. */
 	channel->stall_watchdog_timer_task->cancel();
-	channel->stall_watchdog_timer_task.reset();
+
+	const lttng::pthread::lock_guard global_lock(the_consumer_data.lock);
+	const lttng::pthread::lock_guard channel_lock(channel->lock);
+	const auto task = std::move(channel->stall_watchdog_timer_task);
+
+	/* The task will never run again: release what it was still waiting for. */
+	task->abandon_pending_owner_id_reclamation();
+
 	return 0;
 }
 

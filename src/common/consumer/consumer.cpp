@@ -5317,3 +5317,12 @@ void lttng_consumer_sigbus_handle(void *addr)
 {
 	lttng_ustconsumer_sigbus_handle(addr);
 }
+
+bool lttng_consumer_channel_is_buffer_stall_recovery_enabled(const lttng_consumer_channel& channel)
+{
+	/*
+	 * Metadata channels and channels allocated on a per-pid basis
+	 * don't need buffer stall recovery.
+	 */
+	return channel.type != CONSUMER_CHANNEL_TYPE_METADATA && channel.stall_watchdog_timer_task;
+}

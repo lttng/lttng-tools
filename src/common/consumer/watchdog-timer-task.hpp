@@ -15,6 +15,8 @@ namespace lttng {
 namespace consumer {
 class watchdog_timer_task : public lttng::scheduling::periodic_task {
 public:
+	using sptr = std::shared_ptr<watchdog_timer_task>;
+
 	watchdog_timer_task() = delete;
 
 	watchdog_timer_task(const watchdog_timer_task&) = delete;
@@ -46,6 +48,14 @@ public:
 	}
 
 	ssize_t run() noexcept;
+
+	/*
+	 * Called when the task will no longer run (its channel is set for
+	 * deletion). This notifies the session daemon of any remaining pending
+	 * owner id reclamation so that it stops waiting for them to complete:
+	 * they won't complete since the channel is dying.
+	 */
+	void abandon_pending_owner_id_reclamation();
 
 protected:
 	void _run(lttng::scheduling::absolute_time current_time) noexcept override;

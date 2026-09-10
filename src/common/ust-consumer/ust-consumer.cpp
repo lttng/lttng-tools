@@ -4925,6 +4925,10 @@ uint32_t lttng_ustconsumer_reclaim_session_owner_id(uint64_t session_id, uint32_
 		const std::lock_guard<std::mutex> channel_lock(
 			channel->owners_pending_reclamation_lock);
 
+		if (!lttng_consumer_channel_is_buffer_stall_recovery_enabled(*channel)) {
+			continue;
+		}
+
 		try {
 			channel->owners_pending_reclamation.insert(owner_id);
 			pending_reclamations += 1;
@@ -5314,8 +5318,7 @@ void lttng_ustconsumer_quiescent_stalled_channel(struct lttng_consumer_local_dat
 		return;
 	}
 
-	auto watchdog =
-		reinterpret_cast<lttng::consumer::watchdog_timer_task *>(stall_watchdog_task.get());
+	auto watchdog = stall_watchdog_task.get();
 
 	LTTNG_ASSERT(channel.subbuffer_count);
 

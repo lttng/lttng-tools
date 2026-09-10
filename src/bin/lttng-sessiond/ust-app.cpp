@@ -223,6 +223,15 @@ public:
 		return _pending_owner_ids.count(owner_id) != 0;
 	}
 
+	~pending_owner_id_reclamations()
+	{
+		for (const auto& item : _pending_owner_ids) {
+			ERR_FMT("Left-over owner-id left in the set of pending owner id reclamations: owner_id={}, ref_count={}",
+				item.first,
+				item.second);
+		}
+	}
+
 private:
 	std::unordered_map<uint32_t, uint64_t> _pending_owner_ids;
 
@@ -4661,8 +4670,14 @@ static void ust_app_unregister(ust_app& app)
 			}
 		}
 
-		pending_reclamations +=
-			consumer_reclaim_session_owner_id(*ua_sess, app.owner_id_n.key);
+		/*
+		 * Per-PID channels are torn down with the application: their
+		 * watchdog will never run again, so there is nothing to reclaim.
+		 */
+		if (ua_sess->buffer_type != LTTNG_BUFFER_PER_PID) {
+			pending_reclamations +=
+				consumer_reclaim_session_owner_id(*ua_sess, app.owner_id_n.key);
+		}
 
 		app.sessions_to_teardown.emplace_back(ua_sess);
 	}

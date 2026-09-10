@@ -128,3 +128,20 @@ ssize_t lttng::consumer::watchdog_timer_task::run() noexcept
 
 	return observed_count;
 }
+
+void lttng::consumer::watchdog_timer_task::abandon_pending_owner_id_reclamation()
+{
+	ASSERT_LOCKED(the_consumer_data.lock);
+	ASSERT_LOCKED(_channel.lock);
+
+	const std::lock_guard<std::mutex> channel_lock(_channel.owners_pending_reclamation_lock);
+
+	if (!_channel.owners_pending_reclamation.empty()) {
+		WARN_FMT(
+			"Channel has left-over owner ids pending reclamation at watchdog task destruction time: count={}",
+			_channel.owners_pending_reclamation.size());
+		notify_sessiond_about_reclaimed_owner_ids(_consumer_error_socket,
+							  _channel.owners_pending_reclamation);
+		_channel.owners_pending_reclamation.clear();
+	}
+}
