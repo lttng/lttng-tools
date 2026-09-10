@@ -43,6 +43,8 @@
 #include <lttng/event-rule/user-tracepoint.h>
 #include <lttng/trigger/trigger-internal.hpp>
 
+#include <vendor/optional.hpp>
+
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
@@ -167,40 +169,63 @@ get_locked_session_registry(const ust_app_session::identifier& identifier)
  *
  *  Once a owner-id is created, it can not be used again until it is
  *  reclaimed. The reclamation process works by storing the owner-id in a
- *  reclamation table with a reference count equal to the number of channels
- *  used by the user application that has this owner-id. Channels independently
- *  check their stream's sub-buffers and notify the sessiond about the owner IDs
- *  that can be reclaimed, thus decrementing the reference count in the
- *  reclamation table. Once that refence count is zero, the owner-id is removed
+ *  reclamation table along with the number of channels used by the user
+ *  application that has this owner-id. Channels independently check their
+ *  stream's sub-buffers and notify the sessiond about the owner IDs that can
+ *  be reclaimed. Once all channels have acknowledged, the owner-id is removed
  *  from the reclamation table and can thus be used again.
+ *
+ *  The owner-id is reserved in the table before the reclamation requests are
+ *  sent since a channel can acknowledge before the number of channels is
+ *  known.
  */
 class pending_owner_id_reclamations {
 public:
 	/*
-	 * Mark `owner_id` for reclamation with `ref_count` left.
-	 *
-	 * `ref_count` represents the number of channels that were used by the
-	 * application. Each channel will eventually reply an acknowledge (see
-	 * `unmark_owner_id()`).
+	 * Reserve `owner_id` before the reclamation requests are sent to the
+	 * consumer daemons. Channels can acknowledge a reclamation (see
+	 * `unmark_owner_id()`) before the number of expected acknowledgements
+	 * is known; they are accounted for rather than dropped.
 	 */
-	void mark_owner_id(uint32_t owner_id, uint64_t ref_count)
+	void reserve_owner_id(uint32_t owner_id)
 	{
-		if (ref_count == 0) {
-			return;
-		}
+		const std::lock_guard<std::mutex> lock(_pending_owner_ids_mutex);
 
-		std::lock_guard<std::mutex> lock(_pending_owner_ids_mutex);
-		_pending_owner_ids[owner_id] = ref_count;
+		if (!_pending_owner_ids.emplace(owner_id, reclamation_state()).second) {
+			ERR_FMT("Reserving owner-id for reclamation but it is already pending reclamation: owner_id={}",
+				owner_id);
+		}
 	}
 
 	/*
-	 * Decrement the reference count of `owner_id` in the pending
-	 * table. When the reference count hits zero, `owner_id` is removed from
-	 * table.
+	 * Set the number of channel acknowledgements expected before
+	 * `owner_id` can be used again, once all reclamation requests were
+	 * sent. The owner id is released immediately if they were all received
+	 * already.
+	 */
+	void set_expected_reclamation_count(uint32_t owner_id, uint64_t expected_count)
+	{
+		const std::lock_guard<std::mutex> lock(_pending_owner_ids_mutex);
+		const auto it = _pending_owner_ids.find(owner_id);
+
+		if (it == _pending_owner_ids.end()) {
+			ERR_FMT("Setting expected reclamation count of owner-id that is not pending reclamation: owner_id={}",
+				owner_id);
+			return;
+		}
+
+		it->second.expected_count = expected_count;
+		_release_if_complete(it);
+	}
+
+	/*
+	 * Account for the acknowledgement of a channel for `owner_id`. The
+	 * owner id is released once all expected acknowledgements were
+	 * received.
 	 */
 	void unmark_owner_id(uint32_t owner_id)
 	{
-		std::lock_guard<std::mutex> lock(_pending_owner_ids_mutex);
+		const std::lock_guard<std::mutex> lock(_pending_owner_ids_mutex);
 		const auto it = _pending_owner_ids.find(owner_id);
 
 		if (it == _pending_owner_ids.end()) {
@@ -210,30 +235,47 @@ public:
 			return;
 		}
 
-		if (it->second == 1) {
-			_pending_owner_ids.erase(it);
-		} else {
-			it->second -= 1;
-		}
+		it->second.received_count++;
+		_release_if_complete(it);
 	}
 
 	bool is_owner_id_pending_reclamation(uint32_t owner_id)
 	{
-		std::lock_guard<std::mutex> lock(_pending_owner_ids_mutex);
+		const std::lock_guard<std::mutex> lock(_pending_owner_ids_mutex);
 		return _pending_owner_ids.count(owner_id) != 0;
 	}
 
 	~pending_owner_id_reclamations()
 	{
 		for (const auto& item : _pending_owner_ids) {
-			ERR_FMT("Left-over owner-id left in the set of pending owner id reclamations: owner_id={}, ref_count={}",
+			ERR_FMT("Left-over owner-id left in the set of pending owner id reclamations: owner_id={}, expected_count={}, received_count={}",
 				item.first,
-				item.second);
+				item.second.expected_count ?
+					std::to_string(*item.second.expected_count) :
+					"unknown",
+				item.second.received_count);
 		}
 	}
 
 private:
-	std::unordered_map<uint32_t, uint64_t> _pending_owner_ids;
+	struct reclamation_state {
+		/* Unset until all reclamation requests were sent. */
+		nonstd::optional<uint64_t> expected_count;
+		uint64_t received_count = 0;
+	};
+
+	using pending_owner_ids_map = std::unordered_map<uint32_t, reclamation_state>;
+
+	void _release_if_complete(pending_owner_ids_map::iterator it)
+	{
+		const auto& state = it->second;
+
+		if (state.expected_count && state.received_count >= *state.expected_count) {
+			_pending_owner_ids.erase(it);
+		}
+	}
+
+	pending_owner_ids_map _pending_owner_ids;
 
 	/* Protect accesses of `_pending_owner_ids`. */
 	std::mutex _pending_owner_ids_mutex;
@@ -4597,6 +4639,7 @@ static void ust_app_unregister(ust_app& app)
 		app.pid,
 		app.uid);
 
+	owner_id_reclamations.reserve_owner_id(app.owner_id_n.key);
 	uint64_t pending_reclamations = 0;
 
 	/*
@@ -4689,7 +4732,8 @@ static void ust_app_unregister(ust_app& app)
 	 * confirm that all channels used by the UST app are not stalled
 	 * because of the UST app.
 	 */
-	owner_id_reclamations.mark_owner_id(app.owner_id_n.key, pending_reclamations);
+	owner_id_reclamations.set_expected_reclamation_count(app.owner_id_n.key,
+							     pending_reclamations);
 
 	/*
 	 * Remove application from notify hash table. The thread handling the
