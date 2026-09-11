@@ -8,6 +8,7 @@ Execute vermin on the tests/ directory
 """
 
 import logging
+import os
 import pathlib
 import sys
 import shutil
@@ -22,7 +23,14 @@ import lttngtest
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format=lttngtest.utils.get_logging_format())
-    project_root = pathlib.Path(__file__).absolute().parents[2]
+
+    # LTTNG_TEST_ABS_TOP_SRCDIR is set by the test driver. Otherwise, fallback to
+    # assuming the test is running from the source tree (not an out of tree build).
+    project_root = pathlib.Path(
+        os.environ.get(
+            "LTTNG_TEST_ABS_TOP_SRCDIR", pathlib.Path(__file__).absolute().parents[2]
+        )
+    )
     config_path = project_root / ".vermin"
     directories = ["tests/"]
     tap = lttngtest.TapGenerator(1)
