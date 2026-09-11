@@ -167,9 +167,7 @@ def run_test(test_script):
         return (str(e), -1)
 
     return_code = 0
-    poll_timeout = int(
-        os.getenv("LTTNG_TEST_SERIAL_TEST_POLL_PERIOD_SECONDS", 60)
-    )
+    poll_timeout = int(os.getenv("LTTNG_TEST_SERIAL_TEST_POLL_PERIOD_SECONDS", 60))
     # abort the test if there is more than 30 minutes without new output
     test_timeout_minutes = int(os.getenv("LTTNG_TEST_SERIAL_TEST_TIMEOUT_MINUTES", 30))
     last_output = time.time()
@@ -200,7 +198,9 @@ def run_test(test_script):
             else:
                 # Timeout with no new data
                 logging.info("Test '{}' still running...".format(test_script))
-                if test_being_aborted or (time.time() - last_output) >= (test_timeout_minutes * 60):
+                if test_being_aborted or (time.time() - last_output) >= (
+                    test_timeout_minutes * 60
+                ):
                     logging.info(
                         "{}s since last output, aborting test '{}'".format(
                             time.time() - last_output, test_script
