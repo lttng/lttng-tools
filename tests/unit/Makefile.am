@@ -122,8 +122,11 @@ liblttngctl/lttngctl/lttng.py: $(top_srcdir)/include/lttng/lttng.h $(LIBLTTNG_CT
 # tree, and this target requires a tree that's in the process of being built.
 CLEANFILES += liblttngctl/lttngctl/defaults.py \
 	liblttngctl/lttngctl/lttng.py
+SERIAL_TESTS += \
+	liblttngctl/test_channel_kernel.py
 TESTS += \
 	liblttngctl/test_automatic_memory_reclamation_policy.py \
+	liblttngctl/test_channel_ust.py \
 	liblttngctl/test_preallocation_policy.py \
 	liblttngctl/test_reclaim_channel_memory.py \
 	liblttngctl/test_session_trace_format.py \
@@ -134,6 +137,8 @@ endif
 EXTRA_DIST += \
 	liblttngctl/common.py \
 	liblttngctl/test_automatic_memory_reclamation_policy.py \
+	liblttngctl/test_channel_kernel.py \
+	liblttngctl/test_channel_ust.py \
 	liblttngctl/test_preallocation_policy.py \
 	liblttngctl/test_reclaim_channel_memory.py \
 	liblttngctl/test_session_trace_format.py \
