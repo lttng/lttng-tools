@@ -2570,6 +2570,14 @@ void lttng_channel_set_default_attr(struct lttng_domain *domain, struct lttng_ch
 		attr->num_subbuf = DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM;
 		attr->output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
 		break;
+	case LTTNG_DOMAIN_JUL:
+		/* fallthrough to UST */
+	case LTTNG_DOMAIN_LOG4J:
+		/* fallthrough to UST */
+	case LTTNG_DOMAIN_LOG4J2:
+		/* fallthrough to UST */
+	case LTTNG_DOMAIN_PYTHON:
+		/* fallthrough to UST */
 	case LTTNG_DOMAIN_UST:
 		switch (domain->buf_type) {
 		case LTTNG_BUFFER_PER_UID:
