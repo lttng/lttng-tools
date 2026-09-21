@@ -576,7 +576,6 @@ lttng_event_rule_user_tracepoint_generate_lttng_event(const struct lttng_event_r
 		local_event->loglevel = loglevel_value;
 	} else {
 		local_event->loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
-		local_event->loglevel = LTTNG_LOGLEVEL_DEBUG;
 	}
 
 	return local_event.release();
