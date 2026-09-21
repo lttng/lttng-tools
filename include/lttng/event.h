@@ -1430,7 +1430,11 @@ struct lttng_event {
 	    the static log level of the tracepoint, as set by
 	    <code>LTTNG_UST_TRACEPOINT_LOGLEVEL()</code> (see
 	    \lt_man{lttng-ust,3}).
+
 	</dl>
+
+	Ignore this member when the value of lttng_event::loglevel_type
+	is #LTTNG_EVENT_LOGLEVEL_ALL.
 	*/
 	int loglevel;
 
