@@ -14,7 +14,9 @@ LOG_DRIVER_FLAGS='--merge'
 LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) \
 	$(top_builddir)/tests/utils/tap-driver.sh
 
-EXTRA_DIST =
+TEST_EXTENSIONS = .serial
+
+EXTRA_DIST = tests.serial
 TESTS = \
 	ini_config/test_ini_config \
 	test_action \
@@ -50,8 +52,10 @@ TESTS = \
 	test_utils_parse_size_suffix \
 	test_utils_parse_time_suffix \
 	test_utils_path_walks_up_hierarchy \
-	test_uuid
+	test_uuid \
+	tests.serial
 
+SERIAL_TESTS =
 LIBTAP=$(top_builddir)/tests/utils/tap/libtap.la
 
 LIBCOMMON_GPL=$(top_builddir)/src/common/libcommon-gpl.la
@@ -281,6 +285,10 @@ test_scheduler_LDADD = $(LIBTAP) $(LIBCOMMON_LGPL) $(LIBSCHEDULING) $(ATOMIC_LIB
 # Poller
 test_poller_SOURCES = test_poller.cpp
 test_poller_LDADD = $(LIBTAP) $(LIBCOMMON_GPL)
+
+SERIAL_LOG_DRIVER_FLAGS = --merge
+SERIAL_LOG_DRIVER = env SERIAL_TESTS='$(SERIAL_TESTS)' PGREP='$(PGREP)' AM_TAP_AWK='$(AWK)' $(SHELL) \
+	$(top_srcdir)/tests/utils/tap-driver.sh
 
 # Copy test scripts to the builddir for OOT builds
 if HAVE_CLANG2PY
