@@ -16,6 +16,7 @@
 
 #include <vendor/optional.hpp>
 
+#include <algorithm>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -1148,8 +1149,8 @@ inline bool event_rule::operator<(const event_rule& other) const
 	case LTTNG_EVENT_TRACEPOINT:
 	{
 		/*
-		 * Compare log level types, log levels,
-		 * and filter expressions.
+		 * Compare log level types, log levels, filter
+		 * expressions, and name pattern exclusions.
 		 */
 		const auto lhs = as_ust_tracepoint();
 		const auto rhs = other.as_ust_tracepoint();
@@ -1167,6 +1168,17 @@ inline bool event_rule::operator<(const event_rule& other) const
 
 		if (filter_cmp != 0) {
 			return filter_cmp < 0;
+		}
+
+		const auto lhs_exclusions = lhs.exclusions();
+		const auto rhs_exclusions = rhs.exclusions();
+
+		if (lhs_exclusions != rhs_exclusions) {
+			return std::lexicographical_compare(lhs_exclusions.begin(),
+							    lhs_exclusions.end(),
+							    rhs_exclusions.begin(),
+							    rhs_exclusions.end(),
+							    lhs_exclusions.value_comp());
 		}
 
 		break;
