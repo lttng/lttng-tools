@@ -4,17 +4,13 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import pathlib
-import sys
-import os
-from typing import Any, Callable, Type, Dict, Iterator
-import random
-import string
-from collections.abc import Mapping
-
 """
 Test the listing of recording rules associated to a channel.
 """
+
+import pathlib
+import sys
+from typing import List
 
 # Import in-tree test utils
 test_utils_import_path = pathlib.Path(__file__).absolute().parents[3] / "utils"
@@ -23,67 +19,151 @@ sys.path.append(str(test_utils_import_path))
 import lttngtest
 
 
-def test_identical_recording_rules_except_log_level_rule_type(tap, test_env):
-    # type: (lttngtest.TapGenerator, lttngtest._Environment) -> None
+def _describe_recording_rule(rule: lttngtest.UserTracepointEventRule) -> str:
+    properties = []
+
+    if isinstance(rule.log_level_rule, lttngtest.LogLevelRuleExactly):
+        properties.append("log level exactly {}".format(rule.log_level_rule.level.name))
+    elif isinstance(rule.log_level_rule, lttngtest.LogLevelRuleAsSevereAs):
+        properties.append(
+            "log level as severe as {}".format(rule.log_level_rule.level.name)
+        )
+    else:
+        properties.append("any log level")
+
+    if rule.filter_expression is not None:
+        properties.append("filter `{}`".format(rule.filter_expression))
+
+    if rule.name_pattern_exclusions:
+        properties.append(
+            "excluding {}".format(
+                ", ".join(
+                    "`{}`".format(exclusion)
+                    for exclusion in rule.name_pattern_exclusions
+                )
+            )
+        )
+
+    description = "`{}`".format(rule.name_pattern)
+
+    if properties:
+        description += " ({})".format(", ".join(properties))
+
+    return description
+
+
+class _ExpectedRecordingRule:
+    def __init__(self, rule: lttngtest.UserTracepointEventRule, enabled: bool):
+        self.rule = rule
+        self.enabled = enabled
+
+
+def _test_listed_recording_rules(
+    tap: lttngtest.TapGenerator,
+    channel: lttngtest.Channel,
+    expected_rules: List[_ExpectedRecordingRule],
+) -> None:
+    """
+    Check that `channel` lists exactly the rules of `expected_rules`, each with
+    its expected enabled state.
+    """
+    listed_rules = list(channel.recording_rules)
+
+    tap.test(
+        len(listed_rules) == len(expected_rules),
+        "Channel lists {} recording rule(s)".format(len(expected_rules)),
+    )
+
+    for expected in expected_rules:
+        matching_rules = [rule for rule in listed_rules if rule == expected.rule]
+        tap.test(
+            len(matching_rules) == 1 and matching_rules[0].enabled == expected.enabled,
+            "Recording rule {} is listed once and {}".format(
+                _describe_recording_rule(expected.rule),
+                "enabled" if expected.enabled else "disabled",
+            ),
+        )
+
+
+def test_recording_rules_differing_by_log_level_rule_type(
+    tap: lttngtest.TapGenerator, test_env: lttngtest._Environment
+) -> None:
     tap.diagnostic(
-        "Test adding and listing event rules that differ only by their log level rule type"
+        "Test listing recording rules that differ only by their log level rule type"
     )
 
     client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
-
     session = client.create_session()
     channel = session.add_channel(lttngtest.TracingDomain.User)
-    session.start()
 
-    app = test_env.launch_wait_trace_test_application(100)
-
-    llr_exactly = lttngtest.LogLevelRuleExactly(lttngtest.UserLogLevel.DEBUG_LINE)
-    llr_as_severe_as = lttngtest.LogLevelRuleAsSevereAs(
-        lttngtest.UserLogLevel.DEBUG_LINE
+    rule_exact_log_level = lttngtest.UserTracepointEventRule(
+        "lttng*",
+        None,
+        lttngtest.LogLevelRuleExactly(lttngtest.UserLogLevel.DEBUG_LINE),
+        None,
     )
-
-    recording_rule_log_at_level = lttngtest.UserTracepointEventRule(
-        "lttng*", None, llr_exactly, None
+    rule_as_severe_as_log_level = lttngtest.UserTracepointEventRule(
+        "lttng*",
+        None,
+        lttngtest.LogLevelRuleAsSevereAs(lttngtest.UserLogLevel.DEBUG_LINE),
+        None,
     )
-    recording_rule_log_at_least_level = lttngtest.UserTracepointEventRule(
-        "lttng*", None, llr_as_severe_as, None
-    )
-    recording_rule_no_log_level = lttngtest.UserTracepointEventRule(
-        "lttng*", None, None, None
-    )
+    rule_no_log_level = lttngtest.UserTracepointEventRule("lttng*", None, None, None)
 
-    with tap.case("Adding a recording rule with an `exact` log level rule"):
-        channel.add_recording_rule(recording_rule_log_at_level)
+    channel.add_recording_rule(rule_exact_log_level)
+    channel.add_recording_rule(rule_as_severe_as_log_level)
+    channel.add_recording_rule(rule_no_log_level)
 
-    with tap.case("Adding a recording rule with an `as severe as` log level rule"):
-        channel.add_recording_rule(recording_rule_log_at_least_level)
-
-    with tap.case(
-        "Adding a recording rule without a log level rule (all log levels enabled)"
-    ):
-        channel.add_recording_rule(recording_rule_no_log_level)
-
-    rule_match_count = 0
-    for rule in channel.recording_rules:
-        if (
-            rule != recording_rule_no_log_level
-            and rule != recording_rule_log_at_level
-            and rule != recording_rule_log_at_least_level
-        ):
-            continue
-
-        rule_match_count = rule_match_count + 1
-
-    tap.test(
-        rule_match_count == 3,
-        "Recording rules are added and listed",
+    tap.diagnostic("Listing after adding the three rules")
+    _test_listed_recording_rules(
+        tap,
+        channel,
+        [
+            _ExpectedRecordingRule(rule_exact_log_level, enabled=True),
+            _ExpectedRecordingRule(rule_as_severe_as_log_level, enabled=True),
+            _ExpectedRecordingRule(rule_no_log_level, enabled=True),
+        ],
     )
 
 
-tap = lttngtest.TapGenerator(4)
-tap.diagnostic("Test the addition and listing of event rules associated to a channel")
+def test_recording_rules_differing_by_exclusions(
+    tap: lttngtest.TapGenerator, test_env: lttngtest._Environment
+) -> None:
+    tap.diagnostic(
+        "Test listing recording rules that differ only by their name pattern exclusions"
+    )
+
+    client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
+    session = client.create_session()
+    channel = session.add_channel(lttngtest.TracingDomain.User)
+
+    log_level_rule = lttngtest.LogLevelRuleAsSevereAs(lttngtest.UserLogLevel.INFO)
+    rule_excluding_hlm = lttngtest.UserTracepointEventRule(
+        "*", None, log_level_rule, ["hlm_*"]
+    )
+    rule_excluding_gyproc = lttngtest.UserTracepointEventRule(
+        "*", None, log_level_rule, ["gyproc_*"]
+    )
+
+    channel.add_recording_rule(rule_excluding_hlm)
+    channel.add_recording_rule(rule_excluding_gyproc)
+
+    tap.diagnostic("Listing after adding the two rules")
+    _test_listed_recording_rules(
+        tap,
+        channel,
+        [
+            _ExpectedRecordingRule(rule_excluding_hlm, enabled=True),
+            _ExpectedRecordingRule(rule_excluding_gyproc, enabled=True),
+        ],
+    )
+
+
+tap = lttngtest.TapGenerator(7)
+tap.diagnostic("Test the listing of recording rules associated to a channel")
 
 with lttngtest.test_environment(with_sessiond=True, log=tap.diagnostic) as test_env:
-    test_identical_recording_rules_except_log_level_rule_type(tap, test_env)
+    test_recording_rules_differing_by_log_level_rule_type(tap, test_env)
+    test_recording_rules_differing_by_exclusions(tap, test_env)
 
 sys.exit(0 if tap.is_successful else 1)
