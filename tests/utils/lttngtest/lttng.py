@@ -389,10 +389,16 @@ class _Channel(lttngctl.Channel):
         tracepoint_event_rule_class = None
 
         for event in LTTngClient._mi_get_in_element(target_channel, "events"):
-            # Note that the "enabled" property is ignored as it is not exposed by
-            # the EventRule interface.
             pattern = LTTngClient._mi_get_in_element(event, "name").text
             type = LTTngClient._mi_get_in_element(event, "type").text
+
+            enabled = None
+            enabled_element = LTTngClient._mi_find_in_element(event, "enabled")
+            if enabled_element is not None and enabled_element.text in (
+                "true",
+                "false",
+            ):
+                enabled = enabled_element.text == "true"
 
             filter_expression = None
             filter_expression_element = LTTngClient._mi_find_in_element(
@@ -442,11 +448,14 @@ class _Channel(lttngctl.Channel):
                             )
                         )
 
-                yield tracepoint_event_rule_class(
+                rule = tracepoint_event_rule_class(
                     pattern, filter_expression, log_level_rule, exclusions
                 )
             else:
-                yield tracepoint_event_rule_class(pattern, filter_expression)
+                rule = tracepoint_event_rule_class(pattern, filter_expression)
+
+            rule._enabled = enabled
+            yield rule
 
 
 @enum.unique

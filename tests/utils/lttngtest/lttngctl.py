@@ -286,6 +286,7 @@ class TracepointEventRule(EventRule):
     ):
         self._name_pattern = name_pattern  # type: Optional[str]
         self._filter_expression = filter_expression  # type: Optional[str]
+        self._enabled = None  # type: Optional[bool]
 
     def _equals(self, other):
         # type (TracepointEventRule) -> bool
@@ -314,6 +315,11 @@ class TracepointEventRule(EventRule):
     def filter_expression(self):
         # type: () -> Optional[str]
         return self._filter_expression
+
+    @property
+    def enabled(self):
+        # type: () -> Optional[bool]
+        return self._enabled
 
 
 class UserTracepointEventRule(TracepointEventRule):
