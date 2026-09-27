@@ -11,11 +11,10 @@
 #include <common/scope-exit.hpp>
 #include <common/urcu.hpp>
 
-#include <vendor/optional.hpp>
-
 #include <cstddef>
 #include <cstdint>
 #include <iterator>
+#include <optional>
 
 struct lttng_consumer_channel;
 struct lttng_consumer_stream;
@@ -60,8 +59,8 @@ public:
 	private:
 		explicit iterator(const lttng_consumer_channel& channel,
 				  bool is_end = false,
-				  const nonstd::optional<lttng::consumer::stream_set::filter>&
-					  filter = nonstd::nullopt);
+				  const std::optional<lttng::consumer::stream_set::filter>& filter =
+					  std::nullopt);
 
 		const lttng_consumer_channel& _channel;
 
@@ -89,16 +88,16 @@ public:
 		} _position;
 
 		bool _at_end;
-		nonstd::optional<filter> _filter;
+		std::optional<filter> _filter;
 	};
 
 private:
 	explicit stream_set(const lttng_consumer_channel& channel,
-			    const nonstd::optional<filter>& filter = nonstd::nullopt);
+			    const std::optional<filter>& filter = std::nullopt);
 
 	const lttng_consumer_channel& _channel;
 	lttng::urcu::scoped_rcu_read_lock _rcu_lock;
-	nonstd::optional<filter> _filter;
+	std::optional<filter> _filter;
 };
 } /* namespace consumer */
 } /* namespace lttng */

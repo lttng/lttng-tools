@@ -1171,8 +1171,8 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 			*ev,
 			handle->domain.type,
 			original_filter_expression ?
-				nonstd::make_optional(original_filter_expression) :
-				nonstd::nullopt,
+				std::make_optional(original_filter_expression) :
+				std::nullopt,
 			exclusions_vec);
 	} catch (const lttng::ctl::error& ctl_error) {
 		DBG("%s", ctl_error.what());
@@ -1346,8 +1346,8 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 				*ev,
 				handle->domain.type,
 				original_filter_expression ?
-					nonstd::make_optional(original_filter_expression) :
-					nonstd::nullopt,
+					std::make_optional(original_filter_expression) :
+					std::nullopt,
 				exclusions_vec);
 		} catch (const lttng::ctl::error& ctl_error) {
 			DBG("%s", ctl_error.what());

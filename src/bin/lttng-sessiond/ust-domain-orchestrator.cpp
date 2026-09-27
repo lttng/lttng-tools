@@ -2211,8 +2211,9 @@ void ls::ust::domain_orchestrator::synchronize_app(ust::app& app)
 	}
 }
 
-unsigned int ls::ust::domain_orchestrator::on_app_departure(
-	ust::app& app, const nonstd::optional<uint32_t>& owner_id_to_reclaim)
+unsigned int
+ls::ust::domain_orchestrator::on_app_departure(ust::app& app,
+					       const std::optional<uint32_t>& owner_id_to_reclaim)
 {
 	DBG_FMT("UST domain orchestrator handling app departure: session_name=`{}`, session_id={}, "
 		"app={}, owner_id_to_reclaim={}",
@@ -3244,7 +3245,7 @@ void issue_consumer_reclaim_channel_memory(
 	const std::vector<ls::commands::stream_group_owner>& stream_group_owners,
 	bool is_per_cpu_stream,
 	const std::vector<std::uint64_t>& target_consumer_channel_keys,
-	const nonstd::optional<std::chrono::microseconds>& reclaim_older_than_age,
+	const std::optional<std::chrono::microseconds>& reclaim_older_than_age,
 	bool only_reclaim_consumed_data,
 	std::uint64_t memory_reclaim_request_token,
 	std::vector<ls::commands::stream_memory_reclamation_result_group>& result)
@@ -3272,7 +3273,7 @@ void issue_consumer_reclaim_channel_memory(
 				is_per_cpu_stream ?
 					decltype(ls::commands::stream_identifier::cpu_id)(
 						cpu_id++) :
-					nonstd::nullopt
+					std::nullopt
 			};
 
 			streams_reclaimed_memory.emplace_back(
@@ -3312,7 +3313,7 @@ void append_consumer_channel_memory_usage(
 				is_per_cpu_stream ?
 					decltype(ls::commands::stream_identifier::cpu_id)(
 						cpu_id++) :
-					nonstd::nullopt
+					std::nullopt
 			};
 
 			streams_memory_usage.emplace_back(stream_identifier,
@@ -3375,7 +3376,7 @@ void ls::ust::domain_orchestrator::_collect_stream_group_keys_by_bitness(
 
 ls::commands::reclaim_channel_memory_result ls::ust::domain_orchestrator::reclaim_channel_memory(
 	const config::recording_channel_configuration& target_channel,
-	const nonstd::optional<std::chrono::microseconds>& reclaim_older_than_age,
+	const std::optional<std::chrono::microseconds>& reclaim_older_than_age,
 	bool require_consumed,
 	ls::commands::completion_callback_t on_complete,
 	ls::commands::cancellation_callback_t on_cancel)
@@ -3944,8 +3945,8 @@ void ls::ust::domain_orchestrator::_for_each_consumer_stream_group(
 				false,
 				sg_entry.second->get_trace_class(),
 				*sg_entry.first.channel_config,
-				nonstd::optional<uid_t>(sg_entry.first.uid),
-				nonstd::nullopt });
+				std::optional<uid_t>(sg_entry.first.uid),
+				std::nullopt });
 		}
 
 		for (const auto& tc_entry : _per_uid_trace_classes) {
@@ -3959,8 +3960,8 @@ void ls::ust::domain_orchestrator::_for_each_consumer_stream_group(
 				true,
 				*tc_entry.second,
 				metadata_config,
-				nonstd::optional<uid_t>(tc_entry.first.uid),
-				nonstd::nullopt });
+				std::optional<uid_t>(tc_entry.first.uid),
+				std::nullopt });
 		}
 	} else {
 		for (const auto& sg_entry : _per_pid_stream_groups) {
@@ -3974,8 +3975,8 @@ void ls::ust::domain_orchestrator::_for_each_consumer_stream_group(
 				false,
 				sg_entry.second->get_trace_class(),
 				*sg_entry.first.channel_config,
-				nonstd::nullopt,
-				nonstd::optional<pid_t>(sg_entry.first.app->pid) });
+				std::nullopt,
+				std::optional<pid_t>(sg_entry.first.app->pid) });
 		}
 
 		for (const auto& tc_entry : _per_pid_trace_classes) {
@@ -3993,8 +3994,8 @@ void ls::ust::domain_orchestrator::_for_each_consumer_stream_group(
 				true,
 				*tc_entry.second,
 				metadata_config,
-				nonstd::nullopt,
-				nonstd::optional<pid_t>(tc_entry.first->pid) });
+				std::nullopt,
+				std::optional<pid_t>(tc_entry.first->pid) });
 		}
 	}
 }

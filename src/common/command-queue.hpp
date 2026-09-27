@@ -11,10 +11,9 @@
 #include <common/eventfd.hpp>
 #include <common/waiter.hpp>
 
-#include <vendor/optional.hpp>
-
 #include <deque>
 #include <mutex>
+#include <optional>
 
 namespace lttng {
 
@@ -61,7 +60,7 @@ private:
 		_completed_waker = waker;
 	}
 
-	nonstd::optional<lttng::synchro::waker> _completed_waker;
+	std::optional<lttng::synchro::waker> _completed_waker;
 };
 
 /*
@@ -118,16 +117,16 @@ public:
 		completion_waiter.wait();
 	}
 
-	nonstd::optional<CommandType> pop()
+	std::optional<CommandType> pop()
 	{
 		const std::lock_guard<std::mutex> guard(_lock);
 
 		if (_queue.empty()) {
 			_wake_fd.decrement();
-			return nonstd::nullopt;
+			return std::nullopt;
 		}
 
-		auto cmd = nonstd::optional<CommandType>(std::move(_queue.front()));
+		auto cmd = std::optional<CommandType>(std::move(_queue.front()));
 		_queue.pop_front();
 		return cmd;
 	}
@@ -137,15 +136,15 @@ public:
 	 * nullopt otherwise. Unlike pop(), never touches the eventfd so
 	 * it is safe to call even when no wakeup event is pending.
 	 */
-	nonstd::optional<CommandType> try_pop()
+	std::optional<CommandType> try_pop()
 	{
 		const std::lock_guard<std::mutex> guard(_lock);
 
 		if (_queue.empty()) {
-			return nonstd::nullopt;
+			return std::nullopt;
 		}
 
-		auto cmd = nonstd::optional<CommandType>(std::move(_queue.front()));
+		auto cmd = std::optional<CommandType>(std::move(_queue.front()));
 		_queue.pop_front();
 		return cmd;
 	}

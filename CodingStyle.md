@@ -178,7 +178,7 @@ ffc::grapefruit::grapefruit()
 #include "utils.hpp"
 
 /* Project-wide headers. */
-#include <vendor/optional.hpp>
+#include <common/format.hpp>
 
 /* System headers. */
 #include <functional>

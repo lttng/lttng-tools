@@ -14,14 +14,13 @@
 
 #include <lttng/lttng.h>
 
-#include <vendor/optional.hpp>
-
 #include <algorithm>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <sys/types.h>
@@ -186,19 +185,19 @@ namespace internal {
 
 /*
  * Returns the command line of the process having the PID `pid`, or
- * `nonstd::nullopt` if it can't be read (for example because the
+ * `std::nullopt` if it can't be read (for example because the
  * process is gone).
  *
  * `/proc/PID/cmdline` separates the command-line arguments with null
  * bytes; this function returns the first one, namely the executable
  * path, which preserves the historical behaviour of this helper.
  */
-inline nonstd::optional<std::string> get_cmdline_by_pid(const pid_t pid)
+inline std::optional<std::string> get_cmdline_by_pid(const pid_t pid)
 {
 	std::ifstream cmdline_file(lttng::format("/proc/{}/cmdline", pid));
 
 	if (!cmdline_file) {
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
 	std::string cmdline;
@@ -233,7 +232,7 @@ public:
 		return lib().pid;
 	}
 
-	nonstd::optional<std::string> cmdline() const
+	std::optional<std::string> cmdline() const
 	{
 		return internal::get_cmdline_by_pid(pid());
 	}
@@ -271,7 +270,7 @@ public:
 		return lib().pid;
 	}
 
-	nonstd::optional<std::string> cmdline() const
+	std::optional<std::string> cmdline() const
 	{
 		return internal::get_cmdline_by_pid(pid());
 	}
@@ -1060,12 +1059,12 @@ public:
 		LTTNG_ASSERT(type() == LTTNG_EVENT_USERSPACE_PROBE);
 	}
 
-	nonstd::optional<uprobe_location> location() const noexcept
+	std::optional<uprobe_location> location() const noexcept
 	{
 		const auto loc = lttng_event_get_userspace_probe_location(&lib());
 
 		if (!loc) {
-			return nonstd::nullopt;
+			return std::nullopt;
 		}
 
 		return uprobe_location(*loc);
@@ -1294,7 +1293,7 @@ public:
 	{
 	}
 
-	nonstd::optional<unsigned int> cpu_id() const
+	std::optional<unsigned int> cpu_id() const
 	{
 		unsigned int cpu_id;
 		const auto status = lttng_data_stream_info_get_cpu_id(_lib_stream_info, &cpu_id);
@@ -1302,7 +1301,7 @@ public:
 		if (status == LTTNG_DATA_STREAM_INFO_STATUS_OK) {
 			return cpu_id;
 		} else if (status == LTTNG_DATA_STREAM_INFO_STATUS_NONE) {
-			return nonstd::nullopt;
+			return std::nullopt;
 		}
 
 		LTTNG_THROW_ERROR("Failed to get data stream info CPU ID");
@@ -1378,7 +1377,7 @@ public:
 		}
 	}
 
-	nonstd::optional<uid_t> uid() const
+	std::optional<uid_t> uid() const
 	{
 		uid_t uid;
 		const auto status = lttng_data_stream_info_set_get_uid(_lib_set, &uid);
@@ -1386,13 +1385,13 @@ public:
 		if (status == LTTNG_DATA_STREAM_INFO_STATUS_OK) {
 			return uid;
 		} else if (status == LTTNG_DATA_STREAM_INFO_STATUS_NONE) {
-			return nonstd::nullopt;
+			return std::nullopt;
 		}
 
 		LTTNG_THROW_ERROR("Failed to get data stream info set UID");
 	}
 
-	nonstd::optional<pid_t> pid() const
+	std::optional<pid_t> pid() const
 	{
 		pid_t pid;
 		const auto status = lttng_data_stream_info_set_get_pid(_lib_set, &pid);
@@ -1400,13 +1399,13 @@ public:
 		if (status == LTTNG_DATA_STREAM_INFO_STATUS_OK) {
 			return pid;
 		} else if (status == LTTNG_DATA_STREAM_INFO_STATUS_NONE) {
-			return nonstd::nullopt;
+			return std::nullopt;
 		}
 
 		LTTNG_THROW_ERROR("Failed to get data stream info set PID");
 	}
 
-	nonstd::optional<lttng_app_bitness> app_bitness() const
+	std::optional<lttng_app_bitness> app_bitness() const
 	{
 		lttng_app_bitness lib_bitness;
 		const auto status =
@@ -1415,7 +1414,7 @@ public:
 		if (status == LTTNG_DATA_STREAM_INFO_STATUS_OK) {
 			return lib_bitness;
 		} else if (status == LTTNG_DATA_STREAM_INFO_STATUS_NONE) {
-			return nonstd::nullopt;
+			return std::nullopt;
 		}
 
 		LTTNG_THROW_ERROR("Failed to get data stream info set app bitness");
@@ -1817,9 +1816,9 @@ public:
 	}
 
 	/*
-	 * `nonstd::nullopt` means infinite.
+	 * `std::nullopt` means infinite.
 	 */
-	nonstd::optional<std::uint64_t> blocking_timeout_us() const
+	std::optional<std::uint64_t> blocking_timeout_us() const
 	{
 		std::int64_t timeout;
 
@@ -1828,7 +1827,7 @@ public:
 		}
 
 		if (timeout <= 0) {
-			return nonstd::nullopt;
+			return std::nullopt;
 		}
 
 		return static_cast<std::uint64_t>(timeout);
@@ -1845,7 +1844,7 @@ public:
 		return lib_policy;
 	}
 
-	nonstd::optional<std::uint64_t> watchdog_timer_period_us() const noexcept
+	std::optional<std::uint64_t> watchdog_timer_period_us() const noexcept
 	{
 		std::uint64_t period;
 
@@ -1854,7 +1853,7 @@ public:
 			return period;
 		}
 
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
 	lttng_channel_preallocation_policy preallocation_policy() const
@@ -1869,7 +1868,7 @@ public:
 		return lib_policy;
 	}
 
-	nonstd::optional<std::uint64_t> automatic_memory_reclaim_maximal_age_us() const noexcept
+	std::optional<std::uint64_t> automatic_memory_reclaim_maximal_age_us() const noexcept
 	{
 		std::uint64_t maximal_age_us;
 
@@ -1878,7 +1877,7 @@ public:
 			return maximal_age_us;
 		}
 
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
 	/*
@@ -2047,7 +2046,7 @@ public:
 		return _set.empty();
 	}
 
-	nonstd::optional<ChannelType> find_by_name(const char *const name) const noexcept
+	std::optional<ChannelType> find_by_name(const char *const name) const noexcept
 	{
 		LTTNG_ASSERT(name);
 
@@ -2057,7 +2056,7 @@ public:
 			}
 		}
 
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
 private:
@@ -2161,7 +2160,7 @@ public:
 		return lttng_process_attr_values_get_type_at_index(_lib_values, _index);
 	}
 
-	nonstd::optional<pid_t> pid() const noexcept
+	std::optional<pid_t> pid() const noexcept
 	{
 		pid_t pid;
 
@@ -2170,10 +2169,10 @@ public:
 			return pid;
 		}
 
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
-	nonstd::optional<uid_t> uid() const noexcept
+	std::optional<uid_t> uid() const noexcept
 	{
 		uid_t uid;
 
@@ -2182,7 +2181,7 @@ public:
 			return uid;
 		}
 
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
 	c_string_view user_name() const noexcept
@@ -2198,7 +2197,7 @@ public:
 		return c_string_view(nullptr);
 	}
 
-	nonstd::optional<gid_t> gid() const noexcept
+	std::optional<gid_t> gid() const noexcept
 	{
 		gid_t gid;
 
@@ -2207,7 +2206,7 @@ public:
 			return gid;
 		}
 
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
 	c_string_view group_name() const noexcept
@@ -2366,7 +2365,7 @@ public:
 	 * Returns a snapshot of the available process attribute values
 	 * for this tracker.
 	 */
-	nonstd::optional<std::set<process_attr_value>> inclusion_set() const
+	std::optional<std::set<process_attr_value>> inclusion_set() const
 	{
 		LTTNG_ASSERT(tracking_policy() == LTTNG_TRACKING_POLICY_INCLUDE_SET);
 
@@ -2749,7 +2748,7 @@ public:
 		return _set.empty();
 	}
 
-	nonstd::optional<domain> find_by_type(const lttng_domain_type domain_type) const noexcept
+	std::optional<domain> find_by_type(const lttng_domain_type domain_type) const noexcept
 	{
 		for (const auto& domain : _set) {
 			if (domain.type() == domain_type) {
@@ -2757,7 +2756,7 @@ public:
 			}
 		}
 
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
 private:
@@ -3149,7 +3148,7 @@ public:
 	/*
 	 * Only valid when type() is `LTTNG_MAP_KEY_TYPE_STRING`.
 	 */
-	nonstd::optional<string_map_key> find_by_string(const char *const str) const
+	std::optional<string_map_key> find_by_string(const char *const str) const
 	{
 		LTTNG_ASSERT(str);
 
@@ -3158,7 +3157,7 @@ public:
 			lttng_map_key_set_string_get_key_by_string(_lib_key_set, str, &lib_key);
 
 		if (status == LTTNG_MAP_KEY_SET_STATUS_NOT_FOUND) {
-			return nonstd::nullopt;
+			return std::nullopt;
 		} else if (status != LTTNG_MAP_KEY_SET_STATUS_OK) {
 			LTTNG_THROW_ERROR("Failed to find map key by string");
 		}
@@ -3206,10 +3205,10 @@ public:
 
 	/*
 	 * Partition ID of the contained values within their group, or
-	 * `nonstd::nullopt` when the owning map group is the shared
+	 * `std::nullopt` when the owning map group is the shared
 	 * map group.
 	 */
-	nonstd::optional<unsigned int> partition_id() const
+	std::optional<unsigned int> partition_id() const
 	{
 		/*
 		 * lttng_map_values_get_partition_id() doesn't apply to
@@ -3219,7 +3218,7 @@ public:
 		 * report the absence of a partition ID instead.
 		 */
 		if (_is_shared) {
-			return nonstd::nullopt;
+			return std::nullopt;
 		}
 
 		unsigned int partition_id;
@@ -3888,14 +3887,14 @@ public:
 
 	/*
 	 * Dead group policy of this user space map channel, or
-	 * `nonstd::nullopt` when its buffer ownership model isn't
+	 * `std::nullopt` when its buffer ownership model isn't
 	 * per-process (the only model for which a dead group
 	 * policy applies).
 	 */
-	nonstd::optional<lttng_map_channel_dead_group_policy> dead_group_policy() const
+	std::optional<lttng_map_channel_dead_group_policy> dead_group_policy() const
 	{
 		if (buffer_ownership() != LTTNG_MAP_CHANNEL_BUFFER_OWNERSHIP_PER_PID) {
-			return nonstd::nullopt;
+			return std::nullopt;
 		}
 
 		lttng_map_channel_dead_group_policy lib_policy;
@@ -4026,7 +4025,7 @@ public:
 		return _set.empty();
 	}
 
-	nonstd::optional<map_channel> find_by_name(const char *const name) const
+	std::optional<map_channel> find_by_name(const char *const name) const
 	{
 		LTTNG_ASSERT(name);
 
@@ -4036,7 +4035,7 @@ public:
 			}
 		}
 
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
 	const lttng_map_channel_set& lib() const noexcept
@@ -4086,7 +4085,7 @@ public:
 		return timestamp;
 	}
 
-	nonstd::optional<unsigned int> live_timer_period_us() const noexcept
+	std::optional<unsigned int> live_timer_period_us() const noexcept
 	{
 		const auto period = _lib_session->live_timer_interval;
 
@@ -4094,7 +4093,7 @@ public:
 			return period;
 		}
 
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
 	/*
@@ -4167,12 +4166,12 @@ public:
 	 * Returns a snapshot of the default recording session
 	 * snapshot output.
 	 *
-	 * Returns `nonstd::nullopt` if there's no default
+	 * Returns `std::nullopt` if there's no default
 	 * snapshot output.
 	 *
 	 * Only valid when is_snapshot_mode() returns true.
 	 */
-	nonstd::optional<snapshot_output> default_snapshot_output() const
+	std::optional<snapshot_output> default_snapshot_output() const
 	{
 		lttng_snapshot_output_list *lib_list = nullptr;
 
@@ -4186,7 +4185,7 @@ public:
 
 		if (!lib_output) {
 			lttng_snapshot_output_list_destroy(lib_list);
-			return nonstd::nullopt;
+			return std::nullopt;
 		}
 
 		return snapshot_output(*lib_list, *lib_output);
@@ -4282,7 +4281,7 @@ public:
 		return _list.empty();
 	}
 
-	nonstd::optional<session> find_by_name(const char *const name) const noexcept
+	std::optional<session> find_by_name(const char *const name) const noexcept
 	{
 		LTTNG_ASSERT(name);
 
@@ -4292,7 +4291,7 @@ public:
 			}
 		}
 
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
 private:

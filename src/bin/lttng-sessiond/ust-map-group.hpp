@@ -13,10 +13,9 @@
 #include "ust-application-abi.hpp"
 #include "ust-object-data.hpp"
 
-#include <vendor/optional.hpp>
-
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <vector>
 
 struct lttng_ust_ctl_daemon_counter;
@@ -43,7 +42,7 @@ struct app;
  * • SIGNED_INT_MAX: SIGNED_INT_64 when both the application and the
  *   session daemon are 64-bit, SIGNED_INT_32 otherwise.
  */
-nonstd::optional<config::map_channel_configuration::value_type_t>
+std::optional<config::map_channel_configuration::value_type_t>
 resolve_map_value_type(config::map_channel_configuration::value_type_t value_type,
 		       application_abi app_abi) noexcept;
 

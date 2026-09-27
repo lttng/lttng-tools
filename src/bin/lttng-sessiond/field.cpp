@@ -307,7 +307,7 @@ void lst::dynamic_length_array_type::accept(type_visitor& visitor) const
 
 lst::static_length_blob_type::static_length_blob_type(unsigned int in_alignment,
 						      uint64_t in_length_bytes,
-						      nonstd::optional<std::string> in_media_type,
+						      std::optional<std::string> in_media_type,
 						      roles in_roles) :
 	type(in_alignment),
 	length_bytes{ in_length_bytes },
@@ -335,10 +335,9 @@ void lst::static_length_blob_type::accept(type_visitor& visitor) const
 	visitor.visit(*this);
 }
 
-lst::dynamic_length_blob_type::dynamic_length_blob_type(
-	unsigned int in_alignment,
-	lst::field_location in_length_field_location,
-	nonstd::optional<std::string> in_media_type) :
+lst::dynamic_length_blob_type::dynamic_length_blob_type(unsigned int in_alignment,
+							lst::field_location in_length_field_location,
+							std::optional<std::string> in_media_type) :
 	type(in_alignment),
 	length_field_location{ std::move(in_length_field_location) },
 	media_type{ std::move(in_media_type) }

@@ -65,7 +65,7 @@ lttng::ctl::event_rule_uptr create_user_or_agent_event_rule_from_lttng_event(
 	const lttng_event& event,
 	lttng_domain_type domain,
 	const log_level_rule_uptr& log_level_rule,
-	nonstd::optional<lttng::c_string_view> filter_expression)
+	std::optional<lttng::c_string_view> filter_expression)
 {
 	lttng::ctl::event_rule_uptr rule{ EventRuleCreateFunction() };
 
@@ -113,7 +113,7 @@ lttng::ctl::event_rule_uptr create_user_or_agent_event_rule_from_lttng_event(
 
 lttng::ctl::event_rule_uptr
 create_kernel_event_rule_from_lttng_event(const lttng_event& event,
-					  nonstd::optional<lttng::c_string_view> filter_expression)
+					  std::optional<lttng::c_string_view> filter_expression)
 {
 	lttng::ctl::event_rule_uptr rule;
 
@@ -256,7 +256,7 @@ create_kernel_event_rule_from_lttng_event(const lttng_event& event,
 lttng::ctl::event_rule_uptr lttng::ctl::create_event_rule_from_lttng_event(
 	const lttng_event& event,
 	lttng_domain_type domain,
-	const nonstd::optional<lttng::c_string_view>& filter_expression,
+	const std::optional<lttng::c_string_view>& filter_expression,
 	const std::vector<lttng::c_string_view>& exclusions)
 {
 	lttng::ctl::event_rule_uptr rule;

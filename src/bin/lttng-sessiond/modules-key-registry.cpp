@@ -76,7 +76,7 @@ void key_registry::_refresh_cache() const
 	}
 }
 
-nonstd::optional<std::uint64_t> key_registry::lookup(const std::string& key) const
+std::optional<std::uint64_t> key_registry::lookup(const std::string& key) const
 {
 	const std::lock_guard<std::mutex> guard(_lock);
 
@@ -89,13 +89,13 @@ nonstd::optional<std::uint64_t> key_registry::lookup(const std::string& key) con
 
 	const auto refreshed = _indexes_by_key.find(key);
 	if (refreshed == _indexes_by_key.end()) {
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
 	return refreshed->second;
 }
 
-nonstd::optional<lttng::c_string_view> key_registry::key_for_index(std::uint64_t index) const
+std::optional<lttng::c_string_view> key_registry::key_for_index(std::uint64_t index) const
 {
 	const std::lock_guard<std::mutex> guard(_lock);
 	const auto it = _keys_by_index.find(index);
@@ -108,7 +108,7 @@ nonstd::optional<lttng::c_string_view> key_registry::key_for_index(std::uint64_t
 
 	const auto refreshed = _keys_by_index.find(index);
 	if (refreshed == _keys_by_index.end()) {
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
 	return refreshed->second;

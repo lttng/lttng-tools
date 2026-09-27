@@ -72,7 +72,7 @@ element_value shared_group::aggregate_element(std::uint64_t index) const
 void shared_group::for_each_partition(const std::function<void(const partition_id&)>& visitor) const
 {
 	/* The shared group is a single, partition-less map. */
-	visitor(nonstd::nullopt);
+	visitor(std::nullopt);
 }
 
 element_value shared_group::read_element(std::uint64_t index, const partition_id& partition) const

@@ -47,7 +47,7 @@ public:
 		       std::string signature,
 		       std::vector<lttng::sessiond::trace::field::cuptr> event_fields,
 		       int loglevel_value,
-		       nonstd::optional<std::string> model_emf_uri,
+		       std::optional<std::string> model_emf_uri,
 		       lttng_buffer_type buffer_type,
 		       const ust::app& app,
 		       event_id& out_event_id);

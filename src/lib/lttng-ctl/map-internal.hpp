@@ -19,10 +19,9 @@
 #include <lttng/map/key-type.h>
 #include <lttng/map/value-type.h>
 
-#include <vendor/optional.hpp>
-
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -35,7 +34,7 @@
  */
 
 struct lttng_map_values {
-	nonstd::optional<unsigned int> partition_id;
+	std::optional<unsigned int> partition_id;
 	std::vector<int64_t> signed_values;
 	std::vector<bool> has_overflow;
 };

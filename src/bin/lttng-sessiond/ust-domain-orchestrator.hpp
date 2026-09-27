@@ -11,9 +11,8 @@
 #include "domain-orchestrator.hpp"
 #include "recording-channel-configuration.hpp"
 
-#include <vendor/optional.hpp>
-
 #include <cstdint>
+#include <optional>
 #include <string>
 
 namespace lttng {
@@ -243,7 +242,7 @@ public:
 	 */
 	unsigned int
 	on_app_departure(ust::app& app,
-			 const nonstd::optional<uint32_t>& owner_id_to_reclaim = nonstd::nullopt);
+			 const std::optional<uint32_t>& owner_id_to_reclaim = std::nullopt);
 
 	void rotate() override;
 	void clear() override;
@@ -257,7 +256,7 @@ public:
 
 	commands::reclaim_channel_memory_result reclaim_channel_memory(
 		const config::recording_channel_configuration& target_channel,
-		const nonstd::optional<std::chrono::microseconds>& reclaim_older_than_age,
+		const std::optional<std::chrono::microseconds>& reclaim_older_than_age,
 		bool require_consumed,
 		commands::completion_callback_t on_complete,
 		commands::cancellation_callback_t on_cancel) override;
@@ -439,9 +438,9 @@ private:
 		ust::trace_class& trace_class;
 		const config::channel_configuration& channel_config;
 		/* Set in per-UID mode; absent in per-PID mode. */
-		nonstd::optional<uid_t> owner_uid;
+		std::optional<uid_t> owner_uid;
 		/* Set in per-PID mode; absent in per-UID mode. */
-		nonstd::optional<pid_t> owner_pid;
+		std::optional<pid_t> owner_pid;
 	};
 
 	using consumer_stream_group_visitor =
@@ -686,7 +685,7 @@ private:
 	const config::recording_channel_configuration::ownership_model_t _default_buffer_ownership;
 	consumer_output_uptr _consumer_output;
 	bool _active = false;
-	nonstd::optional<lttng_buffer_type> _locked_buffer_type;
+	std::optional<lttng_buffer_type> _locked_buffer_type;
 	struct lttng_ht *_agents;
 	const std::string _root_shm_path;
 	const std::string _shm_path;

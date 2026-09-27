@@ -48,17 +48,17 @@ lst::clock_class::cycles_t sample_clock_frequency()
 	return get_freq_cb();
 }
 
-nonstd::optional<lttng_uuid> sample_clock_uuid()
+std::optional<lttng_uuid> sample_clock_uuid()
 {
 	lttng_ust_clock_uuid_function get_uuid_cb;
 
 	if (lttng_ust_trace_clock_get_uuid_cb(&get_uuid_cb)) {
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
 	char uuid_str[LTTNG_UUID_STR_LEN];
 	if (get_uuid_cb(uuid_str)) {
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
 	lttng_uuid uuid;
@@ -66,7 +66,7 @@ nonstd::optional<lttng_uuid> sample_clock_uuid()
 		LTTNG_THROW_ERROR("Failed to parse UUID from string");
 	}
 
-	return nonstd::optional<lttng_uuid>{ uuid };
+	return std::optional<lttng_uuid>{ uuid };
 }
 
 const char *sample_clock_name()

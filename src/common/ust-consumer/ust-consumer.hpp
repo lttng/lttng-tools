@@ -87,9 +87,9 @@ void lttng_ustconsumer_try_reclaim_current_subbuffer(lttng_consumer_stream& stre
 
 lttng::consumer::memory_reclaim_result lttng_ustconsumer_reclaim_stream_memory(
 	lttng_consumer_stream& stream,
-	nonstd::optional<std::chrono::microseconds> age_limit,
+	std::optional<std::chrono::microseconds> age_limit,
 	bool require_consumed,
-	const nonstd::optional<std::uint64_t>& memory_reclaim_request_token);
+	const std::optional<std::uint64_t>& memory_reclaim_request_token);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -316,9 +316,9 @@ static inline void lttng_ustconsumer_try_reclaim_current_subbuffer(lttng_consume
 
 static inline lttng::consumer::memory_reclaim_result lttng_ustconsumer_reclaim_stream_memory(
 	lttng_consumer_stream& stream [[maybe_unused]],
-	nonstd::optional<std::chrono::microseconds> age_limit [[maybe_unused]],
+	std::optional<std::chrono::microseconds> age_limit [[maybe_unused]],
 	bool require_consumed [[maybe_unused]],
-	const nonstd::optional<std::uint64_t>& memory_reclaim_request_token [[maybe_unused]])
+	const std::optional<std::uint64_t>& memory_reclaim_request_token [[maybe_unused]])
 {
 	std::abort();
 	return {};

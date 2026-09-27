@@ -21,11 +21,10 @@
 #include <common/file-descriptor.hpp>
 #include <common/make-unique.hpp>
 
-#include <vendor/optional.hpp>
-
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -553,7 +552,7 @@ public:
 	/* Unsupported by the LTTng-modules tracer. */
 	[[noreturn]] commands::reclaim_channel_memory_result reclaim_channel_memory(
 		const config::recording_channel_configuration& target_channel,
-		const nonstd::optional<std::chrono::microseconds>& reclaim_older_than_age,
+		const std::optional<std::chrono::microseconds>& reclaim_older_than_age,
 		bool require_consumed,
 		commands::completion_callback_t on_complete,
 		commands::cancellation_callback_t on_cancel) override;

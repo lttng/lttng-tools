@@ -15,12 +15,11 @@
 
 #include <common/hash-combine.hpp>
 
-#include <vendor/optional.hpp>
-
 #include <cstdint>
 #include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <sys/types.h>
 #include <unordered_map>
 #include <utility>
@@ -171,7 +170,7 @@ public:
 	 * (`ust::app_communication_error`); the caller must translate
 	 * to its own status semantics.
 	 */
-	nonstd::optional<app_attachment> attach_to_app(ust::app& app, int session_parent_handle);
+	std::optional<app_attachment> attach_to_app(ust::app& app, int session_parent_handle);
 
 	struct rule_record {
 		/*

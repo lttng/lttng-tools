@@ -9,10 +9,9 @@
 
 #include <common/macros.hpp>
 
-#include <vendor/optional.hpp>
-
 #include <chrono>
 #include <cxxabi.h>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -50,9 +49,9 @@ struct formatter<std::type_info> : formatter<std::string> {
 };
 
 template <typename WrappedType>
-struct formatter<nonstd::optional<WrappedType>> : formatter<WrappedType> {
+struct formatter<std::optional<WrappedType>> : formatter<WrappedType> {
 	template <typename FormatContextType>
-	typename FormatContextType::iterator format(const nonstd::optional<WrappedType>& opt,
+	typename FormatContextType::iterator format(const std::optional<WrappedType>& opt,
 						    FormatContextType& ctx) const
 	{
 		if (opt) {

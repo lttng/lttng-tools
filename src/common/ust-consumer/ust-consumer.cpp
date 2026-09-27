@@ -1959,9 +1959,9 @@ unsigned long get_current_produced_position(lttng_consumer_stream& stream)
 
 lttng::consumer::memory_reclaim_result lttng_ustconsumer_reclaim_stream_memory(
 	lttng_consumer_stream& stream,
-	nonstd::optional<std::chrono::microseconds> age_limit,
+	std::optional<std::chrono::microseconds> age_limit,
 	bool require_consumed,
-	const nonstd::optional<std::uint64_t>& memory_reclaim_request_token)
+	const std::optional<std::uint64_t>& memory_reclaim_request_token)
 {
 	DBG_FMT("Reclaiming stream memory: channel_name=`{}`, stream_key={}, age_limit_us={}, require_consumed={}",
 		stream.chan->name,
@@ -2055,7 +2055,7 @@ lttng::consumer::memory_reclaim_result lttng_ustconsumer_reclaim_stream_memory(
 		should_flush_current_producer_buffer);
 
 	/* If set, reclaim that subbuffer regardless of its age. */
-	nonstd::optional<unsigned long> age_override_buffer_position;
+	std::optional<unsigned long> age_override_buffer_position;
 	if (should_flush_current_producer_buffer) {
 		unsigned long produced_position_at_flush;
 		const auto flush_ret = lttng_ust_ctl_flush_buffer_with_old_position(
@@ -2105,7 +2105,7 @@ lttng::consumer::memory_reclaim_result lttng_ustconsumer_reclaim_stream_memory(
 		stream.key,
 		consumed_pos);
 
-	nonstd::optional<std::uint64_t> expiry_limit;
+	std::optional<std::uint64_t> expiry_limit;
 	if (age_limit) {
 		expiry_limit = current_tracer_time;
 		const auto negative_age_limit_ns =
@@ -2365,7 +2365,7 @@ lttng::consumer::memory_reclaim_result lttng_ustconsumer_reclaim_stream_memory(
 					consumer_stream_pending_reclamation{
 						deferred_reclaim_subbuf_count,
 						age_limit,
-						nonstd::nullopt
+						std::nullopt
 					};
 			}
 		}
@@ -2389,9 +2389,9 @@ namespace {
 void lttng_ustconsumer_reclaim_channels_memory(
 	int socket,
 	std::uint64_t channel_count,
-	const nonstd::optional<std::chrono::microseconds>& age_limit,
+	const std::optional<std::chrono::microseconds>& age_limit,
 	bool require_consumed,
-	const nonstd::optional<std::uint64_t>& memory_reclaim_request_token)
+	const std::optional<std::uint64_t>& memory_reclaim_request_token)
 {
 	std::vector<std::uint64_t> channel_keys;
 
@@ -2853,7 +2853,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			.gid = LTTNG_OPTIONAL_INIT_VALUE(msg.u.ask_channel.buffer_credentials.gid),
 		};
 
-		nonstd::optional<std::chrono::microseconds> automatic_memory_reclamation_max_age;
+		std::optional<std::chrono::microseconds> automatic_memory_reclamation_max_age;
 		if (msg.u.ask_channel.automatic_memory_reclamation_maximal_age_us.is_set) {
 			automatic_memory_reclamation_max_age =
 				std::chrono::microseconds(LTTNG_OPTIONAL_GET(
@@ -3733,7 +3733,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	{
 		try {
 			health_code_update();
-			nonstd::optional<std::chrono::microseconds> age_limit;
+			std::optional<std::chrono::microseconds> age_limit;
 
 			if (msg.u.reclaim_channels_memory.age_limit_us.is_set) {
 				age_limit = std::chrono::microseconds(
@@ -3751,7 +3751,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				msg.u.reclaim_channels_memory.key_count,
 				age_limit,
 				msg.u.reclaim_channels_memory.require_consumed,
-				nonstd::optional<std::uint64_t>(memory_reclaim_request_token));
+				std::optional<std::uint64_t>(memory_reclaim_request_token));
 		} catch (lttng::consumerd::exceptions::channel_not_found_error& ex) {
 			ERR_FMT("Failed to reclaim memory of channels: {}", ex.what());
 			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;

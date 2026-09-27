@@ -11,12 +11,11 @@
 #include <common/exception.hpp>
 #include <common/format.hpp>
 
-#include <vendor/optional.hpp>
-
 #include <bin/lttng-sessiond/channel-memory-types.hpp>
 #include <chrono>
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -126,7 +125,7 @@ public:
 
 	virtual commands::reclaim_channel_memory_result reclaim_channel_memory(
 		const config::recording_channel_configuration& target_channel,
-		const nonstd::optional<std::chrono::microseconds>& reclaim_older_than_age,
+		const std::optional<std::chrono::microseconds>& reclaim_older_than_age,
 		bool require_consumed,
 		commands::completion_callback_t on_complete,
 		commands::cancellation_callback_t on_cancel) = 0;

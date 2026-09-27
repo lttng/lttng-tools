@@ -8,10 +8,9 @@
 #ifndef LTTNG_SESSIOND_UST_EVENT_NOTIFIER_NOTIFICATION_HPP
 #define LTTNG_SESSIOND_UST_EVENT_NOTIFIER_NOTIFICATION_HPP
 
-#include <vendor/optional.hpp>
-
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 
 namespace lttng {
 namespace sessiond {
@@ -38,7 +37,7 @@ struct event_notifier_notification_header {
  * Any capture payload that follows the header is left on the pipe
  * for the caller to drain.
  */
-nonstd::optional<event_notifier_notification_header>
+std::optional<event_notifier_notification_header>
 read_event_notifier_notification_header(int pipe_fd);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
@@ -48,11 +47,11 @@ read_event_notifier_notification_header(int pipe_fd);
  * in this configuration; the notification pipe for UST applications
  * is never created, so the helper should never be reached.
  */
-inline nonstd::optional<event_notifier_notification_header>
+inline std::optional<event_notifier_notification_header>
 read_event_notifier_notification_header(int pipe_fd __attribute__((unused)))
 {
 	std::abort();
-	return nonstd::nullopt;
+	return std::nullopt;
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */

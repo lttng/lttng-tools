@@ -11,10 +11,9 @@
 #include <common/error.hpp>
 #include <common/format.hpp>
 
-#include <vendor/optional.hpp>
-
 #include <fcntl.h>
 #include <mutex>
+#include <optional>
 #include <sys/mman.h>
 #include <tuple>
 #include <unistd.h>
@@ -84,7 +83,7 @@ bool fd_supports_madv_remove(int fd)
 bool lttng::utils::fs_supports_madv_remove(const char *shm_path) noexcept
 {
 	static std::unordered_map<std::string, bool> cache = {};
-	static nonstd::optional<bool> default_cache;
+	static std::optional<bool> default_cache;
 	static std::mutex cache_mutex;
 
 	const char test_path[] = DEFAULT_MADV_REMOVE_TEST_FILENAME;

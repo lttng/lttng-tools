@@ -14,10 +14,9 @@
 
 #include <lttng/trigger/trigger.h>
 
-#include <vendor/optional.hpp>
-
 #include <cstdint>
 #include <mutex>
+#include <optional>
 #include <sys/types.h>
 #include <unordered_map>
 #include <vector>
@@ -54,13 +53,13 @@ public:
 	 * Look up the index allocated for `tracer_token`. Returns
 	 * nullopt when no index has been allocated for this token.
 	 */
-	nonstd::optional<std::uint64_t> lookup(std::uint64_t tracer_token) const;
+	std::optional<std::uint64_t> lookup(std::uint64_t tracer_token) const;
 
 	/*
 	 * Allocate and register an index for `tracer_token`. Returns
 	 * nullopt when the index pool is exhausted.
 	 */
-	nonstd::optional<std::uint64_t> allocate(std::uint64_t tracer_token);
+	std::optional<std::uint64_t> allocate(std::uint64_t tracer_token);
 
 	/*
 	 * Release the index registered for `tracer_token`. Returns

@@ -13,10 +13,9 @@
 
 #include <lttng/event.h>
 
-#include <vendor/optional.hpp>
-
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 
 namespace lttng {

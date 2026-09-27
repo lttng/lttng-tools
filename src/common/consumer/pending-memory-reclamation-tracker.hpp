@@ -10,11 +10,10 @@
 
 #include <common/scheduler.hpp>
 
-#include <vendor/optional.hpp>
-
 #include <cstdint>
 #include <functional>
 #include <mutex>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 

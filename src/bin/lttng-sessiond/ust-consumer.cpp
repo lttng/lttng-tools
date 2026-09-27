@@ -128,7 +128,7 @@ int ask_channel_creation(lsu::app_session *ua_sess,
 
 	const auto reclamation_age = recording_config ?
 		recording_config->automatic_memory_reclamation_maximal_age :
-		nonstd::optional<std::chrono::microseconds>{};
+		std::optional<std::chrono::microseconds>{};
 
 	/*
 	 * A reclamation policy with an age of zero effectively means that buffers should be
@@ -138,7 +138,7 @@ int ask_channel_creation(lsu::app_session *ua_sess,
 	const bool continuously_reclaimed = reclamation_age.has_value() &&
 		reclamation_age->count() == 0;
 	const auto automatic_memory_reclamation_maximal_age =
-		continuously_reclaimed ? nonstd::nullopt : reclamation_age;
+		continuously_reclaimed ? std::nullopt : reclamation_age;
 
 	const auto monitor_timer_interval = recording_config ?
 		recording_config->monitor_timer_period_us.value_or(0) :
@@ -146,8 +146,8 @@ int ask_channel_creation(lsu::app_session *ua_sess,
 
 	const auto watchdog_timer_interval = recording_config &&
 			recording_config->watchdog_timer_period_us ?
-		nonstd::optional<uint64_t>(*recording_config->watchdog_timer_period_us) :
-		nonstd::optional<uint64_t>{};
+		std::optional<uint64_t>(*recording_config->watchdog_timer_period_us) :
+		std::optional<uint64_t>{};
 
 	const auto tracefile_size = recording_config ?
 		recording_config->trace_file_size_limit_bytes.value_or(0) :

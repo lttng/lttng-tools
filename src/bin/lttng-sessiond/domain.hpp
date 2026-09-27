@@ -23,10 +23,9 @@
 
 #include <lttng/domain.h>
 
-#include <vendor/optional.hpp>
-
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 
@@ -90,25 +89,25 @@ public:
 namespace details {
 /* Create a tracker if domain is kernel-only. */
 template <typename TrackerType>
-nonstd::optional<TrackerType> make_kernel_tracker(lttng::domain_class domain_class)
+std::optional<TrackerType> make_kernel_tracker(lttng::domain_class domain_class)
 {
 	if (domain_class == lttng::domain_class::KERNEL_SPACE) {
 		return TrackerType();
 	}
 
-	return nonstd::nullopt;
+	return std::nullopt;
 }
 
 /* Create a tracker if domain is kernel or user space. */
 template <typename TrackerType>
-nonstd::optional<TrackerType> make_kernel_or_user_space_tracker(lttng::domain_class domain_class)
+std::optional<TrackerType> make_kernel_or_user_space_tracker(lttng::domain_class domain_class)
 {
 	if (domain_class == lttng::domain_class::KERNEL_SPACE ||
 	    domain_class == lttng::domain_class::USER_SPACE) {
 		return TrackerType();
 	}
 
-	return nonstd::nullopt;
+	return std::nullopt;
 }
 
 } /* namespace details */
@@ -482,12 +481,12 @@ private:
 	std::unordered_map<std::string, map_channel_configuration::uptr> _map_channels;
 
 	/* Process attribute trackers (populated based on domain_class_). */
-	nonstd::optional<process_id_tracker_t> _process_id_tracker;
-	nonstd::optional<virtual_process_id_tracker_t> _virtual_process_id_tracker;
-	nonstd::optional<user_id_tracker_t> _user_id_tracker;
-	nonstd::optional<virtual_user_id_tracker_t> _virtual_user_id_tracker;
-	nonstd::optional<group_id_tracker_t> _group_id_tracker;
-	nonstd::optional<virtual_group_id_tracker_t> _virtual_group_id_tracker;
+	std::optional<process_id_tracker_t> _process_id_tracker;
+	std::optional<virtual_process_id_tracker_t> _virtual_process_id_tracker;
+	std::optional<user_id_tracker_t> _user_id_tracker;
+	std::optional<virtual_user_id_tracker_t> _virtual_user_id_tracker;
+	std::optional<group_id_tracker_t> _group_id_tracker;
+	std::optional<virtual_group_id_tracker_t> _virtual_group_id_tracker;
 };
 } /* namespace config */
 } /* namespace sessiond */

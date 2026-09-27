@@ -12,9 +12,8 @@
 #include "stream-class.hpp"
 #include "trace-class.hpp"
 
-#include <vendor/optional.hpp>
-
 #include <functional>
+#include <optional>
 #include <unordered_map>
 
 namespace lttng {

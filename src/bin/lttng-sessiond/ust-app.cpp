@@ -51,13 +51,12 @@
 #include <lttng/ust-ctl.h>
 #include <lttng/ust-error.h>
 
-#include <vendor/optional.hpp>
-
 #include <errno.h>
 #include <exception>
 #include <fcntl.h>
 #include <inttypes.h>
 #include <mutex>
+#include <optional>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -244,7 +243,7 @@ public:
 private:
 	struct reclamation_state {
 		/* Unset until all reclamation requests were sent. */
-		nonstd::optional<uint64_t> expected_count;
+		std::optional<uint64_t> expected_count;
 		uint64_t received_count = 0;
 	};
 
@@ -777,7 +776,7 @@ error:
  * Find an lsu::app using the sock and return it. RCU read side lock must be
  * held before calling this helper function.
  */
-nonstd::optional<ust_app_reference> ust_app_find_by_sock(int sock)
+std::optional<ust_app_reference> ust_app_find_by_sock(int sock)
 {
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
@@ -788,12 +787,12 @@ nonstd::optional<ust_app_reference> ust_app_find_by_sock(int sock)
 	node = lttng_ht_iter_get_node<lttng_ht_node_ulong>(&iter);
 	if (node == nullptr) {
 		DBG2("UST app find by sock %d not found", sock);
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
 	auto raw_app = lttng::utils::container_of(node, &lsu::app::sock_n);
-	return ust_app_get(*raw_app) ? nonstd::make_optional<ust_app_reference>(raw_app) :
-				       nonstd::nullopt;
+	return ust_app_get(*raw_app) ? std::make_optional<ust_app_reference>(raw_app) :
+				       std::nullopt;
 }
 
 /*
@@ -801,7 +800,7 @@ nonstd::optional<ust_app_reference> ust_app_find_by_sock(int sock)
  * be held before calling this helper function.
  */
 namespace {
-nonstd::optional<ust_app_reference> find_app_by_notify_sock(int sock)
+std::optional<ust_app_reference> find_app_by_notify_sock(int sock)
 {
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
@@ -812,11 +811,11 @@ nonstd::optional<ust_app_reference> find_app_by_notify_sock(int sock)
 	node = lttng_ht_iter_get_node<lttng_ht_node_ulong>(&iter);
 	if (node == nullptr) {
 		DBG2("UST app find by notify sock %d not found", sock);
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
 	auto app = lttng::utils::container_of(node, &lsu::app::notify_sock_n);
-	return ust_app_get(*app) ? nonstd::make_optional<ust_app_reference>(app) : nonstd::nullopt;
+	return ust_app_get(*app) ? std::make_optional<ust_app_reference>(app) : std::nullopt;
 }
 } /* namespace */
 
@@ -1519,7 +1518,7 @@ void ust_app_unregister(lsu::app& app)
 
 			try {
 				total_pending_reclamations += orchestrator.on_app_departure(
-					app, nonstd::optional<uint32_t>(app.owner_id_n.key));
+					app, std::optional<uint32_t>(app.owner_id_n.key));
 			} catch (const std::exception& ex) {
 				ERR_FMT("Failed to process app departure in UST orchestrator: session_name=`{}`, session_id={}, app={}, error='{}'",
 					session_ref->name,
@@ -2510,8 +2509,8 @@ int add_event_to_trace_class(int sock,
 							UNDERSCORE_PREFIXED_VARIANT_TAG_MAPPINGS),
 					loglevel_value,
 					model_emf_uri.get() ?
-						nonstd::optional<std::string>(model_emf_uri.get()) :
-						nonstd::nullopt,
+						std::optional<std::string>(model_emf_uri.get()) :
+						std::nullopt,
 					buffer_type,
 					**app,
 					event_id);

@@ -15,10 +15,10 @@
 
 #include <vendor/argpar/argpar.hpp>
 #include <vendor/fmt/core.h>
-#include <vendor/optional.hpp>
 
 #include <chrono>
 #include <cstdlib>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <unistd.h>
@@ -44,7 +44,7 @@ struct app_config {
 	 * events one time.
 	 */
 	unsigned int nr_iter = 100;
-	nonstd::optional<std::chrono::microseconds> nr_usec;
+	std::optional<std::chrono::microseconds> nr_usec;
 	std::string application_in_main_file_path;
 	std::string before_first_event_file_path;
 	std::string after_first_event_file_path;
@@ -76,7 +76,7 @@ app_config parse_arguments(int argc, char **argv)
 	app_config config;
 
 	try {
-		argpar::Iter<nonstd::optional<argpar::Item>> argpar_iter(
+		argpar::Iter<std::optional<argpar::Item>> argpar_iter(
 			argc - 1, const_cast<const char **>(argv + 1), options);
 
 		while (const auto item = argpar_iter.next()) {

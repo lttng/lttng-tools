@@ -18,9 +18,8 @@
 #include <lttng/map/channel-type.h>
 #include <lttng/tracker.h>
 
-#include <vendor/optional.hpp>
-
 #include <limits.h>
+#include <optional>
 #include <stdlib.h>
 #include <string>
 #include <sys/types.h>
@@ -58,16 +57,16 @@ enum class list_cmd_mem_usage_mode {
  */
 struct list_cmd_config final {
 	/* Session name to list (not set for all sessions) */
-	nonstd::optional<std::string> session_name;
+	std::optional<std::string> session_name;
 
 	/* Channel name to filter by (not set for all channels) */
-	nonstd::optional<std::string> channel_name;
+	std::optional<std::string> channel_name;
 
 	/* Map channel name to filter by (not set for all map channels) */
-	nonstd::optional<std::string> map_channel_name;
+	std::optional<std::string> map_channel_name;
 
 	/* Domain type to filter by */
-	nonstd::optional<lttng_domain_type> domain_type;
+	std::optional<lttng_domain_type> domain_type;
 
 	/* Domain selection flags */
 	bool kernel;
@@ -143,13 +142,13 @@ static inline bool is_ust_or_agent_domain(const lttng_domain_type domain_type)
 
 /*
  * Returns the type of map channels associated with the tracing domain
- * `domain_type`, or `nonstd::nullopt` if no map channels apply.
+ * `domain_type`, or `std::nullopt` if no map channels apply.
  *
  * The Linux kernel domain maps to kernel map channels; the user space
  * and agent domains (which are all backed by the user space tracer) map
  * to user space map channels.
  */
-static inline nonstd::optional<lttng_map_channel_type>
+static inline std::optional<lttng_map_channel_type>
 map_channel_type_for_domain(const lttng_domain_type domain_type)
 {
 	switch (domain_type) {
@@ -162,7 +161,7 @@ map_channel_type_for_domain(const lttng_domain_type domain_type)
 	case LTTNG_DOMAIN_PYTHON:
 		return LTTNG_MAP_CHANNEL_TYPE_USER;
 	default:
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 }
 

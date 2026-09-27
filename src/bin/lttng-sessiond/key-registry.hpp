@@ -11,11 +11,10 @@
 #include <common/exception.hpp>
 #include <common/string-utils/c-string-view.hpp>
 
-#include <vendor/optional.hpp>
-
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 
 namespace lttng {
@@ -80,15 +79,15 @@ public:
 	key_registry& operator=(const key_registry&) = delete;
 	key_registry& operator=(key_registry&&) = delete;
 
-	virtual nonstd::optional<std::uint64_t> lookup(const std::string& key) const = 0;
+	virtual std::optional<std::uint64_t> lookup(const std::string& key) const = 0;
 	/*
 	 * Returns a view of the key associated with `index`, or
-	 * `nonstd::nullopt` if no such binding exists. The returned view
+	 * `std::nullopt` if no such binding exists. The returned view
 	 * is valid for the lifetime of the registry: implementations
 	 * never erase entries, and the underlying storage guarantees
 	 * stable string addresses across insertions.
 	 */
-	virtual nonstd::optional<lttng::c_string_view> key_for_index(std::uint64_t index) const = 0;
+	virtual std::optional<lttng::c_string_view> key_for_index(std::uint64_t index) const = 0;
 	virtual void for_each(const element_visitor& visitor) const = 0;
 	virtual std::size_t size() const noexcept = 0;
 	virtual std::uint64_t capacity() const noexcept = 0;

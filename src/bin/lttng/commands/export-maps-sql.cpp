@@ -19,9 +19,8 @@
 #include <lttng/map/group-type.h>
 #include <lttng/map/key-type.h>
 
-#include <vendor/optional.hpp>
-
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <unordered_map>
 

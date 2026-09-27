@@ -26,19 +26,19 @@ tracer_token_index_table::~tracer_token_index_table()
 	}
 }
 
-nonstd::optional<std::uint64_t> tracer_token_index_table::lookup(std::uint64_t tracer_token) const
+std::optional<std::uint64_t> tracer_token_index_table::lookup(std::uint64_t tracer_token) const
 {
 	const std::lock_guard<std::mutex> guard(_lock);
 
 	const auto it = _token_to_index.find(tracer_token);
 	if (it == _token_to_index.end()) {
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
 	return it->second;
 }
 
-nonstd::optional<std::uint64_t> tracer_token_index_table::allocate(std::uint64_t tracer_token)
+std::optional<std::uint64_t> tracer_token_index_table::allocate(std::uint64_t tracer_token)
 {
 	const std::lock_guard<std::mutex> guard(_lock);
 
@@ -49,7 +49,7 @@ nonstd::optional<std::uint64_t> tracer_token_index_table::allocate(std::uint64_t
 	} else if (_high_water < _index_count) {
 		index = _high_water++;
 	} else {
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
 	_token_to_index.emplace(tracer_token, index);

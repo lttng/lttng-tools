@@ -17,9 +17,8 @@
 #include <common/defaults.hpp>
 #include <common/hashtable/hashtable.hpp>
 
-#include <vendor/optional.hpp>
-
 #include <memory>
+#include <optional>
 #include <stdint.h>
 #include <unordered_map>
 #include <vector>
@@ -122,7 +121,7 @@ public:
 	 * Optional because the token is acquired after the channel
 	 * handle is obtained from the tracer (not at construction time).
 	 */
-	nonstd::optional<lttng::sessiond::ust::app_objd_registry::registration_token> objd_token;
+	std::optional<lttng::sessiond::ust::app_objd_registry::registration_token> objd_token;
 	/*
 	 * Reference to the channel configuration from which this per-app
 	 * channel was derived. Points to a recording_channel_configuration

@@ -12,10 +12,9 @@
 
 #include <common/exception.hpp>
 
-#include <vendor/optional.hpp>
-
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <string>
 
 namespace lttng {
@@ -37,7 +36,7 @@ struct element_value {
  * no per-partition decomposition: its single map is identified by an
  * unset id.
  */
-using partition_id = nonstd::optional<unsigned int>;
+using partition_id = std::optional<unsigned int>;
 
 /*
  * Common per-index interface exposed by every group inside a

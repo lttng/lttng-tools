@@ -582,7 +582,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			msg.u.channel.live_timer_interval,
 			msg.u.channel.is_live,
 			false,
-			nonstd::nullopt,
+			std::nullopt,
 			nullptr,
 			nullptr,
 			static_cast<enum lttng_trace_format>(msg.u.channel.trace_format));

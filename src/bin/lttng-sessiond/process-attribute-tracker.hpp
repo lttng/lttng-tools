@@ -11,8 +11,7 @@
 #include <common/exception.hpp>
 #include <common/format.hpp>
 
-#include <vendor/optional.hpp>
-
+#include <optional>
 #include <set>
 #include <string>
 #include <sys/types.h>
@@ -89,7 +88,7 @@ public:
 
 private:
 	IntegralType _resolved_id;
-	nonstd::optional<std::string> _original_name;
+	std::optional<std::string> _original_name;
 };
 
 namespace exceptions {

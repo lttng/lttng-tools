@@ -27,11 +27,10 @@
 #include <common/tinyutf8.hpp>
 #include <common/utils.hpp>
 
-#include <vendor/optional.hpp>
-
 #include <cctype>
 #include <cstdint>
 #include <iostream>
+#include <optional>
 #include <vector>
 
 namespace {
@@ -1057,7 +1056,7 @@ event_rule_node_tags_from_event_rule(const lttng::cli::event_rule& event_rule,
  * Returns an optional probe location property from the
  * event rule `event_rule`.
  */
-nonstd::optional<property>
+std::optional<property>
 probe_location_property_from_event_rule(const lttng::cli::event_rule& event_rule)
 {
 	static constexpr auto title = "Probe location";
@@ -1105,7 +1104,7 @@ probe_location_property_from_event_rule(const lttng::cli::event_rule& event_rule
 		}
 	}
 
-	return nonstd::nullopt;
+	return std::nullopt;
 }
 
 /*
@@ -1996,7 +1995,7 @@ std::unique_ptr<node> node_from_domain(const lttng::cli::session& session,
 	const auto channels = domain.event_record_channels();
 
 	std::vector<std::string> tags;
-	nonstd::optional<lttng::cli::event_rule_set<lttng::cli::java_python_logger_event_rule>>
+	std::optional<lttng::cli::event_rule_set<lttng::cli::java_python_logger_event_rule>>
 		java_python_event_rules;
 
 	/* Build tag based on domain type */
@@ -2027,16 +2026,16 @@ std::unique_ptr<node> node_from_domain(const lttng::cli::session& session,
 	 *
 	 * They're shown under the user space domain node instead.
 	 */
-	const auto map_channels = [&]() -> nonstd::optional<lttng::cli::map_channel_set> {
+	const auto map_channels = [&]() -> std::optional<lttng::cli::map_channel_set> {
 		if (is_agent_domain(domain.type())) {
-			return nonstd::nullopt;
+			return std::nullopt;
 		}
 
 		if (const auto map_type = map_channel_type_for_domain(domain.type())) {
 			return session.map_channels(*map_type);
 		}
 
-		return nonstd::nullopt;
+		return std::nullopt;
 	}();
 
 	/* Linux kernel and user space domains: show map channel count */

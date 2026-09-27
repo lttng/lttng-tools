@@ -1184,7 +1184,7 @@ const char *preallocation_policy_to_string(enum lttng_channel_preallocation_poli
 	}
 }
 
-int mi_emit_channel_reclamation_policy(const nonstd::optional<uint64_t>& memory_reclamation_policy,
+int mi_emit_channel_reclamation_policy(const std::optional<uint64_t>& memory_reclamation_policy,
 				       struct mi_writer *writer)
 {
 	if (!memory_reclamation_policy) {
@@ -1243,7 +1243,7 @@ int mi_lttng_channel_attr(struct mi_writer *writer, const struct lttng_channel_a
 	const char *allocation_policy_str, *preallocation_policy_str;
 	enum lttng_channel_status watchdog_timer_status;
 	bool print_watchdog_timer = false;
-	nonstd::optional<uint64_t> memory_reclamation_policy;
+	std::optional<uint64_t> memory_reclamation_policy;
 
 	LTTNG_ASSERT(attr);
 

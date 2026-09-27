@@ -7,7 +7,6 @@ SUBDIRS = msgpack fmt
 EXTRA_DIST = \
 	mint.hpp \
 	nlohmann/json.hpp \
-	optional.hpp \
 	tinyutf8.h \
 	REUSE.toml
 

@@ -17,11 +17,10 @@
 
 #include <lttng/lttng.h>
 
-#include <vendor/optional.hpp>
-
 #include <fcntl.h>
 #include <inttypes.h>
 #include <math.h>
+#include <optional>
 #include <poll.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -120,13 +119,13 @@ end:
 /*
  * Compare two byte vectors and return an error message if they differ.
  *
- * Returns nonstd::nullopt if the vectors are equal, otherwise returns
+ * Returns std::nullopt if the vectors are equal, otherwise returns
  * an error string describing the mismatch.
  */
-nonstd::optional<std::string> compare_byte_vectors(const uint8_t *expected,
-						   size_t expected_length,
-						   const uint8_t *got,
-						   size_t got_length)
+std::optional<std::string> compare_byte_vectors(const uint8_t *expected,
+						size_t expected_length,
+						const uint8_t *got,
+						size_t got_length)
 {
 	if (expected_length != got_length) {
 		char buf[4096];
@@ -151,7 +150,7 @@ nonstd::optional<std::string> compare_byte_vectors(const uint8_t *expected,
 		}
 	}
 
-	return nonstd::nullopt;
+	return std::nullopt;
 }
 
 /*

@@ -14,13 +14,12 @@
 #include <common/format.hpp>
 #include <common/macros.hpp>
 
-#include <vendor/optional.hpp>
-
 #include <atomic>
 #include <chrono>
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <stddef.h>
 #include <stdint.h>
 #include <vector>
@@ -141,7 +140,7 @@ private:
 	 * Don't access directly, use _get_next_scheduled_time() and
 	 * _set_next_scheduled_time() to ensure proper locking.
 	 */
-	nonstd::optional<absolute_time> _next_scheduled_time;
+	std::optional<absolute_time> _next_scheduled_time;
 
 	const std::string _name{ "Anonymous" };
 };
@@ -252,9 +251,9 @@ public:
 	 *
 	 * Returns:
 	 * - The number of nanoseconds until the next task, if one is still scheduled.
-	 * - `nonstd::nullopt` if no tasks are currently scheduled.
+	 * - `std::nullopt` if no tasks are currently scheduled.
 	 */
-	nonstd::optional<duration_ns>
+	std::optional<duration_ns>
 	tick(absolute_time current_time = std::chrono::steady_clock::now()) noexcept
 	{
 		_last_tick = current_time;
@@ -269,7 +268,7 @@ public:
 
 				/* If the task heap is empty, return no next task. */
 				if (candidate == nullptr) {
-					return nonstd::nullopt;
+					return std::nullopt;
 				}
 
 				if (candidate->_get_next_scheduled_time() > _last_tick) {

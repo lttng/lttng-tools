@@ -13,8 +13,7 @@
 
 #include <lttng/lttng-error.h>
 
-#include <vendor/optional.hpp>
-
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <system_error>
@@ -125,7 +124,7 @@ public:
 				    std::size_t allocation_size,
 				    const lttng::source_location& source_location);
 
-	nonstd::optional<std::size_t> allocation_size;
+	std::optional<std::size_t> allocation_size;
 };
 
 /*

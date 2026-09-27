@@ -82,9 +82,9 @@ class undefined_opt final : std::exception {};
  * Parse command-line arguments and returns a corresponding
  * command configuration.
  *
- * Returns `nonstd::nullopt` when printing help/usage/options.
+ * Returns `std::nullopt` when printing help/usage/options.
  */
-nonstd::optional<list_cmd_config> make_config(int argc, const char **argv)
+std::optional<list_cmd_config> make_config(int argc, const char **argv)
 {
 	if (argc < 1) {
 		LTTNG_THROW_ERROR("");
@@ -106,13 +106,13 @@ nonstd::optional<list_cmd_config> make_config(int argc, const char **argv)
 				SHOW_HELP();
 			}
 
-				return nonstd::nullopt;
+				return std::nullopt;
 			case OPT_USERSPACE:
 				opt_userspace = 1;
 				break;
 			case OPT_LIST_OPTIONS:
 				list_cmd_options(stdout, long_options);
-				return nonstd::nullopt;
+				return std::nullopt;
 			default:
 				throw undefined_opt();
 			}

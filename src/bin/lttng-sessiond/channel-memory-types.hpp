@@ -10,12 +10,11 @@
 
 #include <common/format.hpp>
 
-#include <vendor/optional.hpp>
-
 #include <bin/lttng-sessiond/ust-application-abi.hpp>
 #include <chrono>
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <sys/types.h>
 #include <vector>
 
@@ -53,8 +52,8 @@ struct stream_group_owner {
 };
 
 struct stream_identifier {
-	/* nonstd::nullopt if using per-channel allocation. */
-	const nonstd::optional<uint32_t> cpu_id;
+	/* std::nullopt if using per-channel allocation. */
+	const std::optional<uint32_t> cpu_id;
 };
 
 struct stream_memory_usage {

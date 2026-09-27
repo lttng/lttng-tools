@@ -28,8 +28,7 @@
 #include <common/string-utils/c-string-view.hpp>
 #include <common/uuid.hpp>
 
-#include <vendor/optional.hpp>
-
+#include <optional>
 #include <stdint.h>
 #include <string>
 #include <unordered_map>
@@ -259,14 +258,14 @@ struct app {
 		 * application; resetting the optional releases each via the
 		 * app's command socket.
 		 */
-		nonstd::optional<lttng::sessiond::ust::map_group::app_handle> counter_attachment;
+		std::optional<lttng::sessiond::ust::map_group::app_handle> counter_attachment;
 		/*
 		 * Live for the duration of the app's registration with the
 		 * error-accounting subsystem; resetting this optional releases
 		 * the app's reference to the per-user error counters.
 		 */
-		nonstd::optional<lttng::sessiond::ust::event_notifier_error_accounting::details::
-					 uid_entry_reference>
+		std::optional<lttng::sessiond::ust::event_notifier_error_accounting::details::
+				      uid_entry_reference>
 			accounting_reference;
 #endif
 	} event_notifier_group;
@@ -335,7 +334,7 @@ int ust_app_recv_notify(int sock);
 void ust_app_add(lttng::sessiond::ust::app *app);
 lttng::sessiond::ust::app *ust_app_create(struct ust_register_msg *msg, int sock);
 void ust_app_notify_sock_unregister(int sock);
-nonstd::optional<ust_app_reference> ust_app_find_by_sock(int sock);
+std::optional<ust_app_reference> ust_app_find_by_sock(int sock);
 
 int ust_app_setup_event_notifier_group(lttng::sessiond::ust::app *app);
 
@@ -462,10 +461,10 @@ using ust_app_reference = std::unique_ptr<
 	lttng::sessiond::ust::app,
 	lttng::memory::create_deleter_class<lttng::sessiond::ust::app, ust_app_put>::deleter>;
 
-static inline nonstd::optional<ust_app_reference> ust_app_find_by_sock(int sock
-								       __attribute__((unused)))
+static inline std::optional<ust_app_reference> ust_app_find_by_sock(int sock
+								    __attribute__((unused)))
 {
-	return nonstd::nullopt;
+	return std::nullopt;
 }
 
 static inline std::shared_ptr<lttng::sessiond::ust::trace_class>

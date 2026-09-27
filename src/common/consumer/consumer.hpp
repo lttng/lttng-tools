@@ -31,13 +31,12 @@
 #include <lttng/lttng.h>
 #include <lttng/session-descriptor.h>
 
-#include <vendor/optional.hpp>
-
 #include <chrono>
 #include <cstdint>
 #include <limits.h>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <poll.h>
 #include <set>
 #include <stdint.h>
@@ -106,9 +105,8 @@ struct lttng_consumer_channel {
 	 *
 	 * The consumer_data and channel locks must be acquired before calling this method.
 	 */
-	lttng::consumer::stream_set
-	get_streams(const nonstd::optional<lttng::consumer::stream_set::filter>& filter =
-			    nonstd::nullopt);
+	lttng::consumer::stream_set get_streams(
+		const std::optional<lttng::consumer::stream_set::filter>& filter = std::nullopt);
 
 	/* Is the channel published in the channel hash tables? */
 	bool is_published = false;
@@ -227,7 +225,7 @@ struct lttng_consumer_channel {
 	bool continuously_reclaimed = false;
 
 	/* Maximum age of a subbuffer before it is reclaimed. */
-	nonstd::optional<std::chrono::microseconds> automatic_memory_reclamation_max_age;
+	std::optional<std::chrono::microseconds> automatic_memory_reclamation_max_age;
 
 	/* For channel monitoring timer. */
 	lttng::scheduling::periodic_task::sptr monitor_timer_task;
@@ -295,7 +293,7 @@ struct lttng_consumer_channel {
 	bool streams_sent_to_relayd = false;
 	uint64_t consumed_size_as_of_last_sample_sent = 0;
 
-	nonstd::optional<uint64_t> subbuffer_count;
+	std::optional<uint64_t> subbuffer_count;
 
 	/*
 	 * Reclaim owners set lock.
@@ -474,9 +472,9 @@ using reset_metadata_cb = void (*)(struct lttng_consumer_stream *);
 
 struct consumer_stream_pending_reclamation {
 	unsigned long subbuffer_count;
-	nonstd::optional<std::chrono::microseconds> max_age;
+	std::optional<std::chrono::microseconds> max_age;
 	/* Token for async completion tracking. */
-	nonstd::optional<std::uint64_t> memory_reclaim_request_token;
+	std::optional<std::uint64_t> memory_reclaim_request_token;
 };
 
 /*
@@ -485,8 +483,8 @@ struct consumer_stream_pending_reclamation {
  */
 struct lttng_consumer_stream {
 	struct rotation_parameters {
-		nonstd::optional<uint64_t> relayd_id;
-		nonstd::optional<uint64_t> next_chunk_id;
+		std::optional<uint64_t> relayd_id;
+		std::optional<uint64_t> next_chunk_id;
 	};
 
 	bool has_network_destination() const
@@ -757,7 +755,7 @@ struct lttng_consumer_stream {
 	 */
 	bool is_metadata_coherent:1;
 	bool tracer_supports_metadata_coherency_indicator:1;
-	nonstd::optional<rotation_parameters> pending_metadata_rotation;
+	std::optional<rotation_parameters> pending_metadata_rotation;
 
 	struct {
 		/*
@@ -782,7 +780,7 @@ struct lttng_consumer_stream {
 
 	std::vector<struct stream_subbuffer_transaction_state> subbuffer_transaction_states = {};
 
-	nonstd::optional<consumer_stream_pending_reclamation> pending_memory_reclamation;
+	std::optional<consumer_stream_pending_reclamation> pending_memory_reclamation;
 };
 
 /*
@@ -922,7 +920,7 @@ struct lttng_consumer_local_data {
 	 * to the session daemon (write-only).
 	 */
 	int channel_monitor_pipe = -1;
-	nonstd::optional<lttng_uuid> sessiond_uuid;
+	std::optional<lttng_uuid> sessiond_uuid;
 
 	lttng::scheduling::scheduler timer_task_scheduler;
 	lttng::scheduling::task_executor timer_task_executor{ timer_task_scheduler };
@@ -1114,7 +1112,7 @@ struct lttng_consumer_channel *consumer_allocate_channel(
 	unsigned int live_timer_interval,
 	bool is_in_live_session,
 	bool continuously_reclaimed,
-	nonstd::optional<std::chrono::microseconds> automatic_memory_reclamation_max_age,
+	std::optional<std::chrono::microseconds> automatic_memory_reclamation_max_age,
 	const char *root_shm_path,
 	const char *shm_path,
 	enum lttng_trace_format trace_format);

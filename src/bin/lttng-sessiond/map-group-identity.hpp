@@ -10,9 +10,8 @@
 
 #include "map-channel-configuration.hpp"
 
-#include <vendor/optional.hpp>
-
 #include <cstdint>
+#include <optional>
 #include <string>
 
 namespace lttng {
@@ -42,7 +41,7 @@ enum class group_type : std::uint8_t {
  */
 struct group_identity {
 	group_type type;
-	nonstd::optional<std::uint64_t> owner_id;
+	std::optional<std::uint64_t> owner_id;
 	config::map_channel_configuration::value_type_t value_type;
 
 	bool operator==(const group_identity& other) const noexcept
@@ -66,7 +65,7 @@ struct group_description {
 	 * application name of a USER_PER_PROCESS group). Resolving a Unix
 	 * user id to a name is left to the consumer.
 	 */
-	nonstd::optional<std::string> owner_name;
+	std::optional<std::string> owner_name;
 };
 
 } /* namespace map */

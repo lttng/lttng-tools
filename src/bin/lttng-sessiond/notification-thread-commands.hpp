@@ -17,8 +17,7 @@
 #include <lttng/domain.h>
 #include <lttng/lttng-error.h>
 
-#include <vendor/optional.hpp>
-
+#include <optional>
 #include <stdbool.h>
 #include <urcu/rculfhash.h>
 
@@ -125,7 +124,7 @@ struct notification_thread_command {
 	} reply;
 
 	/* Used to wake origin thread for synchroneous commands. */
-	nonstd::optional<lttng::synchro::waker> command_completed_waker;
+	std::optional<lttng::synchro::waker> command_completed_waker;
 	lttng_error_code reply_code = LTTNG_ERR_UNK;
 	bool is_async = false;
 };

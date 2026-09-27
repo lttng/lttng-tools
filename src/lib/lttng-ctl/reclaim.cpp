@@ -19,8 +19,7 @@
 #include <lttng/reclaim-internal.hpp>
 #include <lttng/reclaim.h>
 
-#include <vendor/optional.hpp>
-
+#include <optional>
 #include <string.h>
 
 /*
@@ -53,7 +52,7 @@ struct lttng_reclaim_handle {
 	lttng::stream_descriptor socket;
 
 	/* Async completion status, unset if not received yet. */
-	nonstd::optional<lttng_reclaim_handle_status> async_reclaim_status;
+	std::optional<lttng_reclaim_handle_status> async_reclaim_status;
 };
 
 namespace {

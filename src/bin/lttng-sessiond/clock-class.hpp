@@ -11,9 +11,8 @@
 #include <common/compat/time.hpp>
 #include <common/uuid.hpp>
 
-#include <vendor/optional.hpp>
-
 #include <memory>
+#include <optional>
 #include <stddef.h>
 #include <stdint.h>
 #include <string>
@@ -43,14 +42,14 @@ public:
 
 	const std::string name;
 	const std::string description;
-	const nonstd::optional<lttng_uuid> uuid;
+	const std::optional<lttng_uuid> uuid;
 	const scycles_t offset;
 	const cycles_t frequency;
 
 protected:
 	clock_class(std::string name,
 		    std::string description,
-		    nonstd::optional<lttng_uuid> uuid,
+		    std::optional<lttng_uuid> uuid,
 		    scycles_t offset,
 		    cycles_t frequency);
 };

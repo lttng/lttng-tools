@@ -67,10 +67,10 @@ std::unordered_map<uid_t, std::unique_ptr<eea_details::ust_uid_map_group_entry>>
  */
 unsigned int registered_event_notifier_count;
 
-nonstd::optional<lttng::sessiond::event_notifier_error_accounting::tracer_token_index_table>
+std::optional<lttng::sessiond::event_notifier_error_accounting::tracer_token_index_table>
 	ust_index_table;
 
-nonstd::optional<lttng::sessiond::config::map_channel_configuration> default_ust_config;
+std::optional<lttng::sessiond::config::map_channel_configuration> default_ust_config;
 } /* namespace */
 
 namespace {

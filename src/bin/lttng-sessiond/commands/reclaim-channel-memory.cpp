@@ -41,14 +41,14 @@ void validate_agent_channel_name(lttng::domain_class domain, lttng::c_string_vie
 }
 } /* namespace */
 
-lsc::reclaim_channel_memory_result lsc::reclaim_channel_memory(
-	const ltt_session::locked_ref& session,
-	lttng::domain_class domain,
-	lttng::c_string_view channel_name,
-	const nonstd::optional<std::chrono::microseconds>& reclaim_older_than_age,
-	bool require_consumed,
-	lsc::completion_callback_t on_complete,
-	lsc::cancellation_callback_t on_cancel)
+lsc::reclaim_channel_memory_result
+lsc::reclaim_channel_memory(const ltt_session::locked_ref& session,
+			    lttng::domain_class domain,
+			    lttng::c_string_view channel_name,
+			    const std::optional<std::chrono::microseconds>& reclaim_older_than_age,
+			    bool require_consumed,
+			    lsc::completion_callback_t on_complete,
+			    lsc::cancellation_callback_t on_cancel)
 {
 	DBG_FMT("Reclaiming memory for channel: session_name=`{}`, domain={}, channel_name=`{}`, age_older_than={}, require_consumed={}",
 		session->name,

@@ -45,13 +45,12 @@
 
 #include <lttng/lttng.h>
 
-#include <vendor/optional.hpp>
-
 #include <fcntl.h>
 #include <getopt.h>
 #include <grp.h>
 #include <inttypes.h>
 #include <limits.h>
+#include <optional>
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
@@ -1867,8 +1866,8 @@ int viewer_get_next_index(struct relay_connection *conn)
 	struct ctf_trace *ctf_trace = nullptr;
 	struct relay_viewer_stream *metadata_viewer_stream = nullptr;
 	bool viewer_stream_and_session_in_same_chunk, viewer_stream_one_rotation_behind;
-	nonstd::optional<std::string> stream_file_chunk_id;
-	nonstd::optional<std::string> viewer_session_chunk_id;
+	std::optional<std::string> stream_file_chunk_id;
+	std::optional<std::string> viewer_session_chunk_id;
 	enum lttng_trace_chunk_status status;
 	bool attached_sessions_have_new_streams = false;
 

@@ -14,11 +14,10 @@
 #include <common/scope-exit.hpp>
 #include <common/uuid.hpp>
 
-#include <vendor/optional.hpp>
-
 #include <algorithm>
 #include <array>
 #include <locale>
+#include <optional>
 #include <queue>
 #include <set>
 #include <stack>
@@ -390,11 +389,11 @@ private:
 class tsdl_field_visitor : public lttng::sessiond::trace::field_visitor,
 			   public lttng::sessiond::trace::type_visitor {
 public:
-	tsdl_field_visitor(const lst::abi& abi,
-			   unsigned int indentation_level,
-			   const tsdl::details::type_overrider& type_overrides,
-			   const nonstd::optional<std::string>& in_default_clock_class_name =
-				   nonstd::nullopt) :
+	tsdl_field_visitor(
+		const lst::abi& abi,
+		unsigned int indentation_level,
+		const tsdl::details::type_overrider& type_overrides,
+		const std::optional<std::string>& in_default_clock_class_name = std::nullopt) :
 		_indentation_level(indentation_level),
 		_trace_abi(abi),
 
@@ -820,7 +819,7 @@ private:
 	 * concept), this attribute is used when expressing static or dynamic length strings as
 	 * arrays/sequences of bytes with an encoding.
 	 */
-	nonstd::optional<enum lst::string_type::encoding> _current_integer_encoding_override;
+	std::optional<enum lst::string_type::encoding> _current_integer_encoding_override;
 
 	unsigned int _indentation_level;
 	const lst::abi& _trace_abi;

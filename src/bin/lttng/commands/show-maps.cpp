@@ -25,12 +25,12 @@
 #include <lttng/map/channel-type.h>
 
 #include <vendor/argpar/argpar.hpp>
-#include <vendor/optional.hpp>
 
 #include <cerrno>
 #include <cstdint>
 #include <cstdlib>
 #include <exception>
+#include <optional>
 #include <set>
 #include <string>
 #include <sys/types.h>
@@ -113,7 +113,7 @@ lttng_map_channel_type channel_type_from_arg(const std::string& arg)
 /*
  * Tries to parse `arg` as a non-negative decimal integer.
  *
- * Returns `nonstd::nullopt` if `arg` is empty, has a leading sign, has
+ * Returns `std::nullopt` if `arg` is empty, has a leading sign, has
  * trailing garbage, or overflows.
  *
  * Does NOT throw.
@@ -121,10 +121,10 @@ lttng_map_channel_type channel_type_from_arg(const std::string& arg)
  * strtoull() silently accepts a leading `-` and wraps the result,
  * therefore we reject any leading sign explicitly.
  */
-nonstd::optional<std::uint64_t> try_parse_uint_arg(const std::string& arg)
+std::optional<std::uint64_t> try_parse_uint_arg(const std::string& arg)
 {
 	if (arg.empty() || arg.front() == '-' || arg.front() == '+') {
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
 	errno = 0;
@@ -133,7 +133,7 @@ nonstd::optional<std::uint64_t> try_parse_uint_arg(const std::string& arg)
 	const auto value = std::strtoull(arg.c_str(), &end, 10);
 
 	if (errno != 0 || end == arg.c_str() || *end != '\0') {
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
 	return value;
@@ -220,13 +220,13 @@ uid_t uid_from_arg(const std::string& arg)
 }
 
 /*
- * Parses the CLI arguments and returns a configuration, or `nonstd::nullopt`
+ * Parses the CLI arguments and returns a configuration, or `std::nullopt`
  * when the caller should exit successfully (help or `--list-options`).
  *
  * Throws `lttng::cli::invalid_usage_error` on invalid arguments and
  * `lttng::cli::no_default_session_error` if no session can be selected.
  */
-nonstd::optional<cmd_cfg> cmd_cfg_from_cli_args(const int argc, const char **const argv)
+std::optional<cmd_cfg> cmd_cfg_from_cli_args(const int argc, const char **const argv)
 {
 	enum show_maps_option_type {
 		OPT_HELP,
@@ -276,14 +276,14 @@ nonstd::optional<cmd_cfg> cmd_cfg_from_cli_args(const int argc, const char **con
 	};
 
 	/* Parse CLI arguments */
-	argpar::Iter<nonstd::optional<argpar::Item>> argpar_iter(
+	argpar::Iter<std::optional<argpar::Item>> argpar_iter(
 		argc - 1, argv + 1, show_maps_options);
 
-	nonstd::optional<std::string> session_name;
-	nonstd::optional<aggregation_level> per;
-	nonstd::optional<sort_column> sort_by;
-	nonstd::optional<sort_direction> sort_order;
-	nonstd::optional<std::uint64_t> limit;
+	std::optional<std::string> session_name;
+	std::optional<aggregation_level> per;
+	std::optional<sort_column> sort_by;
+	std::optional<sort_direction> sort_order;
+	std::optional<std::uint64_t> limit;
 	std::set<std::string> channel_names;
 	std::set<lttng_map_channel_type> channel_types;
 	owner_filter owner;
@@ -306,10 +306,10 @@ nonstd::optional<cmd_cfg> cmd_cfg_from_cli_args(const int argc, const char **con
 			switch (opt.descr().id) {
 			case OPT_HELP:
 				SHOW_HELP_THROW("show-maps");
-				return nonstd::nullopt;
+				return std::nullopt;
 			case OPT_LIST_OPTIONS:
 				list_cmd_options_argpar(stdout, show_maps_options);
-				return nonstd::nullopt;
+				return std::nullopt;
 			case OPT_SESSION:
 				reject_dup_opt(long_name, session_name.has_value());
 				session_name = opt.arg();

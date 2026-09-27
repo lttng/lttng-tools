@@ -315,7 +315,7 @@ create_array_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 	const auto& array_uctl_field = *current;
 	uint32_t array_alignment, array_length;
 	lst::type::cuptr element_type;
-	nonstd::optional<enum lst::string_type::encoding> element_encoding;
+	std::optional<enum lst::string_type::encoding> element_encoding;
 
 	array_length = array_uctl_field.type.u.legacy.array.length;
 	array_alignment = 0;
@@ -377,7 +377,7 @@ lst::type::cuptr create_array_nestable_type_from_ust_ctl_fields(
 	const auto& array_uctl_field = *current;
 	uint32_t array_alignment, array_length;
 	lst::type::cuptr element_type;
-	nonstd::optional<enum lst::string_type::encoding> element_encoding;
+	std::optional<enum lst::string_type::encoding> element_encoding;
 
 	array_length = array_uctl_field.type.u.array_nestable.length;
 	array_alignment = array_uctl_field.type.u.array_nestable.alignment;
@@ -459,7 +459,7 @@ lst::type::cuptr create_sequence_type_from_ust_ctl_fields(
 			lttng_ust_ctl_atype_integer));
 	}
 
-	nonstd::optional<enum lst::string_type::encoding> element_encoding;
+	std::optional<enum lst::string_type::encoding> element_encoding;
 	if (element_uctl_type.atype == lttng_ust_ctl_atype_integer &&
 	    element_uctl_type.u.basic.integer.encoding != lttng_ust_ctl_encode_none) {
 		/* Element represents a text character. */
@@ -528,7 +528,7 @@ lst::type::cuptr create_sequence_nestable_type_from_ust_ctl_fields(
 	/* Nestable sequence fields are followed by their element type. */
 	const auto& element_uctl_field = *(current + 1);
 
-	nonstd::optional<enum lst::string_type::encoding> element_encoding;
+	std::optional<enum lst::string_type::encoding> element_encoding;
 	if (element_uctl_field.type.atype == lttng_ust_ctl_atype_integer &&
 	    element_uctl_field.type.u.integer.encoding != lttng_ust_ctl_encode_none) {
 		/* Element represents a text character. */
@@ -796,7 +796,7 @@ lst::type::cuptr create_fixed_length_blob_type_from_ust_ctl_fields(
 	}
 
 	const auto& fixed_length_blob_uctl_field = *current;
-	nonstd::optional<std::string> media_type;
+	std::optional<std::string> media_type;
 	const uint32_t blob_length = fixed_length_blob_uctl_field.type.u.fixed_length_blob.length;
 
 	if (lttng_strnlen(
@@ -834,7 +834,7 @@ lst::type::cuptr create_dynamic_length_blob_type_from_ust_ctl_fields(
 	const auto& variable_length_blob_uctl_field = *current;
 	const auto *length_field_name =
 		variable_length_blob_uctl_field.type.u.variable_length_blob.length_name;
-	nonstd::optional<std::string> media_type = {};
+	std::optional<std::string> media_type = {};
 
 	if (lttng_strnlen(variable_length_blob_uctl_field.type.u.variable_length_blob.length_name,
 			  sizeof(variable_length_blob_uctl_field.type.u.variable_length_blob

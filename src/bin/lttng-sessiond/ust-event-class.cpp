@@ -22,7 +22,7 @@ lsu::event_class::event_class(unsigned int in_id,
 			      std::string in_signature,
 			      std::vector<lttng::sessiond::trace::field::cuptr> in_fields,
 			      int in_loglevel_value,
-			      nonstd::optional<std::string> in_model_emf_uri) :
+			      std::optional<std::string> in_model_emf_uri) :
 	lst::event_class(in_id,
 			 in_stream_class_id,
 			 in_loglevel_value,

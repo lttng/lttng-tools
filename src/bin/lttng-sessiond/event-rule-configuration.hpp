@@ -25,9 +25,8 @@
 #include <lttng/log-level-rule.h>
 #include <lttng/userspace-probe.h>
 
-#include <vendor/optional.hpp>
-
 #include <cstdint>
+#include <optional>
 #include <string>
 
 namespace lttng {

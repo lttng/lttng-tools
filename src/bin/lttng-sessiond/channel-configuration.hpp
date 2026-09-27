@@ -10,9 +10,8 @@
 
 #include <common/format.hpp>
 
-#include <vendor/optional.hpp>
-
 #include <cstdint>
+#include <optional>
 #include <string>
 
 namespace lttng {
@@ -60,8 +59,8 @@ public:
 			      buffer_consumption_backend_t buffer_consumption_backend_,
 			      std::uint64_t subbuffer_size_bytes_,
 			      unsigned int subbuffer_count_,
-			      const nonstd::optional<timer_period_us>& switch_timer_period_us_,
-			      const nonstd::optional<timer_period_us>& read_timer_period_us_) :
+			      const std::optional<timer_period_us>& switch_timer_period_us_,
+			      const std::optional<timer_period_us>& read_timer_period_us_) :
 		name(std::move(name_)),
 		buffer_full_policy(buffer_full_policy_),
 		buffer_consumption_backend(buffer_consumption_backend_),
@@ -84,8 +83,8 @@ public:
 	const buffer_consumption_backend_t buffer_consumption_backend;
 	const std::uint64_t subbuffer_size_bytes;
 	const unsigned int subbuffer_count;
-	const nonstd::optional<timer_period_us> switch_timer_period_us;
-	const nonstd::optional<timer_period_us> read_timer_period_us;
+	const std::optional<timer_period_us> switch_timer_period_us;
+	const std::optional<timer_period_us> read_timer_period_us;
 
 protected:
 	~channel_configuration() = default;
@@ -107,8 +106,8 @@ public:
 		buffer_consumption_backend_t buffer_consumption_backend_,
 		std::uint64_t subbuffer_size_bytes_,
 		unsigned int subbuffer_count_,
-		const nonstd::optional<timer_period_us>& switch_timer_period_us_,
-		const nonstd::optional<timer_period_us>& read_timer_period_us_) :
+		const std::optional<timer_period_us>& switch_timer_period_us_,
+		const std::optional<timer_period_us>& read_timer_period_us_) :
 		channel_configuration(std::move(name_),
 				      buffer_full_policy_,
 				      buffer_consumption_backend_,

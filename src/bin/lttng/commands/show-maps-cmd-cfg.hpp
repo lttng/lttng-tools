@@ -10,9 +10,8 @@
 
 #include <lttng/map/channel-type.h>
 
-#include <vendor/optional.hpp>
-
 #include <cstdint>
+#include <optional>
 #include <set>
 #include <string>
 #include <sys/types.h>
@@ -97,7 +96,7 @@ struct cmd_cfg final {
 	/* Sorting and display */
 	sort_column sort_by = sort_column::KEY;
 	sort_direction sort_order = sort_direction::ASC;
-	nonstd::optional<std::uint64_t> limit;
+	std::optional<std::uint64_t> limit;
 
 	/*
 	 * Selection axes.

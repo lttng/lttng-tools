@@ -1224,7 +1224,7 @@ int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_error)
 	 * structure of this function, target_session remains unset for commands that don't
 	 * have a target session.
 	 */
-	nonstd::optional<ltt_session::locked_ref> target_session;
+	std::optional<ltt_session::locked_ref> target_session;
 
 	/* Commands that DO NOT need a session. */
 	switch (cmd_ctx->lsm.cmd_type) {

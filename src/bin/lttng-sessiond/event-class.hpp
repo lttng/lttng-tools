@@ -12,8 +12,7 @@
 
 #include <common/uuid.hpp>
 
-#include <vendor/optional.hpp>
-
+#include <optional>
 #include <string>
 
 namespace lttng {
@@ -36,7 +35,7 @@ public:
 	const unsigned int stream_class_id;
 	const int log_level;
 	const std::string name;
-	const nonstd::optional<std::string> model_emf_uri;
+	const std::optional<std::string> model_emf_uri;
 	const lttng::sessiond::trace::type::cuptr payload;
 
 protected:
@@ -44,7 +43,7 @@ protected:
 		    unsigned int stream_class_id,
 		    int log_level,
 		    std::string name,
-		    nonstd::optional<std::string> model_emf_uri,
+		    std::optional<std::string> model_emf_uri,
 		    lttng::sessiond::trace::type::cuptr payload);
 };
 

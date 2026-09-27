@@ -28,12 +28,12 @@
 #include <lttng/session.h>
 
 #include <vendor/argpar/argpar.hpp>
-#include <vendor/optional.hpp>
 
 #include <cerrno>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <optional>
 #include <string>
 
 #ifdef LTTNG_EMBED_HELP
@@ -58,10 +58,10 @@ enum add_map_channel_option_type {
 
 struct cmd_cfg final {
 	std::string session_name;
-	nonstd::optional<std::string> channel_name;
+	std::optional<std::string> channel_name;
 	lttng_map_channel_type type = LTTNG_MAP_CHANNEL_TYPE_KERNEL;
 	lttng_map_value_type value_type = LTTNG_MAP_VALUE_TYPE_SIGNED_INT_MAX;
-	nonstd::optional<std::uint64_t> max_key_count;
+	std::optional<std::uint64_t> max_key_count;
 	lttng_map_channel_update_policy update_policy = LTTNG_MAP_CHANNEL_UPDATE_POLICY_PER_EVENT;
 
 	/* Buffer ownership model */
@@ -180,7 +180,7 @@ void reject_duplicate_option(const char *const long_name, const bool already_set
 	}
 }
 
-nonstd::optional<cmd_cfg> cmd_cfg_from_cli_args(const int argc, const char **const argv)
+std::optional<cmd_cfg> cmd_cfg_from_cli_args(const int argc, const char **const argv)
 {
 	constexpr argpar_opt_descr add_map_channel_options[] = {
 		{ OPT_HELP, 'h', "help", false },
@@ -195,17 +195,17 @@ nonstd::optional<cmd_cfg> cmd_cfg_from_cli_args(const int argc, const char **con
 		ARGPAR_OPT_DESCR_SENTINEL,
 	};
 
-	argpar::Iter<nonstd::optional<argpar::Item>> argpar_iter(
+	argpar::Iter<std::optional<argpar::Item>> argpar_iter(
 		argc - 1, argv + 1, add_map_channel_options);
 
 	std::string session_name;
-	nonstd::optional<std::string> channel_name;
-	nonstd::optional<lttng_map_channel_type> type;
-	nonstd::optional<lttng_map_value_type> value_type;
-	nonstd::optional<std::uint64_t> max_key_count;
-	nonstd::optional<lttng_map_channel_update_policy> update_policy;
-	nonstd::optional<lttng_map_channel_buffer_ownership> buffer_ownership;
-	nonstd::optional<lttng_map_channel_dead_group_policy> dead_process_policy;
+	std::optional<std::string> channel_name;
+	std::optional<lttng_map_channel_type> type;
+	std::optional<lttng_map_value_type> value_type;
+	std::optional<std::uint64_t> max_key_count;
+	std::optional<lttng_map_channel_update_policy> update_policy;
+	std::optional<lttng_map_channel_buffer_ownership> buffer_ownership;
+	std::optional<lttng_map_channel_dead_group_policy> dead_process_policy;
 
 	try {
 		while (const auto item = argpar_iter.next()) {
@@ -228,10 +228,10 @@ nonstd::optional<cmd_cfg> cmd_cfg_from_cli_args(const int argc, const char **con
 			switch (opt.descr().id) {
 			case OPT_HELP:
 				SHOW_HELP_THROW("add-map-channel");
-				return nonstd::nullopt;
+				return std::nullopt;
 			case OPT_LIST_OPTIONS:
 				list_cmd_options_argpar(stdout, add_map_channel_options);
-				return nonstd::nullopt;
+				return std::nullopt;
 			case OPT_TYPE:
 				reject_duplicate_option(long_name, type.has_value());
 				type = type_from_arg(opt.arg());

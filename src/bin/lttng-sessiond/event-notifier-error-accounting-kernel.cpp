@@ -15,13 +15,13 @@
 
 #include <lttng/trigger/trigger-internal.hpp>
 
-#include <vendor/optional.hpp>
+#include <optional>
 
 namespace {
-nonstd::optional<lttng::sessiond::event_notifier_error_accounting::tracer_token_index_table>
+std::optional<lttng::sessiond::event_notifier_error_accounting::tracer_token_index_table>
 	index_table;
-nonstd::optional<lttng::sessiond::config::map_channel_configuration> default_kernel_config;
-nonstd::optional<lttng::sessiond::modules::map_group> kernel_map_group;
+std::optional<lttng::sessiond::config::map_channel_configuration> default_kernel_config;
+std::optional<lttng::sessiond::modules::map_group> kernel_map_group;
 } /* namespace */
 
 namespace lttng {

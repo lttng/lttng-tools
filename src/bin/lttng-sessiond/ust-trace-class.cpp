@@ -335,7 +335,7 @@ lst::type::cuptr lsu::trace_class::_create_packet_header() const
 		lttng::make_unique<lst::static_length_blob_type>(
 			0,
 			16,
-			nonstd::nullopt,
+			std::nullopt,
 			std::initializer_list<lst::static_length_blob_type::role>(
 				{ lst::static_length_blob_type::role::METADATA_STREAM_UUID }))));
 

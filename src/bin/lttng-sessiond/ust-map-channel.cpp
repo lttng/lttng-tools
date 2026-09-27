@@ -142,7 +142,7 @@ void map_channel::for_each_group(const group_visitor& visitor) const
 								static_cast<std::uint64_t>(
 									entry.first.first),
 								group.value_type() },
-							nonstd::nullopt },
+							std::nullopt },
 				group);
 		}
 
@@ -168,9 +168,9 @@ void map_channel::for_each_group(const group_visitor& visitor) const
 
 	/* Every user space map channel exposes its shared group. */
 	visitor(lsm::group_description{ lsm::group_identity{ lsm::group_type::SHARED,
-							     nonstd::nullopt,
+							     std::nullopt,
 							     shared().value_type() },
-					nonstd::nullopt },
+					std::nullopt },
 		shared());
 }
 
@@ -186,8 +186,8 @@ void map_channel::_clear_tracer_groups()
 	}
 }
 
-nonstd::optional<map_channel::app_attachment> map_channel::attach_to_app(ust::app& app,
-									 int session_parent_handle)
+std::optional<map_channel::app_attachment> map_channel::attach_to_app(ust::app& app,
+								      int session_parent_handle)
 {
 	using ownership_t = config::ownership_model_t;
 
@@ -202,7 +202,7 @@ nonstd::optional<map_channel::app_attachment> map_channel::attach_to_app(ust::ap
 			configuration().value_type,
 			app,
 			app_abi);
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
 	switch (configuration().buffer_ownership) {

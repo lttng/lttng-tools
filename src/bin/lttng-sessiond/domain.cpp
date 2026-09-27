@@ -21,9 +21,9 @@ ls::metadata_channel_configuration ls::domain::_make_default_metadata_channel_co
 		ls::channel_configuration::buffer_consumption_backend_t::MMAP,
 		default_get_metadata_subbuf_size(),
 		DEFAULT_METADATA_SUBBUF_NUM,
-		nonstd::optional<ls::channel_configuration::timer_period_us>(
+		std::optional<ls::channel_configuration::timer_period_us>(
 			DEFAULT_METADATA_SWITCH_TIMER),
-		nonstd::optional<ls::channel_configuration::timer_period_us>(
+		std::optional<ls::channel_configuration::timer_period_us>(
 			DEFAULT_METADATA_READ_TIMER));
 }
 

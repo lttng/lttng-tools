@@ -9,11 +9,10 @@
 
 #include "ust-app-session-id.hpp"
 
-#include <vendor/optional.hpp>
-
 #include <cstdint>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <unordered_map>
 
 namespace lttng {
@@ -205,13 +204,13 @@ public:
 	 * Look up a session objd. Returns the session entry if found.
 	 * Used by the notification thread for enum registration.
 	 */
-	nonstd::optional<session_entry> lookup_session(int objd) const noexcept
+	std::optional<session_entry> lookup_session(int objd) const noexcept
 	{
 		const std::lock_guard<std::mutex> guard(_lock);
 
 		const auto it = _session_entries.find(objd);
 		if (it == _session_entries.end()) {
-			return nonstd::nullopt;
+			return std::nullopt;
 		}
 
 		return it->second;
@@ -222,13 +221,13 @@ public:
 	 * Used by the notification thread for channel registration and
 	 * event registration.
 	 */
-	nonstd::optional<channel_entry> lookup_channel(int objd) const noexcept
+	std::optional<channel_entry> lookup_channel(int objd) const noexcept
 	{
 		const std::lock_guard<std::mutex> guard(_lock);
 
 		const auto it = _channel_entries.find(objd);
 		if (it == _channel_entries.end()) {
-			return nonstd::nullopt;
+			return std::nullopt;
 		}
 
 		return it->second;
@@ -238,13 +237,13 @@ public:
 	 * Look up a map-channel master counter objd. Returns the
 	 * map-channel entry if found.
 	 */
-	nonstd::optional<map_channel_entry> lookup_map_channel(int objd) const noexcept
+	std::optional<map_channel_entry> lookup_map_channel(int objd) const noexcept
 	{
 		const std::lock_guard<std::mutex> guard(_lock);
 
 		const auto it = _map_channel_entries.find(objd);
 		if (it == _map_channel_entries.end()) {
-			return nonstd::nullopt;
+			return std::nullopt;
 		}
 
 		return it->second;

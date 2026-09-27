@@ -14,8 +14,7 @@
 #include <common/format.hpp>
 #include <common/hashtable/hashtable.hpp>
 
-#include <vendor/optional.hpp>
-
+#include <optional>
 #include <typeinfo>
 
 namespace lttng {
@@ -36,7 +35,7 @@ public:
 		    std::string signature,
 		    std::vector<lttng::sessiond::trace::field::cuptr> fields,
 		    int loglevel_value,
-		    nonstd::optional<std::string> model_emf_uri);
+		    std::optional<std::string> model_emf_uri);
 	~event_class() override = default;
 	event_class(const event_class&) = delete;
 	event_class(event_class&&) = delete;

@@ -27,8 +27,6 @@
 #include <lttng/snapshot.h>
 #include <lttng/userspace-probe.h>
 
-#include <vendor/optional.hpp>
-
 #include <ctype.h>
 #include <dirent.h>
 #include <inttypes.h>
@@ -36,6 +34,7 @@
 #include <libxml/tree.h>
 #include <libxml/valid.h>
 #include <libxml/xmlschemas.h>
+#include <optional>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -612,8 +611,7 @@ int config_writer_write_string(struct config_writer *writer, const char *value)
 	return std::min(write_ret, 0);
 }
 
-nonstd::optional<lttng_domain_type>
-lttng::config::domain_type_from_string(const char *text) noexcept
+std::optional<lttng_domain_type> lttng::config::domain_type_from_string(const char *text) noexcept
 {
 	if (!strcmp(text, config_domain_type_kernel)) {
 		return LTTNG_DOMAIN_KERNEL;
@@ -629,43 +627,43 @@ lttng::config::domain_type_from_string(const char *text) noexcept
 		return LTTNG_DOMAIN_PYTHON;
 	}
 
-	return nonstd::nullopt;
+	return std::nullopt;
 }
 
-nonstd::optional<std::uint64_t> lttng::config::uint64_from_string(const char *text) noexcept
+std::optional<std::uint64_t> lttng::config::uint64_from_string(const char *text) noexcept
 {
 	char *endptr = nullptr;
 
 	errno = 0;
 	const auto value = strtoull(text, &endptr, 10);
 	if (errno != 0 || endptr == text || *endptr != '\0') {
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
 	return value;
 }
 
-nonstd::optional<std::int64_t> lttng::config::int64_from_string(const char *text) noexcept
+std::optional<std::int64_t> lttng::config::int64_from_string(const char *text) noexcept
 {
 	char *endptr = nullptr;
 
 	errno = 0;
 	const auto value = strtoll(text, &endptr, 10);
 	if (errno != 0 || endptr == text || *endptr != '\0') {
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
 	return value;
 }
 
-nonstd::optional<double> lttng::config::double_from_string(const char *text) noexcept
+std::optional<double> lttng::config::double_from_string(const char *text) noexcept
 {
 	char *endptr = nullptr;
 
 	errno = 0;
 	const auto value = strtod(text, &endptr);
 	if (errno != 0 || endptr == text || *endptr != '\0') {
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
 	return value;
@@ -3052,7 +3050,7 @@ end:
 	return ret;
 }
 
-nonstd::optional<lttng_map_value_type>
+std::optional<lttng_map_value_type>
 map_channel_value_type_from_config_string(const lttng::c_string_view str) noexcept
 {
 	if (str == config_element_map_channel_value_type_signed_int_32) {
@@ -3063,10 +3061,10 @@ map_channel_value_type_from_config_string(const lttng::c_string_view str) noexce
 		return LTTNG_MAP_VALUE_TYPE_SIGNED_INT_MAX;
 	}
 
-	return nonstd::nullopt;
+	return std::nullopt;
 }
 
-nonstd::optional<lttng_map_channel_update_policy>
+std::optional<lttng_map_channel_update_policy>
 map_channel_update_policy_from_config_string(const lttng::c_string_view str) noexcept
 {
 	if (str == config_element_map_channel_update_policy_per_event) {
@@ -3075,10 +3073,10 @@ map_channel_update_policy_from_config_string(const lttng::c_string_view str) noe
 		return LTTNG_MAP_CHANNEL_UPDATE_POLICY_PER_RULE_MATCH;
 	}
 
-	return nonstd::nullopt;
+	return std::nullopt;
 }
 
-nonstd::optional<lttng_map_channel_buffer_ownership>
+std::optional<lttng_map_channel_buffer_ownership>
 map_channel_buffer_ownership_from_config_string(const lttng::c_string_view str) noexcept
 {
 	if (str == config_element_map_channel_buffer_ownership_per_uid) {
@@ -3087,10 +3085,10 @@ map_channel_buffer_ownership_from_config_string(const lttng::c_string_view str) 
 		return LTTNG_MAP_CHANNEL_BUFFER_OWNERSHIP_PER_PID;
 	}
 
-	return nonstd::nullopt;
+	return std::nullopt;
 }
 
-nonstd::optional<lttng_map_channel_dead_group_policy>
+std::optional<lttng_map_channel_dead_group_policy>
 map_channel_dead_group_policy_from_config_string(const lttng::c_string_view str) noexcept
 {
 	if (str == config_element_map_channel_dead_group_policy_drop) {
@@ -3099,7 +3097,7 @@ map_channel_dead_group_policy_from_config_string(const lttng::c_string_view str)
 		return LTTNG_MAP_CHANNEL_DEAD_GROUP_POLICY_SUM_INTO_SHARED;
 	}
 
-	return nonstd::nullopt;
+	return std::nullopt;
 }
 
 /*
@@ -3118,8 +3116,8 @@ int process_map_channel_node(const xmlNodePtr map_channel_node,
 	LTTNG_ASSERT(map_channel_node);
 	LTTNG_ASSERT(session_name.data());
 
-	nonstd::optional<std::string> name;
-	nonstd::optional<uint64_t> max_entry_count;
+	std::optional<std::string> name;
+	std::optional<uint64_t> max_entry_count;
 	auto value_type = LTTNG_MAP_VALUE_TYPE_SIGNED_INT_MAX;
 	auto update_policy = LTTNG_MAP_CHANNEL_UPDATE_POLICY_PER_EVENT;
 	auto buffer_ownership = LTTNG_MAP_CHANNEL_BUFFER_OWNERSHIP_PER_UID;

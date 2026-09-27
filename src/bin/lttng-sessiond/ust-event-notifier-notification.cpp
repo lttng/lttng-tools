@@ -16,7 +16,7 @@ namespace lttng {
 namespace sessiond {
 namespace ust {
 
-nonstd::optional<event_notifier_notification_header>
+std::optional<event_notifier_notification_header>
 read_event_notifier_notification_header(int pipe_fd)
 {
 	struct lttng_ust_abi_event_notifier_notification raw_header;
@@ -31,7 +31,7 @@ read_event_notifier_notification_header(int pipe_fd)
 		       pipe_fd,
 		       sizeof(raw_header),
 		       read_ret);
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
 	return event_notifier_notification_header{ raw_header.token, raw_header.capture_buf_size };

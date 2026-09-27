@@ -11,10 +11,9 @@
 #include <common/format.hpp>
 #include <common/make-unique.hpp>
 
-#include <vendor/optional.hpp>
-
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <type_traits>
@@ -392,7 +391,7 @@ public:
 
 	static_length_blob_type(unsigned int alignment,
 				uint64_t in_length_bytes,
-				nonstd::optional<std::string> media_type = {},
+				std::optional<std::string> media_type = {},
 				roles roles = {});
 
 	type::cuptr copy() const final;
@@ -400,7 +399,7 @@ public:
 	void accept(type_visitor& visitor) const final;
 
 	const uint64_t length_bytes;
-	const nonstd::optional<std::string> media_type;
+	const std::optional<std::string> media_type;
 	const roles roles_;
 
 private:
@@ -411,14 +410,14 @@ class dynamic_length_blob_type : public type {
 public:
 	dynamic_length_blob_type(unsigned int alignment,
 				 field_location length_field_location,
-				 nonstd::optional<std::string> media_type = {});
+				 std::optional<std::string> media_type = {});
 
 	type::cuptr copy() const final;
 
 	void accept(type_visitor& visitor) const final;
 
 	const field_location length_field_location;
-	const nonstd::optional<std::string> media_type;
+	const std::optional<std::string> media_type;
 
 private:
 	bool _is_equal(const type& base_other) const noexcept final;

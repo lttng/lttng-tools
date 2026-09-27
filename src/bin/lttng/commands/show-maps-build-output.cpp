@@ -18,11 +18,10 @@
 
 #include <lttng/lttng.h>
 
-#include <vendor/optional.hpp>
-
 #include <algorithm>
 #include <cstdint>
 #include <fnmatch.h>
+#include <optional>
 #include <set>
 #include <string>
 #include <sys/types.h>
@@ -148,7 +147,7 @@ private:
 	 * Returns whether or not `part_id` passes the partition ID
 	 * axis filter.
 	 */
-	bool _part_id_passes(const nonstd::optional<unsigned int>& part_id) const
+	bool _part_id_passes(const std::optional<unsigned int>& part_id) const
 	{
 		return !part_id || _cfg->selection.part_ids.empty() ||
 			_cfg->selection.part_ids.count(*part_id) > 0;

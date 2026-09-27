@@ -1041,7 +1041,7 @@ struct lttng_consumer_channel *consumer_allocate_channel(
 	unsigned int live_timer_interval,
 	bool is_in_live_session,
 	bool continuously_reclaimed,
-	nonstd::optional<std::chrono::microseconds> automatic_memory_reclamation_max_age,
+	std::optional<std::chrono::microseconds> automatic_memory_reclamation_max_age,
 	const char *root_shm_path,
 	const char *shm_path,
 	enum lttng_trace_format trace_format)
@@ -4769,7 +4769,7 @@ void lttng_consumer_reset_stream_rotate_state(struct lttng_consumer_stream *stre
 	DBG("lttng_consumer_reset_stream_rotate_state for stream %" PRIu64, stream->key);
 	stream->rotate_position = -1ULL;
 	stream->rotate_ready = false;
-	stream->pending_metadata_rotation = nonstd::nullopt;
+	stream->pending_metadata_rotation = std::nullopt;
 }
 
 /*

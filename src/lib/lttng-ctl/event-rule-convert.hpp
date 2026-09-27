@@ -15,9 +15,8 @@
 
 #include <lttng/lttng.h>
 
-#include <vendor/optional.hpp>
-
 #include <memory>
+#include <optional>
 #include <vector>
 
 namespace lttng {
@@ -25,7 +24,7 @@ namespace ctl {
 event_rule_uptr
 create_event_rule_from_lttng_event(const lttng_event& event,
 				   lttng_domain_type domain,
-				   const nonstd::optional<lttng::c_string_view>& filter_expression,
+				   const std::optional<lttng::c_string_view>& filter_expression,
 				   const std::vector<lttng::c_string_view>& exclusions);
 } /* namespace ctl */
 } /* namespace lttng */

@@ -14,7 +14,7 @@
 
 lttng::consumer::stream_set::stream_set(
 	const lttng_consumer_channel& channel,
-	const nonstd::optional<lttng::consumer::stream_set::filter>& filter_) :
+	const std::optional<lttng::consumer::stream_set::filter>& filter_) :
 	_channel(channel), _filter(filter_)
 {
 }
@@ -32,7 +32,7 @@ lttng::consumer::stream_set::iterator lttng::consumer::stream_set::end() const n
 lttng::consumer::stream_set::iterator::iterator(
 	const lttng_consumer_channel& channel,
 	bool at_end,
-	const nonstd::optional<lttng::consumer::stream_set::filter>& filter_) :
+	const std::optional<lttng::consumer::stream_set::filter>& filter_) :
 	_channel(channel), _at_end(at_end), _filter(filter_)
 {
 	if (_at_end) {
@@ -180,7 +180,7 @@ lttng_consumer_stream& lttng::consumer::stream_set::iterator::operator*() const
 }
 
 lttng::consumer::stream_set lttng_consumer_channel::get_streams(
-	const nonstd::optional<lttng::consumer::stream_set::filter>& filter)
+	const std::optional<lttng::consumer::stream_set::filter>& filter)
 {
 	ASSERT_LOCKED(the_consumer_data.lock);
 	ASSERT_LOCKED(lock);

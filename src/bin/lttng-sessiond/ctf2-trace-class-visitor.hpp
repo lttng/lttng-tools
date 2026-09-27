@@ -13,9 +13,9 @@
 #include "trace-class.hpp"
 
 #include <vendor/nlohmann/json.hpp>
-#include <vendor/optional.hpp>
 
 #include <functional>
+#include <optional>
 
 namespace lttng {
 namespace sessiond {

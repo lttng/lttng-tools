@@ -169,7 +169,7 @@ public:
 	 * Optional because the token is acquired after the UST handle
 	 * is created (not at construction time).
 	 */
-	nonstd::optional<app_objd_registry::registration_token> objd_token;
+	std::optional<app_objd_registry::registration_token> objd_token;
 
 	/*
 	 * Per-app, per-channel attachments for this recording session's

@@ -11,10 +11,9 @@
 #include <common/exception.hpp>
 #include <common/file-descriptor.hpp>
 
-#include <vendor/optional.hpp>
-
 #include <cstddef>
 #include <mutex>
+#include <optional>
 #include <sys/types.h>
 
 struct lttng_ust_abi_object_data;
@@ -183,7 +182,7 @@ public:
 	protocol_guard lock();
 
 private:
-	nonstd::optional<lttng::file_descriptor> _fd;
+	std::optional<lttng::file_descriptor> _fd;
 	pid_t _pid = -1;
 	mutable std::mutex _lock;
 };

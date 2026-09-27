@@ -13,12 +13,6 @@ SPDX-FileCopyrightText = "2008-2010 FURUHASHI Sadayuki"
 SPDX-License-Identifier = "BSL-1.0"
 
 [[annotations]]
-path = "optional.hpp"
-precedence = "aggregate"
-SPDX-FileCopyrightText = "2014-2021 Martin Moene"
-SPDX-License-Identifier = "BSL-1.0"
-
-[[annotations]]
 path = "tinyutf8.h"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2015-2021 Jakob Riedle (DuffsDevice)"

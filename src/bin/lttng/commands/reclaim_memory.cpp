@@ -25,12 +25,12 @@
 #include <lttng/domain-internal.hpp>
 
 #include <vendor/argpar/argpar.hpp>
-#include <vendor/optional.hpp>
 
 #include <chrono>
 #include <cstdio>
 #include <map>
 #include <numeric>
+#include <optional>
 #include <set>
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -104,7 +104,7 @@ struct reclaim_config {
 	std::string session_name;
 	channel_name_set channel_names;
 	lttng::domain_class domain;
-	nonstd::optional<std::chrono::microseconds> older_than_age;
+	std::optional<std::chrono::microseconds> older_than_age;
 	bool no_wait;
 };
 
@@ -140,7 +140,7 @@ channel_name_set get_session_channel_names(const std::string& session_name,
 }
 
 /* Parse CLI arguments into configuration struct */
-nonstd::optional<reclaim_config> parse_cli_args(int argc, const char **argv)
+std::optional<reclaim_config> parse_cli_args(int argc, const char **argv)
 {
 	constexpr argpar_opt_descr reclaim_argpar_options[] = {
 		{ reclaim_option_types::OPT_HELP, 'h', "help", false },
@@ -153,13 +153,13 @@ nonstd::optional<reclaim_config> parse_cli_args(int argc, const char **argv)
 		ARGPAR_OPT_DESCR_SENTINEL,
 	};
 
-	argpar::Iter<nonstd::optional<argpar::Item>> argpar_iter(
+	argpar::Iter<std::optional<argpar::Item>> argpar_iter(
 		argc - 1, argv + 1, reclaim_argpar_options);
 
 	std::string target_session_name;
 	channel_name_set target_channel_names;
-	nonstd::optional<lttng::domain_class> target_domain;
-	nonstd::optional<std::chrono::microseconds> older_than_age;
+	std::optional<lttng::domain_class> target_domain;
+	std::optional<std::chrono::microseconds> older_than_age;
 	bool target_all_channels = false;
 	bool no_wait = false;
 
@@ -174,10 +174,10 @@ nonstd::optional<reclaim_config> parse_cli_args(int argc, const char **argv)
 			switch (item->asOpt().descr().id) {
 			case reclaim_option_types::OPT_HELP:
 				SHOW_HELP_THROW("reclaim-memory");
-				return nonstd::nullopt;
+				return std::nullopt;
 			case reclaim_option_types::OPT_LIST_OPTIONS:
 				list_cmd_options_argpar(stdout, reclaim_argpar_options);
-				return nonstd::nullopt;
+				return std::nullopt;
 			case reclaim_option_types::OPT_USER_SPACE:
 				if (target_domain.has_value()) {
 					LTTNG_THROW_CLI_INVALID_USAGE(

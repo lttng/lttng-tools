@@ -19,12 +19,11 @@
 
 #include <lttng/event-rule/event-rule-internal.hpp>
 
-#include <vendor/optional.hpp>
-
 #include <chrono>
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -91,12 +90,11 @@ public:
 		};
 
 		explicit consumption_blocking_policy(
-			mode mode,
-			const nonstd::optional<timer_period_us>& timeout_us = nonstd::nullopt);
+			mode mode, const std::optional<timer_period_us>& timeout_us = std::nullopt);
 
 		const mode mode_;
 		/* Only set in TIMED mode. */
-		const nonstd::optional<timer_period_us> timeout_us;
+		const std::optional<timer_period_us> timeout_us;
 	};
 
 	recording_channel_configuration(
@@ -108,16 +106,16 @@ public:
 		buffer_preallocation_policy_t buffer_preallocation_policy,
 		std::uint64_t subbuffer_size_bytes,
 		unsigned int subbuffer_count,
-		const nonstd::optional<timer_period_us>& switch_timer_period_us,
-		const nonstd::optional<timer_period_us>& read_timer_period_us,
-		const nonstd::optional<timer_period_us>& live_timer_period_us,
-		const nonstd::optional<timer_period_us>& monitor_timer_period_us,
-		const nonstd::optional<timer_period_us>& watchdog_timer_period_us,
-		const nonstd::optional<std::chrono::microseconds>&
+		const std::optional<timer_period_us>& switch_timer_period_us,
+		const std::optional<timer_period_us>& read_timer_period_us,
+		const std::optional<timer_period_us>& live_timer_period_us,
+		const std::optional<timer_period_us>& monitor_timer_period_us,
+		const std::optional<timer_period_us>& watchdog_timer_period_us,
+		const std::optional<std::chrono::microseconds>&
 			automatic_memory_reclamation_maximal_age_us,
 		consumption_blocking_policy consumption_blocking_policy,
-		const nonstd::optional<std::uint64_t>& trace_file_size_limit_bytes,
-		const nonstd::optional<unsigned int>& trace_file_count_limit);
+		const std::optional<std::uint64_t>& trace_file_size_limit_bytes,
+		const std::optional<unsigned int>& trace_file_count_limit);
 
 	~recording_channel_configuration() = default;
 	recording_channel_configuration(recording_channel_configuration&&) = delete;
@@ -161,14 +159,14 @@ public:
 
 	const buffer_allocation_policy_t buffer_allocation_policy;
 	const buffer_preallocation_policy_t buffer_preallocation_policy;
-	const nonstd::optional<timer_period_us> live_timer_period_us;
-	const nonstd::optional<timer_period_us> monitor_timer_period_us;
-	const nonstd::optional<timer_period_us> watchdog_timer_period_us;
+	const std::optional<timer_period_us> live_timer_period_us;
+	const std::optional<timer_period_us> monitor_timer_period_us;
+	const std::optional<timer_period_us> watchdog_timer_period_us;
 	/* Age at 0 means "continuously reclaimed". */
-	const nonstd::optional<std::chrono::microseconds> automatic_memory_reclamation_maximal_age;
+	const std::optional<std::chrono::microseconds> automatic_memory_reclamation_maximal_age;
 	const consumption_blocking_policy consumption_blocking_policy_;
-	const nonstd::optional<std::uint64_t> trace_file_size_limit_bytes;
-	const nonstd::optional<unsigned int> trace_file_count_limit;
+	const std::optional<std::uint64_t> trace_file_size_limit_bytes;
+	const std::optional<unsigned int> trace_file_count_limit;
 
 	bool is_enabled;
 

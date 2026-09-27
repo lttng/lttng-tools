@@ -65,7 +65,6 @@ Main components:
     - `scope-exit.hpp`: Offers `lttng::scope_exit` which works like `std::experimental::scope_exit`.
   - `vendor`: Third-party vendored code. Do _not_ edit those or add anything here.
     - `argpar/`: Custom CLI argument parser. Use for new CLI parsing code.
-    - `optional.hpp`: Offers `nonstd::optional`, which works like `std::optional`. Always use `nonstd::optional` for optional values in new code.
 - `include/lttng/`: Public liblttng-ctl headers.
 - `tests/`: Test suites.
   - `regression/`: Regression tests.
@@ -120,7 +119,6 @@ Do _not_ use C++20 or later: always use C++17.
 Consider the following alternatives:
 
 - Instead of `std::format()`, use `fmt::format()` from `<common/format.hpp>`.
-- Instead of `std::optional`, use `nonstd::optional` from `<vendor/optional.hpp>`.
 - Instead of `std::make_unique()`, use `lttng::make_unique()` from `<common/make-unique.hpp>`.
 - Instead of `std::experimental::scope_exit`, use `lttng::scope_exit` from `<common/scope-exit.hpp>`.
 

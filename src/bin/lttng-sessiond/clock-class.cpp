@@ -10,7 +10,7 @@
 
 lttng::sessiond::trace::clock_class::clock_class(std::string in_name,
 						 std::string in_description,
-						 nonstd::optional<lttng_uuid> in_uuid,
+						 std::optional<lttng_uuid> in_uuid,
 						 scycles_t in_offset,
 						 cycles_t in_frequency) :
 	name{ std::move(in_name) },

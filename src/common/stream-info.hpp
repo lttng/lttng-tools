@@ -13,13 +13,12 @@
 
 #include <lttng/stream-info.h>
 
-#include <vendor/optional.hpp>
-
 #include <memory>
+#include <optional>
 #include <vector>
 
 struct lttng_data_stream_info {
-	nonstd::optional<std::uint32_t> cpu_id;
+	std::optional<std::uint32_t> cpu_id;
 	std::uint64_t memory_usage;
 	std::uint64_t max_memory_usage;
 };

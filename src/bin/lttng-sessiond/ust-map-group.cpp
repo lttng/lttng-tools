@@ -66,7 +66,7 @@ namespace lttng {
 namespace sessiond {
 namespace ust {
 
-nonstd::optional<config::map_channel_configuration::value_type_t>
+std::optional<config::map_channel_configuration::value_type_t>
 resolve_map_value_type(config::map_channel_configuration::value_type_t value_type,
 		       application_abi app_abi) noexcept
 {
@@ -79,8 +79,8 @@ resolve_map_value_type(config::map_channel_configuration::value_type_t value_typ
 	case value_type_t::SIGNED_INT_32:
 		return value_type_t::SIGNED_INT_32;
 	case value_type_t::SIGNED_INT_64:
-		return both_64_bit ? nonstd::optional<value_type_t>(value_type_t::SIGNED_INT_64) :
-				     nonstd::nullopt;
+		return both_64_bit ? std::optional<value_type_t>(value_type_t::SIGNED_INT_64) :
+				     std::nullopt;
 	case value_type_t::SIGNED_INT_MAX:
 		return both_64_bit ? value_type_t::SIGNED_INT_64 : value_type_t::SIGNED_INT_32;
 	}

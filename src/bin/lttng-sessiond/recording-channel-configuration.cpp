@@ -46,15 +46,15 @@ ls::recording_channel_configuration::recording_channel_configuration(
 	buffer_preallocation_policy_t buffer_preallocation_policy_,
 	std::uint64_t subbuffer_size_bytes_,
 	unsigned int subbuffer_count_,
-	const nonstd::optional<timer_period_us>& switch_timer_period_us_,
-	const nonstd::optional<timer_period_us>& read_timer_period_us_,
-	const nonstd::optional<timer_period_us>& live_timer_period_us_,
-	const nonstd::optional<timer_period_us>& monitor_timer_period_us_,
-	const nonstd::optional<timer_period_us>& watchdog_timer_period_us_,
-	const nonstd::optional<std::chrono::microseconds>& automatic_memory_reclamation_maximal_age_,
+	const std::optional<timer_period_us>& switch_timer_period_us_,
+	const std::optional<timer_period_us>& read_timer_period_us_,
+	const std::optional<timer_period_us>& live_timer_period_us_,
+	const std::optional<timer_period_us>& monitor_timer_period_us_,
+	const std::optional<timer_period_us>& watchdog_timer_period_us_,
+	const std::optional<std::chrono::microseconds>& automatic_memory_reclamation_maximal_age_,
 	consumption_blocking_policy blocking_policy,
-	const nonstd::optional<std::uint64_t>& trace_file_size_limit_bytes_,
-	const nonstd::optional<unsigned int>& trace_file_count_limit_) :
+	const std::optional<std::uint64_t>& trace_file_size_limit_bytes_,
+	const std::optional<unsigned int>& trace_file_count_limit_) :
 	channel_configuration(std::move(name_),
 			      buffer_full_policy_,
 			      buffer_consumption_backend_,
@@ -77,7 +77,7 @@ ls::recording_channel_configuration::recording_channel_configuration(
 
 ls::recording_channel_configuration::consumption_blocking_policy::consumption_blocking_policy(
 	ls::recording_channel_configuration::consumption_blocking_policy::mode policy_mode,
-	const nonstd::optional<timer_period_us>& blocking_timeout_us) :
+	const std::optional<timer_period_us>& blocking_timeout_us) :
 	mode_(policy_mode), timeout_us(blocking_timeout_us)
 {
 	if (blocking_timeout_us.has_value() !=

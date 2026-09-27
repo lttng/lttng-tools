@@ -10,8 +10,7 @@
 
 #include "field.hpp"
 
-#include <vendor/optional.hpp>
-
+#include <optional>
 #include <vector>
 
 namespace lttng {
@@ -46,12 +45,12 @@ public:
 	 * nested-name-specifiers.
 	 */
 	const header_type header_type_;
-	const nonstd::optional<std::string> default_clock_class_name;
+	const std::optional<std::string> default_clock_class_name;
 
 protected:
 	stream_class(unsigned int id,
 		     enum header_type header_type,
-		     nonstd::optional<std::string> default_clock_class_name = nonstd::nullopt);
+		     std::optional<std::string> default_clock_class_name = std::nullopt);
 	virtual void _accept_on_event_classes(trace_class_visitor& trace_class_visitor) const = 0;
 
 	lttng::sessiond::trace::type::cuptr _packet_context;

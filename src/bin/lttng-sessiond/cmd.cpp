@@ -352,7 +352,7 @@ map_group_value_type_from_comm(const int32_t value_type)
  *
  * Returns an empty optional when the ID has no entry.
  */
-nonstd::optional<std::string> map_group_owner_name_of(const uid_t uid)
+std::optional<std::string> map_group_owner_name_of(const uid_t uid)
 {
 	passwd pwd;
 	passwd *result = nullptr;
@@ -363,7 +363,7 @@ nonstd::optional<std::string> map_group_owner_name_of(const uid_t uid)
 	}
 
 	if (!result) {
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
 	return std::string(result->pw_name);
@@ -2503,21 +2503,21 @@ enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref& sessi
 		return new_channel_attr->attr.switch_timer_interval > 0 ?
 			decltype(lsc::recording_channel_configuration::switch_timer_period_us)(
 				new_channel_attr->attr.switch_timer_interval) :
-			nonstd::nullopt;
+			std::nullopt;
 	}();
 
 	const auto read_timer_period_us = [&channel_attr]() {
 		return channel_attr.attr.read_timer_interval > 0 ?
 			decltype(lsc::recording_channel_configuration::read_timer_period_us)(
 				channel_attr.attr.read_timer_interval) :
-			nonstd::nullopt;
+			std::nullopt;
 	}();
 
 	const auto live_timer_period_us = [&new_channel_attr]() {
 		return new_channel_attr->attr.live_timer_interval > 0 ?
 			decltype(lsc::recording_channel_configuration::live_timer_period_us)(
 				new_channel_attr->attr.live_timer_interval) :
-			nonstd::nullopt;
+			std::nullopt;
 	}();
 
 	const auto monitor_timer_period_us = [&new_channel_attr]() {
@@ -2534,7 +2534,7 @@ enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref& sessi
 		return period > 0 ?
 			decltype(lsc::recording_channel_configuration::monitor_timer_period_us)(
 				period) :
-			nonstd::nullopt;
+			std::nullopt;
 	}();
 
 	const auto watchdog_timer_period_us = [&channel_attr]() {
@@ -2551,7 +2551,7 @@ enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref& sessi
 		return status == LTTNG_CHANNEL_STATUS_OK ?
 			decltype(lsc::recording_channel_configuration::watchdog_timer_period_us)(
 				period) :
-			nonstd::nullopt;
+			std::nullopt;
 	}();
 
 	const auto automatic_memory_reclamation_maximal_age = [&channel_attr]() {
@@ -2700,12 +2700,12 @@ enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref& sessi
 	const auto trace_file_size_limit_bytes = channel_attr.attr.tracefile_size ?
 		decltype(lsc::recording_channel_configuration::trace_file_size_limit_bytes)(
 			channel_attr.attr.tracefile_size) :
-		nonstd::nullopt;
+		std::nullopt;
 
 	const auto trace_file_count_limit = channel_attr.attr.tracefile_count ?
 		decltype(lsc::recording_channel_configuration::trace_file_count_limit)(
 			channel_attr.attr.tracefile_count) :
-		nonstd::nullopt;
+		std::nullopt;
 
 	/* Snapshot and no-output sessions require mmap. */
 	if (session->snapshot_mode || !session->output_traces) {
@@ -3177,7 +3177,7 @@ cmd_process_attr_tracker_get_inclusion_set(const ltt_session::locked_ref& sessio
 
 namespace {
 /* An unset value means 'match all'. */
-nonstd::optional<lttng::c_string_view>
+std::optional<lttng::c_string_view>
 get_event_rule_pattern_or_name(const lttng_event_rule& event_rule)
 {
 	lttng_event_rule_status status;
@@ -3225,7 +3225,7 @@ get_event_rule_pattern_or_name(const lttng_event_rule& event_rule)
 	}
 
 	if (status == LTTNG_EVENT_RULE_STATUS_UNSET) {
-		return nonstd::nullopt;
+		return std::nullopt;
 	}
 
 	LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
@@ -7773,9 +7773,9 @@ void cmd_reclaim_channel_memory(ltt_session::locked_ref& session,
 
 	const auto reclaim_older_than = cmd_ctx->lsm.u.reclaim_channel_memory.older_than_age_us >
 			0 ?
-		nonstd::optional<std::chrono::microseconds>(std::chrono::microseconds(
+		std::optional<std::chrono::microseconds>(std::chrono::microseconds(
 			cmd_ctx->lsm.u.reclaim_channel_memory.older_than_age_us)) :
-		nonstd::nullopt;
+		std::nullopt;
 
 	/*
 	 * Wrap the socket in a shared_ptr to an RAII wrapper. This ensures the

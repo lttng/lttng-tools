@@ -968,7 +968,7 @@ void consumer_init_ask_channel_comm_msg(
 	bool is_in_live_session,
 	bool continuously_reclaimed,
 	unsigned int monitor_timer_interval,
-	nonstd::optional<uint64_t> watchdog_timer_interval,
+	std::optional<uint64_t> watchdog_timer_interval,
 	int output,
 	int type,
 	uint64_t session_id,
@@ -986,7 +986,7 @@ void consumer_init_ask_channel_comm_msg(
 	int64_t blocking_timeout,
 	lttng::sessiond::config::recording_channel_configuration::buffer_preallocation_policy_t
 		preallocation_policy,
-	const nonstd::optional<std::chrono::microseconds>& automatic_memory_reclamation_maximal_age,
+	const std::optional<std::chrono::microseconds>& automatic_memory_reclamation_maximal_age,
 	const char *root_shm_path,
 	const char *shm_path,
 	struct lttng_trace_chunk *trace_chunk,
@@ -1968,12 +1968,12 @@ lsc::get_channels_memory_usage(consumer_socket& socket,
 	return result;
 }
 
-std::vector<lsc::stream_memory_reclamation_result_group> lsc::reclaim_channels_memory(
-	consumer_socket& socket,
-	const std::vector<std::uint64_t>& channel_keys,
-	const nonstd::optional<std::chrono::microseconds>& reclaim_older_than_age,
-	bool require_consumed,
-	std::uint64_t memory_reclaim_request_token)
+std::vector<lsc::stream_memory_reclamation_result_group>
+lsc::reclaim_channels_memory(consumer_socket& socket,
+			     const std::vector<std::uint64_t>& channel_keys,
+			     const std::optional<std::chrono::microseconds>& reclaim_older_than_age,
+			     bool require_consumed,
+			     std::uint64_t memory_reclaim_request_token)
 {
 	LTTNG_ASSERT(!channel_keys.empty());
 

@@ -12,10 +12,9 @@
 
 #include <common/string-utils/c-string-view.hpp>
 
-#include <vendor/optional.hpp>
-
 #include <cstdint>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -43,8 +42,8 @@ public:
 	key_registry& operator=(const key_registry&) = delete;
 	key_registry& operator=(key_registry&&) = delete;
 
-	nonstd::optional<std::uint64_t> lookup(const std::string& key) const override;
-	nonstd::optional<lttng::c_string_view> key_for_index(std::uint64_t index) const override;
+	std::optional<std::uint64_t> lookup(const std::string& key) const override;
+	std::optional<lttng::c_string_view> key_for_index(std::uint64_t index) const override;
 	void for_each(const sessiond::map::key_registry::element_visitor& visitor) const override;
 	std::size_t size() const noexcept override;
 	std::uint64_t capacity() const noexcept override;

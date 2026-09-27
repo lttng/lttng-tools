@@ -17,10 +17,9 @@
 
 #include <lttng/lttng.h>
 
-#include <vendor/optional.hpp>
-
 #include <algorithm>
 #include <chrono>
+#include <optional>
 #include <urcu/ref.h>
 
 struct snapshot;
@@ -245,7 +244,7 @@ void consumer_init_ask_channel_comm_msg(
 	bool is_in_live_session,
 	bool continuously_reclaimed,
 	unsigned int monitor_timer_interval,
-	nonstd::optional<uint64_t> watchdog_timer_interval,
+	std::optional<uint64_t> watchdog_timer_interval,
 	int output,
 	int type,
 	uint64_t session_id,
@@ -263,7 +262,7 @@ void consumer_init_ask_channel_comm_msg(
 	int64_t blocking_timeout,
 	lttng::sessiond::config::recording_channel_configuration::buffer_preallocation_policy_t
 		preallocation_policy,
-	const nonstd::optional<std::chrono::microseconds>& automatic_memory_reclamation_maximal_age,
+	const std::optional<std::chrono::microseconds>& automatic_memory_reclamation_maximal_age,
 	const char *root_shm_path,
 	const char *shm_path,
 	struct lttng_trace_chunk *trace_chunk,
@@ -409,7 +408,7 @@ struct stream_memory_reclamation_result_group {
 std::vector<stream_memory_reclamation_result_group>
 reclaim_channels_memory(consumer_socket& socket,
 			const std::vector<std::uint64_t>& channel_keys,
-			const nonstd::optional<std::chrono::microseconds>& reclaim_older_than_age,
+			const std::optional<std::chrono::microseconds>& reclaim_older_than_age,
 			bool require_consumed,
 			std::uint64_t memory_reclaim_request_token);
 

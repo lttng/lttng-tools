@@ -21,10 +21,10 @@
 #include <lttng/lttng.h>
 
 #include <vendor/argpar/argpar.hpp>
-#include <vendor/optional.hpp>
 
 #include <cstdio>
 #include <exception>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -71,13 +71,13 @@ struct cmd_cfg final {
 
 /*
  * Parses the CLI arguments and returns a configuration, or
- * `nonstd::nullopt` when the caller should exit successfully (help
+ * `std::nullopt` when the caller should exit successfully (help
  * or `--list-options`).
  *
  * Throws `lttng::cli::invalid_usage_error` on invalid arguments and
  * `lttng::cli::no_default_session_error` if no session can be selected.
  */
-nonstd::optional<cmd_cfg> cmd_cfg_from_cli_args(const int argc, const char **const argv)
+std::optional<cmd_cfg> cmd_cfg_from_cli_args(const int argc, const char **const argv)
 {
 	enum export_maps_option_type {
 		OPT_HELP,
@@ -94,11 +94,11 @@ nonstd::optional<cmd_cfg> cmd_cfg_from_cli_args(const int argc, const char **con
 		ARGPAR_OPT_DESCR_SENTINEL,
 	};
 
-	argpar::Iter<nonstd::optional<argpar::Item>> argpar_iter(
+	argpar::Iter<std::optional<argpar::Item>> argpar_iter(
 		argc - 1, argv + 1, export_maps_options);
 
-	nonstd::optional<std::string> session_name;
-	nonstd::optional<std::string> format;
+	std::optional<std::string> session_name;
+	std::optional<std::string> format;
 
 	try {
 		while (const auto item = argpar_iter.next()) {
@@ -114,10 +114,10 @@ nonstd::optional<cmd_cfg> cmd_cfg_from_cli_args(const int argc, const char **con
 			switch (opt.descr().id) {
 			case OPT_HELP:
 				SHOW_HELP_THROW("export-maps");
-				return nonstd::nullopt;
+				return std::nullopt;
 			case OPT_LIST_OPTIONS:
 				list_cmd_options_argpar(stdout, export_maps_options);
-				return nonstd::nullopt;
+				return std::nullopt;
 			case OPT_SESSION:
 				reject_dup_opt(long_name, session_name.has_value());
 				session_name = opt.arg();
