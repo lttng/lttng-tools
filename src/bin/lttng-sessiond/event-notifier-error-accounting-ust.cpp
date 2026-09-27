@@ -116,7 +116,7 @@ eea_details::ust_uid_map_group_entry& acquire_uid_entry(uid_t uid)
 		 * 32-bit counter is served to applications of any ABI, so this
 		 * single per-uid group covers both 32 and 64-bit apps.
 		 */
-		auto new_entry = lttng::make_unique<eea_details::ust_uid_map_group_entry>(
+		auto new_entry = std::make_unique<eea_details::ust_uid_map_group_entry>(
 			uid,
 			lttng::sessiond::ust::map_group::create_from_config(
 				*default_ust_config,

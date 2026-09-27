@@ -9,7 +9,6 @@
 
 #include <common/error.hpp>
 #include <common/format.hpp>
-#include <common/make-unique.hpp>
 #include <common/payload-view.hpp>
 #include <common/payload.hpp>
 
@@ -232,7 +231,7 @@ void test_equality_and_copy()
 	ok(*a != *c, "Two templates parsed from different strings compare unequal");
 
 	{
-		const auto copy = lttng::make_unique<lttng_key_template>(*a);
+		const auto copy = std::make_unique<lttng_key_template>(*a);
 
 		ok(*copy == *a, "Deep copy of a template compares equal to the original");
 	}

@@ -18,7 +18,6 @@
 #include <common/domain.hpp>
 #include <common/exception.hpp>
 #include <common/format.hpp>
-#include <common/make-unique.hpp>
 #include <common/string-utils/c-string-view.hpp>
 
 #include <lttng/domain.h>
@@ -172,7 +171,7 @@ public:
 	template <typename... Args>
 	recording_channel_configuration& add_channel(Args&&...args)
 	{
-		auto new_channel = lttng::make_unique<recording_channel_configuration>(
+		auto new_channel = std::make_unique<recording_channel_configuration>(
 			std::forward<Args>(args)...);
 
 		_validate_channel(*new_channel);
@@ -255,7 +254,7 @@ public:
 	map_channel_configuration& add_map_channel(Args&&...args)
 	{
 		auto new_map_channel =
-			lttng::make_unique<map_channel_configuration>(std::forward<Args>(args)...);
+			std::make_unique<map_channel_configuration>(std::forward<Args>(args)...);
 
 		_validate_map_channel(*new_map_channel);
 

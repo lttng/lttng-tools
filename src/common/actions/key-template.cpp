@@ -10,7 +10,6 @@
 #include <common/error.hpp>
 #include <common/format.hpp>
 #include <common/macros.hpp>
-#include <common/make-unique.hpp>
 #include <common/payload-view.hpp>
 #include <common/payload.hpp>
 
@@ -56,12 +55,12 @@ const char *placeholder_name(details::key_template_segment_type type) noexcept
 std::unique_ptr<details::key_template_segment> make_placeholder_from_name(const std::string& name)
 {
 	if (name == "event_name") {
-		return lttng::make_unique<details::key_template_placeholder_segment>(
+		return std::make_unique<details::key_template_placeholder_segment>(
 			details::key_template_segment_type::EVENT_NAME);
 	}
 
 	if (name == "provider_name") {
-		return lttng::make_unique<details::key_template_placeholder_segment>(
+		return std::make_unique<details::key_template_placeholder_segment>(
 			details::key_template_segment_type::PROVIDER_NAME);
 	}
 
@@ -72,7 +71,7 @@ std::unique_ptr<lttng_key_template> parse_template_string(const char *str)
 {
 	LTTNG_ASSERT(str);
 
-	auto tmpl = lttng::make_unique<lttng_key_template>();
+	auto tmpl = std::make_unique<lttng_key_template>();
 	std::string literal_buf;
 	std::string placeholder_name_buf;
 
@@ -90,9 +89,8 @@ std::unique_ptr<lttng_key_template> parse_template_string(const char *str)
 			return;
 		}
 
-		tmpl->segments.emplace_back(
-			lttng::make_unique<details::key_template_literal_segment>(
-				std::move(literal_buf)));
+		tmpl->segments.emplace_back(std::make_unique<details::key_template_literal_segment>(
+			std::move(literal_buf)));
 		literal_buf.clear();
 	};
 
@@ -286,17 +284,17 @@ ssize_t deserialize_segment(const struct lttng_buffer_view *view,
 			return -1;
 		}
 
-		out_segment = lttng::make_unique<details::key_template_literal_segment>(
-			std::string(text));
+		out_segment =
+			std::make_unique<details::key_template_literal_segment>(std::string(text));
 		consumed_len += text_len;
 		return consumed_len;
 	}
 	case details::key_template_segment_type::EVENT_NAME:
-		out_segment = lttng::make_unique<details::key_template_placeholder_segment>(
+		out_segment = std::make_unique<details::key_template_placeholder_segment>(
 			details::key_template_segment_type::EVENT_NAME);
 		return consumed_len;
 	case details::key_template_segment_type::PROVIDER_NAME:
-		out_segment = lttng::make_unique<details::key_template_placeholder_segment>(
+		out_segment = std::make_unique<details::key_template_placeholder_segment>(
 			details::key_template_segment_type::PROVIDER_NAME);
 		return consumed_len;
 	}
@@ -421,7 +419,7 @@ ssize_t lttng_key_template::create_from_payload(lttng_payload_view& view,
 	}
 
 	ssize_t consumed_len = sizeof(comm);
-	auto tmpl = lttng::make_unique<lttng_key_template>();
+	auto tmpl = std::make_unique<lttng_key_template>();
 
 	tmpl->segments.reserve(segment_count);
 

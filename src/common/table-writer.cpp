@@ -11,29 +11,29 @@
 #include <common/exception.hpp>
 #include <common/format.hpp>
 #include <common/macros.hpp>
-#include <common/make-unique.hpp>
 #include <common/mint.hpp>
 #include <common/tinyutf8.hpp>
 #include <common/utils.hpp>
 
 #include <algorithm>
+#include <memory>
 
 namespace lttng {
 namespace tw {
 
 table_cell::uptr make_str_cell(tiny_utf8::utf8_string str)
 {
-	return lttng::make_unique<typed_table_cell<tiny_utf8::utf8_string>>(std::move(str));
+	return std::make_unique<typed_table_cell<tiny_utf8::utf8_string>>(std::move(str));
 }
 
 table_cell::uptr make_signed_int_cell(const std::int64_t val)
 {
-	return lttng::make_unique<typed_table_cell<std::int64_t>>(val);
+	return std::make_unique<typed_table_cell<std::int64_t>>(val);
 }
 
 table_cell::uptr make_bigint_cell(bigint val)
 {
-	return lttng::make_unique<typed_table_cell<bigint>>(std::move(val));
+	return std::make_unique<typed_table_cell<bigint>>(std::move(val));
 }
 
 tiny_utf8::utf8_string table_signed_int_col_descr::render(const table_cell& cell) const

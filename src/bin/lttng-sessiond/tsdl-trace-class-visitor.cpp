@@ -10,13 +10,13 @@
 
 #include <common/exception.hpp>
 #include <common/format.hpp>
-#include <common/make-unique.hpp>
 #include <common/scope-exit.hpp>
 #include <common/uuid.hpp>
 
 #include <algorithm>
 #include <array>
 #include <locale>
+#include <memory>
 #include <optional>
 #include <queue>
 #include <set>
@@ -248,7 +248,7 @@ private:
 			}
 		}
 
-		return lttng::make_unique<lst::typed_enumeration_type<MappingIntegerType>>(
+		return std::make_unique<lst::typed_enumeration_type<MappingIntegerType>>(
 			original_selector.alignment,
 			original_selector.byte_order,
 			original_selector.size,
@@ -306,7 +306,7 @@ private:
 						 sanitized_choice_type.copy());
 		}
 
-		return lttng::make_unique<lst::variant_type<MappingIntegerType>>(
+		return std::make_unique<lst::variant_type<MappingIntegerType>>(
 			original_variant.alignment,
 			original_variant.selector_field_location,
 			std::move(new_choices));
@@ -641,13 +641,12 @@ private:
 		/* This type doesn't exist in CTF 1.x, express it as a static length array of
 		 * uint8_t. */
 		std::unique_ptr<const lst::type> uint8_element =
-			lttng::make_unique<lst::integer_type>(
-				8,
-				_trace_abi.byte_order,
-				8,
-				lst::integer_type::signedness::UNSIGNED,
-				lst::integer_type::base::HEXADECIMAL);
-		const auto array = lttng::make_unique<lst::static_length_array_type>(
+			std::make_unique<lst::integer_type>(8,
+							    _trace_abi.byte_order,
+							    8,
+							    lst::integer_type::signedness::UNSIGNED,
+							    lst::integer_type::base::HEXADECIMAL);
+		const auto array = std::make_unique<lst::static_length_array_type>(
 			type.alignment, std::move(uint8_element), type.length_bytes);
 
 		_description += "// static length BLOB field";
@@ -667,13 +666,12 @@ private:
 		/* This type doesn't exist in CTF 1.x, express it as a dynamic length array of
 		 * uint8_t. */
 		std::unique_ptr<const lst::type> uint8_element =
-			lttng::make_unique<lst::integer_type>(
-				8,
-				_trace_abi.byte_order,
-				8,
-				lst::integer_type::signedness::UNSIGNED,
-				lst::integer_type::base::HEXADECIMAL);
-		const auto array = lttng::make_unique<lst::dynamic_length_array_type>(
+			std::make_unique<lst::integer_type>(8,
+							    _trace_abi.byte_order,
+							    8,
+							    lst::integer_type::signedness::UNSIGNED,
+							    lst::integer_type::base::HEXADECIMAL);
+		const auto array = std::make_unique<lst::dynamic_length_array_type>(
 			type.alignment, std::move(uint8_element), type.length_field_location);
 
 		_description += "// dynamic length BLOB field";
@@ -778,12 +776,11 @@ private:
 	lst::type::cuptr create_character_type(enum lst::string_type::encoding encoding)
 	{
 		_current_integer_encoding_override = encoding;
-		return lttng::make_unique<lst::integer_type>(
-			8,
-			_trace_abi.byte_order,
-			8,
-			lst::integer_type::signedness::UNSIGNED,
-			lst::integer_type::base::DECIMAL);
+		return std::make_unique<lst::integer_type>(8,
+							   _trace_abi.byte_order,
+							   8,
+							   lst::integer_type::signedness::UNSIGNED,
+							   lst::integer_type::base::DECIMAL);
 	}
 
 	void visit(const lst::static_length_string_type& type) final
@@ -792,7 +789,7 @@ private:
 		 * TSDL expresses static-length strings as arrays of 8-bit integer with
 		 * an encoding specified.
 		 */
-		const auto char_array = lttng::make_unique<lst::static_length_array_type>(
+		const auto char_array = std::make_unique<lst::static_length_array_type>(
 			type.alignment, create_character_type(type.encoding_), type.length);
 
 		visit(*char_array);
@@ -804,7 +801,7 @@ private:
 		 * TSDL expresses dynamic-length strings as arrays of 8-bit integer with
 		 * an encoding specified.
 		 */
-		const auto char_sequence = lttng::make_unique<lst::dynamic_length_array_type>(
+		const auto char_sequence = std::make_unique<lst::dynamic_length_array_type>(
 			type.alignment,
 			create_character_type(type.encoding_),
 			type.length_field_location);

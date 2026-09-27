@@ -13,13 +13,13 @@
 #include <common/format.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>
 #include <common/lttng-kernel.hpp>
-#include <common/make-unique.hpp>
 #include <common/scope-exit.hpp>
 #include <common/utils.hpp>
 
 #include <cstdint>
 #include <errno.h>
 #include <fcntl.h>
+#include <memory>
 #include <unistd.h>
 #include <utility>
 
@@ -145,8 +145,7 @@ map_group::map_group(lttng::file_descriptor tracer_counter_fd,
 		     const config::map_channel_configuration& configuration,
 		     config::map_channel_configuration::value_type_t resolved_value_type) :
 	sessiond::map::group(resolved_value_type),
-	_tracer_counter_fd(
-		lttng::make_unique<lttng::file_descriptor>(std::move(tracer_counter_fd))),
+	_tracer_counter_fd(std::make_unique<lttng::file_descriptor>(std::move(tracer_counter_fd))),
 	_configuration(configuration)
 {
 }

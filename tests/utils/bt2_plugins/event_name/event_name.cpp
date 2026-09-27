@@ -10,12 +10,12 @@
 
 #include <common/container-wrapper.hpp>
 #include <common/macros.hpp>
-#include <common/make-unique.hpp>
 
 #include <assert.h>
 #include <babeltrace2/babeltrace.h>
 #include <cstdint>
 #include <exception>
+#include <memory>
 #include <stdlib.h>
 #include <string.h>
 #include <string>
@@ -168,7 +168,7 @@ event_name_initialize(bt_self_component_filter *self_comp,
 		}
 
 		event_name_filter =
-			lttng::make_unique<class event_name_filter>(input_port, event_names);
+			std::make_unique<class event_name_filter>(input_port, event_names);
 	} catch (const std::bad_alloc&) {
 		BT_CURRENT_THREAD_ERROR_APPEND_CAUSE_FROM_COMPONENT(
 			self, "Failed to allocate memory for private component data");
@@ -213,8 +213,8 @@ event_name_message_iterator_initialize(bt_self_message_iterator *self_message_it
 
 	std::unique_ptr<event_name_iterator_data> iter_data;
 	try {
-		iter_data = lttng::make_unique<event_name_iterator_data>(std::move(iterator),
-									 event_name_filter);
+		iter_data = std::make_unique<event_name_iterator_data>(std::move(iterator),
+								       event_name_filter);
 	} catch (const std::bad_alloc&) {
 		BT_CURRENT_THREAD_ERROR_APPEND_CAUSE_FROM_MESSAGE_ITERATOR(
 			self_message_iterator, "Failed to allocate event_name iterator data");

@@ -56,7 +56,6 @@
 #include <common/lockfile.hpp>
 #include <common/logging-utils.hpp>
 #include <common/make-unique-wrapper.hpp>
-#include <common/make-unique.hpp>
 #include <common/path.hpp>
 #include <common/relayd/relayd.hpp>
 #include <common/systemd-utils.hpp>
@@ -71,6 +70,7 @@
 #include <inttypes.h>
 #include <libgen.h>
 #include <limits.h>
+#include <memory>
 #include <paths.h>
 #include <pthread.h>
 #include <signal.h>
@@ -2023,7 +2023,7 @@ int _main(int argc, char **argv)
 	}
 
 	try {
-		the_rotation_thread_handle = lttng::make_unique<lttng::sessiond::rotation_thread>(
+		the_rotation_thread_handle = std::make_unique<lttng::sessiond::rotation_thread>(
 			*rotation_timer_queue, *the_notification_thread_handle);
 	} catch (const std::exception& e) {
 		retval = -1;
@@ -2065,7 +2065,7 @@ int _main(int argc, char **argv)
 	}
 
 	the_app_unregistration_queue =
-		lttng::make_unique<lttng::command_queue<lttng::sessiond::app_management::command>>();
+		std::make_unique<lttng::command_queue<lttng::sessiond::app_management::command>>();
 
 	/* Create thread to manage application socket */
 	if (!launch_application_management_thread(apps_cmd_pipe[0],
@@ -2093,7 +2093,7 @@ int _main(int argc, char **argv)
 		 * globals to avoid it being present in the runas worker (which
 		 * is forked earlier in main()).
 		 */
-		the_hotplug_handler_queue = lttng::make_unique<
+		the_hotplug_handler_queue = std::make_unique<
 			lttng::command_queue<lttng::sessiond::hotplug_handler::command>>();
 
 		/* Create hotplug handler thread for kernel CPU hotplug monitoring. */

@@ -516,7 +516,7 @@ ls::ust::stream_group& ls::ust::domain_orchestrator::_find_or_create_per_uid_str
 		return *it->second;
 	}
 
-	auto sg = lttng::make_unique<ust::stream_group>(
+	auto sg = std::make_unique<ust::stream_group>(
 		consumer_key, std::move(channel_object), channel_config, trace_class, stream_class);
 
 	auto& ref = *sg;
@@ -577,7 +577,7 @@ ls::ust::stream_group& ls::ust::domain_orchestrator::_find_or_create_per_pid_str
 		return *it->second;
 	}
 
-	auto sg = lttng::make_unique<ust::stream_group>(
+	auto sg = std::make_unique<ust::stream_group>(
 		consumer_key, std::move(channel_object), channel_config, trace_class, stream_class);
 
 	auto& ref = *sg;
@@ -1296,17 +1296,17 @@ ls::ust::app_session& ls::ust::domain_orchestrator::_find_or_create_app_session(
 	auto put_consumer_output_on_constructor_error = lttng::make_scope_exit(
 		[consumer_output]() noexcept { consumer_output_put(consumer_output); });
 
-	auto new_session = lttng::make_unique<ust::app_session>(app,
-								_session_id(),
-								ust::app_session::next_id(),
-								real_creds,
-								effective_creds,
-								buf_type,
-								app.abi_desc.bits_per_long,
-								std::move(trace_path),
-								_root_shm_path,
-								std::move(session_shm_path),
-								consumer_output);
+	auto new_session = std::make_unique<ust::app_session>(app,
+							      _session_id(),
+							      ust::app_session::next_id(),
+							      real_creds,
+							      effective_creds,
+							      buf_type,
+							      app.abi_desc.bits_per_long,
+							      std::move(trace_path),
+							      _root_shm_path,
+							      std::move(session_shm_path),
+							      consumer_output);
 
 	/* app_session now owns the acquired consumer_output reference. */
 	put_consumer_output_on_constructor_error.disarm();
@@ -3734,8 +3734,8 @@ void ls::ust::domain_orchestrator::add_map_channel(const lsc::map_channel_config
 		_session.name,
 		config);
 
-	auto registry = lttng::make_unique<ust::key_registry>(config.max_entry_count);
-	auto channel_uptr = lttng::make_unique<ust::map_channel>(config, std::move(registry));
+	auto registry = std::make_unique<ust::key_registry>(config.max_entry_count);
+	auto channel_uptr = std::make_unique<ust::map_channel>(config, std::move(registry));
 	auto& channel = *channel_uptr;
 
 	_map_channels.emplace(&config, std::move(channel_uptr));

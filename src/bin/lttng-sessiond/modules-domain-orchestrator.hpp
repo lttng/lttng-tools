@@ -19,7 +19,6 @@
 #include "stream-group.hpp"
 
 #include <common/file-descriptor.hpp>
-#include <common/make-unique.hpp>
 
 #include <cstdint>
 #include <functional>
@@ -296,7 +295,7 @@ public:
 	/* Override to insert kernel_stream instances. */
 	void add_stream(unsigned int cpu, lttng::file_descriptor handle) override
 	{
-		_add_stream(lttng::make_unique<kernel_stream>(cpu, std::move(handle)));
+		_add_stream(std::make_unique<kernel_stream>(cpu, std::move(handle)));
 	}
 
 	lttng::file_descriptor& tracer_handle() noexcept

@@ -22,7 +22,6 @@
 #include <common/compat/errno.hpp>
 #include <common/exception.hpp>
 #include <common/format.hpp>
-#include <common/make-unique.hpp>
 #include <common/scope-exit.hpp>
 #include <common/urcu.hpp>
 
@@ -30,6 +29,7 @@
 #include <lttng/ust-error.h>
 
 #include <inttypes.h>
+#include <memory>
 #include <pthread.h>
 
 namespace lsu = lttng::sessiond::ust;
@@ -148,7 +148,7 @@ void lsu::app_channel::create_context(const lsc::context_configuration& context_
 		return;
 	}
 
-	auto app_context = lttng::make_unique<lsu::app_context>(*this, context_config);
+	auto app_context = std::make_unique<lsu::app_context>(*this, context_config);
 	auto& app = session.app();
 
 	health_code_update();

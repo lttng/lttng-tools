@@ -105,7 +105,7 @@ lst::bit_array_type::bit_array_type(unsigned int in_alignment,
 
 lst::type::cuptr lst::bit_array_type::copy() const
 {
-	return lttng::make_unique<bit_array_type>(alignment, byte_order, size);
+	return std::make_unique<bit_array_type>(alignment, byte_order, size);
 }
 
 bool lst::bit_array_type::_is_equal(const type& base_other) const noexcept
@@ -135,7 +135,7 @@ lst::integer_type::integer_type(unsigned int in_alignment,
 
 lst::type::cuptr lst::integer_type::copy() const
 {
-	return lttng::make_unique<integer_type>(
+	return std::make_unique<integer_type>(
 		alignment, byte_order, size, signedness_, base_, roles_);
 }
 
@@ -177,7 +177,7 @@ lst::floating_point_type::floating_point_type(unsigned int in_alignment,
 
 lst::type::cuptr lst::floating_point_type::copy() const
 {
-	return lttng::make_unique<floating_point_type>(alignment, byte_order, size);
+	return std::make_unique<floating_point_type>(alignment, byte_order, size);
 }
 
 void lst::floating_point_type::accept(type_visitor& visitor) const
@@ -268,8 +268,7 @@ bool lst::static_length_array_type::_is_equal(const type& base_other) const noex
 
 lst::type::cuptr lst::static_length_array_type::copy() const
 {
-	return lttng::make_unique<static_length_array_type>(
-		alignment, element_type->copy(), length);
+	return std::make_unique<static_length_array_type>(alignment, element_type->copy(), length);
 }
 
 void lst::static_length_array_type::accept(type_visitor& visitor) const
@@ -296,7 +295,7 @@ bool lst::dynamic_length_array_type::_is_equal(const type& base_other) const noe
 
 lst::type::cuptr lst::dynamic_length_array_type::copy() const
 {
-	return lttng::make_unique<dynamic_length_array_type>(
+	return std::make_unique<dynamic_length_array_type>(
 		alignment, element_type->copy(), length_field_location);
 }
 
@@ -326,7 +325,7 @@ bool lst::static_length_blob_type::_is_equal(const type& base_other) const noexc
 
 lst::type::cuptr lst::static_length_blob_type::copy() const
 {
-	return lttng::make_unique<static_length_blob_type>(
+	return std::make_unique<static_length_blob_type>(
 		alignment, length_bytes, media_type, roles_);
 }
 
@@ -354,7 +353,7 @@ bool lst::dynamic_length_blob_type::_is_equal(const type& base_other) const noex
 
 lst::type::cuptr lst::dynamic_length_blob_type::copy() const
 {
-	return lttng::make_unique<dynamic_length_blob_type>(
+	return std::make_unique<dynamic_length_blob_type>(
 		alignment, length_field_location, media_type);
 }
 
@@ -391,7 +390,7 @@ bool lst::static_length_string_type::_is_equal(const type& base_other) const noe
 
 lst::type::cuptr lst::static_length_string_type::copy() const
 {
-	return lttng::make_unique<static_length_string_type>(alignment, encoding_, length);
+	return std::make_unique<static_length_string_type>(alignment, encoding_, length);
 }
 
 void lst::static_length_string_type::accept(type_visitor& visitor) const
@@ -418,7 +417,7 @@ bool lst::dynamic_length_string_type::_is_equal(const type& base_other) const no
 
 lst::type::cuptr lst::dynamic_length_string_type::copy() const
 {
-	return lttng::make_unique<dynamic_length_string_type>(
+	return std::make_unique<dynamic_length_string_type>(
 		alignment, encoding_, length_field_location);
 }
 
@@ -435,7 +434,7 @@ lst::null_terminated_string_type::null_terminated_string_type(unsigned int in_al
 
 lst::type::cuptr lst::null_terminated_string_type::copy() const
 {
-	return lttng::make_unique<null_terminated_string_type>(alignment, encoding_);
+	return std::make_unique<null_terminated_string_type>(alignment, encoding_);
 }
 
 void lst::null_terminated_string_type::accept(type_visitor& visitor) const
@@ -462,10 +461,10 @@ lst::type::cuptr lst::structure_type::copy() const
 	copy_of_fields.reserve(fields_.size());
 	for (const auto& field : fields_) {
 		copy_of_fields.emplace_back(
-			lttng::make_unique<lst::field>(field->name, field->get_type().copy()));
+			std::make_unique<lst::field>(field->name, field->get_type().copy()));
 	}
 
-	return lttng::make_unique<structure_type>(alignment, std::move(copy_of_fields));
+	return std::make_unique<structure_type>(alignment, std::move(copy_of_fields));
 }
 
 void lst::structure_type::accept(type_visitor& visitor) const

@@ -34,7 +34,6 @@
 #include <common/exception.hpp>
 #include <common/format.hpp>
 #include <common/hashtable/utils.hpp>
-#include <common/make-unique.hpp>
 #include <common/pthread-lock.hpp>
 #include <common/scope-exit.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
@@ -55,6 +54,7 @@
 #include <exception>
 #include <fcntl.h>
 #include <inttypes.h>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <pthread.h>
@@ -707,7 +707,7 @@ struct ust_app_event_notifier_rule *alloc_ust_app_event_notifier_rule(struct ltt
 
 	std::unique_ptr<ust_app_event_notifier_rule> ua_event_notifier_rule;
 	try {
-		ua_event_notifier_rule = lttng::make_unique<ust_app_event_notifier_rule>();
+		ua_event_notifier_rule = std::make_unique<ust_app_event_notifier_rule>();
 	} catch (const std::bad_alloc&) {
 		PERROR("Failed to allocate ust_app_event_notifier_rule structure");
 		return nullptr;
@@ -2356,7 +2356,7 @@ int handle_app_register_channel_notification(int sock,
 
 		if (!tc_channel.is_registered()) {
 			if (!app_context_fields.empty()) {
-				pending_event_context = lttng::make_unique<lst::structure_type>(
+				pending_event_context = std::make_unique<lst::structure_type>(
 					0, std::move(app_context_fields));
 			}
 		} else {

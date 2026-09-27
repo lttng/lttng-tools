@@ -9,7 +9,6 @@
 #define LTTNG_ACTION_KEY_TEMPLATE_INTERNAL_H
 
 #include <common/macros.hpp>
-#include <common/make-unique.hpp>
 
 #include <lttng/action/key-template.h>
 
@@ -61,7 +60,7 @@ public:
 
 	std::unique_ptr<key_template_segment> clone() const override
 	{
-		return lttng::make_unique<key_template_literal_segment>(text);
+		return std::make_unique<key_template_literal_segment>(text);
 	}
 
 	bool equals(const key_template_segment& other) const noexcept override
@@ -87,7 +86,7 @@ public:
 
 	std::unique_ptr<key_template_segment> clone() const override
 	{
-		return lttng::make_unique<key_template_placeholder_segment>(type);
+		return std::make_unique<key_template_placeholder_segment>(type);
 	}
 
 	bool equals(const key_template_segment& other) const noexcept override

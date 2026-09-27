@@ -7,8 +7,7 @@
 
 #include "ust-event-class.hpp"
 
-#include <common/make-unique.hpp>
-
+#include <memory>
 #include <urcu/rculfhash.h>
 
 namespace lst = lttng::sessiond::trace;
@@ -28,7 +27,7 @@ lsu::event_class::event_class(unsigned int in_id,
 			 in_loglevel_value,
 			 std::move(in_name),
 			 std::move(in_model_emf_uri),
-			 lttng::make_unique<lst::structure_type>(0, std::move(in_fields))),
+			 std::make_unique<lst::structure_type>(0, std::move(in_fields))),
 	session_objd{ in_session_objd },
 	channel_objd{ in_channel_objd },
 	signature{ std::move(in_signature) },

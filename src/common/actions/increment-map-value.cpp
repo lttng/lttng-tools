@@ -586,7 +586,7 @@ lttng_action_increment_map_value_set_key_template(struct lttng_action *action,
 	}
 
 	try {
-		copy = lttng::make_unique<lttng_key_template>(*key_template);
+		copy = std::make_unique<lttng_key_template>(*key_template);
 	} catch (const std::exception& e) {
 		ERR_FMT("Failed to copy key template: {}", e.what());
 		return LTTNG_ACTION_STATUS_ERROR;

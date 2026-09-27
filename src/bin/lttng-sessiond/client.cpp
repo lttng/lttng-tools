@@ -553,7 +553,7 @@ int create_ust_session(const ltt_session::locked_ref& session, const struct lttn
 
 		lsu::domain_orchestrator::consumer_output_uptr consumer_output(consumer_raw);
 
-		session->ust_orchestrator = lttng::make_unique<lsu::domain_orchestrator>(
+		session->ust_orchestrator = std::make_unique<lsu::domain_orchestrator>(
 			*session, default_buffer_ownership, std::move(consumer_output));
 
 		if (!static_cast<const lsu::domain_orchestrator&>(session->get_ust_orchestrator())
@@ -606,7 +606,7 @@ int create_kernel_session(const ltt_session::locked_ref& session)
 		}
 
 		session->kernel_orchestrator =
-			lttng::make_unique<lttng::sessiond::modules::domain_orchestrator>(
+			std::make_unique<lttng::sessiond::modules::domain_orchestrator>(
 				*session,
 				std::move(kconsumer_output),
 				session->id,

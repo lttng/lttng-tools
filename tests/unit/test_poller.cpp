@@ -6,10 +6,10 @@
 
 #include <common/eventfd.hpp>
 #include <common/format.hpp>
-#include <common/make-unique.hpp>
 #include <common/poller.hpp>
 #include <common/timerfd.hpp>
 
+#include <memory>
 #include <tap/tap.h>
 
 /* For error.hpp */

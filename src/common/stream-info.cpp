@@ -9,7 +9,6 @@
 #include <common/dynamic-buffer.hpp>
 #include <common/error.hpp>
 #include <common/macros.hpp>
-#include <common/make-unique.hpp>
 #include <common/payload-view.hpp>
 #include <common/payload.hpp>
 #include <common/stream-info.hpp>
@@ -17,6 +16,7 @@
 #include <lttng/lttng-error.h>
 
 #include <bin/lttng-sessiond/commands/get-channel-memory-usage.hpp>
+#include <memory>
 #include <stdlib.h>
 #include <string.h>
 
@@ -271,7 +271,7 @@ std::pair<ssize_t, lttng_data_stream_info_sets::uptr>
 lttng_data_stream_info_sets::create_from_payload(lttng_payload_view& view)
 {
 	ssize_t offset = 0;
-	auto sets = lttng::make_unique<lttng_data_stream_info_sets>();
+	auto sets = std::make_unique<lttng_data_stream_info_sets>();
 
 	/* Read set count */
 	const lttng::binary_view<uint32_t> set_count_view(view.buffer.data + offset,

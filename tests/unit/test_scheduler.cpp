@@ -4,7 +4,6 @@
  * SPDX-FileCopyrightText: 2025 Jérémie Galarneau <jeremie.galarneau@efficios.com>
  */
 
-#include <common/make-unique.hpp>
 #include <common/scheduler.hpp>
 #include <common/task-executor.hpp>
 

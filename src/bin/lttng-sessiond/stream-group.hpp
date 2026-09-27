@@ -9,7 +9,6 @@
 #define LTTNG_SESSIOND_STREAM_GROUP_HPP
 
 #include <common/exception.hpp>
-#include <common/make-unique.hpp>
 
 #include <cstdint>
 #include <memory>
@@ -92,7 +91,7 @@ public:
 	/* Stream management. */
 	virtual void add_stream(unsigned int cpu, StreamHandleType handle)
 	{
-		_streams.emplace_back(lttng::make_unique<stream>(cpu, std::move(handle)));
+		_streams.emplace_back(std::make_unique<stream>(cpu, std::move(handle)));
 	}
 
 	const std::vector<std::unique_ptr<stream>>& streams() const noexcept

@@ -15,7 +15,6 @@
 #include <common/ctl/memory.hpp>
 #include <common/exception.hpp>
 #include <common/format.hpp>
-#include <common/make-unique.hpp>
 
 #include <lttng/event-rule/event-rule-internal.hpp>
 
@@ -144,7 +143,7 @@ public:
 	void add_event_rule_configuration(Args&&...args)
 	{
 		auto config =
-			lttng::make_unique<event_rule_configuration>(std::forward<Args>(args)...);
+			std::make_unique<event_rule_configuration>(std::forward<Args>(args)...);
 
 		event_rules.emplace(std::cref(*config->event_rule), std::move(config));
 	}

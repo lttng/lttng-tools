@@ -10,7 +10,6 @@
 
 #include <common/format.hpp>
 #include <common/macros.hpp>
-#include <common/make-unique.hpp>
 #include <common/poller.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/stream-descriptor.hpp>
@@ -19,6 +18,7 @@
 #include <lttng/reclaim-internal.hpp>
 #include <lttng/reclaim.h>
 
+#include <memory>
 #include <optional>
 #include <string.h>
 

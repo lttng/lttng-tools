@@ -10,7 +10,6 @@
 #include "show-maps-output-model.hpp"
 
 #include <common/format.hpp>
-#include <common/make-unique.hpp>
 #include <common/mint.hpp>
 #include <common/table-writer.hpp>
 #include <common/term-utils.hpp>
@@ -136,10 +135,10 @@ void write_map_table(std::ostream& os, const map_table& map_table)
 	std::vector<tw::table_col_descr::uptr> cols;
 
 	cols.push_back(
-		make_unique<tw::table_str_col_descr>("Key", tw::table_cell_align::LEFT, true));
-	cols.push_back(make_unique<tw::table_bigint_col_descr>("Value"));
-	cols.push_back(
-		make_unique<tw::table_str_col_descr>("Overflow?", tw::table_cell_align::CENTER));
+		std::make_unique<tw::table_str_col_descr>("Key", tw::table_cell_align::LEFT, true));
+	cols.push_back(std::make_unique<tw::table_bigint_col_descr>("Value"));
+	cols.push_back(std::make_unique<tw::table_str_col_descr>("Overflow?",
+								 tw::table_cell_align::CENTER));
 
 	tw::table_writer writer(std::move(cols), locale_supports_utf8(), true);
 

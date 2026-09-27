@@ -17,7 +17,6 @@
 #include <common/compat/errno.hpp>
 #include <common/exception.hpp>
 #include <common/format.hpp>
-#include <common/make-unique.hpp>
 #include <common/scope-exit.hpp>
 #include <common/urcu.hpp>
 
@@ -28,6 +27,7 @@
 #include <lttng/ust-error.h>
 
 #include <inttypes.h>
+#include <memory>
 
 namespace lsu = lttng::sessiond::ust;
 namespace lsc = lttng::sessiond::config;
@@ -307,7 +307,7 @@ std::unique_ptr<lsu::app_event>
 alloc_ust_app_event(lsu::app_channel& channel,
 		    const lttng::sessiond::config::event_rule_configuration& event_config)
 {
-	auto ua_event = lttng::make_unique<lsu::app_event>(channel, event_config);
+	auto ua_event = std::make_unique<lsu::app_event>(channel, event_config);
 
 	ua_event->enabled = true;
 

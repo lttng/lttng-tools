@@ -19,7 +19,6 @@
 #include <common/exception.hpp>
 #include <common/format.hpp>
 #include <common/macros.hpp>
-#include <common/make-unique.hpp>
 #include <common/mi-lttng.hpp>
 #include <common/mint.hpp>
 #include <common/term-utils.hpp>
@@ -30,6 +29,7 @@
 #include <cctype>
 #include <cstdint>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <vector>
 
@@ -240,33 +240,33 @@ using property_set = std::set<property>;
 
 property make_raw_property(std::string key, std::string value)
 {
-	return { std::move(key), lttng::make_unique<raw_property_value>(std::move(value)) };
+	return { std::move(key), std::make_unique<raw_property_value>(std::move(value)) };
 }
 
 property make_string_property(std::string key, std::string value)
 {
-	return { std::move(key), lttng::make_unique<string_property_value>(std::move(value)) };
+	return { std::move(key), std::make_unique<string_property_value>(std::move(value)) };
 }
 
 property make_literal_string_property(std::string key, std::string value)
 {
 	return { std::move(key),
-		 lttng::make_unique<literal_string_property_value>(std::move(value)) };
+		 std::make_unique<literal_string_property_value>(std::move(value)) };
 }
 
 property make_size_property(std::string key, const std::uint64_t bytes)
 {
-	return { std::move(key), lttng::make_unique<size_property_value>(bytes) };
+	return { std::move(key), std::make_unique<size_property_value>(bytes) };
 }
 
 property make_period_property(std::string key, const std::uint64_t period_us)
 {
-	return { std::move(key), lttng::make_unique<period_property_value>(period_us) };
+	return { std::move(key), std::make_unique<period_property_value>(period_us) };
 }
 
 property make_count_property(std::string key, const std::int64_t count)
 {
-	return { std::move(key), lttng::make_unique<count_property_value>(count) };
+	return { std::move(key), std::make_unique<count_property_value>(count) };
 }
 
 /*
@@ -398,12 +398,12 @@ private:
 
 std::unique_ptr<node> make_property_set_node(property_set properties)
 {
-	return lttng::make_unique<property_set_node>(std::move(properties));
+	return std::make_unique<property_set_node>(std::move(properties));
 }
 
 std::unique_ptr<node> make_block_node(std::string title, std::vector<std::string> lines)
 {
-	return lttng::make_unique<block_node>(std::move(title), std::move(lines));
+	return std::make_unique<block_node>(std::move(title), std::move(lines));
 }
 
 std::unique_ptr<node> make_group_node(std::string title,
@@ -411,21 +411,21 @@ std::unique_ptr<node> make_group_node(std::string title,
 				      const enum group_node::type type = group_node::type::DEFAULT,
 				      std::vector<std::string> tags = {})
 {
-	return lttng::make_unique<group_node>(
+	return std::make_unique<group_node>(
 		std::move(title), std::move(children), type, std::move(tags));
 }
 
 std::unique_ptr<node> make_group_node_underlined_title(std::string title, node_list children = {})
 {
-	return lttng::make_unique<group_node>(lttng::mint_format("[_]{}[/]:", title),
-					      std::move(children));
+	return std::make_unique<group_node>(lttng::mint_format("[_]{}[/]:", title),
+					    std::move(children));
 }
 
 std::unique_ptr<node> make_block_node_underlined_title(std::string title,
 						       std::vector<std::string> lines)
 {
-	return lttng::make_unique<block_node>(lttng::mint_format("[_]{}[/]:", title),
-					      std::move(lines));
+	return std::make_unique<block_node>(lttng::mint_format("[_]{}[/]:", title),
+					    std::move(lines));
 }
 
 const char *tag_open_char() noexcept

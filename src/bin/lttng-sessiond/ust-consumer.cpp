@@ -21,12 +21,12 @@
 #include <common/defaults.hpp>
 #include <common/format.hpp>
 #include <common/make-unique-wrapper.hpp>
-#include <common/make-unique.hpp>
 
 #include <lttng/ust-ctl.h>
 #include <lttng/ust-error.h>
 
 #include <inttypes.h>
+#include <memory>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -394,7 +394,7 @@ int ust_consumer_get_channel(struct consumer_socket *socket, lsu::app_channel *u
 
 	/* Next, get all streams. */
 	while (true) {
-		auto stream = lttng::make_unique<lsu::app_stream>(*ua_chan);
+		auto stream = std::make_unique<lsu::app_stream>(*ua_chan);
 		lttng_ust_abi_object_data *raw = nullptr;
 
 		ret = lttng_ust_ctl_recv_stream_from_consumer(*socket->fd_ptr, &raw);

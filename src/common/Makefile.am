@@ -104,7 +104,6 @@ libcommon_lgpl_la_SOURCES = \
 	locked-reference.hpp \
 	logging-utils.hpp logging-utils.cpp \
 	log-level-rule.cpp \
-	make-unique.hpp \
 	make-unique-wrapper.hpp \
 	math.hpp \
 	meta-helpers.hpp \

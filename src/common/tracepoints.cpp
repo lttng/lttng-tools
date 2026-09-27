@@ -9,9 +9,9 @@
 #include <common/defaults.hpp>
 #include <common/format.hpp>
 #include <common/make-unique-wrapper.hpp>
-#include <common/make-unique.hpp>
 
 #include <dlfcn.h>
+#include <memory>
 #include <string>
 #include <sys/stat.h>
 #include <unordered_set>

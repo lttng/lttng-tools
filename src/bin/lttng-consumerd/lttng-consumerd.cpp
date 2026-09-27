@@ -17,7 +17,6 @@
 #include <common/consumer/consumer.hpp>
 #include <common/defaults.hpp>
 #include <common/format.hpp>
-#include <common/make-unique.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/tracepoints.hpp>
 #include <common/utils.hpp>
@@ -27,6 +26,7 @@
 #include <getopt.h>
 #include <grp.h>
 #include <limits.h>
+#include <memory>
 #include <poll.h>
 #include <pthread.h>
 #include <signal.h>

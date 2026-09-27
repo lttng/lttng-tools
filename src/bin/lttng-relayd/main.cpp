@@ -44,7 +44,6 @@
 #include <common/format.hpp>
 #include <common/futex.hpp>
 #include <common/ini-config/ini-config.hpp>
-#include <common/make-unique.hpp>
 #include <common/path.hpp>
 #include <common/pthread-lock.hpp>
 #include <common/scope-exit.hpp>
@@ -68,6 +67,7 @@
 #include <grp.h>
 #include <inttypes.h>
 #include <limits.h>
+#include <memory>
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>

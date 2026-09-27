@@ -7,8 +7,7 @@
 
 #include "context-configuration.hpp"
 
-#include <common/make-unique.hpp>
-
+#include <memory>
 #include <utility>
 
 namespace lttng {
@@ -211,20 +210,20 @@ make_context_configuration_from_event_context(const lttng_event_context& event_c
 			static_cast<perf_counter_context_configuration::perf_counter_type>(
 				perf_ctx.type);
 
-		return lttng::make_unique<perf_counter_context_configuration>(
+		return std::make_unique<perf_counter_context_configuration>(
 			ctx_type, perf_type, perf_ctx.config, perf_ctx.name);
 	}
 	case LTTNG_EVENT_CONTEXT_APP_CONTEXT:
 	{
 		const auto& app_ctx = event_context.u.app_ctx;
 
-		return lttng::make_unique<app_context_configuration>(
+		return std::make_unique<app_context_configuration>(
 			app_ctx.provider_name ? app_ctx.provider_name : "",
 			app_ctx.ctx_name ? app_ctx.ctx_name : "");
 	}
 	default:
 		/* Simple context - no extra data needed. */
-		return lttng::make_unique<simple_context_configuration>(ctx_type);
+		return std::make_unique<simple_context_configuration>(ctx_type);
 	}
 }
 

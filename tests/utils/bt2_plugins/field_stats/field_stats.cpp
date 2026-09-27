@@ -11,13 +11,13 @@
 
 #include <common/format.hpp>
 #include <common/make-unique-wrapper.hpp>
-#include <common/make-unique.hpp>
 
 #include <assert.h>
 #include <babeltrace2/babeltrace.h>
 #include <cstdint>
 #include <cstring>
 #include <iostream>
+#include <memory>
 #include <stdio.h>
 #include <stdlib.h>
 #include <utility>
@@ -374,7 +374,7 @@ field_stats_initialize(bt_self_component_sink *self_component_sink,
 
 	std::unique_ptr<struct field_stats> field_stats;
 	try {
-		field_stats = lttng::make_unique<struct field_stats>();
+		field_stats = std::make_unique<struct field_stats>();
 	} catch (const bad_alloc_with_msg& ex) {
 		BT_CURRENT_THREAD_ERROR_APPEND_CAUSE_FROM_COMPONENT(
 			bt_self_component_sink_as_self_component(self_component_sink),

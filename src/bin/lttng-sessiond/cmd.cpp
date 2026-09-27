@@ -50,7 +50,6 @@
 #include <common/format.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>
 #include <common/make-unique-wrapper.hpp>
-#include <common/make-unique.hpp>
 #include <common/math.hpp>
 #include <common/payload-view.hpp>
 #include <common/payload.hpp>
@@ -2922,7 +2921,7 @@ enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref& sessi
 			if ((err == LTTNG_OK) &&
 			    (allocation_policy_value == LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU)) {
 				auto cpu_id_config =
-					lttng::make_unique<lsc::simple_context_configuration>(
+					std::make_unique<lsc::simple_context_configuration>(
 						lsc::context_configuration::type::CPU_ID);
 				channel_config.add_context(std::move(cpu_id_config));
 

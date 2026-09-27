@@ -21,7 +21,6 @@
 #include <common/kernel-consumer/kernel-consumer.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>
 #include <common/macros.hpp>
-#include <common/make-unique.hpp>
 #include <common/relayd/relayd.hpp>
 #include <common/urcu.hpp>
 #include <common/ust-consumer/ust-consumer.hpp>
@@ -29,6 +28,7 @@
 
 #include <fcntl.h>
 #include <inttypes.h>
+#include <memory>
 #include <sys/mman.h>
 #include <unistd.h>
 
@@ -946,7 +946,7 @@ struct lttng_consumer_stream *consumer_stream_create(struct lttng_consumer_chann
 	int ret;
 	const lttng::urcu::read_lock_guard read_lock;
 
-	auto stream = lttng::make_unique<lttng_consumer_stream>();
+	auto stream = std::make_unique<lttng_consumer_stream>();
 
 	if (trace_chunk && !lttng_trace_chunk_get(trace_chunk)) {
 		ERR("Failed to acquire trace chunk reference during the creation of a stream");

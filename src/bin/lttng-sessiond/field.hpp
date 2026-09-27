@@ -9,7 +9,6 @@
 #define LTTNG_FIELD_H
 
 #include <common/format.hpp>
-#include <common/make-unique.hpp>
 
 #include <algorithm>
 #include <memory>
@@ -316,7 +315,7 @@ public:
 
 	type::cuptr copy() const override
 	{
-		return lttng::make_unique<typed_enumeration_type<MappingIntegerType>>(
+		return std::make_unique<typed_enumeration_type<MappingIntegerType>>(
 			alignment, byte_order, size, base_, mappings_, roles_);
 	}
 
@@ -573,7 +572,7 @@ public:
 						     current_choice.type_->copy());
 		}
 
-		return lttng::make_unique<variant_type<MappingIntegerType>>(
+		return std::make_unique<variant_type<MappingIntegerType>>(
 			alignment, selector_field_location, std::move(copy_of_choices));
 	}
 

@@ -104,7 +104,3 @@ CheckOptions:
     value:        assert,LTTNG_ASSERT
   - key:          bugprone-signed-char-misuse.CharTypdefsToIgnore
     value:        'int8_t'
-  - key:          modernize-make-unique.MakeSmartPtrFunction
-    value:        'lttng::make_unique'
-  - key:          modernize-make-unique.MakeSmartPtrFunctionHeader
-    value:        '<common/make-unique.hpp>'

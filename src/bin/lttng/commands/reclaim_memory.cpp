@@ -17,7 +17,6 @@
 #include <common/domain.hpp>
 #include <common/format.hpp>
 #include <common/make-unique-wrapper.hpp>
-#include <common/make-unique.hpp>
 #include <common/mi-lttng.hpp>
 #include <common/scope-exit.hpp>
 #include <common/utils.hpp>
@@ -29,6 +28,7 @@
 #include <chrono>
 #include <cstdio>
 #include <map>
+#include <memory>
 #include <numeric>
 #include <optional>
 #include <set>

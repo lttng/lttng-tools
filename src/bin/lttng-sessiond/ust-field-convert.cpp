@@ -14,10 +14,10 @@
 
 #include <common/exception.hpp>
 #include <common/format.hpp>
-#include <common/make-unique.hpp>
 
 #include <lttng/ust-ctl.h>
 
+#include <memory>
 #include <unordered_map>
 #include <utility>
 
@@ -147,11 +147,11 @@ create_integer_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 
 	*next_ust_ctl_field = current + 1;
 
-	return lttng::make_unique<const lst::integer_type>(current->type.u.integer.alignment,
-							   byte_order,
-							   current->type.u.integer.size,
-							   signedness,
-							   base);
+	return std::make_unique<const lst::integer_type>(current->type.u.integer.alignment,
+							 byte_order,
+							 current->type.u.integer.size,
+							 signedness,
+							 base);
 }
 
 lst::type::cuptr
@@ -173,7 +173,7 @@ create_floating_point_type_from_ust_ctl_fields(const lttng_ust_ctl_field *curren
 		session_attributes._native_trace_byte_order;
 
 	try {
-		return lttng::make_unique<const lst::floating_point_type>(
+		return std::make_unique<const lst::floating_point_type>(
 			current->type.u._float.alignment,
 			byte_order,
 			current->type.u._float.exp_dig + current->type.u._float.mant_dig);
@@ -238,7 +238,7 @@ create_enumeration_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 		const auto& enum_registry = static_cast<const lsu::registry_signed_enum&>(
 			*session_attributes.get_registry_enum(enumeration_name, enumeration_id));
 
-		return lttng::make_unique<const lst::signed_enumeration_type>(
+		return std::make_unique<const lst::signed_enumeration_type>(
 			enum_container_uctl_type->alignment,
 			byte_order,
 			enum_container_uctl_type->size,
@@ -248,7 +248,7 @@ create_enumeration_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 		const auto& enum_registry = static_cast<const lsu::registry_unsigned_enum&>(
 			*session_attributes.get_registry_enum(enumeration_name, enumeration_id));
 
-		return lttng::make_unique<const lst::unsigned_enumeration_type>(
+		return std::make_unique<const lst::unsigned_enumeration_type>(
 			enum_container_uctl_type->alignment,
 			byte_order,
 			enum_container_uctl_type->size,
@@ -276,7 +276,7 @@ create_string_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 	const auto encoding =
 		ust_ctl_encoding_to_string_field_encoding(string_uctl_field.type.u.string.encoding);
 
-	return lttng::make_unique<const lst::null_terminated_string_type>(1, encoding);
+	return std::make_unique<const lst::null_terminated_string_type>(1, encoding);
 }
 
 lst::type::cuptr
@@ -296,7 +296,7 @@ create_integer_type_from_ust_ctl_basic_type(const lttng_ust_ctl_basic_type& type
 	const auto size = type.u.basic.integer.size;
 	const auto alignment = type.u.basic.integer.alignment;
 
-	return lttng::make_unique<const lst::integer_type>(
+	return std::make_unique<const lst::integer_type>(
 		alignment, byte_order, size, signedness, base);
 }
 
@@ -350,11 +350,11 @@ create_array_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 		}
 
 		/* Array is a static-length string. */
-		return lttng::make_unique<lst::static_length_string_type>(
+		return std::make_unique<lst::static_length_string_type>(
 			array_alignment, *element_encoding, array_length);
 	}
 
-	return lttng::make_unique<lst::static_length_array_type>(
+	return std::make_unique<lst::static_length_array_type>(
 		array_alignment, std::move(element_type), array_length);
 }
 
@@ -413,11 +413,11 @@ lst::type::cuptr create_array_nestable_type_from_ust_ctl_fields(
 		}
 
 		/* Array is a static-length string. */
-		return lttng::make_unique<lst::static_length_string_type>(
+		return std::make_unique<lst::static_length_string_type>(
 			array_alignment, *element_encoding, array_length);
 	}
 
-	return lttng::make_unique<lst::static_length_array_type>(
+	return std::make_unique<lst::static_length_array_type>(
 		array_alignment, std::move(element_type), array_length);
 }
 
@@ -481,8 +481,8 @@ lst::type::cuptr create_sequence_type_from_ust_ctl_fields(
 						   std::move(length_field_location_elements) };
 
 	/* Publish an implicit length field _before_ the sequence field. */
-	publish_field(lttng::make_unique<lst::field>(std::move(length_field_name),
-						     std::move(length_type)));
+	publish_field(
+		std::make_unique<lst::field>(std::move(length_field_name), std::move(length_type)));
 
 	*next_ust_ctl_field = current + 1;
 
@@ -497,11 +497,11 @@ lst::type::cuptr create_sequence_type_from_ust_ctl_fields(
 		}
 
 		/* Sequence is a dynamic-length string. */
-		return lttng::make_unique<lst::dynamic_length_string_type>(
+		return std::make_unique<lst::dynamic_length_string_type>(
 			sequence_alignment, *element_encoding, std::move(length_field_location));
 	}
 
-	return lttng::make_unique<lst::dynamic_length_array_type>(
+	return std::make_unique<lst::dynamic_length_array_type>(
 		sequence_alignment, std::move(element_type), std::move(length_field_location));
 }
 
@@ -580,11 +580,11 @@ lst::type::cuptr create_sequence_nestable_type_from_ust_ctl_fields(
 		}
 
 		/* Sqeuence is a dynamic-length string. */
-		return lttng::make_unique<lst::dynamic_length_string_type>(
+		return std::make_unique<lst::dynamic_length_string_type>(
 			sequence_alignment, *element_encoding, std::move(length_field_location));
 	}
 
-	return lttng::make_unique<lst::dynamic_length_array_type>(
+	return std::make_unique<lst::dynamic_length_array_type>(
 		sequence_alignment, std::move(element_type), std::move(length_field_location));
 }
 
@@ -620,7 +620,7 @@ create_structure_field_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 	}
 
 	*next_ust_ctl_field = current + 1;
-	return lttng::make_unique<lst::structure_type>(alignment, lst::structure_type::fields());
+	return std::make_unique<lst::structure_type>(alignment, lst::structure_type::fields());
 }
 
 template <class VariantSelectorMappingIntegerType>
@@ -763,7 +763,7 @@ lst::type::cuptr create_variant_field_from_ust_ctl_fields(
 							      selector_field,
 							      quirks);
 
-		return lttng::make_unique<lst::variant_type<int64_t>>(
+		return std::make_unique<lst::variant_type<int64_t>>(
 			alignment, std::move(selector_field_location), std::move(choices));
 	} else {
 		lst::variant_type<uint64_t>::choices choices =
@@ -778,7 +778,7 @@ lst::type::cuptr create_variant_field_from_ust_ctl_fields(
 							       selector_field,
 							       quirks);
 
-		return lttng::make_unique<lst::variant_type<uint64_t>>(
+		return std::make_unique<lst::variant_type<uint64_t>>(
 			alignment, std::move(selector_field_location), std::move(choices));
 	}
 }
@@ -810,7 +810,7 @@ lst::type::cuptr create_fixed_length_blob_type_from_ust_ctl_fields(
 			fixed_length_blob_uctl_field.type.u.fixed_length_blob.media_type);
 	}
 	*next_ust_ctl_field = current + 1;
-	return lttng::make_unique<lst::static_length_blob_type>(
+	return std::make_unique<lst::static_length_blob_type>(
 		0, blob_length, std::move(media_type));
 }
 
@@ -868,7 +868,7 @@ lst::type::cuptr create_dynamic_length_blob_type_from_ust_ctl_fields(
 	if (variable_length_blob_uctl_field.type.u.variable_length_blob.media_type[0])
 		media_type = std::string(
 			variable_length_blob_uctl_field.type.u.variable_length_blob.media_type);
-	return lttng::make_unique<lst::dynamic_length_blob_type>(
+	return std::make_unique<lst::dynamic_length_blob_type>(
 		0, std::move(length_field_location), std::move(media_type));
 }
 
@@ -985,7 +985,7 @@ void create_field_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 			lttng::format("Name of {} is not null-terminated", typeid(*current)));
 	}
 
-	publish_field(lttng::make_unique<lst::field>(
+	publish_field(std::make_unique<lst::field>(
 		current->name,
 		create_type_from_ust_ctl_fields(current,
 						end,

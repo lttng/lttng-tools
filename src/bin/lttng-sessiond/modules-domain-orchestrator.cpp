@@ -244,7 +244,7 @@ void ls::modules::domain_orchestrator::create_channel(
 	/* Register the modern channel object, keyed by config identity. */
 	_stream_groups.emplace(
 		&channel_config,
-		lttng::make_unique<modules::stream_group>(
+		std::make_unique<modules::stream_group>(
 			std::move(modules_stream_group_fd), stream_group_key, channel_config));
 
 	kernel_wait_quiescent();
@@ -817,7 +817,7 @@ void ls::modules::domain_orchestrator::_open_metadata()
 		metadata_stream_group_fd.fd(),
 		consumer_key);
 
-	_metadata_stream_group = lttng::make_unique<modules::metadata_stream_group>(
+	_metadata_stream_group = std::make_unique<modules::metadata_stream_group>(
 		std::move(metadata_stream_group_fd), consumer_key, metadata_config);
 }
 
@@ -1496,12 +1496,12 @@ void ls::modules::domain_orchestrator::add_map_channel(const lsc::map_channel_co
 		/* INDEX-keyed maps need no string registry. */
 		break;
 	case lsc::map_channel_configuration::key_type_t::STRING:
-		registry = lttng::make_unique<modules::key_registry>(kernel_group.tracer_handle(),
-								     config);
+		registry = std::make_unique<modules::key_registry>(kernel_group.tracer_handle(),
+								   config);
 		break;
 	}
 
-	auto channel = lttng::make_unique<modules::map_channel>(
+	auto channel = std::make_unique<modules::map_channel>(
 		config, std::move(registry), std::move(kernel_group));
 	_map_channels.emplace(&config, std::move(channel));
 }

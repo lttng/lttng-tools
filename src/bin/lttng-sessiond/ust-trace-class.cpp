@@ -25,7 +25,6 @@
 #include <common/format.hpp>
 #include <common/hashtable/utils.hpp>
 #include <common/macros.hpp>
-#include <common/make-unique.hpp>
 #include <common/pthread-lock.hpp>
 #include <common/runas.hpp>
 #include <common/string-utils/c-string-view.hpp>
@@ -38,6 +37,7 @@
 #include <fcntl.h>
 #include <functional>
 #include <initializer_list>
+#include <memory>
 #include <mutex>
 #include <sstream>
 #include <string>
@@ -258,17 +258,17 @@ lsu::trace_class::trace_class(enum lttng_trace_format trace_format,
 	_trace_name{ std::move(trace_name) },
 	_hostname{ std::move(hostname) },
 	_creation_time{ creation_time },
-	_clock{ lttng::make_unique<lsu::clock_class>() },
+	_clock{ std::make_unique<lsu::clock_class>() },
 	_metadata_generating_visitor{ [&]() -> std::unique_ptr<trace::trace_class_visitor> {
 		auto func = [this](const std::string& fragment) {
 			_append_metadata_fragment(fragment);
 		};
 
 		if (trace_format == LTTNG_TRACE_FORMAT_CTF_2) {
-			return lttng::make_unique<ctf2::trace_class_visitor>(std::move(func));
+			return std::make_unique<ctf2::trace_class_visitor>(std::move(func));
 		}
 
-		return lttng::make_unique<tsdl::trace_class_visitor>(abi, std::move(func));
+		return std::make_unique<tsdl::trace_class_visitor>(abi, std::move(func));
 	}() },
 	_packet_header{ _create_packet_header() }
 {
@@ -315,9 +315,9 @@ lst::type::cuptr lsu::trace_class::_create_packet_header() const
 	lst::structure_type::fields packet_header_fields;
 
 	/* uint32_t magic */
-	packet_header_fields.emplace_back(lttng::make_unique<lst::field>(
+	packet_header_fields.emplace_back(std::make_unique<lst::field>(
 		"magic",
-		lttng::make_unique<lst::integer_type>(
+		std::make_unique<lst::integer_type>(
 			abi.uint32_t_alignment,
 			abi.byte_order,
 			32,
@@ -327,9 +327,9 @@ lst::type::cuptr lsu::trace_class::_create_packet_header() const
 				{ lst::integer_type::role::PACKET_MAGIC_NUMBER }))));
 
 	/* uuid */
-	packet_header_fields.emplace_back(lttng::make_unique<lst::field>(
+	packet_header_fields.emplace_back(std::make_unique<lst::field>(
 		"uuid",
-		lttng::make_unique<lst::static_length_blob_type>(
+		std::make_unique<lst::static_length_blob_type>(
 			0,
 			16,
 			std::nullopt,
@@ -337,9 +337,9 @@ lst::type::cuptr lsu::trace_class::_create_packet_header() const
 				{ lst::static_length_blob_type::role::METADATA_STREAM_UUID }))));
 
 	/* uint32_t stream_id */
-	packet_header_fields.emplace_back(lttng::make_unique<lst::field>(
+	packet_header_fields.emplace_back(std::make_unique<lst::field>(
 		"stream_id",
-		lttng::make_unique<lst::integer_type>(
+		std::make_unique<lst::integer_type>(
 			abi.uint32_t_alignment,
 			abi.byte_order,
 			32,
@@ -349,9 +349,9 @@ lst::type::cuptr lsu::trace_class::_create_packet_header() const
 				{ lst::integer_type::role::DATA_STREAM_CLASS_ID }))));
 
 	/* uint64_t stream_instance_id */
-	packet_header_fields.emplace_back(lttng::make_unique<lst::field>(
+	packet_header_fields.emplace_back(std::make_unique<lst::field>(
 		"stream_instance_id",
-		lttng::make_unique<lst::integer_type>(
+		std::make_unique<lst::integer_type>(
 			abi.uint64_t_alignment,
 			abi.byte_order,
 			64,
@@ -360,7 +360,7 @@ lst::type::cuptr lsu::trace_class::_create_packet_header() const
 			std::initializer_list<lst::integer_type::role>(
 				{ lst::integer_type::role::DATA_STREAM_ID }))));
 
-	return lttng::make_unique<lst::structure_type>(0, std::move(packet_header_fields));
+	return std::make_unique<lst::structure_type>(0, std::move(packet_header_fields));
 }
 
 const lst::type *lsu::trace_class::packet_header() const noexcept
@@ -692,7 +692,7 @@ void lsu::trace_class::regenerate_metadata()
 	const lttng::pthread::lock_guard trace_class_lock(_lock);
 
 	/* Resample the clock */
-	_clock = lttng::make_unique<lsu::clock_class>();
+	_clock = std::make_unique<lsu::clock_class>();
 
 	_metadata_version++;
 	_reset_metadata();

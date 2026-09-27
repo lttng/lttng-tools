@@ -57,7 +57,7 @@ ust::map_group& map_channel::add_uid_group(uid_t uid, value_type_t resolved_valu
 		return *existing->second;
 	}
 
-	auto group = lttng::make_unique<ust::map_group>(
+	auto group = std::make_unique<ust::map_group>(
 		map_group::create_from_config(configuration(), resolved_value_type));
 	auto& group_ref = *group;
 	_per_uid_groups.emplace(key, std::move(group));
@@ -78,7 +78,7 @@ ust::map_group& map_channel::add_app_group(const ust::app& app, value_type_t res
 	LTTNG_ASSERT(configuration().buffer_ownership == config::ownership_model_t::PER_PID);
 	LTTNG_ASSERT(_per_app_groups.find(&app) == _per_app_groups.end());
 
-	auto group = lttng::make_unique<ust::map_group>(
+	auto group = std::make_unique<ust::map_group>(
 		map_group::create_from_config(configuration(), resolved_value_type));
 	auto& group_ref = *group;
 	_per_app_groups.emplace(&app, std::move(group));

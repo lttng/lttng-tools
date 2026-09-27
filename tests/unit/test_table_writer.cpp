@@ -5,10 +5,10 @@
  *
  */
 
-#include <common/make-unique.hpp>
 #include <common/table-writer.hpp>
 
 #include <cstdint>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <tap/tap.h>
@@ -33,7 +33,7 @@ make_str_col_descr(const char *const header,
 		   const tw::table_cell_align align = tw::table_cell_align::LEFT,
 		   const bool is_wrappable = false)
 {
-	return lttng::make_unique<tw::table_str_col_descr>(header, align, is_wrappable);
+	return std::make_unique<tw::table_str_col_descr>(header, align, is_wrappable);
 }
 
 /*
@@ -41,7 +41,7 @@ make_str_col_descr(const char *const header,
  */
 tw::table_col_descr::uptr make_int_col_descr(const char *const header)
 {
-	return lttng::make_unique<tw::table_signed_int_col_descr>(header);
+	return std::make_unique<tw::table_signed_int_col_descr>(header);
 }
 
 /*
@@ -49,7 +49,7 @@ tw::table_col_descr::uptr make_int_col_descr(const char *const header)
  */
 tw::table_col_descr::uptr make_bigint_col_descr(const char *const header)
 {
-	return lttng::make_unique<tw::table_bigint_col_descr>(header);
+	return std::make_unique<tw::table_bigint_col_descr>(header);
 }
 
 /*
