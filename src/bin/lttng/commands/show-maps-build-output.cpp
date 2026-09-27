@@ -358,12 +358,12 @@ private:
 			return false;
 		}
 
-		_output.tables.push_back(make_unique<per_part_map_table>(_cfg->session_name,
-									 channel_name,
-									 channel_type,
-									 std::move(rows),
-									 group,
-									 partition_id));
+		_output.tables.push_back(lttng::make_unique<per_part_map_table>(_cfg->session_name,
+										channel_name,
+										channel_type,
+										std::move(rows),
+										group,
+										partition_id));
 		return true;
 	}
 
@@ -386,12 +386,12 @@ private:
 		}
 
 		_output.tables.push_back(
-			make_unique<per_owner_map_table>(_cfg->session_name,
-							 channel_name,
-							 channel_type,
-							 std::move(rows),
-							 group,
-							 std::move(group_part_ids)));
+			lttng::make_unique<per_owner_map_table>(_cfg->session_name,
+								channel_name,
+								channel_type,
+								std::move(rows),
+								group,
+								std::move(group_part_ids)));
 		return true;
 	}
 
@@ -414,12 +414,12 @@ private:
 		}
 
 		_output.tables.push_back(
-			make_unique<per_channel_map_table>(_cfg->session_name,
-							   channel_name,
-							   channel_type,
-							   std::move(rows),
-							   std::move(channel_groups),
-							   std::move(channel_part_ids)));
+			lttng::make_unique<per_channel_map_table>(_cfg->session_name,
+								  channel_name,
+								  channel_type,
+								  std::move(rows),
+								  std::move(channel_groups),
+								  std::move(channel_part_ids)));
 		return true;
 	}
 

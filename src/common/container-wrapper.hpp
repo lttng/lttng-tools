@@ -27,8 +27,14 @@ namespace utils {
 template <typename ContainerType, typename ElementType, typename ContainerOperations>
 class random_access_container_wrapper {
 	template <typename IteratorContainerType, typename IteratorElementType>
-	class _iterator : public std::iterator<std::random_access_iterator_tag, std::size_t> {
+	class _iterator {
 	public:
+		using iterator_category = std::random_access_iterator_tag;
+		using value_type = std::size_t;
+		using difference_type = std::ptrdiff_t;
+		using pointer = std::size_t *;
+		using reference = std::size_t&;
+
 		explicit _iterator(IteratorContainerType& container, std::size_t start_index = 0) :
 			_container(container), _index(start_index)
 		{

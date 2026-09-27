@@ -13,6 +13,7 @@
 
 #include <vendor/optional.hpp>
 
+#include <cstddef>
 #include <cstdint>
 #include <iterator>
 
@@ -35,10 +36,16 @@ public:
 	iterator begin() const noexcept;
 	iterator end() const noexcept;
 
-	class iterator : public std::iterator<std::forward_iterator_tag, lttng_consumer_stream> {
+	class iterator {
 		friend stream_set;
 
 	public:
+		using iterator_category = std::forward_iterator_tag;
+		using value_type = lttng_consumer_stream;
+		using difference_type = std::ptrdiff_t;
+		using pointer = lttng_consumer_stream *;
+		using reference = lttng_consumer_stream&;
+
 		iterator(const iterator& other) = delete;
 		iterator(iterator&& /* other */) = default;
 		~iterator() = default;

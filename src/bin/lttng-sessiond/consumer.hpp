@@ -19,6 +19,7 @@
 
 #include <vendor/optional.hpp>
 
+#include <algorithm>
 #include <chrono>
 #include <urcu/ref.h>
 
@@ -32,19 +33,6 @@ struct app_session;
 } /* namespace ust */
 } /* namespace sessiond */
 } /* namespace lttng */
-
-/*
- * Needed until we use C++14, where std::max is constexpr.
- *
- * Use a static_assert so we remember to remove it when we upgrade to a newer
- * C++.
- */
-static_assert(__cplusplus == 201103L, "");
-template <typename NumericalType>
-constexpr NumericalType max_constexpr(NumericalType l, NumericalType r)
-{
-	return l > r ? l : r;
-}
 
 enum consumer_trace_chunk_exists_status {
 	CONSUMER_TRACE_CHUNK_EXISTS_STATUS_EXISTS_LOCAL,
@@ -175,8 +163,8 @@ struct consumer_output {
 	 * Subdirectory path name used for both local and network
 	 * consumer ("kernel", "ust", or empty).
 	 */
-	char domain_subdir[max_constexpr(sizeof(DEFAULT_KERNEL_TRACE_DIR),
-					 sizeof(DEFAULT_UST_TRACE_DIR))];
+	char domain_subdir[std::max(sizeof(DEFAULT_KERNEL_TRACE_DIR),
+				    sizeof(DEFAULT_UST_TRACE_DIR))];
 
 	/*
 	 * Hashtable of consumer_socket index by the file descriptor value. For

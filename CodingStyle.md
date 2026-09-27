@@ -18,7 +18,7 @@ Contributions are expected to adhere to these guidelines.
 
 ### Migration from C
 
-As the LTTng-tools project aims at supporting a broad range of compilers -- currently starting from GCC 6.0 -- its build system is configured to use the C++11 standard.
+As the LTTng-tools project aims at supporting a broad range of compilers -- currently starting from GCC 7.5 -- its build system is configured to use the C++17 standard.
 
 LTTng-tools has historically been developped in C99 with liberal uses of GNU extensions. Since the release of LTTng 2.13, it has started a migration to C++.
 
@@ -213,7 +213,7 @@ private:
 
 ### Miscelaneous guidelines
 
-In general, the project’s contributors make an effort to follow, for C++11 code:
+In general, the project’s contributors make an effort to follow, for C++17 code:
 
 [The C++ Core Guidelines](https://github.com/isocpp/CppCoreGuidelines/blob/master/CppCoreGuidelines.md)
 

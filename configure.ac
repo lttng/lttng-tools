@@ -120,8 +120,8 @@ AC_LANG_POP([C])
 ## C++ compiler checks ##
 ##                     ##
 
-# Find a C++11 compiler with GNU extensions (-std=gnu++11)
-AX_CXX_COMPILE_STDCXX([11], [ext], [mandatory])
+# Find a C++17 compiler with GNU extensions (-std=gnu++17)
+AX_CXX_COMPILE_STDCXX([17], [ext], [mandatory])
 
 # Detect warning flags specific to the C++ compiler and append them to
 # WARN_CXXFLAGS.

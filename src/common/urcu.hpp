@@ -13,6 +13,7 @@
 #include <common/hashtable/hashtable.hpp>
 #include <common/macros.hpp>
 
+#include <cstddef>
 #include <iterator>
 #include <mutex>
 #include <urcu.h>
@@ -111,11 +112,17 @@ template <typename ContainedType, typename NodeType, NodeType ContainedType::*Me
 class lfht_iteration_adapter {
 public:
 	/* Nested iterator class defines the iterator for lfht_iteration_adapter. */
-	class iterator : public std::iterator<std::forward_iterator_tag, ContainedType *> {
+	class iterator {
 		/* Allow lfht_iteration_adapter to access private members of iterator. */
 		friend lfht_iteration_adapter;
 
 	public:
+		using iterator_category = std::forward_iterator_tag;
+		using value_type = ContainedType *;
+		using difference_type = std::ptrdiff_t;
+		using pointer = ContainedType **;
+		using reference = ContainedType *&;
+
 		iterator(const iterator& other) = default;
 		iterator(iterator&& other) noexcept = default;
 		~iterator() = default;
@@ -298,11 +305,17 @@ template <typename ContainedType, cds_list_head ContainedType::*Member>
 class list_iteration_adapter {
 public:
 	/* Nested iterator class defines the iterator for list_iteration_adapter. */
-	class iterator : public std::iterator<std::forward_iterator_tag, ContainedType *> {
+	class iterator {
 		/* Allow list_iteration_adapter to access private members of iterator. */
 		friend list_iteration_adapter;
 
 	public:
+		using iterator_category = std::forward_iterator_tag;
+		using value_type = ContainedType *;
+		using difference_type = std::ptrdiff_t;
+		using pointer = ContainedType **;
+		using reference = ContainedType *&;
+
 		iterator(const iterator& other) = default;
 		iterator(iterator&& other) noexcept = default;
 		~iterator() = default;
