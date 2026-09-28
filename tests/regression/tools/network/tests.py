@@ -142,6 +142,14 @@ def test_session_creation_with_relayd_interruption(
     logging.info("Waiting for session start to return")
     start_thread.join()
 
+    # Listing the session queries the memory usage of each channel
+    client.list_session_raw(session.name)
+    try:
+        test_env._sessiond.wait(timeout=1)
+        assert False, "sessiond process should not be dead"
+    except subprocess.TimeoutExpired:
+        pass
+
     # Confirm that activating and deactivating events works
     for channel in channels:
         channel.disable_recording_rules("tp:tptest")
