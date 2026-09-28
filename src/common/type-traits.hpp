@@ -13,22 +13,10 @@ namespace lttng {
 namespace traits {
 
 /*
- * Provides the member constant `value` equal to:
- *
- * `T` is in the list of types `Ts`:
- *     `true`
- *
- * Otherwise:
- *     `false`
+ * `true` if `T` is in the list of types `Ts`.
  */
 template <typename T, typename... Ts>
-struct is_one_of : std::false_type {};
-
-template <typename T, typename... Ts>
-struct is_one_of<T, T, Ts...> : std::true_type {};
-
-template <typename T, typename U, typename... Ts>
-struct is_one_of<T, U, Ts...> : is_one_of<T, Ts...> {};
+inline constexpr bool is_one_of = (std::is_same_v<T, Ts> || ...);
 } /* namespace traits */
 } /* namespace lttng */
 

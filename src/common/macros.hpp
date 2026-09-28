@@ -60,21 +60,7 @@ static inline void *zmalloc_internal(size_t size)
 }
 
 template <typename MallocableType>
-struct can_malloc {
-	/*
-	 * gcc versions before 5.0 lack some type traits defined in C++11.
-	 * Since in this instance we use the trait to prevent misuses
-	 * of malloc (and statically assert) and not to generate different
-	 * code based on this property, simply set value to true and allow
-	 * the code to compile. Anyone using a contemporary compiler will
-	 * catch the error.
-	 */
-#if __GNUG__ && __GNUC__ < 5
-	static constexpr bool value = true;
-#else
-	static constexpr bool value = std::is_trivially_constructible<MallocableType>::value;
-#endif
-};
+inline constexpr bool can_malloc = std::is_trivially_constructible_v<MallocableType>;
 
 /*
  * Malloc and zero-initialize an object of type T, asserting that MallocableType can be
@@ -83,7 +69,7 @@ struct can_malloc {
 template <typename MallocableType>
 MallocableType *zmalloc()
 {
-	static_assert(can_malloc<MallocableType>::value, "type can be malloc'ed");
+	static_assert(can_malloc<MallocableType>, "type can be malloc'ed");
 	return (MallocableType *) zmalloc_internal(sizeof(MallocableType)); /* NOLINT sizeof
 									       potentially used on a
 									       pointer. */
@@ -96,7 +82,7 @@ MallocableType *zmalloc()
 template <typename AllocatedType>
 AllocatedType *zmalloc(size_t size)
 {
-	static_assert(can_malloc<AllocatedType>::value, "type can be malloc'ed");
+	static_assert(can_malloc<AllocatedType>, "type can be malloc'ed");
 	LTTNG_ASSERT(size >= sizeof(AllocatedType));
 	return (AllocatedType *) zmalloc_internal(size);
 }
@@ -108,7 +94,7 @@ AllocatedType *zmalloc(size_t size)
 template <typename AllocatedType>
 AllocatedType *calloc(size_t nmemb)
 {
-	static_assert(can_malloc<AllocatedType>::value, "type can be malloc'ed");
+	static_assert(can_malloc<AllocatedType>, "type can be malloc'ed");
 	return (AllocatedType *) zmalloc_internal(nmemb * sizeof(AllocatedType)); /* NOLINT sizeof
 										     potentially
 										     used on a
@@ -122,7 +108,7 @@ AllocatedType *calloc(size_t nmemb)
 template <typename AllocatedType>
 AllocatedType *malloc()
 {
-	static_assert(can_malloc<AllocatedType>::value, "type can be malloc'ed");
+	static_assert(can_malloc<AllocatedType>, "type can be malloc'ed");
 	return (AllocatedType *) malloc(sizeof(AllocatedType));
 }
 
@@ -133,7 +119,7 @@ AllocatedType *malloc()
 template <typename AllocatedType>
 AllocatedType *malloc(size_t size)
 {
-	static_assert(can_malloc<AllocatedType>::value, "type can be malloc'ed");
+	static_assert(can_malloc<AllocatedType>, "type can be malloc'ed");
 	return (AllocatedType *) malloc(size);
 }
 
@@ -151,80 +137,36 @@ AllocatedType *malloc(size_t size)
  */
 
 template <typename FreedType>
-struct can_free {
-	/*
-	 * gcc versions before 5.0 lack some type traits defined in C++11.
-	 * Since in this instance we use the trait to prevent misuses
-	 * of free (and statically assert) and not to generate different
-	 * code based on this property, simply set value to true and allow
-	 * the code to compile. Anyone using a contemporary compiler will
-	 * catch the error.
-	 */
-#if __GNUG__ && __GNUC__ < 5
-	static constexpr bool value = true;
-#else
-	static constexpr bool value = std::is_trivially_destructible<FreedType>::value ||
-		std::is_void<FreedType>::value;
-#endif
-};
+inline constexpr bool can_free =
+	std::is_trivially_destructible_v<FreedType> || std::is_void_v<FreedType>;
 
-template <typename FreedType, typename = typename std::enable_if<!can_free<FreedType>::value>::type>
+template <typename FreedType, typename = typename std::enable_if<!can_free<FreedType>>::type>
 void free(FreedType *p) = delete;
 
 template <typename InitializedType>
-struct can_memset {
-	static constexpr bool value = std::is_pod<InitializedType>::value ||
-		std::is_void<InitializedType>::value;
-};
+inline constexpr bool can_memset =
+	std::is_pod_v<InitializedType> || std::is_void_v<InitializedType>;
 
 template <typename InitializedType,
-	  typename = typename std::enable_if<!can_memset<InitializedType>::value>::type>
+	  typename = typename std::enable_if<!can_memset<InitializedType>>::type>
 void *memset(InitializedType *s, int c, size_t n) = delete;
 
 template <typename T>
-struct can_memcpy {
-	/*
-	 * gcc versions before 5.0 lack some type traits defined in C++11.
-	 * Since in this instance we use the trait to prevent misuses
-	 * of memcpy (and statically assert) and not to generate different
-	 * code based on this property, simply set value to true and allow
-	 * the code to compile. Anyone using a contemporary compiler will
-	 * catch the error.
-	 */
-#if __GNUG__ && __GNUC__ < 5
-	static constexpr bool value = true;
-#else
-	static constexpr bool value = std::is_trivially_copyable<T>::value;
-#endif
-};
+inline constexpr bool can_memcpy = std::is_trivially_copyable_v<T>;
 
 template <typename DestinationType,
 	  typename SourceType,
-	  typename = typename std::enable_if<!can_memcpy<DestinationType>::value>::type,
-	  typename = typename std::enable_if<!can_memcpy<SourceType>::value>::type>
+	  typename = typename std::enable_if<!can_memcpy<DestinationType>>::type,
+	  typename = typename std::enable_if<!can_memcpy<SourceType>>::type>
 void *memcpy(DestinationType *d, const SourceType *s, size_t n) = delete;
 
 template <typename MovedType>
-struct can_memmove {
-	/*
-	 * gcc versions before 5.0 lack some type traits defined in C++11.
-	 * Since in this instance we use the trait to prevent misuses
-	 * of memmove (and statically assert) and not to generate different
-	 * code based on this property, simply set value to true and allow
-	 * the code to compile. Anyone using a contemporary compiler will
-	 * catch the error.
-	 */
-#if __GNUG__ && __GNUC__ < 5
-	static constexpr bool value = true;
-#else
-	static constexpr bool value = std::is_trivially_copyable<MovedType>::value;
-#endif
-};
+inline constexpr bool can_memmove = std::is_trivially_copyable_v<MovedType>;
 
 template <typename DestinationType,
 	  typename SourceType,
-	  typename = typename std::enable_if<!can_memmove<DestinationType>::value>::type,
-	  typename = typename std::enable_if<!can_memmove<SourceType>::value>::type>
+	  typename = typename std::enable_if<!can_memmove<DestinationType>>::type,
+	  typename = typename std::enable_if<!can_memmove<SourceType>>::type>
 void *memmove(DestinationType *d, const SourceType *s, size_t n) = delete;
 
 #ifndef ARRAY_SIZE

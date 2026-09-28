@@ -15,8 +15,7 @@ namespace lttng {
 namespace details {
 /* Is operator() of InvocableType is marked as noexcept? */
 template <typename InvocableType>
-struct is_invocation_noexcept
-	: std::integral_constant<bool, noexcept((std::declval<InvocableType>())())> {};
+inline constexpr bool is_invocation_noexcept = noexcept((std::declval<InvocableType>())());
 } /* namespace details. */
 
 /*
@@ -36,7 +35,7 @@ public:
 	 * must be `noexcept` lest we anger the undefined behaviour gods by throwing
 	 * an exception while an exception is active.
 	 */
-	static_assert(details::is_invocation_noexcept<ScopeExitInvocableType>::value,
+	static_assert(details::is_invocation_noexcept<ScopeExitInvocableType>,
 		      "scope_exit requires a noexcept invocable type");
 
 	explicit scope_exit(ScopeExitInvocableType&& scope_exit_callable) :

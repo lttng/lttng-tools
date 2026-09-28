@@ -167,7 +167,7 @@ inline const char *as_const_char_ptr(const char *const val) noexcept
 }
 
 template <typename StrT>
-using comparable_with_c_string_view = lttng::traits::
+inline constexpr bool comparable_with_c_string_view = lttng::traits::
 	is_one_of<typename std::decay<StrT>::type, c_string_view, std::string, const char *>;
 
 } /* namespace internal */
@@ -183,13 +183,10 @@ using comparable_with_c_string_view = lttng::traits::
  *
  * Both `lhs` and `rhs` must not have an underlying `nullptr` raw data.
  */
-template <
-	typename LhsT,
-	typename RhsT,
-	typename =
-		typename std::enable_if<internal::comparable_with_c_string_view<LhsT>::value>::type,
-	typename =
-		typename std::enable_if<internal::comparable_with_c_string_view<RhsT>::value>::type>
+template <typename LhsT,
+	  typename RhsT,
+	  typename = typename std::enable_if<internal::comparable_with_c_string_view<LhsT>>::type,
+	  typename = typename std::enable_if<internal::comparable_with_c_string_view<RhsT>>::type>
 bool operator==(LhsT&& lhs, RhsT&& rhs) noexcept
 {
 	const auto raw_lhs = internal::as_const_char_ptr(lhs);
@@ -214,13 +211,10 @@ bool operator==(LhsT&& lhs, RhsT&& rhs) noexcept
  *
  * Both `lhs` and `rhs` must not have an underlying `nullptr` raw data.
  */
-template <
-	typename LhsT,
-	typename RhsT,
-	typename =
-		typename std::enable_if<internal::comparable_with_c_string_view<LhsT>::value>::type,
-	typename =
-		typename std::enable_if<internal::comparable_with_c_string_view<RhsT>::value>::type>
+template <typename LhsT,
+	  typename RhsT,
+	  typename = typename std::enable_if<internal::comparable_with_c_string_view<LhsT>>::type,
+	  typename = typename std::enable_if<internal::comparable_with_c_string_view<RhsT>>::type>
 bool operator!=(LhsT&& lhs, RhsT&& rhs) noexcept
 {
 	return !(std::forward<LhsT>(lhs) == std::forward<RhsT>(rhs));
