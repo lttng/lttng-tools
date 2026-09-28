@@ -228,7 +228,7 @@ std::optional<map_channel::app_attachment> map_channel::attach_to_app(ust::app& 
 		 * individual attachment failure, so they have no
 		 * equivalent rollback.
 		 */
-		auto group_rollback = lttng::make_scope_exit([&]() noexcept {
+		lttng::scope_exit group_rollback([&]() noexcept {
 			try {
 				remove_app_group(app);
 			} catch (const std::exception& ex) {

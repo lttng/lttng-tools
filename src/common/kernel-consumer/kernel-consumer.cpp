@@ -201,7 +201,7 @@ int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *channel,
 		channel->relayd_id = relayd_id;
 
 		/* Close stream output when were are done. */
-		const auto close_stream_output = lttng::make_scope_exit(
+		const lttng::scope_exit close_stream_output(
 			[&stream]() noexcept { consumer_stream_close_output(&stream); });
 
 		if (relayd_id != (uint64_t) -1ULL) {
@@ -317,7 +317,7 @@ int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *channel,
 			}
 
 			/* Put the subbuffer once we are done. */
-			const auto put_subbuf = lttng::make_scope_exit([&stream]() noexcept {
+			const lttng::scope_exit put_subbuf([&stream]() noexcept {
 				const auto put_ret = kernctl_put_subbuf(stream.wait_fd);
 				if (put_ret < 0) {
 					ERR("Snapshot kernctl_put_subbuf");

@@ -831,7 +831,7 @@ struct lttcomm_sock *init_socket(struct lttng_uri *uri, const char *name)
 		LTTNG_THROW_ERROR(lttng::format("Failed to create \"{}\" socket", formatted_name));
 	}
 
-	auto fd_tracker_remove_on_error = lttng::make_scope_exit([&sock, &sock_fd]() noexcept {
+	lttng::scope_exit fd_tracker_remove_on_error([&sock, &sock_fd]() noexcept {
 		if (sock.get() != nullptr) {
 			if (sock->fd >= 0) {
 				fd_tracker_close_unsuspendable_fd(
@@ -851,8 +851,8 @@ struct lttcomm_sock *init_socket(struct lttng_uri *uri, const char *name)
 		LTTNG_THROW_ERROR("Failed to create and write live port path");
 	}
 
-	auto unlink_relayd_live_port_path_on_error =
-		lttng::make_scope_exit([&relayd_live_port_path]() noexcept {
+	lttng::scope_exit unlink_relayd_live_port_path_on_error(
+		[&relayd_live_port_path]() noexcept {
 			if (unlink(relayd_live_port_path)) {
 				WARN_FMT("Failed to remove live port file at path '{}'",
 					 relayd_live_port_path);

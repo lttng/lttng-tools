@@ -1288,7 +1288,7 @@ int snapshot_channel(struct lttng_consumer_channel *channel,
 		stream.net_seq_idx = relayd_id;
 
 		/* Close stream output when we are done. */
-		const auto close_stream_output = lttng::make_scope_exit(
+		const lttng::scope_exit close_stream_output(
 			[&stream]() noexcept { consumer_stream_close_output(&stream); });
 
 		/* Handle relayd or local file output. */
@@ -1387,8 +1387,8 @@ int snapshot_channel(struct lttng_consumer_channel *channel,
 				break;
 			}
 
-			const auto put_first_acquired_subbuf =
-				lttng::make_scope_exit([&stream, &first_acquired_owned]() noexcept {
+			const lttng::scope_exit put_first_acquired_subbuf(
+				[&stream, &first_acquired_owned]() noexcept {
 					if (first_acquired_owned) {
 						if (lttng_ust_ctl_put_subbuf(stream.ustream) < 0) {
 							ERR("Failed to 'put' first acquired sub-buffer");
@@ -1492,7 +1492,7 @@ int snapshot_channel(struct lttng_consumer_channel *channel,
 			}
 
 			/* Put the subbuffer once we are done. */
-			const auto put_subbuf = lttng::make_scope_exit([&stream]() noexcept {
+			const lttng::scope_exit put_subbuf([&stream]() noexcept {
 				if (lttng_ust_ctl_put_subbuf(stream.ustream) < 0) {
 					ERR("Snapshot lttng_ust_ctl_put_subbuf");
 				}
@@ -2431,13 +2431,12 @@ void lttng_ustconsumer_reclaim_channels_memory(
 	 * on any early exit (such as a channel not being found), so that the suspended
 	 * timer tasks are resumed and the request's tracking state is not leaked.
 	 */
-	auto abort_request_on_error =
-		lttng::make_scope_exit([&memory_reclaim_request_token]() noexcept {
-			if (memory_reclaim_request_token) {
-				lttng::consumerd::the_pending_memory_reclamation_tracker
-					.abort_request(*memory_reclaim_request_token);
-			}
-		});
+	lttng::scope_exit abort_request_on_error([&memory_reclaim_request_token]() noexcept {
+		if (memory_reclaim_request_token) {
+			lttng::consumerd::the_pending_memory_reclamation_tracker.abort_request(
+				*memory_reclaim_request_token);
+		}
+	});
 
 	std::size_t total_stream_count = 0;
 	for (const auto channel_key : channel_keys) {

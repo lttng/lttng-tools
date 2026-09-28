@@ -255,7 +255,7 @@ consumerd_error_msg_handling_status handle_consumerd_error_socket_in(int consume
 	lttng_payload error_msg_payload;
 
 	lttng_payload_init(&error_msg_payload);
-	const auto reset_payload = lttng::make_scope_exit(
+	const lttng::scope_exit reset_payload(
 		[&error_msg_payload]() noexcept { lttng_payload_reset(&error_msg_payload); });
 
 	const auto receive_ret =

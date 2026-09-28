@@ -1014,7 +1014,7 @@ int init_kernel_tracer()
 	int ret;
 	const bool is_root = !getuid();
 
-	const auto log_status_on_exit = lttng::make_scope_exit([]() noexcept {
+	const lttng::scope_exit log_status_on_exit([]() noexcept {
 		DBG_FMT("Kernel tracer status set to `{}`",
 			kernel_tracer_status_to_str(*kernel_tracer_status));
 	});

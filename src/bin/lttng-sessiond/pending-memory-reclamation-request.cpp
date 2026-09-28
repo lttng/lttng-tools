@@ -199,10 +199,9 @@ ls::pending_memory_reclamation_registry::create_request(
 
 	session.add_pending_reclamation(channel_name);
 
-	auto remove_pending_reclaim_on_failure =
-		lttng::make_scope_exit([&session, &channel_name]() noexcept {
-			session.remove_pending_reclamation(channel_name);
-		});
+	lttng::scope_exit remove_pending_reclaim_on_failure([&session, &channel_name]() noexcept {
+		session.remove_pending_reclamation(channel_name);
+	});
 
 	/*
 	 * The constructor of pending_memory_reclaim_request is private so

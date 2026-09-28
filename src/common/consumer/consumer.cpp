@@ -2571,7 +2571,7 @@ void *consumer_thread_data_poll(void *data)
 	bool cool_down_was_empty = true;
 	struct lttng_poll_event poll_events;
 	lttng_poll_init(&poll_events);
-	auto teardown_poll = lttng::make_scope_exit(
+	lttng::scope_exit teardown_poll(
 		[&poll_events]() mutable noexcept { lttng_poll_clean(&poll_events); });
 
 	rcu_register_thread();

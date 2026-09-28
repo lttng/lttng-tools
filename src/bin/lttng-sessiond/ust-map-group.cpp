@@ -239,7 +239,7 @@ map_group::app_handle map_group::attach_to_app(ust::app& app, int parent_handle)
 	 */
 	bool master_sent = false;
 	std::size_t per_cpu_sent_count = 0;
-	auto rollback_app_side = lttng::make_scope_exit([&]() noexcept {
+	lttng::scope_exit rollback_app_side([&]() noexcept {
 		try {
 			auto guard = app.command_socket.lock();
 
@@ -421,7 +421,7 @@ map_group::create_from_config(const config::map_channel_configuration& configura
 	 * if we throw before that hand-off.
 	 */
 	std::vector<int> cpu_counter_fds(nr_cpu, -1);
-	auto fds_guard = lttng::make_scope_exit([&cpu_counter_fds]() noexcept {
+	lttng::scope_exit fds_guard([&cpu_counter_fds]() noexcept {
 		for (auto fd : cpu_counter_fds) {
 			if (fd >= 0) {
 				(void) ::close(fd);

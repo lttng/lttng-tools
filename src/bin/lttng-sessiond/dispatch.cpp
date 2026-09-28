@@ -105,8 +105,8 @@ void update_ust_app(int app_sock)
 	 */
 	for (auto& session : sessions_snapshot) {
 		session->lock();
-		const auto unlock_session =
-			lttng::make_scope_exit([&session]() noexcept { session->unlock(); });
+		const lttng::scope_exit unlock_session(
+			[&session]() noexcept { session->unlock(); });
 
 		if (session->active && session->ust_orchestrator) {
 			auto& orchestrator =

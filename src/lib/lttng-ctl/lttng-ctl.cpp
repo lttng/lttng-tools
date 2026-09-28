@@ -1069,8 +1069,8 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 		 * Since we modify the user's parameter, ensure it is set back to its original value
 		 * on exit.
 		 */
-		const auto restore_event_type_value =
-			lttng::make_scope_exit([&ev]() noexcept { ev->type = LTTNG_EVENT_ALL; });
+		const lttng::scope_exit restore_event_type_value(
+			[&ev]() noexcept { ev->type = LTTNG_EVENT_ALL; });
 
 		ev->type = LTTNG_EVENT_TRACEPOINT;
 		const auto tp_ret = lttng_enable_event_with_exclusions(handle,
@@ -1100,8 +1100,7 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	 */
 	lttng_payload_init(&payload);
 	/* Clean-up payload when returning. */
-	auto cleanup_payload =
-		lttng::make_scope_exit([&payload]() noexcept { lttng_payload_reset(&payload); });
+	lttng::scope_exit cleanup_payload([&payload]() noexcept { lttng_payload_reset(&payload); });
 
 	/* The filter expression may be modified below in the case of agent domains. */
 	std::string filter_expression(original_filter_expression ?: "");
@@ -1192,7 +1191,7 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 		}
 	}
 
-	const auto free_bytecode_ir_and_parser_context = lttng::make_scope_exit([ctx]() noexcept {
+	const lttng::scope_exit free_bytecode_ir_and_parser_context([ctx]() noexcept {
 		if (!ctx) {
 			return;
 		}
@@ -1318,8 +1317,7 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 	 */
 	lttng_payload_init(&payload);
 	/* Clean-up payload when returning. */
-	auto cleanup_payload =
-		lttng::make_scope_exit([&payload]() noexcept { lttng_payload_reset(&payload); });
+	lttng::scope_exit cleanup_payload([&payload]() noexcept { lttng_payload_reset(&payload); });
 
 	/* The filter expression may be modified below in the case of agent domains. */
 	std::string filter_expression(original_filter_expression ?: "");
@@ -1367,7 +1365,7 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 		}
 	}
 
-	const auto free_bytecode_ir_and_parser_context = lttng::make_scope_exit([ctx]() noexcept {
+	const lttng::scope_exit free_bytecode_ir_and_parser_context([ctx]() noexcept {
 		if (!ctx) {
 			return;
 		}
@@ -3593,8 +3591,7 @@ lttng_channel_get_data_stream_info_sets(const char *session_name,
 		lttng_payload_view_init_from_buffer((const char *) &lsm, 0, sizeof(lsm));
 
 	lttng_payload_init(&reply);
-	const auto reset_payload =
-		lttng::make_scope_exit([&reply]() noexcept { lttng_payload_reset(&reply); });
+	const lttng::scope_exit reset_payload([&reply]() noexcept { lttng_payload_reset(&reply); });
 
 	if (!session_name || !channel_name || !sets) {
 		ret_status = LTTNG_CHANNEL_GET_DATA_STREAM_INFO_SETS_STATUS_INVALID_PARAMETER;

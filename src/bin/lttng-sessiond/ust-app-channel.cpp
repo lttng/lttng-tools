@@ -108,8 +108,7 @@ lsu::app_channel::~app_channel()
 void lsu::app_channel::enable()
 {
 	health_code_update();
-	const auto update_health_code_on_exit =
-		lttng::make_scope_exit([]() noexcept { health_code_update(); });
+	const lttng::scope_exit update_health_code_on_exit([]() noexcept { health_code_update(); });
 
 	auto& app = session.app();
 
@@ -125,8 +124,7 @@ void lsu::app_channel::enable()
 void lsu::app_channel::disable()
 {
 	health_code_update();
-	const auto update_health_code_on_exit =
-		lttng::make_scope_exit([]() noexcept { health_code_update(); });
+	const lttng::scope_exit update_health_code_on_exit([]() noexcept { health_code_update(); });
 
 	auto& app = session.app();
 
@@ -152,8 +150,7 @@ void lsu::app_channel::create_context(const lsc::context_configuration& context_
 	auto& app = session.app();
 
 	health_code_update();
-	const auto update_health_code_on_exit =
-		lttng::make_scope_exit([]() noexcept { health_code_update(); });
+	const lttng::scope_exit update_health_code_on_exit([]() noexcept { health_code_update(); });
 
 	{
 		lttng_ust_abi_object_data *raw = nullptr;

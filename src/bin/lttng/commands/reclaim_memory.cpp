@@ -430,7 +430,7 @@ void run_and_print_machine_interface(const reclaim_config& config)
 		LTTNG_THROW_ERROR("Failed to open command element");
 	}
 
-	const auto command_close_guard = lttng::make_scope_exit([&writer]() noexcept {
+	const lttng::scope_exit command_close_guard([&writer]() noexcept {
 		if (mi_lttng_writer_command_close(writer.get())) {
 			ERR("Failed to close machine interface command element");
 		}
@@ -459,14 +459,14 @@ void run_and_print_machine_interface(const reclaim_config& config)
 			LTTNG_THROW_ERROR("Failed to open command output element");
 		}
 
-		const auto command_output_close_guard = lttng::make_scope_exit(
+		const lttng::scope_exit command_output_close_guard(
 			[&writer]() noexcept { mi_lttng_writer_close_element(writer.get()); });
 
 		if (mi_lttng_writer_open_element(writer.get(), "reclaim_channels")) {
 			LTTNG_THROW_ERROR("Failed to open reclaim_channels element");
 		}
 
-		auto channels_close_guard = lttng::make_scope_exit(
+		lttng::scope_exit channels_close_guard(
 			[&writer]() noexcept { mi_lttng_writer_close_element(writer.get()); });
 
 		for (const auto& [channel_name, reclaimed_amount] : result.reclaimed_per_channel) {
@@ -474,10 +474,9 @@ void run_and_print_machine_interface(const reclaim_config& config)
 				LTTNG_THROW_ERROR("Failed to open channel element");
 			}
 
-			const auto channel_close_guard =
-				lttng::make_scope_exit([&writer]() noexcept {
-					mi_lttng_writer_close_element(writer.get());
-				});
+			const lttng::scope_exit channel_close_guard([&writer]() noexcept {
+				mi_lttng_writer_close_element(writer.get());
+			});
 
 			if (mi_lttng_writer_write_element_string(
 				    writer.get(), "name", channel_name.c_str())) {

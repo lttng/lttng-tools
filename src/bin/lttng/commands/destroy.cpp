@@ -68,7 +68,7 @@ cmd_error_code destroy_session(const lttng_session& session)
 	int ret;
 	bool newline_needed = false, printed_destroy_msg = false;
 
-	const auto print_trailing_new_line = lttng::make_scope_exit([&newline_needed]() noexcept {
+	const lttng::scope_exit print_trailing_new_line([&newline_needed]() noexcept {
 		if (newline_needed) {
 			MSG("");
 		}

@@ -38,8 +38,8 @@ public:
 	static_assert(details::is_invocation_noexcept<ScopeExitInvocableType>,
 		      "scope_exit requires a noexcept invocable type");
 
-	explicit scope_exit(ScopeExitInvocableType&& scope_exit_callable) :
-		_on_scope_exit{ std::forward<ScopeExitInvocableType>(scope_exit_callable) }
+	explicit scope_exit(ScopeExitInvocableType scope_exit_callable) :
+		_on_scope_exit(std::move(scope_exit_callable))
 	{
 	}
 
@@ -54,8 +54,8 @@ public:
 	 * The copy constructor is disabled to prevent the action from being
 	 * executed twice should a copy be performed accidentaly.
 	 *
-	 * The move-constructor is present to enable make_scope_exit() but to
-	 * also propagate the scope_exit to another scope, should it be needed.
+	 * The move constructor is present to propagate the scope_exit to
+	 * another scope, should it be needed.
 	 */
 	scope_exit(const scope_exit&) = delete;
 	scope_exit& operator=(const scope_exit&) = delete;
@@ -83,13 +83,6 @@ private:
 	ScopeExitInvocableType _on_scope_exit;
 	bool _armed = true;
 };
-
-template <typename ScopeExitInvocableType>
-scope_exit<ScopeExitInvocableType> make_scope_exit(ScopeExitInvocableType&& scope_exit_callable)
-{
-	return scope_exit<ScopeExitInvocableType>(
-		std::forward<ScopeExitInvocableType>(scope_exit_callable));
-}
 
 } /* namespace lttng */
 

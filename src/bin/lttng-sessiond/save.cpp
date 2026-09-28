@@ -1947,7 +1947,7 @@ int save_session(const ltt_session::locked_ref& session,
 	}
 
 	/* Use scope_exit to ensure file cleanup on error. */
-	auto unlink_file_on_error = lttng::make_scope_exit([&config_file_path]() noexcept {
+	lttng::scope_exit unlink_file_on_error([&config_file_path]() noexcept {
 		if (unlink(config_file_path.c_str())) {
 			PERROR("Unlinking XML session configuration.");
 		}
@@ -2038,7 +2038,7 @@ int cmd_save_sessions(lttng_save_session_attr *attr,
 	 * notification thread).
 	 */
 	struct lttng_triggers *triggers = nullptr;
-	const auto triggers_cleanup = lttng::make_scope_exit(
+	const lttng::scope_exit triggers_cleanup(
 		[&triggers]() noexcept { lttng_triggers_destroy(triggers); });
 
 	if (!attr->no_triggers) {

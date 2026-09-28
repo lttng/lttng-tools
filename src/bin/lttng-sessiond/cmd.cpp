@@ -1072,8 +1072,7 @@ void serialize_event_rule_config_to_payload(const lsc::event_rule_configuration&
 
 	struct lttng_event_exclusion *exclusions = nullptr;
 	const auto exclusion_status = lttng_event_rule_generate_exclusions(rule, &exclusions);
-	const auto exclusion_cleanup =
-		lttng::make_scope_exit([exclusions]() noexcept { free(exclusions); });
+	const lttng::scope_exit exclusion_cleanup([exclusions]() noexcept { free(exclusions); });
 
 	unsigned int exclusion_count = 0;
 	std::vector<const char *> exclusion_names;
@@ -1671,7 +1670,7 @@ int cmd_enable_channel(command_ctx *cmd_ctx, ltt_session::locked_ref& session, i
 	/* Free buffer contents on function exit using a scope_exit. */
 	lttng_dynamic_buffer channel_buffer;
 	lttng_dynamic_buffer_init(&channel_buffer);
-	auto destroy_buffer = lttng::make_scope_exit(
+	lttng::scope_exit destroy_buffer(
 		[&channel_buffer]() noexcept { lttng_dynamic_buffer_reset(&channel_buffer); });
 
 	const size_t channel_len = (size_t) cmd_ctx->lsm.u.channel.length;
@@ -1839,8 +1838,7 @@ void cmd_add_map_channel(const ltt_session::locked_ref& session,
 	 * no half-installed map channel behind. The domain's
 	 * remove_map_channel is intended for exactly this case.
 	 */
-	auto config_rollback = lttng::make_scope_exit([&target_domain,
-						       &map_channel_name]() noexcept {
+	lttng::scope_exit config_rollback([&target_domain, &map_channel_name]() noexcept {
 		try {
 			target_domain.remove_map_channel(map_channel_name);
 		} catch (const std::exception& ex) {
@@ -1894,10 +1892,9 @@ void cmd_add_map_channel(const ltt_session::locked_ref& session,
 			return;
 		}
 
-		const auto triggers_cleanup =
-			lttng::make_scope_exit([&registered_triggers]() noexcept {
-				lttng_triggers_destroy(registered_triggers);
-			});
+		const lttng::scope_exit triggers_cleanup([&registered_triggers]() noexcept {
+			lttng_triggers_destroy(registered_triggers);
+		});
 
 		unsigned int trigger_count = 0;
 		const auto count_status =
@@ -2806,8 +2803,8 @@ enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref& sessi
 			 * Roll back the config if the orchestrator fails to
 			 * create the channel in the tracer.
 			 */
-			auto config_rollback = lttng::make_scope_exit([&target_domain,
-								       &channel_config_name]() noexcept {
+			lttng::scope_exit config_rollback([&target_domain,
+							   &channel_config_name]() noexcept {
 				try {
 					target_domain.remove_channel(channel_config_name);
 				} catch (...) {
@@ -2885,8 +2882,8 @@ enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref& sessi
 			 * Roll back the config if the orchestrator fails to
 			 * create the channel in the tracer.
 			 */
-			auto config_rollback = lttng::make_scope_exit([&target_domain,
-								       &channel_config_name]() noexcept {
+			lttng::scope_exit config_rollback([&target_domain,
+							   &channel_config_name]() noexcept {
 				try {
 					target_domain.remove_channel(channel_config_name);
 				} catch (...) {
@@ -2990,10 +2987,10 @@ cmd_process_attr_tracker_set_tracking_policy(const ltt_session::locked_ref& sess
 
 	update_domain_tracker_policy(target_domain, process_attr, new_policy);
 
-	auto rollback_policy_change = lttng::make_scope_exit([&target_domain,
-							      process_attr,
-							      previous_policy,
-							      new_policy]() noexcept {
+	lttng::scope_exit rollback_policy_change([&target_domain,
+						  process_attr,
+						  previous_policy,
+						  new_policy]() noexcept {
 		try {
 			update_domain_tracker_policy(target_domain, process_attr, previous_policy);
 		} catch (...) {

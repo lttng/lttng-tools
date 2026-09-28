@@ -308,7 +308,7 @@ map_group::create_for_event_notifier_group(int event_notifier_group_fd,
 			-raw_fd);
 	}
 
-	auto fd_guard = lttng::make_scope_exit([raw_fd]() noexcept { (void) ::close(raw_fd); });
+	lttng::scope_exit fd_guard([raw_fd]() noexcept { (void) ::close(raw_fd); });
 
 	/* Prevent fd duplication after execlp(). */
 	if (::fcntl(raw_fd, F_SETFD, FD_CLOEXEC) < 0) {
@@ -340,7 +340,7 @@ map_group map_group::create_for_session(int session_fd,
 			-raw_fd);
 	}
 
-	auto fd_guard = lttng::make_scope_exit([raw_fd]() noexcept { (void) ::close(raw_fd); });
+	lttng::scope_exit fd_guard([raw_fd]() noexcept { (void) ::close(raw_fd); });
 
 	/* Prevent fd duplication after execlp(). */
 	if (::fcntl(raw_fd, F_SETFD, FD_CLOEXEC) < 0) {

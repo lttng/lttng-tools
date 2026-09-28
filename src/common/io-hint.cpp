@@ -73,7 +73,7 @@ int flush_range(int fd, off_t offset, off_t nbytes, int flags)
 		return -1;
 	}
 
-	const auto munmap_on_exit = lttng::make_scope_exit([&]() noexcept {
+	const lttng::scope_exit munmap_on_exit([&]() noexcept {
 		const auto munmap_ret = munmap(mapped_region, nbytes);
 		if (munmap_ret) {
 			PERROR("Failed to munmap region while flushing range: fd=%i, offset=%" PRIu64

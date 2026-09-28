@@ -226,8 +226,7 @@ int ask_channel_creation(lsu::app_session *ua_sess,
 
 	health_code_update();
 
-	const auto update_health_code_on_exit =
-		lttng::make_scope_exit([]() noexcept { health_code_update(); });
+	const lttng::scope_exit update_health_code_on_exit([]() noexcept { health_code_update(); });
 
 	ret = consumer_socket_send(socket, &msg, sizeof(msg));
 	if (ret < 0) {

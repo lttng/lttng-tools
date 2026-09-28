@@ -439,7 +439,7 @@ int main(int argc, char **argv)
 	void *status;
 	struct lttng_consumer_local_data *tmp_ctx;
 	std::string pid_file_path;
-	auto delete_pid_file = lttng::make_scope_exit([&pid_file_path]() noexcept {
+	lttng::scope_exit delete_pid_file([&pid_file_path]() noexcept {
 		if (!pid_file_path.empty() && unlink(pid_file_path.c_str())) {
 			PERROR_FMT("Failed to delete PID file: path=`{}`", pid_file_path);
 		}

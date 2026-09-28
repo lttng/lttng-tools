@@ -358,8 +358,7 @@ void lsu::app_session::flush()
 	int ret;
 	struct consumer_socket *socket;
 
-	const auto update_health_code_on_exit =
-		lttng::make_scope_exit([]() noexcept { health_code_update(); });
+	const lttng::scope_exit update_health_code_on_exit([]() noexcept { health_code_update(); });
 
 	DBG("Flushing app session buffers for ust app pid %d", _app.pid);
 

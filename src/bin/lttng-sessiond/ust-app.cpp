@@ -2709,7 +2709,7 @@ int handle_app_register_key_notification(int sock)
 	 * error path past this point wants the same reply, so the disarm
 	 * sits on the single success branch instead.
 	 */
-	auto deny_reply = lttng::make_scope_exit(
+	lttng::scope_exit deny_reply(
 		[sock]() noexcept { (void) lttng_ust_ctl_reply_register_key(sock, 0, -1); });
 
 	const lttng::urcu::read_lock_guard rcu_lock;

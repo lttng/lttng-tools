@@ -1120,7 +1120,7 @@ int cmd_enable_events(int argc, const char **argv)
 	}
 
 	/* Close the MI command context when leaving the function, no matter the result. */
-	const auto close_mi_on_exit = lttng::make_scope_exit([&success]() noexcept {
+	const lttng::scope_exit close_mi_on_exit([&success]() noexcept {
 		if (!lttng_opt_mi) {
 			return;
 		}

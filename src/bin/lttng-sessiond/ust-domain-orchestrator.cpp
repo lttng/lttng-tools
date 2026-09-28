@@ -1196,8 +1196,7 @@ ls::ust::app_session& ls::ust::domain_orchestrator::_find_or_create_app_session(
 	ASSERT_LOCKED(_session._lock);
 
 	health_code_update();
-	const auto update_health_code_on_exit =
-		lttng::make_scope_exit([]() noexcept { health_code_update(); });
+	const lttng::scope_exit update_health_code_on_exit([]() noexcept { health_code_update(); });
 
 	{
 		const auto it = _app_sessions.find(&app);
@@ -1273,7 +1272,7 @@ ls::ust::app_session& ls::ust::domain_orchestrator::_find_or_create_app_session(
 	 * Release the temporary reference only if app_session construction
 	 * fails before ownership of the reference is transferred.
 	 */
-	auto put_consumer_output_on_constructor_error = lttng::make_scope_exit(
+	lttng::scope_exit put_consumer_output_on_constructor_error(
 		[consumer_output]() noexcept { consumer_output_put(consumer_output); });
 
 	auto new_session = std::make_unique<ust::app_session>(app,
@@ -1876,8 +1875,7 @@ void ls::ust::domain_orchestrator::_create_app_metadata(ust::app_session& ua_ses
 
 	/* Allocate UST metadata */
 	metadata = new app_channel(ua_sess, metadata_config);
-	const auto delete_metadata_on_exit =
-		lttng::make_scope_exit([metadata]() noexcept { delete metadata; });
+	const lttng::scope_exit delete_metadata_on_exit([metadata]() noexcept { delete metadata; });
 
 	/* Need one fd for the channel. */
 	if (lttng_fd_get(LTTNG_FD_APPS, 1) < 0) {
@@ -1888,8 +1886,7 @@ void ls::ust::domain_orchestrator::_create_app_metadata(ust::app_session& ua_ses
 			_session_id(),
 			*app));
 	}
-	const auto put_fd_on_exit =
-		lttng::make_scope_exit([]() noexcept { lttng_fd_put(LTTNG_FD_APPS, 1); });
+	const lttng::scope_exit put_fd_on_exit([]() noexcept { lttng_fd_put(LTTNG_FD_APPS, 1); });
 
 	/* Get the right consumer socket for the application. */
 	socket = consumer_find_socket_by_bitness(app->abi_desc.bits_per_long,
@@ -2330,8 +2327,7 @@ void ls::ust::domain_orchestrator::_start_app_trace(ust::app *app)
 		*app);
 
 	const lttng::urcu::read_lock_guard read_lock;
-	const auto update_health_code_on_exit =
-		lttng::make_scope_exit([]() noexcept { health_code_update(); });
+	const lttng::scope_exit update_health_code_on_exit([]() noexcept { health_code_update(); });
 
 	if (!app->compatible) {
 		return;
@@ -2393,8 +2389,7 @@ void ls::ust::domain_orchestrator::_stop_app_trace(ust::app *app)
 		*app);
 
 	const lttng::urcu::read_lock_guard read_lock;
-	const auto update_health_code_on_exit =
-		lttng::make_scope_exit([]() noexcept { health_code_update(); });
+	const lttng::scope_exit update_health_code_on_exit([]() noexcept { health_code_update(); });
 
 	if (!app->compatible) {
 		return;
@@ -2482,8 +2477,7 @@ void ls::ust::domain_orchestrator::_clear_quiescent_app_session(ust::app *app,
 		*app);
 
 	const lttng::urcu::read_lock_guard read_lock;
-	const auto update_health_code_on_exit =
-		lttng::make_scope_exit([]() noexcept { health_code_update(); });
+	const lttng::scope_exit update_health_code_on_exit([]() noexcept { health_code_update(); });
 
 	if (!app->compatible) {
 		return;
@@ -2952,7 +2946,7 @@ void ls::ust::domain_orchestrator::_record_snapshot_per_uid(
 				"Failed to setup channel trace path for snapshot");
 		}
 
-		const auto free_trace_path = lttng::make_scope_exit(
+		const lttng::scope_exit free_trace_path(
 			[trace_path_raw]() noexcept { free(trace_path_raw); });
 		const auto *trace_path = &trace_path_raw[consumer_path_offset];
 
@@ -3030,7 +3024,7 @@ void ls::ust::domain_orchestrator::_record_snapshot_per_pid(
 				"Failed to setup channel trace path for snapshot");
 		}
 
-		const auto free_trace_path = lttng::make_scope_exit(
+		const lttng::scope_exit free_trace_path(
 			[trace_path_raw]() noexcept { free(trace_path_raw); });
 		const auto *trace_path = &trace_path_raw[consumer_path_offset];
 

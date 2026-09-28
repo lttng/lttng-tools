@@ -657,7 +657,7 @@ lttng::ctl::trigger receive_lttng_trigger(struct command_ctx *cmd_ctx, int sock,
 	struct lttng_trigger *trigger = nullptr;
 
 	lttng_payload_init(&trigger_payload);
-	const auto reset_payload_on_exit = lttng::make_scope_exit(
+	const lttng::scope_exit reset_payload_on_exit(
 		[&trigger_payload]() noexcept { lttng_payload_reset(&trigger_payload); });
 
 	trigger_len = (size_t) cmd_ctx->lsm.u.trigger.length;
@@ -1615,7 +1615,7 @@ skip_domain:
 
 		lttng_dynamic_buffer_init(&reply);
 
-		const auto reset_reply = lttng::make_scope_exit(
+		const lttng::scope_exit reset_reply(
 			[&reply]() noexcept { lttng_dynamic_buffer_reset(&reply); });
 
 		switch (cmd_ctx->lsm.cmd_type) {

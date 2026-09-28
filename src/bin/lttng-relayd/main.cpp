@@ -4513,7 +4513,7 @@ int main(int argc, char **argv)
 	int ret = 0, retval = 0;
 	void *status;
 	char *unlinked_file_directory_path = nullptr, *output_path = nullptr;
-	auto delete_pid_file = lttng::make_scope_exit([]() noexcept {
+	lttng::scope_exit delete_pid_file([]() noexcept {
 		if (opt_pid_file != nullptr) {
 			if (unlink(opt_pid_file)) {
 				PERROR_FMT("Failed to delete PID file at path '{}'", opt_pid_file);

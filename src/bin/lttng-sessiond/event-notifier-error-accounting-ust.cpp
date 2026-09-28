@@ -189,7 +189,7 @@ event_notifier_error_accounting_register_app(lttng::sessiond::ust::app *app)
 		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
 	}
 
-	auto rollback_reference = lttng::make_scope_exit(
+	lttng::scope_exit rollback_reference(
 		[app]() noexcept { app->event_notifier_group.accounting_reference.reset(); });
 
 	auto& entry = app->event_notifier_group.accounting_reference->entry();

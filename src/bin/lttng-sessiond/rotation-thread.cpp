@@ -729,17 +729,15 @@ void ls::rotation_thread::_thread_function() noexcept
 void ls::rotation_thread::_run()
 {
 	rcu_register_thread();
-	const auto unregister_rcu_thread =
-		lttng::make_scope_exit([]() noexcept { rcu_unregister_thread(); });
+	const lttng::scope_exit unregister_rcu_thread([]() noexcept { rcu_unregister_thread(); });
 
 	rcu_thread_online();
-	const auto offline_rcu_thread =
-		lttng::make_scope_exit([]() noexcept { rcu_thread_offline(); });
+	const lttng::scope_exit offline_rcu_thread([]() noexcept { rcu_thread_offline(); });
 
 	health_register(the_health_sessiond, HEALTH_SESSIOND_TYPE_ROTATION);
 	health_code_update();
-	const auto unregister_health =
-		lttng::make_scope_exit([]() noexcept { health_unregister(the_health_sessiond); });
+	const lttng::scope_exit unregister_health(
+		[]() noexcept { health_unregister(the_health_sessiond); });
 
 	const auto queue_pipe_fd = lttng_pipe_get_readfd(_rotation_timer_queue.event_pipe);
 
@@ -924,7 +922,7 @@ void ls::rotation_thread::unsubscribe_session_consumed_size_rotation(ltt_session
 {
 	LTTNG_ASSERT(session.rotate_trigger);
 
-	const auto remove_session_trigger = lttng::make_scope_exit([&session]() noexcept {
+	const lttng::scope_exit remove_session_trigger([&session]() noexcept {
 		lttng_trigger_put(session.rotate_trigger);
 		session.rotate_trigger = nullptr;
 	});

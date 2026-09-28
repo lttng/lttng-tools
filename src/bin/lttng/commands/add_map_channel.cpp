@@ -444,7 +444,7 @@ void run_mi_from_cmd_cfg(const cmd_cfg& cmd_cfg)
 		LTTNG_THROW_ERROR("Failed to open MI `<command>` element");
 	}
 
-	const auto command_close_guard = lttng::make_scope_exit([&writer]() noexcept {
+	const lttng::scope_exit command_close_guard([&writer]() noexcept {
 		if (mi_lttng_writer_command_close(writer.get())) {
 			ERR("Failed to close MI `<command>` element");
 		}

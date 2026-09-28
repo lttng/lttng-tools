@@ -1351,8 +1351,8 @@ void ls::modules::domain_orchestrator::record_snapshot(
 	_open_metadata();
 	_open_metadata_stream();
 
-	auto destroy_metadata_on_exit =
-		lttng::make_scope_exit([&]() noexcept { _metadata_stream_group.reset(); });
+	lttng::scope_exit destroy_metadata_on_exit(
+		[&]() noexcept { _metadata_stream_group.reset(); });
 
 	std::size_t consumer_path_offset;
 	auto trace_path = lttng::make_unique_wrapper<char, lttng::memory::free>(
@@ -1372,7 +1372,7 @@ void ls::modules::domain_orchestrator::record_snapshot(
 		_send_metadata_to_consumer(kconsumer_socket, snapshot_consumer, false);
 	}
 
-	const auto destroy_consumer_metadata_on_exit = lttng::make_scope_exit([&]() noexcept {
+	const lttng::scope_exit destroy_consumer_metadata_on_exit([&]() noexcept {
 		try {
 			const lttng::pthread::lock_guard socket_lock(kconsumer_socket.lock);
 			_destroy_consumer_stream_group(_get_consumer_socket(),

@@ -327,8 +327,7 @@ void create_ust_event(lsu::app_event& event)
 	auto& app = event.channel.session.app();
 
 	health_code_update();
-	const auto update_health_code_on_exit =
-		lttng::make_scope_exit([]() noexcept { health_code_update(); });
+	const lttng::scope_exit update_health_code_on_exit([]() noexcept { health_code_update(); });
 
 	/*
 	 * Build the UST ABI event structure from the event rule configuration.
@@ -375,8 +374,8 @@ void create_ust_event(lsu::app_event& event)
 			event.event_rule_config.event_rule.get(), &exclusion);
 		if (exclusion_status == LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_OK &&
 		    exclusion) {
-			const auto free_exclusion_on_exit =
-				lttng::make_scope_exit([exclusion]() noexcept { free(exclusion); });
+			const lttng::scope_exit free_exclusion_on_exit(
+				[exclusion]() noexcept { free(exclusion); });
 			const auto ret =
 				set_ust_object_exclusions(&app, exclusion, event.obj.get());
 			if (ret < 0) {
@@ -453,8 +452,7 @@ void lsu::app_event::enable()
 	auto& app = channel.session.app();
 
 	health_code_update();
-	const auto update_health_code_on_exit =
-		lttng::make_scope_exit([]() noexcept { health_code_update(); });
+	const lttng::scope_exit update_health_code_on_exit([]() noexcept { health_code_update(); });
 
 	app.command_socket.lock().enable(obj.get());
 
@@ -471,8 +469,7 @@ void lsu::app_event::disable()
 	auto& app = channel.session.app();
 
 	health_code_update();
-	const auto update_health_code_on_exit =
-		lttng::make_scope_exit([]() noexcept { health_code_update(); });
+	const lttng::scope_exit update_health_code_on_exit([]() noexcept { health_code_update(); });
 
 	app.command_socket.lock().disable(obj.get());
 

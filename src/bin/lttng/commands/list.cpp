@@ -91,7 +91,7 @@ std::optional<list_cmd_config> make_config(int argc, const char **argv)
 	}
 
 	auto pc = poptGetContext(nullptr, argc, argv, long_options, 0);
-	const auto pc_guard = lttng::make_scope_exit([pc]() noexcept { poptFreeContext(pc); });
+	const lttng::scope_exit pc_guard([pc]() noexcept { poptFreeContext(pc); });
 
 	poptReadDefaultConfig(pc, 0);
 

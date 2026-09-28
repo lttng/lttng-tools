@@ -942,8 +942,8 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::clock_class&
 void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::stream_class& stream_class)
 {
 	_current_stream_class = &stream_class;
-	const auto clear_stream_class_on_exit =
-		lttng::make_scope_exit([this]() noexcept { _current_stream_class = nullptr; });
+	const lttng::scope_exit clear_stream_class_on_exit(
+		[this]() noexcept { _current_stream_class = nullptr; });
 
 	auto stream_class_str = lttng::format("stream {{\n"
 					      "	id = {};\n",
@@ -1000,8 +1000,8 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::stream_class
 void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::event_class& event_class)
 {
 	_current_event_class = &event_class;
-	const auto clear_event_class_on_exit =
-		lttng::make_scope_exit([this]() noexcept { _current_event_class = nullptr; });
+	const lttng::scope_exit clear_event_class_on_exit(
+		[this]() noexcept { _current_event_class = nullptr; });
 
 	auto event_class_str =
 		lttng::format("event {{\n"
