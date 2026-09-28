@@ -27,6 +27,7 @@ Makefile.in
 *.log
 *.exe
 .dirstamp
+README.html
 configure
 aclocal.m4
 autom4te.cache/
