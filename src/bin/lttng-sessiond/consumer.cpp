@@ -1865,6 +1865,28 @@ error_socket:
 	return ret;
 }
 
+namespace {
+/*
+ * A stream group (consumer daemon channel) without streams has no reply entries:
+ * search forward from the previous entry's stream group.
+ */
+std::size_t find_reply_stream_group_index(const std::vector<std::uint64_t>& stream_group_keys,
+					  const std::size_t previous_entry_stream_group_index,
+					  const std::uint64_t stream_group_key)
+{
+	for (auto index = previous_entry_stream_group_index; index < stream_group_keys.size();
+	     index++) {
+		if (stream_group_keys[index] == stream_group_key) {
+			return index;
+		}
+	}
+
+	LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+		"Consumer reply contains streams of an unexpected channel: channel_key={}",
+		stream_group_key));
+}
+} /* namespace */
+
 std::vector<lsc::channel_memory_usage>
 lsc::get_channels_memory_usage(consumer_socket& socket,
 			       const std::vector<std::uint64_t>& channel_keys)
@@ -1935,22 +1957,11 @@ lsc::get_channels_memory_usage(consumer_socket& socket,
 	std::vector<lsc::channel_memory_usage> result;
 	result.resize(channel_keys.size());
 
-	std::size_t current_channel_index = 0;
-	auto current_channel_key = channel_keys[0];
+	std::size_t current_stream_group_index = 0;
 	for (const auto& stream_info : stream_usage_infos) {
-		if (stream_info.channel_key != current_channel_key) {
-			/* First stream of a new channel; change the current channel index. */
-			current_channel_index++;
-			current_channel_key = stream_info.channel_key;
-
-			if (current_channel_index == channel_keys.size()) {
-				LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
-					"Consumer reply contains streams of too many channels: expected={}",
-					channel_keys.size()));
-			}
-		}
-
-		result[current_channel_index].streams_memory_usage.emplace_back(
+		current_stream_group_index = find_reply_stream_group_index(
+			channel_keys, current_stream_group_index, stream_info.channel_key);
+		result[current_stream_group_index].streams_memory_usage.emplace_back(
 			stream_info.logical_size_bytes, stream_info.physical_size_bytes);
 	}
 
@@ -2037,26 +2048,17 @@ std::vector<lsc::stream_memory_reclamation_result_group> lsc::reclaim_channels_m
 	std::vector<lsc::stream_memory_reclamation_result_group> result;
 	result.resize(channel_keys.size());
 
-	std::size_t current_channel_index = 0;
-	auto current_channel_key = channel_keys[0];
+	std::size_t current_stream_group_index = 0;
 	/*
 	 * stream_reclamation_results are potentially unaligned (since they are packed), access them
 	 * by value.
 	 */
 	for (const auto stream_reclamation_result : stream_reclamation_results) {
-		if (stream_reclamation_result.channel_key != current_channel_key) {
-			/* First stream of a new channel; change the current channel index. */
-			current_channel_index++;
-			current_channel_key = stream_reclamation_result.channel_key;
-
-			if (current_channel_index == channel_keys.size()) {
-				LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
-					"Consumer reply contains streams of too many channels: expected={}",
-					channel_keys.size()));
-			}
-		}
-
-		result[current_channel_index].streams_reclaimed_memory.emplace_back(
+		current_stream_group_index =
+			find_reply_stream_group_index(channel_keys,
+						      current_stream_group_index,
+						      stream_reclamation_result.channel_key);
+		result[current_stream_group_index].streams_reclaimed_memory.emplace_back(
 			stream_reclamation_result.subbuffers_reclaimed,
 			stream_reclamation_result.pending_subbuffers_to_reclaim);
 	}
