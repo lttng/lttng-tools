@@ -2572,19 +2572,13 @@ void thread_init_cleanup([[maybe_unused]] void *data)
  * lttng::runtime_error.
  */
 template <typename ExceptionType>
-typename std::enable_if<std::is_base_of<lttng::runtime_error, ExceptionType>::value,
-			std::string>::type
-formatted_source_location(const ExceptionType& ex)
+std::string formatted_source_location([[maybe_unused]] const ExceptionType& ex)
 {
-	return fmt::format("{}", ex.source_location);
-}
-
-template <typename ExceptionType>
-typename std::enable_if<!std::is_base_of<lttng::runtime_error, ExceptionType>::value,
-			std::string>::type
-formatted_source_location(const ExceptionType&)
-{
-	return "";
+	if constexpr (std::is_base_of<lttng::runtime_error, ExceptionType>::value) {
+		return fmt::format("{}", ex.source_location);
+	} else {
+		return "";
+	}
 }
 
 template <class ExceptionType>

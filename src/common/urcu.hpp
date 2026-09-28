@@ -85,20 +85,19 @@ using unique_read_lock = std::unique_lock<details::read_lock>;
 
 namespace details {
 
-/* Implementation for types that contain a straight cds_lfht_node. */
 template <typename ContainedType, typename NodeType, NodeType ContainedType::*Member>
-static typename std::enable_if<std::is_same<cds_lfht_node, NodeType>::value, ContainedType *>::type
-get_element_from_node(cds_lfht_node& node)
+static ContainedType *get_element_from_node(cds_lfht_node& node)
 {
-	return lttng::utils::container_of(&node, Member);
-}
+	static_assert(std::is_same<cds_lfht_node, NodeType>::value ||
+			      std::is_base_of<lttng_ht_node, NodeType>::value,
+		      "`NodeType` must be `cds_lfht_node` or derive from `lttng_ht_node`");
 
-/* Specialization for NodeType deriving from lttng_ht_node. */
-template <typename ContainedType, typename NodeType, NodeType ContainedType::*Member>
-static typename std::enable_if<std::is_base_of<lttng_ht_node, NodeType>::value, ContainedType *>::type
-get_element_from_node(cds_lfht_node& node)
-{
-	return lttng_ht_node_container_of(&node, Member);
+	if constexpr (std::is_same<cds_lfht_node, NodeType>::value) {
+		/* Type contains a straight `cds_lfht_node`. */
+		return lttng::utils::container_of(&node, Member);
+	} else {
+		return lttng_ht_node_container_of(&node, Member);
+	}
 }
 } /* namespace details */
 
