@@ -190,7 +190,7 @@ void lttng_snapshot_output_list_destroy(struct lttng_snapshot_output_list *list)
  */
 int lttng_snapshot_record(const char *session_name,
 			  struct lttng_snapshot_output *output,
-			  int wait __attribute__((unused)))
+			  [[maybe_unused]] int wait)
 {
 	int ret;
 	struct lttcomm_session_msg lsm;

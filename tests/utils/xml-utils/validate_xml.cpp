@@ -37,7 +37,7 @@ struct validation_ctx {
 
 enum command_err_code { CMD_SUCCESS = 0, CMD_ERROR };
 
-static ATTR_FORMAT_PRINTF(2, 3) void xml_error_handler(void *ctx __attribute__((unused)),
+static ATTR_FORMAT_PRINTF(2, 3) void xml_error_handler([[maybe_unused]] void *ctx,
 						       const char *format,
 						       ...)
 {

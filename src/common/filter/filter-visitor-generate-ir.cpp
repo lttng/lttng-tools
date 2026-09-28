@@ -564,7 +564,7 @@ static void filter_free_ir_recursive(struct ir_op *op)
 		case IR_DATA_STRING:
 			free(op->u.load.u.string.value);
 			break;
-		case IR_DATA_FIELD_REF: /* fall-through */
+		case IR_DATA_FIELD_REF:
 		case IR_DATA_GET_CONTEXT_REF:
 			free(op->u.load.u.ref);
 			break;

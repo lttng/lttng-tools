@@ -1015,9 +1015,9 @@ end:
 } /* namespace */
 
 namespace {
-bool evaluate_session_rotation_ongoing_condition(const struct lttng_condition *condition
-						 __attribute__((unused)),
-						 const struct session_state_sample *sample)
+bool evaluate_session_rotation_ongoing_condition(
+	[[maybe_unused]] const struct lttng_condition *condition,
+	const struct session_state_sample *sample)
 {
 	return sample->rotation.ongoing;
 }
@@ -2411,12 +2411,12 @@ end:
 } /* namespace */
 
 namespace {
-int handle_notification_thread_command_list_triggers(struct notification_thread_handle *handle
-						     __attribute__((unused)),
-						     struct notification_thread_state *state,
-						     uid_t client_uid,
-						     struct lttng_triggers **triggers,
-						     enum lttng_error_code *_cmd_result)
+int handle_notification_thread_command_list_triggers(
+	[[maybe_unused]] struct notification_thread_handle *handle,
+	struct notification_thread_state *state,
+	uid_t client_uid,
+	struct lttng_triggers **triggers,
+	enum lttng_error_code *_cmd_result)
 {
 	int ret = 0;
 	enum lttng_error_code cmd_result = LTTNG_OK;
@@ -4003,7 +4003,7 @@ error:
 
 namespace {
 int client_handle_message_unknown(struct notification_client *client,
-				  struct notification_thread_state *state __attribute__((unused)))
+				  [[maybe_unused]] struct notification_thread_state *state)
 {
 	int ret;
 	/*
@@ -4457,7 +4457,7 @@ bool evaluate_buffer_usage_condition(const struct lttng_condition *condition,
 namespace {
 int evaluate_buffer_condition(const struct lttng_condition *condition,
 			      struct lttng_evaluation **evaluation,
-			      const struct notification_thread_state *state __attribute__((unused)),
+			      [[maybe_unused]] const struct notification_thread_state *state,
 			      const struct channel_state_sample *previous_sample,
 			      const struct channel_state_sample *latest_sample,
 			      struct channel_info *channel_info)

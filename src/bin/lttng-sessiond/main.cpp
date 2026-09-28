@@ -854,7 +854,7 @@ end:
  * return value conventions.
  */
 namespace {
-int config_entry_handler(const struct config_entry *entry, void *unused __attribute__((unused)))
+int config_entry_handler(const struct config_entry *entry, [[maybe_unused]] void *unused)
 {
 	int ret = 0, i;
 
@@ -1042,8 +1042,7 @@ auto tpp_sessiond = static_cast<std::unique_ptr<
 	lttng::memory::create_deleter_class<void, lttng::tracepoints::details::tracepoints_unload>::
 		deleter>>(nullptr);
 
-void load_tracepoints() __attribute__((unused));
-void load_tracepoints()
+[[maybe_unused]] void load_tracepoints()
 {
 	::tpp_common = std::move(tracepoints_load("libtpp-common.so"));
 	::tpp_sessiond = std::move(tracepoints_load("libtpp-sessiond.so"));
@@ -1346,7 +1345,7 @@ error:
  * joining all threads and calling cleanup().
  */
 namespace {
-void sighandler(int sig, siginfo_t *siginfo, void *arg __attribute__((unused)))
+void sighandler(int sig, siginfo_t *siginfo, [[maybe_unused]] void *arg)
 {
 	switch (sig) {
 	case SIGINT:

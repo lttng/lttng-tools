@@ -306,7 +306,7 @@ static void test_ppoll()
 	test_ppoll_generic(SYS_ppoll);
 }
 
-static void test_ppoll_big(FILE *validation_output_file __attribute__((unused)))
+static void test_ppoll_big([[maybe_unused]] FILE *validation_output_file)
 {
 	struct pollfd ufds[MAX_FDS];
 	char buf[BUF_SIZE];
@@ -557,7 +557,7 @@ static void generic_ppoll_fds_buffer_overflow(long int syscall_id)
 	}
 }
 
-static void ppoll_fds_ulong_max(FILE *validation_output_file __attribute__((unused)))
+static void ppoll_fds_ulong_max([[maybe_unused]] FILE *validation_output_file)
 {
 #ifdef SYS_ppoll_time64
 	generic_ppoll_fds_ulong_max(SYS_ppoll_time64);
@@ -566,7 +566,7 @@ static void ppoll_fds_ulong_max(FILE *validation_output_file __attribute__((unus
 #endif /* SYS_ppoll_time64 */
 }
 
-static void ppoll_fds_buffer_overflow(FILE *validation_output_file __attribute__((unused)))
+static void ppoll_fds_buffer_overflow([[maybe_unused]] FILE *validation_output_file)
 {
 #ifdef SYS_ppoll_time64
 	generic_ppoll_fds_buffer_overflow(SYS_ppoll_time64);
@@ -642,7 +642,7 @@ static void generic_invalid_pointer(int syscall_id)
 	}
 }
 
-static void pselect_invalid_fd(FILE *validation_output_file __attribute__((unused)))
+static void pselect_invalid_fd([[maybe_unused]] FILE *validation_output_file)
 {
 #ifdef SYS_pselect6_time64
 	generic_invalid_fd(SYS_pselect6_time64);
@@ -655,7 +655,7 @@ static void pselect_invalid_fd(FILE *validation_output_file __attribute__((unuse
  * Invalid pointer as writefds, should output a ppoll event
  * with 0 FDs.
  */
-static void pselect_invalid_pointer(FILE *validation_output_file __attribute__((unused)))
+static void pselect_invalid_pointer([[maybe_unused]] FILE *validation_output_file)
 {
 #ifdef SYS_pselect6_time64
 	generic_invalid_pointer(SYS_pselect6_time64);
@@ -844,7 +844,7 @@ end:
  *
  * ppoll should work as expected and the trace should be readable at the end.
  */
-static void ppoll_concurrent_write(FILE *validation_output_file __attribute__((unused)))
+static void ppoll_concurrent_write([[maybe_unused]] FILE *validation_output_file)
 {
 	int i, ret, fds[MAX_FDS];
 

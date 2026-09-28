@@ -117,7 +117,7 @@ void setup_health_path()
 /*
  * Thread managing health check socket.
  */
-void *thread_manage_health_consumerd(void *data __attribute__((unused)))
+void *thread_manage_health_consumerd([[maybe_unused]] void *data)
 {
 	int sock = -1, new_sock = -1, ret, i, err = -1;
 	uint32_t nb_fd;

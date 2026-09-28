@@ -288,7 +288,6 @@ bool is_legal_owner_id(uint32_t owner_id)
 	 */
 	switch (owner_id) {
 	case LTTNG_UST_ABI_OWNER_ID_UNSET:
-		/* fall-through */
 	case LTTNG_UST_ABI_OWNER_ID_CONSUMER:
 		return false;
 	}

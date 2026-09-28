@@ -126,7 +126,7 @@ bool ust_process_attr_supported(enum lttng_process_attr *process_attr)
 	switch (*process_attr) {
 	case LTTNG_PROCESS_ATTR_PROCESS_ID:
 		*process_attr = LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID;
-		/* fall-through. */
+		[[fallthrough]];
 	case LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID:
 	case LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID:
 	case LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID:
@@ -525,7 +525,7 @@ end:
 int cmd_track_untrack(enum cmd_type cmd_type,
 		      int argc,
 		      const char **argv,
-		      const char *help_msg __attribute__((unused)))
+		      [[maybe_unused]] const char *help_msg)
 {
 	int opt, ret = 0;
 	bool sub_command_failed = false;

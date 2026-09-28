@@ -138,32 +138,30 @@ end:
 }
 
 enum lttng_error_code lttng_event_rule_kernel_uprobe_generate_filter_bytecode(
-	struct lttng_event_rule *rule __attribute__((unused)),
-	const struct lttng_credentials *creds __attribute__((unused)))
+	[[maybe_unused]] struct lttng_event_rule *rule,
+	[[maybe_unused]] const struct lttng_credentials *creds)
 {
 	/* Nothing to do. */
 	return LTTNG_OK;
 }
 
-const char *lttng_event_rule_kernel_uprobe_get_filter_expression(const struct lttng_event_rule *rule
-								 __attribute__((unused)))
+const char *lttng_event_rule_kernel_uprobe_get_filter_expression(
+	[[maybe_unused]] const struct lttng_event_rule *rule)
 {
 	/* Unsupported. */
 	return nullptr;
 }
 
-const struct lttng_bytecode *
-lttng_event_rule_kernel_uprobe_get_filter_bytecode(const struct lttng_event_rule *rule
-						   __attribute__((unused)))
+const struct lttng_bytecode *lttng_event_rule_kernel_uprobe_get_filter_bytecode(
+	[[maybe_unused]] const struct lttng_event_rule *rule)
 {
 	/* Unsupported. */
 	return nullptr;
 }
 
-enum lttng_event_rule_generate_exclusions_status
-lttng_event_rule_kernel_uprobe_generate_exclusions(const struct lttng_event_rule *rule
-						   __attribute__((unused)),
-						   struct lttng_event_exclusion **exclusions)
+enum lttng_event_rule_generate_exclusions_status lttng_event_rule_kernel_uprobe_generate_exclusions(
+	[[maybe_unused]] const struct lttng_event_rule *rule,
+	struct lttng_event_exclusion **exclusions)
 {
 	/* Unsupported. */
 	*exclusions = nullptr;

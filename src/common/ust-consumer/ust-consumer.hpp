@@ -93,217 +93,207 @@ lttng::consumer::memory_reclaim_result lttng_ustconsumer_reclaim_stream_memory(
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
-static inline ssize_t lttng_ustconsumer_on_read_subbuffer_mmap(
-	struct lttng_consumer_local_data *ctx __attribute__((unused)),
-	struct lttng_consumer_stream *stream __attribute__((unused)),
-	unsigned long len __attribute__((unused)),
-	unsigned long padding __attribute__((unused)))
+static inline ssize_t
+lttng_ustconsumer_on_read_subbuffer_mmap([[maybe_unused]] struct lttng_consumer_local_data *ctx,
+					 [[maybe_unused]] struct lttng_consumer_stream *stream,
+					 [[maybe_unused]] unsigned long len,
+					 [[maybe_unused]] unsigned long padding)
 {
 	return -ENOSYS;
 }
 
-static inline ssize_t lttng_ustconsumer_on_read_subbuffer_splice(
-	struct lttng_consumer_local_data *ctx __attribute__((unused)),
-	struct lttng_consumer_stream *uststream __attribute__((unused)),
-	unsigned long len __attribute__((unused)),
-	unsigned long padding __attribute__((unused)))
+static inline ssize_t
+lttng_ustconsumer_on_read_subbuffer_splice([[maybe_unused]] struct lttng_consumer_local_data *ctx,
+					   [[maybe_unused]] struct lttng_consumer_stream *uststream,
+					   [[maybe_unused]] unsigned long len,
+					   [[maybe_unused]] unsigned long padding)
 {
 	return -ENOSYS;
 }
 
-static inline int lttng_ustconsumer_take_snapshot(struct lttng_consumer_stream *stream
-						  __attribute__((unused)))
+static inline int
+lttng_ustconsumer_take_snapshot([[maybe_unused]] struct lttng_consumer_stream *stream)
 {
 	return -ENOSYS;
 }
 
-static inline int lttng_ustconsumer_sample_snapshot_positions(struct lttng_consumer_stream *stream
-							      __attribute__((unused))) noexcept
+static inline int lttng_ustconsumer_sample_snapshot_positions(
+	[[maybe_unused]] struct lttng_consumer_stream *stream) noexcept
 {
 	return -ENOSYS;
 }
 
-static inline int lttng_ustconsumer_get_produced_snapshot(struct lttng_consumer_stream *stream
-							  __attribute__((unused)),
-							  unsigned long *pos
-							  __attribute__((unused))) noexcept
+static inline int
+lttng_ustconsumer_get_produced_snapshot([[maybe_unused]] struct lttng_consumer_stream *stream,
+					[[maybe_unused]] unsigned long *pos) noexcept
 {
 	return -ENOSYS;
 }
 
-static inline int lttng_ustconsumer_get_consumed_snapshot(struct lttng_consumer_stream *stream
-							  __attribute__((unused)),
-							  unsigned long *pos
-							  __attribute__((unused))) noexcept
+static inline int
+lttng_ustconsumer_get_consumed_snapshot([[maybe_unused]] struct lttng_consumer_stream *stream,
+					[[maybe_unused]] unsigned long *pos) noexcept
 {
 	return -ENOSYS;
 }
 
-static inline int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx
-					     __attribute__((unused)),
-					     int sock __attribute__((unused)),
-					     struct pollfd *consumer_sockpoll
-					     __attribute__((unused)))
+static inline int lttng_ustconsumer_recv_cmd([[maybe_unused]] struct lttng_consumer_local_data *ctx,
+					     [[maybe_unused]] int sock,
+					     [[maybe_unused]] struct pollfd *consumer_sockpoll)
 {
 	return -ENOSYS;
 }
 
-static inline void lttng_ustconsumer_del_channel(struct lttng_consumer_channel *chan
-						 __attribute__((unused)))
+static inline void
+lttng_ustconsumer_del_channel([[maybe_unused]] struct lttng_consumer_channel *chan)
 {
 }
 
-static inline void lttng_ustconsumer_free_channel(struct lttng_consumer_channel *chan
-						  __attribute__((unused)))
+static inline void
+lttng_ustconsumer_free_channel([[maybe_unused]] struct lttng_consumer_channel *chan)
 {
 }
 
-static inline int lttng_ustconsumer_add_stream(struct lttng_consumer_stream *stream
-					       __attribute__((unused)))
+static inline int
+lttng_ustconsumer_add_stream([[maybe_unused]] struct lttng_consumer_stream *stream)
 {
 	return -ENOSYS;
 }
 
-static inline void lttng_ustconsumer_del_stream(struct lttng_consumer_stream *stream
-						__attribute__((unused)))
+static inline void
+lttng_ustconsumer_del_stream([[maybe_unused]] struct lttng_consumer_stream *stream)
 {
 }
 
-static inline int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream
-						   __attribute__((unused)),
-						   struct lttng_consumer_local_data *ctx
-						   __attribute__((unused)))
+static inline int
+lttng_ustconsumer_read_subbuffer([[maybe_unused]] struct lttng_consumer_stream *stream,
+				 [[maybe_unused]] struct lttng_consumer_local_data *ctx)
 {
 	return -ENOSYS;
 }
 
-static inline int lttng_ustconsumer_on_recv_stream(struct lttng_consumer_stream *stream
-						   __attribute__((unused)))
+static inline int
+lttng_ustconsumer_on_recv_stream([[maybe_unused]] struct lttng_consumer_stream *stream)
 {
 	return -ENOSYS;
 }
 
-static inline void lttng_ustconsumer_on_stream_hangup(struct lttng_consumer_stream *stream
-						      __attribute__((unused)))
+static inline void
+lttng_ustconsumer_on_stream_hangup([[maybe_unused]] struct lttng_consumer_stream *stream)
 {
 }
 
-static inline int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream
-						 __attribute__((unused)))
+static inline int
+lttng_ustconsumer_data_pending([[maybe_unused]] struct lttng_consumer_stream *stream)
 {
 	return -ENOSYS;
 }
 
-static inline void lttng_ustconsumer_close_all_metadata(struct lttng_ht *ht __attribute__((unused)))
+static inline void lttng_ustconsumer_close_all_metadata([[maybe_unused]] struct lttng_ht *ht)
 {
 }
 
-static inline void lttng_ustconsumer_close_metadata(struct lttng_consumer_channel *metadata
-						    __attribute__((unused)))
+static inline void
+lttng_ustconsumer_close_metadata([[maybe_unused]] struct lttng_consumer_channel *metadata)
 {
 }
-static inline void lttng_ustconsumer_close_stream_wakeup(struct lttng_consumer_stream *stream
-							 __attribute__((unused)))
+static inline void
+lttng_ustconsumer_close_stream_wakeup([[maybe_unused]] struct lttng_consumer_stream *stream)
 {
 }
 
-static inline int lttng_ustconsumer_recv_metadata(int sock __attribute__((unused)),
-						  uint64_t key __attribute__((unused)),
-						  uint64_t offset __attribute__((unused)),
-						  uint64_t len __attribute__((unused)),
-						  uint64_t version __attribute__((unused)),
-						  struct lttng_consumer_channel *channel
-						  __attribute__((unused)),
-						  bool invoked_by_timer __attribute__((unused)))
+static inline int
+lttng_ustconsumer_recv_metadata([[maybe_unused]] int sock,
+				[[maybe_unused]] uint64_t key,
+				[[maybe_unused]] uint64_t offset,
+				[[maybe_unused]] uint64_t len,
+				[[maybe_unused]] uint64_t version,
+				[[maybe_unused]] struct lttng_consumer_channel *channel,
+				[[maybe_unused]] bool invoked_by_timer)
 {
 	return -ENOSYS;
 }
 
-static inline int lttng_ustconsumer_request_metadata(lttng_consumer_channel& channel
-						     __attribute__((unused)),
-						     protected_socket& sessiond_metadata_socket
-						     __attribute__((unused)),
-						     protected_socket& consumer_error_socket
-						     __attribute__((unused)),
-						     bool invoked_by_timer __attribute__((unused)),
-						     int wait __attribute__((unused)))
+static inline int
+lttng_ustconsumer_request_metadata([[maybe_unused]] lttng_consumer_channel& channel,
+				   [[maybe_unused]] protected_socket& sessiond_metadata_socket,
+				   [[maybe_unused]] protected_socket& consumer_error_socket,
+				   [[maybe_unused]] bool invoked_by_timer,
+				   [[maybe_unused]] int wait)
 {
 	return -ENOSYS;
 }
 
 static inline enum sync_metadata_status
-lttng_ustconsumer_sync_metadata(struct lttng_consumer_local_data *ctx __attribute__((unused)),
-				struct lttng_consumer_stream *metadata __attribute__((unused)))
+lttng_ustconsumer_sync_metadata([[maybe_unused]] struct lttng_consumer_local_data *ctx,
+				[[maybe_unused]] struct lttng_consumer_stream *metadata)
 {
 	return SYNC_METADATA_STATUS_ERROR;
 }
 
-static inline int lttng_ustconsumer_flush_buffer(struct lttng_consumer_stream *stream
-						 __attribute__((unused)),
-						 int producer __attribute__((unused)))
+static inline int
+lttng_ustconsumer_flush_buffer([[maybe_unused]] struct lttng_consumer_stream *stream,
+			       [[maybe_unused]] int producer)
 {
 	return -ENOSYS;
 }
 
 static inline int lttng_ustconsumer_flush_buffer_with_old_position(
-	struct lttng_consumer_stream *stream __attribute__((unused)),
-	int producer __attribute__((unused)),
-	unsigned long *old_position __attribute__((unused)))
+	[[maybe_unused]] struct lttng_consumer_stream *stream,
+	[[maybe_unused]] int producer,
+	[[maybe_unused]] unsigned long *old_position)
 {
 	return -ENOSYS;
 }
 
-static inline int lttng_ustconsumer_clear_buffer(struct lttng_consumer_stream *stream
-						 __attribute__((unused)))
+static inline int
+lttng_ustconsumer_clear_buffer([[maybe_unused]] struct lttng_consumer_stream *stream)
 {
 	return -ENOSYS;
 }
 
-static inline int lttng_ustconsumer_get_current_timestamp(struct lttng_consumer_stream *stream
-							  __attribute__((unused)),
-							  uint64_t *ts __attribute__((unused)))
+static inline int
+lttng_ustconsumer_get_current_timestamp([[maybe_unused]] struct lttng_consumer_stream *stream,
+					[[maybe_unused]] uint64_t *ts)
 {
 	return -ENOSYS;
 }
 
-static inline int lttng_ustconsumer_get_sequence_number(struct lttng_consumer_stream *stream
-							__attribute__((unused)),
-							uint64_t *seq __attribute__((unused)))
+static inline int
+lttng_ustconsumer_get_sequence_number([[maybe_unused]] struct lttng_consumer_stream *stream,
+				      [[maybe_unused]] uint64_t *seq)
 {
 	return -ENOSYS;
 }
 
-static inline int lttng_ustconsumer_get_stream_id(struct lttng_consumer_stream *stream
-						  __attribute__((unused)),
-						  uint64_t *stream_id __attribute__((unused)))
+static inline int
+lttng_ustconsumer_get_stream_id([[maybe_unused]] struct lttng_consumer_stream *stream,
+				[[maybe_unused]] uint64_t *stream_id)
 {
 	return -ENOSYS;
 }
 
-static inline void lttng_ustconsumer_sigbus_handle(void *addr __attribute__((unused)))
+static inline void lttng_ustconsumer_sigbus_handle([[maybe_unused]] void *addr)
 {
 }
-static inline uint32_t lttng_ustconsumer_reclaim_session_owner_id(uint64_t session_id
-								  __attribute__((unused)),
-								  uint32_t owner_id
-								  __attribute__((unused)))
+static inline uint32_t
+lttng_ustconsumer_reclaim_session_owner_id([[maybe_unused]] uint64_t session_id,
+					   [[maybe_unused]] uint32_t owner_id)
 {
 	return 0;
 }
 
-static inline int lttng_ustconsumer_fixup_stalled_channel(struct lttng_consumer_channel *channel
-							  __attribute__((unused)),
-							  std::set<uint32_t>& reclaimed_owner_ids
-							  __attribute__((unused)),
-							  size_t& observed_count
-							  __attribute__((unused)))
+static inline int
+lttng_ustconsumer_fixup_stalled_channel([[maybe_unused]] struct lttng_consumer_channel *channel,
+					[[maybe_unused]] std::set<uint32_t>& reclaimed_owner_ids,
+					[[maybe_unused]] size_t& observed_count)
 {
 	return -ENOSYS;
 }
 
-static inline void lttng_ustconsumer_quiescent_stalled_channel(
-	struct lttng_consumer_local_data& ctx __attribute__((unused)),
-	struct lttng_consumer_channel& channel __attribute__((unused)))
+static inline void
+lttng_ustconsumer_quiescent_stalled_channel([[maybe_unused]] struct lttng_consumer_local_data& ctx,
+					    [[maybe_unused]] struct lttng_consumer_channel& channel)
 {
 }
 

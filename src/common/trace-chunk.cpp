@@ -236,7 +236,7 @@ int fs_handle_untracked_get_fd(struct fs_handle *_handle)
 	return handle->fd;
 }
 
-void fs_handle_untracked_put_fd(struct fs_handle *_handle __attribute__((unused)))
+void fs_handle_untracked_put_fd([[maybe_unused]] struct fs_handle *_handle)
 {
 	/* no-op. */
 }
@@ -1587,7 +1587,7 @@ end:
 	return ret;
 }
 
-int lttng_trace_chunk_no_operation(struct lttng_trace_chunk *trace_chunk __attribute__((unused)))
+int lttng_trace_chunk_no_operation([[maybe_unused]] struct lttng_trace_chunk *trace_chunk)
 {
 	return 0;
 }

@@ -2506,7 +2506,7 @@ int generate_capture_descr(struct lttng_condition *condition)
 		}
 		case FIELD_TYPE_APP_CONTEXT:
 			fail("Application context tests are not implemented yet.");
-			/* fallthrough. */
+			[[fallthrough]];
 		default:
 			ret = 1;
 			goto end;

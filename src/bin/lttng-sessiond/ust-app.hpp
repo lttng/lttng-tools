@@ -350,34 +350,33 @@ void ust_app_notify_reclaimed_owner_ids(const std::vector<uint32_t>& owners);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
-static inline int ust_app_list_events(struct lttng_event **events __attribute__((unused)))
+static inline int ust_app_list_events([[maybe_unused]] struct lttng_event **events)
 {
 	return -ENOSYS;
 }
 
-static inline int ust_app_list_event_fields(struct lttng_event_field **fields
-					    __attribute__((unused)))
+static inline int ust_app_list_event_fields([[maybe_unused]] struct lttng_event_field **fields)
 {
 	return -ENOSYS;
 }
 
-static inline int ust_app_register(struct ust_register_msg *msg __attribute__((unused)),
-				   int sock __attribute__((unused)))
+static inline int ust_app_register([[maybe_unused]] struct ust_register_msg *msg,
+				   [[maybe_unused]] int sock)
 {
 	return -ENOSYS;
 }
 
-static inline int ust_app_register_done(lttng::sessiond::ust::app *app __attribute__((unused)))
+static inline int ust_app_register_done([[maybe_unused]] lttng::sessiond::ust::app *app)
 {
 	return -ENOSYS;
 }
 
-static inline int ust_app_version(lttng::sessiond::ust::app *app __attribute__((unused)))
+static inline int ust_app_version([[maybe_unused]] lttng::sessiond::ust::app *app)
 {
 	return -ENOSYS;
 }
 
-static inline void ust_app_unregister_by_socket(int sock __attribute__((unused)))
+static inline void ust_app_unregister_by_socket([[maybe_unused]] int sock)
 {
 }
 
@@ -390,8 +389,8 @@ static inline int ust_app_ht_alloc(void)
 	return 0;
 }
 
-static inline void ust_app_global_update_event_notifier_rules(lttng::sessiond::ust::app *app
-							      __attribute__((unused)))
+static inline void
+ust_app_global_update_event_notifier_rules([[maybe_unused]] lttng::sessiond::ust::app *app)
 {
 }
 
@@ -399,35 +398,34 @@ static inline void ust_app_global_update_all_event_notifier_rules(void)
 {
 }
 
-static inline int ust_app_setup_event_notifier_group(lttng::sessiond::ust::app *app
-						     __attribute__((unused)))
+static inline int
+ust_app_setup_event_notifier_group([[maybe_unused]] lttng::sessiond::ust::app *app)
 {
 	return 0;
 }
 
-static inline int ust_app_recv_registration(int sock __attribute__((unused)),
-					    struct ust_register_msg *msg __attribute__((unused)))
+static inline int ust_app_recv_registration([[maybe_unused]] int sock,
+					    [[maybe_unused]] struct ust_register_msg *msg)
 {
 	return 0;
 }
 
-static inline int ust_app_recv_notify(int sock __attribute__((unused)))
+static inline int ust_app_recv_notify([[maybe_unused]] int sock)
 {
 	return 0;
 }
 
-static inline lttng::sessiond::ust::app *ust_app_create(struct ust_register_msg *msg
-							__attribute__((unused)),
-							int sock __attribute__((unused)))
+static inline lttng::sessiond::ust::app *
+ust_app_create([[maybe_unused]] struct ust_register_msg *msg, [[maybe_unused]] int sock)
 {
 	return NULL;
 }
 
-static inline void ust_app_add(lttng::sessiond::ust::app *app __attribute__((unused)))
+static inline void ust_app_add([[maybe_unused]] lttng::sessiond::ust::app *app)
 {
 }
 
-static inline void ust_app_notify_sock_unregister(int sock __attribute__((unused)))
+static inline void ust_app_notify_sock_unregister([[maybe_unused]] int sock)
 {
 }
 
@@ -436,24 +434,22 @@ static inline int ust_app_supported(void)
 	return 0;
 }
 
-static inline bool ust_app_supports_notifiers(const lttng::sessiond::ust::app *app
-					      __attribute__((unused)))
+static inline bool ust_app_supports_notifiers([[maybe_unused]] const lttng::sessiond::ust::app *app)
 {
 	return false;
 }
 
-static inline bool ust_app_supports_counters(const lttng::sessiond::ust::app *app
-					     __attribute__((unused)))
+static inline bool ust_app_supports_counters([[maybe_unused]] const lttng::sessiond::ust::app *app)
 {
 	return false;
 }
 
-inline bool ust_app_get(lttng::sessiond::ust::app& app __attribute__((unused)))
+inline bool ust_app_get([[maybe_unused]] lttng::sessiond::ust::app& app)
 {
 	return false;
 }
 
-inline void ust_app_put(lttng::sessiond::ust::app *app __attribute__((unused)))
+inline void ust_app_put([[maybe_unused]] lttng::sessiond::ust::app *app)
 {
 }
 
@@ -461,8 +457,7 @@ using ust_app_reference = std::unique_ptr<
 	lttng::sessiond::ust::app,
 	lttng::memory::create_deleter_class<lttng::sessiond::ust::app, ust_app_put>::deleter>;
 
-static inline std::optional<ust_app_reference> ust_app_find_by_sock(int sock
-								    __attribute__((unused)))
+static inline std::optional<ust_app_reference> ust_app_find_by_sock([[maybe_unused]] int sock)
 {
 	return std::nullopt;
 }
@@ -473,13 +468,12 @@ ust_app_get_session_registry(const lttng::sessiond::ust::app_session::identifier
 	return nullptr;
 }
 
-static inline void ust_app_notify_reclaimed_owner_ids(const std::vector<uint32_t>& owners
-						      __attribute__((unused)))
+static inline void
+ust_app_notify_reclaimed_owner_ids([[maybe_unused]] const std::vector<uint32_t>& owners)
 {
 }
 
-static inline void ust_app_unregister_and_destroy(lttng::sessiond::ust::app& app
-						  __attribute__((unused)))
+static inline void ust_app_unregister_and_destroy([[maybe_unused]] lttng::sessiond::ust::app& app)
 {
 }
 

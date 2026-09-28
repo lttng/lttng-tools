@@ -127,7 +127,7 @@ static int noop_open(void *data, int *fds)
 	return 0;
 }
 
-static int noop_close(void *data __attribute__((unused)), int *fds __attribute__((unused)))
+static int noop_close([[maybe_unused]] void *data, [[maybe_unused]] int *fds)
 {
 	return 0;
 }
@@ -206,12 +206,12 @@ end:
 	free(unlinked_files_directory);
 }
 
-static int error_open(void *data, int *fds __attribute__((unused)))
+static int error_open(void *data, [[maybe_unused]] int *fds)
 {
 	return *((int *) data);
 }
 
-static int error_close(void *data, int *fds __attribute__((unused)))
+static int error_close(void *data, [[maybe_unused]] int *fds)
 {
 	return *((int *) data);
 }
@@ -294,7 +294,7 @@ static void test_unsuspendable_duplicate()
 	free(unlinked_files_directory);
 }
 
-static int open_pipes(void *data __attribute__((unused)), int *out_fds)
+static int open_pipes([[maybe_unused]] void *data, int *out_fds)
 {
 	unsigned int i;
 	const unsigned int pipe_count = TRACKER_FD_LIMIT / 2;
@@ -309,7 +309,7 @@ static int open_pipes(void *data __attribute__((unused)), int *out_fds)
 	return 0;
 }
 
-static int close_pipes(void *data __attribute__((unused)), int *fds)
+static int close_pipes([[maybe_unused]] void *data, int *fds)
 {
 	int i;
 	int *pipes = fds;
@@ -460,8 +460,8 @@ static int open_same_file(struct fd_tracker *tracker,
 	return ret;
 }
 
-static int cleanup_files(struct fd_tracker *tracker __attribute__((unused)),
-			 const char *dir __attribute__((unused)),
+static int cleanup_files([[maybe_unused]] struct fd_tracker *tracker,
+			 [[maybe_unused]] const char *dir,
 			 unsigned int count,
 			 struct fs_handle **handles,
 			 char **file_paths)

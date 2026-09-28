@@ -16,12 +16,12 @@
 #include <unistd.h>
 
 namespace {
-int open_pipe_cloexec(void *data __attribute__((unused)), int *fds)
+int open_pipe_cloexec([[maybe_unused]] void *data, int *fds)
 {
 	return utils_create_pipe_cloexec(fds);
 }
 
-int close_pipe(void *data __attribute__((unused)), int *pipe)
+int close_pipe([[maybe_unused]] void *data, int *pipe)
 {
 	utils_close_pipe(pipe);
 	pipe[0] = pipe[1] = -1;
@@ -29,7 +29,7 @@ int close_pipe(void *data __attribute__((unused)), int *pipe)
 }
 } /* namespace */
 
-int fd_tracker_util_close_fd(void *unused __attribute__((unused)), int *fd)
+int fd_tracker_util_close_fd([[maybe_unused]] void *unused, int *fd)
 {
 	return close(*fd);
 }
@@ -110,7 +110,7 @@ end:
 }
 
 #ifdef HAVE_DIRFD
-int fd_close(void *unused __attribute__((unused)), int *in_fds)
+int fd_close([[maybe_unused]] void *unused, int *in_fds)
 {
 	const int ret = close(in_fds[0]);
 

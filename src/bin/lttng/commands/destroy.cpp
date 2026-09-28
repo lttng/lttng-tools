@@ -223,7 +223,7 @@ cmd_error_code destroy_session(const lttng_session& session)
 					break;
 				}
 			}
-			/* fall-through. */
+				[[fallthrough]];
 			default:
 				ERR_FMT("{}Failed to get the location of the rotation performed during the destruction of `{}`",
 					newline_needed ? "\n" : "",

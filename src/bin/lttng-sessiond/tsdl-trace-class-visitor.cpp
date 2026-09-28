@@ -175,43 +175,43 @@ private:
 		_type_overrides.type(field.get_type()).accept(*this);
 	}
 
-	void visit(const lst::bit_array_type& type __attribute__((unused))) final
+	void visit([[maybe_unused]] const lst::bit_array_type& type) final
 	{
 	}
 
-	void visit(const lst::integer_type& type __attribute__((unused))) final
+	void visit([[maybe_unused]] const lst::integer_type& type) final
 	{
 	}
 
-	void visit(const lst::floating_point_type& type __attribute__((unused))) final
+	void visit([[maybe_unused]] const lst::floating_point_type& type) final
 	{
 	}
 
-	void visit(const lst::signed_enumeration_type& type __attribute__((unused))) final
+	void visit([[maybe_unused]] const lst::signed_enumeration_type& type) final
 	{
 	}
 
-	void visit(const lst::unsigned_enumeration_type& type __attribute__((unused))) final
+	void visit([[maybe_unused]] const lst::unsigned_enumeration_type& type) final
 	{
 	}
 
-	void visit(const lst::static_length_array_type& type __attribute__((unused))) final
+	void visit([[maybe_unused]] const lst::static_length_array_type& type) final
 	{
 	}
 
-	void visit(const lst::dynamic_length_array_type& type __attribute__((unused))) final
+	void visit([[maybe_unused]] const lst::dynamic_length_array_type& type) final
 	{
 	}
 
-	void visit(const lst::static_length_blob_type& type __attribute__((unused))) final
+	void visit([[maybe_unused]] const lst::static_length_blob_type& type) final
 	{
 	}
 
-	void visit(const lst::dynamic_length_blob_type& type __attribute__((unused))) final
+	void visit([[maybe_unused]] const lst::dynamic_length_blob_type& type) final
 	{
 	}
 
-	void visit(const lst::null_terminated_string_type& type __attribute__((unused))) final
+	void visit([[maybe_unused]] const lst::null_terminated_string_type& type) final
 	{
 	}
 
@@ -374,11 +374,11 @@ private:
 		visit_variant(type);
 	}
 
-	void visit(const lst::static_length_string_type& type __attribute__((unused))) final
+	void visit([[maybe_unused]] const lst::static_length_string_type& type) final
 	{
 	}
 
-	void visit(const lst::dynamic_length_string_type& type __attribute__((unused))) final
+	void visit([[maybe_unused]] const lst::dynamic_length_string_type& type) final
 	{
 	}
 
@@ -1131,14 +1131,14 @@ const lttng::sessiond::trace::type& lttng::sessiond::tsdl::trace_class_visitor::
 			LTTNG_THROW_ERROR(
 				"Field type look-up failure: no current event class in visitor's context");
 		}
-		/* fall through. */
+		[[fallthrough]];
 	case lst::field_location::root::EVENT_RECORD_COMMON_CONTEXT:
 	case lst::field_location::root::PACKET_CONTEXT:
 		if (!_current_stream_class) {
 			LTTNG_THROW_ERROR(
 				"Field type look-up failure: no current stream class in visitor's context");
 		}
-		/* fall through. */
+		[[fallthrough]];
 	case lst::field_location::root::PACKET_HEADER:
 		if (!_current_trace_class) {
 			LTTNG_THROW_ERROR(

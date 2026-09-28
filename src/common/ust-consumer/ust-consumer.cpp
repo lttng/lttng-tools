@@ -403,7 +403,6 @@ int create_ust_channel(struct lttng_consumer_channel *channel,
 
 	switch (channel->type) {
 	case CONSUMER_CHANNEL_TYPE_METADATA:
-		/* Fallthrough */
 	case CONSUMER_CHANNEL_TYPE_DATA_PER_CHANNEL:
 		nr_stream_fds = 1;
 		break;
@@ -2672,7 +2671,7 @@ int lttng_ustconsumer_recv_metadata(int sock,
 			} else {
 				LTTNG_ASSERT(!channel->monitor);
 			}
-			/* Fall-through. */
+			[[fallthrough]];
 		case CONSUMER_METADATA_CACHE_WRITE_STATUS_APPENDED_CONTENT:
 			ret = consumer_metadata_wakeup_pipe(channel);
 			if (ret) {
@@ -2912,7 +2911,6 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		/* Translate and save channel type. */
 		switch (msg.u.ask_channel.type) {
 		case LTTNG_UST_ABI_CHAN_PER_CPU:
-			/* fall-through */
 		case LTTNG_UST_ABI_CHAN_PER_CHANNEL:
 
 			if (msg.u.ask_channel.type == LTTNG_UST_ABI_CHAN_PER_CPU) {
@@ -4511,7 +4509,7 @@ end:
 }
 
 int put_next_subbuffer(struct lttng_consumer_stream *stream,
-		       struct stream_subbuffer *subbuffer __attribute__((unused)))
+		       [[maybe_unused]] struct stream_subbuffer *subbuffer)
 {
 	const int ret = lttng_ust_ctl_put_next_subbuf(stream->ustream);
 
@@ -4520,7 +4518,7 @@ int put_next_subbuffer(struct lttng_consumer_stream *stream,
 }
 
 int signal_metadata(struct lttng_consumer_stream *stream,
-		    struct lttng_consumer_local_data *ctx __attribute__((unused)))
+		    [[maybe_unused]] struct lttng_consumer_local_data *ctx)
 {
 	ASSERT_LOCKED(stream->metadata_rdv_lock);
 	return pthread_cond_broadcast(&stream->metadata_rdv) ? -errno : 0;

@@ -203,7 +203,7 @@ lttng::domain_class domain_type_to_class(enum lttng_domain_type domain_type)
 bool domain_supports_map(const enum lttng_domain_type domain_type)
 {
 	switch (domain_type) {
-	case LTTNG_DOMAIN_KERNEL: /* fall-through */
+	case LTTNG_DOMAIN_KERNEL:
 	case LTTNG_DOMAIN_UST:
 		return true;
 	default:
@@ -3588,7 +3588,7 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 			goto error;
 		}
 	}
-	/* Fall through. */
+		[[fallthrough]];
 	case LTTNG_DOMAIN_UST:
 	{
 		LTTNG_ASSERT(session.ust_orchestrator);
@@ -4363,7 +4363,7 @@ enum lttng_error_code cmd_list_tracepoint_fields(enum lttng_domain_type domain,
 
 		break;
 	case LTTNG_DOMAIN_KERNEL:
-	default: /* fall-through */
+	default:
 		ret_code = LTTNG_ERR_UND;
 		goto error;
 	}
@@ -4904,8 +4904,7 @@ cmd_create_session_from_descriptor(struct lttng_session_descriptor *descriptor,
 			new_session->lock();
 			return ltt_session::make_locked_ref(*new_session);
 		}(),
-		[](const ltt_session::locked_ref& session,
-		   void *user_data __attribute__((unused))) {
+		[](const ltt_session::locked_ref& session, [[maybe_unused]] void *user_data) {
 			(void) notification_thread_command_remove_session(
 				the_notification_thread_handle, session->id);
 		},

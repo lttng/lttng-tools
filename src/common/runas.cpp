@@ -610,15 +610,15 @@ end:
 	return ret;
 }
 #else
-int _extract_elf_symbol_offset(struct run_as_data *data __attribute__((unused)),
-			       struct run_as_ret *ret_value __attribute__((unused)))
+int _extract_elf_symbol_offset([[maybe_unused]] struct run_as_data *data,
+			       [[maybe_unused]] struct run_as_ret *ret_value)
 {
 	ERR("Unimplemented runas command RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET");
 	return -1;
 }
 
-int _extract_sdt_probe_offsets(struct run_as_data *data __attribute__((unused)),
-			       struct run_as_ret *ret_value __attribute__((unused)))
+int _extract_sdt_probe_offsets([[maybe_unused]] struct run_as_data *data,
+			       [[maybe_unused]] struct run_as_ret *ret_value)
 {
 	ERR("Unimplemented runas command RUN_AS_EXTRACT_SDT_PROBE_OFFSETS");
 	return -1;
@@ -1314,8 +1314,8 @@ end:
 int run_as_noworker(enum run_as_cmd cmd,
 		    struct run_as_data *data,
 		    struct run_as_ret *ret_value,
-		    uid_t uid __attribute__((unused)),
-		    gid_t gid __attribute__((unused)))
+		    [[maybe_unused]] uid_t uid,
+		    [[maybe_unused]] gid_t gid)
 {
 	int ret, saved_errno;
 	mode_t old_mask;

@@ -292,7 +292,7 @@ end:
 namespace {
 int action_executor_notify_handler(struct action_executor *executor,
 				   const struct action_work_item *work_item,
-				   struct action_work_subitem *item __attribute__((unused)))
+				   [[maybe_unused]] struct action_work_subitem *item)
 {
 	return notification_client_list_send_evaluation(
 		work_item->client_list,
@@ -305,7 +305,7 @@ int action_executor_notify_handler(struct action_executor *executor,
 } /* namespace */
 
 namespace {
-int action_executor_start_session_handler(struct action_executor *executor __attribute__((unused)),
+int action_executor_start_session_handler([[maybe_unused]] struct action_executor *executor,
 					  const struct action_work_item *work_item,
 					  struct action_work_subitem *item)
 {
@@ -396,7 +396,7 @@ int action_executor_start_session_handler(struct action_executor *executor __att
 } /* namespace */
 
 namespace {
-int action_executor_stop_session_handler(struct action_executor *executor __attribute__((unused)),
+int action_executor_stop_session_handler([[maybe_unused]] struct action_executor *executor,
 					 const struct action_work_item *work_item,
 					 struct action_work_subitem *item)
 {
@@ -488,7 +488,7 @@ int action_executor_stop_session_handler(struct action_executor *executor __attr
 } /* namespace */
 
 namespace {
-int action_executor_rotate_session_handler(struct action_executor *executor __attribute__((unused)),
+int action_executor_rotate_session_handler([[maybe_unused]] struct action_executor *executor,
 					   const struct action_work_item *work_item,
 					   struct action_work_subitem *item)
 {
@@ -587,8 +587,7 @@ int action_executor_rotate_session_handler(struct action_executor *executor __at
 } /* namespace */
 
 namespace {
-int action_executor_snapshot_session_handler(struct action_executor *executor
-					     __attribute__((unused)),
+int action_executor_snapshot_session_handler([[maybe_unused]] struct action_executor *executor,
 					     const struct action_work_item *work_item,
 					     struct action_work_subitem *item)
 {
@@ -684,9 +683,9 @@ int action_executor_snapshot_session_handler(struct action_executor *executor
 } /* namespace */
 
 namespace {
-int action_executor_list_handler(struct action_executor *executor __attribute__((unused)),
-				 const struct action_work_item *work_item __attribute__((unused)),
-				 struct action_work_subitem *item __attribute__((unused)))
+int action_executor_list_handler([[maybe_unused]] struct action_executor *executor,
+				 [[maybe_unused]] const struct action_work_item *work_item,
+				 [[maybe_unused]] struct action_work_subitem *item)
 {
 	ERR("Execution of a list action by the action executor should never occur");
 	abort();
@@ -715,8 +714,7 @@ std::string render_literal_key_template(const lttng_key_template& key_template)
 } /* namespace */
 
 namespace {
-int action_executor_increment_map_value_handler(struct action_executor *executor
-						__attribute__((unused)),
+int action_executor_increment_map_value_handler([[maybe_unused]] struct action_executor *executor,
 						const struct action_work_item *work_item,
 						struct action_work_subitem *item)
 {
@@ -1246,7 +1244,6 @@ int add_action_to_subitem_array(struct lttng_action *action, struct lttng_dynami
 		break;
 	case LTTNG_ACTION_TYPE_LIST:
 	case LTTNG_ACTION_TYPE_UNKNOWN:
-		/* Fallthrough */
 	default:
 		abort();
 		break;

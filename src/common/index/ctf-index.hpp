@@ -68,7 +68,7 @@ static inline size_t ctf_packet_index_len(uint32_t major, uint32_t minor)
 }
 
 static inline uint32_t lttng_to_index_major(uint32_t lttng_major,
-					    uint32_t lttng_minor __attribute__((unused)))
+					    [[maybe_unused]] uint32_t lttng_minor)
 {
 	if (lttng_major == 2) {
 		return 1;

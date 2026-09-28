@@ -342,7 +342,6 @@ void print_events(const lttng::cli::event_rule& event_rule, const lttng_domain_t
 			     filter_msg);
 		break;
 	case LTTNG_EVENT_ALL:
-		/* Fall-through. */
 	default:
 		/* We should never have "all" events in list. */
 		std::abort();
@@ -361,7 +360,7 @@ const char *field_type(const lttng::cli::tracepoint_field& field)
 	case LTTNG_EVENT_FIELD_STRING:
 		return "string";
 	case LTTNG_EVENT_FIELD_OTHER:
-	default: /* fall-through */
+	default:
 		return "unknown";
 	}
 }

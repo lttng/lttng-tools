@@ -852,7 +852,7 @@ int lttng_stop_tracing_no_wait(const char *session_name)
  */
 int lttng_add_context(struct lttng_handle *handle,
 		      struct lttng_event_context *ctx,
-		      const char *event_name __attribute__((unused)),
+		      [[maybe_unused]] const char *event_name,
 		      const char *channel_name)
 {
 	int ret;
@@ -2531,8 +2531,8 @@ end:
 	return ret;
 }
 
-int lttng_calibrate(struct lttng_handle *handle __attribute__((unused)),
-		    struct lttng_calibrate *calibrate __attribute__((unused)))
+int lttng_calibrate([[maybe_unused]] struct lttng_handle *handle,
+		    [[maybe_unused]] struct lttng_calibrate *calibrate)
 {
 	/*
 	 * This command was removed in LTTng 2.9.
@@ -2824,7 +2824,6 @@ lttng_channel_set_allocation_policy(struct lttng_channel *chan,
 
 	switch (policy) {
 	case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU:
-		/* Fallthrough */
 	case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CHANNEL:
 		break;
 	default:
@@ -2873,7 +2872,6 @@ lttng_channel_set_preallocation_policy(struct lttng_channel *chan,
 
 	switch (policy) {
 	case LTTNG_CHANNEL_PREALLOCATION_POLICY_PREALLOCATE:
-		/* Fallthrough */
 	case LTTNG_CHANNEL_PREALLOCATION_POLICY_ON_DEMAND:
 		break;
 	default:
@@ -3013,7 +3011,7 @@ error:
  * [OBSOLETE]
  */
 extern "C" LTTNG_EXPORT int lttng_enable_consumer(struct lttng_handle *handle);
-int lttng_enable_consumer(struct lttng_handle *handle __attribute__((unused)))
+int lttng_enable_consumer([[maybe_unused]] struct lttng_handle *handle)
 {
 	return -ENOSYS;
 }
@@ -3022,7 +3020,7 @@ int lttng_enable_consumer(struct lttng_handle *handle __attribute__((unused)))
  * [OBSOLETE]
  */
 extern "C" LTTNG_EXPORT int lttng_disable_consumer(struct lttng_handle *handle);
-int lttng_disable_consumer(struct lttng_handle *handle __attribute__((unused)))
+int lttng_disable_consumer([[maybe_unused]] struct lttng_handle *handle)
 {
 	return -ENOSYS;
 }
@@ -3032,9 +3030,9 @@ int lttng_disable_consumer(struct lttng_handle *handle __attribute__((unused)))
  */
 extern "C" LTTNG_EXPORT int
 _lttng_create_session_ext(const char *name, const char *url, const char *datetime);
-int _lttng_create_session_ext(const char *name __attribute__((unused)),
-			      const char *url __attribute__((unused)),
-			      const char *datetime __attribute__((unused)))
+int _lttng_create_session_ext([[maybe_unused]] const char *name,
+			      [[maybe_unused]] const char *url,
+			      [[maybe_unused]] const char *datetime)
 {
 	return -ENOSYS;
 }

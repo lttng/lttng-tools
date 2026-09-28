@@ -78,7 +78,7 @@ static inline bool __lttng_print_check_opt(enum lttng_error_level type)
 		if (lttng_opt_mi) {
 			return false;
 		}
-		/* Fall-through. */
+		[[fallthrough]];
 	case PRINT_DBG3:
 	case PRINT_DBG2:
 	case PRINT_DBG:

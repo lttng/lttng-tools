@@ -608,7 +608,6 @@ void ls::modules::domain_orchestrator::set_tracking_policy(
 		break;
 	case lsc::tracking_policy::EXCLUDE_ALL:
 	case lsc::tracking_policy::INCLUDE_SET:
-		/* fall-through. */
 		if (attribute_type == lsc::process_attribute_type::PID) {
 			/*
 			 * Maintain a special case for the process ID process

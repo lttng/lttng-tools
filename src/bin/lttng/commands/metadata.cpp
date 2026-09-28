@@ -70,7 +70,7 @@ int count_arguments(const char **argv)
 	return i;
 }
 
-int metadata_regenerate(int argc, const char **argv __attribute__((unused)))
+int metadata_regenerate(int argc, [[maybe_unused]] const char **argv)
 {
 	int ret;
 

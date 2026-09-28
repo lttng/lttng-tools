@@ -139,9 +139,9 @@ int hint_dont_need(int fd, off_t offset, off_t nbytes)
  * since we are only giving a hint to the kernel.
  */
 namespace {
-int hint_dont_need(int fd __attribute__((unused)),
-		   off_t offset __attribute__((unused)),
-		   off_t nbytes __attribute__((unused)))
+int hint_dont_need([[maybe_unused]] int fd,
+		   [[maybe_unused]] off_t offset,
+		   [[maybe_unused]] off_t nbytes)
 {
 	return 0;
 }

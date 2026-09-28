@@ -97,7 +97,7 @@ extern int compat_epoll_create(struct lttng_poll_event *events, int size, int fl
 #define lttng_poll_create(events, size, flags) compat_epoll_create(events, size, flags)
 
 #if defined(HAVE_EPOLL_CREATE1) && defined(EPOLL_CLOEXEC)
-static inline int compat_glibc_epoll_create(int size __attribute__((unused)), int flags)
+static inline int compat_glibc_epoll_create([[maybe_unused]] int size, int flags)
 {
 	return epoll_create1(flags);
 }
@@ -316,7 +316,7 @@ extern int compat_poll_set_max_size(void);
 /*
  * No need to reset a pollfd structure for poll(2)
  */
-static inline void lttng_poll_reset(struct lttng_poll_event *events __attribute__((unused)))
+static inline void lttng_poll_reset([[maybe_unused]] struct lttng_poll_event *events)
 {
 }
 

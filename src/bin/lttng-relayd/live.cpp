@@ -724,7 +724,7 @@ end:
 	return ret;
 }
 
-int close_sock(void *data, int *in_fd __attribute__((unused)))
+int close_sock(void *data, [[maybe_unused]] int *in_fd)
 {
 	struct lttcomm_sock *sock = (lttcomm_sock *) data;
 
@@ -877,7 +877,7 @@ struct lttcomm_sock *init_socket(struct lttng_uri *uri, const char *name)
 /*
  * This thread manages the listening for new connections on the network
  */
-void *thread_listener(void *data __attribute__((unused)))
+void *thread_listener([[maybe_unused]] void *data)
 {
 	int i, ret, err = -1;
 	uint32_t nb_fd;
@@ -1039,7 +1039,7 @@ error_sock_control:
 /*
  * This thread manages the dispatching of the requests to worker threads
  */
-void *thread_dispatcher(void *data __attribute__((unused)))
+void *thread_dispatcher([[maybe_unused]] void *data)
 {
 	int err = -1;
 	ssize_t ret;
@@ -2928,7 +2928,7 @@ void cleanup_connection_pollfd(struct lttng_poll_event *events, int pollfd)
 /*
  * This thread does the actual work
  */
-void *thread_worker(void *data __attribute__((unused)))
+void *thread_worker([[maybe_unused]] void *data)
 {
 	int ret, err = -1;
 	uint32_t nb_fd;

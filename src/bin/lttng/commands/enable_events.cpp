@@ -595,7 +595,6 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 
 			switch (opt_event_type) {
 			case LTTNG_EVENT_ALL: /* Default behavior is tracepoint */
-				/* Fall-through */
 			case LTTNG_EVENT_TRACEPOINT:
 				/* Copy name and type of the event */
 				ev->type = LTTNG_EVENT_TRACEPOINT;

@@ -671,7 +671,7 @@ std::optional<double> lttng::config::double_from_string(const char *text) noexce
 
 namespace {
 ATTR_FORMAT_PRINTF(2, 3)
-void xml_error_handler(void *ctx __attribute__((unused)), const char *format, ...)
+void xml_error_handler([[maybe_unused]] void *ctx, const char *format, ...)
 {
 	char *errMsg;
 	va_list args;

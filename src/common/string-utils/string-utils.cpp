@@ -71,7 +71,7 @@ void strutils_normalize_star_glob_pattern(char *pattern)
 				goto end;
 			}
 
-			/* fall through */
+			[[fallthrough]];
 		default:
 			got_star = false;
 			break;

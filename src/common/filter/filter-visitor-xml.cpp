@@ -62,7 +62,7 @@ static int recursive_visit_print_expression(struct filter_node *node, FILE *stre
 			"<float_constant value=\"%lg\"/>\n",
 			node->u.expression.u.float_constant);
 		break;
-	case AST_EXP_IDENTIFIER: /* fall-through */
+	case AST_EXP_IDENTIFIER:
 	case AST_EXP_GLOBAL_IDENTIFIER:
 		print_tabs(stream, indent);
 		fprintf(stream,

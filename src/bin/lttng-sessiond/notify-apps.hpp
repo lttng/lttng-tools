@@ -14,8 +14,8 @@ bool launch_application_notification_thread(int apps_cmd_notify_pipe_read_fd);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
-static bool launch_application_notification_thread(int apps_cmd_notify_pipe_read_fd
-						   __attribute__((unused)))
+static bool
+launch_application_notification_thread([[maybe_unused]] int apps_cmd_notify_pipe_read_fd)
 {
 	return true;
 }

@@ -522,7 +522,6 @@ handle_status_to_error_code(enum lttng_process_attr_tracker_handle_status handle
 		return LTTNG_OK;
 	case LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_ERROR:
 	default:
-		/* fall-through. */
 		return LTTNG_ERR_UNK;
 	}
 }

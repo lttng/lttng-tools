@@ -48,7 +48,7 @@ read_event_notifier_notification_header(int pipe_fd);
  * is never created, so the helper should never be reached.
  */
 inline std::optional<event_notifier_notification_header>
-read_event_notifier_notification_header(int pipe_fd __attribute__((unused)))
+read_event_notifier_notification_header([[maybe_unused]] int pipe_fd)
 {
 	std::abort();
 	return std::nullopt;

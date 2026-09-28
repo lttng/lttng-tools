@@ -110,8 +110,7 @@ private:
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
-inline enum event_notifier_error_accounting_status init(std::uint64_t index_count
-							__attribute__((unused)))
+inline enum event_notifier_error_accounting_status init([[maybe_unused]] std::uint64_t index_count)
 {
 	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 }
@@ -121,18 +120,18 @@ inline void fini()
 }
 
 inline enum event_notifier_error_accounting_status
-register_event_notifier(const struct lttng_trigger *trigger __attribute__((unused)),
-			std::uint64_t *error_counter_index __attribute__((unused)))
+register_event_notifier([[maybe_unused]] const struct lttng_trigger *trigger,
+			[[maybe_unused]] std::uint64_t *error_counter_index)
 {
 	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 }
 
-inline void unregister_event_notifier(const struct lttng_trigger *trigger __attribute__((unused)))
+inline void unregister_event_notifier([[maybe_unused]] const struct lttng_trigger *trigger)
 {
 }
 
 inline enum event_notifier_error_accounting_status
-get_event_notifier_error_count(const struct lttng_trigger *trigger __attribute__((unused)),
+get_event_notifier_error_count([[maybe_unused]] const struct lttng_trigger *trigger,
 			       std::uint64_t *count)
 {
 	*count = 0;

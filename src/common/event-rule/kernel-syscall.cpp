@@ -213,9 +213,9 @@ lttng_event_rule_kernel_syscall_get_internal_filter_bytecode(const struct lttng_
 }
 
 enum lttng_event_rule_generate_exclusions_status
-lttng_event_rule_kernel_syscall_generate_exclusions(const struct lttng_event_rule *rule
-						    __attribute__((unused)),
-						    struct lttng_event_exclusion **exclusions)
+lttng_event_rule_kernel_syscall_generate_exclusions(
+	[[maybe_unused]] const struct lttng_event_rule *rule,
+	struct lttng_event_exclusion **exclusions)
 {
 	/* Unsupported. */
 	*exclusions = nullptr;

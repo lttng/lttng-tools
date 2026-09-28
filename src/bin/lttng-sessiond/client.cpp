@@ -624,7 +624,7 @@ int create_kernel_session(const ltt_session::locked_ref& session)
 /*
  * Count number of session permitted by uid/gid.
  */
-unsigned int lttng_sessions_count(uid_t uid, gid_t gid __attribute__((unused)))
+unsigned int lttng_sessions_count(uid_t uid, [[maybe_unused]] gid_t gid)
 {
 	unsigned int i = 0;
 	const struct ltt_session_list *session_list = session_get_list();
@@ -1386,7 +1386,7 @@ int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_error)
 			ret = LTTNG_ERR_AGENT_TRACING_DISABLED;
 			goto error;
 		}
-		/* Fallthrough */
+		[[fallthrough]];
 	case LTTNG_DOMAIN_UST:
 	{
 		if (!ust_app_supported()) {
@@ -1605,10 +1605,10 @@ skip_domain:
 		ret = LTTNG_OK;
 		break;
 	}
-	case LTTCOMM_SESSIOND_COMMAND_LIST_MAP_CHANNELS: /* Fallthrough */
-	case LTTCOMM_SESSIOND_COMMAND_GET_MAP_CHANNEL_BY_NAME: /* Fallthrough */
-	case LTTCOMM_SESSIOND_COMMAND_LIST_MAP_GROUPS: /* Fallthrough */
-	case LTTCOMM_SESSIOND_COMMAND_LIST_MAP_KEYS: /* Fallthrough */
+	case LTTCOMM_SESSIOND_COMMAND_LIST_MAP_CHANNELS:
+	case LTTCOMM_SESSIOND_COMMAND_GET_MAP_CHANNEL_BY_NAME:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_MAP_GROUPS:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_MAP_KEYS:
 	case LTTCOMM_SESSIOND_COMMAND_SAMPLE_MAP_GROUP:
 	{
 		struct lttng_dynamic_buffer reply;
@@ -2562,7 +2562,7 @@ void cleanup_client_thread(void *data)
 	lttng_pipe_destroy(quit_pipe);
 }
 
-void thread_init_cleanup(void *data __attribute__((unused)))
+void thread_init_cleanup([[maybe_unused]] void *data)
 {
 	set_thread_status(false);
 }

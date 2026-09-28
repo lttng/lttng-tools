@@ -186,7 +186,7 @@
  * initval - the previous hash, or an arbitrary value
  */
 namespace {
-uint32_t __attribute__((unused)) hashword(const uint32_t *k, size_t length, uint32_t initval)
+[[maybe_unused]] uint32_t hashword(const uint32_t *k, size_t length, uint32_t initval)
 {
 	uint32_t a, b, c;
 
@@ -206,9 +206,11 @@ uint32_t __attribute__((unused)) hashword(const uint32_t *k, size_t length, uint
 	/* handle the last 3 uint32_t's */
 	switch (length) { /* all the case statements fall through */
 	case 3:
-		c += k[2]; /* fall through */
+		c += k[2];
+		[[fallthrough]];
 	case 2:
-		b += k[1]; /* fall through */
+		b += k[1];
+		[[fallthrough]];
 	case 1:
 		a += k[0];
 		final(a, b, c);
@@ -225,7 +227,7 @@ uint32_t __attribute__((unused)) hashword(const uint32_t *k, size_t length, uint
  * initialized with seeds.  If you pass in (*pb)==0, the output (*pc) will be
  * the same as the return value from hashword().
  */
-void __attribute__((unused)) hashword2(const uint32_t *k, size_t length, uint32_t *pc, uint32_t *pb)
+[[maybe_unused]] void hashword2(const uint32_t *k, size_t length, uint32_t *pc, uint32_t *pb)
 {
 	uint32_t a, b, c;
 
@@ -245,14 +247,14 @@ void __attribute__((unused)) hashword2(const uint32_t *k, size_t length, uint32_
 	switch (length) {
 	case 3:
 		c += k[2];
-		/* fall through */
+		[[fallthrough]];
 	case 2:
 		b += k[1];
-		/* fall through */
+		[[fallthrough]];
 	case 1:
 		a += k[0];
 		final(a, b, c);
-		/* fall through */
+		[[fallthrough]];
 	case 0: /* case 0: nothing left to add */
 		break;
 	}
@@ -287,8 +289,9 @@ void __attribute__((unused)) hashword2(const uint32_t *k, size_t length, uint32_
  * acceptable.  Do NOT use for cryptographic purposes.
  */
 namespace {
-LTTNG_NO_SANITIZE_ADDRESS
-__attribute__((unused)) uint32_t hashlittle(const void *key, size_t length, uint32_t initval)
+[[maybe_unused]] LTTNG_NO_SANITIZE_ADDRESS uint32_t hashlittle(const void *key,
+							       size_t length,
+							       uint32_t initval)
 {
 	uint32_t a, b, c;
 	union {
@@ -387,28 +390,36 @@ __attribute__((unused)) uint32_t hashlittle(const void *key, size_t length, uint
 			a += k[0];
 			break;
 		case 11:
-			c += ((uint32_t) k8[10]) << 16; /* fall through */
+			c += ((uint32_t) k8[10]) << 16;
+			[[fallthrough]];
 		case 10:
-			c += ((uint32_t) k8[9]) << 8; /* fall through */
+			c += ((uint32_t) k8[9]) << 8;
+			[[fallthrough]];
 		case 9:
-			c += k8[8]; /* fall through */
+			c += k8[8];
+			[[fallthrough]];
 		case 8:
 			b += k[1];
 			a += k[0];
 			break;
 		case 7:
-			b += ((uint32_t) k8[6]) << 16; /* fall through */
+			b += ((uint32_t) k8[6]) << 16;
+			[[fallthrough]];
 		case 6:
-			b += ((uint32_t) k8[5]) << 8; /* fall through */
+			b += ((uint32_t) k8[5]) << 8;
+			[[fallthrough]];
 		case 5:
-			b += k8[4]; /* fall through */
+			b += k8[4];
+			[[fallthrough]];
 		case 4:
 			a += k[0];
 			break;
 		case 3:
-			a += ((uint32_t) k8[2]) << 16; /* fall through */
+			a += ((uint32_t) k8[2]) << 16;
+			[[fallthrough]];
 		case 2:
-			a += ((uint32_t) k8[1]) << 8; /* fall through */
+			a += ((uint32_t) k8[1]) << 8;
+			[[fallthrough]];
 		case 1:
 			a += k8[0];
 			break;
@@ -438,31 +449,36 @@ __attribute__((unused)) uint32_t hashlittle(const void *key, size_t length, uint
 			a += k[0] + (((uint32_t) k[1]) << 16);
 			break;
 		case 11:
-			c += ((uint32_t) k8[10]) << 16; /* fall through */
+			c += ((uint32_t) k8[10]) << 16;
+			[[fallthrough]];
 		case 10:
 			c += k[4];
 			b += k[2] + (((uint32_t) k[3]) << 16);
 			a += k[0] + (((uint32_t) k[1]) << 16);
 			break;
 		case 9:
-			c += k8[8]; /* fall through */
+			c += k8[8];
+			[[fallthrough]];
 		case 8:
 			b += k[2] + (((uint32_t) k[3]) << 16);
 			a += k[0] + (((uint32_t) k[1]) << 16);
 			break;
 		case 7:
-			b += ((uint32_t) k8[6]) << 16; /* fall through */
+			b += ((uint32_t) k8[6]) << 16;
+			[[fallthrough]];
 		case 6:
 			b += k[2];
 			a += k[0] + (((uint32_t) k[1]) << 16);
 			break;
 		case 5:
-			b += k8[4]; /* fall through */
+			b += k8[4];
+			[[fallthrough]];
 		case 4:
 			a += k[0] + (((uint32_t) k[1]) << 16);
 			break;
 		case 3:
-			a += ((uint32_t) k8[2]) << 16; /* fall through */
+			a += ((uint32_t) k8[2]) << 16;
+			[[fallthrough]];
 		case 2:
 			a += k[0];
 			break;
@@ -496,27 +512,38 @@ __attribute__((unused)) uint32_t hashlittle(const void *key, size_t length, uint
 
 		switch (length) { /* all the case statements fall through */
 		case 12:
-			c += ((uint32_t) k[11]) << 24; /* fall through */
+			c += ((uint32_t) k[11]) << 24;
+			[[fallthrough]];
 		case 11:
-			c += ((uint32_t) k[10]) << 16; /* fall through */
+			c += ((uint32_t) k[10]) << 16;
+			[[fallthrough]];
 		case 10:
-			c += ((uint32_t) k[9]) << 8; /* fall through */
+			c += ((uint32_t) k[9]) << 8;
+			[[fallthrough]];
 		case 9:
-			c += k[8]; /* fall through */
+			c += k[8];
+			[[fallthrough]];
 		case 8:
-			b += ((uint32_t) k[7]) << 24; /* fall through */
+			b += ((uint32_t) k[7]) << 24;
+			[[fallthrough]];
 		case 7:
-			b += ((uint32_t) k[6]) << 16; /* fall through */
+			b += ((uint32_t) k[6]) << 16;
+			[[fallthrough]];
 		case 6:
-			b += ((uint32_t) k[5]) << 8; /* fall through */
+			b += ((uint32_t) k[5]) << 8;
+			[[fallthrough]];
 		case 5:
-			b += k[4]; /* fall through */
+			b += k[4];
+			[[fallthrough]];
 		case 4:
-			a += ((uint32_t) k[3]) << 24; /* fall through */
+			a += ((uint32_t) k[3]) << 24;
+			[[fallthrough]];
 		case 3:
-			a += ((uint32_t) k[2]) << 16; /* fall through */
+			a += ((uint32_t) k[2]) << 16;
+			[[fallthrough]];
 		case 2:
-			a += ((uint32_t) k[1]) << 8; /* fall through */
+			a += ((uint32_t) k[1]) << 8;
+			[[fallthrough]];
 		case 1:
 			a += k[0];
 			break;

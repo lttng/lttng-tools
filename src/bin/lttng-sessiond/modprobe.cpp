@@ -350,11 +350,11 @@ int probes_capacity;
 /*
  * @brief Logging function for libkmod integration.
  */
-static ATTR_FORMAT_PRINTF(6, 0) void log_kmod(void *data __attribute__((unused)),
-					      int priority __attribute__((unused)),
-					      const char *file __attribute__((unused)),
-					      int line __attribute__((unused)),
-					      const char *fn __attribute__((unused)),
+static ATTR_FORMAT_PRINTF(6, 0) void log_kmod([[maybe_unused]] void *data,
+					      [[maybe_unused]] int priority,
+					      [[maybe_unused]] const char *file,
+					      [[maybe_unused]] int line,
+					      [[maybe_unused]] const char *fn,
 					      const char *format,
 					      va_list args)
 {

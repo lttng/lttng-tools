@@ -361,10 +361,9 @@ lttng_event_rule_jul_logging_get_internal_filter_bytecode(const struct lttng_eve
 	return jul_logging->internal_filter.bytecode;
 }
 
-enum lttng_event_rule_generate_exclusions_status
-lttng_event_rule_jul_logging_generate_exclusions(const struct lttng_event_rule *rule
-						 __attribute__((unused)),
-						 struct lttng_event_exclusion **_exclusions)
+enum lttng_event_rule_generate_exclusions_status lttng_event_rule_jul_logging_generate_exclusions(
+	[[maybe_unused]] const struct lttng_event_rule *rule,
+	struct lttng_event_exclusion **_exclusions)
 {
 	/* Unsupported. */
 	*_exclusions = nullptr;
@@ -811,7 +810,7 @@ end:
 }
 
 namespace {
-bool log_level_rule_valid(const struct lttng_log_level_rule *rule __attribute__((unused)))
+bool log_level_rule_valid([[maybe_unused]] const struct lttng_log_level_rule *rule)
 {
 	/*
 	 * JUL custom log levels are possible and can span the entire int32

@@ -97,7 +97,7 @@ namespace {
 /*
  * Signal handler for the daemon
  */
-void sighandler(int sig, siginfo_t *siginfo, void *arg __attribute__((unused)))
+void sighandler(int sig, siginfo_t *siginfo, [[maybe_unused]] void *arg)
 {
 	if (sig == SIGINT && sigintcount++ == 0) {
 		DBG("ignoring first SIGINT");
@@ -352,8 +352,7 @@ auto tpp_consumerd = static_cast<std::unique_ptr<
 	lttng::memory::create_deleter_class<void, lttng::tracepoints::details::tracepoints_unload>::
 		deleter>>(nullptr);
 
-void load_tracepoints() __attribute__((unused));
-void load_tracepoints()
+[[maybe_unused]] void load_tracepoints()
 {
 	::tpp_common = std::move(tracepoints_load("libtpp-common.so"));
 	::tpp_consumerd = std::move(tracepoints_load("libtpp-consumerd.so"));

@@ -51,8 +51,7 @@ int ust_consumer_send_channel_to_ust(lttng::sessiond::ust::app *app,
 #ifdef HAVE_LIBLTTNG_UST_CTL
 int ust_consumer_metadata_request(struct consumer_socket *sock);
 #else
-static inline int ust_consumer_metadata_request(struct consumer_socket *sock
-						__attribute__((unused)))
+static inline int ust_consumer_metadata_request([[maybe_unused]] struct consumer_socket *sock)
 {
 	return -ENOSYS;
 }

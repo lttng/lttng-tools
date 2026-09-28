@@ -417,7 +417,7 @@ end:
 } /* namespace */
 
 namespace {
-bool shutdown_timer_thread(void *data __attribute__((unused)))
+bool shutdown_timer_thread([[maybe_unused]] void *data)
 {
 	return kill(getpid(), LTTNG_SESSIOND_SIG_EXIT) == 0;
 }

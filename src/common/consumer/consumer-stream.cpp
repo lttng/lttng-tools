@@ -238,7 +238,7 @@ void ctf_packet_index_populate(struct ctf_packet_index *index,
 	};
 }
 
-ssize_t consumer_stream_consume_mmap(struct lttng_consumer_local_data *ctx __attribute__((unused)),
+ssize_t consumer_stream_consume_mmap([[maybe_unused]] struct lttng_consumer_local_data *ctx,
 				     struct lttng_consumer_stream *stream,
 				     const struct stream_subbuffer *subbuffer)
 {
@@ -342,7 +342,7 @@ ssize_t consumer_stream_consume_splice(struct lttng_consumer_local_data *ctx,
 
 int consumer_stream_send_index(lttng_consumer_stream& stream,
 			       const struct stream_subbuffer *subbuffer,
-			       struct lttng_consumer_local_data *ctx __attribute__((unused)))
+			       [[maybe_unused]] struct lttng_consumer_local_data *ctx)
 {
 	off_t packet_offset = 0;
 	struct ctf_packet_index index = {};
@@ -785,8 +785,8 @@ end:
  */
 namespace {
 int post_consume_open_new_packet(lttng_consumer_stream& stream,
-				 const struct stream_subbuffer *subbuffer __attribute__((unused)),
-				 struct lttng_consumer_local_data *ctx __attribute__((unused)))
+				 [[maybe_unused]] const struct stream_subbuffer *subbuffer,
+				 [[maybe_unused]] struct lttng_consumer_local_data *ctx)
 {
 	int ret = 0;
 
@@ -833,10 +833,10 @@ end:
 	return ret;
 }
 
-int post_consume_update_metadata_coherent_flag(lttng_consumer_stream& stream,
-					       const struct stream_subbuffer *subbuffer,
-					       struct lttng_consumer_local_data *ctx
-					       __attribute__((unused)))
+int post_consume_update_metadata_coherent_flag(
+	lttng_consumer_stream& stream,
+	const struct stream_subbuffer *subbuffer,
+	[[maybe_unused]] struct lttng_consumer_local_data *ctx)
 {
 	const auto original_state = stream.is_metadata_coherent;
 
@@ -1593,7 +1593,7 @@ end:
 	return ret;
 }
 
-ssize_t metadata_bucket_consume(struct lttng_consumer_local_data *unused __attribute__((unused)),
+ssize_t metadata_bucket_consume([[maybe_unused]] struct lttng_consumer_local_data *unused,
 				struct lttng_consumer_stream *stream,
 				const struct stream_subbuffer *subbuffer)
 {

@@ -607,7 +607,6 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		/* Translate and save channel type. */
 		switch (msg.u.channel.type) {
 		case CONSUMER_CHANNEL_TYPE_DATA_PER_CPU:
-			/* Fallthrough */
 		case CONSUMER_CHANNEL_TYPE_METADATA:
 			new_channel->type = (consumer_channel_type) msg.u.channel.type;
 			break;
@@ -1767,7 +1766,7 @@ end:
 }
 
 int put_next_subbuffer(struct lttng_consumer_stream *stream,
-		       struct stream_subbuffer *subbuffer __attribute__((unused)))
+		       [[maybe_unused]] struct stream_subbuffer *subbuffer)
 {
 	const int ret = kernctl_put_next_subbuf(stream->wait_fd);
 
@@ -1798,7 +1797,7 @@ bool is_get_next_check_metadata_available(int tracer_fd)
 }
 
 int signal_metadata(struct lttng_consumer_stream *stream,
-		    struct lttng_consumer_local_data *ctx __attribute__((unused)))
+		    [[maybe_unused]] struct lttng_consumer_local_data *ctx)
 {
 	ASSERT_LOCKED(stream->metadata_rdv_lock);
 	return pthread_cond_broadcast(&stream->metadata_rdv) ? -errno : 0;

@@ -106,7 +106,6 @@ const char *get_consumer_domain()
 	case LTTNG_CONSUMER_KERNEL:
 		return DEFAULT_KERNEL_TRACE_DIR;
 	case LTTNG_CONSUMER64_UST:
-		/* Fall-through. */
 	case LTTNG_CONSUMER32_UST:
 		return DEFAULT_UST_TRACE_DIR;
 	default:
@@ -1187,7 +1186,6 @@ int consumer_add_channel(struct lttng_consumer_channel *channel,
 	if (channel->wait_fd != -1) {
 		switch (channel->type) {
 		case CONSUMER_CHANNEL_TYPE_DATA_PER_CPU:
-			/* Fallthrough */
 		case CONSUMER_CHANNEL_TYPE_DATA_PER_CHANNEL:
 			notify_channel_pipe(ctx, channel, -1, CONSUMER_CHANNEL_ADD);
 			break;

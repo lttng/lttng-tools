@@ -392,7 +392,7 @@ end:
 	return ret;
 }
 
-int cmd_list_output(int argc __attribute__((unused)), const char **argv __attribute__((unused)))
+int cmd_list_output([[maybe_unused]] int argc, [[maybe_unused]] const char **argv)
 {
 	int ret;
 

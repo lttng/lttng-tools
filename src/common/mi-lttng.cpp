@@ -2058,7 +2058,6 @@ int mi_lttng_event(struct mi_writer *writer,
 		break;
 	}
 	case LTTNG_EVENT_FUNCTION:
-		/* Fallthrough */
 	case LTTNG_EVENT_PROBE:
 		ret = mi_lttng_event_function_probe(writer, event);
 		break;
@@ -2069,7 +2068,6 @@ int mi_lttng_event(struct mi_writer *writer,
 		ret = mi_lttng_event_userspace_probe(writer, event);
 		break;
 	case LTTNG_EVENT_ALL:
-		/* Fallthrough */
 	default:
 		break;
 	}

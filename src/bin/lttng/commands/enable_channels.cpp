@@ -271,7 +271,6 @@ int enable_channel(char *session_name, char *channel_list)
 		dom.type = LTTNG_DOMAIN_KERNEL;
 		switch (opt_buffer_type) {
 		case -1:
-			/* fall-through */
 		case LTTNG_BUFFER_GLOBAL:
 			dom.buf_type = LTTNG_BUFFER_GLOBAL;
 			break;
@@ -295,7 +294,6 @@ int enable_channel(char *session_name, char *channel_list)
 			dom.buf_type = LTTNG_BUFFER_PER_UID;
 			break;
 		case LTTNG_BUFFER_PER_PID:
-			/* fall-through */
 		case LTTNG_BUFFER_PER_UID:
 			dom.buf_type = static_cast<enum lttng_buffer_type>(opt_buffer_type);
 			break;

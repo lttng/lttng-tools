@@ -130,7 +130,7 @@ create_integer_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 					const lttng_ust_ctl_field *end,
 					const session_attributes& session_attributes,
 					const lttng_ust_ctl_field **next_ust_ctl_field,
-					lsu::ctl_field_quirks quirks __attribute__((unused)))
+					[[maybe_unused]] lsu::ctl_field_quirks quirks)
 {
 	if (current >= end) {
 		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
@@ -159,7 +159,7 @@ create_floating_point_type_from_ust_ctl_fields(const lttng_ust_ctl_field *curren
 					       const lttng_ust_ctl_field *end,
 					       const session_attributes& session_attributes,
 					       const lttng_ust_ctl_field **next_ust_ctl_field,
-					       lsu::ctl_field_quirks quirks __attribute__((unused)))
+					       [[maybe_unused]] lsu::ctl_field_quirks quirks)
 {
 	if (current >= end) {
 		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
@@ -188,7 +188,7 @@ create_enumeration_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 					    const lttng_ust_ctl_field *end,
 					    const session_attributes& session_attributes,
 					    const lttng_ust_ctl_field **next_ust_ctl_field,
-					    lsu::ctl_field_quirks quirks __attribute__((unused)))
+					    [[maybe_unused]] lsu::ctl_field_quirks quirks)
 {
 	if (current >= end) {
 		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
@@ -257,13 +257,12 @@ create_enumeration_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 	}
 }
 
-lst::type::cuptr
-create_string_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
-				       const lttng_ust_ctl_field *end,
-				       const session_attributes& session_attributes
-				       __attribute__((unused)),
-				       const lttng_ust_ctl_field **next_ust_ctl_field,
-				       lsu::ctl_field_quirks quirks __attribute__((unused)))
+lst::type::cuptr create_string_type_from_ust_ctl_fields(
+	const lttng_ust_ctl_field *current,
+	const lttng_ust_ctl_field *end,
+	[[maybe_unused]] const session_attributes& session_attributes,
+	const lttng_ust_ctl_field **next_ust_ctl_field,
+	[[maybe_unused]] lsu::ctl_field_quirks quirks)
 {
 	if (current >= end) {
 		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
@@ -305,7 +304,7 @@ create_array_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 				      const lttng_ust_ctl_field *end,
 				      const session_attributes& session_attributes,
 				      const lttng_ust_ctl_field **next_ust_ctl_field,
-				      lsu::ctl_field_quirks quirks __attribute__((unused)))
+				      [[maybe_unused]] lsu::ctl_field_quirks quirks)
 {
 	if (current >= end) {
 		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
@@ -433,7 +432,7 @@ lst::type::cuptr create_sequence_type_from_ust_ctl_fields(
 	const publish_field_fn& publish_field,
 	lst::field_location::root lookup_root,
 	lst::field_location::elements& current_field_location_elements,
-	lsu::ctl_field_quirks quirks __attribute__((unused)))
+	[[maybe_unused]] lsu::ctl_field_quirks quirks)
 {
 	if (current >= end) {
 		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
@@ -588,13 +587,12 @@ lst::type::cuptr create_sequence_nestable_type_from_ust_ctl_fields(
 		sequence_alignment, std::move(element_type), std::move(length_field_location));
 }
 
-lst::type::cuptr
-create_structure_field_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
-					   const lttng_ust_ctl_field *end,
-					   const session_attributes& session_attributes
-					   __attribute__((unused)),
-					   const lttng_ust_ctl_field **next_ust_ctl_field,
-					   lsu::ctl_field_quirks quirks __attribute__((unused)))
+lst::type::cuptr create_structure_field_from_ust_ctl_fields(
+	const lttng_ust_ctl_field *current,
+	const lttng_ust_ctl_field *end,
+	[[maybe_unused]] const session_attributes& session_attributes,
+	const lttng_ust_ctl_field **next_ust_ctl_field,
+	[[maybe_unused]] lsu::ctl_field_quirks quirks)
 {
 	if (current >= end) {
 		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
@@ -786,9 +784,9 @@ lst::type::cuptr create_variant_field_from_ust_ctl_fields(
 lst::type::cuptr create_fixed_length_blob_type_from_ust_ctl_fields(
 	const lttng_ust_ctl_field *current,
 	const lttng_ust_ctl_field *end,
-	const session_attributes& session_attributes __attribute__((unused)),
+	[[maybe_unused]] const session_attributes& session_attributes,
 	const lttng_ust_ctl_field **next_ust_ctl_field,
-	lsu::ctl_field_quirks quirks __attribute__((unused)))
+	[[maybe_unused]] lsu::ctl_field_quirks quirks)
 {
 	if (current >= end) {
 		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
@@ -817,12 +815,12 @@ lst::type::cuptr create_fixed_length_blob_type_from_ust_ctl_fields(
 lst::type::cuptr create_dynamic_length_blob_type_from_ust_ctl_fields(
 	const lttng_ust_ctl_field *current,
 	const lttng_ust_ctl_field *end,
-	const session_attributes& session_attributes __attribute__((unused)),
+	[[maybe_unused]] const session_attributes& session_attributes,
 	const lttng_ust_ctl_field **next_ust_ctl_field,
 	const lookup_field_fn& lookup_field,
 	lst::field_location::root lookup_root,
 	lst::field_location::elements& current_field_location_elements,
-	lsu::ctl_field_quirks quirks __attribute__((unused)))
+	[[maybe_unused]] lsu::ctl_field_quirks quirks)
 {
 	if (current >= end) {
 		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(

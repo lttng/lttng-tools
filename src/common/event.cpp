@@ -532,7 +532,6 @@ deserialize_event_type_payload:
 	/* Event type specific payload */
 	switch (local_event->type) {
 	case LTTNG_EVENT_FUNCTION:
-		/* Fallthrough */
 	case LTTNG_EVENT_PROBE:
 	{
 		struct lttng_payload_view probe_attr_view = lttng_payload_view_from_view(
@@ -642,11 +641,8 @@ deserialize_event_type_payload:
 		break;
 	}
 	case LTTNG_EVENT_TRACEPOINT:
-		/* Fallthrough */
 	case LTTNG_EVENT_ALL:
-		/* Fallthrough */
 	case LTTNG_EVENT_SYSCALL:
-		/* Fallthrough */
 	case LTTNG_EVENT_NOOP:
 		/* Nothing to do here */
 		break;
@@ -808,7 +804,6 @@ int lttng_event_serialize(const struct lttng_event *event,
 	/* Event type specific payload */
 	switch (event->type) {
 	case LTTNG_EVENT_FUNCTION:
-		/* Fallthrough */
 	case LTTNG_EVENT_PROBE:
 		ret = lttng_event_probe_attr_serialize(&event->attr.probe, payload);
 		if (ret) {
@@ -865,9 +860,7 @@ int lttng_event_serialize(const struct lttng_event *event,
 		break;
 	}
 	case LTTNG_EVENT_TRACEPOINT:
-		/* Fallthrough */
 	case LTTNG_EVENT_ALL:
-		/* Fallthrough */
 	default:
 		/* Nothing to do here. */
 		break;

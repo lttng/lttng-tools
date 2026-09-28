@@ -67,8 +67,7 @@ auto tpp_client = static_cast<std::unique_ptr<
 	lttng::memory::create_deleter_class<void, lttng::tracepoints::details::tracepoints_unload>::
 		deleter>>(nullptr);
 
-void load_tracepoints() __attribute__((unused));
-void load_tracepoints()
+[[maybe_unused]] void load_tracepoints()
 {
 	::tpp_common = std::move(tracepoints_load("libtpp-common.so"));
 	::tpp_client = std::move(tracepoints_load("libtpp-client.so"));
