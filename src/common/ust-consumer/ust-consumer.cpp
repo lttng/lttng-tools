@@ -1684,8 +1684,12 @@ void report_channel_memory_usage_by_streams_mincore(lttng_consumer_channel& chan
 		const std::size_t rest = total_page_count % sizeof(vec);
 		char *current_addr = static_cast<char *>(backend_addr);
 
-		const auto report_mincore = [&vec, &report, &current_addr, page_size](
-						    const std::size_t page_count) {
+		std::uint64_t stream_logical_size = 0, stream_physical_size = 0;
+		const auto measure_mincore = [&vec,
+					      &current_addr,
+					      &stream_logical_size,
+					      &stream_physical_size,
+					      page_size](const std::size_t page_count) {
 			const std::uint64_t logical_size = page_size * page_count;
 			const int result = ::mincore(current_addr, logical_size, vec);
 
@@ -1713,17 +1717,21 @@ void report_channel_memory_usage_by_streams_mincore(lttng_consumer_channel& chan
 				physical_size = logical_size;
 			}
 
-			report(logical_size, physical_size);
+			stream_logical_size += logical_size;
+			stream_physical_size += physical_size;
 			current_addr += logical_size;
 		};
 
 		for (std::size_t i = 0; i < loop_count; ++i) {
-			report_mincore(sizeof(vec));
+			measure_mincore(sizeof(vec));
 		}
 
 		if (rest > 0) {
-			report_mincore(rest);
+			measure_mincore(rest);
 		}
+
+		/* The session daemon expects exactly one entry per stream. */
+		report(stream_logical_size, stream_physical_size);
 	}
 }
 
@@ -1843,8 +1851,8 @@ void lttng_ustconsumer_get_channels_memory_usage(int socket, std::uint64_t chann
 
 			report_channel_memory_usage(
 				*channel,
-				[&reply_payload, channel_key](const uint64_t logical_size,
-							      const uint64_t physical_size) {
+				[&reply_payload, &total_stream_count, channel_key](
+					const uint64_t logical_size, const uint64_t physical_size) {
 					const lttcomm_stream_memory_usage stream_memory_usage = {
 						.channel_key = channel_key,
 						.logical_size_bytes = logical_size,
@@ -1857,9 +1865,8 @@ void lttng_ustconsumer_get_channels_memory_usage(int socket, std::uint64_t chann
 							     reinterpret_cast<const std::uint8_t *>(
 								     &stream_memory_usage) +
 								     sizeof(stream_memory_usage));
+					total_stream_count++;
 				});
-
-			total_stream_count += channel->nr_stream_fds;
 		}
 		generic_reply_header.ret_code = LTTCOMM_CONSUMERD_SUCCESS;
 	} catch (const std::exception& exn) {
