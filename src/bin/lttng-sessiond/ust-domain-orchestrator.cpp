@@ -3892,7 +3892,7 @@ void ls::ust::domain_orchestrator::_for_each_consumer_stream_group(
 								   false,
 								   stream_group->get_trace_class(),
 								   *sg_key.channel_config,
-								   std::optional<uid_t>(sg_key.uid),
+								   std::optional(sg_key.uid),
 								   std::nullopt });
 		}
 
@@ -3906,7 +3906,7 @@ void ls::ust::domain_orchestrator::_for_each_consumer_stream_group(
 								   true,
 								   *trace_class,
 								   metadata_config,
-								   std::optional<uid_t>(tc_key.uid),
+								   std::optional(tc_key.uid),
 								   std::nullopt });
 		}
 	} else {
@@ -3922,7 +3922,7 @@ void ls::ust::domain_orchestrator::_for_each_consumer_stream_group(
 				stream_group->get_trace_class(),
 				*sg_key.channel_config,
 				std::nullopt,
-				std::optional<pid_t>(sg_key.app->pid) });
+				std::optional(sg_key.app->pid) });
 		}
 
 		for (const auto& [app, trace_class] : _per_pid_trace_classes) {
@@ -3934,14 +3934,13 @@ void ls::ust::domain_orchestrator::_for_each_consumer_stream_group(
 				application_abi::ABI_32 :
 				application_abi::ABI_64;
 
-			visitor(_consumer_stream_group_descriptor{
-				app_abi,
-				trace_class->_metadata_key,
-				true,
-				*trace_class,
-				metadata_config,
-				std::nullopt,
-				std::optional<pid_t>(app->pid) });
+			visitor(_consumer_stream_group_descriptor{ app_abi,
+								   trace_class->_metadata_key,
+								   true,
+								   *trace_class,
+								   metadata_config,
+								   std::nullopt,
+								   std::optional(app->pid) });
 		}
 	}
 }

@@ -126,7 +126,7 @@ public:
 			return std::nullopt;
 		}
 
-		auto cmd = std::optional<CommandType>(std::move(_queue.front()));
+		auto cmd = std::optional(std::move(_queue.front()));
 		_queue.pop_front();
 		return cmd;
 	}
@@ -144,7 +144,7 @@ public:
 			return std::nullopt;
 		}
 
-		auto cmd = std::optional<CommandType>(std::move(_queue.front()));
+		auto cmd = std::optional(std::move(_queue.front()));
 		_queue.pop_front();
 		return cmd;
 	}

@@ -1549,7 +1549,7 @@ void ltt_session::_const_session_put(const ltt_session *session)
 
 std::unique_lock<std::mutex> ls::lock_session_list()
 {
-	return std::unique_lock<std::mutex>(the_session_list.lock);
+	return std::unique_lock(the_session_list.lock);
 }
 
 bool ltt_session::has_pending_recording_channel_memory_reclamation(

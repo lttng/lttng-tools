@@ -66,7 +66,7 @@ std::optional<lttng_uuid> sample_clock_uuid()
 		LTTNG_THROW_ERROR("Failed to parse UUID from string");
 	}
 
-	return std::optional<lttng_uuid>{ uuid };
+	return uuid;
 }
 
 const char *sample_clock_name()

@@ -3738,7 +3738,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				msg.u.reclaim_channels_memory.key_count,
 				age_limit,
 				msg.u.reclaim_channels_memory.require_consumed,
-				std::optional<std::uint64_t>(memory_reclaim_request_token));
+				std::optional(memory_reclaim_request_token));
 		} catch (lttng::consumerd::exceptions::channel_not_found_error& ex) {
 			ERR_FMT("Failed to reclaim memory of channels: {}", ex.what());
 			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;

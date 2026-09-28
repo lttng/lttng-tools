@@ -7765,7 +7765,7 @@ void cmd_reclaim_channel_memory(ltt_session::locked_ref& session,
 
 	const auto reclaim_older_than = cmd_ctx->lsm.u.reclaim_channel_memory.older_than_age_us >
 			0 ?
-		std::optional<std::chrono::microseconds>(std::chrono::microseconds(
+		std::optional(std::chrono::microseconds(
 			cmd_ctx->lsm.u.reclaim_channel_memory.older_than_age_us)) :
 		std::nullopt;
 

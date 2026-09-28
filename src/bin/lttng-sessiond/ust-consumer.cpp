@@ -146,8 +146,8 @@ int ask_channel_creation(lsu::app_session *ua_sess,
 
 	const auto watchdog_timer_interval = recording_config &&
 			recording_config->watchdog_timer_period_us ?
-		std::optional<uint64_t>(*recording_config->watchdog_timer_period_us) :
-		std::optional<uint64_t>{};
+		std::optional(*recording_config->watchdog_timer_period_us) :
+		std::nullopt;
 
 	const auto tracefile_size = recording_config ?
 		recording_config->trace_file_size_limit_bytes.value_or(0) :
