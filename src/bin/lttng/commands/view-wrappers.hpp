@@ -557,11 +557,9 @@ private:
 		auto event_map = _build_event_map(event_count);
 		auto field_map = _build_field_map(field_count);
 
-		for (const auto& event_entry : event_map) {
-			auto& key = event_entry.first;
-			const auto event_ptr = event_entry.second;
+		for (const auto& [event_key, event_ptr] : event_map) {
 			tracepoint_field_set fields;
-			auto field_it = field_map.find(key);
+			auto field_it = field_map.find(event_key);
 
 			if (field_it != field_map.end()) {
 				/*
@@ -4119,7 +4117,7 @@ public:
 	 */
 	domain_set domains() const
 	{
-		auto list_result = [this]() {
+		const auto [domain_count, lib_domains] = [this]() {
 			lttng_domain *raw_lib_domains = nullptr;
 			const auto count = lttng_list_domains(name().data(), &raw_lib_domains);
 
@@ -4133,11 +4131,10 @@ public:
 				lttng::make_unique_wrapper<lttng_domain, lttng::memory::free>(
 					raw_lib_domains));
 		}();
-		const auto count = list_result.first;
-		const auto lib_domains = std::move(list_result.second);
 
-		LTTNG_ASSERT(count == 0 || lib_domains);
-		return domain_set(name(), lib_domains.get(), static_cast<unsigned int>(count));
+		LTTNG_ASSERT(domain_count == 0 || lib_domains);
+		return domain_set(
+			name(), lib_domains.get(), static_cast<unsigned int>(domain_count));
 	}
 
 	/*

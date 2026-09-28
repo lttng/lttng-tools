@@ -1735,8 +1735,8 @@ lttng_session_trigger_list_build(const struct notification_thread_state *state,
 		lttng_session_trigger_list_create(session_name, state->session_triggers_ht);
 
 	/* The map is keyed by tracer token, hence in registration order. */
-	for (const auto& trigger_entry : state->triggers_by_token) {
-		auto *const trigger = trigger_entry.second->trigger;
+	for (const auto& [token, trigger_ht_element] : state->triggers_by_token) {
+		auto *const trigger = trigger_ht_element->trigger;
 
 		if (!trigger_applies_to_session(trigger, session_name)) {
 			continue;
@@ -1850,8 +1850,8 @@ int handle_notification_thread_command_add_channel(struct notification_thread_st
 	 * Build a list of all triggers applying to the new channel. The map is
 	 * keyed by tracer token, hence in registration order.
 	 */
-	for (const auto& trigger_entry : state->triggers_by_token) {
-		auto *const trigger = trigger_entry.second->trigger;
+	for (const auto& [token, trigger_ht_element] : state->triggers_by_token) {
+		auto *const trigger = trigger_ht_element->trigger;
 
 		if (!trigger_applies_to_channel(trigger, new_channel_info)) {
 			continue;
@@ -2430,9 +2430,7 @@ int handle_notification_thread_command_list_triggers(
 		goto end;
 	}
 
-	for (const auto& trigger_entry : state->triggers_by_token) {
-		auto *const trigger_ht_element = trigger_entry.second;
-
+	for (const auto& [token, trigger_ht_element] : state->triggers_by_token) {
 		/*
 		 * Only return the triggers to which the client has access.
 		 * The root user has visibility over all triggers.
@@ -2496,10 +2494,10 @@ int handle_notification_thread_command_get_trigger(struct notification_thread_st
 	const char *trigger_name;
 	uid_t trigger_owner_uid;
 
-	for (const auto& trigger_entry : state->triggers_by_token) {
-		if (lttng_trigger_is_equal(trigger, trigger_entry.second->trigger)) {
+	for (const auto& [token, trigger_ht_element] : state->triggers_by_token) {
+		if (lttng_trigger_is_equal(trigger, trigger_ht_element->trigger)) {
 			/* Take one reference on the return trigger. */
-			*registered_trigger = trigger_entry.second->trigger;
+			*registered_trigger = trigger_ht_element->trigger;
 			lttng_trigger_get(*registered_trigger);
 			ret = 0;
 			cmd_result = LTTNG_OK;
@@ -2883,8 +2881,8 @@ int handle_notification_thread_command_register_trigger(struct notification_thre
 	}
 
 	/* Reject the registration of a duplicate trigger. */
-	for (const auto& trigger_entry : state->triggers_by_token) {
-		if (lttng_trigger_is_equal(trigger, trigger_entry.second->trigger)) {
+	for (const auto& [token, registered_element] : state->triggers_by_token) {
+		if (lttng_trigger_is_equal(trigger, registered_element->trigger)) {
 			/* Not a fatal error, simply report it to the client. */
 			*cmd_result = LTTNG_ERR_TRIGGER_EXISTS;
 			ret = 0;
@@ -3232,9 +3230,9 @@ int handle_notification_thread_command_unregister_trigger(struct notification_th
 
 	const lttng::urcu::read_lock_guard read_lock;
 
-	for (const auto& trigger_entry : state->triggers_by_token) {
-		if (lttng_trigger_is_equal(trigger, trigger_entry.second->trigger)) {
-			trigger_ht_element = trigger_entry.second;
+	for (const auto& [token, registered_element] : state->triggers_by_token) {
+		if (lttng_trigger_is_equal(trigger, registered_element->trigger)) {
+			trigger_ht_element = registered_element;
 			break;
 		}
 	}

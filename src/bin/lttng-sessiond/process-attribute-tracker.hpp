@@ -174,8 +174,8 @@ public:
 	{
 		LTTNG_ASSERT(_policy == tracking_policy::INCLUDE_SET);
 
-		const auto result = _inclusion_set.insert(std::move(value));
-		if (!result.second) {
+		const auto [value_it, inserted] = _inclusion_set.insert(std::move(value));
+		if (!inserted) {
 			LTTNG_THROW_PROCESS_ATTRIBUTE_ALREADY_TRACKED();
 		}
 	}

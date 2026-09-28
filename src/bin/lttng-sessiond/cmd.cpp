@@ -1116,9 +1116,8 @@ unsigned int list_events_from_domain(const lsc::domain& domain,
 
 	unsigned int nb_events = 0;
 
-	for (const auto& event_pair : channel_config.event_rules) {
-		const auto& event_config = *event_pair.second;
-		serialize_event_rule_config_to_payload(event_config, reply_payload);
+	for (const auto& [event_rule, event_config] : channel_config.event_rules) {
+		serialize_event_rule_config_to_payload(*event_config, reply_payload);
 		nb_events++;
 	}
 

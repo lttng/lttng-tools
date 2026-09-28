@@ -71,8 +71,8 @@ void key_registry::_refresh_cache() const
 
 		const auto flat_index = array_indexes[0];
 
-		const auto inserted = _indexes_by_key.emplace(std::move(key), flat_index);
-		_keys_by_index.emplace(flat_index, inserted.first->first.c_str());
+		const auto [key_it, inserted] = _indexes_by_key.emplace(std::move(key), flat_index);
+		_keys_by_index.emplace(flat_index, key_it->first.c_str());
 	}
 }
 
@@ -120,8 +120,8 @@ void key_registry::for_each(const sessiond::map::key_registry::element_visitor& 
 
 	_refresh_cache();
 
-	for (const auto& kv : _indexes_by_key) {
-		visitor(kv.first, kv.second);
+	for (const auto& [key, index] : _indexes_by_key) {
+		visitor(key, index);
 	}
 }
 

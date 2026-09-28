@@ -136,10 +136,9 @@ nljson::json json_int_field_class_from_type(const EnumerationType& int_type)
 		int_type, { { "mappings", [&] {
 				     nljson::json json_mappings;
 
-				     for (auto& nameMappingPair : *int_type.mappings_) {
-					     json_mappings[nameMappingPair.first] =
-						     json_int_ranges_from_int_type_mapping(
-							     nameMappingPair.second);
+				     for (auto& [name, mapping] : *int_type.mappings_) {
+					     json_mappings[name] =
+						     json_int_ranges_from_int_type_mapping(mapping);
 				     }
 
 				     return json_mappings;

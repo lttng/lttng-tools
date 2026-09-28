@@ -420,8 +420,9 @@ void add_unique_ust_app_event(lsu::app_channel& channel, std::unique_ptr<lsu::ap
 {
 	LTTNG_ASSERT(event);
 
-	const auto result = channel.events.emplace(&event->event_rule_config, std::move(event));
-	LTTNG_ASSERT(result.second);
+	const auto [event_it, inserted] =
+		channel.events.emplace(&event->event_rule_config, std::move(event));
+	LTTNG_ASSERT(inserted);
 }
 } /* anonymous namespace */
 

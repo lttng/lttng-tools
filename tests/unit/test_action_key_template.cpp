@@ -187,11 +187,11 @@ void test_invalid_inputs()
 
 	LTTNG_ASSERT(cases.size() == NUM_INVALID_CASES);
 
-	for (const auto& test_case : cases) {
+	for (const auto& [input, explanation] : cases) {
 		struct lttng_key_template *const parsed =
-			lttng_key_template_create_from_string(test_case.first);
+			lttng_key_template_create_from_string(input);
 
-		ok(parsed == nullptr, "Parser rejects `%s` (%s)", test_case.first, test_case.second);
+		ok(parsed == nullptr, "Parser rejects `%s` (%s)", input, explanation);
 		lttng_key_template_destroy(parsed);
 	}
 }

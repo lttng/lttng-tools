@@ -162,10 +162,9 @@ public:
 private:
 	std::string _render() const override
 	{
-		const auto val_unit_pair = utils_value_unit_from_size(_bytes);
+		const auto [value, unit] = utils_value_unit_from_size(_bytes);
 
-		return lttng::mint_format(
-			"[!]{:.2f}[/] {}", val_unit_pair.first, val_unit_pair.second);
+		return lttng::mint_format("[!]{:.2f}[/] {}", value, unit);
 	}
 
 	std::uint64_t _bytes;
@@ -177,9 +176,9 @@ std::string format_period(const std::uint64_t period_us)
 		return lttng::mint_format("[!]{}[/] {}", period_us, USEC_UNIT);
 	}
 
-	const auto value_unit = utils_value_unit_from_period(period_us);
+	const auto [value, unit] = utils_value_unit_from_period(period_us);
 
-	return lttng::mint_format("[!]{:.2f}[/] {}", value_unit.first, value_unit.second);
+	return lttng::mint_format("[!]{:.2f}[/] {}", value, unit);
 }
 
 /*
@@ -1396,15 +1395,15 @@ std::unique_ptr<node> process_filter_node_from_domain(const lttng::cli::domain& 
 		auto all_include_all = true;
 		auto all_exclude_all = true;
 
-		for (const auto& attr_tracker_pair : trackers) {
-			const auto policy = attr_tracker_pair.second.tracking_policy();
+		for (const auto& [process_attr, tracker] : trackers) {
+			const auto policy = tracker.tracking_policy();
 
 			if (policy != LTTNG_TRACKING_POLICY_INCLUDE_ALL) {
 				all_include_all = false;
 			}
 
 			if (policy == LTTNG_TRACKING_POLICY_INCLUDE_SET) {
-				const auto inclusion_set = attr_tracker_pair.second.inclusion_set();
+				const auto inclusion_set = tracker.inclusion_set();
 
 				if (inclusion_set && !inclusion_set->empty()) {
 					all_exclude_all = false;
@@ -1520,8 +1519,8 @@ std::string format_memory_usage(const std::uint64_t value,
 	static const std::string base_mint_fmt("[!]{:>7.2f}[/] {:>3} / [!]{:>7.2f}[/] {:>3}");
 	static const auto set_mint_fmt = lttng::format("[b*]{}[/]", base_mint_fmt);
 	static const auto total_mint_fmt = lttng::format("[y]{}[/]", base_mint_fmt);
-	const auto value_pair = utils_value_unit_from_size(value);
-	const auto max_pair = utils_value_unit_from_size(max);
+	const auto [scaled_value, value_unit] = utils_value_unit_from_size(value);
+	const auto [scaled_max, max_unit] = utils_value_unit_from_size(max);
 
 	auto& mint_fmt = [&]() -> const std::string& {
 		if (type == memory_usage_line_type::TOTAL) {
@@ -1534,8 +1533,7 @@ std::string format_memory_usage(const std::uint64_t value,
 		}
 	}();
 
-	return lttng::mint_format(
-		mint_fmt, value_pair.first, value_pair.second, max_pair.first, max_pair.second);
+	return lttng::mint_format(mint_fmt, scaled_value, value_unit, scaled_max, max_unit);
 }
 
 /*

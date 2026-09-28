@@ -1119,9 +1119,8 @@ void save_events_from_config(session_config::writer& writer,
 {
 	writer.open_element(config_element_events);
 
-	for (const auto& event_pair : channel_config.event_rules) {
-		const auto& event_config = *event_pair.second;
-		save_event_from_event_rule(writer, event_config);
+	for (const auto& [event_rule, event_config] : channel_config.event_rules) {
+		save_event_from_event_rule(writer, *event_config);
 	}
 
 	/* Close events element */

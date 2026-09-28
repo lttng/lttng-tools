@@ -136,8 +136,8 @@ ls::modules::domain_orchestrator::~domain_orchestrator()
 	 * Unregister all stream groups from the hotplug handler thread so their
 	 * fds are removed from the poller before being closed.
 	 */
-	for (auto& entry : _stream_groups) {
-		auto& group = *entry.second;
+	for (auto& [channel_config, owned_group] : _stream_groups) {
+		auto& group = *owned_group;
 
 		if (!group.is_sent_to_consumer()) {
 			/* Stream group was never registered for hotplug monitoring. */
@@ -163,8 +163,8 @@ ls::modules::domain_orchestrator::~domain_orchestrator()
 			auto& socket = _get_consumer_socket();
 			const lttng::pthread::lock_guard socket_lock(socket.lock);
 
-			for (const auto& entry : _stream_groups) {
-				const auto& group = *entry.second;
+			for (const auto& [channel_config, owned_group] : _stream_groups) {
+				const auto& group = *owned_group;
 
 				if (!group.is_sent_to_consumer()) {
 					continue;
@@ -190,8 +190,8 @@ ls::modules::domain_orchestrator::~domain_orchestrator()
 	 * and ensures the notification thread doesn't hold stale references to
 	 * destroyed channels.
 	 */
-	for (const auto& entry : _stream_groups) {
-		const auto& group = *entry.second;
+	for (const auto& [channel_config, owned_group] : _stream_groups) {
+		const auto& group = *owned_group;
 
 		if (!group.is_published_to_notification_thread()) {
 			continue;
@@ -1067,8 +1067,8 @@ void ls::modules::domain_orchestrator::_send_stream_groups_to_consumer(consumer_
 	}
 
 	/* Send channels and their streams. */
-	for (auto& entry : _stream_groups) {
-		auto& group = *entry.second;
+	for (auto& [channel_config, owned_group] : _stream_groups) {
+		auto& group = *owned_group;
 
 		if (group.is_sent_to_consumer()) {
 			continue;
@@ -1123,8 +1123,8 @@ void ls::modules::domain_orchestrator::start()
 	}
 
 	/* Open streams for each stream group that hasn't had streams created yet. */
-	for (auto& entry : _stream_groups) {
-		auto& group = *entry.second;
+	for (auto& [channel_config, owned_group] : _stream_groups) {
+		auto& group = *owned_group;
 
 		if (group.stream_count() == 0) {
 			_open_streams(group);
@@ -1143,8 +1143,8 @@ void ls::modules::domain_orchestrator::start()
 	_active = true;
 
 	/* Register the channels for hotplug monitoring. */
-	for (auto& entry : _stream_groups) {
-		auto& group = *entry.second;
+	for (auto& [channel_config, owned_group] : _stream_groups) {
+		auto& group = *owned_group;
 
 		if (group.is_monitored_for_hotplug()) {
 			continue;
@@ -1191,8 +1191,8 @@ void ls::modules::domain_orchestrator::stop()
 	}
 
 	/* Flush all channel buffers after stopping. */
-	for (const auto& entry : _stream_groups) {
-		_flush_stream_group_streams(*entry.second);
+	for (const auto& [channel_config, group] : _stream_groups) {
+		_flush_stream_group_streams(*group);
 	}
 
 	_active = false;
@@ -1224,8 +1224,8 @@ void ls::modules::domain_orchestrator::rotate()
 	auto& kconsumer_socket = _get_consumer_socket();
 
 	/* For each stream group, ask the consumer to rotate it. */
-	for (const auto& entry : _stream_groups) {
-		const auto stream_group_key = entry.second->consumer_key();
+	for (const auto& [channel_config, group] : _stream_groups) {
+		const auto stream_group_key = group->consumer_key();
 
 		DBG_FMT("Rotate kernel stream group: key={}", stream_group_key);
 		const auto ret = consumer_rotate_channel(
@@ -1259,8 +1259,8 @@ void ls::modules::domain_orchestrator::clear()
 	 * Done before the recording buffer clearing below so that it
 	 * always runs, including on the snapshot session early return.
 	 */
-	for (auto& entry : _map_channels) {
-		entry.second->clear();
+	for (auto& [map_config, channel] : _map_channels) {
+		channel->clear();
 	}
 
 	/* No recording channels to clear: nothing to do. */
@@ -1272,8 +1272,8 @@ void ls::modules::domain_orchestrator::clear()
 	auto& kconsumer_socket = _get_consumer_socket();
 
 	/* For each stream group, ask the consumer to clear it. */
-	for (const auto& entry : _stream_groups) {
-		const auto stream_group_key = entry.second->consumer_key();
+	for (const auto& [channel_config, group] : _stream_groups) {
+		const auto stream_group_key = group->consumer_key();
 
 		DBG_FMT("Clear kernel stream group: key={}", stream_group_key);
 		const auto ret = consumer_clear_channel(&kconsumer_socket, stream_group_key);
@@ -1325,8 +1325,8 @@ void ls::modules::domain_orchestrator::open_packets()
 	const lttng::urcu::read_lock_guard read_lock;
 	auto& kconsumer_socket = _get_consumer_socket();
 
-	for (const auto& entry : _stream_groups) {
-		const auto stream_group_key = entry.second->consumer_key();
+	for (const auto& [channel_config, group] : _stream_groups) {
+		const auto stream_group_key = group->consumer_key();
 
 		DBG_FMT("Open packet of kernel stream group: key={}", stream_group_key);
 		const auto open_ret =
@@ -1383,10 +1383,10 @@ void ls::modules::domain_orchestrator::record_snapshot(
 	});
 
 	/* For each stream group, ask the consumer to snapshot it. */
-	for (const auto& entry : _stream_groups) {
+	for (const auto& [channel_config, group] : _stream_groups) {
 		const auto status =
 			consumer_snapshot_channel(&kconsumer_socket,
-						  entry.second->consumer_key(),
+						  group->consumer_key(),
 						  &snapshot_consumer,
 						  0,
 						  &trace_path.get()[consumer_path_offset],
@@ -1577,9 +1577,9 @@ void ls::modules::domain_orchestrator::add_map_channel_event_rule(
 	}
 
 	const sessiond::map::event_rule_action_key key{ &event_rule, &incr_map_value_action };
-	const auto inserted = channel._rules.emplace(
+	const auto [rule_it, inserted] = channel._rules.emplace(
 		user_token, modules::map_channel::rule_record{ key, std::move(event_fd) });
-	LTTNG_ASSERT(inserted.second);
+	LTTNG_ASSERT(inserted);
 }
 
 void ls::modules::domain_orchestrator::remove_map_channel_event_rule(
@@ -1620,8 +1620,8 @@ void ls::modules::domain_orchestrator::increment_map_value(
 void ls::modules::domain_orchestrator::for_each_map_channel(
 	const std::function<void(const ls::map::map_channel&)>& visitor) const
 {
-	for (const auto& entry : _map_channels) {
-		visitor(*entry.second);
+	for (const auto& [map_config, channel] : _map_channels) {
+		visitor(*channel);
 	}
 }
 

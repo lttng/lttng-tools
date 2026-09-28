@@ -60,11 +60,12 @@ public:
 	struct uid_value_type_key_hash {
 		std::size_t operator()(const uid_value_type_key& key) const noexcept
 		{
-			auto seed =
-				std::hash<std::uint32_t>{}(static_cast<std::uint32_t>(key.first));
+			const auto& [uid, value_type] = key;
+			auto seed = std::hash<std::uint32_t>{}(static_cast<std::uint32_t>(uid));
+
 			seed = lttng::utils::hash_combine(
 				seed,
-				std::hash<std::uint8_t>{}(static_cast<std::uint8_t>(key.second)));
+				std::hash<std::uint8_t>{}(static_cast<std::uint8_t>(value_type)));
 			return seed;
 		}
 	};

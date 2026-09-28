@@ -45,8 +45,8 @@ void key_registry::for_each(const sessiond::map::key_registry::element_visitor& 
 {
 	const std::lock_guard<std::mutex> guard(_lock);
 
-	for (const auto& kv : _indexes_by_key) {
-		visitor(kv.first, kv.second);
+	for (const auto& [key, index] : _indexes_by_key) {
+		visitor(key, index);
 	}
 }
 
@@ -80,8 +80,8 @@ std::uint64_t key_registry::resolve_or_allocate(const std::string& key)
 
 	const auto index = static_cast<std::uint64_t>(_keys_by_index.size());
 
-	const auto inserted = _indexes_by_key.emplace(key, index);
-	_keys_by_index.emplace_back(inserted.first->first.c_str());
+	const auto [key_it, inserted] = _indexes_by_key.emplace(key, index);
+	_keys_by_index.emplace_back(key_it->first.c_str());
 	return index;
 }
 

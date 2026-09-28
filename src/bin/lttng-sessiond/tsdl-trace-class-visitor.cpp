@@ -236,15 +236,13 @@ private:
 		auto new_mappings = std::make_shared<
 			typename lst::typed_enumeration_type<MappingIntegerType>::mappings>();
 
-		for (const auto& nameMappingPair : *original_selector.mappings_) {
-			if (unsafe_names_found.find(nameMappingPair.first.c_str()) ==
-			    unsafe_names_found.end()) {
+		for (const auto& [name, mapping] : *original_selector.mappings_) {
+			if (unsafe_names_found.find(name.c_str()) == unsafe_names_found.end()) {
 				/* Mapping is safe, simply copy it. */
-				new_mappings->emplace(nameMappingPair);
+				new_mappings->emplace(name, mapping);
 			} else {
 				/* Unsafe mapping, rename it and keep the rest of its attributes. */
-				new_mappings->emplace(lttng::format("_{}", nameMappingPair.first),
-						      nameMappingPair.second);
+				new_mappings->emplace(lttng::format("_{}", name), mapping);
 			}
 		}
 
@@ -557,10 +555,8 @@ private:
 
 		const auto mappings_indentation_level = _indentation_level + 1;
 
-		for (auto& nameMappingPair : *type.mappings_) {
-			auto& name = nameMappingPair.first;
-
-			for (auto& range : nameMappingPair.second.ranges) {
+		for (auto& [name, mapping] : *type.mappings_) {
+			for (auto& range : mapping.ranges) {
 				_description.resize(
 					_description.size() + mappings_indentation_level, '\t');
 

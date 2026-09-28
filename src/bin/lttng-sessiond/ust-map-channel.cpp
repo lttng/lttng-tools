@@ -134,13 +134,13 @@ void map_channel::for_each_group(const group_visitor& visitor) const
 
 	switch (configuration().buffer_ownership) {
 	case config::ownership_model_t::PER_UID:
-		for (const auto& entry : _per_uid_groups) {
-			const auto& group = *entry.second;
+		for (const auto& [uid_value_type, owned_group] : _per_uid_groups) {
+			const auto& group = *owned_group;
 
 			visitor(lsm::group_description{ lsm::group_identity{
 								lsm::group_type::USER_PER_USER,
 								static_cast<std::uint64_t>(
-									entry.first.first),
+									uid_value_type.first),
 								group.value_type() },
 							std::nullopt },
 				group);
@@ -148,15 +148,15 @@ void map_channel::for_each_group(const group_visitor& visitor) const
 
 		break;
 	case config::ownership_model_t::PER_PID:
-		for (const auto& entry : _per_app_groups) {
-			const auto& app = *entry.first;
-			const auto& group = *entry.second;
+		for (const auto& [app, owned_group] : _per_app_groups) {
+			const auto& group = *owned_group;
 
-			visitor(lsm::group_description{ lsm::group_identity{
-								lsm::group_type::USER_PER_PROCESS,
-								static_cast<std::uint64_t>(app.pid),
-								group.value_type() },
-							app.name },
+			visitor(
+				lsm::group_description{
+					lsm::group_identity{ lsm::group_type::USER_PER_PROCESS,
+							     static_cast<std::uint64_t>(app->pid),
+							     group.value_type() },
+					app->name },
 				group);
 		}
 
@@ -177,12 +177,12 @@ void map_channel::for_each_group(const group_visitor& visitor) const
 void map_channel::_clear_tracer_groups()
 {
 	/* Exactly one of the two storage maps is populated */
-	for (auto& entry : _per_uid_groups) {
-		_clear_group_elements(*entry.second);
+	for (auto& [uid_value_type, group] : _per_uid_groups) {
+		_clear_group_elements(*group);
 	}
 
-	for (auto& entry : _per_app_groups) {
-		_clear_group_elements(*entry.second);
+	for (auto& [app, group] : _per_app_groups) {
+		_clear_group_elements(*group);
 	}
 }
 

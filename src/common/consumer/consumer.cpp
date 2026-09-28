@@ -2751,10 +2751,9 @@ void *consumer_thread_data_poll(void *data)
 		}
 
 		/* Take care of high priority channels first. */
-		for (const auto& revents_entry : ready_revents) {
+		for (const auto& [fd, revents] : ready_revents) {
 			health_code_update();
 
-			const auto fd = revents_entry.first;
 			if (fd == data_fd || fd == wakeup_fd) {
 				continue;
 			}
@@ -2767,7 +2766,7 @@ void *consumer_thread_data_poll(void *data)
 
 			const auto stream_idx = stream_it->second;
 
-			if (revents_entry.second & LPOLLPRI) {
+			if (revents & LPOLLPRI) {
 				DBG_FMT("Urgent read on fd={}", fd);
 				high_prio = 1;
 				len = ctx->on_buffer_ready(local_streams[stream_idx], ctx, false);

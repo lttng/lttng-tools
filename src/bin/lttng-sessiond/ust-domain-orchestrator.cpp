@@ -287,28 +287,26 @@ ls::ust::domain_orchestrator::~domain_orchestrator()
 	}
 
 	/* Unregister all per-UID trace classes from the global index. */
-	for (const auto& entry : _per_uid_trace_classes) {
+	for (const auto& [tc_key, trace_class] : _per_uid_trace_classes) {
 		try {
 			the_trace_class_index->remove_per_uid(
-				_session.id,
-				static_cast<std::uint32_t>(entry.first.abi),
-				entry.first.uid);
+				_session.id, static_cast<std::uint32_t>(tc_key.abi), tc_key.uid);
 		} catch (const std::exception& ex) {
 			ERR_FMT("Failed to remove per-UID trace class from the global index during orchestrator destruction: session_name=`{}`, uid={}, error='{}'",
 				_session.name,
-				entry.first.uid,
+				tc_key.uid,
 				ex.what());
 		}
 	}
 
 	/* Unregister any remaining per-PID trace classes from the global index. */
-	for (const auto& entry : _per_pid_app_session_ids) {
+	for (const auto& [app, app_session_id] : _per_pid_app_session_ids) {
 		try {
-			the_trace_class_index->remove_per_pid(entry.second);
+			the_trace_class_index->remove_per_pid(app_session_id);
 		} catch (const std::exception& ex) {
 			ERR_FMT("Failed to remove per-PID trace class from the global index during orchestrator destruction: session_name=`{}`, app_session_id={}, error='{}'",
 				_session.name,
-				entry.second,
+				app_session_id,
 				ex.what());
 		}
 	}
@@ -685,10 +683,7 @@ void ls::ust::domain_orchestrator::_enable_channel_on_apps(lttng::c_string_view 
 {
 	const lttng::urcu::read_lock_guard read_lock;
 
-	for (const auto& app_session_pair : _app_sessions) {
-		auto *app = app_session_pair.first;
-		auto *ua_sess = app_session_pair.second.get();
-
+	for (const auto& [app, ua_sess] : _app_sessions) {
 		if (!ust_app_get(*app)) {
 			continue;
 		}
@@ -725,10 +720,7 @@ void ls::ust::domain_orchestrator::_disable_channel_on_apps(lttng::c_string_view
 {
 	const lttng::urcu::read_lock_guard read_lock;
 
-	for (const auto& app_session_pair : _app_sessions) {
-		auto *app = app_session_pair.first;
-		auto *ua_sess = app_session_pair.second.get();
-
+	for (const auto& [app, ua_sess] : _app_sessions) {
 		if (!ust_app_get(*app)) {
 			continue;
 		}
@@ -776,10 +768,7 @@ void ls::ust::domain_orchestrator::_create_event_on_apps(
 {
 	const lttng::urcu::read_lock_guard read_lock;
 
-	for (const auto& app_session_pair : _app_sessions) {
-		auto *app = app_session_pair.first;
-		auto *ua_sess = app_session_pair.second.get();
-
+	for (const auto& [app, ua_sess] : _app_sessions) {
 		if (!ust_app_get(*app)) {
 			continue;
 		}
@@ -820,10 +809,7 @@ void ls::ust::domain_orchestrator::_enable_event_on_apps(
 {
 	const lttng::urcu::read_lock_guard read_lock;
 
-	for (const auto& app_session_pair : _app_sessions) {
-		auto *app = app_session_pair.first;
-		auto *ua_sess = app_session_pair.second.get();
-
+	for (const auto& [app, ua_sess] : _app_sessions) {
 		if (!ust_app_get(*app)) {
 			continue;
 		}
@@ -872,10 +858,7 @@ void ls::ust::domain_orchestrator::_disable_event_on_apps(
 {
 	const lttng::urcu::read_lock_guard read_lock;
 
-	for (const auto& app_session_pair : _app_sessions) {
-		auto *app = app_session_pair.first;
-		auto *ua_sess = app_session_pair.second.get();
-
+	for (const auto& [app, ua_sess] : _app_sessions) {
 		if (!ust_app_get(*app)) {
 			continue;
 		}
@@ -924,10 +907,7 @@ void ls::ust::domain_orchestrator::_add_context_on_apps(
 {
 	const lttng::urcu::read_lock_guard read_lock;
 
-	for (const auto& app_session_pair : _app_sessions) {
-		auto *app = app_session_pair.first;
-		auto *ua_sess = app_session_pair.second.get();
-
+	for (const auto& [app, ua_sess] : _app_sessions) {
 		if (!ust_app_get(*app)) {
 			continue;
 		}
@@ -1844,9 +1824,9 @@ void ls::ust::domain_orchestrator::_synchronize_all_channels(ust::app_session& u
 			continue;
 		}
 
-		for (const auto& event_rule_entry : chan_config.event_rules) {
+		for (const auto& [event_rule, event_rule_config] : chan_config.event_rules) {
 			try {
-				_synchronize_channel_event(ua_chan, *event_rule_entry.second);
+				_synchronize_channel_event(ua_chan, *event_rule_config);
 			} catch (const lttng::runtime_error&) {
 				return;
 			}
@@ -2013,10 +1993,8 @@ void ls::ust::domain_orchestrator::_synchronize_app_map_channels(ust::app_sessio
 		 * key slots the denied key is deterministically that of the
 		 * most recently registered rule.
 		 */
-		for (const auto& rule_entry : channel._rules) {
-			const auto user_token = rule_entry.first;
-			const auto *const rule_event_rule = rule_entry.second.key.first;
-			const auto *const rule_action = rule_entry.second.key.second;
+		for (const auto& [user_token, rule] : channel._rules) {
+			const auto [rule_event_rule, rule_action] = rule.key;
 
 			try {
 				_install_rule_on_app(app,
@@ -2099,9 +2077,9 @@ void ls::ust::domain_orchestrator::_install_rule_on_app(ust::app& app,
 	app.command_socket.lock().enable(event_handle);
 
 	const counter_event_attachment_key key{ &channel, &event_rule, &incr_map_value_action };
-	const auto insertion =
+	const auto [inserted_it, inserted] =
 		ua_sess.counter_event_attachments.emplace(key, std::move(attachment));
-	LTTNG_ASSERT(insertion.second);
+	LTTNG_ASSERT(inserted);
 }
 
 void ls::ust::domain_orchestrator::_uninstall_rule_from_app(
@@ -2526,9 +2504,9 @@ void ls::ust::domain_orchestrator::_clear_quiescent_app_session(ust::app *app,
 	/* Clear quiescent state. */
 	switch (ua_sess->buffer_type) {
 	case LTTNG_BUFFER_PER_PID:
-		for (auto& chan_pair : ua_sess->channels) {
+		for (auto& [channel_name, ua_chan] : ua_sess->channels) {
 			health_code_update();
-			if (consumer_clear_quiescent_channel(socket, chan_pair.second->key)) {
+			if (consumer_clear_quiescent_channel(socket, ua_chan->key)) {
 				ERR("Error clearing quiescent state for consumer channel");
 				continue;
 			}
@@ -2581,15 +2559,13 @@ void ls::ust::domain_orchestrator::start()
 	if (buffer_type() == LTTNG_BUFFER_PER_PID) {
 		const lttng::urcu::read_lock_guard read_lock;
 
-		for (const auto& app_session_pair : _app_sessions) {
-			auto *app = app_session_pair.first;
-
+		for (const auto& [app, ua_sess] : _app_sessions) {
 			if (!ust_app_get(*app)) {
 				continue;
 			}
 
 			const ust_app_reference app_ref(app);
-			_clear_quiescent_app_session(app, app_session_pair.second.get());
+			_clear_quiescent_app_session(app, ua_sess.get());
 		}
 	}
 
@@ -2628,9 +2604,7 @@ void ls::ust::domain_orchestrator::stop()
 	{
 		const lttng::urcu::read_lock_guard read_lock;
 
-		for (const auto& app_session_pair : _app_sessions) {
-			auto *app = app_session_pair.first;
-
+		for (const auto& [app, ua_sess] : _app_sessions) {
 			if (!ust_app_get(*app)) {
 				continue;
 			}
@@ -2648,8 +2622,8 @@ void ls::ust::domain_orchestrator::stop()
 	if (buffer_type() == LTTNG_BUFFER_PER_PID) {
 		const lttng::urcu::read_lock_guard read_lock;
 
-		for (const auto& app_session_pair : _app_sessions) {
-			_flush_app_session(*app_session_pair.second);
+		for (const auto& [app, ua_sess] : _app_sessions) {
+			_flush_app_session(*ua_sess);
 		}
 	} else if (buffer_type() == LTTNG_BUFFER_PER_UID) {
 		_flush_per_uid_buffers();
@@ -2785,8 +2759,8 @@ void ls::ust::domain_orchestrator::clear()
 	 * Done before the recording buffer clearing below so that it
 	 * always runs.
 	 */
-	for (auto& entry : _map_channels) {
-		entry.second->clear();
+	for (auto& [channel_config, channel] : _map_channels) {
+		channel->clear();
 	}
 
 	auto *consumer = get_consumer_output_ptr();
@@ -2917,21 +2891,18 @@ void ls::ust::domain_orchestrator::_close_per_uid_metadata_on_consumer() const
 {
 	const lttng::urcu::read_lock_guard read_lock;
 
-	for (const auto& tc_entry : _per_uid_trace_classes) {
-		const auto& abi = tc_entry.first.abi;
-		const auto& trace_class = *tc_entry.second;
-
-		if (!trace_class._metadata_key) {
+	for (const auto& [tc_key, trace_class] : _per_uid_trace_classes) {
+		if (!trace_class->_metadata_key) {
 			continue;
 		}
 
-		auto *socket = consumer_find_socket_by_bitness(static_cast<int>(abi),
+		auto *socket = consumer_find_socket_by_bitness(static_cast<int>(tc_key.abi),
 							       _consumer_output.get());
 		if (!socket) {
 			continue;
 		}
 
-		(void) consumer_close_metadata(socket, trace_class._metadata_key);
+		(void) consumer_close_metadata(socket, trace_class->_metadata_key);
 	}
 }
 
@@ -2956,11 +2927,8 @@ void ls::ust::domain_orchestrator::record_snapshot(const struct consumer_output&
 void ls::ust::domain_orchestrator::_record_snapshot_per_uid(
 	const struct consumer_output& snapshot_consumer, std::uint64_t nb_packets_per_stream) const
 {
-	for (const auto& tc_entry : _per_uid_trace_classes) {
-		const auto& tc_key = tc_entry.first;
-		auto& trace_class = *tc_entry.second;
-
-		if (!trace_class._metadata_key) {
+	for (const auto& [tc_key, trace_class] : _per_uid_trace_classes) {
+		if (!trace_class->_metadata_key) {
 			/* Skip since no metadata is present. */
 			continue;
 		}
@@ -2989,18 +2957,17 @@ void ls::ust::domain_orchestrator::_record_snapshot_per_uid(
 		const auto *trace_path = &trace_path_raw[consumer_path_offset];
 
 		/* Snapshot data channels. */
-		for (const auto& sg_entry : _per_uid_stream_groups) {
-			if (sg_entry.first.uid != tc_key.uid || sg_entry.first.abi != tc_key.abi) {
+		for (const auto& [sg_key, stream_group] : _per_uid_stream_groups) {
+			if (sg_key.uid != tc_key.uid || sg_key.abi != tc_key.abi) {
 				continue;
 			}
 
-			const auto status =
-				consumer_snapshot_channel(socket,
-							  sg_entry.second->consumer_key(),
-							  &snapshot_consumer,
-							  0,
-							  trace_path,
-							  nb_packets_per_stream);
+			const auto status = consumer_snapshot_channel(socket,
+								      stream_group->consumer_key(),
+								      &snapshot_consumer,
+								      0,
+								      trace_path,
+								      nb_packets_per_stream);
 			if (status != LTTNG_OK) {
 				LTTNG_THROW_SNAPSHOT_FAILURE("Failed to snapshot UST data channel");
 			}
@@ -3008,7 +2975,7 @@ void ls::ust::domain_orchestrator::_record_snapshot_per_uid(
 
 		/* Snapshot metadata channel. */
 		const auto status = consumer_snapshot_channel(
-			socket, trace_class._metadata_key, &snapshot_consumer, 1, trace_path, 0);
+			socket, trace_class->_metadata_key, &snapshot_consumer, 1, trace_path, 0);
 		if (status != LTTNG_OK) {
 			LTTNG_THROW_SNAPSHOT_FAILURE("Failed to snapshot UST metadata channel");
 		}
@@ -3018,11 +2985,8 @@ void ls::ust::domain_orchestrator::_record_snapshot_per_uid(
 void ls::ust::domain_orchestrator::_record_snapshot_per_pid(
 	const struct consumer_output& snapshot_consumer, std::uint64_t nb_packets_per_stream) const
 {
-	for (const auto& tc_entry : _per_pid_trace_classes) {
-		const auto *app = tc_entry.first;
-		auto& trace_class = *tc_entry.second;
-
-		if (!trace_class._metadata_key) {
+	for (const auto& [app, trace_class] : _per_pid_trace_classes) {
+		if (!trace_class->_metadata_key) {
 			/* Skip since no metadata is present. */
 			continue;
 		}
@@ -3035,7 +2999,7 @@ void ls::ust::domain_orchestrator::_record_snapshot_per_pid(
 		 * maps are cleaned up.
 		 */
 		{
-			const auto locked_tc = trace_class.lock();
+			const auto locked_tc = trace_class->lock();
 
 			if (locked_tc->_metadata_closed) {
 				continue;
@@ -3071,18 +3035,17 @@ void ls::ust::domain_orchestrator::_record_snapshot_per_pid(
 		const auto *trace_path = &trace_path_raw[consumer_path_offset];
 
 		/* Snapshot data channels. */
-		for (const auto& sg_entry : _per_pid_stream_groups) {
-			if (sg_entry.first.app != app) {
+		for (const auto& [sg_key, stream_group] : _per_pid_stream_groups) {
+			if (sg_key.app != app) {
 				continue;
 			}
 
-			const auto status =
-				consumer_snapshot_channel(socket,
-							  sg_entry.second->consumer_key(),
-							  &snapshot_consumer,
-							  0,
-							  trace_path,
-							  nb_packets_per_stream);
+			const auto status = consumer_snapshot_channel(socket,
+								      stream_group->consumer_key(),
+								      &snapshot_consumer,
+								      0,
+								      trace_path,
+								      nb_packets_per_stream);
 			switch (status) {
 			case LTTNG_OK:
 				break;
@@ -3096,7 +3059,7 @@ void ls::ust::domain_orchestrator::_record_snapshot_per_pid(
 
 		/* Snapshot metadata channel. */
 		const auto status = consumer_snapshot_channel(
-			socket, trace_class._metadata_key, &snapshot_consumer, 1, trace_path, 0);
+			socket, trace_class->_metadata_key, &snapshot_consumer, 1, trace_path, 0);
 		switch (status) {
 		case LTTNG_OK:
 			break;
@@ -3121,8 +3084,8 @@ void ls::ust::domain_orchestrator::regenerate_metadata()
 		LTTNG_THROW_UST_METADATA_REGENERATION_UNSUPPORTED();
 	}
 
-	for (const auto& tc_entry : _per_uid_trace_classes) {
-		tc_entry.second->regenerate_metadata();
+	for (const auto& [tc_key, trace_class] : _per_uid_trace_classes) {
+		trace_class->regenerate_metadata();
 	}
 }
 
@@ -3136,10 +3099,7 @@ void ls::ust::domain_orchestrator::regenerate_statedump()
 
 	const lttng::urcu::read_lock_guard read_lock;
 
-	for (const auto& app_session_pair : _app_sessions) {
-		auto *app = app_session_pair.first;
-		auto *ua_sess = app_session_pair.second.get();
-
+	for (const auto& [app, ua_sess] : _app_sessions) {
 		if (!ust_app_get(*app)) {
 			continue;
 		}
@@ -3173,14 +3133,11 @@ void ls::ust::domain_orchestrator::create_channel_subdirectories(
 
 	if (_default_buffer_ownership ==
 	    lsc::recording_channel_configuration::ownership_model_t::PER_UID) {
-		for (const auto& tc_entry : _per_uid_trace_classes) {
-			const auto uid = tc_entry.first.uid;
-			const auto bits_per_long = static_cast<unsigned int>(tc_entry.first.abi);
-
+		for (const auto& [tc_key, trace_class] : _per_uid_trace_classes) {
 			const auto pathname = fmt::format(DEFAULT_UST_TRACE_DIR
 							  "/uid/{}/{}-bit/" DEFAULT_INDEX_DIR,
-							  uid,
-							  bits_per_long);
+							  tc_key.uid,
+							  static_cast<unsigned int>(tc_key.abi));
 
 			const auto chunk_status = lttng_trace_chunk_create_subdirectory(
 				&trace_chunk, pathname.c_str());
@@ -3212,8 +3169,8 @@ void ls::ust::domain_orchestrator::create_channel_subdirectories(
 		 * ua_sess accessible: the orchestrator entry is removed (under
 		 * session lock) before the app session is torn down.
 		 */
-		for (const auto& tc_entry : _per_pid_trace_classes) {
-			const auto *ua_sess = _find_app_session(*tc_entry.first);
+		for (const auto& [app, trace_class] : _per_pid_trace_classes) {
+			const auto *ua_sess = _find_app_session(*app);
 			if (!ua_sess) {
 				continue;
 			}
@@ -3578,9 +3535,7 @@ ls::ust::domain_orchestrator::get_channel_memory_usage(
 
 void ls::ust::domain_orchestrator::_save_per_pid_stats_on_departure(const ust::app_session& ua_sess)
 {
-	for (const auto& chan_pair : ua_sess.channels) {
-		const auto *ua_chan = chan_pair.second.get();
-
+	for (const auto& [channel_name, ua_chan] : ua_sess.channels) {
 		/* Metadata channels do not have discarded/lost counters. */
 		if (ua_chan->channel_config.channel_type() ==
 		    lsc::channel_configuration::channel_type_t::METADATA) {
@@ -3638,9 +3593,9 @@ ls::ust::domain_orchestrator::get_recording_channel_runtime_stats(
 		uint64_t consumer_chan_key = 0;
 		bool found = false;
 
-		for (const auto& sg_entry : _per_uid_stream_groups) {
-			if (sg_entry.first.channel_config == &channel_config) {
-				consumer_chan_key = sg_entry.second->consumer_key();
+		for (const auto& [sg_key, stream_group] : _per_uid_stream_groups) {
+			if (sg_key.channel_config == &channel_config) {
+				consumer_chan_key = stream_group->consumer_key();
 				found = true;
 				break;
 			}
@@ -3677,12 +3632,12 @@ ls::ust::domain_orchestrator::get_recording_channel_runtime_stats(
 		 * channel configuration and query the consumer daemon for
 		 * each app's stats.
 		 */
-		for (const auto& sg_entry : _per_pid_stream_groups) {
-			if (sg_entry.first.channel_config != &channel_config) {
+		for (const auto& [sg_key, stream_group] : _per_pid_stream_groups) {
+			if (sg_key.channel_config != &channel_config) {
 				continue;
 			}
 
-			const auto consumer_chan_key = sg_entry.second->consumer_key();
+			const auto consumer_chan_key = stream_group->consumer_key();
 
 			if (is_overwrite) {
 				uint64_t lost = 0;
@@ -3800,9 +3755,9 @@ void ls::ust::domain_orchestrator::add_map_channel_event_rule(
 	 * Failed apps simply lack the per-app attachment.
 	 */
 	const sessiond::map::event_rule_action_key key{ &event_rule, &incr_map_value_action };
-	const auto inserted =
+	const auto [rule_it, inserted] =
 		channel._rules.emplace(user_token, ust::map_channel::rule_record{ key });
-	LTTNG_ASSERT(inserted.second);
+	LTTNG_ASSERT(inserted);
 
 	for (auto& app_session_entry : _app_sessions) {
 		auto& app = *app_session_entry.first;
@@ -3855,9 +3810,8 @@ void ls::ust::domain_orchestrator::remove_map_channel_event_rule(
 	auto& channel = *channel_it->second;
 
 	/* Drop every per-app attachment first, then the channel-level record. */
-	for (auto& app_session_entry : _app_sessions) {
-		_uninstall_rule_from_app(
-			*app_session_entry.second, channel, event_rule, incr_map_value_action);
+	for (auto& [app, ua_sess] : _app_sessions) {
+		_uninstall_rule_from_app(*ua_sess, channel, event_rule, incr_map_value_action);
 	}
 
 	const auto rule_it =
@@ -3886,8 +3840,8 @@ void ls::ust::domain_orchestrator::increment_map_value(
 void ls::ust::domain_orchestrator::for_each_map_channel(
 	const std::function<void(const ls::map::map_channel&)>& visitor) const
 {
-	for (const auto& entry : _map_channels) {
-		visitor(*entry.second);
+	for (const auto& [channel_config, channel] : _map_channels) {
+		visitor(*channel);
 	}
 }
 
@@ -3907,24 +3861,24 @@ std::uint64_t ls::ust::domain_orchestrator::get_size_one_more_packet_per_stream(
 
 	if (_default_buffer_ownership ==
 	    lsc::recording_channel_configuration::ownership_model_t::PER_UID) {
-		for (const auto& sg_entry : _per_uid_stream_groups) {
-			const auto& config = sg_entry.second->configuration();
+		for (const auto& [sg_key, stream_group] : _per_uid_stream_groups) {
+			const auto& config = stream_group->configuration();
 
 			if (cur_nr_packets >= config.subbuffer_count) {
 				continue;
 			}
 
-			tot_size += config.subbuffer_size_bytes * sg_entry.second->stream_count();
+			tot_size += config.subbuffer_size_bytes * stream_group->stream_count();
 		}
 	} else {
-		for (const auto& sg_entry : _per_pid_stream_groups) {
-			const auto& config = sg_entry.second->configuration();
+		for (const auto& [sg_key, stream_group] : _per_pid_stream_groups) {
+			const auto& config = stream_group->configuration();
 
 			if (cur_nr_packets >= config.subbuffer_count) {
 				continue;
 			}
 
-			tot_size += config.subbuffer_size_bytes * sg_entry.second->stream_count();
+			tot_size += config.subbuffer_size_bytes * stream_group->stream_count();
 		}
 	}
 
@@ -3938,64 +3892,62 @@ void ls::ust::domain_orchestrator::_for_each_consumer_stream_group(
 
 	if (_default_buffer_ownership ==
 	    lsc::recording_channel_configuration::ownership_model_t::PER_UID) {
-		for (const auto& sg_entry : _per_uid_stream_groups) {
-			visitor(_consumer_stream_group_descriptor{
-				sg_entry.first.abi,
-				sg_entry.second->consumer_key(),
-				false,
-				sg_entry.second->get_trace_class(),
-				*sg_entry.first.channel_config,
-				std::optional<uid_t>(sg_entry.first.uid),
-				std::nullopt });
+		for (const auto& [sg_key, stream_group] : _per_uid_stream_groups) {
+			visitor(_consumer_stream_group_descriptor{ sg_key.abi,
+								   stream_group->consumer_key(),
+								   false,
+								   stream_group->get_trace_class(),
+								   *sg_key.channel_config,
+								   std::optional<uid_t>(sg_key.uid),
+								   std::nullopt });
 		}
 
-		for (const auto& tc_entry : _per_uid_trace_classes) {
-			if (!tc_entry.second->_metadata_key) {
+		for (const auto& [tc_key, trace_class] : _per_uid_trace_classes) {
+			if (!trace_class->_metadata_key) {
 				continue;
 			}
 
-			visitor(_consumer_stream_group_descriptor{
-				tc_entry.first.abi,
-				tc_entry.second->_metadata_key,
-				true,
-				*tc_entry.second,
-				metadata_config,
-				std::optional<uid_t>(tc_entry.first.uid),
-				std::nullopt });
+			visitor(_consumer_stream_group_descriptor{ tc_key.abi,
+								   trace_class->_metadata_key,
+								   true,
+								   *trace_class,
+								   metadata_config,
+								   std::optional<uid_t>(tc_key.uid),
+								   std::nullopt });
 		}
 	} else {
-		for (const auto& sg_entry : _per_pid_stream_groups) {
-			const auto app_abi = sg_entry.first.app->abi_desc.bits_per_long == 32 ?
+		for (const auto& [sg_key, stream_group] : _per_pid_stream_groups) {
+			const auto app_abi = sg_key.app->abi_desc.bits_per_long == 32 ?
 				application_abi::ABI_32 :
 				application_abi::ABI_64;
 
 			visitor(_consumer_stream_group_descriptor{
 				app_abi,
-				sg_entry.second->consumer_key(),
+				stream_group->consumer_key(),
 				false,
-				sg_entry.second->get_trace_class(),
-				*sg_entry.first.channel_config,
+				stream_group->get_trace_class(),
+				*sg_key.channel_config,
 				std::nullopt,
-				std::optional<pid_t>(sg_entry.first.app->pid) });
+				std::optional<pid_t>(sg_key.app->pid) });
 		}
 
-		for (const auto& tc_entry : _per_pid_trace_classes) {
-			if (!tc_entry.second->_metadata_key) {
+		for (const auto& [app, trace_class] : _per_pid_trace_classes) {
+			if (!trace_class->_metadata_key) {
 				continue;
 			}
 
-			const auto app_abi = tc_entry.first->abi_desc.bits_per_long == 32 ?
+			const auto app_abi = app->abi_desc.bits_per_long == 32 ?
 				application_abi::ABI_32 :
 				application_abi::ABI_64;
 
 			visitor(_consumer_stream_group_descriptor{
 				app_abi,
-				tc_entry.second->_metadata_key,
+				trace_class->_metadata_key,
 				true,
-				*tc_entry.second,
+				*trace_class,
 				metadata_config,
 				std::nullopt,
-				std::optional<pid_t>(tc_entry.first->pid) });
+				std::optional<pid_t>(app->pid) });
 		}
 	}
 }

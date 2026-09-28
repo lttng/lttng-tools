@@ -176,14 +176,15 @@ public:
 
 		_validate_channel(*new_channel);
 
-		auto result = _channels.emplace(new_channel->name, std::move(new_channel));
-		if (!result.second) {
+		const auto [channel_it, inserted] =
+			_channels.emplace(new_channel->name, std::move(new_channel));
+		if (!inserted) {
 			LTTNG_THROW_ERROR(lttng::format(
 				"Failed to add channel to domain, name already in use: channel_name=`{}`",
-				result.first->first));
+				channel_it->first));
 		}
 
-		return *(result.first->second);
+		return *(channel_it->second);
 	}
 
 	/* Lookup by name. */
@@ -258,13 +259,13 @@ public:
 
 		_validate_map_channel(*new_map_channel);
 
-		auto result =
+		const auto [map_channel_it, inserted] =
 			_map_channels.emplace(new_map_channel->name, std::move(new_map_channel));
-		if (!result.second) {
-			LTTNG_THROW_MAP_CHANNEL_ALREADY_EXISTS_ERROR(result.first->first);
+		if (!inserted) {
+			LTTNG_THROW_MAP_CHANNEL_ALREADY_EXISTS_ERROR(map_channel_it->first);
 		}
 
-		return *(result.first->second);
+		return *(map_channel_it->second);
 	}
 
 	/* Lookup by name. */

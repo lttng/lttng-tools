@@ -201,9 +201,9 @@ lsu::app_session::~app_session()
 
 	/* Remove per-PID channels from the trace class while it is locked. */
 	if (buffer_type == LTTNG_BUFFER_PER_PID && locked_trace_class) {
-		for (const auto& chan_pair : channels) {
+		for (const auto& [channel_name, channel] : channels) {
 			try {
-				locked_trace_class->remove_channel(chan_pair.second->key, true);
+				locked_trace_class->remove_channel(channel->key, true);
 			} catch (const std::exception& ex) {
 				DBG("Could not find channel for removal: %s", ex.what());
 			}
@@ -380,9 +380,9 @@ void lsu::app_session::flush()
 	switch (buffer_type) {
 	case LTTNG_BUFFER_PER_PID:
 	{
-		for (auto& chan_pair : channels) {
+		for (auto& [channel_name, channel] : channels) {
 			health_code_update();
-			ret = consumer_flush_channel(socket, chan_pair.second->key);
+			ret = consumer_flush_channel(socket, channel->key);
 			if (ret) {
 				ERR("Error flushing consumer channel");
 				continue;

@@ -337,10 +337,10 @@ reclaim_result execute_reclaim(const reclaim_config& config)
 		pending_ops.emplace_back(channel_name, std::move(handle));
 	}
 
-	for (auto& op : pending_ops) {
+	for (auto& [channel_name, handle] : pending_ops) {
 		if (!config.no_wait) {
 			const auto wait_status =
-				lttng_reclaim_handle_wait_for_completion(op.second.get(), -1);
+				lttng_reclaim_handle_wait_for_completion(handle.get(), -1);
 			if (wait_status != LTTNG_RECLAIM_HANDLE_STATUS_COMPLETED) {
 				LTTNG_THROW_ERROR(fmt::format(
 					"Failed to wait for memory reclaim completion: {}",
@@ -350,7 +350,7 @@ reclaim_result execute_reclaim(const reclaim_config& config)
 
 		std::uint64_t reclaimed_subbuffers = 0;
 		const auto get_count_status = lttng_reclaim_handle_get_reclaimed_subbuffer_count(
-			op.second.get(), &reclaimed_subbuffers);
+			handle.get(), &reclaimed_subbuffers);
 		if (get_count_status != LTTNG_RECLAIM_HANDLE_STATUS_OK) {
 			LTTNG_THROW_ERROR(fmt::format(
 				"Failed to get reclaimed sub-buffer count: {}", get_count_status));
@@ -358,7 +358,7 @@ reclaim_result execute_reclaim(const reclaim_config& config)
 
 		std::uint64_t pending_subbuffers = 0;
 		const auto get_pending_status = lttng_reclaim_handle_get_pending_subbuffer_count(
-			op.second.get(), &pending_subbuffers);
+			handle.get(), &pending_subbuffers);
 		if (get_pending_status != LTTNG_RECLAIM_HANDLE_STATUS_OK) {
 			LTTNG_THROW_ERROR(fmt::format("Failed to get pending sub-buffer count: {}",
 						      get_pending_status));
@@ -369,7 +369,7 @@ reclaim_result execute_reclaim(const reclaim_config& config)
 			pending_subbuffers = 0;
 		}
 
-		result.reclaimed_per_channel.emplace(std::move(op.first),
+		result.reclaimed_per_channel.emplace(std::move(channel_name),
 						     reclamation_amount{ reclaimed_subbuffers,
 									 pending_subbuffers });
 	}
@@ -386,10 +386,7 @@ void run_and_print_human_readable(const reclaim_config& config)
 		return;
 	}
 
-	for (const auto& channel_result : result.reclaimed_per_channel) {
-		const auto& channel_name = channel_result.first;
-		const auto& reclaimed_amount = channel_result.second;
-
+	for (const auto& [channel_name, reclaimed_amount] : result.reclaimed_per_channel) {
 		if (reclaimed_amount.deferred_subbuffers > 0) {
 			fmt::print("Event record channel `{}`: {} {} reclaimed, {} pending\n",
 				   channel_name,
@@ -472,10 +469,7 @@ void run_and_print_machine_interface(const reclaim_config& config)
 		auto channels_close_guard = lttng::make_scope_exit(
 			[&writer]() noexcept { mi_lttng_writer_close_element(writer.get()); });
 
-		for (const auto& channel_result : result.reclaimed_per_channel) {
-			const auto& channel_name = channel_result.first;
-			const auto& reclaimed_amount = channel_result.second;
-
+		for (const auto& [channel_name, reclaimed_amount] : result.reclaimed_per_channel) {
 			if (mi_lttng_writer_open_element(writer.get(), "channel")) {
 				LTTNG_THROW_ERROR("Failed to open channel element");
 			}

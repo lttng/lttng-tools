@@ -1635,9 +1635,9 @@ std::pair<double, const char *> utils_value_unit_from_size(std::uint64_t bytes)
 
 std::string utils_string_from_size(std::uint64_t bytes)
 {
-	const auto value_unit = utils_value_unit_from_size(bytes);
+	const auto [value, unit] = utils_value_unit_from_size(bytes);
 
-	return fmt::format("{:.2f} {}", value_unit.first, value_unit.second);
+	return fmt::format("{:.2f} {}", value, unit);
 }
 
 std::pair<double, const char *> utils_value_unit_from_period(const std::uint64_t period_us)
@@ -1670,9 +1670,9 @@ std::string utils_string_from_period(const std::uint64_t period_us)
 		return fmt::format("{} {}", period_us, USEC_UNIT);
 	}
 
-	const auto value_unit = utils_value_unit_from_period(period_us);
+	const auto [value, unit] = utils_value_unit_from_period(period_us);
 
-	return fmt::format("{:.2f} {}", value_unit.first, value_unit.second);
+	return fmt::format("{:.2f} {}", value, unit);
 }
 
 std::string utils_format_integer_grouped(const std::int64_t value)

@@ -70,10 +70,10 @@ mappings_from_ust_ctl_entries(const lttng_ust_ctl_enum_entry *in_entries, size_t
 
 	typename lst::typed_enumeration_type<MappingIntegerType>::mappings mappings;
 
-	for (auto& tmpNameMappingPair : tmp_mappings) {
-		mappings.emplace(tmpNameMappingPair.first,
+	for (auto& [name, ranges] : tmp_mappings) {
+		mappings.emplace(name,
 				 typename lst::typed_enumeration_type<MappingIntegerType>::mapping{
-					 tmpNameMappingPair.second });
+					 ranges });
 	}
 
 	return mappings;

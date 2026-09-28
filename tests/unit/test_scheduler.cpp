@@ -201,8 +201,8 @@ void test_lots_of_tasks_ran_in_order()
 	 */
 	std::shuffle(std::begin(tasks), std::end(tasks), std::default_random_engine{});
 
-	for (const auto& task_pair : tasks) {
-		scheduler.schedule(task_pair.first, task_pair.second);
+	for (const auto& [task, scheduled_time] : tasks) {
+		scheduler.schedule(task, scheduled_time);
 	}
 
 	for (unsigned int i = 0; i < tasks_ran.size() + 1; i++) {

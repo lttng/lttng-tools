@@ -1562,12 +1562,13 @@ bool ltt_session::has_pending_recording_channel_memory_reclamation(
 void ltt_session::add_pending_reclamation(std::string channel_name)
 {
 	ASSERT_LOCKED(_lock);
-	const auto result = _channels_with_pending_reclaim.emplace(std::move(channel_name));
-	if (!result.second) {
+	const auto [channel_name_it, inserted] =
+		_channels_with_pending_reclaim.emplace(std::move(channel_name));
+	if (!inserted) {
 		LTTNG_THROW_ERROR(fmt::format(
 			"Channel already present in pending reclaim set: session_name=`{}`, channel_name=`{}`",
 			name,
-			*result.first));
+			*channel_name_it));
 	}
 }
 

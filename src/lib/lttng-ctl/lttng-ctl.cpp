@@ -3641,9 +3641,9 @@ lttng_channel_get_data_stream_info_sets(const char *session_name,
 			lttng_payload_view_from_payload(&reply, 0, reply.buffer.size);
 
 		try {
-			auto sets_create_result =
+			auto [consumed_size, created_sets] =
 				lttng_data_stream_info_sets::create_from_payload(reply_view);
-			*sets = sets_create_result.second.release();
+			*sets = created_sets.release();
 		} catch (const std::exception& e) {
 			/* Catch any exception thrown during creation. */
 			ERR("Failed to create data stream info sets: %s", e.what());

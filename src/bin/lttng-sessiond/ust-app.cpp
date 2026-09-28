@@ -230,13 +230,12 @@ public:
 
 	~pending_owner_id_reclamations()
 	{
-		for (const auto& item : _pending_owner_ids) {
+		for (const auto& [owner_id, state] : _pending_owner_ids) {
 			ERR_FMT("Left-over owner-id left in the set of pending owner id reclamations: owner_id={}, expected_count={}, received_count={}",
-				item.first,
-				item.second.expected_count ?
-					std::to_string(*item.second.expected_count) :
-					"unknown",
-				item.second.received_count);
+				owner_id,
+				state.expected_count ? std::to_string(*state.expected_count) :
+						       "unknown",
+				state.received_count);
 		}
 	}
 

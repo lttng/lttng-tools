@@ -117,8 +117,7 @@ void pending_memory_reclamation_tracker::channel_removed(const lttng_consumer_ch
 {
 	const std::lock_guard<std::mutex> lock(_lock);
 
-	for (auto& token_channels : _suspended_channels_per_token) {
-		auto& channels = token_channels.second;
+	for (auto& [request_token, channels] : _suspended_channels_per_token) {
 		channels.erase(
 			std::remove_if(channels.begin(),
 				       channels.end(),

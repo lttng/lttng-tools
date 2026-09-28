@@ -250,13 +250,14 @@ private:
 			const auto part_has_overflow = values.has_overflow(map_key);
 
 			/*
-			 * `it.second` is true on the first contrib. of
+			 * `is_new` is true on the first contrib. of
 			 * this map key.
 			 */
-			const auto it = accs.emplace(map_key.index(), _per_map_key_acc{});
-			auto& acc = it.first->second;
+			const auto [acc_it, is_new] =
+				accs.emplace(map_key.index(), _per_map_key_acc{});
+			auto& acc = acc_it->second;
 
-			if (it.second) {
+			if (is_new) {
 				/* New */
 				acc.key = key_str.data();
 				acc.val = part_map_val;
@@ -310,9 +311,7 @@ private:
 
 		rows.reserve(accs.size());
 
-		for (const auto& entry : accs) {
-			const auto& acc = entry.second;
-
+		for (const auto& [map_key_index, acc] : accs) {
 			rows.emplace_back(acc.key, acc.val, acc.has_overflow);
 		}
 

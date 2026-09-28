@@ -61,11 +61,12 @@ using counter_event_attachment_key =
 struct counter_event_attachment_key_hash {
 	std::size_t operator()(const counter_event_attachment_key& key) const noexcept
 	{
-		auto seed = std::hash<const ust::map_channel *>{}(std::get<0>(key));
+		const auto& [channel, event_rule, action] = key;
+		auto seed = std::hash<const ust::map_channel *>{}(channel);
+
 		seed = lttng::utils::hash_combine(
-			seed, std::hash<const lttng_event_rule *>{}(std::get<1>(key)));
-		seed = lttng::utils::hash_combine(
-			seed, std::hash<const lttng_action *>{}(std::get<2>(key)));
+			seed, std::hash<const lttng_event_rule *>{}(event_rule));
+		seed = lttng::utils::hash_combine(seed, std::hash<const lttng_action *>{}(action));
 		return seed;
 	}
 };
