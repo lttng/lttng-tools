@@ -28,7 +28,7 @@ tracer_token_index_table::~tracer_token_index_table()
 
 std::optional<std::uint64_t> tracer_token_index_table::lookup(std::uint64_t tracer_token) const
 {
-	const std::lock_guard<std::mutex> guard(_lock);
+	const std::lock_guard guard(_lock);
 
 	const auto it = _token_to_index.find(tracer_token);
 	if (it == _token_to_index.end()) {
@@ -40,7 +40,7 @@ std::optional<std::uint64_t> tracer_token_index_table::lookup(std::uint64_t trac
 
 std::optional<std::uint64_t> tracer_token_index_table::allocate(std::uint64_t tracer_token)
 {
-	const std::lock_guard<std::mutex> guard(_lock);
+	const std::lock_guard guard(_lock);
 
 	std::uint64_t index;
 	if (!_unused_indices.empty()) {
@@ -58,7 +58,7 @@ std::optional<std::uint64_t> tracer_token_index_table::allocate(std::uint64_t tr
 
 bool tracer_token_index_table::release(std::uint64_t tracer_token)
 {
-	const std::lock_guard<std::mutex> guard(_lock);
+	const std::lock_guard guard(_lock);
 
 	const auto it = _token_to_index.find(tracer_token);
 	if (it == _token_to_index.end()) {

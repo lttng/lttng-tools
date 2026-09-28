@@ -214,7 +214,7 @@ handle_consumerd_error_msg_memory_reclaim_complete(const lttng_payload_view *msg
 	 * Acquire the session list lock since completing the request may release the session
 	 * and consequently modify the session list.
 	 */
-	const std::lock_guard<std::mutex> session_list_lock(session_get_list()->lock);
+	const std::lock_guard session_list_lock(session_get_list()->lock);
 	lttng::sessiond::the_pending_memory_reclamation_registry.consumer_completed(
 		payload->memory_reclaim_request_token, payload->success != 0);
 

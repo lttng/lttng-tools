@@ -62,7 +62,7 @@ public:
 
 	void run(absolute_time current_time) noexcept
 	{
-		const std::lock_guard<std::mutex> lock(_mutex);
+		const std::lock_guard lock(_mutex);
 
 		if (_canceled) {
 			/* Task is killed, do not run it. */
@@ -83,7 +83,7 @@ public:
 	 */
 	void cancel() noexcept
 	{
-		const std::lock_guard<std::mutex> lock(_mutex);
+		const std::lock_guard lock(_mutex);
 
 		_canceled = true;
 
@@ -95,7 +95,7 @@ public:
 
 	bool canceled() const noexcept
 	{
-		const std::lock_guard<std::mutex> lock(_mutex);
+		const std::lock_guard lock(_mutex);
 		return _canceled;
 	}
 
@@ -114,7 +114,7 @@ private:
 
 	absolute_time _get_next_scheduled_time() const noexcept
 	{
-		const std::lock_guard<std::mutex> lock(_mutex);
+		const std::lock_guard lock(_mutex);
 
 		LTTNG_ASSERT(_next_scheduled_time.has_value());
 		return *_next_scheduled_time;
@@ -122,7 +122,7 @@ private:
 
 	void _set_next_scheduled_time(absolute_time next_time) noexcept
 	{
-		const std::lock_guard<std::mutex> lock(_mutex);
+		const std::lock_guard lock(_mutex);
 
 		/*
 		 * Re-arm the task: scheduling it (the only caller of this method) clears a
@@ -202,7 +202,7 @@ protected:
 private:
 	bool _must_be_rescheduled() const noexcept override
 	{
-		const std::lock_guard<std::mutex> lock(_mutex);
+		const std::lock_guard lock(_mutex);
 		return !_canceled;
 	}
 
@@ -236,7 +236,7 @@ public:
 	 */
 	void schedule(task::sptr task, absolute_time when_to_run = std::chrono::steady_clock::now())
 	{
-		const std::lock_guard<std::mutex> lock(_mutex);
+		const std::lock_guard lock(_mutex);
 
 		for (const auto& callback : _task_scheduled_callbacks) {
 			callback(when_to_run);
@@ -262,7 +262,7 @@ public:
 			lttng::scheduling::task::sptr task_to_run = nullptr;
 
 			{
-				const std::lock_guard<std::mutex> lock(_mutex);
+				const std::lock_guard lock(_mutex);
 
 				const auto candidate = _task_heap.peek();
 
@@ -295,7 +295,7 @@ public:
 
 	void add_task_scheduled_callback(task_scheduled_callback callback) noexcept
 	{
-		const std::lock_guard<std::mutex> lock(_mutex);
+		const std::lock_guard lock(_mutex);
 		_task_scheduled_callbacks.push_back(std::move(callback));
 	}
 

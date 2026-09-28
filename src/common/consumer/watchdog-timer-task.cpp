@@ -124,7 +124,7 @@ void lttng::consumer::watchdog_timer_task::_run(lttng::scheduling::absolute_time
 ssize_t lttng::consumer::watchdog_timer_task::run() noexcept
 {
 	try {
-		const std::lock_guard<std::mutex> lock(_mutex);
+		const std::lock_guard lock(_mutex);
 		const auto observed_count = stall_watchdog_timer(_channel, _consumer_error_socket);
 
 		if (_is_boosted && (observed_count == 0)) {
@@ -144,7 +144,7 @@ void lttng::consumer::watchdog_timer_task::abandon_pending_owner_id_reclamation(
 	ASSERT_LOCKED(the_consumer_data.lock);
 	ASSERT_LOCKED(_channel.lock);
 
-	const std::lock_guard<std::mutex> channel_lock(_channel.owners_pending_reclamation_lock);
+	const std::lock_guard channel_lock(_channel.owners_pending_reclamation_lock);
 
 	if (!_channel.owners_pending_reclamation.empty()) {
 		WARN_FMT(

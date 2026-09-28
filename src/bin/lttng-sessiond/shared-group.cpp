@@ -37,7 +37,7 @@ const config::map_channel_configuration& shared_group::configuration() const noe
 
 void shared_group::increment(std::uint64_t index, std::int64_t delta)
 {
-	const std::lock_guard<std::mutex> guard(_lock);
+	const std::lock_guard guard(_lock);
 	auto& el = _by_index[index];
 
 	/*
@@ -59,7 +59,7 @@ void shared_group::increment(std::uint64_t index, std::int64_t delta)
 
 element_value shared_group::aggregate_element(std::uint64_t index) const
 {
-	const std::lock_guard<std::mutex> guard(_lock);
+	const std::lock_guard guard(_lock);
 	const auto it = _by_index.find(index);
 
 	if (it == _by_index.end()) {
@@ -83,28 +83,28 @@ element_value shared_group::read_element(std::uint64_t index, const partition_id
 
 void shared_group::clear_element(std::uint64_t index)
 {
-	const std::lock_guard<std::mutex> guard(_lock);
+	const std::lock_guard guard(_lock);
 
 	_by_index.erase(index);
 }
 
 void shared_group::clear() noexcept
 {
-	const std::lock_guard<std::mutex> guard(_lock);
+	const std::lock_guard guard(_lock);
 
 	_by_index.clear();
 }
 
 std::size_t shared_group::size() const noexcept
 {
-	const std::lock_guard<std::mutex> guard(_lock);
+	const std::lock_guard guard(_lock);
 
 	return _by_index.size();
 }
 
 bool shared_group::is_empty() const noexcept
 {
-	const std::lock_guard<std::mutex> guard(_lock);
+	const std::lock_guard guard(_lock);
 
 	return _by_index.empty();
 }

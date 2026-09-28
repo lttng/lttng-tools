@@ -40,7 +40,7 @@ void pending_memory_reclamation_tracker::register_stream(std::uint64_t memory_re
 	/* Tests break on this point to observe that a request deferred a stream. */
 	TESTPOINT("memory_reclaim_stream_deferred");
 
-	const std::lock_guard<std::mutex> lock(_lock);
+	const std::lock_guard lock(_lock);
 
 	auto it = _pending_stream_counts.find(memory_reclaim_request_token);
 	if (it == _pending_stream_counts.end()) {
@@ -57,7 +57,7 @@ void pending_memory_reclamation_tracker::register_stream(std::uint64_t memory_re
 
 void pending_memory_reclamation_tracker::begin_request(std::uint64_t memory_reclaim_request_token)
 {
-	const std::lock_guard<std::mutex> lock(_lock);
+	const std::lock_guard lock(_lock);
 
 	/*
 	 * Hold a reference on the request for the duration of its setup. This is
@@ -75,7 +75,7 @@ void pending_memory_reclamation_tracker::register_suspended_channel(
 	/* Tests break on this point to count the channels a request suspends. */
 	TESTPOINT("memory_reclaim_channel_suspended");
 
-	const std::lock_guard<std::mutex> lock(_lock);
+	const std::lock_guard lock(_lock);
 
 	_suspended_channels_per_token[memory_reclaim_request_token].emplace_back(channel);
 	DBG_FMT("Registered suspended channel for memory reclaim request token: token={}, channel_name=`{}`, channel_key={}",
@@ -98,7 +98,7 @@ void pending_memory_reclamation_tracker::abort_request(
 	std::uint64_t memory_reclaim_request_token) noexcept
 {
 	{
-		const std::lock_guard<std::mutex> lock(_lock);
+		const std::lock_guard lock(_lock);
 		_pending_stream_counts.erase(memory_reclaim_request_token);
 	}
 
@@ -115,7 +115,7 @@ void pending_memory_reclamation_tracker::abort_request(
 
 void pending_memory_reclamation_tracker::channel_removed(const lttng_consumer_channel& channel)
 {
-	const std::lock_guard<std::mutex> lock(_lock);
+	const std::lock_guard lock(_lock);
 
 	for (auto& [request_token, channels] : _suspended_channels_per_token) {
 		channels.erase(
@@ -134,7 +134,7 @@ void pending_memory_reclamation_tracker::_decrement_and_maybe_complete(
 	bool operation_completed = false;
 
 	{
-		const std::lock_guard<std::mutex> lock(_lock);
+		const std::lock_guard lock(_lock);
 
 		auto it = _pending_stream_counts.find(memory_reclaim_request_token);
 		if (it == _pending_stream_counts.end()) {
@@ -170,7 +170,7 @@ void pending_memory_reclamation_tracker::_resume_suspended_channels(
 	 * and eventually frees the channel, so a channel still in the set here can not be
 	 * torn down concurrently: it is safe to dereference and reschedule under the lock.
 	 */
-	const std::lock_guard<std::mutex> lock(_lock);
+	const std::lock_guard lock(_lock);
 
 	auto it = _suspended_channels_per_token.find(memory_reclaim_request_token);
 	if (it == _suspended_channels_per_token.end()) {

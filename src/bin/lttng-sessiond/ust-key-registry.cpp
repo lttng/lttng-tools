@@ -20,7 +20,7 @@ key_registry::key_registry(std::uint64_t capacity) : _capacity(capacity)
 
 std::optional<std::uint64_t> key_registry::lookup(const std::string& key) const
 {
-	const std::lock_guard<std::mutex> guard(_lock);
+	const std::lock_guard guard(_lock);
 	const auto it = _indexes_by_key.find(key);
 
 	if (it == _indexes_by_key.end()) {
@@ -32,7 +32,7 @@ std::optional<std::uint64_t> key_registry::lookup(const std::string& key) const
 
 std::optional<lttng::c_string_view> key_registry::key_for_index(std::uint64_t index) const
 {
-	const std::lock_guard<std::mutex> guard(_lock);
+	const std::lock_guard guard(_lock);
 
 	if (index >= _keys_by_index.size()) {
 		return std::nullopt;
@@ -43,7 +43,7 @@ std::optional<lttng::c_string_view> key_registry::key_for_index(std::uint64_t in
 
 void key_registry::for_each(const sessiond::map::key_registry::element_visitor& visitor) const
 {
-	const std::lock_guard<std::mutex> guard(_lock);
+	const std::lock_guard guard(_lock);
 
 	for (const auto& [key, index] : _indexes_by_key) {
 		visitor(key, index);
@@ -52,7 +52,7 @@ void key_registry::for_each(const sessiond::map::key_registry::element_visitor& 
 
 std::size_t key_registry::size() const noexcept
 {
-	const std::lock_guard<std::mutex> guard(_lock);
+	const std::lock_guard guard(_lock);
 
 	return _keys_by_index.size();
 }
@@ -64,7 +64,7 @@ std::uint64_t key_registry::capacity() const noexcept
 
 std::uint64_t key_registry::resolve_or_allocate(const std::string& key)
 {
-	const std::lock_guard<std::mutex> guard(_lock);
+	const std::lock_guard guard(_lock);
 	const auto it = _indexes_by_key.find(key);
 
 	if (it != _indexes_by_key.end()) {

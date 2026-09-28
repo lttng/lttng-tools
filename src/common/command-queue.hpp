@@ -95,7 +95,7 @@ public:
 
 	void send(CommandType cmd)
 	{
-		const std::lock_guard<std::mutex> guard(_lock);
+		const std::lock_guard guard(_lock);
 
 		_queue.emplace_back(std::move(cmd));
 		_wake_fd.increment();
@@ -108,7 +108,7 @@ public:
 		cmd._set_waker(completion_waiter.get_waker());
 
 		{
-			const std::lock_guard<std::mutex> guard(_lock);
+			const std::lock_guard guard(_lock);
 
 			_queue.emplace_back(std::move(cmd));
 			_wake_fd.increment();
@@ -119,7 +119,7 @@ public:
 
 	std::optional<CommandType> pop()
 	{
-		const std::lock_guard<std::mutex> guard(_lock);
+		const std::lock_guard guard(_lock);
 
 		if (_queue.empty()) {
 			_wake_fd.decrement();
@@ -138,7 +138,7 @@ public:
 	 */
 	std::optional<CommandType> try_pop()
 	{
-		const std::lock_guard<std::mutex> guard(_lock);
+		const std::lock_guard guard(_lock);
 
 		if (_queue.empty()) {
 			return std::nullopt;

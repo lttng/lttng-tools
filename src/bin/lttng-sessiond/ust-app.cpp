@@ -172,7 +172,7 @@ public:
 	 */
 	void reserve_owner_id(uint32_t owner_id)
 	{
-		const std::lock_guard<std::mutex> lock(_pending_owner_ids_mutex);
+		const std::lock_guard lock(_pending_owner_ids_mutex);
 
 		if (!_pending_owner_ids.emplace(owner_id, reclamation_state()).second) {
 			ERR_FMT("Reserving owner-id for reclamation but it is already pending reclamation: owner_id={}",
@@ -188,7 +188,7 @@ public:
 	 */
 	void set_expected_reclamation_count(uint32_t owner_id, uint64_t expected_count)
 	{
-		const std::lock_guard<std::mutex> lock(_pending_owner_ids_mutex);
+		const std::lock_guard lock(_pending_owner_ids_mutex);
 		const auto it = _pending_owner_ids.find(owner_id);
 
 		if (it == _pending_owner_ids.end()) {
@@ -208,7 +208,7 @@ public:
 	 */
 	void unmark_owner_id(uint32_t owner_id)
 	{
-		const std::lock_guard<std::mutex> lock(_pending_owner_ids_mutex);
+		const std::lock_guard lock(_pending_owner_ids_mutex);
 		const auto it = _pending_owner_ids.find(owner_id);
 
 		if (it == _pending_owner_ids.end()) {
@@ -224,7 +224,7 @@ public:
 
 	bool is_owner_id_pending_reclamation(uint32_t owner_id)
 	{
-		const std::lock_guard<std::mutex> lock(_pending_owner_ids_mutex);
+		const std::lock_guard lock(_pending_owner_ids_mutex);
 		return _pending_owner_ids.count(owner_id) != 0;
 	}
 

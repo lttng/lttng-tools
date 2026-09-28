@@ -98,7 +98,7 @@ void drop_uid_map_group_entry_if_unused(uid_t uid)
  */
 eea_details::ust_uid_map_group_entry& acquire_uid_entry(uid_t uid)
 {
-	const std::lock_guard<std::mutex> guard(accounting_lock);
+	const std::lock_guard guard(accounting_lock);
 
 	eea_details::ust_uid_map_group_entry *entry;
 	const auto it = uid_map_groups.find(uid);
@@ -143,7 +143,7 @@ uid_entry_reference::uid_entry_reference(uid_t uid) : _uid(uid), _entry(acquire_
 
 uid_entry_reference::~uid_entry_reference()
 {
-	const std::lock_guard<std::mutex> guard(accounting_lock);
+	const std::lock_guard guard(accounting_lock);
 	_entry.attached_app_count--;
 	DBG_FMT("Releasing UST UID map group entry reference: uid={}, attached_app_count={}, registered_event_notifier_count={}",
 		_uid,
@@ -241,7 +241,7 @@ namespace {
  */
 void on_event_notifier_registered()
 {
-	const std::lock_guard<std::mutex> guard(accounting_lock);
+	const std::lock_guard guard(accounting_lock);
 
 	registered_event_notifier_count++;
 	DBG_FMT("Bumped registered UST event notifier count: registered_event_notifier_count={}",
@@ -256,7 +256,7 @@ void on_event_notifier_registered()
  */
 void on_event_notifier_unregistered()
 {
-	const std::lock_guard<std::mutex> guard(accounting_lock);
+	const std::lock_guard guard(accounting_lock);
 
 	LTTNG_ASSERT(registered_event_notifier_count > 0);
 	registered_event_notifier_count--;
@@ -287,7 +287,7 @@ clear_event_notifier_error_count(const struct lttng_trigger *trigger)
 		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_NOT_FOUND;
 	}
 
-	const std::lock_guard<std::mutex> guard(accounting_lock);
+	const std::lock_guard guard(accounting_lock);
 
 	DBG_FMT("Clearing UST event notifier error counter across all UID entries: trigger={}, index={}, uid_entry_count={}",
 		*trigger,
@@ -338,7 +338,7 @@ void fini()
 {
 	DBG_FMT("Tearing down UST event notifier error accounting");
 	{
-		const std::lock_guard<std::mutex> guard(accounting_lock);
+		const std::lock_guard guard(accounting_lock);
 
 		uid_map_groups.clear();
 		registered_event_notifier_count = 0;
@@ -421,7 +421,7 @@ get_event_notifier_error_count(const struct lttng_trigger *trigger, std::uint64_
 	}
 
 	uint64_t global_sum = 0;
-	const std::lock_guard<std::mutex> guard(accounting_lock);
+	const std::lock_guard guard(accounting_lock);
 
 	DBG_FMT("Aggregating UST event notifier error count across all UID entries: trigger={}, index={}, uid_entry_count={}",
 		*trigger,

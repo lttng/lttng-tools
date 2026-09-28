@@ -91,7 +91,7 @@ bool lttng::utils::fs_supports_madv_remove(const char *shm_path) noexcept
 	try {
 		if (shm_path) {
 			{
-				const std::lock_guard<std::mutex> lock(cache_mutex);
+				const std::lock_guard lock(cache_mutex);
 				if (cache.find(shm_path) != cache.end()) {
 					return cache.at(shm_path);
 				}
@@ -125,7 +125,7 @@ bool lttng::utils::fs_supports_madv_remove(const char *shm_path) noexcept
 			}
 
 			try {
-				const std::lock_guard<std::mutex> lock(cache_mutex);
+				const std::lock_guard lock(cache_mutex);
 				cache[shm_path] = supported;
 			} catch (const std::bad_alloc&) {
 				ERR("Failed to add filesystem MADV_REMOVE support entry to the cache due to an allocation failure.");
@@ -134,7 +134,7 @@ bool lttng::utils::fs_supports_madv_remove(const char *shm_path) noexcept
 		}
 
 		{
-			const std::lock_guard<std::mutex> lock(cache_mutex);
+			const std::lock_guard lock(cache_mutex);
 			if (default_cache) {
 				return default_cache.value();
 			}
@@ -156,7 +156,7 @@ bool lttng::utils::fs_supports_madv_remove(const char *shm_path) noexcept
 		}
 
 		{
-			const std::lock_guard<std::mutex> lock(cache_mutex);
+			const std::lock_guard lock(cache_mutex);
 			default_cache = supported;
 		}
 

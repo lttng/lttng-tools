@@ -168,7 +168,7 @@ public:
 	 */
 	registration_token register_session_objd(int objd, const app_session_identifier& session_id)
 	{
-		const std::lock_guard<std::mutex> guard(_lock);
+		const std::lock_guard guard(_lock);
 
 		_session_entries[objd] = session_entry{ session_id };
 		return registration_token(*this, objd);
@@ -182,7 +182,7 @@ public:
 						 const app_session_identifier& session_id,
 						 std::uint64_t trace_class_channel_key)
 	{
-		const std::lock_guard<std::mutex> guard(_lock);
+		const std::lock_guard guard(_lock);
 
 		_channel_entries[objd] = channel_entry{ session_id, trace_class_channel_key };
 		return registration_token(*this, objd);
@@ -194,7 +194,7 @@ public:
 	 */
 	registration_token register_map_channel_objd(int objd, const map_channel_entry& entry)
 	{
-		const std::lock_guard<std::mutex> guard(_lock);
+		const std::lock_guard guard(_lock);
 
 		_map_channel_entries[objd] = entry;
 		return registration_token(*this, objd);
@@ -206,7 +206,7 @@ public:
 	 */
 	std::optional<session_entry> lookup_session(int objd) const noexcept
 	{
-		const std::lock_guard<std::mutex> guard(_lock);
+		const std::lock_guard guard(_lock);
 
 		const auto it = _session_entries.find(objd);
 		if (it == _session_entries.end()) {
@@ -223,7 +223,7 @@ public:
 	 */
 	std::optional<channel_entry> lookup_channel(int objd) const noexcept
 	{
-		const std::lock_guard<std::mutex> guard(_lock);
+		const std::lock_guard guard(_lock);
 
 		const auto it = _channel_entries.find(objd);
 		if (it == _channel_entries.end()) {
@@ -239,7 +239,7 @@ public:
 	 */
 	std::optional<map_channel_entry> lookup_map_channel(int objd) const noexcept
 	{
-		const std::lock_guard<std::mutex> guard(_lock);
+		const std::lock_guard guard(_lock);
 
 		const auto it = _map_channel_entries.find(objd);
 		if (it == _map_channel_entries.end()) {
@@ -252,7 +252,7 @@ public:
 private:
 	void _remove(int objd) noexcept
 	{
-		const std::lock_guard<std::mutex> guard(_lock);
+		const std::lock_guard guard(_lock);
 
 		/*
 		 * The objd could be in any of the three maps; try each.

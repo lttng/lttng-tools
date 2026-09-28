@@ -4943,8 +4943,7 @@ uint32_t lttng_ustconsumer_reclaim_session_owner_id(uint64_t session_id, uint32_
 				    &session_id,
 				    ht->hash_fct(&session_id, lttng_ht_seed),
 				    ht->match_fct)) {
-		const std::lock_guard<std::mutex> channel_lock(
-			channel->owners_pending_reclamation_lock);
+		const std::lock_guard channel_lock(channel->owners_pending_reclamation_lock);
 
 		if (!lttng_consumer_channel_is_buffer_stall_recovery_enabled(*channel)) {
 			continue;
@@ -5249,8 +5248,7 @@ int lttng_ustconsumer_fixup_stalled_channel(struct lttng_consumer_channel *chann
 	 */
 	std::set<uint32_t> owner_ids_ready_for_reclamation;
 	{
-		const std::lock_guard<std::mutex> channel_lock(
-			channel->owners_pending_reclamation_lock);
+		const std::lock_guard channel_lock(channel->owners_pending_reclamation_lock);
 		std::copy(channel->owners_pending_reclamation.begin(),
 			  channel->owners_pending_reclamation.end(),
 			  std::inserter(owner_ids_ready_for_reclamation,
@@ -5321,8 +5319,7 @@ int lttng_ustconsumer_fixup_stalled_channel(struct lttng_consumer_channel *chann
 
 	/* Remove the owner_ids_ready_for_reclamation from the owners set */
 	{
-		const std::lock_guard<std::mutex> channel_lock(
-			channel->owners_pending_reclamation_lock);
+		const std::lock_guard channel_lock(channel->owners_pending_reclamation_lock);
 		for (auto owner : reclaimed_owner_ids) {
 			channel->owners_pending_reclamation.erase(owner);
 		}

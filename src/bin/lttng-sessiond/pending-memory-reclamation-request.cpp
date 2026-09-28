@@ -193,7 +193,7 @@ ls::pending_memory_reclamation_registry::create_request(
 	pending_memory_reclamation_request::cancellation_callback_t on_cancel)
 {
 	ASSERT_LOCKED(session._lock);
-	const std::lock_guard<std::mutex> lock(_lock);
+	const std::lock_guard lock(_lock);
 
 	const auto token = _next_token++;
 
@@ -231,7 +231,7 @@ void ls::pending_memory_reclamation_registry::allow_completion(token_t token)
 	std::unique_ptr<pending_memory_reclamation_request> completed_request;
 
 	{
-		const std::lock_guard<std::mutex> lock(_lock);
+		const std::lock_guard lock(_lock);
 
 		const auto it = _pending_requests.find(token);
 		if (it == _pending_requests.end()) {
@@ -266,7 +266,7 @@ void ls::pending_memory_reclamation_registry::consumer_completed(token_t token, 
 	std::unique_ptr<pending_memory_reclamation_request> completed_request;
 
 	{
-		const std::lock_guard<std::mutex> lock(_lock);
+		const std::lock_guard lock(_lock);
 
 		const auto it = _pending_requests.find(token);
 		if (it == _pending_requests.end()) {
@@ -303,7 +303,7 @@ void ls::pending_memory_reclamation_registry::cancel_request(token_t token)
 	std::unique_ptr<pending_memory_reclamation_request> cancelled_request;
 
 	{
-		const std::lock_guard<std::mutex> lock(_lock);
+		const std::lock_guard lock(_lock);
 
 		const auto it = _pending_requests.find(token);
 		if (it == _pending_requests.end()) {
