@@ -128,9 +128,9 @@ void lttng::poller::poll(timeout_type timeout) const
 		_epoll(-1);
 		break;
 	default:
-		LTTNG_THROW_INVALID_ARGUMENT_ERROR(lttng::format(
-			"Invalid poller timeout type: {}",
-			static_cast<std::underlying_type<timeout_type>::type>(timeout)));
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+			lttng::format("Invalid poller timeout type: {}",
+				      static_cast<std::underlying_type_t<timeout_type>>(timeout)));
 	}
 }
 

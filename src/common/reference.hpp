@@ -85,7 +85,7 @@ private:
 
 		DIAGNOSTIC_PUSH
 		DIAGNOSTIC_IGNORE_INJECTED_CLASS_NAME
-		static_assert(std::is_class<typename CustomDeleter::deleter>::value,
+		static_assert(std::is_class_v<typename CustomDeleter::deleter>,
 			      "CustomDeleter must define a 'deleter' callable class.");
 		const typename CustomDeleter::deleter del;
 		DIAGNOSTIC_POP

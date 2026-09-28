@@ -226,7 +226,7 @@ end:
 		lsm.u.process_attr_tracker_add_remove_include_value.value_type =                               \
 			(uint32_t) LTTNG_PROCESS_ATTR_VALUE_TYPE_##value_type_enum;                            \
                                                                                                                \
-		if (std::is_signed<value_type_c>::value) {                                                     \
+		if (std::is_signed_v<value_type_c>) {                                                          \
 			lsm.u.process_attr_tracker_add_remove_include_value.integral_value.u                   \
 				._signed = value;                                                              \
 		} else {                                                                                       \

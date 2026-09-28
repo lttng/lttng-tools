@@ -88,11 +88,11 @@ namespace details {
 template <typename ContainedType, typename NodeType, NodeType ContainedType::*Member>
 static ContainedType *get_element_from_node(cds_lfht_node& node)
 {
-	static_assert(std::is_same<cds_lfht_node, NodeType>::value ||
-			      std::is_base_of<lttng_ht_node, NodeType>::value,
+	static_assert(std::is_same_v<cds_lfht_node, NodeType> ||
+			      std::is_base_of_v<lttng_ht_node, NodeType>,
 		      "`NodeType` must be `cds_lfht_node` or derive from `lttng_ht_node`");
 
-	if constexpr (std::is_same<cds_lfht_node, NodeType>::value) {
+	if constexpr (std::is_same_v<cds_lfht_node, NodeType>) {
 		/* Type contains a straight `cds_lfht_node`. */
 		return lttng::utils::container_of(&node, Member);
 	} else {

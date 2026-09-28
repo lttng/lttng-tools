@@ -291,8 +291,7 @@ public:
 	using mapping = details::enumeration_mapping<MappingIntegerType>;
 	using mappings = std::unordered_map<std::string, mapping>;
 
-	static_assert(std::is_integral<MappingIntegerType>::value &&
-			      sizeof(MappingIntegerType) == 8,
+	static_assert(std::is_integral_v<MappingIntegerType> && sizeof(MappingIntegerType) == 8,
 		      "MappingIntegerType must be either int64_t or uint64_t");
 
 	typed_enumeration_type(unsigned int in_alignment,
@@ -304,7 +303,7 @@ public:
 		enumeration_type(in_alignment,
 				 in_byte_order,
 				 in_size,
-				 std::is_signed<MappingIntegerType>::value ?
+				 std::is_signed_v<MappingIntegerType> ?
 					 integer_type::signedness::SIGNED :
 					 integer_type::signedness::UNSIGNED,
 				 in_base,
@@ -502,9 +501,8 @@ private:
 template <typename MappingIntegerType>
 class variant_type_choice {
 	static_assert(
-		std::is_same<MappingIntegerType, unsigned_enumeration_type::range_integer_t>::value ||
-			std::is_same<MappingIntegerType,
-				     signed_enumeration_type::range_integer_t>::value,
+		std::is_same_v<MappingIntegerType, unsigned_enumeration_type::range_integer_t> ||
+			std::is_same_v<MappingIntegerType, signed_enumeration_type::range_integer_t>,
 		"Variant mapping integer type must be one of those allowed by typed_enumeration_type");
 
 public:

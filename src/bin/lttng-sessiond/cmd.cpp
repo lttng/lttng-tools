@@ -2627,8 +2627,8 @@ enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref& sessi
 			default:
 				LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
 					"Invalid channel allocation policy value received: value={}",
-					static_cast<std::underlying_type<
-						lttng_channel_allocation_policy>::type>(policy)));
+					static_cast<std::underlying_type_t<
+						lttng_channel_allocation_policy>>(policy)));
 			}
 		}
 		}
@@ -2661,8 +2661,8 @@ enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref& sessi
 			default:
 				LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
 					"Invalid channel preallocation policy value received: value={}",
-					static_cast<std::underlying_type<
-						lttng_channel_preallocation_policy>::type>(policy)));
+					static_cast<std::underlying_type_t<
+						lttng_channel_preallocation_policy>>(policy)));
 			}
 		}
 		}

@@ -35,12 +35,11 @@ struct process_attr_tracker_value_comm {
 } LTTNG_PACKED;
 } /* namespace */
 
-#define GET_INTEGRAL_COMM_VALUE(value_ptr, as_type)                           \
-	((as_type) (std::is_signed<as_type>::value ? (value_ptr)->u._signed : \
-						     (value_ptr)->u._unsigned))
+#define GET_INTEGRAL_COMM_VALUE(value_ptr, as_type) \
+	((as_type) (std::is_signed_v<as_type> ? (value_ptr)->u._signed : (value_ptr)->u._unsigned))
 
 #define SET_INTEGRAL_COMM_VALUE(comm_value, val)                                       \
-	if (std::is_signed<typeof(val)>::value) {                                      \
+	if (std::is_signed_v<typeof(val)>) {                                           \
 		(comm_value)->u._signed = (typeof((comm_value)->u._signed)) (val);     \
 	} else {                                                                       \
 		(comm_value)->u._unsigned = (typeof((comm_value)->u._unsigned)) (val); \

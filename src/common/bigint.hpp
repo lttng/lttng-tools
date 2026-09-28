@@ -62,8 +62,7 @@ public:
 	 * type (where negating the magnitude would overflow), and never
 	 * emits leading zeros.
 	 */
-	template <typename IntType,
-		  typename = typename std::enable_if<std::is_integral<IntType>::value>::type>
+	template <typename IntType, typename = std::enable_if_t<std::is_integral_v<IntType>>>
 	explicit bigint(const IntType val) : _str(std::to_string(val))
 	{
 	}
@@ -86,8 +85,7 @@ public:
 	bigint& operator=(bigint&&) noexcept = default;
 	~bigint() = default;
 
-	template <typename IntType,
-		  typename = typename std::enable_if<std::is_integral<IntType>::value>::type>
+	template <typename IntType, typename = std::enable_if_t<std::is_integral_v<IntType>>>
 	bigint& operator=(const IntType value)
 	{
 		return *this = bigint(value);
@@ -205,15 +203,13 @@ public:
 		return *this += -other;
 	}
 
-	template <typename IntType,
-		  typename = typename std::enable_if<std::is_integral<IntType>::value>::type>
+	template <typename IntType, typename = std::enable_if_t<std::is_integral_v<IntType>>>
 	bigint& operator+=(const IntType value)
 	{
 		return *this += bigint(value);
 	}
 
-	template <typename IntType,
-		  typename = typename std::enable_if<std::is_integral<IntType>::value>::type>
+	template <typename IntType, typename = std::enable_if_t<std::is_integral_v<IntType>>>
 	bigint& operator-=(IntType value)
 	{
 		return *this -= bigint(value);
@@ -468,32 +464,28 @@ inline bigint operator-(bigint lhs, const bigint& rhs)
 	return lhs;
 }
 
-template <typename IntType,
-	  typename = typename std::enable_if<std::is_integral<IntType>::value>::type>
+template <typename IntType, typename = std::enable_if_t<std::is_integral_v<IntType>>>
 bigint operator+(bigint lhs, IntType rhs)
 {
 	lhs += bigint(rhs);
 	return lhs;
 }
 
-template <typename IntType,
-	  typename = typename std::enable_if<std::is_integral<IntType>::value>::type>
+template <typename IntType, typename = std::enable_if_t<std::is_integral_v<IntType>>>
 bigint operator+(IntType lhs, bigint rhs)
 {
 	rhs += bigint(lhs);
 	return rhs;
 }
 
-template <typename IntType,
-	  typename = typename std::enable_if<std::is_integral<IntType>::value>::type>
+template <typename IntType, typename = std::enable_if_t<std::is_integral_v<IntType>>>
 bigint operator-(bigint lhs, IntType rhs)
 {
 	lhs -= bigint(rhs);
 	return lhs;
 }
 
-template <typename IntType,
-	  typename = typename std::enable_if<std::is_integral<IntType>::value>::type>
+template <typename IntType, typename = std::enable_if_t<std::is_integral_v<IntType>>>
 bigint operator-(IntType lhs, const bigint& rhs)
 {
 	/* `lhs - rhs`, not `rhs - lhs`. */
@@ -503,85 +495,73 @@ bigint operator-(IntType lhs, const bigint& rhs)
 	return result;
 }
 
-template <typename IntType,
-	  typename = typename std::enable_if<std::is_integral<IntType>::value>::type>
+template <typename IntType, typename = std::enable_if_t<std::is_integral_v<IntType>>>
 bool operator==(const bigint& lhs, IntType rhs)
 {
 	return lhs == bigint(rhs);
 }
 
-template <typename IntType,
-	  typename = typename std::enable_if<std::is_integral<IntType>::value>::type>
+template <typename IntType, typename = std::enable_if_t<std::is_integral_v<IntType>>>
 bool operator==(IntType lhs, const bigint& rhs)
 {
 	return bigint(lhs) == rhs;
 }
 
-template <typename IntType,
-	  typename = typename std::enable_if<std::is_integral<IntType>::value>::type>
+template <typename IntType, typename = std::enable_if_t<std::is_integral_v<IntType>>>
 bool operator!=(const bigint& lhs, IntType rhs)
 {
 	return lhs != bigint(rhs);
 }
 
-template <typename IntType,
-	  typename = typename std::enable_if<std::is_integral<IntType>::value>::type>
+template <typename IntType, typename = std::enable_if_t<std::is_integral_v<IntType>>>
 bool operator!=(IntType lhs, const bigint& rhs)
 {
 	return bigint(lhs) != rhs;
 }
 
-template <typename IntType,
-	  typename = typename std::enable_if<std::is_integral<IntType>::value>::type>
+template <typename IntType, typename = std::enable_if_t<std::is_integral_v<IntType>>>
 bool operator<(const bigint& lhs, IntType rhs)
 {
 	return lhs < bigint(rhs);
 }
 
-template <typename IntType,
-	  typename = typename std::enable_if<std::is_integral<IntType>::value>::type>
+template <typename IntType, typename = std::enable_if_t<std::is_integral_v<IntType>>>
 bool operator<(IntType lhs, const bigint& rhs)
 {
 	return bigint(lhs) < rhs;
 }
 
-template <typename IntType,
-	  typename = typename std::enable_if<std::is_integral<IntType>::value>::type>
+template <typename IntType, typename = std::enable_if_t<std::is_integral_v<IntType>>>
 bool operator<=(const bigint& lhs, IntType rhs)
 {
 	return lhs <= bigint(rhs);
 }
 
-template <typename IntType,
-	  typename = typename std::enable_if<std::is_integral<IntType>::value>::type>
+template <typename IntType, typename = std::enable_if_t<std::is_integral_v<IntType>>>
 bool operator<=(IntType lhs, const bigint& rhs)
 {
 	return bigint(lhs) <= rhs;
 }
 
-template <typename IntType,
-	  typename = typename std::enable_if<std::is_integral<IntType>::value>::type>
+template <typename IntType, typename = std::enable_if_t<std::is_integral_v<IntType>>>
 bool operator>(const bigint& lhs, IntType rhs)
 {
 	return lhs > bigint(rhs);
 }
 
-template <typename IntType,
-	  typename = typename std::enable_if<std::is_integral<IntType>::value>::type>
+template <typename IntType, typename = std::enable_if_t<std::is_integral_v<IntType>>>
 bool operator>(IntType lhs, const bigint& rhs)
 {
 	return bigint(lhs) > rhs;
 }
 
-template <typename IntType,
-	  typename = typename std::enable_if<std::is_integral<IntType>::value>::type>
+template <typename IntType, typename = std::enable_if_t<std::is_integral_v<IntType>>>
 bool operator>=(const bigint& lhs, IntType rhs)
 {
 	return lhs >= bigint(rhs);
 }
 
-template <typename IntType,
-	  typename = typename std::enable_if<std::is_integral<IntType>::value>::type>
+template <typename IntType, typename = std::enable_if_t<std::is_integral_v<IntType>>>
 bool operator>=(IntType lhs, const bigint& rhs)
 {
 	return bigint(lhs) >= rhs;

@@ -28,13 +28,13 @@ enum class ctl_field_quirks : unsigned int {
 
 inline ctl_field_quirks operator&(ctl_field_quirks lhs, ctl_field_quirks rhs)
 {
-	using enum_type = std::underlying_type<ctl_field_quirks>::type;
+	using enum_type = std::underlying_type_t<ctl_field_quirks>;
 	return ctl_field_quirks(static_cast<enum_type>(lhs) & static_cast<enum_type>(rhs));
 }
 
 inline ctl_field_quirks operator|(ctl_field_quirks lhs, ctl_field_quirks rhs)
 {
-	using enum_type = std::underlying_type<ctl_field_quirks>::type;
+	using enum_type = std::underlying_type_t<ctl_field_quirks>;
 	return ctl_field_quirks(static_cast<enum_type>(lhs) | static_cast<enum_type>(rhs));
 }
 

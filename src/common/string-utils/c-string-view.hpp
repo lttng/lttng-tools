@@ -167,8 +167,8 @@ inline const char *as_const_char_ptr(const char *const val) noexcept
 }
 
 template <typename StrT>
-inline constexpr bool comparable_with_c_string_view = lttng::traits::
-	is_one_of<typename std::decay<StrT>::type, c_string_view, std::string, const char *>;
+inline constexpr bool comparable_with_c_string_view =
+	lttng::traits::is_one_of<std::decay_t<StrT>, c_string_view, std::string, const char *>;
 
 } /* namespace internal */
 
@@ -185,8 +185,8 @@ inline constexpr bool comparable_with_c_string_view = lttng::traits::
  */
 template <typename LhsT,
 	  typename RhsT,
-	  typename = typename std::enable_if<internal::comparable_with_c_string_view<LhsT>>::type,
-	  typename = typename std::enable_if<internal::comparable_with_c_string_view<RhsT>>::type>
+	  typename = std::enable_if_t<internal::comparable_with_c_string_view<LhsT>>,
+	  typename = std::enable_if_t<internal::comparable_with_c_string_view<RhsT>>>
 bool operator==(LhsT&& lhs, RhsT&& rhs) noexcept
 {
 	const auto raw_lhs = internal::as_const_char_ptr(lhs);
@@ -213,8 +213,8 @@ bool operator==(LhsT&& lhs, RhsT&& rhs) noexcept
  */
 template <typename LhsT,
 	  typename RhsT,
-	  typename = typename std::enable_if<internal::comparable_with_c_string_view<LhsT>>::type,
-	  typename = typename std::enable_if<internal::comparable_with_c_string_view<RhsT>>::type>
+	  typename = std::enable_if_t<internal::comparable_with_c_string_view<LhsT>>,
+	  typename = std::enable_if_t<internal::comparable_with_c_string_view<RhsT>>>
 bool operator!=(LhsT&& lhs, RhsT&& rhs) noexcept
 {
 	return !(std::forward<LhsT>(lhs) == std::forward<RhsT>(rhs));

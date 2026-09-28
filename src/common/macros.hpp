@@ -140,15 +140,14 @@ template <typename FreedType>
 inline constexpr bool can_free =
 	std::is_trivially_destructible_v<FreedType> || std::is_void_v<FreedType>;
 
-template <typename FreedType, typename = typename std::enable_if<!can_free<FreedType>>::type>
+template <typename FreedType, typename = std::enable_if_t<!can_free<FreedType>>>
 void free(FreedType *p) = delete;
 
 template <typename InitializedType>
 inline constexpr bool can_memset =
 	std::is_pod_v<InitializedType> || std::is_void_v<InitializedType>;
 
-template <typename InitializedType,
-	  typename = typename std::enable_if<!can_memset<InitializedType>>::type>
+template <typename InitializedType, typename = std::enable_if_t<!can_memset<InitializedType>>>
 void *memset(InitializedType *s, int c, size_t n) = delete;
 
 template <typename T>
@@ -156,8 +155,8 @@ inline constexpr bool can_memcpy = std::is_trivially_copyable_v<T>;
 
 template <typename DestinationType,
 	  typename SourceType,
-	  typename = typename std::enable_if<!can_memcpy<DestinationType>>::type,
-	  typename = typename std::enable_if<!can_memcpy<SourceType>>::type>
+	  typename = std::enable_if_t<!can_memcpy<DestinationType>>,
+	  typename = std::enable_if_t<!can_memcpy<SourceType>>>
 void *memcpy(DestinationType *d, const SourceType *s, size_t n) = delete;
 
 template <typename MovedType>
@@ -165,8 +164,8 @@ inline constexpr bool can_memmove = std::is_trivially_copyable_v<MovedType>;
 
 template <typename DestinationType,
 	  typename SourceType,
-	  typename = typename std::enable_if<!can_memmove<DestinationType>>::type,
-	  typename = typename std::enable_if<!can_memmove<SourceType>>::type>
+	  typename = std::enable_if_t<!can_memmove<DestinationType>>,
+	  typename = std::enable_if_t<!can_memmove<SourceType>>>
 void *memmove(DestinationType *d, const SourceType *s, size_t n) = delete;
 
 #ifndef ARRAY_SIZE

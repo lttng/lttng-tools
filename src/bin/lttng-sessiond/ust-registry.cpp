@@ -84,7 +84,7 @@ template <class MappingIntegerType>
 lsu::registry_typed_enum<MappingIntegerType>::registry_typed_enum(
 	const char *in_name, const lttng_ust_ctl_enum_entry *entries, size_t entry_count) :
 	registry_enum(in_name,
-		      std::is_signed<MappingIntegerType>::value ?
+		      std::is_signed_v<MappingIntegerType> ?
 			      lst::integer_type::signedness::SIGNED :
 			      lst::integer_type::signedness::UNSIGNED),
 	_mappings{

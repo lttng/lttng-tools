@@ -59,7 +59,7 @@ public:
 	binary_view(const void *data, size_type size_bytes, size_type count = 1) :
 		_data(reinterpret_cast<pointer>(data)), _count(count)
 	{
-		static_assert(std::is_trivially_copyable<ValueType>::value,
+		static_assert(std::is_trivially_copyable_v<ValueType>,
 			      "ValueType must be trivially copyable");
 
 		if (!_data) {

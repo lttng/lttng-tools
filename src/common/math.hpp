@@ -15,8 +15,7 @@ namespace math {
 template <typename IntegralType>
 bool is_power_of_two(const IntegralType value) noexcept
 {
-	static_assert(std::is_integral<IntegralType>::value,
-		      "IntegralType must be an integral type.");
+	static_assert(std::is_integral_v<IntegralType>, "IntegralType must be an integral type.");
 	return value > 0 && (value & (value - 1)) == 0;
 }
 } /* namespace math */

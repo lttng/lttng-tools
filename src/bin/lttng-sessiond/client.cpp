@@ -2574,7 +2574,7 @@ void thread_init_cleanup([[maybe_unused]] void *data)
 template <typename ExceptionType>
 std::string formatted_source_location([[maybe_unused]] const ExceptionType& ex)
 {
-	if constexpr (std::is_base_of<lttng::runtime_error, ExceptionType>::value) {
+	if constexpr (std::is_base_of_v<lttng::runtime_error, ExceptionType>) {
 		return fmt::format("{}", ex.source_location);
 	} else {
 		return "";

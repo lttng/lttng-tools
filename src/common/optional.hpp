@@ -98,16 +98,15 @@
 	}
 
 /* Set the value of an optional field. */
-#define LTTNG_OPTIONAL_SET(field_ptr, val)                                                    \
-	do {                                                                                  \
-		DIAGNOSTIC_PUSH                                                               \
-		DIAGNOSTIC_IGNORE_ADDRESS_OF_PACKED_MEMBER                                    \
-		static_assert(                                                                \
-			std::is_same<typename std::decay<decltype((field_ptr)->value)>::type, \
-				     typename std::decay<decltype(val)>::type>::value,        \
-			"Type mismatch between optional field and value");                    \
-		::details::lttng_optional_set_impl(field_ptr, val);                           \
-		DIAGNOSTIC_POP                                                                \
+#define LTTNG_OPTIONAL_SET(field_ptr, val)                                               \
+	do {                                                                             \
+		DIAGNOSTIC_PUSH                                                          \
+		DIAGNOSTIC_IGNORE_ADDRESS_OF_PACKED_MEMBER                               \
+		static_assert(std::is_same_v<std::decay_t<decltype((field_ptr)->value)>, \
+					     std::decay_t<decltype(val)>>,               \
+			      "Type mismatch between optional field and value");         \
+		::details::lttng_optional_set_impl(field_ptr, val);                      \
+		DIAGNOSTIC_POP                                                           \
 	} while (0)
 
 /* Put an optional field in the "unset" (NULL-ed) state. */
@@ -143,7 +142,7 @@ inline void lttng_optional_set_impl(OptionalType *field_ptr, const ValueType& va
 	 * Use offsetof and sizeof on the value type to avoid any member access
 	 * that could trigger alignment checks on packed structs.
 	 */
-	using DecayedValueType = typename std::decay<ValueType>::type;
+	using DecayedValueType = std::decay_t<ValueType>;
 	constexpr auto value_offset = offsetof(OptionalType, value);
 	auto *const value_ptr = reinterpret_cast<char *>(field_ptr) + value_offset;
 	memcpy(value_ptr, &val, sizeof(DecayedValueType));
@@ -157,7 +156,7 @@ inline void lttng_optional_set_impl(OptionalType *field_ptr, const ValueType&& v
 	 * Use std::decay on the template parameter type to strip any
 	 * cv-qualifiers and references, ensuring tmp_value has proper alignment.
 	 */
-	using DecayedValueType = typename std::decay<ValueType>::type;
+	using DecayedValueType = std::decay_t<ValueType>;
 	const DecayedValueType tmp_value = std::move(val);
 
 	/*
@@ -181,8 +180,7 @@ inline void lttng_optional_set_impl(OptionalType *field_ptr, const ValueType&& v
 }
 
 template <typename OptionalType,
-	  typename ValueType =
-		  typename std::decay<decltype(std::declval<OptionalType>().value)>::type>
+	  typename ValueType = std::decay_t<decltype(std::declval<OptionalType>().value)>>
 inline ValueType lttng_optional_get_value_impl(const OptionalType *field_ptr)
 {
 	/*
@@ -203,16 +201,14 @@ inline ValueType lttng_optional_get_value_impl(const OptionalType *field_ptr)
 	return result;
 }
 
-template <typename OptionalType,
-	  typename ValueType = typename std::decay<decltype(OptionalType::value)>::type>
+template <typename OptionalType, typename ValueType = std::decay_t<decltype(OptionalType::value)>>
 inline ValueType *lttng_optional_get_value_ptr_impl(OptionalType& field_ptr)
 {
 	LTTNG_ASSERT(field_ptr.is_set);
 	return &field_ptr.value;
 }
 
-template <typename OptionalType,
-	  typename ValueType = typename std::decay<decltype(OptionalType::value)>::type>
+template <typename OptionalType, typename ValueType = std::decay_t<decltype(OptionalType::value)>>
 inline const ValueType *lttng_optional_get_value_ptr_impl(const OptionalType& field_ptr)
 {
 	LTTNG_ASSERT(field_ptr.is_set);

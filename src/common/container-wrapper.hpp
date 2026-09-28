@@ -101,9 +101,9 @@ class random_access_container_wrapper {
 			return _index >= other._index;
 		}
 
-		typename std::conditional<std::is_pointer<IteratorElementType>::value,
-					  IteratorElementType,
-					  IteratorElementType&>::type
+		std::conditional_t<std::is_pointer_v<IteratorElementType>,
+				   IteratorElementType,
+				   IteratorElementType&>
 		operator*() const
 		{
 			return _container[_index];
@@ -153,7 +153,7 @@ public:
 		return size() == 0;
 	}
 
-	typename std::conditional<std::is_pointer<ElementType>::value, ElementType, ElementType&>::type
+	std::conditional_t<std::is_pointer_v<ElementType>, ElementType, ElementType&>
 	operator[](std::size_t index)
 	{
 		/*
@@ -169,14 +169,12 @@ public:
 		const auto& const_this = static_cast<const random_access_container_wrapper&>(*this);
 
 		/* NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast) */
-		return const_cast<typename std::conditional<std::is_pointer<ElementType>::value,
-							    ElementType,
-							    ElementType&>::type>(const_this[index]);
+		return const_cast<std::conditional_t<std::is_pointer_v<ElementType>,
+						     ElementType,
+						     ElementType&>>(const_this[index]);
 	}
 
-	typename std::conditional<std::is_pointer<ElementType>::value,
-				  const ElementType,
-				  const ElementType&>::type
+	std::conditional_t<std::is_pointer_v<ElementType>, const ElementType, const ElementType&>
 	operator[](std::size_t index) const
 	{
 		if (index >= ContainerOperations::size(_container)) {

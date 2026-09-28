@@ -33,7 +33,7 @@ namespace {
 star_glob_pattern_type_flags& operator|=(star_glob_pattern_type_flags& l,
 					 star_glob_pattern_type_flags r)
 {
-	using T = std::underlying_type<star_glob_pattern_type_flags>::type;
+	using T = std::underlying_type_t<star_glob_pattern_type_flags>;
 	l = static_cast<star_glob_pattern_type_flags>(static_cast<T>(l) | static_cast<T>(r));
 	return l;
 }
