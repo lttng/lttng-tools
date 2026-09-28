@@ -1190,6 +1190,65 @@ def test_buffer_preallocation_policy(
     assert on_demand_memory_usage_bytes < preallocate_memory_usage_bytes
 
 
+@extra_tap_points(2)
+def test_memory_usage_of_large_buffer(tap, test_env, client):
+    """
+    Ensure that the memory usage of a ring buffer which is larger than what the
+    consumer daemon measures at once (4096 pages) is reported in full.
+
+    A single preallocated per-channel buffer is used to limit the memory
+    needed by the test.
+    """
+    subbuf_size = 2048 * mmap.PAGESIZE
+    subbuf_count = 4
+    buffer_size = subbuf_size * subbuf_count
+
+    tap.diagnostic(
+        "Checking the reported memory usage of a single preallocated buffer of {} bytes ({} pages)".format(
+            buffer_size, buffer_size // mmap.PAGESIZE
+        )
+    )
+
+    session = client.create_session(
+        output=lttngtest.LocalSessionOutputLocation(
+            test_env.create_temporary_directory("trace")
+        ),
+    )
+
+    channel = session.add_channel(
+        lttngtest.TracingDomain.User,
+        buffer_allocation_policy=lttngtest.BufferAllocationPolicy.PerChannel,
+        buffer_preallocation_policy=lttngtest.BufferPreAllocationPolicy.PreAllocate,
+        subbuf_size=subbuf_size,
+        subbuf_count=subbuf_count,
+    )
+
+    channel.add_recording_rule(lttngtest.lttngctl.UserTracepointEventRule("tp:tptest"))
+
+    session.start()
+
+    app = test_env.launch_wait_trace_test_application(1)
+    app.trace()
+    app.wait_for_exit()
+
+    stream_count = get_channel_data_streams_count(client, session.name, channel.name)
+    tap.diagnostic("stream_count={}, expected == 1".format(stream_count))
+    tap.test(stream_count == 1, "Channel has a single data stream")
+
+    memory_usage_bytes = get_channel_memory_usage_bytes(
+        client, session.name, channel.name
+    )
+    tap.diagnostic(
+        "memory_usage_bytes={}, expected >= buffer_size={}".format(
+            memory_usage_bytes, buffer_size
+        )
+    )
+    tap.test(
+        memory_usage_bytes >= buffer_size,
+        "Reported memory usage covers the whole buffer",
+    )
+
+
 def test_load_save_preallocation_policy(
     tap,
     test_env,
@@ -2238,6 +2297,7 @@ if __name__ == "__main__":
     )
 
     tests_no_variants = (
+        test_memory_usage_of_large_buffer,
         test_auto_reclaim_resumes_after_explicit_reclaim,
         test_auto_reclaim_resumes_after_explicit_reclaim_per_process_buffers,
         test_explicit_reclaim_without_age_limit_survives_deferral,
