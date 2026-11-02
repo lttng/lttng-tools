@@ -37,6 +37,9 @@
 #ifndef _COMPAT_ENDIAN_H
 #define _COMPAT_ENDIAN_H
 
+#ifdef __cplusplus
+#include <cstdint>
+
 #if defined(__linux__) || defined(__CYGWIN__)
 #include <byteswap.h>
 #include <endian.h>
@@ -213,4 +216,31 @@
 #error "Please add support for your OS."
 #endif
 
+namespace lttng {
+namespace utils {
+
+inline std::uint8_t byte_swap(const std::uint8_t value) noexcept
+{
+	return value;
+}
+
+inline std::uint16_t byte_swap(const std::uint16_t value) noexcept
+{
+	return __builtin_bswap16(value);
+}
+
+inline std::uint32_t byte_swap(const std::uint32_t value) noexcept
+{
+	return __builtin_bswap32(value);
+}
+
+inline std::uint64_t byte_swap(const std::uint64_t value) noexcept
+{
+	return __builtin_bswap64(value);
+}
+
+} /* namespace utils */
+} /* namespace lttng */
+
+#endif /* __cplusplus */
 #endif /* _COMPAT_ENDIAN_H */

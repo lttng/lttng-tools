@@ -8,16 +8,20 @@
 
 #include <common/common.hpp>
 #include <common/compat/endian.hpp>
+#include <common/format.hpp>
 #include <common/spawn-viewer.hpp>
 #include <common/utils.hpp>
 
 #include <lttng/lttng.h>
 
+#include <cstdint>
+#include <cstring>
 #include <ctype.h>
 #include <dirent.h>
 #include <fcntl.h>
 #include <getopt.h>
 #include <inttypes.h>
+#include <limits>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -414,33 +418,71 @@ error:
 	return ret;
 }
 
-uint64_t _crash_get_field(const struct lttng_crash_layout *layout, const char *ptr, size_t size)
+template <typename IntegerType>
+std::uint64_t read_int(const void *const location, const bool reverse_byte_order) noexcept
 {
-	switch (size) {
+	IntegerType value;
+
+	std::memcpy(&value, location, sizeof(value));
+	return reverse_byte_order ? lttng::utils::byte_swap(value) : value;
+}
+
+std::uint64_t
+read_int(const void *const location, const unsigned int length, const bool reverse_byte_order)
+{
+	switch (length) {
 	case 1:
-		return *(uint8_t *) ptr;
+		return read_int<std::uint8_t>(location, reverse_byte_order);
 	case 2:
-		if (layout->reverse_byte_order) {
-			return bswap_16(*(uint16_t *) ptr);
-		} else {
-			return *(uint16_t *) ptr;
-		}
+		return read_int<std::uint16_t>(location, reverse_byte_order);
 	case 4:
-		if (layout->reverse_byte_order) {
-			return bswap_32(*(uint32_t *) ptr);
-		} else {
-			return *(uint32_t *) ptr;
-		}
+		return read_int<std::uint32_t>(location, reverse_byte_order);
 	case 8:
-		if (layout->reverse_byte_order) {
-			return bswap_64(*(uint64_t *) ptr);
-		} else {
-			return *(uint64_t *) ptr;
-		}
+		return read_int<std::uint64_t>(location, reverse_byte_order);
 	default:
 		abort();
-		return -1;
 	}
+}
+
+template <typename IntegerType>
+int write_int(void *const location, const bool reverse_byte_order, const std::uint64_t value)
+{
+	if (value > std::numeric_limits<IntegerType>::max()) {
+		ERR_FMT("Value does not fit in crash record field: value={}, field_width={} bytes",
+			value,
+			sizeof(IntegerType));
+		return -ERANGE;
+	}
+
+	const auto narrowed = static_cast<IntegerType>(value);
+	const auto encoded = reverse_byte_order ? lttng::utils::byte_swap(narrowed) : narrowed;
+
+	std::memcpy(location, &encoded, sizeof(encoded));
+	return 0;
+}
+
+int write_int(void *const location,
+	      const unsigned int length,
+	      const bool reverse_byte_order,
+	      const std::uint64_t value)
+{
+	switch (length) {
+	case 1:
+		return write_int<std::uint8_t>(location, reverse_byte_order, value);
+	case 2:
+		return write_int<std::uint16_t>(location, reverse_byte_order, value);
+	case 4:
+		return write_int<std::uint32_t>(location, reverse_byte_order, value);
+	case 8:
+		return write_int<std::uint64_t>(location, reverse_byte_order, value);
+	default:
+		abort();
+	}
+}
+
+uint64_t _crash_get_field(const struct lttng_crash_layout *layout, const char *ptr, size_t size)
+{
+	return read_int(ptr, size, layout->reverse_byte_order);
 }
 
 #define crash_get_field(layout, map, name) \
@@ -810,37 +852,36 @@ int copy_crash_subbuf(const struct lttng_crash_layout *layout,
 		 * Packet header can be used.
 		 */
 		if (layout->length.packet_size) {
-			memcpy(&packet_size,
-			       subbuf_ptr + layout->offset.packet_size,
-			       layout->length.packet_size);
-			if (layout->reverse_byte_order) {
-				packet_size = bswap_64(packet_size);
-			}
+			packet_size = crash_get_field(layout, subbuf_ptr, packet_size);
 			packet_size /= CHAR_BIT;
 		} else {
 			packet_size = subbuf_size;
 		}
 	} else {
-		uint64_t patch_size;
-
 		/*
 		 * Find where to patch the sub-buffer header with actual
 		 * readable data len and packet len, derived from seq
 		 * cc. Patch it in our in-memory copy.
 		 */
-		patch_size = committed * CHAR_BIT;
-		if (layout->reverse_byte_order) {
-			patch_size = bswap_64(patch_size);
-		}
+		const uint64_t patch_size = committed * CHAR_BIT;
+
 		if (layout->length.content_size) {
-			memcpy(subbuf_ptr + layout->offset.content_size,
-			       &patch_size,
-			       layout->length.content_size);
+			const auto ret = write_int(subbuf_ptr + layout->offset.content_size,
+						   layout->length.content_size,
+						   layout->reverse_byte_order,
+						   patch_size);
+			if (ret) {
+				return ret;
+			}
 		}
 		if (layout->length.packet_size) {
-			memcpy(subbuf_ptr + layout->offset.packet_size,
-			       &patch_size,
-			       layout->length.packet_size);
+			const auto ret = write_int(subbuf_ptr + layout->offset.packet_size,
+						   layout->length.packet_size,
+						   layout->reverse_byte_order,
+						   patch_size);
+			if (ret) {
+				return ret;
+			}
 		}
 		packet_size = committed;
 	}
