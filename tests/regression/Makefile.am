@@ -178,6 +178,7 @@ TESTS += tools/client/test_reclaim_memory.py \
 	ust/ust-constructor/test_ust_constructor_cpp_static.py \
 	ust/test_no_event_timestamps.py \
 	ust/test_multi_abi.py \
+	ust/test_stack_size.py \
 	tools/lttng-ctl/test_robust_protocol.py \
 	tools/map/test_map_value_type_multilib_ust.py
 

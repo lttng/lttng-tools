@@ -43,7 +43,8 @@ EXTRA_DIST = \
 	test_event_perf	\
 	test_event_tracef \
 	test_multi_abi.py \
-	test_no_event_timestamps.py
+	test_no_event_timestamps.py \
+	test_stack_size.py
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
