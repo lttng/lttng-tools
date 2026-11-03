@@ -9,6 +9,7 @@ import enum
 import importlib.util
 import json
 import multiprocessing
+import resource
 from types import FrameType
 from typing import (
     Callable,
@@ -324,6 +325,7 @@ class _WaitTraceTestApplication:
         emit_blob_events=False,
         register_timeout_s=-1,
         library_dirs: Optional[List[pathlib.Path]] = None,
+        limits: Dict[int, Tuple[int, int]] = dict(),
     ):
         self._process = None
         self._environment = environment  # type: Environment
@@ -507,9 +509,17 @@ class _WaitTraceTestApplication:
                 "--",
             ] + test_app_args
 
+        limit_args = get_ulimit_args(limits)
+        use_shell = False
+        if limit_args:
+            test_app_args = " ".join(limit_args + test_app_args)
+            use_shell = True
+
         self._environment._log(
             "Launching test application: '{}'".format(
                 self._compat_shlex_join(test_app_args)
+                if type(test_app_args) is list
+                else test_app_args
             )
         )
         self._process = subprocess.Popen(
@@ -517,6 +527,10 @@ class _WaitTraceTestApplication:
             env=test_app_env,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
+            # Note that the sh is /bin/sh by default on POSIX platforms.
+            # If we need or want to enforce the use of bash, then creating
+            # the command to run 'bash -c "..."' will be necessary.
+            shell=use_shell,
         )  # type: subprocess.Popen
 
         # Create and start a thread to consume and log the process output
@@ -2924,3 +2938,49 @@ def test_environment(
         yield env
     finally:
         env._cleanup()
+
+
+def get_ulimit_args(limits: Dict[int, tuple[int, int]] = dict()):
+    if not limits:
+        return list()
+
+    have_soft_args = False
+    soft_args = ["ulimit", "-S"]
+    # Do the soft limits
+    for _resource, limit_value in limits.items():
+        soft_limit = limit_value[0]
+        if soft_limit is None:
+            continue
+
+        have_soft_args = True
+        soft_args += _get_ulimit_arg(_resource, soft_limit)
+
+    if not have_soft_args:
+        soft_args = list()
+    else:
+        soft_args += [";"]
+
+    hard_args = ["ulimit", "-H"]
+    # Do the hard limits
+    have_hard_args = False
+    for _resource, limit_value in limits.items():
+        hard_limit = limit_value[0]
+        if hard_limit is None:
+            continue
+
+        have_hard_args = True
+        hard_args += _get_ulimit_arg(_resource, hard_limit)
+
+    if not have_hard_args:
+        hard_args = list()
+    else:
+        hard_args += [";"]
+
+    return soft_args + hard_args
+
+
+def _get_ulimit_arg(res, value):
+    if res == resource.RLIMIT_STACK:
+        return ["-s", str(value)]
+    else:
+        raise RuntimeError("Unhandled ulimit resource: {}".format(res))
