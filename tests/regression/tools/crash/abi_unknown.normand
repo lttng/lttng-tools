@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: Kienan Stewart <kstewart@efficios.com>
+# SPDX-License-Identifier: GPL-2.0-only
+
+<_magic>
+(
+  {m_at = 0}
+  !repeat 16
+    {m = magic[m_at]}
+    [m:8]
+    {m_at = m_at + 1}
+  !end
+)
+<_mmap_length> [_end if mmap_length is None else mmap_length : 64]
+<_endian> [endian:16]
+<_major> [major:16]
+<_minor> [minor:16]
+<_word_size> [word_size:8]
+<_layout_type> [layout_type:8]

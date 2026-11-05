@@ -1,0 +1,37 @@
+# SPDX-FileCopyrightText: Kienan Stewart <kstewart@efficios.com>
+# SPDX-License-Identifier: GPL-2.0-only
+
+<_abi_version_start>
+<_offset>
+[_produced if prod_offset is None else prod_offset : 32]
+[_consumed if consumed_offset is None else consumed_offset : 32]
+[_commit_hot_array if commit_hot_array is None else commit_hot_array : 32]
+[commit_hot_seq:32]
+[_buf_wsb_array if buf_wsb_array is None else buf_wsb_array : 32]
+[buf_wsb_id:32]
+[_sb_array if sb_array is None else sb_array :32]
+[sb_array_shmp_offset:32] # Offset relative to sb_array offset
+[sb_backend_p_offset:32] # Offset relative to sb_array offset
+[content_size:32]
+[packet_size:32]
+
+<_length>
+[length_prod_offset:8]
+[length_consumed_offset:8]
+[length_commit_hot_seq:8]
+[length_buf_wsb_id:8]
+[length_sb_array_shmp_offset:8]
+[length_sb_backend_p_offset:8]
+[length_content_size:8]
+[length_packet_size:8]
+
+<_stride>
+[stride_commit_hot_array:32]
+[stride_buf_wsb_array:32]
+[stride_sb_array:32]
+
+[buf_size:64]
+[subbuf_size:64]
+[num_subbuf:64]
+[mode:32]
+<_abi_version_end>

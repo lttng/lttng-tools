@@ -157,6 +157,7 @@ noinst_SCRIPTS += \
 	client/test_reclaim_memory.py \
 	context/test_ust.py \
 	crash/test_crash \
+	crash/test_input_bounds.py \
 	exclusion/test_exclusion \
 	filtering/test_unsupported_op \
 	filtering/test_invalid_filter \
@@ -284,6 +285,9 @@ noinst_SCRIPTS += \
 
 EXTRA_DIST += $(noinst_SCRIPTS) \
 	base-path/load-stream-extra-path.lttng \
+	crash/abi_0_0.normand \
+	crash/abi_unknown.normand \
+	crash/ringbuffer_data.normand \
 	save-load/configuration/load-42-live.lttng \
 	save-load/configuration/load-42-snapshot.lttng \
 	save-load/load-42-complex.lttng \

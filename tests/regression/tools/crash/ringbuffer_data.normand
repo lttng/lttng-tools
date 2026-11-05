@@ -1,0 +1,52 @@
+# SPDX-FileCopyrightText: Kienan Stewart <kstewart@efficios.com>
+# SPDX-License-Identifier: GPL-2.0-only
+
+# This is a fake layout that gives enough space for performing tests.
+# It is not a consistent representation of the ringbuffer data.
+
+# Misc values that are frequently poked
+
+<_produced>[produced:64]
+<_consumed>[consumed:64]
+
+{array_max_index = num_subbuf + 1}
+{commit_array_element_size_bytes = 16}
+{buf_wsb_array_element_size_bytes = 16}
+{sb_array_element_size_bytes = 16}
+
+@64 <_commit_hot_array>
+[commit_hot_array_data : s:u8]
++ { array_max_index * commit_array_element_size_bytes - len(commit_hot_array_data) + ICITTE }
+
+@64 <_buf_wsb_array>
+[buf_wsb_array_data : s:u8]
++ { array_max_index * buf_wsb_array_element_size_bytes - len(buf_wsb_array_data) + ICITTE}
+
+@64 <_sb_array>
+[sb_array_data : s:u8]
+
+# Fill to 512 bytes
++ { 512 }
+
+<_backend_pages>
+[backend_page_data : s:u8]
+
+# Fill to 1024 bytes
++ { 1024 }
+
+<_subbuf_start>
+(
+{at = 0}
+!repeat array_max_index
+  !if {len(ringbuffer_data) != 0 and at in ringbuffer_data}
+    {ringbuffer_data_here = ringbuffer_data[at]}
+    [ringbuffer_data_here : s:u8]
+    + { subbuf_size - len(ringbuffer_data_here) + ICITTE }
+  !else
+    + { subbuf_size + ICITTE}
+  !end
+  { at = at + 1 }
+!end
+)
+<_subbuf_end>
+<_end>
