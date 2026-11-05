@@ -1150,6 +1150,10 @@ class _BuildProfile:
         return self._resolve(self._binaries["lttng_client"])
 
     @property
+    def lttng_crash_path(self) -> pathlib.Path:
+        return self._resolve(self._binaries['lttng-crash'])
+
+    @property
     def library_dirs(self) -> List[pathlib.Path]:
         return self._library_dirs
 

@@ -8,7 +8,8 @@
 		"sessiond": "../../src/bin/lttng-sessiond/lttng-sessiond",
 		"relayd": "../../src/bin/lttng-relayd/lttng-relayd",
 		"consumerd": "../../src/bin/lttng-consumerd/lttng-consumerd",
-		"lttng_client": "../../src/bin/lttng/lttng"
+		"lttng_client": "../../src/bin/lttng/lttng",
+		"lttng-crash": "../../src/bin/lttng-crash/lttng-crash"
 	},
 	"testapp_dir": "testapp",
 	"tests_dir": "..",
