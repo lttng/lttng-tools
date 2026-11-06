@@ -923,6 +923,12 @@ int copy_crash_data(const struct lttng_crash_layout *layout, int fd_dest, int fd
 		return -1;
 	}
 
+	if (layout->mmap_length > std::numeric_limits<std::size_t>::max()) {
+		ERR_FMT("Buffer file is too large to be loaded in memory: mmap_length={}",
+			layout->mmap_length);
+		return -1;
+	}
+
 	src_file_len = layout->mmap_length;
 	buf = calloc<char>(src_file_len);
 	if (!buf) {
