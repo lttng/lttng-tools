@@ -915,14 +915,31 @@ int copy_crash_data(const struct lttng_crash_layout *layout, int fd_dest, int fd
 	if (ret) {
 		return ret;
 	}
+
+	if (layout->mmap_length > static_cast<std::uint64_t>(statbuf.st_size)) {
+		ERR_FMT("Buffer file is shorter than its declared length: mmap_length={}, file_size={}",
+			layout->mmap_length,
+			statbuf.st_size);
+		return -1;
+	}
+
 	src_file_len = layout->mmap_length;
 	buf = calloc<char>(src_file_len);
 	if (!buf) {
 		return -1;
 	}
+
 	readlen = lttng_read(fd_src, buf, src_file_len);
 	if (readlen < 0) {
 		PERROR("Error reading input file");
+		ret = -1;
+		goto end;
+	}
+
+	if (static_cast<std::size_t>(readlen) != src_file_len) {
+		ERR_FMT("Short read of the buffer file: mmap_length={}, read_length={}",
+			src_file_len,
+			readlen);
 		ret = -1;
 		goto end;
 	}
