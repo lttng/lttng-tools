@@ -30,6 +30,7 @@ TESTS = \
 	test_kprobe_event_rule_event_name \
 	test_uprobe_event_rule_event_name \
 	test_log_level_rule \
+	test_math \
 	test_notification \
 	test_payload \
 	test_poller \
@@ -78,6 +79,7 @@ noinst_PROGRAMS = \
 	test_kprobe_event_rule_event_name \
 	test_uprobe_event_rule_event_name \
 	test_log_level_rule \
+	test_math \
 	test_notification \
 	test_payload \
 	test_poller \
@@ -221,6 +223,10 @@ test_buffer_view_LDADD = $(LIBTAP) $(LIBCOMMON_GPL)
 # bigint unit test
 test_bigint_SOURCES = test_bigint.cpp
 test_bigint_LDADD = $(LIBTAP) $(LIBCOMMON_GPL)
+
+# math unit test
+test_math_SOURCES = test_math.cpp
+test_math_LDADD = $(LIBTAP)
 
 # table writer unit test
 test_table_writer_SOURCES = test_table_writer.cpp
