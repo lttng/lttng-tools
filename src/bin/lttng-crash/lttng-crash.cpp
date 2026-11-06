@@ -775,25 +775,16 @@ inline uint64_t subbuffer_id_get_index(uint32_t extra_reader_subbuf, uint64_t id
 		return id;
 }
 
+/* `produced_counter_at_subbuf_start` is `consumed` in lttng-ust's lib_ring_buffer_get_subbuf(). */
 bool copy_crash_subbuf(const struct lttng_crash_layout *layout,
 		       const lttng::file_descriptor& fd_dest,
 		       char *buf,
-		       uint64_t offset)
+		       uint64_t produced_counter_at_subbuf_start)
 {
-	uint64_t buf_size, subbuf_size, num_subbuf, sbidx, id, sb_bindex, rpages_offset, p_offset,
-		seq_cc, committed, commit_count_mask, consumed_cur, packet_size;
-	char *subbuf_ptr;
-	ssize_t writelen;
-
-	/*
-	 * Get the current subbuffer by applying the proper mask to
-	 * "offset", and looking up the subbuf location within the
-	 * source file buf.
-	 */
-
-	buf_size = layout->buf_size;
-	subbuf_size = layout->subbuf_size;
-	num_subbuf = layout->num_subbuf;
+	const auto buf_size = layout->buf_size;
+	const auto subbuf_size = layout->subbuf_size;
+	const auto num_subbuf = layout->num_subbuf;
+	uint64_t commit_count_mask;
 
 	switch (layout->word_size) {
 	case 4:
@@ -807,89 +798,91 @@ bool copy_crash_subbuf(const struct lttng_crash_layout *layout,
 			fmt::format("Unsupported word size: word_size={}", layout->word_size));
 	}
 
-	DBG("Copy crash subbuffer at offset %" PRIu64, offset);
-	sbidx = subbuf_index(offset, buf_size, subbuf_size);
+	DBG("Copy crash sub-buffer: produced_counter_at_subbuf_start=%" PRIu64,
+	    produced_counter_at_subbuf_start);
 
-	/*
-	 * Find where the seq cc is located. Compute length of data to
-	 * copy.
-	 */
-	seq_cc = crash_get_array_field(layout, buf, commit_hot_array, sbidx, commit_hot_seq);
-	consumed_cur = crash_get_field(layout, buf, consumed_offset);
+	/* lttng-ust: `idx` (from subbuf_index()). */
+	const auto writer_subbuf_index =
+		subbuf_index(produced_counter_at_subbuf_start, buf_size, subbuf_size);
+	/* lttng-ust: `commit_hot[idx].seq`. */
+	const auto commit_seq = crash_get_array_field(
+		layout, buf, commit_hot_array, writer_subbuf_index, commit_hot_seq);
+	/* lttng-ust: `buf->consumed`. */
+	const auto consumed_counter = crash_get_field(layout, buf, consumed_offset);
 
-	/*
-	 * Check that the buffer we are getting is after or at
-	 * consumed_cur position.
-	 */
-	if ((long) subbuf_trunc(offset, subbuf_size) -
-		    (long) subbuf_trunc(consumed_cur, subbuf_size) <
+	if ((long) subbuf_trunc(produced_counter_at_subbuf_start, subbuf_size) -
+		    (long) subbuf_trunc(consumed_counter, subbuf_size) <
 	    0) {
-		DBG("No data: position is before consumed_cur");
+		DBG("No data: sub-buffer starts before the consumed counter");
 		return false;
 	}
 
-	/*
-	 * Check if subbuffer has been fully committed.
-	 */
-	if (((seq_cc - subbuf_size) & commit_count_mask) -
-		    (buf_trunc(offset, buf_size) / num_subbuf) ==
+	uint64_t committed_size;
+
+	if (((commit_seq - subbuf_size) & commit_count_mask) -
+		    (buf_trunc(produced_counter_at_subbuf_start, buf_size) / num_subbuf) ==
 	    0) {
-		committed = subbuf_size;
+		committed_size = subbuf_size;
 	} else {
-		committed = subbuf_offset(seq_cc, subbuf_size);
-		if (!committed) {
-			DBG("No data committed, seq_cc: %" PRIu64, seq_cc);
+		committed_size = subbuf_offset(commit_seq, subbuf_size);
+		if (!committed_size) {
+			DBG("No data committed: commit_seq=%" PRIu64, commit_seq);
 			return false;
 		}
 	}
 
-	/* Find actual physical offset in subbuffer table */
-	id = crash_get_array_field(layout, buf, buf_wsb_array, sbidx, buf_wsb_id);
-	sb_bindex = subbuffer_id_get_index(layout->extra_reader_subbuf, id, layout->word_size);
-	rpages_offset =
-		crash_get_array_field(layout, buf, sb_array, sb_bindex, sb_array_shmp_offset);
-	p_offset = crash_get_field(layout, buf + rpages_offset, sb_backend_p_offset);
-	subbuf_ptr = buf + p_offset;
+	/*
+	 * To read a sub-buffer, the reader exchanges it with the spare sub-buffer of the ring
+	 * buffer, so writer sub-buffer N isn't always backend sub-buffer N. The index part of
+	 * `buf_wsb[N].id` gives the actual backend sub-buffer, of which the backend pages
+	 * structure gives the location of the data.
+	 */
+	/* lttng-ust: `wsb->id`. */
+	const auto subbuf_id =
+		crash_get_array_field(layout, buf, buf_wsb_array, writer_subbuf_index, buf_wsb_id);
+	/* lttng-ust: `sb_bindex`. */
+	const auto backend_subbuf_index =
+		subbuffer_id_get_index(layout->extra_reader_subbuf, subbuf_id, layout->word_size);
+	/* lttng-ust: `rpages`. */
+	const auto backend_pages_offset_from_file_start = crash_get_array_field(
+		layout, buf, sb_array, backend_subbuf_index, sb_array_shmp_offset);
+	/* lttng-ust: `rpages->p`. */
+	const auto subbuf_data_offset_from_file_start = crash_get_field(
+		layout, buf + backend_pages_offset_from_file_start, sb_backend_p_offset);
+	char *const subbuf_data = buf + subbuf_data_offset_from_file_start;
+	uint64_t packet_size;
 
-	if (committed == subbuf_size) {
-		/*
-		 * Packet header can be used.
-		 */
+	if (committed_size == subbuf_size) {
 		if (layout->length.packet_size) {
-			packet_size = crash_get_field(layout, subbuf_ptr, packet_size);
-			packet_size /= CHAR_BIT;
+			packet_size = crash_get_field(layout, subbuf_data, packet_size) / CHAR_BIT;
 		} else {
 			packet_size = subbuf_size;
 		}
 	} else {
 		/*
-		 * Find where to patch the sub-buffer header with actual
-		 * readable data len and packet len, derived from seq
-		 * cc. Patch it in our in-memory copy.
+		 * The tracer writes the packet header sizes only when it closes the packet;
+		 * otherwise, we have to patch them with the committed size in our copy.
 		 */
-		const uint64_t patch_size = committed * CHAR_BIT;
+		const uint64_t committed_size_bits = committed_size * CHAR_BIT;
 
 		if (layout->length.content_size) {
-			write_int(subbuf_ptr + layout->offset.content_size,
+			write_int(subbuf_data + layout->offset.content_size,
 				  layout->length.content_size,
 				  layout->reverse_byte_order,
-				  patch_size);
+				  committed_size_bits);
 		}
 
 		if (layout->length.packet_size) {
-			write_int(subbuf_ptr + layout->offset.packet_size,
+			write_int(subbuf_data + layout->offset.packet_size,
 				  layout->length.packet_size,
 				  layout->reverse_byte_order,
-				  patch_size);
+				  committed_size_bits);
 		}
 
-		packet_size = committed;
+		packet_size = committed_size;
 	}
 
-	/*
-	 * Copy packet into fd_dest.
-	 */
-	writelen = lttng_write(fd_dest.fd(), subbuf_ptr, packet_size);
+	const auto writelen = lttng_write(fd_dest.fd(), subbuf_data, packet_size);
 	if (writelen < 0 || static_cast<uint64_t>(writelen) != packet_size) {
 		LTTNG_THROW_POSIX("Error writing to output file");
 	}
@@ -935,15 +928,20 @@ bool copy_crash_data(const struct lttng_crash_layout *layout,
 				    readlen));
 	}
 
-	const auto prod_offset = crash_get_field(layout, buf.data(), prod_offset);
-	DBG("prod_offset: 0x%" PRIx64, prod_offset);
-	const auto consumed_offset = crash_get_field(layout, buf.data(), consumed_offset);
-	DBG("consumed_offset: 0x%" PRIx64, consumed_offset);
+	/* lttng-ust: `buf->offset`. */
+	const auto produced_counter = crash_get_field(layout, buf.data(), prod_offset);
+	DBG("produced_counter: 0x%" PRIx64, produced_counter);
+	/* lttng-ust: `buf->consumed`. */
+	const auto consumed_counter = crash_get_field(layout, buf.data(), consumed_offset);
+	DBG("consumed_counter: 0x%" PRIx64, consumed_counter);
 
 	bool has_data = false;
 
-	for (auto offset = consumed_offset; offset < prod_offset; offset += layout->subbuf_size) {
-		if (!copy_crash_subbuf(layout, fd_dest, buf.data(), offset)) {
+	for (auto produced_counter_at_subbuf_start = consumed_counter;
+	     produced_counter_at_subbuf_start < produced_counter;
+	     produced_counter_at_subbuf_start += layout->subbuf_size) {
+		if (!copy_crash_subbuf(
+			    layout, fd_dest, buf.data(), produced_counter_at_subbuf_start)) {
 			break;
 		}
 
