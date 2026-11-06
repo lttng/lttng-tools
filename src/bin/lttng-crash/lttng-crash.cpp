@@ -8,7 +8,10 @@
 
 #include <common/common.hpp>
 #include <common/compat/endian.hpp>
+#include <common/exception.hpp>
+#include <common/file-descriptor.hpp>
 #include <common/format.hpp>
+#include <common/scope-exit.hpp>
 #include <common/spawn-viewer.hpp>
 #include <common/utils.hpp>
 
@@ -32,6 +35,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <vector>
 #include <version-git.hpp>
 #include <version.hpp>
 
@@ -362,6 +366,47 @@ error:
 	return -1;
 }
 
+template <typename... FormattingArgumentTypes>
+void log_error_with_causes(const std::exception& exception,
+			   lttng::c_string_view summary_format,
+			   FormattingArgumentTypes&&...arguments) noexcept
+{
+	try {
+		auto message = fmt::format(summary_format.data(),
+					   std::forward<FormattingArgumentTypes>(arguments)...);
+		std::string innermost_location;
+
+		lttng::visit_nested_exceptions(
+			exception,
+			[&message, &innermost_location](const std::exception& cause,
+							const unsigned int) {
+				message += fmt::format("\n  Caused by: {}", cause.what());
+
+				const auto *const lttng_cause =
+					dynamic_cast<const lttng::runtime_error *>(&cause);
+
+				innermost_location = lttng_cause ?
+					fmt::format(
+						" (in {}() at {}:{})",
+						lttng_cause->source_location.function_name.data(),
+						lttng_cause->source_location.file_name.data(),
+						lttng_cause->source_location.line_number) :
+					std::string();
+			});
+
+		if (lttng_opt_verbose > 0) {
+			/* Omit source location in non-verbose output. */
+			message += innermost_location;
+		}
+
+		ERR("%s", message.c_str());
+	} catch (const std::exception& formatting_exception) {
+		ERR("Failed to format error: %s: original_error=`%s`",
+		    formatting_exception.what(),
+		    exception.what());
+	}
+}
+
 int copy_file(const char *file_dest, const char *file_src)
 {
 	int fd_src = -1, fd_dest = -1;
@@ -445,26 +490,25 @@ read_int(const void *const location, const unsigned int length, const bool rever
 }
 
 template <typename IntegerType>
-int write_int(void *const location, const bool reverse_byte_order, const std::uint64_t value)
+void write_int(void *const location, const bool reverse_byte_order, const std::uint64_t value)
 {
 	if (value > std::numeric_limits<IntegerType>::max()) {
-		ERR_FMT("Value does not fit in crash record field: value={}, field_width={} bytes",
-			value,
-			sizeof(IntegerType));
-		return -ERANGE;
+		LTTNG_THROW_OUT_OF_RANGE(
+			fmt::format("Value doesn't fit in field: value={}, field_length_bytes={}",
+				    value,
+				    sizeof(IntegerType)));
 	}
 
 	const auto narrowed = static_cast<IntegerType>(value);
 	const auto encoded = reverse_byte_order ? lttng::utils::byte_swap(narrowed) : narrowed;
 
 	std::memcpy(location, &encoded, sizeof(encoded));
-	return 0;
 }
 
-int write_int(void *const location,
-	      const unsigned int length,
-	      const bool reverse_byte_order,
-	      const std::uint64_t value)
+void write_int(void *const location,
+	       const unsigned int length,
+	       const bool reverse_byte_order,
+	       const std::uint64_t value)
 {
 	switch (length) {
 	case 1:
@@ -771,10 +815,10 @@ inline uint64_t subbuffer_id_get_index(uint32_t extra_reader_subbuf, uint64_t id
 		return id;
 }
 
-int copy_crash_subbuf(const struct lttng_crash_layout *layout,
-		      int fd_dest,
-		      char *buf,
-		      uint64_t offset)
+bool copy_crash_subbuf(const struct lttng_crash_layout *layout,
+		       const lttng::file_descriptor& fd_dest,
+		       char *buf,
+		       uint64_t offset)
 {
 	uint64_t buf_size, subbuf_size, num_subbuf, sbidx, id, sb_bindex, rpages_offset, p_offset,
 		seq_cc, committed, commit_count_mask, consumed_cur, packet_size;
@@ -799,8 +843,8 @@ int copy_crash_subbuf(const struct lttng_crash_layout *layout,
 		commit_count_mask = 0xFFFFFFFFFFFFFFFFULL / num_subbuf;
 		break;
 	default:
-		ERR("Unsupported word size: %u", (unsigned int) layout->word_size);
-		return -EINVAL;
+		LTTNG_THROW_UNSUPPORTED_ERROR(
+			fmt::format("Unsupported word size: word_size={}", layout->word_size));
 	}
 
 	DBG("Copy crash subbuffer at offset %" PRIu64, offset);
@@ -821,7 +865,7 @@ int copy_crash_subbuf(const struct lttng_crash_layout *layout,
 		    (long) subbuf_trunc(consumed_cur, subbuf_size) <
 	    0) {
 		DBG("No data: position is before consumed_cur");
-		goto nodata;
+		return false;
 	}
 
 	/*
@@ -835,7 +879,7 @@ int copy_crash_subbuf(const struct lttng_crash_layout *layout,
 		committed = subbuf_offset(seq_cc, subbuf_size);
 		if (!committed) {
 			DBG("No data committed, seq_cc: %" PRIu64, seq_cc);
-			goto nodata;
+			return false;
 		}
 	}
 
@@ -866,115 +910,87 @@ int copy_crash_subbuf(const struct lttng_crash_layout *layout,
 		const uint64_t patch_size = committed * CHAR_BIT;
 
 		if (layout->length.content_size) {
-			const auto ret = write_int(subbuf_ptr + layout->offset.content_size,
-						   layout->length.content_size,
-						   layout->reverse_byte_order,
-						   patch_size);
-			if (ret) {
-				return ret;
-			}
+			write_int(subbuf_ptr + layout->offset.content_size,
+				  layout->length.content_size,
+				  layout->reverse_byte_order,
+				  patch_size);
 		}
+
 		if (layout->length.packet_size) {
-			const auto ret = write_int(subbuf_ptr + layout->offset.packet_size,
-						   layout->length.packet_size,
-						   layout->reverse_byte_order,
-						   patch_size);
-			if (ret) {
-				return ret;
-			}
+			write_int(subbuf_ptr + layout->offset.packet_size,
+				  layout->length.packet_size,
+				  layout->reverse_byte_order,
+				  patch_size);
 		}
+
 		packet_size = committed;
 	}
 
 	/*
 	 * Copy packet into fd_dest.
 	 */
-	writelen = lttng_write(fd_dest, subbuf_ptr, packet_size);
-	if (writelen < packet_size) {
-		PERROR("Error writing to output file");
-		return -1;
+	writelen = lttng_write(fd_dest.fd(), subbuf_ptr, packet_size);
+	if (writelen < 0 || static_cast<uint64_t>(writelen) != packet_size) {
+		LTTNG_THROW_POSIX("Error writing to output file");
 	}
-	DBG("Copied %" PRIu64 " bytes of data", packet_size);
-	return 0;
 
-nodata:
-	return -ENODATA;
+	DBG("Copied %" PRIu64 " bytes of data", packet_size);
+	return true;
 }
 
-int copy_crash_data(const struct lttng_crash_layout *layout, int fd_dest, int fd_src)
+bool copy_crash_data(const struct lttng_crash_layout *layout,
+		     const lttng::file_descriptor& fd_dest,
+		     const lttng::file_descriptor& fd_src)
 {
-	char *buf;
-	int ret = 0, has_data = 0;
-	struct stat statbuf;
-	size_t src_file_len;
-	uint64_t prod_offset, consumed_offset;
-	uint64_t offset, subbuf_size;
-	ssize_t readlen;
+	struct stat file_stat;
 
-	ret = fstat(fd_src, &statbuf);
-	if (ret) {
-		return ret;
+	if (fstat(fd_src.fd(), &file_stat) < 0) {
+		LTTNG_THROW_POSIX("Failed to stat the buffer file");
 	}
 
-	if (layout->mmap_length > static_cast<std::uint64_t>(statbuf.st_size)) {
-		ERR_FMT("Buffer file is shorter than its declared length: mmap_length={}, file_size={}",
+	if (layout->mmap_length > static_cast<std::uint64_t>(file_stat.st_size)) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			"Buffer file is shorter than its declared length: mmap_length={}, file_size={}",
 			layout->mmap_length,
-			statbuf.st_size);
-		return -1;
+			file_stat.st_size));
 	}
 
 	if (layout->mmap_length > std::numeric_limits<std::size_t>::max()) {
-		ERR_FMT("Buffer file is too large to be loaded in memory: mmap_length={}",
-			layout->mmap_length);
-		return -1;
+		LTTNG_THROW_ERROR(fmt::format(
+			"Buffer file is too large to be loaded in memory: mmap_length={}",
+			layout->mmap_length));
 	}
 
-	src_file_len = layout->mmap_length;
-	buf = calloc<char>(src_file_len);
-	if (!buf) {
-		return -1;
-	}
+	std::vector<char> buf(layout->mmap_length);
+	const auto readlen = lttng_read(fd_src.fd(), buf.data(), buf.size());
 
-	readlen = lttng_read(fd_src, buf, src_file_len);
 	if (readlen < 0) {
-		PERROR("Error reading input file");
-		ret = -1;
-		goto end;
+		LTTNG_THROW_POSIX("Failed to read the buffer file");
 	}
 
-	if (static_cast<std::size_t>(readlen) != src_file_len) {
-		ERR_FMT("Short read of the buffer file: mmap_length={}, read_length={}",
-			src_file_len,
-			readlen);
-		ret = -1;
-		goto end;
+	if (static_cast<std::size_t>(readlen) != buf.size()) {
+		LTTNG_THROW_ERROR(
+			fmt::format("Short read of the buffer file: mmap_length={}, read_length={}",
+				    buf.size(),
+				    readlen));
 	}
 
-	prod_offset = crash_get_field(layout, buf, prod_offset);
+	const auto prod_offset = crash_get_field(layout, buf.data(), prod_offset);
 	DBG("prod_offset: 0x%" PRIx64, prod_offset);
-	consumed_offset = crash_get_field(layout, buf, consumed_offset);
+	const auto consumed_offset = crash_get_field(layout, buf.data(), consumed_offset);
 	DBG("consumed_offset: 0x%" PRIx64, consumed_offset);
-	subbuf_size = layout->subbuf_size;
 
-	for (offset = consumed_offset; offset < prod_offset; offset += subbuf_size) {
-		ret = copy_crash_subbuf(layout, fd_dest, buf, offset);
-		if (!ret) {
-			has_data = 1;
+	bool has_data = false;
+
+	for (auto offset = consumed_offset; offset < prod_offset; offset += layout->subbuf_size) {
+		if (!copy_crash_subbuf(layout, fd_dest, buf.data(), offset)) {
+			break;
 		}
-		if (ret) {
-			goto end;
-		}
+
+		has_data = true;
 	}
-end:
-	free(buf);
-	if (ret && ret != -ENODATA) {
-		return ret;
-	}
-	if (has_data) {
-		return 0;
-	} else {
-		return -ENODATA;
-	}
+
+	return has_data;
 }
 
 int extract_file(int output_dir_fd,
@@ -982,58 +998,51 @@ int extract_file(int output_dir_fd,
 		 int input_dir_fd,
 		 const char *input_file)
 {
-	int fd_dest, fd_src, ret = 0, closeret;
-	struct lttng_crash_layout layout;
-
-	layout.reverse_byte_order = 0; /* For reading magic number */
-
 	DBG("Extract file '%s'", input_file);
-	fd_src = openat(input_dir_fd, input_file, O_RDONLY);
-	if (fd_src < 0) {
+
+	const auto raw_fd_src = openat(input_dir_fd, input_file, O_RDONLY);
+	if (raw_fd_src < 0) {
 		PERROR("Error opening '%s' for reading", input_file);
-		ret = -1;
-		goto end;
+		return -1;
 	}
+
+	const lttng::file_descriptor fd_src(raw_fd_src);
+	struct lttng_crash_layout layout = {};
 
 	/* Query the crash ABI layout */
-	ret = get_crash_layout(&layout, fd_src, input_file);
-	if (ret) {
-		goto close_src;
+	const auto layout_ret = get_crash_layout(&layout, fd_src.fd(), input_file);
+	if (layout_ret) {
+		return layout_ret;
 	}
 
-	fd_dest = openat(output_dir_fd,
-			 output_file,
-			 O_RDWR | O_CREAT | O_EXCL,
-			 S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
-	if (fd_dest < 0) {
+	const auto raw_fd_dest = openat(output_dir_fd,
+					output_file,
+					O_RDWR | O_CREAT | O_EXCL,
+					S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+	if (raw_fd_dest < 0) {
 		PERROR("Error opening '%s' for writing", output_file);
-		ret = -1;
-		goto close_src;
+		return -1;
 	}
 
-	ret = copy_crash_data(&layout, fd_dest, fd_src);
-	if (ret) {
-		goto close_dest;
-	}
+	const lttng::file_descriptor fd_dest(raw_fd_dest);
 
-close_dest:
-	closeret = close(fd_dest);
-	if (closeret) {
-		PERROR("close");
-	}
-	if (ret == -ENODATA) {
-		closeret = unlinkat(output_dir_fd, output_file, 0);
-		if (closeret) {
-			PERROR("unlinkat");
+	lttng::scope_exit remove_output_file([output_dir_fd, output_file]() noexcept {
+		if (unlinkat(output_dir_fd, output_file, 0)) {
+			PERROR("Failed to remove output file '%s'", output_file);
 		}
+	});
+
+	try {
+		if (!copy_crash_data(&layout, fd_dest, fd_src)) {
+			return -ENODATA;
+		}
+	} catch (const std::exception& ex) {
+		log_error_with_causes(ex, "Failed to extract buffer file `{}`", input_file);
+		return -1;
 	}
-close_src:
-	closeret = close(fd_src);
-	if (closeret) {
-		PERROR("close");
-	}
-end:
-	return ret;
+
+	remove_output_file.disarm();
+	return 0;
 }
 
 int extract_all_files(const char *output_path, const char *input_path)
