@@ -6,6 +6,7 @@
  *
  */
 
+#include <common/binary-view.hpp>
 #include <common/common.hpp>
 #include <common/compat/endian.hpp>
 #include <common/exception.hpp>
@@ -13,10 +14,12 @@
 #include <common/format.hpp>
 #include <common/scope-exit.hpp>
 #include <common/spawn-viewer.hpp>
+#include <common/stream-descriptor.hpp>
 #include <common/utils.hpp>
 
 #include <lttng/lttng.h>
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -26,12 +29,12 @@
 #include <getopt.h>
 #include <inttypes.h>
 #include <limits>
+#include <optional>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -541,8 +544,6 @@ uint64_t _crash_get_field(const struct lttng_crash_layout *layout, const char *p
 				 (layout)->offset.field_name,            \
 			 (layout)->length.field_name)
 
-#define crash_get_hdr_raw_field(layout, hdr, name) ((hdr)->name)
-
 #define crash_get_hdr_field(layout, hdr, name)                                         \
 	_crash_get_field(layout,                                                       \
 			 reinterpret_cast<const char *>(hdr) +                         \
@@ -610,131 +611,86 @@ void print_dbg_magic(const uint8_t *magic)
 	    magic[15]);
 }
 
-int check_magic(const uint8_t *magic)
+bool is_valid_magic(const uint8_t *magic) noexcept
 {
-	int i;
-
-	for (i = 0; i < RB_CRASH_DUMP_ABI_MAGIC_LEN; i++) {
+	for (int i = 0; i < RB_CRASH_DUMP_ABI_MAGIC_LEN; i++) {
 		if ((magic[i] ^ 0xFF) != lttng_crash_expected_magic_xor[i]) {
-			return -1;
+			return false;
 		}
 	}
-	return 0;
+
+	return true;
 }
 
-int get_crash_layout(struct lttng_crash_layout *layout, int fd, const char *input_file)
+std::optional<lttng_crash_layout> get_crash_layout(lttng::input_stream_descriptor& fd)
 {
-	char *map;
-	int ret = 0, unmapret;
-	const uint8_t *magic;
-	uint64_t mmap_length;
-	uint16_t major, minor;
-	uint8_t word_size;
-	const struct crash_abi_unknown *abi;
-	uint16_t endian;
-	enum lttng_crash_type layout_type;
-	struct stat stat;
+	constexpr auto max_header_length = sizeof(crash_abi_1_0);
+	std::array<char, max_header_length> header_bytes{};
+	const auto header_length = fd.read_some(header_bytes.data(), header_bytes.size());
+	const auto abi =
+		lttng::binary_view<crash_abi_unknown>(header_bytes.data(), header_length).begin();
+	lttng_crash_layout layout = {};
 
-	ret = fstat(fd, &stat);
-	if (ret < 0) {
-		PERROR("Failed to fstat '%s'", input_file);
-		return -1;
-	}
-	if (stat.st_size < RB_CRASH_DUMP_ABI_LEN) {
-		ERR("File '%s' truncated: file length of %" PRIi64
-		    " bytes does not meet the minimal expected "
-		    "length of %d bytes",
-		    input_file,
-		    (int64_t) stat.st_size,
-		    RB_CRASH_DUMP_ABI_LEN);
-		return -1;
-	}
-	map = (char *) mmap(nullptr, RB_CRASH_DUMP_ABI_LEN, PROT_READ, MAP_PRIVATE, fd, 0);
-	if (map == MAP_FAILED) {
-		PERROR("Mapping file");
-		return -1;
-	}
-	abi = (const struct crash_abi_unknown *) map;
-	magic = crash_get_hdr_raw_field(layout, abi, magic);
-	print_dbg_magic(magic);
-	if (check_magic(magic)) {
+	print_dbg_magic(abi->magic);
+	if (!is_valid_magic(abi->magic)) {
 		DBG("Unknown magic number");
-		ret = 1; /* positive return value, skip */
-		goto end;
+		return std::nullopt;
 	}
-	endian = crash_get_hdr_field(layout, abi, endian);
+
+	const auto endian = crash_get_hdr_field(&layout, abi, endian);
 	switch (endian) {
 	case RB_CRASH_ENDIAN:
 		break;
 	case RB_CRASH_ENDIAN_REVERSE:
-		layout->reverse_byte_order = 1;
+		layout.reverse_byte_order = 1;
 		break;
 	default:
 		DBG("Unknown endianness value: 0x%X", (unsigned int) endian);
-		ret = 1; /* positive return value, skip */
-		goto end;
+		return std::nullopt;
 	}
-	layout_type = (enum lttng_crash_type) crash_get_hdr_field(layout, abi, layout_type);
+
+	const auto layout_type =
+		(enum lttng_crash_type) crash_get_hdr_field(&layout, abi, layout_type);
 	switch (layout_type) {
 	case LTTNG_CRASH_TYPE_UST:
 		break;
 	case LTTNG_CRASH_TYPE_KERNEL:
 		ERR("lttng-modules buffer layout support not implemented");
-		ret = 1; /* positive return value, skip */
-		goto end;
+		return std::nullopt;
 	default:
 		ERR("Unknown layout type %u", (unsigned int) layout_type);
-		ret = 1; /* positive return value, skip */
-		goto end;
+		return std::nullopt;
 	}
-	mmap_length = crash_get_hdr_field(layout, abi, mmap_length);
-	DBG("mmap_length: %" PRIu64, mmap_length);
-	layout->mmap_length = mmap_length;
-	major = crash_get_hdr_field(layout, abi, major);
-	DBG("major: %u", major);
-	minor = crash_get_hdr_field(layout, abi, minor);
-	DBG("minor: %u", minor);
-	word_size = crash_get_hdr_field(layout, abi, word_size);
-	DBG("word_size: %u", word_size);
-	switch (major) {
-	case 0:
-		switch (minor) {
-		case 0:
-			get_crash_layout_fields(layout,
-						reinterpret_cast<const crash_abi_0_0 *>(map));
-			layout->extra_reader_subbuf = (layout->mode == RING_BUFFER_OVERWRITE);
-			break;
-		default:
-			ret = -1;
-			ERR("Unsupported crash ABI %u.%u\n", major, minor);
-			goto end;
-		}
-		break;
-	case 1:
-		switch (minor) {
-		case 0:
-			get_crash_layout_fields(layout,
-						reinterpret_cast<const crash_abi_1_0 *>(map));
-			layout->extra_reader_subbuf = true;
-			break;
-		default:
-			ret = -1;
-			ERR("Unsupported crash ABI %u.%u\n", major, minor);
-			goto end;
-		}
-		break;
-	default:
-		ERR("Unsupported crash ABI %u.%u\n", major, minor);
-		ret = -1;
-		goto end;
+
+	layout.mmap_length = crash_get_hdr_field(&layout, abi, mmap_length);
+	DBG("mmap_length: %" PRIu64, layout.mmap_length);
+	const auto major = crash_get_hdr_field(&layout, abi, major);
+	DBG("major: %" PRIu64, major);
+	const auto minor = crash_get_hdr_field(&layout, abi, minor);
+	DBG("minor: %" PRIu64, minor);
+	layout.word_size = crash_get_hdr_field(&layout, abi, word_size);
+	DBG("word_size: %d", layout.word_size);
+
+	if (major == 0 && minor == 0) {
+		const auto abi_0_0 =
+			lttng::binary_view<crash_abi_0_0>(header_bytes.data(), header_length)
+				.begin();
+
+		get_crash_layout_fields(&layout, abi_0_0);
+		layout.extra_reader_subbuf = (layout.mode == RING_BUFFER_OVERWRITE);
+	} else if (major == 1 && minor == 0) {
+		const auto abi_1_0 =
+			lttng::binary_view<crash_abi_1_0>(header_bytes.data(), header_length)
+				.begin();
+
+		get_crash_layout_fields(&layout, abi_1_0);
+		layout.extra_reader_subbuf = true;
+	} else {
+		LTTNG_THROW_UNSUPPORTED_ERROR(
+			fmt::format("Unsupported crash ABI {}.{}", major, minor));
 	}
-	layout->word_size = word_size;
-end:
-	unmapret = munmap(map, RB_CRASH_DUMP_ABI_LEN);
-	if (unmapret) {
-		PERROR("munmap");
-	}
-	return ret;
+
+	return layout;
 }
 
 /* buf_trunc mask selects only the buffer number. */
@@ -893,7 +849,7 @@ bool copy_crash_subbuf(const struct lttng_crash_layout *layout,
 
 bool copy_crash_data(const struct lttng_crash_layout *layout,
 		     const lttng::file_descriptor& fd_dest,
-		     const lttng::file_descriptor& fd_src)
+		     lttng::input_stream_descriptor& fd_src)
 {
 	struct stat file_stat;
 
@@ -915,18 +871,12 @@ bool copy_crash_data(const struct lttng_crash_layout *layout,
 	}
 
 	std::vector<char> buf(layout->mmap_length);
-	const auto readlen = lttng_read(fd_src.fd(), buf.data(), buf.size());
 
-	if (readlen < 0) {
-		LTTNG_THROW_POSIX("Failed to read the buffer file");
+	if (lseek(fd_src.fd(), 0, SEEK_SET) < 0) {
+		LTTNG_THROW_POSIX("Failed to seek to the beginning of the buffer file");
 	}
 
-	if (static_cast<std::size_t>(readlen) != buf.size()) {
-		LTTNG_THROW_ERROR(
-			fmt::format("Short read of the buffer file: mmap_length={}, read_length={}",
-				    buf.size(),
-				    readlen));
-	}
+	fd_src.read(buf.data(), buf.size());
 
 	/* lttng-ust: `buf->offset`. */
 	const auto produced_counter = crash_get_field(layout, buf.data(), prod_offset);
@@ -964,43 +914,41 @@ int extract_file(int output_dir_fd,
 		return -1;
 	}
 
-	const lttng::file_descriptor fd_src(raw_fd_src);
-	struct lttng_crash_layout layout = {};
-
-	/* Query the crash ABI layout */
-	const auto layout_ret = get_crash_layout(&layout, fd_src.fd(), input_file);
-	if (layout_ret) {
-		return layout_ret;
-	}
-
-	const auto raw_fd_dest = openat(output_dir_fd,
-					output_file,
-					O_RDWR | O_CREAT | O_EXCL,
-					S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
-	if (raw_fd_dest < 0) {
-		PERROR("Error opening '%s' for writing", output_file);
-		return -1;
-	}
-
-	const lttng::file_descriptor fd_dest(raw_fd_dest);
-
-	lttng::scope_exit remove_output_file([output_dir_fd, output_file]() noexcept {
-		if (unlinkat(output_dir_fd, output_file, 0)) {
-			PERROR("Failed to remove output file '%s'", output_file);
-		}
-	});
+	lttng::input_stream_descriptor fd_src(raw_fd_src);
 
 	try {
-		if (!copy_crash_data(&layout, fd_dest, fd_src)) {
+		const auto layout = get_crash_layout(fd_src);
+		if (!layout) {
+			return 1;
+		}
+
+		const auto raw_fd_dest = openat(output_dir_fd,
+						output_file,
+						O_RDWR | O_CREAT | O_EXCL,
+						S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+		if (raw_fd_dest < 0) {
+			PERROR("Error opening '%s' for writing", output_file);
+			return -1;
+		}
+
+		const lttng::file_descriptor fd_dest(raw_fd_dest);
+
+		lttng::scope_exit remove_output_file([output_dir_fd, output_file]() noexcept {
+			if (unlinkat(output_dir_fd, output_file, 0)) {
+				PERROR("Failed to remove output file '%s'", output_file);
+			}
+		});
+
+		if (!copy_crash_data(&layout.value(), fd_dest, fd_src)) {
 			return -ENODATA;
 		}
+
+		remove_output_file.disarm();
+		return 0;
 	} catch (const std::exception& ex) {
 		log_error_with_causes(ex, "Failed to extract buffer file `{}`", input_file);
 		return -1;
 	}
-
-	remove_output_file.disarm();
-	return 0;
 }
 
 int extract_all_files(const char *output_path, const char *input_path)
