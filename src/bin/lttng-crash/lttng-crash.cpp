@@ -17,6 +17,7 @@
 
 #include <lttng/lttng.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <ctype.h>
@@ -34,6 +35,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <type_traits>
 #include <unistd.h>
 #include <vector>
 #include <version-git.hpp>
@@ -541,8 +543,11 @@ uint64_t _crash_get_field(const struct lttng_crash_layout *layout, const char *p
 
 #define crash_get_hdr_raw_field(layout, hdr, name) ((hdr)->name)
 
-#define crash_get_hdr_field(layout, hdr, name) \
-	_crash_get_field(layout, (const char *) &(hdr)->name, sizeof((hdr)->name))
+#define crash_get_hdr_field(layout, hdr, name)                                         \
+	_crash_get_field(layout,                                                       \
+			 reinterpret_cast<const char *>(hdr) +                         \
+				 offsetof(std::remove_pointer_t<decltype(hdr)>, name), \
+			 sizeof((hdr)->name))
 
 #define crash_get_layout(layout, hdr, name)                                    \
 	do {                                                                   \
@@ -550,10 +555,9 @@ uint64_t _crash_get_field(const struct lttng_crash_layout *layout, const char *p
 		DBG("layout.%s = %" PRIu64, #name, (uint64_t) (layout)->name); \
 	} while (0)
 
-int get_crash_layout_0_0(struct lttng_crash_layout *layout, char *map)
+template <typename AbiType>
+void get_crash_layout_fields(struct lttng_crash_layout *layout, const AbiType *abi)
 {
-	const struct crash_abi_0_0 *abi = (const struct crash_abi_0_0 *) map;
-
 	crash_get_layout(layout, abi, offset.prod_offset);
 	crash_get_layout(layout, abi, offset.consumed_offset);
 	crash_get_layout(layout, abi, offset.commit_hot_array);
@@ -583,49 +587,6 @@ int get_crash_layout_0_0(struct lttng_crash_layout *layout, char *map)
 	crash_get_layout(layout, abi, subbuf_size);
 	crash_get_layout(layout, abi, num_subbuf);
 	crash_get_layout(layout, abi, mode);
-
-	layout->extra_reader_subbuf = (layout->mode == RING_BUFFER_OVERWRITE);
-
-	return 0;
-}
-
-int get_crash_layout_1_0(struct lttng_crash_layout *layout, char *map)
-{
-	const struct crash_abi_1_0 *abi = (const struct crash_abi_1_0 *) map;
-
-	crash_get_layout(layout, abi, offset.prod_offset);
-	crash_get_layout(layout, abi, offset.consumed_offset);
-	crash_get_layout(layout, abi, offset.commit_hot_array);
-	crash_get_layout(layout, abi, offset.commit_hot_seq);
-	crash_get_layout(layout, abi, offset.buf_wsb_array);
-	crash_get_layout(layout, abi, offset.buf_wsb_id);
-	crash_get_layout(layout, abi, offset.sb_array);
-	crash_get_layout(layout, abi, offset.sb_array_shmp_offset);
-	crash_get_layout(layout, abi, offset.sb_backend_p_offset);
-	crash_get_layout(layout, abi, offset.content_size);
-	crash_get_layout(layout, abi, offset.packet_size);
-
-	crash_get_layout(layout, abi, length.prod_offset);
-	crash_get_layout(layout, abi, length.consumed_offset);
-	crash_get_layout(layout, abi, length.commit_hot_seq);
-	crash_get_layout(layout, abi, length.buf_wsb_id);
-	crash_get_layout(layout, abi, length.sb_array_shmp_offset);
-	crash_get_layout(layout, abi, length.sb_backend_p_offset);
-	crash_get_layout(layout, abi, length.content_size);
-	crash_get_layout(layout, abi, length.packet_size);
-
-	crash_get_layout(layout, abi, stride.commit_hot_array);
-	crash_get_layout(layout, abi, stride.buf_wsb_array);
-	crash_get_layout(layout, abi, stride.sb_array);
-
-	crash_get_layout(layout, abi, buf_size);
-	crash_get_layout(layout, abi, subbuf_size);
-	crash_get_layout(layout, abi, num_subbuf);
-	crash_get_layout(layout, abi, mode);
-
-	layout->extra_reader_subbuf = true;
-
-	return 0;
 }
 
 void print_dbg_magic(const uint8_t *magic)
@@ -739,9 +700,9 @@ int get_crash_layout(struct lttng_crash_layout *layout, int fd, const char *inpu
 	case 0:
 		switch (minor) {
 		case 0:
-			ret = get_crash_layout_0_0(layout, map);
-			if (ret)
-				goto end;
+			get_crash_layout_fields(layout,
+						reinterpret_cast<const crash_abi_0_0 *>(map));
+			layout->extra_reader_subbuf = (layout->mode == RING_BUFFER_OVERWRITE);
 			break;
 		default:
 			ret = -1;
@@ -752,10 +713,9 @@ int get_crash_layout(struct lttng_crash_layout *layout, int fd, const char *inpu
 	case 1:
 		switch (minor) {
 		case 0:
-			ret = get_crash_layout_1_0(layout, map);
-			if (ret) {
-				goto end;
-			}
+			get_crash_layout_fields(layout,
+						reinterpret_cast<const crash_abi_1_0 *>(map));
+			layout->extra_reader_subbuf = true;
 			break;
 		default:
 			ret = -1;
