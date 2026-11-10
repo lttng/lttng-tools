@@ -20,7 +20,6 @@
 #include <lttng/lttng.h>
 
 #include <array>
-#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <ctype.h>
@@ -38,7 +37,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <type_traits>
 #include <unistd.h>
 #include <vector>
 #include <version-git.hpp>
@@ -114,12 +112,12 @@ enum lttng_crash_type {
 #define SB_ID_INDEX_COUNT(wl) (1UL << SB_ID_INDEX_SHIFT(wl))
 #define SB_ID_INDEX_MASK(wl)  (SB_ID_NOREF_COUNT(wl) - 1)
 
-enum rb_modes {
-	RING_BUFFER_OVERWRITE = 0, /* Overwrite when buffer full */
-	RING_BUFFER_DISCARD = 1, /* Discard when buffer full */
+namespace {
+enum class event_record_loss_mode {
+	OVERWRITE,
+	DISCARD,
 };
 
-namespace {
 struct crash_abi_unknown {
 	uint8_t magic[RB_CRASH_DUMP_ABI_MAGIC_LEN];
 	uint64_t mmap_length; /* Overall length of crash record */
@@ -212,31 +210,368 @@ struct crash_abi_1_0 {
 	uint32_t mode; /* Buffer mode: 0: overwrite, 1: discard */
 } __attribute__((packed));
 
-struct lttng_crash_layout {
-	struct {
-		int prod_offset, consumed_offset, commit_hot_array, commit_hot_seq, buf_wsb_array,
-			buf_wsb_id, sb_array, sb_array_shmp_offset, sb_backend_p_offset,
-			content_size, packet_size;
-	} offset;
-	struct {
-		int prod_offset, consumed_offset, commit_hot_seq, buf_wsb_id, sb_array_shmp_offset,
-			sb_backend_p_offset, content_size, packet_size;
-	} length;
-	struct {
-		int commit_hot_array, buf_wsb_array, sb_array;
-	} stride;
+template <typename IntegerType>
+std::uint64_t read_int(const void *const location, const bool reverse_byte_order) noexcept
+{
+	IntegerType value;
 
-	int reverse_byte_order;
-	int word_size;
+	std::memcpy(&value, location, sizeof(value));
+	return reverse_byte_order ? lttng::utils::byte_swap(value) : value;
+}
 
-	uint64_t mmap_length; /* Length of crash record */
-	uint64_t buf_size; /* Size of the buffer */
-	uint64_t subbuf_size; /* Sub-buffer size */
-	uint64_t num_subbuf; /* Number of sub-buffers for writer */
-	uint32_t mode; /* Buffer mode: 0: overwrite, 1: discard */
-	uint32_t extra_reader_subbuf; /* Has an extra reader subbuffer ? (true/false) */
+template <typename IntegerType>
+void write_int(void *const location, const bool reverse_byte_order, const std::uint64_t value)
+{
+	if (value > std::numeric_limits<IntegerType>::max()) {
+		LTTNG_THROW_OUT_OF_RANGE(
+			fmt::format("Value doesn't fit in field: value={}, field_length_bytes={}",
+				    value,
+				    sizeof(IntegerType)));
+	}
+
+	const auto narrowed = static_cast<IntegerType>(value);
+	const auto encoded = reverse_byte_order ? lttng::utils::byte_swap(narrowed) : narrowed;
+
+	std::memcpy(location, &encoded, sizeof(encoded));
+}
+
+bool has_extra_reader_subbuf(const crash_abi_0_0&, const event_record_loss_mode mode) noexcept
+{
+	return mode == event_record_loss_mode::OVERWRITE;
+}
+
+bool has_extra_reader_subbuf(const crash_abi_1_0&, const event_record_loss_mode) noexcept
+{
+	return true;
+}
+
+enum class field_length : unsigned int {
+	ONE_BYTE = 1,
+	TWO_BYTES = 2,
+	FOUR_BYTES = 4,
+	EIGHT_BYTES = 8,
+};
+
+enum class word_length : unsigned int {
+	FOUR_BYTES = 4,
+	EIGHT_BYTES = 8,
+};
+
+class field_descriptor final {
+public:
+	explicit field_descriptor(lttng::c_string_view name,
+				  const std::uint64_t offset_from_structure_start,
+				  const std::uint64_t byte_count) :
+		_name(name),
+		_offset_from_structure_start(offset_from_structure_start),
+		_length(_length_from_byte_count(name, byte_count))
+	{
+	}
+
+	field_descriptor(const field_descriptor&) = default;
+	field_descriptor(field_descriptor&&) = default;
+	field_descriptor& operator=(const field_descriptor&) = delete;
+	field_descriptor& operator=(field_descriptor&&) = delete;
+	~field_descriptor() = default;
+
+	lttng::c_string_view name() const noexcept
+	{
+		return _name;
+	}
+
+	std::uint64_t offset_from_structure_start() const noexcept
+	{
+		return _offset_from_structure_start;
+	}
+
+	field_length length() const noexcept
+	{
+		return _length;
+	}
+
+private:
+	static field_length _length_from_byte_count(const lttng::c_string_view name,
+						    const std::uint64_t byte_count)
+	{
+		switch (byte_count) {
+		case 1:
+			return field_length::ONE_BYTE;
+		case 2:
+			return field_length::TWO_BYTES;
+		case 4:
+			return field_length::FOUR_BYTES;
+		case 8:
+			return field_length::EIGHT_BYTES;
+		default:
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+				"Unsupported length of crash ABI header field `{}`: length={}",
+				name,
+				byte_count));
+		}
+	}
+
+	lttng::c_string_view _name;
+	const std::uint64_t _offset_from_structure_start;
+	const field_length _length;
+};
+
+class array_descriptor final {
+public:
+	explicit array_descriptor(lttng::c_string_view name,
+				  const std::uint64_t offset_from_file_start,
+				  const std::uint64_t stride) noexcept :
+		_name(name), _offset_from_file_start(offset_from_file_start), _stride(stride)
+	{
+	}
+
+	array_descriptor(const array_descriptor&) = default;
+	array_descriptor(array_descriptor&&) = default;
+	array_descriptor& operator=(const array_descriptor&) = delete;
+	array_descriptor& operator=(array_descriptor&&) = delete;
+	~array_descriptor() = default;
+
+	lttng::c_string_view name() const noexcept
+	{
+		return _name;
+	}
+
+	std::uint64_t offset_from_file_start() const noexcept
+	{
+		return _offset_from_file_start;
+	}
+
+	std::uint64_t stride() const noexcept
+	{
+		return _stride;
+	}
+
+private:
+	lttng::c_string_view _name;
+	const std::uint64_t _offset_from_file_start;
+	const std::uint64_t _stride;
+};
+
+class header_reader final {
+public:
+	explicit header_reader(bool reverse_byte_order) noexcept :
+		_reverse_byte_order(reverse_byte_order)
+	{
+	}
+
+	bool reverse_byte_order() const noexcept
+	{
+		return _reverse_byte_order;
+	}
+
+	template <typename IntegerType>
+	std::uint64_t value(IntegerType raw_value) const noexcept
+	{
+		return read_int<IntegerType>(&raw_value, _reverse_byte_order);
+	}
+
+	template <typename OffsetType, typename LengthType>
+	field_descriptor
+	field(const lttng::c_string_view name, OffsetType raw_offset, LengthType raw_length) const
+	{
+		return field_descriptor(name, value(raw_offset), value(raw_length));
+	}
+
+	template <typename OffsetType, typename LengthType>
+	std::optional<field_descriptor> optional_field(const lttng::c_string_view name,
+						       OffsetType raw_offset,
+						       LengthType raw_length) const
+	{
+		/* lttng-ust sets a length of zero when the field isn't populated. */
+		if (value(raw_length) == 0) {
+			return std::nullopt;
+		}
+
+		return field(name, raw_offset, raw_length);
+	}
+
+	template <typename OffsetType, typename StrideType>
+	array_descriptor
+	array(const lttng::c_string_view name, OffsetType raw_offset, StrideType raw_stride) const
+	{
+		return array_descriptor(name, value(raw_offset), value(raw_stride));
+	}
+
+private:
+	const bool _reverse_byte_order;
+};
+
+struct crash_field_layout {
+	template <typename AbiType>
+	crash_field_layout(const AbiType& abi, const header_reader& reader) :
+		field{ reader.field("prod_offset", abi.offset.prod_offset, abi.length.prod_offset),
+		       reader.field("consumed_offset",
+				    abi.offset.consumed_offset,
+				    abi.length.consumed_offset),
+		       reader.field("commit_hot_seq",
+				    abi.offset.commit_hot_seq,
+				    abi.length.commit_hot_seq),
+		       reader.field("buf_wsb_id", abi.offset.buf_wsb_id, abi.length.buf_wsb_id),
+		       reader.field("sb_array_shmp_offset",
+				    abi.offset.sb_array_shmp_offset,
+				    abi.length.sb_array_shmp_offset),
+		       reader.field("sb_backend_p_offset",
+				    abi.offset.sb_backend_p_offset,
+				    abi.length.sb_backend_p_offset),
+		       reader.optional_field(
+			       "content_size", abi.offset.content_size, abi.length.content_size),
+		       reader.optional_field(
+			       "packet_size", abi.offset.packet_size, abi.length.packet_size) },
+		array{ reader.array("commit_hot_array",
+				    abi.offset.commit_hot_array,
+				    abi.stride.commit_hot_array),
+		       reader.array(
+			       "buf_wsb_array", abi.offset.buf_wsb_array, abi.stride.buf_wsb_array),
+		       reader.array("sb_array", abi.offset.sb_array, abi.stride.sb_array) },
+		reverse_byte_order(reader.reverse_byte_order())
+	{
+	}
+
+	crash_field_layout(const crash_field_layout&) = default;
+	crash_field_layout(crash_field_layout&&) = default;
+	crash_field_layout& operator=(const crash_field_layout&) = delete;
+	crash_field_layout& operator=(crash_field_layout&&) = delete;
+	~crash_field_layout() = default;
+
+	struct {
+		const field_descriptor prod_offset;
+		const field_descriptor consumed_offset;
+		const field_descriptor commit_hot_seq;
+		const field_descriptor buf_wsb_id;
+		const field_descriptor sb_array_shmp_offset;
+		const field_descriptor sb_backend_p_offset;
+		const std::optional<field_descriptor> content_size;
+		const std::optional<field_descriptor> packet_size;
+	} field;
+	struct {
+		const array_descriptor commit_hot;
+		const array_descriptor buf_wsb;
+		const array_descriptor sb;
+	} array;
+
+	const bool reverse_byte_order;
+};
+
+struct ring_buffer_properties {
+	template <typename AbiType>
+	ring_buffer_properties(const AbiType& abi, const header_reader& reader) :
+		word_size(_word_size_from_value(reader.value(abi.parent.word_size))),
+		buf_size(reader.value(abi.buf_size)),
+		subbuf_size(reader.value(abi.subbuf_size)),
+		num_subbuf(reader.value(abi.num_subbuf)),
+		mode(_mode_from_value(reader.value(abi.mode))),
+		extra_reader_subbuf(has_extra_reader_subbuf(abi, mode))
+	{
+	}
+
+	ring_buffer_properties(const ring_buffer_properties&) = default;
+	ring_buffer_properties(ring_buffer_properties&&) = default;
+	ring_buffer_properties& operator=(const ring_buffer_properties&) = delete;
+	ring_buffer_properties& operator=(ring_buffer_properties&&) = delete;
+	~ring_buffer_properties() = default;
+
+	const word_length word_size;
+	const std::uint64_t buf_size;
+	const std::uint64_t subbuf_size;
+	const std::uint64_t num_subbuf;
+	const event_record_loss_mode mode;
+	const bool extra_reader_subbuf;
+
+private:
+	static word_length _word_size_from_value(const std::uint64_t value)
+	{
+		switch (value) {
+		case 4:
+			return word_length::FOUR_BYTES;
+		case 8:
+			return word_length::EIGHT_BYTES;
+		default:
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+				"Unsupported word size in crash ABI header: {}", value));
+		}
+	}
+
+	static event_record_loss_mode _mode_from_value(const std::uint64_t value)
+	{
+		switch (value) {
+		case 0:
+			return event_record_loss_mode::OVERWRITE;
+		case 1:
+			return event_record_loss_mode::DISCARD;
+		default:
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+				"Unsupported ring buffer mode in crash ABI header: {}", value));
+		}
+	}
+};
+
+struct crash_header {
+	template <typename AbiType>
+	crash_header(const AbiType& abi, const header_reader& reader) :
+		layout(abi, reader),
+		properties(abi, reader),
+		mmap_length(reader.value(abi.parent.mmap_length))
+	{
+	}
+
+	crash_header(const crash_header&) = default;
+	crash_header(crash_header&&) = default;
+	crash_header& operator=(const crash_header&) = delete;
+	crash_header& operator=(crash_header&&) = delete;
+	~crash_header() = default;
+
+	const crash_field_layout layout;
+	const ring_buffer_properties properties;
+
+	/* Length of the ring buffer, header included. */
+	const std::uint64_t mmap_length;
 };
 } /* namespace */
+
+namespace fmt {
+template <>
+struct formatter<field_descriptor> : formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator format(const field_descriptor& field,
+						    FormatContextType& ctx) const
+	{
+		return format_to(ctx.out(),
+				 "{{offset_from_structure_start={:#x}, length={}}}",
+				 field.offset_from_structure_start(),
+				 static_cast<unsigned int>(field.length()));
+	}
+};
+
+template <>
+struct formatter<array_descriptor> : formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator format(const array_descriptor& array,
+						    FormatContextType& ctx) const
+	{
+		return format_to(ctx.out(),
+				 "{{offset_from_file_start={:#x}, stride={}}}",
+				 array.offset_from_file_start(),
+				 array.stride());
+	}
+};
+
+template <>
+struct formatter<event_record_loss_mode> : formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator format(const event_record_loss_mode mode,
+						    FormatContextType& ctx) const
+	{
+		return format_to(ctx.out(),
+				 "{}",
+				 mode == event_record_loss_mode::OVERWRITE ? "overwrite" :
+									     "discard");
+	}
+};
+} /* namespace fmt */
 
 /* Variables */
 namespace {
@@ -468,126 +803,41 @@ error:
 	return ret;
 }
 
-template <typename IntegerType>
-std::uint64_t read_int(const void *const location, const bool reverse_byte_order) noexcept
-{
-	IntegerType value;
-
-	std::memcpy(&value, location, sizeof(value));
-	return reverse_byte_order ? lttng::utils::byte_swap(value) : value;
-}
-
 std::uint64_t
-read_int(const void *const location, const unsigned int length, const bool reverse_byte_order)
+read_int(const void *const location, const field_length length, const bool reverse_byte_order)
 {
 	switch (length) {
-	case 1:
+	case field_length::ONE_BYTE:
 		return read_int<std::uint8_t>(location, reverse_byte_order);
-	case 2:
+	case field_length::TWO_BYTES:
 		return read_int<std::uint16_t>(location, reverse_byte_order);
-	case 4:
+	case field_length::FOUR_BYTES:
 		return read_int<std::uint32_t>(location, reverse_byte_order);
-	case 8:
+	case field_length::EIGHT_BYTES:
 		return read_int<std::uint64_t>(location, reverse_byte_order);
-	default:
-		abort();
-	}
-}
-
-template <typename IntegerType>
-void write_int(void *const location, const bool reverse_byte_order, const std::uint64_t value)
-{
-	if (value > std::numeric_limits<IntegerType>::max()) {
-		LTTNG_THROW_OUT_OF_RANGE(
-			fmt::format("Value doesn't fit in field: value={}, field_length_bytes={}",
-				    value,
-				    sizeof(IntegerType)));
 	}
 
-	const auto narrowed = static_cast<IntegerType>(value);
-	const auto encoded = reverse_byte_order ? lttng::utils::byte_swap(narrowed) : narrowed;
-
-	std::memcpy(location, &encoded, sizeof(encoded));
+	/* Unreachable: `field_descriptor` only holds supported lengths. */
+	abort();
 }
 
 void write_int(void *const location,
-	       const unsigned int length,
+	       const field_length length,
 	       const bool reverse_byte_order,
 	       const std::uint64_t value)
 {
 	switch (length) {
-	case 1:
+	case field_length::ONE_BYTE:
 		return write_int<std::uint8_t>(location, reverse_byte_order, value);
-	case 2:
+	case field_length::TWO_BYTES:
 		return write_int<std::uint16_t>(location, reverse_byte_order, value);
-	case 4:
+	case field_length::FOUR_BYTES:
 		return write_int<std::uint32_t>(location, reverse_byte_order, value);
-	case 8:
+	case field_length::EIGHT_BYTES:
 		return write_int<std::uint64_t>(location, reverse_byte_order, value);
-	default:
-		abort();
 	}
-}
 
-uint64_t _crash_get_field(const struct lttng_crash_layout *layout, const char *ptr, size_t size)
-{
-	return read_int(ptr, size, layout->reverse_byte_order);
-}
-
-#define crash_get_field(layout, map, name) \
-	_crash_get_field(layout, (map) + (layout)->offset.name, (layout)->length.name)
-
-#define crash_get_array_field(layout, map, array_name, idx, field_name)  \
-	_crash_get_field(layout,                                         \
-			 (map) + (layout)->offset.array_name +           \
-				 ((idx) * (layout)->stride.array_name) + \
-				 (layout)->offset.field_name,            \
-			 (layout)->length.field_name)
-
-#define crash_get_hdr_field(layout, hdr, name)                                         \
-	_crash_get_field(layout,                                                       \
-			 reinterpret_cast<const char *>(hdr) +                         \
-				 offsetof(std::remove_pointer_t<decltype(hdr)>, name), \
-			 sizeof((hdr)->name))
-
-#define crash_get_layout(layout, hdr, name)                                    \
-	do {                                                                   \
-		(layout)->name = crash_get_hdr_field(layout, hdr, name);       \
-		DBG("layout.%s = %" PRIu64, #name, (uint64_t) (layout)->name); \
-	} while (0)
-
-template <typename AbiType>
-void get_crash_layout_fields(struct lttng_crash_layout *layout, const AbiType *abi)
-{
-	crash_get_layout(layout, abi, offset.prod_offset);
-	crash_get_layout(layout, abi, offset.consumed_offset);
-	crash_get_layout(layout, abi, offset.commit_hot_array);
-	crash_get_layout(layout, abi, offset.commit_hot_seq);
-	crash_get_layout(layout, abi, offset.buf_wsb_array);
-	crash_get_layout(layout, abi, offset.buf_wsb_id);
-	crash_get_layout(layout, abi, offset.sb_array);
-	crash_get_layout(layout, abi, offset.sb_array_shmp_offset);
-	crash_get_layout(layout, abi, offset.sb_backend_p_offset);
-	crash_get_layout(layout, abi, offset.content_size);
-	crash_get_layout(layout, abi, offset.packet_size);
-
-	crash_get_layout(layout, abi, length.prod_offset);
-	crash_get_layout(layout, abi, length.consumed_offset);
-	crash_get_layout(layout, abi, length.commit_hot_seq);
-	crash_get_layout(layout, abi, length.buf_wsb_id);
-	crash_get_layout(layout, abi, length.sb_array_shmp_offset);
-	crash_get_layout(layout, abi, length.sb_backend_p_offset);
-	crash_get_layout(layout, abi, length.content_size);
-	crash_get_layout(layout, abi, length.packet_size);
-
-	crash_get_layout(layout, abi, stride.commit_hot_array);
-	crash_get_layout(layout, abi, stride.buf_wsb_array);
-	crash_get_layout(layout, abi, stride.sb_array);
-
-	crash_get_layout(layout, abi, buf_size);
-	crash_get_layout(layout, abi, subbuf_size);
-	crash_get_layout(layout, abi, num_subbuf);
-	crash_get_layout(layout, abi, mode);
+	abort();
 }
 
 void print_dbg_magic(const uint8_t *magic)
@@ -622,35 +872,35 @@ bool is_valid_magic(const uint8_t *magic) noexcept
 	return true;
 }
 
-std::optional<lttng_crash_layout> get_crash_layout(lttng::input_stream_descriptor& fd)
+std::optional<crash_header> decode_crash_header(lttng::input_stream_descriptor& fd)
 {
 	constexpr auto max_header_length = sizeof(crash_abi_1_0);
 	std::array<char, max_header_length> header_bytes{};
 	const auto header_length = fd.read_some(header_bytes.data(), header_bytes.size());
 	const auto abi =
-		lttng::binary_view<crash_abi_unknown>(header_bytes.data(), header_length).begin();
-	lttng_crash_layout layout = {};
+		lttng::binary_view<crash_abi_unknown>(header_bytes.data(), header_length).value();
 
-	print_dbg_magic(abi->magic);
-	if (!is_valid_magic(abi->magic)) {
+	print_dbg_magic(abi.magic);
+	if (!is_valid_magic(abi.magic)) {
 		DBG("Unknown magic number");
 		return std::nullopt;
 	}
 
-	const auto endian = crash_get_hdr_field(&layout, abi, endian);
+	bool reverse_byte_order = false;
+	const auto endian = header_reader(false).value(abi.endian);
 	switch (endian) {
 	case RB_CRASH_ENDIAN:
 		break;
 	case RB_CRASH_ENDIAN_REVERSE:
-		layout.reverse_byte_order = 1;
+		reverse_byte_order = true;
 		break;
 	default:
 		DBG("Unknown endianness value: 0x%X", (unsigned int) endian);
 		return std::nullopt;
 	}
 
-	const auto layout_type =
-		(enum lttng_crash_type) crash_get_hdr_field(&layout, abi, layout_type);
+	const header_reader reader(reverse_byte_order);
+	const auto layout_type = (enum lttng_crash_type) reader.value(abi.layout_type);
 	switch (layout_type) {
 	case LTTNG_CRASH_TYPE_UST:
 		break;
@@ -662,35 +912,96 @@ std::optional<lttng_crash_layout> get_crash_layout(lttng::input_stream_descripto
 		return std::nullopt;
 	}
 
-	layout.mmap_length = crash_get_hdr_field(&layout, abi, mmap_length);
-	DBG("mmap_length: %" PRIu64, layout.mmap_length);
-	const auto major = crash_get_hdr_field(&layout, abi, major);
+	DBG("mmap_length: %" PRIu64, reader.value(abi.mmap_length));
+	const auto major = reader.value(abi.major);
 	DBG("major: %" PRIu64, major);
-	const auto minor = crash_get_hdr_field(&layout, abi, minor);
+	const auto minor = reader.value(abi.minor);
 	DBG("minor: %" PRIu64, minor);
-	layout.word_size = crash_get_hdr_field(&layout, abi, word_size);
-	DBG("word_size: %d", layout.word_size);
+	DBG("word_size: %" PRIu64, reader.value(abi.word_size));
+
+	std::optional<crash_header> header;
 
 	if (major == 0 && minor == 0) {
-		const auto abi_0_0 =
-			lttng::binary_view<crash_abi_0_0>(header_bytes.data(), header_length)
-				.begin();
-
-		get_crash_layout_fields(&layout, abi_0_0);
-		layout.extra_reader_subbuf = (layout.mode == RING_BUFFER_OVERWRITE);
+		header.emplace(lttng::binary_view<crash_abi_0_0>(header_bytes.data(), header_length)
+				       .value(),
+			       reader);
 	} else if (major == 1 && minor == 0) {
-		const auto abi_1_0 =
-			lttng::binary_view<crash_abi_1_0>(header_bytes.data(), header_length)
-				.begin();
-
-		get_crash_layout_fields(&layout, abi_1_0);
-		layout.extra_reader_subbuf = true;
+		header.emplace(lttng::binary_view<crash_abi_1_0>(header_bytes.data(), header_length)
+				       .value(),
+			       reader);
 	} else {
 		LTTNG_THROW_UNSUPPORTED_ERROR(
 			fmt::format("Unsupported crash ABI {}.{}", major, minor));
 	}
 
-	return layout;
+	DBG_FMT("Crash ABI fields: prod_offset={}, consumed_offset={}, commit_hot_seq={}, "
+		"buf_wsb_id={}, sb_array_shmp_offset={}, sb_backend_p_offset={}, "
+		"content_size={}, packet_size={}",
+		header->layout.field.prod_offset,
+		header->layout.field.consumed_offset,
+		header->layout.field.commit_hot_seq,
+		header->layout.field.buf_wsb_id,
+		header->layout.field.sb_array_shmp_offset,
+		header->layout.field.sb_backend_p_offset,
+		header->layout.field.content_size,
+		header->layout.field.packet_size);
+	DBG_FMT("Crash ABI arrays: commit_hot={}, buf_wsb={}, sb={}",
+		header->layout.array.commit_hot,
+		header->layout.array.buf_wsb,
+		header->layout.array.sb);
+	DBG_FMT("Ring buffer properties: word_size={}, buf_size={}, subbuf_size={}, num_subbuf={}, "
+		"mode={}, extra_reader_subbuf={}",
+		static_cast<unsigned int>(header->properties.word_size),
+		header->properties.buf_size,
+		header->properties.subbuf_size,
+		header->properties.num_subbuf,
+		header->properties.mode,
+		header->properties.extra_reader_subbuf);
+	return header;
+}
+
+std::uint64_t read_field(const crash_field_layout& layout,
+			 const char *const file_contents,
+			 const field_descriptor& field,
+			 const std::uint64_t structure_offset_from_file_start)
+{
+	return read_int(file_contents + structure_offset_from_file_start +
+				field.offset_from_structure_start(),
+			field.length(),
+			layout.reverse_byte_order);
+}
+
+/* Reads a field of the ring buffer structure, which starts the file. */
+std::uint64_t read_field(const crash_field_layout& layout,
+			 const char *const file_contents,
+			 const field_descriptor& field)
+{
+	return read_field(layout, file_contents, field, 0);
+}
+
+std::uint64_t read_field(const crash_field_layout& layout,
+			 const char *const file_contents,
+			 const array_descriptor& array,
+			 const std::uint64_t index,
+			 const field_descriptor& field)
+{
+	return read_field(layout,
+			  file_contents,
+			  field,
+			  array.offset_from_file_start() + (index * array.stride()));
+}
+
+void write_field(const crash_field_layout& layout,
+		 char *const file_contents,
+		 const field_descriptor& field,
+		 const std::uint64_t structure_offset_from_file_start,
+		 const std::uint64_t value)
+{
+	write_int(file_contents + structure_offset_from_file_start +
+			  field.offset_from_structure_start(),
+		  field.length(),
+		  layout.reverse_byte_order,
+		  value);
 }
 
 /* buf_trunc mask selects only the buffer number. */
@@ -723,7 +1034,7 @@ inline uint64_t subbuf_index(uint64_t offset, uint64_t buf_size, uint64_t subbuf
 	return buf_offset(offset, buf_size) / subbuf_size;
 }
 
-inline uint64_t subbuffer_id_get_index(uint32_t extra_reader_subbuf, uint64_t id, unsigned int wl)
+inline uint64_t subbuffer_id_get_index(bool extra_reader_subbuf, uint64_t id, unsigned int wl)
 {
 	if (extra_reader_subbuf)
 		return id & SB_ID_INDEX_MASK(wl);
@@ -732,39 +1043,35 @@ inline uint64_t subbuffer_id_get_index(uint32_t extra_reader_subbuf, uint64_t id
 }
 
 /* `produced_counter_at_subbuf_start` is `consumed` in lttng-ust's lib_ring_buffer_get_subbuf(). */
-bool copy_crash_subbuf(const struct lttng_crash_layout *layout,
+bool copy_crash_subbuf(const crash_header& header,
 		       const lttng::file_descriptor& fd_dest,
-		       char *buf,
+		       char *const file_contents,
 		       uint64_t produced_counter_at_subbuf_start)
 {
-	const auto buf_size = layout->buf_size;
-	const auto subbuf_size = layout->subbuf_size;
-	const auto num_subbuf = layout->num_subbuf;
-	uint64_t commit_count_mask;
+	const auto& layout = header.layout;
+	const auto& properties = header.properties;
+	const auto buf_size = properties.buf_size;
+	const auto subbuf_size = properties.subbuf_size;
+	const auto num_subbuf = properties.num_subbuf;
+	const auto commit_count_mask =
+		(properties.word_size == word_length::FOUR_BYTES ? UINT32_MAX : UINT64_MAX) /
+		num_subbuf;
 
-	switch (layout->word_size) {
-	case 4:
-		commit_count_mask = 0xFFFFFFFFULL / num_subbuf;
-		break;
-	case 8:
-		commit_count_mask = 0xFFFFFFFFFFFFFFFFULL / num_subbuf;
-		break;
-	default:
-		LTTNG_THROW_UNSUPPORTED_ERROR(
-			fmt::format("Unsupported word size: word_size={}", layout->word_size));
-	}
-
-	DBG("Copy crash sub-buffer: produced_counter_at_subbuf_start=%" PRIu64,
+	DBG("Copy crash sub-buffer: produced_counter_at_subbuf_start=0x%" PRIx64,
 	    produced_counter_at_subbuf_start);
 
 	/* lttng-ust: `idx` (from subbuf_index()). */
 	const auto writer_subbuf_index =
 		subbuf_index(produced_counter_at_subbuf_start, buf_size, subbuf_size);
 	/* lttng-ust: `commit_hot[idx].seq`. */
-	const auto commit_seq = crash_get_array_field(
-		layout, buf, commit_hot_array, writer_subbuf_index, commit_hot_seq);
+	const auto commit_seq = read_field(layout,
+					   file_contents,
+					   layout.array.commit_hot,
+					   writer_subbuf_index,
+					   layout.field.commit_hot_seq);
 	/* lttng-ust: `buf->consumed`. */
-	const auto consumed_counter = crash_get_field(layout, buf, consumed_offset);
+	const auto consumed_counter =
+		read_field(layout, file_contents, layout.field.consumed_offset);
 
 	if ((long) subbuf_trunc(produced_counter_at_subbuf_start, subbuf_size) -
 		    (long) subbuf_trunc(consumed_counter, subbuf_size) <
@@ -794,23 +1101,39 @@ bool copy_crash_subbuf(const struct lttng_crash_layout *layout,
 	 * structure gives the location of the data.
 	 */
 	/* lttng-ust: `wsb->id`. */
-	const auto subbuf_id =
-		crash_get_array_field(layout, buf, buf_wsb_array, writer_subbuf_index, buf_wsb_id);
+	const auto subbuf_id = read_field(layout,
+					  file_contents,
+					  layout.array.buf_wsb,
+					  writer_subbuf_index,
+					  layout.field.buf_wsb_id);
 	/* lttng-ust: `sb_bindex`. */
 	const auto backend_subbuf_index =
-		subbuffer_id_get_index(layout->extra_reader_subbuf, subbuf_id, layout->word_size);
+		subbuffer_id_get_index(properties.extra_reader_subbuf,
+				       subbuf_id,
+				       static_cast<unsigned int>(properties.word_size));
 	/* lttng-ust: `rpages`. */
-	const auto backend_pages_offset_from_file_start = crash_get_array_field(
-		layout, buf, sb_array, backend_subbuf_index, sb_array_shmp_offset);
+	const auto backend_pages_offset_from_file_start =
+		read_field(layout,
+			   file_contents,
+			   layout.array.sb,
+			   backend_subbuf_index,
+			   layout.field.sb_array_shmp_offset);
 	/* lttng-ust: `rpages->p`. */
-	const auto subbuf_data_offset_from_file_start = crash_get_field(
-		layout, buf + backend_pages_offset_from_file_start, sb_backend_p_offset);
-	char *const subbuf_data = buf + subbuf_data_offset_from_file_start;
+	const auto subbuf_data_offset_from_file_start =
+		read_field(layout,
+			   file_contents,
+			   layout.field.sb_backend_p_offset,
+			   backend_pages_offset_from_file_start);
+	const char *const subbuf_data = file_contents + subbuf_data_offset_from_file_start;
 	uint64_t packet_size;
 
 	if (committed_size == subbuf_size) {
-		if (layout->length.packet_size) {
-			packet_size = crash_get_field(layout, subbuf_data, packet_size) / CHAR_BIT;
+		if (layout.field.packet_size) {
+			packet_size = read_field(layout,
+						 file_contents,
+						 *layout.field.packet_size,
+						 subbuf_data_offset_from_file_start) /
+				CHAR_BIT;
 		} else {
 			packet_size = subbuf_size;
 		}
@@ -821,18 +1144,20 @@ bool copy_crash_subbuf(const struct lttng_crash_layout *layout,
 		 */
 		const uint64_t committed_size_bits = committed_size * CHAR_BIT;
 
-		if (layout->length.content_size) {
-			write_int(subbuf_data + layout->offset.content_size,
-				  layout->length.content_size,
-				  layout->reverse_byte_order,
-				  committed_size_bits);
+		if (layout.field.content_size) {
+			write_field(layout,
+				    file_contents,
+				    *layout.field.content_size,
+				    subbuf_data_offset_from_file_start,
+				    committed_size_bits);
 		}
 
-		if (layout->length.packet_size) {
-			write_int(subbuf_data + layout->offset.packet_size,
-				  layout->length.packet_size,
-				  layout->reverse_byte_order,
-				  committed_size_bits);
+		if (layout.field.packet_size) {
+			write_field(layout,
+				    file_contents,
+				    *layout.field.packet_size,
+				    subbuf_data_offset_from_file_start,
+				    committed_size_bits);
 		}
 
 		packet_size = committed_size;
@@ -847,7 +1172,7 @@ bool copy_crash_subbuf(const struct lttng_crash_layout *layout,
 	return true;
 }
 
-bool copy_crash_data(const struct lttng_crash_layout *layout,
+bool copy_crash_data(const crash_header& header,
 		     const lttng::file_descriptor& fd_dest,
 		     lttng::input_stream_descriptor& fd_src)
 {
@@ -857,41 +1182,45 @@ bool copy_crash_data(const struct lttng_crash_layout *layout,
 		LTTNG_THROW_POSIX("Failed to stat the buffer file");
 	}
 
-	if (layout->mmap_length > static_cast<std::uint64_t>(file_stat.st_size)) {
+	if (header.mmap_length > static_cast<std::uint64_t>(file_stat.st_size)) {
 		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
 			"Buffer file is shorter than its declared length: mmap_length={}, file_size={}",
-			layout->mmap_length,
+			header.mmap_length,
 			file_stat.st_size));
 	}
 
-	if (layout->mmap_length > std::numeric_limits<std::size_t>::max()) {
+	if (header.mmap_length > std::numeric_limits<std::size_t>::max()) {
 		LTTNG_THROW_ERROR(fmt::format(
 			"Buffer file is too large to be loaded in memory: mmap_length={}",
-			layout->mmap_length));
+			header.mmap_length));
 	}
 
-	std::vector<char> buf(layout->mmap_length);
+	std::vector<char> file_contents(header.mmap_length);
 
 	if (lseek(fd_src.fd(), 0, SEEK_SET) < 0) {
 		LTTNG_THROW_POSIX("Failed to seek to the beginning of the buffer file");
 	}
 
-	fd_src.read(buf.data(), buf.size());
+	fd_src.read(file_contents.data(), file_contents.size());
 
 	/* lttng-ust: `buf->offset`. */
-	const auto produced_counter = crash_get_field(layout, buf.data(), prod_offset);
+	const auto produced_counter =
+		read_field(header.layout, file_contents.data(), header.layout.field.prod_offset);
 	DBG("produced_counter: 0x%" PRIx64, produced_counter);
 	/* lttng-ust: `buf->consumed`. */
-	const auto consumed_counter = crash_get_field(layout, buf.data(), consumed_offset);
+	const auto consumed_counter = read_field(
+		header.layout, file_contents.data(), header.layout.field.consumed_offset);
 	DBG("consumed_counter: 0x%" PRIx64, consumed_counter);
 
 	bool has_data = false;
 
 	for (auto produced_counter_at_subbuf_start = consumed_counter;
 	     produced_counter_at_subbuf_start < produced_counter;
-	     produced_counter_at_subbuf_start += layout->subbuf_size) {
-		if (!copy_crash_subbuf(
-			    layout, fd_dest, buf.data(), produced_counter_at_subbuf_start)) {
+	     produced_counter_at_subbuf_start += header.properties.subbuf_size) {
+		if (!copy_crash_subbuf(header,
+				       fd_dest,
+				       file_contents.data(),
+				       produced_counter_at_subbuf_start)) {
 			break;
 		}
 
@@ -917,8 +1246,8 @@ int extract_file(int output_dir_fd,
 	lttng::input_stream_descriptor fd_src(raw_fd_src);
 
 	try {
-		const auto layout = get_crash_layout(fd_src);
-		if (!layout) {
+		const auto header = decode_crash_header(fd_src);
+		if (!header) {
 			return 1;
 		}
 
@@ -939,7 +1268,7 @@ int extract_file(int output_dir_fd,
 			}
 		});
 
-		if (!copy_crash_data(&layout.value(), fd_dest, fd_src)) {
+		if (!copy_crash_data(*header, fd_dest, fd_src)) {
 			return -ENODATA;
 		}
 
