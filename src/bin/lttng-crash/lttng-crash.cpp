@@ -12,6 +12,7 @@
 #include <common/exception.hpp>
 #include <common/file-descriptor.hpp>
 #include <common/format.hpp>
+#include <common/math.hpp>
 #include <common/scope-exit.hpp>
 #include <common/spawn-viewer.hpp>
 #include <common/stream-descriptor.hpp>
@@ -466,6 +467,7 @@ struct ring_buffer_properties {
 		mode(_mode_from_value(reader.value(abi.mode))),
 		extra_reader_subbuf(has_extra_reader_subbuf(abi, mode))
 	{
+		_validate();
 	}
 
 	ring_buffer_properties(const ring_buffer_properties&) = default;
@@ -505,6 +507,19 @@ private:
 		default:
 			LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
 				"Unsupported ring buffer mode in crash ABI header: {}", value));
+		}
+	}
+
+	void _validate() const
+	{
+		if (!lttng::math::is_power_of_two(subbuf_size) ||
+		    !lttng::math::is_power_of_two(num_subbuf) ||
+		    subbuf_size > UINT64_MAX / num_subbuf || buf_size != subbuf_size * num_subbuf) {
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+				"Invalid ring buffer geometry: buf_size={}, subbuf_size={}, num_subbuf={}",
+				buf_size,
+				subbuf_size,
+				num_subbuf));
 		}
 	}
 };
@@ -872,6 +887,11 @@ bool is_valid_magic(const uint8_t *magic) noexcept
 	return true;
 }
 
+std::uint64_t max_word_value(const ring_buffer_properties& properties) noexcept
+{
+	return properties.word_size == word_length::FOUR_BYTES ? UINT32_MAX : UINT64_MAX;
+}
+
 std::optional<crash_header> decode_crash_header(lttng::input_stream_descriptor& fd)
 {
 	constexpr auto max_header_length = sizeof(crash_abi_1_0);
@@ -981,8 +1001,8 @@ public:
 	std::uint64_t read(const field_descriptor& field,
 			   const std::uint64_t structure_offset_from_file_start) const
 	{
-		return read_int(_contents.data() + structure_offset_from_file_start +
-					field.offset_from_structure_start(),
+		return read_int(_contents.data() +
+					_field_offset(field, structure_offset_from_file_start),
 				field.length(),
 				_layout.reverse_byte_order);
 	}
@@ -991,15 +1011,14 @@ public:
 			   const std::uint64_t index,
 			   const field_descriptor& field) const
 	{
-		return read(field, array.offset_from_file_start() + (index * array.stride()));
+		return read(field, _element_offset(array, index));
 	}
 
 	void write(const field_descriptor& field,
 		   const std::uint64_t structure_offset_from_file_start,
 		   const std::uint64_t value)
 	{
-		write_int(_contents.data() + structure_offset_from_file_start +
-				  field.offset_from_structure_start(),
+		write_int(_contents.data() + _field_offset(field, structure_offset_from_file_start),
 			  field.length(),
 			  _layout.reverse_byte_order,
 			  value);
@@ -1008,11 +1027,69 @@ public:
 	lttng::binary_view<char> view(const std::uint64_t offset_from_file_start,
 				      const std::uint64_t length) const
 	{
+		if (!_is_within_file(offset_from_file_start, length)) {
+			LTTNG_THROW_OUT_OF_RANGE(fmt::format(
+				"File range is past the end of the buffer file: offset_from_file_start={:#x}, length={}, mmap_length={}",
+				offset_from_file_start,
+				length,
+				_contents.size()));
+		}
+
 		return lttng::binary_view<char>(
 			_contents.data() + offset_from_file_start, length, length);
 	}
 
 private:
+	bool _is_within_file(const std::uint64_t offset_from_file_start,
+			     const std::uint64_t length) const noexcept
+	{
+		return length <= _contents.size() &&
+			offset_from_file_start <= _contents.size() - length;
+	}
+
+	std::uint64_t _field_offset(const field_descriptor& field,
+				    const std::uint64_t structure_offset_from_file_start) const
+	{
+		const auto length = static_cast<std::uint64_t>(field.length());
+
+		/* Checks the terms first so that their sum doesn't overflow. */
+		if (structure_offset_from_file_start > _contents.size() ||
+		    field.offset_from_structure_start() >
+			    _contents.size() - structure_offset_from_file_start ||
+		    !_is_within_file(structure_offset_from_file_start +
+					     field.offset_from_structure_start(),
+				     length)) {
+			LTTNG_THROW_OUT_OF_RANGE(fmt::format(
+				"Field `{}` is past the end of the buffer file: structure_offset_from_file_start={:#x}, field_offset_from_structure_start={:#x}, field_length={}, mmap_length={}",
+				field.name(),
+				structure_offset_from_file_start,
+				field.offset_from_structure_start(),
+				length,
+				_contents.size()));
+		}
+
+		return structure_offset_from_file_start + field.offset_from_structure_start();
+	}
+
+	std::uint64_t _element_offset(const array_descriptor& array,
+				      const std::uint64_t index) const
+	{
+		if (array.offset_from_file_start() > _contents.size() ||
+		    (array.stride() != 0 &&
+		     index > (_contents.size() - array.offset_from_file_start()) /
+				     array.stride())) {
+			LTTNG_THROW_OUT_OF_RANGE(fmt::format(
+				"Element of array `{}` is past the end of the buffer file: index={}, array_offset_from_file_start={:#x}, stride={}, mmap_length={}",
+				array.name(),
+				index,
+				array.offset_from_file_start(),
+				array.stride(),
+				_contents.size()));
+		}
+
+		return array.offset_from_file_start() + (index * array.stride());
+	}
+
 	std::vector<char> _contents;
 	const crash_field_layout _layout;
 };
@@ -1097,9 +1174,7 @@ bool copy_crash_subbuf(crash_buffer& buffer,
 	const auto buf_size = properties.buf_size;
 	const auto subbuf_size = properties.subbuf_size;
 	const auto num_subbuf = properties.num_subbuf;
-	const auto commit_count_mask =
-		(properties.word_size == word_length::FOUR_BYTES ? UINT32_MAX : UINT64_MAX) /
-		num_subbuf;
+	const auto commit_count_mask = max_word_value(properties) / num_subbuf;
 
 	DBG("Copy crash sub-buffer: produced_counter_at_subbuf_start=0x%" PRIx64,
 	    produced_counter_at_subbuf_start);
@@ -1162,6 +1237,12 @@ bool copy_crash_subbuf(crash_buffer& buffer,
 			packet_size = buffer.read(*layout.field.packet_size,
 						  subbuf_data_offset_from_file_start) /
 				CHAR_BIT;
+			if (packet_size > subbuf_size) {
+				LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+					"Packet is larger than its sub-buffer: packet_size={}, subbuf_size={}",
+					packet_size,
+					subbuf_size));
+			}
 		} else {
 			packet_size = subbuf_size;
 		}
@@ -1205,16 +1286,46 @@ bool copy_crash_data(crash_buffer& buffer,
 	const auto produced_counter = buffer.read(layout.field.prod_offset, 0);
 	DBG("produced_counter: 0x%" PRIx64, produced_counter);
 	/* lttng-ust: `buf->consumed`. */
-	const auto consumed_counter = buffer.read(layout.field.consumed_offset, 0);
+	auto consumed_counter = buffer.read(layout.field.consumed_offset, 0);
 	DBG("consumed_counter: 0x%" PRIx64, consumed_counter);
 
+	/*
+	 * With a 32-bit ABI, the free-running counters are expected to overflow,
+	 * which makes their difference huge once read as 64-bit values. Bring it back
+	 * within the 32-bit range when that happens.
+	 */
+	auto produced_size = (produced_counter - consumed_counter) & max_word_value(properties);
+
+	if (produced_size > properties.buf_size &&
+	    properties.mode == event_record_loss_mode::OVERWRITE) {
+		/*
+		 * A writer pushes the consumed counter after moving the produced counter, so
+		 * the application may have crashed in between. Push it like the tracer would.
+		 */
+		consumed_counter = (subbuf_trunc(produced_counter - 1, properties.subbuf_size) -
+				    properties.buf_size + properties.subbuf_size) &
+			max_word_value(properties);
+		produced_size = (produced_counter - consumed_counter) & max_word_value(properties);
+		DBG("Pushed consumed_counter: 0x%" PRIx64, consumed_counter);
+	}
+
+	if (produced_size > properties.buf_size) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			"Producer is more than a buffer ahead of the consumer: produced_counter={:#x}, consumed_counter={:#x}, buf_size={}",
+			produced_counter,
+			consumed_counter,
+			properties.buf_size));
+	}
+
+	const auto subbuf_count =
+		(produced_size + properties.subbuf_size - 1) / properties.subbuf_size;
 	bool has_data = false;
 
-	for (auto produced_counter_at_subbuf_start = consumed_counter;
-	     produced_counter_at_subbuf_start < produced_counter;
-	     produced_counter_at_subbuf_start += properties.subbuf_size) {
-		if (!copy_crash_subbuf(
-			    buffer, properties, fd_dest, produced_counter_at_subbuf_start)) {
+	for (uint64_t i = 0; i < subbuf_count; i++) {
+		if (!copy_crash_subbuf(buffer,
+				       properties,
+				       fd_dest,
+				       consumed_counter + (i * properties.subbuf_size))) {
 			break;
 		}
 
