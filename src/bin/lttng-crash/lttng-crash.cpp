@@ -960,48 +960,93 @@ std::optional<crash_header> decode_crash_header(lttng::input_stream_descriptor& 
 	return header;
 }
 
-std::uint64_t read_field(const crash_field_layout& layout,
-			 const char *const file_contents,
-			 const field_descriptor& field,
-			 const std::uint64_t structure_offset_from_file_start)
-{
-	return read_int(file_contents + structure_offset_from_file_start +
-				field.offset_from_structure_start(),
-			field.length(),
-			layout.reverse_byte_order);
-}
+class crash_buffer final {
+public:
+	explicit crash_buffer(std::vector<char> contents, crash_field_layout layout) :
+		_contents(std::move(contents)), _layout(std::move(layout))
+	{
+	}
 
-/* Reads a field of the ring buffer structure, which starts the file. */
-std::uint64_t read_field(const crash_field_layout& layout,
-			 const char *const file_contents,
-			 const field_descriptor& field)
-{
-	return read_field(layout, file_contents, field, 0);
-}
+	crash_buffer(const crash_buffer&) = delete;
+	crash_buffer(crash_buffer&&) = default;
+	crash_buffer& operator=(const crash_buffer&) = delete;
+	crash_buffer& operator=(crash_buffer&&) = delete;
+	~crash_buffer() = default;
 
-std::uint64_t read_field(const crash_field_layout& layout,
-			 const char *const file_contents,
-			 const array_descriptor& array,
-			 const std::uint64_t index,
-			 const field_descriptor& field)
-{
-	return read_field(layout,
-			  file_contents,
-			  field,
-			  array.offset_from_file_start() + (index * array.stride()));
-}
+	const crash_field_layout& layout() const noexcept
+	{
+		return _layout;
+	}
 
-void write_field(const crash_field_layout& layout,
-		 char *const file_contents,
-		 const field_descriptor& field,
-		 const std::uint64_t structure_offset_from_file_start,
-		 const std::uint64_t value)
+	std::uint64_t read(const field_descriptor& field,
+			   const std::uint64_t structure_offset_from_file_start) const
+	{
+		return read_int(_contents.data() + structure_offset_from_file_start +
+					field.offset_from_structure_start(),
+				field.length(),
+				_layout.reverse_byte_order);
+	}
+
+	std::uint64_t read(const array_descriptor& array,
+			   const std::uint64_t index,
+			   const field_descriptor& field) const
+	{
+		return read(field, array.offset_from_file_start() + (index * array.stride()));
+	}
+
+	void write(const field_descriptor& field,
+		   const std::uint64_t structure_offset_from_file_start,
+		   const std::uint64_t value)
+	{
+		write_int(_contents.data() + structure_offset_from_file_start +
+				  field.offset_from_structure_start(),
+			  field.length(),
+			  _layout.reverse_byte_order,
+			  value);
+	}
+
+	lttng::binary_view<char> view(const std::uint64_t offset_from_file_start,
+				      const std::uint64_t length) const
+	{
+		return lttng::binary_view<char>(
+			_contents.data() + offset_from_file_start, length, length);
+	}
+
+private:
+	std::vector<char> _contents;
+	const crash_field_layout _layout;
+};
+
+crash_buffer read_crash_buffer(lttng::input_stream_descriptor& fd, const crash_header& header)
 {
-	write_int(file_contents + structure_offset_from_file_start +
-			  field.offset_from_structure_start(),
-		  field.length(),
-		  layout.reverse_byte_order,
-		  value);
+	struct stat file_stat;
+
+	if (fstat(fd.fd(), &file_stat) < 0) {
+		LTTNG_THROW_POSIX("Failed to stat the buffer file");
+	}
+
+	if (header.mmap_length > static_cast<std::uint64_t>(file_stat.st_size)) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			"Buffer file is shorter than its declared length: mmap_length={}, file_size={}",
+			header.mmap_length,
+			file_stat.st_size));
+	}
+
+	if (header.mmap_length > std::numeric_limits<std::size_t>::max()) {
+		LTTNG_THROW_ERROR(fmt::format(
+			"Buffer file is too large to be loaded in memory: mmap_length={}",
+			header.mmap_length));
+	}
+
+	std::vector<char> contents(header.mmap_length);
+
+	if (lseek(fd.fd(), 0, SEEK_SET) < 0) {
+		LTTNG_THROW_POSIX("Failed to seek to the beginning of the buffer file");
+	}
+
+	fd.read(contents.data(), contents.size());
+
+	return crash_buffer(std::move(contents), header.layout);
 }
 
 /* buf_trunc mask selects only the buffer number. */
@@ -1043,13 +1088,12 @@ inline uint64_t subbuffer_id_get_index(bool extra_reader_subbuf, uint64_t id, un
 }
 
 /* `produced_counter_at_subbuf_start` is `consumed` in lttng-ust's lib_ring_buffer_get_subbuf(). */
-bool copy_crash_subbuf(const crash_header& header,
+bool copy_crash_subbuf(crash_buffer& buffer,
+		       const ring_buffer_properties& properties,
 		       const lttng::file_descriptor& fd_dest,
-		       char *const file_contents,
 		       uint64_t produced_counter_at_subbuf_start)
 {
-	const auto& layout = header.layout;
-	const auto& properties = header.properties;
+	const auto& layout = buffer.layout();
 	const auto buf_size = properties.buf_size;
 	const auto subbuf_size = properties.subbuf_size;
 	const auto num_subbuf = properties.num_subbuf;
@@ -1064,14 +1108,10 @@ bool copy_crash_subbuf(const crash_header& header,
 	const auto writer_subbuf_index =
 		subbuf_index(produced_counter_at_subbuf_start, buf_size, subbuf_size);
 	/* lttng-ust: `commit_hot[idx].seq`. */
-	const auto commit_seq = read_field(layout,
-					   file_contents,
-					   layout.array.commit_hot,
-					   writer_subbuf_index,
-					   layout.field.commit_hot_seq);
+	const auto commit_seq = buffer.read(
+		layout.array.commit_hot, writer_subbuf_index, layout.field.commit_hot_seq);
 	/* lttng-ust: `buf->consumed`. */
-	const auto consumed_counter =
-		read_field(layout, file_contents, layout.field.consumed_offset);
+	const auto consumed_counter = buffer.read(layout.field.consumed_offset, 0);
 
 	if ((long) subbuf_trunc(produced_counter_at_subbuf_start, subbuf_size) -
 		    (long) subbuf_trunc(consumed_counter, subbuf_size) <
@@ -1101,38 +1141,26 @@ bool copy_crash_subbuf(const crash_header& header,
 	 * structure gives the location of the data.
 	 */
 	/* lttng-ust: `wsb->id`. */
-	const auto subbuf_id = read_field(layout,
-					  file_contents,
-					  layout.array.buf_wsb,
-					  writer_subbuf_index,
-					  layout.field.buf_wsb_id);
+	const auto subbuf_id =
+		buffer.read(layout.array.buf_wsb, writer_subbuf_index, layout.field.buf_wsb_id);
 	/* lttng-ust: `sb_bindex`. */
 	const auto backend_subbuf_index =
 		subbuffer_id_get_index(properties.extra_reader_subbuf,
 				       subbuf_id,
 				       static_cast<unsigned int>(properties.word_size));
 	/* lttng-ust: `rpages`. */
-	const auto backend_pages_offset_from_file_start =
-		read_field(layout,
-			   file_contents,
-			   layout.array.sb,
-			   backend_subbuf_index,
-			   layout.field.sb_array_shmp_offset);
+	const auto backend_pages_offset_from_file_start = buffer.read(
+		layout.array.sb, backend_subbuf_index, layout.field.sb_array_shmp_offset);
 	/* lttng-ust: `rpages->p`. */
 	const auto subbuf_data_offset_from_file_start =
-		read_field(layout,
-			   file_contents,
-			   layout.field.sb_backend_p_offset,
-			   backend_pages_offset_from_file_start);
-	const char *const subbuf_data = file_contents + subbuf_data_offset_from_file_start;
+		buffer.read(layout.field.sb_backend_p_offset, backend_pages_offset_from_file_start);
+	const auto subbuf = buffer.view(subbuf_data_offset_from_file_start, subbuf_size);
 	uint64_t packet_size;
 
 	if (committed_size == subbuf_size) {
 		if (layout.field.packet_size) {
-			packet_size = read_field(layout,
-						 file_contents,
-						 *layout.field.packet_size,
-						 subbuf_data_offset_from_file_start) /
+			packet_size = buffer.read(*layout.field.packet_size,
+						  subbuf_data_offset_from_file_start) /
 				CHAR_BIT;
 		} else {
 			packet_size = subbuf_size;
@@ -1145,25 +1173,21 @@ bool copy_crash_subbuf(const crash_header& header,
 		const uint64_t committed_size_bits = committed_size * CHAR_BIT;
 
 		if (layout.field.content_size) {
-			write_field(layout,
-				    file_contents,
-				    *layout.field.content_size,
-				    subbuf_data_offset_from_file_start,
-				    committed_size_bits);
+			buffer.write(*layout.field.content_size,
+				     subbuf_data_offset_from_file_start,
+				     committed_size_bits);
 		}
 
 		if (layout.field.packet_size) {
-			write_field(layout,
-				    file_contents,
-				    *layout.field.packet_size,
-				    subbuf_data_offset_from_file_start,
-				    committed_size_bits);
+			buffer.write(*layout.field.packet_size,
+				     subbuf_data_offset_from_file_start,
+				     committed_size_bits);
 		}
 
 		packet_size = committed_size;
 	}
 
-	const auto writelen = lttng_write(fd_dest.fd(), subbuf_data, packet_size);
+	const auto writelen = lttng_write(fd_dest.fd(), subbuf.begin(), packet_size);
 	if (writelen < 0 || static_cast<uint64_t>(writelen) != packet_size) {
 		LTTNG_THROW_POSIX("Error writing to output file");
 	}
@@ -1172,55 +1196,25 @@ bool copy_crash_subbuf(const crash_header& header,
 	return true;
 }
 
-bool copy_crash_data(const crash_header& header,
-		     const lttng::file_descriptor& fd_dest,
-		     lttng::input_stream_descriptor& fd_src)
+bool copy_crash_data(crash_buffer& buffer,
+		     const ring_buffer_properties& properties,
+		     const lttng::file_descriptor& fd_dest)
 {
-	struct stat file_stat;
-
-	if (fstat(fd_src.fd(), &file_stat) < 0) {
-		LTTNG_THROW_POSIX("Failed to stat the buffer file");
-	}
-
-	if (header.mmap_length > static_cast<std::uint64_t>(file_stat.st_size)) {
-		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
-			"Buffer file is shorter than its declared length: mmap_length={}, file_size={}",
-			header.mmap_length,
-			file_stat.st_size));
-	}
-
-	if (header.mmap_length > std::numeric_limits<std::size_t>::max()) {
-		LTTNG_THROW_ERROR(fmt::format(
-			"Buffer file is too large to be loaded in memory: mmap_length={}",
-			header.mmap_length));
-	}
-
-	std::vector<char> file_contents(header.mmap_length);
-
-	if (lseek(fd_src.fd(), 0, SEEK_SET) < 0) {
-		LTTNG_THROW_POSIX("Failed to seek to the beginning of the buffer file");
-	}
-
-	fd_src.read(file_contents.data(), file_contents.size());
-
+	const auto& layout = buffer.layout();
 	/* lttng-ust: `buf->offset`. */
-	const auto produced_counter =
-		read_field(header.layout, file_contents.data(), header.layout.field.prod_offset);
+	const auto produced_counter = buffer.read(layout.field.prod_offset, 0);
 	DBG("produced_counter: 0x%" PRIx64, produced_counter);
 	/* lttng-ust: `buf->consumed`. */
-	const auto consumed_counter = read_field(
-		header.layout, file_contents.data(), header.layout.field.consumed_offset);
+	const auto consumed_counter = buffer.read(layout.field.consumed_offset, 0);
 	DBG("consumed_counter: 0x%" PRIx64, consumed_counter);
 
 	bool has_data = false;
 
 	for (auto produced_counter_at_subbuf_start = consumed_counter;
 	     produced_counter_at_subbuf_start < produced_counter;
-	     produced_counter_at_subbuf_start += header.properties.subbuf_size) {
-		if (!copy_crash_subbuf(header,
-				       fd_dest,
-				       file_contents.data(),
-				       produced_counter_at_subbuf_start)) {
+	     produced_counter_at_subbuf_start += properties.subbuf_size) {
+		if (!copy_crash_subbuf(
+			    buffer, properties, fd_dest, produced_counter_at_subbuf_start)) {
 			break;
 		}
 
@@ -1251,6 +1245,8 @@ int extract_file(int output_dir_fd,
 			return 1;
 		}
 
+		auto buffer = read_crash_buffer(fd_src, *header);
+
 		const auto raw_fd_dest = openat(output_dir_fd,
 						output_file,
 						O_RDWR | O_CREAT | O_EXCL,
@@ -1268,7 +1264,7 @@ int extract_file(int output_dir_fd,
 			}
 		});
 
-		if (!copy_crash_data(*header, fd_dest, fd_src)) {
+		if (!copy_crash_data(buffer, header->properties, fd_dest)) {
 			return -ENODATA;
 		}
 
