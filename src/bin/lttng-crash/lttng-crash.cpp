@@ -20,6 +20,7 @@
 
 #include <lttng/lttng.h>
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <cstring>
@@ -35,6 +36,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/sendfile.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -980,15 +982,43 @@ std::optional<crash_header> decode_crash_header(lttng::input_stream_descriptor& 
 	return header;
 }
 
+/* Buffer files can be larger than 4 GiB on all platforms (see `AC_SYS_LARGEFILE`). */
+static_assert(sizeof(off_t) >= sizeof(std::uint64_t), "`off_t` must be at least 64-bit");
+
+struct file_range {
+	file_range(const file_range&) = default;
+	file_range(file_range&&) = default;
+	file_range& operator=(const file_range&) = delete;
+	file_range& operator=(file_range&&) = delete;
+	~file_range() = default;
+
+	const std::uint64_t offset_from_file_start;
+	const std::uint64_t length;
+};
+
 class crash_buffer final {
 public:
-	explicit crash_buffer(std::vector<char> contents, crash_field_layout layout) :
-		_contents(std::move(contents)), _layout(std::move(layout))
+	explicit crash_buffer(lttng::input_stream_descriptor fd,
+			      crash_field_layout layout,
+			      const std::uint64_t mmap_length) :
+		_fd(std::move(fd)), _layout(std::move(layout)), _mmap_length(mmap_length)
 	{
+		struct stat file_stat;
+
+		if (fstat(_fd.fd(), &file_stat) < 0) {
+			LTTNG_THROW_POSIX("Failed to stat the buffer file");
+		}
+
+		if (_mmap_length > static_cast<std::uint64_t>(file_stat.st_size)) {
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+				"Buffer file is shorter than its declared length: mmap_length={}, file_size={}",
+				_mmap_length,
+				file_stat.st_size));
+		}
 	}
 
 	crash_buffer(const crash_buffer&) = delete;
-	crash_buffer(crash_buffer&&) = default;
+	crash_buffer(crash_buffer&&) = delete;
 	crash_buffer& operator=(const crash_buffer&) = delete;
 	crash_buffer& operator=(crash_buffer&&) = delete;
 	~crash_buffer() = default;
@@ -1001,10 +1031,14 @@ public:
 	std::uint64_t read(const field_descriptor& field,
 			   const std::uint64_t structure_offset_from_file_start) const
 	{
-		return read_int(_contents.data() +
-					_field_offset(field, structure_offset_from_file_start),
-				field.length(),
-				_layout.reverse_byte_order);
+		std::array<char, sizeof(std::uint64_t)> bytes;
+
+		_fd.read_at(
+			bytes.data(),
+			static_cast<std::size_t>(field.length()),
+			static_cast<off_t>(_field_offset(field, structure_offset_from_file_start)));
+
+		return read_int(bytes.data(), field.length(), _layout.reverse_byte_order);
 	}
 
 	std::uint64_t read(const array_descriptor& array,
@@ -1023,37 +1057,61 @@ public:
 		}
 	}
 
-	void write(const field_descriptor& field,
-		   const std::uint64_t structure_offset_from_file_start,
-		   const std::uint64_t value)
-	{
-		write_int(_contents.data() + _field_offset(field, structure_offset_from_file_start),
-			  field.length(),
-			  _layout.reverse_byte_order,
-			  value);
-	}
-
-	lttng::binary_view<char> view(const std::uint64_t offset_from_file_start,
-				      const std::uint64_t length) const
+	file_range range(const std::uint64_t offset_from_file_start,
+			 const std::uint64_t length) const
 	{
 		if (!_is_within_file(offset_from_file_start, length)) {
 			LTTNG_THROW_OUT_OF_RANGE(fmt::format(
 				"File range is past the end of the buffer file: offset_from_file_start={:#x}, length={}, mmap_length={}",
 				offset_from_file_start,
 				length,
-				_contents.size()));
+				_mmap_length));
 		}
 
-		return lttng::binary_view<char>(
-			_contents.data() + offset_from_file_start, length, length);
+		return { offset_from_file_start, length };
+	}
+
+	void copy(const file_range& source,
+		  std::uint64_t length,
+		  const lttng::output_stream_descriptor& fd_dest) const
+	{
+		if (length > source.length) {
+			LTTNG_THROW_OUT_OF_RANGE(fmt::format(
+				"Copy is larger than its source range: length={}, range_length={}",
+				length,
+				source.length));
+		}
+
+		auto read_offset_from_file_start =
+			static_cast<off_t>(source.offset_from_file_start);
+		auto remaining = length;
+
+		while (remaining > 0) {
+			/* `remaining` may not fit in a `size_t` on 32-bit platforms. */
+			const auto chunk_length = static_cast<std::size_t>(std::min<std::uint64_t>(
+				remaining, std::numeric_limits<ssize_t>::max()));
+			const auto ret = sendfile(
+				fd_dest.fd(), _fd.fd(), &read_offset_from_file_start, chunk_length);
+
+			if (ret < 0 && errno == EINTR) {
+				continue;
+			} else if (ret < 0) {
+				LTTNG_THROW_POSIX("Failed to copy a packet to the output file");
+			} else if (ret == 0) {
+				LTTNG_THROW_ERROR(fmt::format(
+					"Unexpected end of the buffer file: offset={:#x}",
+					read_offset_from_file_start));
+			}
+
+			remaining -= ret;
+		}
 	}
 
 private:
 	bool _is_within_file(const std::uint64_t offset_from_file_start,
 			     const std::uint64_t length) const noexcept
 	{
-		return length <= _contents.size() &&
-			offset_from_file_start <= _contents.size() - length;
+		return length <= _mmap_length && offset_from_file_start <= _mmap_length - length;
 	}
 
 	std::uint64_t _field_offset(const field_descriptor& field,
@@ -1062,9 +1120,9 @@ private:
 		const auto length = static_cast<std::uint64_t>(field.length());
 
 		/* Checks the terms first so that their sum doesn't overflow. */
-		if (structure_offset_from_file_start > _contents.size() ||
+		if (structure_offset_from_file_start > _mmap_length ||
 		    field.offset_from_structure_start() >
-			    _contents.size() - structure_offset_from_file_start ||
+			    _mmap_length - structure_offset_from_file_start ||
 		    !_is_within_file(structure_offset_from_file_start +
 					     field.offset_from_structure_start(),
 				     length)) {
@@ -1074,7 +1132,7 @@ private:
 				structure_offset_from_file_start,
 				field.offset_from_structure_start(),
 				length,
-				_contents.size()));
+				_mmap_length));
 		}
 
 		return structure_offset_from_file_start + field.offset_from_structure_start();
@@ -1083,56 +1141,58 @@ private:
 	std::uint64_t _element_offset(const array_descriptor& array,
 				      const std::uint64_t index) const
 	{
-		if (array.offset_from_file_start() > _contents.size() ||
+		if (array.offset_from_file_start() > _mmap_length ||
 		    (array.stride() != 0 &&
-		     index > (_contents.size() - array.offset_from_file_start()) /
-				     array.stride())) {
+		     index > (_mmap_length - array.offset_from_file_start()) / array.stride())) {
 			LTTNG_THROW_OUT_OF_RANGE(fmt::format(
 				"Element of array `{}` is past the end of the buffer file: index={}, array_offset_from_file_start={:#x}, stride={}, mmap_length={}",
 				array.name(),
 				index,
 				array.offset_from_file_start(),
 				array.stride(),
-				_contents.size()));
+				_mmap_length));
 		}
 
 		return array.offset_from_file_start() + (index * array.stride());
 	}
 
-	std::vector<char> _contents;
+	lttng::input_stream_descriptor _fd;
 	const crash_field_layout _layout;
+	const std::uint64_t _mmap_length;
 };
 
-crash_buffer read_crash_buffer(lttng::input_stream_descriptor& fd, const crash_header& header)
+void patch_packet_field(const lttng::output_stream_descriptor& fd_dest,
+			off_t packet_offset_from_file_start,
+			std::uint64_t packet_size,
+			const field_descriptor& field,
+			bool reverse_byte_order,
+			std::uint64_t value)
 {
-	struct stat file_stat;
+	const auto length = static_cast<std::uint64_t>(field.length());
 
-	if (fstat(fd.fd(), &file_stat) < 0) {
-		LTTNG_THROW_POSIX("Failed to stat the buffer file");
+	if (length > packet_size || field.offset_from_structure_start() > packet_size - length) {
+		LTTNG_THROW_OUT_OF_RANGE(fmt::format(
+			"Packet header field `{}` is outside of the packet: field_offset_from_packet_start={:#x}, field_length={}, packet_size={}",
+			field.name(),
+			field.offset_from_structure_start(),
+			length,
+			packet_size));
 	}
 
-	if (header.mmap_length > static_cast<std::uint64_t>(file_stat.st_size)) {
-		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
-			"Buffer file is shorter than its declared length: mmap_length={}, file_size={}",
-			header.mmap_length,
-			file_stat.st_size));
+	try {
+		std::array<char, sizeof(std::uint64_t)> bytes;
+
+		write_int(bytes.data(), field.length(), reverse_byte_order, value);
+		fd_dest.write_at(bytes.data(),
+				 static_cast<std::size_t>(length),
+				 packet_offset_from_file_start +
+					 static_cast<off_t>(field.offset_from_structure_start()));
+	} catch (...) {
+		std::throw_with_nested(lttng::runtime_error(
+			fmt::format("Failed to patch packet header field `{}` in the output file",
+				    field.name()),
+			LTTNG_SOURCE_LOCATION()));
 	}
-
-	if (header.mmap_length > std::numeric_limits<std::size_t>::max()) {
-		LTTNG_THROW_ERROR(fmt::format(
-			"Buffer file is too large to be loaded in memory: mmap_length={}",
-			header.mmap_length));
-	}
-
-	std::vector<char> contents(header.mmap_length);
-
-	if (lseek(fd.fd(), 0, SEEK_SET) < 0) {
-		LTTNG_THROW_POSIX("Failed to seek to the beginning of the buffer file");
-	}
-
-	fd.read(contents.data(), contents.size());
-
-	return crash_buffer(std::move(contents), header.layout);
 }
 
 /* buf_trunc mask selects only the buffer number. */
@@ -1174,9 +1234,9 @@ inline uint64_t subbuffer_id_get_index(bool extra_reader_subbuf, uint64_t id, un
 }
 
 /* `produced_counter_at_subbuf_start` is `consumed` in lttng-ust's lib_ring_buffer_get_subbuf(). */
-bool copy_crash_subbuf(crash_buffer& buffer,
+bool copy_crash_subbuf(const crash_buffer& buffer,
 		       const ring_buffer_properties& properties,
-		       const lttng::file_descriptor& fd_dest,
+		       const lttng::output_stream_descriptor& fd_dest,
 		       uint64_t produced_counter_at_subbuf_start)
 {
 	const auto& layout = buffer.layout();
@@ -1236,15 +1296,12 @@ bool copy_crash_subbuf(crash_buffer& buffer,
 	const auto backend_pages_offset_from_file_start = buffer.read(
 		layout.array.sb, backend_subbuf_index, layout.field.sb_array_shmp_offset);
 	/* Name the backend sub-buffer since `sb_array` gives the offset of its pages. */
-	const auto subbuf_data_offset_from_file_start = [&]() -> std::uint64_t {
+	const auto subbuf = [&]() -> file_range {
 		try {
 			/* lttng-ust: `rpages->p`. */
-			const auto offset = buffer.read(layout.field.sb_backend_p_offset,
-							backend_pages_offset_from_file_start);
-
-			/* Throws if the data is outside of the file. */
-			buffer.view(offset, subbuf_size);
-			return offset;
+			return buffer.range(buffer.read(layout.field.sb_backend_p_offset,
+							backend_pages_offset_from_file_start),
+					    subbuf_size);
 		} catch (...) {
 			std::throw_with_nested(lttng::runtime_error(
 				fmt::format(
@@ -1254,13 +1311,12 @@ bool copy_crash_subbuf(crash_buffer& buffer,
 				LTTNG_SOURCE_LOCATION()));
 		}
 	}();
-	const auto subbuf = buffer.view(subbuf_data_offset_from_file_start, subbuf_size);
 	uint64_t packet_size;
 
 	if (committed_size == subbuf_size) {
 		if (layout.field.packet_size) {
 			packet_size = buffer.read(*layout.field.packet_size,
-						  subbuf_data_offset_from_file_start) /
+						  subbuf.offset_from_file_start) /
 				CHAR_BIT;
 			if (packet_size > subbuf_size) {
 				LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
@@ -1272,39 +1328,49 @@ bool copy_crash_subbuf(crash_buffer& buffer,
 			packet_size = subbuf_size;
 		}
 	} else {
+		packet_size = committed_size;
+	}
+
+	const auto packet_offset_from_file_start = lseek(fd_dest.fd(), 0, SEEK_CUR);
+	if (packet_offset_from_file_start < 0) {
+		LTTNG_THROW_POSIX("Failed to get the position of the output file");
+	}
+
+	buffer.copy(subbuf, packet_size, fd_dest);
+
+	if (committed_size != subbuf_size) {
 		/*
 		 * The tracer writes the packet header sizes only when it closes the packet;
-		 * otherwise, we have to patch them with the committed size in our copy.
+		 * otherwise, we have to patch them with the committed size in the output file.
 		 */
 		const uint64_t committed_size_bits = committed_size * CHAR_BIT;
 
 		if (layout.field.content_size) {
-			buffer.write(*layout.field.content_size,
-				     subbuf_data_offset_from_file_start,
-				     committed_size_bits);
+			patch_packet_field(fd_dest,
+					   packet_offset_from_file_start,
+					   packet_size,
+					   *layout.field.content_size,
+					   layout.reverse_byte_order,
+					   committed_size_bits);
 		}
 
 		if (layout.field.packet_size) {
-			buffer.write(*layout.field.packet_size,
-				     subbuf_data_offset_from_file_start,
-				     committed_size_bits);
+			patch_packet_field(fd_dest,
+					   packet_offset_from_file_start,
+					   packet_size,
+					   *layout.field.packet_size,
+					   layout.reverse_byte_order,
+					   committed_size_bits);
 		}
-
-		packet_size = committed_size;
-	}
-
-	const auto writelen = lttng_write(fd_dest.fd(), subbuf.begin(), packet_size);
-	if (writelen < 0 || static_cast<uint64_t>(writelen) != packet_size) {
-		LTTNG_THROW_POSIX("Error writing to output file");
 	}
 
 	DBG("Copied %" PRIu64 " bytes of data", packet_size);
 	return true;
 }
 
-bool copy_crash_data(crash_buffer& buffer,
+bool copy_crash_data(const crash_buffer& buffer,
 		     const ring_buffer_properties& properties,
-		     const lttng::file_descriptor& fd_dest)
+		     const lttng::output_stream_descriptor& fd_dest)
 {
 	const auto& layout = buffer.layout();
 	/* lttng-ust: `buf->offset`. */
@@ -1404,7 +1470,7 @@ int extract_file(int output_dir_fd,
 			return 1;
 		}
 
-		auto buffer = read_crash_buffer(fd_src, *header);
+		const crash_buffer buffer(std::move(fd_src), header->layout, header->mmap_length);
 
 		const auto raw_fd_dest = openat(output_dir_fd,
 						output_file,
@@ -1415,7 +1481,7 @@ int extract_file(int output_dir_fd,
 			return -1;
 		}
 
-		const lttng::file_descriptor fd_dest(raw_fd_dest);
+		const lttng::output_stream_descriptor fd_dest(raw_fd_dest);
 
 		lttng::scope_exit remove_output_file([output_dir_fd, output_file]() noexcept {
 			if (unlinkat(output_dir_fd, output_file, 0)) {
