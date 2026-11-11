@@ -894,6 +894,20 @@ std::uint64_t max_word_value(const ring_buffer_properties& properties) noexcept
 	return properties.word_size == word_length::FOUR_BYTES ? UINT32_MAX : UINT64_MAX;
 }
 
+/*
+ * With a 32-bit ABI, the free-running counters are expected to overflow, so
+ * compare them at the word size of the ABI rather than as 64-bit values.
+ */
+bool counter_is_before(const ring_buffer_properties& properties,
+		       std::uint64_t counter,
+		       std::uint64_t other_counter) noexcept
+{
+	const auto mask = max_word_value(properties);
+
+	/* Tests the sign bit of the difference, like the ring buffer does with `long`. */
+	return ((counter - other_counter) & mask) > mask / 2;
+}
+
 std::optional<crash_header> decode_crash_header(lttng::input_stream_descriptor& fd)
 {
 	constexpr auto max_header_length = sizeof(crash_abi_1_0);
@@ -1257,9 +1271,9 @@ bool copy_crash_subbuf(const crash_buffer& buffer,
 	/* lttng-ust: `buf->consumed`. */
 	const auto consumed_counter = buffer.read(layout.field.consumed_offset, 0);
 
-	if ((long) subbuf_trunc(produced_counter_at_subbuf_start, subbuf_size) -
-		    (long) subbuf_trunc(consumed_counter, subbuf_size) <
-	    0) {
+	if (counter_is_before(properties,
+			      subbuf_trunc(produced_counter_at_subbuf_start, subbuf_size),
+			      subbuf_trunc(consumed_counter, subbuf_size))) {
 		DBG("No data: sub-buffer starts before the consumed counter");
 		return false;
 	}
@@ -1414,7 +1428,9 @@ bool copy_crash_data(const crash_buffer& buffer,
 
 	for (uint64_t i = 0; i < subbuf_count; i++) {
 		const auto produced_counter_at_subbuf_start =
-			consumed_counter + (i * properties.subbuf_size);
+			(consumed_counter + (i * properties.subbuf_size)) &
+			max_word_value(properties);
+
 		bool is_copied;
 
 		try {
