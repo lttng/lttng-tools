@@ -1576,21 +1576,10 @@ int extract_all_files(const char *output_path, const char *input_path)
 
 int extract_one_trace(const char *output_path, const char *input_path)
 {
-	char dest[PATH_MAX], src[PATH_MAX];
-	int ret;
-
 	DBG("Extract crash trace '%s' into '%s'", input_path, output_path);
 
-	/* Copy metadata */
-	strncpy(dest, output_path, PATH_MAX);
-	dest[PATH_MAX - 1] = '\0';
-	strncat(dest, "/metadata", PATH_MAX - strlen(dest) - 1);
-
-	strncpy(src, input_path, PATH_MAX);
-	src[PATH_MAX - 1] = '\0';
-	strncat(src, "/metadata", PATH_MAX - strlen(dest) - 1);
-
-	ret = copy_file(dest, src);
+	const auto ret = copy_file(fmt::format("{}/metadata", output_path).c_str(),
+				   fmt::format("{}/metadata", input_path).c_str());
 	if (ret) {
 		return ret;
 	}
