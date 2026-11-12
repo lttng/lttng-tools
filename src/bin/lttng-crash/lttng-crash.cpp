@@ -37,6 +37,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <string>
 #include <sys/sendfile.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -46,7 +47,8 @@
 #include <version-git.hpp>
 #include <version.hpp>
 
-#define COPY_BUFLEN	      4096
+static_assert(sizeof(off_t) >= sizeof(std::uint64_t), "`off_t` must be at least 64-bit");
+
 #define RB_CRASH_DUMP_ABI_LEN 32
 
 #define RB_CRASH_DUMP_ABI_MAGIC_LEN 16
@@ -765,60 +767,71 @@ void log_error_with_causes(const std::exception& exception,
 	}
 }
 
-int copy_file(const char *file_dest, const char *file_src)
+void copy_file_range(const lttng::output_stream_descriptor& destination_fd,
+		     const lttng::input_stream_descriptor& source_fd,
+		     const std::uint64_t offset_from_file_start,
+		     const std::uint64_t length)
 {
-	int fd_src = -1, fd_dest = -1;
-	ssize_t readlen, writelen;
-	char buf[COPY_BUFLEN];
-	int ret;
+	auto read_offset_from_file_start = static_cast<off_t>(offset_from_file_start);
+	auto remaining = length;
 
-	DBG("Copy metadata file '%s' into '%s'", file_src, file_dest);
+	while (remaining > 0) {
+		/* `remaining` may not fit in a `size_t` on 32-bit platforms. */
+		const auto chunk_length = static_cast<std::size_t>(
+			std::min<std::uint64_t>(remaining, std::numeric_limits<ssize_t>::max()));
+		const auto ret = sendfile(destination_fd.fd(),
+					  source_fd.fd(),
+					  &read_offset_from_file_start,
+					  chunk_length);
 
-	fd_src = open(file_src, O_RDONLY);
-	if (fd_src < 0) {
-		PERROR("Error opening %s for reading", file_src);
-		ret = -errno;
-		goto error;
+		if (ret < 0 && errno == EINTR) {
+			continue;
+		} else if (ret < 0) {
+			LTTNG_THROW_POSIX(
+				fmt::format("Failed to copy a file range: offset={:#x}, length={}",
+					    offset_from_file_start,
+					    length));
+		} else if (ret == 0) {
+			LTTNG_THROW_ERROR(fmt::format(
+				"Unexpected end of file while copying a file range: offset={:#x}, length={}, copied_length={}",
+				offset_from_file_start,
+				length,
+				length - remaining));
+		}
+
+		remaining -= ret;
 	}
-	fd_dest = open(file_dest, O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
-	if (fd_dest < 0) {
-		PERROR("Error opening %s for writing", file_dest);
-		ret = -errno;
-		goto error;
-	}
+}
 
-	for (;;) {
-		readlen = lttng_read(fd_src, buf, COPY_BUFLEN);
-		if (readlen < 0) {
-			PERROR("Error reading input file");
-			ret = -1;
-			goto error;
-		}
-		if (!readlen) {
-			break;
-		}
-		writelen = lttng_write(fd_dest, buf, readlen);
-		if (writelen < readlen) {
-			PERROR("Error writing to output file");
-			ret = -1;
-			goto error;
-		}
-	}
+void copy_file(const std::string& destination_path, const std::string& source_path)
+{
+	DBG_FMT("Copying metadata file: source_path=`{}`, destination_path=`{}`",
+		source_path,
+		destination_path);
 
-	ret = 0;
-error:
-	if (fd_src >= 0) {
-		if (close(fd_src) < 0) {
-			PERROR("Error closing %s", file_src);
-		}
+	const auto raw_source_fd = open(source_path.c_str(), O_RDONLY);
+	if (raw_source_fd < 0) {
+		LTTNG_THROW_POSIX(fmt::format("Failed to open `{}` for reading", source_path));
 	}
 
-	if (fd_dest >= 0) {
-		if (close(fd_dest) < 0) {
-			PERROR("Error closing %s", file_dest);
-		}
+	const lttng::input_stream_descriptor source_fd(raw_source_fd);
+
+	const auto raw_destination_fd = open(destination_path.c_str(),
+					     O_RDWR | O_CREAT | O_EXCL,
+					     S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+	if (raw_destination_fd < 0) {
+		LTTNG_THROW_POSIX(fmt::format("Failed to open `{}` for writing", destination_path));
 	}
-	return ret;
+
+	const lttng::output_stream_descriptor destination_fd(raw_destination_fd);
+
+	struct stat source_stat;
+	if (fstat(source_fd.fd(), &source_stat)) {
+		LTTNG_THROW_POSIX(fmt::format("Failed to get the size of `{}`", source_path));
+	}
+
+	copy_file_range(
+		destination_fd, source_fd, 0, static_cast<std::uint64_t>(source_stat.st_size));
 }
 
 std::uint64_t
@@ -997,9 +1010,6 @@ std::optional<crash_header> decode_crash_header(lttng::input_stream_descriptor& 
 	return header;
 }
 
-/* Buffer files can be larger than 4 GiB on all platforms (see `AC_SYS_LARGEFILE`). */
-static_assert(sizeof(off_t) >= sizeof(std::uint64_t), "`off_t` must be at least 64-bit");
-
 struct file_range {
 	file_range(const file_range&) = default;
 	file_range(file_range&&) = default;
@@ -1097,29 +1107,7 @@ public:
 				source.length));
 		}
 
-		auto read_offset_from_file_start =
-			static_cast<off_t>(source.offset_from_file_start);
-		auto remaining = length;
-
-		while (remaining > 0) {
-			/* `remaining` may not fit in a `size_t` on 32-bit platforms. */
-			const auto chunk_length = static_cast<std::size_t>(std::min<std::uint64_t>(
-				remaining, std::numeric_limits<ssize_t>::max()));
-			const auto ret = sendfile(
-				fd_dest.fd(), _fd.fd(), &read_offset_from_file_start, chunk_length);
-
-			if (ret < 0 && errno == EINTR) {
-				continue;
-			} else if (ret < 0) {
-				LTTNG_THROW_POSIX("Failed to copy a packet to the output file");
-			} else if (ret == 0) {
-				LTTNG_THROW_ERROR(fmt::format(
-					"Unexpected end of the buffer file: offset={:#x}",
-					read_offset_from_file_start));
-			}
-
-			remaining -= ret;
-		}
+		copy_file_range(fd_dest, _fd, source.offset_from_file_start, length);
 	}
 
 private:
@@ -1583,10 +1571,12 @@ int extract_one_trace(const char *output_path, const char *input_path)
 {
 	DBG("Extract crash trace '%s' into '%s'", input_path, output_path);
 
-	const auto ret = copy_file(fmt::format("{}/metadata", output_path).c_str(),
-				   fmt::format("{}/metadata", input_path).c_str());
-	if (ret) {
-		return ret;
+	try {
+		copy_file(fmt::format("{}/metadata", output_path),
+			  fmt::format("{}/metadata", input_path));
+	} catch (const std::exception& ex) {
+		log_error_with_causes(ex, "Failed to copy the metadata file of `{}`", input_path);
+		return -1;
 	}
 
 	/* Extract each other file that has expected header */
