@@ -16,6 +16,7 @@
 #include <common/scope-exit.hpp>
 #include <common/spawn-viewer.hpp>
 #include <common/stream-descriptor.hpp>
+#include <common/string-utils/c-string-view.hpp>
 #include <common/utils.hpp>
 
 #include <lttng/lttng.h>
@@ -1548,9 +1549,13 @@ int extract_all_files(const char *output_path, const char *input_path)
 	}
 
 	while ((entry = readdir(input_dir))) {
-		if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, ".."))
+		const lttng::c_string_view file_name(entry->d_name);
+
+		if (file_name == "." || file_name == ".." || file_name == "metadata") {
 			continue;
-		ret = extract_file(output_dir_fd, entry->d_name, input_dir_fd, entry->d_name);
+		}
+
+		ret = extract_file(output_dir_fd, file_name, input_dir_fd, file_name);
 		if (ret == -ENODATA) {
 			DBG("No data in file '%s', skipping", entry->d_name);
 			ret = 0;
