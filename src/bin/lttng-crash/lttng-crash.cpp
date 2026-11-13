@@ -1583,110 +1583,64 @@ int extract_one_trace(const char *output_path, const char *input_path)
 	return extract_all_files(output_path, input_path);
 }
 
-int extract_trace_recursive(const char *output_path, const char *input_path)
+int extract_trace_recursive(const std::string& output_path, const std::string& input_path)
 {
-	DIR *dir;
-	int dir_fd, ret = 0, closeret;
-	struct dirent *entry;
-	size_t path_len;
-	int has_warning = 0;
-
-	/* Open directory */
-	dir = opendir(input_path);
+	DIR *const dir = opendir(input_path.c_str());
 	if (!dir) {
-		PERROR("Cannot open '%s' path", input_path);
+		PERROR("Cannot open '%s' path", input_path.c_str());
 		return -1;
 	}
 
-	path_len = strlen(input_path);
+	const lttng::scope_exit close_dir([dir]() noexcept {
+		if (closedir(dir)) {
+			PERROR("closedir");
+		}
+	});
 
-	dir_fd = dirfd(dir);
-	if (dir_fd < 0) {
-		PERROR("dirfd");
-		return -1;
-	}
+	int has_warning = 0;
+	struct dirent *entry;
 
 	while ((entry = readdir(dir))) {
-		struct stat st;
-		size_t name_len;
-		char filename[PATH_MAX];
-
 		const lttng::c_string_view entry_name(entry->d_name);
 
 		if (entry_name == "." || entry_name == "..") {
 			continue;
 		}
 
-		name_len = strlen(entry->d_name);
-		if (path_len + name_len + 2 > sizeof(filename)) {
-			ERR("Failed to remove file: path name too long (%s/%s)",
-			    input_path,
-			    entry->d_name);
-			continue;
-		}
+		const auto entry_input_path = fmt::format("{}/{}", input_path, entry_name);
+		struct stat st;
 
-		if (snprintf(filename, sizeof(filename), "%s/%s", input_path, entry->d_name) < 0) {
-			ERR("Failed to format path.");
-			continue;
-		}
-
-		if (stat(filename, &st)) {
-			PERROR("stat");
+		if (stat(entry_input_path.c_str(), &st)) {
+			PERROR("Failed to stat '%s'", entry_input_path.c_str());
 			continue;
 		}
 
 		if (S_ISDIR(st.st_mode)) {
-			char output_subpath[PATH_MAX];
-			char input_subpath[PATH_MAX];
+			const auto entry_output_path =
+				fmt::format("{}/{}", output_path, entry_name);
 
-			strncpy(output_subpath, output_path, sizeof(output_subpath));
-			output_subpath[sizeof(output_subpath) - 1] = '\0';
-			strncat(output_subpath,
-				"/",
-				sizeof(output_subpath) - strlen(output_subpath) - 1);
-			strncat(output_subpath,
-				entry->d_name,
-				sizeof(output_subpath) - strlen(output_subpath) - 1);
-
-			ret = mkdir(output_subpath, S_IRWXU | S_IRWXG);
-			if (ret) {
-				PERROR("mkdir");
-				has_warning = 1;
-				goto end;
+			if (mkdir(entry_output_path.c_str(), S_IRWXU | S_IRWXG)) {
+				PERROR("Failed to create directory '%s'",
+				       entry_output_path.c_str());
+				return 1;
 			}
 
-			strncpy(input_subpath, input_path, sizeof(input_subpath));
-			input_subpath[sizeof(input_subpath) - 1] = '\0';
-			strncat(input_subpath,
-				"/",
-				sizeof(input_subpath) - strlen(input_subpath) - 1);
-			strncat(input_subpath,
-				entry->d_name,
-				sizeof(input_subpath) - strlen(input_subpath) - 1);
-
-			ret = extract_trace_recursive(output_subpath, input_subpath);
-			if (ret) {
+			if (extract_trace_recursive(entry_output_path, entry_input_path)) {
 				has_warning = 1;
 			}
 		} else if (S_ISREG(st.st_mode) || S_ISLNK(st.st_mode)) {
 			if (entry_name == "metadata") {
-				ret = extract_one_trace(output_path, input_path);
-				if (ret) {
+				if (extract_one_trace(output_path.c_str(), input_path.c_str())) {
 					WARN("Error extracting trace '%s', continuing anyway.",
-					     input_path);
+					     input_path.c_str());
 					has_warning = 1;
 				}
 			}
 		} else {
-			has_warning = 1;
-			goto end;
+			return 1;
 		}
 	}
-end:
-	closeret = closedir(dir);
-	if (closeret) {
-		PERROR("closedir");
-	}
+
 	return has_warning;
 }
 
@@ -1857,7 +1811,13 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	ret = extract_trace_recursive(output_path, the_input_path);
+	try {
+		ret = extract_trace_recursive(output_path, the_input_path);
+	} catch (const std::exception& ex) {
+		log_error_with_causes(ex, "Failed to extract `{}`", the_input_path);
+		ret = -1;
+	}
+
 	if (ret < 0) {
 		has_warning = true;
 		goto end;
