@@ -1650,7 +1650,7 @@ int extract_trace_recursive(const std::string& output_path, const std::string& i
 			if (extract_trace_recursive(entry_output_path, entry_input_path)) {
 				has_warning = 1;
 			}
-		} else if (S_ISREG(st.st_mode) || S_ISLNK(st.st_mode)) {
+		} else if (S_ISREG(st.st_mode)) {
 			if (entry_name == "metadata") {
 				if (extract_one_trace(output_path.c_str(), input_path.c_str())) {
 					WARN("Error extracting trace '%s', continuing anyway.",
