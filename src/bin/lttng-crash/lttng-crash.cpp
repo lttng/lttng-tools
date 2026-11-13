@@ -536,6 +536,7 @@ struct crash_header {
 		properties(abi, reader),
 		mmap_length(reader.value(abi.parent.mmap_length))
 	{
+		_validate();
 	}
 
 	crash_header(const crash_header&) = default;
@@ -549,6 +550,27 @@ struct crash_header {
 
 	/* Length of the ring buffer, header included. */
 	const std::uint64_t mmap_length;
+
+private:
+	void _validate() const
+	{
+		for (const auto *const array :
+		     { &layout.array.commit_hot, &layout.array.buf_wsb, &layout.array.sb }) {
+			if (array->stride() == 0) {
+				LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+					"Invalid zero stride of crash ABI header array `{}`: offset_from_file_start={:#x}",
+					array->name(),
+					array->offset_from_file_start()));
+			}
+		}
+
+		if (properties.buf_size > mmap_length) {
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+				"Ring buffer is larger than the buffer file: buf_size={}, mmap_length={}",
+				properties.buf_size,
+				mmap_length));
+		}
+	}
 };
 } /* namespace */
 
