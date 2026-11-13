@@ -195,11 +195,9 @@ bool operator==(LhsT&& lhs, RhsT&& rhs) noexcept
 	const auto raw_lhs = internal::as_const_char_ptr(lhs);
 	const auto raw_rhs = internal::as_const_char_ptr(rhs);
 
-	if (raw_lhs == raw_rhs) {
-		return true;
-	} else if (!raw_lhs || !raw_rhs) {
-		/* Only one of the strings is null, not equal. */
-		return false;
+	if (!raw_lhs || !raw_rhs) {
+		/* Equal only if both are null. */
+		return raw_lhs == raw_rhs;
 	}
 
 	return std::strcmp(raw_lhs, raw_rhs) == 0;
