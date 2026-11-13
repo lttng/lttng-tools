@@ -95,12 +95,8 @@ int walk_command_search_path(const char *binary, char *binary_full_path)
 			 */
 			ret = stat(tentative_binary_path, &stat_output);
 			if (ret == 0) {
-				/*
-				 * Verify that it is a regular file or a
-				 * symlink and not a special file (e.g.
-				 * device).
-				 */
-				if (S_ISREG(stat_output.st_mode) || S_ISLNK(stat_output.st_mode)) {
+				/* Verify that it is not a special file (e.g. device). */
+				if (S_ISREG(stat_output.st_mode)) {
 					/*
 					 * Found a match, set the out parameter
 					 * and return success.
