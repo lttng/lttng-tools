@@ -1644,101 +1644,64 @@ int extract_trace_recursive(const std::string& output_path, const std::string& i
 	return has_warning;
 }
 
-int delete_dir_recursive(const char *path)
+int delete_dir_recursive(const std::string& path)
 {
-	DIR *dir;
-	int dir_fd, ret = 0, closeret;
-	size_t path_len;
-	struct dirent *entry;
-
-	/* Open trace directory */
-	dir = opendir(path);
+	DIR *const dir = opendir(path.c_str());
 	if (!dir) {
-		PERROR("Cannot open '%s' path", path);
-		ret = -errno;
-		goto end_no_closedir;
+		PERROR("Cannot open '%s' path", path.c_str());
+		return -errno;
 	}
 
-	path_len = strlen(path);
+	const lttng::scope_exit close_dir([dir]() noexcept {
+		if (closedir(dir)) {
+			PERROR("closedir");
+		}
+	});
 
-	dir_fd = dirfd(dir);
+	const auto dir_fd = dirfd(dir);
 	if (dir_fd < 0) {
 		PERROR("dirfd");
-		ret = -errno;
-		goto end;
+		return -errno;
 	}
 
-	while ((entry = readdir(dir))) {
-		struct stat st;
-		size_t name_len;
-		char filename[PATH_MAX];
+	struct dirent *entry;
 
+	while ((entry = readdir(dir))) {
 		const lttng::c_string_view entry_name(entry->d_name);
 
 		if (entry_name == "." || entry_name == "..") {
 			continue;
 		}
 
-		name_len = strlen(entry->d_name);
-		if (path_len + name_len + 2 > sizeof(filename)) {
-			ERR("Failed to remove file: path name too long (%s/%s)",
-			    path,
-			    entry->d_name);
-			continue;
-		}
+		const auto entry_path = fmt::format("{}/{}", path, entry_name);
+		struct stat st;
 
-		if (snprintf(filename, sizeof(filename), "%s/%s", path, entry->d_name) < 0) {
-			ERR("Failed to format path.");
-			continue;
-		}
-
-		if (stat(filename, &st)) {
-			PERROR("stat");
+		if (stat(entry_path.c_str(), &st)) {
+			PERROR("Failed to stat '%s'", entry_path.c_str());
 			continue;
 		}
 
 		if (S_ISDIR(st.st_mode)) {
-			char *subpath = calloc<char>(PATH_MAX);
-
-			if (!subpath) {
-				PERROR("zmalloc path");
-				ret = -1;
-				goto end;
-			}
-			strncpy(subpath, path, PATH_MAX);
-			subpath[PATH_MAX - 1] = '\0';
-			strncat(subpath, "/", PATH_MAX - strlen(subpath) - 1);
-			strncat(subpath, entry->d_name, PATH_MAX - strlen(subpath) - 1);
-
-			ret = delete_dir_recursive(subpath);
-			free(subpath);
+			const auto ret = delete_dir_recursive(entry_path);
 			if (ret) {
 				/* Error occurred, abort traversal. */
-				goto end;
+				return ret;
 			}
 		} else if (S_ISREG(st.st_mode)) {
-			ret = unlinkat(dir_fd, entry->d_name, 0);
-			if (ret) {
-				PERROR("Unlinking '%s'", entry->d_name);
-				goto end;
+			if (unlinkat(dir_fd, entry->d_name, 0)) {
+				PERROR("Unlinking '%s'", entry_path.c_str());
+				return -1;
 			}
 		} else {
-			ret = -EINVAL;
-			goto end;
+			return -EINVAL;
 		}
 	}
-end:
-	if (!ret) {
-		ret = rmdir(path);
-		if (ret) {
-			PERROR("rmdir '%s'", path);
-		}
+
+	const auto ret = rmdir(path.c_str());
+	if (ret) {
+		PERROR("rmdir '%s'", path.c_str());
 	}
-	closeret = closedir(dir);
-	if (closeret) {
-		PERROR("closedir");
-	}
-end_no_closedir:
+
 	return ret;
 }
 
@@ -1832,7 +1795,13 @@ int main(int argc, char *argv[])
 			has_warning = true;
 		}
 		/* unlink temporary trace */
-		ret = delete_dir_recursive(output_path);
+		try {
+			ret = delete_dir_recursive(output_path);
+		} catch (const std::exception& ex) {
+			log_error_with_causes(ex, "Failed to delete `{}`", output_path);
+			ret = -1;
+		}
+
 		if (ret) {
 			has_warning = true;
 		}
