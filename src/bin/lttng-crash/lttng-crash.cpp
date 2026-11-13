@@ -1611,7 +1611,9 @@ int extract_trace_recursive(const char *output_path, const char *input_path)
 		size_t name_len;
 		char filename[PATH_MAX];
 
-		if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, "..")) {
+		const lttng::c_string_view entry_name(entry->d_name);
+
+		if (entry_name == "." || entry_name == "..") {
 			continue;
 		}
 
@@ -1667,7 +1669,7 @@ int extract_trace_recursive(const char *output_path, const char *input_path)
 				has_warning = 1;
 			}
 		} else if (S_ISREG(st.st_mode) || S_ISLNK(st.st_mode)) {
-			if (!strcmp(entry->d_name, "metadata")) {
+			if (entry_name == "metadata") {
 				ret = extract_one_trace(output_path, input_path);
 				if (ret) {
 					WARN("Error extracting trace '%s', continuing anyway.",
@@ -1717,7 +1719,9 @@ int delete_dir_recursive(const char *path)
 		size_t name_len;
 		char filename[PATH_MAX];
 
-		if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, "..")) {
+		const lttng::c_string_view entry_name(entry->d_name);
+
+		if (entry_name == "." || entry_name == "..") {
 			continue;
 		}
 
