@@ -1770,6 +1770,26 @@ int delete_dir_recursive(const std::string& path)
 
 int view_trace(const char *trace_path, char *viewer_path)
 {
+	struct sigaction ignore_action = {};
+	ignore_action.sa_handler = SIG_IGN;
+	sigemptyset(&ignore_action.sa_mask);
+
+	struct sigaction original_sigint_action = {};
+	struct sigaction original_sigquit_action = {};
+
+	if (sigaction(SIGINT, &ignore_action, &original_sigint_action) ||
+	    sigaction(SIGQUIT, &ignore_action, &original_sigquit_action)) {
+		PERROR("Failed to ignore SIGINT and SIGQUIT while the viewer runs");
+	}
+
+	const auto restore_signal_actions = [&original_sigint_action,
+					     &original_sigquit_action]() noexcept {
+		(void) sigaction(SIGINT, &original_sigint_action, nullptr);
+		(void) sigaction(SIGQUIT, &original_sigquit_action, nullptr);
+	};
+	const lttng::scope_exit restore_signal_actions_on_exit(
+		[&restore_signal_actions]() noexcept { restore_signal_actions(); });
+
 	const auto pid = fork();
 	if (pid < 0) {
 		PERROR("Failed to fork the viewer process");
@@ -1777,6 +1797,9 @@ int view_trace(const char *trace_path, char *viewer_path)
 	}
 
 	if (pid == 0) {
+		/* Let the viewer handle the signals. */
+		restore_signal_actions();
+
 		/*
 		 * spawn_viewer() only returns on error. Don't return to run(), which
 		 * would also remove the temporary directory.
