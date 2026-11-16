@@ -1770,32 +1770,36 @@ int delete_dir_recursive(const std::string& path)
 
 int view_trace(const char *trace_path, char *viewer_path)
 {
-	pid_t pid;
-
-	pid = fork();
+	const auto pid = fork();
 	if (pid < 0) {
-		/* Error */
-		PERROR("fork");
+		PERROR("Failed to fork the viewer process");
 		return -1;
-	} else if (pid > 0) {
-		/* Parent */
-		int status;
-
-		pid = waitpid(pid, &status, 0);
-		if (pid < 0 || !WIFEXITED(status)) {
-			return -1;
-		}
-	} else {
-		/* Child */
-		int ret;
-
-		ret = spawn_viewer(trace_path, viewer_path, false);
-		if (ret) {
-			return EXIT_FAILURE;
-		}
-		/* Never reached */
-		return EXIT_SUCCESS;
 	}
+
+	if (pid == 0) {
+		/*
+		 * spawn_viewer() only returns on error. Don't return to run(), which
+		 * would also remove the temporary directory.
+		 */
+		spawn_viewer(trace_path, viewer_path, false);
+		_exit(EXIT_FAILURE);
+	}
+
+	int status;
+
+	if (waitpid(pid, &status, 0) < 0) {
+		PERROR("Failed to wait for the viewer process");
+		return -1;
+	}
+
+	if (WIFSIGNALED(status)) {
+		ERR("Viewer process was terminated by signal %d", WTERMSIG(status));
+		return -1;
+	} else if (WEXITSTATUS(status) != EXIT_SUCCESS) {
+		ERR("Viewer process exited with status %d", WEXITSTATUS(status));
+		return -1;
+	}
+
 	return 0;
 }
 
