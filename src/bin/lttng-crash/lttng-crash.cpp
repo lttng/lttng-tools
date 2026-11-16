@@ -1011,7 +1011,16 @@ public:
 			   const std::uint64_t index,
 			   const field_descriptor& field) const
 	{
-		return read(field, _element_offset(array, index));
+		try {
+			return read(field, _element_offset(array, index));
+		} catch (...) {
+			std::throw_with_nested(
+				lttng::runtime_error(fmt::format("Failed to read `{}[{}].{}`",
+								 array.name(),
+								 index,
+								 field.name()),
+						     LTTNG_SOURCE_LOCATION()));
+		}
 	}
 
 	void write(const field_descriptor& field,
@@ -1226,9 +1235,25 @@ bool copy_crash_subbuf(crash_buffer& buffer,
 	/* lttng-ust: `rpages`. */
 	const auto backend_pages_offset_from_file_start = buffer.read(
 		layout.array.sb, backend_subbuf_index, layout.field.sb_array_shmp_offset);
-	/* lttng-ust: `rpages->p`. */
-	const auto subbuf_data_offset_from_file_start =
-		buffer.read(layout.field.sb_backend_p_offset, backend_pages_offset_from_file_start);
+	/* Name the backend sub-buffer since `sb_array` gives the offset of its pages. */
+	const auto subbuf_data_offset_from_file_start = [&]() -> std::uint64_t {
+		try {
+			/* lttng-ust: `rpages->p`. */
+			const auto offset = buffer.read(layout.field.sb_backend_p_offset,
+							backend_pages_offset_from_file_start);
+
+			/* Throws if the data is outside of the file. */
+			buffer.view(offset, subbuf_size);
+			return offset;
+		} catch (...) {
+			std::throw_with_nested(lttng::runtime_error(
+				fmt::format(
+					"Failed to locate the data of backend sub-buffer {}: backend_pages_offset_from_file_start={:#x}",
+					backend_subbuf_index,
+					backend_pages_offset_from_file_start),
+				LTTNG_SOURCE_LOCATION()));
+		}
+	}();
 	const auto subbuf = buffer.view(subbuf_data_offset_from_file_start, subbuf_size);
 	uint64_t packet_size;
 
@@ -1322,10 +1347,25 @@ bool copy_crash_data(crash_buffer& buffer,
 	bool has_data = false;
 
 	for (uint64_t i = 0; i < subbuf_count; i++) {
-		if (!copy_crash_subbuf(buffer,
-				       properties,
-				       fd_dest,
-				       consumed_counter + (i * properties.subbuf_size))) {
+		const auto produced_counter_at_subbuf_start =
+			consumed_counter + (i * properties.subbuf_size);
+		bool is_copied;
+
+		try {
+			is_copied = copy_crash_subbuf(
+				buffer, properties, fd_dest, produced_counter_at_subbuf_start);
+		} catch (...) {
+			std::throw_with_nested(lttng::runtime_error(
+				fmt::format(
+					"Failed to copy writer sub-buffer {}: produced_counter_at_subbuf_start={:#x}",
+					subbuf_index(produced_counter_at_subbuf_start,
+						     properties.buf_size,
+						     properties.subbuf_size),
+					produced_counter_at_subbuf_start),
+				LTTNG_SOURCE_LOCATION()));
+		}
+
+		if (!is_copied) {
 			break;
 		}
 
@@ -1351,7 +1391,15 @@ int extract_file(int output_dir_fd,
 	lttng::input_stream_descriptor fd_src(raw_fd_src);
 
 	try {
-		const auto header = decode_crash_header(fd_src);
+		const auto header = [&fd_src]() {
+			try {
+				return decode_crash_header(fd_src);
+			} catch (...) {
+				std::throw_with_nested(lttng::runtime_error(
+					"Failed to decode the crash ABI header",
+					LTTNG_SOURCE_LOCATION()));
+			}
+		}();
 		if (!header) {
 			return 1;
 		}
