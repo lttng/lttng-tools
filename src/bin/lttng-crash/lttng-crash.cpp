@@ -1566,7 +1566,7 @@ int extract_all_files(const char *output_path, const char *input_path)
 		return -1;
 	}
 
-	int ret = 0;
+	bool has_error = false;
 	struct dirent *entry;
 
 	while ((entry = readdir(input_dir))) {
@@ -1576,21 +1576,19 @@ int extract_all_files(const char *output_path, const char *input_path)
 			continue;
 		}
 
-		ret = extract_file(output_dir_fd, file_name, input_dir_fd, file_name);
-		if (ret == -ENODATA) {
+		const auto extract_ret =
+			extract_file(output_dir_fd, file_name, input_dir_fd, file_name);
+		if (extract_ret == -ENODATA) {
 			DBG("No data in file '%s', skipping", entry->d_name);
-			ret = 0;
-			continue;
-		} else if (ret < 0) {
-			break;
-		} else if (ret > 0) {
+		} else if (extract_ret < 0) {
+			/* extract_file() logged the error. Extract the other streams anyway. */
+			has_error = true;
+		} else if (extract_ret > 0) {
 			DBG("Skipping file '%s'", entry->d_name);
-			ret = 0;
-			continue;
 		}
 	}
 
-	return ret;
+	return has_error ? -1 : 0;
 }
 
 int extract_one_trace(const char *output_path, const char *input_path)
