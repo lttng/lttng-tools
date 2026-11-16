@@ -24,7 +24,7 @@ lttng::sessiond::make_lttng_channel(const lsc::recording_channel_configuration& 
 	auto attr = lttng::make_unique_wrapper<lttng_channel, lttng_channel_destroy>(
 		lttng_channel_create_internal());
 	if (!attr) {
-		LTTNG_THROW_POSIX("Failed to allocate lttng_channel", ENOMEM);
+		LTTNG_THROW_POSIX_WITH_ERRNO("Failed to allocate lttng_channel", ENOMEM);
 	}
 
 	if (lttng_strncpy(attr->name, channel_config.name.c_str(), sizeof(attr->name))) {

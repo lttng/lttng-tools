@@ -212,11 +212,9 @@ void warn_on_small_client_shm(const char *session_name)
 		    shm_path,
 		    parent.c_str());
 		if (statvfs(parent.c_str(), &statbuf) != 0) {
-			LTTNG_THROW_POSIX(
-				lttng::format(
-					"Failed to get the capacity of the filesystem at path '{}'",
-					parent.c_str()),
-				errno);
+			LTTNG_THROW_POSIX(lttng::format(
+				"Failed to get the capacity of the filesystem at path '{}'",
+				parent.c_str()));
 		}
 	} else {
 		/*
@@ -229,8 +227,7 @@ void warn_on_small_client_shm(const char *session_name)
 			if (raw_fd < 0) {
 				LTTNG_THROW_POSIX(
 					lttng::format("Failed to open shared memory at path '%s'",
-						      CLIENT_SHM_TEST_PATH),
-					errno);
+						      CLIENT_SHM_TEST_PATH));
 			}
 			return lttng::file_descriptor(raw_fd);
 		}();
@@ -239,8 +236,7 @@ void warn_on_small_client_shm(const char *session_name)
 			lttng::make_scope_exit([]() noexcept { shm_unlink(CLIENT_SHM_TEST_PATH); });
 		if (fstatvfs(fd.fd(), &statbuf) != 0) {
 			LTTNG_THROW_POSIX(
-				"Failed to get the capacity of the filesystem at the default location used by shm_open",
-				errno);
+				"Failed to get the capacity of the filesystem at the default location used by shm_open");
 		}
 	}
 

@@ -43,7 +43,7 @@ std::vector<std::uint8_t> consumer_request(consumer_socket& socket,
 {
 	const auto send_ret = consumer_socket_send(&socket, payload.data(), payload.size());
 	if (send_ret < 0) {
-		LTTNG_THROW_POSIX("Failed to send command payload to consumer daemon", errno);
+		LTTNG_THROW_POSIX("Failed to send command payload to consumer daemon");
 	}
 
 	auto reply = std::move(payload);
@@ -59,8 +59,7 @@ std::vector<std::uint8_t> consumer_request(consumer_socket& socket,
 			errno = ECONNRESET;
 		}
 
-		LTTNG_THROW_POSIX("Failed to receive command reply header from consumer daemon",
-				  errno);
+		LTTNG_THROW_POSIX("Failed to receive command reply header from consumer daemon");
 	}
 
 	const auto status_code = static_cast<lttcomm_return_code>(reply_header.ret_code);
@@ -82,8 +81,7 @@ std::vector<std::uint8_t> consumer_request(consumer_socket& socket,
 	reply.resize(reply_header.payload_size);
 	const auto recv_payload_ret = consumer_socket_recv(&socket, reply.data(), reply.size());
 	if (recv_payload_ret < 0) {
-		LTTNG_THROW_POSIX("Failed to receive command reply payload from consumer daemon",
-				  errno);
+		LTTNG_THROW_POSIX("Failed to receive command reply payload from consumer daemon");
 	}
 
 	return reply;

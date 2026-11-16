@@ -22,7 +22,7 @@ timerfd::timerfd(int flags) :
 		const auto raw_fd = ::timerfd_create(CLOCK_MONOTONIC, flags);
 
 		if (raw_fd < 0) {
-			LTTNG_THROW_POSIX("Failed to create timerfd", errno);
+			LTTNG_THROW_POSIX("Failed to create timerfd");
 		}
 
 		return raw_fd;
@@ -50,8 +50,7 @@ void timerfd::settime(std::chrono::nanoseconds relative_time)
 
 	if (::timerfd_settime(fd(), 0, &spec, nullptr) == -1) {
 		LTTNG_THROW_POSIX(lttng::format("Failed to set timerfd time: relative_time={}",
-						relative_time),
-				  errno);
+						relative_time));
 	}
 }
 

@@ -786,7 +786,7 @@ struct lttcomm_sock *init_socket(struct lttng_uri *uri, const char *name)
 		const auto fmt_ret =
 			asprintf(&raw_relayd_path, DEFAULT_RELAYD_PATH, rundir_path.get());
 		if (fmt_ret < 0) {
-			LTTNG_THROW_POSIX("Failed to format relayd rundir path", errno);
+			LTTNG_THROW_POSIX("Failed to format relayd rundir path");
 		}
 
 		return lttng::make_unique_wrapper<char, lttng::memory::free>(raw_relayd_path);
@@ -843,7 +843,7 @@ struct lttcomm_sock *init_socket(struct lttng_uri *uri, const char *name)
 	DBG("Listening on %s socket %d", name, sock->fd);
 	ret = sock->ops->bind(sock.get());
 	if (ret < 0) {
-		LTTNG_THROW_POSIX("Failed to bind lttng-live socket", errno);
+		LTTNG_THROW_POSIX("Failed to bind lttng-live socket");
 	}
 
 	if (utils_create_pid_file((pid_t) ntohs(sock->sockaddr.addr.sin.sin_port),

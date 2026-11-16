@@ -32,8 +32,15 @@
 
 #define LTTNG_THROW_CTL(msg, error_code) \
 	throw lttng::ctl::error(msg, error_code, LTTNG_SOURCE_LOCATION())
-#define LTTNG_THROW_POSIX(msg, errno_code) \
-	throw lttng::posix_error(msg, errno_code, LTTNG_SOURCE_LOCATION())
+
+#define LTTNG_THROW_POSIX_WITH_ERRNO(msg, errno_value)                                \
+	do {                                                                          \
+		const int lttng_throw_posix_errno_value = (errno_value);              \
+		throw lttng::posix_error(                                             \
+			msg, lttng_throw_posix_errno_value, LTTNG_SOURCE_LOCATION()); \
+	} while (0)
+#define LTTNG_THROW_POSIX(msg) LTTNG_THROW_POSIX_WITH_ERRNO(msg, errno)
+
 #define LTTNG_THROW_ERROR(msg)	      throw lttng::runtime_error(msg, LTTNG_SOURCE_LOCATION())
 #define LTTNG_THROW_OUT_OF_RANGE(msg) throw lttng::out_of_range(msg, LTTNG_SOURCE_LOCATION())
 #define LTTNG_THROW_ALLOCATION_FAILURE_ERROR(msg) \

@@ -31,7 +31,8 @@ lttng::ctl::lttng_channel_uptr channel_new_default_attr(lttng_domain_type dom,
 
 	lttng::ctl::lttng_channel_uptr chan(lttng_channel_create_internal());
 	if (!chan) {
-		LTTNG_THROW_POSIX("Failed to allocate channel with default attributes", -ENOMEM);
+		LTTNG_THROW_POSIX_WITH_ERRNO("Failed to allocate channel with default attributes",
+					     -ENOMEM);
 	}
 
 	struct lttng_channel_extended *extended_attr =

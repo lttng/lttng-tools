@@ -62,7 +62,7 @@ lttng::poller::poller() :
 		const auto epoll_fd = ::epoll_create1(EPOLL_CLOEXEC);
 
 		if (epoll_fd < 0) {
-			LTTNG_THROW_POSIX("Failed to create epoll fd", errno);
+			LTTNG_THROW_POSIX("Failed to create epoll fd");
 		}
 
 		return epoll_fd;
@@ -81,8 +81,7 @@ void lttng::poller::add(const lttng::file_descriptor& new_fd, event_type events,
 	if (::epoll_ctl(_epoll_fd.fd(), EPOLL_CTL_ADD, new_fd.fd(), &ev) == -1) {
 		LTTNG_THROW_POSIX(lttng::format("Failed to add fd to epoll: epoll_fd={}, fd={}",
 						_epoll_fd.fd(),
-						new_fd.fd()),
-				  errno);
+						new_fd.fd()));
 	}
 
 	_event_callbacks[new_fd.fd()] = std::move(cb);
@@ -100,8 +99,7 @@ void lttng::poller::modify(const lttng::file_descriptor& fd_to_modify, event_typ
 	if (::epoll_ctl(_epoll_fd.fd(), EPOLL_CTL_MOD, fd_to_modify.fd(), &ev) == -1) {
 		LTTNG_THROW_POSIX(lttng::format("Failed to modify epoll fd: epoll_fd={}, fd={}",
 						_epoll_fd.fd(),
-						fd_to_modify.fd()),
-				  errno);
+						fd_to_modify.fd()));
 	}
 }
 
@@ -113,8 +111,7 @@ void lttng::poller::remove(const lttng::file_descriptor& fd_to_remove)
 		LTTNG_THROW_POSIX(
 			lttng::format("Failed to delete fd from epoll fd: epoll_fd={}, fd={}",
 				      _epoll_fd.fd(),
-				      fd_to_remove.fd()),
-			errno);
+				      fd_to_remove.fd()));
 	}
 
 	_event_callbacks.erase(fd_to_remove.fd());
@@ -167,8 +164,7 @@ void lttng::poller::_epoll(int timeout) const
 				continue;
 			}
 
-			LTTNG_THROW_POSIX("Failed to collect new poll events using epoll_wait",
-					  errno);
+			LTTNG_THROW_POSIX("Failed to collect new poll events using epoll_wait");
 		}
 
 		unsigned int event_count = wait_ret;

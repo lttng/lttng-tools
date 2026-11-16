@@ -88,8 +88,8 @@ void create_lttng_rundir_with_perm(const char *rundir)
 	const auto mkdir_ret = mkdir(rundir, S_IRWXU);
 	if (mkdir_ret < 0) {
 		if (errno != EEXIST) {
-			LTTNG_THROW_POSIX(fmt::format("Failed to create rundir: path=`{}`", rundir),
-					  errno);
+			LTTNG_THROW_POSIX(
+				fmt::format("Failed to create rundir: path=`{}`", rundir));
 		}
 	}
 
@@ -108,22 +108,17 @@ void create_lttng_rundir_with_perm(const char *rundir)
 
 	const auto chown_ret = chown(rundir, 0, gid);
 	if (chown_ret < 0) {
-		LTTNG_THROW_POSIX(
-			fmt::format("Failed to set group on rundir: path=`{}`, group_id={}",
-				    rundir,
-				    gid),
-			errno);
+		LTTNG_THROW_POSIX(fmt::format(
+			"Failed to set group on rundir: path=`{}`, group_id={}", rundir, gid));
 	}
 
 	const auto permission_mask = S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH |
 		S_IXOTH;
 	const auto chmod_ret = chmod(rundir, permission_mask);
 	if (chmod_ret < 0) {
-		LTTNG_THROW_POSIX(
-			fmt::format(
-				"Failed to set permissions on rundir: path=`{}`, permission={:o}",
-				rundir,
-				permission_mask),
-			errno);
+		LTTNG_THROW_POSIX(fmt::format(
+			"Failed to set permissions on rundir: path=`{}`, permission={:o}",
+			rundir,
+			permission_mask));
 	}
 }

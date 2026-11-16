@@ -32,7 +32,7 @@ void key_registry::_refresh_cache() const
 	const auto ret = kernctl_counter_map_nr_descriptors(_counter_fd.fd(), &nr);
 
 	if (ret != 0) {
-		LTTNG_THROW_POSIX(
+		LTTNG_THROW_POSIX_WITH_ERRNO(
 			lttng::format(
 				"Failed to query kernel counter descriptor count: map_name=`{}`",
 				_configuration.name),
@@ -53,7 +53,7 @@ void key_registry::_refresh_cache() const
 		const auto desc_ret = kernctl_counter_map_descriptor(
 			_counter_fd.fd(), i, &dimension, &user_token, &key, &array_indexes);
 		if (desc_ret != 0) {
-			LTTNG_THROW_POSIX(
+			LTTNG_THROW_POSIX_WITH_ERRNO(
 				lttng::format(
 					"Failed to read kernel counter descriptor: map_name=`{}`, index={}",
 					_configuration.name,

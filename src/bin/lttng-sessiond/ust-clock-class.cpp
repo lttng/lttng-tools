@@ -115,7 +115,7 @@ void measure_single_clock_offset(struct offset_sample *sample)
 
 	monotonic[0] = sample_clock_read64();
 	if (lttng_clock_gettime(CLOCK_REALTIME, &rts)) {
-		LTTNG_THROW_POSIX("Failed to sample time from clock", errno);
+		LTTNG_THROW_POSIX("Failed to sample time from clock");
 	}
 
 	monotonic[1] = sample_clock_read64();

@@ -23,7 +23,7 @@ lttng::eventfd::eventfd(bool use_semaphore_semantics, std::uint64_t initial_valu
 
 		const auto raw_fd = ::eventfd(initial_value, flags);
 		if (raw_fd < 0) {
-			LTTNG_THROW_POSIX("Failed to create eventfd", errno);
+			LTTNG_THROW_POSIX("Failed to create eventfd");
 		}
 
 		return raw_fd;

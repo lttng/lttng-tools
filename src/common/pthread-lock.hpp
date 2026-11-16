@@ -41,7 +41,7 @@ public:
 	void lock()
 	{
 		if (pthread_mutex_lock(&_mutex) != 0) {
-			LTTNG_THROW_POSIX("Failed to lock mutex", errno);
+			LTTNG_THROW_POSIX("Failed to lock mutex");
 		}
 	}
 
@@ -54,7 +54,7 @@ public:
 		} else if (errno == EBUSY || errno == EAGAIN) {
 			return false;
 		} else {
-			LTTNG_THROW_POSIX("Failed to try to lock mutex", errno);
+			LTTNG_THROW_POSIX("Failed to try to lock mutex");
 		}
 	}
 

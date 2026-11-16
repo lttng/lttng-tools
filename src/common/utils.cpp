@@ -1456,8 +1456,7 @@ unsigned int get_max_possible_cpu_id() LTTNG_MAY_THROW
 		if (raw_handle < 0) {
 			LTTNG_THROW_POSIX(
 				lttng::format("Failed to open possible CPU file, path=`{}`",
-					      DEFAULT_LINUX_POSSIBLE_CPU_PATH),
-				errno);
+					      DEFAULT_LINUX_POSSIBLE_CPU_PATH));
 		}
 
 		return lttng::input_stream_descriptor(raw_handle);
@@ -1564,15 +1563,13 @@ std::vector<int> list_open_fds()
 		lttng::make_unique_wrapper<DIR, lttng_closedir>(opendir(proc_self_fd));
 
 	if (!self_fd_handle) {
-		LTTNG_THROW_POSIX(fmt::format("Failed to open directory: path=`{}`", proc_self_fd),
-				  errno);
+		LTTNG_THROW_POSIX(fmt::format("Failed to open directory: path=`{}`", proc_self_fd));
 	}
 
 	const auto dir_fd = dirfd(self_fd_handle.get());
 	if (dir_fd < 0) {
 		LTTNG_THROW_POSIX(fmt::format("Failed to get directory file descriptor: path=`{}`",
-					      proc_self_fd),
-				  errno);
+					      proc_self_fd));
 	}
 
 	struct dirent *entry = nullptr;

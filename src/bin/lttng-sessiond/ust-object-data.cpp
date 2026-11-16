@@ -51,7 +51,7 @@ lsu::ust_object_data lsu::ust_object_data::duplicate() const
 	LTTNG_ASSERT(_obj);
 	const auto ret = lttng_ust_ctl_duplicate_ust_object_data(&copy, _obj);
 	if (ret < 0) {
-		LTTNG_THROW_POSIX("Failed to duplicate UST object data", -ret);
+		LTTNG_THROW_POSIX_WITH_ERRNO("Failed to duplicate UST object data", -ret);
 	}
 
 	return ust_object_data(copy);

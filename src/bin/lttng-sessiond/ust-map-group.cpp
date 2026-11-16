@@ -318,7 +318,7 @@ map::element_value map_group::aggregate_element(std::uint64_t index) const
 				index));
 		}
 
-		LTTNG_THROW_POSIX(
+		LTTNG_THROW_POSIX_WITH_ERRNO(
 			lttng::format("Failed to aggregate UST map element: map_name=`{}`, index={}",
 				      _configuration.name,
 				      index),
@@ -353,7 +353,7 @@ lsm::element_value map_group::read_element(std::uint64_t index, int cpu) const
 				cpu));
 		}
 
-		LTTNG_THROW_POSIX(
+		LTTNG_THROW_POSIX_WITH_ERRNO(
 			lttng::format(
 				"Failed to read UST map element: map_name=`{}`, index={}, cpu={}",
 				_configuration.name,
@@ -397,7 +397,7 @@ void map_group::clear_element(std::uint64_t index)
 				index));
 		}
 
-		LTTNG_THROW_POSIX(
+		LTTNG_THROW_POSIX_WITH_ERRNO(
 			lttng::format("Failed to clear UST map element: map_name=`{}`, index={}",
 				      _configuration.name,
 				      index),

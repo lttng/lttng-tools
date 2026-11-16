@@ -368,7 +368,7 @@ __attribute__((format(printf, 1, 2))) std::string format_printf_string(const cha
 	va_end(args);
 
 	if (size <= 0) {
-		LTTNG_THROW_POSIX("Failed to format string with snprintf", errno);
+		LTTNG_THROW_POSIX("Failed to format string with snprintf");
 	}
 
 	std::string result(size, '\0');
@@ -378,7 +378,7 @@ __attribute__((format(printf, 1, 2))) std::string format_printf_string(const cha
 	va_end(args);
 
 	if (ret < 0) {
-		LTTNG_THROW_POSIX("Failed to format string with snprintf", errno);
+		LTTNG_THROW_POSIX("Failed to format string with snprintf");
 	}
 
 	if (ret != size) {

@@ -103,10 +103,8 @@ bool is_user_part_of_group(uid_t uid, gid_t primary_group, gid_t target_group)
 		const auto getpwuid_ret = getpwuid_r(
 			uid, &pwd, pwuid_string_buf.data(), pwuid_string_buf.size(), &pw_result);
 		if (getpwuid_ret < 0) {
-			LTTNG_THROW_POSIX(
-				fmt::format("Failed to get password file entry of user: uid={}",
-					    uid),
-				errno);
+			LTTNG_THROW_POSIX(fmt::format(
+				"Failed to get password file entry of user: uid={}", uid));
 		} else if (!pw_result) {
 			ERR_FMT("No matching password file entry for user: uid={}", uid);
 			return false;

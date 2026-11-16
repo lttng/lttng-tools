@@ -3345,7 +3345,7 @@ notification_thread_command *pop_cmd_queue(notification_thread_handle *handle)
 	const auto read_ret = lttng_read(handle->cmd_queue.event_fd, &counter, sizeof(counter));
 	if (read_ret != sizeof(counter)) {
 		if (read_ret < 0) {
-			LTTNG_THROW_POSIX("Failed to read counter value from event_fd", errno);
+			LTTNG_THROW_POSIX("Failed to read counter value from event_fd");
 		} else {
 			LTTNG_THROW_ERROR(lttng::format(
 				"Failed to read counter value from event_fd because of a truncated read: ret={}, expected read size={}",

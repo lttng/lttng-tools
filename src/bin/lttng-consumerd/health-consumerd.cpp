@@ -108,9 +108,8 @@ void setup_health_path()
 				      rundir_path.get());
 	DIAGNOSTIC_POP
 	if (fmt_ret < 0) {
-		LTTNG_THROW_POSIX(fmt::format("Failed to format {} health socket path",
-					      consumer_type),
-				  errno);
+		LTTNG_THROW_POSIX(
+			fmt::format("Failed to format {} health socket path", consumer_type));
 	}
 }
 } /* namespace */

@@ -52,7 +52,7 @@ lttng_uuid generate_uuid_or_throw()
 	lttng_uuid new_uuid;
 
 	if (lttng_uuid_generate(new_uuid)) {
-		LTTNG_THROW_POSIX("Failed to generate UST uuid", errno);
+		LTTNG_THROW_POSIX("Failed to generate UST uuid");
 	}
 
 	return new_uuid;
@@ -76,13 +76,12 @@ void clear_metadata_file(int fd)
 	const auto lseek_ret = lseek(fd, 0, SEEK_SET);
 	if (lseek_ret < 0) {
 		LTTNG_THROW_POSIX(
-			"Failed to seek to the beginning of the metadata file while clearing it",
-			errno);
+			"Failed to seek to the beginning of the metadata file while clearing it");
 	}
 
 	const auto ret = ftruncate(fd, 0);
 	if (ret < 0) {
-		LTTNG_THROW_POSIX("Failed to truncate the metadata file while clearing it", errno);
+		LTTNG_THROW_POSIX("Failed to truncate the metadata file while clearing it");
 	}
 }
 
@@ -276,7 +275,7 @@ lsu::trace_class::trace_class(enum lttng_trace_format trace_format,
 	pthread_mutex_init(&_lock, nullptr);
 	if (_shm_path.size() > 0) {
 		if (run_as_mkdir_recursive(_shm_path.c_str(), S_IRWXU | S_IRWXG, euid, egid)) {
-			LTTNG_THROW_POSIX("run_as_mkdir_recursive", errno);
+			LTTNG_THROW_POSIX("run_as_mkdir_recursive");
 		}
 	}
 
@@ -288,11 +287,9 @@ lsu::trace_class::trace_class(enum lttng_trace_format trace_format,
 					    euid,
 					    egid);
 		if (ret < 0) {
-			LTTNG_THROW_POSIX(
-				lttng::format(
-					"Failed to open metadata file during trace class creation: path = {}",
-					_metadata_path),
-				errno);
+			LTTNG_THROW_POSIX(lttng::format(
+				"Failed to open metadata file during trace class creation: path = {}",
+				_metadata_path));
 		}
 
 		_metadata_fd = ret;
@@ -300,7 +297,7 @@ lsu::trace_class::trace_class(enum lttng_trace_format trace_format,
 
 	_enums.reset(lttng_ht_new(0, LTTNG_HT_TYPE_STRING));
 	if (!_enums) {
-		LTTNG_THROW_POSIX("Failed to create enums hash table", ENOMEM);
+		LTTNG_THROW_POSIX_WITH_ERRNO("Failed to create enums hash table", ENOMEM);
 	}
 
 	/* hash/match functions are specified at call site. */
@@ -309,7 +306,7 @@ lsu::trace_class::trace_class(enum lttng_trace_format trace_format,
 
 	_channels.reset(lttng_ht_new(0, LTTNG_HT_TYPE_U64));
 	if (!_channels) {
-		LTTNG_THROW_POSIX("Failed to create channels hash table", ENOMEM);
+		LTTNG_THROW_POSIX_WITH_ERRNO("Failed to create channels hash table", ENOMEM);
 	}
 }
 
@@ -643,7 +640,7 @@ void lsu::trace_class::_increase_metadata_size(size_t reservation_length)
 
 		auto newptr = (char *) realloc(_metadata, new_alloc_len);
 		if (!newptr) {
-			LTTNG_THROW_POSIX("Failed to allocate trace metadata storage", errno);
+			LTTNG_THROW_POSIX("Failed to allocate trace metadata storage");
 		}
 
 		_metadata = newptr;
@@ -668,7 +665,7 @@ void lsu::trace_class::_append_metadata_fragment(const std::string& fragment)
 			lttng_write(_metadata_fd, fragment.c_str(), fragment.size());
 
 		if (bytes_written != fragment.size()) {
-			LTTNG_THROW_POSIX("Failed to write trace metadata fragment to file", errno);
+			LTTNG_THROW_POSIX("Failed to write trace metadata fragment to file");
 		}
 	}
 }

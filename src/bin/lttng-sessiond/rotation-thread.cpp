@@ -420,7 +420,7 @@ ls::rotation_thread::rotation_thread(rotation_thread_timer_queue& rotation_timer
 	_quit_pipe.reset([]() {
 		auto raw_pipe = lttng_pipe_open(FD_CLOEXEC);
 		if (!raw_pipe) {
-			LTTNG_THROW_POSIX("Failed to rotation thread's quit pipe", errno);
+			LTTNG_THROW_POSIX("Failed to rotation thread's quit pipe");
 		}
 
 		return raw_pipe;
@@ -757,7 +757,7 @@ void ls::rotation_thread::_run()
 				continue;
 			}
 
-			LTTNG_THROW_POSIX("Error encountered during lttng_poll_wait", errno);
+			LTTNG_THROW_POSIX("Error encountered during lttng_poll_wait");
 		}
 
 		const auto fd_count = poll_wait_ret;
@@ -804,11 +804,9 @@ void ls::rotation_thread::_run()
 					char buf;
 
 					if (lttng_read(fd, &buf, 1) != 1) {
-						LTTNG_THROW_POSIX(
-							lttng::format(
-								"Failed to read from wakeup pipe: fd={}",
-								fd),
-							errno);
+						LTTNG_THROW_POSIX(lttng::format(
+							"Failed to read from wakeup pipe: fd={}",
+							fd));
 					}
 				} else {
 					DBG("Quit pipe activity");
@@ -859,7 +857,7 @@ void ls::rotation_thread::subscribe_session_consumed_size_rotation(ltt_session& 
 	auto rotate_condition = lttng::make_unique_wrapper<lttng_condition, lttng_condition_put>(
 		lttng_condition_session_consumed_size_create());
 	if (!rotate_condition) {
-		LTTNG_THROW_POSIX("Failed to create session consumed size condition object", errno);
+		LTTNG_THROW_POSIX("Failed to create session consumed size condition object");
 	}
 
 	auto condition_status =
@@ -880,7 +878,7 @@ void ls::rotation_thread::subscribe_session_consumed_size_rotation(ltt_session& 
 	auto notify_action = lttng::make_unique_wrapper<lttng_action, lttng_action_put>(
 		lttng_action_notify_create());
 	if (!notify_action) {
-		LTTNG_THROW_POSIX("Could not create notify action", errno);
+		LTTNG_THROW_POSIX("Could not create notify action");
 	}
 
 	LTTNG_ASSERT(!session.rotate_trigger);
@@ -888,7 +886,7 @@ void ls::rotation_thread::subscribe_session_consumed_size_rotation(ltt_session& 
 	auto trigger = lttng::make_unique_wrapper<lttng_trigger, lttng_trigger_put>(
 		lttng_trigger_create(rotate_condition.get(), notify_action.get()));
 	if (!trigger) {
-		LTTNG_THROW_POSIX("Could not create size-based rotation trigger", errno);
+		LTTNG_THROW_POSIX("Could not create size-based rotation trigger");
 	}
 
 	/* Ensure this trigger is not visible to external users. */

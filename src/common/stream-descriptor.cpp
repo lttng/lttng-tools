@@ -22,13 +22,11 @@ void input_stream_descriptor::read(void *buffer, std::size_t size)
 {
 	const auto read_ret = read_some(buffer, size);
 	if (static_cast<std::size_t>(read_ret) != size) {
-		LTTNG_THROW_POSIX(
-			lttng::format(
-				"Failed to read enough data from file descriptor: fd={}, requested_size={}, amount_read={}",
-				fd(),
-				size,
-				read_ret),
-			errno);
+		LTTNG_THROW_POSIX(lttng::format(
+			"Failed to read enough data from file descriptor: fd={}, requested_size={}, amount_read={}",
+			fd(),
+			size,
+			read_ret));
 	}
 }
 
@@ -47,8 +45,8 @@ std::size_t input_stream_descriptor::read_some(void *buffer, std::size_t max_siz
 
 	const auto read_ret = lttng_read(fd(), buffer, max_size);
 	if (read_ret < 0) {
-		LTTNG_THROW_POSIX(lttng::format("Failed to read from file descriptor: fd={}", fd()),
-				  errno);
+		LTTNG_THROW_POSIX(
+			lttng::format("Failed to read from file descriptor: fd={}", fd()));
 	}
 
 	return read_ret;
@@ -70,8 +68,7 @@ void output_stream_descriptor::write(const void *buffer, std::size_t size)
 
 	const auto write_ret = lttng_write(fd(), buffer, size);
 	if (write_ret < 0 || static_cast<std::size_t>(write_ret) != size) {
-		LTTNG_THROW_POSIX(lttng::format("Failed to write to file descriptor: fd={}", fd()),
-				  errno);
+		LTTNG_THROW_POSIX(lttng::format("Failed to write to file descriptor: fd={}", fd()));
 	}
 }
 

@@ -1615,13 +1615,11 @@ void report_channel_memory_usage_by_streams_fstat(const lttng_consumer_channel& 
 
 		struct stat file_status;
 		if (fstat(stream_fd, &file_status) == -1) {
-			LTTNG_THROW_POSIX(
-				fmt::format(
-					"Failed to fstat() stream file descriptor of channel: channel_key={}, channel_name=`{}`, stream_fd={}",
-					channel.key,
-					channel.name,
-					stream_fd),
-				errno);
+			LTTNG_THROW_POSIX(fmt::format(
+				"Failed to fstat() stream file descriptor of channel: channel_key={}, channel_name=`{}`, stream_fd={}",
+				channel.key,
+				channel.name,
+				stream_fd));
 		}
 
 		const auto logical_size = static_cast<std::uint64_t>(file_status.st_size);
@@ -1641,7 +1639,7 @@ void report_channel_memory_usage_by_streams_mincore(lttng_consumer_channel& chan
 	const long maybe_page_size = sysconf(_SC_PAGESIZE);
 
 	if (maybe_page_size < 0) {
-		LTTNG_THROW_POSIX("Failed to call sysconf(_SC_PAGESIZE)", errno);
+		LTTNG_THROW_POSIX("Failed to call sysconf(_SC_PAGESIZE)");
 	}
 
 	const std::size_t page_size = static_cast<std::size_t>(maybe_page_size);
@@ -1808,7 +1806,7 @@ void lttng_ustconsumer_get_channels_memory_usage(int socket, std::uint64_t chann
 		lttcomm_recv_unix_sock(socket, channel_keys.data(), channel_key_payload_size);
 
 	if (recv_ret != channel_key_payload_size) {
-		LTTNG_THROW_POSIX("Failed to receive channel keys from session daemon", errno);
+		LTTNG_THROW_POSIX("Failed to receive channel keys from session daemon");
 	}
 
 	/*
@@ -1888,11 +1886,9 @@ void lttng_ustconsumer_get_channels_memory_usage(int socket, std::uint64_t chann
 	const auto send_ret =
 		lttcomm_send_unix_sock(socket, reply_payload.data(), reply_payload.size());
 	if (send_ret != reply_payload.size()) {
-		LTTNG_THROW_POSIX(
-			fmt::format(
-				"Failed to send channel memory usage reply to session daemon: payload_size={} bytes",
-				reply_payload.size()),
-			errno);
+		LTTNG_THROW_POSIX(fmt::format(
+			"Failed to send channel memory usage reply to session daemon: payload_size={} bytes",
+			reply_payload.size()));
 	}
 }
 
@@ -2248,12 +2244,10 @@ lttng::consumer::memory_reclaim_result lttng_ustconsumer_reclaim_stream_memory(
 		 * reclamation attempt.
 		 */
 		if (reclaim_ret < 0 && reclaim_ret != -ENOMEM) {
-			LTTNG_THROW_POSIX(
-				fmt::format(
-					"Failed to reclaim reader sub-buffer for stream: channel_name=`{}`, stream_key={}",
-					stream.chan->name,
-					stream.key),
-				errno);
+			LTTNG_THROW_POSIX(fmt::format(
+				"Failed to reclaim reader sub-buffer for stream: channel_name=`{}`, stream_key={}",
+				stream.chan->name,
+				stream.key));
 		}
 
 		const auto exchg_ret =
@@ -2289,12 +2283,10 @@ lttng::consumer::memory_reclaim_result lttng_ustconsumer_reclaim_stream_memory(
 		const auto reclaim_ret = lttng_ust_ctl_reclaim_reader_subbuf(stream.ustream);
 
 		if (reclaim_ret < 0 && reclaim_ret != -ENOMEM) {
-			LTTNG_THROW_POSIX(
-				fmt::format(
-					"Failed to reclaim reader sub-buffer for stream: channel_name=`{}`, stream_key={}",
-					stream.chan->name,
-					stream.key),
-				errno);
+			LTTNG_THROW_POSIX(fmt::format(
+				"Failed to reclaim reader sub-buffer for stream: channel_name=`{}`, stream_key={}",
+				stream.chan->name,
+				stream.key));
 		}
 	}
 
@@ -2402,7 +2394,7 @@ void lttng_ustconsumer_reclaim_channels_memory(
 		lttcomm_recv_unix_sock(socket, channel_keys.data(), channel_key_payload_size);
 
 	if (recv_ret != channel_key_payload_size) {
-		LTTNG_THROW_POSIX("Failed to receive channel keys from session daemon", errno);
+		LTTNG_THROW_POSIX("Failed to receive channel keys from session daemon");
 	}
 
 	/*
@@ -2573,11 +2565,9 @@ void lttng_ustconsumer_reclaim_channels_memory(
 	const auto send_ret =
 		lttcomm_send_unix_sock(socket, reply_payload.data(), reply_payload.size());
 	if (send_ret != reply_payload.size()) {
-		LTTNG_THROW_POSIX(
-			fmt::format(
-				"Failed to send channel memory reclamation reply to session daemon: payload_size={} bytes",
-				reply_payload.size()),
-			errno);
+		LTTNG_THROW_POSIX(fmt::format(
+			"Failed to send channel memory reclamation reply to session daemon: payload_size={} bytes",
+			reply_payload.size()));
 	}
 
 	/*
@@ -5485,12 +5475,10 @@ void lttng_ustconsumer_try_reclaim_current_subbuffer(lttng_consumer_stream& stre
 	 * being in use by a writer during a previous reclamation attempt.
 	 */
 	if (initial_reclaim_ret < 0 && initial_reclaim_ret != -ENOMEM) {
-		LTTNG_THROW_POSIX(
-			fmt::format(
-				"Failed to reclaim reader sub-buffer for stream: channel_name=`{}`, stream_key={}",
-				stream.chan->name,
-				stream.key),
-			errno);
+		LTTNG_THROW_POSIX(fmt::format(
+			"Failed to reclaim reader sub-buffer for stream: channel_name=`{}`, stream_key={}",
+			stream.chan->name,
+			stream.key));
 	}
 
 	const auto pos_snapshot_ret = lttng_ustconsumer_sample_snapshot_positions(&stream);
@@ -5537,12 +5525,10 @@ void lttng_ustconsumer_try_reclaim_current_subbuffer(lttng_consumer_stream& stre
 	 * being in use by a writer during a previous reclamation attempt.
 	 */
 	if (consumed_reclaim_ret < 0 && consumed_reclaim_ret != -ENOMEM) {
-		LTTNG_THROW_POSIX(
-			fmt::format(
-				"Failed to reclaim reader sub-buffer for stream: channel_name=`{}`, stream_key={}",
-				stream.chan->name,
-				stream.key),
-			errno);
+		LTTNG_THROW_POSIX(fmt::format(
+			"Failed to reclaim reader sub-buffer for stream: channel_name=`{}`, stream_key={}",
+			stream.chan->name,
+			stream.key));
 	}
 
 	if (stream.pending_memory_reclamation) {

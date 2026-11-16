@@ -58,7 +58,7 @@ lttng::file_descriptor create_tracer_session(const struct ltt_session& session)
 	auto ret = kernctl_create_session(kernel_tracer_fd_value());
 	if (ret < 0) {
 		PERROR("ioctl kernel create session");
-		LTTNG_THROW_POSIX("Failed to create kernel tracer session", -ret);
+		LTTNG_THROW_POSIX_WITH_ERRNO("Failed to create kernel tracer session", -ret);
 	}
 
 	lttng::file_descriptor session_fd(ret);
@@ -227,7 +227,8 @@ void ls::modules::domain_orchestrator::create_channel(
 		const auto raw_channel_fd =
 			kernctl_create_channel(_tracer_session_fd.fd(), kernel_abi_channel);
 		if (raw_channel_fd < 0) {
-			LTTNG_THROW_POSIX("Failed to create kernel channel", -raw_channel_fd);
+			LTTNG_THROW_POSIX_WITH_ERRNO("Failed to create kernel channel",
+						     -raw_channel_fd);
 		}
 
 		return lttng::file_descriptor(raw_channel_fd);
@@ -235,7 +236,7 @@ void ls::modules::domain_orchestrator::create_channel(
 
 	/* Prevent the fd from leaking across exec. */
 	if (fcntl(modules_stream_group_fd.fd(), F_SETFD, FD_CLOEXEC) < 0) {
-		LTTNG_THROW_POSIX("Failed to set FD_CLOEXEC on kernel channel fd", errno);
+		LTTNG_THROW_POSIX("Failed to set FD_CLOEXEC on kernel channel fd");
 	}
 
 	const auto stream_group_key = allocate_next_kernel_stream_group_key();
@@ -257,7 +258,7 @@ void ls::modules::domain_orchestrator::enable_channel(
 	DBG_FMT("Enabling kernel channel: name=`{}`", channel_config.name);
 	const auto ret = kernctl_enable(runtime_channel.tracer_handle().fd());
 	if (ret < 0) {
-		LTTNG_THROW_POSIX("Failed to enable kernel channel", -ret);
+		LTTNG_THROW_POSIX_WITH_ERRNO("Failed to enable kernel channel", -ret);
 	}
 
 	kernel_wait_quiescent();
@@ -271,7 +272,7 @@ void ls::modules::domain_orchestrator::disable_channel(
 	DBG_FMT("Disabling kernel channel: name=`{}`", channel_config.name);
 	const auto ret = kernctl_disable(runtime_channel.tracer_handle().fd());
 	if (ret < 0 && ret != -EEXIST) {
-		LTTNG_THROW_POSIX("Failed to disable kernel channel", -ret);
+		LTTNG_THROW_POSIX_WITH_ERRNO("Failed to disable kernel channel", -ret);
 	}
 
 	kernel_wait_quiescent();
@@ -460,7 +461,7 @@ void ls::modules::domain_orchestrator::enable_event(
 	if (existing_event) {
 		const auto ret = kernctl_enable(existing_event->tracer_handle().fd());
 		if (ret < 0) {
-			LTTNG_THROW_POSIX("Failed to re-enable kernel event", -ret);
+			LTTNG_THROW_POSIX_WITH_ERRNO("Failed to re-enable kernel event", -ret);
 		}
 
 		kernel_wait_quiescent();
@@ -483,14 +484,15 @@ void ls::modules::domain_orchestrator::enable_event(
 			LTTNG_THROW_KERNEL_EVENT_ENABLE_FAILURE(
 				fmt::format("Kernel event not found: `{}`", abi_event.name));
 		default:
-			LTTNG_THROW_POSIX("Failed to create kernel event", -raw_event_fd);
+			LTTNG_THROW_POSIX_WITH_ERRNO("Failed to create kernel event",
+						     -raw_event_fd);
 		}
 	}
 
 	lttng::file_descriptor event_fd(raw_event_fd);
 
 	if (fcntl(event_fd.fd(), F_SETFD, FD_CLOEXEC) < 0) {
-		LTTNG_THROW_POSIX("Failed to set FD_CLOEXEC on kernel event fd", errno);
+		LTTNG_THROW_POSIX("Failed to set FD_CLOEXEC on kernel event fd");
 	}
 
 	/* Apply filter bytecode if present. */
@@ -525,7 +527,7 @@ void ls::modules::domain_orchestrator::enable_event(
 	{
 		const auto enable_ret = kernctl_enable(event_fd.fd());
 		if (enable_ret < 0) {
-			LTTNG_THROW_POSIX("Failed to enable kernel event", -enable_ret);
+			LTTNG_THROW_POSIX_WITH_ERRNO("Failed to enable kernel event", -enable_ret);
 		}
 	}
 
@@ -552,7 +554,7 @@ void ls::modules::domain_orchestrator::disable_event(
 
 	const auto ret = kernctl_disable(runtime_event->tracer_handle().fd());
 	if (ret < 0 && ret != -EEXIST) {
-		LTTNG_THROW_POSIX("Failed to disable kernel event", -ret);
+		LTTNG_THROW_POSIX_WITH_ERRNO("Failed to disable kernel event", -ret);
 	}
 
 	kernel_wait_quiescent();
@@ -579,7 +581,7 @@ void ls::modules::domain_orchestrator::add_context(
 			return;
 		}
 
-		LTTNG_THROW_POSIX(
+		LTTNG_THROW_POSIX_WITH_ERRNO(
 			fmt::format(
 				"Failed to add context to kernel channel: context={}, channel=`{}`",
 				context_config,
@@ -745,14 +747,15 @@ unsigned int ls::modules::domain_orchestrator::_open_streams(stream_group& strea
 				break;
 			}
 
-			LTTNG_THROW_POSIX("Failed to create kernel stream", -raw_stream_fd);
+			LTTNG_THROW_POSIX_WITH_ERRNO("Failed to create kernel stream",
+						     -raw_stream_fd);
 		}
 
 		lttng::file_descriptor stream_fd(raw_stream_fd);
 
 		if (fcntl(stream_fd.fd(), F_SETFD, FD_CLOEXEC) < 0) {
 			LTTNG_THROW_POSIX(
-				"Failed to set FD_CLOEXEC on kernel stream file descriptor", errno);
+				"Failed to set FD_CLOEXEC on kernel stream file descriptor");
 		}
 
 		const auto cpu = stream_group.stream_count();
@@ -798,15 +801,14 @@ void ls::modules::domain_orchestrator::_open_metadata()
 	const auto raw_metadata_stream_group_fd =
 		kernctl_open_metadata(_tracer_session_fd.fd(), kernel_stream_group);
 	if (raw_metadata_stream_group_fd < 0) {
-		LTTNG_THROW_POSIX("Failed to open kernel metadata stream group",
-				  -raw_metadata_stream_group_fd);
+		LTTNG_THROW_POSIX_WITH_ERRNO("Failed to open kernel metadata stream group",
+					     -raw_metadata_stream_group_fd);
 	}
 
 	lttng::file_descriptor metadata_stream_group_fd(raw_metadata_stream_group_fd);
 
 	if (fcntl(metadata_stream_group_fd.fd(), F_SETFD, FD_CLOEXEC) < 0) {
-		LTTNG_THROW_POSIX("Failed to set FD_CLOEXEC on kernel metadata stream group fd",
-				  errno);
+		LTTNG_THROW_POSIX("Failed to set FD_CLOEXEC on kernel metadata stream group fd");
 	}
 
 	const auto consumer_key = allocate_next_kernel_stream_group_key();
@@ -827,13 +829,14 @@ void ls::modules::domain_orchestrator::_open_metadata_stream()
 	const auto raw_stream_fd =
 		kernctl_create_stream(_metadata_stream_group->tracer_handle().fd());
 	if (raw_stream_fd < 0) {
-		LTTNG_THROW_POSIX("Failed to create kernel metadata stream", -raw_stream_fd);
+		LTTNG_THROW_POSIX_WITH_ERRNO("Failed to create kernel metadata stream",
+					     -raw_stream_fd);
 	}
 
 	lttng::file_descriptor stream_fd(raw_stream_fd);
 
 	if (fcntl(stream_fd.fd(), F_SETFD, FD_CLOEXEC) < 0) {
-		LTTNG_THROW_POSIX("Failed to set FD_CLOEXEC on kernel metadata stream fd", errno);
+		LTTNG_THROW_POSIX("Failed to set FD_CLOEXEC on kernel metadata stream fd");
 	}
 
 	DBG_FMT("Kernel metadata stream created: fd={}", stream_fd.fd());
@@ -1481,7 +1484,7 @@ void ls::modules::domain_orchestrator::add_map_channel(const lsc::map_channel_co
 	/* The tracer creates the counter channel disabled; its enabled flag gates every hit. */
 	const auto enable_ret = kernctl_enable(kernel_group.tracer_handle().fd());
 	if (enable_ret < 0) {
-		LTTNG_THROW_POSIX(
+		LTTNG_THROW_POSIX_WITH_ERRNO(
 			lttng::format("Failed to enable kernel map counter: map_name=`{}`",
 				      config.name),
 			-enable_ret);
@@ -1528,7 +1531,7 @@ void ls::modules::domain_orchestrator::add_map_channel_event_rule(
 	const auto raw_event_fd = kernctl_create_counter_event(
 		channel.kernel_group().tracer_handle().fd(), payload.data());
 	if (raw_event_fd < 0) {
-		LTTNG_THROW_POSIX(
+		LTTNG_THROW_POSIX_WITH_ERRNO(
 			lttng::format("Failed to install counter-event rule on kernel counter: "
 				      "map_name=`{}`",
 				      target_map.name),
@@ -1565,7 +1568,7 @@ void ls::modules::domain_orchestrator::add_map_channel_event_rule(
 	{
 		const auto enable_ret = kernctl_enable(event_fd.fd());
 		if (enable_ret < 0) {
-			LTTNG_THROW_POSIX(
+			LTTNG_THROW_POSIX_WITH_ERRNO(
 				lttng::format(
 					"Failed to enable counter-event rule on kernel counter: "
 					"map_name=`{}`",

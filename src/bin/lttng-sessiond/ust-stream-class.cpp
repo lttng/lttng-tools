@@ -377,7 +377,7 @@ lsu::stream_class::stream_class(
 {
 	_events = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
 	if (!_events) {
-		LTTNG_THROW_POSIX("Failed to allocate urcu events hash table", ENOMEM);
+		LTTNG_THROW_POSIX_WITH_ERRNO("Failed to allocate urcu events hash table", ENOMEM);
 	}
 
 	/* Set custom match function. */

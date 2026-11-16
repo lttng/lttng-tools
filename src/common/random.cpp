@@ -67,10 +67,8 @@ void getrandom_nonblock(char *out_data, std::size_t size)
 	} while ((ret > 0 && ret != size) || (ret == -1 && errno == EINTR));
 
 	if (ret < 0) {
-		LTTNG_THROW_POSIX(
-			lttng::format("Failed to get true random data using getrandom(): size={}",
-				      size),
-			errno);
+		LTTNG_THROW_POSIX(lttng::format(
+			"Failed to get true random data using getrandom(): size={}", size));
 	}
 }
 #elif defined(HAVE_ARC4RANDOM)
@@ -103,20 +101,18 @@ lttng::random::seed_t produce_pseudo_random_seed()
 
 	ret = clock_gettime(CLOCK_REALTIME, &real_time);
 	if (ret) {
-		LTTNG_THROW_POSIX("Failed to read real time while generating pseudo-random seed",
-				  errno);
+		LTTNG_THROW_POSIX("Failed to read real time while generating pseudo-random seed");
 	}
 
 	ret = clock_gettime(CLOCK_MONOTONIC, &monotonic_time);
 	if (ret) {
 		LTTNG_THROW_POSIX(
-			"Failed to read monotonic time while generating pseudo-random seed", errno);
+			"Failed to read monotonic time while generating pseudo-random seed");
 	}
 
 	ret = gethostname(hostname, sizeof(hostname));
 	if (ret) {
-		LTTNG_THROW_POSIX("Failed to get host name while generating pseudo-random seed",
-				  errno);
+		LTTNG_THROW_POSIX("Failed to get host name while generating pseudo-random seed");
 	}
 
 	hash_seed = (unsigned long) real_time.tv_nsec ^ (unsigned long) real_time.tv_sec ^
@@ -143,7 +139,7 @@ lttng::random::seed_t produce_random_seed_from_urandom()
 		const auto urandom_raw_fd = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
 
 		if (urandom_raw_fd < 0) {
-			LTTNG_THROW_POSIX("Failed to open `/dev/urandom`", errno);
+			LTTNG_THROW_POSIX("Failed to open `/dev/urandom`");
 		}
 
 		return urandom_raw_fd;

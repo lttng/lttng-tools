@@ -3726,8 +3726,8 @@ lttng::ctl::event_rule_uptr create_agent_internal_event_rule(lttng_domain_type a
 	lttng::ctl::event_rule_uptr event_rule(lttng_event_rule_user_tracepoint_create());
 
 	if (!event_rule) {
-		LTTNG_THROW_POSIX("Failed to allocate agent internal user space tracer event rule",
-				  ENOMEM);
+		LTTNG_THROW_POSIX_WITH_ERRNO(
+			"Failed to allocate agent internal user space tracer event rule", ENOMEM);
 	}
 
 	const auto set_pattern_ret = lttng_event_rule_user_tracepoint_set_name_pattern(
@@ -7708,10 +7708,8 @@ void send_reclaim_channel_memory_response(int client_socket,
 
 	if (lttcomm_send_unix_sock(client_socket, buffer.data(), buffer.size()) !=
 	    static_cast<ssize_t>(buffer.size())) {
-		LTTNG_THROW_POSIX(
-			fmt::format("Failed to send reclaim response to client: socket={}",
-				    client_socket),
-			errno);
+		LTTNG_THROW_POSIX(fmt::format(
+			"Failed to send reclaim response to client: socket={}", client_socket));
 	}
 }
 } /* namespace */

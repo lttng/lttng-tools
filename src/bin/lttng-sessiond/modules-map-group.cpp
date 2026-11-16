@@ -201,7 +201,7 @@ map::element_value map_group::read_element(std::uint64_t index, int cpu) const
 				index,
 				cpu));
 		default:
-			LTTNG_THROW_POSIX(
+			LTTNG_THROW_POSIX_WITH_ERRNO(
 				lttng::format(
 					"Failed to read kernel map element: map_name=`{}`, index={}, cpu={}",
 					_configuration.name,
@@ -232,7 +232,7 @@ map::element_value map_group::aggregate_element(std::uint64_t index) const
 				index));
 		}
 
-		LTTNG_THROW_POSIX(
+		LTTNG_THROW_POSIX_WITH_ERRNO(
 			lttng::format(
 				"Failed to aggregate kernel map element: map_name=`{}`, index={}",
 				_configuration.name,
@@ -282,7 +282,7 @@ void map_group::clear_element(std::uint64_t index)
 				index));
 		}
 
-		LTTNG_THROW_POSIX(
+		LTTNG_THROW_POSIX_WITH_ERRNO(
 			lttng::format("Failed to clear kernel map element: map_name=`{}`, index={}",
 				      _configuration.name,
 				      index),
@@ -301,7 +301,7 @@ map_group::create_for_event_notifier_group(int event_notifier_group_fd,
 	const auto raw_fd =
 		kernctl_create_event_notifier_group_error_counter(event_notifier_group_fd, &conf);
 	if (raw_fd < 0) {
-		LTTNG_THROW_POSIX(
+		LTTNG_THROW_POSIX_WITH_ERRNO(
 			lttng::format(
 				"Failed to create event notifier group error counter: map_name=`{}`, event_notifier_group_fd={}",
 				configuration.name,
@@ -313,14 +313,10 @@ map_group::create_for_event_notifier_group(int event_notifier_group_fd,
 
 	/* Prevent fd duplication after execlp(). */
 	if (::fcntl(raw_fd, F_SETFD, FD_CLOEXEC) < 0) {
-		const auto errno_copy = errno;
-
-		LTTNG_THROW_POSIX(
-			lttng::format(
-				"Failed to set FD_CLOEXEC on kernel map group counter fd: map_name=`{}`, fd={}",
-				configuration.name,
-				raw_fd),
-			errno_copy);
+		LTTNG_THROW_POSIX(lttng::format(
+			"Failed to set FD_CLOEXEC on kernel map group counter fd: map_name=`{}`, fd={}",
+			configuration.name,
+			raw_fd));
 	}
 
 	fd_guard.disarm();
@@ -337,7 +333,7 @@ map_group map_group::create_for_session(int session_fd,
 
 	const auto raw_fd = kernctl_create_session_counter(session_fd, &conf);
 	if (raw_fd < 0) {
-		LTTNG_THROW_POSIX(
+		LTTNG_THROW_POSIX_WITH_ERRNO(
 			lttng::format(
 				"Failed to create session counter: map_name=`{}`, session_fd={}",
 				configuration.name,
@@ -349,14 +345,10 @@ map_group map_group::create_for_session(int session_fd,
 
 	/* Prevent fd duplication after execlp(). */
 	if (::fcntl(raw_fd, F_SETFD, FD_CLOEXEC) < 0) {
-		const auto errno_copy = errno;
-
-		LTTNG_THROW_POSIX(
-			lttng::format(
-				"Failed to set FD_CLOEXEC on kernel map group counter fd: map_name=`{}`, fd={}",
-				configuration.name,
-				raw_fd),
-			errno_copy);
+		LTTNG_THROW_POSIX(lttng::format(
+			"Failed to set FD_CLOEXEC on kernel map group counter fd: map_name=`{}`, fd={}",
+			configuration.name,
+			raw_fd));
 	}
 
 	fd_guard.disarm();
