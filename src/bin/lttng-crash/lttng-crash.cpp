@@ -1478,6 +1478,7 @@ bool copy_crash_data(const crash_buffer& buffer,
 int extract_file(int output_dir_fd,
 		 const char *output_file,
 		 int input_dir_fd,
+		 const lttng::c_string_view input_dir_path,
 		 const char *input_file)
 {
 	DBG("Extract file '%s'", input_file);
@@ -1530,7 +1531,8 @@ int extract_file(int output_dir_fd,
 		remove_output_file.disarm();
 		return 0;
 	} catch (const std::exception& ex) {
-		log_error_with_causes(ex, "Failed to extract buffer file `{}`", input_file);
+		log_error_with_causes(
+			ex, "Failed to extract buffer file `{}/{}`", input_dir_path, input_file);
 		return -1;
 	}
 }
@@ -1595,7 +1597,7 @@ int extract_all_files(const char *output_path, const char *input_path)
 		}
 
 		const auto extract_ret =
-			extract_file(output_dir_fd, file_name, input_dir_fd, file_name);
+			extract_file(output_dir_fd, file_name, input_dir_fd, input_path, file_name);
 		if (extract_ret == -ENODATA) {
 			DBG("No data in file '%s', skipping", entry->d_name);
 		} else if (extract_ret < 0) {
