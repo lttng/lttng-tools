@@ -1798,77 +1798,92 @@ int view_trace(const char *trace_path, char *viewer_path)
 	}
 	return 0;
 }
-} /* namespace */
 
-/*
- *  main
- */
-int main(int argc, char *argv[])
+/* Returns whether `path` and its contents were removed. */
+bool remove_output_directory(const lttng::c_string_view path) noexcept
 {
-	int ret;
-	bool has_warning = false;
-	const char *output_path = nullptr;
-	char tmppath[] = "/tmp/lttng-crash-XXXXXX";
-
-	progname = argv[0] ? argv[0] : "lttng-crash";
-
-	ret = parse_args(argc, argv);
-	if (ret > 0) {
-		goto end;
-	} else if (ret < 0) {
-		has_warning = true;
-		goto end;
+	try {
+		return delete_dir_recursive(path) == 0;
+	} catch (const std::exception& ex) {
+		log_error_with_causes(ex, "Failed to delete `{}`", path);
+		return false;
 	}
+}
+
+/* Returns whether lttng-crash succeeded. */
+bool run(int argc, char *argv[])
+{
+	const auto parse_ret = parse_args(argc, argv);
+	if (parse_ret > 0) {
+		/* Help, version, or option list. */
+		return true;
+	} else if (parse_ret < 0) {
+		return false;
+	}
+
+	char temporary_path[] = "/tmp/lttng-crash-XXXXXX";
+	lttng::c_string_view output_path;
 
 	if (opt_output_path) {
-		output_path = opt_output_path;
-		ret = mkdir(output_path, S_IRWXU | S_IRWXG);
-		if (ret) {
-			PERROR("mkdir");
-			has_warning = true;
-			goto end;
+		if (mkdir(opt_output_path, S_IRWXU | S_IRWXG)) {
+			PERROR("Failed to create output directory '%s'", opt_output_path);
+			return false;
 		}
+
+		output_path = opt_output_path;
 	} else {
-		output_path = mkdtemp(tmppath);
+		output_path = mkdtemp(temporary_path);
 		if (!output_path) {
-			PERROR("mkdtemp");
-			has_warning = true;
-			goto end;
+			PERROR("Failed to create a temporary output directory");
+			return false;
 		}
 	}
+
+	/* Don't leave the output directory behind if the extraction fails. */
+	lttng::scope_exit remove_output(
+		[output_path]() noexcept { remove_output_directory(output_path); });
+
+	int extract_ret;
 
 	try {
-		ret = extract_trace_recursive(output_path, the_input_path);
+		extract_ret = extract_trace_recursive(output_path, the_input_path);
 	} catch (const std::exception& ex) {
 		log_error_with_causes(ex, "Failed to extract `{}`", the_input_path);
-		ret = -1;
+		return false;
 	}
 
-	if (ret < 0) {
-		has_warning = true;
-		goto end;
-	} else if (ret > 0) {
-		/* extract_trace_recursive reported a warning. */
-		has_warning = true;
+	if (extract_ret < 0) {
+		return false;
 	}
-	if (!opt_output_path) {
-		/* View trace */
-		ret = view_trace(output_path, opt_viewer_path);
-		if (ret) {
-			has_warning = true;
-		}
-		/* unlink temporary trace */
-		try {
-			ret = delete_dir_recursive(output_path);
-		} catch (const std::exception& ex) {
-			log_error_with_causes(ex, "Failed to delete `{}`", output_path);
-			ret = -1;
-		}
 
-		if (ret) {
-			has_warning = true;
-		}
+	auto is_success = extract_ret == 0;
+
+	if (opt_output_path) {
+		remove_output.disarm();
+		return is_success;
 	}
-end:
-	return has_warning ? EXIT_FAILURE : EXIT_SUCCESS;
+
+	if (view_trace(output_path, opt_viewer_path)) {
+		is_success = false;
+	}
+
+	remove_output.disarm();
+	return remove_output_directory(output_path) && is_success;
+}
+} /* namespace */
+
+int main(int argc, char *argv[])
+{
+	progname = argv[0] ? argv[0] : "lttng-crash";
+
+	/* run() handles the expected errors; this just catches the rest. */
+	try {
+		return run(argc, argv) ? EXIT_SUCCESS : EXIT_FAILURE;
+	} catch (const std::exception& ex) {
+		log_error_with_causes(ex, "Unexpected error");
+	} catch (...) {
+		ERR("Unexpected error of unknown type");
+	}
+
+	return EXIT_FAILURE;
 }
