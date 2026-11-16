@@ -13,6 +13,7 @@
 
 #include <lttng/lttng-error.h>
 
+#include <exception>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -233,6 +234,31 @@ public:
 	explicit invalid_argument_error(const std::string& msg,
 					const lttng::source_location& source_location);
 };
+
+namespace details {
+template <typename VisitorType>
+void visit_nested_exceptions(const std::exception& exception,
+			     VisitorType& visitor,
+			     const unsigned int depth)
+{
+	visitor(exception, depth);
+
+	try {
+		std::rethrow_if_nested(exception);
+	} catch (const std::exception& nested_exception) {
+		visit_nested_exceptions(nested_exception, visitor, depth + 1);
+	} catch (...) {
+		/* We don't throw non-exception values; this is an error. */
+		std::abort();
+	}
+}
+} /* namespace details */
+
+template <typename VisitorType>
+void visit_nested_exceptions(const std::exception& exception, VisitorType visitor)
+{
+	details::visit_nested_exceptions(exception, visitor, 0);
+}
 
 } /* namespace lttng */
 
