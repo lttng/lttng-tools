@@ -95,7 +95,7 @@ enum lttng_crash_type {
 #define HALF_ULONG_BITS(wl) (((wl) *CHAR_BIT) >> 1)
 
 #define SB_ID_OFFSET_SHIFT(wl) (HALF_ULONG_BITS(wl) + 1)
-#define SB_ID_OFFSET_COUNT(wl) (1UL << SB_ID_OFFSET_SHIFT(wl))
+#define SB_ID_OFFSET_COUNT(wl) (UINT64_C(1) << SB_ID_OFFSET_SHIFT(wl))
 #define SB_ID_OFFSET_MASK(wl)  (~(SB_ID_OFFSET_COUNT(wl) - 1))
 /*
  * LTTng crash ABI 0.0:
@@ -104,7 +104,7 @@ enum lttng_crash_type {
  *   - Lowest bit of top word half belongs to noref.
  */
 #define SB_ID_NOREF_SHIFT(wl) (SB_ID_OFFSET_SHIFT(wl) - 1)
-#define SB_ID_NOREF_COUNT(wl) (1UL << SB_ID_NOREF_SHIFT(wl))
+#define SB_ID_NOREF_COUNT(wl) (UINT64_C(1) << SB_ID_NOREF_SHIFT(wl))
 #define SB_ID_NOREF_MASK(wl)  SB_ID_NOREF_COUNT(wl)
 /*
  * LTTng crash ABI 0.0:
@@ -115,7 +115,7 @@ enum lttng_crash_type {
  *  - Limit of 2^16 subbuffers per buffer on 32-bit, 2^32 on 64-bit.
  */
 #define SB_ID_INDEX_SHIFT(wl) 0
-#define SB_ID_INDEX_COUNT(wl) (1UL << SB_ID_INDEX_SHIFT(wl))
+#define SB_ID_INDEX_COUNT(wl) (UINT64_C(1) << SB_ID_INDEX_SHIFT(wl))
 #define SB_ID_INDEX_MASK(wl)  (SB_ID_NOREF_COUNT(wl) - 1)
 
 namespace {
