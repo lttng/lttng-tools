@@ -1574,9 +1574,20 @@ int extract_all_files(const char *output_path, const char *input_path)
 	}
 
 	bool has_error = false;
-	struct dirent *entry;
 
-	while ((entry = readdir(input_dir))) {
+	for (;;) {
+		/* readdir() returns `nullptr` both at the end and on error. */
+		errno = 0;
+		const auto *const entry = readdir(input_dir);
+		if (!entry) {
+			if (errno != 0) {
+				PERROR("Failed to read directory '%s'", input_path);
+				has_error = true;
+			}
+
+			break;
+		}
+
 		const lttng::c_string_view file_name(entry->d_name);
 
 		if (file_name == "." || file_name == ".." || file_name == "metadata") {
@@ -1629,9 +1640,20 @@ int extract_trace_recursive(const std::string& output_path, const std::string& i
 	});
 
 	int has_warning = 0;
-	struct dirent *entry;
 
-	while ((entry = readdir(dir))) {
+	for (;;) {
+		/* readdir() returns `nullptr` both at the end and on error. */
+		errno = 0;
+		const auto *const entry = readdir(dir);
+		if (!entry) {
+			if (errno != 0) {
+				PERROR("Failed to read directory '%s'", input_path.c_str());
+				has_warning = true;
+			}
+
+			break;
+		}
+
 		const lttng::c_string_view entry_name(entry->d_name);
 
 		if (entry_name == "." || entry_name == "..") {
@@ -1643,6 +1665,7 @@ int extract_trace_recursive(const std::string& output_path, const std::string& i
 
 		if (stat(entry_input_path.c_str(), &st)) {
 			PERROR("Failed to stat '%s'", entry_input_path.c_str());
+			has_warning = true;
 			continue;
 		}
 
@@ -1653,26 +1676,25 @@ int extract_trace_recursive(const std::string& output_path, const std::string& i
 			if (mkdir(entry_output_path.c_str(), S_IRWXU | S_IRWXG)) {
 				PERROR("Failed to create directory '%s'",
 				       entry_output_path.c_str());
-				return 1;
+				has_warning = true;
+				continue;
 			}
 
 			if (extract_trace_recursive(entry_output_path, entry_input_path)) {
-				has_warning = 1;
+				has_warning = true;
 			}
 		} else if (S_ISREG(st.st_mode)) {
 			if (entry_name == "metadata") {
 				if (extract_one_trace(output_path.c_str(), input_path.c_str())) {
 					WARN("Error extracting trace '%s', continuing anyway.",
 					     input_path.c_str());
-					has_warning = 1;
+					has_warning = true;
 				}
 			}
-		} else {
-			return 1;
 		}
 	}
 
-	return has_warning;
+	return has_warning ? 1 : 0;
 }
 
 int delete_dir_recursive(const std::string& path)
@@ -1695,9 +1717,19 @@ int delete_dir_recursive(const std::string& path)
 		return -errno;
 	}
 
-	struct dirent *entry;
+	for (;;) {
+		/* readdir() returns `nullptr` both at the end and on error. */
+		errno = 0;
+		const auto *const entry = readdir(dir);
+		if (!entry) {
+			if (errno != 0) {
+				PERROR("Failed to read directory '%s'", path.c_str());
+				return -1;
+			}
 
-	while ((entry = readdir(dir))) {
+			break;
+		}
+
 		const lttng::c_string_view entry_name(entry->d_name);
 
 		if (entry_name == "." || entry_name == "..") {
