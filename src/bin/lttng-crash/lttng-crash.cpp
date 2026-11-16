@@ -847,6 +847,12 @@ void copy_file(const std::string& destination_path, const std::string& source_pa
 
 	const lttng::output_stream_descriptor destination_fd(raw_destination_fd);
 
+	lttng::scope_exit remove_destination_file([&destination_path]() noexcept {
+		if (unlink(destination_path.c_str())) {
+			PERROR("Failed to remove '%s'", destination_path.c_str());
+		}
+	});
+
 	struct stat source_stat;
 	if (fstat(source_fd.fd(), &source_stat)) {
 		LTTNG_THROW_POSIX(fmt::format("Failed to get the size of `{}`", source_path));
@@ -854,6 +860,7 @@ void copy_file(const std::string& destination_path, const std::string& source_pa
 
 	copy_file_range(
 		destination_fd, source_fd, 0, static_cast<std::uint64_t>(source_stat.st_size));
+	remove_destination_file.disarm();
 }
 
 std::uint64_t
