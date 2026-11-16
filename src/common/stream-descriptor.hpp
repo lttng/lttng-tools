@@ -11,6 +11,7 @@
 #include "file-descriptor.hpp"
 
 #include <cstddef>
+#include <sys/types.h>
 #include <utility>
 
 namespace lttng {
@@ -59,6 +60,14 @@ public:
 	 * Throws an exception if an error occurs. Returns the number of bytes read.
 	 */
 	std::size_t read_some(void *buffer, std::size_t max_size);
+
+	/*
+	 * Read `size` bytes at `offset` from the beginning of the file
+	 * without changing the file offset.
+	 *
+	 * Throws an exception if the requested amount of bytes couldn't be read.
+	 */
+	void read_at(void *buffer, std::size_t size, off_t offset) const;
 };
 
 class output_stream_descriptor : public virtual file_descriptor {
@@ -97,6 +106,14 @@ public:
 	 * Throws an exception if the requested amount of bytes couldn't be written.
 	 */
 	void write(const void *buffer, std::size_t size);
+
+	/*
+	 * Write `size` bytes at `offset` from the beginning of the file
+	 * without changing the file offset.
+	 *
+	 * Throws an exception if the requested amount of bytes couldn't be written.
+	 */
+	void write_at(const void *buffer, std::size_t size, off_t offset) const;
 };
 
 class stream_descriptor : public input_stream_descriptor, public output_stream_descriptor {

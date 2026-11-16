@@ -23,4 +23,15 @@
 ssize_t lttng_read(int fd, void *buf, size_t count);
 ssize_t lttng_write(int fd, const void *buf, size_t count);
 
+/*
+ * Like lttng_read() and lttng_write(), but at `offset` from the beginning of
+ * the file, without changing the file offset of `fd`.
+ *
+ * Returns -1 and sets `errno` on error, even after a partial transfer. A
+ * return value lower than `count` means that the end of the file was
+ * reached.
+ */
+ssize_t lttng_pread(int fd, void *buf, size_t count, off_t offset);
+ssize_t lttng_pwrite(int fd, const void *buf, size_t count, off_t offset);
+
 #endif /* LTTNG_COMMON_READWRITE_H */

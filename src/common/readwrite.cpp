@@ -13,6 +13,36 @@
 #include <limits.h>
 #include <unistd.h>
 
+namespace {
+template <typename IOFunctionType>
+ssize_t complete_io(const size_t count, const IOFunctionType& io_function)
+{
+	if (count > SSIZE_MAX) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	size_t io_length = 0;
+
+	while (io_length < count) {
+		const auto ret = io_function(io_length);
+
+		if (ret < 0 && errno == EINTR) {
+			continue;
+		} else if (ret < 0) {
+			return -1;
+		} else if (ret == 0) {
+			break;
+		}
+
+		io_length += ret;
+		LTTNG_ASSERT(io_length <= count);
+	}
+
+	return static_cast<ssize_t>(io_length);
+}
+} /* namespace */
+
 /*
  * lttng_read and lttng_write take care of EINTR and partial read/write.
  * Upon success, they return the "count" received as parameter.
@@ -93,4 +123,28 @@ error:
 	} else {
 		return i;
 	}
+}
+
+ssize_t lttng_pread(const int fd, void *const buf, const size_t count, const off_t offset)
+{
+	LTTNG_ASSERT(buf);
+
+	return complete_io(count, [=](const size_t io_length) {
+		return pread(fd,
+			     static_cast<char *>(buf) + io_length,
+			     count - io_length,
+			     offset + static_cast<off_t>(io_length));
+	});
+}
+
+ssize_t lttng_pwrite(const int fd, const void *const buf, const size_t count, const off_t offset)
+{
+	LTTNG_ASSERT(buf);
+
+	return complete_io(count, [=](const size_t io_length) {
+		return pwrite(fd,
+			      static_cast<const char *>(buf) + io_length,
+			      count - io_length,
+			      offset + static_cast<off_t>(io_length));
+	});
 }

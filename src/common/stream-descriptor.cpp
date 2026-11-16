@@ -52,6 +52,23 @@ std::size_t input_stream_descriptor::read_some(void *buffer, std::size_t max_siz
 	return read_ret;
 }
 
+void input_stream_descriptor::read_at(void *buffer, std::size_t size, off_t offset) const
+{
+	const auto read_ret = lttng_pread(fd(), buffer, size, offset);
+
+	if (read_ret < 0) {
+		LTTNG_THROW_POSIX(lttng::format(
+			"Failed to read from file descriptor: fd={}, offset={}", fd(), offset));
+	} else if (static_cast<std::size_t>(read_ret) != size) {
+		LTTNG_THROW_ERROR(lttng::format(
+			"Unexpected end of file: fd={}, offset={}, requested_size={}, amount_read={}",
+			fd(),
+			offset,
+			size,
+			read_ret));
+	}
+}
+
 void output_stream_descriptor::write(const void *buffer, std::size_t size)
 {
 	using lttng_write_return_type = decltype(lttng_write(
@@ -69,6 +86,23 @@ void output_stream_descriptor::write(const void *buffer, std::size_t size)
 	const auto write_ret = lttng_write(fd(), buffer, size);
 	if (write_ret < 0 || static_cast<std::size_t>(write_ret) != size) {
 		LTTNG_THROW_POSIX(lttng::format("Failed to write to file descriptor: fd={}", fd()));
+	}
+}
+
+void output_stream_descriptor::write_at(const void *buffer, std::size_t size, off_t offset) const
+{
+	const auto write_ret = lttng_pwrite(fd(), buffer, size, offset);
+
+	if (write_ret < 0) {
+		LTTNG_THROW_POSIX(lttng::format(
+			"Failed to write to file descriptor: fd={}, offset={}", fd(), offset));
+	} else if (static_cast<std::size_t>(write_ret) != size) {
+		LTTNG_THROW_ERROR(lttng::format(
+			"Short write to file descriptor: fd={}, offset={}, requested_size={}, amount_written={}",
+			fd(),
+			offset,
+			size,
+			write_ret));
 	}
 }
 
