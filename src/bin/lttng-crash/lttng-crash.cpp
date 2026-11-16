@@ -1530,33 +1530,44 @@ int extract_file(int output_dir_fd,
 
 int extract_all_files(const char *output_path, const char *input_path)
 {
-	DIR *input_dir, *output_dir;
-	int input_dir_fd, output_dir_fd, ret = 0, closeret;
-	struct dirent *entry; /* input */
-
-	/* Open input directory */
-	input_dir = opendir(input_path);
+	DIR *const input_dir = opendir(input_path);
 	if (!input_dir) {
 		PERROR("Cannot open '%s' path", input_path);
 		return -1;
 	}
-	input_dir_fd = dirfd(input_dir);
+
+	const lttng::scope_exit close_input_dir([input_dir, input_path]() noexcept {
+		if (closedir(input_dir)) {
+			PERROR("Failed to close directory '%s'", input_path);
+		}
+	});
+
+	const auto input_dir_fd = dirfd(input_dir);
 	if (input_dir_fd < 0) {
-		PERROR("dirfd");
+		PERROR("Failed to get the file descriptor of directory '%s'", input_path);
 		return -1;
 	}
 
-	/* Open output directory */
-	output_dir = opendir(output_path);
+	DIR *const output_dir = opendir(output_path);
 	if (!output_dir) {
 		PERROR("Cannot open '%s' path", output_path);
 		return -1;
 	}
-	output_dir_fd = dirfd(output_dir);
+
+	const lttng::scope_exit close_output_dir([output_dir, output_path]() noexcept {
+		if (closedir(output_dir)) {
+			PERROR("Failed to close directory '%s'", output_path);
+		}
+	});
+
+	const auto output_dir_fd = dirfd(output_dir);
 	if (output_dir_fd < 0) {
-		PERROR("dirfd");
+		PERROR("Failed to get the file descriptor of directory '%s'", output_path);
 		return -1;
 	}
+
+	int ret = 0;
+	struct dirent *entry;
 
 	while ((entry = readdir(input_dir))) {
 		const lttng::c_string_view file_name(entry->d_name);
@@ -1578,14 +1589,7 @@ int extract_all_files(const char *output_path, const char *input_path)
 			continue;
 		}
 	}
-	closeret = closedir(output_dir);
-	if (closeret) {
-		PERROR("closedir");
-	}
-	closeret = closedir(input_dir);
-	if (closeret) {
-		PERROR("closedir");
-	}
+
 	return ret;
 }
 
