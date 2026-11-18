@@ -22,7 +22,7 @@ void input_stream_descriptor::read(void *buffer, std::size_t size)
 {
 	const auto read_ret = read_some(buffer, size);
 	if (static_cast<std::size_t>(read_ret) != size) {
-		LTTNG_THROW_POSIX(lttng::format(
+		LTTNG_THROW_ERROR(lttng::format(
 			"Failed to read enough data from file descriptor: fd={}, requested_size={}, amount_read={}",
 			fd(),
 			size,
