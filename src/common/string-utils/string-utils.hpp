@@ -10,8 +10,11 @@
 
 #include <common/dynamic-array.hpp>
 #include <common/macros.hpp>
+#include <common/string-utils/c-string-view.hpp>
 
+#include <cstddef>
 #include <stdbool.h>
+#include <string>
 
 void strutils_normalize_star_glob_pattern(char *pattern);
 
@@ -45,5 +48,20 @@ C_LINKAGE int strutils_append_str(char **str, const char *append);
  * `fmt` and the following arguments.
  */
 C_LINKAGE ATTR_FORMAT_PRINTF(2, 3) int strutils_appendf(char **s, const char *fmt, ...);
+
+namespace lttng {
+namespace utils {
+
+/*
+ * Wraps `text` between words to fit `line_width` columns (one per UTF-8
+ * code point), assuming `indent` columns precede the first line and
+ * indenting the other lines with `indent` spaces.
+ *
+ * Wrap plain text only, since escape sequences would count as columns.
+ */
+std::string wrap_text(lttng::c_string_view text, std::size_t line_width, std::size_t indent = 0);
+
+} /* namespace utils */
+} /* namespace lttng */
 
 #endif /* _STRING_UTILS_H */

@@ -6,16 +6,21 @@
  */
 
 #define _LGPL_SOURCE
+#include "../exception.hpp"
+#include "../format.hpp"
 #include "../macros.hpp"
 #include "string-utils.hpp"
 
+#include <algorithm>
 #include <assert.h>
+#include <cstring>
 #include <errno.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <string>
 #include <type_traits>
 
 enum star_glob_pattern_type_flags {
@@ -441,4 +446,70 @@ int strutils_appendf(char **s, const char *fmt, ...)
 
 end:
 	return ret;
+}
+
+namespace {
+std::size_t utf8_code_point_count(const char *const begin, const char *const end) noexcept
+{
+	return std::count_if(begin, end, [](const char byte) {
+		/* Count every byte except UTF-8 continuation bytes (`10xxxxxx`). */
+		return (static_cast<unsigned char>(byte) & 0xc0) != 0x80;
+	});
+}
+} /* namespace */
+
+std::string lttng::utils::wrap_text(const lttng::c_string_view text,
+				    const std::size_t line_width,
+				    const std::size_t indent)
+{
+	if (line_width <= indent) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			"Line width must be greater than the indentation: line_width={}, indent={}",
+			line_width,
+			indent));
+	}
+
+	const auto max_line_length = line_width - indent;
+	std::string wrapped;
+	std::size_t line_length = 0;
+	bool is_first_line = true;
+	const char *position = text.data();
+
+	while (*position != '\0') {
+		if (*position == ' ') {
+			position++;
+			continue;
+		}
+
+		if (*position == '\n') {
+			wrapped += '\n';
+			line_length = 0;
+			is_first_line = false;
+			position++;
+			continue;
+		}
+
+		const auto *const word_end = position + std::strcspn(position, " \n");
+		const auto word_length = utf8_code_point_count(position, word_end);
+
+		if (line_length > 0 && line_length + 1 + word_length > max_line_length) {
+			wrapped += '\n';
+			line_length = 0;
+			is_first_line = false;
+		}
+
+		if (line_length > 0) {
+			wrapped += ' ';
+			line_length++;
+		} else if (!is_first_line) {
+			/* Indent lazily so that blank lines have no trailing spaces. */
+			wrapped.append(indent, ' ');
+		}
+
+		wrapped.append(position, word_end);
+		line_length += word_length;
+		position = word_end;
+	}
+
+	return wrapped;
 }

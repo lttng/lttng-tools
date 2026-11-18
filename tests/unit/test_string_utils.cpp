@@ -11,10 +11,11 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <string>
 #include <tap/tap.h>
 
 /* Number of TAP tests in this file */
-#define NUM_TESTS 69
+#define NUM_TESTS 79
 
 /* For error.h */
 bool lttng_opt_is_tui = true;
@@ -177,6 +178,40 @@ static void test_normalize_star_glob_pattern()
 	test_one_normalize_star_glob_pattern("**\\***", "*\\**");
 }
 
+static void test_one_wrap_text(const char *input,
+			       std::size_t line_width,
+			       std::size_t indent,
+			       const char *expected)
+{
+	const auto wrapped = lttng::utils::wrap_text(input, line_width, indent);
+
+	ok(wrapped == expected,
+	   "wrap_text() wraps `%s` (width %zu, indent %zu) as `%s`, got `%s`",
+	   input,
+	   line_width,
+	   indent,
+	   expected,
+	   wrapped.c_str());
+}
+
+static void test_wrap_text()
+{
+	test_one_wrap_text("", 10, 0, "");
+	test_one_wrap_text("short", 10, 0, "short");
+	test_one_wrap_text("aaa bbb ccc", 7, 0, "aaa bbb\nccc");
+	test_one_wrap_text("  aaa   bbb  ", 20, 0, "aaa bbb");
+	test_one_wrap_text("aaa bbbbbbbbbb ccc", 6, 0, "aaa\nbbbbbbbbbb\nccc");
+	test_one_wrap_text("aaa bbb ccc ddd", 10, 3, "aaa bbb\n   ccc ddd");
+	test_one_wrap_text("aaa\nbbb", 10, 2, "aaa\n  bbb");
+	test_one_wrap_text("aaa\n\nbbb", 10, 2, "aaa\n\n  bbb");
+	test_one_wrap_text(
+		"\xc3\xa9t\xc3\xa9 \xc3\xa9t\xc3\xa9", 7, 0, "\xc3\xa9t\xc3\xa9 \xc3\xa9t\xc3\xa9");
+	test_one_wrap_text("\xc3\xa9t\xc3\xa9 \xc3\xa9t\xc3\xa9",
+			   6,
+			   0,
+			   "\xc3\xa9t\xc3\xa9\n\xc3\xa9t\xc3\xa9");
+}
+
 int main()
 {
 	plan_tests(NUM_TESTS);
@@ -185,6 +220,7 @@ int main()
 	test_is_star_glob_pattern();
 	test_is_star_at_the_end_only_glob_pattern();
 	test_split();
+	test_wrap_text();
 
 	return exit_status();
 }
