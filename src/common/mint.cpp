@@ -60,10 +60,10 @@ mint::When when() noexcept
 
 } /* namespace */
 
-std::string mint(const char *const begin, const char *const end)
+std::string mint(const char *const begin, const char *const end, const term_stream target_stream)
 {
 	try {
-		return mint::mint(begin, end, when());
+		return mint::mint(begin, end, when(), term_stream_fd(target_stream));
 	} catch (const std::runtime_error& ex) {
 		return std::string{ "mint() parsing error: " } + ex.what();
 	}

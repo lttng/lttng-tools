@@ -7,6 +7,7 @@
 #define LTTNG_COMMON_MINT_HPP
 
 #include <common/format.hpp>
+#include <common/term-utils.hpp>
 
 #include <string>
 #include <utility>
@@ -23,26 +24,33 @@ namespace lttng {
  *
  * This function checks the environment variables once on first call.
  *
- * This function doesn't throw when the viewed string contains a markup
- * error, preferring to return a string containing the error
+ * When the environment variables don't force a decision, this function
+ * emits SGR codes if `target_stream` is connected to a terminal which
+ * seems to support them.
+ *
+ * This function doesn't throw when the viewed string contains a
+ * markup error, preferring to return a string containing the error
  * message instead.
  */
-std::string mint(const char *begin, const char *end);
+std::string
+mint(const char *begin, const char *end, term_stream target_stream = term_stream::STANDARD_OUTPUT);
 
 /*
  * Overload with a C string.
  */
-inline std::string mint(const char *const str)
+inline std::string mint(const char *const str,
+			const term_stream stream = term_stream::STANDARD_OUTPUT)
 {
-	return mint(str, str + std::strlen(str));
+	return mint(str, str + std::strlen(str), stream);
 }
 
 /*
  * Overload with a C++ string.
  */
-inline std::string mint(const std::string& str)
+inline std::string mint(const std::string& str,
+			const term_stream stream = term_stream::STANDARD_OUTPUT)
 {
-	return mint(str.data(), str.data() + str.size());
+	return mint(str.data(), str.data() + str.size(), stream);
 }
 
 /*
@@ -95,6 +103,17 @@ template <typename... FormattingArguments>
 std::string mint_format(const std::string& fmtstr, FormattingArguments&&...args)
 {
 	return lttng::format(mint(fmtstr), std::forward<FormattingArguments>(args)...);
+}
+
+/*
+ * Like mint_format(), but for a string which the caller writes
+ * to `stream`.
+ */
+template <typename... FormattingArguments>
+std::string
+mint_format(const term_stream stream, const std::string& fmtstr, FormattingArguments&&...args)
+{
+	return lttng::format(mint(fmtstr, stream), std::forward<FormattingArguments>(args)...);
 }
 
 /*

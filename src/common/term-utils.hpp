@@ -10,14 +10,23 @@
 
 namespace lttng {
 
+/* Standard stream which may be connected to a terminal. */
+enum class term_stream {
+	STANDARD_OUTPUT,
+	STANDARD_ERROR,
+};
+
 /*
- * Returns the terminal width (in columns) of the standard output, caching
- * the result on the first call.
+ * Returns the terminal width (in columns) of `stream`, caching the result
+ * on the first call for each stream.
  *
- * If the terminal width can't be determined (for example, when standard
- * output isn't a TTY), returns `std::numeric_limits<std::size_t>::max()`.
+ * If the terminal width can't be determined (for example, when `stream`
+ * isn't a TTY), returns `std::numeric_limits<std::size_t>::max()`.
  */
-std::size_t term_columns() noexcept;
+std::size_t term_columns(term_stream stream = term_stream::STANDARD_OUTPUT) noexcept;
+
+/* Returns the file descriptor of `stream`. */
+int term_stream_fd(term_stream stream) noexcept;
 
 } /* namespace lttng */
 
