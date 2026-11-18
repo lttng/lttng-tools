@@ -83,6 +83,15 @@ EXIT STATUS
     Fatal error
 
 
+ENVIRONMENT
+-----------
+`LTTNG_ABORT_ON_ERROR`::
+    Set to `1` to abort the process after the first error is
+    encountered.
+
+include::common-color-env-vars.txt[]
+
+
 include::common-footer.txt[]
 
 

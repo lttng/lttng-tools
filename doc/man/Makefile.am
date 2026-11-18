@@ -69,6 +69,7 @@ MAN_XML = $(MAN1_XML) $(MAN3_XML) $(MAN7_XML) $(MAN8_XML)
 
 # common AsciiDoc source files
 COMMON_TXT = \
+	$(srcdir)/common-color-env-vars.txt \
 	$(srcdir)/common-footer.txt \
 	$(srcdir)/common-lttng-cmd-after-options.txt \
 	$(srcdir)/common-lttng-cmd-options-head.txt \
