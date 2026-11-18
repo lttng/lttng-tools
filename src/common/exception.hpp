@@ -192,8 +192,16 @@ private:
 class posix_error : public lttng::runtime_error {
 public:
 	explicit posix_error(const std::string& msg,
-			     unsigned int errno_code,
+			     int errno_code,
 			     const lttng::source_location& source_location);
+
+	int code() const noexcept
+	{
+		return _errno_code;
+	}
+
+private:
+	const int _errno_code;
 };
 
 /*

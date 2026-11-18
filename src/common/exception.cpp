@@ -19,9 +19,10 @@ lttng::ctl::error::error(const std::string& msg,
 }
 
 lttng::posix_error::posix_error(const std::string& msg,
-				unsigned int errno_code,
+				int errno_code,
 				const lttng::source_location& location) :
-	lttng::runtime_error(msg + ": " + std::system_category().message(errno_code), location)
+	lttng::runtime_error(msg + ": " + std::system_category().message(errno_code), location),
+	_errno_code{ errno_code }
 {
 }
 
