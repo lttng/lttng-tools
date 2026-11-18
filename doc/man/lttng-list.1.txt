@@ -117,7 +117,8 @@ option:--style=**compact** option.
 
 This command shows colored text when the terminal supports it.
 Override the terminal coloring behaviour with the
-`LTTNG_TERM_COLOR` and `NO_COLOR` environment variables.
+`LTTNG_TERM_COLOR`, `NO_COLOR`, and `FORCE_COLOR` environment
+variables.
 
 See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
