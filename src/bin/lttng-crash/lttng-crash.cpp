@@ -13,10 +13,13 @@
 #include <common/file-descriptor.hpp>
 #include <common/format.hpp>
 #include <common/math.hpp>
+#include <common/mint.hpp>
 #include <common/scope-exit.hpp>
 #include <common/spawn-viewer.hpp>
 #include <common/stream-descriptor.hpp>
 #include <common/string-utils/c-string-view.hpp>
+#include <common/string-utils/string-utils.hpp>
+#include <common/term-utils.hpp>
 #include <common/utils.hpp>
 
 #include <lttng/lttng.h>
@@ -748,40 +751,90 @@ error:
 	return -1;
 }
 
+constexpr std::size_t min_wrapped_text_width = 20;
+
+std::string wrap_for_standard_error(const std::string& text, const std::size_t indent)
+{
+	const auto columns = lttng::term_columns(lttng::term_stream::STANDARD_ERROR);
+
+	if (columns == std::numeric_limits<std::size_t>::max() ||
+	    columns < indent + min_wrapped_text_width) {
+		return text;
+	}
+
+	return lttng::utils::wrap_text(text, columns, indent);
+}
+
 template <typename... FormattingArgumentTypes>
 void log_error_with_causes(const std::exception& exception,
 			   lttng::c_string_view summary_format,
 			   FormattingArgumentTypes&&...arguments) noexcept
 {
 	try {
-		auto message = fmt::format(summary_format.data(),
-					   std::forward<FormattingArgumentTypes>(arguments)...);
-		std::string innermost_location;
+		constexpr auto stream = lttng::term_stream::STANDARD_ERROR;
+		constexpr char error_label[] = "Error:";
+		constexpr char cause_margin[] = "  ";
+		constexpr char cause_label[] = "Caused by:";
+		/* Continuation lines start under the message, after the label and a space. */
+		constexpr auto error_indent = (sizeof(error_label) - 1) + 1;
+		constexpr auto cause_indent =
+			(sizeof(cause_margin) - 1) + (sizeof(cause_label) - 1) + 1;
+		const auto summary = fmt::format(
+			summary_format.data(), std::forward<FormattingArgumentTypes>(arguments)...);
+		auto message = lttng::mint_format(stream,
+						  "[!*r]{} {}[/]",
+						  error_label,
+						  wrap_for_standard_error(summary, error_indent));
+		std::vector<std::string> causes;
+		std::optional<lttng::source_location> innermost_location;
 
 		lttng::visit_nested_exceptions(
 			exception,
-			[&message, &innermost_location](const std::exception& cause,
-							const unsigned int) {
-				message += fmt::format("\n  Caused by: {}", cause.what());
+			[&causes, &innermost_location](const std::exception& cause,
+						       const unsigned int) {
+				causes.emplace_back(cause.what());
 
 				const auto *const lttng_cause =
 					dynamic_cast<const lttng::runtime_error *>(&cause);
 
 				innermost_location = lttng_cause ?
-					fmt::format(
-						" (in {}() at {}:{})",
-						lttng_cause->source_location.function_name.data(),
-						lttng_cause->source_location.file_name.data(),
-						lttng_cause->source_location.line_number) :
-					std::string();
+					std::make_optional(lttng_cause->source_location) :
+					std::nullopt;
 			});
 
-		if (lttng_opt_verbose > 0) {
-			/* Omit source location in non-verbose output. */
-			message += innermost_location;
+		for (const auto& cause : causes) {
+			/* Make the innermost cause, which is the actual problem, stand out. */
+			const auto label = lttng::mint_format(
+				stream,
+				&cause == &causes.back() ? "[!*r]{}[/]" : "[!]{}[/]",
+				cause_label);
+
+			message += fmt::format("\n{}{} {}",
+					       cause_margin,
+					       label,
+					       wrap_for_standard_error(cause, cause_indent));
 		}
 
-		ERR("%s", message.c_str());
+		if (lttng_opt_verbose > 0 && innermost_location) {
+			/* Omit source location in non-verbose output. */
+			const auto location = fmt::format("(in {}() at {}:{})",
+							  innermost_location->function_name.data(),
+							  innermost_location->file_name.data(),
+							  innermost_location->line_number);
+
+			message +=
+				lttng::mint_format(stream,
+						   "\n{:{}}[-]{}[/]",
+						   "",
+						   cause_indent,
+						   wrap_for_standard_error(location, cause_indent));
+		}
+
+		if (!lttng_opt_quiet) {
+			lttng::print(stderr, "{}\n", message);
+		}
+
+		lttng_abort_on_error();
 	} catch (const std::exception& formatting_exception) {
 		ERR("Failed to format error: %s: original_error=`%s`",
 		    formatting_exception.what(),
