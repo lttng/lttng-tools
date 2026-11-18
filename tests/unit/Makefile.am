@@ -37,6 +37,7 @@ TESTS = \
 	test_relayd_backward_compat_group_by_session \
 	test_scheduler \
 	test_session \
+	test_stream_descriptor \
 	test_string_utils \
 	test_condition \
 	test_table_writer \
@@ -86,6 +87,7 @@ noinst_PROGRAMS = \
 	test_relayd_backward_compat_group_by_session \
 	test_scheduler \
 	test_session \
+	test_stream_descriptor \
 	test_string_utils \
 	test_table_writer \
 	test_unix_socket \
@@ -180,6 +182,10 @@ test_utils_path_walks_up_hierarchy_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(DL_LIBS)
 # directory handle unit test
 test_directory_handle_SOURCES = test_directory_handle.cpp
 test_directory_handle_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(DL_LIBS)
+
+# stream descriptor unit test
+test_stream_descriptor_SOURCES = test_stream_descriptor.cpp
+test_stream_descriptor_LDADD = $(LIBTAP) $(LIBCOMMON_GPL)
 
 # string utilities unit test
 test_string_utils_SOURCES = test_string_utils.cpp

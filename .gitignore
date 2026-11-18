@@ -108,6 +108,7 @@ compile_commands.json
 /tests/unit/test_action
 /tests/unit/test_action_key_template
 /tests/unit/test_unix_socket
+/tests/unit/test_stream_descriptor
 /tests/unit/test_string_utils
 /tests/unit/test_buffer_view
 /tests/unit/test_kernel_probe
