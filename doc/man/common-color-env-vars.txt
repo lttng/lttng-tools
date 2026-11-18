@@ -11,9 +11,10 @@ One of:
 +
 --
 `auto` (default)::
-    Only emit SGR codes when the standard output is connected to a
-    color-capable terminal, or when the `FORCE_COLOR` environment
-    variable is set and not empty.
+    Only emit SGR codes to a standard stream (standard output or
+    standard error) when that stream is connected to a color-capable
+    terminal, or when the `FORCE_COLOR` environment variable is set
+    and not empty.
 
 `always`::
     Always emit SGR codes.

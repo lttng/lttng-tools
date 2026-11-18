@@ -55,8 +55,10 @@ void __lttng_print_colorized(enum lttng_error_level type, const char *fmt, ...)
 	vsnprintf(message_buf.data(), message_buf.size(), fmt, format_args);
 	va_end(format_args);
 
-	const auto colorized_message = lttng::mint_format(
-		type == PRINT_WARN ? "[!*y]{}[/]" : "[!*r]{}[/]", message_buf.data());
+	const auto colorized_message =
+		lttng::mint_format(lttng::term_stream::STANDARD_ERROR,
+				   type == PRINT_WARN ? "[!*y]{}[/]" : "[!*r]{}[/]",
+				   message_buf.data());
 
 	fprintf(stderr, "%s", colorized_message.c_str());
 }
