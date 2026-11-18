@@ -1654,7 +1654,6 @@ int extract_all_files(const char *output_path, const char *input_path)
 		if (extract_ret == -ENODATA) {
 			DBG("No data in file '%s', skipping", entry->d_name);
 		} else if (extract_ret < 0) {
-			/* extract_file() logged the error. Extract the other streams anyway. */
 			has_error = true;
 		} else if (extract_ret > 0) {
 			DBG("Skipping file '%s'", entry->d_name);
@@ -1741,8 +1740,7 @@ int extract_trace_recursive(const std::string& output_path, const std::string& i
 		} else if (S_ISREG(st.st_mode)) {
 			if (entry_name == "metadata") {
 				if (extract_one_trace(output_path.c_str(), input_path.c_str())) {
-					WARN("Error extracting trace '%s', continuing anyway.",
-					     input_path.c_str());
+					/* extract_one_trace() logged the errors. */
 					has_warning = true;
 				}
 			}
