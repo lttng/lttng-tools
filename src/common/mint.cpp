@@ -11,49 +11,33 @@
 
 #include <cstdlib>
 #include <cstring>
-#include <mutex>
 #include <stdexcept>
 
 namespace lttng {
 namespace {
 
 /*
- * Returns the `mint::When` value from the `NO_COLOR` and
- * `LTTNG_TERM_COLOR` environment variables, caching the result.
+ * Returns the `mint::When` value from the `LTTNG_TERM_COLOR` environment
+ * variable, caching the result.
  *
- * `NO_COLOR` overrides `LTTNG_TERM_COLOR`.
+ * `LTTNG_TERM_COLOR` overrides `NO_COLOR` and `FORCE_COLOR`, which
+ * mint::mint() only honors in its automatic mode.
  */
 mint::When when() noexcept
 {
-	static std::once_flag init_flag;
-	static mint::When when_value = mint::When::Auto;
+	static const auto when_value = []() -> mint::When {
+		const auto term_color = std::getenv("LTTNG_TERM_COLOR");
 
-	std::call_once(init_flag, [] {
-		/*
-		 * Check `NO_COLOR` first (see <https://no-color.org/>).
-		 *
-		 * If set and not empty, disable colors.
-		 */
-		{
-			const auto no_color = std::getenv("NO_COLOR");
-
-			if (no_color && no_color[0] != '\0') {
-				when_value = mint::When::Never;
-				return;
-			}
+		if (term_color && std::strcmp(term_color, "always") == 0) {
+			return mint::When::Always;
 		}
 
-		/* Check `LTTNG_TERM_COLOR` */
-		const auto env_val = std::getenv("LTTNG_TERM_COLOR");
-
-		if (env_val) {
-			if (std::strcmp(env_val, "always") == 0) {
-				when_value = mint::When::Always;
-			} else if (std::strcmp(env_val, "never") == 0) {
-				when_value = mint::When::Never;
-			}
+		if (term_color && std::strcmp(term_color, "never") == 0) {
+			return mint::When::Never;
 		}
-	});
+
+		return mint::When::Auto;
+	}();
 
 	return when_value;
 }

@@ -5,27 +5,29 @@
 `LTTNG_TERM_COLOR`::
     Controls when to emit terminal SGR codes in the output.
 +
-The `NO_COLOR` environment variable overrides this.
-+
 One of:
 +
 --
 `auto` (default)::
     Only emit SGR codes to a standard stream (standard output or
     standard error) when that stream is connected to a color-capable
-    terminal, or when the `FORCE_COLOR` environment variable is set
-    and not empty.
+    terminal, unless the `NO_COLOR` or `FORCE_COLOR` environment
+    variable is set and not empty.
 
 `always`::
-    Always emit SGR codes.
+    Always emit SGR codes, even if the `NO_COLOR` environment variable
+    is set.
 
 `never`::
-    Never emit SGR codes.
+    Never emit SGR codes, even if the `FORCE_COLOR` environment
+    variable is set.
 --
 
 `NO_COLOR`::
-    If set and not empty, then it's equivalent to setting
-    `LTTNG_TERM_COLOR` to `never`.
+    If set and not empty, then don't emit SGR codes.
++
+This environment variable only applies when `LTTNG_TERM_COLOR` is
+`auto`.
 +
 See https://no-color.org/[NO_COLOR] to learn more.
 

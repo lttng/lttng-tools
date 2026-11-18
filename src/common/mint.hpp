@@ -16,11 +16,10 @@ namespace lttng {
 
 /*
  * Wraps mint::mint() from `vendor/mint.hpp`, automatically determining
- * the `when` parameter from the `LTTNG_TERM_COLOR` and `NO_COLOR`
- * environment variables.
+ * the `when` parameter from the `LTTNG_TERM_COLOR`, `NO_COLOR`, and
+ * `FORCE_COLOR` environment variables.
  *
- * See lttng(1) to learn more about the `LTTNG_TERM_COLOR` and
- * `NO_COLOR` environment variables.
+ * See lttng(1) to learn more about those environment variables.
  *
  * This function checks the environment variables once on first call.
  *
