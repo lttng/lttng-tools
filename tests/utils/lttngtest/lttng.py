@@ -465,7 +465,8 @@ class _Channel(lttngctl.Channel):
         # type: (lttngctl.EventRule) -> None
         client_args = (
             "enable-event --session {session_name} --channel {channel_name}".format(
-                session_name=self._session.name, channel_name=self.name
+                session_name=shlex.quote(self._session.name),
+                channel_name=shlex.quote(self.name),
             )
         )
         if isinstance(rule, lttngctl.TracepointEventRule):
@@ -555,8 +556,8 @@ class _Channel(lttngctl.Channel):
         self._client._run_cmd(
             "disable-event --session {session_name} --channel {channel_name}"
             " --{domain_option_name} {name_pattern}".format(
-                session_name=self._session.name,
-                channel_name=self.name,
+                session_name=shlex.quote(self._session.name),
+                channel_name=shlex.quote(self.name),
                 domain_option_name=domain_option_name,
                 name_pattern=name_pattern,
             )
@@ -568,8 +569,8 @@ class _Channel(lttngctl.Channel):
         self._client._run_cmd(
             "disable-event --session {session_name} --channel {channel_name}"
             " --{domain_option_name} --all-events".format(
-                session_name=self._session.name,
-                channel_name=self.name,
+                session_name=shlex.quote(self._session.name),
+                channel_name=shlex.quote(self.name),
                 domain_option_name=domain_option_name,
             )
         )
