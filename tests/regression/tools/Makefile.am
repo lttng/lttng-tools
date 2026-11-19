@@ -265,6 +265,7 @@ noinst_SCRIPTS += \
 	tracefile-limits/test_tracefile_count \
 	tracefile-limits/test_tracefile_size \
 	trace-format/test_empty_event_field_name.py \
+	trace-format/test_env_string_escaping.py \
 	trace-format/test_sessiond_default_trace_format.py \
 	trace-format/test_trace_format_kernel.py \
 	trace-format/test_trace_format_ust.py \
