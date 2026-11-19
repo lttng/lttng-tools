@@ -102,7 +102,7 @@ std::string escape_tsdl_env_string_value(const std::string& original_string)
 			escaped_string += "\\\\";
 			break;
 		case '"':
-			escaped_string += "\"";
+			escaped_string += "\\\"";
 			break;
 		default:
 			escaped_string += c;
