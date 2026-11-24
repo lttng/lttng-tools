@@ -166,6 +166,8 @@ struct lttng_directory_handle *lttng_directory_handle_create_from_dirfd(int dirf
 			handle = nullptr;
 			goto end;
 		}
+
+		handle->directory_inode = stat_buf.st_ino;
 	} else {
 		handle->directory_inode = RESERVED_AT_FDCWD_INO;
 	}

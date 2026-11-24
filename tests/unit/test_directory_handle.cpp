@@ -8,6 +8,8 @@
 #include <common/compat/directory-handle.hpp>
 #include <common/compat/errno.hpp>
 #include <common/error.hpp>
+#include <common/make-unique-wrapper.hpp>
+#include <common/scope-exit.hpp>
 #include <common/utils.hpp>
 
 #include <fcntl.h>
@@ -20,7 +22,7 @@
 #include <tap/tap.h>
 #include <unistd.h>
 
-#define TEST_COUNT 11
+#define TEST_COUNT 13
 
 /* For error.h */
 bool lttng_opt_is_tui = true;
@@ -39,11 +41,13 @@ using test_func = int(const char *);
 static test_func test_rmdir_fail_non_empty;
 static test_func test_rmdir_skip_non_empty;
 static test_func test_create_from_invalid_dirfd;
+static test_func test_equals;
 
 static test_func *const test_funcs[] = {
 	&test_rmdir_fail_non_empty,
 	&test_rmdir_skip_non_empty,
 	&test_create_from_invalid_dirfd,
+	&test_equals,
 };
 
 static bool dir_exists(const char *path)
@@ -279,6 +283,57 @@ static int test_create_from_invalid_dirfd(const char *)
 
 	ok(list_open_fds().size() == open_fd_count_before,
 	   "No file descriptor closed after the failure to create a directory handle");
+	tests_ran++;
+	return tests_ran;
+}
+
+static int test_equals(const char *test_dir)
+{
+	int tests_ran = 0;
+	const char subdirectory_name[] = "equals";
+
+	diag("Comparison of directory handles");
+
+	const auto test_dir_handle =
+		lttng::make_unique_wrapper<lttng_directory_handle, lttng_directory_handle_put>(
+			lttng_directory_handle_create(test_dir));
+	if (!test_dir_handle) {
+		diag("Failed to create a handle to the test directory");
+		return -1;
+	}
+
+	if (lttng_directory_handle_create_subdirectory(
+		    test_dir_handle.get(), subdirectory_name, DIR_CREATION_MODE)) {
+		diag("Failed to create a subdirectory of the test directory");
+		return -1;
+	}
+
+	const lttng::scope_exit remove_subdirectory(
+		[&test_dir_handle, &subdirectory_name]() noexcept {
+			if (lttng_directory_handle_remove_subdirectory(test_dir_handle.get(),
+								       subdirectory_name)) {
+				diag("Failed to remove the subdirectory of the test directory");
+			}
+		});
+
+	const auto subdirectory_handle =
+		lttng::make_unique_wrapper<lttng_directory_handle, lttng_directory_handle_put>(
+			lttng_directory_handle_create_from_handle(subdirectory_name,
+								  test_dir_handle.get()));
+	const auto test_dir_handle_copy =
+		lttng::make_unique_wrapper<lttng_directory_handle, lttng_directory_handle_put>(
+			lttng_directory_handle_copy(test_dir_handle.get()));
+	if (!subdirectory_handle || !test_dir_handle_copy) {
+		diag("Failed to create the directory handles to compare");
+		return -1;
+	}
+
+	ok(!lttng_directory_handle_equals(test_dir_handle.get(), subdirectory_handle.get()),
+	   "Handles of distinct directories are not equal");
+	tests_ran++;
+
+	ok(lttng_directory_handle_equals(test_dir_handle.get(), test_dir_handle_copy.get()),
+	   "A directory handle is equal to its copy");
 	tests_ran++;
 	return tests_ran;
 }
