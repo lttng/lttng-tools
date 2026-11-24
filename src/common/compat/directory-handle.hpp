@@ -82,6 +82,8 @@ lttng_directory_handle_create_from_handle(const char *path,
  * Create a new directory handle from an existing directory fd.
  *
  * The new directory handle assumes the ownership of the directory fd.
+ * On failure, the directory fd is left open and still belongs to the caller.
+ *
  * Note that this method should only be used in very specific cases, such as
  * re-creating a directory handle from a dirfd passed over a unix socket.
  *

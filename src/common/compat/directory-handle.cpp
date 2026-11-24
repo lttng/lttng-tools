@@ -156,6 +156,8 @@ struct lttng_directory_handle *lttng_directory_handle_create_from_dirfd(int dirf
 		goto end;
 	}
 
+	handle->dirfd = -1;
+
 	if (dirfd != AT_FDCWD) {
 		ret = fstat(dirfd, &stat_buf);
 		if (ret) {

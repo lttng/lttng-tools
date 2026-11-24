@@ -8,6 +8,7 @@
 #include <common/compat/directory-handle.hpp>
 #include <common/compat/errno.hpp>
 #include <common/error.hpp>
+#include <common/utils.hpp>
 
 #include <fcntl.h>
 #include <stdbool.h>
@@ -19,7 +20,7 @@
 #include <tap/tap.h>
 #include <unistd.h>
 
-#define TEST_COUNT 9
+#define TEST_COUNT 11
 
 /* For error.h */
 bool lttng_opt_is_tui = true;
@@ -37,10 +38,12 @@ using test_func = int(const char *);
 
 static test_func test_rmdir_fail_non_empty;
 static test_func test_rmdir_skip_non_empty;
+static test_func test_create_from_invalid_dirfd;
 
 static test_func *const test_funcs[] = {
 	&test_rmdir_fail_non_empty,
 	&test_rmdir_skip_non_empty,
+	&test_create_from_invalid_dirfd,
 };
 
 static bool dir_exists(const char *path)
@@ -260,6 +263,24 @@ end:
 	free(created_dir);
 	free(test_dir_path);
 	return ret == 0 ? tests_ran : ret;
+}
+
+static int test_create_from_invalid_dirfd(const char *)
+{
+	int tests_ran = 0;
+
+	diag("Creation from an invalid directory file descriptor");
+
+	const auto open_fd_count_before = list_open_fds().size();
+
+	ok(!lttng_directory_handle_create_from_dirfd(-1),
+	   "No directory handle created from an invalid file descriptor");
+	tests_ran++;
+
+	ok(list_open_fds().size() == open_fd_count_before,
+	   "No file descriptor closed after the failure to create a directory handle");
+	tests_ran++;
+	return tests_ran;
 }
 
 int main()
