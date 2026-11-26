@@ -23,6 +23,8 @@ EXTRA_DIST = \
 	utils.sh \
 	warn_processes.sh
 
+noinst_DATA = lttng-build-profile.json
+
 noinst_HEADERS = \
 	xml-utils/common.hpp
 
